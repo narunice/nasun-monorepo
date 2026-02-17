@@ -413,6 +413,32 @@ export type { UseNsaRecoveryResult, NsaRecoveryOverrides } from './hooks/useNsaR
 export { useNsaBackup } from './hooks/useNsaBackup';
 export type { UseNsaBackupResult } from './hooks/useNsaBackup';
 
+// Wallet Backup (no Smart Account required)
+export { useWalletBackup } from './hooks/useWalletBackup';
+export type { UseWalletBackupResult } from './hooks/useWalletBackup';
+
+// Wallet Backup Core
+export {
+  createWalletBackup,
+  restoreWalletBackup,
+  validateWalletBackupFormat,
+} from './core/walletBackup';
+export type { WalletBackupRestoreResult } from './core/walletBackup';
+
+// NSA Backup Types
+export type { BackupAccountState, NsaBackupRestoreResult } from './core/nsa/backup';
+
+// Backup Types
+export type {
+  EncryptedBackupEnvelope,
+  WalletBackupPackage,
+  BackupPackage,
+} from './types/backup';
+export { detectBackupType } from './types/backup';
+
+// Backup Utilities
+export { downloadBackupFile, parseBackupJson } from './core/backup-utils';
+
 // NSA Store
 export { useNsaStore } from './stores/nsaStore';
 

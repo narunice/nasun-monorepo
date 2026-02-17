@@ -12,7 +12,9 @@ import {
   restoreFromBackup,
   validateBackupFormat,
 } from '../core/nsa/backup';
+import type { NsaBackupRestoreResult } from '../core/nsa/backup';
 import { fetchAccountState } from '../core/nsa/client';
+import { downloadBackupFile, parseBackupJson } from '../core/backup-utils';
 import type { NsaBackupPackage } from '../types/nsa';
 
 export interface UseNsaBackupResult {
@@ -23,11 +25,7 @@ export interface UseNsaBackupResult {
   /** Create an encrypted backup */
   createNsaBackup: (signerPrivateKey: string, signerAddress: string, pin: string) => Promise<NsaBackupPackage>;
   /** Restore from an encrypted backup */
-  restoreNsaBackup: (backup: NsaBackupPackage, pin: string) => Promise<{
-    signerPrivateKey: string;
-    accountObjectId: string;
-    signerAddress: string;
-  }>;
+  restoreNsaBackup: (backup: NsaBackupPackage, pin: string) => Promise<NsaBackupRestoreResult>;
   /** Validate backup file format */
   validateBackup: (data: unknown) => boolean;
   /** Download backup as JSON file */
@@ -99,32 +97,11 @@ export function useNsaBackup(): UseNsaBackupResult {
   }, []);
 
   const downloadBackup = useCallback((backup: NsaBackupPackage): void => {
-    const json = JSON.stringify(backup, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `nasun-backup-${backup.accountObjectId.slice(0, 8)}.json`;
-    anchor.click();
-
-    URL.revokeObjectURL(url);
+    downloadBackupFile(backup, `nasun-nsa-backup-${backup.accountObjectId.slice(0, 8)}.json`);
   }, []);
 
   const parseBackupFile = useCallback(async (file: File): Promise<NsaBackupPackage> => {
-    const text = await file.text();
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new Error('Invalid JSON file');
-    }
-
-    if (!validateBackupFormat(parsed)) {
-      throw new Error('Invalid backup file format');
-    }
-
-    return parsed as NsaBackupPackage;
+    return parseBackupJson(file, validateBackupFormat);
   }, []);
 
   const clearError = useCallback(() => {

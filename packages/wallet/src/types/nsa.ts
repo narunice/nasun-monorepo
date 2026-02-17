@@ -57,7 +57,8 @@ export type RecoveryTier = 'multipath' | 'backup' | 'guardian';
 
 /** Backup package for Tier 2 recovery */
 export interface NsaBackupPackage {
-  version: 1;
+  type?: 'nsa';
+  version: 1 | 2;
   accountObjectId: string;
   encryptedPayload: string;
   salt: string;

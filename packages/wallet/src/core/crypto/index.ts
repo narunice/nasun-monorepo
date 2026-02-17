@@ -7,9 +7,14 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { generateMnemonic, validateMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english.js';
 import { blake2b } from '@noble/hashes/blake2.js';
+import {
+  deriveKey as deriveKeyPrimitive,
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+} from './primitives';
 
-// PBKDF2 settings
-const PBKDF2_ITERATIONS = 100000;
+// Keystore encryption uses 100K iterations (interactive unlock)
+const KEYSTORE_PBKDF2_ITERATIONS = 100_000;
 const SALT_LENGTH = 16;
 const IV_LENGTH = 12;
 
@@ -85,33 +90,6 @@ export function getPublicKeyFromKeypair(keypair: Ed25519Keypair): string {
 }
 
 /**
- * Derive encryption key from password (PBKDF2)
- */
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  const passwordKey = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(password),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength) as ArrayBuffer,
-      iterations: PBKDF2_ITERATIONS,
-      hash: 'SHA-256',
-    },
-    passwordKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-/**
  * Encrypt private key
  * @param privateKey Bech32 encoded private key string (suiprivkey1...)
  */
@@ -121,7 +99,7 @@ export async function encryptPrivateKey(
 ): Promise<{ encrypted: string; iv: string; salt: string }> {
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const key = await deriveKey(password, salt);
+  const key = await deriveKeyPrimitive(password, salt, { iterations: KEYSTORE_PBKDF2_ITERATIONS });
 
   // Convert Bech32 string to UTF-8 bytes
   const encoder = new TextEncoder();
@@ -154,7 +132,7 @@ export async function decryptPrivateKey(
   const iv = base64ToArrayBuffer(ivBase64);
   const salt = base64ToArrayBuffer(saltBase64);
 
-  const key = await deriveKey(password, new Uint8Array(salt));
+  const key = await deriveKeyPrimitive(password, new Uint8Array(salt), { iterations: KEYSTORE_PBKDF2_ITERATIONS });
 
   try {
     const decrypted = await crypto.subtle.decrypt(
@@ -218,26 +196,4 @@ export function secureZeroString(str: string): Uint8Array {
   const buffer = encoder.encode(str);
   secureZero(buffer);
   return buffer;
-}
-
-// ============================================
-// Utility functions
-// ============================================
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
 }
