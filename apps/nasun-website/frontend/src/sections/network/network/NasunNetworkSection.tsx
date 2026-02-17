@@ -62,9 +62,10 @@ function NasunNetworkSection() {
                     icon={<span>{layer.emoji}</span>}
                     description={t(layer.descKey)}
                     color={layer.color}
-                    className="!bg-black/50"
+                    className={layer.color === "white" ? "!bg-black/50 !border-nasun-white/40" : "!bg-black/50"}
                     padding="sm"
                     disableHover
+                    titleClassName={layer.color === "white" ? "text-nasun-white/90" : ""}
                   />
                 ))}
               </div>
