@@ -15,6 +15,7 @@
     "@aws/lambda-invoke-store": "^0.1.0",
     "axios": "^1.6.7",
     "ethers": "^6.13.0",
+    "jose": "^5.2.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
