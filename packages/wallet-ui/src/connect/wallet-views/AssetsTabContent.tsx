@@ -197,16 +197,23 @@ export function AssetsTabContent({
               No NFTs found
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {accumulatedNfts.slice(0, 6).map((nft) => (
-                <NFTCard
-                  key={nft.objectId}
-                  nft={nft}
-                  compact
-                  onClick={(n) => onSelectNFT(n)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                {accumulatedNfts.slice(0, 3).map((nft) => (
+                  <NFTCard
+                    key={nft.objectId}
+                    nft={nft}
+                    compact
+                    onClick={(n) => onSelectNFT(n)}
+                  />
+                ))}
+              </div>
+              {accumulatedNfts.length > 3 && (
+                <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 text-center mt-2">
+                  +{accumulatedNfts.length - 3} more
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
