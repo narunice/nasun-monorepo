@@ -26,21 +26,13 @@ export function PasskeySetupView({
   error: PasskeyError | null;
 }) {
   const [userName, setUserName] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword;
-  const passwordTooShort = password.length > 0 && password.length < 6;
-  const canCreate =
-    userName.trim().length > 0 &&
-    password.length >= 6 &&
-    password === confirmPassword &&
-    !isLoading;
+  const canCreate = userName.trim().length > 0 && !isLoading;
 
   const handleCreate = async () => {
     if (!canCreate) return;
     try {
-      const { mnemonic } = await createWallet(userName.trim(), password);
+      const { mnemonic } = await createWallet(userName.trim(), undefined);
       onCreated(mnemonic);
     } catch {
       // Error is stored in hook state
@@ -62,41 +54,11 @@ export function PasskeySetupView({
           placeholder="Display name (e.g., My Wallet)"
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && canCreate && handleCreate()}
           className={inputClass}
           disabled={isLoading}
           autoFocus
         />
-
-        <input
-          type="password"
-          placeholder="Wallet password (min 6 characters)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
-          disabled={isLoading}
-        />
-
-        <input
-          type="password"
-          placeholder="Confirm password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && canCreate && handleCreate()}
-          className={inputClass}
-          disabled={isLoading}
-        />
-
-        {passwordTooShort && (
-          <p className="text-xs text-amber-500">Password must be at least 6 characters</p>
-        )}
-        {passwordMismatch && (
-          <p className="text-xs text-red-400">Passwords don't match</p>
-        )}
-
-        <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500">
-          Password protects your wallet if your device doesn't support hardware encryption.
-          On supported devices, only biometrics are needed to unlock.
-        </p>
 
         {error && (
           <p className="text-xs xl:text-sm text-red-400">{error.message}</p>
