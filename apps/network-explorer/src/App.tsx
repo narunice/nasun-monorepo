@@ -1,6 +1,7 @@
 import { Routes, Route, Link } from 'react-router-dom';
 import { ErrorBoundary, Layout } from './components/layout';
 import Home from './pages/Home';
+import Analytics from './pages/Analytics';
 import Transaction from './pages/Transaction';
 import Transactions from './pages/Transactions';
 import ObjectPage from './pages/Object';
@@ -32,6 +33,7 @@ function App() {
 
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/tx/:digest" element={<Transaction />} />
           <Route path="/object/:id" element={<ObjectPage />} />
