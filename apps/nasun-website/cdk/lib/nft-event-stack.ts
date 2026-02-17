@@ -14,10 +14,12 @@
 import * as cdk from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
 
@@ -157,12 +159,29 @@ export class NftEventStack extends cdk.Stack {
     const X_TARGET_USER_ID = process.env.X_TARGET_USER_ID || "1725466995565752320";
     const X_TARGET_TWEET_ID = process.env.X_TARGET_TWEET_ID || "";
 
+    // Common NodejsFunction options
+    const nftEventLambdaSrcPath = path.join(__dirname, "..", "lambda-src", "nft-event");
+    const depsLockFilePath = path.join(__dirname, "..", "pnpm-lock.yaml");
+    const bundlingOptions = {
+      minify: true,
+      sourceMap: true,
+      externalModules: [
+        "@aws-sdk/client-dynamodb",
+        "@aws-sdk/lib-dynamodb",
+        "@aws-sdk/util-dynamodb",
+        "@aws-sdk/client-s3",
+        "@aws-sdk/s3-request-presigner",
+      ],
+    };
+
     // Lambda 1: verify-eligibility
-    const verifyEligibilityLambda = new lambda.Function(this, "VerifyEligibilityLambda", {
+    const verifyEligibilityLambda = new NodejsFunction(this, "VerifyEligibilityLambda", {
       functionName: "nasun-nft-verify-eligibility",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/index.handler",
-      code: lambda.Code.fromAsset("lambda-src/nft-event/verify-eligibility"),
+      entry: path.join(nftEventLambdaSrcPath, "verify-eligibility", "src", "index.ts"),
+      handler: "handler",
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       logGroup: verifyLogGroup,
@@ -176,6 +195,7 @@ export class NftEventStack extends cdk.Stack {
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: "--enable-source-maps",
       },
     });
 
@@ -184,11 +204,13 @@ export class NftEventStack extends cdk.Stack {
     this.tasksTable.grantReadWriteData(verifyEligibilityLambda);
 
     // Lambda 2: register-user
-    const registerUserLambda = new lambda.Function(this, "RegisterUserLambda", {
+    const registerUserLambda = new NodejsFunction(this, "RegisterUserLambda", {
       functionName: "nasun-nft-register-user",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/index.handler",
-      code: lambda.Code.fromAsset("lambda-src/nft-event/register-user"),
+      entry: path.join(nftEventLambdaSrcPath, "register-user", "src", "index.ts"),
+      handler: "handler",
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
       logGroup: registerLogGroup,
@@ -201,6 +223,7 @@ export class NftEventStack extends cdk.Stack {
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: "--enable-source-maps",
       },
     });
 
@@ -208,28 +231,33 @@ export class NftEventStack extends cdk.Stack {
     this.tasksTable.grantReadWriteData(registerUserLambda); // copyTasks() PutItem 권한 필요
 
     // Lambda 3: withdraw-user
-    const withdrawUserLambda = new lambda.Function(this, "WithdrawUserLambda", {
+    const withdrawUserLambda = new NodejsFunction(this, "WithdrawUserLambda", {
       functionName: "nasun-nft-withdraw-user",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/index.handler",
-      code: lambda.Code.fromAsset("lambda-src/nft-event/withdraw-user"),
+      entry: path.join(nftEventLambdaSrcPath, "withdraw-user", "src", "index.ts"),
+      handler: "handler",
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
       logGroup: withdrawLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: "--enable-source-maps",
       },
     });
 
     this.whitelistTable.grantReadWriteData(withdrawUserLambda);
 
     // Lambda 4: export-csv (OpenSea Allowlist)
-    const exportCsvLambda = new lambda.Function(this, "ExportCsvLambda", {
+    const exportCsvLambda = new NodejsFunction(this, "ExportCsvLambda", {
       functionName: "nasun-nft-export-csv",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/index.handler",
-      code: lambda.Code.fromAsset("lambda-src/nft-event/export-csv"),
+      entry: path.join(nftEventLambdaSrcPath, "export-csv", "src", "index.ts"),
+      handler: "handler",
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
       logGroup: exportLogGroup,
@@ -243,6 +271,7 @@ export class NftEventStack extends cdk.Stack {
         CACHE_TTL_MINUTES: "15",
         EXPORT_BUCKET_NAME: exportBucket.bucketName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: "--enable-source-maps",
       },
     });
 
@@ -251,17 +280,20 @@ export class NftEventStack extends cdk.Stack {
     exportBucket.grantRead(exportCsvLambda); // Presigned URL 생성용
 
     // Lambda 5: check-registration-status
-    const checkStatusLambda = new lambda.Function(this, "CheckStatusLambda", {
+    const checkStatusLambda = new NodejsFunction(this, "CheckStatusLambda", {
       functionName: "nasun-nft-check-status",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/index.handler",
-      code: lambda.Code.fromAsset("lambda-src/nft-event/check-registration-status"),
+      entry: path.join(nftEventLambdaSrcPath, "check-registration-status", "src", "index.ts"),
+      handler: "handler",
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
       logGroup: checkStatusLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: "--enable-source-maps",
       },
     });
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 
 // 배경 이미지
@@ -16,6 +17,7 @@ import { FadeInUp } from "@/components/ui/FadeInUp";
  * - 중앙 하단: 타이틀 + 설명 텍스트
  */
 function GenSolHeroSection() {
+  const { t } = useTranslation("genSol");
   const [isMobile, setIsMobile] = useState(false);
 
   // 반응형 이미지 선택을 위한 viewport 감지
@@ -51,7 +53,6 @@ function GenSolHeroSection() {
       </div>
 
       {/* 데스크톱 콘텐츠 - 중앙 하단 */}
-
       <div className="hidden lg:block absolute inset-x-0 bottom-[14%] z-20 text-center px-12 lg:px-20">
         <div className="items-center mx-auto">
           <FadeInUp>
@@ -60,15 +61,24 @@ function GenSolHeroSection() {
               alt="GEN SOL"
               className="h-16 xl:h-20 w-auto mx-auto mb-12"
             />
-            <p className=" text-nasun-white/80 text-base/snug xl:text-lg/snug lg:max-w-[940px] xl:max-w-[1060px] mx-auto">
-              A bold sci-fi universe designed to power games, films, streaming shows and merchandise
-              at a global scale. Gen Sol is an expansive world with deep lore, striking visuals, and
-              compelling characters driven by purpose and conflict. Beyond traditional mediums, we
-              aim to pioneer new forms of entertainment that blur the lines between the digital and
-              physical worlds.
+            <p className="text-nasun-white/80 text-base/snug xl:text-lg/snug lg:max-w-[940px] xl:max-w-[1060px] mx-auto">
+              {t("hero.description")}
             </p>
           </FadeInUp>
         </div>
+      </div>
+
+      {/* Scroll indicator - 데스크톱 */}
+      <div className="hidden lg:flex absolute bottom-6 inset-x-0 z-20 justify-center">
+        <svg
+          className="w-6 h-6 text-nasun-white/50 animate-bounce"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
       </div>
 
       {/* ============ 모바일/태블릿 레이아웃 (lg 미만) ============ */}
@@ -101,13 +111,22 @@ function GenSolHeroSection() {
               className="h-10 md:h-12 w-auto mx-auto mb-6"
             />
             <p className="text-nasun-white/80 text-base/snug xl:text-lg/snug max-w-[410px] md:max-w-[590px] mx-auto pt-4">
-              A bold sci-fi universe designed to power games, films, streaming shows and merchandise
-              at a global scale. Gen Sol is an expansive world with deep lore, striking visuals, and
-              compelling characters driven by purpose and conflict. Beyond traditional mediums, we
-              aim to pioneer new forms of entertainment that blur the lines between the digital and
-              physical worlds.
+              {t("hero.description")}
             </p>
           </div>
+        </div>
+
+        {/* Scroll indicator - 모바일 (하단 고정) */}
+        <div className="flex justify-center mt-auto pb-6">
+          <svg
+            className="w-5 h-5 text-nasun-white/50 animate-bounce"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
         </div>
       </div>
     </SectionLayout>

@@ -1,6 +1,7 @@
 import React from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const COORDINATION_ITEMS = [
   "Persistent, evolving assets across games, AI models, and IP",
@@ -11,7 +12,8 @@ const COORDINATION_ITEMS = [
 
 function BuiltForCoordinationSection() {
   return (
-    <SectionLayout className="!max-w-6xl">
+    <SectionLayout maxWidth="6xl">
+      <FadeInUp>
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
           <SectionTitle as="h4" className="font-normal uppercase">
@@ -34,8 +36,9 @@ function BuiltForCoordinationSection() {
           </div>
         </div>
       </div>
+      </FadeInUp>
     </SectionLayout>
   );
 }
 
-export default React.memo(BuiltForCoordinationSection);
+export default BuiltForCoordinationSection;
