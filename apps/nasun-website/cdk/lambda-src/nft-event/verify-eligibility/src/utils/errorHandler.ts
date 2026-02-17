@@ -47,10 +47,8 @@ export enum ErrorCode {
 
 export interface ErrorResponse {
   success: false;
-  error: string;
   code: ErrorCode;
   message: string;
-  details?: any;
 }
 
 /**
@@ -122,10 +120,8 @@ export function handleError(
 
   const errorResponse: ErrorResponse = {
     success: false,
-    error: errorMessage,
     code: errorCode,
     message,
-    details: context,
   };
 
   return {

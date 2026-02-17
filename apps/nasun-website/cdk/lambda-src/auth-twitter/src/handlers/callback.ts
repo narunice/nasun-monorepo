@@ -127,8 +127,8 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     const cognitoService = new CognitoService(COGNITO_IDENTITY_POOL_ID, COGNITO_DEVELOPER_PROVIDER_NAME);
     const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 
-    // 1. Validate session and state
-    const session = await sessionManager.getSession(sessionId);
+    // 1. Atomically get and delete session (prevents replay attacks)
+    const session = await sessionManager.getAndDeleteSession(sessionId);
     if (!session) {
       return {
         statusCode: 400,
@@ -256,8 +256,8 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       );
     }
 
-    // 6. Clean up session
-    await sessionManager.deleteSession(sessionId);
+    // 6. Session already deleted atomically in step 1
+    // No need to delete again
 
     // 7. Return user profile to frontend
     console.log('User authenticated successfully:', maskSensitiveData(userProfile));
@@ -311,7 +311,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       headers,
       body: JSON.stringify({
         error: 'Internal Server Error',
-        message: error.message || 'Failed to process Twitter OAuth callback',
+        message: 'Failed to process Twitter OAuth callback',
       }),
     };
   }
