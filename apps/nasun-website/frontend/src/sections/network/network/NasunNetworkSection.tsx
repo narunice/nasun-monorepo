@@ -11,7 +11,7 @@ const LAYERS = [
     emoji: "\uD83D\uDD12",
     titleKey: "network.layer1Title",
     descKey: "network.layer1Desc",
-    color: "nw3" as const,
+    color: "nw1" as const,
   },
   {
     emoji: "\u26A1",
@@ -23,7 +23,7 @@ const LAYERS = [
     emoji: "\uD83C\uDFAE",
     titleKey: "network.layer3Title",
     descKey: "network.layer3Desc",
-    color: "white" as const,
+    color: "nw1" as const,
   },
 ] as const;
 
@@ -62,10 +62,9 @@ function NasunNetworkSection() {
                     icon={<span>{layer.emoji}</span>}
                     description={t(layer.descKey)}
                     color={layer.color}
-                    className={layer.color === "white" ? "!bg-black/50 !border-nasun-white/40" : "!bg-black/50"}
+                    className="!bg-black/50"
                     padding="sm"
                     disableHover
-                    titleClassName={layer.color === "white" ? "text-nasun-white/90" : ""}
                   />
                 ))}
               </div>

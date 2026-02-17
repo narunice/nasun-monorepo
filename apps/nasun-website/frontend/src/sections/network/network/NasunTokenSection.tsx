@@ -4,39 +4,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
-interface TokenUseCase {
-  key: "staking" | "fee" | "transfer" | "governance";
-  color: "c4";
-  gradient: string;
-  titleClassName: string;
-}
-
-const tokenUses: TokenUseCase[] = [
-  {
-    key: "staking",
-    color: "c4",
-    gradient: "",
-    titleClassName: "!text-nasun-c7 !font-bold !",
-  },
-  {
-    key: "fee",
-    color: "c4",
-    gradient: "",
-    titleClassName: "!text-nasun-c7 !font-bold ",
-  },
-  {
-    key: "transfer",
-    color: "c4",
-    gradient: "",
-    titleClassName: "!text-nasun-c7 !font-bold ",
-  },
-  {
-    key: "governance",
-    color: "c4",
-    gradient: "",
-    titleClassName: "!text-nasun-c7 !font-bold ",
-  },
-];
+const TOKEN_USE_KEYS = ["staking", "fee", "transfer", "governance"] as const;
 
 function NasunTokenSection() {
   const { t } = useTranslation("tokenomics");
@@ -63,17 +31,16 @@ function NasunTokenSection() {
 
           {/* Right: Use Cases Cards */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {tokenUses.map((use) => (
+            {TOKEN_USE_KEYS.map((key) => (
               <DividerBox
                 padding="sm"
-                key={use.key}
-                title={t(`token.uses.${use.key}.heading`)}
-                color={use.color}
-                titleClassName={use.titleClassName}
-                description={t(`token.uses.${use.key}.description`)}
+                key={key}
+                title={t(`token.uses.${key}.heading`)}
+                color="nw1"
+                description={t(`token.uses.${key}.description`)}
                 descriptionClassName="!mb-0"
                 hideDivider
-                className={`${use.gradient} !bg-nasun-c4/90 min-h-[160px] !border-nasun-white/50 xl:min-h-[192px] flex flex-col justify-center !py-6 md:!py-8`}
+                className="!bg-[#212E57]/50 !border-nasun-nw4/30 min-h-[160px] xl:min-h-[192px] flex flex-col justify-center !py-6 md:!py-8"
               />
             ))}
           </div>

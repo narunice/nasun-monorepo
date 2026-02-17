@@ -20,7 +20,7 @@ function WhoBuildsHereSection() {
             {/* Mobile: Card layout */}
             <div className="space-y-3 md:hidden">
               {VERTICAL_KEYS.map((key) => (
-                <div key={key} className="border border-nasun-nw3/30 rounded-sm p-4">
+                <div key={key} className="border border-nasun-nw4/30 rounded-sm p-4 bg-gray-950">
                   <p className="font-semibold text-nasun-nw4 mb-1">
                     {t(`whoBuildsHere.${key}Name`)}
                   </p>
@@ -31,9 +31,9 @@ function WhoBuildsHereSection() {
 
             {/* Desktop: Table layout */}
             <div className="hidden md:block">
-              <table className="w-full border-collapse border border-nasun-nw3/40 bg-nasun-nw3/10">
+              <table className="w-full border-collapse border border-nasun-nw4/30 bg-gray-950">
                 <thead>
-                  <tr className="border-b border-nasun-nw3/40 bg-nasun-nw3/20">
+                  <tr className="border-b border-nasun-nw4/30 bg-[#212E57]/50">
                     <th className="text-left py-3 px-6 uppercase tracking-wider">
                       <h6 className="font-semibold text-nasun-nw4">
                         {t("whoBuildsHere.columnVertical")}
@@ -48,7 +48,7 @@ function WhoBuildsHereSection() {
                 </thead>
                 <tbody>
                   {VERTICAL_KEYS.map((key) => (
-                    <tr key={key} className="border-b border-nasun-nw3/15">
+                    <tr key={key} className="border-b border-nasun-nw4/15">
                       <td className="py-4 px-6 align-top">
                         <p className="font-semibold text-nasun-nw4">
                           {t(`whoBuildsHere.${key}Name`)}
