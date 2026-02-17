@@ -58,14 +58,9 @@
 | `TWITTER_ACCESS_TOKEN` | Twitter API |
 | `TWITTER_ACCESS_TOKEN_SECRET` | Twitter API |
 
-**Lambda 빌드 주의사항:**
+**Lambda 빌드 방식:**
 
-| Lambda | 패키지 매니저 | 이유 |
-| ------ | ------------ | ---- |
-| auth-twitter | **npm** | pnpm symlink 비호환 |
-| wallet-api | pnpm | - |
-| PriceAPI | pnpm | - |
-| leaderboard-v3 | pnpm | - |
+> 2026-02-17 NodejsFunction 마이그레이션 완료. **모든 Lambda가 `NodejsFunction`(esbuild 자동 번들링)을 사용합니다.** 수동 빌드, npm/pnpm 구분, `dist/` 관리 모두 불필요. `Code.fromAsset`을 사용하는 Lambda는 없습니다.
 
 ---
 
