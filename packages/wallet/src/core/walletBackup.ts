@@ -122,7 +122,7 @@ export async function restoreWalletBackup(
     throw new Error('Invalid PIN or corrupted backup');
   }
 
-  const payloadStr = new TextDecoder().decode(plaintext);
+  let payloadStr: string | null = new TextDecoder().decode(plaintext);
   // Zero the decrypted plaintext buffer to minimize key exposure in memory
   new Uint8Array(plaintext).fill(0);
 
@@ -130,8 +130,12 @@ export async function restoreWalletBackup(
   try {
     payload = JSON.parse(payloadStr) as WalletBackupPayload;
   } catch {
+    payloadStr = null;
     throw new Error('Corrupted backup payload');
   }
+  // Null reference after successful parse to allow earlier GC.
+  // JS strings are immutable — this does not zero memory, only drops the reference.
+  payloadStr = null;
 
   if (!payload.signerPrivateKey || !payload.signerAddress || !payload.signerType) {
     throw new Error('Missing required fields in backup');

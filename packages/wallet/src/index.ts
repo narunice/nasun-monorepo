@@ -96,6 +96,8 @@ export {
   getLockoutInfo,
   getUnlockAttemptState,
   resetUnlockAttempts,
+  recordFailedAttempt,
+  BACKUP_RESTORE_ATTEMPT_KEY,
 } from './core/rate-limit';
 
 // Wallet Label (display alias)
