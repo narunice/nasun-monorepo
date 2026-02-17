@@ -360,7 +360,11 @@ export function parseJwt(jwt: string): {
     picture?: string;
   };
 } {
-  const [headerB64, payloadB64] = jwt.split('.');
+  const parts = jwt.split('.');
+  if (parts.length !== 3) {
+    throw new Error(`Invalid JWT format: expected 3 parts, got ${parts.length}`);
+  }
+  const [headerB64, payloadB64] = parts;
 
   // Helper to decode base64 with proper UTF-8 support
   // atob() alone doesn't handle UTF-8 - it treats each byte as Latin-1
