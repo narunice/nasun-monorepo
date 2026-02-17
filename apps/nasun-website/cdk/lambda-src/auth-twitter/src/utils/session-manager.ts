@@ -85,6 +85,43 @@ export class SessionManager {
   }
 
   /**
+   * Atomically get and delete an OAuth session (prevents replay attacks)
+   * Uses ReturnValues: 'ALL_OLD' to retrieve the item before deletion
+   */
+  async getAndDeleteSession(sessionId: string): Promise<TwitterOAuthSession | null> {
+    const deleteCommand = new DeleteItemCommand({
+      TableName: this.tableName,
+      Key: {
+        sessionId: { S: sessionId },
+      },
+      ReturnValues: 'ALL_OLD',
+    });
+
+    const result = await this.dynamoClient.send(deleteCommand);
+
+    if (!result.Attributes) {
+      return null;
+    }
+
+    // Check if session has expired
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = parseInt(result.Attributes.expiresAt.N!);
+
+    if (now > expiresAt) {
+      return null;
+    }
+
+    return {
+      sessionId: result.Attributes.sessionId.S!,
+      codeVerifier: result.Attributes.codeVerifier.S!,
+      state: result.Attributes.state.S!,
+      redirectUri: result.Attributes.redirectUri?.S,
+      createdAt: parseInt(result.Attributes.createdAt.N!),
+      expiresAt: expiresAt,
+    };
+  }
+
+  /**
    * Delete an OAuth session
    */
   async deleteSession(sessionId: string): Promise<void> {
