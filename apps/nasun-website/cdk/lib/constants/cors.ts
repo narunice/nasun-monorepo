@@ -10,6 +10,7 @@ const PRODUCTION_ORIGINS = [
   'https://www.nasun.io',
   'https://staging.nasun.io',
   'https://explorer.nasun.io',
+  'https://staging.explorer.nasun.io',
   'https://gensol.io',
   'https://www.gensol.io',
   'https://gensol.nasun.io',
