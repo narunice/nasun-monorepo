@@ -8,6 +8,7 @@
 
 import { FC, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
@@ -98,13 +99,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       mode: "link",
       onSuccess: async (address) => {
         logger.info("MetaMask wallet linked:", address);
-        alert(t("userInfo.linkMetaMaskSuccess") || "MetaMask wallet linked and activated!");
+        toast.success(t("userInfo.linkMetaMaskSuccess") || "MetaMask wallet linked and activated!");
         // Update active wallet state immediately
         setActiveWalletAddress(address.toLowerCase());
       },
       onError: (error) => {
         logger.error("Failed to link MetaMask account:", error);
-        alert(error.message || "Failed to link MetaMask account");
+        toast.error(error.message || "Failed to link MetaMask account");
       },
     });
 
@@ -178,7 +179,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
     isMetaMaskLinked && activeWalletAddress && activeWalletAddress !== linkedWalletAddress;
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -323,11 +324,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                     <Button
                       size="sm"
                       variant="filledOutlineC7"
-                      onClick={isDifferentWalletActive ? handleLinkMetaMask : handleActivateMetaMask}
-                      disabled={isDifferentWalletActive ? (isMetaMaskLinking || isLinking) : false}
+                      onClick={
+                        isDifferentWalletActive ? handleLinkMetaMask : handleActivateMetaMask
+                      }
+                      disabled={isDifferentWalletActive ? isMetaMaskLinking || isLinking : false}
                     >
                       {isDifferentWalletActive
-                        ? (isMetaMaskLinking ? "Switching..." : "Switch")
+                        ? isMetaMaskLinking
+                          ? "Switching..."
+                          : "Switch"
                         : "Activate"}
                     </Button>
                     {!isMetaMaskPrimary && (
@@ -365,11 +370,16 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   : "Not connected"
               }
               statusBadge={isNasunConnected ? <ConnectedBadge /> : undefined}
-                            actions={[
-                              <div key="connect" className="nasun-wallet-connect relative z-50">
-                                <WalletConnect variant="filledOutlineC7" size="sm" dropdownPosition="bottom" dropdownAlign="right" />
-                              </div>,
-                            ]}
+              actions={[
+                <div key="connect" className="nasun-wallet-connect relative z-50">
+                  <WalletConnect
+                    variant="filledOutlineC7"
+                    size="sm"
+                    dropdownPosition="bottom"
+                    dropdownAlign="right"
+                  />
+                </div>,
+              ]}
             >
               <p className="text-xs text-nasun-white/60 leading-relaxed">
                 * This is a prototype on Devnet. Test purpose only.

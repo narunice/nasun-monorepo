@@ -30,8 +30,8 @@ function WhoBuildsHereSection() {
             </div>
 
             {/* Desktop: Table layout */}
-            <div className="hidden md:block">
-              <table className="w-full border-collapse border border-nasun-nw4/30 bg-gray-950">
+            <div className="hidden md:block overflow-hidden rounded-sm border border-nasun-nw1/40">
+              <table className="w-full border-collapse bg-gray-950">
                 <thead>
                   <tr className="border-b border-nasun-nw4/30 bg-[#212E57]/50">
                     <th className="text-left py-3 px-6 uppercase tracking-wider">

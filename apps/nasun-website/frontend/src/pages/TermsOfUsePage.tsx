@@ -153,6 +153,13 @@ function TermsOfUsePage() {
               {TERMS_CONTENT.title}
             </PageTitle>
             <p className="text-center text-gray-400 text-sm mt-2">{TERMS_CONTENT.lastUpdated}</p>
+
+            {/* Language Disclaimer */}
+            <div className="mt-6 p-3 bg-blue-900/10 border border-blue-500/20 rounded text-center">
+              <p className="text-sm text-blue-300/90">
+                {t("languageDisclaimer")}
+              </p>
+            </div>
           </SectionLayout>
 
           {/* Investment Disclaimer - Highlighted Box */}
