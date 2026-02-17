@@ -12,10 +12,10 @@
  * Withdraw 요청
  */
 export interface WithdrawUserRequest {
-  walletAddress: string;  // 지갑 주소 (0x...)
-  signature: string;      // MetaMask 서명
-  message: string;        // 서명한 메시지
-  timestamp: string;      // 서명 생성 시각 (ISO 8601)
+  walletAddress: string;   // 지갑 주소 (0x...)
+  signature?: string;      // MetaMask 서명 (optional — user may already be authenticated)
+  message?: string;        // 서명한 메시지
+  timestamp?: string;      // 서명 생성 시각 (ISO 8601)
 }
 
 /**

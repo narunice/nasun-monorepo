@@ -155,7 +155,8 @@
     "walletNotConnected": "연결되지 않음",
     "allTasksCompleted": "✅ 모든 미션 완료",
     "registering": "등록 중...",
-    "button": "허용리스트 등록하기"
+    "button": "허용리스트 등록하기",
+    "cancel": "취소"
   },
   "step6": {
     "title": "🎉 허용리스트 등록 완료!",

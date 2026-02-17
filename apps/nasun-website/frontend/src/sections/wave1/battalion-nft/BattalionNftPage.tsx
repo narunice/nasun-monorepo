@@ -26,8 +26,7 @@ import { ErrorAlert } from "./common/ErrorAlert";
 import type { VerificationResult, ApiError } from "../../../types/battalion-nft";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
-import { checkBattalionNftStatus, registerBattalionNftWithSignature } from "../../../services/battalionNftApi";
-import { signMessage } from "../../../utils/metamaskUtils";
+import { checkBattalionNftStatus, registerUserApi } from "../../../services/battalionNftApi";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 export const BattalionNftPage: React.FC = () => {
@@ -135,7 +134,7 @@ export const BattalionNftPage: React.FC = () => {
 
       // Check registration status from backend (only on initial page load)
       console.log("[BattalionNftPage] Checking registration status for:", userWalletAddress);
-      checkBattalionNftStatus(userWalletAddress)
+      checkBattalionNftStatus(userWalletAddress, user?.twitterId || undefined)
         .then((response) => {
           if (response.registered && response.data) {
             console.log("[BattalionNftPage] User is registered - moving to Step 6:", response.data);
@@ -160,8 +159,8 @@ export const BattalionNftPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentStep]);
 
-  const handleXAuthSuccess = (userId: string, username: string, identityId: string) => {
-    setXAuth(userId, username, identityId);
+  const handleXAuthSuccess = (userId: string, username: string, identityId: string, cognitoToken?: string) => {
+    setXAuth(userId, username, identityId, cognitoToken);
     setError(null);
   };
 
@@ -187,20 +186,26 @@ export const BattalionNftPage: React.FC = () => {
     try {
       setError(null);
       setIsRegistering(true);
-      const result = await registerBattalionNftWithSignature(
-        walletAddress,
+      const result = await registerUserApi({
+        walletAddress: walletAddress.toLowerCase(),
         xUserId,
         xUsername,
-        (message) => signMessage(message, walletAddress),
-      );
+      });
       if (result.success && result.whitelist) {
         setRegistered(result.whitelist);
+      } else if (result.success && result.registered && !result.whitelist) {
+        // Already registered but whitelist data not returned — fetch it
+        const statusResponse = await checkBattalionNftStatus(walletAddress, xUserId || user?.twitterId || undefined);
+        if (statusResponse.registered && statusResponse.data) {
+          setRegistered(statusResponse.data);
+        } else {
+          throw new Error(result.message || t("errors.registrationFailed"));
+        }
       } else {
         throw new Error(result.message || t("errors.registrationFailed"));
       }
     } catch (err: unknown) {
       const apiError = err as ApiError;
-      // Map error codes to i18n translations (backend messages may be in Korean)
       const errorCode = apiError.code;
       const i18nKey = errorCode ? `errors.${errorCode}` : null;
       const translated = i18nKey && t(i18nKey) !== i18nKey ? t(i18nKey) : null;
@@ -277,6 +282,7 @@ export const BattalionNftPage: React.FC = () => {
               walletAddress={walletAddress || null}
               isRegistering={isRegistering}
               onRegister={handleRegister}
+              onCancel={handleReset}
             />
           )}
           {currentStep === 6 && registered && whitelist && (

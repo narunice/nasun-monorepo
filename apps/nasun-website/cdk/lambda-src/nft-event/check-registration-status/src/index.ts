@@ -43,25 +43,34 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
   try {
     // 1. Query Parameters 파싱
     const walletAddress = event.queryStringParameters?.walletAddress;
+    const xUserId = event.queryStringParameters?.xUserId;
 
-    if (!walletAddress) {
+    if (!walletAddress && !xUserId) {
       throw new NftEventError(
-        'Missing walletAddress query parameter',
+        'Missing walletAddress or xUserId query parameter',
         ErrorCode.INVALID_WALLET_ADDRESS,
         400
       );
     }
 
-    // 2. 지갑 주소 형식 검증
-    validateWalletAddress(walletAddress);
+    // 2. 지갑 주소 형식 검증 (provided인 경우만)
+    if (walletAddress) {
+      validateWalletAddress(walletAddress);
+    }
 
     // 3. WhitelistService 초기화
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
 
-    console.log('[check-registration-status] Checking registration for:', walletAddress);
+    console.log('[check-registration-status] Checking registration for:', { walletAddress, xUserId });
 
-    // 4. DynamoDB 조회
-    const whitelist = await whitelistService.findByWalletAddress(walletAddress);
+    // 4. DynamoDB 조회 — walletAddress first, then xUserId fallback
+    let whitelist = walletAddress
+      ? await whitelistService.findByWalletAddress(walletAddress)
+      : null;
+
+    if (!whitelist && xUserId) {
+      whitelist = await whitelistService.findByXUserId(xUserId);
+    }
 
     // 5. 응답 생성 (Soft delete: WITHDRAWN 상태는 미등록으로 처리)
     const isActive = whitelist !== null && whitelist.status !== 'WITHDRAWN';

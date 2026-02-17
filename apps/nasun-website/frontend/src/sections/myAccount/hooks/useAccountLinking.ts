@@ -94,9 +94,14 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) throw new Error("Link Account API is not configured");
 
+      const linkHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (user?.cognitoToken) {
+        linkHeaders["Authorization"] = `Bearer ${user.cognitoToken}`;
+      }
+
       const linkResponse = await fetch(linkAccountApi, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: linkHeaders,
         body: JSON.stringify({
           primaryIdentityId: user?.identityId,
           secondaryIdentityId: authResult.identityId,
@@ -123,9 +128,14 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) throw new Error("Link Account API is not configured");
 
+      const unlinkHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (user?.cognitoToken) {
+        unlinkHeaders["Authorization"] = `Bearer ${user.cognitoToken}`;
+      }
+
       const response = await fetch(`${linkAccountApi}/unlink`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: unlinkHeaders,
         body: JSON.stringify({
           primaryIdentityId: user?.identityId,
           provider: provider.toLowerCase(),

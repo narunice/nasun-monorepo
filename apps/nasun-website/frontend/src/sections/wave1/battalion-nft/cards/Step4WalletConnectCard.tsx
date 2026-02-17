@@ -41,7 +41,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   const { t } = useTranslation("battalion-nft");
   const { user } = useAuth();
   const { updateUserProfile } = useUserStore();
-  const { cognitoIdentityId } = useBattalionNftStore();
+  const { cognitoIdentityId, cognitoToken: storeCognitoToken } = useBattalionNftStore();
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
@@ -123,11 +123,18 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           throw new Error("Link Account API is not configured");
         }
 
+        const linkHeaders: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        // Use Battalion NFT store token (from Step 2 Twitter auth) or logged-in user's token
+        const cognitoToken = storeCognitoToken || user?.cognitoToken;
+        if (cognitoToken) {
+          linkHeaders["Authorization"] = `Bearer ${cognitoToken}`;
+        }
+
         const linkResponse = await fetch(linkAccountApi, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: linkHeaders,
           body: JSON.stringify({
             primaryIdentityId,
             secondaryIdentityId: authResult.identityId,
