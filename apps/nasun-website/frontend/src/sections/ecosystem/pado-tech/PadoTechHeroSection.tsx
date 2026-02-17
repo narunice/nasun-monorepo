@@ -7,15 +7,12 @@ import { Button } from "@/components/ui";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import { useTranslation } from "react-i18next";
-
 interface PadoTechHeroSectionProps {
   onVideoReady?: () => void;
   isVideoReady?: boolean;
 }
 
 function PadoTechHeroSection({ onVideoReady }: PadoTechHeroSectionProps) {
-  const { t } = useTranslation("pado-tech");
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -102,13 +99,13 @@ function PadoTechHeroSection({ onVideoReady }: PadoTechHeroSectionProps) {
             flex flex-col items-center text-center px-4 pointer-events-auto"
           >
             <FadeInUp>
-              <h2>{t("hero.tagline")}</h2>
+              <h2>Architecture for Social Finance</h2>
               <h4 className="text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
-                {t("hero.subTagline")}
+                Real-time social infrastructure on an object-oriented financial chain.
               </h4>
               <Button variant="white" size="lg" asChild className="mt-6">
                 <Link to={import.meta.env.VITE_PADO_ALPHA_URL} target="_blank" rel="noopener noreferrer">
-                  {t("hero.button")}
+                  Try Pado Alpha
                   <ExternalLink className="w-4 h-4 ml-2" />
                 </Link>
               </Button>

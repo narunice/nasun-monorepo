@@ -1,5 +1,4 @@
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { DividerBox } from "@/components/ui/DividerBox";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Coins, ChevronRight, Server, TrendingUp, User, Wrench } from "lucide-react";
@@ -37,37 +36,58 @@ const InfraOverviewContent = () => {
 
         {/* Node Types - Table */}
         <section>
-          <SectionTitle as="h4" className="uppercase text-center">
+          <SectionTitle as="h4" className="font-normal uppercase text-center">
             Node Types
           </SectionTitle>
-          <DividerBox color="nw3" padding="sm" hideDivider className="!bg-gray-900/70">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-nasun-nw4/30">
-                    <th className="pb-3 pr-4 text-nasun-nw4 font-medium text-sm uppercase tracking-wider">
-                      Node Type
-                    </th>
-                    <th className="pb-3 pr-4 text-nasun-nw4 font-medium text-sm uppercase tracking-wider">
-                      Powers
-                    </th>
-                    <th className="pb-3 text-nasun-nw4 font-medium text-sm uppercase tracking-wider">
-                      Earn NSN
-                    </th>
+
+          {/* Mobile: Card layout */}
+          <div className="space-y-3 md:hidden">
+            {nodeTypes.map((node) => (
+              <div key={node.type} className="border border-nasun-nw4/30 rounded-sm p-4 bg-gray-950">
+                <p className="font-semibold text-nasun-nw4 mb-1">{node.type}</p>
+                <p className="text-nasun-white/70 text-sm mb-2">
+                  <span className="font-medium">Powers:</span> {node.powers}
+                </p>
+                <p className="text-nasun-white/70 text-sm">
+                  <span className="font-medium">Earn NSN:</span> {node.earn}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: Table layout */}
+          <div className="hidden md:block overflow-hidden rounded-sm border border-nasun-nw1/40">
+            <table className="w-full border-collapse bg-gray-950">
+              <thead>
+                <tr className="border-b border-nasun-nw4/30 bg-[#212E57]/50">
+                  <th className="text-left py-3 px-6 uppercase tracking-wider">
+                    <h6 className="font-semibold text-nasun-nw4">Node Type</h6>
+                  </th>
+                  <th className="text-left py-3 px-6 uppercase tracking-wider">
+                    <h6 className="font-semibold text-nasun-nw4">Powers</h6>
+                  </th>
+                  <th className="text-left py-3 px-6 uppercase tracking-wider">
+                    <h6 className="font-semibold text-nasun-nw4">Earn NSN</h6>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {nodeTypes.map((node) => (
+                  <tr key={node.type} className="border-b border-nasun-nw4/15">
+                    <td className="py-4 px-6 align-top">
+                      <p className="font-semibold text-nasun-nw4">{node.type}</p>
+                    </td>
+                    <td className="py-4 px-6 align-top">
+                      <p className="text-nasun-white/70">{node.powers}</p>
+                    </td>
+                    <td className="py-4 px-6 align-top">
+                      <p className="text-nasun-white/70">{node.earn}</p>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {nodeTypes.map((node) => (
-                    <tr key={node.type} className="border-b border-nasun-white/5 last:border-0">
-                      <td className="py-3 pr-4 font-medium text-nasun-white">{node.type}</td>
-                      <td className="py-3 pr-4 text-nasun-white/80">{node.powers}</td>
-                      <td className="py-3 text-nasun-white/80">{node.earn}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </DividerBox>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {/* How It Works */}

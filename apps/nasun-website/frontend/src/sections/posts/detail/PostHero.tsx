@@ -30,7 +30,7 @@ export default function PostHero({ title, date, onBack, backButtonText }: PostHe
         <div className="max-w-5xl mx-auto text-center md:text-left">
           <button
             onClick={onBack}
-            className="inline-flex items-center text-nasun-nw1 hover:text-nasun-nw4 transition-colors mb-6 text-xs md:text-sm lg:text-base uppercase tracking-[0.2em] font-medium"
+            className="inline-flex items-center text-nasun-nw1 hover:text-nasun-nw4 transition-colors mb-6 text-xs md:text-sm lg:text-base uppercase font-medium"
           >
             <ArrowLeftIcon className="mr-2 w-4 h-4" /> {backButtonText}
           </button>

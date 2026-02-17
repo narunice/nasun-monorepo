@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 import nsnNetworkVideo from "../../../assets/videos/Nsn-Network-Section-rf29.mp4";
@@ -19,7 +18,6 @@ interface NetworkHeroSectionProps {
  * NSN Network 페이지의 Hero 섹션 - 반응형 배경 동영상과 좌측 하단 타이틀
  */
 function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
-  const { t } = useTranslation("tokenomics");
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
@@ -82,7 +80,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
       {/* 비디오 로딩 중 - 로딩 스피너 */}
       {!isVideoPlaying && (
         <div className="absolute inset-0 bg-nasun-black flex items-center justify-center z-20">
-          <InlineLoading message={t("hero.loading")} size="lg" />
+          <InlineLoading message="Loading..." size="lg" />
         </div>
       )}
 
@@ -119,10 +117,10 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         <div className="absolute inset-x-0 bottom-[5%] sm:bottom-[10%] z-20 px-6 md:hidden">
           <div className="leading-tight text-center">
             <h3 className="font-medium text-nasun-white text-3xl sm:text-[34px] uppercase ">
-              {t("hero.title")}
+              IP Infrastructure
             </h3>
             <h4 className=" text-nasun-white/70 text-lg  sm:text-xl">
-              {t("hero.subtitle")}
+              Entertainment, Finance, and AI
             </h4>
           </div>
           <div className="flex justify-center mt-3">
@@ -132,7 +130,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {t("hero.cta")}
+                Open Devnet & Wallet
               </Link>
             </Button>
           </div>
@@ -145,10 +143,10 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
           <div>
             <FadeInUp>
               <h3 className="font-medium text-nasun-white text-2xl/tight md:text-[32px] lg:text-[39px] uppercase">
-                {t("hero.title")}
+                IP Infrastructure
               </h3>
               <h5 className="text-nasun-white/70 text-2xl/tight md:text-[22px] lg:text-[27px]">
-                {t("hero.subtitle")}
+                Entertainment, Finance, and AI
               </h5>
               <Button variant="white" size="lg" asChild className="mt-5">
                 <Link
@@ -156,7 +154,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {t("hero.cta")}
+                  Open Devnet & Wallet
                 </Link>
               </Button>
             </FadeInUp>
