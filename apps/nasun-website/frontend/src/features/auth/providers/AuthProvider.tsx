@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useState, useCallback } from "react";
 import logger from "@/lib/logger";
+import { formatErrorMessage } from "@/lib/errorParser";
 import { useUserStore } from "@/store/userStore";
 import type { UserData } from "@/store/userStore";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
@@ -135,7 +136,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       const err = e as Error;
       logger.error(`Error handling ${provider} redirect:`, err);
-      setError(err);
+      const formattedError = new Error(formatErrorMessage(err));
+      setError(formattedError);
       clearUser();
     } finally {
       localStorage.removeItem("auth_provider_preference");
@@ -195,7 +197,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("twitter_oauth_session", sessionId);
       window.location.href = authUrl;
     } catch (error) {
-      setError(error as Error);
+      const formattedError = new Error(formatErrorMessage(error));
+      setError(formattedError);
       setIsLoading(false);
     }
   };
@@ -238,8 +241,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logger.log("MetaMask sign-in successful:", { identityId, walletAddress });
     } catch (error) {
       logger.error("MetaMask sign-in failed", error);
-      setError(error as Error);
-      throw error;
+      const formattedError = new Error(formatErrorMessage(error));
+      setError(formattedError);
+      throw formattedError;
     } finally {
       setIsLoading(false);
     }

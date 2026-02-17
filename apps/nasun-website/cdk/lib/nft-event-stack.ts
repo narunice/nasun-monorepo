@@ -292,30 +292,14 @@ export class NftEventStack extends cdk.Stack {
     const eventResource = this.api.root.addResource("event");
 
     // POST /event/verify
+    // Note: proxy: true means Lambda handles CORS headers directly
+    // integrationResponses and methodResponses are not used in proxy mode
     const verifyResource = eventResource.addResource("verify");
     verifyResource.addMethod(
       "POST",
       new apigateway.LambdaIntegration(verifyEligibilityLambda, {
         proxy: true,
-        integrationResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": "'*'",
-            },
-          },
-        ],
-      }),
-      {
-        methodResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": true,
-            },
-          },
-        ],
-      },
+      })
     );
 
     // POST /event/register
@@ -324,25 +308,7 @@ export class NftEventStack extends cdk.Stack {
       "POST",
       new apigateway.LambdaIntegration(registerUserLambda, {
         proxy: true,
-        integrationResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": "'*'",
-            },
-          },
-        ],
-      }),
-      {
-        methodResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": true,
-            },
-          },
-        ],
-      },
+      })
     );
 
     // POST /event/withdraw
@@ -351,25 +317,7 @@ export class NftEventStack extends cdk.Stack {
       "POST",
       new apigateway.LambdaIntegration(withdrawUserLambda, {
         proxy: true,
-        integrationResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": "'*'",
-            },
-          },
-        ],
-      }),
-      {
-        methodResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": true,
-            },
-          },
-        ],
-      },
+      })
     );
 
     // GET /event/status?walletAddress=0x...
@@ -436,26 +384,10 @@ export class NftEventStack extends cdk.Stack {
       "GET",
       new apigateway.LambdaIntegration(exportCsvLambda, {
         proxy: true,
-        integrationResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": "'*'",
-            },
-          },
-        ],
       }),
       {
         apiKeyRequired: true, // API Key 필수
-        methodResponses: [
-          {
-            statusCode: "200",
-            responseParameters: {
-              "method.response.header.Access-Control-Allow-Origin": true,
-            },
-          },
-        ],
-      },
+      }
     );
 
     // ========== 6. CloudFormation Outputs ==========

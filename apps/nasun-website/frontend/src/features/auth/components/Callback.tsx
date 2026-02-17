@@ -93,7 +93,7 @@ export default function Callback() {
       const savedPath = localStorage.getItem('auth_return_to');
       localStorage.removeItem('auth_return_to');
 
-      if (savedPath && savedPath !== '/') {
+      if (savedPath && savedPath !== '/' && isValidReturnUrl(savedPath)) {
         navigate(savedPath, { replace: true });
         return;
       }
