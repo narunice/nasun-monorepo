@@ -41,6 +41,8 @@ export type WcViewMode =
 
 export type LinkViewMode = "nasun-link";
 
+export type BackupViewMode = "wallet-backup" | "restore-backup";
+
 export type ViewMode =
   | CoreViewMode
   | AssetViewMode
@@ -49,4 +51,5 @@ export type ViewMode =
   | PasskeyViewMode
   | NsaViewMode
   | WcViewMode
-  | LinkViewMode;
+  | LinkViewMode
+  | BackupViewMode;

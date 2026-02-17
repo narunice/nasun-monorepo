@@ -39,6 +39,7 @@ import { WCViewRouter } from "../walletconnect";
 import { setPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
 import { secureZeroString } from "@nasun/wallet";
 import { NsaRestorePanel } from "../nsa";
+import { WalletBackupPanel, RestoreBackupPanel } from "../backup";
 
 type ViewRenderer = (s: WalletConnectStateReturn) => ReactNode | null;
 
@@ -176,6 +177,28 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
       setViewMode={s.setViewMode}
     />
   ),
+
+  "wallet-backup": (s) => (
+    <WalletBackupPanel onClose={() => s.setViewMode("main")} />
+  ),
+
+  "restore-backup": (s) => {
+    // Only available when disconnected (prevent overwriting existing keys)
+    if (s.status === "disconnected" && !s.isZkLoggedIn && !s.isLedgerConnected && !s.isPasskeyUnlocked) {
+      return (
+        <RestoreBackupPanel
+          onClose={() => s.setViewMode("main")}
+          onImportKey={(key) => {
+            setPendingRestoreKey(key);
+            s.setViewMode("import");
+          }}
+        />
+      );
+    }
+    // Connected: redirect to main
+    s.setViewMode("main");
+    return null;
+  },
 };
 
 // Wrapper: consume pending restore key safely in a useState initializer (runs once)

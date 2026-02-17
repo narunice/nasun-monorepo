@@ -154,6 +154,13 @@ export {
   NsaRecoveryPanel,
 } from './nsa';
 
+// Backup components (Wallet Backup + Unified Restore)
+export {
+  BackupWizard,
+  WalletBackupPanel,
+  RestoreBackupPanel,
+} from './backup';
+
 // WalletConnect components
 export {
   WCViewRouter,
