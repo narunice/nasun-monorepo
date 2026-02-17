@@ -461,6 +461,14 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
   const url = new URL(req.url || '/', `http://localhost:${CONFIG.port}`);
 
   if (url.pathname === '/api/messages' && req.method === 'GET') {
+    const clientIp = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      || 'unknown';
+    if (!checkApiRateLimit(clientIp)) {
+      res.writeHead(429, corsHeaders);
+      res.end(JSON.stringify({ error: 'Too many requests' }));
+      return;
+    }
+
     const roomId = parseInt(url.searchParams.get('roomId') || '0', 10);
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
     const before = url.searchParams.get('before')
