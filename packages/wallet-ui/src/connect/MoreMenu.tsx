@@ -6,6 +6,8 @@
  * Other settings are accessible from the Account tab.
  */
 
+import { useUISettingsStore } from '../stores/uiSettingsStore';
+
 interface MoreMenuProps {
   /** Whether NSA is initialized */
   nsaIsInitialized: boolean;
@@ -35,6 +37,8 @@ export function MoreMenu({
   onSmartAccount,
   onWalletConnect,
 }: MoreMenuProps) {
+  const { isAdvancedMode } = useUISettingsStore();
+
   return (
     <div className="py-1">
       <button
@@ -67,8 +71,8 @@ export function MoreMenu({
         Create Nasun Link
       </button>
 
-      {/* WalletConnect */}
-      {onWalletConnect && (
+      {/* WalletConnect - Only visible in Pro mode */}
+      {isAdvancedMode && onWalletConnect && (
         <button
           onClick={onWalletConnect}
           className="w-full px-3 py-2 text-left text-sm xl:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
@@ -90,8 +94,8 @@ export function MoreMenu({
         </button>
       )}
 
-      {/* Smart Account - shown when initialized */}
-      {nsaIsInitialized && (
+      {/* Smart Account - Only visible in Pro mode when initialized */}
+      {isAdvancedMode && nsaIsInitialized && (
         <button
           onClick={onSmartAccount}
           className="w-full px-3 py-2 text-left text-sm xl:text-base text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2"
