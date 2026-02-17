@@ -543,7 +543,7 @@ importers:
         version: 6.15.9
       axios:
         specifier: ^1.12.2
-        version: 1.13.2(debug@4.4.3)
+        version: 1.13.2
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1
@@ -15483,6 +15483,14 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  axios@1.13.2:
+    dependencies:
+      follow-redirects: 1.15.11
+      form-data: 4.0.5
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
   axios@1.13.2(debug@4.4.3):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.3)
@@ -16865,6 +16873,8 @@ snapshots:
       keyv: 4.5.4
 
   flatted@3.3.3: {}
+
+  follow-redirects@1.15.11: {}
 
   follow-redirects@1.15.11(debug@4.4.3):
     optionalDependencies:
