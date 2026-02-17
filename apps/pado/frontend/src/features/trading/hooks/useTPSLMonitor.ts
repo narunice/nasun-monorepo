@@ -335,7 +335,7 @@ export function useTPSLMonitor({
 
   const handleCancelOrder = useCallback(
     async (id: string) => {
-      if (isDelegated) {
+      if (isDelegated && walletAddress) {
         try {
           await cancelTPSLOrderKeeper(id, walletAddress);
           showToast('TP/SL order cancelled (server)', 'info');
