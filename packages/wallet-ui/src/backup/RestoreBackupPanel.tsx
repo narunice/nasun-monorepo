@@ -15,12 +15,18 @@ import {
   validateBackupFormat,
   useNsaBackup,
   secureZeroString,
+  recordFailedAttempt,
+  resetUnlockAttempts,
+  isLockedOut,
+  getLockoutRemainingMs,
+  BACKUP_RESTORE_ATTEMPT_KEY,
   type WalletBackupPackage,
   type NsaBackupPackage,
 } from "@nasun/wallet";
 import { WALLET_STYLES } from "../shared";
 
 const MAX_BACKUP_FILE_SIZE = 1_048_576; // 1MB
+const MIN_BACKUP_FILE_SIZE = 100; // Valid backups are 400+ bytes
 
 type Step = "upload" | "wallet-pin" | "nsa-pin" | "restoring" | "wallet-success" | "nsa-success";
 
@@ -39,33 +45,47 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
   const [walletBackup, setWalletBackup] = useState<WalletBackupPackage | null>(null);
   const [nsaBackup, setNsaBackup] = useState<NsaBackupPackage | null>(null);
 
-  // Restore results
+  // Restore results — H-1 fix: signerPrivateKey is NOT in React state.
+  // Only non-sensitive display fields are stored in state.
   const [walletResult, setWalletResult] = useState<{
     signerAddress: string;
     signerType: string;
-    signerPrivateKey: string;
   } | null>(null);
   const [nsaResult, setNsaResult] = useState<{
-    signerPrivateKey: string;
     accountObjectId: string;
     signerAddress: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // M-1: Rate limiting state
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // H-1: Private key is stored ONLY in this ref, never in React state
   const resultRef = useRef<{ signerPrivateKey: string } | null>(null);
   const clipboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { restoreNsaBackup, isProcessing } = useNsaBackup();
 
-  // Track restore result for secure cleanup
+  // M-1: Poll lockout status
   useEffect(() => {
-    resultRef.current = walletResult ?? nsaResult;
-  }, [walletResult, nsaResult]);
+    const check = () => {
+      if (isLockedOut(BACKUP_RESTORE_ATTEMPT_KEY)) {
+        setLockoutRemaining(Math.ceil(getLockoutRemainingMs(BACKUP_RESTORE_ATTEMPT_KEY) / 1000));
+      } else {
+        setLockoutRemaining(0);
+      }
+    };
+    check();
+    const id = setInterval(check, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Secure cleanup on unmount
   useEffect(() => {
     return () => {
+      // Best-effort: JS strings are immutable — secureZeroString zeros a
+      // buffer copy but the original string persists until GC.
       if (resultRef.current?.signerPrivateKey) {
         secureZeroString(resultRef.current.signerPrivateKey);
       }
@@ -76,6 +96,7 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
   }, []);
 
   const clearResults = useCallback(() => {
+    // Best-effort cleanup (L-1: JS string zeroing limitation applies)
     if (resultRef.current?.signerPrivateKey) {
       secureZeroString(resultRef.current.signerPrivateKey);
     }
@@ -88,6 +109,11 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
     setError(null);
     if (file.size > MAX_BACKUP_FILE_SIZE) {
       setError("File too large. Backup files are typically under 1 KB.");
+      return;
+    }
+    // M-3: Minimum file size check
+    if (file.size < MIN_BACKUP_FILE_SIZE) {
+      setError("File too small to be a valid backup.");
       return;
     }
 
@@ -125,64 +151,124 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
 
   const handleWalletRestore = useCallback(async () => {
     if (!walletBackup || pin.length < 6) return;
+    // M-1: Check lockout before attempting
+    if (isLockedOut(BACKUP_RESTORE_ATTEMPT_KEY)) {
+      const sec = Math.ceil(getLockoutRemainingMs(BACKUP_RESTORE_ATTEMPT_KEY) / 1000);
+      setError(`Too many failed attempts. Try again in ${sec} seconds.`);
+      return;
+    }
     setError(null);
     setStep("restoring");
     try {
       const result = await restoreWalletBackup(walletBackup, pin);
-      setWalletResult(result);
+      // H-1: Store private key ONLY in ref, not in React state
+      resultRef.current = { signerPrivateKey: result.signerPrivateKey };
+      setWalletResult({
+        signerAddress: result.signerAddress,
+        signerType: result.signerType,
+      });
       setPin("");
+      resetUnlockAttempts(BACKUP_RESTORE_ATTEMPT_KEY);
       setStep("wallet-success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Restoration failed");
+      const message = err instanceof Error ? err.message : "Restoration failed";
+      const isDecryptError = message.includes("Invalid PIN") || message.includes("decrypt");
+      if (isDecryptError) {
+        recordFailedAttempt(BACKUP_RESTORE_ATTEMPT_KEY);
+        if (isLockedOut(BACKUP_RESTORE_ATTEMPT_KEY)) {
+          const sec = Math.ceil(getLockoutRemainingMs(BACKUP_RESTORE_ATTEMPT_KEY) / 1000);
+          setError(`Too many failed attempts. Try again in ${sec} seconds.`);
+        } else {
+          setError("Invalid PIN");
+        }
+      } else {
+        setError(message);
+      }
       setStep("wallet-pin");
     }
   }, [walletBackup, pin]);
 
   const handleNsaRestore = useCallback(async () => {
     if (!nsaBackup || pin.length < 6) return;
+    // M-1: Check lockout before attempting
+    if (isLockedOut(BACKUP_RESTORE_ATTEMPT_KEY)) {
+      const sec = Math.ceil(getLockoutRemainingMs(BACKUP_RESTORE_ATTEMPT_KEY) / 1000);
+      setError(`Too many failed attempts. Try again in ${sec} seconds.`);
+      return;
+    }
     setError(null);
     setStep("restoring");
     try {
       const result = await restoreNsaBackup(nsaBackup, pin);
-      setNsaResult(result);
+      // H-1: Store private key ONLY in ref, not in React state
+      resultRef.current = { signerPrivateKey: result.signerPrivateKey };
+      setNsaResult({
+        accountObjectId: result.accountObjectId,
+        signerAddress: result.signerAddress,
+      });
       setPin("");
+      resetUnlockAttempts(BACKUP_RESTORE_ATTEMPT_KEY);
       setStep("nsa-success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Restoration failed");
+      const message = err instanceof Error ? err.message : "Restoration failed";
+      const isDecryptError = message.includes("Invalid PIN") || message.includes("decrypt");
+      if (isDecryptError) {
+        recordFailedAttempt(BACKUP_RESTORE_ATTEMPT_KEY);
+        if (isLockedOut(BACKUP_RESTORE_ATTEMPT_KEY)) {
+          const sec = Math.ceil(getLockoutRemainingMs(BACKUP_RESTORE_ATTEMPT_KEY) / 1000);
+          setError(`Too many failed attempts. Try again in ${sec} seconds.`);
+        } else {
+          setError("Invalid PIN");
+        }
+      } else {
+        setError(message);
+      }
       setStep("nsa-pin");
     }
   }, [nsaBackup, pin, restoreNsaBackup]);
 
   const handleImportKey = useCallback(() => {
-    const key = walletResult?.signerPrivateKey ?? nsaResult?.signerPrivateKey;
+    const key = resultRef.current?.signerPrivateKey;
     if (!onImportKey || !key) return;
     onImportKey(key);
     clearResults();
-  }, [onImportKey, walletResult, nsaResult, clearResults]);
+  }, [onImportKey, clearResults]);
 
   const handleCopyKey = useCallback(async () => {
-    const key = nsaResult?.signerPrivateKey;
+    const key = resultRef.current?.signerPrivateKey;
     if (!key) return;
     try {
       await navigator.clipboard.writeText(key);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      // Auto-clear clipboard after 30 seconds
+      // L-2: Auto-clear clipboard after 30 seconds (without readText permission)
       if (clipboardTimerRef.current) clearTimeout(clipboardTimerRef.current);
       clipboardTimerRef.current = setTimeout(async () => {
         try {
-          const current = await navigator.clipboard.readText();
-          if (current === key) {
-            await navigator.clipboard.writeText("");
-          }
+          await navigator.clipboard.writeText("");
+          setCopied(false);
         } catch {
-          // Permission denied is expected
+          // Expected if page lost focus or permission denied
         }
       }, 30_000);
     } catch {
       setError("Failed to copy. Please select the key manually.");
     }
-  }, [nsaResult]);
+  }, []);
+
+  // L-2: Explicit clipboard clear button
+  const handleClearClipboard = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText("");
+      setCopied(false);
+      if (clipboardTimerRef.current) {
+        clearTimeout(clipboardTimerRef.current);
+        clipboardTimerRef.current = null;
+      }
+    } catch {
+      // Permission denied — browser prevents clipboard access
+    }
+  }, []);
 
   const handleDone = useCallback(() => {
     clearResults();
@@ -262,6 +348,7 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
   if (step === "wallet-pin" || step === "nsa-pin") {
     const isWallet = step === "wallet-pin";
     const handleRestore = isWallet ? handleWalletRestore : handleNsaRestore;
+    const isLocked = lockoutRemaining > 0;
 
     return (
       <div className={WALLET_STYLES.panelContainer}>
@@ -300,6 +387,18 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
           </p>
         </div>
 
+        {/* M-1: Lockout banner */}
+        {isLocked && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3 mb-3">
+            <p className={`${WALLET_STYLES.textLabel} text-red-700 dark:text-red-400 font-medium`}>
+              Too many failed attempts
+            </p>
+            <p className={`${WALLET_STYLES.textCaption} text-red-600 dark:text-red-400`}>
+              Try again in {lockoutRemaining}s
+            </p>
+          </div>
+        )}
+
         <div className="space-y-3">
           <div>
             <label className={`block ${WALLET_STYLES.textLabel} text-gray-500 dark:text-zinc-400 mb-1`}>
@@ -309,18 +408,19 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && pin.length >= 6 && handleRestore()}
+              onKeyDown={(e) => e.key === "Enter" && pin.length >= 6 && !isLocked && handleRestore()}
               placeholder="Enter your backup PIN"
               className={`w-full ${WALLET_STYLES.input}`}
               autoFocus
+              disabled={isLocked}
             />
           </div>
 
-          {error && <p className={`${WALLET_STYLES.textLabel} text-red-400`}>{error}</p>}
+          {error && !isLocked && <p className={`${WALLET_STYLES.textLabel} text-red-400`}>{error}</p>}
 
           <button
             onClick={handleRestore}
-            disabled={pin.length < 6 || isProcessing}
+            disabled={pin.length < 6 || isProcessing || isLocked}
             className={`w-full py-2.5 ${WALLET_STYLES.primaryButton}`}
           >
             Restore
@@ -400,6 +500,10 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
 
   // === NSA Restore Success ===
   if (step === "nsa-success" && nsaResult) {
+    const maskedKey = resultRef.current?.signerPrivateKey
+      ? `${resultRef.current.signerPrivateKey.slice(0, 12)}${"*".repeat(8)}...`
+      : "***";
+
     return (
       <div className={WALLET_STYLES.panelContainer}>
         <div className="flex flex-col items-center py-4">
@@ -432,12 +536,22 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
             <div className="bg-gray-50 dark:bg-zinc-800 rounded p-3">
               <div className="flex items-center justify-between mb-1">
                 <p className={`${WALLET_STYLES.textCaption} text-gray-500 dark:text-zinc-400`}>Private Key</p>
-                <button onClick={handleCopyKey} className={`${WALLET_STYLES.textCaption} text-blue-500 hover:text-blue-600 transition-colors`}>
-                  {copied ? "Copied!" : "Copy"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleCopyKey} className={`${WALLET_STYLES.textCaption} text-blue-500 hover:text-blue-600 transition-colors`}>
+                    {copied ? "Copied!" : "Copy"}
+                  </button>
+                  {copied && (
+                    <button
+                      onClick={handleClearClipboard}
+                      className={`${WALLET_STYLES.textCaption} text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors`}
+                    >
+                      Clear Clipboard
+                    </button>
+                  )}
+                </div>
               </div>
               <p className={`${WALLET_STYLES.textCaption} font-mono text-gray-700 dark:text-zinc-300 break-all`}>
-                {nsaResult.signerPrivateKey.slice(0, 12)}{"*".repeat(8)}...
+                {maskedKey}
               </p>
             </div>
           </div>

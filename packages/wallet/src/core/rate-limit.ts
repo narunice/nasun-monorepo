@@ -1,6 +1,9 @@
 /**
  * Nasun Wallet Rate Limiting
  * Brute force protection with progressive lockout
+ *
+ * Supports multiple independent rate-limit domains via storageKey parameter.
+ * Default key is for wallet unlock; BACKUP_RESTORE_ATTEMPT_KEY for backup PIN.
  */
 
 import type { UnlockAttemptState } from '../types';
@@ -8,12 +11,15 @@ import { LOCKOUT_TIERS, DEFAULT_UNLOCK_ATTEMPT_STATE } from '../types';
 
 const UNLOCK_ATTEMPT_KEY = 'nasun_wallet_unlock_attempts';
 
+/** Separate rate-limit key for backup restore PIN attempts */
+export const BACKUP_RESTORE_ATTEMPT_KEY = 'nasun_backup_restore_attempts';
+
 /**
  * Load unlock attempt state from localStorage
  */
-export function getUnlockAttemptState(): UnlockAttemptState {
+export function getUnlockAttemptState(storageKey: string = UNLOCK_ATTEMPT_KEY): UnlockAttemptState {
   try {
-    const stored = localStorage.getItem(UNLOCK_ATTEMPT_KEY);
+    const stored = localStorage.getItem(storageKey);
     if (stored) {
       const parsed = JSON.parse(stored);
       return { ...DEFAULT_UNLOCK_ATTEMPT_STATE, ...parsed };
@@ -27,9 +33,9 @@ export function getUnlockAttemptState(): UnlockAttemptState {
 /**
  * Save unlock attempt state to localStorage
  */
-export function saveUnlockAttemptState(state: UnlockAttemptState): void {
+export function saveUnlockAttemptState(state: UnlockAttemptState, storageKey: string = UNLOCK_ATTEMPT_KEY): void {
   try {
-    localStorage.setItem(UNLOCK_ATTEMPT_KEY, JSON.stringify(state));
+    localStorage.setItem(storageKey, JSON.stringify(state));
   } catch (error) {
     // Rate-limit state must persist for security — warn on failure
     console.warn('[RateLimit] Failed to save unlock attempt state:', error);
@@ -54,8 +60,8 @@ export function calculateLockoutDuration(failedAttempts: number): number {
 /**
  * Check if currently locked out
  */
-export function isLockedOut(): boolean {
-  const state = getUnlockAttemptState();
+export function isLockedOut(storageKey: string = UNLOCK_ATTEMPT_KEY): boolean {
+  const state = getUnlockAttemptState(storageKey);
   if (!state.lockoutEndTime) return false;
   return Date.now() < state.lockoutEndTime;
 }
@@ -64,8 +70,8 @@ export function isLockedOut(): boolean {
  * Get remaining lockout time in milliseconds
  * @returns Remaining time in ms (0 if not locked out)
  */
-export function getLockoutRemainingMs(): number {
-  const state = getUnlockAttemptState();
+export function getLockoutRemainingMs(storageKey: string = UNLOCK_ATTEMPT_KEY): number {
+  const state = getUnlockAttemptState(storageKey);
   if (!state.lockoutEndTime) return 0;
   const remaining = state.lockoutEndTime - Date.now();
   return remaining > 0 ? remaining : 0;
@@ -77,8 +83,8 @@ export function getLockoutRemainingMs(): number {
  * This enables progressive lockout - more failures = longer lockout.
  * @returns Updated state
  */
-export function recordFailedAttempt(): UnlockAttemptState {
-  const state = getUnlockAttemptState();
+export function recordFailedAttempt(storageKey: string = UNLOCK_ATTEMPT_KEY): UnlockAttemptState {
+  const state = getUnlockAttemptState(storageKey);
   const now = Date.now();
 
   // Clear expired lockout time (but keep counter for progressive lockout)
@@ -96,27 +102,27 @@ export function recordFailedAttempt(): UnlockAttemptState {
     state.lockoutEndTime = now + lockoutDuration;
   }
 
-  saveUnlockAttemptState(state);
+  saveUnlockAttemptState(state, storageKey);
   return state;
 }
 
 /**
  * Reset unlock attempts (call on successful unlock)
  */
-export function resetUnlockAttempts(): void {
-  localStorage.removeItem(UNLOCK_ATTEMPT_KEY);
+export function resetUnlockAttempts(storageKey: string = UNLOCK_ATTEMPT_KEY): void {
+  localStorage.removeItem(storageKey);
 }
 
 /**
  * Get current lockout info for UI display
  */
-export function getLockoutInfo(): {
+export function getLockoutInfo(storageKey: string = UNLOCK_ATTEMPT_KEY): {
   isLockedOut: boolean;
   remainingMs: number;
   failedAttempts: number;
 } {
-  const state = getUnlockAttemptState();
-  const remainingMs = getLockoutRemainingMs();
+  const state = getUnlockAttemptState(storageKey);
+  const remainingMs = getLockoutRemainingMs(storageKey);
 
   return {
     isLockedOut: remainingMs > 0,
