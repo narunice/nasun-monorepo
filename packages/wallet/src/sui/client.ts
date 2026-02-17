@@ -354,10 +354,27 @@ export function shortenAddressResponsive(
 /**
  * Get all token balances for an address
  * Returns balances for native token and all registered tokens
+ * @param address Wallet address
+ * @param rpcUrl Optional RPC URL for external chains. If omitted, uses Nasun default.
+ * @param chainId Optional chain ID for RPC method prefix resolution and native token info
  */
-export async function getAllBalances(address: string): Promise<MultiTokenBalanceInfo> {
+export async function getAllBalances(
+  address: string,
+  rpcUrl?: string,
+  chainId?: string
+): Promise<MultiTokenBalanceInfo> {
+  // Determine native token info based on chain (outside try block for error handling)
+  const chain = chainId ? getChain(chainId) : null;
+  const nativeToken = chain
+    ? {
+        symbol: chain.nativeCurrency.symbol,
+        decimals: chain.nativeCurrency.decimals,
+        type: chain.nativeCoinType ?? '0x2::sui::SUI',
+      }
+    : NATIVE_TOKEN;
+
   try {
-    const client = getSuiClient();
+    const client = rpcUrl ? getMoveClient(rpcUrl, chainId) : getSuiClient();
     const rawBalances = await client.getAllBalances({ owner: address });
 
     // Validate RPC response
@@ -368,11 +385,11 @@ export async function getAllBalances(address: string): Promise<MultiTokenBalance
 
     // Initialize native token balance
     const nativeBalance: TokenBalance = {
-      symbol: NATIVE_TOKEN.symbol,
+      symbol: nativeToken.symbol,
       balance: 0n,
       formatted: '0',
-      decimals: NATIVE_TOKEN.decimals,
-      type: NATIVE_TOKEN.type,
+      decimals: nativeToken.decimals,
+      type: nativeToken.type,
     };
 
     // Map for additional tokens
@@ -383,10 +400,10 @@ export async function getAllBalances(address: string): Promise<MultiTokenBalance
       const tokenConfig = getTokenByType(balance.coinType);
       const balanceValue = BigInt(balance.totalBalance);
 
-      if (balance.coinType === NATIVE_TOKEN.type) {
-        // Native token (NASUN)
+      if (balance.coinType === nativeToken.type) {
+        // Native token (chain-specific)
         nativeBalance.balance = balanceValue;
-        nativeBalance.formatted = formatBalance(balanceValue, NATIVE_TOKEN.decimals);
+        nativeBalance.formatted = formatBalance(balanceValue, nativeToken.decimals);
       } else if (tokenConfig) {
         // Registered token
         tokens[tokenConfig.symbol] = {
@@ -408,11 +425,11 @@ export async function getAllBalances(address: string): Promise<MultiTokenBalance
     console.error('Failed to get all balances:', error);
     return {
       native: {
-        symbol: NATIVE_TOKEN.symbol,
+        symbol: nativeToken.symbol,
         balance: 0n,
         formatted: '0',
-        decimals: NATIVE_TOKEN.decimals,
-        type: NATIVE_TOKEN.type,
+        decimals: nativeToken.decimals,
+        type: nativeToken.type,
       },
       tokens: {},
     };
