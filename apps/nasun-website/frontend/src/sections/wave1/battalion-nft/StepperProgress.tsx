@@ -42,7 +42,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
       case "completed":
         return "bg-nasun-nw1 text-white border-nasun-nw1";
       case "current":
-        return "bg-teal-800 text-white border-teal-600";
+        return "bg-nasun-sf-blue text-white border-nasun-sf-blue";
       case "upcoming":
         return "bg-gray-700 text-gray-400 border-gray-600";
     }
@@ -76,7 +76,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                         w-12 h-12 rounded-full border-2 flex items-center justify-center
                         font-semibold text-lg transition-all   flex-shrink-0
                         ${stepColor}
-                        ${status === "current" ? "ring-4 ring-teal-600/20" : ""}
+                        ${status === "current" ? "ring-4 ring-nasun-sf-blue/20" : ""}
                       `}
                     >
                       {status === "completed" ? (
@@ -101,7 +101,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                     <p
                       className={`
                         text-center break-words
-                        ${status === "current" ? "text-teal-500" : ""}
+                        ${status === "current" ? "text-nasun-sf-blue" : ""}
                         ${status === "completed" ? "text-nasun-nw1" : ""}
                         ${status === "upcoming" ? "text-gray-400" : ""}
                       `}
@@ -123,71 +123,23 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
         </div>
       </div>
 
-      {/* Mobile View */}
+      {/* Mobile View — compact progress */}
       <div className="md:hidden px-[8%]">
-        <div className="space-y-4">
-          {steps.map((step) => {
-            const status = getStepStatus(step);
-            const stepColor = getStepColor(status);
-
-            return (
-              <div key={step} className="flex items-center justify-between gap-3">
-                {/* Left: Step Circle + Label */}
-                <div className="flex items-center gap-3">
-                  {/* Step Circle */}
-                  <div
-                    className={`
-                      w-10 h-10 rounded-full border-2 flex items-center justify-center
-                      font-semibold flex-shrink-0 transition-all
-                      ${stepColor}
-                      ${status === "current" ? "ring-4 ring-teal-600/20" : ""}
-                    `}
-                  >
-                    {status === "completed" ? (
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    ) : (
-                      step
-                    )}
-                  </div>
-
-                  {/* Step Label */}
-                  <p
-                    className={`
-                      ${status === "current" ? "text-teal-400" : ""}
-                      ${status === "completed" ? "text-nasun-nw1" : ""}
-                      ${status === "upcoming" ? "text-gray-400" : ""}
-                    `}
-                  >
-                    {t(`stepper.step${step}`)}
-                  </p>
-                </div>
-
-                {/* Right: Status Badge */}
-                {status === "current" && (
-                  <span className="px-3 py-1 text-teal-400 bg-teal-700/30 rounded-full text-sm flex-shrink-0">
-                    {t("stepper.statusCurrent")}
-                  </span>
-                )}
-                {status === "completed" && (
-                  <span className="px-3 py-1 text-nasun-nw1 bg-nasun-nw1/20 rounded-full text-sm flex-shrink-0">
-                    {t("stepper.statusCompleted")}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+        {/* Current step label */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-nasun-sf-blue font-medium">
+            {t(`stepper.step${currentStep}`)}
+          </p>
+          <p className="text-gray-400">
+            {currentStep} / {steps.length}
+          </p>
+        </div>
+        {/* Progress bar */}
+        <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-nasun-sf-blue rounded-full transition-all duration-500"
+            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+          />
         </div>
       </div>
     </div>

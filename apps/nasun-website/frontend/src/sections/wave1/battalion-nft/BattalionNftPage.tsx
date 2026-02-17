@@ -257,7 +257,7 @@ export const BattalionNftPage: React.FC = () => {
       <SectionLayout className="!py-0 mb-6 md:mb-8 lg:mb-10">
         <ErrorAlert message={error} />
 
-        <div className="">
+        <div key={currentStep} className="animate-fadeIn">
           {currentStep === 1 && <Step1WelcomeCard onStartClick={() => setStep(2)} />}
 
           {currentStep === 2 && <XAuthCard onAuthSuccess={handleXAuthSuccess} />}

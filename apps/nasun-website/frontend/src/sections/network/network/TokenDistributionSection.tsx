@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { Doughnut } from "react-chartjs-2";
@@ -92,7 +93,7 @@ function TokenDistributionSection() {
   ];
 
   return (
-    <SectionLayout className="!max-w-6xl">
+    <SectionLayout maxWidth="6xl">
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
           <SectionTitle as="h4" className="font-normal uppercase">
@@ -106,7 +107,7 @@ function TokenDistributionSection() {
         {/* Chart */}
         <div className="w-full lg:w-1/2 max-w-md lg:max-w-none">
           <div className="relative h-[340px] md:h-[460px]">
-            <Doughnut ref={chartRef} data={chartData} options={chartOptions} />
+            <Doughnut ref={chartRef} data={chartData} options={chartOptions} aria-label="NSN Token Distribution Chart" role="img" />
 
             {/* Center Text */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
@@ -146,4 +147,4 @@ function TokenDistributionSection() {
   );
 }
 
-export default React.memo(TokenDistributionSection);
+export default TokenDistributionSection;

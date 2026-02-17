@@ -110,6 +110,8 @@
     },
     "fallbackNote": "💡 <strong>If you have completed all tasks</strong>, try clicking \"Retry\" or proceed to the next step.",
     "goToTweet": "View Event Tweet",
+    "rateLimitWithTimer": "X API rate limit reached. Please wait {{time}} before retrying.",
+    "retryIn": "Retry in {{time}}",
     "retry": "Retry Verification",
     "button": "Verify Tasks",
     "nextButton": "Next Step",

@@ -5,6 +5,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui/OuterBox";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const LAYERS = [
   {
@@ -32,7 +33,8 @@ function NasunNetworkSection() {
   const { t } = useTranslation("tokenomics");
 
   return (
-    <SectionLayout className="!max-w-6xl">
+    <SectionLayout maxWidth="6xl">
+      <FadeInUp>
       {/* Content Box */}
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-6 xl:py-8">
@@ -80,8 +82,9 @@ function NasunNetworkSection() {
           </OuterBox>
         </div>
       </div>
+      </FadeInUp>
     </SectionLayout>
   );
 }
 
-export default React.memo(NasunNetworkSection);
+export default NasunNetworkSection;

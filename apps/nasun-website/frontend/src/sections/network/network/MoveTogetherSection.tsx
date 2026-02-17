@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 import fastIcon from "../../../assets/images/fast.svg";
 import scalableIcon from "../../../assets/images/scalable.svg";
 import secureIcon from "../../../assets/images/secure.svg";
@@ -57,7 +58,7 @@ function MoveTogetherSection() {
   const { t } = useTranslation("tokenomics");
 
   return (
-    <SectionLayout className="!max-w-6xl">
+    <SectionLayout maxWidth="6xl">
       {/* Main Title */}
       <SectionTitle
         as="h2"
@@ -68,7 +69,7 @@ function MoveTogetherSection() {
 
       {/* Subtitle with highlight */}
       <div className="mb-3 md:mb-4 lg:mb-5 xl:mb-6 flex flex-col items-center">
-        <h4 className="  text-[#B3E0FF]  font-semibold text-center">
+        <h4 className="  text-nasun-c7  font-semibold text-center">
           {t("moveTogether.subtitle")}
         </h4>
       </div>
@@ -82,25 +83,21 @@ function MoveTogetherSection() {
         {advantages.map((item) => (
           <div
             key={item.key}
-            className="border border-nasun-nw4/30    text-[#B3E0FF]  rounded-sm bg-[#212E57]/50 p-6 md:p-8 transition-all hover:border-nasun-c5/50 min-h-[140px] md:min-h-[160px]"
+            className="border border-nasun-nw4/30    text-nasun-c7  rounded-sm bg-[#212E57]/50 p-6 md:p-8 transition-all hover:border-nasun-c5/50 min-h-[140px] md:min-h-[160px]"
           >
             <div className="flex items-center gap-6 h-full">
               {/* Icon Box */}
-              <div className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-[#B3E0FF]/10 border-2 border-[#B3E0FF]/40 flex items-center justify-center">
+              <div className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-nasun-c7/10 border-2 border-nasun-c7/40 flex items-center justify-center">
                 <img
                   src={item.icon}
                   alt={t(item.titleKey)}
                   className="w-8 h-8 md:w-10 md:h-10 object-contain"
-                  style={{
-                    filter:
-                      "invert(82%) sepia(25%) saturate(400%) hue-rotate(180deg) brightness(105%) contrast(100%)",
-                  }}
                 />
               </div>
 
               {/* Text Content */}
               <div className="flex-1">
-                <h4 className="font-semibold text-[#B3E0FF] mb-2">{t(item.titleKey)}</h4>
+                <h4 className="font-semibold text-nasun-c7 mb-2">{t(item.titleKey)}</h4>
                 <p className="text-nasun-white/80">{t(item.descKey)}</p>
               </div>
             </div>
@@ -111,4 +108,4 @@ function MoveTogetherSection() {
   );
 }
 
-export default React.memo(MoveTogetherSection);
+export default MoveTogetherSection;

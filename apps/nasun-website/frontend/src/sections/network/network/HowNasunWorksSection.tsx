@@ -2,6 +2,7 @@ import React from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const REVENUE_ITEMS = [
   "Product development and sustainability",
@@ -11,7 +12,8 @@ const REVENUE_ITEMS = [
 
 function HowNasunWorksSection() {
   return (
-    <SectionLayout className="!max-w-6xl">
+    <SectionLayout maxWidth="6xl">
+      <FadeInUp>
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
           <SectionTitle as="h4" className="font-normal uppercase">
@@ -42,8 +44,9 @@ function HowNasunWorksSection() {
           </div>
         </div>
       </div>
+      </FadeInUp>
     </SectionLayout>
   );
 }
 
-export default React.memo(HowNasunWorksSection);
+export default HowNasunWorksSection;

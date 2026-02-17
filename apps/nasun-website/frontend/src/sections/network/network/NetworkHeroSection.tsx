@@ -20,7 +20,7 @@ interface NetworkHeroSectionProps {
 function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   // Resize observer - 모바일/데스크탑 동영상 전환
   useEffect(() => {
@@ -66,7 +66,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 5000);
+    }, 8000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
@@ -108,7 +108,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
       <div
         className="absolute inset-0 pointer-events-none z-10"
         style={{
-          background: "linear-gradient(to bottom, transparent 66%, rgb(25, 22, 21) 100%)",
+          background: "linear-gradient(to bottom, transparent 66%, #191615 100%)",
         }}
       />
 
@@ -165,4 +165,4 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
   );
 }
 
-export default React.memo(NetworkHeroSection);
+export default NetworkHeroSection;

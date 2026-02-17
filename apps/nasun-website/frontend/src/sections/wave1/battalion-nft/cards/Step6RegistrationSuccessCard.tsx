@@ -179,7 +179,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
               className="flex items-center gap-2"
             >
               <img
-                src="/opensea-Logomark-Transparent White.svg"
+                src="/opensea-logomark-white.svg"
                 alt="OpenSea"
                 className="w-6 h-6"
               />

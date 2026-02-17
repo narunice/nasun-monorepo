@@ -25,7 +25,7 @@ const WAVE_TITLE_FADE_DURATION = 0.5;
 function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [titleVisible, setTitleVisible] = useState(false);
   const [wordOpacities, setWordOpacities] = useState([0, 0, 0]);
   const [waveTitleOpacity, setWaveTitleOpacity] = useState(0);
@@ -128,7 +128,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 5000);
+    }, 8000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);

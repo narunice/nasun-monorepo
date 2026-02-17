@@ -1,10 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as path from 'path';
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 export interface AuthStackProps extends cdk.StackProps {
@@ -25,12 +27,26 @@ export class AuthStack extends cdk.Stack {
     // Import from LeaderboardV3Stack CloudFormation export
     const leaderboardV3AccountsTableName = cdk.Fn.importValue('LeaderboardV3AccountsTableName');
 
+    // Common NodejsFunction options
+    const lambdaSrcPath = path.join(__dirname, '..', 'lambda-src');
+    const depsLockFilePath = path.join(__dirname, '..', 'pnpm-lock.yaml');
+    const bundlingOptions = {
+      minify: true,
+      sourceMap: true,
+      externalModules: [
+        '@aws-sdk/client-dynamodb',
+        '@aws-sdk/lib-dynamodb',
+      ],
+    };
+
     // Twitter OAuth Authentication Lambda
-    const twitterLoginFunction = new lambda.Function(this, 'TwitterLoginFunction', {
+    const twitterLoginFunction = new NodejsFunction(this, 'TwitterLoginFunction', {
       functionName: 'nasun-auth-twitter-login',
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/auth-twitter"),
+      entry: path.join(lambdaSrcPath, 'auth-twitter', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
         // Note: SECRET_NAME removed - user auth uses env vars only (separated from operator path)
@@ -45,6 +61,7 @@ export class AuthStack extends cdk.Stack {
         // NFT event tasks table for secure X access token storage (backend proxy)
         NFT_EVENT_TASKS_TABLE_NAME: nftEventTasksTableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: '--enable-source-maps',
       },
       logGroup: new logs.LogGroup(this, "TwitterAuthLambdaLogGroup", {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -127,11 +144,13 @@ export class AuthStack extends cdk.Stack {
     });
 
     // 2. MetaMask Auth Lambda 함수
-    const metamaskAuthFunction = new lambda.Function(this, 'MetaMaskAuthFunction', {
+    const metamaskAuthFunction = new NodejsFunction(this, 'MetaMaskAuthFunction', {
       functionName: 'nasun-auth-metamask',
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'dist/index.handler',
-      code: lambda.Code.fromAsset('lambda-src/auth-metamask'),
+      entry: path.join(lambdaSrcPath, 'auth-metamask', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
         NONCE_TABLE_NAME: nonceTable.tableName,
@@ -141,6 +160,7 @@ export class AuthStack extends cdk.Stack {
         ETHEREUM_CHAIN_ID_MAINNET: process.env.ETHEREUM_CHAIN_ID_MAINNET || '1',
         ETHEREUM_CHAIN_ID_SEPOLIA: process.env.ETHEREUM_CHAIN_ID_SEPOLIA || '11155111',
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: '--enable-source-maps',
       },
       logGroup: new logs.LogGroup(this, 'MetaMaskAuthLambdaLogGroup', {
         logGroupName: '/aws/lambda/nasun-auth-metamask',
@@ -218,17 +238,20 @@ export class AuthStack extends cdk.Stack {
     });
 
     // 2. zkLogin Salt Lambda 함수
-    const zkLoginSaltFunction = new lambda.Function(this, 'ZkLoginSaltFunction', {
+    const zkLoginSaltFunction = new NodejsFunction(this, 'ZkLoginSaltFunction', {
       functionName: 'nasun-auth-zklogin-salt',
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'dist/index.handler',
-      code: lambda.Code.fromAsset('lambda-src/zklogin-salt'),
+      entry: path.join(lambdaSrcPath, 'zklogin-salt', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       environment: {
         ZKLOGIN_TABLE_NAME: zkLoginTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         ALLOWED_AUD: process.env.GOOGLE_CLIENT_ID || '',
+        NODE_OPTIONS: '--enable-source-maps',
       },
       logGroup: new logs.LogGroup(this, 'ZkLoginSaltLambdaLogGroup', {
         logGroupName: '/aws/lambda/nasun-auth-zklogin-salt',

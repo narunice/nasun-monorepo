@@ -3,6 +3,7 @@ dotenv.config();
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -10,6 +11,7 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
@@ -55,15 +57,35 @@ export class CommonStack extends cdk.Stack {
     );
 
     // ========================================
+    // Common NodejsFunction options
+    // ========================================
+    const lambdaSrcPath = path.join(__dirname, '..', 'lambda-src');
+    const depsLockFilePath = path.join(__dirname, '..', 'pnpm-lock.yaml');
+    const bundlingOptions = {
+      minify: true,
+      sourceMap: true,
+      externalModules: [
+        '@aws-sdk/client-dynamodb',
+        '@aws-sdk/lib-dynamodb',
+        '@aws-sdk/util-dynamodb',
+        '@aws-sdk/client-s3',
+        '@aws-sdk/s3-request-presigner',
+        '@aws-sdk/client-cognito-identity',
+      ],
+    };
+
+    // ========================================
     // 1. NFT/Supply Lambda 함수들
     // ========================================
 
     // 1-1. Get Backup Prices
-    const getBackupPricesLambda = new lambda.Function(this, "GetBackupPricesLambda", {
+    const getBackupPricesLambda = new NodejsFunction(this, "GetBackupPricesLambda", {
       functionName: "nasun-common-get-backup-prices",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/get-backup-prices/dist"),
+      entry: path.join(lambdaSrcPath, 'get-backup-prices', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         TABLE_NAME: cryptoBackupPricesTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -86,11 +108,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 1-2. Get Supply Count
-    const getSupplyCountLambda = new lambda.Function(this, "GetSupplyCountLambda", {
+    const getSupplyCountLambda = new NodejsFunction(this, "GetSupplyCountLambda", {
       functionName: "nasun-common-get-supply-count",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/getSupplyCount/dist"),
+      entry: path.join(lambdaSrcPath, 'getSupplyCount', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         TABLE_NAME: supplyCountTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -113,11 +137,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 1-3. Get All Supply Counts
-    const getAllSupplyCountsLambda = new lambda.Function(this, "GetAllSupplyCountsLambda", {
+    const getAllSupplyCountsLambda = new NodejsFunction(this, "GetAllSupplyCountsLambda", {
       functionName: "nasun-common-get-all-supply-counts",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/getAllSupplyCounts"),
+      entry: path.join(lambdaSrcPath, 'getAllSupplyCounts', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         TABLE_NAME: supplyCountTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -140,14 +166,17 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 1-4. Random Image Handler
-    const randomImageHandlerLambda = new lambda.Function(this, "RandomImageHandlerLambda", {
+    const randomImageHandlerLambda = new NodejsFunction(this, "RandomImageHandlerLambda", {
       functionName: "nasun-common-random-image-handler",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/randomImageHandler"),
+      entry: path.join(lambdaSrcPath, 'randomImageHandler', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         TABLE_NAME: supplyCountTable.tableName,
-        MAX_MINT_COUNTS: '{"TIER1":1,"TIER2":2,"TIER3":3,"TIER4":4,"TIER5":100}'
+        MAX_MINT_COUNTS: '{"TIER1":1,"TIER2":2,"TIER3":3,"TIER4":4,"TIER5":100}',
+        NODE_OPTIONS: '--enable-source-maps',
       },
       logGroup: new logs.LogGroup(this, "RandomImageHandlerLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-random-image-handler",
@@ -171,11 +200,13 @@ export class CommonStack extends cdk.Stack {
     // ========================================
 
     // 2-1. Get User Profile
-    const getUserProfileLambda = new lambda.Function(this, "GetUserProfileLambda", {
+    const getUserProfileLambda = new NodejsFunction(this, "GetUserProfileLambda", {
       functionName: "nasun-common-get-user-profile",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/get-user-profile"),
+      entry: path.join(lambdaSrcPath, 'get-user-profile', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         USER_IDENTITY_MAP_TABLE: userIdentityMapTable.tableName,
@@ -201,11 +232,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 2-2. Link Account
-    const linkAccountLambda = new lambda.Function(this, "LinkAccountLambda", {
+    const linkAccountLambda = new NodejsFunction(this, "LinkAccountLambda", {
       functionName: "nasun-common-link-account",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/link-account"),
+      entry: path.join(lambdaSrcPath, 'link-account', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
@@ -231,11 +264,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 2-3. Wallet API
-    const walletApiLambda = new lambda.Function(this, "WalletApiLambda", {
+    const walletApiLambda = new NodejsFunction(this, "WalletApiLambda", {
       functionName: "nasun-common-wallet-api",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/wallet-api/dist"),
+      entry: path.join(lambdaSrcPath, 'wallet-api', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -259,11 +294,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 2-4. Governance API (with VotingPowerCertificate + Sponsored Transaction)
-    const governanceApiLambda = new lambda.Function(this, "GovernanceApiLambda", {
+    const governanceApiLambda = new NodejsFunction(this, "GovernanceApiLambda", {
       functionName: "nasun-common-governance-api",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/governance-api/dist"),
+      entry: path.join(lambdaSrcPath, 'governance-api', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
         // Leaderboard V3 tables
@@ -344,11 +381,13 @@ export class CommonStack extends cdk.Stack {
     // ========================================
 
     // 3-1. Update Backup Prices
-    const updateBackupPricesLambda = new lambda.Function(this, "UpdateBackupPricesLambda", {
+    const updateBackupPricesLambda = new NodejsFunction(this, "UpdateBackupPricesLambda", {
       functionName: "nasun-common-update-backup-prices",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/update-backup-prices/src"),
+      entry: path.join(lambdaSrcPath, 'update-backup-prices', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         CMC_API_KEY: process.env.CMC_API_KEY || "",
         TABLE_NAME: cryptoBackupPricesTable.tableName
@@ -361,11 +400,13 @@ export class CommonStack extends cdk.Stack {
     cryptoBackupPricesTable.grantWriteData(updateBackupPricesLambda);
 
     // 3-2. Price API
-    const priceApiLambda = new lambda.Function(this, "PriceApiLambda", {
+    const priceApiLambda = new NodejsFunction(this, "PriceApiLambda", {
       functionName: "nasun-common-price-api",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "lambda-handler.handler",
-      code: lambda.Code.fromAsset("lambda-src/PriceAPI/dist"),
+      entry: path.join(lambdaSrcPath, 'PriceAPI', 'src', 'lambda-handler.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {},
       logGroup: new logs.LogGroup(this, "PriceApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-price-api",
@@ -376,13 +417,17 @@ export class CommonStack extends cdk.Stack {
     cryptoBackupPricesTable.grantReadData(priceApiLambda);
 
     // 3-3. Price Updater
-    this.priceUpdaterLambda = new lambda.Function(this, "PriceUpdaterLambda", {
+    this.priceUpdaterLambda = new NodejsFunction(this, "PriceUpdaterLambda", {
       functionName: "nasun-common-price-updater",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "price-updater-handler.handler",
-      code: lambda.Code.fromAsset("lambda-src/PriceAPI/lambda-package"),
+      entry: path.join(lambdaSrcPath, 'PriceAPI', 'src', 'price-updater-handler.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.minutes(5),
-      environment: {},
+      environment: {
+        NODE_OPTIONS: '--enable-source-maps',
+      },
       logGroup: new logs.LogGroup(this, "PriceUpdaterLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-price-updater",
         removalPolicy: cdk.RemovalPolicy.DESTROY
@@ -413,11 +458,13 @@ export class CommonStack extends cdk.Stack {
     // 4. AWS Credentials Lambda
     // ========================================
 
-    const getAwsCredentialsLambda = new lambda.Function(this, "GetAwsCredentialsLambda", {
+    const getAwsCredentialsLambda = new NodejsFunction(this, "GetAwsCredentialsLambda", {
       functionName: "nasun-common-get-aws-credentials",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/get-aws-credentials"),
+      entry: path.join(lambdaSrcPath, 'get-aws-credentials', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
@@ -452,11 +499,13 @@ export class CommonStack extends cdk.Stack {
     // 로그인 시스템을 건드리지 않기 위해 Custom Token Authorizer를 사용하지 않음
 
     // 5-2. Deactivate User Account Lambda
-    const deactivateUserAccountLambda = new lambda.Function(this, "DeactivateUserAccountLambda", {
+    const deactivateUserAccountLambda = new NodejsFunction(this, "DeactivateUserAccountLambda", {
         functionName: "nasun-common-deactivate-user-account",
         runtime: lambda.Runtime.NODEJS_22_X,
-        handler: "index.handler",
-        code: lambda.Code.fromAsset("lambda-src/deactivate-user-account/dist"),
+        entry: path.join(lambdaSrcPath, 'deactivate-user-account', 'src', 'index.ts'),
+        handler: 'handler',
+        depsLockFilePath,
+        bundling: bundlingOptions,
         environment: {
             USER_PROFILES_TABLE: this.userProfilesTable.tableName,
             ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -483,11 +532,13 @@ export class CommonStack extends cdk.Stack {
     deactivateAccountApi.root.addMethod('DELETE', new apigw.LambdaIntegration(deactivateUserAccountLambda));
 
     // 5-3. Purge Deactivated Accounts Lambda (Scheduled)
-    const purgeDeactivatedAccountsLambda = new lambda.Function(this, "PurgeDeactivatedAccountsLambda", {
+    const purgeDeactivatedAccountsLambda = new NodejsFunction(this, "PurgeDeactivatedAccountsLambda", {
       functionName: "nasun-common-purge-deactivated-accounts",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/purge-deactivated-accounts/dist"),
+      entry: path.join(lambdaSrcPath, 'purge-deactivated-accounts', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
@@ -517,11 +568,13 @@ export class CommonStack extends cdk.Stack {
     // 6. Get User Count Lambda (Roadmap 메트릭용)
     // ========================================
 
-    const getUserCountLambda = new lambda.Function(this, "GetUserCountLambda", {
+    const getUserCountLambda = new NodejsFunction(this, "GetUserCountLambda", {
       functionName: "nasun-common-get-user-count",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/get-user-count/dist"),
+      entry: path.join(lambdaSrcPath, 'get-user-count', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -553,11 +606,13 @@ export class CommonStack extends cdk.Stack {
     // 6-2. Get Follower Count Lambda (Twitter API)
     // ========================================
 
-    const getFollowerCountLambda = new lambda.Function(this, "GetFollowerCountLambda", {
+    const getFollowerCountLambda = new NodejsFunction(this, "GetFollowerCountLambda", {
       functionName: "nasun-common-get-follower-count",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "index.handler",
-      code: lambda.Code.fromAsset("lambda-src/get-follower-count/dist"),
+      entry: path.join(lambdaSrcPath, 'get-follower-count', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
         TARGET_USER_ID: "1725466995565752320",
@@ -724,11 +779,13 @@ export class CommonStack extends cdk.Stack {
     };
 
     // 10-3. Join Whitelist Lambda
-    const joinWhitelistLambda = new lambda.Function(this, "JoinWhitelistLambda", {
+    const joinWhitelistLambda = new NodejsFunction(this, "JoinWhitelistLambda", {
       functionName: "nasun-common-whitelist-join",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/handlers/join.handler",
-      code: lambda.Code.fromAsset("lambda-src/whitelist"),
+      entry: path.join(lambdaSrcPath, 'whitelist', 'src', 'handlers', 'join.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       environment: whitelistEnv,
@@ -750,11 +807,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 10-4. Withdraw Whitelist Lambda
-    const withdrawWhitelistLambda = new lambda.Function(this, "WithdrawWhitelistLambda", {
+    const withdrawWhitelistLambda = new NodejsFunction(this, "WithdrawWhitelistLambda", {
       functionName: "nasun-common-whitelist-withdraw",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/handlers/withdraw.handler",
-      code: lambda.Code.fromAsset("lambda-src/whitelist"),
+      entry: path.join(lambdaSrcPath, 'whitelist', 'src', 'handlers', 'withdraw.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       environment: whitelistEnv,
@@ -776,11 +835,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 10-5. Check Whitelist Lambda
-    const checkWhitelistLambda = new lambda.Function(this, "CheckWhitelistLambda", {
+    const checkWhitelistLambda = new NodejsFunction(this, "CheckWhitelistLambda", {
       functionName: "nasun-common-whitelist-check",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/handlers/check.handler",
-      code: lambda.Code.fromAsset("lambda-src/whitelist"),
+      entry: path.join(lambdaSrcPath, 'whitelist', 'src', 'handlers', 'check.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
       environment: whitelistEnv,
@@ -802,11 +863,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 10-6. Admin List Lambda
-    const adminListLambda = new lambda.Function(this, "AdminListLambda", {
+    const adminListLambda = new NodejsFunction(this, "AdminListLambda", {
       functionName: "nasun-common-whitelist-admin-list",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/handlers/admin-list.handler",
-      code: lambda.Code.fromAsset("lambda-src/whitelist"),
+      entry: path.join(lambdaSrcPath, 'whitelist', 'src', 'handlers', 'admin-list.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       environment: whitelistEnv,
@@ -828,11 +891,13 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 10-7. Admin Export Lambda
-    const adminExportLambda = new lambda.Function(this, "AdminExportLambda", {
+    const adminExportLambda = new NodejsFunction(this, "AdminExportLambda", {
       functionName: "nasun-common-whitelist-export",
       runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "dist/handlers/admin-export.handler",
-      code: lambda.Code.fromAsset("lambda-src/whitelist"),
+      entry: path.join(lambdaSrcPath, 'whitelist', 'src', 'handlers', 'admin-export.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(60),
       memorySize: 1024,
       environment: whitelistEnv,
