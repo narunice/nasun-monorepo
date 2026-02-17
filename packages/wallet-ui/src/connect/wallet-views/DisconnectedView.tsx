@@ -135,7 +135,7 @@ export function DisconnectedView({
           <span className="text-xs">Import</span>
         </button>
         <button
-          onClick={() => setViewMode("nsa-restore")}
+          onClick={() => setViewMode("restore-backup")}
           className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

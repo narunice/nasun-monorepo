@@ -141,6 +141,14 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         </ul>
       </div>
 
+      {/* Additional backup hint */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
+        <p className="text-xs xl:text-sm text-blue-800 dark:text-blue-300">
+          For additional protection, create an encrypted <strong>Wallet Backup</strong> in{' '}
+          <span className="font-medium">Account &gt; Backup &amp; Recovery</span>.
+        </p>
+      </div>
+
       {/* Confirmation checkbox */}
       <label className="flex items-start gap-3 mb-4 cursor-pointer group">
         <input

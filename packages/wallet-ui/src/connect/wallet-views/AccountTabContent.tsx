@@ -4,6 +4,7 @@
  * plus variant-specific items for self-custody wallets.
  */
 
+import { useState } from "react";
 import type { ViewMode } from "../types";
 import { WALLET_STYLES } from "../../shared";
 
@@ -23,6 +24,8 @@ const ICON_PATHS = {
   settingsCircle: "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
   exportKey:
     "M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z",
+  backup:
+    "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
 } as const;
 
 const MENU_ITEM_CLASS = WALLET_STYLES.menuItem;
@@ -56,6 +59,8 @@ export function AccountTabContent({
   nsaRecoveryCompleted: number;
   onNavigate: (mode: ViewMode) => void;
 }) {
+  const [showBackupGuide, setShowBackupGuide] = useState(false);
+
   return (
     <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tl-lg">
       {/* Asset Management */}
@@ -105,27 +110,56 @@ export function AccountTabContent({
         </button>
       )}
 
-      {/* Self-custody only: Security Settings + Export */}
+      {/* Self-custody only: Security Settings */}
       {variant === "self-custody" && (
-        <>
-          <button onClick={() => onNavigate("settings")} className={MENU_ITEM_CLASS}>
-            <MenuIcon d={[ICON_PATHS.settings, ICON_PATHS.settingsCircle]} />
-            Security Settings
-          </button>
-
-          <div className={WALLET_STYLES.divider} />
-
-          <button onClick={() => onNavigate("export")} className={MENU_ITEM_CLASS}>
-            <MenuIcon d={ICON_PATHS.exportKey} />
-            Export Private Key
-          </button>
-        </>
+        <button onClick={() => onNavigate("settings")} className={MENU_ITEM_CLASS}>
+          <MenuIcon d={[ICON_PATHS.settings, ICON_PATHS.settingsCircle]} />
+          Security Settings
+        </button>
       )}
 
-      {/* Passkey: Export Private Key */}
-      {variant === "passkey" && (
+      {/* Backup & Recovery (self-custody + passkey) */}
+      {(variant === "self-custody" || variant === "passkey") && (
         <>
           <div className={WALLET_STYLES.divider} />
+
+          <div className="flex items-center justify-between px-3 pt-1 pb-0.5">
+            <p className="text-xs text-gray-400 dark:text-zinc-500">
+              Backup & Recovery
+            </p>
+            <button
+              onClick={() => setShowBackupGuide((v) => !v)}
+              className="p-0.5 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+              aria-label="Backup options guide"
+              title="Compare backup options"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </div>
+
+          {showBackupGuide && (
+            <div className="mx-3 mb-1 p-2.5 bg-gray-50 dark:bg-zinc-700/50 rounded text-[10px] xl:text-xs space-y-1.5">
+              <p className="text-gray-700 dark:text-zinc-300">
+                <span className="font-medium">Wallet Backup</span>
+                <span className="text-gray-500 dark:text-zinc-400"> — Encrypted file with PIN. Quick wallet recovery.</span>
+              </p>
+              <p className="text-gray-700 dark:text-zinc-300">
+                <span className="font-medium">Export Private Key</span>
+                <span className="text-gray-500 dark:text-zinc-400"> — Raw key for importing into other wallets.</span>
+              </p>
+              <p className="text-gray-700 dark:text-zinc-300">
+                <span className="font-medium">Full Backup</span>
+                <span className="text-gray-500 dark:text-zinc-400"> — Smart Account menu. Includes guardians and settings.</span>
+              </p>
+            </div>
+          )}
+
+          <button onClick={() => onNavigate("wallet-backup")} className={MENU_ITEM_CLASS}>
+            <MenuIcon d={ICON_PATHS.backup} />
+            Wallet Backup
+          </button>
 
           <button onClick={() => onNavigate("export")} className={MENU_ITEM_CLASS}>
             <MenuIcon d={ICON_PATHS.exportKey} />
