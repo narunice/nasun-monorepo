@@ -25,13 +25,16 @@ export function TabBar({
   onTabChange: (tab: TabMode) => void;
 }) {
   return (
-    <div className="flex gap-1 px-2 pt-2">
+    <div className="flex gap-1 px-2 pt-2" role="tablist">
       {(Object.keys(TAB_CONFIG) as TabMode[]).map((tab) => {
         const isActive = tab === activeTab;
         const { path, label } = TAB_CONFIG[tab];
         return (
           <button
             key={tab}
+            role="tab"
+            aria-selected={isActive}
+            aria-controls={`tabpanel-${tab}`}
             onClick={() => onTabChange(tab)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs xl:text-sm font-medium transition-all ${
               isActive
@@ -39,7 +42,7 @@ export function TabBar({
                 : "text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 rounded-t-lg"
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
             </svg>
             {label}

@@ -37,6 +37,7 @@ vi.mock('../connect/wallet-views', () => ({
   AddressBookView: (props: any) => <div data-testid="address-book-view" />,
   ReceiveView: (props: any) => <div data-testid="receive-view" />,
   AddTokenView: (props: any) => <div data-testid="add-token-view" />,
+  DeleteConfirmationView: (props: any) => <div data-testid="delete-confirmation-view" />,
 }));
 
 vi.mock('../connect/LockedStateUI', () => ({
@@ -134,6 +135,7 @@ function createMockState(overrides: Record<string, any> = {}): any {
 
     // Delete
     handleDelete: vi.fn(),
+    confirmDelete: vi.fn(),
     handleUnlock: vi.fn(),
     resetView: vi.fn(),
 
@@ -193,6 +195,7 @@ const EXPLICIT_VIEW_MODES: ViewMode[] = [
   'create',
   'create-backup',
   'create-auto-lock',
+  'delete-confirm',
   'import',
   'export',
   'send',
@@ -336,7 +339,7 @@ describe('ViewMode Smoke Tests', () => {
     it('should have all ViewModes covered by tests', () => {
       const ALL_VIEW_MODES: ViewMode[] = [
         // Core
-        'main', 'create', 'create-backup', 'create-auto-lock', 'import', 'export', 'send', 'receive',
+        'main', 'create', 'create-backup', 'create-auto-lock', 'delete-confirm', 'import', 'export', 'send', 'receive',
         // Asset
         'staking', 'portfolio', 'add-token',
         // Settings
