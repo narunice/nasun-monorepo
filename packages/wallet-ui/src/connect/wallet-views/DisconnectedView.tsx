@@ -72,7 +72,12 @@ export function DisconnectedView({
                   placeholder="Wallet password"
                   value={passkeyPassword}
                   onChange={(e) => setPasskeyPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && passkeyPassword && onPasskeyUnlock?.(passkeyPassword)}
+                  onKeyDown={(e) => {
+                    // Only execute if button would be enabled (exact same condition as button's !disabled)
+                    if (e.key === "Enter" && !passkeyIsLoading && (!passkeyNeedsPassword || passkeyPassword)) {
+                      onPasskeyUnlock?.(passkeyNeedsPassword ? passkeyPassword : undefined);
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   disabled={passkeyIsLoading}
                 />
