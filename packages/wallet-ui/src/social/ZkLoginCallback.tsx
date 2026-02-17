@@ -222,7 +222,7 @@ export function ZkLoginCallback({
       </p>
 
       {/* Step indicators */}
-      <div className="flex flex-col gap-2 mt-6 text-sm xl:text-base">
+      <div className="flex flex-col items-center gap-2 mt-6 text-sm xl:text-base">
         <StepIndicator
           label="Login verified"
           status={getStepStatus('verifying', step)}
