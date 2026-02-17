@@ -7,15 +7,12 @@ import { Button } from "@/components/ui";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import { useTranslation } from "react-i18next";
-
 interface PadoPitchHeroSectionProps {
   onVideoReady?: () => void;
   isVideoReady?: boolean;
 }
 
 function PadoPitchHeroSection({ onVideoReady }: PadoPitchHeroSectionProps) {
-  const { t } = useTranslation("pado-pitch");
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -102,13 +99,13 @@ function PadoPitchHeroSection({ onVideoReady }: PadoPitchHeroSectionProps) {
             flex flex-col items-center text-center px-4 pointer-events-auto"
           >
             <FadeInUp>
-              <h2>{t("hero.tagline")}</h2>
+              <h2>The Opportunity</h2>
               <h4 className="text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
-                {t("hero.subTagline")}
+                The only DEX where community forms inside the product.
               </h4>
               <Button variant="white" size="lg" asChild className="mt-6">
                 <Link to={import.meta.env.VITE_PADO_ALPHA_URL} target="_blank" rel="noopener noreferrer">
-                  {t("hero.button")}
+                  Try Pado Alpha
                   <ExternalLink className="w-4 h-4 ml-2" />
                 </Link>
               </Button>

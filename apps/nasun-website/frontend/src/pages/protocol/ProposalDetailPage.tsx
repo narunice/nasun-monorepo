@@ -137,7 +137,7 @@ const ProposalDetailPage: FC = () => {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate("/network/governance")}
-          className="inline-flex items-center text-nasun-nw1 hover:text-nasun-nw4 transition-colors text-xs md:text-sm lg:text-base uppercase tracking-[0.2em] font-medium"
+          className="inline-flex items-center text-nasun-nw1 hover:text-nasun-nw4 transition-colors text-xs md:text-sm lg:text-base uppercase font-medium"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Governance
@@ -177,7 +177,7 @@ const ProposalDetailPage: FC = () => {
           className="flex flex-col min-h-[300px] lg:min-h-[500px] max-h-[55vh] !bg-gray-900"
         >
           <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
-            <p className="text-nasun-white/85 whitespace-pre-wrap leading-relaxed">
+            <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
               {proposal.description}
             </p>
           </div>
@@ -186,8 +186,8 @@ const ProposalDetailPage: FC = () => {
         {/* Right: Sidebar */}
         <div className="flex flex-col gap-4 lg:min-h-[300px]">
           {/* Vote Results */}
-          <OuterBox color="nw2" padding="md">
-            <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wider mb-3">
+          <OuterBox color="nw1" padding="md">
+            <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
               Vote Results
             </h3>
             <div className="mb-3">
@@ -202,55 +202,55 @@ const ProposalDetailPage: FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-green-500/10 border border-green-500/20 rounded-sm p-3 text-center">
-                <div className="text-xl font-bold text-green-400">{yesPercent.toFixed(1)}%</div>
-                <div className="text-xs text-nasun-white/50">Yes</div>
-                <div className="text-sm font-medium text-green-400 mt-1">{proposal.yesVotes}</div>
-                <div className="text-[10px] text-nasun-white/30">voting power</div>
+                <div className="text-2xl font-bold text-green-400">{yesPercent.toFixed(1)}%</div>
+                <div className="text-sm text-nasun-white/70">Yes</div>
+                <div className="text-base font-medium text-green-400 mt-1">{proposal.yesVotes}</div>
+                <div className="text-xs text-nasun-white/30">voting power</div>
               </div>
               <div className="bg-red-500/10 border border-red-500/20 rounded-sm p-3 text-center">
-                <div className="text-xl font-bold text-red-400">
+                <div className="text-2xl font-bold text-red-400">
                   {(100 - yesPercent).toFixed(1)}%
                 </div>
-                <div className="text-xs text-nasun-white/50">No</div>
-                <div className="text-sm font-medium text-red-400 mt-1">{proposal.noVotes}</div>
-                <div className="text-[10px] text-nasun-white/30">voting power</div>
+                <div className="text-sm text-nasun-white/70">No</div>
+                <div className="text-base font-medium text-red-400 mt-1">{proposal.noVotes}</div>
+                <div className="text-xs text-nasun-white/30">voting power</div>
               </div>
             </div>
           </OuterBox>
 
           {/* Details */}
-          <OuterBox color="nw2" padding="md" className="flex-1 ">
-            <h3 className="text-sm font-medium text-nasun-white/60 uppercase tracking-wider mb-3">
+          <OuterBox color="nw1" padding="md" className="flex-1">
+            <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
               Details
             </h3>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-base">
               <div className="flex justify-between">
-                <span className="text-nasun-white/50">Proposal ID</span>
+                <span className="text-nasun-white/70">Proposal ID</span>
                 <a
                   href={`${explorerUrl}/object/${proposalId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-xs"
+                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
                 >
                   {proposalId?.slice(0, 6)}...{proposalId?.slice(-4)}
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
               <div className="flex justify-between">
-                <span className="text-nasun-white/50">Creator</span>
+                <span className="text-nasun-white/70">Creator</span>
                 <a
                   href={`${explorerUrl}/address/${proposal.creator}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-xs"
+                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
                 >
                   {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
               <div className="flex justify-between">
-                <span className="text-nasun-white/50">Expiration</span>
-                <span className="text-nasun-white/80 text-xs">
+                <span className="text-nasun-white/70">Expiration</span>
+                <span className="text-nasun-white/80 text-sm">
                   {isDelisted
                     ? "Delisted"
                     : isExpired
@@ -259,8 +259,8 @@ const ProposalDetailPage: FC = () => {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-nasun-white/50">Type</span>
-                <span className="text-nasun-white/80 text-xs">
+                <span className="text-nasun-white/70">Type</span>
+                <span className="text-nasun-white/80 text-sm">
                   {proposal.proposalType === "Poll"
                     ? "Poll (Zero Gas)"
                     : "Governance (Gas Required)"}
