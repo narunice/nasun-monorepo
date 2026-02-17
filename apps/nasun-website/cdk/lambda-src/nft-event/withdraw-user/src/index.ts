@@ -76,36 +76,33 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       throw new NftEventError('Invalid wallet address', ErrorCode.INVALID_WALLET_ADDRESS, 400);
     }
 
-    if (!request.signature || !request.message || !request.timestamp) {
-      throw new NftEventError('signature, message, and timestamp are required', ErrorCode.INVALID_SIGNATURE, 400);
-    }
+    // 3. Verify MetaMask signature if provided (optional — user may already be authenticated on-site)
+    if (request.signature && request.message && request.timestamp) {
+      const signedAt = new Date(request.timestamp).getTime();
+      const age = Date.now() - signedAt;
+      if (isNaN(signedAt) || age < -30_000 || age > 5 * 60 * 1000) {
+        throw new NftEventError('Signature expired or invalid timestamp', ErrorCode.SIGNATURE_EXPIRED, 400);
+      }
 
-    // 3. Verify signature is not expired (5-minute window, 30s forward tolerance for clock skew)
-    const signedAt = new Date(request.timestamp).getTime();
-    const age = Date.now() - signedAt;
-    if (isNaN(signedAt) || age < -30_000 || age > 5 * 60 * 1000) {
-      throw new NftEventError('Signature expired or invalid timestamp', ErrorCode.SIGNATURE_EXPIRED, 400);
-    }
+      if (!request.message.includes(request.timestamp)) {
+        throw new NftEventError('Signed message must contain the request timestamp', ErrorCode.INVALID_SIGNATURE, 400);
+      }
 
-    // 4. Verify message content — prevent cross-action signature replay.
-    // The signed message must contain the timestamp to bind it to this specific request.
-    if (!request.message.includes(request.timestamp)) {
-      throw new NftEventError('Signed message must contain the request timestamp', ErrorCode.INVALID_SIGNATURE, 400);
-    }
+      let recoveredAddress: string;
+      try {
+        recoveredAddress = ethers.verifyMessage(request.message, request.signature);
+      } catch {
+        throw new NftEventError('Invalid signature', ErrorCode.INVALID_SIGNATURE, 400);
+      }
 
-    // 5. Verify MetaMask signature — proves caller owns the wallet
-    let recoveredAddress: string;
-    try {
-      recoveredAddress = ethers.verifyMessage(request.message, request.signature);
-    } catch {
-      throw new NftEventError('Invalid signature', ErrorCode.INVALID_SIGNATURE, 400);
-    }
+      if (recoveredAddress.toLowerCase() !== request.walletAddress.toLowerCase()) {
+        throw new NftEventError('Signature does not match wallet address', ErrorCode.INVALID_SIGNATURE, 403);
+      }
 
-    if (recoveredAddress.toLowerCase() !== request.walletAddress.toLowerCase()) {
-      throw new NftEventError('Signature does not match wallet address', ErrorCode.INVALID_SIGNATURE, 403);
+      console.log('[withdraw-user] Wallet ownership verified via signature:', request.walletAddress);
+    } else {
+      console.log('[withdraw-user] No signature provided, proceeding without verification:', request.walletAddress);
     }
-
-    console.log('[withdraw-user] Wallet ownership verified:', request.walletAddress);
 
     // 6. 화이트리스트에서 사용자 제거 (Soft Delete)
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);

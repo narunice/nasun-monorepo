@@ -18,6 +18,7 @@ interface Step5ConfirmationCardProps {
   walletAddress: string | null;
   isRegistering: boolean;
   onRegister: () => void;
+  onCancel: () => void;
 }
 
 export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
@@ -25,6 +26,7 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
   walletAddress,
   isRegistering,
   onRegister,
+  onCancel,
 }) => {
   const { t } = useTranslation("battalion-nft");
 
@@ -74,19 +76,31 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           <span className="text-green-500">{t("step5.allTasksCompleted")}</span>
         </div>
       </DividerBox>
-      <ButtonV3
-        onClick={onRegister}
-        disabled={isRegistering}
-        variant="nw1"
-        className="flex mx-auto disabled:opacity-90"
-        size="lg"
-      >
-        {isRegistering ? (
-          <InlineLoading message={t("step5.registering")} size="md" />
-        ) : (
-          <span>{t("step5.button")}</span>
-        )}
-      </ButtonV3>
+      <div className="flex flex-col-reverse sm:flex-row items-center justify-center gap-3">
+        <ButtonV3
+          onClick={onCancel}
+          disabled={isRegistering}
+          variant="nw1"
+          outline
+          className="w-full sm:w-auto"
+          size="lg"
+        >
+          {t("step5.cancel")}
+        </ButtonV3>
+        <ButtonV3
+          onClick={onRegister}
+          disabled={isRegistering}
+          variant="nw1"
+          className="disabled:opacity-90 w-full sm:w-auto"
+          size="lg"
+        >
+          {isRegistering ? (
+            <InlineLoading message={t("step5.registering")} size="md" />
+          ) : (
+            <span>{t("step5.button")}</span>
+          )}
+        </ButtonV3>
+      </div>
     </OuterBox>
   );
 };

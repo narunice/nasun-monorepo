@@ -78,9 +78,14 @@ export function useWhitelistJoinFlow(
         return;
       }
 
+      const linkHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user.cognitoToken) {
+        linkHeaders['Authorization'] = `Bearer ${user.cognitoToken}`;
+      }
+
       const response = await fetch(`${linkAccountApi}/link`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: linkHeaders,
         body: JSON.stringify({
           primaryIdentityId: user.identityId,
           secondaryIdentityId: authResult.identityId,

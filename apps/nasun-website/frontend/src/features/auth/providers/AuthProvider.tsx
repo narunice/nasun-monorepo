@@ -98,7 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (linkSessionRaw) {
           const { primaryIdentityId } = JSON.parse(linkSessionRaw);
-          await linkAccounts(primaryIdentityId, identityId, provider as "Google" | "Twitter");
+          // Retrieve primary user's cognitoToken from sessionStorage (saved during initial login)
+          const cachedProfile = sessionStorage.getItem("nasun_user_profile");
+          const primaryCognitoToken = cachedProfile ? JSON.parse(cachedProfile).cognitoToken : undefined;
+          await linkAccounts(primaryIdentityId, identityId, provider as "Google" | "Twitter", primaryCognitoToken);
           sessionStorage.removeItem(linkSessionKey);
           await refreshAndSaveUserProfile(primaryIdentityId);
           setUser(useUserStore.getState().user);

@@ -28,7 +28,8 @@ interface UseBattalionNftStatusReturn {
  * @returns 등록 상태 및 관련 메서드
  */
 export function useBattalionNftStatus(
-  walletAddress: string | null | undefined
+  walletAddress: string | null | undefined,
+  xUserId?: string | null,
 ): UseBattalionNftStatusReturn {
   const [status, setStatus] = useState<NftWhitelist | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
@@ -37,8 +38,8 @@ export function useBattalionNftStatus(
   const { t } = useTranslation('battalion-nft');
 
   const fetchStatus = useCallback(async () => {
-    // 지갑 주소가 없으면 조회하지 않음
-    if (!walletAddress) {
+    // Neither walletAddress nor xUserId — nothing to query
+    if (!walletAddress && !xUserId) {
       setIsLoading(false);
       setIsRegistered(false);
       setStatus(null);
@@ -50,7 +51,7 @@ export function useBattalionNftStatus(
       setIsLoading(true);
       setError(null);
 
-      const response = await checkBattalionNftStatus(walletAddress);
+      const response = await checkBattalionNftStatus(walletAddress || undefined, xUserId || undefined);
 
       if (response.success) {
         setIsRegistered(response.registered);
@@ -79,7 +80,7 @@ export function useBattalionNftStatus(
     } finally {
       setIsLoading(false);
     }
-  }, [walletAddress, t]);
+  }, [walletAddress, xUserId, t]);
 
   // 지갑 주소가 변경될 때마다 자동으로 상태 조회
   useEffect(() => {

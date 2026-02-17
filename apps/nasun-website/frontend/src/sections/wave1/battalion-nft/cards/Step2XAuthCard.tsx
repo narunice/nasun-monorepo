@@ -20,7 +20,7 @@ import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
 library.add(fab);
 
 interface XAuthCardProps {
-  onAuthSuccess: (userId: string, username: string, identityId: string) => void;
+  onAuthSuccess: (userId: string, username: string, identityId: string, cognitoToken?: string) => void;
 }
 
 /**
@@ -89,8 +89,8 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         sessionStorage.removeItem("battalion_nft_twitter_session");
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        // Notify parent component
-        onAuthSuccess(userId, username, identityId);
+        // Notify parent component (pass cognitoToken for link-account API auth)
+        onAuthSuccess(userId, username, identityId, data.cognitoToken);
       } catch (err: unknown) {
         const error = err as Error;
         console.error("[XAuthCard] Twitter callback error:", error);
