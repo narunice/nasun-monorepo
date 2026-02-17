@@ -195,6 +195,34 @@ NODE_ENV={node_env} npx cdk deploy {stack_or_all} \
 - Exit code != 0: "CDK 배포 실패" 에러 출력
 - CloudFormation 롤백 발생 시: `aws cloudformation describe-stack-events`로 실패 원인 조회
 
+**리소스 미존재 오류 복구 (`could not be found`):**
+
+AWS 콘솔에서 CDK가 관리하는 리소스(Lambda 등)를 수동 삭제한 경우, 배포 시 "resource could not be found" 오류 발생. 복구 절차:
+
+```bash
+# 1. 롤백 해제 (UPDATE_ROLLBACK_FAILED 상태일 때)
+aws cloudformation continue-update-rollback \
+  --stack-name {stack} ${PROFILE:+--profile $PROFILE} \
+  --resources-to-skip {logical-id} --region ap-northeast-2
+
+# 2. 스택 삭제 (RETAIN 리소스는 보존됨)
+NODE_ENV={node_env} npx cdk destroy {stack} --force ${PROFILE:+--profile $PROFILE}
+
+# 3. RETAIN된 리소스(DynamoDB 등) import
+#    - resource-mapping.json 생성: {"LogicalId": {"TableName": "실제테이블명"}}
+#    - Logical ID는 `cdk synth {stack}` 출력에서 확인
+NODE_ENV={node_env} npx cdk import {stack} \
+  --resource-mapping resource-mapping.json ${PROFILE:+--profile $PROFILE}
+
+# 4. 나머지 리소스 생성
+NODE_ENV={node_env} npx cdk deploy {stack} \
+  --require-approval never ${PROFILE:+--profile $PROFILE}
+
+# 5. resource-mapping.json 삭제 (임시 파일)
+```
+
+**근거:** 2026-02-17 FollowerStack 배포에서 수동 삭제된 Lambda `nasun-collect-followers`로 인해 발생. DynamoDB `NasunTargetFollowers` 테이블은 `removalPolicy: RETAIN`으로 보존되어 `cdk import`로 복구.
+
 ### 8단계: Post-deployment 검증
 
 배포가 완료된 후 결과를 확인합니다.
@@ -268,6 +296,7 @@ aws lambda get-function-configuration \
 | 프론트엔드 .env URL 미확인 후 배포 | 배포된 스택의 API를 프론트엔드가 참조하지 않아 방치됨 | 8.3단계에서 반드시 동기화 확인 |
 | dev/prod .env에서 다른 계정의 API 참조 | 환경 분리 무효화, 데이터 격리 실패 | 5단계 양방향 교차 검증으로 감지 |
 | Lambda에 수동 `dist/` 빌드 | 모든 Lambda가 NodejsFunction(esbuild 자동 번들링)을 사용. 수동 빌드는 불필요하고 혼란만 유발 | CDK에 맡기기. `dist/`, `build.js` 파일이 있으면 삭제 |
+| AWS 콘솔에서 CDK 리소스 수동 삭제 | CloudFormation 상태와 불일치 → 배포 실패 ("could not be found") | 반드시 CDK로 삭제 (`cdk destroy`). 이미 삭제된 경우 7단계 복구 절차 참조 |
 
 ## 주의사항
 

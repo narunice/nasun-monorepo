@@ -154,6 +154,14 @@ API URL 교차 검증(5단계)에서 참조합니다.
 
 **해결:** 배포 전 `cdk/lib/` 및 `cdk/bin/`의 `.js`, `.d.ts` 파일을 삭제 (SKILL.md 2단계)
 
+### 수동 삭제된 리소스로 인한 배포 실패 (2026-02-17 발견/해결)
+
+CloudFormation이 관리하는 리소스(Lambda 등)를 AWS 콘솔에서 수동 삭제하면, `cdk deploy` 시 "resource could not be found" 오류가 발생합니다.
+
+**사례:** FollowerStack의 Lambda `nasun-collect-followers`가 수동 삭제됨 → 배포 실패 → `continue-update-rollback` → `cdk destroy` → DynamoDB 테이블 `NasunTargetFollowers`는 `RETAIN` 정책으로 보존 → `cdk import --resource-mapping`으로 테이블 재연결 → `cdk deploy`로 Lambda/EventBridge 재생성.
+
+**핵심:** CDK 관리 리소스는 반드시 CDK로 삭제. `cdk import`는 비대화형 터미널에서 `--resource-mapping` JSON 파일 필수. 복구 절차는 SKILL.md 7단계 참조.
+
 ### API URL 계정 간 교차 참조 (2026-02-14 수정 완료)
 
 수정 전: 3개 API가 환경 간 교차 참조되어 있었음:
