@@ -4,15 +4,34 @@
  * PBKDF2 (600K iterations) + AES-256-GCM encryption for
  * signer private key backup. Users can restore access to
  * their SmartAccount using a PIN + backup file.
+ *
+ * v1: Signer key + account ID only
+ * v2: Adds on-chain account state snapshot (signers, guardians, threshold)
  */
 
 import { NsaError } from '../../types/nsa';
-import type { NsaBackupPackage } from '../../types/nsa';
+import type { NsaBackupPackage, NsaSignerInfo, NsaAccountState } from '../../types/nsa';
+import {
+  deriveKey,
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+  uint8ArrayToBase64,
+  base64ToUint8Array,
+} from '../crypto/primitives';
+import { fetchAccountState } from './client';
 
-const PBKDF2_ITERATIONS = 600_000;
 const SALT_LENGTH = 32;
 const IV_LENGTH = 12;
-const KEY_LENGTH = 256; // bits
+
+/** On-chain state snapshot included in v2 backups */
+export interface BackupAccountState {
+  signers: NsaSignerInfo[];
+  threshold: number;
+  guardians: string[];
+  guardianThreshold: number;
+  recoveryOwner: string;
+  nonce: number;
+}
 
 /** Payload structure for backup encryption */
 interface BackupPayload {
@@ -20,10 +39,24 @@ interface BackupPayload {
   accountObjectId: string;
   signerAddress: string;
   createdAt: number;
+  accountState?: BackupAccountState;
+}
+
+/** Result of restoring from an NSA backup */
+export interface NsaBackupRestoreResult {
+  signerPrivateKey: string;
+  accountObjectId: string;
+  signerAddress: string;
+  accountState?: BackupAccountState;
+  /** Warning if backup nonce differs from current on-chain nonce */
+  nonceWarning?: string;
 }
 
 /**
- * Create an encrypted backup package
+ * Create an encrypted backup package.
+ *
+ * Attempts to fetch on-chain account state for a v2 backup.
+ * Falls back to v1 if the RPC call fails (offline, RPC down, etc.).
  *
  * @param signerPrivateKey - Base64-encoded private key of the signer
  * @param accountObjectId - SmartAccount object ID
@@ -41,11 +74,30 @@ export async function createBackup(
     throw new NsaError('BACKUP_INVALID_FORMAT', 'PIN must be at least 6 characters');
   }
 
+  // Try to fetch on-chain state for v2 backup
+  let accountState: NsaAccountState | null = null;
+  try {
+    accountState = await fetchAccountState(accountObjectId);
+  } catch {
+    // RPC failure: fall back to v1 backup (key-only)
+  }
+
+  const now = Date.now();
   const payload: BackupPayload = {
     signerPrivateKey,
     accountObjectId,
     signerAddress,
-    createdAt: Date.now(),
+    createdAt: now,
+    ...(accountState && {
+      accountState: {
+        signers: accountState.signers,
+        threshold: accountState.threshold,
+        guardians: accountState.guardians,
+        guardianThreshold: accountState.guardianThreshold,
+        recoveryOwner: accountState.recoveryOwner,
+        nonce: accountState.nonce,
+      },
+    }),
   };
 
   const plaintext = new TextEncoder().encode(JSON.stringify(payload));
@@ -61,28 +113,35 @@ export async function createBackup(
     plaintext,
   );
 
+  // Zero plaintext buffer to minimize key exposure in memory
+  plaintext.fill(0);
+
   return {
-    version: 1,
+    type: 'nsa',
+    version: accountState ? 2 : 1,
     accountObjectId,
     encryptedPayload: arrayBufferToBase64(ciphertext),
     salt: uint8ArrayToBase64(salt),
     iv: uint8ArrayToBase64(iv),
-    createdAt: Date.now(),
+    createdAt: now,
   };
 }
 
 /**
- * Restore signer from encrypted backup
+ * Restore signer from encrypted backup.
+ *
+ * Supports both v1 and v2 backups. For v2, compares backup nonce
+ * with current on-chain nonce and returns a warning if they differ.
  *
  * @param backup - Encrypted backup package
  * @param pin - User-provided PIN
- * @returns Decrypted payload with private key and account info
+ * @returns Decrypted payload with private key, account info, and optional state
  */
 export async function restoreFromBackup(
   backup: NsaBackupPackage,
   pin: string,
-): Promise<{ signerPrivateKey: string; accountObjectId: string; signerAddress: string }> {
-  if (backup.version !== 1) {
+): Promise<NsaBackupRestoreResult> {
+  if (backup.version !== 1 && backup.version !== 2) {
     throw new NsaError('BACKUP_INVALID_FORMAT', `Unsupported backup version: ${backup.version}`);
   }
 
@@ -104,6 +163,9 @@ export async function restoreFromBackup(
   }
 
   const payloadStr = new TextDecoder().decode(plaintext);
+  // Zero decrypted plaintext buffer
+  new Uint8Array(plaintext).fill(0);
+
   let payload: BackupPayload;
   try {
     payload = JSON.parse(payloadStr) as BackupPayload;
@@ -115,78 +177,45 @@ export async function restoreFromBackup(
     throw new NsaError('BACKUP_INVALID_FORMAT', 'Missing required fields in backup');
   }
 
-  return {
+  const result: NsaBackupRestoreResult = {
     signerPrivateKey: payload.signerPrivateKey,
     accountObjectId: payload.accountObjectId,
     signerAddress: payload.signerAddress,
   };
+
+  // v2: include account state and check for nonce drift
+  if (payload.accountState) {
+    result.accountState = payload.accountState;
+
+    try {
+      const onchainState = await fetchAccountState(payload.accountObjectId);
+      if (onchainState.nonce !== payload.accountState.nonce) {
+        result.nonceWarning =
+          `Backup was created at nonce ${payload.accountState.nonce}, ` +
+          `but current on-chain nonce is ${onchainState.nonce}. ` +
+          `Account settings may have changed since this backup was created.`;
+      }
+    } catch {
+      // Cannot verify nonce — non-critical, proceed without warning
+    }
+  }
+
+  return result;
 }
 
 /**
- * Validate backup package structure without decrypting
+ * Validate backup package structure without decrypting.
+ * Accepts both v1 (no type field) and v2 (type: 'nsa') formats.
  */
 export function validateBackupFormat(data: unknown): data is NsaBackupPackage {
   if (!data || typeof data !== 'object') return false;
   const pkg = data as Record<string, unknown>;
   return (
-    pkg.version === 1 &&
-    typeof pkg.accountObjectId === 'string' &&
-    typeof pkg.encryptedPayload === 'string' &&
-    typeof pkg.salt === 'string' &&
-    typeof pkg.iv === 'string' &&
+    (pkg.version === 1 || pkg.version === 2) &&
+    typeof pkg.accountObjectId === 'string' && pkg.accountObjectId.length > 0 &&
+    typeof pkg.encryptedPayload === 'string' && pkg.encryptedPayload.length > 0 &&
+    typeof pkg.salt === 'string' && pkg.salt.length > 0 &&
+    typeof pkg.iv === 'string' && pkg.iv.length > 0 &&
     typeof pkg.createdAt === 'number'
   );
-}
-
-// === Internal Helpers ===
-
-async function deriveKey(pin: string, salt: Uint8Array): Promise<CryptoKey> {
-  const pinBytes = new TextEncoder().encode(pin);
-
-  const baseKey = await crypto.subtle.importKey(
-    'raw',
-    pinBytes,
-    'PBKDF2',
-    false,
-    ['deriveKey'],
-  );
-
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: salt as BufferSource,
-      iterations: PBKDF2_ITERATIONS,
-      hash: 'SHA-256',
-    },
-    baseKey,
-    { name: 'AES-GCM', length: KEY_LENGTH },
-    false,
-    ['encrypt', 'decrypt'],
-  );
-}
-
-function uint8ArrayToBase64(arr: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < arr.length; i++) {
-    binary += String.fromCharCode(arr[i]);
-  }
-  return btoa(binary);
-}
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const arr = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    arr[i] = binary.charCodeAt(i);
-  }
-  return arr;
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  return uint8ArrayToBase64(new Uint8Array(buffer));
-}
-
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const arr = base64ToUint8Array(base64);
-  return arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength) as ArrayBuffer;
 }
