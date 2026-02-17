@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 
 // 배경 이미지
@@ -17,7 +16,6 @@ import { FadeInUp } from "@/components/ui/FadeInUp";
  * - 중앙 하단: 타이틀 + 설명 텍스트
  */
 function GenSolHeroSection() {
-  const { t } = useTranslation("genSol");
   const [isMobile, setIsMobile] = useState(false);
 
   // 반응형 이미지 선택을 위한 viewport 감지
@@ -62,7 +60,7 @@ function GenSolHeroSection() {
               className="h-16 xl:h-20 w-auto mx-auto mb-12"
             />
             <p className="text-nasun-white/80 text-base/snug xl:text-lg/snug lg:max-w-[940px] xl:max-w-[1060px] mx-auto">
-              {t("hero.description")}
+              Gen Sol is a bold sci-fi universe powering games, films, streaming shows and merchandise worldwide. With rich lore, striking visuals, and characters driven by purpose and conflict, Gen Sol pushes the boundaries of entertainment, blurring the lines between the digital and physical worlds.
             </p>
           </FadeInUp>
         </div>
@@ -111,7 +109,7 @@ function GenSolHeroSection() {
               className="h-10 md:h-12 w-auto mx-auto mb-6"
             />
             <p className="text-nasun-white/80 text-base/snug xl:text-lg/snug max-w-[410px] md:max-w-[590px] mx-auto pt-4">
-              {t("hero.description")}
+              Gen Sol is a bold sci-fi universe powering games, films, streaming shows and merchandise worldwide. With rich lore, striking visuals, and characters driven by purpose and conflict, Gen Sol pushes the boundaries of entertainment, blurring the lines between the digital and physical worlds.
             </p>
           </div>
         </div>

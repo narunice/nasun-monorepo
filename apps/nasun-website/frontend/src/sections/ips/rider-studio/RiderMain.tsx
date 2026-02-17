@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
@@ -14,8 +13,6 @@ import { FadeInUp } from "@/components/ui/FadeInUp";
  * ImageHeroSection과 HeroSection을 통합하고 디자인 가이드를 적용함.
  */
 export default function RiderMain() {
-  const { t } = useTranslation("riderStudio");
-
   return (
     <div className="flex flex-col">
       {/* 
@@ -59,14 +56,14 @@ export default function RiderMain() {
         <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
           <section>
             <SectionTitle as="h4" className="uppercase mb-2 md:mb-3 lg:mb-4">
-              {t("hero.subtitle")}
+              LAUNCHING 2026
             </SectionTitle>
 
             <div className="space-y-2 md:space-y-3 lg:space-y-4">
-              <p>{t("hero.p1")}</p>
-              <p>{t("hero.p2")}</p>
-              <p>{t("hero.p3")}</p>
-              <p>{t("hero.p4")}</p>
+              <p>Nasun's community will function as a creative studio — acquiring, developing, and managing a slate of narrative projects including films, animation series, and live-action shows. We will establish a transparent, consensus-driven process for greenlighting and shaping stories that the community is passionate about. This approach allows us to manage above-the-line talent effectively while preserving creative freedom across projects.</p>
+              <p>As founders, our lifelong passion lies at the intersection of cinema and technology. Naru, as head editor and producer, has contributed to seminal Korean films, while Overclocked has written and directed both sort and feature-length works, led two production and postproduction studios through the transition from film to digital, and was among the first to bring digital filmmaking into mainstream production in South Korea.</p>
+              <p>Having spent our lives immersed in all aspects of filmmaking, we believe there has never been a more exciting moment for storytellers — with professional-grade tools now widely accessible and transformative technologies like AI, Web3, and Unreal Engine 5 reshaping what's possible.</p>
+              <p>Our ambition for Rider Studio extends beyond creating exceptional films. We aim to pioneer a new era of global filmmaking — one that pushes the boundaries of story, aesthetics, and production while redefining how films are produced, marketed, and distributed. Ultimately, Rider Studio will serve as both a creative engine and an educational platform — showcasing the full professional process of filmmaking and inviting the community to learn, contribute, and innovate with us.</p>
             </div>
           </section>
         </div>

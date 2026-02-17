@@ -118,13 +118,14 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  // Infra 섹션 (신설)
+  // Infra 섹션 (신설) - 메뉴에서 숨김 처리
   infra: {
     path: "/infra",
     component: Pages.InfraOverview,
     navItem: {
       name: "navigation.infra",
       path: "/infra",
+      hidden: true, // 메뉴에서 숨김
       subMenu: [
         {
           name: "navigation.infraOverview",
