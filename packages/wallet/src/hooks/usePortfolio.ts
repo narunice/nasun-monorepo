@@ -124,38 +124,42 @@ export function usePortfolio(options?: UsePortfolioOptions): UsePortfolioResult 
         try {
           const balances = await getAllBalances(moveAddress, chain.rpcUrl, chain.id);
 
-          // Native token
-          symbolsToFetch.add(balances.native.symbol);
-          assets.push({
-            chainId: chain.id,
-            chainName: chain.name,
-            chainType: 'move',
-            symbol: balances.native.symbol,
-            name: chain.nativeCurrency.name,
-            balance: balances.native.balance,
-            formattedBalance: balances.native.formatted,
-            decimals: balances.native.decimals,
-            type: balances.native.type,
-            priceUsd: 0, // Will be filled after batch fetch
-            valueUsd: 0,
-          });
-
-          // Additional tokens (NBTC, NUSDC)
-          for (const [symbol, tokenBalance] of Object.entries(balances.tokens)) {
-            symbolsToFetch.add(symbol);
+          // Native token (only add if balance > 0)
+          if (balances.native.balance > 0n) {
+            symbolsToFetch.add(balances.native.symbol);
             assets.push({
               chainId: chain.id,
               chainName: chain.name,
               chainType: 'move',
-              symbol,
-              name: symbol,
-              balance: tokenBalance.balance,
-              formattedBalance: tokenBalance.formatted,
-              decimals: tokenBalance.decimals,
-              type: tokenBalance.type,
-              priceUsd: 0,
+              symbol: balances.native.symbol,
+              name: chain.nativeCurrency.name,
+              balance: balances.native.balance,
+              formattedBalance: balances.native.formatted,
+              decimals: balances.native.decimals,
+              type: balances.native.type,
+              priceUsd: 0, // Will be filled after batch fetch
               valueUsd: 0,
             });
+          }
+
+          // Additional tokens (NBTC, NUSDC) - only add if balance > 0
+          for (const [symbol, tokenBalance] of Object.entries(balances.tokens)) {
+            if (tokenBalance.balance > 0n) {
+              symbolsToFetch.add(symbol);
+              assets.push({
+                chainId: chain.id,
+                chainName: chain.name,
+                chainType: 'move',
+                symbol,
+                name: symbol,
+                balance: tokenBalance.balance,
+                formattedBalance: tokenBalance.formatted,
+                decimals: tokenBalance.decimals,
+                type: tokenBalance.type,
+                priceUsd: 0,
+                valueUsd: 0,
+              });
+            }
           }
         } catch (err) {
           console.warn(`[usePortfolio] Failed to fetch ${chain.name} balances:`, err);
