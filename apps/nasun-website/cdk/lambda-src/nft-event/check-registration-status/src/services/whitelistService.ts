@@ -12,7 +12,7 @@
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { NftWhitelist } from '../types';
 import { ethers } from 'ethers';
 
@@ -55,6 +55,38 @@ export class WhitelistService {
       return result.Item as NftWhitelist;
     } catch (error: any) {
       console.error('[WhitelistService] Error finding by wallet address:', error);
+      throw new Error(`DYNAMODB_ERROR: ${error.message}`);
+    }
+  }
+
+  /**
+   * X User ID로 화이트리스트 조회 (GSI)
+   */
+  async findByXUserId(xUserId: string): Promise<NftWhitelist | null> {
+    try {
+      console.log(`[WhitelistService] Finding by xUserId: ${xUserId}`);
+
+      const result = await this.docClient.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'xUserId-index',
+          KeyConditionExpression: 'xUserId = :xUserId',
+          ExpressionAttributeValues: {
+            ':xUserId': xUserId,
+          },
+          Limit: 1,
+        })
+      );
+
+      if (!result.Items || result.Items.length === 0) {
+        console.log(`[WhitelistService] xUserId not found`);
+        return null;
+      }
+
+      console.log(`[WhitelistService] xUserId found:`, result.Items[0]);
+      return result.Items[0] as NftWhitelist;
+    } catch (error: any) {
+      console.error('[WhitelistService] Error finding by xUserId:', error);
       throw new Error(`DYNAMODB_ERROR: ${error.message}`);
     }
   }

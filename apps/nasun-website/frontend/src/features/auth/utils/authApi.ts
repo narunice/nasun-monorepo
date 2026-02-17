@@ -23,13 +23,19 @@ export const handleTwitterCallback = async (code: string, state: string, session
 export const linkAccounts = async (
   primaryIdentityId: string,
   secondaryIdentityId: string,
-  secondaryProvider: "Google" | "Twitter"
+  secondaryProvider: "Google" | "Twitter",
+  cognitoToken?: string
 ) => {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (cognitoToken) {
+    headers["Authorization"] = `Bearer ${cognitoToken}`;
+  }
+
   const response = await fetch(`${import.meta.env.VITE_LINK_ACCOUNT_API}/link`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       primaryIdentityId,
       secondaryIdentityId,

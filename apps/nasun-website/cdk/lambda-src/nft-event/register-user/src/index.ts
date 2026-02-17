@@ -63,8 +63,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     // 2. 입력 검증
     validateRequest(request);
 
-    // 2.5. 지갑 서명 검증 — proves caller owns the wallet
-    verifyWalletSignature(request);
+    // 2.5. 지갑 서명 검증 — optional (Step 4 already verified wallet ownership via MetaMask auth)
+    if (request.signature && request.message && request.timestamp) {
+      verifyWalletSignature(request);
+    }
 
     // 3. 서비스 초기화
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
@@ -96,7 +98,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     if (isDuplicate) {
       // 이미 등록된 경우 기존 정보 반환 (Idempotent)
-      const existing = await whitelistService.findByWalletAddress(request.walletAddress);
+      // Duplicate could be by walletAddress or xUserId — check both
+      const existingByWallet = await whitelistService.findByWalletAddress(request.walletAddress);
+      const existing = existingByWallet || await whitelistService.findByXUserId(request.xUserId);
 
       return {
         statusCode: 200,
@@ -109,7 +113,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           success: true,
           registered: true,
           whitelist: existing,
-          message: '이미 등록된 지갑 주소입니다.',
+          message: existingByWallet
+            ? '이미 등록된 지갑 주소입니다.'
+            : '이 X 계정은 이미 다른 지갑으로 등록되었습니다.',
         } as RegisterUserResponse),
       };
     }
@@ -183,31 +189,32 @@ function validateRequest(request: RegisterUserRequest): void {
     throw new NftEventError('Invalid X Username', ErrorCode.INVALID_X_USERNAME, 400);
   }
 
-  if (!request.signature || !request.message || !request.timestamp) {
-    throw new NftEventError('signature, message, and timestamp are required', ErrorCode.INVALID_SIGNATURE, 400);
-  }
+  // Signature fields are optional (Step 4 MetaMask auth already verifies wallet ownership)
 }
 
 /**
  * 지갑 서명 검증 — proves caller owns the wallet
  */
 function verifyWalletSignature(request: RegisterUserRequest): void {
+  // Caller already checks these fields exist before calling this function
+  const { signature, message, timestamp } = request as Required<Pick<RegisterUserRequest, 'signature' | 'message' | 'timestamp'>> & RegisterUserRequest;
+
   // Verify signature is not expired (5-minute window, 30s forward tolerance for clock skew)
-  const signedAt = new Date(request.timestamp).getTime();
+  const signedAt = new Date(timestamp).getTime();
   const age = Date.now() - signedAt;
   if (isNaN(signedAt) || age < -30_000 || age > 5 * 60 * 1000) {
     throw new NftEventError('Signature expired or invalid timestamp', ErrorCode.SIGNATURE_EXPIRED, 400);
   }
 
   // Verify message content — prevent cross-action signature replay
-  if (!request.message.includes(request.timestamp)) {
+  if (!message.includes(timestamp)) {
     throw new NftEventError('Signed message must contain the request timestamp', ErrorCode.INVALID_SIGNATURE, 400);
   }
 
   // Verify MetaMask signature — proves caller owns the wallet
   let recoveredAddress: string;
   try {
-    recoveredAddress = ethers.verifyMessage(request.message, request.signature);
+    recoveredAddress = ethers.verifyMessage(message, signature);
   } catch {
     throw new NftEventError('Invalid signature', ErrorCode.INVALID_SIGNATURE, 400);
   }

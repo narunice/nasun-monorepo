@@ -7,6 +7,7 @@
 
 import { FC, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
 import { checkWhitelistStatus, withdrawWhitelist } from "../../services/whitelistApi";
 import { withdrawUserApi } from "../../services/battalionNftApi";
@@ -67,16 +68,20 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
 
 export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, className = "" }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { reset: resetBattalionStore } = useBattalionNftStore();
   const [isBattalionWithdrawing, setIsBattalionWithdrawing] = useState(false);
   const [isGenesisWithdrawing, setIsGenesisWithdrawing] = useState(false);
 
-  // Battalion NFT Status
+  // Battalion NFT Status — pass twitterId for xUserId fallback lookup
+  // Check both direct twitterId (Twitter login) and linkedAccounts (MetaMask login with linked Twitter)
+  const twitterId = user?.twitterId ?? user?.linkedAccounts?.twitter?.twitterId;
   const {
+    status: battalionStatus,
     isRegistered: isBattalionRegistered,
     isLoading: isBattalionLoading,
     refetch: refetchBattalion,
-  } = useBattalionNftStatus(walletAddress);
+  } = useBattalionNftStatus(walletAddress, twitterId);
 
   // Founders WL Status
   const [isFoundersRegistered, setIsFoundersRegistered] = useState(false);
@@ -118,7 +123,10 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
    * Battalion NFT Withdraw Handler (no signature required)
    */
   const handleBattalionWithdraw = async () => {
-    if (!walletAddress || isBattalionWithdrawing) return;
+    // Use the registered walletAddress from DynamoDB, not the current login wallet.
+    // The user may have registered with a different wallet (found via xUserId GSI fallback).
+    const registeredWallet = battalionStatus?.walletAddress;
+    if (!registeredWallet || isBattalionWithdrawing) return;
 
     if (!confirm("Are you sure you want to withdraw from Battalion NFT Allowlist?")) {
       return;
@@ -127,10 +135,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
     try {
       setIsBattalionWithdrawing(true);
       await withdrawUserApi({
-        walletAddress: walletAddress.toLowerCase(),
-        signature: "",
-        message: "",
-        timestamp: new Date().toISOString(),
+        walletAddress: registeredWallet.toLowerCase(),
       });
       resetBattalionStore();
       refetchBattalion();

@@ -155,7 +155,8 @@
     "walletNotConnected": "Not connected",
     "allTasksCompleted": "✅ All tasks completed",
     "registering": "Registering...",
-    "button": "Register for Allowlist"
+    "button": "Register for Allowlist",
+    "cancel": "Cancel"
   },
   "step6": {
     "title": "🎉 Allowlist Registration Complete!",

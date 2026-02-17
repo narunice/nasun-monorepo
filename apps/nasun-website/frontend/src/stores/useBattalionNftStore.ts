@@ -51,6 +51,7 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
       xUserId: undefined,
       xUsername: undefined,
       cognitoIdentityId: undefined,
+      cognitoToken: undefined,
       walletAddress: undefined,
       verification: undefined,
       registered: false,
@@ -69,12 +70,13 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
       /**
        * X Auth 정보 설정 (Step 2 완료 → Step 3으로 이동)
        */
-      setXAuth: (userId: string, username: string, identityId: string) => {
+      setXAuth: (userId: string, username: string, identityId: string, cognitoToken?: string) => {
         console.log(`[useBattalionNftStore] Setting X Auth: ${username} (${userId}), identityId: ${identityId}`);
         set({
           xUserId: userId,
           xUsername: username,
           cognitoIdentityId: identityId,
+          cognitoToken,
           currentStep: 3, // X Auth 완료 시 Step 3 (Task Verification)로 이동
         });
       },
@@ -130,6 +132,7 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
           xUserId: undefined,
           xUsername: undefined,
           cognitoIdentityId: undefined,
+          cognitoToken: undefined,
           walletAddress: undefined,
           verification: undefined,
           registered: false,

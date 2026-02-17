@@ -153,17 +153,22 @@ export async function registerUserApi(request: RegisterUserRequest): Promise<Reg
  * GET /event/status?walletAddress=0x...
  */
 export async function checkBattalionNftStatus(
-  walletAddress: string,
+  walletAddress?: string,
+  xUserId?: string,
 ): Promise<BattalionNftStatusResponse> {
   try {
-    if (import.meta.env.DEV) console.log("[battalionNftApi] Checking Battalion NFT status:", walletAddress);
+    if (import.meta.env.DEV) console.log("[battalionNftApi] Checking Battalion NFT status:", { walletAddress, xUserId });
 
-    // Normalize wallet address (lowercase)
-    const normalizedAddress = walletAddress.toLowerCase();
-
-    // GET /event/status?walletAddress=0x...
+    // GET /event/status?walletAddress=0x...&xUserId=123
+    const params = new URLSearchParams();
+    if (walletAddress) {
+      params.set("walletAddress", walletAddress.toLowerCase());
+    }
+    if (xUserId) {
+      params.set("xUserId", xUserId);
+    }
     const response = await fetch(
-      `${API_BASE_URL}/event/status?walletAddress=${encodeURIComponent(normalizedAddress)}`,
+      `${API_BASE_URL}/event/status?${params.toString()}`,
       {
         method: "GET",
         headers: {
