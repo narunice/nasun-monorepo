@@ -100,8 +100,9 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
     deleteWallet();
     resetSettings();
     resetUnlockAttempts();
+    viewState.setViewMode("main");
     viewState.setShowDropdown(false);
-  }, [deleteWallet, resetSettings, viewState.setShowDropdown]);
+  }, [deleteWallet, resetSettings, viewState.setViewMode, viewState.setShowDropdown]);
 
   return {
     handleCreate,
