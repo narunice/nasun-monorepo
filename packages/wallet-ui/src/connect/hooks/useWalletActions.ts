@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from "react";
-import { useWallet, useChainStore, clearPendingBackupMnemonic } from "@nasun/wallet";
+import { useWallet, useChainStore, clearPendingBackupMnemonic, resetUnlockAttempts } from "@nasun/wallet";
 import { useUISettingsStore } from "../../stores";
 import type { WalletViewStateReturn } from "./useWalletViewState";
 
@@ -93,11 +93,14 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
   );
 
   const handleDelete = useCallback(() => {
-    if (confirm("Remove this wallet from your browser?\nYour assets are safe on-chain, but you will need your recovery phrase (mnemonic) or private key to restore access.\nMake sure you have a backup before proceeding.")) {
-      deleteWallet();
-      resetSettings();
-      viewState.setShowDropdown(false);
-    }
+    viewState.setViewMode("delete-confirm");
+  }, [viewState.setViewMode]);
+
+  const confirmDelete = useCallback(() => {
+    deleteWallet();
+    resetSettings();
+    resetUnlockAttempts();
+    viewState.setShowDropdown(false);
   }, [deleteWallet, resetSettings, viewState.setShowDropdown]);
 
   return {
@@ -109,6 +112,7 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
     handleImportPrivateKey,
     handleExportPrivateKey,
     handleDelete,
+    confirmDelete,
   };
 }
 

@@ -622,6 +622,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
             placeholder="0.0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            onWheel={(e) => e.currentTarget.blur()}
             step="0.0001"
             min="0"
             className={`w-full px-3 py-2 bg-gray-200 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none transition-colors ${

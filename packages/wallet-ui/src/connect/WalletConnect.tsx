@@ -4,6 +4,7 @@
  * All forms are displayed as dropdowns to maintain consistent header height
  */
 
+import { useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useWalletConnectState } from "./hooks/useWalletConnectState";
 import { WALLET_STYLES } from "../shared/styles";
@@ -21,7 +22,7 @@ interface WalletConnectProps {
   /** @deprecated Use addressStartChars instead */
   addressLength?: number;
   /** Button style variant */
-  variant?: string;
+  variant?: "filledOutlineC7" | "default";
   /** Button size variant */
   size?: "default" | "sm";
 }
@@ -37,6 +38,19 @@ export function WalletConnect({
   size = "default",
 }: WalletConnectProps) {
   const s = useWalletConnectState();
+
+  // Close dropdown on Escape key
+  const handleEscapeKey = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape" && s.showDropdown) {
+      if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;
+      s.setShowDropdown(false);
+    }
+  }, [s.showDropdown, s.viewMode, s.setShowDropdown]);
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
+  }, [handleEscapeKey]);
 
   // Shared props for ConnectedView (passed to status-based views)
   const connectedViewSharedProps = {

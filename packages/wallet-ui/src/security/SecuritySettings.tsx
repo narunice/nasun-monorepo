@@ -102,6 +102,8 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
             </p>
           </div>
           <button
+            role="switch"
+            aria-checked={security.confirmLargeTransactions}
             onClick={handleConfirmLargeTxToggle}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
               security.confirmLargeTransactions ? 'bg-blue-600' : 'bg-gray-300 dark:bg-zinc-600'
