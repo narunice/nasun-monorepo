@@ -122,7 +122,7 @@ export function usePortfolio(options?: UsePortfolioOptions): UsePortfolioResult 
         if (!moveAddress) continue;
 
         try {
-          const balances = await getAllBalances(moveAddress);
+          const balances = await getAllBalances(moveAddress, chain.rpcUrl, chain.id);
 
           // Native token
           symbolsToFetch.add(balances.native.symbol);
