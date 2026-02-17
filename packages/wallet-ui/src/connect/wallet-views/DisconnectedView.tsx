@@ -51,17 +51,6 @@ export function DisconnectedView({
         <div className="mt-3">
           {passkeyWallet ? (
             <div className="space-y-2">
-              {passkeyNeedsPassword && (
-                <input
-                  type="password"
-                  placeholder="Wallet password"
-                  value={passkeyPassword}
-                  onChange={(e) => setPasskeyPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && passkeyPassword && onPasskeyUnlock?.(passkeyPassword)}
-                  className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  disabled={passkeyIsLoading}
-                />
-              )}
               <button
                 onClick={() => onPasskeyUnlock?.(passkeyNeedsPassword ? passkeyPassword : undefined)}
                 disabled={passkeyIsLoading || (passkeyNeedsPassword && !passkeyPassword)}
@@ -77,6 +66,17 @@ export function DisconnectedView({
                 </svg>
                 {passkeyIsLoading ? "Authenticating..." : "Unlock with Passkey"}
               </button>
+              {passkeyNeedsPassword && (
+                <input
+                  type="password"
+                  placeholder="Wallet password"
+                  value={passkeyPassword}
+                  onChange={(e) => setPasskeyPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && passkeyPassword && onPasskeyUnlock?.(passkeyPassword)}
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  disabled={passkeyIsLoading}
+                />
+              )}
             </div>
           ) : (
             <button
