@@ -94,6 +94,7 @@ function createMockState(overrides: Record<string, any> = {}): any {
     handleCreate: vi.fn(),
     handleUnlock: vi.fn(),
     handleDelete: vi.fn(),
+    confirmDelete: vi.fn(),
     handleSocialLogin: vi.fn(),
     handleBackupConfirmed: vi.fn(),
     handleAutoLockComplete: vi.fn(),

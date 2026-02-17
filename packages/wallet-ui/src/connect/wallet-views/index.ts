@@ -21,6 +21,7 @@ export {
   AddressBookView,
   ReceiveView,
   AddTokenView,
+  DeleteConfirmationView,
 } from "./SubViews";
 export { NetworkSelector } from "./NetworkSelector";
 export { AssetsTabContent } from "./AssetsTabContent";

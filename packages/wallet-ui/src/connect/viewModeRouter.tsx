@@ -34,6 +34,7 @@ import {
   AddressBookView,
   ReceiveView,
   AddTokenView,
+  DeleteConfirmationView,
 } from "./wallet-views";
 import { WCViewRouter } from "../walletconnect";
 import { setPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
@@ -102,6 +103,13 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
 
   "create-auto-lock": (s) => (
     <AutoLockSetupView onComplete={s.handleAutoLockComplete} />
+  ),
+
+  "delete-confirm": (s) => (
+    <DeleteConfirmationView
+      onConfirm={s.confirmDelete}
+      onCancel={() => s.setViewMode("main")}
+    />
   ),
 
   "create": (s) => (
