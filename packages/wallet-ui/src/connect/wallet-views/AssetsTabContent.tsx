@@ -58,6 +58,7 @@ export function AssetsTabContent({
   accumulatedNfts: NFTInfo[];
   nftsLoading: boolean;
   onSelectNFT: (nft: NFTInfo) => void;
+  onViewAllNFTs?: () => void;
 }) {
   return (
     <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tr-lg">
@@ -209,9 +210,12 @@ export function AssetsTabContent({
                 ))}
               </div>
               {accumulatedNfts.length > 3 && (
-                <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 text-center mt-2">
-                  +{accumulatedNfts.length - 3} more
-                </p>
+                <button
+                  onClick={onViewAllNFTs}
+                  className="text-xs xl:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-center mt-2 transition-colors"
+                >
+                  +{accumulatedNfts.length - 3} more — View all
+                </button>
               )}
             </>
           )}

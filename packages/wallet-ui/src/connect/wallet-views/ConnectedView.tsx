@@ -326,6 +326,7 @@ export function ConnectedView(props: ConnectedViewProps) {
             accumulatedNfts={accumulatedNfts}
             nftsLoading={nftsLoading}
             onSelectNFT={(nft) => setSelectedNFT(nft)}
+            onViewAllNFTs={() => setViewMode('nfts')}
           />
         )}
 
