@@ -8,8 +8,80 @@
     "visionTitle": "비전",
     "visionDescription": "나선 네트워크는 보안성, 속도, 확장성을 위해 설계된 차세대 프로그래밍 언어인 Move를 활용하는 고성능 레이어 1 블록체인 위에 구축되었습니다.\n\n최첨단 기술과 창작자 중심의 인프라를 통합함으로써, 우리는 아티스트와 팬들이 전례 없는 방식으로 디지털 경험을 구축하고, 공유하며, 소유할 수 있도록 지원합니다.",
     "layer1": "레이어 1 프로토콜",
-    "description": "Building community-owned IP at global scale.\nEntertainment. AI platforms. Financial services.\nDecentralized infrastructure, owned and governed by the community.",
-    "buttonText": "Explore Ecosystem"
+    "description": "글로벌 규모의 커뮤니티 소유 IP를 구축합니다.\n엔터테인먼트. AI 플랫폼. 금융 서비스.\n커뮤니티가 소유하고 관리하는 탈중앙화 인프라.",
+    "buttonText": "생태계 탐색",
+    "threeLayerModel": "3계층 모델",
+    "communityBuilds": "커뮤니티가 만들고, 가치를 공유합니다.",
+    "layer1Title": "레이어 1: 프로토콜",
+    "layer1Desc": "Move L1 + Mysticeti 합의. 소유권, 조율, 정산.",
+    "layer2Title": "레이어 2: 인프라",
+    "layer2Desc": "탈중앙화 AI 실행기, 게임 서버, 스트리밍, 컴퓨팅, 스토리지.",
+    "layer3Title": "레이어 3: 애플리케이션",
+    "layer3Desc": "Gen Sol (미디어 & 게임), Baram (AI 정산), Pado (통합 금융) — 그리고 더 많은 것들."
+  },
+  "networkActivity": {
+    "heading": "네트워크 활동",
+    "liveMonitoring": "실시간 모니터링",
+    "errorMessage": "네트워크 데이터를 일시적으로 사용할 수 없습니다"
+  },
+  "hero": {
+    "title": "IP 인프라",
+    "subtitle": "엔터테인먼트, 금융, 그리고 AI",
+    "cta": "데브넷 & 지갑 열기",
+    "loading": "로딩 중..."
+  },
+  "howNasunWorks": {
+    "heading": "나선의 작동 방식",
+    "description": "나선 위에 구축된 애플리케이션은 수익을 창출하며, 이 수익은 프로젝트와 생태계 트레저리로 흘러갑니다. NSN 토큰 보유자는 트레저리 자금 배분에 대해 거버넌스 권한을 행사합니다.",
+    "revenueSupports": "수익 지원",
+    "revenueItem1": "제품 개발 및 지속 가능성",
+    "revenueItem2": "생태계 성장 프로그램",
+    "revenueItem3": "거버넌스 승인 네트워크 이니셔티브",
+    "governanceNote": "토큰 보유자가 거버넌스를 행사합니다. 수익 배분을 받지 않습니다.",
+    "alignment": "이것은 제품의 성공과 장기적인 네트워크 건전성을 일치시킵니다."
+  },
+  "builtForCoordination": {
+    "heading": "조율을 위해 설계",
+    "description": "나선은 크리에이터, 플랫폼, 사용자, 자율 에이전트가 대규모로 조율하는 애플리케이션을 지원합니다:",
+    "item1": "게임, AI 모델, IP를 아우르는 영속적이고 진화하는 자산",
+    "item2": "로열티, 분배, 트레저리를 갖춘 프로그래밍 가능한 소유권",
+    "item3": "고빈도 소액 결제",
+    "item4": "글로벌 병목 없는 병렬 실행"
+  },
+  "whoBuildsHere": {
+    "heading": "누가 여기서 빌드하나",
+    "columnVertical": "분야",
+    "columnWhy": "왜 나선인가",
+    "v1Name": "크리에이터 / 스트리밍",
+    "v1Reason": "프로그래밍 가능한 로열티와 소액 결제",
+    "v2Name": "게임 / 가상 세계",
+    "v2Reason": "영속 객체와 게임 간 이식성",
+    "v3Name": "AI / 에이전트",
+    "v3Reason": "귀속 가능한 컴퓨팅과 에이전트 조율",
+    "v4Name": "금융",
+    "v4Reason": "다자간 자본 조율",
+    "v5Name": "인프라",
+    "v5Reason": "고빈도 상태와 내장된 경제 로직"
+  },
+  "technicalFoundation": {
+    "heading": "기술 기반",
+    "t1Title": "Move",
+    "t1Desc": "자산 안전성, 명시적 소유권, 다자간 프리미티브.",
+    "t2Title": "Mysticeti + DPoS",
+    "t2Desc": "1초 미만 최종성, 확장 가능하고 에너지 효율적인 합의.",
+    "t3Title": "객체 중심 실행",
+    "t3Desc": "글로벌 경합 없는 병렬 실행."
+  },
+  "forBuilders": {
+    "heading": "빌더를 위해",
+    "usersLabel": "사용자",
+    "usersDesc": "는 매끄러운 앱을 경험합니다. 보이지 않는 블록체인.",
+    "developersLabel": "개발자",
+    "developersDesc": "는 SDK, 문서, 그랜트, 커뮤니티 지원을 받습니다.",
+    "intentional": "대부분의 사용자는 탈중앙화된 것을 알지 못할 것입니다. 의도된 것입니다.",
+    "investorsHeading": "투자자를 위해",
+    "investorsDesc": "초기 단계 네트워크. 프리시드 진행 중.",
+    "contactUs": "문의하기"
   },
   "token": {
     "title": "나선 토큰",

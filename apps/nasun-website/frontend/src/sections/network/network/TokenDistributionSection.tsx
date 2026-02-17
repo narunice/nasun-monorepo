@@ -94,6 +94,7 @@ function TokenDistributionSection() {
 
   return (
     <SectionLayout maxWidth="6xl">
+      <FadeInUp>
       <div className="max-w-5xl w-full mx-auto">
         <div className="w-full md:max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto">
           <SectionTitle as="h4" className="font-normal uppercase">
@@ -143,6 +144,7 @@ function TokenDistributionSection() {
       <p className="text-sm text-nasun-white/70  mx-auto mt-12 whitespace-pre-line ">
         {t("distribution.description_bottom")}
       </p>
+      </FadeInUp>
     </SectionLayout>
   );
 }

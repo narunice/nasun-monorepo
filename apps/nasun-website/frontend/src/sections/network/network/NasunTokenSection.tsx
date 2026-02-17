@@ -43,6 +43,7 @@ function NasunTokenSection() {
 
   return (
     <SectionLayout className="">
+      <FadeInUp>
       <div className="max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-[410px_1fr] xl:grid-cols-[430px_1fr] gap-x-8 py-10 lg:py-12 xl:py-14">
           {/* Left: Title Section */}
@@ -78,6 +79,7 @@ function NasunTokenSection() {
           </div>
         </div>
       </div>
+      </FadeInUp>
     </SectionLayout>
   );
 }
