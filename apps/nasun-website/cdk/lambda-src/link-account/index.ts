@@ -2,10 +2,48 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
 const dynamoClient = DynamoDBDocumentClient.from(client);
 const tableName = process.env.USER_PROFILES_TABLE || 'UserProfiles';
+const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
+
+// JWKS singleton for token verification
+let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
+function getJWKS() {
+  if (!jwksInstance) {
+    jwksInstance = createRemoteJWKSet(
+      new URL('https://cognito-identity.amazonaws.com/.well-known/jwks_uri')
+    );
+  }
+  return jwksInstance;
+}
+
+/**
+ * Verify a Bearer token and extract identityId from Cognito JWT.
+ * Returns undefined if verification fails.
+ */
+async function verifyToken(authHeader: string | undefined): Promise<string | undefined> {
+  if (!authHeader?.startsWith('Bearer ')) return undefined;
+  const token = authHeader.slice(7);
+
+  if (!COGNITO_IDENTITY_POOL_ID) {
+    console.error('COGNITO_IDENTITY_POOL_ID is not set');
+    return undefined;
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, getJWKS(), {
+      issuer: 'https://cognito-identity.amazonaws.com',
+      audience: COGNITO_IDENTITY_POOL_ID,
+    });
+    return payload.sub;
+  } catch (error) {
+    console.error('JWT verification failed:', error);
+    return undefined;
+  }
+}
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 function getCorsOrigin(origin?: string): string {
@@ -32,6 +70,18 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const path = event.path || event.resource || '';
   const isUnlink = path.includes('/unlink');
 
+  // Authentication: Verify JWT token
+  const authHeader = event.headers.Authorization || event.headers.authorization;
+  const authenticatedIdentityId = await verifyToken(authHeader);
+
+  if (!authenticatedIdentityId) {
+    return {
+      statusCode: 401,
+      headers: corsHeaders,
+      body: JSON.stringify({ message: 'Unauthorized. Valid authentication token required.' }),
+    };
+  }
+
   try {
     if (isUnlink) {
       // Unlink flow
@@ -42,6 +92,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ message: 'primaryIdentityId and provider are required' }),
+        };
+      }
+
+      // Authorization: Ensure the authenticated user owns the primary account
+      if (primaryIdentityId !== authenticatedIdentityId) {
+        console.warn(`Authorization failed: ${authenticatedIdentityId} attempted to unlink from ${primaryIdentityId}`);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Forbidden. You can only unlink your own accounts.' }),
         };
       }
 
@@ -162,6 +222,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         statusCode: 400,
         headers: corsHeaders,
         body: JSON.stringify({ message: 'primaryIdentityId, secondaryIdentityId, and secondaryProvider are required' }),
+      };
+    }
+
+    // Authorization: Ensure the authenticated user owns the primary account
+    if (primaryIdentityId !== authenticatedIdentityId) {
+      console.warn(`Authorization failed: ${authenticatedIdentityId} attempted to link to ${primaryIdentityId}`);
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Forbidden. You can only link accounts to your own identity.' }),
       };
     }
 
@@ -290,7 +360,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ message: 'Internal Server Error', error: error.message }),
+      body: JSON.stringify({ message: 'Internal Server Error' }),
     };
   }
 };
