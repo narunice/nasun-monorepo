@@ -658,6 +658,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
     new cdk.CfnOutput(this, 'LeaderboardV3AccountsTableName', {
       value: this.accountsTable.tableName,
       description: 'Leaderboard V3 Accounts Table Name',
+      exportName: `${envPrefix}LeaderboardV3AccountsTableName`,
     });
 
     new cdk.CfnOutput(this, 'LeaderboardV3SeasonsTableName', {

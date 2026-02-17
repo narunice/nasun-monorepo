@@ -22,8 +22,8 @@ export class AuthStack extends cdk.Stack {
     const nftEventTasksTable = dynamodb.Table.fromTableName(this, 'NftEventTasksTable', nftEventTasksTableName);
 
     // Leaderboard V3 accounts table name (for profile sync)
-    // Note: Using hardcoded name as LeaderboardV3Stack is deployed separately
-    const leaderboardV3AccountsTableName = 'leaderboard-v3-accounts';
+    // Import from LeaderboardV3Stack CloudFormation export
+    const leaderboardV3AccountsTableName = cdk.Fn.importValue('LeaderboardV3AccountsTableName');
 
     // Twitter OAuth Authentication Lambda
     const twitterLoginFunction = new lambda.Function(this, 'TwitterLoginFunction', {
