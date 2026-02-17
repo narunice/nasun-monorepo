@@ -53,6 +53,8 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
       cognitoIdentityId: undefined,
       cognitoToken: undefined,
       walletAddress: undefined,
+      walletProof: undefined,
+      proofIssuedAt: undefined,
       verification: undefined,
       registered: false,
       whitelist: undefined,
@@ -111,6 +113,14 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
       },
 
       /**
+       * Wallet proof 설정 (MetaMask verify Lambda에서 발급)
+       */
+      setWalletProof: (proof: string, issuedAt: string) => {
+        console.log('[useBattalionNftStore] Setting wallet proof');
+        set({ walletProof: proof, proofIssuedAt: issuedAt });
+      },
+
+      /**
        * 등록 완료 설정 (Step 5 완료 → Step 6 Complete로 이동)
        */
       setRegistered: (whitelist: NftWhitelist) => {
@@ -134,6 +144,8 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
           cognitoIdentityId: undefined,
           cognitoToken: undefined,
           walletAddress: undefined,
+          walletProof: undefined,
+          proofIssuedAt: undefined,
           verification: undefined,
           registered: false,
           whitelist: undefined,
@@ -145,6 +157,8 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         // LocalStorage에 저장할 필드만 선택
+        // walletProof/proofIssuedAt are intentionally excluded — kept in memory only
+        // to prevent XSS extraction of bearer-like credentials
         currentStep: state.currentStep,
         xUserId: state.xUserId,
         xUsername: state.xUsername,

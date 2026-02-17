@@ -53,9 +53,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       );
     }
 
-    // 2. 지갑 주소 형식 검증 (provided인 경우만)
+    // 2. 입력 형식 검증
     if (walletAddress) {
       validateWalletAddress(walletAddress);
+    }
+    if (xUserId && !/^\d+$/.test(xUserId)) {
+      throw new NftEventError('Invalid X User ID format', ErrorCode.INVALID_WALLET_ADDRESS, 400);
     }
 
     // 3. WhitelistService 초기화

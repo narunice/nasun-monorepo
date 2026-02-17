@@ -90,9 +90,8 @@ export interface RegisterUserRequest {
   walletAddress: string; // MetaMask 지갑 주소
   xUserId: string; // X User ID
   xUsername: string; // X Username
-  signature?: string; // MetaMask signed message (optional — Step 4 already verifies wallet)
-  message?: string; // Original message that was signed
-  timestamp?: string; // ISO 8601 timestamp included in signed message
+  walletProof: string; // HMAC-SHA256 proof from MetaMask verify
+  proofIssuedAt: string; // ISO 8601 timestamp when proof was issued
 }
 
 /**

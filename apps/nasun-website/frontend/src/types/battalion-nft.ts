@@ -68,9 +68,8 @@ export interface RegisterUserRequest {
   walletAddress: string; // MetaMask 지갑 주소
   xUserId: string; // X User ID
   xUsername: string; // X Username
-  signature?: string; // MetaMask signed message (optional — Step 4 already verifies wallet)
-  message?: string; // Original message that was signed
-  timestamp?: string; // ISO 8601 timestamp included in signed message
+  walletProof: string; // HMAC-SHA256 proof from MetaMask verify
+  proofIssuedAt: string; // ISO 8601 timestamp when proof was issued
 }
 
 /**
@@ -88,9 +87,8 @@ export interface RegisterUserResponse {
  */
 export interface WithdrawUserRequest {
   walletAddress: string; // MetaMask 지갑 주소
-  signature?: string; // MetaMask 서명 (optional — user may already be authenticated)
-  message?: string; // 서명한 메시지
-  timestamp?: string; // 서명 생성 시각 (ISO 8601)
+  walletProof: string; // HMAC-SHA256 proof from MetaMask verify
+  proofIssuedAt: string; // ISO 8601 timestamp when proof was issued
 }
 
 /**
@@ -221,6 +219,8 @@ export interface BattalionNftStore {
   cognitoIdentityId?: string;
   cognitoToken?: string;
   walletAddress?: string;
+  walletProof?: string;
+  proofIssuedAt?: string;
   verification?: VerificationResult;
   registered: boolean;
   whitelist?: NftWhitelist;
@@ -230,6 +230,7 @@ export interface BattalionNftStore {
   setXAuth: (userId: string, username: string, identityId: string, cognitoToken?: string) => void;
   setVerification: (result: VerificationResult) => void;
   setWalletAddress: (address: string) => void;
+  setWalletProof: (proof: string, issuedAt: string) => void;
   setRegistered: (whitelist: NftWhitelist) => void;
   reset: () => void;
 }

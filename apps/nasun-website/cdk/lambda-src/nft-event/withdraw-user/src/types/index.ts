@@ -13,9 +13,8 @@
  */
 export interface WithdrawUserRequest {
   walletAddress: string;   // 지갑 주소 (0x...)
-  signature?: string;      // MetaMask 서명 (optional — user may already be authenticated)
-  message?: string;        // 서명한 메시지
-  timestamp?: string;      // 서명 생성 시각 (ISO 8601)
+  walletProof: string;     // HMAC-SHA256 proof from MetaMask verify
+  proofIssuedAt: string;   // ISO 8601 timestamp when proof was issued
 }
 
 /**

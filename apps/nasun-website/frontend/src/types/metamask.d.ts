@@ -41,6 +41,8 @@ export interface MetaMaskVerifyRequest {
 export interface MetaMaskVerifyResponse {
   identityId: string;     // Cognito Identity ID (고유 식별자)
   token: string;          // OpenID Connect 토큰
+  walletProof: string;    // HMAC-SHA256 proof for downstream register/withdraw
+  proofIssuedAt: string;  // ISO 8601 timestamp when proof was issued
 }
 
 /**

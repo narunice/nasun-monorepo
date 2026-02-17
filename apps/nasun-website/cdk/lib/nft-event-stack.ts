@@ -31,6 +31,12 @@ export class NftEventStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // Validate required secrets at synth time
+    const walletProofSecret = process.env.WALLET_PROOF_SECRET;
+    if (!walletProofSecret) {
+      throw new Error('WALLET_PROOF_SECRET is required. Set it in cdk/.env before deploying.');
+    }
+
     // ========== 1. DynamoDB Tables ==========
 
     // 1.1 NftWhitelist Table
@@ -222,6 +228,7 @@ export class NftEventStack extends cdk.Stack {
         X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
+        WALLET_PROOF_SECRET: walletProofSecret,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
@@ -243,6 +250,7 @@ export class NftEventStack extends cdk.Stack {
       logGroup: withdrawLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
+        WALLET_PROOF_SECRET: walletProofSecret,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },

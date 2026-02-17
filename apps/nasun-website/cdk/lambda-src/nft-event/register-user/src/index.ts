@@ -12,6 +12,7 @@
  * @date 2025-10-25
  */
 
+import { createHmac, timingSafeEqual } from 'crypto';
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import {
   RegisterUserRequest,
@@ -22,7 +23,6 @@ import {
 } from './types';
 import { WhitelistService } from './services/whitelistService';
 import { TaskTracker } from './services/taskTracker';
-import { ethers } from 'ethers';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
@@ -63,10 +63,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     // 2. 입력 검증
     validateRequest(request);
 
-    // 2.5. 지갑 서명 검증 — optional (Step 4 already verified wallet ownership via MetaMask auth)
-    if (request.signature && request.message && request.timestamp) {
-      verifyWalletSignature(request);
-    }
+    // 2.5. HMAC wallet proof validation (from MetaMask verify Lambda)
+    validateWalletProof(request.walletAddress, request.walletProof, request.proofIssuedAt);
 
     // 3. 서비스 초기화
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
@@ -89,7 +87,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     console.log(`[register-user] Copying tasks from ${request.xUserId} to ${request.walletAddress}`);
     await taskTracker.copyTasks(request.xUserId, request.walletAddress, request.xUsername);
 
-    // 5. 중복 등록 방지 (지갑 주소 및 X User ID 확인)
+    // 6. 중복 등록 방지 (지갑 주소 및 X User ID 확인)
     console.log(`[register-user] Checking for duplicates`);
     const isDuplicate = await whitelistService.checkDuplicate(
       request.walletAddress,
@@ -120,7 +118,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // 6. 화이트리스트 등록
+    // 7. 화이트리스트 등록
     console.log(`[register-user] Registering user to whitelist`);
     const whitelist = await whitelistService.registerUser(request);
 
@@ -189,39 +187,44 @@ function validateRequest(request: RegisterUserRequest): void {
     throw new NftEventError('Invalid X Username', ErrorCode.INVALID_X_USERNAME, 400);
   }
 
-  // Signature fields are optional (Step 4 MetaMask auth already verifies wallet ownership)
+  if (!request.walletProof || !request.proofIssuedAt) {
+    throw new NftEventError('Missing wallet proof', ErrorCode.INVALID_SIGNATURE, 400);
+  }
 }
 
+const PROOF_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
- * 지갑 서명 검증 — proves caller owns the wallet
+ * Validate HMAC wallet proof token issued by MetaMask verify Lambda.
+ * Proves the caller completed wallet ownership verification within the time window.
  */
-function verifyWalletSignature(request: RegisterUserRequest): void {
-  // Caller already checks these fields exist before calling this function
-  const { signature, message, timestamp } = request as Required<Pick<RegisterUserRequest, 'signature' | 'message' | 'timestamp'>> & RegisterUserRequest;
-
-  // Verify signature is not expired (5-minute window, 30s forward tolerance for clock skew)
-  const signedAt = new Date(timestamp).getTime();
-  const age = Date.now() - signedAt;
-  if (isNaN(signedAt) || age < -30_000 || age > 5 * 60 * 1000) {
-    throw new NftEventError('Signature expired or invalid timestamp', ErrorCode.SIGNATURE_EXPIRED, 400);
+function validateWalletProof(walletAddress: string, proof: string, issuedAt: string): void {
+  // Runtime guard: secret must be configured
+  const secret = process.env.WALLET_PROOF_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('WALLET_PROOF_SECRET is not configured');
   }
 
-  // Verify message content — prevent cross-action signature replay
-  if (!message.includes(timestamp)) {
-    throw new NftEventError('Signed message must contain the request timestamp', ErrorCode.INVALID_SIGNATURE, 400);
+  // Format validation: HMAC-SHA256 hex is always 64 chars
+  if (!/^[a-f0-9]{64}$/.test(proof)) {
+    throw new NftEventError('Invalid wallet proof format', ErrorCode.INVALID_SIGNATURE, 400);
   }
 
-  // Verify MetaMask signature — proves caller owns the wallet
-  let recoveredAddress: string;
-  try {
-    recoveredAddress = ethers.verifyMessage(message, signature);
-  } catch {
-    throw new NftEventError('Invalid signature', ErrorCode.INVALID_SIGNATURE, 400);
+  const age = Date.now() - new Date(issuedAt).getTime();
+  if (isNaN(age) || age < 0 || age > PROOF_MAX_AGE_MS) {
+    throw new NftEventError('Wallet proof expired', ErrorCode.SIGNATURE_EXPIRED, 401);
   }
 
-  if (recoveredAddress.toLowerCase() !== request.walletAddress.toLowerCase()) {
-    throw new NftEventError('Signature does not match wallet address', ErrorCode.INVALID_SIGNATURE, 403);
+  const expected = createHmac('sha256', secret)
+    .update(`${walletAddress.toLowerCase()}:${issuedAt}`)
+    .digest('hex');
+
+  const proofBuf = Buffer.from(proof);
+  const expectedBuf = Buffer.from(expected);
+
+  if (proofBuf.length !== expectedBuf.length || !timingSafeEqual(proofBuf, expectedBuf)) {
+    throw new NftEventError('Invalid wallet proof', ErrorCode.INVALID_SIGNATURE, 401);
   }
 
-  console.log('[register-user] Wallet ownership verified:', request.walletAddress);
+  console.log('[register-user] Wallet proof validated:', `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`);
 }
