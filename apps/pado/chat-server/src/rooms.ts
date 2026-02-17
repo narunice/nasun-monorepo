@@ -30,6 +30,22 @@ export function getPoolSymbol(poolId: string): string | null {
   return rooms.get(roomId)?.name ?? null;
 }
 
+// Base token decimals per symbol (NBTC/NETH=8, NASUN/NSOL=9)
+const BASE_DECIMALS: Record<string, number> = {
+  NBTC: 8,
+  NETH: 8,
+  NASUN: 9,
+  NSOL: 9,
+};
+
+/**
+ * Get base token decimals for a pool (default 9 for unknown pools).
+ */
+export function getPoolBaseDecimals(poolId: string): number {
+  const symbol = getPoolSymbol(poolId);
+  return symbol ? (BASE_DECIMALS[symbol] ?? 9) : 9;
+}
+
 export function getRoom(id: number): RoomInfo | undefined {
   return rooms.get(id);
 }

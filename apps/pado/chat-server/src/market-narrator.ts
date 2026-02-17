@@ -107,11 +107,13 @@ function formatAlert(alert: PriceAlert): string {
 // ===== AI Summary =====
 
 function buildSummaryPrompt(states: Map<string, PoolState>): string {
-  const lines: string[] = ['Current market state for Pado DEX (NBTC/NUSDC pool):'];
+  const lines: string[] = ['Current market state for Pado DEX:'];
 
-  for (const [, state] of states) {
+  for (const [poolId, state] of states) {
     if (state.fillCount === 0) continue;
+    const symbol = getPoolSymbol(poolId) ?? 'Unknown';
     lines.push(
+      `\n[${symbol}/NUSDC pool]`,
       `- Last price: $${state.lastPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
       `- Baseline price (EWMA): $${state.baselinePrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
       `- 5-min volume: $${Math.round(state.volume5m).toLocaleString('en-US')}`,

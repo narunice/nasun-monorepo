@@ -5,7 +5,7 @@ import {
   getBalanceManagerOwner, setBalanceManagerOwner,
   insertTradeFill,
 } from './leaderboard-store.js';
-import { getPoolSymbol } from './rooms.js';
+import { getPoolSymbol, getPoolBaseDecimals } from './rooms.js';
 
 // In-memory cache for balance_manager_id -> owner address (LRU-bounded)
 const BM_CACHE_MAX = 10_000;
@@ -167,9 +167,10 @@ async function pollOrderFilled(): Promise<number> {
             const quoteRaw = BigInt(json.quote_quantity || '0');
             if (quoteRaw >= largeTradeOpts.thresholdRaw) {
               const quoteUsd = Number(quoteRaw / 1_000_000n) + Number(quoteRaw % 1_000_000n) / 1_000_000;
-              const baseQty = Number(json.base_quantity) / 1_000_000_000; // 9 decimals for base
+              const baseDec = getPoolBaseDecimals(json.pool_id);
+              const baseQty = Number(json.base_quantity) / Math.pow(10, baseDec);
               const side = json.taker_is_bid ? 'bought' : 'sold';
-              const priceNum = Number(json.price) / 1_000_000_000; // price uses 9 decimals
+              const priceNum = Number(json.price) / 1_000_000_000; // DeepBook V3 price uses 9 decimals
               const symbol = getPoolSymbol(json.pool_id) ?? 'tokens';
               const msg = `Large trade: ${baseQty.toFixed(4)} ${symbol} ${side} at $${priceNum.toLocaleString('en-US', { maximumFractionDigits: 2 })} ($${quoteUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })})`;
               largeTradeOpts.onLargeTrade(msg, json.pool_id);
@@ -182,10 +183,11 @@ async function pollOrderFilled(): Promise<number> {
         // Notify market narrator of every fill
         if (largeTradeOpts?.onTradeFill) {
           try {
+            const fillBaseDec = getPoolBaseDecimals(json.pool_id);
             largeTradeOpts.onTradeFill({
               poolId: json.pool_id,
-              price: Number(json.price) / 1e9,
-              baseQuantity: Number(json.base_quantity) / 1e9,
+              price: Number(json.price) / 1e9, // DeepBook V3 price uses 9 decimals
+              baseQuantity: Number(json.base_quantity) / Math.pow(10, fillBaseDec),
               quoteQuantity: Number(json.quote_quantity) / 1e6,
               takerIsBid: json.taker_is_bid,
               timestampMs: Number(json.timestamp) || Number(event.timestampMs) || Date.now(),

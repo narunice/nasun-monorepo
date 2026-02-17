@@ -166,8 +166,8 @@ function buildPriceLevels(
   let cumulativeTotal = 0;
 
   for (let i = 0; i < prices.length && i < quantities.length; i++) {
-    const price = formatPriceWithDecimals(prices[i], quoteDecimals);
-    const quantity = formatQuantityWithDecimals(quantities[i], baseDecimals);
+    const price = formatPrice(prices[i], quoteDecimals);
+    const quantity = formatQuantity(quantities[i], baseDecimals);
     cumulativeTotal += quantity;
 
     levels.push({
@@ -190,25 +190,11 @@ export function formatPrice(rawPrice: bigint, decimals: number = TOKENS.NUSDC.de
 }
 
 /**
- * Format price with explicit decimals
- */
-function formatPriceWithDecimals(rawPrice: bigint, decimals: number): number {
-  return Number(rawPrice) / Math.pow(10, decimals);
-}
-
-/**
  * Format quantity from raw value (accounting for decimals)
  * @param rawQuantity - Raw quantity value
  * @param decimals - Base token decimals (default: NBTC = 8)
  */
 export function formatQuantity(rawQuantity: bigint, decimals: number = TOKENS.NBTC.decimals): number {
-  return Number(rawQuantity) / Math.pow(10, decimals);
-}
-
-/**
- * Format quantity with explicit decimals
- */
-function formatQuantityWithDecimals(rawQuantity: bigint, decimals: number): number {
   return Number(rawQuantity) / Math.pow(10, decimals);
 }
 

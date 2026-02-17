@@ -58,9 +58,21 @@ const ENV_VARS: EnvConfig[] = [
   // Pool (required)
   { name: 'VITE_POOL_NBTC_NUSDC', value: import.meta.env.VITE_POOL_NBTC_NUSDC, required: true, format: 'object_id' },
 
+  // Tokens V2 (optional — NETH, NSOL pools)
+  { name: 'VITE_TOKENS_V2_PACKAGE', value: import.meta.env.VITE_TOKENS_V2_PACKAGE, required: false, format: 'object_id' },
+  { name: 'VITE_NETH_TYPE', value: import.meta.env.VITE_NETH_TYPE, required: false, format: 'sui_type' },
+  { name: 'VITE_NSOL_TYPE', value: import.meta.env.VITE_NSOL_TYPE, required: false, format: 'sui_type' },
+  { name: 'VITE_POOL_NETH_NUSDC', value: import.meta.env.VITE_POOL_NETH_NUSDC, required: false, format: 'object_id' },
+  { name: 'VITE_POOL_NSOL_NUSDC', value: import.meta.env.VITE_POOL_NSOL_NUSDC, required: false, format: 'object_id' },
+  { name: 'VITE_POOL_NASUN_NUSDC', value: import.meta.env.VITE_POOL_NASUN_NUSDC, required: false, format: 'object_id' },
+
   // Token Faucet (required)
   { name: 'VITE_FAUCET_PACKAGE', value: import.meta.env.VITE_FAUCET_PACKAGE, required: true, format: 'object_id' },
   { name: 'VITE_TOKEN_FAUCET', value: import.meta.env.VITE_TOKEN_FAUCET, required: true, format: 'object_id' },
+
+  // Token Faucet V2 (optional)
+  { name: 'VITE_TOKEN_FAUCET_V2', value: import.meta.env.VITE_TOKEN_FAUCET_V2, required: false, format: 'object_id' },
+  { name: 'VITE_NETH_FAUCET_V2', value: import.meta.env.VITE_NETH_FAUCET_V2, required: false, format: 'object_id' },
 
   // Oracle (optional)
   { name: 'VITE_ORACLE_REGISTRY_ID', value: import.meta.env.VITE_ORACLE_REGISTRY_ID, required: false, format: 'object_id' },

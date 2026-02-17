@@ -26,6 +26,7 @@
  * @version 0.3.0
  */
 
+import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
@@ -385,10 +386,12 @@ function authenticateRequest(req: IncomingMessage, res: ServerResponse): boolean
   // Dev mode: skip auth when no API key configured or not in production
   if (!REQUIRE_AUTH && !API_KEY) return true;
 
-  // API key verification (primary defense)
+  // API key verification (primary defense, timing-safe)
   if (API_KEY) {
-    const clientKey = req.headers['x-api-key'];
-    if (clientKey !== API_KEY) {
+    const clientKey = (req.headers['x-api-key'] as string) || '';
+    const clientBuf = Buffer.from(clientKey);
+    const keyBuf = Buffer.from(API_KEY);
+    if (clientBuf.length !== keyBuf.length || !timingSafeEqual(clientBuf, keyBuf)) {
       sendJson(res, 401, { error: 'Unauthorized: invalid or missing API key' });
       return false;
     }
