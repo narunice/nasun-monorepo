@@ -12,7 +12,6 @@ import { ZkLoginError } from '../types/zklogin';
 import {
   configureZkLogin,
   getZkLoginState,
-  saveZkLoginState,
   clearZkLoginState,
   startZkLogin,
   completeZkLogin,
@@ -146,9 +145,8 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
       return completeZkLogin(jwt);
     },
     onSuccess: (newState) => {
-      // Update both store and sessionStorage
+      // Update store state (completeZkLogin already saved to sessionStorage)
       setStoreState(newState);
-      saveZkLoginState(newState);
       onLoginComplete?.(newState);
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['zklogin'] });
@@ -190,12 +188,6 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
     if (!state.proof) {
       throw new ZkLoginError('PROVER_FAILED', 'ZK proof not available');
     }
-
-    // Debug: log state for comparison
-    console.log('[useZkLogin] signTransaction - state.ephemeralPublicKey:', state.ephemeralPublicKey);
-    console.log('[useZkLogin] signTransaction - state.addressSeed (first 20):', state.addressSeed?.substring(0, 20));
-    console.log('[useZkLogin] signTransaction - state.maxEpoch:', state.maxEpoch);
-    console.log('[useZkLogin] signTransaction - proof exists:', !!state.proof);
 
     return signWithZkLogin({
       txBytes,
