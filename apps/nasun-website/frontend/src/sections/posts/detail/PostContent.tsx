@@ -6,9 +6,13 @@ interface PostContentProps {
 }
 
 export default function PostContent({ content }: PostContentProps) {
-  // WordPress Content Sanitization
+  // WordPress Content Sanitization with strict allowlist
   const cleanContent = sanitizeWordPressContent(content);
-  const sanitizedContent = DOMPurify.sanitize(cleanContent);
+  const sanitizedContent = DOMPurify.sanitize(cleanContent, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'blockquote', 'pre', 'code', 'div', 'span'],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'target', 'rel'],
+    ALLOW_DATA_ATTR: false,
+  });
 
   return (
     <div

@@ -25,11 +25,11 @@ const DEV_ORIGINS = [
   'http://localhost:5177',
 ];
 
-// Always include DEV_ORIGINS: localhost origins only affect browser CORS policy,
-// not server-side security. Auth tokens (cognitoToken) are the real security boundary.
+// Include DEV_ORIGINS only in non-production environments
+const isDev = process.env.NODE_ENV !== 'production';
 export const ALLOWED_ORIGINS = [
   ...PRODUCTION_ORIGINS,
-  ...DEV_ORIGINS,
+  ...(isDev ? DEV_ORIGINS : []),
 ];
 
 /** Comma-separated string for passing to Lambda environment variables */
