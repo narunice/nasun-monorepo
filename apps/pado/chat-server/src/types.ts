@@ -200,7 +200,7 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   dbPath: process.env.CHAT_DB_PATH || './data/chat.db',
   messageRetentionDays: 90,
   retentionCleanupIntervalMs: 24 * 60 * 60 * 1000, // Daily
-  allowedOrigins: (process.env.CHAT_ALLOWED_ORIGINS || 'https://pado.nasun.io,http://localhost:5176').split(','),
+  allowedOrigins: (process.env.CHAT_ALLOWED_ORIGINS || 'https://pado.finance,https://staging.pado.finance,http://localhost:5176').split(','),
   // Leaderboard indexer
   leaderboardDbPath: process.env.LEADERBOARD_DB_PATH || './data/leaderboard.db',
   deepbookPackage: process.env.DEEPBOOK_PACKAGE || '',
