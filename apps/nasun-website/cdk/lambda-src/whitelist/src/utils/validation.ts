@@ -2,7 +2,8 @@
  * 입력 검증 유틸리티
  */
 
-const TIMESTAMP_VALIDITY_MS = 5 * 60 * 1000; // 5분
+const TIMESTAMP_VALIDITY_MS = 2 * 60 * 1000; // 2분 (replay attack 윈도우 축소)
+const CLOCK_SKEW_TOLERANCE_MS = 30 * 1000; // 30초 허용 (클라이언트-서버 시계 동기화 차이)
 
 export function validateEthereumAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
@@ -21,19 +22,19 @@ export function validateTimestamp(timestamp: string): {
     const now = Date.now();
     const diff = now - requestTime;
 
-    // 미래 시간 체크
-    if (diff < 0) {
+    // 미래 시간 체크 (clock skew 허용)
+    if (diff < -CLOCK_SKEW_TOLERANCE_MS) {
       return {
         valid: false,
         error: 'Timestamp is in the future'
       };
     }
 
-    // 만료 체크 (5분)
+    // 만료 체크 (2분)
     if (diff > TIMESTAMP_VALIDITY_MS) {
       return {
         valid: false,
-        error: `Timestamp expired (older than 5 minutes)`
+        error: `Timestamp expired (older than 2 minutes)`
       };
     }
 

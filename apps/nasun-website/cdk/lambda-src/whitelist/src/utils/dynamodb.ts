@@ -96,6 +96,47 @@ export async function updateWhitelistItem(
 }
 
 /**
+ * Whitelist 항목 재활성화 (WITHDRAWN -> ACTIVE 재등록 시 사용)
+ */
+export async function reactivateWhitelistItem(
+  walletAddress: string,
+  signature: string,
+  message: string,
+  timestamp: string,
+  joinedAt: string
+): Promise<void> {
+  try {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { walletAddress: walletAddress.toLowerCase() },
+        UpdateExpression: 'SET signature = :signature, message = :message, #timestamp = :timestamp, joinedAt = :joinedAt, #status = :status REMOVE withdrawnAt',
+        ExpressionAttributeNames: {
+          '#status': 'status',
+          '#timestamp': 'timestamp'
+        },
+        ExpressionAttributeValues: {
+          ':signature': signature,
+          ':message': message,
+          ':timestamp': timestamp,
+          ':joinedAt': joinedAt,
+          ':status': 'ACTIVE',
+          ':withdrawn': 'WITHDRAWN'
+        },
+        // WITHDRAWN 상태인 경우에만 재활성화 허용
+        ConditionExpression: 'attribute_exists(walletAddress) AND #status = :withdrawn'
+      })
+    );
+  } catch (error: any) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      throw new Error('NOT_WITHDRAWN');
+    }
+    console.error('reactivateWhitelistItem error:', error);
+    throw error;
+  }
+}
+
+/**
  * Whitelist 항목 삭제 (Hard Delete - 선택적 사용)
  */
 export async function deleteWhitelistItem(walletAddress: string): Promise<void> {
@@ -191,26 +232,75 @@ export async function queryByStatus(
 }
 
 /**
- * 통계 계산
+ * 통계 계산 (캐싱 적용)
+ *
+ * NOTE: 대규모 데이터셋에서는 전체 스캔이 비효율적입니다.
+ * 개선 방안:
+ * 1. DynamoDB Streams + Lambda로 실시간 카운터 테이블 유지
+ * 2. CloudWatch Metrics로 추적 (PutMetricData)
+ * 3. Redis/ElastiCache에 캐싱
+ *
+ * 현재는 간단한 인메모리 캐싱 적용 (5분 TTL)
  */
+
+let statisticsCache: {
+  data: { totalActive: number; totalWithdrawn: number; totalAll: number } | null;
+  timestamp: number;
+} = { data: null, timestamp: 0 };
+
+const STATISTICS_CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+
 export async function getStatistics(): Promise<{
   totalActive: number;
   totalWithdrawn: number;
   totalAll: number;
 }> {
   try {
+    // 캐시 확인
+    const now = Date.now();
+    if (statisticsCache.data && (now - statisticsCache.timestamp) < STATISTICS_CACHE_TTL_MS) {
+      return statisticsCache.data;
+    }
+
+    // 캐시 만료 또는 미존재 시 재계산
     const allItems = await scanAllItems('ALL');
 
     const totalActive = allItems.filter(item => item.status === 'ACTIVE').length;
     const totalWithdrawn = allItems.filter(item => item.status === 'WITHDRAWN').length;
 
-    return {
+    const stats = {
       totalActive,
       totalWithdrawn,
       totalAll: allItems.length
     };
+
+    // 캐시 업데이트
+    statisticsCache = {
+      data: stats,
+      timestamp: now
+    };
+
+    return stats;
   } catch (error) {
     console.error('getStatistics error:', error);
+    throw error;
+  }
+}
+
+/**
+ * 서명이 이미 사용되었는지 확인 (replay attack 방지)
+ * 현재는 WhitelistItem에 저장된 signature와 비교
+ */
+export async function isSignatureUsed(
+  walletAddress: string,
+  signature: string
+): Promise<boolean> {
+  try {
+    const item = await getWhitelistItem(walletAddress);
+    // 동일한 서명이 이미 저장되어 있으면 재사용으로 간주
+    return item !== null && item.signature === signature;
+  } catch (error) {
+    console.error('isSignatureUsed error:', error);
     throw error;
   }
 }
