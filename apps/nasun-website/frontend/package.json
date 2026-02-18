@@ -46,6 +46,7 @@
     "dompurify": "^3.3.0",
     "ethers": "^6.15.0",
     "framer-motion": "^12.23.24",
+    "html2canvas": "^1.4.1",
     "i18next": "^25.2.1",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",

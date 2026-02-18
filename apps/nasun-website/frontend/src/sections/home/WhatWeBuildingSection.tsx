@@ -42,7 +42,15 @@ type SlideData = {
   bgColor: string;
   buttonPrefix: string;
   projectName: string;
-  buttonVariant: "red" | "blue" | "white" | "purple" | "gensol-red" | "baram" | "pado" | "nasun-network";
+  buttonVariant:
+    | "red"
+    | "blue"
+    | "white"
+    | "purple"
+    | "gensol-red"
+    | "baram"
+    | "pado"
+    | "nasun-network";
   link: string;
   video?: string;
   videoStartTime?: number;
@@ -216,7 +224,7 @@ function WhatWeBuildingSection() {
   };
 
   return (
-    <SectionLayout className="max-w-none relative min-h-screen bg-nasun-black overflow-hidden !justify-start">
+    <SectionLayout className="max-w-none relative min-h-screen !h-auto bg-nasun-black !justify-start">
       <div className="relative z-10 flex flex-col items-center pt-[max(4.5rem,8vh)] pb-16 md:pb-20 lg:pb-24 px-4 md:px-8">
         {/* Section Title */}
         <FadeInUp>
@@ -231,75 +239,77 @@ function WhatWeBuildingSection() {
 
         {/* Carousel Card */}
         <FadeInUp delay="0.2s">
-          <div
-            ref={containerRef}
-            className="relative w-full max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-0 lg:px-16 xl:px-20"
-          >
-            <Slider ref={sliderRef} {...sliderSettings}>
-              {SLIDES.map((slide) => (
-                <div key={slide.id}>
-                  <div
-                    className="relative rounded-sm overflow-hidden aspect-video"
-                    style={{ backgroundColor: slide.bgColor }}
-                  >
-                    {/* Background Video */}
-                    {slide.video && (
-                      <video
-                        ref={(el) => {
-                          if (!el) return;
-                          if (slide.videoStartTime && el.currentTime === 0) {
-                            el.currentTime = slide.videoStartTime;
-                          }
-                        }}
-                        muted
-                        playsInline
-                        preload="auto"
-                        onEnded={(e) => {
-                          // Ignore events from cloned slides
-                          const slideEl = e.currentTarget.closest(".slick-slide");
-                          if (slideEl?.classList.contains("slick-cloned")) return;
-                          sliderRef.current?.slickNext();
-                        }}
-                        className={`absolute inset-0 w-full h-full ${slide.id === "baram" ? "object-contain" : "object-cover"} ${slide.id === "pado" ? "object-top" : ""}`}
-                      >
-                        <source src={slide.video} type="video/mp4" />
-                      </video>
-                    )}
+          <div className="relative w-full max-w-[1920px] mx-auto">
+            <div
+              ref={containerRef}
+              className="relative w-full min-w-[76vw] max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-0 lg:px-16 xl:px-20"
+            >
+              <Slider ref={sliderRef} {...sliderSettings}>
+                {SLIDES.map((slide) => (
+                  <div key={slide.id}>
+                    <div
+                      className="relative rounded-sm overflow-hidden aspect-video"
+                      style={{ backgroundColor: slide.bgColor }}
+                    >
+                      {/* Background Video */}
+                      {slide.video && (
+                        <video
+                          ref={(el) => {
+                            if (!el) return;
+                            if (slide.videoStartTime && el.currentTime === 0) {
+                              el.currentTime = slide.videoStartTime;
+                            }
+                          }}
+                          muted
+                          playsInline
+                          preload="auto"
+                          onEnded={(e) => {
+                            // Ignore events from cloned slides
+                            const slideEl = e.currentTarget.closest(".slick-slide");
+                            if (slideEl?.classList.contains("slick-cloned")) return;
+                            sliderRef.current?.slickNext();
+                          }}
+                          className={`absolute inset-0 w-full h-full ${slide.id === "baram" ? "object-contain" : "object-cover"} ${slide.id === "pado" ? "object-top" : ""}`}
+                        >
+                          <source src={slide.video} type="video/mp4" />
+                        </video>
+                      )}
 
-                    {/* Dark overlay for readability */}
-                    {/* {slide.video && <div className="absolute inset-0 bg-black/30" />} */}
+                      {/* Dark overlay for readability */}
+                      {/* {slide.video && <div className="absolute inset-0 bg-black/30" />} */}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </Slider>
-
-            {/* Button + Navigation Dots (outside card) */}
-            <div className="flex flex-col items-center mt-6 gap-8">
-              <ButtonV2
-                variant={SLIDES[activeSlideIndex].buttonVariant}
-                size="md"
-                asChild
-                className="w-[200px] md:w-[240px]"
-              >
-                <Link to={SLIDES[activeSlideIndex].link}>
-                  {SLIDES[activeSlideIndex].buttonPrefix}
-                  <span className="font-medium ml-1">{SLIDES[activeSlideIndex].projectName}</span>
-                </Link>
-              </ButtonV2>
-
-              <div className="flex items-center gap-6">
-                {SLIDES.map((slide, i) => (
-                  <button
-                    key={slide.id}
-                    onClick={() => sliderRef.current?.slickGoTo(i)}
-                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                      i === activeSlideIndex
-                        ? "bg-nasun-nw1"
-                        : "bg-nasun-white/40 hover:bg-nasun-white/60"
-                    }`}
-                    aria-label={`Go to slide ${i + 1}`}
-                  />
                 ))}
+              </Slider>
+
+              {/* Button + Navigation Dots (outside card) */}
+              <div className="flex flex-col items-center mt-6 gap-8">
+                <ButtonV2
+                  variant={SLIDES[activeSlideIndex].buttonVariant}
+                  size="md"
+                  asChild
+                  className="w-[200px] md:w-[240px]"
+                >
+                  <Link to={SLIDES[activeSlideIndex].link}>
+                    {SLIDES[activeSlideIndex].buttonPrefix}
+                    <span className="font-medium ml-1">{SLIDES[activeSlideIndex].projectName}</span>
+                  </Link>
+                </ButtonV2>
+
+                <div className="flex items-center gap-6">
+                  {SLIDES.map((slide, i) => (
+                    <button
+                      key={slide.id}
+                      onClick={() => sliderRef.current?.slickGoTo(i)}
+                      className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                        i === activeSlideIndex
+                          ? "bg-nasun-nw1"
+                          : "bg-nasun-white/40 hover:bg-nasun-white/60"
+                      }`}
+                      aria-label={`Go to slide ${i + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
