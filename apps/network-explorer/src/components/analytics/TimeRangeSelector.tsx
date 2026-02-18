@@ -20,7 +20,7 @@ export function TimeRangeSelector({ value, onChange }: TimeRangeSelectorProps) {
           onClick={() => onChange(opt.value)}
           className={`px-4 py-1.5 text-sm font-medium rounded-sm transition-colors ${
             value === opt.value
-              ? 'bg-ne1/20 text-foreground border border-ne1/40'
+              ? 'bg-ne1/20 text-foreground'
               : 'text-muted-foreground hover:text-foreground border border-transparent'
           }`}
         >
