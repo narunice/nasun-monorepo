@@ -59,12 +59,6 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
             {/* Desktop navigation */}
             <nav className="hidden md:flex items-center gap-4">
               <Link
-                to="/analytics"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Analytics
-              </Link>
-              <Link
                 to="/transactions"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -88,6 +82,12 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               >
                 Packages
               </Link>
+              <Link
+                to="/analytics"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Analytics
+              </Link>
             </nav>
           </div>
 
@@ -108,13 +108,6 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-background border-b border-border z-50">
           <nav className="flex flex-col px-4 py-3 gap-1">
-            <Link
-              to="/analytics"
-              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Analytics
-            </Link>
             <Link
               to="/transactions"
               className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
@@ -142,6 +135,13 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               onClick={() => setMobileMenuOpen(false)}
             >
               Packages
+            </Link>
+            <Link
+              to="/analytics"
+              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Analytics
             </Link>
           </nav>
         </div>

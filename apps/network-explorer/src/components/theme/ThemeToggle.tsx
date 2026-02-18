@@ -21,7 +21,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={`
         relative w-11 h-6 rounded-full transition-colors duration-300
-        ${isDark ? "bg-ne1" : "bg-ne4 ring-1 ring-inset ring-ne2"}
+        ${isDark ? "bg-ne1" : "bg-ne4 ring-1 ring-inset ring-ne2/50"}
       `}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
