@@ -27,6 +27,7 @@ import {
 import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
 import { initNarrator, onTradeFill, stopNarrator } from './market-narrator.js';
+import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { VALID_PERIODS, VALID_MODES } from './leaderboard-types.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { LeaderboardConfig, Period, CompetitionStatus } from './leaderboard-types.js';
@@ -186,6 +187,11 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
 
   // Broadcast to all authenticated clients (including sender for confirmation)
   broadcast(chatMsg);
+
+  // Check for AI chatbot mention (non-blocking)
+  onUserMessage(content, senderNickname, client.address, roomId).catch((err) => {
+    console.warn('[Chatbot] Error:', (err as Error).message);
+  });
 }
 
 function handleLoadHistory(ws: WebSocket, msg: ClientMessage & { type: 'load_history' }, client?: AuthenticatedClient): void {
@@ -1099,6 +1105,14 @@ function start(): void {
     console.log('[Leaderboard] Indexer disabled (DEEPBOOK_PACKAGE not set)');
   }
 
+  // Initialize AI chatbot (mention-based @pado responses)
+  if (process.env.ANTHROPIC_API_KEY) {
+    initChatbot({
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+      broadcastToRoom: broadcastSystemMessage,
+    });
+  }
+
   // Create HTTP server (for REST API + WebSocket upgrade)
   const httpServer = createServer(handleHttpRequest);
 
@@ -1168,6 +1182,7 @@ function start(): void {
     clearInterval(heartbeatTimer);
     clearInterval(rateLimitCleanupTimer);
     clearInterval(retentionTimer);
+    stopChatbot();
     if (leaderboardEnabled) {
       stopNarrator();
       stopIndexer();

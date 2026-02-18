@@ -7,9 +7,9 @@ import { NETWORK_CONFIG } from '../../../config/network';
 
 // Text size presets: [content, sender, system, avatar]
 const SIZE_PRESETS: Record<ChatTextSize, { content: string; sender: string; system: string; avatar: number }> = {
-  0: { content: 'text-[12px]', sender: 'text-[11px]', system: 'text-[10px]', avatar: 16 },
-  1: { content: 'text-[14px]', sender: 'text-[13px]', system: 'text-[12px]', avatar: 20 },
-  2: { content: 'text-[16px]', sender: 'text-[15px]', system: 'text-[14px]', avatar: 24 },
+  0: { content: 'text-[10px]', sender: 'text-[9px]', system: 'text-[8px]', avatar: 16 },
+  1: { content: 'text-[12px]', sender: 'text-[11px]', system: 'text-[10px]', avatar: 18 },
+  2: { content: 'text-[14px]', sender: 'text-[13px]', system: 'text-[12px]', avatar: 22 },
 };
 
 interface Props {
@@ -125,9 +125,19 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
     if (isBot) {
       const botContent = message.content.slice(6);
       return (
-        <div className="flex items-start gap-1.5 py-1 px-2">
-          <span className={`${sizes.system} font-semibold text-theme-accent shrink-0`}>BOT</span>
-          <span className={`${sizes.system} text-theme-text-secondary`}>{botContent}</span>
+        <div className="group">
+          <div className="flex items-center gap-1.5">
+            <Avatar name="WAVI_BOT" variant="beam" size={sizes.avatar} />
+            <span className={`${sizes.sender} font-medium shrink-0 text-theme-accent`}>
+              Wavi
+            </span>
+            <span className={`${sizes.system} text-theme-text-muted shrink-0`}>
+              {formatTime(message.timestamp)}
+            </span>
+          </div>
+          <p className={`${sizes.content} text-theme-text-primary break-words leading-relaxed`}>
+            {botContent}
+          </p>
         </div>
       );
     }
