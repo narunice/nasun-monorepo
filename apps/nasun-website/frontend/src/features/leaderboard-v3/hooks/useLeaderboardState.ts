@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSeasons, useActiveSeason } from "../hooks/useSeasons";
 import { useSeasonLeaderboard } from "../hooks/useSeasonLeaderboard";
 import { usePaginationV3 } from "../hooks/usePaginationV3";
@@ -8,6 +9,7 @@ const ITEMS_PER_PAGE = 50;
 export function useLeaderboardState() {
   const { data: seasons, isLoading: seasonsLoading } = useSeasons();
   const activeSeason = useActiveSeason();
+  const [searchParams] = useSearchParams();
 
   // Selected season (defaults to active season)
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>(undefined);
@@ -59,7 +61,7 @@ export function useLeaderboardState() {
         } else {
           // Same page, scroll immediately
           setTimeout(() => {
-            const row = document.querySelector(`[data-username="${username}"]`);
+            const row = document.querySelector(`[data-username="${CSS.escape(username)}"]`);
             if (row) {
               row.scrollIntoView({ behavior: "smooth", block: "center" });
             }
@@ -68,7 +70,7 @@ export function useLeaderboardState() {
       } else {
         // No rank info, try to scroll on current page
         setTimeout(() => {
-          const row = document.querySelector(`[data-username="${username}"]`);
+          const row = document.querySelector(`[data-username="${CSS.escape(username)}"]`);
           if (row) {
             row.scrollIntoView({ behavior: "smooth", block: "center" });
           }
@@ -88,7 +90,7 @@ export function useLeaderboardState() {
     if (pendingScrollUsername && !leaderboardLoading) {
       // Data loaded, now scroll to the user
       setTimeout(() => {
-        const row = document.querySelector(`[data-username="${pendingScrollUsername}"]`);
+        const row = document.querySelector(`[data-username="${CSS.escape(pendingScrollUsername)}"]`);
         if (row) {
           row.scrollIntoView({ behavior: "smooth", block: "center" });
         }
@@ -112,6 +114,23 @@ export function useLeaderboardState() {
       setSelectedSeasonId(activeSeason.seasonId);
     }
   }, [activeSeason, selectedSeasonId]);
+
+  // Handle URL param for username (from "View" button)
+  useEffect(() => {
+    const usernameParam = searchParams.get("username");
+
+    if (usernameParam && leaderboardData && !leaderboardLoading) {
+      const entry = leaderboardData.entries.find(
+        (e) => e.username === usernameParam || e.originalUsername === usernameParam
+      );
+
+      if (entry) {
+        // Use entry.username (lowercase) instead of usernameParam to match data-username attribute
+        handleUserSelect(entry.username, entry.rank);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, leaderboardData, leaderboardLoading]);
 
   // Handle page change - update local page state
   const handlePageChange = useCallback(
