@@ -183,6 +183,10 @@ export async function onUserMessage(
   if (!hasMention(content)) return;
   if (!canRespond(senderAddress)) return;
 
+  // Record response BEFORE await to prevent race condition:
+  // without this, a second message during generateResponse() would pass canRespond()
+  recordResponse(senderAddress);
+
   try {
     const recentMessages = getRecentMessages(roomId, CONTEXT_MESSAGE_COUNT);
     const senderName = senderNickname ?? senderAddress.slice(0, 10);
@@ -191,7 +195,6 @@ export async function onUserMessage(
     if (!response) return;
 
     config.broadcastToRoom(`${BOT_PREFIX}${response}`, roomId);
-    recordResponse(senderAddress);
     console.log(`[Chatbot] Responded to ${senderAddress.slice(0, 10)}... in room ${roomId}`);
   } catch (err) {
     // AI failure should never crash the server
