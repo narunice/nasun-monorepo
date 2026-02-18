@@ -5,7 +5,7 @@
  * Route: /network/governance/proposal/:proposalId
  */
 
-import { FC, useState } from "react";
+import { FC, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { useWallet, useZkLogin } from "@nasun/wallet";
@@ -30,6 +30,8 @@ const ProposalDetailPage: FC = () => {
   const { proposalId } = useParams<{ proposalId: string }>();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const captureRef = useRef<HTMLDivElement>(null);
 
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
@@ -128,6 +130,50 @@ const ProposalDetailPage: FC = () => {
     toast.success("URL copied to clipboard");
   };
 
+  const handleShareToX = async () => {
+    if (!captureRef.current || isSharing) return;
+    setIsSharing(true);
+
+    try {
+      // Dynamic import for code splitting
+      const html2canvas = await import("html2canvas").then((m) => m.default);
+
+      // Capture screenshot
+      const canvas = await html2canvas(captureRef.current, {
+        backgroundColor: "#191615", // Nasun dark background
+        scale: 2, // Retina quality
+        useCORS: true,
+        ignoreElements: (element) => {
+          return element.classList.contains("no-capture");
+        },
+      });
+
+      // Convert to PNG blob
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png")
+      );
+
+      if (blob) {
+        // Copy to clipboard
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+        toast.info("Proposal screenshot copied! Paste (Ctrl+V) in your post to attach it.");
+      }
+
+      // Open X post window
+      const message = `Check out this governance proposal on @Nasun_io!\n\n${proposal.title}`;
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
+      window.open(twitterUrl, "_blank", "width=550,height=420");
+
+    } catch (error) {
+      console.error("Failed to share to X:", error);
+      toast.error("Failed to capture screenshot. Please try again.");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const explorerUrl =
     import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet";
 
@@ -165,11 +211,13 @@ const ProposalDetailPage: FC = () => {
         </div>
       </div>
 
-      {/* Title */}
-      <PageTitle as="h2">{proposal.title}</PageTitle>
+      {/* Capture area wrapper */}
+      <div ref={captureRef} className="flex flex-col gap-4">
+        {/* Title */}
+        <PageTitle as="h2">{proposal.title}</PageTitle>
 
-      {/* Two-column layout: Description (left) + Sidebar (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
+        {/* Two-column layout: Description (left) + Sidebar (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
         {/* Left: Description */}
         <OuterBox
           color="nw2"
@@ -269,8 +317,9 @@ const ProposalDetailPage: FC = () => {
             </div>
           </OuterBox>
 
-          {/* Actions */}
-          <div className="flex flex-col gap-2">
+          {/* Actions - excluded from screenshot capture */}
+          <div className="flex flex-col gap-2 no-capture">
+            {/* Copy URL Button */}
             <ButtonV3
               variant="nw2"
               outline
@@ -278,25 +327,42 @@ const ProposalDetailPage: FC = () => {
               className="w-full flex items-center justify-center gap-2"
             >
               <Copy className="w-4 h-4" />
-              Share
+              Copy URL
             </ButtonV3>
+
+            {/* Share on X Button */}
+            <ButtonV3
+              variant="nw2"
+              outline
+              onClick={handleShareToX}
+              disabled={isSharing}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              {isSharing ? "Capturing..." : "Share on X"}
+            </ButtonV3>
+
+            {/* Vote Button */}
             {!isExpired &&
               (isConnected ? (
                 <ButtonV3
                   variant="gradientDark"
                   onClick={() => setIsModalOpen(true)}
                   disabled={!!voteNft}
-                  className="w-full  "
+                  className="w-full"
                 >
                   {voteNft ? "Already Voted" : "Vote on this Proposal"}
                 </ButtonV3>
               ) : (
-                <div className="flex justify-center">
+                <div className="w-full [&_>_div]:w-full [&_button]:w-full">
                   <WalletConnect />
                 </div>
               ))}
           </div>
         </div>
+      </div>
       </div>
 
       <VoteModal

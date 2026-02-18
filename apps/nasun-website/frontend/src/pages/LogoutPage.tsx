@@ -8,7 +8,7 @@ const LogoutPage = () => {
 
   return (
     <SectionLayout title="">
-      <div className="flex flex-col items-center gap-6 text-center py-24 max-w-2xl mx-auto">
+      <div className="flex flex-col items-center justify-center gap-6 text-center h-full max-w-2xl mx-auto min-h-[60vh]">
         <h3 className=" text-nasun-white">{t("logout.successMessage")}</h3>
 
         <p className="text-lg md:text-xl mb-8">{t("logout.description")}</p>

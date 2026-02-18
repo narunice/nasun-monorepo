@@ -80,8 +80,8 @@ export default function HomePage() {
               <VisionSection shouldLoadVideo={true} onVideoReady={handleVisionVideoReady} />
             </ScrollSnapSection>
 
-            {/* WhatWeBuildingSection - 제품 캐러셀 */}
-            <ScrollSnapSection>
+            {/* WhatWeBuildingSection - 제품 캐러셀 (초광폭에서 콘텐츠 높이 초과 허용) */}
+            <ScrollSnapSection allowTallContent={true}>
               <WhatWeBuildingSection />
             </ScrollSnapSection>
 
