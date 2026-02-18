@@ -804,6 +804,10 @@ export class CommonStack extends cdk.Stack {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
+      deployOptions: {
+        throttlingBurstLimit: 10,
+        throttlingRateLimit: 5, // 5 requests per second
+      },
     });
 
     // 10-4. Withdraw Whitelist Lambda
@@ -831,6 +835,10 @@ export class CommonStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
+      },
+      deployOptions: {
+        throttlingBurstLimit: 10,
+        throttlingRateLimit: 5, // 5 requests per second
       },
     });
 
@@ -860,6 +868,10 @@ export class CommonStack extends cdk.Stack {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
+      deployOptions: {
+        throttlingBurstLimit: 20,
+        throttlingRateLimit: 10, // 10 requests per second (read-only, higher limit)
+      },
     });
 
     // 10-6. Admin List Lambda
@@ -888,6 +900,10 @@ export class CommonStack extends cdk.Stack {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
       },
+      deployOptions: {
+        throttlingBurstLimit: 5,
+        throttlingRateLimit: 2, // 2 requests per second (admin only)
+      },
     });
 
     // 10-7. Admin Export Lambda
@@ -915,6 +931,10 @@ export class CommonStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
+      },
+      deployOptions: {
+        throttlingBurstLimit: 2,
+        throttlingRateLimit: 1, // 1 request per second (admin export, expensive operation)
       },
     });
 
