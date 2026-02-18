@@ -216,6 +216,14 @@ export function NasunLinkWizard({
         <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           Connect wallet to create Nasun Links
         </p>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="w-full mt-6 px-4 py-2.5 text-sm text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+          >
+            Close
+          </button>
+        )}
       </div>
     );
   }
@@ -243,6 +251,14 @@ export function NasunLinkWizard({
         <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
           zkLogin wallets cannot create links yet.
         </p>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="w-full mt-6 px-4 py-2.5 text-sm text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+          >
+            Close
+          </button>
+        )}
       </div>
     );
   }

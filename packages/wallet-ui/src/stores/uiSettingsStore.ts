@@ -37,6 +37,18 @@ function switchToNasunIfExternal(): void {
 }
 
 /**
+ * Getting Started checklist state — tracks first-time user task completion.
+ * Each item is marked done when the user navigates to the relevant view.
+ */
+export interface GettingStartedState {
+  dismissed: boolean;
+  backupDone: boolean;
+  faucetDone: boolean;
+  sendDone: boolean;
+  stakingDone: boolean;
+}
+
+/**
  * UI Settings state interface
  */
 interface UISettingsState {
@@ -50,6 +62,8 @@ interface UISettingsState {
   navigation: NavigationState;
   /** Whether the NSA setup banner has been dismissed */
   nsaBannerDismissed: boolean;
+  /** Getting Started checklist state for first-time users */
+  gettingStarted: GettingStartedState;
 }
 
 /**
@@ -72,6 +86,10 @@ interface UISettingsActions {
   goHome: () => void;
   /** Dismiss the NSA setup banner */
   dismissNsaBanner: () => void;
+  /** Mark a Getting Started item as done */
+  markGettingStartedDone: (item: keyof Omit<GettingStartedState, 'dismissed'>) => void;
+  /** Permanently dismiss the Getting Started checklist */
+  dismissGettingStarted: () => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
 }
@@ -81,6 +99,14 @@ type UISettingsStore = UISettingsState & UISettingsActions;
 /**
  * Default state values
  */
+const DEFAULT_GETTING_STARTED: GettingStartedState = {
+  dismissed: false,
+  backupDone: false,
+  faucetDone: false,
+  sendDone: false,
+  stakingDone: false,
+};
+
 const DEFAULT_STATE: UISettingsState = {
   isAdvancedMode: false,
   userPurpose: 'all',
@@ -90,6 +116,7 @@ const DEFAULT_STATE: UISettingsState = {
     view: 'dashboard',
   },
   nsaBannerDismissed: false,
+  gettingStarted: DEFAULT_GETTING_STARTED,
 };
 
 /**
@@ -152,6 +179,18 @@ export const useUISettingsStore = create<UISettingsStore>()(
         set({ nsaBannerDismissed: true });
       },
 
+      markGettingStartedDone: (item) => {
+        set((state) => ({
+          gettingStarted: { ...state.gettingStarted, [item]: true },
+        }));
+      },
+
+      dismissGettingStarted: () => {
+        set((state) => ({
+          gettingStarted: { ...state.gettingStarted, dismissed: true },
+        }));
+      },
+
       resetSettings: () => {
         set(DEFAULT_STATE);
       },
@@ -164,6 +203,7 @@ export const useUISettingsStore = create<UISettingsStore>()(
         userPurpose: state.userPurpose,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         nsaBannerDismissed: state.nsaBannerDismissed,
+        gettingStarted: state.gettingStarted,
       }),
     }
   )
@@ -251,4 +291,23 @@ export function useUISettings(): UseUISettingsResult {
     navigateToView: store.navigateToView,
     goHome: store.goHome,
   };
+}
+
+/**
+ * Hook to access Getting Started checklist state and actions
+ */
+export function useGettingStarted() {
+  const gettingStarted = useUISettingsStore((state) => state.gettingStarted);
+  const markDone = useUISettingsStore((state) => state.markGettingStartedDone);
+  const dismiss = useUISettingsStore((state) => state.dismissGettingStarted);
+
+  const allDone =
+    gettingStarted.backupDone &&
+    gettingStarted.faucetDone &&
+    gettingStarted.sendDone &&
+    gettingStarted.stakingDone;
+
+  const isVisible = !gettingStarted.dismissed && !allDone;
+
+  return { gettingStarted, markDone, dismiss, isVisible };
 }

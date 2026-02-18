@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useWallet, getPendingBackupMnemonic, secureZeroString } from "@nasun/wallet";
+import { useUISettingsStore } from "../../stores";
 import type { ViewMode } from "../types";
 import type { TabMode } from "../TabBar";
 import type { NFTInfo } from "@nasun/wallet";
@@ -89,7 +90,12 @@ export function useWalletViewState() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showDropdown, setShowDropdown] = useState(!!pendingBackup || !!pendingPasskey);
   const [mnemonic, setMnemonic] = useState<string | null>(pendingBackup ?? pendingPasskey);
-  const [activeTab, setActiveTab] = useState<TabMode>("assets");
+  // Personalize initial tab based on userPurpose (set during onboarding).
+  // 'invest' → Account tab (Staking is there); everything else → Assets tab.
+  const [activeTab, setActiveTab] = useState<TabMode>(() => {
+    const purpose = useUISettingsStore.getState().userPurpose;
+    return purpose === 'invest' ? 'account' : 'assets';
+  });
   const [selectedNFT, setSelectedNFT] = useState<NFTInfo | null>(null);
   const [sendRecipient, setSendRecipient] = useState<string | undefined>(undefined);
   const [proposalBannerDismissed, setProposalBannerDismissed] = useState(false);
@@ -152,7 +158,11 @@ export function useWalletViewState() {
         !isInsideModal
       ) {
         // Keep dropdown open during wallet creation/backup flow — user must complete before closing
-        if (viewMode === "create-backup" || viewMode === "create-auto-lock" || viewMode === "passkey-backup") return;
+        if (
+          viewMode === "create-backup" ||
+          viewMode === "create-auto-lock" ||
+          viewMode === "passkey-backup"
+        ) return;
 
         setShowDropdown(false);
         setViewMode("main");

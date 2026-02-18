@@ -37,7 +37,10 @@ import {
   removeCredentialFromWallet,
   updateCredentialLastUsed,
   base64urlEncode,
+  deriveEVMPasswordFromPasskey,
 } from '../core/passkey';
+import { createEVMWalletFromMnemonic, hasEVMWallet, deleteEVMWallet } from '../core/evm';
+import { saveSessionPassword, clearSessionPassword } from '../sui/client';
 import { getSecretKeyFromKeypair } from '../core/crypto';
 import { usePasskeyStore } from '../stores/passkeyStore';
 
@@ -162,14 +165,32 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
         prfOutput = authResult.prfOutput;
       }
 
-      // Create wallet with credential (and PRF output or password)
+      // Determine key derivation method (same logic as createPasskeyWallet)
+      const keyDerivationMethod = prfOutput ? 'prf' : (password ? 'credential-id-password' : 'credential-id');
+
+      // Derive EVM password BEFORE createPasskeyWallet zeros prfOutput in finally block
+      const evmPassword = deriveEVMPasswordFromPasskey(
+        keyDerivationMethod, prfOutput, password, credential.id,
+      );
+
+      // Create passkey wallet (this zeros prfOutput in its finally block)
       const result = await createPasskeyWallet(credential, prfOutput, password);
 
-      return result;
+      // Create EVM wallet if it doesn't already exist (e.g., from a mnemonic wallet)
+      if (evmPassword && !hasEVMWallet()) {
+        try {
+          await createEVMWalletFromMnemonic(result.mnemonic, evmPassword);
+        } catch {
+          // EVM wallet creation failure is non-fatal
+        }
+      }
+
+      return { ...result, evmPassword };
     },
-    onSuccess: ({ wallet: newWallet, keypair: newKeypair }) => {
+    onSuccess: ({ wallet: newWallet, keypair: newKeypair, evmPassword }) => {
       // Update global store — all usePasskey instances see this immediately
       usePasskeyStore.getState().setUnlocked(newWallet, newKeypair);
+      if (evmPassword) saveSessionPassword(evmPassword);
       onWalletCreated?.(newWallet.address);
       queryClient.invalidateQueries({ queryKey: ['passkey'] });
     },
@@ -206,17 +227,26 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
         throw new PasskeyError('CREDENTIAL_NOT_FOUND', 'Authenticated with unrecognized credential');
       }
 
+      // Derive EVM password BEFORE unlockPasskeyWallet zeros prfOutput in finally block
+      const evmPassword = deriveEVMPasswordFromPasskey(
+        currentWallet.keyDerivationMethod,
+        authResult.prfOutput,
+        password,
+        authResult.credentialId,
+      );
+
       // Decrypt wallet (PRF output for PRF wallets, password for credential-id-password wallets)
       const unlockedKeypair = await unlockPasskeyWallet(currentWallet, authResult.prfOutput, password);
 
       // Update last used timestamp
       const updatedWallet = updateCredentialLastUsed(currentWallet, authResult.credentialId);
 
-      return { unlockedKeypair, updatedWallet };
+      return { unlockedKeypair, updatedWallet, evmPassword };
     },
-    onSuccess: ({ unlockedKeypair, updatedWallet }) => {
+    onSuccess: ({ unlockedKeypair, updatedWallet, evmPassword }) => {
       // Update global store with keypair + updated wallet metadata
       usePasskeyStore.getState().setUnlocked(updatedWallet, unlockedKeypair);
+      if (evmPassword) saveSessionPassword(evmPassword);
       onWalletUnlocked?.(updatedWallet.address);
     },
     onError: (err) => {
@@ -312,6 +342,7 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
   // the strongest measure available in a browser environment.
   const lock = useCallback(() => {
     usePasskeyStore.getState().lock();
+    clearSessionPassword();
   }, []);
 
   // Delete wallet function — requires biometric re-authentication
@@ -326,6 +357,8 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     }
 
     clearPasskeyWallet();
+    deleteEVMWallet();
+    clearSessionPassword();
     usePasskeyStore.getState().clear();
     setError(null);
     queryClient.invalidateQueries({ queryKey: ['passkey'] });
