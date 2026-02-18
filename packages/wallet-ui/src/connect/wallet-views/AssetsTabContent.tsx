@@ -39,6 +39,7 @@ export function AssetsTabContent({
   accumulatedNfts,
   nftsLoading,
   onSelectNFT,
+  onViewAllNFTs,
 }: {
   isEVM: boolean;
   isExternalMove: boolean;
@@ -209,7 +210,7 @@ export function AssetsTabContent({
                   />
                 ))}
               </div>
-              {accumulatedNfts.length > 3 && (
+              {accumulatedNfts.length > 3 && onViewAllNFTs && (
                 <button
                   onClick={onViewAllNFTs}
                   className="text-xs xl:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-center mt-2 transition-colors"
