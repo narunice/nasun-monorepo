@@ -34,8 +34,20 @@ export function DisconnectedView({
 }) {
   const [passkeyPassword, setPasskeyPassword] = useState("");
   const showPasskeySection = isPasskeySupported && isPasskeyPlatformAvailable;
+
+  // Read network name from env — falls back to "Nasun Devnet" if not set
+  const networkName = import.meta.env.VITE_NETWORK_NAME ?? "Nasun Devnet";
+
   return (
     <div className="py-3 px-4 w-full">
+      {/* Network badge — alerts users this is a test network */}
+      <div className="flex justify-end mb-3">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] xl:text-xs font-medium bg-ne4 text-ne1 dark:bg-ne0s/40 dark:text-ne3 border border-ne3 dark:border-ne1/50">
+          <span className="w-1.5 h-1.5 rounded-full bg-ne1 dark:bg-ne2" />
+          {networkName}
+        </span>
+      </div>
+
       {/* Social Login */}
       <SocialLoginButtons
         onLogin={handleSocialLogin}
@@ -44,7 +56,10 @@ export function DisconnectedView({
         providers={["google"]}
         size="md"
       />
-      {zkError && <p className="text-xs xl:text-sm text-red-400 mt-2 text-center">{zkError.message}</p>}
+
+      {zkError && (
+        <p className="text-xs xl:text-sm text-red-400 mt-2 text-center">{zkError.message}</p>
+      )}
 
       {/* Passkey Section — styled to match Google button (h-11, font-medium, border-gray, w-5 icon) */}
       {showPasskeySection && (
@@ -52,7 +67,9 @@ export function DisconnectedView({
           {passkeyWallet ? (
             <div className="space-y-2">
               <button
-                onClick={() => onPasskeyUnlock?.(passkeyNeedsPassword ? passkeyPassword : undefined)}
+                onClick={() =>
+                  onPasskeyUnlock?.(passkeyNeedsPassword ? passkeyPassword : undefined)
+                }
                 disabled={passkeyIsLoading || (passkeyNeedsPassword && !passkeyPassword)}
                 className="flex items-center justify-center gap-3 w-full h-11 rounded-lg border border-gray-200 dark:border-zinc-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-700 text-base xl:text-lg px-4"
               >
@@ -74,7 +91,11 @@ export function DisconnectedView({
                   onChange={(e) => setPasskeyPassword(e.target.value)}
                   onKeyDown={(e) => {
                     // Only execute if button would be enabled (exact same condition as button's !disabled)
-                    if (e.key === "Enter" && !passkeyIsLoading && (!passkeyNeedsPassword || passkeyPassword)) {
+                    if (
+                      e.key === "Enter" &&
+                      !passkeyIsLoading &&
+                      (!passkeyNeedsPassword || passkeyPassword)
+                    ) {
                       onPasskeyUnlock?.(passkeyNeedsPassword ? passkeyPassword : undefined);
                     }
                   }}
@@ -105,7 +126,9 @@ export function DisconnectedView({
       {/* Divider */}
       <div className="flex items-center gap-3 my-3">
         <div className="flex-1 border-t border-gray-200 dark:border-zinc-700" />
-        <span className="text-xs text-gray-400 dark:text-zinc-500 whitespace-nowrap">or use web3 native wallet</span>
+        <span className="text-xs text-gray-400 dark:text-zinc-500 whitespace-nowrap">
+          or use web3 native wallet
+        </span>
         <div className="flex-1 border-t border-gray-200 dark:border-zinc-700" />
       </div>
 
@@ -113,21 +136,19 @@ export function DisconnectedView({
       <div className="grid grid-cols-3 gap-2">
         <button
           onClick={() => setViewMode("create")}
-          className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+          className="flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          <span className="text-xs">Create</span>
+          <span className="text-sm font-medium">Create</span>
+          <span className="text-[12px] text-gray-400 dark:text-zinc-500 text-center leading-tight">
+            New wallet
+          </span>
         </button>
         <button
           onClick={() => setViewMode("import")}
-          className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+          className="flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -137,11 +158,14 @@ export function DisconnectedView({
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
             />
           </svg>
-          <span className="text-xs">Import</span>
+          <span className="text-sm font-medium">Import</span>
+          <span className="text-[12px] text-gray-400 dark:text-zinc-500 text-center leading-tight">
+            Use seed phrase
+          </span>
         </button>
         <button
           onClick={() => setViewMode("restore-backup")}
-          className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+          className="flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-lg text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -151,7 +175,10 @@ export function DisconnectedView({
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
             />
           </svg>
-          <span className="text-xs">Restore</span>
+          <span className="text-sm font-medium">Restore</span>
+          <span className="text-[12px] text-gray-400 dark:text-zinc-500 text-center leading-tight">
+            From backup file
+          </span>
         </button>
       </div>
     </div>

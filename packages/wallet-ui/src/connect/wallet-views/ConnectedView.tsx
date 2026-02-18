@@ -337,6 +337,7 @@ export function ConnectedView(props: ConnectedViewProps) {
             nsaIsInitialized={nsaIsInitialized}
             nsaRecoveryCompleted={nsaRecoveryCompleted}
             onNavigate={handleNavigate}
+            onSwitchTab={setActiveTab}
           />
         )}
 

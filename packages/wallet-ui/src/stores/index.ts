@@ -12,6 +12,7 @@ export {
   useCurrentSection,
   useCurrentView,
   useUISettings,
+  useGettingStarted,
 } from './uiSettingsStore';
 
-export type { UseUISettingsResult } from './uiSettingsStore';
+export type { UseUISettingsResult, GettingStartedState } from './uiSettingsStore';

@@ -107,7 +107,7 @@ export function useWalletConnectState() {
     [passkeyExportPrivateKey],
   );
 
-  // UI Settings (Advanced mode)
+  // UI Settings
   const isAdvancedMode = useAdvancedMode();
 
   // NSA (Smart Account) state

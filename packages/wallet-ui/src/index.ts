@@ -186,8 +186,9 @@ export {
   useCurrentSection,
   useCurrentView,
   useUISettings,
+  useGettingStarted,
 } from './stores';
-export type { UseUISettingsResult } from './stores';
+export type { UseUISettingsResult, GettingStartedState } from './stores';
 
 // Navigation types
 export type {

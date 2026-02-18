@@ -501,6 +501,29 @@ export async function createPasskeyWallet(
 }
 
 /**
+ * Derive a password string for EVM keystore encryption from passkey auth context.
+ * Returns null if derivation is not possible (missing required inputs).
+ *
+ * - credential-id-password: uses the user-provided password directly
+ * - prf: converts PRF output bytes to hex string (deterministic per credential)
+ * - credential-id: uses credential ID as password (legacy, low security)
+ */
+export function deriveEVMPasswordFromPasskey(
+  keyDerivationMethod: PasskeyWalletState['keyDerivationMethod'],
+  prfOutput?: ArrayBuffer,
+  password?: string,
+  credentialId?: string,
+): string | null {
+  if (keyDerivationMethod === 'credential-id-password' && password) return password;
+  if (keyDerivationMethod === 'prf' && prfOutput) {
+    const bytes = new Uint8Array(prfOutput);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  if (keyDerivationMethod === 'credential-id' && credentialId) return credentialId;
+  return null;
+}
+
+/**
  * Unlock wallet using passkey credential.
  * Passkey authentication (biometric check) must be performed before calling this.
  *
