@@ -215,7 +215,7 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
         {onRestoreFromBackup && (
           <button
             onClick={onRestoreFromBackup}
-            className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+            className="w-full px-3 py-2.5 text-sm xl:text-base text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
           >
             Restore from backup .json file
           </button>
@@ -224,7 +224,7 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
         {onRecoverAsGuardian && (
           <button
             onClick={onRecoverAsGuardian}
-            className="w-full px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+            className="w-full px-3 py-2.5 text-sm xl:text-base text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
           >
             Recover as Guardian
           </button>

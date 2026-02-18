@@ -6,8 +6,9 @@
 
 import { useState } from "react";
 import type { ViewMode } from "../types";
+import type { TabMode } from "../TabBar";
 import { WALLET_STYLES } from "../../shared";
-import { useUISettingsStore } from "../../stores/uiSettingsStore";
+import { useUISettingsStore, useGettingStarted } from "../../stores/uiSettingsStore";
 
 // SVG path constants for menu icons
 const ICON_PATHS = {
@@ -49,22 +50,163 @@ function MenuIcon({ d }: { d: string | string[] }) {
   );
 }
 
+function GettingStartedChecklist({
+  variant,
+  onNavigate,
+  onSwitchTab,
+}: {
+  variant: "zkLogin" | "self-custody" | "passkey";
+  onNavigate: (mode: ViewMode) => void;
+  onSwitchTab?: (tab: TabMode) => void;
+}) {
+  const { gettingStarted, markDone, dismiss, isVisible } = useGettingStarted();
+
+  if (!isVisible) return null;
+
+  const items: Array<{
+    key: keyof typeof gettingStarted;
+    label: string;
+    description: string;
+    action: () => void;
+    hidden?: boolean;
+  }> = [
+    {
+      key: 'backupDone',
+      label: 'Back up your wallet',
+      description: 'Save your recovery phrase',
+      action: () => {
+        markDone('backupDone');
+        onNavigate('wallet-backup');
+      },
+      // zkLogin wallets have no mnemonic to back up
+      hidden: variant === 'zkLogin',
+    },
+    {
+      key: 'faucetDone',
+      label: 'Get NASUN from Faucet',
+      description: 'Request free test tokens',
+      action: () => {
+        markDone('faucetDone');
+        onSwitchTab?.('assets');
+      },
+    },
+    {
+      key: 'sendDone',
+      label: 'Send a transaction',
+      description: 'Transfer NASUN to an address',
+      action: () => {
+        markDone('sendDone');
+        onNavigate('send');
+      },
+    },
+    {
+      key: 'stakingDone',
+      label: 'Explore staking',
+      description: 'Earn rewards by staking',
+      action: () => {
+        markDone('stakingDone');
+        onNavigate('staking');
+      },
+    },
+  ];
+
+  const visibleItems = items.filter((item) => !item.hidden);
+  const doneCount = visibleItems.filter((item) => gettingStarted[item.key]).length;
+
+  return (
+    <div className="mx-3 mb-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/10 overflow-hidden">
+      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
+            Getting Started
+          </span>
+          <span className="text-[10px] xl:text-xs text-blue-500 dark:text-blue-500">
+            {doneCount}/{visibleItems.length}
+          </span>
+        </div>
+        <button
+          onClick={() => dismiss()}
+          className="text-blue-400 dark:text-blue-600 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          title="Dismiss"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="divide-y divide-blue-100 dark:divide-blue-900/40">
+        {visibleItems.map((item) => {
+          const done = gettingStarted[item.key] as boolean;
+          return (
+            <button
+              key={item.key}
+              onClick={item.action}
+              disabled={done}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                done
+                  ? 'opacity-50 cursor-default'
+                  : 'hover:bg-blue-100/60 dark:hover:bg-blue-800/20'
+              }`}
+            >
+              {/* Checkbox */}
+              <div
+                className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                  done
+                    ? 'border-blue-500 bg-blue-500'
+                    : 'border-blue-300 dark:border-blue-600'
+                }`}
+              >
+                {done && (
+                  <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs xl:text-sm font-medium ${done ? 'line-through text-gray-400 dark:text-zinc-500' : 'text-gray-800 dark:text-zinc-200'}`}>
+                  {item.label}
+                </p>
+                {!done && (
+                  <p className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
+                    {item.description}
+                  </p>
+                )}
+              </div>
+              {!done && (
+                <svg className="w-4 h-4 text-blue-400 dark:text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function AccountTabContent({
   variant,
   nsaIsInitialized,
   nsaRecoveryCompleted,
   onNavigate,
+  onSwitchTab,
 }: {
   variant: "zkLogin" | "self-custody" | "passkey";
   nsaIsInitialized: boolean;
   nsaRecoveryCompleted: number;
   onNavigate: (mode: ViewMode) => void;
+  onSwitchTab?: (tab: TabMode) => void;
 }) {
   const [showBackupGuide, setShowBackupGuide] = useState(false);
   const { isAdvancedMode } = useUISettingsStore();
 
   return (
     <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tl-lg">
+      {/* Getting Started checklist for first-time users */}
+      <GettingStartedChecklist variant={variant} onNavigate={onNavigate} onSwitchTab={onSwitchTab} />
+
       {/* Asset Management */}
       <button onClick={() => onNavigate("staking")} className={MENU_ITEM_CLASS}>
         <MenuIcon d={ICON_PATHS.staking} />

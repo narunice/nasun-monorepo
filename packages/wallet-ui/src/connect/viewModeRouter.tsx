@@ -92,12 +92,12 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
           }
           setPendingPasskeyMnemonic(null);
           s.setMnemonic(null);
-          s.setViewMode("main");
           try {
             localStorage.removeItem("nasun_wallet_backup_pending");
           } catch {
             // Ignore localStorage errors
           }
+          s.setViewMode("main");
         }}
       />
     ) : null,

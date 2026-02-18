@@ -184,7 +184,7 @@ export function useSigner(): UseSignerResult {
     };
 
     registerEVMSigner();
-  }, [isEVM, chain.chainId, status]); // Re-run when chain changes or wallet status changes
+  }, [isEVM, chain.chainId, status, isPasskeyUnlocked]); // Re-run when chain changes, wallet status changes, or passkey unlocks
 
   // Register/unregister NsaSigner when SmartAccount is configured
   useEffect(() => {

@@ -18,6 +18,8 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
   } = useWallet();
 
   const resetSettings = useUISettingsStore((state) => state.resetSettings);
+  // Read current value at callback time via getState() — avoids stale closure issues
+  // after resetSettings() is called (which resets hasCompletedOnboarding to false)
 
   const handleCreate = useCallback(async () => {
     if (viewState.password.length < 8) return;
