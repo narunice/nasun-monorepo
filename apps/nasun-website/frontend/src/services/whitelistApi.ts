@@ -249,11 +249,8 @@ export async function withdrawWhitelistWithSignature(
   walletAddress: string,
   signMessageFn: (message: string) => Promise<string>
 ): Promise<WithdrawWhitelistResponse> {
-  console.log('[DEBUG] withdrawWhitelistWithSignature called for wallet:', walletAddress);
-
   // 타임스탬프 생성
   const timestamp = new Date().toISOString();
-  console.log('[DEBUG] Timestamp generated:', timestamp);
 
   // 서명할 메시지 생성 (다국어 지원 + 보안 안내)
   const message = `${i18n.t('common:signatures.withdrawWhitelist.title')}
@@ -263,18 +260,11 @@ ${i18n.t('common:signatures.withdrawWhitelist.ownershipVerification')}
 
 Timestamp: ${timestamp}`;
 
-  console.log('[DEBUG] Message generated, length:', message.length);
-  console.log('[DEBUG] FULL MESSAGE:\n---START---\n' + message + '\n---END---');
-  console.log('[DEBUG] Calling signMessageFn...');
-
   // MetaMask로 메시지 서명
   const signature = await signMessageFn(message);
-  console.log('[DEBUG] Signature received:', signature.substring(0, 20) + '...');
 
   // Withdraw API 호출
-  console.log('[DEBUG] Calling withdrawWhitelist API...');
   const response = await withdrawWhitelist(walletAddress, signature, message, timestamp);
-  console.log('[DEBUG] Withdraw API response:', response);
 
   return response;
 }
