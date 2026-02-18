@@ -51,7 +51,7 @@ function parseKeeperError(error: unknown): string {
   }
 
   if (message.includes('InsufficientGas')) {
-    return 'Not enough NASUN for transaction fees';
+    return 'Not enough NSN for transaction fees';
   }
 
   if (message.length > 100) {

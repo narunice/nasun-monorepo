@@ -272,17 +272,19 @@ function TradePageContent() {
             </div>
             {/* Simple mode xl+: Interface toggle inline with market info */}
             {isSimple && (
-              <div className="hidden xl:flex shrink-0 items-center bg-theme-bg-secondary rounded-lg px-3 gap-2">
+              <div className={`hidden xl:flex shrink-0 items-center justify-between bg-theme-bg-secondary rounded-lg px-3 ${CARD_W}`}>
                 <span className="text-xs text-theme-text-muted whitespace-nowrap">Interface</span>
-                <span className="text-trading-sm text-theme-text-primary font-medium">Simple</span>
-                <button
-                  onClick={toggleMode}
-                  className="w-7 h-3.5 rounded-full transition-colors bg-theme-toggle-off"
-                  aria-label="Switch to Pro mode"
-                >
-                  <span className="block w-3 h-3 rounded-full bg-white transition-transform translate-x-0.5" />
-                </button>
-                <span className="text-trading-sm text-theme-text-muted">Pro</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-trading-sm text-theme-text-primary font-medium">Simple</span>
+                  <button
+                    onClick={toggleMode}
+                    className="w-7 h-3.5 rounded-full transition-colors bg-theme-toggle-off"
+                    aria-label="Switch to Pro mode"
+                  >
+                    <span className="block w-3 h-3 rounded-full bg-white transition-transform translate-x-0.5" />
+                  </button>
+                  <span className="text-trading-sm text-theme-text-muted">Pro</span>
+                </div>
               </div>
             )}
           </div>

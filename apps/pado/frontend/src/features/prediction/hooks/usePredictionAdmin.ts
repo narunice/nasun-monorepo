@@ -38,7 +38,7 @@ function parseAdminError(error: unknown): string {
     return 'Market has already been resolved';
   }
   if (message.includes('InsufficientGas')) {
-    return 'Not enough NASUN for transaction fees';
+    return 'Not enough NSN for transaction fees';
   }
 
   // Return original message for unknown errors (truncated)

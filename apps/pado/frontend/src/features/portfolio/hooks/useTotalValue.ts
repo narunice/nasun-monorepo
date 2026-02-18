@@ -106,14 +106,14 @@ export function useTotalValue(): UseTotalValueResult {
     const nsolTotal = nsolWallet;
 
     // Calculate USD values using unified prices
-    const nasunValue = calculateUsdValue('NASUN', nasunTotal);
+    const nasunValue = calculateUsdValue('NSN', nasunTotal);
     const nbtcValue = calculateUsdValue('NBTC', nbtcTotal);
     const nusdcValue = calculateUsdValue('NUSDC', nusdcTotal);
     const nethValue = calculateUsdValue('NETH', nethTotal);
     const nsolValue = calculateUsdValue('NSOL', nsolTotal);
 
     // Calculate 24h P&L
-    const nasunPnl = calculate24hPnl('NASUN', nasunValue);
+    const nasunPnl = calculate24hPnl('NSN', nasunValue);
     const nbtcPnl = calculate24hPnl('NBTC', nbtcValue);
     const nusdcPnl = calculate24hPnl('NUSDC', nusdcValue);
     const nethPnl = calculate24hPnl('NETH', nethValue);
@@ -137,11 +137,11 @@ export function useTotalValue(): UseTotalValueResult {
     // Add tokens to list
     if (nasunTotal > 0) {
       tokens.push({
-        symbol: 'NASUN',
+        symbol: 'NSN',
         balance: nasunTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }),
-        price: getUnifiedPrice('NASUN'),
+        price: getUnifiedPrice('NSN'),
         value: nasunValue,
-        change24h: getPriceChange24h('NASUN'),
+        change24h: getPriceChange24h('NSN'),
         pnl24h: nasunPnl,
         source: getNasunSource(),
       });

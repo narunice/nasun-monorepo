@@ -15,7 +15,7 @@ interface TokenRowProps {
 const TOKEN_COLORS: Record<string, string> = {
   NBTC: 'bg-orange-500',
   NUSDC: 'bg-pd2',
-  NASUN: 'bg-purple-500',
+  NSN: 'bg-purple-500',
   Predictions: 'bg-pink-500',
 };
 

@@ -46,7 +46,7 @@ const BINANCE_SYMBOL_MAP: Record<string, string> = {
   NBTC: 'BTCUSDT',
   NETH: 'ETHUSDT',
   NSOL: 'SOLUSDT',
-  NASUN: '', // No external data
+  NSN: '', // No external data
 };
 
 // Price scale mapping for proper decimal display
@@ -54,7 +54,7 @@ const PRICESCALE_MAP: Record<string, number> = {
   NBTC: 100,    // 2 decimal places for BTC
   NETH: 100,    // 2 decimal places for ETH
   NSOL: 10000,  // 4 decimal places for SOL
-  NASUN: 10000, // 4 decimal places for NASUN
+  NSN: 10000,   // 4 decimal places for NSN
 };
 
 // Approximate prices for fallback when Binance API is unavailable (updated 2026-02)
@@ -62,7 +62,7 @@ const FALLBACK_PRICES: Record<string, number> = {
   NBTC: 69000,
   NETH: 2000,
   NSOL: 85,
-  NASUN: 0.10,
+  NSN: 0.10,
 };
 
 const BINANCE_API = 'https://api.binance.com/api/v3';
@@ -238,7 +238,7 @@ export class PadoDatafeed implements IDatafeedChartApi {
       { base: 'NBTC', quote: 'NUSDC', desc: 'Nasun BTC / Nasun USDC' },
       { base: 'NETH', quote: 'NUSDC', desc: 'Nasun ETH / Nasun USDC' },
       { base: 'NSOL', quote: 'NUSDC', desc: 'Nasun SOL / Nasun USDC' },
-      { base: 'NASUN', quote: 'NUSDC', desc: 'Nasun / Nasun USDC' },
+      { base: 'NSN', quote: 'NUSDC', desc: 'Nasun / Nasun USDC' },
     ];
 
     const query = userInput.toUpperCase();

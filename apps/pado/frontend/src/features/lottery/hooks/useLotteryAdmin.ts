@@ -78,7 +78,7 @@ function parseLotteryAdminError(error: unknown): string {
   }
 
   if (message.includes('InsufficientGas')) {
-    return 'Not enough NASUN for transaction fees';
+    return 'Not enough NSN for transaction fees';
   }
 
   // Return original message for unknown errors (truncated)

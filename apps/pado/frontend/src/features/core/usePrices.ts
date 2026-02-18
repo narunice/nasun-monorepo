@@ -71,7 +71,7 @@ export function usePrices(enabled: boolean = true): UsePricesResult {
       await refreshAllPrices();
       // Return current prices after refresh
       return {
-        NASUN: buildPriceInfo('NASUN'),
+        NSN: buildPriceInfo('NSN'),
         NBTC: buildPriceInfo('NBTC'),
         NUSDC: buildPriceInfo('NUSDC'),
         NETH: buildPriceInfo('NETH'),
@@ -94,7 +94,7 @@ export function usePrices(enabled: boolean = true): UsePricesResult {
 
   return {
     prices: query.data ?? {
-      NASUN: buildPriceInfo('NASUN'),
+      NSN: buildPriceInfo('NSN'),
       NBTC: buildPriceInfo('NBTC'),
       NUSDC: buildPriceInfo('NUSDC'),
       NETH: buildPriceInfo('NETH'),

@@ -325,7 +325,7 @@ export function UnifiedBalanceCard({
  */
 function TokenIcon({ symbol }: { symbol: TokenSymbol }) {
   const colors: Record<TokenSymbol, string> = {
-    NASUN: 'bg-gradient-to-br from-pd4 to-pd2',
+    NSN: 'bg-gradient-to-br from-pd4 to-pd2',
     NBTC: 'bg-gradient-to-br from-orange-400 to-yellow-500',
     NUSDC: 'bg-gradient-to-br from-pd3 to-pd1',
     NETH: 'bg-gradient-to-br from-indigo-400 to-blue-600',

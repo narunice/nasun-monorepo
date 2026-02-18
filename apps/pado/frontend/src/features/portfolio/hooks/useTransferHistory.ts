@@ -91,7 +91,7 @@ function generateSimulatedTransfers(accountAddress: string): TransferRecord[] {
   const seed = accountAddress.slice(2, 10);
   const seedNum = parseInt(seed, 16) || 12345;
 
-  const tokens = ['NASUN', 'NBTC', 'NUSDC'];
+  const tokens = ['NSN', 'NBTC', 'NUSDC'];
   const transfers: TransferRecord[] = [];
   const now = Date.now();
   const transferCount = 15 + (seedNum % 15); // 15-29 transfers

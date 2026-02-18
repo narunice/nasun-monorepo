@@ -116,7 +116,7 @@ export function MarginAccountCard() {
   // Get wallet balances
   const nusdcBalance = balances?.tokens?.NUSDC;
   const walletNusdcAmount = nusdcBalance ? Number(nusdcBalance.balance) / 1e6 : 0;
-  const nasunBalance = balances?.tokens?.NASUN;
+  const nasunBalance = balances?.tokens?.NSN;
   const walletNasunAmount = nasunBalance ? Number(nasunBalance.balance) / 1e9 : 0;
   const MIN_GAS_RESERVE = 0.1; // Keep at least 0.1 NASUN for gas
 
@@ -312,11 +312,11 @@ export function MarginAccountCard() {
                   <span className="text-yellow-500 text-sm">⚠️</span>
                   <div className="flex-1">
                     <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                      Low NASUN balance ({walletNasunAmount.toFixed(3)} NASUN). Keep at least{" "}
-                      {MIN_GAS_RESERVE} NASUN for transaction fees.
+                      Low NSN balance ({walletNasunAmount.toFixed(3)} NSN). Keep at least{" "}
+                      {MIN_GAS_RESERVE} NSN for transaction fees.
                     </p>
                     <p className="text-xs text-theme-text-muted mt-1">
-                      Get NASUN from faucet on the Trade page.
+                      Get NSN from faucet on the Trade page.
                     </p>
                   </div>
                 </div>

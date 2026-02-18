@@ -44,7 +44,7 @@ const BINANCE_SYMBOL_MAP: Record<string, string> = {
   'NBTC': 'BTCUSDT',
   'NETH': 'ETHUSDT',
   'NSOL': 'SOLUSDT',
-  'NASUN': '', // No external data
+  'NSN': '', // No external data
 };
 
 /**

@@ -219,7 +219,7 @@ describe('renderPortfolioCard', () => {
     tokens: [
       { symbol: 'NBTC', value: 9700, allocation: 78.5 },
       { symbol: 'NUSDC', value: 2500, allocation: 20.2 },
-      { symbol: 'NASUN', value: 145, allocation: 1.3 },
+      { symbol: 'NSN', value: 145, allocation: 1.3 },
     ],
     totalTrades: 42,
     totalVolume: 98765,

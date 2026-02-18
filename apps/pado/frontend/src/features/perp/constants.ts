@@ -29,7 +29,7 @@ export const PERP_MARKET_BTC =
 export const ORACLE_SYMBOL = {
   BTC: 1,
   ETH: 2,
-  NASUN: 3,
+  NSN: 3,
 } as const;
 
 /** Oracle Registry shared object ID (TODO: Redeploy for V6) */

@@ -39,8 +39,8 @@ describe('getUnifiedPrice', () => {
     expect(getUnifiedPrice('NUSDC')).toBe(1.0);
   });
 
-  it('returns simulated price for NASUN', () => {
-    expect(getUnifiedPrice('NASUN')).toBe(0.1);
+  it('returns simulated price for NSN', () => {
+    expect(getUnifiedPrice('NSN')).toBe(0.1);
   });
 
   it('returns simulated price for NETH', () => {
@@ -86,8 +86,8 @@ describe('getTokenByOracleId', () => {
     expect(getTokenByOracleId(2)).toBe('NETH');
   });
 
-  it('maps oracle ID 3 to NASUN', () => {
-    expect(getTokenByOracleId(3)).toBe('NASUN');
+  it('maps oracle ID 3 to NSN', () => {
+    expect(getTokenByOracleId(3)).toBe('NSN');
   });
 
   it('maps oracle ID 4 to NSOL', () => {
@@ -243,7 +243,7 @@ describe('formatPercentage', () => {
 describe('getAllPrices', () => {
   it('returns all token prices', () => {
     const prices = getAllPrices();
-    expect(prices.NASUN).toBe(0.1);
+    expect(prices.NSN).toBe(0.1);
     expect(prices.NBTC).toBe(69000);
     expect(prices.NUSDC).toBe(1.0);
     expect(prices.NETH).toBe(2000);

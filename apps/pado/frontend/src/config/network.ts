@@ -57,7 +57,7 @@ export const NETWORK_CONFIG = {
 // Token Metadata
 export const TOKENS = {
   NASUN: {
-    symbol: 'NASUN',
+    symbol: 'NSN',
     name: 'Nasun',
     decimals: 9,
     type: '0x2::sui::SUI',
@@ -87,6 +87,29 @@ export const TOKENS = {
     type: NETWORK_CONFIG.nsolType,
   },
 } as const;
+
+// Symbol → Token lookup (maps display symbol to token config)
+type TokenValue = typeof TOKENS[keyof typeof TOKENS];
+const SYMBOL_TO_TOKEN: Record<string, TokenValue> = Object.fromEntries(
+  Object.values(TOKENS).map(t => [t.symbol, t])
+) as Record<string, TokenValue>;
+
+/**
+ * Look up token config by display symbol (e.g., 'NSN', 'NBTC')
+ */
+export function getTokenBySymbol(symbol: string): TokenValue | undefined {
+  return SYMBOL_TO_TOKEN[symbol];
+}
+
+const STABLECOIN_SYMBOLS = new Set(['NUSDC']);
+
+/**
+ * Returns true if the given token symbol is a stablecoin (pegged to $1).
+ * Used to suppress redundant USD equivalent display.
+ */
+export function isStablecoin(symbol: string): boolean {
+  return STABLECOIN_SYMBOLS.has(symbol);
+}
 
 // Network Type Detection
 export type NetworkType = 'devnet' | 'testnet' | 'mainnet';

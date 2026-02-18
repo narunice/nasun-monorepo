@@ -147,12 +147,12 @@ describe('MiniPortfolioWidget', () => {
       setupDefaultMocks({
         tokens: [
           { symbol: 'NBTC', balance: '0.1', price: 97000, value: 9700, change24h: 1, pnl24h: 50 },
-          { symbol: 'NASUN', balance: '0', price: 0.5, value: 0, change24h: 0, pnl24h: 0 },
+          { symbol: 'NSN', balance: '0', price: 0.5, value: 0, change24h: 0, pnl24h: 0 },
         ],
       });
       render(<MiniPortfolioWidget />);
       expect(screen.getByText('NBTC')).toBeTruthy();
-      expect(screen.queryByText('NASUN')).toBeNull();
+      expect(screen.queryByText('NSN')).toBeNull();
     });
 
     it('limits to 5 tokens max', () => {

@@ -1,18 +1,21 @@
 /**
  * SwapOrderForm
  * Swap-style order form for Simple trading mode.
- * "You Pay / You Receive" layout with flip button, inline token selector,
- * percent-based quick buttons, and 3-view flow (form → confirm → success).
+ * "Sell / Buy" layout (Uniswap-style) with flip button, inline token selector,
+ * percent-based quick buttons, collapsible details, and 3-view flow (form → confirm → success).
  *
- * Benchmarked from: Binance Convert, Jupiter, Uniswap.
+ * Benchmarked from: Uniswap, Jupiter, Binance Convert.
+ * Follows ethereum.org DEX design best practices.
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useMarket, type MarketKey } from '../context/MarketContext';
+import { useMarket } from '../context/MarketContext';
 import { useOrderForm } from '../context/OrderFormContext';
 import { InlineTokenSelector } from './InlineTokenSelector';
 import { SwapConfirmView } from './SwapConfirmView';
 import { SwapSuccessView } from './SwapSuccessView';
+import { getPriceImpactColorClass } from '../utils/priceImpact';
+import { isStablecoin } from '../../../config/network';
 import type { PriceLevel } from '../../../lib/deepbook';
 
 const SLIPPAGE_PRESETS = [0.1, 0.5, 1.0];
@@ -35,6 +38,7 @@ interface LastTrade {
   receiveToken: string;
   payAmount: number;
   receiveAmount: number;
+  isBuying: boolean;
 }
 
 export function SwapOrderForm({
@@ -56,7 +60,7 @@ export function SwapOrderForm({
   const [receiveToken, setReceiveToken] = useState(currentPool.baseToken.symbol);
   const [payAmountInput, setPayAmountInput] = useState('');
   const [view, setView] = useState<'form' | 'confirm' | 'success'>('form');
-  const [showSlippage, setShowSlippage] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [lastTrade, setLastTrade] = useState<LastTrade | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -97,9 +101,9 @@ export function SwapOrderForm({
   // Update market when token pair changes
   const updateMarketForTokens = useCallback((pay: string, receive: string) => {
     const base = pay === 'NUSDC' ? receive : pay;
-    const key = `${base}_NUSDC` as MarketKey;
-    if (markets.some(m => m.key === key)) {
-      setMarket(key);
+    const market = markets.find(m => m.pool.baseToken.symbol === base);
+    if (market) {
+      setMarket(market.key);
     }
   }, [markets, setMarket]);
 
@@ -170,6 +174,25 @@ export function SwapOrderForm({
     if (!midPrice || midPrice <= 0) return 0;
     return baseAmount * midPrice * feeRate;
   }, [payAmount, baseAmount, midPrice, isBuying, feeRate]);
+
+  // USD equivalent for display
+  const payUsd = useMemo(() => {
+    if (payAmount <= 0) return 0;
+    if (isBuying) return payAmount; // NUSDC ≈ $1
+    return midPrice > 0 ? payAmount * midPrice : 0;
+  }, [payAmount, isBuying, midPrice]);
+
+  const receiveUsd = useMemo(() => {
+    if (receiveAmount <= 0) return 0;
+    if (isBuying) return midPrice > 0 ? receiveAmount * midPrice : 0;
+    return receiveAmount; // NUSDC ≈ $1
+  }, [receiveAmount, isBuying, midPrice]);
+
+  // Minimum received after slippage
+  const minReceived = useMemo(() => {
+    if (receiveAmount <= 0) return 0;
+    return receiveAmount * (1 - slippage / 100);
+  }, [receiveAmount, slippage]);
 
   // Price impact from orderbook depth (VWAP calculation)
   const priceImpact = useMemo(() => {
@@ -243,7 +266,7 @@ export function SwapOrderForm({
         : await onMarketSell(baseAmount);
 
       if (success) {
-        setLastTrade({ payToken, receiveToken, payAmount, receiveAmount });
+        setLastTrade({ payToken, receiveToken, payAmount, receiveAmount, isBuying });
         setView('success');
         setPayAmountInput('');
       } else {
@@ -261,14 +284,18 @@ export function SwapOrderForm({
     setLastTrade(null);
   };
 
+  // Action label based on direction
+  const actionLabel = isBuying ? 'Buy' : 'Sell';
+
   // Button state
-  const getPreviewButtonState = () => {
-    if (isLoading) return { text: 'Processing...', disabled: true };
-    if (midPrice <= 0) return { text: 'No Market Liquidity', disabled: true };
-    if (payAmount <= 0) return { text: 'Enter Amount', disabled: true };
-    if (isInsufficientBalance) return { text: 'Insufficient Balance', disabled: true };
-    if (baseAmount <= 0) return { text: 'Amount Too Small', disabled: true };
-    return { text: 'Preview Swap', disabled };
+  const directionVariant = isBuying ? 'buy' : 'sell';
+  const getPreviewButtonState = (): { text: string; disabled: boolean; variant: 'buy' | 'sell' | 'error' } => {
+    if (isLoading) return { text: 'Processing...', disabled: true, variant: directionVariant };
+    if (midPrice <= 0) return { text: 'No Market Liquidity', disabled: true, variant: directionVariant };
+    if (payAmount <= 0) return { text: 'Enter Amount', disabled: true, variant: directionVariant };
+    if (isInsufficientBalance) return { text: `Insufficient ${payToken}`, disabled: true, variant: 'error' };
+    if (baseAmount <= 0) return { text: 'Amount Too Small', disabled: true, variant: directionVariant };
+    return { text: `Preview ${actionLabel}`, disabled, variant: directionVariant };
   };
   const previewBtn = getPreviewButtonState();
 
@@ -276,6 +303,8 @@ export function SwapOrderForm({
   const rateDisplay = midPrice > 0
     ? `1 ${baseSymbol} = $${midPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
     : '...';
+
+  const payDisplayDecimals = isBuying ? 2 : 6;
 
   // --- Render views ---
 
@@ -296,6 +325,7 @@ export function SwapOrderForm({
         onConfirm={handleConfirm}
         onBack={() => setView('form')}
         isLoading={isLoading || isSubmitting}
+        isBuying={isBuying}
       />
     );
   }
@@ -307,57 +337,66 @@ export function SwapOrderForm({
         receiveToken={lastTrade.receiveToken}
         payAmount={lastTrade.payAmount}
         receiveAmount={lastTrade.receiveAmount}
+        isBuying={lastTrade.isBuying}
         onNewSwap={handleNewSwap}
       />
     );
   }
 
-  const payDisplayDecimals = isBuying ? 2 : 6;
-
   return (
     <div className="h-full flex flex-col">
-      {/* Exchange Rate */}
-      <div className="text-sm xl:text-base text-theme-text-muted mb-3 shrink-0 font-mono">
-        {rateDisplay}
-      </div>
-
       {/* You Pay */}
-      <div className="bg-theme-bg-tertiary/50 rounded-lg p-4 shrink-0">
+      <div className="bg-theme-bg-tertiary/50 rounded-r-lg p-4 shrink-0 border-l-4 border-red-500/50">
         <div className="flex items-center justify-between text-sm xl:text-base mb-2">
-          <span className="text-theme-text-muted">You Pay</span>
-          <span className="text-theme-text-muted font-mono">
-            Bal: {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-theme-text-muted font-medium">You Pay</span>
+            <InlineTokenSelector
+              selectedToken={payToken}
+              tokens={tokenOptions}
+              onSelect={handlePayTokenSelect}
+              disabled={disabled}
+            />
+          </div>
+          <button
+            onClick={() => handlePercentClick(100)}
+            disabled={disabled || maxPayAmount <= 0}
+            className="text-theme-text-muted font-mono text-xs hover:text-theme-text-primary transition-colors disabled:cursor-default disabled:hover:text-theme-text-muted"
+            title="Click to use max balance"
+          >
+            Balance: {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })}
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          <InlineTokenSelector
-            selectedToken={payToken}
-            tokens={tokenOptions}
-            onSelect={handlePayTokenSelect}
-            disabled={disabled}
-          />
+        <div>
           <input
             type="text"
             inputMode="decimal"
+            aria-label={`Amount of ${payToken} to pay`}
             value={payAmountInput}
             onChange={handlePayAmountChange}
             placeholder="0.00"
             disabled={disabled}
-            className="flex-1 min-w-0 bg-transparent text-right text-lg font-mono text-theme-text-primary placeholder:text-theme-text-muted/50 outline-none"
+            className="w-full bg-transparent text-lg font-mono text-theme-text-primary placeholder:text-theme-text-muted/50 outline-none"
           />
         </div>
-        {/* Percent buttons */}
-        <div className="flex gap-2 mt-3">
-          {PERCENT_BUTTONS.map((pct) => (
-            <button
-              key={pct}
-              onClick={() => handlePercentClick(pct)}
-              disabled={disabled || maxPayAmount <= 0}
-              className="flex-1 h-7 text-xs xl:text-sm font-medium rounded bg-theme-bg-secondary text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {pct === 100 ? 'Max' : `${pct}%`}
-            </button>
-          ))}
+        {/* USD equivalent + percent buttons */}
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex gap-1.5">
+            {PERCENT_BUTTONS.map((pct) => (
+              <button
+                key={pct}
+                onClick={() => handlePercentClick(pct)}
+                disabled={disabled || maxPayAmount <= 0}
+                className="px-2 h-6 text-xs font-medium rounded bg-theme-bg-secondary text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {pct === 100 ? 'Max' : `${pct}%`}
+              </button>
+            ))}
+          </div>
+          {payUsd > 0 && !isStablecoin(payToken) && (
+            <span className="text-xs text-theme-text-muted font-mono">
+              ~${payUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -381,96 +420,107 @@ export function SwapOrderForm({
       </div>
 
       {/* You Receive */}
-      <div className="bg-theme-bg-tertiary/50 rounded-lg p-4 shrink-0">
-        <div className="text-sm xl:text-base text-theme-text-muted mb-2">You Receive</div>
-        <div className="flex items-center gap-2">
+      <div className="bg-theme-bg-tertiary/50 rounded-r-lg p-4 shrink-0 border-l-4 border-green-500/50">
+        <div className="flex items-center gap-2 text-sm xl:text-base mb-2">
+          <span className="text-theme-text-muted font-medium">You Receive</span>
           <InlineTokenSelector
             selectedToken={receiveToken}
             tokens={receiveTokenOptions}
             onSelect={handleReceiveTokenSelect}
             disabled={disabled}
           />
-          <div className="flex-1 text-right text-lg font-mono text-theme-text-secondary">
-            {receiveAmount > 0
-              ? `≈ ${receiveAmount.toLocaleString('en-US', { maximumFractionDigits: isBuying ? 6 : 2 })}`
-              : '—'}
-          </div>
         </div>
-      </div>
-
-      {/* Price Impact Warning */}
-      {baseAmount > 0 && priceImpact.avgPrice > 0 && (
-        <div className="mt-2 space-y-1 px-3 py-2 bg-theme-bg-tertiary/50 rounded text-xs xl:text-sm shrink-0">
-          <div className="flex justify-between">
-            <span className="text-theme-text-muted">Est. Avg Price</span>
-            <span className="font-mono text-theme-text-secondary">
-              ${priceImpact.avgPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <div className="text-lg font-mono text-theme-text-secondary">
+          {receiveAmount > 0
+            ? `${receiveAmount.toLocaleString('en-US', { maximumFractionDigits: isBuying ? 6 : 2 })}`
+            : '0.00'}
+        </div>
+        {receiveUsd > 0 && !isStablecoin(receiveToken) && (
+          <div className="mt-2 text-right">
+            <span className="text-xs text-theme-text-muted font-mono">
+              ~${receiveUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-theme-text-muted">Price Impact</span>
-            <span className={`font-mono font-medium ${
-              priceImpact.impactPct < 0.5 ? 'text-green-400' :
-              priceImpact.impactPct < 2 ? 'text-yellow-400' :
-              'text-red-400'
-            }`}>
-              {priceImpact.impactPct < 0.01 ? '<0.01' : priceImpact.impactPct.toFixed(2)}%
-            </span>
-          </div>
-          {!priceImpact.fillable && (
-            <p role="alert" className="text-red-400 mt-1">
-              Insufficient liquidity — only {priceImpact.filledQty.toFixed(4)} fillable
-            </p>
-          )}
-          {priceImpact.impactPct >= 2 && priceImpact.fillable && (
-            <p role="alert" className="text-yellow-400 mt-1">
-              High price impact. Consider reducing size or using Pro mode.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Rate + Fee + Slippage toggle */}
-      <div className="mt-3 flex items-center justify-between text-xs xl:text-sm text-theme-text-muted shrink-0">
-        <div className="flex items-center gap-2 min-w-0 truncate">
-          <span>Fee: ~${feeUsd.toFixed(2)}</span>
-        </div>
-        <button
-          onClick={() => setShowSlippage(!showSlippage)}
-          className="shrink-0 p-1 text-theme-text-muted hover:text-theme-text-secondary transition-colors"
-          title="Slippage Settings"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
-            <circle cx="7" cy="7" r="1.75" />
-            <path d="M7 .875v1.75M7 11.375v1.75M.875 7h1.75M11.375 7h1.75M2.66 2.66l1.24 1.24M10.1 10.1l1.24 1.24M11.34 2.66l-1.24 1.24M3.9 10.1l-1.24 1.24" />
-          </svg>
-        </button>
+        )}
       </div>
 
-      {/* Slippage Settings (expandable) */}
-      {showSlippage && (
-        <div className="mt-1.5 flex items-center gap-2 shrink-0">
-          <span className="text-xs xl:text-sm text-theme-text-muted">Slippage:</span>
-          {SLIPPAGE_PRESETS.map((pct) => (
-            <button
-              key={pct}
-              onClick={() => setSlippage(pct)}
-              className={`px-2 py-0.5 text-xs xl:text-sm font-medium rounded transition-colors ${
-                slippage === pct
-                  ? 'bg-pd1 text-white'
-                  : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
-              }`}
+      {/* Collapsible Details Accordion */}
+      {midPrice > 0 && (
+        <div className="mt-3 shrink-0">
+          {/* Accordion header: exchange rate + chevron */}
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="w-full flex items-center justify-between text-xs xl:text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+          >
+            <span className="font-mono">{rateDisplay}</span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform ${showDetails ? 'rotate-180' : ''}`}
             >
-              {pct}%
-            </button>
-          ))}
-        </div>
-      )}
+              <path d="M3 4.5l3 3 3-3" />
+            </svg>
+          </button>
 
-      {/* Insufficient balance warning */}
-      {isInsufficientBalance && (
-        <div className="mt-2 text-xs xl:text-sm text-red-400 text-center shrink-0">
-          Insufficient balance (have {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })})
+          {/* Expanded details */}
+          {showDetails && (
+            <div className="mt-2 space-y-1.5 px-3 py-2 bg-theme-bg-tertiary/50 rounded text-xs xl:text-sm">
+              {priceImpact.avgPrice > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-theme-text-muted">Price Impact</span>
+                  <span className={`font-mono font-medium ${getPriceImpactColorClass(priceImpact.impactPct)}`}>
+                    {priceImpact.impactPct < 0.01 ? '<0.01' : priceImpact.impactPct.toFixed(2)}%
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">Fee ({feePercent})</span>
+                <span className="font-mono text-theme-text-muted">~${feeUsd.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">Slippage Tolerance</span>
+                <div className="flex items-center gap-1">
+                  {SLIPPAGE_PRESETS.map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => setSlippage(pct)}
+                      className={`px-1.5 py-0.5 text-xs font-medium rounded transition-colors ${
+                        slippage === pct
+                          ? 'bg-pd1 text-white'
+                          : 'bg-theme-bg-secondary text-theme-text-muted hover:text-theme-text-secondary'
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {minReceived > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-theme-text-muted">Min. Received</span>
+                  <span className="font-mono text-theme-text-secondary">
+                    {minReceived.toLocaleString('en-US', { maximumFractionDigits: isBuying ? 6 : 2 })} {receiveToken}
+                  </span>
+                </div>
+              )}
+              {!priceImpact.fillable && (
+                <p role="alert" className="text-red-700 dark:text-red-400 mt-1">
+                  Insufficient liquidity — only {priceImpact.filledQty.toFixed(4)} fillable
+                </p>
+              )}
+              {priceImpact.impactPct >= 2 && priceImpact.fillable && (
+                <p role="alert" className="text-amber-700 dark:text-yellow-400 mt-1">
+                  High price impact. Consider reducing size or using Pro mode.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -481,7 +531,13 @@ export function SwapOrderForm({
       <button
         onClick={handlePreview}
         disabled={previewBtn.disabled}
-        className="h-12 w-full rounded-lg text-sm xl:text-base font-semibold text-white bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 transition-colors shrink-0"
+        className={`h-12 w-full rounded-lg text-sm xl:text-base font-semibold transition-colors shrink-0 ${
+          previewBtn.variant === 'error'
+            ? 'bg-red-500/20 text-red-400 cursor-not-allowed'
+            : previewBtn.variant === 'buy'
+            ? 'text-white bg-green-600 hover:bg-green-600/80 disabled:bg-green-600/40'
+            : 'text-white bg-red-600 hover:bg-red-600/80 disabled:bg-red-600/40'
+        }`}
       >
         {previewBtn.text}
       </button>
