@@ -11,6 +11,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
+import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import { useUserStore } from "../../../../store/userStore";
 import { useBattalionNftStore } from "../../../../stores/useBattalionNftStore";
 import {
@@ -155,18 +156,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
         logger.log("[WalletConnectCard] Account linked successfully");
 
-        // 4c. Fetch updated profile
-        const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
-        const profileResponse = await fetch(`${userProfileApi}?identityId=${primaryIdentityId}`);
-
-        if (profileResponse.ok) {
-          const updatedProfile = await profileResponse.json();
-          updateUserProfile(updatedProfile);
-          sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
-          logger.log("[WalletConnectCard] User profile updated");
-        } else {
-          throw new Error("Failed to fetch updated profile");
-        }
+        // 4c. Refresh and save user profile (ensures full state sync)
+        await refreshAndSaveUserProfile(primaryIdentityId);
+        logger.log("[WalletConnectCard] User profile refreshed and saved");
       } else {
         logger.log("[WalletConnectCard] Wallet already linked - authenticating for proof only...");
 
