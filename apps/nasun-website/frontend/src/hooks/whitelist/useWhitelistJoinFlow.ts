@@ -56,12 +56,10 @@ export function useWhitelistJoinFlow(
 
   const autoLinkWallet = useCallback(async (walletAddress: string) => {
     if (!user?.identityId) {
-      console.log('[JoinWhitelist] No user identityId, skipping auto-link');
       return;
     }
 
     try {
-      console.log('[JoinWhitelist] Auto-linking wallet to profile...');
 
       const expectedChainId = import.meta.env.VITE_ETHEREUM_CHAIN_ID;
       if (expectedChainId) {
@@ -74,7 +72,6 @@ export function useWhitelistJoinFlow(
 
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) {
-        console.warn('[JoinWhitelist] VITE_LINK_ACCOUNT_API not configured, skipping link');
         return;
       }
 
@@ -95,7 +92,6 @@ export function useWhitelistJoinFlow(
       });
 
       if (!response.ok) {
-        console.warn('[JoinWhitelist] Failed to link wallet:', await response.text());
         return;
       }
 
@@ -108,10 +104,8 @@ export function useWhitelistJoinFlow(
           sessionStorage.setItem('nasun_user_profile', JSON.stringify(updatedProfile));
         }
       }
-
-      console.log('[JoinWhitelist] Wallet auto-linked successfully');
     } catch (error) {
-      console.warn('[JoinWhitelist] Auto-link failed (non-blocking):', error);
+      // Auto-link failed (non-blocking)
     }
   }, [user?.identityId, updateUserProfile]);
 
@@ -144,7 +138,6 @@ export function useWhitelistJoinFlow(
 
       const walletAddress = await connectWallet();
       const normalizedAddress = walletAddress.toLowerCase();
-      console.log('Connected wallet:', walletAddress);
 
       if (registeredEthAddress && normalizedAddress !== registeredEthAddress.toLowerCase()) {
         setModalData({
@@ -232,33 +225,20 @@ export function useWhitelistJoinFlow(
   }, [t, registeredEthAddress, user?.identityId, autoLinkWallet, options]);
 
   const handleWithdraw = useCallback(async () => {
-    console.log('[DEBUG] handleWithdraw called, modalData:', modalData);
-
     if (!modalData.walletAddress) {
-      console.error('No wallet address available for withdrawal');
       return;
     }
 
-    console.log('[DEBUG] Wallet address confirmed:', modalData.walletAddress);
-
     try {
-      console.log('[DEBUG] Setting state to signing...');
       setModalData((prev) => ({
         ...prev,
         state: 'signing',
       }));
 
-      console.log('[DEBUG] Calling withdrawWhitelistWithSignature...');
       const response = await withdrawWhitelistWithSignature(
         modalData.walletAddress,
-        (message) => {
-          console.log('[DEBUG] signMessage callback invoked with message length:', message.length);
-          return signMessage(message, modalData.walletAddress!);
-        }
+        (message) => signMessage(message, modalData.walletAddress!)
       );
-      console.log('[DEBUG] withdrawWhitelistWithSignature completed:', response);
-
-      console.log('Withdrawn successfully:', response);
       setModalOpen(false);
       setModalData({ state: 'idle' });
 
