@@ -13,7 +13,8 @@
     "lp-bot:nbtc": "LP_MARKET=NBTC node --env-file=.env --import tsx lp-bot.ts",
     "lp-bot:neth": "LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts",
     "lp-bot:nsol": "LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts",
-    "lp-bot:all": "LP_MARKET=NBTC node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts & wait"
+    "lp-bot:all": "LP_MARKET=NBTC node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts & wait",
+    "tpsl-keeper": "node --env-file=.env --import tsx tpsl-keeper.ts"
   },
   "dependencies": {
     "@mysten/sui": "^1.21.1",

@@ -7,7 +7,7 @@
     "dev:nasun-website": "pnpm --filter @nasun/nasun-website dev",
     "dev:gensol-website": "pnpm --filter @nasun/gensol-website dev",
     "dev:pado": "pnpm --filter @nasun/pado dev & pnpm --filter @nasun/pado-chat-server dev & wait",
-    "dev:pado:with-bot": "pnpm --filter @nasun/pado dev & pnpm --filter @nasun/pado-chat-server dev & (cd apps/pado/bots && pnpm lp-bot:all) & (cd apps/pado/bots && pnpm price-updater) & wait",
+    "dev:pado:with-bot": "pnpm --filter @nasun/pado dev & pnpm --filter @nasun/pado-chat-server dev & (cd apps/pado/bots && pnpm lp-bot:all) & (cd apps/pado/bots && pnpm price-updater) & (cd apps/pado/bots && pnpm tpsl-keeper) & wait",
     "dev:baram": "pnpm --filter @nasun/baram dev",
     "dev:baram-aer": "pnpm --filter @nasun/baram-aer dev",
     "build": "pnpm -r build",
