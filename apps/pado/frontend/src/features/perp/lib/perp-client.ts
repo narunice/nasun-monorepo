@@ -336,7 +336,7 @@ export function toMarketDisplay(
   const symbolMap: Record<number, string> = {
     1: 'BTC',
     2: 'ETH',
-    3: 'NASUN',
+    3: 'NSN',
   };
 
   const fundingRatePercent =

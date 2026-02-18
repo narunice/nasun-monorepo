@@ -45,7 +45,7 @@ interface RawFilledJson {
 
 const POOL_CONFIGS = [
   { pool: POOLS.NBTC_NUSDC, baseSymbol: 'NBTC' as TokenSymbol },
-  { pool: POOLS.NASUN_NUSDC, baseSymbol: 'NASUN' as TokenSymbol },
+  { pool: POOLS.NASUN_NUSDC, baseSymbol: 'NSN' as TokenSymbol },
   { pool: POOLS.NETH_NUSDC, baseSymbol: 'NETH' as TokenSymbol },
   { pool: POOLS.NSOL_NUSDC, baseSymbol: 'NSOL' as TokenSymbol },
 ];

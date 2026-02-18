@@ -24,7 +24,7 @@ import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { useMarginAccount } from './useMarginAccount';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
-import { POOLS, TOKENS } from '../../../config/network';
+import { POOLS, TOKENS, getTokenBySymbol } from '../../../config/network';
 import {
   type TokenSymbol,
   getUnifiedPrice,
@@ -187,12 +187,12 @@ export function useUnifiedBalance(): UnifiedBalanceState {
       Number(nusdcMargin) / 10 ** TOKENS.NUSDC.decimals;
 
     // Calculate USD values using unified prices
-    const nasunUsd = calculateUsdValue('NASUN', nasunTotal);
+    const nasunUsd = calculateUsdValue('NSN', nasunTotal);
     const nbtcUsd = calculateUsdValue('NBTC', nbtcTotal);
     const nusdcUsd = calculateUsdValue('NUSDC', nusdcTotal);
 
     // Calculate 24h PnL
-    const nasunPnl = calculate24hPnl('NASUN', nasunUsd);
+    const nasunPnl = calculate24hPnl('NSN', nasunUsd);
     const nbtcPnl = calculate24hPnl('NBTC', nbtcUsd);
     const nusdcPnl = calculate24hPnl('NUSDC', nusdcUsd);
 
@@ -229,13 +229,13 @@ export function useUnifiedBalance(): UnifiedBalanceState {
 
     // Build breakdown
     const breakdown = {
-      NASUN: {
+      NSN: {
         wallet: nasunWallet,
-        trading: 0n, // NASUN not in BalanceManager
-        margin: 0n,  // NASUN not in MarginAccount
+        trading: 0n, // NSN not in BalanceManager
+        margin: 0n,  // NSN not in MarginAccount
         total: nasunTotal,
         usd: nasunUsd,
-        change24h: getPriceChange24h('NASUN'),
+        change24h: getPriceChange24h('NSN'),
         pnl24h: nasunPnl,
       },
       NBTC: {
@@ -296,7 +296,7 @@ export function formatTokenBreakdown(breakdown: TokenBreakdown, symbol: TokenSym
   sources: Array<{ label: string; amount: string }>;
 } {
   const price = getUnifiedPrice(symbol);
-  const decimals = TOKENS[symbol].decimals;
+  const decimals = getTokenBySymbol(symbol)?.decimals ?? 9;
 
   const sources: Array<{ label: string; amount: string }> = [];
 

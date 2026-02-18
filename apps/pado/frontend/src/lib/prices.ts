@@ -17,7 +17,7 @@ import * as oracleClient from './oracle-client';
 import type { SymbolKey } from './oracle-client';
 import { logOnce, logThrottled } from './logger';
 
-export type TokenSymbol = 'NASUN' | 'NBTC' | 'NUSDC' | 'NETH' | 'NSOL';
+export type TokenSymbol = 'NSN' | 'NBTC' | 'NUSDC' | 'NETH' | 'NSOL';
 
 // ========================================
 // Price Cache (10s TTL)
@@ -40,7 +40,7 @@ const priceCache: Map<TokenSymbol, CachedPrice> = new Map();
 
 // Fallback prices when oracle is unavailable or stale
 const SIMULATED_PRICES: Record<TokenSymbol, number> = {
-  NASUN: 0.10,    // $0.10 per NASUN
+  NSN: 0.10,      // $0.10 per NSN
   NBTC: 69000,    // ~$69,000 per BTC (updated 2026-02)
   NUSDC: 1.00,    // $1.00 per USDC (stablecoin)
   NETH: 2000,     // ~$2,000 per ETH (updated 2026-02)
@@ -49,7 +49,7 @@ const SIMULATED_PRICES: Record<TokenSymbol, number> = {
 
 // Fallback 24h changes (used only when no real data is available)
 const FALLBACK_CHANGES: Record<TokenSymbol, number> = {
-  NASUN: 0,
+  NSN: 0,
   NBTC: 0,
   NUSDC: 0,
   NETH: 0,
@@ -66,7 +66,7 @@ const changeCache: Map<TokenSymbol, { percent: number; timestamp: number }> = ne
 // Map Pado token symbols to Oracle symbol keys
 const TOKEN_TO_ORACLE_SYMBOL: Partial<Record<TokenSymbol, SymbolKey>> = {
   NBTC: 'BTCUSD',
-  NASUN: 'NASUSD',
+  NSN: 'NASUSD',
   NETH: 'ETHUSD',
   NSOL: 'SOLUSD',
   // NUSDC: No oracle needed (always $1.00)
@@ -77,7 +77,7 @@ const TOKEN_TO_ORACLE_SYMBOL: Partial<Record<TokenSymbol, SymbolKey>> = {
 const ORACLE_ID_TO_TOKEN: Record<number, TokenSymbol> = {
   1: 'NBTC',
   2: 'NETH',
-  3: 'NASUN',
+  3: 'NSN',
   4: 'NSOL',
 };
 
@@ -154,7 +154,7 @@ export async function refreshPrice(symbol: TokenSymbol): Promise<void> {
  * Refresh all prices in cache
  */
 export async function refreshAllPrices(): Promise<void> {
-  const symbols: TokenSymbol[] = ['NASUN', 'NBTC', 'NUSDC', 'NETH', 'NSOL'];
+  const symbols: TokenSymbol[] = ['NSN', 'NBTC', 'NUSDC', 'NETH', 'NSOL'];
   await Promise.all(symbols.map(refreshPrice));
 }
 
@@ -164,7 +164,7 @@ export async function refreshAllPrices(): Promise<void> {
  * Uses cached oracle price if available and fresh, otherwise returns simulated.
  * Call refreshPrice() or refreshAllPrices() to update cache from oracle.
  *
- * @param symbol - Token symbol (NASUN, NBTC, NUSDC)
+ * @param symbol - Token symbol (NSN, NBTC, NUSDC)
  * @returns Price in USD
  *
  * @example

@@ -423,14 +423,9 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     return (
       <div className="h-full">
         <div className="bg-theme-bg-secondary rounded-lg p-4 h-full flex flex-col">
-          {/* Header with title and balance */}
-          <div className="flex items-center justify-between mb-4 shrink-0">
+          {/* Header */}
+          <div className="mb-4 shrink-0">
             <h3 className="text-base font-semibold text-theme-text-primary">Quick Trade</h3>
-            {isConnected && (
-              <span className="text-sm xl:text-base text-theme-text-muted font-mono">
-                ${availableQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            )}
           </div>
 
           {/* Connect wallet banner when not connected */}

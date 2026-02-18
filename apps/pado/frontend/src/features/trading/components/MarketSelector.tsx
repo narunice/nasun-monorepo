@@ -167,7 +167,7 @@ export function TokenIcon({ symbol }: { symbol: string }) {
   const bgColors: Record<string, string> = {
     NBTC: 'bg-orange-500',
     NUSDC: 'bg-pd2',
-    NASUN: 'bg-purple-500',
+    NSN: 'bg-purple-500',
     NETH: 'bg-blue-500',
     NSOL: 'bg-emerald-500',
   };

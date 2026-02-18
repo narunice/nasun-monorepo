@@ -48,12 +48,12 @@ const ORDER_INFO_ERRORS: Record<number, string> = {
 const GENERAL_ERRORS: { pattern: RegExp; message: string; errorType?: ErrorType }[] = [
   {
     pattern: /No valid gas coins found/i,
-    message: 'No gas tokens available. You need NASUN to pay for transaction fees.',
+    message: 'No gas tokens available. You need NSN to pay for transaction fees.',
     errorType: 'GAS_REQUIRED',
   },
   {
     pattern: /InsufficientGas/i,
-    message: 'Insufficient gas. You need more NASUN to pay for transaction fees.',
+    message: 'Insufficient gas. You need more NSN to pay for transaction fees.',
     errorType: 'GAS_REQUIRED',
   },
   {
@@ -208,7 +208,7 @@ export function formatErrorMessage(error: unknown): string {
         rpcUrl.includes('devnet') ||
         rpcUrl.includes('testnet');
       if (isDevOrTest) {
-        message += ' Get NASUN from the faucet in your wallet.';
+        message += ' Get NSN from the faucet in your wallet.';
       }
     } catch {
       // Ignore env access errors

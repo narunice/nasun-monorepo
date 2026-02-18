@@ -35,7 +35,7 @@ const NBTC_POOL: PoolConfig = {
 
 const NASUN_POOL: PoolConfig = {
   id: '0x' + 'b'.repeat(64),
-  baseToken: { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+  baseToken: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   quoteToken: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: '0x::nusdc::NUSDC' },
   tickSize: 10000,     // $0.01 raw
   lotSize: 1000000000, // 1.0 NASUN (10^9)
@@ -134,7 +134,7 @@ describe('quantityToRaw', () => {
     expect(quantityToRaw(0.018, 8)).toBe(1800000n);
   });
 
-  it('handles NASUN decimals (9)', () => {
+  it('handles NSN decimals (9)', () => {
     expect(quantityToRaw(1, 9)).toBe(1000000000n);
   });
 
@@ -168,10 +168,10 @@ describe('Floating-Point Precision', () => {
     expect(quantityToRaw(0.00001, 8)).toBe(1000n);
   });
 
-  it('priceToRaw handles $0.01 increments for NASUN', () => {
+  it('priceToRaw handles $0.01 increments for NSN', () => {
     const raw = priceToRaw(0.01, 6);
     expect(raw).toBe(10000n);
-    expect(raw % 10000n).toBe(0n); // NASUN tick-aligned
+    expect(raw % 10000n).toBe(0n); // NSN tick-aligned
   });
 
   it('large price precision: $97,123.45', () => {
@@ -210,13 +210,13 @@ describe('validatePrice', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('valid: NASUN pool $0.01 tick', () => {
+  it('valid: NSN pool $0.01 tick', () => {
     expect(validatePrice(0.01, NASUN_POOL).valid).toBe(true);
     expect(validatePrice(0.10, NASUN_POOL).valid).toBe(true);
     expect(validatePrice(1.23, NASUN_POOL).valid).toBe(true);
   });
 
-  it('invalid: NASUN pool $0.005 (not tick-aligned)', () => {
+  it('invalid: NSN pool $0.005 (not tick-aligned)', () => {
     expect(validatePrice(0.005, NASUN_POOL).valid).toBe(false);
   });
 
@@ -247,13 +247,13 @@ describe('validateQuantity', () => {
     expect(result.message).toContain('Quantity');
   });
 
-  it('valid: NASUN pool lot (1.0 NASUN)', () => {
+  it('valid: NSN pool lot (1.0 NSN)', () => {
     expect(validateQuantity(1, NASUN_POOL).valid).toBe(true);
     expect(validateQuantity(5, NASUN_POOL).valid).toBe(true);
     expect(validateQuantity(100, NASUN_POOL).valid).toBe(true);
   });
 
-  it('invalid: NASUN pool fractional (0.5 NASUN)', () => {
+  it('invalid: NSN pool fractional (0.5 NSN)', () => {
     expect(validateQuantity(0.5, NASUN_POOL).valid).toBe(false);
   });
 
@@ -332,7 +332,7 @@ describe('snapToTick', () => {
     expect(snapToTick(-10, NBTC_POOL)).toBe(0);
   });
 
-  it('snaps for NASUN pool ($0.01 tick)', () => {
+  it('snaps for NSN pool ($0.01 tick)', () => {
     expect(snapToTick(0.125, NASUN_POOL)).toBeCloseTo(0.12, 6);
   });
 
@@ -355,7 +355,7 @@ describe('getMinQuantity', () => {
     expect(getMinQuantity(NBTC_POOL)).toBeCloseTo(0.00001, 8);
   });
 
-  it('NASUN: 1.0 NASUN (lotSize=10^9, 9 decimals)', () => {
+  it('NSN: 1.0 NSN (lotSize=10^9, 9 decimals)', () => {
     expect(getMinQuantity(NASUN_POOL)).toBeCloseTo(1.0, 2);
   });
 
@@ -369,7 +369,7 @@ describe('getMinPrice', () => {
     expect(getMinPrice(NBTC_POOL)).toBeCloseTo(0.1, 6);
   });
 
-  it('NASUN: $0.01 (tickSize=10000, 6 decimals)', () => {
+  it('NSN: $0.01 (tickSize=10000, 6 decimals)', () => {
     expect(getMinPrice(NASUN_POOL)).toBeCloseTo(0.01, 6);
   });
 });
@@ -379,8 +379,8 @@ describe('formatMinQuantity', () => {
     expect(formatMinQuantity(NBTC_POOL)).toBe('0.00001 NBTC');
   });
 
-  it('formats NASUN min quantity', () => {
-    expect(formatMinQuantity(NASUN_POOL)).toBe('1 NASUN');
+  it('formats NSN min quantity', () => {
+    expect(formatMinQuantity(NASUN_POOL)).toBe('1 NSN');
   });
 });
 
@@ -389,7 +389,7 @@ describe('formatMinPrice', () => {
     expect(formatMinPrice(NBTC_POOL)).toBe('$0.1');
   });
 
-  it('formats NASUN min price', () => {
+  it('formats NSN min price', () => {
     expect(formatMinPrice(NASUN_POOL)).toBe('$0.01');
   });
 });

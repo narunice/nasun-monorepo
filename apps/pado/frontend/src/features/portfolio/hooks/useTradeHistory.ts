@@ -74,7 +74,7 @@ const POOL_CONFIGS = [
   },
   {
     pool: POOLS.NASUN_NUSDC,
-    name: 'NASUN/NUSDC',
+    name: 'NSN/NUSDC',
     takerFeeBps: POOLS.NASUN_NUSDC.takerFeeBps,
     makerFeeBps: POOLS.NASUN_NUSDC.makerFeeBps,
   },

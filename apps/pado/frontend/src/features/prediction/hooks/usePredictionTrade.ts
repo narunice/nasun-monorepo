@@ -34,7 +34,7 @@ function parseTradeError(error: unknown): string {
 
   // Insufficient gas
   if (message.includes('InsufficientGas') || message.includes('insufficient gas')) {
-    return 'Not enough NASUN for transaction fees. Please get some from the faucet.';
+    return 'Not enough NSN for transaction fees. Please get some from the faucet.';
   }
 
   // Insufficient balance

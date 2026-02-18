@@ -11,7 +11,7 @@ import {
 } from './price-alert-types';
 
 const STORAGE_KEY = 'pado:price:alerts';
-const ALLOWED_SYMBOLS = ['NBTC', 'NASUN', 'NUSDC'];
+const ALLOWED_SYMBOLS = ['NBTC', 'NSN', 'NUSDC'];
 const MAX_ALERT_PRICE = 10_000_000;
 
 function saveAlerts(alerts: PriceAlert[]): boolean {

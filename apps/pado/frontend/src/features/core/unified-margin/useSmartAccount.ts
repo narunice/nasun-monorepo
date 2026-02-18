@@ -68,7 +68,7 @@ export interface SmartAccountState {
   collateral: {
     NUSDC: CollateralInfo;
     NBTC: CollateralInfo;
-    NASUN: CollateralInfo;
+    NSN: CollateralInfo;
   };
   /** Total collateral value (after haircuts) */
   totalCollateralValue: number;
@@ -91,7 +91,7 @@ export interface SmartAccountState {
 const HAIRCUTS: Record<string, number> = {
   NUSDC: 0,    // 100% value
   NBTC: 5,     // 95% value
-  NASUN: 10,   // 90% value (future support)
+  NSN: 10,   // 90% value (future support)
 };
 
 // === Risk Thresholds (basis points) ===
@@ -151,7 +151,7 @@ export function useSmartAccount(): SmartAccountState {
       collateral: {
         NUSDC: { balance: 0n, amount: 0, value: 0, rawValue: 0, haircut: HAIRCUTS.NUSDC },
         NBTC: { balance: 0n, amount: 0, value: 0, rawValue: 0, haircut: HAIRCUTS.NBTC },
-        NASUN: { balance: 0n, amount: 0, value: 0, rawValue: 0, haircut: HAIRCUTS.NASUN },
+        NSN: { balance: 0n, amount: 0, value: 0, rawValue: 0, haircut: HAIRCUTS.NSN },
       },
       totalCollateralValue: 0,
     };
@@ -162,7 +162,7 @@ export function useSmartAccount(): SmartAccountState {
 
     // Get prices
     const nbtcPrice = getPrice('NBTC');
-    const nasunPrice = getPrice('NASUN');
+    const nasunPrice = getPrice('NSN');
     // NUSDC is always $1
 
     // === Parse Margin Account Balances ===
@@ -185,7 +185,7 @@ export function useSmartAccount(): SmartAccountState {
     // Apply haircuts
     const nusdcValue = nusdcRawValue * (1 - HAIRCUTS.NUSDC / 100);
     const nbtcValue = nbtcRawValue * (1 - HAIRCUTS.NBTC / 100);
-    const nasunValue = nasunRawValue * (1 - HAIRCUTS.NASUN / 100);
+    const nasunValue = nasunRawValue * (1 - HAIRCUTS.NSN / 100);
 
     // Total collateral (only NUSDC and NBTC for now, NASUN not yet in MarginAccount)
     const totalCollateralValue = nusdcValue + nbtcValue;
@@ -244,12 +244,12 @@ export function useSmartAccount(): SmartAccountState {
           rawValue: nbtcRawValue,
           haircut: HAIRCUTS.NBTC,
         },
-        NASUN: {
+        NSN: {
           balance: nasunBalance,
           amount: nasunAmount,
           value: nasunValue,
           rawValue: nasunRawValue,
-          haircut: HAIRCUTS.NASUN,
+          haircut: HAIRCUTS.NSN,
         },
       },
       totalCollateralValue,

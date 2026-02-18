@@ -13,7 +13,7 @@ interface PaymentQRCodeProps {
   message?: string;
 }
 
-export function PaymentQRCode({ amount, token = 'NASUN', message }: PaymentQRCodeProps) {
+export function PaymentQRCode({ amount, token = 'NSN', message }: PaymentQRCodeProps) {
   const { account, status } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const [copied, setCopied] = useState(false);

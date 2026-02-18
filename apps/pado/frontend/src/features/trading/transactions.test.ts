@@ -31,7 +31,7 @@ vi.mock('../../config/network', () => {
       },
     },
     TOKENS: {
-      NASUN: { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+      NASUN: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
       NBTC: { symbol: 'NBTC', name: 'Nasun BTC', decimals: 8, type: id + '::nbtc::NBTC' },
       NUSDC: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: id + '::nusdc::NUSDC' },
       NETH: { symbol: 'NETH', name: 'Nasun ETH', decimals: 8, type: id + '::neth::NETH' },

@@ -23,7 +23,7 @@ const NBTC_POOL: PoolConfig = {
 
 const NASUN_POOL: PoolConfig = {
   id: '0x' + 'b'.repeat(64),
-  baseToken: { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
+  baseToken: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   quoteToken: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: '0x::nusdc::NUSDC' },
   tickSize: 10000,
   lotSize: 1000000000,
@@ -224,28 +224,28 @@ describe('Swap Sell: NBTC → NUSDC', () => {
 // ========================================
 // Swap: NASUN Pool
 // ========================================
-describe('Swap: NASUN/NUSDC Pool', () => {
-  const midPrice = 0.10; // $0.10 per NASUN
+describe('Swap: NSN/NUSDC Pool', () => {
+  const midPrice = 0.10; // $0.10 per NSN
   const feeRate = NASUN_POOL.takerFeeBps / 10000;
 
-  it('$10 buys 100 NASUN at $0.10', () => {
+  it('$10 buys 100 NSN at $0.10', () => {
     const base = calcBaseAmount(10, midPrice, true, NASUN_POOL);
-    // 10 / 0.10 = 100.0 → 100 lots (lot=1 NASUN) = 100
+    // 10 / 0.10 = 100.0 → 100 lots (lot=1 NSN) = 100
     expect(base).toBe(100);
   });
 
-  it('$15 buys 150 NASUN at $0.10', () => {
+  it('$15 buys 150 NSN at $0.10', () => {
     const base = calcBaseAmount(15, midPrice, true, NASUN_POOL);
     expect(base).toBe(150);
   });
 
-  it('$7 buys 70 NASUN at $0.10 (rounded to lot)', () => {
+  it('$7 buys 70 NSN at $0.10 (rounded to lot)', () => {
     const base = calcBaseAmount(7, midPrice, true, NASUN_POOL);
     // 7 / 0.10 = 70 → exactly 70 lots
     expect(base).toBe(70);
   });
 
-  it('sell 50 NASUN at $0.10 = ~$4.995', () => {
+  it('sell 50 NSN at $0.10 = ~$4.995', () => {
     const base = calcBaseAmount(50, midPrice, false, NASUN_POOL);
     expect(base).toBe(50);
 
@@ -254,9 +254,9 @@ describe('Swap: NASUN/NUSDC Pool', () => {
     expect(receive).toBeCloseTo(5.0, 1); // rounds to 2 decimals
   });
 
-  it('fractional NASUN gets floored to whole lots', () => {
+  it('fractional NSN gets floored to whole lots', () => {
     const base = calcBaseAmount(0.5, 0.10, false, NASUN_POOL);
-    // 0.5 NASUN / 1.0 lot = 0 lots → 0
+    // 0.5 NSN / 1.0 lot = 0 lots → 0
     expect(base).toBe(0);
   });
 });
@@ -356,12 +356,12 @@ describe('Percent Quick Buttons', () => {
       expect(amount).toBe(0.165);
     });
 
-    it('NASUN: 75% of 100 NASUN = 75 NASUN', () => {
+    it('NSN: 75% of 100 NSN = 75 NSN', () => {
       const amount = calcPercentAmount(75, 100, false, NASUN_POOL);
       expect(amount).toBe(75);
     });
 
-    it('NASUN: 33% of 100 NASUN = 33 NASUN (lot=1)', () => {
+    it('NSN: 33% of 100 NSN = 33 NSN (lot=1)', () => {
       const amount = calcPercentAmount(33, 100, false, NASUN_POOL);
       expect(amount).toBe(33);
     });
@@ -509,13 +509,13 @@ describe('Lot Size Rounding', () => {
     expect(base).toBe(0.0103);
   });
 
-  it('NASUN: $0.15 at $0.10 = 1 NASUN (lot=1.0)', () => {
+  it('NSN: $0.15 at $0.10 = 1 NSN (lot=1.0)', () => {
     const base = calcBaseAmount(0.15, 0.10, true, NASUN_POOL);
     // 0.15 / 0.10 = 1.5 → 1 lot → 1.0
     expect(base).toBe(1);
   });
 
-  it('NASUN: $0.05 at $0.10 = 0 (below lot size)', () => {
+  it('NSN: $0.05 at $0.10 = 0 (below lot size)', () => {
     const base = calcBaseAmount(0.05, 0.10, true, NASUN_POOL);
     // 0.05 / 0.10 = 0.5 → 0 lots → 0
     expect(base).toBe(0);
@@ -632,11 +632,15 @@ describe('Market Switching', () => {
     expect(receiveToken).toBe('NUSDC');
   });
 
-  it('changing receive token updates market key', () => {
-    const receiveToken = 'NASUN';
-    const base = receiveToken;
-    const key = `${base}_NUSDC`;
-    expect(key).toBe('NASUN_NUSDC');
+  it('changing receive token updates market key via symbol matching', () => {
+    const receiveToken = 'NSN';
+    // Market lookup uses baseToken.symbol matching, not key construction
+    const markets = [
+      { key: 'NBTC_NUSDC', pool: { baseToken: { symbol: 'NBTC' } } },
+      { key: 'NASUN_NUSDC', pool: { baseToken: { symbol: 'NSN' } } },
+    ];
+    const market = markets.find(m => m.pool.baseToken.symbol === receiveToken);
+    expect(market?.key).toBe('NASUN_NUSDC');
   });
 
   it('changing pay token to non-NUSDC forces receive to NUSDC', () => {

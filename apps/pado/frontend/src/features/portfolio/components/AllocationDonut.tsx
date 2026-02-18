@@ -12,7 +12,7 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 const TOKEN_COLORS: Record<string, string> = {
   NBTC: '#f97316',    // orange
   NUSDC: '#3b82f6',   // blue
-  NASUN: '#8b5cf6',   // purple
+  NSN: '#8b5cf6',   // purple
   NETH: '#6366f1',    // indigo
   NSOL: '#14b8a6',    // teal
   Other: '#6b7280',   // gray
