@@ -11,7 +11,10 @@ import { scanAllItems } from '@/utils/dynamodb';
 export async function handler(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  console.log('Admin Export Request:', JSON.stringify(event, null, 2));
+  console.log('Admin Export Request:', {
+    httpMethod: event.httpMethod,
+    path: event.path,
+  });
 
   const requestOrigin = event.headers?.origin || event.headers?.Origin;
 

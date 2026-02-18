@@ -13,7 +13,10 @@ import { CheckResponse } from '@/types/whitelist';
 export async function handler(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  console.log('Check Whitelist Request:', JSON.stringify(event, null, 2));
+  console.log('Check Whitelist Request:', {
+    httpMethod: event.httpMethod,
+    path: event.path,
+  });
 
   const requestOrigin = event.headers?.origin || event.headers?.Origin;
 

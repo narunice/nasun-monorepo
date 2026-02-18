@@ -5,14 +5,19 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { successResponse, errorResponse, corsHeaders } from '@/utils/response';
-import { normalizeAddress } from '@/utils/ethereum';
+import { normalizeAddress, verifyWhitelistSignature, validateMessageFormat } from '@/utils/ethereum';
 import { getWhitelistItem, updateWhitelistItem } from '@/utils/dynamodb';
+import { validateWithdrawRequest } from '@/utils/validation';
+import { logInfo, logError } from '@/utils/logger';
 import { WithdrawRequest } from '@/types/whitelist';
 
 export async function handler(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  console.log('Withdraw Whitelist Request:', JSON.stringify(event, null, 2));
+  logInfo('withdraw_whitelist_request', {
+    httpMethod: event.httpMethod,
+    path: event.path,
+  });
 
   const requestOrigin = event.headers?.origin || event.headers?.Origin;
 
@@ -31,22 +36,57 @@ export async function handler(
       return errorResponse('INVALID_REQUEST', 'Request body is required', 400, undefined, requestOrigin);
     }
 
-    const body: WithdrawRequest = JSON.parse(event.body);
+    let body: WithdrawRequest;
+    try {
+      body = JSON.parse(event.body);
+    } catch {
+      return errorResponse('INVALID_REQUEST', 'Invalid JSON body', 400, undefined, requestOrigin);
+    }
 
-    // 2. 지갑 주소 검증
-    if (!body.walletAddress || !/^0x[a-fA-F0-9]{40}$/i.test(body.walletAddress)) {
-      return errorResponse('INVALID_INPUT', 'Invalid wallet address', 400, undefined, requestOrigin);
+    // 2. 입력 검증
+    const validation = validateWithdrawRequest(body);
+    if (!validation.valid) {
+      return errorResponse('INVALID_INPUT', validation.error || 'Invalid input', 400, undefined, requestOrigin);
     }
 
     // 3. 지갑 주소 정규화
     const walletAddress = normalizeAddress(body.walletAddress);
 
-    console.log('[withdraw] Wallet address validated:', walletAddress);
+    // 4. 메시지 포맷 검증
+    if (!validateMessageFormat(body.message, body.timestamp, 'withdraw')) {
+      return errorResponse(
+        'INVALID_MESSAGE_FORMAT',
+        'Message format does not match expected format',
+        400,
+        undefined,
+        requestOrigin
+      );
+    }
 
-    // 4. 존재 확인
+    // 5. 서명 검증
+    const signatureCheck = verifyWhitelistSignature(
+      walletAddress,
+      body.message,
+      body.signature
+    );
+
+    if (!signatureCheck.valid) {
+      console.error('Signature verification failed:', signatureCheck.error);
+      return errorResponse(
+        'INVALID_SIGNATURE',
+        signatureCheck.error || 'Signature verification failed',
+        400,
+        undefined,
+        requestOrigin
+      );
+    }
+
+    logInfo('withdraw_wallet_validated', { walletAddress });
+
+    // 6. 존재 확인
     const existingItem = await getWhitelistItem(walletAddress);
     if (!existingItem || existingItem.status !== 'ACTIVE') {
-      console.log('Not found or already withdrawn:', walletAddress);
+      logInfo('withdraw_not_found_or_already_withdrawn', { walletAddress });
       return errorResponse(
         'NOT_FOUND',
         'This wallet address is not registered',
@@ -56,13 +96,13 @@ export async function handler(
       );
     }
 
-    // 5. Soft Delete (withdrawnAt 설정)
+    // 7. Soft Delete (withdrawnAt 설정)
     const withdrawnAt = new Date().toISOString();
     await updateWhitelistItem(walletAddress, withdrawnAt);
 
-    console.log('Successfully withdrawn from whitelist:', walletAddress);
+    logInfo('withdraw_whitelist_success', { walletAddress });
 
-    // 6. 성공 응답
+    // 8. 성공 응답
     return successResponse(
       {
         walletAddress,
@@ -72,7 +112,7 @@ export async function handler(
       requestOrigin
     );
   } catch (error: any) {
-    console.error('Withdraw whitelist error:', error);
+    logError('withdraw_whitelist_error', error);
 
     // Not found 에러 처리
     if (error.message === 'NOT_FOUND') {
