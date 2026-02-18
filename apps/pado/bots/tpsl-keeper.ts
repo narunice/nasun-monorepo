@@ -29,6 +29,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { SuiClient } from '@mysten/sui/client';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { TPSLStore, type TPSLOrder } from './lib/tpsl-store.js';
 import { executeMarketOrder, type ExecuteParams } from './lib/tpsl-executor.js';
@@ -594,13 +595,30 @@ async function main() {
   console.log(`  Port: ${PORT}`);
   console.log(`  Check Interval: ${CHECK_INTERVAL_MS / 1000}s\n`);
 
-  const keeperKeyHex = process.env.KEEPER_PRIVATE_KEY;
-  if (!keeperKeyHex) {
+  const privateKeyInput = process.env.KEEPER_PRIVATE_KEY;
+  if (!privateKeyInput) {
     console.error('KEEPER_PRIVATE_KEY environment variable not set');
+    console.error('Supported formats: suiprivkey1... (Bech32) or 64-char hex');
     process.exit(1);
   }
 
-  const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(keeperKeyHex, 'hex'));
+  let keypair: Ed25519Keypair;
+  try {
+    if (privateKeyInput.startsWith('suiprivkey')) {
+      const { secretKey } = decodeSuiPrivateKey(privateKeyInput);
+      keypair = Ed25519Keypair.fromSecretKey(secretKey);
+    } else {
+      const cleanKey = privateKeyInput.replace(/^0x/, '').toLowerCase();
+      if (!/^[0-9a-f]{64}$/.test(cleanKey)) {
+        throw new Error('Invalid hex format');
+      }
+      keypair = Ed25519Keypair.fromSecretKey(Buffer.from(cleanKey, 'hex'));
+    }
+  } catch (error) {
+    console.error('Invalid KEEPER_PRIVATE_KEY format');
+    console.error('Supported: suiprivkey1... (Bech32) or 64-char hex');
+    process.exit(1);
+  }
   const client = new SuiClient({ url: RPC_URL });
   const store = new TPSLStore('./data/tpsl-orders.json');
   const startTime = Date.now();
