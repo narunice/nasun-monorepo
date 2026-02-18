@@ -7,13 +7,17 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { successResponse, errorResponse, corsHeaders } from '@/utils/response';
 import { validateJoinRequest } from '@/utils/validation';
 import { verifyWhitelistSignature, normalizeAddress, validateMessageFormat } from '@/utils/ethereum';
-import { getWhitelistItem, putWhitelistItem } from '@/utils/dynamodb';
+import { getWhitelistItem, putWhitelistItem, reactivateWhitelistItem } from '@/utils/dynamodb';
+import { logInfo, logError } from '@/utils/logger';
 import { JoinRequest, WhitelistItem } from '@/types/whitelist';
 
 export async function handler(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  console.log('Join Whitelist Request:', JSON.stringify(event, null, 2));
+  logInfo('join_whitelist_request', {
+    httpMethod: event.httpMethod,
+    path: event.path,
+  });
 
   const requestOrigin = event.headers?.origin || event.headers?.Origin;
 
@@ -77,7 +81,7 @@ export async function handler(
 
     // 6-1. ACTIVE 상태: 이미 등록됨
     if (existingItem && existingItem.status === 'ACTIVE') {
-      console.log('Already registered:', walletAddress);
+      logInfo('already_registered', { walletAddress });
       return errorResponse(
         'ALREADY_REGISTERED',
         'This wallet address is already registered',
@@ -92,48 +96,25 @@ export async function handler(
 
     // 6-2. WITHDRAWN 상태: 재등록 허용 (UPDATE)
     const now = new Date().toISOString();
-    const item: WhitelistItem = {
-      walletAddress,
-      signature: body.signature,
-      message: body.message,
-      timestamp: body.timestamp,
-      joinedAt: now,
-      status: 'ACTIVE'
-    };
 
     if (existingItem && existingItem.status === 'WITHDRAWN') {
-      console.log('Re-registering withdrawn wallet:', walletAddress);
+      logInfo('reregistering_withdrawn_wallet', { walletAddress });
       // WITHDRAWN 상태에서 재등록: UPDATE (withdrawnAt 제거)
-      const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
-      const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-
-      const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
-      const docClient = DynamoDBDocumentClient.from(client);
-
-      await docClient.send(
-        new UpdateCommand({
-          TableName: process.env.WHITELIST_TABLE_NAME || 'GenesisNftWhitelist',
-          Key: { walletAddress: walletAddress.toLowerCase() },
-          UpdateExpression: 'SET signature = :signature, message = :message, #timestamp = :timestamp, joinedAt = :joinedAt, #status = :status REMOVE withdrawnAt',
-          ExpressionAttributeNames: {
-            '#status': 'status',
-            '#timestamp': 'timestamp'
-          },
-          ExpressionAttributeValues: {
-            ':signature': body.signature,
-            ':message': body.message,
-            ':timestamp': body.timestamp,
-            ':joinedAt': now,
-            ':status': 'ACTIVE'
-          }
-        })
-      );
+      await reactivateWhitelistItem(walletAddress, body.signature, body.message, body.timestamp, now);
     } else {
       // 7. 신규 등록: PUT
+      const item: WhitelistItem = {
+        walletAddress,
+        signature: body.signature,
+        message: body.message,
+        timestamp: body.timestamp,
+        joinedAt: now,
+        status: 'ACTIVE'
+      };
       await putWhitelistItem(item);
     }
 
-    console.log('Successfully joined whitelist:', walletAddress);
+    logInfo('join_whitelist_success', { walletAddress });
 
     // 8. 성공 응답
     return successResponse(
@@ -145,7 +126,7 @@ export async function handler(
       requestOrigin
     );
   } catch (error: any) {
-    console.error('Join whitelist error:', error);
+    logError('join_whitelist_error', error);
 
     // 중복 등록 에러 처리
     if (error.message === 'ALREADY_REGISTERED') {

@@ -12,7 +12,10 @@ import { WhitelistListRequest, WhitelistListResponse } from '@/types/whitelist';
 export async function handler(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  console.log('Admin List Request:', JSON.stringify(event, null, 2));
+  console.log('Admin List Request:', {
+    httpMethod: event.httpMethod,
+    path: event.path,
+  });
 
   const requestOrigin = event.headers?.origin || event.headers?.Origin;
 
