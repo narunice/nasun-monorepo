@@ -50,7 +50,7 @@ export function StakingSection() {
                   ) : (
                     <>
                       {formattedBalance}{' '}
-                      <span className="text-sm font-normal text-pd3">NASUN</span>
+                      <span className="text-sm font-normal text-pd3">NSN</span>
                     </>
                   )}
                 </p>
@@ -66,7 +66,7 @@ export function StakingSection() {
                 ) : (
                   <>
                     {summary?.formattedTotalStaked || '0'}{' '}
-                    <span className="text-sm font-normal text-pd3">NASUN</span>
+                    <span className="text-sm font-normal text-pd3">NSN</span>
                   </>
                 )}
               </p>
@@ -81,7 +81,7 @@ export function StakingSection() {
                 ) : (
                   <>
                     +{summary?.formattedTotalRewards || '0'}{' '}
-                    <span className="text-sm font-normal">NASUN</span>
+                    <span className="text-sm font-normal">NSN</span>
                   </>
                 )}
               </p>
@@ -124,7 +124,7 @@ export function StakingSection() {
           <ul className="space-y-2 text-xs text-theme-text-muted">
             <li className="flex items-start gap-2">
               <span className="text-pd3 font-bold">1.</span>
-              <span>Select a validator and stake your NASUN</span>
+              <span>Select a validator and stake your NSN</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-pd3 font-bold">2.</span>
@@ -138,7 +138,7 @@ export function StakingSection() {
 
           <div className="mt-4 pt-4 border-t border-theme-border">
             <p className="text-xs text-theme-text-muted">
-              <span className="text-yellow-500">Note:</span> Min stake: 1 NASUN.
+              <span className="text-yellow-500">Note:</span> Min stake: 1 NSN.
               Keep some unstaked for gas fees.
             </p>
           </div>

@@ -7,6 +7,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Orderbook as OrderbookType, PriceLevel } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
+import { getPriceImpactColorClass } from '../utils/priceImpact';
 import { UnderlineTabs } from '@/components/common';
 import { ConnectionStatusDot } from '@/components/common/ConnectionStatus';
 import { useTradeEvents } from '../hooks/useTradeEvents';
@@ -658,11 +659,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
                   </div>
                   <div className="flex justify-between">
                     <span className="text-theme-text-muted">Impact</span>
-                    <span className={`font-medium ${
-                      hoverPreview.impactPct < 0.5 ? 'text-green-400' :
-                      hoverPreview.impactPct < 2 ? 'text-yellow-400' :
-                      'text-red-400'
-                    }`}>
+                    <span className={`font-medium ${getPriceImpactColorClass(hoverPreview.impactPct)}`}>
                       {hoverPreview.impactPct < 0.01 ? '<0.01' : hoverPreview.impactPct.toFixed(2)}%
                     </span>
                   </div>

@@ -29,7 +29,7 @@ export function EarnPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-theme-text-primary">Earn</h1>
         <p className="text-sm text-theme-text-secondary mt-1">
-          Stake NASUN or lend assets to earn yield
+          Stake NSN or lend assets to earn yield
         </p>
       </div>
 

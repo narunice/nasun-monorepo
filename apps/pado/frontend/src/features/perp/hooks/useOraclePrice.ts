@@ -50,7 +50,7 @@ export function useEthPrice(): SymbolPriceResult {
 }
 
 export function useNasunPrice(): SymbolPriceResult {
-  return useSymbolPrice(ORACLE_SYMBOL.NASUN);
+  return useSymbolPrice(ORACLE_SYMBOL.NSN);
 }
 
 export function useMarketPrice(baseSymbol: number): SymbolPriceResult {

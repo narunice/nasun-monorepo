@@ -21,7 +21,7 @@ const ALL_MARKETS: { key: MarketKey; label: string; pool: PoolConfig }[] = [
   },
   {
     key: 'NASUN_NUSDC',
-    label: 'NASUN/NUSDC',
+    label: 'NSN/NUSDC',
     pool: POOLS.NASUN_NUSDC,
   },
   {

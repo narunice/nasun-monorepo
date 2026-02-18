@@ -1,8 +1,10 @@
 /**
  * SwapConfirmView
  * Confirmation step before executing a swap order.
- * Shows trade summary and Confirm/Back buttons.
+ * Shows trade summary with Sell/Buy labels and Confirm/Back buttons.
  */
+
+import { getPriceImpactColorClass } from '../utils/priceImpact';
 
 interface SwapConfirmViewProps {
   payToken: string;
@@ -19,6 +21,7 @@ interface SwapConfirmViewProps {
   onConfirm: () => void;
   onBack: () => void;
   isLoading: boolean;
+  isBuying: boolean;
 }
 
 export function SwapConfirmView({
@@ -36,15 +39,17 @@ export function SwapConfirmView({
   onConfirm,
   onBack,
   isLoading,
+  isBuying,
 }: SwapConfirmViewProps) {
   const payDecimals = payToken === 'NUSDC' ? 2 : 6;
   const receiveDecimals = receiveToken === 'NUSDC' ? 2 : 6;
+  const actionLabel = isBuying ? 'Buy' : 'Sell';
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="text-center mb-4 shrink-0">
-        <h3 className="text-sm font-semibold text-theme-text-primary">Confirm Swap</h3>
+        <h3 className="text-sm font-semibold text-theme-text-primary">Confirm {actionLabel}</h3>
       </div>
 
       {/* Summary */}
@@ -83,11 +88,7 @@ export function SwapConfirmView({
           {impactPct != null && impactPct > 0 && (
             <div className="flex justify-between text-xs">
               <span className="text-theme-text-muted">Price Impact</span>
-              <span className={`font-mono font-medium ${
-                impactPct < 0.5 ? 'text-green-400' :
-                impactPct < 2 ? 'text-yellow-400' :
-                'text-red-400'
-              }`}>
+              <span className={`font-mono font-medium ${getPriceImpactColorClass(impactPct)}`}>
                 {impactPct < 0.01 ? '<0.01' : impactPct.toFixed(2)}%
               </span>
             </div>
@@ -114,9 +115,13 @@ export function SwapConfirmView({
         <button
           onClick={onConfirm}
           disabled={isLoading}
-          className="flex-1 h-10 rounded-lg text-xs font-semibold text-white bg-pd1 hover:bg-pd1/80 disabled:bg-pd1/60 transition-colors"
+          className={`flex-1 h-10 rounded-lg text-xs font-semibold text-white transition-colors ${
+            isBuying
+              ? 'bg-green-600 hover:bg-green-600/80 disabled:bg-green-600/40'
+              : 'bg-red-600 hover:bg-red-600/80 disabled:bg-red-600/40'
+          }`}
         >
-          {isLoading ? 'Swapping...' : 'Confirm Swap'}
+          {isLoading ? 'Swapping...' : `Confirm ${actionLabel}`}
         </button>
       </div>
     </div>

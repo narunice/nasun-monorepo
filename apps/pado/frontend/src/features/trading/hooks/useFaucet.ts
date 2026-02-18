@@ -41,7 +41,7 @@ function formatFaucetError(error: unknown, symbol: string): string {
   }
   // Gas error
   if (/InsufficientGas|No valid gas coins/i.test(msg)) {
-    return 'Not enough NASUN for gas. Request NASUN first.';
+    return 'Not enough NSN for gas. Request NSN first.';
   }
   // Network / fetch errors
   if (/fetch|network|ECONNREFUSED|timeout/i.test(msg)) {
@@ -141,7 +141,7 @@ export function useFaucet(): UseFaucetResult {
     const remaining = getCooldownRemaining(address, 'NSN');
     if (remaining > 0) {
       const formatted = formatCooldownRemaining(remaining);
-      showToast(`NASUN faucet: cooldown active. Try again in ${formatted}.`, "warning");
+      showToast(`NSN faucet: cooldown active. Try again in ${formatted}.`, "warning");
       return;
     }
 
@@ -151,12 +151,12 @@ export function useFaucet(): UseFaucetResult {
       if (success) {
         setCooldownTimestamp(address, 'NSN');
         await pollAndRefresh();
-        showToast("NASUN received!", "success");
+        showToast("NSN received!", "success");
       } else {
-        showToast("NASUN faucet failed. Check your connection and try again.", "error");
+        showToast("NSN faucet failed. Check your connection and try again.", "error");
       }
     } catch (error) {
-      showToast(formatFaucetError(error, "NASUN"), "error");
+      showToast(formatFaucetError(error, "NSN"), "error");
     } finally {
       setIsNasunLoading(false);
     }

@@ -21,6 +21,8 @@ import { renderTradeCard, downloadShareCard, copyShareCardToClipboard, type Trad
 import { generateCsv, downloadCsv } from '@/lib/csv-export';
 import { getChatService } from '@/lib/chat-service';
 
+export const CHAT_DRAFT_EVENT = 'pado:chat-draft';
+
 // Re-export Trade type for external consumers (useTradeEvents compatibility)
 export type { Trade } from '../types/trade';
 
@@ -203,7 +205,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
       const pnlSign = pnlData.pnl >= 0 ? '+' : '';
       msg += ` | PnL: ${pnlSign}$${pnlData.pnl.toFixed(2)} (${pnlSign}${pnlData.pnlPercent.toFixed(2)}%)`;
     }
-    chatService.sendMessage(msg);
+    document.dispatchEvent(new CustomEvent(CHAT_DRAFT_EVENT, { detail: msg }));
     setSharingId('chat-' + trade.id);
     setTimeout(() => setSharingId(null), 1500);
   };

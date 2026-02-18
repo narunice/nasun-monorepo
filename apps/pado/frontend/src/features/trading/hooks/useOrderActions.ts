@@ -158,7 +158,7 @@ export function useOrderActions(): UseOrderActionsResult {
 
       // Gas-related errors
       if (parsed.errorType === "GAS_REQUIRED") {
-        return "Not enough NASUN for gas. Get NASUN from Faucet in your wallet.";
+        return "Not enough NSN for gas. Get NSN from Faucet in your wallet.";
       }
 
       // Use parsed code for reliable matching (raw error strings don't contain these codes)

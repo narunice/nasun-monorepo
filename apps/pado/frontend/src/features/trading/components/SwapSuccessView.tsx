@@ -1,7 +1,7 @@
 /**
  * SwapSuccessView
  * Success state after a swap is executed.
- * Shows checkmark, trade details, and "New Swap" button.
+ * Shows checkmark, trade details with Sell/Buy labels, and "New Trade" button.
  */
 
 interface SwapSuccessViewProps {
@@ -9,6 +9,7 @@ interface SwapSuccessViewProps {
   receiveToken: string;
   payAmount: number;
   receiveAmount: number;
+  isBuying: boolean;
   onNewSwap: () => void;
 }
 
@@ -17,10 +18,12 @@ export function SwapSuccessView({
   receiveToken,
   payAmount,
   receiveAmount,
+  isBuying,
   onNewSwap,
 }: SwapSuccessViewProps) {
   const payDecimals = payToken === 'NUSDC' ? 2 : 6;
   const receiveDecimals = receiveToken === 'NUSDC' ? 2 : 6;
+  const actionLabel = isBuying ? 'Buy' : 'Sell';
 
   return (
     <div className="h-full flex flex-col items-center justify-center">
@@ -38,7 +41,7 @@ export function SwapSuccessView({
       </div>
 
       {/* Title */}
-      <h3 className="text-sm font-semibold text-theme-text-primary mb-1">Swap Complete</h3>
+      <h3 className="text-sm font-semibold text-theme-text-primary mb-1">{actionLabel} Complete</h3>
 
       {/* Details */}
       <div className="text-xs text-theme-text-secondary text-center space-y-1 mb-6">
@@ -50,12 +53,12 @@ export function SwapSuccessView({
         </p>
       </div>
 
-      {/* New Swap */}
+      {/* New Trade */}
       <button
         onClick={onNewSwap}
         className="w-full h-10 rounded-lg text-xs font-semibold text-white bg-pd1 hover:bg-pd1/80 transition-colors"
       >
-        New Swap
+        New Trade
       </button>
     </div>
   );

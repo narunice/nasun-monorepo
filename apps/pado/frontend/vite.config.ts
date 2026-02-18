@@ -66,12 +66,14 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Browser stub for Node.js https module (@ledgerhq/live-network workaround)
+      https: path.resolve(__dirname, './src/lib/https-browser-stub.ts'),
     },
     preserveSymlinks: true,
     dedupe: ['@nasun/wallet', '@nasun/wallet-ui', 'react', 'react-dom', 'zustand', '@tanstack/react-query'],
   },
   optimizeDeps: {
-    include: ['@nasun/wallet', '@scure/bip39', '@scure/bip39/wordlists/english.js'],
+    include: ['@nasun/wallet', '@nasun/wallet-ui', '@scure/bip39', '@scure/bip39/wordlists/english.js'],
   },
   // Strip console.log and console.debug in production builds (keep console.warn/error)
   esbuild: {
@@ -81,6 +83,7 @@ export default defineConfig({
   build: {
     commonjsOptions: {
       include: [/node_modules/],
+      transformMixedEsModules: true,
     },
     rollupOptions: {
       output: {

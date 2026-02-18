@@ -6,7 +6,7 @@ import { TOKENS, POOLS, NETWORK_CONFIG, getNetworkType, isFaucetAvailable } from
 // ========================================
 describe('TOKENS', () => {
   it('defines NASUN token', () => {
-    expect(TOKENS.NASUN.symbol).toBe('NASUN');
+    expect(TOKENS.NASUN.symbol).toBe('NSN');
     expect(TOKENS.NASUN.decimals).toBe(9);
     expect(TOKENS.NASUN.type).toBe('0x2::sui::SUI');
   });

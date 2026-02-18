@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { getPriceImpactColorClass } from '../utils/priceImpact';
 import type { ExecutionOption } from '../context';
 import { useMarket, useOrderForm } from '../context';
 import { UnderlineTabs } from '@/components/common';
@@ -586,11 +587,7 @@ export function OrderForm({
               </div>
               <div className="flex justify-between">
                 <span className="text-theme-text-muted">Price Impact</span>
-                <span className={`font-mono font-medium ${
-                  priceImpact.impactPct < 0.5 ? 'text-green-400' :
-                  priceImpact.impactPct < 2 ? 'text-yellow-400' :
-                  'text-red-400'
-                }`}>
+                <span className={`font-mono font-medium ${getPriceImpactColorClass(priceImpact.impactPct)}`}>
                   {priceImpact.impactPct < 0.01 ? '<0.01' : priceImpact.impactPct.toFixed(2)}%
                 </span>
               </div>
@@ -600,7 +597,7 @@ export function OrderForm({
                 </p>
               )}
               {priceImpact.impactPct >= 2 && priceImpact.fillable && (
-                <p className="text-yellow-400 mt-1">
+                <p className="text-amber-700 dark:text-yellow-400 mt-1">
                   High price impact. Consider reducing size or using a limit order.
                 </p>
               )}

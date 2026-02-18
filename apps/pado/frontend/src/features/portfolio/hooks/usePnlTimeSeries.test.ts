@@ -108,10 +108,10 @@ describe('buildPnlSeries', () => {
   it('tracks multiple tokens independently', () => {
     const trades = [
       makeTrade({ side: 'buy', price: 100, quantity: 1, fee: 0, timestamp: 1000, poolName: 'NBTC/NUSDC' }),
-      makeTrade({ side: 'buy', price: 5, quantity: 10, fee: 0, timestamp: 2000, poolName: 'NASUN/NUSDC' }),
+      makeTrade({ side: 'buy', price: 5, quantity: 10, fee: 0, timestamp: 2000, poolName: 'NSN/NUSDC' }),
       makeTrade({ side: 'sell', price: 120, quantity: 1, fee: 0, timestamp: 3000, poolName: 'NBTC/NUSDC' }),
       // NBTC PnL: (120-100)*1 = 20
-      makeTrade({ side: 'sell', price: 3, quantity: 10, fee: 0, timestamp: 4000, poolName: 'NASUN/NUSDC' }),
+      makeTrade({ side: 'sell', price: 3, quantity: 10, fee: 0, timestamp: 4000, poolName: 'NSN/NUSDC' }),
       // NASUN PnL: (3-5)*10 = -20, cumulative = 0
     ];
     const result = buildPnlSeries(trades);
