@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "set -a && . ../.env.local && set +a && tsx watch src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc",
     "test": "vitest run"

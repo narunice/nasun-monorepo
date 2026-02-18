@@ -1,4 +1,5 @@
-import { useState, useCallback, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useCallback, useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
+import { CHAT_DRAFT_EVENT } from '@/features/trading/components/TradeHistory';
 
 interface Props {
   onSend: (content: string) => void;
@@ -9,6 +10,20 @@ interface Props {
 
 export function ChatInput({ onSend, disabled, maxLength = 500, disabledPlaceholder }: Props) {
   const [text, setText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Listen for draft messages from TradeHistory share-to-chat
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const msg = (e as CustomEvent<string>).detail;
+      if (disabled) return;
+      if (!inputRef.current || inputRef.current.offsetParent === null) return;
+      setText(msg);
+      inputRef.current.focus();
+    };
+    document.addEventListener(CHAT_DRAFT_EVENT, handler);
+    return () => document.removeEventListener(CHAT_DRAFT_EVENT, handler);
+  }, [disabled]);
 
   const handleSubmit = useCallback((e: FormEvent) => {
     e.preventDefault();
@@ -31,6 +46,7 @@ export function ChatInput({ onSend, disabled, maxLength = 500, disabledPlacehold
   return (
     <form className="flex gap-1.5 px-3 py-2 border-t border-theme-border" onSubmit={handleSubmit}>
       <input
+        ref={inputRef}
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
