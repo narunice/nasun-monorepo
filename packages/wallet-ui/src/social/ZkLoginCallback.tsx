@@ -167,7 +167,7 @@ export function ZkLoginCallback({
     <div className="flex flex-col items-center justify-center flex-1 h-full p-6">
       {/* Progress circle */}
       <div className="relative flex items-center justify-center w-20 h-20 mb-6">
-        <svg className="absolute w-20 h-20 transform -rotate-90">
+        <svg className="absolute w-20 h-20 transform -rotate-90" viewBox="0 0 80 80">
           <circle
             cx="40"
             cy="40"
@@ -190,7 +190,7 @@ export function ZkLoginCallback({
             strokeLinecap="round"
           />
         </svg>
-        <div className="absolute flex items-center justify-center w-full h-full">
+        <div className="absolute inset-0 flex items-center justify-center">
           {step === 'complete' ? (
             <svg
               className="w-8 h-8 text-green-500"
