@@ -14,7 +14,7 @@ export type CoreViewMode =
   | "send"
   | "receive";
 
-export type AssetViewMode = "staking" | "portfolio" | "add-token";
+export type AssetViewMode = "staking" | "portfolio" | "add-token" | "nfts";
 
 export type SettingsViewMode = "settings" | "address-book";
 

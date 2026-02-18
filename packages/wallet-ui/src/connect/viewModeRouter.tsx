@@ -36,6 +36,7 @@ import {
   AddTokenView,
   DeleteConfirmationView,
 } from "./wallet-views";
+import { NFTGallery } from "../nft/NFTGallery";
 import { WCViewRouter } from "../walletconnect";
 import { setPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
 import { secureZeroString } from "@nasun/wallet";
@@ -159,6 +160,28 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   "settings": (s) => <SettingsView setViewMode={s.setViewMode} />,
   "receive": (s) => <ReceiveView setViewMode={s.setViewMode} />,
   "add-token": (s) => <AddTokenView setViewMode={s.setViewMode} />,
+
+  "nfts": (s) => (
+    <div className="flex flex-col h-full">
+      {/* Header with back button */}
+      <div className="flex items-center gap-3 px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
+        <button
+          onClick={() => s.setViewMode("main")}
+          className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h2 className="text-base xl:text-lg font-medium text-gray-900 dark:text-white">My NFTs</h2>
+      </div>
+
+      {/* NFT Gallery */}
+      <div className="flex-1 overflow-y-auto px-3 py-3">
+        <NFTGallery columns={3} hideHeader />
+      </div>
+    </div>
+  ),
 
   "address-book": (s) => (
     <AddressBookView
