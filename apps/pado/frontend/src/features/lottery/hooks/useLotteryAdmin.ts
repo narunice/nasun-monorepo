@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
@@ -95,6 +95,9 @@ export function useLotteryAdmin(): UseLotteryAdminResult {
     state: zkState,
     signTransaction: zkSignTransaction,
   } = useZkLogin();
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const queryClient = useQueryClient();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -107,8 +110,10 @@ export function useLotteryAdmin(): UseLotteryAdminResult {
     ? zkState?.address
     : isLocalWalletActive
       ? account?.address
-      : undefined;
-  const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
+  const isWalletConnected = isZkLoggedIn || isLocalWalletActive || isPasskeyUnlocked;
 
   // Check if user has AdminCap
   useEffect(() => {
@@ -160,6 +165,9 @@ export function useLotteryAdmin(): UseLotteryAdminResult {
       if (isZkLoggedIn && zkState) {
         // zkLogin signing
         signature = await zkSignTransaction(bytes);
+      } else if (isPasskeyUnlocked && passkeyKeypair) {
+        const signResult = await passkeyKeypair.signTransaction(bytes);
+        signature = signResult.signature;
       } else {
         // Local wallet signing
         const keypair = getKeypair();
@@ -182,7 +190,7 @@ export function useLotteryAdmin(): UseLotteryAdminResult {
 
       return result;
     },
-    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]
+    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]
   );
 
   /**

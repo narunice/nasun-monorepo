@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
@@ -67,6 +67,9 @@ export function useLotteryKeeper(): UseLotteryKeeperResult {
     state: zkState,
     signTransaction: zkSignTransaction,
   } = useZkLogin();
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const queryClient = useQueryClient();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -78,8 +81,10 @@ export function useLotteryKeeper(): UseLotteryKeeperResult {
     ? zkState?.address
     : isLocalWalletActive
       ? account?.address
-      : undefined;
-  const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
+  const isWalletConnected = isZkLoggedIn || isLocalWalletActive || isPasskeyUnlocked;
 
   /**
    * Check if round can be closed (permissionless)
@@ -111,6 +116,9 @@ export function useLotteryKeeper(): UseLotteryKeeperResult {
       let signature: string;
       if (isZkLoggedIn && zkState) {
         signature = await zkSignTransaction(bytes);
+      } else if (isPasskeyUnlocked && passkeyKeypair) {
+        const signResult = await passkeyKeypair.signTransaction(bytes);
+        signature = signResult.signature;
       } else {
         const keypair = getKeypair();
         if (!keypair) {
@@ -132,7 +140,7 @@ export function useLotteryKeeper(): UseLotteryKeeperResult {
 
       return result;
     },
-    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]
+    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]
   );
 
   /**

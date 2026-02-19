@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import type { PredictionMarket, Position } from '../types';
 import { calculateProbability } from '../types';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
@@ -27,6 +27,7 @@ interface PositionListProps {
 export function PositionList({ market, positions, onSuccess }: PositionListProps) {
   const { status } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const { isLoading, placeSellOrder, claimWinnings } = usePredictionTrade();
   const [sellModalPosition, setSellModalPosition] = useState<string | null>(null);
   const [sellPriceNusdc, setSellPriceNusdc] = useState(''); // Changed from % to NUSDC
@@ -125,7 +126,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     };
   }, [sellingPosition, sellPriceNusdc, positions]);
 
-  if (status !== 'unlocked' && !isZkConnected) {
+  if (status !== 'unlocked' && !isZkConnected && !isPasskeyUnlocked) {
     return null;
   }
 

@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
   buildOpenPositionWithAmount,
@@ -57,6 +57,9 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
   const { marketId, onSuccess, onError } = options;
   const { account, getKeypair, status } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const invalidatePositions = useInvalidatePositions();
   const queryClient = useQueryClient();
 
@@ -69,7 +72,13 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
 
   // Determine wallet address
   const isLocalWalletActive = status === 'unlocked' && account?.address;
-  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : isLocalWalletActive
+      ? account?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   /**
    * Execute transaction with appropriate signing method
@@ -80,7 +89,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     if (!walletAddress) {
       return { success: false, error: 'Wallet not connected' };
     }
-    if (!isZkLoggedIn && !keypair) {
+    if (!isZkLoggedIn && !isPasskeyUnlocked && !keypair) {
       return { success: false, error: 'No signing method available' };
     }
 
@@ -93,6 +102,9 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
       let signature: string;
       if (isZkLoggedIn && zkState) {
         signature = await zkSignTransaction(bytes);
+      } else if (isPasskeyUnlocked && passkeyKeypair) {
+        const signatureData = await passkeyKeypair.signTransaction(bytes);
+        signature = signatureData.signature;
       } else if (keypair) {
         const signatureData = await keypair.signTransaction(bytes);
         signature = signatureData.signature;
@@ -123,7 +135,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     } catch (err) {
       return { success: false, error: formatErrorMessage(err) };
     }
-  }, [walletAddress, isZkLoggedIn, zkState, zkSignTransaction, getKeypair]);
+  }, [walletAddress, isZkLoggedIn, zkState, zkSignTransaction, getKeypair, isPasskeyUnlocked, passkeyKeypair]);
 
   /**
    * Get NUSDC coin for collateral

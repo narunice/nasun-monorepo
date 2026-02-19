@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useWallet, useBalance, useZkLogin } from '@nasun/wallet';
+import { useWallet, useBalance, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { FIRST_TRADE_STORAGE_KEY } from '../../trading/hooks/useFirstTradeCelebration';
 import { ORDER_FILL_EVENT } from '../../trading/hooks/useOrderFillNotifier';
 
@@ -24,7 +24,8 @@ interface Step {
 export function GettingStartedCard() {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
 
   // Adaptive polling: 3s while waiting for faucet (step 2), default 30s otherwise
   const { data: balance } = useBalance(undefined, {

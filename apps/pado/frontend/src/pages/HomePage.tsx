@@ -14,7 +14,7 @@
  * - QuickActions + Hot Markets + Predictions
  */
 
-import { useWallet, useZkLogin } from "@nasun/wallet";
+import { useWallet, useZkLogin, usePasskeyStore } from "@nasun/wallet";
 import {
   QuickActions,
   HotMarketsCard,
@@ -41,7 +41,8 @@ function MarketsGrid() {
 export function HomePage() {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const hasNoWallet = status === "disconnected" && !isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const hasNoWallet = status === "disconnected" && !isZkLoggedIn && !isPasskeyUnlocked;
 
   return (
     <div className="p-4 pt-0 md:p-6 md:pt-1 max-w-7xl mx-auto">

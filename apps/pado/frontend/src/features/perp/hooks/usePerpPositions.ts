@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import {
   fetchUserPositions,
   fetchPosition,
@@ -21,16 +21,28 @@ const REFETCH_INTERVAL = 5_000; // 5 seconds for positions (more frequent)
  * Fetch all positions for the connected wallet
  */
 export function usePerpPositions() {
-  const { account } = useWallet();
+  const { account, status } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const adaptiveInterval = useAdaptiveInterval(REFETCH_INTERVAL);
 
+  // Determine active address (zkLogin takes priority)
+  const address = isZkConnected
+    ? zkState?.address
+    : status === 'unlocked'
+      ? account?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
+
   return useQuery<PerpPosition[]>({
-    queryKey: [POSITIONS_QUERY_KEY, account?.address],
+    queryKey: [POSITIONS_QUERY_KEY, address],
     queryFn: () =>
-      account?.address
-        ? fetchUserPositions(account.address)
+      address
+        ? fetchUserPositions(address)
         : Promise.resolve([]),
-    enabled: !!account?.address,
+    enabled: !!address,
     refetchInterval: adaptiveInterval,
     staleTime: 2_000,
   });
