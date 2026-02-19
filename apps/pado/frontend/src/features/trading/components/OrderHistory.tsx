@@ -36,14 +36,15 @@ function formatDate(timestamp: number): string {
 
 export function OrderHistory() {
   const { status, account } = useWallet();
-  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const senderAddress = isZkLoggedIn ? zkState?.address : account?.address;
 
   const { currentPool } = useMarket();
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   const { balanceManagerId } = useOrderActions();
-  const { data: orders, isLoading } = useOrderHistory(balanceManagerId);
+  const { data: orders, isLoading } = useOrderHistory(balanceManagerId, senderAddress);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 

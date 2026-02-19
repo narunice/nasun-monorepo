@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin } from '@nasun/wallet';
-import { getSuiClient } from '../../../lib/sui-client';
+import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
@@ -101,11 +101,11 @@ function safeBigInt(value: unknown): bigint {
   return BigInt(str);
 }
 
-async function fetchRealTrades(balanceManagerId: string): Promise<UserTrade[]> {
+async function fetchRealTrades(balanceManagerId: string, senderAddress: string): Promise<UserTrade[]> {
   const client = getSuiClient();
 
   const result = await client.queryEvents({
-    query: { MoveEventType: ORDER_FILLED_TYPE },
+    query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
     limit: 50,
     order: 'descending',
   });
@@ -170,9 +170,9 @@ export function useTradeHistory(): UseTradeHistoryResult {
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 
   const { data: trades, isLoading, error, refetch } = useQuery({
-    queryKey: ['tradeHistory', balanceManagerId],
-    queryFn: () => fetchRealTrades(balanceManagerId!),
-    enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE,
+    queryKey: ['tradeHistory', balanceManagerId, activeAddress],
+    queryFn: () => fetchRealTrades(balanceManagerId!, activeAddress!),
+    enabled: !!balanceManagerId && !!activeAddress && !!DEEPBOOK_PACKAGE,
     refetchInterval: adaptiveInterval,
     staleTime: 10_000,
   });

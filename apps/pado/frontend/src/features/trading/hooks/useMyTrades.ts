@@ -2,10 +2,13 @@
  * useMyTrades Hook
  * Fetches personal trade fills (OrderFilled events) filtered by user's balanceManagerId
  * Shows each fill as a separate row (1 fill = 1 row)
+ *
+ * Uses compound {All: [MoveEventType, Sender]} filter to fetch only the user's events
+ * server-side, avoiding LP Bot noise.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getSuiClient } from '../../../lib/sui-client';
+import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
@@ -40,13 +43,14 @@ const ORDER_FILLED_TYPE = `${DEEPBOOK_PACKAGE}::order_info::OrderFilled`;
 async function fetchMyTrades(
   poolId: string,
   balanceManagerId: string,
+  senderAddress: string,
   quoteDecimals: number,
   baseDecimals: number,
 ): Promise<MyTradeItem[]> {
   const client = getSuiClient();
 
   const result = await client.queryEvents({
-    query: { MoveEventType: ORDER_FILLED_TYPE },
+    query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
     limit: 50,
     order: 'descending',
   });
@@ -85,6 +89,7 @@ async function fetchMyTrades(
  */
 export function useMyTrades(
   balanceManagerId: string | null,
+  senderAddress: string | undefined,
   refetchInterval = 10000,
 ) {
   const { currentPool } = useMarket();
@@ -92,15 +97,16 @@ export function useMyTrades(
   const poolId = currentPool.id as string;
 
   return useQuery<MyTradeItem[]>({
-    queryKey: ['myTrades', balanceManagerId, poolId],
+    queryKey: ['myTrades', balanceManagerId, senderAddress, poolId],
     queryFn: () =>
       fetchMyTrades(
         poolId,
         balanceManagerId!,
+        senderAddress!,
         currentPool.quoteToken.decimals,
         currentPool.baseToken.decimals,
       ),
-    enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE && !!poolId,
+    enabled: !!balanceManagerId && !!senderAddress && !!DEEPBOOK_PACKAGE && !!poolId,
     refetchInterval: adaptiveInterval,
     staleTime: 5000,
   });
