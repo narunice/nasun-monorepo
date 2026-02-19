@@ -16,6 +16,7 @@ export const buttonV3Variants = cva(
 
         // Brand variants
         "gensol-red": "bg-[#d52933] text-white hover:bg-[#c0242d]",
+        "sf-orange": "bg-[#f05340] text-white hover:bg-[#d94433]",
 
         // Semantic variants
         red: "bg-red-600 text-white hover:bg-red-700",
@@ -26,6 +27,8 @@ export const buttonV3Variants = cva(
           "bg-gradient-to-r from-[#6697b7] to-[#9CC0D8] text-white hover:from-[#5a87a5] hover:to-[#8EB4CE]",
         gradientDark:
           "bg-gradient-to-r from-[#4c7d9a] to-[#85B3CC] text-white hover:from-[#416d87] hover:to-[#78A5BD]",
+        "sf-orange-gradient":
+          "bg-gradient-to-r from-[#f05340] to-[#f5826e] text-white hover:from-[#d94433] hover:to-[#e57260]",
       },
       outline: {
         true: "bg-transparent bg-none border",
@@ -41,6 +44,16 @@ export const buttonV3Variants = cva(
     },
     compoundVariants: [
       // Outline variants — only colors with sufficient contrast on dark backgrounds
+      {
+        variant: "sf-orange",
+        outline: true,
+        class: "border-[#f05340] text-[#f05340] hover:bg-[#f05340]/10",
+      },
+      {
+        variant: "sf-orange-gradient",
+        outline: true,
+        class: "border-[#f05340] text-[#f05340] hover:bg-[#f05340]/10",
+      },
       {
         variant: "nw1",
         outline: true,
