@@ -86,11 +86,12 @@ export function useRefreshBalance() {
   const queryClient = useQueryClient();
   const { account } = useWallet();
   const { state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
   const chainId = useChainStore((s) => s.currentChainId);
 
   return async () => {
     const signerAddr = SignerManager.getCurrent()?.address;
-    const address = signerAddr ?? account?.address ?? zkState?.address;
+    const address = signerAddr ?? account?.address ?? zkState?.address ?? passkeyAddress;
     if (address) {
       await queryClient.invalidateQueries({
         queryKey: [BALANCE_QUERY_KEY, chainId, address],

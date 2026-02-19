@@ -9,6 +9,7 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import type { SignerAdapter, SignerCapabilities, SignatureResult } from '../types';
 import { DEFAULT_CAPABILITIES } from '../types';
+import { usePasskeyStore } from '../../../stores/passkeyStore';
 
 export class PasskeySigner implements SignerAdapter {
   readonly type = 'passkey' as const;
@@ -35,6 +36,7 @@ export class PasskeySigner implements SignerAdapter {
    * @returns Signature result with base64 signature
    */
   async sign(txBytes: Uint8Array): Promise<SignatureResult> {
+    usePasskeyStore.getState().updateActivity();
     const result = await this.keypair.signTransaction(txBytes);
     return {
       signature: result.signature,
@@ -47,6 +49,7 @@ export class PasskeySigner implements SignerAdapter {
    * @returns Signature result with base64 signature
    */
   async signPersonal(message: Uint8Array): Promise<SignatureResult> {
+    usePasskeyStore.getState().updateActivity();
     const result = await this.keypair.signPersonalMessage(message);
     return {
       signature: result.signature,
