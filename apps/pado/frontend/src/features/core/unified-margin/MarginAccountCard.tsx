@@ -10,7 +10,7 @@
 import { useState, useCallback } from "react";
 import { formatErrorMessage } from '../../trading/utils/errorParser';
 import { useQuery } from "@tanstack/react-query";
-import { useWallet, useZkLogin, useMultiBalance, getSuiClient } from "@nasun/wallet";
+import { useWallet, useZkLogin, useMultiBalance, getSuiClient, usePasskeyStore } from "@nasun/wallet";
 import { useMarginAccount } from "./useMarginAccount";
 import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
@@ -32,12 +32,15 @@ export function MarginAccountCard() {
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const { data: balances } = useMultiBalance();
 
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+
   // Determine active wallet address (zkLogin takes priority)
   const activeAddress = isZkLoggedIn
     ? zkState?.address
     : status === "unlocked"
       ? walletAccount?.address
-      : undefined;
+      : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined);
 
   // Query NUSDC coin object
   const { data: nusdcCoin } = useQuery({
@@ -111,7 +114,7 @@ export function MarginAccountCard() {
   const [error, setError] = useState<string | null>(null);
   const [showGasWarning, setShowGasWarning] = useState(false);
 
-  const isConnected = (status === "unlocked" && walletAccount) || isZkLoggedIn;
+  const isConnected = (status === "unlocked" && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
 
   // Get wallet balances
   const nusdcBalance = balances?.tokens?.NUSDC;

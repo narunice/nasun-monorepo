@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useWallet, useZkLogin, useSignerAddress } from '@nasun/wallet';
+import { useWallet, useZkLogin, useSignerAddress, usePasskeyStore } from '@nasun/wallet';
 import { useLeaderboard, usePnlLeaderboard, usePointsLeaderboard, LeaderboardTable, PnlLeaderboardTable, PointsLeaderboardTable, PeriodSelector, ModeSelector, MyRankCard } from '../features/leaderboard';
 import { CompetitionBanner } from '../features/competitions';
 import type { Period, LeaderboardMode } from '../features/leaderboard';
@@ -34,7 +34,8 @@ export function LeaderboardPage() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const signerAddress = useSignerAddress();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
   const userAddress = signerAddress || null;
 
   return (

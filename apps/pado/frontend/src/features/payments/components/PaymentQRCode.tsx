@@ -5,7 +5,7 @@
 
 import { QRCodeSVG } from 'qrcode.react';
 import { useState } from 'react';
-import { useWallet, useZkLogin, shortenAddress } from '@nasun/wallet';
+import { useWallet, useZkLogin, shortenAddress, usePasskeyStore } from '@nasun/wallet';
 
 interface PaymentQRCodeProps {
   amount?: string;
@@ -18,14 +18,17 @@ export function PaymentQRCode({ amount, token = 'NSN', message }: PaymentQRCodeP
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const [copied, setCopied] = useState(false);
 
-  // Check if connected via traditional wallet OR zkLogin
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+
+  // Check if connected via traditional wallet OR zkLogin OR passkey
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
   // Determine active address (zkLogin takes priority)
   const connectedAddress = isZkLoggedIn
     ? zkState?.address
     : status === 'unlocked'
       ? account?.address
-      : undefined;
+      : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined);
 
   // Wallet not connected
   if (!isConnected || !connectedAddress) {

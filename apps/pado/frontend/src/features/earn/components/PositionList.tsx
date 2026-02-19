@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useLendingPositions } from '../hooks/useLendingPositions';
 import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingActions } from '../hooks/useLendingActions';
@@ -41,7 +41,8 @@ export function PositionList() {
     }
   }, [withdraw, refetchPool, refetch]);
 
-  const isConnected = (status === 'unlocked' && account) || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkConnected || isPasskeyUnlocked;
 
   if (!isConnected) {
     return (

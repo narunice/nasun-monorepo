@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useUnifiedBalance, formatTokenBreakdown } from './useUnifiedBalance';
 import { formatUsdValue, formatPercentage } from '../../../lib/prices';
 import type { TokenSymbol } from '../../../lib/prices';
@@ -50,7 +50,8 @@ export function UnifiedBalanceCard({
     hasMarginAccount,
   } = useUnifiedBalance();
 
-  const isConnected = (status === 'unlocked' && walletAccount) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
 
   // Calculate fund distribution
   const inWallet = available - inMargin; // Wallet portion of available

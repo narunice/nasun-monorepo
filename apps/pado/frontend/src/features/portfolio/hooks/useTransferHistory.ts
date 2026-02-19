@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 
 export interface TransferRecord {
   id: string;
@@ -30,13 +30,16 @@ export function useTransferHistory(): UseTransferHistoryResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+
   // Determine active address (zkLogin takes priority)
   const address = isZkConnected
     ? zkState?.address
     : status === 'unlocked'
       ? account?.address
-      : undefined;
-  const isConnected = (status === 'unlocked' && account) || isZkConnected;
+      : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined);
+  const isConnected = (status === 'unlocked' && account) || isZkConnected || isPasskeyUnlocked;
 
   // Clear transfers immediately when address changes (prevents stale data)
   useEffect(() => {

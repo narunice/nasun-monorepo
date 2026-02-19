@@ -4,7 +4,7 @@
  */
 
 import { useCallback } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTotalValue } from '../hooks';
 import { useCostBasis } from '../hooks/useCostBasis';
 import { useTradeHistory } from '../hooks/useTradeHistory';
@@ -18,7 +18,8 @@ export function AssetOverview() {
   const { totalPnl, totalRealizedPnl, totalUnrealizedPnl, entries: costEntries, isLoading: isPnlLoading } = useCostBasis();
   const { trades, stats: tradeStats } = useTradeHistory();
 
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
 
   const handleExport = useCallback(() => {
     const date = new Date().toISOString().slice(0, 10);

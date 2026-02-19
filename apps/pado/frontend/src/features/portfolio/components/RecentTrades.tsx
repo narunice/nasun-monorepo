@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
 import { generateCsv, downloadCsv } from '../../../lib/csv-export';
 import { useNow } from '@/hooks/useNow';
@@ -319,7 +319,8 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
   const now = useNow();
 
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
 
   // Derive unique market names from trades
   const markets = useMemo(() => {

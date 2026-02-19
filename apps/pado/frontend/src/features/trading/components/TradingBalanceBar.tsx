@@ -12,7 +12,7 @@
  */
 
 import { useState } from 'react';
-import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
+import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from '@nasun/wallet';
 
 interface TradingBalanceBarProps {
   /** Base token symbol (e.g., 'NBTC', 'NASUN') */
@@ -42,7 +42,8 @@ export function TradingBalanceBar({
   // Wallet connection state
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
 
   // Wallet balances
   const { data: multiBalance, isLoading: isWalletLoading } = useMultiBalance();
