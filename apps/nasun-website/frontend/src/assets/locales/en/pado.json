@@ -212,40 +212,6 @@
       "closing": "We believe this balance is essential to protecting the long-term integrity—and the underlying values—of the Nasun ecosystem."
     }
   },
-  "initiative": {
-    "title": "The Pado Initiative",
-    "intro": "The Pado Initiative is a strategic roadmap to revolutionize on-chain finance.",
-    "buildingTogether": {
-      "title": "What We Are Building Together",
-      "description": "Collaborative financial infrastructure for the decentralized future."
-    },
-    "products": {
-      "perpetuals": {
-        "title": "Perpetuals & Spot DEX",
-        "description": "High-performance trading with deep liquidity."
-      },
-      "predictions": {
-        "title": "Predictions Market",
-        "description": "Decentralized forecasting on global events."
-      },
-      "rwa": {
-        "title": "Real-World Assets (RWA)",
-        "description": "Bridging traditional assets with blockchain efficiency."
-      },
-      "moneyMarket": {
-        "title": "Money Market",
-        "description": "Algorithmic lending and borrowing protocols."
-      },
-      "crossMarket": {
-        "title": "Cross-Market Integrations",
-        "description": "Unified liquidity and composability across products."
-      }
-    },
-    "closing": {
-      "p1": "Join the initiative and shape the future of Pado.",
-      "p2": "Together, we build a more open and accessible financial system."
-    }
-  },
   "unifiedOnchain": {
     "pageTitle": "Pado: The Unified Onchain Finance Layer",
     "subtitle": {

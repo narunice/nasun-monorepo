@@ -1,8 +1,8 @@
 {
   "hero": {
     "tagline": "Architecture for Social Finance",
-    "subTagline": "객체 지향 금융 체인 위의 실시간 소셜 인프라.",
-    "button": "Pado Open Alpha"
+    "subTagline": "Real-time social infrastructure on an object-oriented financial chain.",
+    "button": "Try Pado Alpha"
   },
   "chain": {
     "title": "Why a New Chain",
@@ -27,31 +27,49 @@
     ]
   },
   "social": {
-    "title": "Social Infrastructure",
+    "title": "소셜 인프라",
     "intro": "소셜 레이어는 부가 기능이 아닙니다. 트레이딩 엔진과 동일한 엄밀함으로 구축된 코어 인프라입니다 — 실시간, 인증 기반, 모든 화면에 통합.",
     "chat": {
       "title": "Chat Server",
       "description": "암호화 서명 인증 기반의 WebSocket 실시간 메시징. 모든 메시지는 검증된 온체인 아이덴티티에 연결됩니다. SQLite 영속성으로 재접속 시에도 메시지 히스토리가 유지됩니다. 레이트 리미팅과 DoS 방지로 대규모에서도 서비스를 보호합니다.",
-      "specs": ["Signature Auth", "SQLite Persistence", "Rate Limiting", "DoS Prevention"]
+      "specs": [
+        "Signature Auth",
+        "SQLite Persistence",
+        "Rate Limiting",
+        "DoS Prevention"
+      ]
     },
     "rooms": {
       "title": "Room Architecture",
       "description": "마켓별 채널, 일반 토론, 구조화된 대화를 지원하는 멀티룸 시스템. 답글 스레딩으로 활성 채팅방 내에서 집중적인 토론이 가능합니다. 닉네임은 지갑 수준의 검증을 포기하지 않으면서 가독성 있는 아이덴티티를 제공합니다.",
-      "specs": ["Multi-Room", "Reply Threading", "Nickname System", "REST API"]
+      "specs": [
+        "Multi-Room",
+        "Reply Threading",
+        "Nickname System",
+        "REST API"
+      ]
     },
     "leaderboard": {
       "title": "Leaderboard Engine",
       "description": "Rust 이벤트 인덱서가 처리한 온체인 트레이딩 데이터에서 랭킹을 산출합니다. 자가 보고 지표도, 오프체인 조작도 없습니다. 모든 포지션, 모든 PnL, 모든 순위가 체인에서 검증 가능합니다.",
-      "specs": ["On-chain Data", "Rust Indexer", "Verifiable Rankings"]
+      "specs": [
+        "On-chain Data",
+        "Rust Indexer",
+        "Verifiable Rankings"
+      ]
     },
     "auth": {
       "title": "Auth Bridge",
       "description": "트레이딩과 소셜이 같은 키페어를 사용합니다. 거래 서명과 메시지 서명이 같은 아이덴티티로. zkLogin 유저는 트랜잭션에 사용하는 것과 같은 임시 키로 채팅 서버에 인증합니다 — 별도 로그인 없음, 추가 마찰 없음.",
-      "specs": ["Unified Identity", "zkLogin Support", "No Separate Login"]
+      "specs": [
+        "Unified Identity",
+        "zkLogin Support",
+        "No Separate Login"
+      ]
     }
   },
   "account": {
-    "title": "Smart Account Architecture",
+    "title": "스마트 계정 아키텍처",
     "intro": "사용자는 시드 구문을 현대적 인증으로 대체하면서도 완전한 키 제어를 유지하는 비수탁형 스마트 계정을 통해 상호작용합니다.",
     "features": [
       {
@@ -73,34 +91,54 @@
     ]
   },
   "markets": {
-    "title": "Market Infrastructure",
+    "title": "마켓 인프라",
     "intro": "모든 시장은 Move 스마트 컨트랙트를 통해 네이티브 온체인으로 실행됩니다. 오프체인 매칭도, 중앙화된 시퀀서도 없습니다.",
     "deepbook": {
-      "title": "DeepBook V3 — Central Limit Order Book",
+      "title": "DeepBook V3 — 중앙지정가 주문장",
       "description": "가격-시간 우선순위 매칭을 갖춘 완전한 온체인 CLOB. 지정가 주문, 시장가 주문, Fill-or-Kill 의미론을 지원합니다. Rust 기반 인덱서가 트레이딩 UI를 위해 DeepBook 이벤트를 실시간 처리합니다.",
-      "specs": ["온체인 매칭 엔진", "Rust 이벤트 인덱서", "Level 2 호가창 깊이", "실시간 체결 스트리밍"]
+      "specs": [
+        "온체인 매칭 엔진",
+        "Rust 이벤트 인덱서",
+        "Level 2 호가창 깊이",
+        "실시간 체결 스트리밍"
+      ]
     },
     "prediction": {
       "title": "Prediction Markets",
       "description": "결과별 전용 오더북을 가진 이진 YES/NO 결과 시장. NUSDC 담보. 관리자 오라클 또는 자동 정산을 통해 온체인에서 마켓이 결정됩니다.",
-      "specs": ["이진 결과 오더북", "NUSDC 담보", "온체인 정산", "관리자 마켓 생성"]
+      "specs": [
+        "이진 결과 오더북",
+        "NUSDC 담보",
+        "온체인 정산",
+        "관리자 마켓 생성"
+      ]
     },
     "lottery": {
       "title": "On-Chain Lottery",
       "description": "Sui Random(VRF)을 사용한 검증 가능한 공정 추첨의 주간 복권. 1-32에서 5개 번호 선택(201,376 조합). 3단계 상금 분배: 잭팟 60%, 2등 25%, 3등 15%.",
-      "specs": ["Sui Random VRF", "5개 번호 선택 (1-32)", "다단계 상금", "주소당 최대 100장"]
+      "specs": [
+        "Sui Random VRF",
+        "5개 번호 선택 (1-32)",
+        "다단계 상금",
+        "주소당 최대 100장"
+      ]
     },
     "oracle": {
-      "title": "DevOracle — Price Feeds",
+      "title": "DevOracle — 가격 피드",
       "description": "BTC, ETH, NASUN 피드를 제공하는 관리자 제어 가격 오라클. CoinGecko/Binance 폴링을 통해 30초마다 갱신. 마진 계산, 청산, 무기한 선물 펀딩 레이트를 구동합니다.",
-      "specs": ["30초 갱신 주기", "다중 소스 폴링", "청산 트리거", "펀딩 레이트 계산"]
+      "specs": [
+        "30초 갱신 주기",
+        "다중 소스 폴링",
+        "청산 트리거",
+        "펀딩 레이트 계산"
+      ]
     }
   },
   "margin": {
-    "title": "Capital Infrastructure",
+    "title": "캐피탈 인프라",
     "intro": "포트폴리오 레벨 리스크 엔진이 단일 마진 프레임워크 하에서 모든 포지션을 평가합니다. 리스크는 프로토콜별이 아닌 계정별로 계산됩니다. 이것은 자본이 계속 흐르게 하고 — 유저가 떠날 필요 없게 하는 인프라입니다.",
     "collateral": {
-      "title": "Multi-Collateral System",
+      "title": "멀티 담보 시스템",
       "items": [
         "NUSDC: 담보 가치 100% (헤어컷 0%)",
         "NBTC: 담보 가치 90% (헤어컷 10%)",
@@ -108,16 +146,32 @@
       ]
     },
     "thresholds": {
-      "title": "4-Tier Risk Thresholds",
+      "title": "4단계 리스크 임계값",
       "items": [
-        { "label": "Initial Margin (IM)", "value": "10%", "description": "신규 포지션 오픈에 필요" },
-        { "label": "Warning Level", "value": "8%", "description": "경고 임계값, 신규 포지션 불가" },
-        { "label": "Maintenance Margin (MM)", "value": "5%", "description": "청산 트리거 포인트" },
-        { "label": "Forced Close (FC)", "value": "3%", "description": "전체 포지션 강제 청산" }
+        {
+          "label": "Initial Margin (IM)",
+          "value": "10%",
+          "description": "신규 포지션 오픈에 필요"
+        },
+        {
+          "label": "Warning Level",
+          "value": "8%",
+          "description": "경고 임계값, 신규 포지션 불가"
+        },
+        {
+          "label": "Maintenance Margin (MM)",
+          "value": "5%",
+          "description": "청산 트리거 포인트"
+        },
+        {
+          "label": "Forced Close (FC)",
+          "value": "3%",
+          "description": "전체 포지션 강제 청산"
+        }
       ]
     },
     "liquidation": {
-      "title": "Liquidation Mechanics",
+      "title": "청산 메커니즘",
       "items": [
         "부분 청산: 이벤트당 최대 50%",
         "청산 보너스: 키퍼를 위한 5% 인센티브",
@@ -136,33 +190,82 @@
     }
   },
   "stack": {
-    "title": "Tech Stack & Deployed Contracts",
+    "title": "기술 스택 & 배포된 컨트랙트",
     "frontend": {
       "title": "Frontend",
-      "items": ["React 19", "Vite 7", "TypeScript 5.9", "TailwindCSS 3.4", "Zustand (state)", "TanStack Query (server state)", "Lightweight Charts (trading)"]
+      "items": [
+        "React 19",
+        "Vite 7",
+        "TypeScript 5.9",
+        "TailwindCSS 3.4",
+        "Zustand (state)",
+        "TanStack Query (server state)",
+        "Lightweight Charts (trading)"
+      ]
     },
     "backend": {
-      "title": "Backend & Infrastructure",
-      "items": ["Node.js WebSocket 채팅 서버", "Move 스마트 컨트랙트 (Sui/Nasun)", "Rust 인덱서 (DeepBook V3)", "SQLite 메시지 저장", "EC2 + nginx 배포"]
+      "title": "백엔드 & 인프라",
+      "items": [
+        "Node.js WebSocket 채팅 서버",
+        "Move 스마트 컨트랙트 (Sui/Nasun)",
+        "Rust 인덱서 (DeepBook V3)",
+        "SQLite 메시지 저장",
+        "EC2 + nginx 배포"
+      ]
     },
     "contracts": {
-      "title": "Deployed Contracts (Nasun Devnet V7)",
+      "title": "배포된 컨트랙트 (Nasun Devnet V7)",
       "items": [
-        { "name": "Chat Server (WebSocket)", "status": "Live" },
-        { "name": "Tokens (NBTC, NUSDC, Faucet)", "status": "Live" },
-        { "name": "DeepBook V3 CLOB", "status": "Live" },
-        { "name": "Prediction Markets", "status": "Live" },
-        { "name": "Lottery", "status": "Live" },
-        { "name": "DevOracle", "status": "Live" },
-        { "name": "Lending Pool", "status": "Live" },
-        { "name": "Unified Margin", "status": "Live" },
-        { "name": "Perpetuals", "status": "배포 대기" },
-        { "name": "Smart Account (NSA)", "status": "Live" }
+        {
+          "name": "Chat Server (WebSocket)",
+          "status": "Live"
+        },
+        {
+          "name": "Tokens (NBTC, NUSDC, Faucet)",
+          "status": "Live"
+        },
+        {
+          "name": "DeepBook V3 CLOB",
+          "status": "Live"
+        },
+        {
+          "name": "Prediction Markets",
+          "status": "Live"
+        },
+        {
+          "name": "Lottery",
+          "status": "Live"
+        },
+        {
+          "name": "DevOracle",
+          "status": "Live"
+        },
+        {
+          "name": "Lending Pool",
+          "status": "Live"
+        },
+        {
+          "name": "Unified Margin",
+          "status": "Live"
+        },
+        {
+          "name": "Perpetuals",
+          "status": "배포 대기"
+        },
+        {
+          "name": "Smart Account (NSA)",
+          "status": "Live"
+        }
       ]
     },
     "network": {
       "title": "Network",
-      "items": ["Chain ID: 272218f1", "RPC: rpc.devnet.nasun.io", "Explorer: explorer.nasun.io/devnet", "Native Token: NASUN (unit: SOE)"]
+      "items": [
+        "Chain ID: 272218f1",
+        "RPC: rpc.devnet.nasun.io",
+        "Explorer: explorer.nasun.io/devnet",
+        "Native Token: NASUN (unit: SOE)"
+      ]
     }
   },
   "cta": {

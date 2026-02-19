@@ -1,8 +1,8 @@
 {
   "hero": {
     "tagline": "The Opportunity",
-    "subTagline": "커뮤니티가 제품 안에서 형성되는 유일한 DEX.",
-    "button": "Pado Open Alpha"
+    "subTagline": "The only DEX where community forms inside the product.",
+    "button": "Try Pado Alpha"
   },
   "market": {
     "title": "The Market",
@@ -52,10 +52,26 @@
     "title": "Traction & Execution",
     "intro": "백서가 아닙니다. 로드맵이 아닙니다. 작동하는 프로토타입입니다.",
     "metrics": [
-      { "label": "스마트 컨트랙트 패키지", "value": "9", "detail": "Nasun Devnet V7에 배포" },
-      { "label": "금융 상품", "value": "7", "detail": "라이브 운영 중" },
-      { "label": "커스텀 L1 블록체인", "value": "1", "detail": "자체 밸리데이터 세트의 Sui 포크" },
-      { "label": "외부 자금", "value": "$0", "detail": "현재까지 완전 부트스트랩" }
+      {
+        "label": "스마트 컨트랙트 패키지",
+        "value": "9",
+        "detail": "Nasun Devnet V7에 배포"
+      },
+      {
+        "label": "금융 상품",
+        "value": "7",
+        "detail": "라이브 운영 중"
+      },
+      {
+        "label": "커스텀 L1 블록체인",
+        "value": "1",
+        "detail": "자체 밸리데이터 세트의 Sui 포크"
+      },
+      {
+        "label": "외부 자금",
+        "value": "$0",
+        "detail": "현재까지 완전 부트스트랩"
+      }
     ],
     "deployed": [
       "서명 기반 인증의 WebSocket 채팅 서버",
