@@ -217,9 +217,12 @@ interface TradeListContentProps {
   isExpanded: boolean;
   onLoadMore: () => void;
   onCollapse: () => void;
+  hasNextRpcPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadNextPage?: () => void;
 }
 
-function TradeListContent({ filteredTrades, displayedTrades, hasMore, isExpanded, onLoadMore, onCollapse }: TradeListContentProps) {
+function TradeListContent({ filteredTrades, displayedTrades, hasMore, isExpanded, onLoadMore, onCollapse, hasNextRpcPage, isFetchingNextPage, onLoadNextPage }: TradeListContentProps) {
   if (filteredTrades.length === 0) {
     return (
       <div className="p-8 text-center text-theme-text-muted">
@@ -282,6 +285,21 @@ function TradeListContent({ filteredTrades, displayedTrades, hasMore, isExpanded
           )}
         </div>
       )}
+
+      {/* Load older trades from chain */}
+      {!hasMore && hasNextRpcPage && onLoadNextPage && (
+        <div className="p-4 border-t border-theme-border">
+          <button
+            onClick={onLoadNextPage}
+            disabled={isFetchingNextPage}
+            className="w-full py-2 px-4 text-sm font-medium text-pd1 dark:text-pd3
+                       bg-pd5 dark:bg-pd0/30 hover:bg-pd4/80 dark:hover:bg-pd0/40
+                       rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isFetchingNextPage ? 'Loading...' : 'Load older trades'}
+          </button>
+        </div>
+      )}
     </>
   );
 }
@@ -294,7 +312,7 @@ interface RecentTradesProps {
 export function RecentTrades({ embedded = false }: RecentTradesProps) {
   const { status } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
-  const { trades, isLoading, error, refetch } = useTradeHistory();
+  const { trades, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useTradeHistory();
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const [marketFilter, setMarketFilter] = useState<string>('all');
   const [sideFilter, setSideFilter] = useState<SideFilter>('all');
@@ -417,6 +435,9 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
           isExpanded={isExpanded}
           onLoadMore={handleLoadMore}
           onCollapse={handleCollapse}
+          hasNextRpcPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onLoadNextPage={fetchNextPage}
         />
       </>
     );
@@ -517,6 +538,9 @@ export function RecentTrades({ embedded = false }: RecentTradesProps) {
         isExpanded={isExpanded}
         onLoadMore={handleLoadMore}
         onCollapse={handleCollapse}
+        hasNextRpcPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        onLoadNextPage={fetchNextPage}
       />
     </div>
   );

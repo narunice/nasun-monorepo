@@ -44,7 +44,7 @@ export function OrderHistory() {
   const quoteSymbol = currentPool.quoteToken.symbol;
 
   const { balanceManagerId } = useOrderActions();
-  const { data: orders, isLoading } = useOrderHistory(balanceManagerId, senderAddress);
+  const { data: orders, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useOrderHistory(balanceManagerId, senderAddress);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -164,6 +164,19 @@ export function OrderHistory() {
               Collapse
             </button>
           )}
+        </div>
+      )}
+
+      {/* Load older orders from chain */}
+      {!canShowMore && hasNextPage && (
+        <div className="flex justify-center pt-2 pb-1">
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="text-xs xl:text-sm text-pd1 dark:text-pd3 hover:underline disabled:opacity-50 transition-colors"
+          >
+            {isFetchingNextPage ? 'Loading...' : 'Load older orders'}
+          </button>
         </div>
       )}
     </div>

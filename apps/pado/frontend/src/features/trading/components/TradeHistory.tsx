@@ -144,7 +144,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
   const pair = getMarketLabel();
 
   const { balanceManagerId } = useOrderActions();
-  const { data: trades, isLoading } = useMyTrades(balanceManagerId, senderAddress);
+  const { data: trades, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useMyTrades(balanceManagerId, senderAddress);
   const { entries: costBasis } = useCostBasis();
   const avgBuyPrice = costBasis.find((e) => e.symbol === baseSymbol)?.avgBuyPrice ?? 0;
 
@@ -421,7 +421,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
         <div className="flex justify-center gap-3 pt-2">
           {canShowMore && (
             <button
-              onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, trades.length))}
+              onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredTrades.length))}
               className="text-xs xl:text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors"
             >
               Show {Math.min(PAGE_SIZE, remainingCount)} more
@@ -435,6 +435,19 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
               Collapse
             </button>
           )}
+        </div>
+      )}
+
+      {/* Load older trades from chain */}
+      {!canShowMore && hasNextPage && (
+        <div className="flex justify-center pt-2 pb-1">
+          <button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="text-xs xl:text-sm text-pd1 dark:text-pd3 hover:underline disabled:opacity-50 transition-colors"
+          >
+            {isFetchingNextPage ? 'Loading...' : 'Load older trades'}
+          </button>
         </div>
       )}
     </div>
