@@ -20,8 +20,8 @@
     "readMore": "더 읽기 ↗"
   },
   "newsEvents": {
-    "title": "뉴스 & 이벤트",
-    "subtitle": "나선의 최신 소식",
+    "title": "NEWS & EVENTS",
+    "subtitle": "LATEST UPDATES FROM NASUN",
     "footer": "나선 커뮤니티의 최신 뉴스, 공지사항, 이벤트 소식을 확인하세요.",
     "readMore": "더 읽기 ↗"
   },
@@ -45,6 +45,10 @@
     "joinUsAsWe": {
       "title": "함께하세요",
       "description": "우리와 함께 집단적 잠재력을 발휘하고 상상을 초월하는 미래를 만들어가세요."
+    },
+    "cta": {
+      "unifiedVision": "통합된 비전",
+      "signUp": "회원가입"
     }
   },
   "wave1": {
@@ -60,7 +64,7 @@
     "leaderboard": {
       "title": "리더보드",
       "description": "순위를 올려보세요. 초기의 의미 있는 기여는 인정받습니다. 상위 기여자들은 런칭 보상 풀을 공유하고, 프론티어스 NFT를 받을 기회를 얻습니다.",
-      "cta": "시작하기 ↗"
+      "cta": "지금 시작하기"
     },
     "leader": {
       "title": "관련 커뮤니티나 업계의 리더이거나",
@@ -70,12 +74,19 @@
     "battalionNft": {
       "title": "배틀리온 NFT 무료 민트",
       "description": "게이트웨이 패스 - 무료 패스를 민트하여 프론티어스 이벤트 배율, 독점 경품 자격, 그리고 얼리 테스트 액세스를 잠금 해제하세요.",
-      "cta": "시작하기 ↗"
+      "cta": "화이트리스트 참여"
     },
     "earlyContributor": {
       "title": "초기 기여자",
       "description": "지속되는 지위 - Wave 1에서 리드하여 독점 유틸리티와 장기적 인정을 받는 희귀한 브리게이디어 NFT를 획득하세요.",
-      "cta": "시작하기 ↗"
+      "cta": "프로그램 참여"
     }
+  },
+  "whatWeBuilding": {
+    "prefix": "살펴보기",
+    "gensol": "젠솔",
+    "baram": "바람",
+    "pado": "파도",
+    "nasun": "나선"
   }
 }

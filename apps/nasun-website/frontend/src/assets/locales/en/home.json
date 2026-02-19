@@ -45,6 +45,10 @@
     "joinUsAsWe": {
       "title": "Join us as we",
       "description": "unlock our collective potential and shape a future beyond imagination."
+    },
+    "cta": {
+      "unifiedVision": "A UNIFIED VISION",
+      "signUp": "SIGN UP"
     }
   },
   "wave1": {
@@ -60,7 +64,7 @@
     "leaderboard": {
       "title": "Leaderboard",
       "description": "Climb the Ranks Early and meaningful contribution is recognized. Top contributors share in the launch reward pool and a chance to receive a Frontiers NFT.",
-      "cta": "Get Started ↗"
+      "cta": "Register Now"
     },
     "leader": {
       "title": "If you're a leader",
@@ -70,12 +74,19 @@
     "battalionNft": {
       "title": "Battalion NFT Free Mint",
       "description": "The Gateway Pass Mint your free pass to unlock Frontiers Event multipliers, eligibility for exclusive giveaways, and early testing access.",
-      "cta": "Get Started ↗"
+      "cta": "Join Allowlist"
     },
     "earlyContributor": {
       "title": "Early Contributors",
       "description": "Lasting Status Lead in Wave 1 to earn a rare Brigadier NFT with exclusive utilities and long-term recognition.",
-      "cta": "Get Started ↗"
+      "cta": "Join Program"
     }
+  },
+  "whatWeBuilding": {
+    "prefix": "EXPLORE",
+    "gensol": "GEN SOL",
+    "baram": "BARAM",
+    "pado": "PADO",
+    "nasun": "NASUN"
   }
 }
