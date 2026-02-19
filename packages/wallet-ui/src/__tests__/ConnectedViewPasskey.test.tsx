@@ -2,9 +2,8 @@
  * Tests for passkey header variant in ConnectedView.
  *
  * Covers:
- * - Passkey header rendering (credential name, address, fingerprint icon)
- * - Sign Out button for passkey variant (same as zkLogin)
- * - No Lock/Delete buttons for passkey variant
+ * - Passkey header rendering (credential name, address, addressLabel)
+ * - Lock + Delete buttons for passkey variant (same as self-custody)
  * - Tab rendering with passkey variant
  */
 
@@ -116,36 +115,47 @@ describe('ConnectedView - Passkey Variant', () => {
   // Passkey Header Rendering
   // ------------------------------------------
   describe('Passkey Header', () => {
+    const passkeyHeader = {
+      variant: 'passkey' as const,
+      address: testAddress,
+      displayAddress: testAddress,
+      addressLabel: 'Connected Address',
+      credentialName: 'My Biometric Key',
+    };
+
     it('should display credential name', () => {
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'My Biometric Key' }}
-          onSignOut={vi.fn()}
+          header={passkeyHeader}
+          onLock={vi.fn()}
+          onDelete={vi.fn()}
         />
       );
 
       expect(screen.getByText('My Biometric Key')).toBeInTheDocument();
     });
 
-    it('should display "Passkey Wallet" label', () => {
+    it('should display addressLabel', () => {
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'Test Key' }}
-          onSignOut={vi.fn()}
+          header={{ ...passkeyHeader, addressLabel: 'Connected Address' }}
+          onLock={vi.fn()}
+          onDelete={vi.fn()}
         />
       );
 
-      expect(screen.getByText('Passkey Wallet')).toBeInTheDocument();
+      expect(screen.getByText('Connected Address')).toBeInTheDocument();
     });
 
-    it('should display copyable address', () => {
+    it('should display copyable address using displayAddress', () => {
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'Test' }}
-          onSignOut={vi.fn()}
+          header={passkeyHeader}
+          onLock={vi.fn()}
+          onDelete={vi.fn()}
         />
       );
 
@@ -159,46 +169,73 @@ describe('ConnectedView - Passkey Variant', () => {
   // Session Actions
   // ------------------------------------------
   describe('Session Actions', () => {
-    it('should show Sign Out button (not Lock/Delete)', () => {
+    const passkeyHeader = {
+      variant: 'passkey' as const,
+      address: testAddress,
+      displayAddress: testAddress,
+      addressLabel: 'Connected Address',
+      credentialName: 'Test',
+    };
+
+    it('should show Lock and Remove buttons (not Sign Out)', () => {
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'Test' }}
-          onSignOut={vi.fn()}
+          header={passkeyHeader}
+          onLock={vi.fn()}
+          onDelete={vi.fn()}
         />
       );
 
-      expect(screen.getByText('Sign Out')).toBeInTheDocument();
-      expect(screen.queryByText('Lock')).not.toBeInTheDocument();
-      expect(screen.queryByText('Remove')).not.toBeInTheDocument();
+      expect(screen.getByText('Lock')).toBeInTheDocument();
+      expect(screen.getByText('Remove')).toBeInTheDocument();
+      expect(screen.queryByText('Sign Out')).not.toBeInTheDocument();
     });
 
-    it('should call onSignOut when Sign Out is clicked', () => {
-      const onSignOut = vi.fn();
+    it('should call onLock when Lock is clicked', () => {
+      const onLock = vi.fn();
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'Test' }}
-          onSignOut={onSignOut}
+          header={passkeyHeader}
+          onLock={onLock}
+          onDelete={vi.fn()}
         />
       );
 
-      fireEvent.click(screen.getByText('Sign Out'));
-      expect(onSignOut).toHaveBeenCalled();
+      fireEvent.click(screen.getByText('Lock'));
+      expect(onLock).toHaveBeenCalled();
     });
 
-    it('should show proposal banner for passkey variant with pending invitations', () => {
+    it('should call onDelete when Remove is clicked', () => {
+      const onDelete = vi.fn();
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'Test' }}
-          onSignOut={vi.fn()}
+          header={passkeyHeader}
+          onLock={vi.fn()}
+          onDelete={onDelete}
+        />
+      );
+
+      fireEvent.click(screen.getByText('Remove'));
+      expect(onDelete).toHaveBeenCalled();
+    });
+
+    it('should show proposal banner for passkey variant with pending invitations (pro mode)', () => {
+      render(
+        <ConnectedView
+          {...baseSharedProps}
+          isAdvancedMode={true}
+          header={passkeyHeader}
+          onLock={vi.fn()}
+          onDelete={vi.fn()}
           pendingForMe={3}
           proposalBannerDismissed={false}
         />
       );
 
-      // Proposal banner shows for both self-custody and passkey variants
+      // Proposal banner shows for both self-custody and passkey variants in pro mode
       expect(screen.getByText(/pending signer invitation/)).toBeInTheDocument();
     });
   });
@@ -207,12 +244,21 @@ describe('ConnectedView - Passkey Variant', () => {
   // Tab Support
   // ------------------------------------------
   describe('Tabs', () => {
+    const passkeyHeader = {
+      variant: 'passkey' as const,
+      address: testAddress,
+      displayAddress: testAddress,
+      addressLabel: 'Connected Address',
+      credentialName: 'Test',
+    };
+
     it('should render tab bar', () => {
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'Test' }}
-          onSignOut={vi.fn()}
+          header={passkeyHeader}
+          onLock={vi.fn()}
+          onDelete={vi.fn()}
         />
       );
 
@@ -223,8 +269,9 @@ describe('ConnectedView - Passkey Variant', () => {
       render(
         <ConnectedView
           {...baseSharedProps}
-          header={{ variant: 'passkey', address: testAddress, credentialName: 'Test' }}
-          onSignOut={vi.fn()}
+          header={passkeyHeader}
+          onLock={vi.fn()}
+          onDelete={vi.fn()}
           activeTab={'account' as any}
         />
       );
@@ -235,10 +282,10 @@ describe('ConnectedView - Passkey Variant', () => {
   });
 
   // ------------------------------------------
-  // Comparison: zkLogin should also show Sign Out
+  // zkLogin still shows Sign Out (not Lock/Delete)
   // ------------------------------------------
-  describe('Behavior parity with zkLogin', () => {
-    it('zkLogin variant should also show Sign Out (not Lock/Delete)', () => {
+  describe('zkLogin variant still uses Sign Out', () => {
+    it('zkLogin variant should show Sign Out (not Lock/Delete)', () => {
       render(
         <ConnectedView
           {...baseSharedProps}

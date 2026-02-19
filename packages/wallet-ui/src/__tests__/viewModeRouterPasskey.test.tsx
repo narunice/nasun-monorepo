@@ -21,11 +21,25 @@ vi.mock('../connect/wallet-views', () => ({
   ConnectedView: (props: any) => (
     <div data-testid="connected-view" data-variant={props.header?.variant}>
       {props.header?.variant === 'passkey' && (
-        <span data-testid="passkey-cred-name">{props.header.credentialName}</span>
+        <>
+          <span data-testid="passkey-cred-name">{props.header.credentialName}</span>
+          <span data-testid="passkey-display-address">{props.header.displayAddress}</span>
+          <span data-testid="passkey-address-label">{props.header.addressLabel}</span>
+        </>
       )}
       {props.onSignOut && (
         <button data-testid="sign-out" onClick={props.onSignOut}>
           Sign Out
+        </button>
+      )}
+      {props.onLock && (
+        <button data-testid="lock-btn" onClick={props.onLock}>
+          Lock
+        </button>
+      )}
+      {props.onDelete && (
+        <button data-testid="delete-btn" onClick={props.onDelete}>
+          Delete
         </button>
       )}
     </div>
@@ -72,6 +86,18 @@ vi.mock('../connect/LockedStateUI', () => ({
 
 vi.mock('../../walletconnect', () => ({
   WCViewRouter: () => <div data-testid="wc-view" />,
+}));
+
+// Mock @nasun/wallet module with proper usePasskeyStore.getState()
+const mockSetPendingMnemonic = vi.fn();
+vi.mock('@nasun/wallet', () => ({
+  secureZeroString: vi.fn(),
+  usePasskeyStore: {
+    getState: () => ({
+      setPendingMnemonic: mockSetPendingMnemonic,
+      pendingMnemonic: null,
+    }),
+  },
 }));
 
 // Helper: create mock state
@@ -161,6 +187,9 @@ describe('viewModeRouter - Passkey Routes', () => {
     // Dynamic import to ensure mocks are fully applied first
     const mod = await import('../connect/viewModeRouter');
     renderViewContent = mod.renderViewContent;
+    // Clear module-level pending mnemonic from previous tests
+    const { setPendingPasskeyMnemonic } = await import('../connect/hooks/useWalletViewState');
+    setPendingPasskeyMnemonic(null);
   });
 
   // ------------------------------------------
@@ -219,7 +248,7 @@ describe('viewModeRouter - Passkey Routes', () => {
       expect(screen.getByTestId('backup-mnemonic').textContent).toBe(testMnemonic);
     });
 
-    it('should fall through to wallet status when mnemonic is missing', () => {
+    it('should render empty fragment (not fall through) when mnemonic is missing', () => {
       const state = createMockState({
         viewMode: 'passkey-backup',
         mnemonic: null,
@@ -227,8 +256,10 @@ describe('viewModeRouter - Passkey Routes', () => {
       const content = renderViewContent(state, sharedProps);
       render(<>{content}</>);
 
+      // When mnemonic is missing, returns empty fragment (not null)
+      // to prevent fallthrough to ConnectedView/DisconnectedView
       expect(screen.queryByTestId('backup-view')).not.toBeInTheDocument();
-      expect(screen.getByTestId('disconnected-view')).toBeInTheDocument();
+      expect(screen.queryByTestId('disconnected-view')).not.toBeInTheDocument();
     });
 
     it('should clean up on backup confirm', () => {
@@ -292,7 +323,7 @@ describe('viewModeRouter - Passkey Routes', () => {
       expect(screen.getByTestId('passkey-cred-name').textContent).toBe('Passkey Wallet');
     });
 
-    it('should call passkeyLock on sign out', () => {
+    it('should call passkeyLock on Lock button click', () => {
       const passkeyLock = vi.fn();
       const setShowDropdown = vi.fn();
       const state = createMockState({
@@ -307,9 +338,123 @@ describe('viewModeRouter - Passkey Routes', () => {
       const content = renderViewContent(state, sharedProps);
       render(<>{content}</>);
 
-      screen.getByTestId('sign-out').click();
+      screen.getByTestId('lock-btn').click();
       expect(passkeyLock).toHaveBeenCalled();
       expect(setShowDropdown).toHaveBeenCalledWith(false);
+    });
+
+    it('should pass onDelete for passkey connected state', () => {
+      const passkeyDeleteWallet = vi.fn();
+      const state = createMockState({
+        viewMode: 'main',
+        status: 'disconnected',
+        isPasskeyUnlocked: true,
+        passkeyAddress: '0x' + 'b'.repeat(64),
+        passkeyCredentials: [],
+        passkeyDeleteWallet,
+      });
+      const content = renderViewContent(state, sharedProps);
+      render(<>{content}</>);
+
+      expect(screen.getByTestId('delete-btn')).toBeInTheDocument();
+      screen.getByTestId('delete-btn').click();
+      expect(passkeyDeleteWallet).toHaveBeenCalled();
+    });
+
+    it('should NOT show Sign Out button for passkey (uses Lock instead)', () => {
+      const state = createMockState({
+        viewMode: 'main',
+        status: 'disconnected',
+        isPasskeyUnlocked: true,
+        passkeyAddress: '0x' + 'b'.repeat(64),
+        passkeyCredentials: [],
+      });
+      const content = renderViewContent(state, sharedProps);
+      render(<>{content}</>);
+
+      expect(screen.queryByTestId('sign-out')).not.toBeInTheDocument();
+      expect(screen.getByTestId('lock-btn')).toBeInTheDocument();
+    });
+  });
+
+  // ------------------------------------------
+  // displayAddress / addressLabel (Fix 2b)
+  // ------------------------------------------
+  describe('Passkey displayAddress and addressLabel', () => {
+    it('should use signerAddress for displayAddress on Move chain', () => {
+      const passkeyAddr = '0x' + 'b'.repeat(64);
+      const signerAddr = '0x' + 'c'.repeat(64); // chain-derived address
+      const state = createMockState({
+        viewMode: 'main',
+        status: 'disconnected',
+        isPasskeyUnlocked: true,
+        passkeyAddress: passkeyAddr,
+        signerAddress: signerAddr,
+        passkeyCredentials: [],
+        isEVM: false,
+      });
+      const content = renderViewContent(state, sharedProps);
+      render(<>{content}</>);
+
+      expect(screen.getByTestId('passkey-display-address').textContent).toBe(signerAddr);
+      expect(screen.getByTestId('passkey-address-label').textContent).toBe('Connected Address');
+    });
+
+    it('should fall back to passkeyAddress when signerAddress is null', () => {
+      const passkeyAddr = '0x' + 'b'.repeat(64);
+      const state = createMockState({
+        viewMode: 'main',
+        status: 'disconnected',
+        isPasskeyUnlocked: true,
+        passkeyAddress: passkeyAddr,
+        signerAddress: null,
+        passkeyCredentials: [],
+        isEVM: false,
+      });
+      const content = renderViewContent(state, sharedProps);
+      render(<>{content}</>);
+
+      expect(screen.getByTestId('passkey-display-address').textContent).toBe(passkeyAddr);
+    });
+
+    it('should use storedEVMAddress when on EVM chain', () => {
+      const passkeyAddr = '0x' + 'b'.repeat(64);
+      const evmAddr = '0x' + 'ee'.repeat(20);
+      const state = createMockState({
+        viewMode: 'main',
+        status: 'disconnected',
+        isPasskeyUnlocked: true,
+        passkeyAddress: passkeyAddr,
+        signerAddress: null,
+        storedEVMAddress: evmAddr,
+        passkeyCredentials: [],
+        isEVM: true,
+        chain: { id: 'evm-sepolia', name: 'Sepolia', type: 'evm', nativeCurrency: { symbol: 'ETH', name: 'Ether', decimals: 18 }, rpcUrl: '' },
+      });
+      const content = renderViewContent(state, sharedProps);
+      render(<>{content}</>);
+
+      expect(screen.getByTestId('passkey-display-address').textContent).toBe(evmAddr);
+      expect(screen.getByTestId('passkey-address-label').textContent).toBe('Sepolia Address');
+    });
+
+    it('should show "EVM Wallet Not Configured" when EVM but no storedEVMAddress', () => {
+      const passkeyAddr = '0x' + 'b'.repeat(64);
+      const state = createMockState({
+        viewMode: 'main',
+        status: 'disconnected',
+        isPasskeyUnlocked: true,
+        passkeyAddress: passkeyAddr,
+        signerAddress: passkeyAddr,
+        storedEVMAddress: null,
+        passkeyCredentials: [],
+        isEVM: true,
+        chain: { id: 'evm-sepolia', name: 'Sepolia', type: 'evm', nativeCurrency: { symbol: 'ETH', name: 'Ether', decimals: 18 }, rpcUrl: '' },
+      });
+      const content = renderViewContent(state, sharedProps);
+      render(<>{content}</>);
+
+      expect(screen.getByTestId('passkey-address-label').textContent).toBe('EVM Wallet Not Configured');
     });
   });
 
