@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import { LOTTERY_PACKAGE_ID } from '../../lottery/constants';
 import { PREDICTION_PACKAGE_ID } from '../../prediction/constants';
@@ -28,6 +28,8 @@ export interface UseAdminAccessResult {
 export function useAdminAccess(): UseAdminAccessResult {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
   const [isLoading, setIsLoading] = useState(true);
   const [adminCaps, setAdminCaps] = useState<AdminCapInfo>({
@@ -41,7 +43,9 @@ export function useAdminAccess(): UseAdminAccessResult {
     ? zkState?.address
     : isLocalWalletActive
       ? account?.address
-      : undefined;
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   useEffect(() => {
     async function checkAdminCaps() {

@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore, useMultiBalance } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
@@ -28,14 +28,15 @@ type OrderType = 'buy' | 'sell';
 export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const { isLoading, isFaucetLoading, placeBuyOrder, placeSellOrder, mintTokens, requestNusdc } = usePredictionTrade();
   const { data: multiBalance } = useMultiBalance();
   const { hasAccount: hasMarginAccount } = useMarginAccount();
   const { currentMarginFormatted, canTrade, formatRequired } = useRiskEngine();
   const queryClient = useQueryClient();
 
-  // Consider wallet connected if either local wallet is unlocked OR zkLogin is active
-  const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
+  // Consider wallet connected if either local wallet is unlocked OR zkLogin is active OR passkey is unlocked
+  const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
   // NUSDC balance from wallet

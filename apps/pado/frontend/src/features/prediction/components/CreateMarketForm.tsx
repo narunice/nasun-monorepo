@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { usePredictionAdmin } from '../hooks/usePredictionAdmin';
 
 const CATEGORIES = [
@@ -26,6 +26,8 @@ interface CreateMarketFormProps {
 
 export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps) {
   const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const { isLoading, createMarket } = usePredictionAdmin();
 
   const [question, setQuestion] = useState('');
@@ -106,7 +108,8 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
     }
   }, [question, description, category, closeDate, closeTime, resolveDate, resolveTime, resolver, useCurrentAddress, createMarket, onSuccess]);
 
-  const isDisabled = status !== 'unlocked' || isLoading;
+  const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
+  const isDisabled = !isWalletConnected || isLoading;
 
   // Get min dates for inputs
   const today = new Date().toISOString().split('T')[0];
@@ -287,7 +290,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
           >
             {isLoading
               ? 'Creating...'
-              : status !== 'unlocked'
+              : !isWalletConnected
               ? 'Connect Wallet'
               : 'Create Market'}
           </button>

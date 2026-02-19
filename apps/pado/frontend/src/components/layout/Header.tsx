@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { HeaderNetValue } from './HeaderNetValue';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { useAdminAccess } from '../../features/admin';
@@ -63,10 +63,13 @@ export function Header() {
   const { isSimple } = useTradeMode();
   const isTradePage = location.pathname.startsWith('/markets');
 
+  // Passkey state
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+
   // Hide wallet button on homepage only when no wallet exists (WelcomeBanner has "Get Started")
   // Show it when locked (unlock from header) or connected
   const isHomePage = location.pathname === '/';
-  const showWalletButton = !isHomePage || status !== 'disconnected' || isZkLoggedIn;
+  const showWalletButton = !isHomePage || status !== 'disconnected' || isZkLoggedIn || isPasskeyUnlocked;
 
   // Close dropdowns on route change
   useEffect(() => {

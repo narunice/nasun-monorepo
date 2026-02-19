@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { LeverageSlider } from './LeverageSlider';
 import { usePerpMarketContext } from '../context/PerpMarketContext';
 import { usePerpOrder } from '../hooks/usePerpOrder';
@@ -26,7 +26,9 @@ export function PerpOrderForm({
   onOrderSuccess,
   onOrderError,
 }: PerpOrderFormProps) {
-  const { account } = useWallet();
+  const { account, status } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const {
     selectedMarketId,
     selectedMarket,
@@ -142,8 +144,9 @@ export function PerpOrderForm({
   }, [selectedMarketId, formState, currentPrice, openPosition, preview.errors, submitGuard]);
 
   const isLong = formState.side === POSITION_SIDE.LONG;
+  const isWalletConnected = (status === 'unlocked' && !!account?.address) || isZkLoggedIn || isPasskeyUnlocked;
   const isDisabled =
-    !account?.address ||
+    !isWalletConnected ||
     !selectedMarketId ||
     isPriceStale ||
     preview.errors.length > 0 ||
@@ -287,7 +290,7 @@ export function PerpOrderForm({
             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             Opening...
           </span>
-        ) : !account?.address ? (
+        ) : !isWalletConnected ? (
           'Connect Wallet'
         ) : (
           `${isLong ? 'Long' : 'Short'} ${formState.leverage}x`

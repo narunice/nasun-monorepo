@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import {
   getUserPositions,
   calculatePositionValue,
@@ -30,6 +30,8 @@ interface UseLendingPositionsResult {
 export function useLendingPositions(): UseLendingPositionsResult {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const { pool } = useLendingPool();
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
@@ -38,7 +40,9 @@ export function useLendingPositions(): UseLendingPositionsResult {
     ? zkState?.address
     : status === 'unlocked'
       ? account?.address
-      : undefined;
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   const {
     data: rawPositions,

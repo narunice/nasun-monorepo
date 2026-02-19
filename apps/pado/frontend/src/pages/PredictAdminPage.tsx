@@ -4,7 +4,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { CreateMarketForm, usePredictionAdmin } from '../features/prediction';
 
 // Admin address that owns AdminCap (from devnet-config)
@@ -13,6 +13,8 @@ const ADMIN_ADDRESS = import.meta.env.VITE_PREDICTION_RESOLVER_ADDRESS || '';
 export function PredictAdminPage() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const { isResolver } = usePredictionAdmin();
   const navigate = useNavigate();
 
@@ -21,7 +23,9 @@ export function PredictAdminPage() {
     ? zkState?.address
     : status === 'unlocked'
       ? account?.address
-      : undefined;
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
   const isAdmin = walletAddress === ADMIN_ADDRESS;
 
   const handleSuccess = (digest: string) => {

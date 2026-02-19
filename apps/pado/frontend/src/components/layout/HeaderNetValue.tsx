@@ -9,14 +9,15 @@
  * @version 2.0.0 (Phase 16.1)
  */
 
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useUnifiedBalance } from '../../features/core/unified-margin';
 import { formatUsdValue, formatPercentage } from '../../lib/prices';
 
 export function HeaderNetValue() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isConnected = isZkLoggedIn || (status === 'unlocked' && account);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = isZkLoggedIn || (status === 'unlocked' && account) || isPasskeyUnlocked;
 
   const { totalValue, totalChange24h, isLoading } = useUnifiedBalance();
 

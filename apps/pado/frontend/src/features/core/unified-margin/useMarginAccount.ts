@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useWallet, useZkLogin, getSuiClient } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore, getSuiClient } from '@nasun/wallet';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { SuiObjectChange } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
@@ -51,13 +51,22 @@ interface UseMarginAccountResult {
 export function useMarginAccount(): UseMarginAccountResult {
   const { account: walletAccount, status, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const queryClient = useQueryClient();
   const adaptiveInterval = useAdaptiveInterval(10_000);
 
-  // Determine active wallet (zkLogin takes priority)
+  // Determine active wallet (zkLogin > local > passkey)
   const isLocalWalletActive = status === 'unlocked' && !!walletAccount?.address;
-  const activeAddress = isZkLoggedIn ? zkState?.address : walletAccount?.address;
-  const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
+  const activeAddress = isZkLoggedIn
+    ? zkState?.address
+    : isLocalWalletActive
+      ? walletAccount?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
+  const isWalletConnected = isZkLoggedIn || isLocalWalletActive || isPasskeyUnlocked;
 
   const [marginAccountId, setMarginAccountId] = useState<string | null>(null);
 
@@ -146,6 +155,10 @@ export function useMarginAccount(): UseMarginAccountResult {
       if (isZkLoggedIn && zkState) {
         // zkLogin signing
         signature = await zkSignTransaction(bytes);
+      } else if (isPasskeyUnlocked && passkeyKeypair) {
+        // Passkey signing
+        const signResult = await passkeyKeypair.signTransaction(bytes);
+        signature = signResult.signature;
       } else {
         // Local wallet signing
         const keypair = getKeypair();
@@ -166,7 +179,7 @@ export function useMarginAccount(): UseMarginAccountResult {
 
       return result;
     },
-    [activeAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]
+    [activeAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]
   );
 
   // Create account mutation

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useWallet, useZkLogin } from "@nasun/wallet";
+import { useWallet, useZkLogin, usePasskeyStore } from "@nasun/wallet";
 import { useLotteryActions } from "../hooks";
 import { useToast } from "@/components/common/Toast";
 import { generateQuickPick, formatNusdc } from "../lib/lottery-client";
@@ -15,12 +15,13 @@ interface TicketPurchaseFormProps {
 export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseFormProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const { buyTicket, isBuying, error } = useLotteryActions();
   const { showToast } = useToast();
   const [selectedNumbers, setSelectedNumbers] = useState<Set<number>>(new Set());
 
-  // Detect both regular wallet and zkLogin connection
-  const isConnected = isZkLoggedIn || (status === "unlocked" && !!account);
+  // Detect both regular wallet, zkLogin, and passkey connection
+  const isConnected = isZkLoggedIn || (status === "unlocked" && !!account) || isPasskeyUnlocked;
   const now = useNow();
   const isRoundOpen = now < round.closeTime;
   const canPurchase =
