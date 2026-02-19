@@ -7,7 +7,7 @@
 import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '../../../lib/sui-client';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { formatErrorMessage } from '../utils/errorParser';
 import type { TradeResult, SuiEvent } from '../types';
 
@@ -21,9 +21,18 @@ interface UseTransactionExecutorResult {
 export function useTransactionExecutor(): UseTransactionExecutorResult {
   const { account, getKeypair, status } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
   const isLocalWalletActive = status === 'unlocked' && account?.address;
-  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : isLocalWalletActive
+      ? account?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,9 +42,9 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
       return { success: false, error: 'Wallet not connected' };
     }
 
-    // Only retrieve keypair for local wallet signing (not needed for zkLogin)
-    const keypair = !isZkLoggedIn ? getKeypair() : null;
-    if (!isZkLoggedIn && !keypair) {
+    // Only retrieve keypair for local wallet signing (not needed for zkLogin or passkey)
+    const keypair = !isZkLoggedIn && !isPasskeyUnlocked ? getKeypair() : null;
+    if (!isZkLoggedIn && !isPasskeyUnlocked && !keypair) {
       return { success: false, error: 'No signing method available' };
     }
 
@@ -48,12 +57,15 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
       tx.setSender(walletAddress);
       const bytes = await tx.build({ client });
 
-      // Sign with appropriate method
+      // Sign with appropriate method (priority: zkLogin > local > passkey)
       let signature: string;
       if (isZkLoggedIn && zkState) {
         signature = await zkSignTransaction(bytes);
       } else if (keypair) {
         const signResult = await keypair.signTransaction(bytes);
+        signature = signResult.signature;
+      } else if (isPasskeyUnlocked && passkeyKeypair) {
+        const signResult = await passkeyKeypair.signTransaction(bytes);
         signature = signResult.signature;
       } else {
         return { success: false, error: 'No signing method available' };
@@ -93,7 +105,7 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
     } finally {
       setIsLoading(false);
     }
-  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]);
+  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]);
 
   return {
     isLoading,

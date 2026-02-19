@@ -5,7 +5,7 @@
  * Benchmarked from Coinbase App portfolio strip.
  */
 
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTotalValue, type TokenValue } from '../../portfolio/hooks';
 
 const TOKEN_COLORS: Record<string, string> = {
@@ -31,7 +31,8 @@ export function MobileTokenPills() {
   const { isConnected: isZkConnected } = useZkLogin();
   const { tokens, isLoading } = useTotalValue();
 
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
 
   if (!isConnected || isLoading || tokens.length === 0) return null;
 

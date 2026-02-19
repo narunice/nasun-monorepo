@@ -6,7 +6,7 @@
 
 import { useMemo } from 'react';
 import { useTotalValue, type TokenValue } from '../hooks/useTotalValue';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 
 // Token color mapping
 const TOKEN_COLORS: Record<string, string> = {
@@ -82,7 +82,8 @@ function formatValue(value: number): string {
 export function AllocationDonut() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
 
   const { totalValue, tokens, isLoading } = useTotalValue();
 

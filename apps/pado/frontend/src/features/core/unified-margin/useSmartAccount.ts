@@ -13,7 +13,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
+import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from '@nasun/wallet';
 import { useMarginAccount } from './useMarginAccount';
 import { useUnifiedBalance } from './useUnifiedBalance';
 import { usePrices } from '../usePrices';
@@ -117,13 +117,18 @@ export function useSmartAccount(): SmartAccountState {
   const { status, account: walletAccount } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
 
-  const isConnected = (status === 'unlocked' && !!walletAccount) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+
+  const isConnected = (status === 'unlocked' && !!walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
   const address = isZkLoggedIn
     ? zkState?.address ?? null
     : status === 'unlocked'
       ? walletAccount?.address ?? null
-      : null;
-  const authType: AuthType = isZkLoggedIn ? 'zkLogin' : status === 'unlocked' ? 'embedded' : 'none';
+      : isPasskeyUnlocked
+        ? passkeyAddress
+        : null;
+  const authType: AuthType = isZkLoggedIn ? 'zkLogin' : status === 'unlocked' ? 'embedded' : isPasskeyUnlocked ? 'embedded' : 'none';
 
   // === Data Sources ===
   const { data: walletBalance, isLoading: isWalletLoading } = useMultiBalance();

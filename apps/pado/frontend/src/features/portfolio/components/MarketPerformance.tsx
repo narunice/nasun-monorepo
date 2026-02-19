@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTradeHistory, type UserTrade } from '../hooks/useTradeHistory';
 import { useCostBasis } from '../hooks/useCostBasis';
 import { getUnifiedPrice, type TokenSymbol } from '@/lib/prices';
@@ -135,7 +135,8 @@ export function MarketPerformance() {
   const [period, setPeriod] = useState<Period>('all');
   const now = useNow();
 
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
 
   const avgBuyPrices = useMemo(() => {
     const map = new Map<string, number>();

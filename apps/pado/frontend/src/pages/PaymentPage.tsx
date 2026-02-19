@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { SendTransaction } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useLocation } from 'react-router-dom';
 import { PaymentQRCode } from '../features/payments';
 
@@ -18,7 +18,8 @@ export function PaymentPage() {
   const { isConnected: isZkConnected } = useZkLogin();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>('send');
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
 
   // Use location state key to remount SendTransaction when nav clicked again
   const stateKey = (location.state as { key?: number } | null)?.key || 'default';
