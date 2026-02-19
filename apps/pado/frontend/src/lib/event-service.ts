@@ -18,7 +18,7 @@ import type {
 } from '../features/trading/types/events';
 
 // Polling configuration
-const POLLING_INTERVAL = 2000; // 2 seconds
+const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_INTERVAL = 30000; // 30 seconds max backoff
 const MAX_EVENTS_PER_POLL = 50;
 
@@ -51,6 +51,7 @@ export class EventService {
   private poolFilter: string | null = null;
   private consecutiveFailures = 0;
   private modeChangeCallbacks: Set<ModeChangeCallback> = new Set();
+  private visibilityHandler: (() => void) | null = null;
 
   constructor() {
     // Initialize subscriber maps
@@ -78,7 +79,7 @@ export class EventService {
       const pollingSuccess = await this.tryPolling();
       if (pollingSuccess) {
         this.setMode('polling');
-        console.log('[EventService] Connected via Polling (2s interval)');
+        console.log('[EventService] Connected via Polling (5s interval)');
         this.isConnecting = false;
         return this.mode;
       }
@@ -107,6 +108,11 @@ export class EventService {
     if (this.pollingInterval) {
       clearTimeout(this.pollingInterval);
       this.pollingInterval = null;
+    }
+
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
     }
 
     this.setMode('simulation');
@@ -197,6 +203,18 @@ export class EventService {
    * Start polling for events
    */
   private startPolling(): void {
+    // Listen for tab visibility changes to pause/resume polling
+    if (!this.visibilityHandler) {
+      this.visibilityHandler = () => {
+        if (document.visibilityState === 'visible') {
+          // Tab became visible: cancel pending timer, immediately poll and resume schedule
+          if (this.pollingInterval) clearTimeout(this.pollingInterval);
+          this.pollEvents().then(() => this.scheduleNextPoll());
+        }
+        // When hidden, scheduleNextPoll will skip via the visibility check below
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
     this.scheduleNextPoll();
   }
 
@@ -212,6 +230,11 @@ export class EventService {
     );
 
     this.pollingInterval = setTimeout(async () => {
+      // Skip polling when tab is hidden to reduce RPC load
+      if (document.visibilityState === 'hidden') {
+        this.scheduleNextPoll();
+        return;
+      }
       await this.pollEvents();
       this.scheduleNextPoll();
     }, delay);

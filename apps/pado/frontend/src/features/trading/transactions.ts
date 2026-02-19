@@ -360,6 +360,38 @@ export function buildCancelOrder(
 }
 
 /**
+ * Batch cancel multiple orders in a single PTB.
+ * Avoids shared-object version conflicts that occur when cancelling sequentially.
+ */
+export function buildCancelAllOrders(
+  balanceManagerId: string,
+  orderIds: string[],
+  pool: PoolConfig = DEFAULT_POOL,
+): Transaction {
+  const tx = new Transaction();
+
+  for (const orderId of orderIds) {
+    const tradeProof = generateProofAsOwner(tx, balanceManagerId);
+    tx.moveCall({
+      target: `${NETWORK_CONFIG.deepbookPackage}::pool::cancel_order`,
+      typeArguments: [
+        pool.baseToken.type!,
+        pool.quoteToken.type!,
+      ],
+      arguments: [
+        tx.object(pool.id!),
+        tx.object(balanceManagerId),
+        tradeProof,
+        tx.pure.u128(orderId),
+        tx.object(CLOCK_ID),
+      ],
+    });
+  }
+
+  return tx;
+}
+
+/**
  * 단순 스왑 (BalanceManager 없이)
  * Base → Quote 스왑
  */

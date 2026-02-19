@@ -9,6 +9,7 @@ import {
   buildPlaceLimitOrder,
   buildPlaceMarketOrder,
   buildCancelOrder,
+  buildCancelAllOrders,
   buildCreateBalanceManager,
   buildDeposit,
   buildDepositAll,
@@ -61,6 +62,7 @@ interface UseTrading {
   placeLimitOrder: (params: PlaceLimitOrderParams) => Promise<TradeResult>;
   placeMarketOrder: (params: PlaceMarketOrderParams) => Promise<TradeResult>;
   cancelOrder: (orderId: string) => Promise<TradeResult>;
+  cancelAllOrders: (orderIds: string[]) => Promise<TradeResult>;
 
   // Convenience orders (for UI)
   placeBuyOrder: (price: number, amount: number, orderType?: OrderType) => Promise<TradeResult>;
@@ -234,6 +236,19 @@ export function useTrading(): UseTrading {
     return executeTransaction(tx);
   }, [balanceManagerId, executeTransaction, currentPool]);
 
+  const cancelAllOrders = useCallback(async (orderIds: string[]): Promise<TradeResult> => {
+    if (!balanceManagerId) {
+      return { success: false, error: 'BalanceManager not created' };
+    }
+    if (orderIds.length === 0) return { success: true };
+    if (orderIds.length === 1) {
+      const tx = buildCancelOrder(balanceManagerId, orderIds[0], currentPool);
+      return executeTransaction(tx);
+    }
+    const tx = buildCancelAllOrders(balanceManagerId, orderIds, currentPool);
+    return executeTransaction(tx);
+  }, [balanceManagerId, executeTransaction, currentPool]);
+
   const placeBuyOrder = useCallback(async (
     price: number,
     amount: number,
@@ -368,6 +383,7 @@ export function useTrading(): UseTrading {
     placeLimitOrder,
     placeMarketOrder,
     cancelOrder,
+    cancelAllOrders,
     placeBuyOrder,
     placeSellOrder,
     requestNbtc,

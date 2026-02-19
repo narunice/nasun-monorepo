@@ -124,6 +124,7 @@ export function useOrderActions(): UseOrderActionsResult {
     placeSellOrder,
     placeMarketOrder,
     cancelOrder,
+    cancelAllOrders,
     createBalanceManager,
     depositAllTokens,
     withdrawAllTokens,
@@ -227,8 +228,11 @@ export function useOrderActions(): UseOrderActionsResult {
     setTimeout(() => {
       queryClient.invalidateQueries({ queryKey: ["balances"] });
       queryClient.invalidateQueries({ queryKey: ["openOrders"] });
+      queryClient.invalidateQueries({ queryKey: ["balance-manager-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["bm-balance-global"] });
       queryClient.invalidateQueries({ queryKey: ["orderbook"] });
       queryClient.invalidateQueries({ queryKey: ["orderHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["sender-events"] });
     }, 2000);
   }, [queryClient]);
 
@@ -360,45 +364,31 @@ export function useOrderActions(): UseOrderActionsResult {
     [cancelOrder, showToast, refreshData, formatUserFriendlyError]
   );
 
-  // Cancel all open orders sequentially (capped to prevent UI freeze / gas drain)
+  // Cancel all open orders in a single PTB (atomic batch)
   const MAX_CANCEL_BATCH = 50;
   const handleCancelAllOrders = useCallback(
     async (orderIds: string[]): Promise<TradeResult> => {
       if (orderIds.length === 0) return { success: true };
 
       const cappedIds = orderIds.slice(0, MAX_CANCEL_BATCH);
-      let cancelled = 0;
-      let lastError: string | undefined;
+      const result = await cancelAllOrders(cappedIds);
 
-      for (const orderId of cappedIds) {
-        const result = await cancelOrder(orderId);
-        if (result.success) {
-          cancelled++;
-        } else {
-          // Skip already-filled orders
-          const parsed = parseError(result.error);
-          if (parsed.errorType === 'ORDER_NOT_FOUND') {
-            cancelled++;
-          } else {
-            lastError = result.error;
-          }
+      if (result.success) {
+        showToast(`Cancelled ${cappedIds.length} order${cappedIds.length > 1 ? 's' : ''}`, "success");
+        refreshData();
+      } else {
+        const parsed = parseError(result.error);
+        if (parsed.errorType === 'ORDER_NOT_FOUND') {
+          showToast("Some orders were already filled or cancelled", "warning");
+          refreshData();
+          return { success: true };
         }
+        showToast(`Failed to cancel orders: ${formatUserFriendlyError(result.error)}`, "error");
       }
 
-      if (cancelled === cappedIds.length) {
-        showToast(`Cancelled ${cancelled} order${cancelled > 1 ? 's' : ''}`, "success");
-        refreshData();
-        return { success: true };
-      } else if (cancelled > 0) {
-        showToast(`Cancelled ${cancelled}/${cappedIds.length} orders`, "warning");
-        refreshData();
-        return { success: true };
-      }
-
-      showToast(`Failed to cancel orders: ${formatUserFriendlyError(lastError)}`, "error");
-      return { success: false, error: lastError };
+      return result;
     },
-    [cancelOrder, showToast, refreshData, formatUserFriendlyError]
+    [cancelAllOrders, showToast, refreshData, formatUserFriendlyError]
   );
 
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)

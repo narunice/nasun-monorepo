@@ -9,6 +9,7 @@ export { useOrderActions, type UseOrderActionsResult } from './useOrderActions';
 export { useTradeEvents } from './useTradeEvents';
 export { useOrderHistory, type OrderHistoryItem, type OrderType, type OrderStatus } from './useOrderHistory';
 export { useMyTrades, type MyTradeItem } from './useMyTrades';
+export { useSenderEvents } from './useSenderEvents';
 export { useTradeMode, type TradeMode } from './useTradeMode';
 export { useBalanceManagerBalance } from './useBalanceManagerBalance';
 export {

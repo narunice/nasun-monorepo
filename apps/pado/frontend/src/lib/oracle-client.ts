@@ -22,6 +22,9 @@ const DECIMALS = 8;
 // Cache the Table object ID (resolved from registry on first call)
 let feedsTableId: string | null = null;
 
+// Cache for resolved dynamic field object IDs (stable, no expiry needed)
+const feedObjectIds = new Map<number, string>();
+
 // Symbol ID mapping (must match dev_oracle.move constants)
 export const SYMBOLS = {
   BTCUSD: 1,
@@ -231,7 +234,7 @@ export async function getPriceWithValidation(
 }
 
 /**
- * Get all prices at once
+ * Get all prices at once (individual calls)
  *
  * @param client - SuiClient instance
  * @returns Record of symbol to PriceData
@@ -250,6 +253,99 @@ export async function getAllPrices(
       results[symbol] = await getPrice(client, symbol);
     })
   );
+
+  return results;
+}
+
+/**
+ * Resolve the dynamic field object ID for a given oracle symbol.
+ * Cached indefinitely since dynamic field object IDs are stable.
+ */
+async function resolveFeedObjectId(
+  client: SuiClient,
+  symbolId: number,
+): Promise<string | null> {
+  const cached = feedObjectIds.get(symbolId);
+  if (cached) return cached;
+
+  const tableId = await resolveFeedsTableId(client);
+  if (!tableId) return null;
+
+  try {
+    const result = await client.getDynamicFieldObject({
+      parentId: tableId,
+      name: { type: 'u64', value: symbolId.toString() },
+    });
+    const objectId = result.data?.objectId;
+    if (objectId) {
+      feedObjectIds.set(symbolId, objectId);
+      return objectId;
+    }
+    return null;
+  } catch (error) {
+    logThrottled(`oracle-resolve-${symbolId}`, 'error', 60_000, `[Oracle] Failed to resolve feed object for symbol ${symbolId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get all prices in a single multiGetObjects RPC call (4 symbols -> 1 RPC).
+ * On first call, resolves feed object IDs (individual calls, then cached).
+ * Subsequent calls: 1 RPC call total.
+ */
+export async function getBatchPrices(
+  client: SuiClient,
+): Promise<Record<SymbolKey, PriceData | null>> {
+  const symbols = Object.keys(SYMBOLS) as SymbolKey[];
+  const results = Object.fromEntries(
+    symbols.map(s => [s, null])
+  ) as Record<SymbolKey, PriceData | null>;
+
+  // Resolve feed object IDs (cached after first call)
+  const entries: Array<{ symbol: SymbolKey; objectId: string }> = [];
+  await Promise.all(
+    symbols.map(async (symbol) => {
+      const objectId = await resolveFeedObjectId(client, SYMBOLS[symbol]);
+      if (objectId) {
+        entries.push({ symbol, objectId });
+      }
+    })
+  );
+
+  if (entries.length === 0) return results;
+
+  try {
+    // Single RPC call for all feed objects
+    const batchResult = await client.multiGetObjects({
+      ids: entries.map(e => e.objectId),
+      options: { showContent: true },
+    });
+
+    const divisor = Math.pow(10, DECIMALS);
+
+    for (let i = 0; i < entries.length; i++) {
+      const { symbol } = entries[i];
+      const obj = batchResult[i];
+
+      const outerFields = getMoveFields(obj.data?.content);
+      if (!outerFields) continue;
+
+      const rawPrice = safeBigInt(getNestedField(outerFields, 'value.price'));
+      const rawConfidence = safeBigInt(getNestedField(outerFields, 'value.confidence'));
+      const timestamp = getNestedField(outerFields, 'value.timestamp');
+      if (rawPrice === null || rawConfidence === null || timestamp == null) continue;
+
+      results[symbol] = {
+        price: Number(rawPrice) / divisor,
+        confidence: Number(rawConfidence) / divisor,
+        timestamp: Number(timestamp),
+        symbol,
+        raw: { price: rawPrice, confidence: rawConfidence },
+      };
+    }
+  } catch (error) {
+    logThrottled('oracle-batch', 'error', 60_000, '[Oracle] Batch price fetch failed:', error);
+  }
 
   return results;
 }

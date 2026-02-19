@@ -3,17 +3,15 @@
  * Fetches past OrderPlaced + OrderCanceled + OrderFilled(taker) events via queryEvents RPC
  * Merges into a unified personal order history
  *
- * Uses Sender filter to fetch only the user's events, then classifies by event type
- * client-side. Supports cursor-based pagination via useInfiniteQuery.
+ * Uses shared useSenderEvents hook to avoid duplicate queryEvents RPC calls
+ * with useMyTrades.
  */
 
 import { useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import type { SuiEvent, EventId } from '@mysten/sui/client';
-import { getSuiClient } from '../../../lib/sui-client';
+import type { SuiEvent } from '@mysten/sui/client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
-import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
+import { useSenderEvents } from './useSenderEvents';
 
 /** Safely convert unknown RPC value to BigInt, defaulting to 0n on invalid input */
 function safeBigInt(value: unknown): bigint {
@@ -55,42 +53,27 @@ interface RawEventJson {
   [key: string]: unknown;
 }
 
-interface OrderHistoryPage {
-  orders: OrderHistoryItem[];
-  nextCursor: EventId | null | undefined;
-  hasNextPage: boolean;
-}
-
 const DEEPBOOK_PACKAGE = NETWORK_CONFIG.deepbookPackage;
 const ORDER_PLACED_TYPE = `${DEEPBOOK_PACKAGE}::order_info::OrderPlaced`;
 const ORDER_CANCELED_TYPE = `${DEEPBOOK_PACKAGE}::order::OrderCanceled`;
 const ORDER_FILLED_TYPE = `${DEEPBOOK_PACKAGE}::order_info::OrderFilled`;
 
-async function fetchOrderHistoryPage(
+/**
+ * Process raw events into order history items for a specific pool
+ */
+function processOrderHistory(
+  events: SuiEvent[],
   poolId: string,
   balanceManagerId: string,
-  senderAddress: string,
   quoteDecimals: number,
   baseDecimals: number,
-  cursor: EventId | null,
-): Promise<OrderHistoryPage> {
-  const client = getSuiClient();
-
-  // Query all events from this user, then classify by type client-side.
-  // Sender filter ensures only user's events are returned (not LP Bot noise).
-  const result = await client.queryEvents({
-    query: { Sender: senderAddress },
-    limit: 200,
-    order: 'descending',
-    cursor: cursor ?? undefined,
-  });
-
+): OrderHistoryItem[] {
   // Classify events by type
   const placedEvents: SuiEvent[] = [];
   const canceledEvents: SuiEvent[] = [];
   const filledEvents: SuiEvent[] = [];
 
-  for (const event of result.data) {
+  for (const event of events) {
     if (event.type === ORDER_PLACED_TYPE) placedEvents.push(event);
     else if (event.type === ORDER_CANCELED_TYPE) canceledEvents.push(event);
     else if (event.type === ORDER_FILLED_TYPE) filledEvents.push(event);
@@ -231,11 +214,7 @@ async function fetchOrderHistoryPage(
   // Sort by timestamp descending
   orders.sort((a, b) => b.timestamp - a.timestamp);
 
-  return {
-    orders,
-    nextCursor: result.nextCursor,
-    hasNextPage: result.hasNextPage,
-  };
+  return orders;
 }
 
 /**
@@ -244,45 +223,37 @@ async function fetchOrderHistoryPage(
 export function useOrderHistory(
   balanceManagerId: string | null,
   senderAddress: string | undefined,
-  refetchInterval = 10000,
 ) {
   const { currentPool } = useMarket();
-  const adaptiveInterval = useAdaptiveInterval(refetchInterval);
   const poolId = currentPool.id as string;
+  const quoteDecimals = currentPool.quoteToken.decimals;
+  const baseDecimals = currentPool.baseToken.decimals;
 
-  const query = useInfiniteQuery({
-    queryKey: ['orderHistory', balanceManagerId, senderAddress, poolId],
-    queryFn: ({ pageParam }) =>
-      fetchOrderHistoryPage(
-        poolId,
-        balanceManagerId!,
-        senderAddress!,
-        currentPool.quoteToken.decimals,
-        currentPool.baseToken.decimals,
-        pageParam,
-      ),
-    initialPageParam: null as EventId | null,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasNextPage ? lastPage.nextCursor : undefined,
-    enabled: !!balanceManagerId && !!senderAddress && !!DEEPBOOK_PACKAGE && !!poolId,
-    refetchInterval: adaptiveInterval,
-    staleTime: 5000,
-  });
+  const query = useSenderEvents(senderAddress);
 
-  // Flatten pages + deduplicate by orderId (prefer entry with higher executedQuantity)
+  // Process raw events into order history, deduplicate by orderId
   const allOrders = useMemo(() => {
-    if (!query.data) return undefined;
-    const orderMap = new Map<string, OrderHistoryItem>();
+    if (!query.data || !balanceManagerId) return undefined;
+
+    // Flatten all events from all pages
+    const allEvents: SuiEvent[] = [];
     for (const page of query.data.pages) {
-      for (const order of page.orders) {
-        const existing = orderMap.get(order.orderId);
-        if (!existing || order.executedQuantity > existing.executedQuantity) {
-          orderMap.set(order.orderId, order);
-        }
+      allEvents.push(...page.events);
+    }
+
+    const orders = processOrderHistory(allEvents, poolId, balanceManagerId, quoteDecimals, baseDecimals);
+
+    // Deduplicate by orderId (prefer entry with higher executedQuantity)
+    const orderMap = new Map<string, OrderHistoryItem>();
+    for (const order of orders) {
+      const existing = orderMap.get(order.orderId);
+      if (!existing || order.executedQuantity > existing.executedQuantity) {
+        orderMap.set(order.orderId, order);
       }
     }
+
     return Array.from(orderMap.values()).sort((a, b) => b.timestamp - a.timestamp);
-  }, [query.data]);
+  }, [query.data, balanceManagerId, poolId, quoteDecimals, baseDecimals]);
 
   return {
     data: allOrders,

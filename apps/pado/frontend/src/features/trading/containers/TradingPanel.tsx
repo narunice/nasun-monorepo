@@ -6,9 +6,9 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
+import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from '@nasun/wallet';
 import { useToast } from '@/components/common';
-import { useOrderbook, useOpenOrders, useOrderActions, useOrderFillNotifier, type TradeMode } from '../hooks';
+import { useOrderbook, useOpenOrders, useOrderActions, useOrderFillNotifier, useBalanceManagerBalance, type TradeMode } from '../hooks';
 import { useTradeCap } from '../hooks/useTradeCap';
 import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
@@ -109,7 +109,8 @@ export function EnablePadoInfo({ variant = 'simple' }: { variant?: 'simple' | 'p
 export function EnablePadoCard() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
   const { isLoading, balanceManagerId, handleCreateBalanceManager } = useOrderActions();
 
   if (!isConnected || balanceManagerId) return null;
@@ -141,8 +142,10 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const { showToast } = useToast();
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
-  const walletAddress = account?.address ?? zkState?.address;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
+  const walletAddress = account?.address ?? zkState?.address ?? passkeyAddress ?? undefined;
 
   // Market context for base token symbol
   const { currentPool } = useMarket();
@@ -166,10 +169,11 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     handleCreateBalanceManager,
   } = useOrderActions();
 
-  // BM balance data
+  // Open orders + BM balance data
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
-  const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
   const openOrders = openOrdersData?.orders ?? [];
+  const { balance: bmBalanceData } = useBalanceManagerBalance();
+  const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
 
   // In-orders locked amounts (buy orders lock quote, sell orders lock base)
   const { lockedQuote, lockedBase } = calcLockedAmounts(openOrders);

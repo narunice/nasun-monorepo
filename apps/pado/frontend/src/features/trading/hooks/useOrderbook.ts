@@ -5,7 +5,7 @@
 
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getOrderbook, getPoolMidPrice, type Orderbook } from '../../../lib/deepbook';
+import { getOrderbook, type Orderbook } from '../../../lib/deepbook';
 import { getEventService } from '../../../lib/event-service';
 import { useMarket } from '../context/MarketContext';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
@@ -49,11 +49,10 @@ export function useOrderbook(refetchInterval = 10000) {
   return useQuery<OrderbookData>({
     queryKey: ['orderbook', currentMarket],
     queryFn: async () => {
-      const [orderbook, midPrice] = await Promise.all([
-        getOrderbook(currentPool),
-        getPoolMidPrice(currentPool),
-      ]);
-      return { orderbook, midPrice };
+      // getOrderbook already computes midPrice = (bestAsk + bestBid) / 2
+      // No need for separate getPoolMidPrice devInspect call
+      const orderbook = await getOrderbook(currentPool);
+      return { orderbook, midPrice: orderbook.midPrice };
     },
     refetchInterval: adaptiveInterval,
     staleTime: 3000, // Increased from 2s since we have event-based updates

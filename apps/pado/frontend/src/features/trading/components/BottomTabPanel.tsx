@@ -6,11 +6,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useWallet, useZkLogin, useMultiBalance } from '@nasun/wallet';
+import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
 import { OrderHistory } from './OrderHistory';
 import { TradeHistory } from './TradeHistory';
-import { useOpenOrders, useOrderActions } from '../hooks';
+import { useOpenOrders, useOrderActions, useBalanceManagerBalance } from '../hooks';
 import { useMarket } from '../context/MarketContext';
 import { calcLockedAmounts } from '../types';
 import { UnderlineTabs, type TabItem } from '@/components/common';
@@ -246,15 +246,17 @@ function TPSLTab() {
 function AssetsTab() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
 
   const { currentPool } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol;
 
   const { balanceManagerId, isLoading, handleDepositToken, handleWithdrawToken, lastAutoDepositError } = useOrderActions();
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
-  const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
   const assetOrders = openOrdersData?.orders ?? [];
+  const { balance: bmBalanceData } = useBalanceManagerBalance();
+  const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
   const { lockedQuote, lockedBase } = calcLockedAmounts(assetOrders);
 
   const { data: multiBalance } = useMultiBalance();
