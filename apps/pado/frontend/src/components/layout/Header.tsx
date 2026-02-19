@@ -5,6 +5,7 @@ import { useWallet, useZkLogin } from '@nasun/wallet';
 import { HeaderNetValue } from './HeaderNetValue';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { useAdminAccess } from '../../features/admin';
+import { useTradeMode } from '../../features/trading/hooks';
 
 interface NavItem {
   label: string;
@@ -57,6 +58,10 @@ export function Header() {
 
   // Admin access check
   const { isAdmin } = useAdminAccess();
+
+  // Trade mode for header max-width in Simple mode
+  const { isSimple } = useTradeMode();
+  const isTradePage = location.pathname.startsWith('/markets');
 
   // Hide wallet button on homepage only when no wallet exists (WelcomeBanner has "Get Started")
   // Show it when locked (unlock from header) or connected
@@ -127,7 +132,13 @@ export function Header() {
 
   return (
     <header className="border-b border-theme-border px-3 sm:px-4 md:px-6 py-3 md:py-4">
-      <div className={`flex items-center justify-between gap-2 ${isHomePage ? 'max-w-7xl mx-auto' : ''}`}>
+      <div className={`flex items-center justify-between gap-2 ${
+        isHomePage
+          ? 'max-w-7xl mx-auto'
+          : isTradePage && isSimple
+            ? 'xl:max-w-[1400px] 2xl:max-w-[1520px] xl:mx-auto'
+            : ''
+      }`}>
         {/* Logo Wordmark - Click to go Home */}
         <Link to="/" className="hover:opacity-80 transition-opacity">
           <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">PADO</h1>
