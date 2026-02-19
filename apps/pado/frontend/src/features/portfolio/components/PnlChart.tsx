@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createChart, AreaSeries } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTheme } from '../../../providers/theme';
 import { usePnlTimeSeries, type PnlPeriod } from '../hooks/usePnlTimeSeries';
 import { useCostBasis } from '../hooks/useCostBasis';
@@ -54,7 +54,8 @@ export function PnlChart() {
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
   const colors = COLORS[theme];
   const hasData = !isLoading && data.length > 0;
 
@@ -140,10 +141,13 @@ export function PnlChart() {
     });
 
     // Convert timestamps to lightweight-charts Time format (seconds)
-    const chartData = data.map((d) => ({
-      time: Math.floor(d.time / 1000) as Time,
-      value: d.cumulativePnl,
-    }));
+    // Deduplicate: keep last entry per second (lightweight-charts requires strictly ascending time)
+    const chartDataMap = new Map<number, { time: Time; value: number }>();
+    for (const d of data) {
+      const sec = Math.floor(d.time / 1000);
+      chartDataMap.set(sec, { time: sec as unknown as Time, value: d.cumulativePnl });
+    }
+    const chartData = Array.from(chartDataMap.values());
 
     series.setData(chartData);
     seriesRef.current = series;

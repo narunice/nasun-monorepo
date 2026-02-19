@@ -166,13 +166,13 @@ describe('ShareCardModal', () => {
       expect(decodedUrl).toContain('pado.finance');
     });
 
-    it('tweet text mentions "2 people"', () => {
+    it('tweet text mentions Nasun L1', () => {
       render(
         <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
       );
       const xLink = screen.getByTitle('Share on X') as HTMLAnchorElement;
       const decodedUrl = decodeURIComponent(xLink.href);
-      expect(decodedUrl).toContain('2 people');
+      expect(decodedUrl).toContain('Nasun L1');
     });
   });
 
