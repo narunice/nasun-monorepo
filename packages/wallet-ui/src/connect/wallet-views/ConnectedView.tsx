@@ -202,7 +202,7 @@ export function ConnectedView(props: ConnectedViewProps) {
                   />
                 </svg>
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 text-left">
                 <p className="text-sm xl:text-base text-gray-900 dark:text-white font-medium truncate">
                   {header.credentialName}
                 </p>
