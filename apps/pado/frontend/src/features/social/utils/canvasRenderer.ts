@@ -172,7 +172,7 @@ function drawFooter(ctx: CanvasRenderingContext2D, timestamp: number) {
   ctx.fillStyle = COLORS.textMuted;
   ctx.font = '10px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Built by 2 people \u00B7 Powered by Nasun L1', CARD_WIDTH / 2, y);
+  ctx.fillText('Powered by Nasun L1', CARD_WIDTH / 2, y);
   ctx.textAlign = 'left';
 
   // Pado URL
