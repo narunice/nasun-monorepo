@@ -187,7 +187,13 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
 
       return { ...result, evmPassword };
     },
-    onSuccess: ({ wallet: newWallet, keypair: newKeypair, evmPassword }) => {
+    onSuccess: ({ wallet: newWallet, keypair: newKeypair, mnemonic, evmPassword }) => {
+      // Store mnemonic BEFORE unlocking — setUnlocked triggers re-renders that may
+      // unmount the current WalletConnect (e.g., WelcomeBanner on homepage).
+      // The new WalletConnect instance reads pendingMnemonic on mount.
+      if (mnemonic) {
+        usePasskeyStore.getState().setPendingMnemonic(mnemonic);
+      }
       // Update global store — all usePasskey instances see this immediately
       usePasskeyStore.getState().setUnlocked(newWallet, newKeypair);
       if (evmPassword) saveSessionPassword(evmPassword);

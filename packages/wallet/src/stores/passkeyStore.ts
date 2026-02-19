@@ -24,10 +24,18 @@ interface PasskeyStoreState {
   address: string | null;
   /** Whether wallet is unlocked (keypair available in memory) */
   isUnlocked: boolean;
+  /** Mnemonic pending backup — set BEFORE setUnlocked to survive component unmount */
+  pendingMnemonic: string | null;
+  /** Timestamp of last passkey signing activity — used for auto-lock */
+  lastActivityAt: number;
   /** Set wallet + keypair (after create or unlock) */
   setUnlocked: (wallet: PasskeyWalletState, keypair: Ed25519Keypair) => void;
   /** Set wallet metadata only (from localStorage check, no keypair) */
   setWallet: (wallet: PasskeyWalletState | null) => void;
+  /** Store mnemonic pending backup (called before setUnlocked) */
+  setPendingMnemonic: (mnemonic: string | null) => void;
+  /** Update last activity timestamp (called on each signing operation) */
+  updateActivity: () => void;
   /** Lock wallet — clear keypair, keep wallet metadata */
   lock: () => void;
   /** Clear everything — wallet deleted */
@@ -42,24 +50,77 @@ export const usePasskeyStore = create<PasskeyStoreState>()((set) => ({
   keypair: null,
   address: initialWallet?.address ?? null,
   isUnlocked: false,
+  pendingMnemonic: null,
+  lastActivityAt: Date.now(),
   setUnlocked: (wallet, keypair) => set({
     wallet,
     keypair,
     address: wallet.address,
     isUnlocked: true,
+    lastActivityAt: Date.now(),
   }),
   setWallet: (wallet) => set({
     wallet,
     address: wallet?.address ?? null,
   }),
+  setPendingMnemonic: (mnemonic) => set({ pendingMnemonic: mnemonic }),
+  updateActivity: () => set({ lastActivityAt: Date.now() }),
   lock: () => set({
     keypair: null,
     isUnlocked: false,
+    pendingMnemonic: null,
   }),
   clear: () => set({
     wallet: null,
     keypair: null,
     address: null,
     isUnlocked: false,
+    pendingMnemonic: null,
+    lastActivityAt: Date.now(),
   }),
 }));
+
+// ============================================
+// Passkey Auto-lock Timer
+// ============================================
+
+// Shared localStorage key — same setting as self-custody security settings
+const SECURITY_SETTINGS_KEY = 'nasun_wallet_security';
+
+let passkeyAutoLockIntervalId: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Set up module-level auto-lock timer for passkey wallets.
+ * Mirrors setupAutoLock() pattern from useWallet.ts.
+ * Reads autoLockMinutes from shared security settings.
+ * Only locks the passkey keypair — does NOT clear session password.
+ */
+function setupPasskeyAutoLock(): void {
+  if (passkeyAutoLockIntervalId) {
+    clearInterval(passkeyAutoLockIntervalId);
+  }
+  passkeyAutoLockIntervalId = setInterval(() => {
+    const state = usePasskeyStore.getState();
+    if (!state.isUnlocked) return;
+
+    let autoLockMinutes = 15;
+    try {
+      const stored = localStorage.getItem(SECURITY_SETTINGS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        autoLockMinutes = typeof parsed.autoLockMinutes === 'number'
+          ? parsed.autoLockMinutes
+          : 15;
+      }
+    } catch {
+      // Ignore parse errors — use default
+    }
+
+    if (autoLockMinutes <= 0) return;
+    if (Date.now() - state.lastActivityAt > autoLockMinutes * 60 * 1000) {
+      state.lock();
+    }
+  }, 30_000);
+}
+
+setupPasskeyAutoLock();
