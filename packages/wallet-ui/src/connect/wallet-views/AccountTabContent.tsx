@@ -91,15 +91,6 @@ function GettingStartedChecklist({
       },
     },
     {
-      key: 'sendDone',
-      label: 'Send a transaction',
-      description: 'Transfer NASUN to an address',
-      action: () => {
-        markDone('sendDone');
-        onNavigate('send');
-      },
-    },
-    {
       key: 'stakingDone',
       label: 'Explore staking',
       description: 'Earn rewards by staking',
@@ -274,8 +265,8 @@ export function AccountTabContent({
         </>
       )}
 
-      {/* Self-custody only: Security Settings */}
-      {variant === "self-custody" && (
+      {/* Self-custody + passkey: Security Settings */}
+      {(variant === "self-custody" || variant === "passkey") && (
         <button onClick={() => onNavigate("settings")} className={MENU_ITEM_CLASS}>
           <MenuIcon d={[ICON_PATHS.settings, ICON_PATHS.settingsCircle]} />
           Security Settings

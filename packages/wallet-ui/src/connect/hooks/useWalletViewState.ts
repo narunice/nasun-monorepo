@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useWallet, getPendingBackupMnemonic, secureZeroString } from "@nasun/wallet";
+import { useWallet, getPendingBackupMnemonic, secureZeroString, usePasskeyStore } from "@nasun/wallet";
 import { useUISettingsStore } from "../../stores";
 import type { ViewMode } from "../types";
 import type { TabMode } from "../TabBar";
@@ -76,8 +76,10 @@ export function useWalletViewState() {
   // Check for pending mnemonic backup on mount — uses initial state so the
   // backup view shows from the very first render (no effect delay).
   // This handles WalletConnect unmount/remount mid-backup (e.g., Pado homepage).
+  // Priority: Zustand store (set before setUnlocked) > module-level var > null
   const pendingBackup = getPendingBackupMnemonic();
-  const pendingPasskey = getPendingPasskeyMnemonic();
+  const pendingPasskey = getPendingPasskeyMnemonic()
+    ?? usePasskeyStore.getState().pendingMnemonic;
 
   // View & form state
   const [viewMode, setViewMode] = useState<ViewMode>(

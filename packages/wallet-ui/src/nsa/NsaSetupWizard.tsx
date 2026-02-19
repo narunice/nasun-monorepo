@@ -68,10 +68,13 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
       // Map signer type to NSA signer type
       const nsaSignerType: NsaSignerType =
         signerType === 'zklogin' ? 'zklogin' :
+        signerType === 'passkey' ? 'passkey' :
         signerType === 'local' ? 'local' :
         'local';
 
-      const label = signerType === 'zklogin' ? 'primary-zklogin' : 'primary-key';
+      const label = signerType === 'zklogin' ? 'primary-zklogin'
+        : signerType === 'passkey' ? 'primary-passkey'
+        : 'primary-key';
       const objectId = await createAccount(nsaSignerType, label, signer);
       setCreatedId(objectId);
       setStep('success');
@@ -254,7 +257,7 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
             <div className="flex justify-between text-sm xl:text-base">
               <span className="text-gray-500 dark:text-zinc-400">Signer Type</span>
               <span className="text-gray-900 dark:text-white font-medium">
-                {signerType === 'zklogin' ? 'zkLogin' : signerType === 'local' ? 'Local Key' : signerType || 'Unknown'}
+                {signerType === 'zklogin' ? 'zkLogin' : signerType === 'local' ? 'Local Key' : signerType === 'passkey' ? 'Passkey' : signerType || 'Unknown'}
               </span>
             </div>
             <div className="flex justify-between text-sm xl:text-base">
