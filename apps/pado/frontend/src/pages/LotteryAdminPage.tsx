@@ -4,20 +4,24 @@
  */
 
 import { Link } from 'react-router-dom';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useLotteryAdmin } from '../features/lottery';
 import { LotteryAdminContent } from '../features/lottery/components/admin';
 
 export function LotteryAdminPage() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const { isAdmin } = useLotteryAdmin();
 
   const walletAddress = isZkLoggedIn
     ? zkState?.address
     : status === 'unlocked'
       ? account?.address
-      : undefined;
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   if (!walletAddress) {
     return (

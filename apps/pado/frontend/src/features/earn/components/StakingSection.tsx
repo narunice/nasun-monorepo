@@ -4,7 +4,7 @@
  */
 
 import { StakingPanel } from '@nasun/wallet-ui';
-import { useStaking, useValidators, useBalance, useWallet, useZkLogin, type ValidatorInfo } from '@nasun/wallet';
+import { useStaking, useValidators, useBalance, useWallet, useZkLogin, usePasskeyStore, type ValidatorInfo } from '@nasun/wallet';
 
 export function StakingSection() {
   const { summary, isLoading: stakingLoading } = useStaking();
@@ -12,8 +12,9 @@ export function StakingSection() {
   const { data: balance, isLoading: balanceLoading } = useBalance();
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
-  const isWalletConnected = status === 'unlocked' || isZkLoggedIn;
+  const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
 
   // Format balance
   const formattedBalance = balance?.formattedBalance || '0';

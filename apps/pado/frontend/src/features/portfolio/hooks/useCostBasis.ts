@@ -7,7 +7,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
@@ -142,11 +142,17 @@ async function fetchCostBasis(balanceManagerId: string, senderAddress: string): 
 export function useCostBasis(): CostBasisResult {
   const { account, status } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
   const activeAddress = isZkConnected
     ? zkState?.address
-    : (status === 'unlocked' ? account?.address : undefined);
+    : status === 'unlocked'
+      ? account?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 

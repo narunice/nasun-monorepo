@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { fetchUserTickets } from '../lib/lottery-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { Ticket } from '../types';
@@ -14,11 +14,19 @@ export interface UseMyTicketsResult {
 export function useMyTickets(roundId?: string): UseMyTicketsResult {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
   // Determine active wallet address (zkLogin takes priority)
   const isLocalWalletActive = status === 'unlocked' && !!account?.address;
-  const address = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
+  const address = isZkLoggedIn
+    ? zkState?.address
+    : isLocalWalletActive
+      ? account?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   const {
     data: tickets = [],

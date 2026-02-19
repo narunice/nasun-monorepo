@@ -13,6 +13,7 @@ import { useToast } from "@/components/common";
 import {
   useWalletAccount,
   useZkLogin,
+  usePasskeyStore,
   getCooldownRemaining,
   setCooldownTimestamp,
   formatCooldownRemaining,
@@ -69,7 +70,9 @@ export interface UseFaucetResult {
 export function useFaucet(): UseFaucetResult {
   const walletAccount = useWalletAccount();
   const { state: zkState } = useZkLogin();
-  const address = walletAccount?.address || zkState?.address;
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const address = walletAccount?.address || zkState?.address || (isPasskeyUnlocked ? passkeyAddress : undefined) || undefined;
   const { showToast } = useToast();
   const { requestNbtc, requestNusdc, requestNeth, requestNsol } = useTrading();
   const queryClient = useQueryClient();

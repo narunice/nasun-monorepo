@@ -144,8 +144,15 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isLocalWalletActive = status === 'unlocked' && account?.address;
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
-  const walletAddress = account?.address ?? zkState?.address ?? passkeyAddress ?? undefined;
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : isLocalWalletActive
+      ? account?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   // Market context for base token symbol
   const { currentPool } = useMarket();

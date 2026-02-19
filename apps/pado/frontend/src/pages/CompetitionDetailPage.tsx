@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useWallet, useZkLogin, useSignerAddress } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore, useSignerAddress } from '@nasun/wallet';
 import { useCompetition, useCompetitionResults, CompetitionCountdown, CompetitionLeaderboard } from '../features/competitions';
 import { STATUS_LABELS } from '../features/competitions/types';
 
@@ -32,8 +32,9 @@ export function CompetitionDetailPage() {
 
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const signerAddress = useSignerAddress();
-  const userAddress = (status === 'unlocked' && account) || isZkLoggedIn ? signerAddress : null;
+  const userAddress = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked ? signerAddress : null;
 
   if (!id) {
     return (

@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import { buildResolveMarket, buildCreateMarket } from '../transactions';
 import { PREDICTION_ADMIN_CAP } from '../constants';
@@ -51,12 +51,21 @@ function parseAdminError(error: unknown): string {
 export function usePredictionAdmin() {
   const { status, account, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const passkeyKeypair = usePasskeyStore((s) => s.keypair);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const [isLoading, setIsLoading] = useState(false);
 
   // Determine active wallet (zkLogin takes priority)
   const isLocalWalletActive = status === 'unlocked' && account?.address;
-  const walletAddress = isZkLoggedIn ? zkState?.address : (isLocalWalletActive ? account?.address : undefined);
-  const isWalletConnected = isZkLoggedIn || isLocalWalletActive;
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : isLocalWalletActive
+      ? account?.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
+  const isWalletConnected = isZkLoggedIn || isLocalWalletActive || isPasskeyUnlocked;
 
   // Check if current user is the resolver
   const isResolver = walletAddress === RESOLVER_ADDRESS;
@@ -78,6 +87,9 @@ export function usePredictionAdmin() {
     if (isZkLoggedIn && zkState) {
       // zkLogin signing
       signature = await zkSignTransaction(bytes);
+    } else if (isPasskeyUnlocked && passkeyKeypair) {
+      const signResult = await passkeyKeypair.signTransaction(bytes);
+      signature = signResult.signature;
     } else {
       // Local wallet signing
       const keypair = getKeypair();
@@ -99,7 +111,7 @@ export function usePredictionAdmin() {
     }
 
     return result;
-  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction]);
+  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]);
 
   /**
    * Resolve market with outcome
