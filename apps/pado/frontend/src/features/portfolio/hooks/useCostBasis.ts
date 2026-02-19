@@ -8,7 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin } from '@nasun/wallet';
-import { getSuiClient } from '../../../lib/sui-client';
+import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
@@ -59,12 +59,12 @@ function safeBigInt(value: unknown): bigint {
   return BigInt(str);
 }
 
-async function fetchCostBasis(balanceManagerId: string): Promise<CostBasisEntry[]> {
+async function fetchCostBasis(balanceManagerId: string, senderAddress: string): Promise<CostBasisEntry[]> {
   const client = getSuiClient();
 
-  // Fetch OrderFilled events (covers all pools)
+  // Fetch OrderFilled events filtered by sender (covers all pools)
   const result = await client.queryEvents({
-    query: { MoveEventType: ORDER_FILLED_TYPE },
+    query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
     limit: 50,
     order: 'descending',
   });
@@ -149,9 +149,9 @@ export function useCostBasis(): CostBasisResult {
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 
   const { data: entries, isLoading } = useQuery({
-    queryKey: ['costBasis', balanceManagerId],
-    queryFn: () => fetchCostBasis(balanceManagerId!),
-    enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE,
+    queryKey: ['costBasis', balanceManagerId, activeAddress],
+    queryFn: () => fetchCostBasis(balanceManagerId!, activeAddress!),
+    enabled: !!balanceManagerId && !!activeAddress && !!DEEPBOOK_PACKAGE,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
