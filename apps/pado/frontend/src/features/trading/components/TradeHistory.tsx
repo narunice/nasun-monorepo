@@ -134,8 +134,9 @@ const PERIOD_MS: Record<PeriodFilter, number> = {
 
 export function TradeHistory({ className = "" }: TradeHistoryProps) {
   const { status, account } = useWallet();
-  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const senderAddress = isZkLoggedIn ? zkState?.address : account?.address;
 
   const { currentPool, getMarketLabel } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol as TokenSymbol;
@@ -143,7 +144,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
   const pair = getMarketLabel();
 
   const { balanceManagerId } = useOrderActions();
-  const { data: trades, isLoading } = useMyTrades(balanceManagerId);
+  const { data: trades, isLoading } = useMyTrades(balanceManagerId, senderAddress);
   const { entries: costBasis } = useCostBasis();
   const avgBuyPrice = costBasis.find((e) => e.symbol === baseSymbol)?.avgBuyPrice ?? 0;
 

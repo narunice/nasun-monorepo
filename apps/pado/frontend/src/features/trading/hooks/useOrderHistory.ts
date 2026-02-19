@@ -2,10 +2,13 @@
  * useOrderHistory Hook
  * Fetches past OrderPlaced + OrderCanceled + OrderFilled(taker) events via queryEvents RPC
  * Merges into a unified personal order history
+ *
+ * Uses compound {All: [MoveEventType, Sender]} filter to fetch only the user's events
+ * server-side, avoiding LP Bot noise that would otherwise push user events out of the limit.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getSuiClient } from '../../../lib/sui-client';
+import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
@@ -58,25 +61,28 @@ const ORDER_FILLED_TYPE = `${DEEPBOOK_PACKAGE}::order_info::OrderFilled`;
 async function fetchOrderHistory(
   poolId: string,
   balanceManagerId: string,
+  senderAddress: string,
   quoteDecimals: number,
   baseDecimals: number,
 ): Promise<OrderHistoryItem[]> {
   const client = getSuiClient();
 
-  // Fetch all 3 event types in parallel
+  // Use compound filter: event type AND sender address
+  // This fetches only the user's events server-side, preventing LP Bot noise
+  // from pushing user events out of the result limit.
   const [placedResult, canceledResult, filledResult] = await Promise.all([
     client.queryEvents({
-      query: { MoveEventType: ORDER_PLACED_TYPE },
+      query: andEventFilter({ MoveEventType: ORDER_PLACED_TYPE }, { Sender: senderAddress }),
       limit: 50,
       order: 'descending',
     }),
     client.queryEvents({
-      query: { MoveEventType: ORDER_CANCELED_TYPE },
+      query: andEventFilter({ MoveEventType: ORDER_CANCELED_TYPE }, { Sender: senderAddress }),
       limit: 50,
       order: 'descending',
     }),
     client.queryEvents({
-      query: { MoveEventType: ORDER_FILLED_TYPE },
+      query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
       limit: 50,
       order: 'descending',
     }),
@@ -225,6 +231,7 @@ async function fetchOrderHistory(
  */
 export function useOrderHistory(
   balanceManagerId: string | null,
+  senderAddress: string | undefined,
   refetchInterval = 10000,
 ) {
   const { currentPool } = useMarket();
@@ -232,15 +239,16 @@ export function useOrderHistory(
   const poolId = currentPool.id as string;
 
   return useQuery<OrderHistoryItem[]>({
-    queryKey: ['orderHistory', balanceManagerId, poolId],
+    queryKey: ['orderHistory', balanceManagerId, senderAddress, poolId],
     queryFn: () =>
       fetchOrderHistory(
         poolId,
         balanceManagerId!,
+        senderAddress!,
         currentPool.quoteToken.decimals,
         currentPool.baseToken.decimals,
       ),
-    enabled: !!balanceManagerId && !!DEEPBOOK_PACKAGE && !!poolId,
+    enabled: !!balanceManagerId && !!senderAddress && !!DEEPBOOK_PACKAGE && !!poolId,
     refetchInterval: adaptiveInterval,
     staleTime: 5000,
   });

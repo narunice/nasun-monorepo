@@ -228,6 +228,7 @@ export function useOrderActions(): UseOrderActionsResult {
       queryClient.invalidateQueries({ queryKey: ["balances"] });
       queryClient.invalidateQueries({ queryKey: ["openOrders"] });
       queryClient.invalidateQueries({ queryKey: ["orderbook"] });
+      queryClient.invalidateQueries({ queryKey: ["orderHistory"] });
     }, 2000);
   }, [queryClient]);
 
