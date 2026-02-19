@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useMarket } from '../context/MarketContext';
 import { useOrderActions } from '../hooks';
 import { useOrderHistory } from '../hooks/useOrderHistory';
@@ -37,8 +37,12 @@ function formatDate(timestamp: number): string {
 export function OrderHistory() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
-  const senderAddress = isZkLoggedIn ? zkState?.address : account?.address;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
+  const senderAddress = isZkLoggedIn
+    ? zkState?.address
+    : account?.address ?? passkeyAddress ?? undefined;
 
   const { currentPool } = useMarket();
   const quoteSymbol = currentPool.quoteToken.symbol;

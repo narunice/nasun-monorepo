@@ -8,7 +8,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getBalanceManagerBalances, type BalanceManagerBalance } from '../../../lib/deepbook';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 import { useMarket } from '../context/MarketContext';
@@ -37,14 +37,18 @@ export function useBalanceManagerBalance(options?: {
   const adaptiveInterval = useAdaptiveInterval(refetchInterval);
   const { currentPool } = useMarket();
 
-  // Get active wallet address (zkLogin takes priority)
+  // Get active wallet address (zkLogin > local > passkey)
   const { account: walletAccount, status } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
   const activeAddress = isZkLoggedIn
     ? zkState?.address
     : status === 'unlocked'
       ? walletAccount?.address
-      : undefined;
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
 
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 

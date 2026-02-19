@@ -10,7 +10,7 @@
  */
 
 import { useState, useMemo } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useMarket } from "../context/MarketContext";
 import { useMyTrades, type MyTradeItem } from "../hooks/useMyTrades";
 import { useOrderActions } from "../hooks";
@@ -135,8 +135,12 @@ const PERIOD_MS: Record<PeriodFilter, number> = {
 export function TradeHistory({ className = "" }: TradeHistoryProps) {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
-  const senderAddress = isZkLoggedIn ? zkState?.address : account?.address;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
+  const senderAddress = isZkLoggedIn
+    ? zkState?.address
+    : account?.address ?? passkeyAddress ?? undefined;
 
   const { currentPool, getMarketLabel } = useMarket();
   const baseSymbol = currentPool.baseToken.symbol as TokenSymbol;

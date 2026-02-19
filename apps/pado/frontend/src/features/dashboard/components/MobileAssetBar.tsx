@@ -5,7 +5,7 @@
  * Benchmarked from Coinbase App mobile hero.
  */
 
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTotalValue } from '../../portfolio/hooks';
 
 export function MobileAssetBar() {
@@ -13,7 +13,8 @@ export function MobileAssetBar() {
   const { isConnected: isZkConnected } = useZkLogin();
   const { totalValue, totalPnl24h, totalChange24h, isLoading } = useTotalValue();
 
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
   const isPositive = totalChange24h >= 0;
   const changeColor = totalChange24h === 0
     ? 'text-theme-text-secondary'

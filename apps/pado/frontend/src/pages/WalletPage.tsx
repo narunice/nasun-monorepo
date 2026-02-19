@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { PaymentQRCode } from '../features/payments';
 import { TransferHistory } from '../features/portfolio/components/TransferHistory';
 import { UnifiedBalanceCard, MarginAccountCard } from '../features/core/unified-margin';
@@ -27,7 +27,8 @@ export function WalletPage() {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   // Check if connected via traditional wallet OR zkLogin
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
 
   // Remount key from navigation
   const remountKey = (location.state as { key?: number })?.key || 0;

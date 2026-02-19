@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTransferHistory, type TransferRecord } from '../hooks/useTransferHistory';
 
 const ITEMS_PER_PAGE = 10;
@@ -72,7 +72,8 @@ export function TransferHistory() {
   const { transfers, isLoading, error, refetch } = useTransferHistory();
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
-  const isConnected = status === 'unlocked' || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
   const displayedTransfers = transfers.slice(0, displayCount);
   const hasMore = displayCount < transfers.length;
   const remaining = transfers.length - displayCount;

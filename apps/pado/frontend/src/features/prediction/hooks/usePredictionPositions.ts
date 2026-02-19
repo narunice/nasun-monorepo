@@ -4,7 +4,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallet, useZkLogin } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
@@ -61,13 +61,16 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+
   // Determine active address (zkLogin takes priority)
   const address = isZkConnected
     ? zkState?.address
     : status === 'unlocked'
       ? account?.address
-      : undefined;
-  const isConnected = (status === 'unlocked' && account) || isZkConnected;
+      : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined);
+  const isConnected = (status === 'unlocked' && account) || isZkConnected || isPasskeyUnlocked;
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['prediction-positions', address, marketId],

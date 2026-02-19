@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useWallet, useMultiBalance, useZkLogin } from '@nasun/wallet';
+import { useWallet, useMultiBalance, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useLendingActions } from '../hooks/useLendingActions';
 import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingPositions } from '../hooks/useLendingPositions';
@@ -71,7 +71,8 @@ export function DepositForm({ onSuccess }: DepositFormProps) {
 
   const parsedAmount = parseNUSDC(amount);
   const isValidAmount = parsedAmount >= MIN_DEPOSIT && parsedAmount <= nusdcBalance;
-  const isConnected = (status === 'unlocked' && account) || isZkConnected;
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkConnected || isPasskeyUnlocked;
 
   return (
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
