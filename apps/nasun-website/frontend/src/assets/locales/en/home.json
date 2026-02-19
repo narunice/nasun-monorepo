@@ -29,39 +29,7 @@
     "title": "JOIN US AND GET INVOLVED",
     "description": "Nasun will provide a place where people from all parts of the world and different backgrounds can come together to share their passion for art, storytelling, technology, and business, and in so doing, the community will become the main creative and financial driver of the studio. By leveraging the latest tech in Web3, AI, and social media, we will together, by managing IPs, grow a flourishing, complementary creative and financial environment to produce best in class products and services."
   },
-  "foundersSale": {
-    "title": "FRONTIERS SALE",
-    "subtitle": "Black Series Frontiers Mint",
-    "description1": "Be one of the first to join Nasun and we will become the most productive and prosperous community focused on mass, real world adoption, creating fun, exciting things that make people happy.",
-    "description2": "To promote active participation of early Nasun adopters, the Frontiers Sale will receive a significant portion of the total token supply."
-  },
-  "managingIps": {
-    "title": "MANAGING IPs",
-    "description": "We will use the available technology to manage a portfolio of IPs through ideation, development, preproduction, production, post, marketing and distribution. We will ensure only the highest quality, best in class products and services hit the markets for the general public to consume, use and enjoy. Our mission is to not hype ecosystem projects for those already in our community but to compete and dominate in the open markets.",
-    "more": "Learn more about the first financial and creative IPs we will manage together as a community and discover the real “Killer App.” (hint: it's not AI or code)."
-  },
-  "latestNews": {
-    "title": "LATEST NEWS & ACTIVITIES",
-    "description": "Check out Nasun’s latest announcements, news and posts:"
-  },
-  "manifesto": {
-    "title": "READ THE NASUN MANIFESTO",
-    "description": " Excerpt of the Nasun Manifesto."
-  },
-  "foundersNFTSale": "Frontiers Sale",
   "earlyContributors": "Early Contributors Program",
-  "joinFuture": {
-    "heading": "Join the Future of Entertainment and Finance",
-    "titleLine1": "JOIN",
-    "titleLine2": "the FUTURE",
-    "titleLine3": "of ENTERTAINMENT",
-    "titleLine4": "and FINANCE",
-    "paragraph1Title": "Nasun is a Community-Driven Ecosystem",
-    "paragraph1Body": "that manages and scales intellectual properties (IPs) for global audiences.",
-    "paragraph2": "Our mission is to bring storytelling, finance, and technology together to reimagine how immersive experiences—from films and games to emerging digital and physical worlds—are brought to life and shared.",
-    "paragraph3": "Although there are other projects with similar aspirations, what sets us apart is our focus on story. This is the soul of Nasun, and it will create a halo effect imparting everything in its glow with more value. Loyalty and devotion to a beloved source material form the most passionate communities.",
-    "paragraph4": "Join us as we unlock our collective potential and shape a future beyond imagination."
-  },
   "vision": {
     "title": "VISION",
     "subtitle": "On / Off-Chain Consensus",
@@ -109,14 +77,5 @@
       "description": "Lasting Status Lead in Wave 1 to earn a rare Brigadier NFT with exclusive utilities and long-term recognition.",
       "cta": "Get Started ↗"
     }
-  },
-  "nftSale": {
-    "title": "GENESIS NFT",
-    "subtitle": "EMBODY OUR VISION AND COMMITMENT",
-    "description1": "Each piece was inspired by the sci-fi world-building of our first IP—Gen Sol, and was crafted using tools like Blender, ZBrush, Substance Painter, and Photoshop.",
-    "description2": "Owning one means joining us beyond the boundaries of art, finance, and technology—where our imagination fuels our journey into a future without limits.",
-    "moreInfo": "JOIN US",
-    "getStarted": "[Get started →]",
-    "whitelist": "WHITELIST"
   }
 }

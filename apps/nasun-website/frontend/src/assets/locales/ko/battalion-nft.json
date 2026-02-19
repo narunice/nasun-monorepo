@@ -27,7 +27,6 @@
     "INVALID_SIGNATURE": "잘못된 지갑 서명입니다. 다시 시도해주세요.",
     "SIGNATURE_EXPIRED": "서명이 만료되었습니다. 다시 시도해주세요."
   },
-  "shareOnX": "X에 공유",
   "share": "공유하기",
   "goToHome": "홈으로 가기",
   "goToMyAccount": "내 계정 대시보드로 가기",

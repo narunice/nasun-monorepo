@@ -25,10 +25,10 @@
     "errorMessage": "네트워크 데이터를 일시적으로 사용할 수 없습니다"
   },
   "hero": {
-    "title": "IP 인프라",
-    "subtitle": "엔터테인먼트, 금융, 그리고 AI",
-    "cta": "데브넷 & 지갑 열기",
-    "loading": "로딩 중..."
+    "title": "IP Infrastructure",
+    "subtitle": "Entertainment, Finance, and AI",
+    "cta": "Open Devnet & Wallet",
+    "loading": "Loading..."
   },
   "howNasunWorks": {
     "heading": "나선의 작동 방식",
@@ -128,15 +128,6 @@
       "title": "자원 지향 언어",
       "description": "Move의 소유권 모델은 자산이 실물 자원처럼 동작하도록 보장합니다"
     }
-  },
-  "key_facts": {
-    "title": "핵심 정보",
-    "points": [
-      "총 발행량: 100억 NASUN",
-      "합의 메커니즘: 위임 지분 증명(DPoS)",
-      "스마트 계약 언어: Move",
-      "가스 수수료: NASUN으로 지불"
-    ]
   },
   "distribution": {
     "title": "NSN TOKEN",

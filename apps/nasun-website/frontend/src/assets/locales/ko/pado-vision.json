@@ -1,8 +1,8 @@
 {
   "hero": {
     "tagline": "Trade Together",
-    "subTagline": "커뮤니티가 살아 숨쉬는 금융 플랫폼.",
-    "button": "Pado Open Alpha"
+    "subTagline": "The financial platform where community lives inside.",
+    "button": "Try Pado Alpha"
   },
   "problem": {
     "title": "고립된 트레이더 문제",
@@ -24,7 +24,7 @@
       "content": "Pado는 금융에서 시작합니다 — 실제 트레이딩, 실제 마켓, 실제 리스크. 소셜 레이어는 이미 존재하는 공유 맥락을 표면화합니다: 같은 차트를 보고, 같은 리스크를 감수하고, 같은 확신을 형성하는 사람들. 금융은 오는 이유. 커뮤니티는 머무는 이유."
     },
     "financeFirstSocial": {
-      "title": "What Finance-First Social Means",
+      "title": "Finance-First Social이란",
       "content": "트레이딩 페어에 직접 내장된 채팅. 공유된 맥락과 선의의 경쟁을 만드는 리더보드. 확신을 대화로 바꾸는 예측 시장. 모든 금융 행동에는 소셜 표면이 있습니다 — 참여 유도가 목적이 아니라, 혼자 트레이딩하는 것보다 함께하는 것이 더 낫기 때문입니다. 피드 없음. 팔로워 없음. 좋아요 없음. 마켓과 그 안의 사람들만 있습니다."
     },
     "visitorJourney": {
@@ -32,7 +32,7 @@
       "content": "소셜 없이: 유저가 데모를 시도하고, 클릭하고, 떠남. 소셜 있으면: 유저가 거래를 열고, 채팅을 발견하고, 누군가 같은 셋업을 콜하는 것을 보고, 리더보드를 확인하고, 내일 다시 옴. 차이는 기능이 아닙니다 — 도구와 장소의 차이입니다."
     },
     "oneApp": {
-      "title": "One App, Not Many Protocols",
+      "title": "하나의 앱, 다수의 프로토콜이 아닌",
       "content": "현물 거래, 무기한 선물, 대출과 차입, 예측 시장, 복권, 스테이킹, 결제 — 모두 하나의 계정, 하나의 마진 시스템, 하나의 리스크 엔진 아래에 있습니다. 이것은 차별화 포인트가 아닙니다. 차별화를 가능하게 하는 기반입니다. 자본이 자유롭게 흐르고 담보가 어디서든 작동할 때, 소셜 레이어는 모일 수 있는 실체를 갖게 됩니다."
     }
   },
@@ -109,7 +109,7 @@
       ]
     },
     "phase3": {
-      "title": "Phase 3 — Intelligence & Scale",
+      "title": "Phase 3 — 인텔리전스 & 스케일",
       "items": [
         {
           "title": "AI Agents",
@@ -125,10 +125,10 @@
         }
       ]
     },
-    "closing": "Community first. Depth second. Scale third."
+    "closing": "커뮤니티가 먼저. 깊이가 다음. 스케일이 그다음."
   },
   "community": {
-    "title": "Community Is the Product",
+    "title": "커뮤니티가 곧 제품이다",
     "content": "Web3에서 커뮤니티는 완성된 제품이 아니라 비전과 초기 참여를 중심으로 형성됩니다. 50명의 믿는 사람들이 대화하는 채팅방이 있는 프로토타입이 커뮤니티 없는 세련된 DEX보다 더 가치 있습니다. Pado는 이 순서를 위해 설계되었습니다: 비전과 프로토타입이 커뮤니티를 끌어들입니다. 커뮤니티가 NFT 판매를 통해 다음 단계에 자금을 댑니다. NFT 펀딩이 유동성 부트스트래핑을 가능하게 합니다. 유동성이 메인넷을 가능하게 합니다. 모든 단계는 이전 단계를 필요로 합니다. 커뮤니티는 마케팅 채널이 아닙니다 — 펀딩 메커니즘이자, 피드백 루프이자, 제품이 작동하는 이유입니다."
   },
   "cta": {
