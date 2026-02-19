@@ -15,7 +15,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useMultiBalance, useWallet, useZkLogin } from '@nasun/wallet';
+import { useMultiBalance, useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { usePredictionPositions } from '../../prediction/hooks/usePredictionPositions';
 import { useMarginAccount } from '../../core/unified-margin';
@@ -56,7 +56,9 @@ export function useTotalValue(): UseTotalValueResult {
   // Get active wallet address
   const { account: walletAccount, status } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
-  const activeAddress = isZkLoggedIn ? zkState?.address : (status === 'unlocked' ? walletAccount?.address : undefined);
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const activeAddress = isZkLoggedIn ? zkState?.address : (status === 'unlocked' ? walletAccount?.address : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined));
 
   const { data: multiBalance, isLoading: isBalanceLoading } = useMultiBalance();
   const { positions, isLoading: isPositionsLoading } = usePredictionPositions();
@@ -66,7 +68,7 @@ export function useTotalValue(): UseTotalValueResult {
   // IMPORTANT: Use address-keyed storage to support multi-wallet
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
   const { data: bmBalance, isLoading: isBmLoading } = useQuery({
-    queryKey: ['portfolio-bm-balance', balanceManagerId],
+    queryKey: ['bm-balance-global', balanceManagerId],
     queryFn: async () => {
       if (!balanceManagerId) return { base: 0, quote: 0 };
       return getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);

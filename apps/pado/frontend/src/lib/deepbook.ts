@@ -520,41 +520,33 @@ export async function getBalanceManagerBalances(
   }
 
   try {
-    // Base 토큰 잔고 조회
-    const baseTx = new Transaction();
-    baseTx.moveCall({
+    // Batch base + quote balance queries into a single devInspect call
+    const tx = new Transaction();
+    tx.moveCall({
       target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::balance`,
       typeArguments: [pool.baseToken.type],
-      arguments: [baseTx.object(balanceManagerId)],
+      arguments: [tx.object(balanceManagerId)],
+    });
+    tx.moveCall({
+      target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::balance`,
+      typeArguments: [pool.quoteToken.type],
+      arguments: [tx.object(balanceManagerId)],
     });
 
-    const baseResult = await client.devInspectTransactionBlock({
+    const result = await client.devInspectTransactionBlock({
       sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      transactionBlock: baseTx,
+      transactionBlock: tx,
     });
 
     let baseBalance = 0;
-    if (baseResult.results?.[0]?.returnValues?.[0]) {
-      const bytes = baseResult.results[0].returnValues[0][0];
+    if (result.results?.[0]?.returnValues?.[0]) {
+      const bytes = result.results[0].returnValues[0][0];
       baseBalance = parseU64FromBytes(bytes);
     }
 
-    // Quote 토큰 잔고 조회
-    const quoteTx = new Transaction();
-    quoteTx.moveCall({
-      target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::balance`,
-      typeArguments: [pool.quoteToken.type],
-      arguments: [quoteTx.object(balanceManagerId)],
-    });
-
-    const quoteResult = await client.devInspectTransactionBlock({
-      sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      transactionBlock: quoteTx,
-    });
-
     let quoteBalance = 0;
-    if (quoteResult.results?.[0]?.returnValues?.[0]) {
-      const bytes = quoteResult.results[0].returnValues[0][0];
+    if (result.results?.[1]?.returnValues?.[0]) {
+      const bytes = result.results[1].returnValues[0][0];
       quoteBalance = parseU64FromBytes(bytes);
     }
 
