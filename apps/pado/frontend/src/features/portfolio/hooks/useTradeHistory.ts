@@ -1,10 +1,12 @@
 /**
  * useTradeHistory Hook
  * Fetch user's trading history from on-chain OrderFilled events across all pools
+ * Supports cursor-based pagination via useInfiniteQuery.
  */
 
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import type { EventId } from '@mysten/sui/client';
 import { useWallet, useZkLogin } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
@@ -41,6 +43,9 @@ interface UseTradeHistoryResult {
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
+  fetchNextPage: () => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
 }
 
 const EMPTY_STATS: TradeStats = {
@@ -63,6 +68,12 @@ interface RawFilledJson {
   quantity?: string;
   taker_is_bid?: boolean;
   [key: string]: unknown;
+}
+
+interface TradeHistoryPage {
+  trades: UserTrade[];
+  nextCursor: EventId | null | undefined;
+  hasNextPage: boolean;
 }
 
 const POOL_CONFIGS = [
@@ -101,7 +112,11 @@ function safeBigInt(value: unknown): bigint {
   return BigInt(str);
 }
 
-async function fetchRealTrades(balanceManagerId: string, senderAddress: string): Promise<UserTrade[]> {
+async function fetchRealTradesPage(
+  balanceManagerId: string,
+  senderAddress: string,
+  cursor: EventId | null,
+): Promise<TradeHistoryPage> {
   const client = getSuiClient();
 
   // Sender filter only — Nasun RPC does not support compound All filters.
@@ -110,6 +125,7 @@ async function fetchRealTrades(balanceManagerId: string, senderAddress: string):
     query: { Sender: senderAddress },
     limit: 200,
     order: 'descending',
+    cursor: cursor ?? undefined,
   });
 
   const trades: UserTrade[] = [];
@@ -156,7 +172,11 @@ async function fetchRealTrades(balanceManagerId: string, senderAddress: string):
     });
   }
 
-  return trades.sort((a, b) => b.timestamp - a.timestamp);
+  return {
+    trades: trades.sort((a, b) => b.timestamp - a.timestamp),
+    nextCursor: result.nextCursor,
+    hasNextPage: result.hasNextPage,
+  };
 }
 
 export function useTradeHistory(): UseTradeHistoryResult {
@@ -172,15 +192,31 @@ export function useTradeHistory(): UseTradeHistoryResult {
 
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 
-  const { data: trades, isLoading, error, refetch } = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['tradeHistory', balanceManagerId, activeAddress],
-    queryFn: () => fetchRealTrades(balanceManagerId!, activeAddress!),
+    queryFn: ({ pageParam }) =>
+      fetchRealTradesPage(balanceManagerId!, activeAddress!, pageParam),
+    initialPageParam: null as EventId | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? lastPage.nextCursor : undefined,
     enabled: !!balanceManagerId && !!activeAddress && !!DEEPBOOK_PACKAGE,
     refetchInterval: adaptiveInterval,
     staleTime: 10_000,
   });
 
-  const safeTrades = trades ?? [];
+  // Flatten pages + deduplicate
+  const safeTrades = useMemo(() => {
+    if (!query.data) return [];
+    const seen = new Set<string>();
+    return query.data.pages
+      .flatMap((page) => page.trades)
+      .filter((trade) => {
+        if (seen.has(trade.id)) return false;
+        seen.add(trade.id);
+        return true;
+      })
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }, [query.data]);
 
   // Calculate statistics from real trades
   const stats = useMemo<TradeStats>(() => {
@@ -207,8 +243,11 @@ export function useTradeHistory(): UseTradeHistoryResult {
   return {
     trades: safeTrades,
     stats,
-    isLoading,
-    error: error ? 'Failed to load trade history' : null,
-    refetch,
+    isLoading: query.isLoading,
+    error: query.error ? 'Failed to load trade history' : null,
+    refetch: query.refetch,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: query.hasNextPage ?? false,
+    isFetchingNextPage: query.isFetchingNextPage,
   };
 }
