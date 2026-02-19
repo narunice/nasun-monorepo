@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -42,12 +43,14 @@ type SlideData = {
   bgColor: string;
   buttonPrefix: string;
   projectName: string;
+  nameKey: string;
   buttonVariant:
     | "red"
     | "blue"
     | "white"
     | "purple"
     | "gensol-red"
+    | "sf-orange"
     | "baram"
     | "pado"
     | "nasun-network";
@@ -63,7 +66,8 @@ const SLIDES: SlideData[] = [
     bgColor: "#2d1b3d",
     buttonPrefix: "EXPLORE",
     projectName: "GEN SOL",
-    buttonVariant: "gensol-red",
+    nameKey: "gensol",
+    buttonVariant: "sf-orange",
     link: "/ip/gensol",
     video: gensolVideo,
     contentPosition: "right-center",
@@ -73,6 +77,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#f7f4ef",
     buttonPrefix: "EXPLORE",
     projectName: "BARAM",
+    nameKey: "baram",
     buttonVariant: "baram",
     link: "/baram",
     video: baramVideo,
@@ -82,6 +87,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#0f4f4f",
     buttonPrefix: "EXPLORE",
     projectName: "PADO",
+    nameKey: "pado",
     buttonVariant: "pado",
     link: "/pado-new",
     video: padoVideo,
@@ -92,6 +98,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#1a2744",
     buttonPrefix: "EXPLORE",
     projectName: "NASUN",
+    nameKey: "nasun",
     buttonVariant: "nasun-network",
     link: "/about/strategy",
     video: explorerVideo,
@@ -99,6 +106,8 @@ const SLIDES: SlideData[] = [
 ];
 
 function WhatWeBuildingSection() {
+  const { t, i18n } = useTranslation("home");
+  const isKorean = i18n.language === "ko";
   const containerRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<Slider>(null);
   const activeSlideRef = useRef(0);
@@ -291,8 +300,17 @@ function WhatWeBuildingSection() {
                   className="w-[200px] md:w-[240px]"
                 >
                   <Link to={SLIDES[activeSlideIndex].link}>
-                    {SLIDES[activeSlideIndex].buttonPrefix}
-                    <span className="font-medium ml-1">{SLIDES[activeSlideIndex].projectName}</span>
+                    {isKorean ? (
+                      <>
+                        <span className="font-semibold mr-1">{t(`whatWeBuilding.${SLIDES[activeSlideIndex].nameKey}`)}</span>
+                        {t("whatWeBuilding.prefix")}
+                      </>
+                    ) : (
+                      <>
+                        {t("whatWeBuilding.prefix")}
+                        <span className="font-semibold ml-1">{t(`whatWeBuilding.${SLIDES[activeSlideIndex].nameKey}`)}</span>
+                      </>
+                    )}
                   </Link>
                 </ButtonV2>
 
