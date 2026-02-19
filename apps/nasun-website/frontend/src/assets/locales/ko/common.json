@@ -101,7 +101,8 @@
     "noMorePosts": "더 이상 게시물이 없습니다."
   },
   "actions": {
-    "retry": "다시 시도"
+    "retry": "다시 시도",
+    "readMore": "더 읽기"
   },
   "myAccount": "내 계정",
   "wallet": {

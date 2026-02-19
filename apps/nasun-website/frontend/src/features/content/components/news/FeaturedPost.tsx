@@ -1,5 +1,6 @@
 // sections/news/FeaturedPost.tsx
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 import { Post } from "@/types/post.d";
 import { Tag } from "@/components/ui/tag";
@@ -33,6 +34,7 @@ const getCategory = (post: Post): string => {
 };
 
 export default function FeaturedPost({ post }: FeaturedPostProps) {
+  const { t } = useTranslation("common");
   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
   const category = getCategory(post);
   const title = stripHtml(post.title.rendered);
@@ -85,7 +87,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
 
             {/* Read More indicator (visual only, card is clickable) */}
             <span className="self-end inline-flex items-center justify-center rounded-3xl bg-nasun-c2/20 group-hover:bg-nasun-c2/30 text-white capitalize transition-all px-6 py-3">
-              Read More
+              {t("actions.readMore")}
               <ArrowTopRightIcon className="ml-2 w-4 h-4" />
             </span>
           </div>

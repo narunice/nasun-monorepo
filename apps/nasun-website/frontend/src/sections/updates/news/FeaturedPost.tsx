@@ -1,5 +1,6 @@
 // sections/news/FeaturedPost.tsx
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 import { Post } from "../../types/post.d";
 import { TagV2 } from "@/components/ui/tag-v2";
@@ -53,6 +54,7 @@ const getImageUrl = (post: Post): string => {
 };
 
 export default function FeaturedPost({ post }: FeaturedPostProps) {
+  const { t } = useTranslation("common");
   const imageUrl = getImageUrl(post);
   const category = getCategory(post);
   const title = stripHtml(post.title.rendered);
@@ -106,7 +108,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
             {/* Read More indicator (visual only, card is clickable) */}
             <div className="flex justify-end">
               <ButtonV3 variant="gradient" size="sm" className="capitalize">
-                Read More
+                {t("actions.readMore")}
                 <ArrowTopRightIcon className="ml-2 w-4 h-4" />
               </ButtonV3>
             </div>

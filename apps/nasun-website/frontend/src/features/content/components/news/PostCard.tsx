@@ -1,4 +1,5 @@
 // components/news/PostCard.tsx
+import { useTranslation } from "react-i18next";
 import { Post } from "../../../types/post.d";
 import DOMPurify from "dompurify";
 
@@ -7,6 +8,7 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post }: PostCardProps) {
+  const { t } = useTranslation("common");
   const featuredImage = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
   // The excerpt is already sanitized by replacing HTML tags, but we can also use DOMPurify for consistency if needed.
   const excerptText = post.excerpt.rendered.replace(/<[^>]*>/g, "").trim();
@@ -47,7 +49,7 @@ export default function PostCard({ post }: PostCardProps) {
           className="mt-auto inline-flex items-center font-medium transition-all underline text-gray-200  hover:text-gray-300"
           onClick={(e) => e.stopPropagation()}
         >
-          Read more
+          {t("actions.readMore")}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-4 w-4 ml-1"
