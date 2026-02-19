@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import wave1VideoMP4 from "../../assets/videos/Home-Wave1-rf24.mp4";
 import leaderboardVideoMP4 from "../../assets/videos/Leaderboard-Ui-rf22.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -12,6 +13,7 @@ interface Wave1SectionV3Props {
 }
 
 function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV3Props) {
+  const { t } = useTranslation("home");
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -127,7 +129,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
                   <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                    Register Now
+                    {t("wave1.leaderboard.cta")}
                   </ButtonV3>
                 </div>
               </div>
@@ -149,7 +151,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
                   <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                    Join Allowlist
+                    {t("wave1.battalionNft.cta")}
                   </ButtonV3>
                 </div>
               </div>
@@ -171,7 +173,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                 </p>
                 <div className="flex justify-end mt-auto pt-3">
                   <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                    Join Program
+                    {t("wave1.earlyContributor.cta")}
                   </ButtonV3>
                 </div>
               </div>

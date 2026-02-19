@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import visionVideoMP4 from "../../assets/videos/Home-Vision-rf24.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
@@ -13,6 +14,7 @@ interface VisionSectionV2Props {
 }
 
 function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectionV2Props) {
+  const { t } = useTranslation("home");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -155,7 +157,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
                     asChild
                     className="lg:px-4 xl:px-12 xl:w-[280px]"
                   >
-                    <Link to="/about/strategy">A UNIFIED VISION</Link>
+                    <Link to="/about/strategy">{t("vision.cta.unifiedVision")}</Link>
                   </ButtonV3>
                   <ButtonV3
                     variant="nw1"
@@ -164,7 +166,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
                     onClick={() => setIsSignUpModalOpen(true)}
                     className="lg:px-4 xl:px-12 xl:w-[280px]"
                   >
-                    SIGN UP
+                    {t("vision.cta.signUp")}
                   </ButtonV3>
                 </div>
               </FadeInUp>
