@@ -1,42 +1,48 @@
 /**
  * useTradeMode Hook
- * Manages Simple/Pro trading mode preference with localStorage persistence
+ * Manages Simple/Pro trading mode preference with Zustand store + localStorage persistence.
+ * Global store so Header and TradePage share the same reactive state.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { create } from 'zustand';
 
 export type TradeMode = 'simple' | 'pro';
 
 const STORAGE_KEY = 'pado_trade_mode';
 
-export function useTradeMode() {
-  const [mode, setModeState] = useState<TradeMode>(() => {
-    if (typeof window === 'undefined') return 'simple';
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return (stored === 'pro' || stored === 'simple') ? stored : 'pro';
-  });
+function readStoredMode(): TradeMode {
+  if (typeof window === 'undefined') return 'simple';
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return (stored === 'pro' || stored === 'simple') ? stored : 'pro';
+}
 
-  // Sync with localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, mode);
-  }, [mode]);
+interface TradeModeState {
+  mode: TradeMode;
+  isSimple: boolean;
+  isPro: boolean;
+  setMode: (mode: TradeMode) => void;
+  toggleMode: () => void;
+}
 
-  const setMode = useCallback((newMode: TradeMode) => {
-    setModeState(newMode);
-  }, []);
-
-  const toggleMode = useCallback(() => {
-    setModeState((prev) => (prev === 'simple' ? 'pro' : 'simple'));
-  }, []);
-
-  const isSimple = mode === 'simple';
-  const isPro = mode === 'pro';
-
+const useTradeModeStore = create<TradeModeState>((set) => {
+  const initial = readStoredMode();
   return {
-    mode,
-    setMode,
-    toggleMode,
-    isSimple,
-    isPro,
+    mode: initial,
+    isSimple: initial === 'simple',
+    isPro: initial === 'pro',
+    setMode: (newMode) => {
+      localStorage.setItem(STORAGE_KEY, newMode);
+      set({ mode: newMode, isSimple: newMode === 'simple', isPro: newMode === 'pro' });
+    },
+    toggleMode: () =>
+      set((state) => {
+        const newMode: TradeMode = state.mode === 'simple' ? 'pro' : 'simple';
+        localStorage.setItem(STORAGE_KEY, newMode);
+        return { mode: newMode, isSimple: newMode === 'simple', isPro: newMode === 'pro' };
+      }),
   };
+});
+
+export function useTradeMode() {
+  return useTradeModeStore();
 }
