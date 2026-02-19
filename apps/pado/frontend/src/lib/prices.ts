@@ -151,11 +151,32 @@ export async function refreshPrice(symbol: TokenSymbol): Promise<void> {
 }
 
 /**
- * Refresh all prices in cache
+ * Refresh all prices in cache (batched: 4 oracle symbols in 1 RPC call)
  */
 export async function refreshAllPrices(): Promise<void> {
-  const symbols: TokenSymbol[] = ['NSN', 'NBTC', 'NUSDC', 'NETH', 'NSOL'];
-  await Promise.all(symbols.map(refreshPrice));
+  try {
+    const client = getSuiClient();
+    const batchPrices = await oracleClient.getBatchPrices(client);
+    const now = Date.now();
+
+    // Map oracle results back to token symbols
+    for (const [tokenSymbol, oracleSymbol] of Object.entries(TOKEN_TO_ORACLE_SYMBOL) as [TokenSymbol, SymbolKey][]) {
+      const priceData = batchPrices[oracleSymbol];
+      if (priceData && oracleClient.isFresh(priceData, MAX_ORACLE_AGE_MS)) {
+        priceCache.set(tokenSymbol, { price: priceData.price, source: 'oracle', timestamp: now });
+      } else {
+        priceCache.set(tokenSymbol, { price: SIMULATED_PRICES[tokenSymbol], source: 'simulated', timestamp: now });
+      }
+    }
+
+    // NUSDC is always $1.00 (no oracle)
+    priceCache.set('NUSDC', { price: 1.0, source: 'simulated', timestamp: now });
+  } catch (error) {
+    logThrottled('prices-batch', 'error', 60_000, '[Prices] Batch price refresh failed, using individual:', error);
+    // Fallback to individual calls
+    const symbols: TokenSymbol[] = ['NSN', 'NBTC', 'NUSDC', 'NETH', 'NSOL'];
+    await Promise.all(symbols.map(refreshPrice));
+  }
 }
 
 /**

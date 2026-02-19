@@ -18,7 +18,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import type { CoinStruct } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useMarket } from '../context/MarketContext';
-import { useOpenOrders } from './useOpenOrders';
+import { useBalanceManagerBalance } from './useBalanceManagerBalance';
 import { useTransactionExecutor } from './useTransactionExecutor';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { DEPOSIT_BUFFER_MULTIPLIER } from '../../../lib/constants';
@@ -165,8 +165,8 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
   const queryClient = useQueryClient();
 
   // Get current BM balance
-  const { data: openOrdersData } = useOpenOrders(balanceManagerId);
-  const bmBalance = openOrdersData?.balance ?? { base: 0, quote: 0 };
+  const { balance: bmBalanceData } = useBalanceManagerBalance();
+  const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
 
   const [isDepositing, setIsDepositing] = useState(false);
   const [lastDepositError, setLastDepositError] = useState<string | null>(null);
