@@ -1,5 +1,6 @@
 // sections/news/NewsCard.tsx
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Post } from "../../../types/post.d";
 import { Tag } from "../../../ui/tag";
 import { Button } from "../../../ui/button";
@@ -33,6 +34,7 @@ const getCategory = (post: Post): string => {
 };
 
 export default function NewsCard({ post }: NewsCardProps) {
+  const { t } = useTranslation("common");
   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
   const category = getCategory(post);
   const title = stripHtml(post.title.rendered);
@@ -79,7 +81,7 @@ export default function NewsCard({ post }: NewsCardProps) {
           {/* Read More button */}
           <Button asChild variant="action" className="self-end mt-4 px-4 py-2">
             <Link to={`/news-events/${post.slug}`}>
-              Read More
+              {t("actions.readMore")}
             </Link>
           </Button>
         </div>
