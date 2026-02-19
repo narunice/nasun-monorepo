@@ -24,6 +24,7 @@ import {
   getClaimStatus,
 } from '../core/link/claim';
 import { LocalSigner } from '../core/signer/adapters/LocalSigner';
+import { PasskeySigner } from '../core/signer/adapters/PasskeySigner';
 
 /**
  * Result of useNasunLink hook
@@ -97,8 +98,8 @@ export function useNasunLink(): UseNasunLinkResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if wallet can create links (needs local signer with keypair access)
-  const canCreate = isConnected && signer instanceof LocalSigner;
+  // Check if wallet can create links (needs signer with keypair access: local or passkey)
+  const canCreate = isConnected && (signer instanceof LocalSigner || signer instanceof PasskeySigner);
 
   // Check if wallet can claim (just needs an address)
   const canClaim = isConnected && !!address;
@@ -112,7 +113,10 @@ export function useNasunLink(): UseNasunLinkResult {
         throw new Error('Wallet not ready for link creation');
       }
 
-      const keypair = getKeypair();
+      // Get keypair from local wallet or passkey signer
+      const keypair = signer instanceof PasskeySigner
+        ? signer.getKeypair()
+        : getKeypair();
       if (!keypair) {
         throw new Error('Could not access wallet keypair');
       }
@@ -132,7 +136,7 @@ export function useNasunLink(): UseNasunLinkResult {
         setIsLoading(false);
       }
     },
-    [canCreate, getKeypair]
+    [canCreate, getKeypair, signer]
   );
 
   /**
@@ -147,7 +151,10 @@ export function useNasunLink(): UseNasunLinkResult {
         throw new Error('Wallet not ready for link creation');
       }
 
-      const keypair = getKeypair();
+      // Get keypair from local wallet or passkey signer
+      const keypair = signer instanceof PasskeySigner
+        ? signer.getKeypair()
+        : getKeypair();
       if (!keypair) {
         throw new Error('Could not access wallet keypair');
       }
@@ -167,7 +174,7 @@ export function useNasunLink(): UseNasunLinkResult {
         setIsLoading(false);
       }
     },
-    [canCreate, getKeypair]
+    [canCreate, getKeypair, signer]
   );
 
   /**

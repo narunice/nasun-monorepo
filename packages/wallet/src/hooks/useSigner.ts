@@ -134,15 +134,29 @@ export function useSigner(): UseSignerResult {
   }, [isZkLoggedIn, zkState]);
 
   // Register/unregister PasskeySigner based on passkey store state
+  // Mirrors LocalSigner registration: derives chain-specific address on each chain change.
   useEffect(() => {
     if (isPasskeyUnlocked && passkeyKeypair && passkeyAddress) {
-      SignerManager.register(new PasskeySigner(passkeyKeypair, passkeyAddress));
+      try {
+        const scheme = getAddressScheme(chain.id);
+        const chainAddress = deriveChainAddress(passkeyKeypair, scheme);
+        SignerManager.register(new PasskeySigner(passkeyKeypair, chainAddress));
+      } catch (err) {
+        console.error('[useSigner] Failed to derive passkey chain address:', err);
+        // Safe fallback: only use Sui address on Nasun-compatible chains.
+        // For external chains (IOTA etc.), wrong address = potential fund loss.
+        if (isNasunChain(chain.id)) {
+          SignerManager.register(new PasskeySigner(passkeyKeypair, passkeyAddress));
+        } else if (SignerManager.has('passkey')) {
+          SignerManager.unregister('passkey');
+        }
+      }
     } else {
       if (SignerManager.has('passkey')) {
         SignerManager.unregister('passkey');
       }
     }
-  }, [isPasskeyUnlocked, passkeyKeypair, passkeyAddress]);
+  }, [isPasskeyUnlocked, passkeyKeypair, passkeyAddress, chain.id]);
 
   // Register/unregister EVMSigner based on EVM chain and wallet state
   useEffect(() => {
