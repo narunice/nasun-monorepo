@@ -101,7 +101,8 @@
     "noMorePosts": "No more posts available."
   },
   "actions": {
-    "retry": "Retry"
+    "retry": "Retry",
+    "readMore": "Read More"
   },
   "myAccount": "My Account",
   "wallet": {
