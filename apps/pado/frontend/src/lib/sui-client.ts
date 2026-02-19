@@ -1,13 +1,5 @@
-import { SuiClient, type SuiEventFilter } from '@mysten/sui/client';
+import { SuiClient } from '@mysten/sui/client';
 import { NETWORK_CONFIG } from '../config/network';
-
-/**
- * Compound AND event filter for queryEvents.
- * Sui RPC supports All(Vec<EventFilter>) but the SDK type restricts to All: [].
- */
-export function andEventFilter(...filters: SuiEventFilter[]): SuiEventFilter {
-  return { All: filters } as unknown as SuiEventFilter;
-}
 
 // Singleton SuiClient instance
 let suiClient: SuiClient | null = null;
