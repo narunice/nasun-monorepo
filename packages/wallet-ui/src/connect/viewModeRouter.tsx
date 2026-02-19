@@ -38,8 +38,8 @@ import {
 } from "./wallet-views";
 import { NFTGallery } from "../nft/NFTGallery";
 import { WCViewRouter } from "../walletconnect";
-import { setPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
-import { secureZeroString } from "@nasun/wallet";
+import { setPendingPasskeyMnemonic, getPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
+import { secureZeroString, usePasskeyStore } from "@nasun/wallet";
 import { NsaRestorePanel } from "../nsa";
 import { WalletBackupPanel, RestoreBackupPanel } from "../backup";
 
@@ -81,16 +81,31 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
     />
   ),
 
-  "passkey-backup": (s) =>
-    s.mnemonic ? (
+  "passkey-backup": (s) => {
+    // Mnemonic resolution order (handles WalletConnect unmount/remount race):
+    // 1. React state (s.mnemonic) — set by onCreated if same component instance
+    // 2. Module-level var — set by onCreated, survives within same JS context
+    // 3. Zustand store — set BEFORE setUnlocked in mutation onSuccess, survives
+    //    across component unmount/remount (e.g., WelcomeBanner → Header transition)
+    const mnemonic = s.mnemonic
+      ?? getPendingPasskeyMnemonic()
+      ?? usePasskeyStore.getState().pendingMnemonic;
+
+    if (!mnemonic) {
+      // Mnemonic not yet available — return empty fragment (truthy) so renderViewContent
+      // does NOT fall through to renderByWalletStatus (which would show ConnectedView).
+      return <></>;
+    }
+
+    return (
       <BackupView
-        mnemonic={s.mnemonic}
+        mnemonic={mnemonic}
         onConfirm={() => {
           // Best-effort secure cleanup of mnemonic from memory
-          if (s.mnemonic) {
-            secureZeroString(s.mnemonic);
-          }
+          const toZero = s.mnemonic ?? mnemonic;
+          secureZeroString(toZero);
           setPendingPasskeyMnemonic(null);
+          usePasskeyStore.getState().setPendingMnemonic(null);
           s.setMnemonic(null);
           try {
             localStorage.removeItem("nasun_wallet_backup_pending");
@@ -100,7 +115,8 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
           s.setViewMode("main");
         }}
       />
-    ) : null,
+    );
+  },
 
   "create-auto-lock": (s) => (
     <AutoLockSetupView onComplete={s.handleAutoLockComplete} />
@@ -324,18 +340,31 @@ function renderByWalletStatus(
   // Passkey connected state (after zkLogin, before ledger/self-custody)
   if (s.isPasskeyUnlocked && s.passkeyAddress) {
     const credName = s.passkeyCredentials?.[0]?.name ?? "Passkey Wallet";
+    // Mirror self-custody: use chain-aware signer address for display
+    const displayAddress = s.isEVM && s.storedEVMAddress
+      ? s.storedEVMAddress
+      : s.signerAddress ?? s.passkeyAddress;
+    const addressLabel = s.isEVM
+      ? s.storedEVMAddress
+        ? `${s.chain.name} Address`
+        : "EVM Wallet Not Configured"
+      : "Connected Address";
+
     return (
       <ConnectedView
         header={{
           variant: "passkey",
           address: s.passkeyAddress,
+          displayAddress,
+          addressLabel,
           credentialName: credName,
         }}
         {...connectedViewSharedProps}
-        onSignOut={() => {
+        onLock={() => {
           s.passkeyLock();
           s.setShowDropdown(false);
         }}
+        onDelete={s.passkeyDeleteWallet}
       />
     );
   }
@@ -400,7 +429,12 @@ export function renderViewContent(
   const renderer = VIEW_RENDERERS[s.viewMode];
   if (renderer) {
     const result = renderer(s);
-    if (result) return result;
+    if (result != null) return result;
+    // passkey-backup / create-backup: never fall through to ConnectedView.
+    // The renderer returns null only transiently (before mnemonic arrives).
+    if (s.viewMode === "passkey-backup" || s.viewMode === "create-backup") {
+      return null;
+    }
   }
 
   // 2. Prefix-based routing

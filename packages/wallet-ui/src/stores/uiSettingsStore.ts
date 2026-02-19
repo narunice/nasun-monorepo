@@ -44,7 +44,6 @@ export interface GettingStartedState {
   dismissed: boolean;
   backupDone: boolean;
   faucetDone: boolean;
-  sendDone: boolean;
   stakingDone: boolean;
 }
 
@@ -103,7 +102,6 @@ const DEFAULT_GETTING_STARTED: GettingStartedState = {
   dismissed: false,
   backupDone: false,
   faucetDone: false,
-  sendDone: false,
   stakingDone: false,
 };
 
@@ -304,7 +302,6 @@ export function useGettingStarted() {
   const allDone =
     gettingStarted.backupDone &&
     gettingStarted.faucetDone &&
-    gettingStarted.sendDone &&
     gettingStarted.stakingDone;
 
   const isVisible = !gettingStarted.dismissed && !allDone;

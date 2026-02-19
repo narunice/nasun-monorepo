@@ -34,7 +34,9 @@ interface SelfCustodyHeaderProps {
 
 interface PasskeyHeaderProps {
   variant: "passkey";
-  address: string;
+  address: string;          // canonical Sui address (identity/fallback)
+  displayAddress: string;   // chain-aware address for display
+  addressLabel: string;     // e.g. "Connected Address" or "EVM Address"
   credentialName: string;
 }
 
@@ -207,10 +209,10 @@ export function ConnectedView(props: ConnectedViewProps) {
                   {header.credentialName}
                 </p>
                 <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
-                  Passkey Wallet
+                  {header.addressLabel}
                 </p>
                 <CopyableAddress
-                  value={header.address}
+                  value={header.displayAddress}
                   shorten={isMobile ? 4 : 6}
                   showCopy
                   showExplorer
@@ -385,7 +387,7 @@ export function ConnectedView(props: ConnectedViewProps) {
 
       {/* Session Actions - Always visible */}
       <div className="px-2 pb-2 pt-1 bg-gray-100 dark:bg-zinc-700/50">
-        {(variant === "zkLogin" || variant === "passkey") && onSignOut ? (
+        {variant === "zkLogin" && onSignOut ? (
           <button
             onClick={onSignOut}
             className="w-full px-3 py-2 text-sm xl:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded-lg transition-colors flex items-center justify-center gap-2"

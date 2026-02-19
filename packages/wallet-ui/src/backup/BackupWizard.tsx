@@ -104,6 +104,7 @@ export function BackupWizard({
               type="password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && pin.length >= 6 && (setError(null), setStep("confirm-pin"))}
               placeholder="Enter a secure PIN"
               className={`w-full ${WALLET_STYLES.input}`}
               autoFocus
@@ -183,7 +184,7 @@ export function BackupWizard({
   // Download step
   return (
     <div className={WALLET_STYLES.panelContainer}>
-      <div className="flex flex-col items-center py-6">
+      <div className="flex flex-col items-center pt-6 pb-3">
         <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-3">
           <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
