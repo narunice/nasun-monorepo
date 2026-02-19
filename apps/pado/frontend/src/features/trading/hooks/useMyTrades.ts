@@ -3,12 +3,12 @@
  * Fetches personal trade fills (OrderFilled events) filtered by user's balanceManagerId
  * Shows each fill as a separate row (1 fill = 1 row)
  *
- * Uses compound {All: [MoveEventType, Sender]} filter to fetch only the user's events
- * server-side, avoiding LP Bot noise.
+ * Uses Sender filter to fetch only the user's events, then filters by OrderFilled type
+ * client-side. This avoids LP Bot noise pushing user events out of the result limit.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
+import { getSuiClient } from '../../../lib/sui-client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
@@ -49,15 +49,17 @@ async function fetchMyTrades(
 ): Promise<MyTradeItem[]> {
   const client = getSuiClient();
 
+  // Query all events from this user, filter by OrderFilled type client-side
   const result = await client.queryEvents({
-    query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
-    limit: 50,
+    query: { Sender: senderAddress },
+    limit: 200,
     order: 'descending',
   });
 
   const trades: MyTradeItem[] = [];
 
   for (const event of result.data) {
+    if (event.type !== ORDER_FILLED_TYPE) continue;
     const json = event.parsedJson as RawFilledJson | undefined;
     if (!json) continue;
     if (json.pool_id !== poolId) continue;

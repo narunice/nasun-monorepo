@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin } from '@nasun/wallet';
-import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
+import { getSuiClient } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
@@ -104,15 +104,18 @@ function safeBigInt(value: unknown): bigint {
 async function fetchRealTrades(balanceManagerId: string, senderAddress: string): Promise<UserTrade[]> {
   const client = getSuiClient();
 
+  // Sender filter only — Nasun RPC does not support compound All filters.
+  // Filter by OrderFilled type client-side.
   const result = await client.queryEvents({
-    query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
-    limit: 50,
+    query: { Sender: senderAddress },
+    limit: 200,
     order: 'descending',
   });
 
   const trades: UserTrade[] = [];
 
   for (const event of result.data) {
+    if (event.type !== ORDER_FILLED_TYPE) continue;
     const json = event.parsedJson as RawFilledJson | undefined;
     if (!json) continue;
 
