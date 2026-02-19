@@ -9,12 +9,15 @@ const DISMISS_KEY = 'pado:gettingStartedDismissed';
 // Mutable mock state
 let mockWalletStatus = 'disconnected';
 let mockIsZkConnected = false;
+let mockIsPasskeyUnlocked = false;
 let mockBalance: { totalBalance: string; formattedBalance: string } | undefined;
 
 vi.mock('@nasun/wallet', () => ({
   useWallet: () => ({ status: mockWalletStatus }),
   useZkLogin: () => ({ isConnected: mockIsZkConnected }),
   useBalance: () => ({ data: mockBalance }),
+  usePasskeyStore: (selector: (s: { isUnlocked: boolean }) => boolean) =>
+    selector({ isUnlocked: mockIsPasskeyUnlocked }),
 }));
 
 function renderCard() {
@@ -28,6 +31,7 @@ function renderCard() {
 beforeEach(() => {
   mockWalletStatus = 'disconnected';
   mockIsZkConnected = false;
+  mockIsPasskeyUnlocked = false;
   mockBalance = undefined;
 });
 
@@ -300,6 +304,85 @@ describe('GettingStartedCard', () => {
       mockBalance = { totalBalance: 'notanumber', formattedBalance: 'NaN' };
       renderCard();
       // Number('notanumber') is NaN, NaN > 0 is false
+      expect(screen.getByText('1/3 completed')).toBeInTheDocument();
+    });
+  });
+
+  // ========================================
+  // Passkey wallet support
+  // ========================================
+  describe('passkey wallet', () => {
+    it('shows 1/3 when wallet connected via passkey', () => {
+      mockIsPasskeyUnlocked = true;
+      renderCard();
+      expect(screen.getByText('1/3 completed')).toBeInTheDocument();
+    });
+
+    it('marks wallet step complete with passkey (line-through)', () => {
+      mockIsPasskeyUnlocked = true;
+      renderCard();
+      const walletLabel = screen.getByText(/Create Wallet/);
+      expect(walletLabel.className).toContain('line-through');
+    });
+
+    it('hides wallet description when passkey connected', () => {
+      mockIsPasskeyUnlocked = true;
+      renderCard();
+      expect(screen.queryByText('Set up your wallet to start trading')).not.toBeInTheDocument();
+    });
+
+    it('shows 2/3 when passkey connected and has balance', () => {
+      mockIsPasskeyUnlocked = true;
+      mockBalance = { totalBalance: '500000000', formattedBalance: '0.5' };
+      renderCard();
+      expect(screen.getByText('2/3 completed')).toBeInTheDocument();
+    });
+
+    it('returns null when passkey user completes all steps', () => {
+      mockIsPasskeyUnlocked = true;
+      mockBalance = { totalBalance: '1000000000', formattedBalance: '1.0' };
+      localStorage.setItem(FIRST_TRADE_STORAGE_KEY, String(Date.now()));
+      const { container } = renderCard();
+      expect(container.innerHTML).toBe('');
+    });
+
+    it('shows "Go to Trade" for passkey user with balance', () => {
+      mockIsPasskeyUnlocked = true;
+      mockBalance = { totalBalance: '1000000000', formattedBalance: '1.0' };
+      renderCard();
+      const link = screen.getByText(/Go to Trade/);
+      expect(link.closest('a')).toHaveAttribute('href', '/markets/spot');
+    });
+
+    it('passkey alone (no mnemonic, no zkLogin) counts as connected', () => {
+      // Ensure passkey is a first-class wallet type
+      mockWalletStatus = 'disconnected';
+      mockIsZkConnected = false;
+      mockIsPasskeyUnlocked = true;
+      renderCard();
+      expect(screen.getByText('1/3 completed')).toBeInTheDocument();
+    });
+
+    it('passkey + mnemonic both active still shows 1/3 (single wallet step)', () => {
+      mockWalletStatus = 'unlocked';
+      mockIsPasskeyUnlocked = true;
+      renderCard();
+      // Even with two wallet types, wallet step is still just "1 step"
+      expect(screen.getByText('1/3 completed')).toBeInTheDocument();
+    });
+
+    it('passkey + zkLogin both active still shows 1/3', () => {
+      mockIsZkConnected = true;
+      mockIsPasskeyUnlocked = true;
+      renderCard();
+      expect(screen.getByText('1/3 completed')).toBeInTheDocument();
+    });
+
+    it('all three wallet types active still shows 1/3', () => {
+      mockWalletStatus = 'unlocked';
+      mockIsZkConnected = true;
+      mockIsPasskeyUnlocked = true;
+      renderCard();
       expect(screen.getByText('1/3 completed')).toBeInTheDocument();
     });
   });
