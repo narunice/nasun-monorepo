@@ -8,7 +8,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin } from '@nasun/wallet';
-import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
+import { getSuiClient } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
@@ -62,10 +62,11 @@ function safeBigInt(value: unknown): bigint {
 async function fetchCostBasis(balanceManagerId: string, senderAddress: string): Promise<CostBasisEntry[]> {
   const client = getSuiClient();
 
-  // Fetch OrderFilled events filtered by sender (covers all pools)
+  // Sender filter only — Nasun RPC does not support compound All filters.
+  // Filter by OrderFilled type client-side.
   const result = await client.queryEvents({
-    query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
-    limit: 50,
+    query: { Sender: senderAddress },
+    limit: 200,
     order: 'descending',
   });
 
@@ -84,6 +85,7 @@ async function fetchCostBasis(balanceManagerId: string, senderAddress: string): 
     let realizedPnl = 0;
 
     for (const event of fills) {
+      if (event.type !== ORDER_FILLED_TYPE) continue;
       const json = event.parsedJson as RawFilledJson | undefined;
       if (!json || json.pool_id !== poolId) continue;
 

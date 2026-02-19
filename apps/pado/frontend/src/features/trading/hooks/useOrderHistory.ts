@@ -3,12 +3,13 @@
  * Fetches past OrderPlaced + OrderCanceled + OrderFilled(taker) events via queryEvents RPC
  * Merges into a unified personal order history
  *
- * Uses compound {All: [MoveEventType, Sender]} filter to fetch only the user's events
- * server-side, avoiding LP Bot noise that would otherwise push user events out of the limit.
+ * Uses Sender filter to fetch only the user's events, then classifies by event type
+ * client-side. This avoids LP Bot noise pushing user events out of the result limit.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { getSuiClient, andEventFilter } from '../../../lib/sui-client';
+import type { SuiEvent } from '@mysten/sui/client';
+import { getSuiClient } from '../../../lib/sui-client';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useMarket } from '../context/MarketContext';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
@@ -67,30 +68,28 @@ async function fetchOrderHistory(
 ): Promise<OrderHistoryItem[]> {
   const client = getSuiClient();
 
-  // Use compound filter: event type AND sender address
-  // This fetches only the user's events server-side, preventing LP Bot noise
-  // from pushing user events out of the result limit.
-  const [placedResult, canceledResult, filledResult] = await Promise.all([
-    client.queryEvents({
-      query: andEventFilter({ MoveEventType: ORDER_PLACED_TYPE }, { Sender: senderAddress }),
-      limit: 50,
-      order: 'descending',
-    }),
-    client.queryEvents({
-      query: andEventFilter({ MoveEventType: ORDER_CANCELED_TYPE }, { Sender: senderAddress }),
-      limit: 50,
-      order: 'descending',
-    }),
-    client.queryEvents({
-      query: andEventFilter({ MoveEventType: ORDER_FILLED_TYPE }, { Sender: senderAddress }),
-      limit: 50,
-      order: 'descending',
-    }),
-  ]);
+  // Query all events from this user, then classify by type client-side.
+  // Sender filter ensures only user's events are returned (not LP Bot noise).
+  const result = await client.queryEvents({
+    query: { Sender: senderAddress },
+    limit: 200,
+    order: 'descending',
+  });
+
+  // Classify events by type
+  const placedEvents: SuiEvent[] = [];
+  const canceledEvents: SuiEvent[] = [];
+  const filledEvents: SuiEvent[] = [];
+
+  for (const event of result.data) {
+    if (event.type === ORDER_PLACED_TYPE) placedEvents.push(event);
+    else if (event.type === ORDER_CANCELED_TYPE) canceledEvents.push(event);
+    else if (event.type === ORDER_FILLED_TYPE) filledEvents.push(event);
+  }
 
   // Collect canceled order IDs for status lookup
   const canceledOrderIds = new Set<string>();
-  for (const event of canceledResult.data) {
+  for (const event of canceledEvents) {
     const json = event.parsedJson as RawEventJson | undefined;
     if (!json) continue;
     if (json.balance_manager_id !== balanceManagerId) continue;
@@ -100,7 +99,7 @@ async function fetchOrderHistory(
 
   // Collect maker fills: maker_order_id -> total executed qty (raw)
   const makerFillQtyMap = new Map<string, bigint>();
-  for (const event of filledResult.data) {
+  for (const event of filledEvents) {
     const json = event.parsedJson as RawEventJson | undefined;
     if (!json) continue;
     if (json.maker_balance_manager_id !== balanceManagerId) continue;
@@ -116,7 +115,7 @@ async function fetchOrderHistory(
 
   // Build limit orders from OrderPlaced events
   const orders: OrderHistoryItem[] = [];
-  for (const event of placedResult.data) {
+  for (const event of placedEvents) {
     const json = event.parsedJson as RawEventJson | undefined;
     if (!json) continue;
     if (json.balance_manager_id !== balanceManagerId) continue;
@@ -165,7 +164,7 @@ async function fetchOrderHistory(
     txDigest: string;
   }>();
 
-  for (const event of filledResult.data) {
+  for (const event of filledEvents) {
     const json = event.parsedJson as RawEventJson | undefined;
     if (!json) continue;
     if (json.taker_balance_manager_id !== balanceManagerId) continue;
