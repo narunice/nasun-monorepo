@@ -1,7 +1,7 @@
 {
   "hero": {
-    "tagline": "통합 온체인 금융",
-    "subTagline": "수탁 없는 성능. 타협 없는 통제.",
+    "tagline": "Unified Onchain Finance",
+    "subTagline": "Performance without custody. Control without compromise.",
     "button": "Try Pado Alpha"
   },
   "intro": {
@@ -33,7 +33,7 @@
   },
   "coreInnovation": {
     "title": "핵심 혁신",
-    "subtitle": "One Account, One Risk Engine",
+    "subtitle": "하나의 계정, 하나의 리스크 엔진",
     "intro": "Pado의 중심에는 사용자의 전체 금융 상태를 나타내는 Smart Account Object가 있습니다.",
     "features": [
       {
@@ -197,7 +197,7 @@
     "title": "인텐트 기반 & 에이전트 대응",
     "subtitle": "에이전트 미래를 위한 설계",
     "intro": "Pado는 사용자(또는 자율 에이전트)가 수동 트랜잭션 대신 금융 목표를 표현할 수 있는 인텐트 기반 실행 레이어를 도입합니다.",
-    "example": "\"Maintain a 5% yield on my stablecoins while keeping my ETH position above a 1.6x health factor.\"",
+    "example": "\"내 스테이블코인에서 5% 수익률을 유지하면서 ETH 포지션의 헬스 팩터를 1.6배 이상으로 유지해줘.\"",
     "features": [
       {
         "title": "솔버 네트워크",

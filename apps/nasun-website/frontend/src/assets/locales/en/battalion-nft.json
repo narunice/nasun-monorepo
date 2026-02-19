@@ -27,7 +27,6 @@
     "INVALID_SIGNATURE": "Invalid wallet signature. Please try again.",
     "SIGNATURE_EXPIRED": "Signature expired. Please try again."
   },
-  "shareOnX": "Share on X",
   "share": "Share on",
   "goToHome": "Go to Home",
   "goToMyAccount": "Go to My Account Dashboard",

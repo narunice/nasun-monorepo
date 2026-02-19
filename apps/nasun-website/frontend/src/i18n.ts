@@ -32,14 +32,8 @@ i18n
       "common",
       "home",
       "strategy",
-      "products",
-      "web3",
       "tokenomics",
-      "manifesto",
-      "story",
-
       "roadmap",
-
       "riderStudio",
       "wePop",
       "genSol",
@@ -47,12 +41,9 @@ i18n
       "heist",
       "opportunities",
       "grants",
-
       "team",
       "sale",
       "myAccount",
-      "privacyPolicy",
-      "terms",
       "battalion-nft",
       "early-contributors",
       "leaderboard",

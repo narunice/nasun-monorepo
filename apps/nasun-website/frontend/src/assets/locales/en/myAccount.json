@@ -61,25 +61,6 @@
       }
     }
   },
-  "battalionNftAllowlist": {
-    "title": "BATTALION NFT ALLOWLIST STATUS",
-    "connectWallet": "Please connect your MetaMask wallet to check your Battalion NFT status.",
-    "registered": "Registered",
-    "withdrawn": "Withdrawn",
-    "notRegistered": "You are not registered for the Battalion NFT Allowlist.",
-    "notRegisteredHint": "Visit the Battalion NFT page to register.",
-    "verifiedAt": "Registered on: {{date}}",
-    "verifiedAtLabel": "Registered At",
-    "handle": "Handle",
-    "status": "Status",
-    "walletAddress": "Wallet Address",
-    "withdraw": "Withdraw from Allowlist",
-    "confirmWithdraw": "Are you sure you want to withdraw from the Battalion NFT Allowlist? You can re-register anytime by visiting the event page again.",
-    "withdrawSuccess": "You have successfully withdrawn from the Battalion NFT Allowlist.",
-    "withdrawError": "Failed to withdraw from the Battalion NFT Allowlist. Please try again.",
-    "alreadyWithdrawn": "You have already withdrawn from the Battalion NFT.",
-    "signatureError": "Signature verification failed. Please try again."
-  },
   "myAssets": {
     "myAssets": "MY ASSETS",
     "noObject": "No NASUN objects were found.",
@@ -179,6 +160,5 @@
   },
   "loading": "Loading...",
   "loadingSui": "Error loading Nasun NFTs:",
-  "loadingEthereum": "Error loading Ethereum NFTs:",
   "walletNotConnected": "Wallet not connected."
 }

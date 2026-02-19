@@ -1,0 +1,87 @@
+{
+  "info": {
+    "pageTitle": "리더보드 가이드",
+    "intro": {
+      "title": "NASUN 리더보드 작동 방식",
+      "description": "X (Twitter)에서 NASUN과 교류하여 포인트를 획득하세요. 팔로우, 좋아요, 리포스트, 답글을 통해 순위를 올리세요. 팔로우:"
+    },
+    "rewardsBreakdown": "보상 안내",
+    "tiers": {
+      "platinum": {
+        "rank": "순위 1 - 20",
+        "name": "Platinum"
+      },
+      "gold": {
+        "rank": "순위 21 - 50",
+        "name": "Gold"
+      },
+      "silver": {
+        "rank": "순위 51 - 200",
+        "name": "Silver"
+      },
+      "beyond": {
+        "rank": "순위 201+",
+        "name": "Participants"
+      }
+    },
+    "rewards": {
+      "topPercentageShare": "에어드롭 리워드 풀의 최상위 비율 배분",
+      "percentageShare": "에어드롭 리워드 풀의 비율 배분",
+      "freeMint": "Genesis NFT 컬렉션 무료 민트",
+      "discountedMint": "Genesis NFT 컬렉션 할인 민트",
+      "battalionNft": "단독 Battalion NFT 에어드롭",
+      "allowlistAccess": "향후 드롭 허용 목록 보장",
+      "randomDrawings": "랜덤 추첨 참여 자격",
+      "beyondRewards": "모든 참가자는 랜덤 추첨 및 커뮤니티 보상 참여 자격이 있습니다"
+    },
+    "howToEarnPoints": "포인트 획득 방법",
+    "scoringOverview": {
+      "title": "점수 산정 개요",
+      "description": "포인트는 X (Twitter)에서 NASUN 공식 게시물과의 교류를 기반으로 산정됩니다. 각 상호작용 유형은 서로 다른 가중치를 갖습니다. 좋아요, 리포스트, 답글, 인용 트윗 모두 점수에 기여합니다.",
+      "policyNote": "점수 산정 가중치와 정책은 공정성 유지 및 악용 방지를 위해 언제든 조정될 수 있습니다.",
+      "finalNotes": {
+        "title": "유의사항",
+        "items": [
+          "점수는 실시간이 아닌 주기적으로 갱신됩니다",
+          "NASUN 공식 게시물과의 상호작용만 집계됩니다",
+          "동일 사용자의 복수 계정은 병합 또는 실격 처리됩니다",
+          "팀은 공정성을 위해 점수를 조정할 권리를 보유합니다"
+        ]
+      }
+    },
+    "rulesGuidelines": {
+      "title": "규칙 및 가이드라인",
+      "description": "공정하고 진정성 있는 커뮤니티를 유지하기 위해 다음 활동은 금지됩니다:",
+      "expand": "상세 설명 보기",
+      "collapse": "상세 설명 접기",
+      "prohibited": {
+        "headlines": [
+          "봇 또는 자동화된 활동",
+          "스팸 또는 반복적인 답글",
+          "가짜 또는 중복 계정",
+          "조작 또는 조직적인 부정 행위"
+        ],
+        "items": [
+          "좋아요, 리포스트 또는 답글 생성을 위한 봇, 스크립트 또는 자동화 도구 사용",
+          "포인트 획득만을 위한 반복적, 무관련 또는 저품질 답글 게시",
+          "참여도나 순위를 인위적으로 부풀리기 위한 복수 계정 생성",
+          "상호 점수를 인위적으로 높이기 위한 타인과의 공모",
+          "제3자 서비스를 통한 참여(좋아요, 팔로워, 리포스트) 구매"
+        ],
+        "disclaimer": "위반 시 점수 차감, 실격, 또는 리더보드 프로그램에서 영구 제명될 수 있습니다."
+      }
+    },
+    "dataPrivacy": {
+      "title": "데이터 및 개인정보",
+      "description": "리더보드 점수 산정을 위해 X (Twitter) API의 공개 데이터만 수집합니다.",
+      "apiUsageTitle": "수집하는 정보",
+      "items": [
+        "공개 프로필 정보 (사용자명, 표시명)",
+        "NASUN 게시물에 대한 공개 트윗 상호작용 (좋아요, 리포스트, 답글)",
+        "NASUN 계정 팔로우 여부"
+      ],
+      "scoringNote": "비공개 메시지, 보호된 트윗 또는 기타 비공개 데이터에 접근하지 않습니다. X 계정 자격 증명은 저장되지 않습니다."
+    },
+    "goToLeaderboard": "리더보드로 이동"
+  }
+}

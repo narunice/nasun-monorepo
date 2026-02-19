@@ -1,16 +1,4 @@
 {
-  "foundersHero": {
-    "title": "Frontiers Event",
-    "subtitleHighlight": "You — the early contributors, creators, and visionaries —",
-    "subtitleDimmed": "form the heart of Nasun's community.",
-    "description1": "As one of the first to join our journey, you help shape the foundation on which Nasun's vision will grow.",
-    "description2": "The Nasun Frontiers Event recognizes your early participation and grants exclusive access, privileges, and eligibility across the Nasun ecosystem.",
-    "visionTitle": "Embody Our Vision and Commitment",
-    "visionDescription1": "Each piece was inspired by the sci-fi world-building of our first IP—Gen Sol, and was crafted using tools like Blender, ZBrush, Substance Painter, and Photoshop.",
-    "visionDescription2": "Owning one means joining us beyond the boundaries of art, finance, and technology—where our imagination fuels our journey into a future without limits.",
-    "ctaButton": "JOIN THE WHITELIST & START YOUR JOURNEY WITH US >>"
-  },
-
   "keyBenefits": {
     "title": "Key Benefits",
     "tokensCard": {
@@ -49,7 +37,6 @@
     },
     "ctaButton": "OPENSEA: NASUN FRONTIERS COLLECTION"
   },
-
   "title": "FRONTIERS COLLECTION",
   "tagline": "Ascend through the ranks of the Ark universe. Higher tiers unlock unprecedented access in our space opera saga.",
   "tier": "TIER",
@@ -59,11 +46,9 @@
     "title": "TOKEN ALLOCATION",
     "description": "of total supply"
   },
-  "select_chain": "Select Preferred Chain",
   "switch": "Switch/Disconnect",
   "status": "Wallet Status",
   "mint": "Mint Now",
-  "go_to_mint": "Go to Mint",
   "toast": {
     "connected_well": "Wallet connected successfully.",
     "unsupported_chain": "This chain is not supported yet.",
@@ -79,7 +64,6 @@
     "supply_unavailable": "Supply information unavailable",
     "minted_label": "Minted to date"
   },
-
   "minted_modal": {
     "minting_successful": "Minting Successful",
     "loading_nft_details": "Loading NFT details...",
@@ -94,7 +78,6 @@
     "close": "Close",
     "sr_only_description": "NFT minting progress"
   },
-
   "payAndMintNFT": {
     "errors": {
       "InsufficientCoinBalance": "Insufficient token balance",
@@ -116,9 +99,7 @@
       "success": "{{tier}} NFT minted successfully!"
     }
   },
-
   "comparison": "COMMAND YOUR TIER",
-
   "tiers": {
     "tier1": {
       "name": "VOREX THE DESTROYER",

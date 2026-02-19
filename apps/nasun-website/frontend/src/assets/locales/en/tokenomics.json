@@ -129,15 +129,6 @@
       "description": "Move's ownership model ensures assets behave like physical resources"
     }
   },
-  "key_facts": {
-    "title": "KEY FACTS",
-    "points": [
-      "Total supply: 10 billion NASUN",
-      "Consensus: Delegated Proof-of-Stake (DPoS)",
-      "Smart contract language: Move",
-      "Gas fees paid in NASUN"
-    ]
-  },
   "distribution": {
     "title": "NSN TOKEN",
     "heading": "NSN TOKEN",
