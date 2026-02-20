@@ -7,6 +7,7 @@ import {
   TransactionCharts,
   TradingActivityChart,
   NetworkStateSection,
+  IndexerCharts,
 } from '../components/analytics';
 import type { TimeRange } from '../lib/analytics/types';
 
@@ -62,6 +63,14 @@ export default function Analytics() {
       <section>
         <h2 className="text-lg font-semibold text-foreground mb-4">Protocol Activity</h2>
         <TradingActivityChart data={tradingData} isLoading={tradingLoading} />
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Indexer Metrics</h2>
+        <p className="text-muted-foreground text-xs mb-4">
+          Aggregated from the on-chain indexer. Data may lag behind real-time during sync.
+        </p>
+        <IndexerCharts range={timeRange === 'all' ? '30d' : timeRange} />
       </section>
 
       <section>
