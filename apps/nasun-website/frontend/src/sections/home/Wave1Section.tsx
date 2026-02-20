@@ -115,7 +115,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
           <div className="flex flex-col gap-5 w-full lg:w-[50%] mt-6 lg:mt-0 order-2 lg:order-1">
             {/* LEADERBOARD */}
             <Link
-              to="/wave1/leaderboard-info"
+              to="/wave1/leaderboard-guide"
               className="block w-full flex-1 group transition-all duration-300 ease-out"
             >
               <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">

@@ -1,87 +1,66 @@
 {
   "info": {
     "pageTitle": "Leaderboard Guide",
-    "intro": {
-      "title": "How the NASUN Leaderboard Works",
-      "description": "Earn points by engaging with NASUN on X (Twitter). Follow, like, repost, and reply to earn your rank. Follow us at"
-    },
-    "rewardsBreakdown": "Rewards Breakdown",
-    "tiers": {
+    "subtitle": "Contribute content, bring people in, and help create network effects. Climb the ranks to access the Launch Pool and earn Battalion NFTs.",
+    "howToJoin": "How to join: Follow",
+    "howToJoinMiddle": "and sign up to this website",
+    "howToJoinSuffix": "(auto-enrolled).",
+    "rewards": {
+      "title": "Rewards",
+      "columns": {
+        "rank": "Rank",
+        "tier": "Tier",
+        "poolShare": "Pool Share",
+        "battalionNft": "Battalion NFT",
+        "allowlist": "Allowlist x4",
+        "drawings": "Drawings"
+      },
       "platinum": {
-        "rank": "Rank 1 - 20",
-        "name": "Platinum"
+        "rank": "1-20",
+        "name": "Platinum",
+        "poolShare": "Top (TBA)",
+        "nft": "1 Free",
+        "allowlist": "GTD",
+        "drawings": "true"
       },
       "gold": {
-        "rank": "Rank 21 - 50",
-        "name": "Gold"
+        "rank": "21-50",
+        "name": "Gold",
+        "poolShare": "High (TBA)",
+        "nft": "1 Discount",
+        "allowlist": "GTD",
+        "drawings": "true"
       },
       "silver": {
-        "rank": "Rank 51 - 200",
-        "name": "Silver"
+        "rank": "51-200",
+        "name": "Silver",
+        "poolShare": "Share (TBA)",
+        "nft": "-",
+        "allowlist": "GTD",
+        "drawings": "true"
       },
-      "beyond": {
-        "rank": "Rank 201+",
-        "name": "Participants"
+      "bronze": {
+        "rank": "201+",
+        "name": "Bronze",
+        "poolShare": "TBA soon",
+        "nft": "Community perks",
+        "allowlist": "-",
+        "drawings": "false"
       }
     },
-    "rewards": {
-      "topPercentageShare": "Top percentage share of the airdrop reward pool",
-      "percentageShare": "Percentage share of the airdrop reward pool",
-      "freeMint": "Free mint for Genesis NFT collection",
-      "discountedMint": "Discounted mint for Genesis NFT collection",
-      "battalionNft": "Exclusive Battalion NFT airdrop",
-      "allowlistAccess": "Guaranteed allowlist access for future drops",
-      "randomDrawings": "Eligibility for random prize drawings",
-      "beyondRewards": "All participants are eligible for random prize drawings and community rewards"
-    },
-    "howToEarnPoints": "How to Earn Points",
-    "scoringOverview": {
-      "title": "Scoring Overview",
-      "description": "Points are calculated based on your engagement with official NASUN posts on X (Twitter). Each interaction type carries a different weight. Likes, reposts, replies, and quote tweets all contribute to your score.",
-      "policyNote": "Scoring weights and policies may be adjusted at any time to maintain fairness and prevent abuse.",
-      "finalNotes": {
-        "title": "Important Notes",
-        "items": [
-          "Scores are updated periodically, not in real-time",
-          "Only interactions with official NASUN posts are counted",
-          "Multiple accounts from the same user will be merged or disqualified",
-          "The team reserves the right to adjust scores for fairness"
-        ]
-      }
-    },
-    "rulesGuidelines": {
-      "title": "Rules & Guidelines",
-      "description": "To maintain a fair and genuine community, the following activities are prohibited:",
-      "expand": "Show detailed descriptions",
-      "collapse": "Hide details",
-      "prohibited": {
-        "headlines": [
-          "Bot or automated engagement",
-          "Spam or repetitive replies",
-          "Fake or duplicate accounts",
-          "Manipulation or coordinated inauthentic behavior"
-        ],
-        "items": [
-          "Using bots, scripts, or automated tools to generate likes, reposts, or replies",
-          "Posting repetitive, irrelevant, or low-quality replies solely to farm points",
-          "Creating multiple accounts to artificially inflate engagement or rankings",
-          "Coordinating with others to artificially boost each other's scores",
-          "Purchasing engagement (likes, followers, reposts) from third-party services"
-        ],
-        "disclaimer": "Violations may result in score reduction, disqualification, or permanent ban from the leaderboard program."
-      }
-    },
-    "dataPrivacy": {
-      "title": "Data & Privacy",
-      "description": "We collect only publicly available data from the X (Twitter) API to calculate leaderboard scores.",
-      "apiUsageTitle": "What We Access",
+    "earnPoints": {
+      "title": "Earn Points",
+      "description": "Quality engagement @Nasun_io gets the biggest boosts:",
       "items": [
-        "Public profile information (username, display name)",
-        "Public tweet interactions (likes, reposts, replies) with NASUN posts",
-        "Follower status relative to NASUN accounts"
-      ],
-      "scoringNote": "We do not access private messages, protected tweets, or any non-public data. Your X account credentials are never stored."
+        "Thoughtful quotes & replies",
+        "Creative content (threads, videos, memes, analysis)",
+        "Organic shares with your audience"
+      ]
     },
-    "goToLeaderboard": "Go to Leaderboard"
+    "fairPlay": {
+      "title": "Fair Play",
+      "description": "No bots, no spam. Organic only."
+    },
+    "viewLeaderboard": "View Live Leaderboard"
   }
 }

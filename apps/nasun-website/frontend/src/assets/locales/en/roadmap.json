@@ -35,15 +35,15 @@
       "title": "NASUN L1 Network",
       "items": [
         "Devnet Live",
+        "Smart Contract Deployment",
+        "Sponsored Transactions",
         "Blockchain Explorer",
+        "Network Indexer & Analytics API",
         "Non-custodial Wallet",
         "zkLogin & Passkey Authentication",
         "Multi-token Support",
         "Faucet",
-        "Sponsored Transactions",
-        "Smart Contract Deployment",
-        "On-chain Governance",
-        "Network Indexer & Analytics API"
+        "On-chain Governance"
       ]
     },
     "pado": {
@@ -251,22 +251,22 @@
           "description": "Developer tools for ModelObject creation and executor integration"
         },
         {
-          "id": "gensol-partnerships",
-          "title": "Gen Sol: Partnerships",
-          "status": "upcoming",
-          "description": "Producers, prodcos, & talent agencies"
-        },
-        {
           "id": "spectra-2026",
           "title": "Gen Sol: SPECTRA",
-          "status": "upcoming",
+          "status": "in-progress",
           "description": "Team mission mode, ranked & tournament systems, Web3 integration"
         },
         {
           "id": "spectra-heist-previz",
-          "title": "Gen Sol: Spectra Heist",
-          "status": "upcoming",
+          "title": "Gen Sol: The Heist",
+          "status": "in-progress",
           "description": "Pre-visualization for animated series & script development"
+        },
+        {
+          "id": "gensol-partnerships",
+          "title": "Gen Sol: Partnerships",
+          "status": "upcoming",
+          "description": "Producers, prodcos, & talent agencies"
         },
         {
           "id": "the-heir-dev",
@@ -315,7 +315,7 @@
         {
           "id": "nasun-launch",
           "title": "Nasun Launch",
-          "status": "upcoming",
+          "status": "completed",
           "description": "Official announcement on X"
         },
         {
@@ -327,13 +327,19 @@
         {
           "id": "battalion-leaderboard",
           "title": "Battalion Leaderboard Launch",
-          "status": "upcoming"
+          "status": "in-progress"
         },
         {
           "id": "battalion-nft",
           "title": "Battalion NFT",
-          "status": "upcoming",
+          "status": "in-progress",
           "description": "Drop + utility campaign (early access)"
+        },
+        {
+          "id": "gensol-web-launch",
+          "title": "Gen Sol Website Launch",
+          "status": "in-progress",
+          "description": "Community onboarding"
         },
         {
           "id": "genesis-leaderboard",
@@ -345,12 +351,6 @@
           "title": "Early Contributors Campaign",
           "status": "upcoming",
           "description": "Onboard KOLs and creators on social platforms"
-        },
-        {
-          "id": "gensol-web-launch",
-          "title": "Gen Sol Website Launch",
-          "status": "completed",
-          "description": "Community onboarding"
         },
         {
           "id": "genesis-event",
