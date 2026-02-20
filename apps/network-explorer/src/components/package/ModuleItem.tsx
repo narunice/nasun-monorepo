@@ -1,5 +1,6 @@
 import type { SuiMoveNormalizedModule } from '@mysten/sui/client';
 import { formatMoveType, type MoveParam } from '../../lib/move-utils';
+import { Badge } from '../ui/Badge';
 
 interface ModuleItemProps {
   name: string;
@@ -88,13 +89,22 @@ export default function ModuleItem({ name, module, isExpanded, onToggle }: Modul
               <div className="space-y-2">
                 {Object.entries(module.structs).map(([structName, struct]) => (
                   <div key={structName} className="bg-card border border-border/20 rounded p-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <code className="text-foreground font-mono text-sm">{structName}</code>
-                      {struct.abilities.abilities.length > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          has {struct.abilities.abilities.join(', ')}
-                        </span>
-                      )}
+                      {struct.abilities.abilities.map((ability) => (
+                        <Badge
+                          key={ability}
+                          variant={
+                            ability === 'Key' ? 'info' :
+                            ability === 'Store' ? 'success' :
+                            ability === 'Copy' ? 'default' :
+                            ability === 'Drop' ? 'child' :
+                            'default'
+                          }
+                        >
+                          {ability}
+                        </Badge>
+                      ))}
                     </div>
                     {struct.fields.length > 0 && (
                       <div className="mt-1 text-xs text-muted-foreground font-mono pl-2">

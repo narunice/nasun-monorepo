@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Card } from '../ui/Card';
-import { truncateDigest, formatTimestamp, formatLastUpdated } from '../../lib/format';
+import { Badge } from '../ui/Badge';
+import { truncateDigest, formatTimestamp, formatLastUpdated, getTxTypeInfo } from '../../lib/format';
 import type { SuiTransactionBlockResponse } from '@mysten/sui/client';
 
 interface RecentTransactionsTableProps {
@@ -46,6 +47,9 @@ export default function RecentTransactionsTable({
                   Digest
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">
                   Time
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">
@@ -54,7 +58,9 @@ export default function RecentTransactionsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
-              {transactions.map((tx) => (
+              {transactions.map((tx) => {
+                const typeInfo = getTxTypeInfo(tx);
+                return (
                 <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3">
                     <Link
@@ -64,6 +70,9 @@ export default function RecentTransactionsTable({
                       {truncateDigest(tx.digest)}
                     </Link>
                   </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>
+                  </td>
                   <td className="px-4 py-3 text-foreground text-sm">
                     {formatTimestamp(tx.timestampMs)}
                   </td>
@@ -71,7 +80,8 @@ export default function RecentTransactionsTable({
                     {tx.checkpoint || '-'}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

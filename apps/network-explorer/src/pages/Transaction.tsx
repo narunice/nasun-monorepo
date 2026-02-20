@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 import TransactionOverview from '../components/transaction/TransactionOverview';
 import TransactionGas from '../components/transaction/TransactionGas';
 import TransactionObjectChanges from '../components/transaction/TransactionObjectChanges';
+import TransactionBalanceChanges from '../components/transaction/TransactionBalanceChanges';
 import TransactionEvents from '../components/transaction/TransactionEvents';
 import TransactionRawData from '../components/transaction/TransactionRawData';
 
@@ -55,6 +56,11 @@ export default function Transaction() {
             timestampMs={tx.timestampMs}
             checkpoint={tx.checkpoint}
             sender={tx.transaction?.data?.sender}
+            transactions={
+              tx.transaction?.data?.transaction?.kind === 'ProgrammableTransaction'
+                ? tx.transaction.data.transaction.transactions
+                : null
+            }
           />
 
           {/* Gas Section */}
@@ -66,6 +72,9 @@ export default function Transaction() {
 
           {/* Object Changes Section */}
           <TransactionObjectChanges objectChanges={tx.objectChanges} />
+
+          {/* Balance Changes Section */}
+          <TransactionBalanceChanges balanceChanges={tx.balanceChanges} />
 
           {/* Events Section */}
           <TransactionEvents events={tx.events} />

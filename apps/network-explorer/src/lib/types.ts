@@ -30,6 +30,7 @@ export interface EpochInfo {
   epochDurationMs: string;
   remainingMs: number;
   totalStake: string;
+  activeValidatorsCount: number;
   progress: number;
   startTimestamp: number;
   endTimestamp: number;

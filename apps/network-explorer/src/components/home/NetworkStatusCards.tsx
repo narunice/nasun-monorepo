@@ -1,5 +1,5 @@
 import { Card } from '../ui/Card';
-import { formatLastUpdated, formatDuration } from '../../lib/format';
+import { formatLastUpdated, formatDuration, formatBalance } from '../../lib/format';
 import type { NetworkStatus, EpochInfo } from '../../lib/types';
 
 interface NetworkStatusCardsProps {
@@ -41,7 +41,7 @@ export default function NetworkStatusCards({
       {isLoading ? (
         <div className="text-muted-foreground">Loading...</div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
           <Card variant="default" className="p-4">
             <div className="text-muted-foreground text-sm uppercase tracking-wider">Status</div>
             <div
@@ -77,6 +77,18 @@ export default function NetworkStatusCards({
             <div className="text-muted-foreground text-sm uppercase tracking-wider">Gas Price</div>
             <div className="text-lg font-mono text-foreground">
               {status?.referenceGasPrice || '-'} SOE
+            </div>
+          </Card>
+          <Card variant="default" className="p-4">
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">Total Stake</div>
+            <div className="text-lg font-mono text-foreground truncate">
+              {epochInfo?.totalStake ? `${formatBalance(epochInfo.totalStake)} NSN` : '-'}
+            </div>
+          </Card>
+          <Card variant="default" className="p-4">
+            <div className="text-muted-foreground text-sm uppercase tracking-wider">Validators</div>
+            <div className="text-lg font-mono text-foreground">
+              {epochInfo?.activeValidatorsCount ?? '-'}
             </div>
           </Card>
         </div>

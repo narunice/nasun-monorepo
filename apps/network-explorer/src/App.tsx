@@ -11,6 +11,9 @@ import Validator from './pages/Validator';
 import Checkpoints from './pages/Checkpoints';
 import Checkpoint from './pages/Checkpoint';
 import Package from './pages/Package';
+import Packages from './pages/Packages';
+import Tokens from './pages/Tokens';
+import Epoch from './pages/Epoch';
 import AuthCallback from './pages/AuthCallback';
 import { Card } from './components/ui/Card';
 
@@ -43,6 +46,9 @@ function App() {
           <Route path="/checkpoints" element={<Checkpoints />} />
           <Route path="/checkpoint/:sequence" element={<Checkpoint />} />
           <Route path="/package/:id" element={<Package />} />
+          <Route path="/packages" element={<Packages />} />
+          <Route path="/tokens" element={<Tokens />} />
+          <Route path="/epoch/:id" element={<Epoch />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
