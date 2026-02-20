@@ -1,19 +1,25 @@
 import { Suspense, lazy } from "react";
-import { useTranslation } from "react-i18next";
+// import { useTranslation } from "react-i18next";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
-import OverviewSkeleton from "@/sections/ips/gensol/overview/OverviewSkeleton";
+// import OverviewSkeleton from "@/sections/ips/gensol/overview/OverviewSkeleton";
+import { SectionLoading } from "@/components/ui/SectionLoading";
 
-// Lazy load consolidated hero section
-const OverviewHeroSection = lazy(() => import("@/sections/ips/gensol/overview/OverviewHeroSection"));
+const GenSolPlanSection = lazy(() => import("@/sections/ips/gensol/overview/GenSolPlanSection"));
+// Legacy: const OverviewHeroSection = lazy(() => import("@/sections/ips/gensol/overview/OverviewHeroSection"));
 
 export default function OverviewPage() {
-  const { t } = useTranslation("genSol");
+  // const { t } = useTranslation("genSol");
 
   return (
     <ErrorBoundary>
       <PageLayout>
+        <Suspense fallback={<SectionLoading />}>
+          <GenSolPlanSection />
+        </Suspense>
+
+        {/* Legacy content — hidden pending removal
         <Suspense fallback={<OverviewSkeleton />}>
           <OverviewHeroSection />
         </Suspense>
@@ -25,6 +31,7 @@ export default function OverviewPage() {
             </a>
           </Button>
         </div>
+        */}
       </PageLayout>
     </ErrorBoundary>
   );

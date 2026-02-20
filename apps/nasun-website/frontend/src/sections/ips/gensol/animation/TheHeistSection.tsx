@@ -19,21 +19,10 @@ function TheHeistSection() {
           <PageTitle>THE HEIST</PageTitle>
           <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">3D Animated Sci-Fi Series</h5>
 
-          {/* Video Placeholder */}
-          <div className="mt-4 md:mt-6 lg:mt-8 w-full">
-            <div className="w-full aspect-video bg-nasun-nw3/20 border border-dashed border-nasun-nw3/50 rounded-lg flex flex-col items-center justify-center gap-4">
-              <div className="w-16 h-16 rounded-full border-2 border-nasun-nw4/50 flex items-center justify-center">
-                <span className="text-nasun-nw4/80 ml-1 text-2xl">▶</span>
-              </div>
-              <small className="text-nasun-nw4/70 tracking-widest uppercase">
-                Trailer — Coming Soon
-              </small>
-            </div>
-            <p className="text-center text-nasun-white/70 py-2 md:py-4">
-              A grieving father must pull off an impossible heist across the galaxy to save his
-              kidnapped daughter.
-            </p>
-          </div>
+          <p className="mt-6 md:mt-8 py-10 text-nasun-white/70 italic text-center">
+            A grieving father must pull off an impossible heist across the galaxy to save his
+            kidnapped daughter.
+          </p>
         </div>
 
         {/* ========== THE STORY ========== */}
@@ -159,8 +148,8 @@ function TheHeistSection() {
           <div className="bg-slate-900 border border-slate-700 backdrop-blur-lg rounded-sm shadow-lg px-4 md:px-6 lg:px-8 py-3 md:py-5 lg:py-7 space-y-4">
             <p className="text-nasun-nw4 font-medium">
               Lush frontier worlds. Oppressive imperial strongholds. Outlaw stations operating at
-              the edges of the galaxy. Ancient technologies powered by Spectra energy. Every
-              empire and planetary system preparing for the V Games.
+              the edges of the galaxy. Ancient technologies powered by Spectra energy. Every empire
+              and planetary system preparing for the V Games.
             </p>
             <p className="text-nasun-white/70">
               The Heist introduces the Gen Sol universe—its factions, its dangers, and the power
