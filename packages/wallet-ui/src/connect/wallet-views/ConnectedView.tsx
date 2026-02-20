@@ -14,7 +14,7 @@ import { MoreMenu } from "../MoreMenu";
 import type { ViewMode } from "../types";
 import { NetworkSelector } from "./NetworkSelector";
 import { AssetsTabContent } from "./AssetsTabContent";
-import { AccountTabContent } from "./AccountTabContent";
+import { AccountTabContent, GettingStartedChecklist } from "./AccountTabContent";
 import { HistoryTabContent } from "./HistoryTabContent";
 
 interface ZkLoginHeaderProps {
@@ -309,6 +309,8 @@ export function ConnectedView(props: ConnectedViewProps) {
 
         {/* Assets tab */}
         {activeTab === "assets" && (
+          <>
+          <GettingStartedChecklist variant={variant} onNavigate={handleNavigate} onSwitchTab={setActiveTab} />
           <AssetsTabContent
             isEVM={isEVM}
             isExternalMove={isExternalMove}
@@ -330,6 +332,7 @@ export function ConnectedView(props: ConnectedViewProps) {
             onSelectNFT={(nft) => setSelectedNFT(nft)}
             onViewAllNFTs={() => setViewMode('nfts')}
           />
+          </>
         )}
 
         {/* Account tab */}
@@ -339,7 +342,6 @@ export function ConnectedView(props: ConnectedViewProps) {
             nsaIsInitialized={nsaIsInitialized}
             nsaRecoveryCompleted={nsaRecoveryCompleted}
             onNavigate={handleNavigate}
-            onSwitchTab={setActiveTab}
           />
         )}
 

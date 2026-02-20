@@ -50,7 +50,7 @@ function MenuIcon({ d }: { d: string | string[] }) {
   );
 }
 
-function GettingStartedChecklist({
+export function GettingStartedChecklist({
   variant,
   onNavigate,
   onSwitchTab,
@@ -182,22 +182,17 @@ export function AccountTabContent({
   nsaIsInitialized,
   nsaRecoveryCompleted,
   onNavigate,
-  onSwitchTab,
 }: {
   variant: "zkLogin" | "self-custody" | "passkey";
   nsaIsInitialized: boolean;
   nsaRecoveryCompleted: number;
   onNavigate: (mode: ViewMode) => void;
-  onSwitchTab?: (tab: TabMode) => void;
 }) {
   const [showBackupGuide, setShowBackupGuide] = useState(false);
   const { isAdvancedMode } = useUISettingsStore();
 
   return (
     <div className="py-1 mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-tl-lg">
-      {/* Getting Started checklist for first-time users */}
-      <GettingStartedChecklist variant={variant} onNavigate={onNavigate} onSwitchTab={onSwitchTab} />
-
       {/* Asset Management */}
       <button onClick={() => onNavigate("staking")} className={MENU_ITEM_CLASS}>
         <MenuIcon d={ICON_PATHS.staking} />
