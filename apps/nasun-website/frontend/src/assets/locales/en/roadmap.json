@@ -15,7 +15,7 @@
       "title": "PROTOCOL & INFRASTRUCTURE"
     },
     "content": {
-      "title": "PRODUCTS"
+      "title": "ECOSYSTEM & PRODUCTS"
     },
     "finance": {
       "title": "COMMUNITY & MARKETING"
@@ -34,12 +34,13 @@
     "nasun": {
       "title": "NASUN L1 Network",
       "items": [
-        "Devnet Live (2 Validator Nodes)",
+        "Devnet Live",
         "Blockchain Explorer",
-        "Non-custodial Wallet (Create, Import, Backup)",
+        "Non-custodial Wallet",
         "zkLogin & Passkey Authentication",
-        "Multi-token Support (NSN, NBTC, NUSDC)",
+        "Multi-token Support",
         "Faucet",
+        "Sponsored Transactions",
         "Smart Contract Deployment",
         "On-chain Governance"
       ]
@@ -47,11 +48,11 @@
     "pado": {
       "title": "Pado — Unified Onchain Finance",
       "items": [
-        "Spot DEX (CLOB Engine)",
-        "Perpetual Futures (20x Leverage)",
+        "Spot DEX",
+        "Perpetual Futures",
         "Prediction Markets",
         "Weekly Lottery",
-        "Payments (QR Transfer)",
+        "Payments",
         "Unified Margin System"
       ]
     },
@@ -94,10 +95,16 @@
           "description": "Building the foundation for decentralized governance"
         },
         {
-          "id": "dao-voting-alpha",
-          "title": "DAO Voting Alpha",
+          "id": "gov-voting-alpha",
+          "title": "Governance Voting Alpha",
           "status": "completed",
           "description": "Community-driven consensus internal testing"
+        },
+        {
+          "id": "team-validators",
+          "title": "Team-Operated Validators",
+          "status": "completed",
+          "description": "Initial consensus nodes run by core team for protocol testing"
         }
       ],
       "content": [
@@ -114,18 +121,30 @@
           "description": "Cloud gaming infrastructure deployed"
         },
         {
+          "id": "pado-poc",
+          "title": "Pado POC",
+          "status": "completed",
+          "description": "DeFi layer design and architecture"
+        },
+        {
           "id": "pado-alpha",
           "title": "Pado Alpha",
           "status": "completed",
-          "description": "Spot trading with CLOB engine"
+          "description": "Spot trading"
+        },
+        {
+          "id": "baram-poc",
+          "title": "Baram POC",
+          "status": "completed",
+          "description": "AI settlement architecture & object model design"
         }
       ],
       "finance": [
         {
-          "id": "infofi-alpha",
-          "title": "InfoFi Alpha",
+          "id": "leaderboard-alpha",
+          "title": "Nasun Leaderboard Alpha",
           "status": "completed",
-          "description": "Proprietary leaderboard V3 with seasonal rankings"
+          "description": "Proprietary leaderboard launch"
         },
         {
           "id": "nasun-staging",
@@ -145,22 +164,16 @@
       "description": "Expansion Year",
       "web3": [
         {
-          "id": "devnet-mvp",
-          "title": "Devnet MVP",
-          "status": "completed",
-          "description": "Nasun L1 devnet with 2 validator nodes, zkLogin, and state pruning"
-        },
-        {
-          "id": "wallet-mvp",
-          "title": "Wallet MVP",
-          "status": "completed",
-          "description": "zkLogin, Passkey, multi-chain EVM support, and Web2 integration"
-        },
-        {
           "id": "explorer-mvp",
           "title": "Explorer MVP",
           "status": "completed",
-          "description": "NFT support, Validators page, Checkpoints, Mobile responsive design"
+          "description": "Advanced search"
+        },
+        {
+          "id": "team-executors-alpha",
+          "title": "Team-Operated Executors (Alpha)",
+          "status": "completed",
+          "description": "Initial AI inference nodes operated by team to prove Baram protocol"
         },
         {
           "id": "val-staking",
@@ -172,19 +185,19 @@
           "id": "testnet-launch",
           "title": "Nasun Testnet Launch",
           "status": "upcoming",
-          "description": "Incentivized testnet & bounty program"
+          "description": "Incentivized testnet & bounty program for developers and early adopters"
         },
         {
           "id": "infra-partners",
-          "title": "Onboard Infrastructure Partners",
+          "title": "Infrastructure Partners",
           "status": "upcoming",
-          "description": "Oracles, Interoperability, Indexing, Node infra, Custody"
+          "description": "Onboard oracles, interoperability, indexing, node infrastructure, custody providers"
         },
         {
           "id": "compute-pilot",
           "title": "Compute Pilot",
           "status": "upcoming",
-          "description": "Onboard DePIN & DRN partners"
+          "description": "Onboard DePIN & DRN partners for general compute infrastructure"
         },
         {
           "id": "stablecoin-rails",
@@ -196,45 +209,45 @@
           "id": "rwa-tokenization",
           "title": "RWA Tokenization",
           "status": "upcoming",
-          "description": "Oracle integration, identity layer, zk-KYC"
+          "description": "Oracle integration and identity layer (zk-KYC)"
+        },
+        {
+          "id": "invited-executor-network",
+          "title": "Invited Executor Network",
+          "status": "upcoming",
+          "description": "Whitelist GPU operators and TEE-capable providers; staking rewards for early participation"
         }
       ],
       "content": [
         {
+          "id": "baram-alpha",
+          "title": "Baram Alpha",
+          "status": "completed",
+          "description": "End-to-end prototype: discover, license, execute, settle"
+        },
+        {
           "id": "pado-mvp",
           "title": "Pado MVP",
           "status": "completed",
-          "description": "Spot & Perpetuals DEX, Prediction markets, Lending, Lottery, Unified Margin, Payments"
+          "description": "DEX, prediction markets, lending, transactions & payments"
         },
         {
-          "id": "baram-mvp",
-          "title": "Baram AI Settlement Layer",
+          "id": "pado-web3",
+          "title": "Pado Web3 Features",
           "status": "completed",
-          "description": "TEE-based AI execution with trustless settlement and compliance tracking"
+          "description": "Unified accounts & zkLogin"
         },
         {
           "id": "gensol-partnerships",
           "title": "Gen Sol: Partnerships",
           "status": "upcoming",
-          "description": "Producers, Prodcos, & Talent Agencies"
+          "description": "Producers, prodcos, & talent agencies"
         },
         {
-          "id": "spectra-team",
+          "id": "spectra-2026",
           "title": "Gen Sol: SPECTRA",
           "status": "upcoming",
-          "description": "Team mission mode"
-        },
-        {
-          "id": "pado-unified",
-          "title": "Pado Unified Account",
-          "status": "completed",
-          "description": "Unified margin with multi-collateral support and zkLogin authentication"
-        },
-        {
-          "id": "baram-marketplace",
-          "title": "Baram: Model Marketplace",
-          "status": "upcoming",
-          "description": "On-chain model registry, provider onboarding, and revenue sharing"
+          "description": "Team mission mode, ranked & tournament systems, Web3 integration"
         },
         {
           "id": "spectra-heist-previz",
@@ -243,10 +256,10 @@
           "description": "Pre-visualization for animated series & script development"
         },
         {
-          "id": "spectra-web3",
-          "title": "Gen Sol: SPECTRA",
+          "id": "the-heir-dev",
+          "title": "Gen Sol: The Heir",
           "status": "upcoming",
-          "description": "Ranked & tournament systems and Web3 Integration"
+          "description": "Live-action series development"
         },
         {
           "id": "stablecoin-strategy",
@@ -273,22 +286,22 @@
           "description": "Onboarding strategic liquidity partners"
         },
         {
+          "id": "baram-sdk",
+          "title": "Baram SDK & Documentation",
+          "status": "in-progress",
+          "description": "Developer tools for ModelObject creation and executor integration"
+        },
+        {
           "id": "spectra-mvp",
           "title": "Gen Sol: SPECTRA MVP",
           "status": "upcoming",
-          "description": "Incentivized community playtesting and feedback collection"
+          "description": "Incentivized community playtesting and feedback"
         },
         {
           "id": "spectra-heist-trailer",
-          "title": "Gen Sol: Spectra Heist",
+          "title": "Gen Sol: Animation Trailer",
           "status": "upcoming",
-          "description": "Animation series pre-viz trailer"
-        },
-        {
-          "id": "the-heir-dev",
-          "title": "Gen Sol: The Heir",
-          "status": "upcoming",
-          "description": "Live-action series development"
+          "description": "Spectra Heist pre-viz trailer"
         }
       ],
       "finance": [
@@ -302,19 +315,23 @@
           "id": "nasun-web-launch",
           "title": "Nasun Website Launch",
           "status": "upcoming",
-          "description": "Leaderboard V3, governance dashboard, Battalion NFT event"
+          "description": "Pado, governance & NFT dashboard"
+        },
+        {
+          "id": "battalion-leaderboard",
+          "title": "Battalion Leaderboard Launch",
+          "status": "upcoming"
         },
         {
           "id": "battalion-nft",
           "title": "Battalion NFT",
           "status": "upcoming",
-          "description": "Free mint allowlist with 3-tier X API verification"
+          "description": "Drop + utility campaign (early access)"
         },
         {
-          "id": "infofi-preseed",
-          "title": "InfoFi Pre-Seed Launch",
-          "status": "upcoming",
-          "description": "Proprietary leaderboard"
+          "id": "genesis-leaderboard",
+          "title": "Genesis Leaderboard Launch",
+          "status": "upcoming"
         },
         {
           "id": "early-contributors",
@@ -329,10 +346,14 @@
           "description": "Community onboarding"
         },
         {
-          "id": "founders-sale",
-          "title": "Frontiers Sale",
-          "status": "upcoming",
-          "description": "Limited edition NFT with utility collection"
+          "id": "genesis-event",
+          "title": "Genesis Event",
+          "status": "upcoming"
+        },
+        {
+          "id": "pfp-leaderboard",
+          "title": "PFP Leaderboard Launch",
+          "status": "upcoming"
         },
         {
           "id": "nasun-foundation",
@@ -347,16 +368,15 @@
           "description": "Hire core team & establish advisory board"
         },
         {
-          "id": "infofi-seed",
-          "title": "InfoFi Seed Launch",
-          "status": "upcoming",
-          "description": "Social engagement rewards"
+          "id": "onchain-leaderboard",
+          "title": "Onchain Leaderboard Launch",
+          "status": "upcoming"
         },
         {
           "id": "content-contests",
           "title": "Content Contests",
           "status": "upcoming",
-          "description": "Art & writing competitions"
+          "description": "Art & writing"
         },
         {
           "id": "pado-contests",
@@ -365,10 +385,15 @@
           "description": "Incentivized testing"
         },
         {
-          "id": "seed-sale",
-          "title": "Seed Sale",
+          "id": "gensol-early-access",
+          "title": "Gen Sol Early Access",
           "status": "upcoming",
-          "description": "PFP community branding and growth strategy"
+          "description": "Rewards & points for testers"
+        },
+        {
+          "id": "pfp-event",
+          "title": "PFP Event",
+          "status": "upcoming"
         }
       ]
     },
@@ -379,29 +404,29 @@
           "id": "mainnet-tge",
           "title": "Nasun Mainnet & TGE",
           "status": "upcoming",
-          "description": "Full mainnet launch and Token generation event"
+          "description": "Full mainnet launch, audited, token generation event"
         },
         {
           "id": "core-sdks",
           "title": "Core SDKs",
           "status": "upcoming",
-          "description": "Tools for node operators and smart contract builders"
+          "description": "Standardizing the library of tools for node operators and smart contract builders"
         },
         {
           "id": "docs-portal",
           "title": "Documentation Portal",
           "status": "upcoming",
-          "description": "Comprehensive Quickstart guides and API references"
+          "description": "Comprehensive quickstart guides and API references"
         },
         {
           "id": "dev-hub",
           "title": "Nasun Developer Hub",
           "status": "upcoming",
-          "description": "Technical resources, community support, and bug reporting"
+          "description": "Technical resources, community support, bug reporting"
         },
         {
           "id": "wallet-ga",
-          "title": "Wallet GA",
+          "title": "Wallet Beta/GA",
           "status": "upcoming",
           "description": "Publicly available, audited, and stable"
         },
@@ -413,7 +438,7 @@
         },
         {
           "id": "ip-governance",
-          "title": "IP Governance",
+          "title": "Full IP Governance",
           "status": "upcoming",
           "description": "Complete decentralized IP governance system"
         },
@@ -421,10 +446,64 @@
           "id": "move-vm-custom",
           "title": "Move VM Customization",
           "status": "upcoming",
-          "description": "Gaming/DeFi optimizations"
+          "description": "Nasun-specific extensions for gaming/DeFi optimizations"
+        },
+        {
+          "id": "permissionless-validators",
+          "title": "Permissionless Validator Entry",
+          "status": "upcoming",
+          "description": "Open validator registration with staking requirements"
+        },
+        {
+          "id": "permissionless-executors",
+          "title": "Permissionless Executor Entry",
+          "status": "upcoming",
+          "description": "Open AI inference provider registration; general & TEE tiers"
+        },
+        {
+          "id": "storage-nodes",
+          "title": "Storage Node Network Launch",
+          "status": "upcoming",
+          "description": "Decentralized file & data storage with cryptographic guarantees"
+        },
+        {
+          "id": "streamer-nodes",
+          "title": "Streamer Node Beta",
+          "status": "upcoming",
+          "description": "Live & on-demand video delivery infrastructure"
+        },
+        {
+          "id": "game-server-nodes",
+          "title": "Game Server Node Beta",
+          "status": "upcoming",
+          "description": "Multiplayer session hosting for Gen Sol and third-party games"
+        },
+        {
+          "id": "compute-expansion",
+          "title": "General Compute Node Expansion",
+          "status": "upcoming",
+          "description": "API & application hosting infrastructure at scale"
         }
       ],
       "content": [
+        {
+          "id": "baram-mainnet",
+          "title": "Baram Mainnet Launch",
+          "status": "upcoming",
+          "description": "Permissionless AI settlement layer with multi-provider consensus for high-value workloads"
+        },
+        {
+          "id": "baram-enterprise",
+          "title": "Baram Enterprise Pilots",
+          "status": "upcoming",
+          "description": "Design partners in healthcare, finance, legal, government"
+        },
+        {
+          "id": "model-marketplace",
+          "title": "ModelObject Marketplace",
+          "status": "upcoming",
+          "description": "Permissionless model publishing with protocol-enforced royalties"
+        },
         {
           "id": "spectra-beta",
           "title": "Gen Sol: SPECTRA Beta",
@@ -435,13 +514,7 @@
           "id": "pado-ga",
           "title": "Pado GA",
           "status": "upcoming",
-          "description": "Full launch"
-        },
-        {
-          "id": "baram-production",
-          "title": "Baram: Distributed Executor Network",
-          "status": "upcoming",
-          "description": "Validator-integrated TEE nodes, on-chain executor assignment, and security audit"
+          "description": "Full launch with partner onboarding"
         },
         {
           "id": "genesis-liquidity",
@@ -453,7 +526,7 @@
           "id": "gensol-distribution",
           "title": "Gen Sol: Distribution",
           "status": "upcoming",
-          "description": "Securing traditional and innovative distribution channels"
+          "description": "Securing traditional distribution channels & innovating new ones"
         },
         {
           "id": "moonoak-dev",
@@ -465,57 +538,93 @@
           "id": "rider-studio",
           "title": "Rider Studio Launch",
           "status": "upcoming",
-          "description": "Governance & social media infra for production"
+          "description": "Governance & social media infrastructure for production pipeline"
         },
         {
           "id": "spectra-heist-prod",
           "title": "Gen Sol: Spectra Heist",
           "status": "upcoming",
-          "description": "Production"
+          "description": "Production of animated series"
         },
         {
           "id": "the-heir-preprod",
           "title": "Gen Sol: The Heir Apparent",
           "status": "upcoming",
-          "description": "Pre-production"
-        },
-        {
-          "id": "pado-partners",
-          "title": "Pado",
-          "status": "upcoming",
-          "description": "Onboard partners"
+          "description": "Pre-production of live-action series"
         },
         {
           "id": "gensol-tge",
           "title": "Gen Sol TGE",
-          "status": "upcoming",
-          "description": "Token generation event"
+          "status": "upcoming"
         }
       ],
       "finance": [
         {
-          "id": "infofi-tge",
-          "title": "InfoFi TGE Launch",
-          "status": "upcoming",
-          "description": "Token generation event"
+          "id": "tge-leaderboard",
+          "title": "TGE Leaderboard Launch",
+          "status": "upcoming"
         },
         {
           "id": "grants-programs",
           "title": "Grants Programs",
           "status": "upcoming",
-          "description": "Onboard projects and devs"
+          "description": "Onboard projects and developers"
         },
         {
           "id": "hackathons",
           "title": "Hackathons",
           "status": "upcoming",
-          "description": "Seoul & Singapore events"
+          "description": "Seoul & Singapore"
         },
         {
           "id": "pado-onboarding",
-          "title": "Pado Onboarding",
+          "title": "Pado Onboarding Campaign",
           "status": "upcoming",
           "description": "Leaderboard, airdrops, points & rewards program"
+        },
+        {
+          "id": "baram-dev-incentives",
+          "title": "Baram Developer Incentives",
+          "status": "upcoming",
+          "description": "SDK grants, execution credits, technical support"
+        },
+        {
+          "id": "liquidity-campaigns",
+          "title": "Liquidity Campaigns",
+          "status": "upcoming"
+        },
+        {
+          "id": "node-campaigns",
+          "title": "Node Operator Campaigns",
+          "status": "upcoming",
+          "description": "Incentivize validator, executor, storage, streamer, game server, and compute node operators"
+        }
+      ]
+    },
+    "2028": {
+      "description": "Future Enhancements",
+      "web3": [
+        {
+          "id": "zk-enhanced",
+          "title": "Advanced Protocol",
+          "status": "upcoming",
+          "description": "ZK-enhanced proofs for Baram; advanced privacy techniques; multi-chain interoperability; scalability optimizations"
+        }
+      ],
+      "content": [
+        {
+          "id": "ecosystem-expansion",
+          "title": "Ecosystem Expansion",
+          "status": "upcoming",
+          "description": "Baram standard-setting with regulatory bodies; AI integration for trading, content creation software, and productivity tools; expanded Gen Sol universe; advanced DeFi products on Pado"
+        }
+      ],
+      "finance": [
+        {
+          "id": "global-expansion",
+          "title": "Global Growth",
+          "status": "upcoming",
+          "description": "Global community expansion; mainstream partnerships; institutional adoption; continuous creator empowerment programs"
         }
       ]
     }
