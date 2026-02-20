@@ -392,8 +392,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.LeaderboardV3,
         },
         {
-          name: "navigation.leaderboardInfo",
-          path: "/wave1/leaderboard-info",
+          name: "navigation.leaderboardGuide",
+          path: "/wave1/leaderboard-guide",
           element: Pages.LeaderboardInfo,
         },
         {
@@ -681,7 +681,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.battalionNft": "Battalion NFT",
     "navigation.earlyContributors": "Early Contributors",
     "navigation.leaderboard": "Leaderboard",
-    "navigation.leaderboardInfo": "Leaderboard Info",
+    "navigation.leaderboardGuide": "Leaderboard Guide",
     "navigation.genesisEvent": "Frontiers Event",
     "navigation.contests": "Contests",
   },
