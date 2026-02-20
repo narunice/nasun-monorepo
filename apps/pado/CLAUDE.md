@@ -870,3 +870,16 @@ cd apps/pado/frontend && pnpm test:coverage
 3. **Lending UI 활성화 대기**: 컨트랙트 V7 배포 완료, 풀 생성 + .env 연동 + 풀 UI 구현 필요
 4. **Auto-deposit NBTC 하드코딩**: 비-NBTC 마켓에서 auto-deposit 코드가 "NBTC"를 하드코딩 ([DEBUG_HARDCODED_NBTC.md](docs/DEBUG_HARDCODED_NBTC.md) 참조)
 5. **Market Narrator 풀 이름 하드코딩**: `formatAlert`에서 "NBTC" 하드코딩, 다른 풀 추가 시 수정 필요
+
+---
+
+## Nasun Indexer Infrastructure (공유 인프라)
+
+Pado에서 온체인 집계 데이터(주소별 잔액, TX 통계, 활성 주소 수 등)가 필요한 경우,
+**Nasun Indexer API**를 활용할 수 있습니다.
+
+- **API Base URL**: `https://explorer.nasun.io/api/v1`
+- **인프라 상세**: 루트 [CLAUDE.md](../../CLAUDE.md)의 "Nasun Indexer Infrastructure" 섹션 참조
+- **코드 위치**: `apps/network-explorer/api-server/`
+- **현재 엔드포인트**: health, top-accounts, daily-transactions, active-addresses, network-summary
+- **확장**: Pado 전용 집계(예: DEX 거래량, TVL)가 필요하면 API 서버에 새 라우트 추가 가능
