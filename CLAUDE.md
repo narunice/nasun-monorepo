@@ -173,7 +173,7 @@ Security expectations:
 - 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
 - 일관된 개발 환경과 빌드 설정
 
-### 현재 상태 (2026-02-05)
+### 현재 상태 (2026-02-20)
 
 | 앱                             | 패키지명                | 상태      | 배포 방식    | 설명                                                  |
 | ------------------------------ | ----------------------- | --------- | ------------ | ----------------------------------------------------- |
@@ -187,6 +187,61 @@ Security expectations:
 
 ---
 
+## Nasun Indexer Infrastructure (공유 인프라)
+
+Nasun Devnet의 블록체인 데이터를 PostgreSQL에 인덱싱하는 공유 인프라입니다.
+Explorer, Pado, Baram 등 모든 Nasun 프로젝트에서 활용 가능합니다.
+
+### 아키텍처
+
+```
+nasun-node-1 (3.38.127.23)          nasun-node-2 (3.38.76.85)
+┌─────────────────────────┐         ┌─────────────────────────┐
+│ Validator #1            │         │ Validator #2            │
+│ RPC Server (:9000) ─────┼────────>│ sui-indexer (systemd)   │
+│ Faucet (:5003)          │  VPC    │   └─> PostgreSQL (:5432)│
+│ zkLogin Prover          │  내부   │ explorer-api (:3200/PM2)│
+│ Nginx                   │         │                         │
+└─────────────────────────┘         └─────────────────────────┘
+     ↑
+Production EC2 (43.200.67.52)
+  nginx: explorer.nasun.io/api/v1/* → node-2:3200
+```
+
+### 구성 요소
+
+| 구성 요소 | 위치 | 설명 |
+|-----------|------|------|
+| **sui-indexer** | EC2 node-2 (systemd) | Rust 바이너리 (v1.63.3), RPC → PostgreSQL 인덱싱 |
+| **PostgreSQL 16** | EC2 node-2 | DB: `sui_indexer`, User: `sui_indexer` |
+| **Explorer API** | EC2 node-2 (PM2, port 3200) | Hono REST API, 인덱싱된 데이터 조회 |
+| **Nginx proxy** | Production EC2 | `/api/v1/*` → node-2:3200 리버스 프록시 |
+
+### API 엔드포인트 (explorer.nasun.io/api/v1/)
+
+| 엔드포인트 | 설명 | 캐시 TTL |
+|-----------|------|---------|
+| `GET /health` | DB 연결 + 체크포인트 상태 | 없음 |
+| `GET /stats/top-accounts?limit=50` | 잔액 상위 주소 | 5분 |
+| `GET /stats/daily-transactions?range=7d` | 일별 TX 수 | 5분 |
+| `GET /stats/active-addresses?range=7d` | 일별 활성 주소 수 | 5분 |
+| `GET /stats/network-summary` | 총 TX/주소/패키지/이벤트 수 | 30초 |
+
+### 코드 위치
+
+- **API 서버**: `apps/network-explorer/api-server/` (Hono + postgres.js)
+- **프론트엔드 클라이언트**: `apps/network-explorer/src/lib/explorer-api.ts`
+
+### 운영 참고
+
+- **Start checkpoint**: 4665621 (Fullnode object pruning으로 인해 이전 체크포인트 인덱싱 불가)
+- **Validator OOM 보호**: Validator `oom_score_adj=-500`, Indexer `OOMScoreAdjust=500`
+- **Security Group**: Port 3200은 Production EC2 IP (43.200.67.52/32)에만 개방
+- **PM2 .env**: `DATABASE_URL`은 `.env` 파일에 저장, `set -a && source .env && set +a` 후 PM2 시작
+- **Devnet 리셋 시**: indexer 중지 → `DROP/CREATE DATABASE sui_indexer` → indexer 재시작
+
+---
+
 ## Nasun Explorer (network-explorer)
 
 ### 개요
@@ -194,7 +249,7 @@ Security expectations:
 Nasun Devnet 블록 탐색기. EC2 + nginx로 배포됩니다.
 
 - **URL**: https://explorer.nasun.io/devnet
-- **버전**: v0.7.x
+- **버전**: v0.8.x
 - **개발 포트**: 5175
 
 ### 페이지 및 라우트
@@ -211,6 +266,8 @@ Nasun Devnet 블록 탐색기. EC2 + nginx로 배포됩니다.
 | `/checkpoints`          | Checkpoints.tsx  | 체크포인트 목록 (커서 페이지네이션)          |
 | `/checkpoint/:sequence` | Checkpoint.tsx   | 체크포인트 상세                              |
 | `/package/:id`          | Package.tsx      | 모듈 탐색기 (함수, 구조체)                   |
+| `/top-accounts`         | TopAccounts.tsx  | 잔액 상위 주소 (인덱서 기반)                 |
+| `/analytics`            | Analytics.tsx    | 네트워크 통계 + 인덱서 메트릭스              |
 | `/callback`             | AuthCallback.tsx | zkLogin OAuth 콜백                           |
 
 ### 주요 기능
@@ -221,6 +278,7 @@ Nasun Devnet 블록 탐색기. EC2 + nginx로 배포됩니다.
 - **모바일 반응형**: 햄버거 메뉴, 반응형 주소 표시
 - **지갑 통합**: @nasun/wallet-ui 연동 (생성/전송/Faucet)
 - **zkLogin**: Google OAuth 지원
+- **인덱서 메트릭스**: Top Accounts, Daily TX, Active Addresses (API 서버 경유)
 
 ### 환경 변수
 
@@ -230,6 +288,7 @@ VITE_NETWORK_NAME=Nasun Devnet
 VITE_CHAIN_ID=272218f1
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 VITE_GOOGLE_CLIENT_ID=<optional>
+VITE_EXPLORER_API_URL=/api/v1  # 인덱서 API (기본값: /api/v1, nginx 프록시)
 ```
 
 ### 내부 문서
@@ -259,6 +318,7 @@ nasun-monorepo/
 │   │   ├── cdk/                   # AWS CDK 인프라
 │   │   └── scripts/               # 유틸리티 스크립트
 │   ├── network-explorer/          # @nasun/network-explorer - 블록 탐색기
+│   │   └── api-server/            # Explorer API (Hono, 인덱서 데이터 조회)
 │   ├── nasun-website/             # @nasun/nasun-website - 공식 웹사이트
 │   │   └── frontend/              # Vite React 앱
 │   ├── x-leaderboard-v2-legacy/   # @nasun/x-leaderboard - Legacy Leaderboard V2
@@ -445,6 +505,7 @@ pnpm deploy:pado:bots:prod       # LP Bot to pado.finance
 | baram (Legacy)   | AWS CDK      | -         | Lambda API (코드 변경 금지)      |
 | baram-aer        | TBD          | 수동 실행 | TBD                              |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
+| explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-2) |
 | nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
 | pado             | EC2 스크립트 | 수동 실행 | https://pado.finance             |

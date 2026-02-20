@@ -458,3 +458,15 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | H | Production (Validator 통합, 분산 Executor) | 계획 |
 
 자세한 구현 상태는 [BARAM_IMPLEMENTATION_PLAN.md](docs/BARAM_IMPLEMENTATION_PLAN.md) 참조.
+
+---
+
+## Nasun Indexer Infrastructure (공유 인프라)
+
+Baram AER에서 온체인 집계 데이터(Executor TX 통계, AER 이력 집계 등)가 필요한 경우,
+**Nasun Indexer API**를 활용할 수 있습니다.
+
+- **API Base URL**: `https://explorer.nasun.io/api/v1`
+- **인프라 상세**: 루트 [CLAUDE.md](../../CLAUDE.md)의 "Nasun Indexer Infrastructure" 섹션 참조
+- **코드 위치**: `apps/network-explorer/api-server/`
+- **확장**: Baram 전용 집계(예: Executor별 정산 통계, AER 카테고리별 집계)가 필요하면 API 서버에 새 라우트 추가 가능
