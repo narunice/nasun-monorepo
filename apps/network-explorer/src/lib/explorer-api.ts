@@ -19,6 +19,9 @@ async function fetchApi<T>(path: string): Promise<T> {
 
 export interface ApiHealth {
   status: string;
+  chainId: string | null;
+  expectedChainId?: string;
+  chainResetDetected: boolean;
   latestCheckpoint: string | null;
   earliestCheckpoint: string | null;
   totalCheckpoints: number;
@@ -57,7 +60,9 @@ export interface NetworkSummary {
 // ============================================
 
 export async function getApiHealth(): Promise<ApiHealth> {
-  return fetchApi<ApiHealth>('/health');
+  // Health endpoint returns valid JSON body even on 503 (chain reset), so parse directly
+  const res = await fetch(`${API_BASE}/health`);
+  return res.json() as Promise<ApiHealth>;
 }
 
 export async function getTopAccounts(limit = 50): Promise<TopAccount[]> {
