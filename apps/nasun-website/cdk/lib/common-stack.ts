@@ -626,10 +626,10 @@ export class CommonStack extends cdk.Stack {
       }),
     });
 
-    // Secrets Manager 읽기 권한 추가
+    // Secrets Manager read + write permission for token refresh
     getFollowerCountLambda.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["secretsmanager:GetSecretValue"],
+        actions: ["secretsmanager:GetSecretValue", "secretsmanager:UpdateSecret"],
         resources: [
           `arn:aws:secretsmanager:${this.region}:${this.account}:secret:nasun-twitter-tokens*`,
         ]
