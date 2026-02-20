@@ -94,7 +94,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
         {/* Join the allowlist */}
         <div className="mb-6 md:mb-8 lg:mb-10">
           <h5 className="text-nasun-white font-medium mb-3">{t("step1.joinAllowlist.title")}</h5>
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <ul className="space-y-2">
               {(
                 [
@@ -113,29 +113,25 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
                 </li>
               ))}
             </ul>
-            <div className="flex flex-row md:flex-col gap-2 flex-shrink-0">
-              <ButtonV3 variant="nw1" size="sm" asChild>
-                <a
-                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5"
-                >
-                  <ExternalLink size={14} />
-                  {t("step1.links.followAccount")}
-                </a>
-              </ButtonV3>
-              <ButtonV3 variant="nw1" size="sm" asChild>
-                <a
-                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}/status/${import.meta.env.VITE_EVENT_TWEET_ID}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5"
-                >
-                  <ExternalLink size={14} />
-                  {t("step1.links.announcementPost")}
-                </a>
-              </ButtonV3>
+            <div className="flex flex-row justify-around md:flex-col gap-2 flex-shrink-0">
+              <a
+                href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-nasun-nw4/40 text-nasun-nw4 text-xs hover:bg-nasun-nw4/10 transition-colors"
+              >
+                {t("step1.links.followAccount")}
+                <ExternalLink size={13} />
+              </a>
+              <a
+                href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}/status/${import.meta.env.VITE_EVENT_TWEET_ID}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-nasun-nw4/40 text-nasun-nw4 text-xs hover:bg-nasun-nw4/10 transition-colors"
+              >
+                {t("step1.links.announcementPost")}
+                <ExternalLink size={13} />
+              </a>
             </div>
           </div>
         </div>
