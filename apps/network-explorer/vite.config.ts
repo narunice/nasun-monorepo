@@ -28,6 +28,10 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/faucet/, ''),
       },
+      '/api/v1': {
+        target: 'https://explorer.nasun.io',
+        changeOrigin: true,
+      },
     },
   },
   optimizeDeps: {

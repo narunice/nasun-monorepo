@@ -45,13 +45,13 @@ function ChartSkeleton() {
 }
 
 export function IndexerCharts({ range }: IndexerChartsProps) {
-  const { data: dailyTx, isLoading: txLoading, error: txError } = useQuery({
+  const { data: dailyTx, isLoading: txLoading } = useQuery({
     queryKey: ['indexer-daily-tx', range],
     queryFn: () => getDailyTransactions(range),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: activeAddr, isLoading: addrLoading, error: addrError } = useQuery({
+  const { data: activeAddr, isLoading: addrLoading } = useQuery({
     queryKey: ['indexer-active-addr', range],
     queryFn: () => getActiveAddresses(range),
     staleTime: 5 * 60 * 1000,
