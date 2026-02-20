@@ -229,13 +229,19 @@
           "id": "pado-mvp",
           "title": "Pado MVP",
           "status": "completed",
-          "description": "DEX, prediction markets, lending, transactions & payments"
+          "description": "Spot, lottery, global chat, automated LP bot"
         },
         {
           "id": "pado-web3",
           "title": "Pado Web3 Features",
           "status": "completed",
           "description": "Unified accounts & zkLogin"
+        },
+        {
+          "id": "baram-sdk",
+          "title": "Baram SDK & Documentation",
+          "status": "in-progress",
+          "description": "Developer tools for ModelObject creation and executor integration"
         },
         {
           "id": "gensol-partnerships",
@@ -286,12 +292,6 @@
           "description": "Onboarding strategic liquidity partners"
         },
         {
-          "id": "baram-sdk",
-          "title": "Baram SDK & Documentation",
-          "status": "in-progress",
-          "description": "Developer tools for ModelObject creation and executor integration"
-        },
-        {
           "id": "spectra-mvp",
           "title": "Gen Sol: SPECTRA MVP",
           "status": "upcoming",
@@ -314,7 +314,7 @@
         {
           "id": "nasun-web-launch",
           "title": "Nasun Website Launch",
-          "status": "upcoming",
+          "status": "completed",
           "description": "Pado, governance & NFT dashboard"
         },
         {
@@ -342,7 +342,7 @@
         {
           "id": "gensol-web-launch",
           "title": "Gen Sol Website Launch",
-          "status": "upcoming",
+          "status": "completed",
           "description": "Community onboarding"
         },
         {
