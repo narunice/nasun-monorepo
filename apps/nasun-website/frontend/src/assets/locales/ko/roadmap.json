@@ -15,7 +15,7 @@
       "title": "프로토콜 및 인프라"
     },
     "content": {
-      "title": "제품 및 서비스"
+      "title": "에코시스템 및 제품"
     },
     "finance": {
       "title": "커뮤니티 및 마케팅"
@@ -94,10 +94,16 @@
           "description": "탈중앙화 거버넌스 기반 구축"
         },
         {
-          "id": "dao-voting-alpha",
-          "title": "DAO 투표 알파",
+          "id": "gov-voting-alpha",
+          "title": "거버넌스 투표 알파",
           "status": "completed",
           "description": "커뮤니티 주도 합의 내부 테스트"
+        },
+        {
+          "id": "team-validators",
+          "title": "팀 운영 밸리데이터",
+          "status": "completed",
+          "description": "프로토콜 테스트를 위한 핵심 팀 운영 합의 노드"
         }
       ],
       "content": [
@@ -114,18 +120,30 @@
           "description": "클라우드 게임 인프라 배포"
         },
         {
+          "id": "pado-poc",
+          "title": "파도 POC",
+          "status": "completed",
+          "description": "DeFi 레이어 설계 및 아키텍처"
+        },
+        {
           "id": "pado-alpha",
           "title": "파도 알파",
           "status": "completed",
-          "description": "CLOB 엔진 기반 현물 거래"
+          "description": "현물 거래"
+        },
+        {
+          "id": "baram-poc",
+          "title": "바람 POC",
+          "status": "completed",
+          "description": "AI 정산 아키텍처 및 객체 모델 설계"
         }
       ],
       "finance": [
         {
-          "id": "infofi-alpha",
-          "title": "인포파이 알파",
+          "id": "leaderboard-alpha",
+          "title": "나선 리더보드 알파",
           "status": "completed",
-          "description": "시즌별 순위 시스템을 갖춘 자체 리더보드 V3"
+          "description": "자체 리더보드 런칭"
         },
         {
           "id": "nasun-staging",
@@ -145,22 +163,16 @@
       "description": "확장의 해",
       "web3": [
         {
-          "id": "devnet-mvp",
-          "title": "데브넷 MVP",
-          "status": "completed",
-          "description": "2개 밸리데이터 노드, zkLogin, 상태 정리 기능을 갖춘 나선 L1 데브넷"
-        },
-        {
-          "id": "wallet-mvp",
-          "title": "지갑 MVP",
-          "status": "completed",
-          "description": "zkLogin, Passkey, 멀티체인 EVM 지원 및 Web2 통합"
-        },
-        {
           "id": "explorer-mvp",
           "title": "익스플로러 MVP",
           "status": "completed",
-          "description": "NFT 지원, 검증자 페이지, 체크포인트, 모바일 반응형 디자인"
+          "description": "고급 검색"
+        },
+        {
+          "id": "team-executors-alpha",
+          "title": "팀 운영 Executor (알파)",
+          "status": "completed",
+          "description": "바람 프로토콜 검증을 위한 팀 운영 AI 추론 노드"
         },
         {
           "id": "val-staking",
@@ -172,19 +184,19 @@
           "id": "testnet-launch",
           "title": "나선 테스트넷 런칭",
           "status": "upcoming",
-          "description": "인센티브 테스트넷 및 바운티 프로그램"
+          "description": "개발자 및 얼리 어답터를 위한 인센티브 테스트넷 및 바운티 프로그램"
         },
         {
           "id": "infra-partners",
-          "title": "인프라 파트너 온보딩",
+          "title": "인프라 파트너",
           "status": "upcoming",
-          "description": "오라클, 상호운용성, 인덱싱, 노드 인프라, 수탁 기관"
+          "description": "오라클, 상호운용성, 인덱싱, 노드 인프라, 수탁 기관 온보딩"
         },
         {
           "id": "compute-pilot",
           "title": "컴퓨트 파일럿",
           "status": "upcoming",
-          "description": "DePIN 및 DRN 파트너 온보딩"
+          "description": "DePIN 및 DRN 파트너를 위한 범용 컴퓨트 인프라 온보딩"
         },
         {
           "id": "stablecoin-rails",
@@ -197,20 +209,32 @@
           "title": "RWA 토큰화",
           "status": "upcoming",
           "description": "오라클 통합, 신원 확인 레이어, zk-KYC"
+        },
+        {
+          "id": "invited-executor-network",
+          "title": "초청 Executor 네트워크",
+          "status": "upcoming",
+          "description": "GPU 운영자 및 TEE 지원 제공자 화이트리스트; 초기 참여 스테이킹 보상"
         }
       ],
       "content": [
         {
+          "id": "baram-alpha",
+          "title": "바람 알파",
+          "status": "completed",
+          "description": "엔드투엔드 프로토타입: 탐색, 라이선스, 실행, 정산"
+        },
+        {
           "id": "pado-mvp",
           "title": "파도 MVP",
           "status": "completed",
-          "description": "현물 및 무기한 선물 DEX, 예측 시장, 대출, 로또, 통합 마진, 결제"
+          "description": "DEX, 예측 시장, 대출, 거래 및 결제"
         },
         {
-          "id": "baram-mvp",
-          "title": "바람 AI 정산 레이어",
+          "id": "pado-web3",
+          "title": "파도 Web3 기능",
           "status": "completed",
-          "description": "TEE 기반 AI 실행과 무신뢰 정산 및 컴플라이언스 추적"
+          "description": "통합 계정 및 zkLogin"
         },
         {
           "id": "gensol-partnerships",
@@ -219,22 +243,10 @@
           "description": "제작사 및 탤런트 에이전시 협력"
         },
         {
-          "id": "spectra-team",
+          "id": "spectra-2026",
           "title": "젠솔: SPECTRA",
           "status": "upcoming",
-          "description": "팀 미션 모드"
-        },
-        {
-          "id": "pado-unified",
-          "title": "파도 통합 계정",
-          "status": "completed",
-          "description": "다중 담보 지원 통합 마진 시스템 및 zkLogin 인증"
-        },
-        {
-          "id": "baram-marketplace",
-          "title": "바람: 모델 마켓플레이스",
-          "status": "upcoming",
-          "description": "온체인 모델 레지스트리, 제공자 온보딩, 수익 분배"
+          "description": "팀 미션 모드, 랭킹 및 토너먼트 시스템, Web3 통합"
         },
         {
           "id": "spectra-heist-previz",
@@ -243,10 +255,10 @@
           "description": "애니메이션 시리즈 프리비즈 및 시나리오 개발"
         },
         {
-          "id": "spectra-web3",
-          "title": "젠솔: SPECTRA",
+          "id": "the-heir-dev",
+          "title": "젠솔: The Heir",
           "status": "upcoming",
-          "description": "랭킹 및 토너먼트 시스템, Web3 통합"
+          "description": "실사 시리즈 개발"
         },
         {
           "id": "stablecoin-strategy",
@@ -273,6 +285,12 @@
           "description": "전략적 유동성 파트너 온보딩"
         },
         {
+          "id": "baram-sdk",
+          "title": "바람 SDK 및 문서화",
+          "status": "in-progress",
+          "description": "ModelObject 생성 및 Executor 통합을 위한 개발자 도구"
+        },
+        {
           "id": "spectra-mvp",
           "title": "젠솔: SPECTRA MVP",
           "status": "upcoming",
@@ -280,15 +298,9 @@
         },
         {
           "id": "spectra-heist-trailer",
-          "title": "젠솔: Spectra Heist",
+          "title": "젠솔: 애니메이션 트레일러",
           "status": "upcoming",
-          "description": "애니메이션 시리즈 프리비즈 트레일러"
-        },
-        {
-          "id": "the-heir-dev",
-          "title": "젠솔: The Heir",
-          "status": "upcoming",
-          "description": "실사 시리즈 개발"
+          "description": "Spectra Heist 프리비즈 트레일러"
         }
       ],
       "finance": [
@@ -302,19 +314,23 @@
           "id": "nasun-web-launch",
           "title": "나선 웹사이트 런칭",
           "status": "upcoming",
-          "description": "리더보드 V3, 거버넌스 대시보드, 바탈리온 NFT 이벤트"
+          "description": "파도, 거버넌스 및 NFT 대시보드"
+        },
+        {
+          "id": "battalion-leaderboard",
+          "title": "바탈리온 리더보드 런칭",
+          "status": "upcoming"
         },
         {
           "id": "battalion-nft",
           "title": "바탈리온 NFT",
           "status": "upcoming",
-          "description": "3단계 X API 검증 무료 민팅 얼로우리스트"
+          "description": "드롭 및 유틸리티 캠페인 (얼리 액세스)"
         },
         {
-          "id": "infofi-preseed",
-          "title": "인포파이 프리시드 런칭",
-          "status": "upcoming",
-          "description": "자체 리더보드 시스템"
+          "id": "genesis-leaderboard",
+          "title": "제네시스 리더보드 런칭",
+          "status": "upcoming"
         },
         {
           "id": "early-contributors",
@@ -329,10 +345,14 @@
           "description": "커뮤니티 온보딩"
         },
         {
-          "id": "founders-sale",
-          "title": "프론티어스 세일",
-          "status": "upcoming",
-          "description": "초기 서포터를 위한 한정판 NFT 컬렉션"
+          "id": "genesis-event",
+          "title": "제네시스 이벤트",
+          "status": "upcoming"
+        },
+        {
+          "id": "pfp-leaderboard",
+          "title": "PFP 리더보드 런칭",
+          "status": "upcoming"
         },
         {
           "id": "nasun-foundation",
@@ -347,10 +367,9 @@
           "description": "핵심 팀 채용 및 자문위원회 구성"
         },
         {
-          "id": "infofi-seed",
-          "title": "인포파이 시드 런칭",
-          "status": "upcoming",
-          "description": "소셜 참여 보상 시스템"
+          "id": "onchain-leaderboard",
+          "title": "온체인 리더보드 런칭",
+          "status": "upcoming"
         },
         {
           "id": "content-contests",
@@ -365,10 +384,15 @@
           "description": "인센티브 기반 테스팅"
         },
         {
-          "id": "seed-sale",
-          "title": "시드 세일",
+          "id": "gensol-early-access",
+          "title": "젠솔 얼리 액세스",
           "status": "upcoming",
-          "description": "PFP 커뮤니티 브랜딩 및 성장 전략"
+          "description": "테스터를 위한 보상 및 포인트"
+        },
+        {
+          "id": "pfp-event",
+          "title": "PFP 이벤트",
+          "status": "upcoming"
         }
       ]
     },
@@ -401,7 +425,7 @@
         },
         {
           "id": "wallet-ga",
-          "title": "지갑 정식 버전(GA)",
+          "title": "지갑 베타/GA",
           "status": "upcoming",
           "description": "감사 완료된 안정적인 공개 버전"
         },
@@ -413,7 +437,7 @@
         },
         {
           "id": "ip-governance",
-          "title": "IP 거버넌스",
+          "title": "완전한 IP 거버넌스",
           "status": "upcoming",
           "description": "완전한 탈중앙화 IP 거버넌스 시스템"
         },
@@ -422,9 +446,63 @@
           "title": "Move VM 커스텀",
           "status": "upcoming",
           "description": "게임 및 DeFi 최적화"
+        },
+        {
+          "id": "permissionless-validators",
+          "title": "퍼미션리스 밸리데이터 진입",
+          "status": "upcoming",
+          "description": "스테이킹 요건을 갖춘 개방형 밸리데이터 등록"
+        },
+        {
+          "id": "permissionless-executors",
+          "title": "퍼미션리스 Executor 진입",
+          "status": "upcoming",
+          "description": "개방형 AI 추론 제공자 등록; 일반 및 TEE 티어"
+        },
+        {
+          "id": "storage-nodes",
+          "title": "스토리지 노드 네트워크 런칭",
+          "status": "upcoming",
+          "description": "암호학적 보증을 갖춘 탈중앙화 파일 및 데이터 스토리지"
+        },
+        {
+          "id": "streamer-nodes",
+          "title": "스트리머 노드 베타",
+          "status": "upcoming",
+          "description": "실시간 및 주문형 비디오 전송 인프라"
+        },
+        {
+          "id": "game-server-nodes",
+          "title": "게임 서버 노드 베타",
+          "status": "upcoming",
+          "description": "젠솔 및 서드파티 게임용 멀티플레이어 세션 호스팅"
+        },
+        {
+          "id": "compute-expansion",
+          "title": "범용 컴퓨트 노드 확장",
+          "status": "upcoming",
+          "description": "대규모 API 및 애플리케이션 호스팅 인프라"
         }
       ],
       "content": [
+        {
+          "id": "baram-mainnet",
+          "title": "바람 메인넷 런칭",
+          "status": "upcoming",
+          "description": "고가치 워크로드를 위한 다중 제공자 합의 기반 퍼미션리스 AI 정산 레이어"
+        },
+        {
+          "id": "baram-enterprise",
+          "title": "바람 엔터프라이즈 파일럿",
+          "status": "upcoming",
+          "description": "의료, 금융, 법률, 정부 분야 설계 파트너"
+        },
+        {
+          "id": "model-marketplace",
+          "title": "ModelObject 마켓플레이스",
+          "status": "upcoming",
+          "description": "프로토콜 기반 로열티를 갖춘 퍼미션리스 모델 퍼블리싱"
+        },
         {
           "id": "spectra-beta",
           "title": "젠솔: SPECTRA 베타",
@@ -435,13 +513,7 @@
           "id": "pado-ga",
           "title": "파도 정식 런칭(GA)",
           "status": "upcoming",
-          "description": "전체 서비스 런칭"
-        },
-        {
-          "id": "baram-production",
-          "title": "바람: 분산 Executor 네트워크",
-          "status": "upcoming",
-          "description": "밸리데이터 통합 TEE 노드, 온체인 Executor 배정, 보안 감사"
+          "description": "파트너 온보딩과 함께 전체 런칭"
         },
         {
           "id": "genesis-liquidity",
@@ -471,7 +543,7 @@
           "id": "spectra-heist-prod",
           "title": "젠솔: Spectra Heist",
           "status": "upcoming",
-          "description": "본격 제작"
+          "description": "애니메이션 시리즈 본격 제작"
         },
         {
           "id": "the-heir-preprod",
@@ -480,24 +552,16 @@
           "description": "프리 프로덕션"
         },
         {
-          "id": "pado-partners",
-          "title": "파도 파트너",
-          "status": "upcoming",
-          "description": "파트너사 온보딩"
-        },
-        {
           "id": "gensol-tge",
           "title": "젠솔 TGE",
-          "status": "upcoming",
-          "description": "토큰 생성 이벤트"
+          "status": "upcoming"
         }
       ],
       "finance": [
         {
-          "id": "infofi-tge",
-          "title": "인포파이 TGE 런칭",
-          "status": "upcoming",
-          "description": "토큰 생성 이벤트"
+          "id": "tge-leaderboard",
+          "title": "TGE 리더보드 런칭",
+          "status": "upcoming"
         },
         {
           "id": "grants-programs",
@@ -513,9 +577,53 @@
         },
         {
           "id": "pado-onboarding",
-          "title": "파도 온보딩",
+          "title": "파도 온보딩 캠페인",
           "status": "upcoming",
           "description": "리더보드, 에어드랍, 포인트 및 보상 프로그램"
+        },
+        {
+          "id": "baram-dev-incentives",
+          "title": "바람 개발자 인센티브",
+          "status": "upcoming",
+          "description": "SDK 그랜트, 실행 크레딧, 기술 지원"
+        },
+        {
+          "id": "liquidity-campaigns",
+          "title": "유동성 캠페인",
+          "status": "upcoming"
+        },
+        {
+          "id": "node-campaigns",
+          "title": "노드 운영자 캠페인",
+          "status": "upcoming",
+          "description": "밸리데이터, Executor, 스토리지, 스트리머, 게임 서버 및 컴퓨트 노드 운영자 인센티브"
+        }
+      ]
+    },
+    "2028": {
+      "description": "미래 발전 방향",
+      "web3": [
+        {
+          "id": "zk-enhanced",
+          "title": "고급 프로토콜",
+          "status": "upcoming",
+          "description": "바람을 위한 ZK 강화 증명; 고급 프라이버시 기술; 멀티체인 상호운용성; 확장성 최적화"
+        }
+      ],
+      "content": [
+        {
+          "id": "ecosystem-expansion",
+          "title": "에코시스템 확장",
+          "status": "upcoming",
+          "description": "규제 기관과의 바람 표준 수립; 트레이딩, 콘텐츠 창작, 생산성 도구를 위한 AI 통합; 젠솔 유니버스 확장; 파도 고급 DeFi 제품"
+        }
+      ],
+      "finance": [
+        {
+          "id": "global-expansion",
+          "title": "글로벌 성장",
+          "status": "upcoming",
+          "description": "글로벌 커뮤니티 확장; 주류 파트너십; 기관 채택; 지속적인 크리에이터 역량 강화 프로그램"
         }
       ]
     }
