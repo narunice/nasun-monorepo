@@ -1,0 +1,53 @@
+import { serve } from '@hono/node-server';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import { sql } from './db.js';
+import healthRoutes from './routes/health.js';
+import statsRoutes from './routes/stats.js';
+
+const PORT = Number(process.env.PORT ?? 3200);
+
+const app = new Hono();
+
+// Middleware
+app.use('*', logger());
+app.use(
+  '*',
+  cors({
+    origin: [
+      'https://explorer.nasun.io',
+      'http://localhost:5175',
+      'http://localhost:4173',
+    ],
+    maxAge: 3600,
+  }),
+);
+
+// Routes
+app.route('/api/v1/health', healthRoutes);
+app.route('/api/v1/stats', statsRoutes);
+
+// Root
+app.get('/', (c) => c.json({ service: 'explorer-api', version: '0.1.0' }));
+
+// 404
+app.notFound((c) => c.json({ error: 'not_found' }, 404));
+
+// Error handler
+app.onError((err, c) => {
+  console.error('Unhandled error:', err);
+  return c.json({ error: 'internal_server_error' }, 500);
+});
+
+// Graceful shutdown
+async function shutdown() {
+  console.log('Shutting down Explorer API...');
+  await sql.end({ timeout: 5 });
+  process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
+console.log(`Explorer API starting on port ${PORT}`);
+serve({ fetch: app.fetch, port: PORT });

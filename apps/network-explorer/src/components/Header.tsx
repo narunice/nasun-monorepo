@@ -94,6 +94,12 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               >
                 Analytics
               </Link>
+              <Link
+                to="/top-accounts"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Top Accounts
+              </Link>
             </nav>
           </div>
 
@@ -155,6 +161,13 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               onClick={() => setMobileMenuOpen(false)}
             >
               Analytics
+            </Link>
+            <Link
+              to="/top-accounts"
+              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Top Accounts
             </Link>
           </nav>
         </div>

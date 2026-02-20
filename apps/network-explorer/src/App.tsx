@@ -14,6 +14,7 @@ import Package from './pages/Package';
 import Packages from './pages/Packages';
 import Tokens from './pages/Tokens';
 import Epoch from './pages/Epoch';
+import TopAccounts from './pages/TopAccounts';
 import AuthCallback from './pages/AuthCallback';
 import { Card } from './components/ui/Card';
 
@@ -49,6 +50,7 @@ function App() {
           <Route path="/packages" element={<Packages />} />
           <Route path="/tokens" element={<Tokens />} />
           <Route path="/epoch/:id" element={<Epoch />} />
+          <Route path="/top-accounts" element={<TopAccounts />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
