@@ -10,19 +10,35 @@ function AwardsSection() {
   return (
     <SectionLayout className="!max-w-6xl gap-8 md:gap-10 xl:gap-12">
       <FadeInUp>
-        <OuterBox color="nw4" padding="md" className=" ">
-          <div className="text-left mb-4 md:mb-5 lg:mb-6">
+        <div>
+          <div className="mb-6 md:mb-8">
             <h4 className="font-medium text-nasun-white -mb-1">{t("heading1")}</h4>
             <h5 className="text-nasun-nw4 font-medium">{t("heading2")}</h5>
           </div>
 
-          <div className="space-y-4">
-            <p>{t("paragraph1")}</p>
-            <p>{t("paragraph2")}</p>
-            <p>{t("paragraph3")}</p>
-            <p>{t("paragraph4")}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <OuterBox color="nw0" padding="sm">
+              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+                Track Record
+              </small>
+              <p>{t("paragraph1")}</p>
+            </OuterBox>
+
+            <OuterBox color="nw0" padding="sm">
+              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+                Why It Matters
+              </small>
+              <p className="">{t("paragraph2")}</p>
+            </OuterBox>
+
+            <OuterBox color="nw0" padding="sm">
+              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+                What's Next
+              </small>
+              <p className="text-nasun-white/70">{t("paragraph3")}</p>
+            </OuterBox>
           </div>
-        </OuterBox>
+        </div>
       </FadeInUp>
     </SectionLayout>
   );
