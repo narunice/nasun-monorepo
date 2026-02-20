@@ -310,7 +310,7 @@ export function ConnectedView(props: ConnectedViewProps) {
         {/* Assets tab */}
         {activeTab === "assets" && (
           <>
-          <GettingStartedChecklist variant={variant} onNavigate={handleNavigate} onSwitchTab={setActiveTab} />
+          <GettingStartedChecklist variant={variant} onNavigate={handleNavigate} />
           <AssetsTabContent
             isEVM={isEVM}
             isExternalMove={isExternalMove}

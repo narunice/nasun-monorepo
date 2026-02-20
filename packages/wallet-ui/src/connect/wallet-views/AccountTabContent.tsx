@@ -4,11 +4,11 @@
  * plus variant-specific items for self-custody wallets.
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { ViewMode } from "../types";
-import type { TabMode } from "../TabBar";
 import { WALLET_STYLES } from "../../shared";
 import { useUISettingsStore, useGettingStarted } from "../../stores/uiSettingsStore";
+import { useWallet, usePasskey, useRefreshBalance, requestFaucet } from "@nasun/wallet";
 
 // SVG path constants for menu icons
 const ICON_PATHS = {
@@ -53,13 +53,34 @@ function MenuIcon({ d }: { d: string | string[] }) {
 export function GettingStartedChecklist({
   variant,
   onNavigate,
-  onSwitchTab,
 }: {
   variant: "zkLogin" | "self-custody" | "passkey";
   onNavigate: (mode: ViewMode) => void;
-  onSwitchTab?: (tab: TabMode) => void;
 }) {
   const { gettingStarted, markDone, dismiss, isVisible } = useGettingStarted();
+  const { account } = useWallet();
+  const { address: passkeyAddress } = usePasskey();
+  const refreshBalance = useRefreshBalance();
+  const [faucetLoading, setFaucetLoading] = useState(false);
+  const [faucetError, setFaucetError] = useState<string | null>(null);
+
+  const faucetAddress = account?.address || passkeyAddress;
+
+  const handleFaucetRequest = useCallback(async () => {
+    if (!faucetAddress || faucetLoading) return;
+    setFaucetLoading(true);
+    setFaucetError(null);
+    try {
+      await requestFaucet(faucetAddress);
+      await refreshBalance();
+      markDone('faucetDone');
+    } catch (err) {
+      setFaucetError(err instanceof Error ? err.message : 'Faucet request failed');
+      setTimeout(() => setFaucetError(null), 5000);
+    } finally {
+      setFaucetLoading(false);
+    }
+  }, [faucetAddress, faucetLoading, refreshBalance, markDone]);
 
   if (!isVisible) return null;
 
@@ -69,6 +90,8 @@ export function GettingStartedChecklist({
     description: string;
     action: () => void;
     hidden?: boolean;
+    loading?: boolean;
+    error?: string | null;
   }> = [
     {
       key: 'backupDone',
@@ -85,10 +108,9 @@ export function GettingStartedChecklist({
       key: 'faucetDone',
       label: 'Get NASUN from Faucet',
       description: 'Request free test tokens',
-      action: () => {
-        markDone('faucetDone');
-        onSwitchTab?.('assets');
-      },
+      action: handleFaucetRequest,
+      loading: faucetLoading,
+      error: faucetError,
     },
     {
       key: 'stakingDone',
@@ -129,47 +151,61 @@ export function GettingStartedChecklist({
       <div className="divide-y divide-blue-100 dark:divide-blue-900/40">
         {visibleItems.map((item) => {
           const done = gettingStarted[item.key] as boolean;
+          const isLoading = item.loading ?? false;
           return (
-            <button
-              key={item.key}
-              onClick={item.action}
-              disabled={done}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
-                done
-                  ? 'opacity-50 cursor-default'
-                  : 'hover:bg-blue-100/60 dark:hover:bg-blue-800/20'
-              }`}
-            >
-              {/* Checkbox */}
-              <div
-                className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+            <div key={item.key}>
+              <button
+                onClick={item.action}
+                disabled={done || isLoading}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
                   done
-                    ? 'border-blue-500 bg-blue-500'
-                    : 'border-blue-300 dark:border-blue-600'
+                    ? 'opacity-50 cursor-default'
+                    : isLoading
+                    ? 'cursor-wait'
+                    : 'hover:bg-blue-100/60 dark:hover:bg-blue-800/20'
                 }`}
               >
-                {done && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                {/* Checkbox / Spinner */}
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                    done
+                      ? 'border-blue-500 bg-blue-500'
+                      : 'border-blue-300 dark:border-blue-600'
+                  }`}
+                >
+                  {done && (
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs xl:text-sm font-medium ${done ? 'line-through text-gray-400 dark:text-zinc-500' : 'text-gray-800 dark:text-zinc-200'}`}>
+                    {isLoading ? 'Requesting tokens...' : item.label}
+                  </p>
+                  {!done && !isLoading && (
+                    <p className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+                {isLoading ? (
+                  <svg className="w-4 h-4 text-blue-400 dark:text-blue-500 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : !done && (
+                  <svg className="w-4 h-4 text-blue-400 dark:text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs xl:text-sm font-medium ${done ? 'line-through text-gray-400 dark:text-zinc-500' : 'text-gray-800 dark:text-zinc-200'}`}>
-                  {item.label}
+              </button>
+              {item.error && (
+                <p className="px-3 pb-1.5 text-[10px] xl:text-xs text-red-500 dark:text-red-400">
+                  {item.error}
                 </p>
-                {!done && (
-                  <p className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
-                    {item.description}
-                  </p>
-                )}
-              </div>
-              {!done && (
-                <svg className="w-4 h-4 text-blue-400 dark:text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
