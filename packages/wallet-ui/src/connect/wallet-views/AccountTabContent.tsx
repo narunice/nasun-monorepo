@@ -106,7 +106,7 @@ export function GettingStartedChecklist({
     },
     {
       key: 'faucetDone',
-      label: 'Get NASUN from Faucet',
+      label: 'Get NSN from Faucet',
       description: 'Request free test tokens',
       action: handleFaucetRequest,
       loading: faucetLoading,
