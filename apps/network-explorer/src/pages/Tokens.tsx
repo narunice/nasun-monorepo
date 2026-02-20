@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getCoinMetadata, getCoinTotalSupply } from '../lib/sui-client';
+import { getCoinTotalSupply } from '../lib/sui-client';
 import { formatTokenBalance } from '../lib/format';
 
 // Nasun Devnet V7 token list — update after devnet reset (sync with devnet-ids.json)
@@ -46,8 +46,10 @@ interface TokenRow {
 }
 
 function truncateType(coinType: string): string {
-  const parts = coinType.split('::');
-  if (parts.length < 3) return coinType;
+  // Nasun branding: native coin type shown as 0x2::nasun::NSN
+  const branded = coinType.replace(/0x2::sui::SUI/g, '0x2::nasun::NSN');
+  const parts = branded.split('::');
+  if (parts.length < 3) return branded;
   const pkgId = parts[0];
   const shortened = pkgId.length > 12 ? `${pkgId.slice(0, 6)}...${pkgId.slice(-4)}` : pkgId;
   return `${shortened}::${parts[1]}::${parts[2]}`;
@@ -59,15 +61,16 @@ export default function Tokens() {
     queryFn: async () => {
       const rows = await Promise.all(
         KNOWN_TOKENS.map(async (t) => {
-          const [metadata, supply] = await Promise.all([
-            getCoinMetadata(t.coinType),
-            getCoinTotalSupply(t.coinType),
-          ]);
+          // Only fetch total supply for native token — faucet-managed tokens
+          // have TreasuryCap wrapped inside the faucet contract, so RPC getTotalSupply fails.
+          const isNative = t.coinType === '0x2::sui::SUI';
+          const supply = isNative ? await getCoinTotalSupply(t.coinType) : null;
           return {
             coinType: t.coinType,
-            symbol: metadata?.symbol ?? t.symbol,
-            name: metadata?.name ?? t.name,
-            decimals: metadata?.decimals ?? t.decimals,
+            // Always use hardcoded values — RPC returns "SUI" for the native coin
+            symbol: t.symbol,
+            name: t.name,
+            decimals: t.decimals,
             totalSupply: supply,
           };
         })
@@ -121,7 +124,7 @@ export default function Tokens() {
                   <td className="px-4 py-3 hidden md:table-cell">
                     <span
                       className="font-mono text-xs text-muted-foreground"
-                      title={token.coinType}
+                      title={token.coinType.replace(/0x2::sui::SUI/g, '0x2::nasun::NSN')}
                     >
                       {truncateType(token.coinType)}
                     </span>
