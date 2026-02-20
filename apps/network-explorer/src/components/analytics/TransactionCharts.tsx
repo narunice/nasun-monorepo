@@ -2,7 +2,7 @@ import {
   BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, ResponsiveContainer, Tooltip,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
+import type { TooltipContentProps } from 'recharts';
 import { Card } from '../ui/Card';
 import { formatDateLabel, formatCompactNumber } from '../../lib/analytics/analytics-aggregator';
 import type { TxHistoryData } from '../../lib/analytics/types';
@@ -13,7 +13,7 @@ interface TransactionChartsProps {
 }
 
 // Custom Tooltip Component for better readability
-function CustomTooltip({ active, payload, label, valueLabel }: TooltipProps<number, string> & { valueLabel: string }) {
+function CustomTooltip({ active, payload, label, valueLabel }: Partial<TooltipContentProps<number, string>> & { valueLabel: string }) {
   if (!active || !payload || !payload.length) return null;
 
   return (

@@ -6,6 +6,7 @@ import {
   TimeRangeSelector,
   TransactionCharts,
   TradingActivityChart,
+  NetworkStateSection,
 } from '../components/analytics';
 import type { TimeRange } from '../lib/analytics/types';
 
@@ -61,6 +62,14 @@ export default function Analytics() {
       <section>
         <h2 className="text-lg font-semibold text-foreground mb-4">Protocol Activity</h2>
         <TradingActivityChart data={tradingData} isLoading={tradingLoading} />
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Network State</h2>
+        <p className="text-muted-foreground text-xs mb-4">
+          Protocol-level metrics from the current epoch. Updates every 30 seconds.
+        </p>
+        <NetworkStateSection />
       </section>
     </div>
   );

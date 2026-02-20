@@ -6,6 +6,7 @@
 import { Link } from 'react-router-dom';
 import { truncateId } from '../lib/format';
 import { useCopyToClipboard } from '../hooks';
+import { KNOWN_ADDRESSES } from '../lib/known-addresses';
 
 interface CopyableIdProps {
   /** The full ID/address value */
@@ -56,13 +57,19 @@ export default function CopyableId({
 
   const displayValue = shorten && shorten > 0 ? truncateId(value, shorten + 2, shorten) : value;
   const textSize = size === 'xs' ? 'text-xs' : 'text-sm';
+  const knownLabel = KNOWN_ADDRESSES[value];
 
   return (
     <div className="flex flex-col gap-1">
       {label && (
         <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
       )}
-      <div className="flex items-center">
+      <div className="flex items-center gap-1.5">
+        {knownLabel && (
+          <span className="text-xs font-medium px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary border border-primary/20 shrink-0">
+            {knownLabel}
+          </span>
+        )}
         <span
           className={`${textSize} text-foreground font-mono break-all ${className}`}
           title={value}

@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { suiClient } from '../lib/sui-client';
-import { formatTimestamp, truncateDigest } from '../lib/format';
+import { formatTimestamp, truncateDigest, getTxTypeInfo } from '../lib/format';
 import { useCursorPagination } from '../hooks';
+import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 
 export default function Transactions() {
@@ -51,13 +52,16 @@ export default function Transactions() {
               <thead className="bg-muted/50 border-b border-border/20">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Digest</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Type</th>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Status</th>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Time</th>
                   <th className="px-4 py-3 text-left text-sm font-medium uppercase tracking-wider text-muted-foreground">Checkpoint</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
-                {data.data.map((tx) => (
+                {data.data.map((tx) => {
+                  const typeInfo = getTxTypeInfo(tx);
+                  return (
                   <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">
                       <Link
@@ -68,13 +72,12 @@ export default function Transactions() {
                       </Link>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        tx.effects?.status?.status === 'success'
-                          ? 'bg-green-500/20 text-green-600 dark:text-green-400'
-                          : 'bg-destructive/20 text-destructive'
-                      }`}>
+                      <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={tx.effects?.status?.status === 'success' ? 'success' : 'error'}>
                         {tx.effects?.status?.status || 'unknown'}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-4 py-3 text-foreground text-sm">
                       {formatTimestamp(tx.timestampMs)}
@@ -83,7 +86,8 @@ export default function Transactions() {
                       {tx.checkpoint || '-'}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

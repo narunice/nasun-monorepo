@@ -8,3 +8,7 @@ export { SectionBox } from './SectionBox';
 export type { SectionBoxProps, SectionColor } from './SectionBox';
 
 export { JsonBlock } from './JsonBlock';
+
+export { Badge } from './Badge';
+
+export { Tabs } from './Tabs';

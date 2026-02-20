@@ -65,6 +65,12 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
                 Transactions
               </Link>
               <Link
+                to="/tokens"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Tokens
+              </Link>
+              <Link
                 to="/validators"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -77,7 +83,7 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
                 Checkpoints
               </Link>
               <Link
-                to="/package/0x2"
+                to="/packages"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Packages
@@ -116,6 +122,13 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               Transactions
             </Link>
             <Link
+              to="/tokens"
+              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Tokens
+            </Link>
+            <Link
               to="/validators"
               className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
               onClick={() => setMobileMenuOpen(false)}
@@ -130,7 +143,7 @@ export default function Header({ showNetworkName = false }: HeaderProps) {
               Checkpoints
             </Link>
             <Link
-              to="/package/0x2"
+              to="/packages"
               className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >

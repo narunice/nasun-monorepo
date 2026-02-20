@@ -2,7 +2,7 @@ import {
   ComposedChart, Bar, Line,
   XAxis, YAxis, ResponsiveContainer, Tooltip, Legend,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
+import type { TooltipContentProps } from 'recharts';
 import { Card } from '../ui/Card';
 import { formatDateLabel, formatCompactNumber } from '../../lib/analytics/analytics-aggregator';
 import type { TradingActivityData } from '../../lib/analytics/types';
@@ -13,7 +13,7 @@ interface TradingActivityChartProps {
 }
 
 // Custom Tooltip Component for dual-axis chart
-function CustomTradingTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function CustomTradingTooltip({ active, payload, label }: Partial<TooltipContentProps<number, string>>) {
   if (!active || !payload || !payload.length) return null;
 
   const tradeCount = payload.find((p) => p.dataKey === 'tradeCount')?.value ?? 0;

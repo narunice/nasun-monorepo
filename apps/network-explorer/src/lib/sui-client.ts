@@ -6,6 +6,7 @@ import type {
   CoinMetadata,
   CoinBalance,
   SuiMoveNormalizedModules,
+  DynamicFieldPage,
 } from '@mysten/sui/client';
 import { SuiClient } from '@mysten/sui/client';
 
@@ -347,6 +348,26 @@ export async function getCoinMetadata(coinType: string): Promise<CoinMetadata | 
   }
 }
 
+export async function getCoinTotalSupply(coinType: string): Promise<string | null> {
+  try {
+    const supply = await suiClient.getTotalSupply({ coinType });
+    return supply.value;
+  } catch (error) {
+    console.error('Failed to get total supply:', error);
+    return null;
+  }
+}
+
+export async function getDynamicFields(parentId: string): Promise<DynamicFieldPage | null> {
+  try {
+    const result = await suiClient.getDynamicFields({ parentId });
+    return result;
+  } catch (error) {
+    console.error('Failed to get dynamic fields:', error);
+    return null;
+  }
+}
+
 // ============================================
 // Epoch & TPS Functions
 // ============================================
@@ -357,6 +378,7 @@ export interface EpochInfo {
   epochDurationMs: string;
   remainingMs: number;
   totalStake: string;
+  activeValidatorsCount: number;
   progress: number;
   startTimestamp: number;
   endTimestamp: number;
@@ -379,6 +401,7 @@ export async function getEpochInfo(): Promise<EpochInfo | null> {
       epochDurationMs: systemState.epochDurationMs,
       remainingMs,
       totalStake: systemState.totalStake,
+      activeValidatorsCount: systemState.activeValidators.length,
       // New fields for charts
       progress,
       startTimestamp: epochStart,
@@ -412,6 +435,48 @@ export async function getTPS(): Promise<number | null> {
     return Math.round((txDiff / timeDiff) * 10) / 10; // 소수점 1자리
   } catch (error) {
     console.error('Failed to calculate TPS:', error);
+    return null;
+  }
+}
+
+// ============================================
+// Network State (Protocol Metrics)
+// ============================================
+
+export interface NetworkState {
+  epoch: string;
+  epochDurationMs: string;
+  epochStartTimestampMs: string;
+  totalStake: string;
+  referenceGasPrice: string;
+  activeValidatorsCount: number;
+  stakeSubsidyBalance: string;
+  stakeSubsidyCurrentDistributionAmount: string;
+  stakeSubsidyStartEpoch: string;
+  storageFundTotalObjectStorageRebates: string;
+  storageFundNonRefundableBalance: string;
+  safeMode: boolean;
+}
+
+export async function getNetworkState(): Promise<NetworkState | null> {
+  try {
+    const s = await suiClient.getLatestSuiSystemState();
+    return {
+      epoch: s.epoch,
+      epochDurationMs: s.epochDurationMs,
+      epochStartTimestampMs: s.epochStartTimestampMs,
+      totalStake: s.totalStake,
+      referenceGasPrice: s.referenceGasPrice,
+      activeValidatorsCount: s.activeValidators.length,
+      stakeSubsidyBalance: s.stakeSubsidyBalance,
+      stakeSubsidyCurrentDistributionAmount: s.stakeSubsidyCurrentDistributionAmount,
+      stakeSubsidyStartEpoch: s.stakeSubsidyStartEpoch,
+      storageFundTotalObjectStorageRebates: s.storageFundTotalObjectStorageRebates,
+      storageFundNonRefundableBalance: s.storageFundNonRefundableBalance,
+      safeMode: s.safeMode,
+    };
+  } catch (error) {
+    console.error('Failed to get network state:', error);
     return null;
   }
 }
