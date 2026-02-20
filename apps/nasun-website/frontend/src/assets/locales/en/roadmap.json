@@ -42,7 +42,8 @@
         "Faucet",
         "Sponsored Transactions",
         "Smart Contract Deployment",
-        "On-chain Governance"
+        "On-chain Governance",
+        "Network Indexer & Analytics API"
       ]
     },
     "pado": {
@@ -174,6 +175,12 @@
           "title": "Team-Operated Executors (Alpha)",
           "status": "completed",
           "description": "Initial AI inference nodes operated by team to prove Baram protocol"
+        },
+        {
+          "id": "indexer-api",
+          "title": "Network Indexer API",
+          "status": "completed",
+          "description": "On-chain analytics, top accounts, network metrics"
         },
         {
           "id": "val-staking",
