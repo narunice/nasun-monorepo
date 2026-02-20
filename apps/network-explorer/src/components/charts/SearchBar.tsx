@@ -9,17 +9,40 @@ const HEX_ID_RE = /^0x[0-9a-fA-F]{1,64}$/;
 // Full-length Sui ID (0x + exactly 64 hex chars)
 const FULL_HEX_ID_RE = /^0x[0-9a-fA-F]{64}$/;
 
+type QueryType = 'TX' | 'Object' | 'Address' | null;
+
+function detectQueryType(query: string): QueryType {
+  if (!query) return null;
+  if (TX_DIGEST_RE.test(query)) return 'TX';
+  if (FULL_HEX_ID_RE.test(query)) return 'Address'; // Could be Object or Address — resolved on submit
+  if (HEX_ID_RE.test(query)) return 'Object';
+  return null;
+}
+
 export function SearchBar() {
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const navigate = useNavigate();
 
+  // '/' key focuses the search bar
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handler);
     return () => {
+      document.removeEventListener('keydown', handler);
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     };
   }, []);
+
+  const detectedType = detectQueryType(inputValue.trim());
 
   const showError = (msg: string) => {
     setErrorMsg(msg);
@@ -30,8 +53,7 @@ export function SearchBar() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMsg('');
-    const formData = new FormData(e.currentTarget);
-    const query = (formData.get('query') as string).trim();
+    const query = inputValue.trim();
 
     if (!query) return;
 
@@ -72,14 +94,26 @@ export function SearchBar() {
   return (
     <div>
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <input
-          type="text"
-          name="query"
-          placeholder="Search by Transaction Digest, Object ID, or Address"
-          className={`flex-1 bg-card border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary backdrop-blur-md transition-colors ${errorMsg ? 'border-destructive' : 'border-input'}`}
-          disabled={isSearching}
-          onChange={() => errorMsg && setErrorMsg('')}
-        />
+        <div className="relative flex-1">
+          <input
+            ref={inputRef}
+            type="text"
+            name="query"
+            value={inputValue}
+            placeholder="Search by Tx Digest, Object ID, or Address  [/]"
+            className={`w-full bg-card border rounded-xl px-4 py-3 pr-20 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary backdrop-blur-md transition-colors ${errorMsg ? 'border-destructive' : 'border-input'}`}
+            disabled={isSearching}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              if (errorMsg) setErrorMsg('');
+            }}
+          />
+          {detectedType && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-sm pointer-events-none">
+              {detectedType}
+            </span>
+          )}
+        </div>
         <button
           type="submit"
           disabled={isSearching}

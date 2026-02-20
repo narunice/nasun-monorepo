@@ -1,6 +1,29 @@
 /**
  * Nasun 브랜딩 관련 포맷 유틸리티
  */
+import type { SuiTransactionBlockResponse } from '@mysten/sui/client';
+
+export interface TxTypeInfo {
+  label: string;
+  variant: 'success' | 'info' | 'default';
+}
+
+// Determine the primary action type of a PTB for display as a Badge
+export function getTxTypeInfo(tx: SuiTransactionBlockResponse): TxTypeInfo {
+  const txData = tx.transaction?.data?.transaction;
+  if (!txData || txData.kind !== 'ProgrammableTransaction') {
+    return { label: txData?.kind ?? 'Unknown', variant: 'default' };
+  }
+  const txs = txData.transactions;
+  if (!txs || txs.length === 0) return { label: 'PTB', variant: 'default' };
+  if (txs.some((t) => 'Publish' in t)) return { label: 'Publish', variant: 'success' };
+  if (txs.some((t) => 'Upgrade' in t)) return { label: 'Upgrade', variant: 'info' };
+  if (txs.some((t) => 'MoveCall' in t)) return { label: 'MoveCall', variant: 'info' };
+  if (txs.some((t) => 'TransferObjects' in t)) return { label: 'Transfer', variant: 'default' };
+  if (txs.some((t) => 'SplitCoins' in t)) return { label: 'SplitCoins', variant: 'default' };
+  if (txs.some((t) => 'MergeCoins' in t)) return { label: 'MergeCoins', variant: 'default' };
+  return { label: 'PTB', variant: 'default' };
+}
 
 // SUI 타입을 NSN으로 변환
 export function formatCoinType(coinType: string | undefined): string {

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getAddressTransactions } from '../lib/sui-client';
@@ -16,6 +17,7 @@ const HEX_ADDR_RE = /^0x[0-9a-fA-F]{1,64}$/;
 export default function Address() {
   const { addr } = useParams<{ addr: string }>();
   const isValidAddr = addr ? HEX_ADDR_RE.test(addr) : false;
+  const [txLimit, setTxLimit] = useState(20);
 
   // Data loading via custom hook
   const {
@@ -29,10 +31,10 @@ export default function Address() {
     handleLoadMore,
   } = useAddressObjects(isValidAddr ? addr : undefined);
 
-  // Separate query for transaction history
+  // Separate query for transaction history (refetches when txLimit changes)
   const { data: transactions, isLoading: txLoading } = useQuery({
-    queryKey: ['address-transactions', addr],
-    queryFn: () => getAddressTransactions(addr!, 20),
+    queryKey: ['address-transactions', addr, txLimit],
+    queryFn: () => getAddressTransactions(addr!, txLimit),
     enabled: isValidAddr,
   });
 
@@ -86,7 +88,12 @@ export default function Address() {
           />
 
           {/* Transaction History Section */}
-          <AddressTransactionHistory transactions={transactions} isLoading={txLoading} />
+          <AddressTransactionHistory
+            transactions={transactions}
+            isLoading={txLoading}
+            hasMore={txLimit < 100 && (transactions?.length ?? 0) >= txLimit}
+            onLoadMore={() => setTxLimit((prev) => Math.min(prev + 30, 100))}
+          />
         </div>
       )}
     </>
