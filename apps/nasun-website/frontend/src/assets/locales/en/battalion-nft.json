@@ -4,7 +4,7 @@
     "description": "The NFT event feature is currently disabled. Please check back later."
   },
   "header": {
-    "title": "Wave 1 Battalion NFT",
+    "title": "Battalion NFT",
     "description": "You're among the pioneers shaping Nasun's future. Please complete the steps below to claim your place on the allowlist."
   },
   "errors": {
@@ -32,24 +32,32 @@
   "goToMyAccount": "Go to My Account Dashboard",
   "step1": {
     "title": "Welcome to Nasun",
-    "description": "This is your special opportunity to mint NASUN's first NFT collection.",
-    "requirements": {
-      "title": "Requirements",
-      "item1": "Follow X @Nasun_io account",
-      "item2": "Like the event post",
-      "item3": "Retweet the event post"
+    "intro1": "Battalion represents Nasun's founding community\u2014the believers who joined our vision from Day 1, before mainnet and before most people even knew.",
+    "intro2": "Holding Battalion signals you were here early. But it's not just symbolic:",
+    "whatYouGet": {
+      "title": "What you get:",
+      "item1": "Staking rewards \u2013 Stake pre-TGE for base rewards + multipliers (based on # of different Battalion NFTs held)",
+      "item2": "Early access \u2013 First into testing for Pado, Gen Sol, Baram + ecosystem points",
+      "item3": "Preferential terms on subsequent rounds",
+      "item4": "Governance weight \u2013 Vote on protocol decisions",
+      "item5": "On-chain founding member designation",
+      "item6": "Airdrop multipliers \u2013 Amplify future ecosystem airdrops"
+    },
+    "details": {
+      "title": "Details:",
+      "item1": "Mint: 4 per wallet",
+      "item2": "Up to 7 NFTs/wallet count for staking/multipliers",
+      "item3": "Diversity unlocks tiered multipliers"
+    },
+    "joinAllowlist": {
+      "title": "Join the allowlist:",
+      "item1": "Follow @Nasun_io",
+      "item2": "Like & Repost the announcement",
+      "item3": "Submit your wallet address"
     },
     "links": {
-      "officialAccount": "Official X Account",
-      "eventPost": "Event Post"
-    },
-    "rewards": {
-      "title": "Rewards",
-      "item1": "1 Wave 1 Battalion NFT Mint per Person",
-      "item2": "Priority access to future airdrops and events",
-      "item3": "Eligible for Random Drawings",
-      "item4": "Collect all Battalion NFTs + Frontiers NFT to increase Multipliers",
-      "item5": "Exclusive community membership"
+      "followAccount": "Follow @Nasun_io",
+      "announcementPost": "Announcement Post"
     },
     "button": "Get Started"
   },
@@ -159,8 +167,8 @@
   },
   "step6": {
     "title": "🎉 Allowlist Registration Complete!",
-    "description": "Congratulations! You have successfully registered for the Wave 1 Battalion NFT allowlist.",
-    "shareMessage": "I've registered for the Wave 1 Battalion NFT allowlist! 🎉 #NASUN #NFT",
+    "description": "Congratulations! You have successfully registered for the Battalion NFT allowlist.",
+    "shareMessage": "I've registered for the Battalion NFT allowlist! 🎉 #NASUN #NFT",
     "shareEventOnX": "Share this event on",
     "mintingGuide": {
       "title": "OpenSea Minting Guide",

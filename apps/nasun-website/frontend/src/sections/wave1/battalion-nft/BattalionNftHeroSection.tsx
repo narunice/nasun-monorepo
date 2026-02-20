@@ -85,7 +85,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
       setWordOpacities([0, 0, 0]);
     }
 
-    // "WAVE 1 BATTALION" animation
+    // "BATTALION" animation
     if (
       duration > 0 &&
       !isNaN(duration) &&
@@ -218,12 +218,12 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
                   DESTINY
                 </h2>
               </div>
-              {/* WAVE 1 BATTALION */}
+              {/* BATTALION */}
               <h2
                 className="absolute inset-0 flex items-center justify-center !font-changeling text-3xl"
                 style={{ opacity: waveTitleOpacity }}
               >
-                WAVE 1 BATTALION
+                BATTALION
               </h2>
             </div>
           </div>
@@ -277,10 +277,10 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
                 DESTINY
               </h2>
             </div>
-            {/* WAVE 1 BATTALION */}
+            {/* BATTALION */}
             <div className="absolute inset-0 flex justify-center items-baseline pt-6">
               <h2 className="!font-changeling" style={{ opacity: waveTitleOpacity }}>
-                WAVE 1 BATTALION
+                BATTALION
               </h2>
             </div>
           </div>
