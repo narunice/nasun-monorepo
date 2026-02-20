@@ -41,7 +41,7 @@ export default function NetworkStatusCards({
       {isLoading ? (
         <div className="text-muted-foreground">Loading...</div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card variant="default" className="p-4">
             <div className="text-muted-foreground text-sm uppercase tracking-wider">Status</div>
             <div
@@ -58,9 +58,11 @@ export default function NetworkStatusCards({
           </Card>
           <Card variant="default" className="p-4">
             <div className="text-muted-foreground text-sm uppercase tracking-wider">Epoch</div>
-            <div className="text-lg font-mono text-foreground">{epochInfo?.epoch || '-'}</div>
-            <div className="text-xs text-muted-foreground">
-              {epochInfo?.remainingMs ? `${formatDuration(epochInfo.remainingMs)} left` : '-'}
+            <div className="flex items-baseline justify-between">
+              <span className="text-lg font-mono text-foreground">{epochInfo?.epoch || '-'}</span>
+              <span className="text-xs text-muted-foreground">
+                {epochInfo?.remainingMs ? `${formatDuration(epochInfo.remainingMs)} left` : ''}
+              </span>
             </div>
           </Card>
           <Card variant="default" className="p-4">
