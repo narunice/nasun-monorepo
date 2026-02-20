@@ -3,3 +3,4 @@ export { TimeRangeSelector } from './TimeRangeSelector';
 export { TransactionCharts } from './TransactionCharts';
 export { TradingActivityChart } from './TradingActivityChart';
 export { NetworkStateSection } from './NetworkStateSection';
+export { IndexerCharts } from './IndexerCharts';
