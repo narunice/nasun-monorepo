@@ -39,7 +39,8 @@ import {
 import { NFTGallery } from "../nft/NFTGallery";
 import { WCViewRouter } from "../walletconnect";
 import { setPendingPasskeyMnemonic, getPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
-import { secureZeroString, usePasskeyStore } from "@nasun/wallet";
+import { secureZeroString, usePasskeyStore, useChainStore } from "@nasun/wallet";
+import { useUISettingsStore } from "../stores";
 import { NsaRestorePanel } from "../nsa";
 import { WalletBackupPanel, RestoreBackupPanel } from "../backup";
 
@@ -71,6 +72,9 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
     <PasskeySetupView
       onBack={() => s.setViewMode("main")}
       onCreated={(mnemonic) => {
+        // Reset UI settings for fresh onboarding (matches password-based handleCreate)
+        useUISettingsStore.getState().resetSettings();
+        useChainStore.getState().resetToDefault();
         setPendingPasskeyMnemonic(mnemonic);
         s.setMnemonic(mnemonic);
         s.setViewMode("passkey-backup");
