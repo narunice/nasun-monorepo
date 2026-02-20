@@ -1,219 +1,231 @@
+import React from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { DividerBox } from "@/components/ui/DividerBox";
+import { ButtonV3 } from "@/components/ui/button-v3";
+import { OuterBox } from "@/components/ui/OuterBox";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { Infinity as InfinityIcon, Network, Users } from "lucide-react";
-import { useTranslation, Trans } from "react-i18next";
+import { MessageSquare, FileText, Vote, Zap, Check, ArrowRight, ArrowDown } from "lucide-react";
+
+const frameworkSteps = [
+  {
+    Icon: MessageSquare,
+    step: "Collaborate",
+    description: "Open creative iteration where anyone can contribute ideas or improvements.",
+  },
+  {
+    Icon: FileText,
+    step: "Propose",
+    description:
+      "Refined ideas are formalized with clear scope, contributors, and resource requirements.",
+  },
+  {
+    Icon: Vote,
+    step: "Vote",
+    description: "The community decides what gets built and funded.",
+  },
+  {
+    Icon: Zap,
+    step: "Execute",
+    description:
+      "Approved proposals are executed with transparent treasury flows and contributor attribution recorded on-chain.",
+  },
+];
+
+const networkProvides = [
+  "Transparent treasury flows",
+  "Composable digital assets",
+  "Verifiable governance",
+];
+
+const creatorUnderstanding = ["Professional creative pipelines", "Technical systems engineering"];
+
+const koreaAdvantages = [
+  "Proven global cultural exports (Hallyu)",
+  "High crypto adoption",
+  "Advanced gaming ecosystem",
+  "Production efficiency",
+];
 
 const StrategyOverviewV2 = () => {
-  const { t } = useTranslation("strategy");
-
   return (
-    <SectionLayout className="!max-w-6xl">
-      {/* Page Title */}
-      <PageTitle className="normal-case flex flex-col">
-        <span>{t("overviewV2.pageTitle.line1")}</span>
-        <span className="font-normal text-xl/tight md:text-2xl/tight lg:text-3xl/tight tracking-wide text-nasun-white ">
-          {t("overviewV2.pageTitle.line2")}
-        </span>
-      </PageTitle>
+    <SectionLayout className="!max-w-5xl">
+      {/* Title */}
+      <PageTitle>NASUN STRATEGY</PageTitle>
+      <div className="text-center -mt-2 mb-10 md:mb-14">
+        <p className="text-nasun-white/60">A System for Shared Creation</p>
+      </div>
 
-      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
-        {/* Section 1: The Core Challenge */}
+      <div className="flex flex-col gap-10 md:gap-14 lg:gap-16">
+        {/* 1. The Core Problem */}
         <section>
-          <SectionTitle as="h4">{t("overviewV2.section1.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            {(t("overviewV2.section1.content", { returnObjects: true }) as string[]).map(
-              (paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              )
-            )}
-
-            <DividerBox color="w1" padding="sm">
-              <ul className="space-y-4 ">
-                <li className="">
-                  <Trans
-                    t={t}
-                    i18nKey="overviewV2.section1.box.item1"
-                    components={[<strong className="text-nasun-nw1 " key="0" />]}
-                  />
-                </li>
-                <li>
-                  <Trans
-                    t={t}
-                    i18nKey="overviewV2.section1.box.item2"
-                    components={[<strong className="text-nasun-nw1" key="0" />]}
-                  />
-                </li>
-                <li>
-                  <Trans
-                    t={t}
-                    i18nKey="overviewV2.section1.box.item3"
-                    components={[<strong className="text-nasun-nw1" key="0" />]}
-                  />
-                </li>
-              </ul>
-            </DividerBox>
-
+          <SectionTitle as="h4">
+            <span>1.</span> The Core Problem
+          </SectionTitle>
+          <h5 className="mb-4 md:mb-5">Creation Has Exploded. Value Has Not.</h5>
+          <div className="space-y-3">
+            <p>AI tools and social platforms allow millions to create instantly.</p>
+            <p>But:</p>
+            <div className="border-l-4 border-nasun-nw1/40 pl-6 md:pl-8 py-2 space-y-2">
+              <p>Stories launch then vanish.</p>
+              <p>Content spreads and disappears.</p>
+              <p>Platforms extract while creators get scraps.</p>
+            </div>
             <p>
-              {t("overviewV2.section1.conclusion.line1")}
-              <br />
-              <Trans
-                t={t}
-                i18nKey="overviewV2.section1.conclusion.line2"
-                components={[<strong className="text-nasun-white" key="0" />]}
-              />
+              The issue is not creativity.
+              <br /> It is continuity.
             </p>
+            <p>Without continuity, there is no compounding value.</p>
             <p>
-              <Trans
-                t={t}
-                i18nKey="overviewV2.section1.conclusion.line3"
-                components={[<strong className="text-nasun-white" key="0" />]}
-              />
+              Communities need a way to build intellectual property together and share in its
+              long-term success.
             </p>
-            <p>{t("overviewV2.section1.conclusion.line4")}</p>
           </div>
         </section>
 
-        {/* Section 2: Our Solution */}
+        {/* 2. The Nasun Framework */}
         <section>
-          <SectionTitle as="h4">{t("overviewV2.section2.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            {(t("overviewV2.section2.intro", { returnObjects: true }) as string[]).map(
-              (paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              )
-            )}
-          </div>
+          <SectionTitle as="h4">
+            <span>2.</span> The Nasun Framework
+          </SectionTitle>
+          <p className="mb-5 md:mb-6">
+            Nasun treats on-chain execution as the final step, not the starting point.
+          </p>
 
-          <div className="grid grid-cols-1 gap-8 mt-2 md:mt-3 lg:mt-4">
-            <DividerBox
-              color="w1"
-              className=""
-              titleClassName="!text-nasun-nw1"
-              icon={<InfinityIcon className="w-5 h-5 text-nasun-nw1" />}
-              title={t("overviewV2.section2.box1.title")}
-            >
-              <div className="space-y-4 text-nasun-white/90 text-lg font-light">
-                {(t("overviewV2.section2.box1.content", { returnObjects: true }) as string[]).map(
-                  (paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  )
+          {/* Flow: horizontal on desktop, vertical on mobile */}
+          <div className="flex flex-col md:flex-row items-stretch">
+            {frameworkSteps.map(({ Icon, step, description }, index) => (
+              <React.Fragment key={step}>
+                <OuterBox color="nw0" padding="sm" className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className="w-4 h-4 text-nasun-nw1 flex-shrink-0" />
+                    <h6 className="font-bold">{step}</h6>
+                  </div>
+                  <p className="text-nasun-white/75">{description}</p>
+                </OuterBox>
+
+                {index < frameworkSteps.length - 1 && (
+                  <>
+                    <div className="hidden md:flex items-center justify-center px-2 text-nasun-nw4/40 flex-shrink-0">
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                    <div className="flex md:hidden justify-center py-2 text-nasun-nw4/40">
+                      <ArrowDown className="w-4 h-4" />
+                    </div>
+                  </>
                 )}
-              </div>
-            </DividerBox>
-
-            <DividerBox
-              color="w1"
-              titleClassName="!text-nasun-nw1"
-              icon={<Network className="w-5 h-5 text-nasun-nw1" />}
-              title={t("overviewV2.section2.box2.title")}
-            >
-              <div className="space-y-4 text-nasun-white/90 text-lg font-light">
-                {(t("overviewV2.section2.box2.content", { returnObjects: true }) as string[]).map(
-                  (paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  )
-                )}
-              </div>
-            </DividerBox>
-
-            <DividerBox
-              color="w1"
-              titleClassName="!text-nasun-nw1"
-              icon={<Users className="w-5 h-5 text-nasun-nw1" />}
-              title={t("overviewV2.section2.box3.title")}
-            >
-              <div className="space-y-4 text-nasun-white/90 text-lg font-light">
-                <p>{t("overviewV2.section2.box3.intro")}</p>
-                <p>{t("overviewV2.section2.box3.p2")}</p>
-                <ul className="list-disc pl-6 space-y-2 marker:text-nasun-nw1">
-                  {(t("overviewV2.section2.box3.list", { returnObjects: true }) as string[]).map(
-                    (_, index) => (
-                      <li key={index}>
-                        <Trans
-                          t={t}
-                          i18nKey={`overviewV2.section2.box3.list.${index}` as never}
-                          components={[<strong className="text-nasun-white" key="0" />]}
-                        />
-                      </li>
-                    )
-                  )}
-                </ul>
-                <p>{t("overviewV2.section2.box3.conclusion")}</p>
-              </div>
-            </DividerBox>
+              </React.Fragment>
+            ))}
           </div>
         </section>
 
-        {/* Section 3: Built by Creators */}
+        {/* 3. The Network as Economic Backbone */}
         <section>
-          <SectionTitle as="h4">{t("overviewV2.section3.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            {(t("overviewV2.section3.content", { returnObjects: true }) as string[]).map(
-              (paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              )
-            )}
-          </div>
-        </section>
-
-        {/* Section 4: The Coordination Pipeline */}
-        <section>
-          <SectionTitle as="h4">{t("overviewV2.section4.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>{t("overviewV2.section4.intro")}</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2 md:mt-3 lg:mt-4">
-            <DividerBox color="nw1" title={t("overviewV2.section4.box1.title")}>
-              <p className="text-nasun-white/90 text-lg font-light">
-                {t("overviewV2.section4.box1.content")}
-              </p>
-            </DividerBox>
-            <DividerBox color="nw1" title={t("overviewV2.section4.box2.title")}>
-              <p className="text-nasun-white/90 text-lg font-light">
-                {t("overviewV2.section4.box2.content")}
-              </p>
-            </DividerBox>
-            <DividerBox color="nw1" title={t("overviewV2.section4.box3.title")}>
-              <p className="text-nasun-white/90 text-lg font-light">
-                {t("overviewV2.section4.box3.content")}
-              </p>
-            </DividerBox>
-            <DividerBox color="nw1" title={t("overviewV2.section4.box4.title")}>
-              <p className="text-nasun-white/90 text-lg font-light">
-                {t("overviewV2.section4.box4.content")}
-              </p>
-            </DividerBox>
-          </div>
-          <div className="mt-8 text-nasun-white/90 leading-relaxed text-lg md:text-xl font-light">
-            <p>{t("overviewV2.section4.conclusion")}</p>
-          </div>
-        </section>
-
-        {/* Section 5: Why Now */}
-        <section>
-          <SectionTitle as="h4">{t("overviewV2.section5.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>{t("overviewV2.section5.content.0" as never)}</p>
-            <p>
-              <Trans
-                t={t}
-                i18nKey={"overviewV2.section5.content.1" as never}
-                components={[
-                  <strong className="text-nasun-white" key="0" />,
-                  <br key="1" />,
-                ]}
-              />
-            </p>
-            {(t("overviewV2.section5.content", { returnObjects: true }) as string[])
-              .slice(2)
-              .map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
+          <SectionTitle as="h4">
+            <span>3.</span> The Network as Economic Backbone
+          </SectionTitle>
+          <p className="mb-5">Shared IP requires enforceable ownership.</p>
+          <OuterBox color="nw1" padding="sm">
+            <p className="mb-3">The Nasun Network provides:</p>
+            <ul className="space-y-2">
+              {networkProvides.map((item) => (
+                <li key={item} className="flex items-center gap-3">
+                  <Check className="w-4 h-4 text-nasun-nw4 flex-shrink-0" />
+                  <span>{item}</span>
+                </li>
               ))}
-          </div>
+            </ul>
+          </OuterBox>
+          <p className="mt-4">
+            When an IP generates revenue, through a game, film, AI platform, or financial
+            application, net revenue flows back to the projects and treasury.
+          </p>
         </section>
+
+        {/* 4. Built by Creators, Not Just Engineers */}
+        <section>
+          <SectionTitle as="h4">
+            <span>4.</span> Built by Creators, Not Just Engineers
+          </SectionTitle>
+          <p className="mb-5">Nasun began in production, not speculation.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <OuterBox color="nw0" padding="sm">
+              <h6 className="font-bold text-nasun-nw4 mb-2">Naru</h6>
+              <p className="text-nasun-white/80">
+                Head editor and producer on Korean films premiering at Cannes, Berlin, and Venice.
+              </p>
+            </OuterBox>
+            <OuterBox color="nw0" padding="sm">
+              <h6 className="font-bold text-nasun-nw4 mb-2">Overclocked</h6>
+              <p className="text-nasun-white/80">
+                20+ years in media production. Built Gen Sol multiplayer alpha in UE5 (C++).
+              </p>
+            </OuterBox>
+          </div>
+          <p className="mb-3">We understand both:</p>
+          <ul className="space-y-2 mb-4">
+            {creatorUnderstanding.map((item) => (
+              <li key={item} className="flex items-center gap-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 flex-shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          <p>Nasun exists because existing platforms failed to coordinate both.</p>
+        </section>
+
+        {/* 5. Why Korea, Why Global */}
+        <section>
+          <SectionTitle as="h4">
+            <span>5.</span> Why Korea, Why Global
+          </SectionTitle>
+          <p className="mb-4">Korea is the launchpad:</p>
+          <ul className="space-y-2 mb-5">
+            {koreaAdvantages.map((item) => (
+              <li key={item} className="flex items-center gap-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 flex-shrink-0" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="font-medium text-nasun-white">Global from day one.</p>
+        </section>
+
+        {/* 6. Why Now: The Relevance Era */}
+        <section>
+          <SectionTitle as="h4">
+            <span>6.</span> Why Now: The Relevance Era
+          </SectionTitle>
+          <div className="space-y-3">
+            <p>AI is flooding the world with content.</p>
+            <p>Crypto has onboarded millions, but relevance remains shallow.</p>
+            <p>The next era will not be defined by speculation or infinite content.</p>
+            <p>It will be defined by systems that allow communities to:</p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 my-6 md:my-8">
+            <h5 className="font-medium">Create together</h5>
+            <span className="hidden sm:block text-nasun-nw4/30">|</span>
+            <h5 className="font-medium">Decide together</h5>
+            <span className="hidden sm:block text-nasun-nw4/30">|</span>
+            <h5 className="font-medium">Own together</h5>
+          </div>
+          <p>
+            Nasun is the infrastructure that makes this coordination technically possible and
+            economically sustainable.
+          </p>
+        </section>
+
+        {/* CTA */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pb-4">
+          <ButtonV3 variant="nw1" size="md" disabled>
+            Litepaper
+          </ButtonV3>
+          <ButtonV3 variant="nw1" size="md" outline disabled>
+            Join Beta
+          </ButtonV3>
+          <ButtonV3 variant="nw1" size="md" outline disabled>
+            Team Deck
+          </ButtonV3>
+        </div>
       </div>
     </SectionLayout>
   );

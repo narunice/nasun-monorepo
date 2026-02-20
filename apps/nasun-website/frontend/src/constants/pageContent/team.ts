@@ -9,7 +9,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     nameKey: "naru.name",
     positionKey: "naru.position",
     descriptionKey: "naru.description", // i18n 키로 변경
-    emphasizedWordCount: 5, // "Naru is a professional filmmaker"
+    emphasizedWordCount: 5, // "Head editor and producer on"
     imageUrl: naru,
     socialLinks: {
       email: "naru@nasun.io",
@@ -40,7 +40,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     nameKey: "overclocked.name",
     positionKey: "overclocked.position",
     descriptionKey: "overclocked.description", // i18n 키로 변경
-    emphasizedWordCount: 7, // "Overclocked has over 20 years of experience"
+    emphasizedWordCount: 5, // "20+ years in film, television,"
     imageUrl: overclocked,
     socialLinks: {
       email: "overclocked@nasun.io",
