@@ -1,119 +1,110 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXTwitter, faYoutube } from "@fortawesome/free-brands-svg-icons";
-import { faTrophy } from "@fortawesome/free-solid-svg-icons";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { ButtonV3 } from "@/components/ui/button-v3";
+import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
-import { OuterBox, DividerBox } from "@/components/ui";
-import { Button } from "@/components/ui/button";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import { Mail, ExternalLink } from "lucide-react";
 
-export const EarlyContributorsSection: React.FC = () => {
-  const { t } = useTranslation("early-contributors");
+const lookingForItems = [
+  "Content creators (X, YouTube, other platforms)",
+  "Developers and technical contributors",
+  "Artists and designers",
+  "Community leads",
+];
 
-  const contentCreatorsItems = t("contentCreators.items", {
-    returnObjects: true,
-  }) as string[];
-  const youtubeCreatorsItems = t("youtubeCreators.items", {
-    returnObjects: true,
-  }) as string[];
-  const rewardsItems = t("rewards.items", { returnObjects: true }) as string[];
-  const philosophyParagraphs = t("philosophy.paragraphs", { returnObjects: true }) as string[];
+const whatYouGetItems = [
+  { head: "A rare Battalion NFT", rest: " with utilities and airdrop multipliers" },
+  { head: "Direct access", rest: " to the core team" },
+  { head: "Allowlist", rest: " for the Battalion drop" },
+  { head: "A share", rest: " of the launch marketing budget" },
+];
 
+function EarlyContributorsSection() {
   return (
-    <SectionLayout className="!max-w-6xl">
-      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
-        <PageTitle as="h2" align="center">
-          {t("title")}
-        </PageTitle>
+    <SectionLayout className="!max-w-5xl">
+      <PageTitle>EARLY CONTRIBUTORS</PageTitle>
 
-        {/* Main Intro Box */}
-        <OuterBox color="w5">
-          <p className="text-lg font-light leading-relaxed text-nasun-white/90 text-center max-w-3xl mx-auto">
-            <span className="text-nasun-c1 font-medium">{t("intro.highlight")}</span>
-            {t("intro.rest")}
-          </p>
-        </OuterBox>
+      {/* Intro */}
+      <div className="mb-8 md:mb-10 lg:mb-12 max-w-3xl mx-auto">
+        <p className="mb-4">
+          We're looking for early contributors to help build Nasun from the ground up.
+        </p>
+        <p>
+          If you're a creator, developer, artist, or community leader who wants to help shape
+          Nasun from Day 1, we'd love to hear from you.
+        </p>
+      </div>
 
-        {/* We're Looking For Section */}
-        <section className="space-y-2 md:space-y-3 lg:space-y-4">
-          <h3 className="font-medium text-center">{t("lookingFor.title")}</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            <DividerBox
-              color="w1"
-              title={t("contentCreators.title")}
-              titleClassName="!text-nasun-c1"
-              icon={<FontAwesomeIcon icon={faXTwitter} className="text-nasun-c1 w-5 h-5" />}
-            >
-              <ul className="list-disc marker:text-nasun-c1 pl-6 space-y-2 text-nasun-white/80">
-                {contentCreatorsItems.map((item, index) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
-            </DividerBox>
-
-            <DividerBox
-              color="w1"
-              title={t("youtubeCreators.title")}
-              titleClassName="!text-nasun-c1"
-              icon={<FontAwesomeIcon icon={faYoutube} className="text-nasun-c1 w-5 h-5" />}
-            >
-              <ul className="list-disc marker:text-nasun-c1 pl-6 space-y-2 text-nasun-white/80">
-                {youtubeCreatorsItems.map((item, index) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
-            </DividerBox>
-          </div>
+      <div className="flex flex-col gap-8 md:gap-10">
+        {/* What we're looking for */}
+        <section>
+          <SectionTitle as="h4">What we're looking for:</SectionTitle>
+          <OuterBox color="nw0" padding="sm">
+            <ul className="space-y-2">
+              {lookingForItems.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </OuterBox>
         </section>
 
-        {/* Rewards Section */}
-        <DividerBox
-          color="w1"
-          title={t("rewards.title")}
-          titleClassName="!text-nasun-c1"
-          icon={<FontAwesomeIcon icon={faTrophy} className="text-nasun-c1 w-5 h-5" />}
-        >
-          <p className="text-nasun-white font-medium mb-4">{t("rewards.intro")}</p>
-          <ul className="list-disc marker:text-nasun-c1 pl-6 space-y-2 text-nasun-white/80">
-            {rewardsItems.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </DividerBox>
+        {/* What you get */}
+        <section>
+          <SectionTitle as="h4">What you get:</SectionTitle>
+          <OuterBox color="nw0" padding="sm">
+            <ul className="space-y-2">
+              {whatYouGetItems.map(({ head, rest }) => (
+                <li key={head} className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
+                  <span>
+                    <span className="font-semibold text-nasun-nw4">{head}</span>
+                    {rest}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </OuterBox>
+        </section>
 
-        <div>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4  leading-relaxed">
-            {philosophyParagraphs.map((paragraph, index) => (
-              <p key={index}>{paragraph}</p>
-            ))}
-          </div>
+        {/* Closing */}
+        <div className="max-w-3xl mx-auto space-y-4">
+          <p>
+            Nasun is community-funded, not VC-backed. We're building this with our people, not
+            with a fund.
+          </p>
+          <p>
+            Spots are limited. If you're interested, email us or DM @Nasun_io.
+          </p>
+        </div>
 
-          <div className="mt-6 md:mt-8 pt-6 border-t border-nasun-white/10 text-center">
-            <p className="mb-6 max-w-2xl mx-auto">
-              {t("philosophy.closing.before")}
-              <span className="text-nasun-white font-medium">
-                {t("philosophy.closing.highlight")}
-              </span>
-              {t("philosophy.closing.after")}
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <a href="mailto:admin@nasun.io">
-                <Button variant="c4" size="lg">
-                  {t("philosophy.emailButton")}
-                </Button>
-              </a>
-              <a href="https://x.com/Nasun_io" target="_blank" rel="noopener noreferrer">
-                <Button variant="c4" size="lg">
-                  {t("philosophy.xButton")}{" "}
-                  <FontAwesomeIcon icon={faXTwitter} className="ml-2 w-4 h-4" />
-                </Button>
-              </a>
-            </div>
-          </div>
+        {/* CTA */}
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <ButtonV3 variant="nw1" size="md" asChild>
+            <a href="mailto:admin@nasun.io" className="inline-flex items-center gap-2">
+              <Mail size={16} />
+              Email Us
+            </a>
+          </ButtonV3>
+          <ButtonV3 variant="nw1" size="md" asChild>
+            <a
+              href="https://x.com/Nasun_io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2"
+            >
+              DM @Nasun_io
+              <ExternalLink size={16} />
+            </a>
+          </ButtonV3>
         </div>
       </div>
     </SectionLayout>
   );
-};
+}
+
+export { EarlyContributorsSection };
+export default React.memo(EarlyContributorsSection);
