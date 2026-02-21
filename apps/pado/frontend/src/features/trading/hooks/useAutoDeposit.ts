@@ -164,8 +164,8 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
   const { currentPool } = useMarket();
   const queryClient = useQueryClient();
 
-  // Get current BM balance
-  const { balance: bmBalanceData } = useBalanceManagerBalance();
+  // Get current BM balance (pass validated ID to avoid stale localStorage reads)
+  const { balance: bmBalanceData } = useBalanceManagerBalance({ balanceManagerId });
   const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
 
   const [isDepositing, setIsDepositing] = useState(false);

@@ -32,12 +32,14 @@ interface UseBalanceManagerBalanceResult {
 export function useBalanceManagerBalance(options?: {
   refetchInterval?: number;
   enabled?: boolean;
+  balanceManagerId?: string | null;
 }): UseBalanceManagerBalanceResult {
-  const { refetchInterval = 5000, enabled = true } = options ?? {};
+  const { refetchInterval = 5000, enabled = true, balanceManagerId: externalId } = options ?? {};
   const adaptiveInterval = useAdaptiveInterval(refetchInterval);
   const { currentPool } = useMarket();
 
-  // Get active wallet address (zkLogin > local > passkey)
+  // Use externally-validated balanceManagerId when provided (avoids stale localStorage reads).
+  // Falls back to localStorage lookup for backward compatibility.
   const { account: walletAccount, status } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
@@ -50,7 +52,9 @@ export function useBalanceManagerBalance(options?: {
         ? passkeyAddress ?? undefined
         : undefined;
 
-  const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
+  const balanceManagerId = externalId !== undefined
+    ? externalId
+    : activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 
   const {
     data: balance,

@@ -179,7 +179,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // Open orders + BM balance data
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const openOrders = openOrdersData?.orders ?? [];
-  const { balance: bmBalanceData } = useBalanceManagerBalance();
+  const { balance: bmBalanceData } = useBalanceManagerBalance({ balanceManagerId });
   const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
 
   // In-orders locked amounts (buy orders lock quote, sell orders lock base)
