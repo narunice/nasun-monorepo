@@ -116,6 +116,16 @@ module devnet_tokens_v2::faucet_v2 {
         transfer::public_transfer(nsol_coin, sender);
     }
 
+    /// Request only NSOL without cooldown (for LP bot refill)
+    public fun request_nsol(
+        faucet: &mut TokenFaucetV2,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let nsol_coin = coin::mint(&mut faucet.nsol_cap, NSOL_FAUCET_AMOUNT, ctx);
+        transfer::public_transfer(nsol_coin, sender);
+    }
+
     /// Check remaining cooldown time (returns 0 if can claim)
     public fun get_remaining_cooldown(
         record: &ClaimRecordV2,
