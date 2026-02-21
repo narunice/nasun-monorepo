@@ -41,6 +41,7 @@ export const EXECUTOR_CONFIG = {
 export const AER_CONFIG = {
   packageId: import.meta.env.VITE_AER_PACKAGE_ID || BARAM.aerPackageId,
   registryId: BARAM.aerRegistry,
+  indexerApiUrl: import.meta.env.VITE_AER_INDEXER_API_URL || '',
 } as const;
 
 // Agent Profile Configuration
