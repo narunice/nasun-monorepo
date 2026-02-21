@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "vitest run --config e2e/vitest.e2e.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {
