@@ -5,6 +5,7 @@ import { formatBalance, formatSoe, formatPercentage } from '../lib/format';
 import { resolveMediaUrl, sanitizeHref } from '../lib/media';
 import { Card } from '../components/ui/Card';
 import { SectionBox } from '../components/ui/SectionBox';
+import ValidatorStaking from '../components/staking/ValidatorStaking';
 
 export default function Validator() {
   const { address } = useParams<{ address: string }>();
@@ -137,6 +138,11 @@ export default function Validator() {
           </div>
         </div>
       </SectionBox>
+
+      {/* Stake NSN */}
+      <ValidatorStaking
+        validatorAddress={validator.address}
+      />
     </>
   );
 }
