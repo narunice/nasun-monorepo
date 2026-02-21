@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import { sql } from '../db.js';
 import { cached } from '../cache.js';
+import { rpcCall } from '../rpc.js';
 
 const app = new Hono();
 
-const SUI_RPC_URL = process.env.SUI_RPC_URL || 'https://rpc.devnet.nasun.io';
 const EXPECTED_CHAIN_ID = process.env.CHAIN_ID || '';
 if (!EXPECTED_CHAIN_ID) {
   console.warn('CHAIN_ID env not set — chain reset detection disabled');
@@ -12,14 +12,7 @@ if (!EXPECTED_CHAIN_ID) {
 
 // Cache RPC chain ID for 5 minutes (only changes on devnet reset)
 const getRpcChainId = cached('rpc-chain-id', 5 * 60 * 1000, async () => {
-  const res = await fetch(SUI_RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'sui_getChainIdentifier', params: [] }),
-    signal: AbortSignal.timeout(5000),
-  });
-  const json = (await res.json()) as { result?: string };
-  return json.result ?? null;
+  return rpcCall<string>('sui_getChainIdentifier');
 });
 
 app.get('/', async (c) => {
