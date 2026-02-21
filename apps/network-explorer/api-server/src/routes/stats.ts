@@ -11,13 +11,19 @@ const OWNER_TYPE_ADDRESS = 1;
 // Known coin types for token stats queries.
 // Source of truth: packages/devnet-config/devnet-ids.json
 // Update after devnet reset: sync coin types with devnet-ids.json
+// NOTE: sui-indexer stores coin_type with zero-padded 64-char hex addresses
 const KNOWN_COIN_TYPES = [
-  '0x2::sui::SUI',
+  '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI',
   '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nbtc::NBTC',
   '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC',
   '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31::neth::NETH',
   '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2::nsol::NSOL',
 ] as const;
+
+// Map zero-padded indexer coin types back to standard short form for API response
+function normalizeAddress(coinType: string): string {
+  return coinType.replace(/^0x0+/, '0x');
+}
 
 // Allowed limit values to prevent cache fragmentation
 const ALLOWED_LIMITS = [25, 50, 100, 200] as const;
@@ -80,7 +86,7 @@ app.get('/tokens', async (c) => {
         GROUP BY coin_type
       `;
       return rows.map((r: Record<string, unknown>) => ({
-        coinType: r.coin_type as string,
+        coinType: normalizeAddress(r.coin_type as string),
         holders: Number(r.holders),
         circulatingSupply: (r.circulating_supply as string) ?? null,
       }));
