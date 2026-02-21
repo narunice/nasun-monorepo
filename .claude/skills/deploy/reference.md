@@ -176,3 +176,53 @@ CloudFormation이 관리하는 리소스(Lambda 등)를 AWS 콘솔에서 수동 
 | Leaderboard V3 | `ewjyu9feog` | `auzo707xql` |
 | Follower Count (CommonStack) | `331h8k7x0g` | `as05kvrlii` |
 | Governance (CommonStack) | `3n52syk380` | `4xf3e5t8zc` |
+
+### Lambda 환경변수 드리프트 (2026-02-21 발견/해결)
+
+AdminStack이 `/deploy` 스킬 외부에서 배포되어 `NODE_ENV`가 올바르게 설정되지 않았고, `.env.development`가 로드됨. AdminStack의 3개 Lambda(`AdminExportFunction`, `NftCollectionsFunction`, `AdminApiAuthorizer`)에 dev 환경의 `COGNITO_IDENTITY_POOL_ID`(`cea43281`)가 설정되어, 프로덕션 관리자 페이지에서 403 Forbidden 에러 발생.
+
+**증상:** 프로덕션 `nasun.io/admin/governance`에서 proposal hide 시 403 Forbidden. Token Authorizer가 dev Identity Pool ID로 JWT audience 검증하여 실패.
+
+**해결:** `aws lambda update-function-configuration`으로 3개 Lambda의 `COGNITO_IDENTITY_POOL_ID`를 프로덕션 값(`312bb111`)으로 수동 교정 + API Gateway authorizer 캐시 flush.
+
+**방지책:** SKILL.md 4.5단계(pre-flight 드리프트 검사) + 8.2단계(post-deployment 전체 Lambda 검증) 추가.
+
+---
+
+## COGNITO_IDENTITY_POOL_ID를 사용하는 Lambda 전체 목록
+
+이 변수는 Cognito 인증 토큰 검증에 사용됩니다. 환경별로 다른 Identity Pool을 사용하므로, 잘못된 값이 설정되면 인증이 실패합니다 (403 Forbidden).
+
+**환경별 올바른 값:**
+
+| 환경 | 값 |
+| ---- | -- |
+| dev  | `ap-northeast-2:cea43281-b7c1-4473-8cbf-cf5ccaa33c0a` |
+| prod | `ap-northeast-2:312bb111-8de7-4a61-95db-9a3c3fab58df` |
+
+**Lambda 목록 (스택별):**
+
+| 스택 | Lambda 함수명 | 명시적 functionName | 용도 |
+| ---- | ------------- | :-: | ---- |
+| AdminStack | AdminExportFunction | - | Whitelist/Stats export + hidden proposals |
+| AdminStack | NftCollectionsFunction | - | NFT collections CRUD |
+| AdminStack | AdminApiAuthorizer | - | Token authorizer (OIDC 검증) |
+| AuthStack | nasun-auth-twitter-login | O | Twitter OAuth 인증 |
+| AuthStack | nasun-auth-metamask | O | MetaMask 인증 |
+| CommonStack | nasun-common-link-account | O | 계정 연결 |
+| CommonStack | nasun-common-purge-deactivated-accounts | O | 비활성 계정 정리 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-create-post | O | 게시물 등록 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-get-leaderboard | O | 리더보드 조회 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-get-account | O | 계정 조회 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-admin-seasons | O | 시즌 관리 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-admin-stats | O | 통계 대시보드 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-generate-snapshot | O | 일일 스냅샷 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-get-top-climbers | O | 상위 순위 변동자 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-get-featured-feed | O | 추천 피드 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-get-my-rank | O | 내 순위 조회 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-get-rank-history | O | 순위 히스토리 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-search-accounts | O | 계정 검색 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-admin-blacklist | O | 블랙리스트 관리 |
+| LeaderboardV3Stack | nasun-leaderboard-v3-admin-edit-post | O | 게시물 편집 |
+
+> **참고**: AdminStack의 Lambda는 CDK 자동생성 이름을 사용합니다. 드리프트 검사 시 `aws cloudformation list-stack-resources`로 실제 함수명을 조회해야 합니다.
