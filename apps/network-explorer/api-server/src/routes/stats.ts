@@ -112,7 +112,7 @@ app.get('/daily-gas', async (c) => {
           DATE(to_timestamp(timestamp_ms / 1000.0))::text AS day,
           SUM(total_gas_cost)::text AS total_gas_cost,
           CASE WHEN SUM(max_tx_sequence_number - min_tx_sequence_number + 1) > 0
-            THEN (SUM(total_gas_cost) / SUM(max_tx_sequence_number - min_tx_sequence_number + 1))::text
+            THEN FLOOR(SUM(total_gas_cost) / SUM(max_tx_sequence_number - min_tx_sequence_number + 1))::text
             ELSE '0'
           END AS avg_gas_per_tx,
           SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::int AS tx_count
@@ -211,7 +211,7 @@ app.get('/active-addresses', async (c) => {
   const getActiveAddresses = cached(`active-addresses-${days}`, 5 * 60 * 1000, async () => {
     const rows = await sql`
       SELECT
-        DATE(to_timestamp(t.timestamp_ms / 1000.0)) as day,
+        DATE(to_timestamp(t.timestamp_ms / 1000.0))::text as day,
         COUNT(DISTINCT a.sender) as active_count
       FROM tx_affected_addresses a
       JOIN transactions t ON t.tx_sequence_number = a.tx_sequence_number
@@ -272,7 +272,7 @@ app.get('/daily-transactions', async (c) => {
   const getDailyTx = cached(`daily-tx-${days}`, 5 * 60 * 1000, async () => {
     const rows = await sql`
       SELECT
-        DATE(to_timestamp(timestamp_ms / 1000.0)) as day,
+        DATE(to_timestamp(timestamp_ms / 1000.0))::text as day,
         COUNT(*) as tx_count
       FROM transactions
       WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000

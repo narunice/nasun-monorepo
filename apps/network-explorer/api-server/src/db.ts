@@ -6,7 +6,7 @@ if (!DATABASE_URL) {
 }
 
 export const sql = postgres(DATABASE_URL, {
-  max: 10,
+  max: 25,
   idle_timeout: 20,
   connect_timeout: 10,
 });
