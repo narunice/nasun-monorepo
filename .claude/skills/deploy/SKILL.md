@@ -114,6 +114,66 @@ AWS_ACCOUNT_ID
 
 **추가 검증 (nasun-website만):** CDK `bin/cdk.ts`에서 `process.env.`로 읽는 변수명을 Grep으로 추출하고, `.env` 파일에 해당 변수가 존재하는지 교차 확인. 불일치 발견 시 경고.
 
+### 4.5단계: 배포된 Lambda 환경변수 드리프트 검사 (nasun-website만)
+
+현재 배포된 Lambda 함수들의 `COGNITO_IDENTITY_POOL_ID` 값이 대상 환경의 올바른 값과 일치하는지 전수 확인합니다. `/deploy` 스킬 외부에서 수행된 배포(out-of-band deployment)로 인한 환경변수 오염을 사전에 감지합니다.
+
+**대상 스택:** `AdminStack`, `AuthStack`, `CommonStack`, `LeaderboardV3Stack`
+
+**환경별 올바른 값 (reference.md 참조):**
+
+| 환경 | COGNITO_IDENTITY_POOL_ID |
+| ---- | ------------------------ |
+| dev  | `ap-northeast-2:cea43281-b7c1-4473-8cbf-cf5ccaa33c0a` |
+| prod | `ap-northeast-2:312bb111-8de7-4a61-95db-9a3c3fab58df` |
+
+**실행 절차:**
+
+1. 대상 4개 스택 각각에 대해 Lambda 함수 목록을 조회합니다:
+
+```bash
+aws cloudformation list-stack-resources \
+  --stack-name {STACK} ${PROFILE:+--profile $PROFILE} \
+  --query "StackResourceSummaries[?ResourceType=='AWS::Lambda::Function'].PhysicalResourceId" \
+  --output text --region ap-northeast-2
+```
+
+스택이 존재하지 않으면 (아직 미배포) 해당 스택을 건너뜁니다.
+
+2. 각 Lambda 함수의 `COGNITO_IDENTITY_POOL_ID` 환경변수를 조회합니다:
+
+```bash
+aws lambda get-function-configuration \
+  --function-name {function-name} ${PROFILE:+--profile $PROFILE} \
+  --query "Environment.Variables.COGNITO_IDENTITY_POOL_ID" \
+  --output text --region ap-northeast-2
+```
+
+`None`을 반환하는 Lambda는 이 변수를 사용하지 않으므로 건너뜁니다.
+
+3. 올바른 환경별 값과 비교합니다.
+
+**검증 결과:**
+
+- 모든 Lambda의 값이 올바르면: "환경변수 드리프트 없음 (N개 Lambda 확인)" 출력
+- 불일치 발견 시 **blocking** 경고:
+
+```
+[CRITICAL] Lambda 환경변수 드리프트 감지
+
+| Lambda 함수 | 스택 | 현재 값 | 올바른 값 |
+| ----------- | ---- | ------- | --------- |
+| AdminStack-AdminExportFunction... | AdminStack | cea43281 (dev) | 312bb111 (prod) |
+
+이 Lambda들은 잘못된 COGNITO_IDENTITY_POOL_ID를 사용하고 있습니다.
+해당 스택을 이번 배포에 포함하면 올바른 값으로 교정됩니다.
+해당 스택이 배포 대상이 아닌 경우, 별도로 배포해야 합니다.
+```
+
+**`--check` 플래그:** 이 검사는 `--check` 모드에서도 실행됩니다.
+
+**근거:** 2026-02-21 프로덕션 인시던트. AdminStack이 /deploy 스킬 없이 배포되어 3개 Lambda에 dev 환경의 `COGNITO_IDENTITY_POOL_ID`가 설정됨. 프로덕션 관리자 페이지에서 403 Forbidden 에러 발생.
+
 ### 5단계: API URL 교차 검증
 
 프론트엔드 `.env` 파일의 API Gateway URL이 해당 환경의 AWS 계정에 실제로 존재하는지 **양방향**으로 확인합니다.
@@ -241,15 +301,37 @@ aws cloudformation describe-stacks \
 
 **8.2 Lambda 환경변수 검증 (nasun-website만):**
 
-배포된 스택에 속하는 Lambda 함수 1개를 샘플로 확인:
+배포된 스택의 **모든** Lambda 함수에서 `COGNITO_IDENTITY_POOL_ID`가 올바른 환경별 값으로 설정되었는지 전수 확인합니다. (4.5단계와 동일한 검증을 배포 후에 다시 수행)
+
+**대상 스택:** 방금 배포한 스택이 `AdminStack`, `AuthStack`, `CommonStack`, `LeaderboardV3Stack` 중 하나이거나, `--all`로 전체 배포한 경우 4개 스택 모두.
+
+**실행:**
+
+1. 배포한 스택의 Lambda 함수 목록을 조회합니다:
+
+```bash
+aws cloudformation list-stack-resources \
+  --stack-name {stack} ${PROFILE:+--profile $PROFILE} \
+  --query "StackResourceSummaries[?ResourceType=='AWS::Lambda::Function'].PhysicalResourceId" \
+  --output text --region ap-northeast-2
+```
+
+2. 각 Lambda의 `COGNITO_IDENTITY_POOL_ID` 값을 확인합니다:
 
 ```bash
 aws lambda get-function-configuration \
-  --function-name {sample-function} ${PROFILE:+--profile $PROFILE} \
-  --query "Environment.Variables" --output json --region ap-northeast-2
+  --function-name {function-name} ${PROFILE:+--profile $PROFILE} \
+  --query "Environment.Variables.COGNITO_IDENTITY_POOL_ID" \
+  --output text --region ap-northeast-2
 ```
 
-`COGNITO_IDENTITY_POOL_ID`, `USER_PROFILES_TABLE` 등 필수 변수가 설정되었는지 확인.
+3. `None`이 아닌 값을 가진 Lambda만 필터링하여 환경별 올바른 값과 비교합니다.
+
+**검증 결과:**
+
+- 모든 값이 올바르면: "배포 후 환경변수 검증 통과 (N개 Lambda)" 출력
+- 불일치 발견 시 **에러**: "배포가 완료되었지만 Lambda 환경변수가 잘못되었습니다. CDK .env 설정을 확인하세요."
+  - 불일치 Lambda를 테이블로 표시 (함수명, 현재값, 기대값)
 
 **8.3 프론트엔드 .env 동기화 확인 (nasun-website만):**
 
@@ -297,6 +379,8 @@ aws lambda get-function-configuration \
 | dev/prod .env에서 다른 계정의 API 참조 | 환경 분리 무효화, 데이터 격리 실패 | 5단계 양방향 교차 검증으로 감지 |
 | Lambda에 수동 `dist/` 빌드 | 모든 Lambda가 NodejsFunction(esbuild 자동 번들링)을 사용. 수동 빌드는 불필요하고 혼란만 유발 | CDK에 맡기기. `dist/`, `build.js` 파일이 있으면 삭제 |
 | AWS 콘솔에서 CDK 리소스 수동 삭제 | CloudFormation 상태와 불일치 → 배포 실패 ("could not be found") | 반드시 CDK로 삭제 (`cdk destroy`). 이미 삭제된 경우 7단계 복구 절차 참조 |
+| `NODE_ENV` 없이 `npx cdk deploy` 직접 실행 | `.env.development`가 로드되어 prod에 dev 환경변수(Identity Pool ID 등)가 설정됨 | 반드시 `NODE_ENV={node_env} npx cdk deploy` 사용. 4.5단계 드리프트 검사로 감지 |
+| 한 스택만 배포 후 다른 스택 드리프트 무시 | 배포하지 않은 스택의 Lambda에 잘못된 값이 남아있을 수 있음 | 4.5단계에서 전체 스택의 Lambda 검사. 불일치 발견 시 추가 배포 안내 |
 
 ## 주의사항
 
