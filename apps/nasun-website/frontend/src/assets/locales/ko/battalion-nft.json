@@ -4,8 +4,8 @@
     "description": "NFT 이벤트 기능이 현재 비활성화되었습니다. 나중에 다시 확인해주세요."
   },
   "header": {
-    "title": "Wave 1 Battalion NFT",
-    "description": "아래의 미션을 완료하고 허용리스트에 등록하여 당신의 NFT를 민팅하세요."
+    "title": "Battalion NFT",
+    "description": "나선의 미래를 만들어가는 개척자 중 한 명입니다. 아래 단계를 완료하여 허용리스트에 등록하세요."
   },
   "errors": {
     "missingInfo": "필수 정보가 누락되었습니다. 이전 단계를 모두 완료해주세요.",
@@ -31,25 +31,33 @@
   "goToHome": "홈으로 가기",
   "goToMyAccount": "내 계정 대시보드로 가기",
   "step1": {
-    "title": "Wave 1 Battalion NFT 이벤트에 오신 것을 환영합니다!",
-    "description": "아래의 미션을 완료하고 허용리스트에 등록하여 당신의 NFT를 민팅하세요.",
-    "requirements": {
-      "title": "참여 조건",
-      "item1": "X @Nasun_io 계정 팔로우",
-      "item2": "이벤트 게시물에 좋아요",
-      "item3": "이벤트 게시물 리트윗"
+    "title": "나선에 오신 것을 환영합니다",
+    "intro1": "Battalion은 나선의 창립 커뮤니티를 대표합니다 — 메인넷 이전, 대부분이 알기도 전에 첫 날부터 우리의 비전에 합류한 사람들입니다.",
+    "intro2": "Battalion을 보유한다는 것은 당신이 초기부터 함께했다는 신호입니다. 하지만 단순한 상징 이상의 의미가 있습니다:",
+    "whatYouGet": {
+      "title": "혜택:",
+      "item1": "스테이킹 보상 – TGE 이전 스테이킹으로 기본 보상 + 멀티플라이어 (보유 중인 다양한 Battalion NFT 수 기반)",
+      "item2": "얼리 액세스 – Pado, Gen Sol, Baram + 생태계 포인트 테스트 우선 참여",
+      "item3": "후속 라운드 우대 조건",
+      "item4": "거버넌스 가중치 – 프로토콜 의사결정 투표",
+      "item5": "온체인 창립 멤버 지정",
+      "item6": "에어드랍 멀티플라이어 – 향후 생태계 에어드랍 증폭"
+    },
+    "details": {
+      "title": "세부사항:",
+      "item1": "민트: 지갑당 4개",
+      "item2": "스테이킹/멀티플라이어에 지갑당 최대 7개 NFT 적용",
+      "item3": "다양성이 단계별 멀티플라이어를 해제합니다"
+    },
+    "joinAllowlist": {
+      "title": "허용리스트 참여 방법:",
+      "item1": "@Nasun_io 팔로우",
+      "item2": "공지 게시물 좋아요 & 리포스트",
+      "item3": "지갑 주소 제출"
     },
     "links": {
-      "officialAccount": "나선 공식 X 계정",
-      "eventPost": "이벤트 포스트"
-    },
-    "rewards": {
-      "title": "보상",
-      "item1": "1인당 Wave 1 Battalion NFT 1개 민팅",
-      "item2": "향후 에어드랍 및 이벤트 우선 참여권",
-      "item3": "랜덤 추첨 참여 자격",
-      "item4": "모든 Battalion NFT + Frontiers NFT 수집 시 멀티플라이어 증가",
-      "item5": "독점 커뮤니티 멤버십"
+      "followAccount": "@Nasun_io 팔로우",
+      "announcementPost": "공지 게시물"
     },
     "button": "시작하기"
   },
@@ -159,8 +167,8 @@
   },
   "step6": {
     "title": "🎉 허용리스트 등록 완료!",
-    "description": "축하합니다! Wave 1 Battalion NFT 허용리스트에 성공적으로 등록되었습니다.",
-    "shareMessage": "Wave 1 Battalion NFT 허용리스트에 등록했어요! 🎉 #NASUN #NFT",
+    "description": "축하합니다! Battalion NFT 허용리스트에 성공적으로 등록되었습니다.",
+    "shareMessage": "Battalion NFT 허용리스트에 등록했어요! 🎉 #NASUN #NFT",
     "shareEventOnX": "이 이벤트를 공유하기",
     "mintingGuide": {
       "title": "OpenSea 민팅 가이드",
@@ -185,7 +193,7 @@
       "goHome": "홈으로 돌아가기"
     },
     "walletDisconnected": {
-      "title": "Wallet Disconnected",
+      "title": "지갑 연결 해제됨",
       "description": "등록 정보는 저장되었지만 MetaMask 지갑 연결이 해제되었습니다.",
       "instruction": "등록 상태를 확인하고 NFT 민팅에 참여하려면 지갑을 다시 연결해주세요.",
       "reconnectButton": "MetaMask 재연결",
