@@ -1,15 +1,12 @@
 import { Hono } from 'hono';
 import { sql } from '../db.js';
 import { cached } from '../cache.js';
+import { getBalance, discoverAddressesViaRpc } from '../rpc.js';
 
 const app = new Hono();
 
 // Owner type constants from sui-indexer schema (smallint)
 const OWNER_TYPE_ADDRESS = 1;
-
-// SUI coin type (stored in objects.coin_type, not object_type)
-const SUI_COIN_TYPE =
-  '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
 
 // Allowed limit values to prevent cache fragmentation
 const ALLOWED_LIMITS = [25, 50, 100, 200] as const;
@@ -29,33 +26,83 @@ function parseDays(range: string | undefined): number {
   return 7;
 }
 
-// Top accounts by SUI balance
+// Max addresses to discover from DB (prevents unbounded RPC fan-out)
+const MAX_DISCOVERY = 500;
+// Concurrent RPC calls limit (prevents overwhelming the RPC node)
+const RPC_CONCURRENCY = 20;
+
+function safeBigInt(value: string | undefined | null): bigint {
+  if (!value || !/^-?\d+$/.test(value)) return 0n;
+  return BigInt(value);
+}
+
+// Run async tasks with concurrency limit
+async function mapConcurrent<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency: number,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return results;
+}
+
+// Top accounts by SUI balance (hybrid: address discovery from DB, real-time balance from RPC)
 app.get('/top-accounts', async (c) => {
   const limit = parseLimit(c.req.query('limit'));
 
-  const getTopAccounts = cached(`top-accounts-${limit}`, 5 * 60 * 1000, async () => {
+  const getTopAccounts = cached(`top-accounts-${limit}`, 60 * 1000, async () => {
+    // Phase 1: Discover addresses from PostgreSQL (capped)
     const rows = await sql`
-      SELECT
-        '0x' || encode(owner_id, 'hex') as address,
-        SUM(coin_balance) as total_balance,
-        COUNT(*) as coin_count
-      FROM objects
-      WHERE coin_type = ${SUI_COIN_TYPE}
-        AND owner_type = ${OWNER_TYPE_ADDRESS}
-        AND coin_balance IS NOT NULL
-      GROUP BY owner_id
-      ORDER BY SUM(coin_balance) DESC
-      LIMIT ${limit}
+      SELECT DISTINCT address FROM (
+        SELECT '0x' || encode(sender, 'hex') AS address
+        FROM tx_affected_addresses
+        UNION
+        SELECT '0x' || encode(owner_id, 'hex') AS address
+        FROM objects
+        WHERE owner_type = ${OWNER_TYPE_ADDRESS}
+      ) all_addresses
+      LIMIT ${MAX_DISCOVERY}
     `;
-    return rows.map((r) => ({
-      address: r.address,
-      balance: r.total_balance?.toString() ?? '0',
-      coinCount: Number(r.coin_count),
-    }));
+    const addresses = rows.map((r) => r.address as string);
+
+    // Phase 2: Fetch real-time balances via RPC (concurrency-limited)
+    const results = await mapConcurrent(
+      addresses,
+      async (addr) => {
+        try {
+          const bal = await getBalance(addr);
+          return {
+            address: addr,
+            balance: bal.totalBalance,
+            coinCount: bal.coinObjectCount,
+          };
+        } catch {
+          return null;
+        }
+      },
+      RPC_CONCURRENCY,
+    );
+
+    // Phase 3: Filter zero balances, sort descending, limit
+    return results
+      .filter((r): r is NonNullable<typeof r> => r !== null && r.balance !== '0')
+      .sort((a, b) => {
+        const diff = safeBigInt(b.balance) - safeBigInt(a.balance);
+        return diff > 0n ? 1 : diff < 0n ? -1 : 0;
+      })
+      .slice(0, limit);
   });
 
   const data = await getTopAccounts();
-  c.header('Cache-Control', 'public, max-age=300');
+  c.header('Cache-Control', 'public, max-age=60');
   return c.json({ data, count: data.length });
 });
 
