@@ -1,8 +1,8 @@
 # Nasun Explorer Roadmap
 
-> Version: v0.8.0
-> Date: 2026-01-10
-> Current Version: v0.7.1-ux-improvements
+> Version: v0.9.0
+> Date: 2026-02-21
+> Current Version: v0.8.0-token-list-gas-chart
 
 ---
 
@@ -101,28 +101,55 @@
 
 ---
 
-### P1 - Next (v0.8.0)
+### ✅ Completed (v0.8.0)
 
-#### 6. Token List
+#### 6. Token List Enhancement ✅
 
 **Route**: `/tokens`
+**Completed**: 2026-02-21
 
-**Features**:
-- Token list with holders count
-- Total supply
-- Token details page
+**Implemented Features**:
+- Token list with holder count + circulating supply (via Explorer API `/stats/tokens`)
+- `@nasun/devnet-config` integration (hardcoded coin types removed)
+- NSN total supply via RPC (independent from API), faucet tokens via DB aggregation
+- Holders column, Supply column with "Total"/"Distributed" labels
+- Decimals column removed (not useful for end users)
+- Mobile responsive: Holders `hidden sm:table-cell`, Type `hidden md:table-cell`
+- Graceful degradation: metadata always renders, stats show `-` on API failure
+
+#### 7. Gas Price History Chart ✅
+
+**Location**: Analytics page
+**Completed**: 2026-02-21
+
+**Implemented Features**:
+- Daily gas cost (SOE) bar chart + average gas per TX area chart
+- Explorer API `/stats/daily-gas` endpoint (checkpoints table aggregation)
+- 7d/14d/30d range selection (shared with existing IndexerCharts)
+- Amber color scheme (#f59e0b) differentiated from existing charts
+- ChartTooltip with SOE formatting
+
+#### 8. Explorer API E2E Tests ✅
+
+**Completed**: 2026-02-21
+
+**Implemented Features**:
+- 121 E2E tests across 9 test files covering all API endpoints
+- Request throttling (100ms) + retry with backoff for 502/503
+- `fileParallelism: false` for small EC2 instances
+- Discovered and fixed: SQL FLOOR() for BigInt safety, DATE `::text` consistency, DB pool sizing
 
 ---
 
 ### P3 - Future (v0.9.0+)
 
-#### 7. Coins Page
+#### 9. Coins Page
 
 - Coin type list
 - Supply distribution
 - Holder analytics
 
-#### 8. Events Search
+#### 10. Events Search
 
 - Event type filtering
 - Advanced search by event fields
@@ -167,9 +194,19 @@ Phase 3.5 (v0.7.1) ✅ COMPLETED
 │   ├── [x] Header.tsx: Hide BalanceDisplay/FaucetButton on mobile
 │   └── [x] Home.tsx: Search bar moved to top
 
-Phase 4 (v0.8.0) - NEXT
-├── [ ] Token List page
-└── [ ] Gas price history chart
+Phase 4 (v0.8.0) ✅ COMPLETED
+├── [x] Token List Enhancement
+│   ├── [x] api-server: GET /stats/tokens (holders + circulating supply)
+│   ├── [x] pages/Tokens.tsx: @nasun/devnet-config integration, holders column
+│   └── [x] lib/explorer-api.ts: getTokenStats()
+├── [x] Gas Price History Chart
+│   ├── [x] api-server: GET /stats/daily-gas (checkpoints aggregation)
+│   ├── [x] components/analytics/GasCostChart.tsx
+│   └── [x] pages/Analytics.tsx: GasCostChart integration
+└── [x] E2E Tests (121 tests, 9 files)
+    ├── [x] e2e/: health, top-accounts, daily-gas, network-summary, tokens
+    ├── [x] e2e/: active-addresses, daily-transactions, edge-cases, data-consistency
+    └── [x] Bug fixes: SQL FLOOR(), DATE ::text, DB pool max:25
 ```
 
 ---
@@ -223,6 +260,7 @@ src/
 
 | Version | Date | Features |
 |---------|------|----------|
+| v0.8.0 | 2026-02-21 | Token List Enhancement, Gas Price History Chart, E2E Tests (121 tests) |
 | v0.7.1 | 2026-01-10 | Mobile UX (Hamburger menu, Responsive address, Search bar top) |
 | v0.7.0 | 2025-12-28 | Network Charts (TPS Trend, Epoch Progress), Recharts |
 | v0.6.0 | 2025-12-28 | Package Explorer, Object→Package link, Header menu |
