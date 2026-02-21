@@ -30,7 +30,7 @@ export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c6
 
 // Tokens V2 - NSOL (original package, 9 decimals)
 export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
-export const TOKENS_V2_FAUCET_PACKAGE = '0x3887377706f0307d22f1d0b04e0c4fa72b2cbbf0315502a0b8ecba9cba5216f8';
+export const TOKENS_V2_FAUCET_PACKAGE = '0xc2d09b5e026b1d8378e8f70333e8e74ed3b5798715caa284bcb82d22cb60b78e';
 export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 
 // Tokens V2 - NETH (re-published, 8 decimals — matches Sui mainnet WETH convention)
@@ -74,6 +74,7 @@ export interface MarketConfig {
   faucetType: 'v1' | 'v2'; // Which faucet module to use for base token
   faucetV2Package?: string;  // Package to call for V2 faucet (per-market)
   faucetV2Object?: string;   // Shared faucet object for V2 (per-market)
+  faucetV2Function?: string; // Function name for V2 faucet (default: 'request_tokens')
 }
 
 export const MARKETS: Record<string, MarketConfig> = {
@@ -141,11 +142,12 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultSpreadBps: 40,
     defaultMaxArbQuantity: 10,
     defaultMaxOrderSize: 100,
-    faucetBaseAmount: 10,    // V2 faucet: 10 NSOL per call
+    faucetBaseAmount: 50,    // V2 faucet: 50 NSOL per call (request_nsol)
     startupDelayMs: 40000,
     faucetType: 'v2',
     faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
     faucetV2Object: TOKEN_FAUCET_V2,
+    faucetV2Function: 'request_nsol',
   },
 };
 
