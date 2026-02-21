@@ -23,6 +23,7 @@ type NasunColor =
   | "w3"
   | "w4"
   | "w5"
+  | "nw0"
   | "nw1"
   | "nw2"
   | "nw3"
@@ -218,6 +219,13 @@ const colorStyles: Record<
     background: "bg-[#3D3D3D]",
     backgroundHover: "hover:bg-[#4A4A4A] transition-colors",
     text: "text-nasun-white",
+  },
+  nw0: {
+    border: "border-gray-600",
+    borderHover: "",
+    background: "bg-gray-950/80",
+    backgroundHover: "",
+    text: "text-nasun-nw4",
   },
   nw1: {
     border: "border-nasun-nw4/40",
