@@ -92,7 +92,7 @@ async function discoverAddressesFromSender(senderAddress: string): Promise<Set<s
   let cursor: string | null = null;
 
   for (let page = 0; page < MAX_DISCOVERY_PAGES; page++) {
-    const result = await rpcCall<TxQueryResult>('suix_queryTransactionBlocks', [
+    const result: TxQueryResult = await rpcCall<TxQueryResult>('suix_queryTransactionBlocks', [
       { filter: { FromAddress: senderAddress }, options: { showEffects: true } },
       cursor,
       50,
