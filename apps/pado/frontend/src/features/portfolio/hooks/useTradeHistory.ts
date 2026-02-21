@@ -1,10 +1,11 @@
 /**
  * useTradeHistory Hook
- * Fetch user's trading history from on-chain OrderFilled events across all pools
+ * Fetch user's trading history via chat-server Trade API (primary)
+ * with RPC fallback for resilience.
  * Supports cursor-based pagination via useInfiniteQuery.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { EventId } from '@mysten/sui/client';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
@@ -12,6 +13,8 @@ import { getSuiClient } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
+import { fetchTradeHistoryFromApi, isTradeApiAvailable } from '../../../lib/pado-api';
+import type { TradeHistoryPage as ApiPage } from '../../../lib/pado-api';
 
 export interface UserTrade {
   id: string;
@@ -59,6 +62,8 @@ const EMPTY_STATS: TradeStats = {
   lastTradeTime: null,
 };
 
+// ===== RPC Fallback (legacy) =====
+
 interface RawFilledJson {
   pool_id?: string;
   maker_balance_manager_id?: string;
@@ -70,7 +75,7 @@ interface RawFilledJson {
   [key: string]: unknown;
 }
 
-interface TradeHistoryPage {
+interface TradeHistoryPageRpc {
   trades: UserTrade[];
   nextCursor: EventId | null | undefined;
   hasNextPage: boolean;
@@ -112,15 +117,13 @@ function safeBigInt(value: unknown): bigint {
   return BigInt(str);
 }
 
-async function fetchRealTradesPage(
+async function fetchRealTradesPageRpc(
   balanceManagerId: string,
   senderAddress: string,
   cursor: EventId | null,
-): Promise<TradeHistoryPage> {
+): Promise<TradeHistoryPageRpc> {
   const client = getSuiClient();
 
-  // Sender filter only — Nasun RPC does not support compound All filters.
-  // Filter by OrderFilled type client-side.
   const result = await client.queryEvents({
     query: { Sender: senderAddress },
     limit: 200,
@@ -139,7 +142,6 @@ async function fetchRealTradesPage(
     const isTaker = json.taker_balance_manager_id === balanceManagerId;
     if (!isMaker && !isTaker) continue;
 
-    // Find matching pool config
     const poolConfig = POOL_CONFIGS.find((c) => c.pool.id === json.pool_id);
     if (!poolConfig) continue;
 
@@ -154,7 +156,6 @@ async function fetchRealTradesPage(
     const qty = Number(safeBigInt(json.base_quantity || json.quantity)) / Math.pow(10, baseDecimals);
     const total = price * qty;
 
-    // Calculate fee based on role
     const feeBps = isTaker ? poolConfig.takerFeeBps : poolConfig.makerFeeBps;
     const fee = total * feeBps / 10000;
 
@@ -179,12 +180,23 @@ async function fetchRealTradesPage(
   };
 }
 
+// ===== Unified page type (API cursor = number, RPC cursor = EventId) =====
+
+interface UnifiedPage {
+  trades: UserTrade[];
+  nextCursor: number | EventId | null | undefined;
+  hasMore: boolean;
+}
+
 export function useTradeHistory(): UseTradeHistoryResult {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const passkeyAddress = usePasskeyStore((s) => s.address);
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const adaptiveInterval = useAdaptiveInterval(15_000);
+
+  // Mode switch: once API fails, stay on RPC for the session
+  const useRpcMode = useRef(false);
 
   const activeAddress = isZkConnected
     ? zkState?.address
@@ -197,13 +209,42 @@ export function useTradeHistory(): UseTradeHistoryResult {
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 
   const query = useInfiniteQuery({
-    queryKey: ['tradeHistory', balanceManagerId, activeAddress],
-    queryFn: ({ pageParam }) =>
-      fetchRealTradesPage(balanceManagerId!, activeAddress!, pageParam),
-    initialPageParam: null as EventId | null,
+    queryKey: ['tradeHistory', activeAddress],
+    queryFn: async ({ pageParam }): Promise<UnifiedPage> => {
+      // Try API first (if available and not in RPC fallback mode)
+      if (!useRpcMode.current && isTradeApiAvailable() && activeAddress) {
+        try {
+          const apiCursor = typeof pageParam === 'number' ? pageParam : null;
+          const result: ApiPage = await fetchTradeHistoryFromApi(activeAddress, apiCursor);
+          return {
+            trades: result.trades,
+            nextCursor: result.nextCursor,
+            hasMore: result.hasMore,
+          };
+        } catch {
+          console.warn('[TradeHistory] API failed, switching to RPC fallback');
+          useRpcMode.current = true;
+        }
+      }
+
+      // RPC fallback
+      if (!balanceManagerId || !activeAddress) {
+        return { trades: [], nextCursor: null, hasMore: false };
+      }
+      const rpcCursor = (pageParam != null && typeof pageParam !== 'number')
+        ? pageParam as EventId
+        : null;
+      const rpcResult = await fetchRealTradesPageRpc(balanceManagerId, activeAddress, rpcCursor);
+      return {
+        trades: rpcResult.trades,
+        nextCursor: rpcResult.nextCursor,
+        hasMore: rpcResult.hasNextPage,
+      };
+    },
+    initialPageParam: null as number | EventId | null,
     getNextPageParam: (lastPage) =>
-      lastPage.hasNextPage ? lastPage.nextCursor : undefined,
-    enabled: !!balanceManagerId && !!activeAddress && !!DEEPBOOK_PACKAGE,
+      lastPage.hasMore ? lastPage.nextCursor : undefined,
+    enabled: !!activeAddress && (!!balanceManagerId || isTradeApiAvailable()) && !!DEEPBOOK_PACKAGE,
     refetchInterval: adaptiveInterval,
     staleTime: 10_000,
   });
