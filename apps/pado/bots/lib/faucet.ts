@@ -45,12 +45,13 @@ function buildRequestNusdcOnly(): Transaction {
 function buildRequestTokensV2(): Transaction {
   const pkg = MARKET.faucetV2Package;
   const obj = MARKET.faucetV2Object;
+  const fn = MARKET.faucetV2Function || 'request_tokens';
   if (!pkg || !obj) {
     throw new Error(`V2 faucet not configured for market ${MARKET.name}`);
   }
   const tx = new Transaction();
   tx.moveCall({
-    target: `${pkg}::faucet_v2::request_tokens`,
+    target: `${pkg}::faucet_v2::${fn}`,
     arguments: [tx.object(obj)],
   });
   return tx;
@@ -161,7 +162,7 @@ async function executeRequestTokensV2(
       return false;
     }
 
-    console.log(`[${timestamp()}] Received tokens from V2 faucet (0.1 NETH + 10 NSOL)`);
+    console.log(`[${timestamp()}] Received tokens from V2 faucet (${MARKET.name}: ${MARKET.faucetBaseAmount})`);
     await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return true;
