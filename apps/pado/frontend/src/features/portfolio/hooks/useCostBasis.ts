@@ -1,11 +1,13 @@
 /**
  * useCostBasis Hook
- * Calculate cost basis and P&L from on-chain OrderFilled events
+ * Calculate cost basis and P&L via chat-server Trade API (primary)
+ * with RPC fallback for resilience.
  *
  * Tracks weighted average purchase price per token, realized PnL (sells),
  * and unrealized PnL (current holdings vs avg buy price).
  */
 
+import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
@@ -13,6 +15,7 @@ import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 import { getUnifiedPrice, type TokenSymbol } from '../../../lib/prices';
+import { fetchCostBasisFromApi, isTradeApiAvailable } from '../../../lib/pado-api';
 
 export interface CostBasisEntry {
   symbol: TokenSymbol;
@@ -31,6 +34,8 @@ export interface CostBasisResult {
   totalPnl: number;
   isLoading: boolean;
 }
+
+// ===== RPC Fallback (legacy) =====
 
 interface RawFilledJson {
   pool_id?: string;
@@ -59,11 +64,12 @@ function safeBigInt(value: unknown): bigint {
   return BigInt(str);
 }
 
-async function fetchCostBasis(balanceManagerId: string, senderAddress: string): Promise<CostBasisEntry[]> {
+async function fetchCostBasisRpc(
+  balanceManagerId: string,
+  senderAddress: string,
+): Promise<CostBasisEntry[]> {
   const client = getSuiClient();
 
-  // Sender filter only — Nasun RPC does not support compound All filters.
-  // Filter by OrderFilled type client-side.
   const result = await client.queryEvents({
     query: { Sender: senderAddress },
     limit: 200,
@@ -102,7 +108,6 @@ async function fetchCostBasis(balanceManagerId: string, senderAddress: string): 
       if (qty === 0) continue;
 
       if (isBid) {
-        // Buy: update weighted average price
         const prevHolding = totalBought - totalSold;
         const newHolding = prevHolding + qty;
         if (newHolding > 0) {
@@ -110,7 +115,6 @@ async function fetchCostBasis(balanceManagerId: string, senderAddress: string): 
         }
         totalBought += qty;
       } else {
-        // Sell: realize PnL against average buy price
         realizedPnl += (price - avgBuyPrice) * qty;
         totalSold += qty;
       }
@@ -122,7 +126,6 @@ async function fetchCostBasis(balanceManagerId: string, senderAddress: string): 
       ? (currentPrice - avgBuyPrice) * holdingQty
       : 0;
 
-    // Only include tokens the user has traded
     if (totalBought > 0 || totalSold > 0) {
       entries.push({
         symbol: baseSymbol,
@@ -146,6 +149,9 @@ export function useCostBasis(): CostBasisResult {
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
+  // Mode switch: once API fails, stay on RPC for the session
+  const useRpcMode = useRef(false);
+
   const activeAddress = isZkConnected
     ? zkState?.address
     : status === 'unlocked'
@@ -157,9 +163,23 @@ export function useCostBasis(): CostBasisResult {
   const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
 
   const { data: entries, isLoading } = useQuery({
-    queryKey: ['costBasis', balanceManagerId, activeAddress],
-    queryFn: () => fetchCostBasis(balanceManagerId!, activeAddress!),
-    enabled: !!balanceManagerId && !!activeAddress && !!DEEPBOOK_PACKAGE,
+    queryKey: ['costBasis', activeAddress],
+    queryFn: async (): Promise<CostBasisEntry[]> => {
+      // Try API first (if available and not in RPC fallback mode)
+      if (!useRpcMode.current && isTradeApiAvailable() && activeAddress) {
+        try {
+          return await fetchCostBasisFromApi(activeAddress, getUnifiedPrice);
+        } catch {
+          console.warn('[CostBasis] API failed, switching to RPC fallback');
+          useRpcMode.current = true;
+        }
+      }
+
+      // RPC fallback
+      if (!balanceManagerId || !activeAddress) return [];
+      return fetchCostBasisRpc(balanceManagerId, activeAddress);
+    },
+    enabled: !!activeAddress && (!!balanceManagerId || isTradeApiAvailable()) && !!DEEPBOOK_PACKAGE,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
   });
