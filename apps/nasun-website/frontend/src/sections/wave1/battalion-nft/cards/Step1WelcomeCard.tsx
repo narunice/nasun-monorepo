@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ExternalLink } from "lucide-react";
 import { FiCheck } from "react-icons/fi";
-import { OuterBox } from "@/components/ui";
+import { OuterBox, DividerBox } from "@/components/ui";
 
 interface Step1WelcomeCardProps {
   onStartClick: () => void;
@@ -92,9 +92,15 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
         </div>
 
         {/* Join the allowlist */}
-        <div className="mb-6 md:mb-8 lg:mb-10">
-          <h5 className="text-nasun-white font-medium mb-3">{t("step1.joinAllowlist.title")}</h5>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <DividerBox
+          title={t("step1.joinAllowlist.title")}
+          hideDivider
+          color="nw0"
+          className="mb-6 md:mb-8 lg:mb-10"
+          titleClassName="!w-full !text-center"
+          disableHover
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-3">
             <ul className="space-y-2">
               {(
                 [
@@ -134,7 +140,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
               </a>
             </div>
           </div>
-        </div>
+        </DividerBox>
 
         {/* CTA */}
         <div className="text-center">

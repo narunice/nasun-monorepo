@@ -34,24 +34,26 @@
     "nasun": {
       "title": "NASUN L1 네트워크",
       "items": [
-        "데브넷 운영 중 (2 밸리데이터 노드)",
-        "블록체인 탐색기",
-        "비수탁형 지갑 (생성, 가져오기, 백업)",
-        "zkLogin 및 Passkey 인증",
-        "멀티토큰 지원 (NSN, NBTC, NUSDC)",
-        "Faucet",
+        "데브넷 운영 중",
         "스마트 컨트랙트 배포",
+        "스폰서드 트랜잭션",
+        "블록체인 탐색기",
+        "네트워크 인덱서 및 분석 API",
+        "비수탁형 지갑",
+        "zkLogin 및 Passkey 인증",
+        "멀티토큰 지원",
+        "Faucet",
         "온체인 거버넌스"
       ]
     },
     "pado": {
       "title": "파도 — 통합 온체인 금융",
       "items": [
-        "현물 DEX (CLOB 엔진)",
-        "무기한 선물 (20배 레버리지)",
+        "현물 DEX",
+        "무기한 선물",
         "예측 시장",
         "주간 로또",
-        "결제 (QR 송금)",
+        "결제",
         "통합 마진 시스템"
       ]
     },
@@ -175,6 +177,12 @@
           "description": "바람 프로토콜 검증을 위한 팀 운영 AI 추론 노드"
         },
         {
+          "id": "indexer-api",
+          "title": "네트워크 인덱서 API",
+          "status": "completed",
+          "description": "온체인 분석, 상위 계정, 네트워크 메트릭스"
+        },
+        {
           "id": "val-staking",
           "title": "밸리데이터 스테이킹 및 위임",
           "status": "upcoming",
@@ -228,7 +236,7 @@
           "id": "pado-mvp",
           "title": "파도 MVP",
           "status": "completed",
-          "description": "DEX, 예측 시장, 대출, 거래 및 결제"
+          "description": "현물 거래, 로또, 글로벌 채팅, 자동 LP 봇"
         },
         {
           "id": "pado-web3",
@@ -237,22 +245,28 @@
           "description": "통합 계정 및 zkLogin"
         },
         {
-          "id": "gensol-partnerships",
-          "title": "젠솔: 파트너십",
-          "status": "upcoming",
-          "description": "제작사 및 탤런트 에이전시 협력"
+          "id": "baram-sdk",
+          "title": "바람 SDK 및 문서화",
+          "status": "in-progress",
+          "description": "ModelObject 생성 및 Executor 통합을 위한 개발자 도구"
         },
         {
           "id": "spectra-2026",
           "title": "젠솔: SPECTRA",
-          "status": "upcoming",
+          "status": "in-progress",
           "description": "팀 미션 모드, 랭킹 및 토너먼트 시스템, Web3 통합"
         },
         {
           "id": "spectra-heist-previz",
-          "title": "젠솔: Spectra Heist",
-          "status": "upcoming",
+          "title": "젠솔: The Heist",
+          "status": "in-progress",
           "description": "애니메이션 시리즈 프리비즈 및 시나리오 개발"
+        },
+        {
+          "id": "gensol-partnerships",
+          "title": "젠솔: 파트너십",
+          "status": "upcoming",
+          "description": "제작사 및 탤런트 에이전시 협력"
         },
         {
           "id": "the-heir-dev",
@@ -285,16 +299,10 @@
           "description": "전략적 유동성 파트너 온보딩"
         },
         {
-          "id": "baram-sdk",
-          "title": "바람 SDK 및 문서화",
-          "status": "in-progress",
-          "description": "ModelObject 생성 및 Executor 통합을 위한 개발자 도구"
-        },
-        {
           "id": "spectra-mvp",
           "title": "젠솔: SPECTRA MVP",
           "status": "upcoming",
-          "description": "커뮤니티 플레이테스트 및 피드백 수집"
+          "description": "인센티브 기반 커뮤니티 플레이테스트 및 피드백 수집"
         },
         {
           "id": "spectra-heist-trailer",
@@ -307,25 +315,31 @@
         {
           "id": "nasun-launch",
           "title": "나선 공식 런칭",
-          "status": "upcoming",
-          "description": "X(Twitter) 공식 발표"
+          "status": "completed",
+          "description": "X 공식 발표"
         },
         {
           "id": "nasun-web-launch",
           "title": "나선 웹사이트 런칭",
-          "status": "upcoming",
+          "status": "completed",
           "description": "파도, 거버넌스 및 NFT 대시보드"
         },
         {
           "id": "battalion-leaderboard",
           "title": "바탈리온 리더보드 런칭",
-          "status": "upcoming"
+          "status": "in-progress"
         },
         {
           "id": "battalion-nft",
           "title": "바탈리온 NFT",
-          "status": "upcoming",
+          "status": "in-progress",
           "description": "드롭 및 유틸리티 캠페인 (얼리 액세스)"
+        },
+        {
+          "id": "gensol-web-launch",
+          "title": "젠솔 웹사이트 런칭",
+          "status": "in-progress",
+          "description": "커뮤니티 온보딩"
         },
         {
           "id": "genesis-leaderboard",
@@ -337,12 +351,6 @@
           "title": "얼리 컨트리뷰터 캠페인",
           "status": "upcoming",
           "description": "KOL 및 소셜 플랫폼 크리에이터 온보딩"
-        },
-        {
-          "id": "gensol-web-launch",
-          "title": "젠솔 웹사이트 런칭",
-          "status": "upcoming",
-          "description": "커뮤니티 온보딩"
         },
         {
           "id": "genesis-event",
