@@ -23,7 +23,9 @@ import {
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
   getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
+  getTraderFillsByAddress, computeCostBasis,
 } from './leaderboard-store.js';
+import { getPoolBaseDecimals } from './rooms.js';
 import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
 import { initNarrator, onTradeFill, stopNarrator } from './market-narrator.js';
@@ -743,6 +745,89 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       }));
     } catch (err) {
       console.error('[Points] Trader points API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // ===== Trade History API =====
+
+  // Rate limit trade API endpoints
+  if (url.pathname.startsWith('/api/trades')) {
+    const clientIp = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      || 'unknown';
+    if (!checkApiRateLimit(clientIp)) {
+      res.writeHead(429, corsHeaders);
+      res.end(JSON.stringify({ error: 'Too many requests' }));
+      return;
+    }
+  }
+
+  // GET /api/trades/:address - paginated trade history for an address
+  const tradesMatch = url.pathname.match(/^\/api\/trades\/(0x[a-fA-F0-9]{64})$/);
+  if (tradesMatch && req.method === 'GET') {
+    try {
+      const address = tradesMatch[1];
+      const pool = url.searchParams.get('pool') || undefined;
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 200);
+      const cursorParam = url.searchParams.get('cursor');
+      const cursor = cursorParam ? parseInt(cursorParam, 10) : undefined;
+
+      if (cursor !== undefined && (!Number.isFinite(cursor) || cursor < 0)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid cursor' }));
+        return;
+      }
+
+      const { fills, nextCursor, hasMore } = getTraderFillsByAddress(address, { pool, limit, cursor });
+
+      // Enrich with side and role relative to the queried address
+      const trades = fills.map((r) => {
+        const isTaker = r.taker_address === address;
+        const isBid = !!r.taker_is_bid;
+        const side = isTaker ? (isBid ? 'buy' : 'sell') : (isBid ? 'sell' : 'buy');
+        return {
+          id: r.id,
+          tx_digest: r.tx_digest,
+          event_seq: r.event_seq,
+          pool_id: r.pool_id,
+          price: r.price,
+          base_quantity: r.base_quantity,
+          quote_quantity: r.quote_quantity,
+          taker_is_bid: r.taker_is_bid,
+          side,
+          role: isTaker ? 'taker' : 'maker',
+          timestamp_ms: r.timestamp_ms,
+        };
+      });
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ trades, nextCursor, hasMore }));
+    } catch (err) {
+      console.error('[Trades] API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // GET /api/trades/:address/cost-basis - FIFO weighted average cost basis
+  const costBasisMatch = url.pathname.match(/^\/api\/trades\/(0x[a-fA-F0-9]{64})\/cost-basis$/);
+  if (costBasisMatch && req.method === 'GET') {
+    try {
+      const address = costBasisMatch[1];
+      const entries = computeCostBasis(address, getPoolBaseDecimals);
+
+      const totalRealizedPnl = entries.reduce((sum, e) => sum + e.realized_pnl, 0);
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({
+        entries,
+        total_realized_pnl: Math.round(totalRealizedPnl * 100) / 100,
+      }));
+    } catch (err) {
+      console.error('[CostBasis] API error:', (err as Error).message);
       res.writeHead(500, corsHeaders);
       res.end(JSON.stringify({ error: 'Internal server error' }));
     }
