@@ -63,6 +63,10 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
       ON trade_fills(maker_address, timestamp_ms DESC);
     CREATE INDEX IF NOT EXISTS idx_fills_taker
       ON trade_fills(taker_address, timestamp_ms DESC);
+    CREATE INDEX IF NOT EXISTS idx_fills_pool_maker
+      ON trade_fills(pool_id, maker_address, timestamp_ms DESC);
+    CREATE INDEX IF NOT EXISTS idx_fills_pool_taker
+      ON trade_fills(pool_id, taker_address, timestamp_ms DESC);
 
     CREATE TABLE IF NOT EXISTS trader_stats (
       address TEXT NOT NULL,
@@ -393,6 +397,179 @@ export function getTraderFills(
        ) ORDER BY timestamp_ms DESC LIMIT ?`
     )
     .all(address, address, limit + 1) as TradeFillRow[];
+}
+
+// ===== Trade History API Queries =====
+
+export interface TradeHistoryRow {
+  id: number;
+  tx_digest: string;
+  event_seq: string;
+  pool_id: string;
+  maker_address: string;
+  taker_address: string;
+  price: string;
+  base_quantity: string;
+  quote_quantity: string;
+  taker_is_bid: number;
+  timestamp_ms: number;
+}
+
+/**
+ * Get trade fills for a specific address with optional pool filter and cursor pagination.
+ * Uses UNION to leverage per-column indexes (avoids OR full table scan).
+ * Sorted by id DESC for stable cursor-based pagination.
+ */
+export function getTraderFillsByAddress(
+  address: string,
+  opts: { pool?: string; limit?: number; cursor?: number } = {},
+): { fills: TradeHistoryRow[]; nextCursor: number | null; hasMore: boolean } {
+  const ldb = getLeaderboardDb();
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+
+  // Build dynamic query: 2 variants (with/without pool filter)
+  // Cursor filter: id < cursor (descending order)
+  const cursorClause = opts.cursor != null ? 'AND id < ?' : '';
+  const poolClause = opts.pool ? 'AND pool_id = ?' : '';
+
+  const query = `
+    SELECT * FROM (
+      SELECT id, tx_digest, event_seq, pool_id, maker_address, taker_address,
+             price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
+      FROM trade_fills
+      WHERE maker_address = ? ${cursorClause} ${poolClause}
+      UNION
+      SELECT id, tx_digest, event_seq, pool_id, maker_address, taker_address,
+             price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
+      FROM trade_fills
+      WHERE taker_address = ? ${cursorClause} ${poolClause}
+    ) ORDER BY id DESC LIMIT ?
+  `;
+
+  // Build params array dynamically
+  const params: unknown[] = [];
+  // maker branch
+  params.push(address);
+  if (opts.cursor != null) params.push(opts.cursor);
+  if (opts.pool) params.push(opts.pool);
+  // taker branch (same params)
+  params.push(address);
+  if (opts.cursor != null) params.push(opts.cursor);
+  if (opts.pool) params.push(opts.pool);
+  // limit (fetch 1 extra to detect hasMore)
+  params.push(limit + 1);
+
+  const rows = ldb.prepare(query).all(...params) as TradeHistoryRow[];
+
+  const hasMore = rows.length > limit;
+  const fills = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = fills.length > 0 ? fills[fills.length - 1].id : null;
+
+  return { fills, nextCursor: hasMore ? nextCursor : null, hasMore };
+}
+
+// ===== Cost Basis Computation =====
+
+export interface CostBasisEntryRaw {
+  pool_id: string;
+  total_bought: number;
+  total_sold: number;
+  avg_buy_price: number;
+  realized_pnl: number;
+  holding_qty: number;
+}
+
+/**
+ * Compute FIFO weighted-average cost basis for a trader across all pools.
+ * Processes all fills chronologically (oldest first) to produce accurate cost basis.
+ *
+ * @param baseDecimalsFn - Function to get base token decimals by pool_id
+ * @param quoteDecimals - Quote token decimals (NUSDC = 6 for all pools)
+ */
+export function computeCostBasis(
+  address: string,
+  baseDecimalsFn: (poolId: string) => number,
+  quoteDecimals: number = 6,
+): CostBasisEntryRaw[] {
+  const ldb = getLeaderboardDb();
+
+  // Fetch ALL fills for this address, chronologically ascending
+  const rows = ldb.prepare(`
+    SELECT * FROM (
+      SELECT id, pool_id, maker_address, taker_address,
+             price, base_quantity, taker_is_bid
+      FROM trade_fills WHERE maker_address = ?
+      UNION
+      SELECT id, pool_id, maker_address, taker_address,
+             price, base_quantity, taker_is_bid
+      FROM trade_fills WHERE taker_address = ?
+    ) ORDER BY id ASC
+  `).all(address, address) as Array<{
+    id: number;
+    pool_id: string;
+    maker_address: string;
+    taker_address: string;
+    price: string;
+    base_quantity: string;
+    taker_is_bid: number;
+  }>;
+
+  // Accumulate per-pool cost basis
+  const poolData = new Map<string, {
+    totalBought: number;
+    totalSold: number;
+    avgBuyPrice: number;
+    realizedPnl: number;
+  }>();
+
+  for (const row of rows) {
+    const isTaker = row.taker_address === address;
+    const takerIsBid = row.taker_is_bid === 1;
+    const isBid = isTaker ? takerIsBid : !takerIsBid;
+
+    const baseDec = baseDecimalsFn(row.pool_id);
+    const price = Number(row.price) / Math.pow(10, quoteDecimals);
+    const qty = Number(row.base_quantity) / Math.pow(10, baseDec);
+
+    if (qty === 0) continue;
+
+    let data = poolData.get(row.pool_id);
+    if (!data) {
+      data = { totalBought: 0, totalSold: 0, avgBuyPrice: 0, realizedPnl: 0 };
+      poolData.set(row.pool_id, data);
+    }
+
+    if (isBid) {
+      // Buy: update weighted average price
+      const prevHolding = data.totalBought - data.totalSold;
+      const newHolding = prevHolding + qty;
+      if (newHolding > 0) {
+        data.avgBuyPrice = (data.avgBuyPrice * prevHolding + price * qty) / newHolding;
+      }
+      data.totalBought += qty;
+    } else {
+      // Sell: realize PnL against average buy price
+      data.realizedPnl += (price - data.avgBuyPrice) * qty;
+      data.totalSold += qty;
+    }
+  }
+
+  // Build result entries (only pools the user has traded)
+  const entries: CostBasisEntryRaw[] = [];
+  for (const [poolId, data] of poolData) {
+    if (data.totalBought > 0 || data.totalSold > 0) {
+      entries.push({
+        pool_id: poolId,
+        total_bought: Math.round(data.totalBought * 1e8) / 1e8,
+        total_sold: Math.round(data.totalSold * 1e8) / 1e8,
+        avg_buy_price: Math.round(data.avgBuyPrice * 100) / 100,
+        realized_pnl: Math.round(data.realizedPnl * 100) / 100,
+        holding_qty: Math.round((data.totalBought - data.totalSold) * 1e8) / 1e8,
+      });
+    }
+  }
+
+  return entries;
 }
 
 export function getTotalTradersCount(): number {
