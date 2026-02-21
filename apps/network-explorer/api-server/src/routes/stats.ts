@@ -54,24 +54,38 @@ async function mapConcurrent<T, R>(
   return results;
 }
 
-// Top accounts by SUI balance (hybrid: address discovery from DB, real-time balance from RPC)
+// RPC-based address discovery (cached separately — expensive but comprehensive)
+const getRpcAddresses = cached('rpc-discovered-addresses', 5 * 60 * 1000, async () => {
+  return discoverAddressesViaRpc();
+});
+
+// Top accounts by SUI balance (hybrid: address discovery from DB + RPC, real-time balance from RPC)
 app.get('/top-accounts', async (c) => {
   const limit = parseLimit(c.req.query('limit'));
 
   const getTopAccounts = cached(`top-accounts-${limit}`, 60 * 1000, async () => {
-    // Phase 1: Discover addresses from PostgreSQL (capped)
-    const rows = await sql`
-      SELECT DISTINCT address FROM (
-        SELECT '0x' || encode(sender, 'hex') AS address
-        FROM tx_affected_addresses
-        UNION
-        SELECT '0x' || encode(owner_id, 'hex') AS address
-        FROM objects
-        WHERE owner_type = ${OWNER_TYPE_ADDRESS}
-      ) all_addresses
-      LIMIT ${MAX_DISCOVERY}
-    `;
-    const addresses = rows.map((r) => r.address as string);
+    // Phase 1: Discover addresses from both PostgreSQL and RPC
+    const [dbRows, rpcAddrs] = await Promise.all([
+      sql`
+        SELECT DISTINCT address FROM (
+          SELECT '0x' || encode(sender, 'hex') AS address
+          FROM tx_affected_addresses
+          UNION
+          SELECT '0x' || encode(owner_id, 'hex') AS address
+          FROM objects
+          WHERE owner_type = ${OWNER_TYPE_ADDRESS}
+        ) all_addresses
+        LIMIT ${MAX_DISCOVERY}
+      `,
+      getRpcAddresses().catch(() => [] as string[]),
+    ]);
+
+    // Merge and deduplicate
+    const addressSet = new Set<string>();
+    for (const r of dbRows) addressSet.add(r.address as string);
+    for (const a of rpcAddrs) addressSet.add(a);
+    addressSet.delete('0x0000000000000000000000000000000000000000000000000000000000000000');
+    const addresses = [...addressSet];
 
     // Phase 2: Fetch real-time balances via RPC (concurrency-limited)
     const results = await mapConcurrent(
