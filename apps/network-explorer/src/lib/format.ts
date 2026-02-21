@@ -145,6 +145,8 @@ const KNOWN_DECIMALS: Record<string, number> = {
   '::nsn::': 9,
   '::nusdc::': 6,
   '::nbtc::': 8,
+  '::neth::': 8,
+  '::nsol::': 8,
 };
 
 function resolveDecimals(coinType: string): number {
