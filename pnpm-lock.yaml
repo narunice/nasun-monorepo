@@ -716,6 +716,9 @@ importers:
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
+      '@nasun/devnet-config':
+        specifier: workspace:*
+        version: link:../../packages/devnet-config
       '@nasun/wallet':
         specifier: workspace:*
         version: link:../../packages/wallet
@@ -14968,7 +14971,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.19.3)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
+      vitest: 3.2.4(@types/node@24.10.4)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
 
   '@vitest/utils@2.1.9':
     dependencies:
