@@ -8,6 +8,17 @@ const app = new Hono();
 // Owner type constants from sui-indexer schema (smallint)
 const OWNER_TYPE_ADDRESS = 1;
 
+// Known coin types for token stats queries.
+// Source of truth: packages/devnet-config/devnet-ids.json
+// Update after devnet reset: sync coin types with devnet-ids.json
+const KNOWN_COIN_TYPES = [
+  '0x2::sui::SUI',
+  '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nbtc::NBTC',
+  '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC',
+  '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31::neth::NETH',
+  '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2::nsol::NSOL',
+] as const;
+
 // Allowed limit values to prevent cache fragmentation
 const ALLOWED_LIMITS = [25, 50, 100, 200] as const;
 
@@ -53,6 +64,73 @@ async function mapConcurrent<T, R>(
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
   return results;
 }
+
+// Token stats: holder count + circulating supply per known coin type (DB-only)
+app.get('/tokens', async (c) => {
+  const getTokenStats = cached('token-stats', 5 * 60 * 1000, async () => {
+    try {
+      const rows = await sql`
+        SELECT
+          coin_type,
+          COUNT(DISTINCT owner_id) AS holders,
+          SUM(coin_balance)::text AS circulating_supply
+        FROM objects
+        WHERE owner_type = ${OWNER_TYPE_ADDRESS}
+          AND coin_type = ANY(${KNOWN_COIN_TYPES as unknown as string[]})
+        GROUP BY coin_type
+      `;
+      return rows.map((r: Record<string, unknown>) => ({
+        coinType: r.coin_type as string,
+        holders: Number(r.holders),
+        circulatingSupply: (r.circulating_supply as string) ?? null,
+      }));
+    } catch (err) {
+      console.error('Token stats query failed:', err);
+      return [];
+    }
+  });
+
+  const data = await getTokenStats();
+  c.header('Cache-Control', 'public, max-age=300');
+  return c.json({ data });
+});
+
+// Daily gas cost aggregated from checkpoints
+app.get('/daily-gas', async (c) => {
+  const days = parseDays(c.req.query('range'));
+
+  const getDailyGas = cached(`daily-gas-${days}`, 5 * 60 * 1000, async () => {
+    try {
+      const rows = await sql`
+        SELECT
+          DATE(to_timestamp(timestamp_ms / 1000.0))::text AS day,
+          SUM(total_gas_cost)::text AS total_gas_cost,
+          CASE WHEN SUM(max_tx_sequence_number - min_tx_sequence_number + 1) > 0
+            THEN (SUM(total_gas_cost) / SUM(max_tx_sequence_number - min_tx_sequence_number + 1))::text
+            ELSE '0'
+          END AS avg_gas_per_tx,
+          SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::int AS tx_count
+        FROM checkpoints
+        WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
+        GROUP BY DATE(to_timestamp(timestamp_ms / 1000.0))
+        ORDER BY day ASC
+      `;
+      return rows.map((r: Record<string, unknown>) => ({
+        date: r.day,
+        totalGasCost: r.total_gas_cost as string,
+        avgGasPerTx: r.avg_gas_per_tx as string,
+        txCount: Number(r.tx_count),
+      }));
+    } catch (err) {
+      console.error('Daily gas query failed:', err);
+      return [];
+    }
+  });
+
+  const data = await getDailyGas();
+  c.header('Cache-Control', 'public, max-age=300');
+  return c.json({ data, range: `${days}d` });
+});
 
 // RPC-based address discovery (cached separately — expensive but comprehensive)
 const getRpcAddresses = cached('rpc-discovered-addresses', 5 * 60 * 1000, async () => {
