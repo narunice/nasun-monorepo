@@ -8,7 +8,7 @@ import { useState, useCallback } from "react";
 import type { ViewMode } from "../types";
 import { WALLET_STYLES } from "../../shared";
 import { useUISettingsStore, useGettingStarted } from "../../stores/uiSettingsStore";
-import { useWallet, usePasskey, useRefreshBalance, requestFaucet } from "@nasun/wallet";
+import { useWallet, usePasskeyStore, useRefreshBalance, requestFaucet } from "@nasun/wallet";
 
 // SVG path constants for menu icons
 const ICON_PATHS = {
@@ -58,8 +58,8 @@ export function GettingStartedChecklist({
   onNavigate: (mode: ViewMode) => void;
 }) {
   const { gettingStarted, markDone, dismiss, isVisible } = useGettingStarted();
-  const { account } = useWallet();
-  const { address: passkeyAddress } = usePasskey();
+  const account = useWallet((s) => s.account);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
   const refreshBalance = useRefreshBalance();
   const [faucetLoading, setFaucetLoading] = useState(false);
   const [faucetError, setFaucetError] = useState<string | null>(null);

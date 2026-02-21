@@ -255,7 +255,7 @@ function AssetsTab() {
   const { balanceManagerId, isLoading, handleDepositToken, handleWithdrawToken, lastAutoDepositError } = useOrderActions();
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const assetOrders = openOrdersData?.orders ?? [];
-  const { balance: bmBalanceData } = useBalanceManagerBalance();
+  const { balance: bmBalanceData } = useBalanceManagerBalance({ balanceManagerId });
   const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
   const { lockedQuote, lockedBase } = calcLockedAmounts(assetOrders);
 
