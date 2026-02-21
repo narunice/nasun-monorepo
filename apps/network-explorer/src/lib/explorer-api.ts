@@ -55,6 +55,19 @@ export interface NetworkSummary {
   latestTimestamp: string | null;
 }
 
+export interface TokenStats {
+  coinType: string;
+  holders: number;
+  circulatingSupply: string | null;
+}
+
+export interface DailyGas {
+  date: string;
+  totalGasCost: string;
+  avgGasPerTx: string;
+  txCount: number;
+}
+
 // ============================================
 // API Functions
 // ============================================
@@ -88,5 +101,17 @@ export async function getActiveAddresses(range: '7d' | '14d' | '30d' = '7d'): Pr
 
 export async function getNetworkSummary(): Promise<NetworkSummary> {
   const res = await fetchApi<{ data: NetworkSummary }>('/stats/network-summary');
+  return res.data;
+}
+
+export async function getTokenStats(): Promise<TokenStats[]> {
+  const res = await fetchApi<{ data: TokenStats[] }>('/stats/tokens');
+  return res.data;
+}
+
+export async function getDailyGas(range: '7d' | '14d' | '30d' = '7d'): Promise<DailyGas[]> {
+  const res = await fetchApi<{ data: DailyGas[]; range: string }>(
+    `/stats/daily-gas?range=${range}`
+  );
   return res.data;
 }

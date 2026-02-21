@@ -8,6 +8,7 @@ import {
   TradingActivityChart,
   NetworkStateSection,
   IndexerCharts,
+  GasCostChart,
 } from '../components/analytics';
 import type { TimeRange } from '../lib/analytics/types';
 
@@ -71,6 +72,14 @@ export default function Analytics() {
           Aggregated from the on-chain indexer. Data may lag behind real-time during sync.
         </p>
         <IndexerCharts range={timeRange === 'all' ? '30d' : timeRange} />
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Gas Metrics</h2>
+        <p className="text-muted-foreground text-xs mb-4">
+          Daily gas costs and average gas per transaction from checkpoint data.
+        </p>
+        <GasCostChart range={timeRange === 'all' ? '30d' : timeRange} />
       </section>
 
       <section>
