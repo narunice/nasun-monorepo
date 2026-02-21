@@ -1,5 +1,8 @@
 /**
- * useAERRecords - Query AIExecutionReport objects
+ * useAERRecords - Query AIExecutionReport records via indexer API with RPC fallback.
+ *
+ * When VITE_AER_INDEXER_API_URL is configured, fetches from the baram-aer API server.
+ * Falls back to direct RPC getOwnedObjects when indexer is unavailable.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -26,6 +29,65 @@ export interface AERRecord {
   budgetRemaining: number;
 }
 
+// === Indexer API fetch ===
+
+interface IndexerApiResponse {
+  data: Array<{
+    objectId: string;
+    requestId: number;
+    authorizer: string;
+    executor: string;
+    modelName: string;
+    paymentAmount: number;
+    executionTimeMs: number;
+    status: number;
+    statusName: string;
+    settledAt: number;
+    requestedAt: number;
+    purpose: string | null;
+    teeVerified: boolean;
+    executorTier: number;
+    budgetId: string | null;
+    budgetRemaining: number | null;
+  }>;
+  hasNextPage: boolean;
+  nextCursor: string | null;
+}
+
+function mapIndexerRecord(row: IndexerApiResponse['data'][number]): AERRecord {
+  return {
+    id: row.objectId,
+    requestId: row.requestId,
+    authorizer: row.authorizer,
+    executor: row.executor,
+    modelName: row.modelName,
+    paymentAmount: row.paymentAmount,
+    executionTimeMs: row.executionTimeMs,
+    status: row.status,
+    statusName: row.statusName,
+    settledAt: row.settledAt,
+    requestedAt: row.requestedAt,
+    purpose: row.purpose ?? '',
+    teeVerified: row.teeVerified,
+    executorTier: row.executorTier,
+    budgetId: row.budgetId ?? '',
+    budgetRemaining: row.budgetRemaining ?? 0,
+  };
+}
+
+async function fetchFromIndexer(ownerAddress: string): Promise<AERRecord[]> {
+  const baseUrl = AER_CONFIG.indexerApiUrl;
+  const url = `${baseUrl}/api/v1/aer?authorizer=${encodeURIComponent(ownerAddress)}&limit=200&order=desc`;
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`Indexer API error: ${res.status}`);
+
+  const json: IndexerApiResponse = await res.json();
+  return json.data.map(mapIndexerRecord);
+}
+
+// === RPC fallback (original implementation) ===
+
 function parseAERRecord(fields: Record<string, unknown>): AERRecord | null {
   try {
     return {
@@ -51,8 +113,7 @@ function parseAERRecord(fields: Record<string, unknown>): AERRecord | null {
   }
 }
 
-// AER reports are owned by the authorizer (requester)
-async function fetchAERRecords(ownerAddress: string): Promise<AERRecord[]> {
+async function fetchFromRpc(ownerAddress: string): Promise<AERRecord[]> {
   const aerType = `${AER_CONFIG.packageId}::aer::AIExecutionReport`;
   const records: AERRecord[] = [];
   let cursor: string | null | undefined = undefined;
@@ -75,9 +136,21 @@ async function fetchAERRecords(ownerAddress: string): Promise<AERRecord[]> {
     cursor = result.hasNextPage ? result.nextCursor : null;
   } while (cursor);
 
-  // Sort by settled_at descending (newest first)
   records.sort((a, b) => b.settledAt - a.settledAt);
   return records;
+}
+
+// === Dual-mode fetch ===
+
+async function fetchAERRecords(ownerAddress: string): Promise<AERRecord[]> {
+  if (AER_CONFIG.indexerApiUrl) {
+    try {
+      return await fetchFromIndexer(ownerAddress);
+    } catch {
+      // Indexer unavailable — fall back to RPC
+    }
+  }
+  return fetchFromRpc(ownerAddress);
 }
 
 export function useAERRecords(ownerAddress: string | null) {
@@ -85,7 +158,7 @@ export function useAERRecords(ownerAddress: string | null) {
     queryKey: ['aerRecords', ownerAddress],
     queryFn: () => fetchAERRecords(ownerAddress!),
     enabled: !!ownerAddress,
-    refetchInterval: 15000,
-    staleTime: 10000,
+    refetchInterval: AER_CONFIG.indexerApiUrl ? 30000 : 15000,
+    staleTime: AER_CONFIG.indexerApiUrl ? 20000 : 10000,
   });
 }

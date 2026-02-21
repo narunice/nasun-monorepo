@@ -37,6 +37,7 @@ export type { BudgetUtilization } from './types/budget';
 
 // Errors
 export { AERError, AERNotFoundError, ChainDepthExceededError, RpcError } from './errors';
+export { IndexerError, shouldFallback } from './services/indexer';
 
 // Services (for advanced usage / tree-shaking)
 export { parseAERFields } from './services/parse';
