@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@mysten/sui": "^1.45.2",
+    "@nasun/devnet-config": "workspace:*",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@scure/bip39": "^2.0.1",
