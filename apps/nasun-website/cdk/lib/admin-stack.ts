@@ -159,7 +159,7 @@ export class AdminStack extends cdk.Stack {
 
     const tokenAuthorizer = new apigateway.TokenAuthorizer(this, "AdminTokenAuthorizer", {
       handler: authorizerFunction,
-      resultsCacheTtl: cdk.Duration.seconds(300),
+      resultsCacheTtl: cdk.Duration.seconds(60), // Short TTL: revoked admin access expires quickly
       identitySource: "method.request.header.Authorization",
     });
 
