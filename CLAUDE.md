@@ -248,7 +248,7 @@ Production EC2 (43.200.67.52)
 
 ### 운영 참고
 
-- **Start checkpoint**: 6584888 (2026-02-21 DB 리셋 후 설정). systemd 서비스에 `--start-checkpoint 6584888` 하드코딩됨.
+- **Start checkpoint**: `start-indexer.sh` wrapper script가 DB에서 `MAX(sequence_number)+1`을 동적으로 조회하여 설정. DB 비어있으면 oldest `.chk` 파일 번호 사용. 수동 업데이트 불필요.
 - **Validator OOM 보호**: Validator `oom_score_adj=-500`, Indexer `OOMScoreAdjust=500`
 - **Security Group**: Port 3200은 Production EC2 IP (43.200.67.52/32)에만 개방
 - **PM2 .env**: `DATABASE_URL`, `SUI_RPC_URL`, `GENESIS_ADDRESSES` 포함. `set -a && source .env && set +a` 후 PM2 시작
@@ -260,28 +260,24 @@ Production EC2 (43.200.67.52)
 인덱서는 **local file 기반** (`--data-ingestion-path`)으로 동작:
 1. Fullnode가 체크포인트 `.chk` 파일을 `data-ingestion-dir`에 생성
 2. 인덱서가 파일을 읽고 PostgreSQL에 인덱싱
-3. 인덱서가 처리 완료된 파일을 GC (삭제)
+3. 인덱서가 처리 완료된 파일을 GC (삭제) — `gc_checkpoint_files: true`
 
-**인덱서 stuck 장애 패턴**: 인덱서가 뒤처지면 → 필요한 체크포인트 파일이 이미 GC됨 → 영구 stuck (`new updates: 0`). `data-ingestion-dir`의 가장 오래된 파일 번호보다 인덱서 위치가 뒤에 있으면 복구 불가.
+**GC gap 자동 복구 (2026-02-22 적용)**:
+- `start-indexer.sh` wrapper script가 systemd 재시작 시 DB에서 resume point 자동 계산
+- 인덱서 자체 GC만 동작 (cron 삭제됨). 미처리 파일이 삭제되는 일 없음
+- systemd `StartLimitBurst=5` + `RestartSec=30`으로 무한 restart 방지
 
-**복구 절차**:
+**DB 리셋이 필요한 경우** (Devnet 리셋 등):
 ```bash
 # 1. 인덱서 중지
 sudo systemctl stop sui-indexer
 
-# 2. data-ingestion-dir에서 가장 오래된 체크포인트 번호 확인
-ls ~/db/data-ingestion/ | sort -n | head -1
-
-# 3. DB 리셋 (활성 연결 종료 필요)
+# 2. DB 리셋 (활성 연결 종료 필요)
 sudo -u postgres psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='sui_indexer';"
 sudo -u postgres psql -c "DROP DATABASE sui_indexer;"
 sudo -u postgres psql -c "CREATE DATABASE sui_indexer OWNER sui_indexer;"
 
-# 4. systemd에 --start-checkpoint 설정 (가장 오래된 .chk 번호)
-sudo systemctl edit sui-indexer  # ExecStart에 --start-checkpoint 추가
-sudo systemctl daemon-reload
-
-# 5. 인덱서 재시작
+# 3. 인덱서 재시작 (start-indexer.sh가 oldest .chk 파일에서 자동 시작)
 sudo systemctl start sui-indexer
 ```
 
@@ -291,11 +287,10 @@ sudo systemctl start sui-indexer
 
 1. 인덱서 중지: `sudo systemctl stop sui-indexer`
 2. DB 리셋: `DROP/CREATE DATABASE sui_indexer`
-3. systemd `--start-checkpoint` 값 업데이트 (새 체크포인트 번호)
-4. `daemon-reload` + 인덱서 재시작
-5. `packages/devnet-config/devnet-ids.json`의 coin type 주소 업데이트
-6. `stats.ts`의 `KNOWN_COIN_TYPES` 동기화 (devnet-ids.json 기준)
-7. `GENESIS_ADDRESSES` 환경변수 업데이트 (새 faucet 주소)
+3. 인덱서 재시작: `sudo systemctl start sui-indexer` (`start-indexer.sh`가 자동으로 oldest .chk에서 시작)
+4. `packages/devnet-config/devnet-ids.json`의 coin type 주소 업데이트
+5. `stats.ts`의 `KNOWN_COIN_TYPES` 동기화 (devnet-ids.json 기준)
+6. `GENESIS_ADDRESSES` 환경변수 업데이트 (새 faucet 주소)
 
 ---
 
