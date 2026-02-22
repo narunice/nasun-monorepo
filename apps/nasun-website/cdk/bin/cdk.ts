@@ -53,11 +53,14 @@ const adminStack = new AdminStack(app, 'AdminStack', {
 });
 // No dependencies - references existing tables by name
 
-// Follower collection stack (X API daily follower tracking)
+// Follower collection stack (X API daily follower tracking + OAuth2 token refresh)
 const followerStack = new FollowerStack(app, 'FollowerStack', {
   env: { region: 'ap-northeast-2' },
   twitterBearerToken: process.env.TWITTER_BEARER_TOKEN || '',
   targetAccounts: process.env.TARGET_ACCOUNTS || '[]',
+  oauth2ClientId: process.env.OAUTH2_CLIENT_ID || '',
+  oauth2ClientSecret: process.env.OAUTH2_CLIENT_SECRET || '',
+  twitterTokensSecretName: process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens',
 });
 // No dependencies - standalone stack
 
