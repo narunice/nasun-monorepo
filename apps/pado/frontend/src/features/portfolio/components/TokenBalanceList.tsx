@@ -5,19 +5,11 @@
 
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTotalValue, type TokenValue } from '../hooks';
-import { SkeletonMarketRow } from '@/components/common';
+import { SkeletonMarketRow, TokenIcon } from '@/components/common';
 
 interface TokenRowProps {
   token: TokenValue;
 }
-
-// Token icon background colors
-const TOKEN_COLORS: Record<string, string> = {
-  NBTC: 'bg-orange-500',
-  NUSDC: 'bg-pd2',
-  NSN: 'bg-purple-500',
-  Predictions: 'bg-pink-500',
-};
 
 function TokenRow({ token }: TokenRowProps) {
   const isPredictions = token.symbol === 'Predictions';
@@ -41,9 +33,11 @@ function TokenRow({ token }: TokenRowProps) {
   return (
     <div className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-full ${TOKEN_COLORS[token.symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs xl:text-sm font-bold text-white`}>
-          {isPredictions ? '📊' : token.symbol.charAt(0)}
-        </div>
+        {isPredictions ? (
+          <div className="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-sm">📊</div>
+        ) : (
+          <TokenIcon symbol={token.symbol} size="md" />
+        )}
         <div>
           <div className="font-medium">{token.symbol}</div>
           {!isPredictions && (

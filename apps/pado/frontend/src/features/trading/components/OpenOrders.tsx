@@ -13,7 +13,6 @@ interface OpenOrdersProps {
 
 export function OpenOrders({ orders, isLoading, onCancel, onCancelAll }: OpenOrdersProps) {
   const { currentPool } = useMarket();
-  const baseSymbol = currentPool.baseToken.symbol;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [confirmCancelAll, setConfirmCancelAll] = useState<string[] | null>(null);
 
@@ -48,6 +47,16 @@ export function OpenOrders({ orders, isLoading, onCancel, onCancelAll }: OpenOrd
     onCancelAll?.(ids);
   };
 
+  const quoteSymbol = currentPool.quoteToken.symbol;
+
+  const formatPrice = (price: number) =>
+    `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const formatTotal = (price: number, qty: number) => {
+    const total = price * qty;
+    return `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   return (
     <div>
       {orders.length === 0 ? (
@@ -56,8 +65,19 @@ export function OpenOrders({ orders, isLoading, onCancel, onCancelAll }: OpenOrd
           <p className="text-[10px] text-theme-text-muted mt-0.5">Place an order to get started</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {/* Cancel All row */}
+        <div>
+          {/* Header row with Cancel All */}
+          <div className="flex items-center justify-between mb-2 pb-1 border-b border-theme-border">
+            <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 gap-2 flex-1">
+              <span>Side</span>
+              <span className="text-right">Price ({quoteSymbol})</span>
+              <span className="text-right">Amount</span>
+              <span className="text-right">Total</span>
+              <span className="text-right">Action</span>
+            </div>
+          </div>
+
+          {/* Cancel All */}
           {onCancelAll && orders.length > 1 && (
             <div className="flex justify-end items-center gap-2 mb-1">
               {confirmCancelAll ? (
@@ -88,26 +108,34 @@ export function OpenOrders({ orders, isLoading, onCancel, onCancelAll }: OpenOrd
               )}
             </div>
           )}
+
+          {/* Order rows */}
           {visibleOrders.map((order) => (
             <div
               key={order.orderId}
-              className="flex items-center justify-between p-2 bg-theme-bg-tertiary rounded text-xs xl:text-sm"
+              className="grid grid-cols-5 gap-2 py-1.5 text-trading-sm xl:text-trading-lg items-center hover:bg-theme-bg-tertiary/30 transition-colors rounded"
             >
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold ${order.isBid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                  {order.isBid ? 'BUY' : 'SELL'}
-                </span>
-                <span className="text-theme-text-primary">
-                  {order.quantity.toFixed(4)} {baseSymbol} @ ${order.price.toFixed(2)}
-                </span>
+              <span className={`font-semibold ${order.isBid ? 'text-green-400' : 'text-red-400'}`}>
+                {order.isBid ? 'BUY' : 'SELL'}
+              </span>
+              <span className="text-right font-mono text-theme-text-primary">
+                {formatPrice(order.price)}
+              </span>
+              <span className="text-right font-mono text-theme-text-primary">
+                {order.quantity.toFixed(4)}
+              </span>
+              <span className="text-right font-mono text-theme-text-secondary">
+                {formatTotal(order.price, order.quantity)}
+              </span>
+              <div className="text-right">
+                <button
+                  onClick={() => onCancel(order.orderId)}
+                  disabled={isLoading}
+                  className="px-1.5 py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
               </div>
-              <button
-                onClick={() => onCancel(order.orderId)}
-                disabled={isLoading}
-                className="px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-600/10 dark:hover:bg-red-500/15 disabled:opacity-50 rounded transition-colors"
-              >
-                Cancel
-              </button>
             </div>
           ))}
 

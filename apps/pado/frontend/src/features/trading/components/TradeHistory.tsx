@@ -184,7 +184,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
     if (!trades || trades.length === 0) return;
     const csv = generateCsv(trades, [
       { header: 'Date', accessor: (t) => new Date(t.timestamp).toISOString() },
-      { header: 'Pair', accessor: () => pair },
+      { header: 'Market', accessor: () => pair },
       { header: 'Side', accessor: (t) => (t.isBid ? 'BUY' : 'SELL') },
       { header: 'Price', accessor: (t) => t.price },
       { header: 'Amount', accessor: (t) => t.quantity },
@@ -317,6 +317,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
       <table className="w-full text-xs xl:text-sm">
         <thead className="text-theme-text-secondary">
           <tr>
+            <th className="py-2 px-2 text-left font-medium">Market</th>
             <th className="py-2 px-2 text-left font-medium">Side</th>
             <th className="py-2 px-2 text-right font-medium">Price ({quoteSymbol})</th>
             <th className="py-2 px-2 text-right font-medium">Amount ({baseSymbol})</th>
@@ -332,6 +333,9 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
 
             return (
               <tr key={trade.id} className="hover:bg-theme-bg-tertiary/30 transition-colors">
+                <td className="py-1.5 px-2 text-theme-text-secondary">
+                  {pair}
+                </td>
                 <td className={`py-1.5 px-2 font-semibold ${
                   trade.isBid
                     ? 'text-green-700 dark:text-green-400'
@@ -446,7 +450,7 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
       {!canShowMore && hasNextPage && (
         <div className="flex justify-center pt-2 pb-1">
           <button
-            onClick={() => fetchNextPage()}
+            onClick={() => fetchNextPage?.()}
             disabled={isFetchingNextPage}
             className="text-xs xl:text-sm text-pd1 dark:text-pd3 hover:underline disabled:opacity-50 transition-colors"
           >
