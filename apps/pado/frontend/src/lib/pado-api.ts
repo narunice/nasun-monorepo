@@ -200,6 +200,71 @@ export async function fetchCostBasisFromApi(
     .filter((e): e is CostBasisEntry => e !== null);
 }
 
+// ===== Order History =====
+
+export interface ApiOrderEvent {
+  tx_digest: string;
+  event_seq: string;
+  event_type: 'placed' | 'canceled';
+  pool_id: string;
+  order_id: string;
+  price: string;
+  quantity: string;
+  is_bid: number;
+  timestamp_ms: number;
+}
+
+export interface ApiOrderFill {
+  tx_digest: string;
+  event_seq: string;
+  pool_id: string;
+  maker_order_id: string | null;
+  taker_order_id: string | null;
+  price: string;
+  base_quantity: string;
+  quote_quantity: string;
+  taker_is_bid: number;
+  timestamp_ms: number;
+  is_maker: boolean;
+  is_taker: boolean;
+}
+
+interface OrderHistoryApiResponse {
+  events: ApiOrderEvent[];
+  fills: ApiOrderFill[];
+  nextCursor: number | null;
+  hasMore: boolean;
+}
+
+export interface OrderHistoryPage {
+  events: ApiOrderEvent[];
+  fills: ApiOrderFill[];
+  nextCursor: number | null;
+  hasMore: boolean;
+}
+
+export async function fetchOrderHistoryFromApi(
+  address: string,
+  pool?: string,
+  cursor?: number | null,
+): Promise<OrderHistoryPage> {
+  const params = new URLSearchParams();
+  params.set('limit', '100');
+  if (cursor != null) params.set('cursor', String(cursor));
+  if (pool) params.set('pool', pool);
+
+  const data = await apiFetch<OrderHistoryApiResponse>(
+    `/api/orders/${encodeURIComponent(address)}?${params}`,
+  );
+
+  return {
+    events: data.events,
+    fills: data.fills,
+    nextCursor: data.nextCursor,
+    hasMore: data.hasMore,
+  };
+}
+
 // ===== Feature Detection =====
 
 export function isTradeApiAvailable(): boolean {

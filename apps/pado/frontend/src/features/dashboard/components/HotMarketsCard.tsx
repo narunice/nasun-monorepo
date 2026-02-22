@@ -5,7 +5,7 @@
 
 import { Link } from 'react-router-dom';
 import { useMarketOverview } from '../hooks';
-import { SkeletonMarketRow } from '@/components/common';
+import { SkeletonMarketRow, TokenIcon } from '@/components/common';
 
 export function HotMarketsCard() {
   const { markets, isLoading } = useMarketOverview();
@@ -48,9 +48,7 @@ export function HotMarketsCard() {
             className="flex items-center justify-between p-2 -mx-2 rounded-lg hover:bg-theme-bg-tertiary transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-theme-bg-tertiary rounded-full flex items-center justify-center text-xs font-bold text-theme-text-primary">
-                {market.symbol.charAt(0)}
-              </div>
+              <TokenIcon symbol={market.symbol} size="md" />
               <div>
                 <div className="font-medium text-theme-text-primary text-sm xl:text-base">{market.symbol}</div>
                 <div className="text-xs xl:text-sm text-theme-text-muted">{market.name}</div>

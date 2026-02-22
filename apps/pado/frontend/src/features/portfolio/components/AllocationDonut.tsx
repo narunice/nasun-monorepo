@@ -7,16 +7,10 @@
 import { useMemo } from 'react';
 import { useTotalValue, type TokenValue } from '../hooks/useTotalValue';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
+import { getTokenHexColor } from '@/components/common';
 
-// Token color mapping
-const TOKEN_COLORS: Record<string, string> = {
-  NBTC: '#f97316',    // orange
-  NUSDC: '#3b82f6',   // blue
-  NSN: '#8b5cf6',   // purple
-  NETH: '#6366f1',    // indigo
-  NSOL: '#14b8a6',    // teal
-  Other: '#6b7280',   // gray
-};
+const KNOWN_TOKENS = ['NBTC', 'NUSDC', 'NSN', 'NETH', 'NSOL'];
+const OTHER_COLOR = '#6b7280';
 
 const CHART_SIZE = 160;
 const STROKE_WIDTH = 28;
@@ -39,7 +33,7 @@ function buildSegments(tokens: TokenValue[], totalValue: number): DonutSegment[]
 
   for (const token of tokens) {
     // Skip synthetic entries like "Pado Balance" and "Predictions"
-    if (!TOKEN_COLORS[token.symbol]) {
+    if (!KNOWN_TOKENS.includes(token.symbol)) {
       otherValue += token.value;
       continue;
     }
@@ -50,7 +44,7 @@ function buildSegments(tokens: TokenValue[], totalValue: number): DonutSegment[]
     } else {
       raw.push({
         symbol: token.symbol,
-        color: TOKEN_COLORS[token.symbol],
+        color: getTokenHexColor(token.symbol),
         percent,
         value: token.value,
       });
@@ -64,7 +58,7 @@ function buildSegments(tokens: TokenValue[], totalValue: number): DonutSegment[]
   if (otherValue > 0) {
     raw.push({
       symbol: 'Other',
-      color: TOKEN_COLORS.Other,
+      color: OTHER_COLOR,
       percent: (otherValue / totalValue) * 100,
       value: otherValue,
     });

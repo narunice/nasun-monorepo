@@ -211,7 +211,7 @@ function TradePageContent() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount
   const { currentPool } = useMarket();
   const { data: orderbookData, isError: isOrderbookError } = useOrderbook();
-  const { setPrice } = useOrderForm();
+  const { setPrice, setStopPrice, focusedPriceField } = useOrderForm();
   const { getPrice, getPriceInfo } = usePrices();
 
   const orderbook = orderbookData?.orderbook ?? { bids: [], asks: [], spread: 0, midPrice: 0 };
@@ -251,9 +251,14 @@ function TradePageContent() {
     priceSource: midPrice ? 'oracle' as const : getPriceInfo(baseSymbol).source,
   };
 
-  // Handle orderbook price click
+  // Handle orderbook price click — route to focused field in stop-limit mode
   const handlePriceClick = (price: number) => {
-    setPrice(price.toFixed(2));
+    const formatted = price.toFixed(2);
+    if (focusedPriceField === 'stopPrice') {
+      setStopPrice(formatted);
+    } else {
+      setPrice(formatted);
+    }
   };
 
   return (

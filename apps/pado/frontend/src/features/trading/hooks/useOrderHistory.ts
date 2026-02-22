@@ -1,15 +1,20 @@
 /**
  * useOrderHistory Hook
- * Fetches past OrderPlaced + OrderCanceled + OrderFilled(taker) events via queryEvents RPC
- * Merges into a unified personal order history
  *
- * Uses shared useSenderEvents hook to avoid duplicate queryEvents RPC calls
- * with useMyTrades.
+ * Primary: Chat Server API (/api/orders/:address) — indexed, fast
+ * Fallback: RPC queryEvents (useSenderEvents) — when API unavailable
+ *
+ * Merges OrderPlaced + OrderCanceled + OrderFilled into unified order history.
  */
 
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { SuiEvent } from '@mysten/sui/client';
 import { NETWORK_CONFIG } from '../../../config/network';
+import {
+  fetchOrderHistoryFromApi, isTradeApiAvailable,
+  type ApiOrderEvent, type ApiOrderFill,
+} from '../../../lib/pado-api';
 import { useMarket } from '../context/MarketContext';
 import { useSenderEvents } from './useSenderEvents';
 
@@ -35,6 +40,136 @@ export interface OrderHistoryItem {
   txDigest: string;
 }
 
+// ===== API-based processing =====
+
+function processOrderHistoryFromApi(
+  events: ApiOrderEvent[],
+  fills: ApiOrderFill[],
+  poolId: string,
+  quoteDecimals: number,
+  baseDecimals: number,
+): OrderHistoryItem[] {
+  // Separate placed and canceled events (already filtered by address on server)
+  const placedEvents = events.filter(e => e.event_type === 'placed' && e.pool_id === poolId);
+  const canceledEvents = events.filter(e => e.event_type === 'canceled' && e.pool_id === poolId);
+  const poolFills = fills.filter(f => f.pool_id === poolId);
+
+  // Collect canceled order IDs
+  const canceledOrderIds = new Set<string>();
+  for (const e of canceledEvents) {
+    canceledOrderIds.add(e.order_id);
+  }
+
+  // Collect maker fills: maker_order_id -> total executed qty (raw bigint)
+  const makerFillQtyMap = new Map<string, bigint>();
+  for (const fill of poolFills) {
+    if (!fill.is_maker || !fill.maker_order_id) continue;
+    const fillQty = safeBigInt(fill.base_quantity);
+    const prev = makerFillQtyMap.get(fill.maker_order_id) || 0n;
+    makerFillQtyMap.set(fill.maker_order_id, prev + fillQty);
+  }
+
+  // Track placed order IDs to avoid duplicating as market orders
+  const placedOrderIds = new Set<string>();
+
+  // Build limit orders from placed events
+  const orders: OrderHistoryItem[] = [];
+  for (const event of placedEvents) {
+    const orderId = event.order_id;
+    placedOrderIds.add(orderId);
+
+    const rawQuantity = safeBigInt(event.quantity);
+    const quantity = Number(rawQuantity) / Math.pow(10, baseDecimals);
+    const rawExecuted = makerFillQtyMap.get(orderId) || 0n;
+    const executedQuantity = Number(rawExecuted) / Math.pow(10, baseDecimals);
+
+    let status: OrderStatus;
+    if (canceledOrderIds.has(orderId)) {
+      status = 'canceled';
+    } else if (rawExecuted >= rawQuantity && rawQuantity > 0n) {
+      status = 'filled';
+    } else if (rawExecuted > 0n) {
+      status = 'partial';
+    } else {
+      status = 'placed';
+    }
+
+    orders.push({
+      orderId,
+      type: 'limit',
+      price: Number(safeBigInt(event.price)) / Math.pow(10, quoteDecimals),
+      quantity,
+      executedQuantity,
+      isBid: !!event.is_bid,
+      status,
+      timestamp: event.timestamp_ms,
+      txDigest: event.tx_digest,
+    });
+  }
+
+  // Build market orders from taker fills
+  const takerOrderMap = new Map<string, {
+    totalQuantity: bigint;
+    weightedPrice: bigint;
+    isBid: boolean;
+    timestamp: number;
+    txDigest: string;
+  }>();
+
+  for (const fill of poolFills) {
+    if (!fill.is_taker) continue;
+    const takerOrderId = fill.taker_order_id || fill.tx_digest; // fallback grouping key
+
+    // Skip if this order was already captured via OrderPlaced
+    if (placedOrderIds.has(takerOrderId)) continue;
+
+    const fillQty = safeBigInt(fill.base_quantity);
+    const fillPrice = safeBigInt(fill.price);
+
+    const existing = takerOrderMap.get(takerOrderId);
+    if (existing) {
+      existing.totalQuantity += fillQty;
+      existing.weightedPrice += fillPrice * fillQty;
+      if (fill.timestamp_ms < existing.timestamp) {
+        existing.timestamp = fill.timestamp_ms;
+        existing.txDigest = fill.tx_digest;
+      }
+    } else {
+      takerOrderMap.set(takerOrderId, {
+        totalQuantity: fillQty,
+        weightedPrice: fillPrice * fillQty,
+        isBid: !!fill.taker_is_bid,
+        timestamp: fill.timestamp_ms,
+        txDigest: fill.tx_digest,
+      });
+    }
+  }
+
+  for (const [orderId, data] of takerOrderMap) {
+    const avgPrice = data.totalQuantity > 0n
+      ? Number(data.weightedPrice / data.totalQuantity) / Math.pow(10, quoteDecimals)
+      : 0;
+    const qty = Number(data.totalQuantity) / Math.pow(10, baseDecimals);
+
+    orders.push({
+      orderId,
+      type: 'market',
+      price: avgPrice,
+      quantity: qty,
+      executedQuantity: qty,
+      isBid: data.isBid,
+      status: 'filled',
+      timestamp: data.timestamp,
+      txDigest: data.txDigest,
+    });
+  }
+
+  orders.sort((a, b) => b.timestamp - a.timestamp);
+  return orders;
+}
+
+// ===== RPC-based processing (fallback) =====
+
 interface RawEventJson {
   balance_manager_id?: string;
   maker_balance_manager_id?: string;
@@ -58,17 +193,13 @@ const ORDER_PLACED_TYPE = `${DEEPBOOK_PACKAGE}::order_info::OrderPlaced`;
 const ORDER_CANCELED_TYPE = `${DEEPBOOK_PACKAGE}::order::OrderCanceled`;
 const ORDER_FILLED_TYPE = `${DEEPBOOK_PACKAGE}::order_info::OrderFilled`;
 
-/**
- * Process raw events into order history items for a specific pool
- */
-function processOrderHistory(
+function processOrderHistoryFromRpc(
   events: SuiEvent[],
   poolId: string,
   balanceManagerId: string,
   quoteDecimals: number,
   baseDecimals: number,
 ): OrderHistoryItem[] {
-  // Classify events by type
   const placedEvents: SuiEvent[] = [];
   const canceledEvents: SuiEvent[] = [];
   const filledEvents: SuiEvent[] = [];
@@ -79,7 +210,6 @@ function processOrderHistory(
     else if (event.type === ORDER_FILLED_TYPE) filledEvents.push(event);
   }
 
-  // Collect canceled order IDs for status lookup
   const canceledOrderIds = new Set<string>();
   for (const event of canceledEvents) {
     const json = event.parsedJson as RawEventJson | undefined;
@@ -89,7 +219,6 @@ function processOrderHistory(
     if (json.order_id) canceledOrderIds.add(String(json.order_id));
   }
 
-  // Collect maker fills: maker_order_id -> total executed qty (raw)
   const makerFillQtyMap = new Map<string, bigint>();
   for (const event of filledEvents) {
     const json = event.parsedJson as RawEventJson | undefined;
@@ -102,11 +231,9 @@ function processOrderHistory(
     makerFillQtyMap.set(makerOrderId, (makerFillQtyMap.get(makerOrderId) || 0n) + fillQty);
   }
 
-  // Track placed order IDs to avoid duplicating as market orders
   const placedOrderIds = new Set<string>();
-
-  // Build limit orders from OrderPlaced events
   const orders: OrderHistoryItem[] = [];
+
   for (const event of placedEvents) {
     const json = event.parsedJson as RawEventJson | undefined;
     if (!json) continue;
@@ -121,7 +248,6 @@ function processOrderHistory(
     const rawExecuted = makerFillQtyMap.get(orderId) || 0n;
     const executedQuantity = Number(rawExecuted) / Math.pow(10, baseDecimals);
 
-    // Determine status: canceled > filled > partial > placed
     let status: OrderStatus;
     if (canceledOrderIds.has(orderId)) {
       status = 'canceled';
@@ -146,8 +272,6 @@ function processOrderHistory(
     });
   }
 
-  // Build market orders from OrderFilled(taker) events
-  // Group by taker_order_id to merge partial fills into one order
   const takerOrderMap = new Map<string, {
     totalQuantity: bigint;
     weightedPrice: bigint;
@@ -163,8 +287,6 @@ function processOrderHistory(
     if (json.pool_id !== poolId) continue;
 
     const takerOrderId = String(json.taker_order_id || '');
-
-    // Skip if this order was already captured via OrderPlaced (limit order that got filled)
     if (placedOrderIds.has(takerOrderId)) continue;
 
     const fillQty = safeBigInt(json.base_quantity || json.quantity);
@@ -175,7 +297,6 @@ function processOrderHistory(
     if (existing) {
       existing.totalQuantity += fillQty;
       existing.weightedPrice += fillPrice * fillQty;
-      // Keep earliest timestamp
       if (timestamp < existing.timestamp) {
         existing.timestamp = timestamp;
         existing.txDigest = event.id?.txDigest || '';
@@ -191,13 +312,12 @@ function processOrderHistory(
     }
   }
 
-  // Convert aggregated taker fills to market order entries
   for (const [orderId, data] of takerOrderMap) {
     const avgPrice = data.totalQuantity > 0n
       ? Number(data.weightedPrice / data.totalQuantity) / Math.pow(10, quoteDecimals)
       : 0;
-
     const qty = Number(data.totalQuantity) / Math.pow(10, baseDecimals);
+
     orders.push({
       orderId,
       type: 'market',
@@ -211,14 +331,28 @@ function processOrderHistory(
     });
   }
 
-  // Sort by timestamp descending
   orders.sort((a, b) => b.timestamp - a.timestamp);
-
   return orders;
 }
 
+// ===== Deduplication helper =====
+
+function deduplicateOrders(orders: OrderHistoryItem[]): OrderHistoryItem[] {
+  const orderMap = new Map<string, OrderHistoryItem>();
+  for (const order of orders) {
+    const existing = orderMap.get(order.orderId);
+    if (!existing || order.executedQuantity > existing.executedQuantity) {
+      orderMap.set(order.orderId, order);
+    }
+  }
+  return Array.from(orderMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+}
+
+// ===== Main Hook =====
+
 /**
- * Fetch order history for the current user's BalanceManager
+ * Fetch order history for the current user.
+ * Uses Chat Server API when available, falls back to RPC.
  */
 export function useOrderHistory(
   balanceManagerId: string | null,
@@ -228,38 +362,55 @@ export function useOrderHistory(
   const poolId = currentPool.id as string;
   const quoteDecimals = currentPool.quoteToken.decimals;
   const baseDecimals = currentPool.baseToken.decimals;
+  const apiAvailable = isTradeApiAvailable();
 
-  const query = useSenderEvents(senderAddress);
+  // API source (primary)
+  const apiQuery = useQuery({
+    queryKey: ['order-history-api', senderAddress, poolId],
+    queryFn: () => fetchOrderHistoryFromApi(senderAddress!, poolId),
+    enabled: !!senderAddress && apiAvailable,
+    refetchInterval: 10_000,
+    staleTime: 5000,
+    retry: 1,
+  });
 
-  // Process raw events into order history, deduplicate by orderId
-  const allOrders = useMemo(() => {
-    if (!query.data || !balanceManagerId) return undefined;
+  // RPC source (fallback when API fails or unavailable)
+  const rpcQuery = useSenderEvents(
+    !apiAvailable || apiQuery.isError ? senderAddress : undefined,
+  );
 
-    // Flatten all events from all pages
+  // Process API data
+  const apiOrders = useMemo(() => {
+    if (!apiQuery.data) return undefined;
+    const orders = processOrderHistoryFromApi(
+      apiQuery.data.events,
+      apiQuery.data.fills,
+      poolId,
+      quoteDecimals,
+      baseDecimals,
+    );
+    return deduplicateOrders(orders);
+  }, [apiQuery.data, poolId, quoteDecimals, baseDecimals]);
+
+  // Process RPC data (fallback)
+  const rpcOrders = useMemo(() => {
+    if (!rpcQuery.data || !balanceManagerId) return undefined;
     const allEvents: SuiEvent[] = [];
-    for (const page of query.data.pages) {
+    for (const page of rpcQuery.data.pages) {
       allEvents.push(...page.events);
     }
+    const orders = processOrderHistoryFromRpc(allEvents, poolId, balanceManagerId, quoteDecimals, baseDecimals);
+    return deduplicateOrders(orders);
+  }, [rpcQuery.data, balanceManagerId, poolId, quoteDecimals, baseDecimals]);
 
-    const orders = processOrderHistory(allEvents, poolId, balanceManagerId, quoteDecimals, baseDecimals);
-
-    // Deduplicate by orderId (prefer entry with higher executedQuantity)
-    const orderMap = new Map<string, OrderHistoryItem>();
-    for (const order of orders) {
-      const existing = orderMap.get(order.orderId);
-      if (!existing || order.executedQuantity > existing.executedQuantity) {
-        orderMap.set(order.orderId, order);
-      }
-    }
-
-    return Array.from(orderMap.values()).sort((a, b) => b.timestamp - a.timestamp);
-  }, [query.data, balanceManagerId, poolId, quoteDecimals, baseDecimals]);
+  // Use API data when available, fallback to RPC
+  const useApi = apiAvailable && !apiQuery.isError;
 
   return {
-    data: allOrders,
-    isLoading: query.isLoading,
-    fetchNextPage: query.fetchNextPage,
-    hasNextPage: query.hasNextPage ?? false,
-    isFetchingNextPage: query.isFetchingNextPage,
+    data: useApi ? apiOrders : rpcOrders,
+    isLoading: useApi ? apiQuery.isLoading : rpcQuery.isLoading,
+    fetchNextPage: useApi ? undefined : rpcQuery.fetchNextPage,
+    hasNextPage: useApi ? (apiQuery.data?.hasMore ?? false) : (rpcQuery.hasNextPage ?? false),
+    isFetchingNextPage: useApi ? false : rpcQuery.isFetchingNextPage,
   };
 }
