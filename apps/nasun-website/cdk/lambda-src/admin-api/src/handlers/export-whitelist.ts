@@ -404,7 +404,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     // POST /hidden-proposals - Hide a proposal (admin only)
     if (path.endsWith("/hidden-proposals") && event.httpMethod === "POST") {
-      const body = event.body ? JSON.parse(event.body) : {};
+      let body: Record<string, unknown>;
+      try {
+        body = event.body ? JSON.parse(event.body) : {};
+      } catch {
+        return errorResponse(400, "Invalid JSON in request body", requestOrigin);
+      }
       const { proposalId } = body;
 
       if (!proposalId || typeof proposalId !== "string") {
@@ -430,8 +435,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     }
 
     return errorResponse(404, "Not found", requestOrigin);
-  } catch (error: any) {
-    console.error("Admin Export API error:", error);
+  } catch (error: unknown) {
+    console.error("Admin Export API error:", error instanceof Error ? error.message : String(error));
     return errorResponse(500, "Internal server error", requestOrigin);
   }
 };
