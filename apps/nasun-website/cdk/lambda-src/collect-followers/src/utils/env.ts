@@ -12,9 +12,6 @@ export interface EnvConfig {
   // DynamoDB
   followersTableName: string;
 
-  // Twitter API
-  twitterBearerToken: string;
-
   // AWS
   awsRegion: string;
 }
@@ -33,7 +30,6 @@ export function getEnvConfig(): EnvConfig {
   return {
     targetAccounts,
     followersTableName: process.env.FOLLOWERS_TABLE_NAME || 'NasunTargetFollowers',
-    twitterBearerToken: process.env.TWITTER_BEARER_TOKEN || '',
     awsRegion: process.env.AWS_REGION || 'ap-northeast-2',
   };
 }
@@ -43,10 +39,6 @@ export function validateEnvConfig(config: EnvConfig): string[] {
 
   if (config.targetAccounts.length === 0) {
     errors.push('TARGET_ACCOUNTS is empty or invalid');
-  }
-
-  if (!config.twitterBearerToken) {
-    errors.push('TWITTER_BEARER_TOKEN is required');
   }
 
   if (!config.followersTableName) {

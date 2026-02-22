@@ -3,6 +3,7 @@ import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { generateCodeVerifier, generateCodeChallenge, generateState, generateSessionId } from '../utils/pkce';
 import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
+import { getOAuthClientCredentials } from '../utils/secrets';
 
 // Read from environment variable (set by CDK from shared constants/cors.ts)
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
@@ -41,14 +42,12 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
   }
 
   try {
-    // Get credentials from environment variables (not Secrets Manager)
-    // This separates user auth path from operator path (data collection Lambdas)
-    const TWITTER_CLIENT_ID = process.env.OAUTH2_CLIENT_ID;
-    const TWITTER_CLIENT_SECRET = process.env.OAUTH2_CLIENT_SECRET;
+    // Get OAuth2 client credentials from Secrets Manager (cached across warm invocations)
+    const { clientId: TWITTER_CLIENT_ID, clientSecret: TWITTER_CLIENT_SECRET } = await getOAuthClientCredentials();
     const { SESSIONS_TABLE_NAME, TWITTER_REDIRECT_URI } = process.env;
 
-    if (!TWITTER_CLIENT_ID || !TWITTER_CLIENT_SECRET || !SESSIONS_TABLE_NAME) {
-      throw new Error('Missing required environment variables or secrets.');
+    if (!SESSIONS_TABLE_NAME) {
+      throw new Error('Missing required environment variable: SESSIONS_TABLE_NAME');
     }
 
     let redirectUri = TWITTER_REDIRECT_URI || 'https://nasun.io/callback';

@@ -1,68 +1,53 @@
-import { SecretsManagerClient, GetSecretValueCommand, UpdateSecretCommand } from '@aws-sdk/client-secrets-manager';
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 
-// Cache for secrets
-let cachedSecrets: { [key: string]: any } | null = null;
-
-export async function getTwitterSecrets() {
-  if (cachedSecrets) {
-    return cachedSecrets;
-  }
-
-  const secretName = process.env.SECRET_NAME;
-  if (!secretName) {
-    throw new Error('SECRET_NAME environment variable not set.');
-  }
-
-  const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
-  const command = new GetSecretValueCommand({ SecretId: secretName });
-
-  try {
-    const data = await client.send(command);
-    if (data.SecretString) {
-      cachedSecrets = JSON.parse(data.SecretString);
-      return cachedSecrets;
-    } else {
-      throw new Error('SecretString is empty or not found in Secrets Manager response.');
-    }
-  } catch (error) {
-    console.error('Failed to retrieve secrets from Secrets Manager:', error);
-    throw new Error('Could not retrieve secrets.');
-  }
+export interface OAuthClientCredentials {
+  clientId: string;
+  clientSecret: string;
 }
 
-export async function updateTwitterSecrets(newOauth2Data: any): Promise<void> {
-  const secretName = process.env.SECRET_NAME;
+// Module-level cache (persists across warm Lambda invocations)
+let cachedCredentials: OAuthClientCredentials | null = null;
+
+const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
+
+/**
+ * Get OAuth2 client credentials from Secrets Manager with module-level caching.
+ * Reads oauth2.clientId and oauth2.clientSecret from the secret.
+ */
+export async function getOAuthClientCredentials(): Promise<OAuthClientCredentials> {
+  if (cachedCredentials) {
+    return cachedCredentials;
+  }
+
+  const secretName = process.env.TWITTER_TOKENS_SECRET_NAME;
   if (!secretName) {
-    throw new Error('SECRET_NAME environment variable not set.');
+    throw new Error('TWITTER_TOKENS_SECRET_NAME environment variable not set.');
   }
 
-  const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
+  const data = await client.send(
+    new GetSecretValueCommand({ SecretId: secretName }),
+  );
 
+  if (!data.SecretString) {
+    throw new Error('SecretString is empty in Secrets Manager response.');
+  }
+
+  let secrets: any;
   try {
-    // It's better to get the freshest value before updating
-    const getCommand = new GetSecretValueCommand({ SecretId: secretName });
-    const currentSecretData = await client.send(getCommand);
-    const currentSecret = JSON.parse(currentSecretData.SecretString || '{}');
-
-    // Create the new secret value by merging
-    const newSecret = {
-      ...currentSecret,
-      oauth2: newOauth2Data,
-    };
-
-    const updateCommand = new UpdateSecretCommand({
-      SecretId: secretName,
-      SecretString: JSON.stringify(newSecret, null, 2),
-    });
-
-    await client.send(updateCommand);
-
-    // Invalidate the cache since we just updated the secret
-    cachedSecrets = null;
-    console.log('Successfully updated Twitter secrets in Secrets Manager.');
-
-  } catch (error) {
-    console.error('Failed to update secrets in Secrets Manager:', error);
-    throw new Error('Could not update secrets.');
+    secrets = JSON.parse(data.SecretString);
+  } catch {
+    throw new Error('Failed to parse Secrets Manager response as JSON.');
   }
+
+  if (!secrets.oauth2?.clientId || !secrets.oauth2?.clientSecret) {
+    throw new Error('Missing oauth2.clientId or oauth2.clientSecret in Secrets Manager.');
+  }
+
+  cachedCredentials = {
+    clientId: secrets.oauth2.clientId,
+    clientSecret: secrets.oauth2.clientSecret,
+  };
+
+  console.log('[AUTH_TWITTER] OAuth2 client credentials loaded from Secrets Manager');
+  return cachedCredentials;
 }

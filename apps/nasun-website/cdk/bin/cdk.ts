@@ -56,7 +56,6 @@ const adminStack = new AdminStack(app, 'AdminStack', {
 // Follower collection stack (X API daily follower tracking + OAuth2 token refresh)
 const followerStack = new FollowerStack(app, 'FollowerStack', {
   env: { region: 'ap-northeast-2' },
-  twitterBearerToken: process.env.TWITTER_BEARER_TOKEN || '',
   targetAccounts: process.env.TARGET_ACCOUNTS || '[]',
   twitterTokensSecretName: process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens',
 });
