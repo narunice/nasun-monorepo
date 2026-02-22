@@ -66,7 +66,7 @@ export function GasCostChart({ range }: GasCostChartProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartSkeleton />
         <ChartSkeleton />
       </div>
@@ -95,8 +95,8 @@ export function GasCostChart({ range }: GasCostChartProps) {
   }));
 
   return (
-    <div className="space-y-4">
-      <Card variant="default" className="p-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card variant="default" className="p-4 min-w-0">
         <div className="text-muted-foreground text-sm uppercase tracking-wider mb-4">
           Daily Gas Cost
         </div>
@@ -123,7 +123,7 @@ export function GasCostChart({ range }: GasCostChartProps) {
         </div>
       </Card>
 
-      <Card variant="default" className="p-4">
+      <Card variant="default" className="p-4 min-w-0">
         <div className="text-muted-foreground text-sm uppercase tracking-wider mb-4">
           Average Gas Per Transaction
         </div>

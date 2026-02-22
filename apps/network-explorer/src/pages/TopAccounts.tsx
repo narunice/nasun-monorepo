@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getTopAccounts, getNetworkSummary } from '../lib/explorer-api';
+import { getTopAccounts } from '../lib/explorer-api';
 import type { TopAccount } from '../lib/explorer-api';
 import { formatBalance, truncateAddress } from '../lib/format';
 
@@ -14,12 +14,6 @@ export default function TopAccounts() {
     queryKey: ['top-accounts', limit],
     queryFn: () => getTopAccounts(limit),
     staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: summary } = useQuery({
-    queryKey: ['network-summary'],
-    queryFn: getNetworkSummary,
-    staleTime: 30_000,
   });
 
   return (
@@ -35,7 +29,7 @@ export default function TopAccounts() {
           <h1 className="text-2xl font-bold text-foreground">Top Accounts</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Ranked by NSN balance
-            {summary ? ` — ${summary.uniqueAddresses.toLocaleString('en-US')} unique addresses` : ''}
+            {accounts ? ` — ${accounts.length.toLocaleString('en-US')} unique addresses` : ''}
           </p>
         </div>
 

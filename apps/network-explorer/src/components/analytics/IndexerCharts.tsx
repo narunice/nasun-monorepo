@@ -62,7 +62,7 @@ export function IndexerCharts({ range }: IndexerChartsProps) {
 
   if (txLoading && addrLoading) {
     return (
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartSkeleton />
         <ChartSkeleton />
       </div>
@@ -91,9 +91,9 @@ export function IndexerCharts({ range }: IndexerChartsProps) {
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {hasTxData && (
-        <Card variant="default" className="p-4">
+        <Card variant="default" className="p-4 min-w-0">
           <div className="text-muted-foreground text-sm uppercase tracking-wider mb-4">
             Daily Transactions (Indexer)
           </div>
@@ -122,7 +122,7 @@ export function IndexerCharts({ range }: IndexerChartsProps) {
       )}
 
       {hasAddrData && (
-        <Card variant="default" className="p-4">
+        <Card variant="default" className="p-4 min-w-0">
           <div className="text-muted-foreground text-sm uppercase tracking-wider mb-4">
             Daily Active Addresses (Indexer)
           </div>
