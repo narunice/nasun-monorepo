@@ -89,7 +89,7 @@ const SLIDES: SlideData[] = [
     projectName: "PADO",
     nameKey: "pado",
     buttonVariant: "pado",
-    link: "/pado-new",
+    link: "/pado",
     video: padoVideo,
     videoStartTime: 16,
   },
