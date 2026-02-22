@@ -66,7 +66,7 @@ export function AssetsTab({
   });
 
   return (
-    <div className="max-h-[280px] overflow-y-auto">
+    <div>
       {/* Token Balances Section */}
       <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
         <p className="text-xs xl:text-sm font-medium text-gray-500 dark:text-zinc-400 mb-2">

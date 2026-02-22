@@ -83,7 +83,7 @@ export function StakingPanel({
       </div>
 
       {/* Tab Content */}
-      <div className={compact ? 'max-h-[400px] overflow-y-auto' : ''}>
+      <div>
         {activeTab === 'stake' && <StakeTab compact={compact} />}
         {activeTab === 'unstake' && <UnstakeTab compact={compact} />}
         {activeTab === 'positions' && (

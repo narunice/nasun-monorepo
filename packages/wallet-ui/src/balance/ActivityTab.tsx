@@ -35,7 +35,7 @@ export function ActivityTab({
   );
 
   return (
-    <div className="max-h-[280px] overflow-y-auto overflow-x-hidden">
+    <div className="overflow-x-hidden">
       {/* Pending Proposals Section - only show if there are any */}
       {nsaIsInitialized && proposalsForMe.length > 0 && (
         <div className="px-3 py-2 border-b border-gray-200 dark:border-zinc-700">
