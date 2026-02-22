@@ -112,7 +112,8 @@ function NarrativeContent() {
               description={t("narrative.category1.description")}
               color="c1"
               hideDivider={true}
-              className="!bg-gray-950/50 !border-nasun-c1/40 h-full"
+              titleClassName="!text-sf-orange"
+              className="!bg-gray-950/50 !border-sf-orange/40 h-full"
             />
           </FadeInUp>
           <FadeInUp delay="0.2s" className="h-full">
@@ -121,7 +122,8 @@ function NarrativeContent() {
               description={t("narrative.category2.description")}
               color="c1"
               hideDivider={true}
-              className="!bg-gray-950/50 !border-nasun-c1/40 h-full"
+              titleClassName="!text-sf-orange"
+              className="!bg-gray-950/50 !border-sf-orange/40 h-full"
             />
           </FadeInUp>
           <FadeInUp delay="0.3s" className="h-full">

@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
-import { checkWhitelistStatus, withdrawWhitelist } from "../../services/whitelistApi";
+import { checkWhitelistStatus, withdrawWhitelistWithSignature } from "../../services/whitelistApi";
 import { withdrawUserApi } from "../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
 import { authenticateWithMetaMask } from "../../services/metamaskApi";
@@ -169,7 +169,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   };
 
   /**
-   * Genesis NFT Withdraw Handler (no signature required)
+   * Genesis NFT Withdraw Handler (MetaMask signature required)
    */
   const handleGenesisWithdraw = async () => {
     if (!walletAddress || isGenesisWithdrawing) return;
@@ -180,7 +180,15 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
 
     try {
       setIsGenesisWithdrawing(true);
-      await withdrawWhitelist(walletAddress.toLowerCase(), "", "", new Date().toISOString());
+      const connectedAddress = await connectWallet();
+      if (connectedAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+        toast.error(`Please connect the registered wallet (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}).`);
+        return;
+      }
+      await withdrawWhitelistWithSignature(
+        walletAddress.toLowerCase(),
+        (message) => signMessage(message, connectedAddress)
+      );
       refetchFounders();
       toast.success("Successfully withdrawn from Frontiers Whitelist.");
     } catch (err) {
