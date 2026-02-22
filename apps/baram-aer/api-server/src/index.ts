@@ -5,6 +5,7 @@ import { logger } from 'hono/logger';
 import { sql, initSchema } from './db.js';
 import { startSyncWorker, getSyncStatus } from './sync/aer-sync.js';
 import aerRoutes from './routes/aer.js';
+import type { Context, Next } from 'hono';
 
 const PORT = Number(process.env.PORT ?? 3201);
 const RPC_URL = process.env.SUI_RPC_URL ?? 'https://rpc.devnet.nasun.io';
@@ -12,6 +13,39 @@ const AER_PACKAGE_ID = process.env.AER_PACKAGE_ID;
 
 if (!AER_PACKAGE_ID) {
   throw new Error('AER_PACKAGE_ID environment variable is required');
+}
+
+// IP-based rate limiter
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 60;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+const rateLimitCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(ip);
+  }
+}, 60_000);
+if (typeof rateLimitCleanupTimer.unref === 'function') rateLimitCleanupTimer.unref();
+
+function rateLimitMiddleware() {
+  return async (c: Context, next: Next) => {
+    const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim()
+      || c.req.header('x-real-ip')
+      || 'unknown';
+
+    const now = Date.now();
+    const entry = rateLimitMap.get(ip);
+    if (!entry || now > entry.resetAt) {
+      rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    } else if (entry.count >= RATE_LIMIT_MAX) {
+      c.header('Retry-After', String(Math.ceil((entry.resetAt - now) / 1000)));
+      return c.json({ error: 'too_many_requests' }, 429);
+    } else {
+      entry.count++;
+    }
+    await next();
+  };
 }
 
 const app = new Hono();
@@ -29,6 +63,7 @@ app.use(
     maxAge: 3600,
   }),
 );
+app.use('/api/*', rateLimitMiddleware());
 
 // AER routes
 app.route('/api/v1/aer', aerRoutes);
@@ -60,7 +95,7 @@ app.notFound((c) => c.json({ error: 'not_found' }, 404));
 
 // Error handler
 app.onError((err, c) => {
-  console.error('Unhandled error:', err);
+  console.error('Unhandled error:', err instanceof Error ? err.message : String(err));
   return c.json({ error: 'internal_server_error' }, 500);
 });
 
