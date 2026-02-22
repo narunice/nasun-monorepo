@@ -16,8 +16,6 @@ import * as path from 'path';
 export interface FollowerStackProps extends cdk.StackProps {
   readonly twitterBearerToken: string;
   readonly targetAccounts: string; // JSON array of { userId, username }
-  readonly oauth2ClientId: string;
-  readonly oauth2ClientSecret: string;
   readonly twitterTokensSecretName: string;
 }
 
@@ -121,8 +119,6 @@ export class FollowerStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(1),
       memorySize: 256,
       environment: {
-        OAUTH2_CLIENT_ID: props.oauth2ClientId,
-        OAUTH2_CLIENT_SECRET: props.oauth2ClientSecret,
         TWITTER_TOKENS_SECRET_NAME: props.twitterTokensSecretName,
         NODE_OPTIONS: '--enable-source-maps',
       },
