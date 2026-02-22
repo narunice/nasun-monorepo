@@ -774,6 +774,12 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       const cursorParam = url.searchParams.get('cursor');
       const cursor = cursorParam ? parseInt(cursorParam, 10) : undefined;
 
+      if (pool && !/^0x[a-fA-F0-9]{64}$/.test(pool)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid pool address' }));
+        return;
+      }
+
       if (cursor !== undefined && (!Number.isFinite(cursor) || cursor < 0)) {
         res.writeHead(400, corsHeaders);
         res.end(JSON.stringify({ error: 'Invalid cursor' }));
