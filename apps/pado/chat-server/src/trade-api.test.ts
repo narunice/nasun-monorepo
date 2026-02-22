@@ -492,6 +492,36 @@ describe('Address validation regex', () => {
   });
 });
 
+// ===== Pool parameter validation (added for pool format check) =====
+
+describe('Pool parameter validation', () => {
+  const POOL_REGEX = /^0x[a-fA-F0-9]{64}$/;
+
+  it('accepts valid 66-char pool address', () => {
+    expect(POOL_REGEX.test(POOL_NBTC)).toBe(true);
+  });
+
+  it('rejects short pool address', () => {
+    expect(POOL_REGEX.test('0xabc')).toBe(false);
+  });
+
+  it('rejects pool without 0x prefix', () => {
+    expect(POOL_REGEX.test('a'.repeat(64))).toBe(false);
+  });
+
+  it('rejects non-hex characters in pool', () => {
+    expect(POOL_REGEX.test('0x' + 'g'.repeat(64))).toBe(false);
+  });
+
+  it('rejects overly long pool address', () => {
+    expect(POOL_REGEX.test('0x' + 'a'.repeat(65))).toBe(false);
+  });
+
+  it('accepts mixed case hex', () => {
+    expect(POOL_REGEX.test('0x' + 'aAbBcC01'.repeat(8))).toBe(true);
+  });
+});
+
 // ===== Cursor validation =====
 
 describe('Cursor parameter validation', () => {
