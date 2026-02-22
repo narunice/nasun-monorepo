@@ -28,16 +28,16 @@ source "$SCRIPT_DIR/_common.sh"
 CDK_DIR="$MONOREPO_ROOT/apps/nasun-website/cdk"
 
 # Lambda
-TOKEN_LAMBDA_NAME="nasun-refresh-oauth2-token"
-TOKEN_LOG_GROUP="/aws/lambda/nasun-refresh-oauth2-token"
+TOKEN_LAMBDA_NAME="nasun-follower-token-refresh"
+TOKEN_LOG_GROUP="/aws/lambda/nasun-follower-token-refresh"
 
 # Secrets Manager
 DEV_SECRET_NAME="nasun-twitter-tokens"
 PROD_SECRET_NAME="nasun-twitter-tokens-prod"
 
-# CloudWatch Alarms
-DEV_ALARM_NAMES=("NASUN-OAuth토큰-갱신실패" "nasun-oauth2-token-refresh-failure" "nasun-oauth2-invalid-refresh-token")
-PROD_ALARM_NAMES=("nasun-oauth2-token-refresh-failure" "nasun-oauth2-invalid-refresh-token")
+# CloudWatch Alarms (FollowerStack managed)
+DEV_ALARM_NAMES=("nasun-follower-token-refresh-error" "nasun-follower-token-not-refreshed-3h" "nasun-follower-token-refresh-dlq" "nasun-follower-invalid-refresh-token" "nasun-follower-secret-update-failure")
+PROD_ALARM_NAMES=("nasun-follower-token-refresh-error" "nasun-follower-token-not-refreshed-3h" "nasun-follower-token-refresh-dlq" "nasun-follower-invalid-refresh-token" "nasun-follower-secret-update-failure")
 
 # AWS Profiles
 DEV_PROFILE="default"
@@ -247,7 +247,7 @@ check_refresh_lambda() {
   fi
   log_success "[$env_name] Lambda '$TOKEN_LAMBDA_NAME' exists"
 
-  # Recent invocations (last 3 hours — should have at least 1 since it runs every 90 min)
+  # Recent invocations (last 3 hours — should have at least 2 since it runs every 70 min)
   local three_hours_ago
   three_hours_ago=$(date -u -d "3 hours ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -v-3H +"%Y-%m-%dT%H:%M:%SZ")
   local now
@@ -418,7 +418,8 @@ if [ "$ISSUES_FOUND" -gt 0 ]; then
   echo -e "${RED}║  Elapsed: ${CYAN}$(get_elapsed_time $START_TIME)${NC}"
   echo -e "${RED}║                                                            ║${NC}"
   echo -e "${RED}║  Fix: ${CYAN}cd apps/nasun-website/cdk${NC}"
-  echo -e "${RED}║       ${CYAN}npx tsx scripts/verify-oauth-token.ts --all${NC}"
+  echo -e "${RED}║       ${CYAN}npx tsx scripts/verify-oauth-token.ts --env=dev${NC}"
+  echo -e "${RED}║       ${CYAN}AWS_PROFILE=nasun-prod npx tsx scripts/verify-oauth-token.ts --env=prod${NC}"
   echo -e "${RED}║  Docs: ${CYAN}apps/nasun-website/cdk/docs/OAUTH2_TOKEN_MANAGEMENT.md${NC}"
   echo -e "${RED}╚════════════════════════════════════════════════════════════╝${NC}"
   exit 1
