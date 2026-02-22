@@ -5,6 +5,7 @@ import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
 import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
+import { getOAuthClientCredentials } from '../utils/secrets';
 
 /**
  * Sync profile data to leaderboard-v3-accounts table
@@ -105,20 +106,18 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       };
     }
 
-    // Get credentials from environment variables (not Secrets Manager)
+    // Get OAuth2 client credentials from Secrets Manager (cached across warm invocations)
+    const { clientId: TWITTER_CLIENT_ID, clientSecret: TWITTER_CLIENT_SECRET } = await getOAuthClientCredentials();
     const {
-      OAUTH2_CLIENT_ID: TWITTER_CLIENT_ID,
-      OAUTH2_CLIENT_SECRET: TWITTER_CLIENT_SECRET,
       SESSIONS_TABLE_NAME,
       USER_PROFILES_TABLE,
       COGNITO_IDENTITY_POOL_ID,
       COGNITO_DEVELOPER_PROVIDER_NAME,
     } = process.env;
 
-    if (!TWITTER_CLIENT_ID || !TWITTER_CLIENT_SECRET ||
-        !SESSIONS_TABLE_NAME || !USER_PROFILES_TABLE || !COGNITO_IDENTITY_POOL_ID ||
+    if (!SESSIONS_TABLE_NAME || !USER_PROFILES_TABLE || !COGNITO_IDENTITY_POOL_ID ||
         !COGNITO_DEVELOPER_PROVIDER_NAME) {
-      throw new Error('Missing required environment variables or secrets');
+      throw new Error('Missing required environment variables');
     }
 
     // Initialize services

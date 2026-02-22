@@ -33,6 +33,8 @@ export class AuthStack extends cdk.Stack {
     // Import from LeaderboardV3Stack CloudFormation export
     const leaderboardV3AccountsTableName = cdk.Fn.importValue('LeaderboardV3AccountsTableName');
 
+    const twitterTokensSecretName = process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens';
+
     // Common NodejsFunction options
     const lambdaSrcPath = path.join(__dirname, '..', 'lambda-src');
     const depsLockFilePath = path.join(__dirname, '..', 'pnpm-lock.yaml');
@@ -42,6 +44,7 @@ export class AuthStack extends cdk.Stack {
       externalModules: [
         '@aws-sdk/client-dynamodb',
         '@aws-sdk/lib-dynamodb',
+        '@aws-sdk/client-secrets-manager',
       ],
     };
 
@@ -55,13 +58,11 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
-        // Note: SECRET_NAME removed - user auth uses env vars only (separated from operator path)
         SESSIONS_TABLE_NAME: twitterSessionsTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
         COGNITO_DEVELOPER_PROVIDER_NAME: 'nasun.io',
-        OAUTH2_CLIENT_ID: process.env.OAUTH2_CLIENT_ID || "",
-        OAUTH2_CLIENT_SECRET: process.env.OAUTH2_CLIENT_SECRET || "",
+        TWITTER_TOKENS_SECRET_NAME: twitterTokensSecretName,
         // Leaderboard V3 profile sync (optional - fails gracefully if table doesn't exist)
         LEADERBOARD_V3_ACCOUNTS_TABLE: leaderboardV3AccountsTableName,
         // NFT event tasks table for secure X access token storage (backend proxy)
@@ -80,6 +81,17 @@ export class AuthStack extends cdk.Stack {
     props.userProfilesTable.grantReadWriteData(twitterLoginFunction);
     // Grant write access to NFT event tasks table for X access token storage
     nftEventTasksTable.grantWriteData(twitterLoginFunction);
+
+    // Grant Secrets Manager read access for OAuth2 client credentials
+    twitterLoginFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${twitterTokensSecretName}-*`,
+        ],
+      }),
+    );
 
     // Grant permissions to leaderboard-v3-accounts table (for profile sync)
     twitterLoginFunction.addToRolePolicy(new iam.PolicyStatement({

@@ -64,7 +64,8 @@ export const handler = async (
   } catch (error: any) {
     // Fallback to Bearer token (requires Basic tier)
     console.log('[COLLECT_FOLLOWERS] OAuth 2.0 not available, falling back to Bearer token');
-    twitterApi = TwitterApiService.withBearerToken(config.twitterBearerToken);
+    const bearerToken = await tokenManager.getBearerToken();
+    twitterApi = TwitterApiService.withBearerToken(bearerToken);
   }
 
   const followerStore = new FollowerStore(

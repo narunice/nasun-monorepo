@@ -14,7 +14,6 @@ import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as path from 'path';
 
 export interface FollowerStackProps extends cdk.StackProps {
-  readonly twitterBearerToken: string;
   readonly targetAccounts: string; // JSON array of { userId, username }
   readonly twitterTokensSecretName: string;
 }
@@ -64,6 +63,7 @@ export class FollowerStack extends cdk.Stack {
         externalModules: [
           '@aws-sdk/client-dynamodb',
           '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/client-secrets-manager',
         ],
       },
       timeout: cdk.Duration.minutes(10), // 10 minutes for large follower lists
@@ -71,7 +71,7 @@ export class FollowerStack extends cdk.Stack {
       environment: {
         TARGET_ACCOUNTS: props.targetAccounts,
         FOLLOWERS_TABLE_NAME: this.followersTable.tableName,
-        TWITTER_BEARER_TOKEN: props.twitterBearerToken,
+        TWITTER_TOKENS_SECRET_NAME: props.twitterTokensSecretName,
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
         NODE_OPTIONS: '--enable-source-maps',
       },
@@ -80,6 +80,17 @@ export class FollowerStack extends cdk.Stack {
 
     // Grant DynamoDB permissions
     this.followersTable.grantReadWriteData(this.collectFollowersFunction);
+
+    // Grant Secrets Manager read access for bearer token
+    this.collectFollowersFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${props.twitterTokensSecretName}-*`,
+        ],
+      }),
+    );
 
     // ========================================
     // EventBridge Rule: Daily Schedule (09:00 UTC)
