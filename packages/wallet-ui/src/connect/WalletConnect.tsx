@@ -136,7 +136,7 @@ export function WalletConnect({
       {/* Dropdown - Desktop: relative to button, Mobile: portal to body for proper stacking */}
       {s.showDropdown && !s.isMobile && (
         <div
-          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute ${s.status === "locked" ? WALLET_STYLES.dropdownCompact : WALLET_STYLES.dropdownDesktop} overflow-hidden ${
+          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute ${s.status === "locked" ? WALLET_STYLES.dropdownCompact : WALLET_STYLES.dropdownDesktop} max-h-[85vh] overflow-y-auto overflow-x-hidden ${
             dropdownAlign === "left"
               ? "left-0"
               : dropdownAlign === "center"
