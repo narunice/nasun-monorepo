@@ -77,7 +77,7 @@ const poolConfigMap = new Map(
 
 // ===== HTTP Helpers =====
 
-const API_TIMEOUT_MS = 3000;
+const API_TIMEOUT_MS = 5000;
 
 async function apiFetch<T>(path: string): Promise<T> {
   const baseUrl = NETWORK_CONFIG.chatHttpUrl;
