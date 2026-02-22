@@ -107,10 +107,10 @@ export function MiniPortfolioWidget() {
                 <span className="text-theme-text-secondary font-medium">{token.symbol}</span>
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-theme-text-muted">{token.balance}</span>
-                  <span className="font-mono text-theme-text-secondary w-20 text-right">
+                  <span className="font-mono text-theme-text-secondary min-w-20 text-right">
                     ${token.value.toFixed(2)}
                   </span>
-                  <span className={`font-mono w-14 text-right ${token.pnl24h >= 0 ? 'text-trading-bid' : 'text-trading-ask'}`}>
+                  <span className={`font-mono min-w-14 text-right ${token.pnl24h >= 0 ? 'text-trading-bid' : 'text-trading-ask'}`}>
                     {token.pnl24h >= 0 ? '+' : ''}{token.pnl24h.toFixed(2)}
                   </span>
                 </div>

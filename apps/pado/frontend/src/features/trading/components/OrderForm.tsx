@@ -79,7 +79,7 @@ export function OrderForm({
   onScaleOrder,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
-  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice, trailValue, setTrailValue, trailMode, setTrailMode, ocoEnabled, setOcoEnabled } = useOrderForm();
+  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice, trailValue, setTrailValue, trailMode, setTrailMode, ocoEnabled, setOcoEnabled, setFocusedPriceField } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
@@ -466,6 +466,7 @@ export function OrderForm({
               placeholder="Trigger price"
               value={stopPrice}
               onChange={(e) => setStopPrice(e.target.value)}
+              onFocus={() => setFocusedPriceField('stopPrice')}
               step={minPrice}
               className="px-3 py-2 text-sm xl:text-base"
             />
@@ -505,6 +506,7 @@ export function OrderForm({
               placeholder="0.00"
               value={price}
               onChange={(e) => onPriceChange(e.target.value)}
+              onFocus={() => setFocusedPriceField('price')}
               step={minPrice}
               className={`px-3 py-2 text-sm xl:text-base ${
                 effectivePrice > 0 && !priceValidation.valid

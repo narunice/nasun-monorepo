@@ -81,6 +81,10 @@ export interface OrderFormContextType {
   openConfirmModal: (type: 'buy' | 'sell') => void;
   closeConfirmModal: () => void;
 
+  // Focused price field (for orderbook click routing)
+  focusedPriceField: 'price' | 'stopPrice' | null;
+  setFocusedPriceField: (field: 'price' | 'stopPrice' | null) => void;
+
   // 유틸리티
   resetForm: () => void;
 }
@@ -152,6 +156,9 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
   // OCO state
   const [ocoEnabled, setOcoEnabled] = useState(false);
 
+  // Focused price field (for orderbook click routing in stop-limit mode)
+  const [focusedPriceField, setFocusedPriceField] = useState<'price' | 'stopPrice' | null>(null);
+
   // OrderType 변환
   const getOrderType = useCallback((): OrderType => {
     return EXECUTION_OPTION_MAP[executionOption];
@@ -217,6 +224,8 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         setTrailMode,
         ocoEnabled,
         setOcoEnabled,
+        focusedPriceField,
+        setFocusedPriceField,
         isConfirmModalOpen,
         pendingOrderType,
         openConfirmModal,

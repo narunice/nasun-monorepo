@@ -6,7 +6,7 @@
 
 import { useMarket, type MarketKey } from '../context/MarketContext';
 import { useFavoriteMarkets } from '../hooks/useFavoriteMarkets';
-import { TokenIcon } from './MarketSelector';
+import { TokenIcon } from '@/components/common';
 
 export function FavoriteStrip() {
   const { currentMarket, setMarket, markets } = useMarket();
@@ -41,8 +41,8 @@ export function FavoriteStrip() {
             }`}
           >
             <div className="flex -space-x-1.5">
-              <TokenIcon symbol={market.pool.baseToken.symbol} />
-              <TokenIcon symbol={market.pool.quoteToken.symbol} />
+              <TokenIcon symbol={market.pool.baseToken.symbol} className="relative z-10 border-2 border-theme-bg-primary" />
+              <TokenIcon symbol={market.pool.quoteToken.symbol} className="border-2 border-theme-bg-primary" />
             </div>
             <span>{market.label}</span>
           </button>

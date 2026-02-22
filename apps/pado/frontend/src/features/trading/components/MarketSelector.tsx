@@ -6,6 +6,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useMarket, type MarketKey } from '../context/MarketContext';
 import { useFavoriteMarkets } from '../hooks/useFavoriteMarkets';
+import { TokenIcon } from '@/components/common';
 
 export function MarketSelector() {
   const { currentMarket, setMarket, markets, getMarketLabel } = useMarket();
@@ -72,10 +73,10 @@ export function MarketSelector() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2 bg-theme-bg-tertiary hover:bg-theme-bg-secondary rounded-lg transition-colors"
       >
-        {/* 토큰 아이콘 */}
+        {/* 토큰 아이콘 — base token in front */}
         <div className="flex -space-x-2">
-          <TokenIcon symbol={currentMarketData?.pool.baseToken.symbol ?? ''} />
-          <TokenIcon symbol={currentMarketData?.pool.quoteToken.symbol ?? ''} />
+          <TokenIcon symbol={currentMarketData?.pool.baseToken.symbol ?? ''} className="relative z-10 border-2 border-theme-bg-tertiary" />
+          <TokenIcon symbol={currentMarketData?.pool.quoteToken.symbol ?? ''} className="border-2 border-theme-bg-tertiary" />
         </div>
 
         {/* 마켓 라벨 */}
@@ -128,10 +129,10 @@ export function MarketSelector() {
                   {favorites.includes(market.key) ? '\u2605' : '\u2606'}
                 </span>
 
-                {/* Token icons */}
+                {/* Token icons — base token in front */}
                 <div className="flex -space-x-2">
-                  <TokenIcon symbol={market.pool.baseToken.symbol} />
-                  <TokenIcon symbol={market.pool.quoteToken.symbol} />
+                  <TokenIcon symbol={market.pool.baseToken.symbol} className="relative z-10 border-2 border-theme-bg-secondary" />
+                  <TokenIcon symbol={market.pool.quoteToken.symbol} className="border-2 border-theme-bg-secondary" />
                 </div>
 
                 {/* Market info */}
@@ -161,22 +162,3 @@ export function MarketSelector() {
   );
 }
 
-// 토큰 아이콘 컴포넌트
-export function TokenIcon({ symbol }: { symbol: string }) {
-  // 토큰별 배경색
-  const bgColors: Record<string, string> = {
-    NBTC: 'bg-orange-500',
-    NUSDC: 'bg-pd2',
-    NSN: 'bg-purple-500',
-    NETH: 'bg-blue-500',
-    NSOL: 'bg-emerald-500',
-  };
-
-  return (
-    <div
-      className={`w-6 h-6 rounded-full ${bgColors[symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center text-xs xl:text-sm font-bold text-white border-2 border-theme-bg-primary`}
-    >
-      {symbol.charAt(0)}
-    </div>
-  );
-}

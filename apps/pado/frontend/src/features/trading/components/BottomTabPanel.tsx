@@ -118,8 +118,11 @@ function TradeHistoryTab() {
 }
 
 // TP/SL Tab - shows active and triggered TP/SL orders
+const TPSL_HISTORY_PAGE_SIZE = 20;
+
 function TPSLTab() {
   const [orders, setOrders] = useState<TPSLOrder[]>(() => getTPSLOrders());
+  const [historyVisible, setHistoryVisible] = useState(TPSL_HISTORY_PAGE_SIZE);
 
   const refresh = () => setOrders(getTPSLOrders());
 
@@ -135,6 +138,7 @@ function TPSLTab() {
 
   const handleClearHistory = () => {
     clearTPSLHistory();
+    setHistoryVisible(TPSL_HISTORY_PAGE_SIZE);
     refresh();
   };
 
@@ -156,35 +160,88 @@ function TPSLTab() {
     }
   };
 
+  const typeLabel = (type: TPSLOrder['triggerType']) => {
+    switch (type) {
+      case 'tp': return 'TP';
+      case 'stop-limit': return 'S-L';
+      case 'trailing-stop': return 'Trail';
+      default: return 'SL';
+    }
+  };
+
+  const typeColor = (type: TPSLOrder['triggerType'], dim = false) => {
+    const opacity = dim ? '/60' : '';
+    switch (type) {
+      case 'tp': return `text-green-400${opacity}`;
+      case 'stop-limit': return `text-amber-400${opacity}`;
+      case 'trailing-stop': return `text-purple-400${opacity}`;
+      default: return `text-red-400${opacity}`;
+    }
+  };
+
+  const typeBadgeColor = (type: TPSLOrder['triggerType']) => {
+    switch (type) {
+      case 'tp': return 'bg-green-600/20 text-green-400';
+      case 'stop-limit': return 'bg-amber-600/20 text-amber-400';
+      case 'trailing-stop': return 'bg-purple-600/20 text-purple-400';
+      default: return 'bg-red-600/20 text-red-400';
+    }
+  };
+
+  // Render trigger info based on order type
+  const renderTrigger = (order: TPSLOrder) => {
+    if (order.triggerType === 'trailing-stop') {
+      const trailLabel = order.trailPercent
+        ? `Trail ${order.trailPercent}%`
+        : order.trailAmount
+          ? `Trail ${formatPrice(order.trailAmount)}`
+          : formatPrice(order.triggerPrice);
+      return (
+        <div className="text-right font-mono">
+          <div>{trailLabel}</div>
+          {order.highWaterMark ? (
+            <div className="text-theme-text-muted text-[10px]">HWM {formatPrice(order.highWaterMark)}</div>
+          ) : null}
+        </div>
+      );
+    }
+    if (order.triggerType === 'stop-limit') {
+      return (
+        <div className="text-right font-mono">
+          <div>{formatPrice(order.triggerPrice)}</div>
+          {order.limitPrice ? (
+            <div className="text-theme-text-muted text-[10px]">Limit {formatPrice(order.limitPrice)}</div>
+          ) : null}
+        </div>
+      );
+    }
+    return <span className="text-right font-mono">{formatPrice(order.triggerPrice)}</span>;
+  };
+
   return (
     <div className="min-h-[180px]">
       {/* Active TP/SL Orders */}
       {activeOrders.length > 0 ? (
         <>
-          <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-6 gap-2 mb-2 pb-1 border-b border-theme-border">
+          <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 xl:grid-cols-6 gap-2 mb-2 pb-1 border-b border-theme-border">
             <span>Type</span>
             <span>Side</span>
             <span className="text-right">Trigger</span>
             <span className="text-right">Qty</span>
-            <span className="text-right">Created</span>
+            <span className="text-right hidden xl:block">Created</span>
             <span className="text-right">Action</span>
           </div>
           {activeOrders.map((order) => (
-            <div key={order.id} className="grid grid-cols-6 gap-2 py-1 text-trading-sm xl:text-trading-lg items-center">
-              <span className={order.triggerType === 'tp' ? 'text-green-400 font-medium' : order.triggerType === 'stop-limit' ? 'text-amber-400 font-medium' : 'text-red-400 font-medium'}>
-                {order.triggerType === 'tp' ? 'TP' : order.triggerType === 'stop-limit' ? 'S-L' : 'SL'}
+            <div key={order.id} className="grid grid-cols-5 xl:grid-cols-6 gap-2 py-1 text-trading-sm xl:text-trading-lg items-center">
+              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] xl:text-xs font-medium ${typeBadgeColor(order.triggerType)}`}>
+                {typeLabel(order.triggerType)}
               </span>
               <span className={order.side === 'buy' ? 'text-green-400' : 'text-red-400'}>
                 {order.side === 'buy' ? 'Buy' : 'Sell'}
               </span>
-              <span className="text-right font-mono" title={order.triggerType === 'stop-limit' && order.limitPrice ? `Limit: ${formatPrice(order.limitPrice)}` : undefined}>
-                {formatPrice(order.triggerPrice)}
-                {order.triggerType === 'stop-limit' && order.limitPrice ? (
-                  <span className="text-theme-text-muted text-[10px] ml-0.5">→{formatPrice(order.limitPrice)}</span>
-                ) : null}
-              </span>
+              {renderTrigger(order)}
               <span className="text-right font-mono">{order.quantity.toFixed(4)}</span>
-              <span className="text-right text-theme-text-muted text-[10px]">{formatTime(order.createdAt)}</span>
+              <span className="text-right text-theme-text-muted text-[10px] hidden xl:block">{formatTime(order.createdAt)}</span>
               <div className="text-right">
                 <button
                   onClick={() => handleCancel(order.id)}
@@ -215,10 +272,10 @@ function TPSLTab() {
               Clear
             </button>
           </div>
-          {historyOrders.slice(0, 10).map((order) => (
+          {historyOrders.slice(0, historyVisible).map((order) => (
             <div key={order.id} className="grid grid-cols-6 gap-2 py-0.5 text-[10px] xl:text-xs text-theme-text-muted items-center">
-              <span className={order.triggerType === 'tp' ? 'text-green-400/60' : order.triggerType === 'stop-limit' ? 'text-amber-400/60' : 'text-red-400/60'}>
-                {order.triggerType === 'tp' ? 'TP' : order.triggerType === 'stop-limit' ? 'S-L' : 'SL'}
+              <span className={typeColor(order.triggerType, true)}>
+                {typeLabel(order.triggerType)}
               </span>
               <span>{order.side === 'buy' ? 'Buy' : 'Sell'}</span>
               <span className="text-right font-mono">{formatPrice(order.triggerPrice)}</span>
@@ -236,6 +293,16 @@ function TPSLTab() {
               </div>
             </div>
           ))}
+          {historyOrders.length > historyVisible && (
+            <div className="flex justify-center pt-1">
+              <button
+                onClick={() => setHistoryVisible((v) => v + TPSL_HISTORY_PAGE_SIZE)}
+                className="text-[10px] xl:text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+              >
+                Show {Math.min(TPSL_HISTORY_PAGE_SIZE, historyOrders.length - historyVisible)} more
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

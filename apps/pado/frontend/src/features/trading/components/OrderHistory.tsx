@@ -3,12 +3,21 @@
  * Displays personal order history (limit + market orders with lifecycle status)
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useMarket } from '../context/MarketContext';
 import { useOrderActions } from '../hooks';
 import { useOrderHistory } from '../hooks/useOrderHistory';
 import { SkeletonTable } from '@/components/common';
+
+type SideFilter = 'all' | 'buy' | 'sell';
+type PeriodFilter = 'all' | '24h' | '7d';
+
+const PERIOD_MS: Record<PeriodFilter, number> = {
+  all: 0,
+  '24h': 24 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000,
+};
 
 const PAGE_SIZE = 10;
 
@@ -51,6 +60,22 @@ export function OrderHistory() {
   const { data: orders, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useOrderHistory(balanceManagerId, senderAddress);
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [sideFilter, setSideFilter] = useState<SideFilter>('all');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+
+  // Apply filters
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+    let result = orders;
+    if (sideFilter !== 'all') {
+      result = result.filter(o => sideFilter === 'buy' ? o.isBid : !o.isBid);
+    }
+    if (periodFilter !== 'all') {
+      const cutoff = Date.now() - PERIOD_MS[periodFilter];
+      result = result.filter(o => o.timestamp >= cutoff);
+    }
+    return result;
+  }, [orders, sideFilter, periodFilter]);
 
   if (!isConnected) {
     return (
@@ -85,13 +110,48 @@ export function OrderHistory() {
     );
   }
 
-  const visibleOrders = orders.slice(0, visibleCount);
-  const remainingCount = orders.length - visibleCount;
+  const visibleOrders = filteredOrders.slice(0, visibleCount);
+  const remainingCount = filteredOrders.length - visibleCount;
   const canShowMore = remainingCount > 0;
   const canShowLess = visibleCount > PAGE_SIZE;
 
   return (
     <div>
+      {/* Filters */}
+      <div className="flex items-center gap-1 pb-1">
+        {/* Side filter */}
+        {(['all', 'buy', 'sell'] as SideFilter[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => { setSideFilter(f); setVisibleCount(PAGE_SIZE); }}
+            className={`px-2 py-0.5 text-[10px] xl:text-xs rounded transition-colors ${
+              sideFilter === f
+                ? f === 'buy' ? 'bg-green-500/15 text-green-400 font-medium'
+                  : f === 'sell' ? 'bg-red-500/15 text-red-400 font-medium'
+                  : 'bg-theme-bg-tertiary text-theme-text-primary font-medium'
+                : 'text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary'
+            }`}
+          >
+            {f === 'all' ? 'All' : f === 'buy' ? 'Buy' : 'Sell'}
+          </button>
+        ))}
+        <span className="w-px h-3 bg-theme-border mx-0.5" />
+        {/* Period filter */}
+        {(['all', '24h', '7d'] as PeriodFilter[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => { setPeriodFilter(f); setVisibleCount(PAGE_SIZE); }}
+            className={`px-2 py-0.5 text-[10px] xl:text-xs rounded transition-colors ${
+              periodFilter === f
+                ? 'bg-theme-bg-tertiary text-theme-text-primary font-medium'
+                : 'text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary'
+            }`}
+          >
+            {f === 'all' ? 'All' : f.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
       <table className="w-full text-xs xl:text-sm">
         <thead className="text-theme-text-secondary">
           <tr>
@@ -154,7 +214,7 @@ export function OrderHistory() {
         <div className="flex justify-center gap-3 pt-2">
           {canShowMore && (
             <button
-              onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, orders.length))}
+              onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredOrders.length))}
               className="text-xs xl:text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors"
             >
               Show {Math.min(PAGE_SIZE, remainingCount)} more
@@ -175,7 +235,7 @@ export function OrderHistory() {
       {!canShowMore && hasNextPage && (
         <div className="flex justify-center pt-2 pb-1">
           <button
-            onClick={() => fetchNextPage()}
+            onClick={() => fetchNextPage?.()}
             disabled={isFetchingNextPage}
             className="text-xs xl:text-sm text-pd1 dark:text-pd3 hover:underline disabled:opacity-50 transition-colors"
           >

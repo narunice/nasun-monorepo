@@ -7,14 +7,7 @@
 
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTotalValue, type TokenValue } from '../../portfolio/hooks';
-
-const TOKEN_COLORS: Record<string, string> = {
-  NBTC: 'bg-orange-500',
-  NUSDC: 'bg-pd2',
-  NSN: 'bg-purple-500',
-  NETH: 'bg-blue-400',
-  NSOL: 'bg-green-400',
-};
+import { TokenIcon } from '@/components/common';
 
 function formatCompactBalance(token: TokenValue): string {
   const num = parseFloat(token.balance.replace(/,/g, ''));
@@ -50,9 +43,7 @@ export function MobileTokenPills() {
           key={token.symbol}
           className="flex items-center gap-1.5 px-2.5 py-1.5 bg-theme-bg-secondary rounded-full whitespace-nowrap shrink-0"
         >
-          <div className={`w-4 h-4 rounded-full ${TOKEN_COLORS[token.symbol] ?? 'bg-theme-bg-tertiary'} flex items-center justify-center`}>
-            <span className="text-[8px] font-bold text-white">{token.symbol.charAt(0)}</span>
-          </div>
+          <TokenIcon symbol={token.symbol} size="xs" />
           <span className="text-xs font-medium text-theme-text-primary">{token.symbol}</span>
           <span className="text-xs text-theme-text-muted font-mono">{formatCompactBalance(token)}</span>
         </div>

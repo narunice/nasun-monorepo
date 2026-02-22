@@ -19,6 +19,7 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useUnifiedBalance, formatTokenBreakdown } from './useUnifiedBalance';
 import { formatUsdValue, formatPercentage } from '../../../lib/prices';
 import type { TokenSymbol } from '../../../lib/prices';
+import { TokenIcon } from '@/components/common';
 
 interface UnifiedBalanceCardProps {
   /** Show compact view (header) vs full view (wallet page) */
@@ -277,7 +278,7 @@ export function UnifiedBalanceCard({
                   className="flex items-center justify-between py-2 border-b border-theme-border last:border-0"
                 >
                   <div className="flex items-center gap-3">
-                    <TokenIcon symbol={symbol} />
+                    <TokenIcon symbol={symbol} size="md" gradient />
                     <div>
                       <div className="font-medium text-theme-text-primary">
                         {symbol}
@@ -321,23 +322,3 @@ export function UnifiedBalanceCard({
   );
 }
 
-/**
- * Simple token icon component
- */
-function TokenIcon({ symbol }: { symbol: TokenSymbol }) {
-  const colors: Record<TokenSymbol, string> = {
-    NSN: 'bg-gradient-to-br from-pd4 to-pd2',
-    NBTC: 'bg-gradient-to-br from-orange-400 to-yellow-500',
-    NUSDC: 'bg-gradient-to-br from-pd3 to-pd1',
-    NETH: 'bg-gradient-to-br from-indigo-400 to-blue-600',
-    NSOL: 'bg-gradient-to-br from-emerald-400 to-teal-600',
-  };
-
-  return (
-    <div
-      className={`w-8 h-8 rounded-full ${colors[symbol]} flex items-center justify-center text-white text-xs font-bold`}
-    >
-      {symbol.charAt(0)}
-    </div>
-  );
-}
