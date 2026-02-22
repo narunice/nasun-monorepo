@@ -1,9 +1,17 @@
 import { SuiClient } from '@mysten/sui/client';
-import type { LeaderboardConfig, OrderFilledParsedJson, TradeFillData } from './leaderboard-types.js';
+import type {
+  LeaderboardConfig,
+  OrderFilledParsedJson,
+  OrderPlacedParsedJson,
+  OrderCanceledParsedJson,
+  TradeFillData,
+  OrderEventType,
+} from './leaderboard-types.js';
 import {
   getIndexerState, setIndexerState,
   getBalanceManagerOwner, setBalanceManagerOwner,
   insertTradeFill,
+  insertOrderEvent,
 } from './leaderboard-store.js';
 import { getPoolSymbol, getPoolBaseDecimals } from './rooms.js';
 
@@ -154,6 +162,8 @@ async function pollOrderFilled(): Promise<number> {
           pool_id: json.pool_id,
           maker_address: makerAddress,
           taker_address: takerAddress,
+          maker_order_id: json.maker_order_id || null,
+          taker_order_id: json.taker_order_id || null,
           price: json.price,
           base_quantity: json.base_quantity,
           quote_quantity: json.quote_quantity,
@@ -221,15 +231,133 @@ async function pollOrderFilled(): Promise<number> {
   return totalIndexed;
 }
 
+// ===== OrderPlaced + OrderCanceled Event Polling =====
+
+interface OrderEventSource {
+  eventType: string;
+  cursorKey: string;
+  label: OrderEventType;
+}
+
+/**
+ * Poll OrderPlaced and OrderCanceled events.
+ * Uses a single interleaved cursor approach: poll both event types sequentially.
+ */
+async function pollOrderEvents(): Promise<number> {
+  if (!client || !config) return 0;
+
+  const sources: OrderEventSource[] = [
+    {
+      eventType: `${config.deepbookPackage}::order_info::OrderPlaced`,
+      cursorKey: 'order_placed_cursor',
+      label: 'placed',
+    },
+    {
+      eventType: `${config.deepbookPackage}::order::OrderCanceled`,
+      cursorKey: 'order_canceled_cursor',
+      label: 'canceled',
+    },
+  ];
+
+  let totalIndexed = 0;
+
+  for (const source of sources) {
+    if (!running) break;
+
+    const savedCursor = getIndexerState(source.cursorKey);
+    let cursor = null;
+    if (savedCursor) {
+      try {
+        cursor = JSON.parse(savedCursor);
+      } catch {
+        setIndexerState(source.cursorKey, '');
+      }
+    }
+
+    let currentCursor = cursor;
+    let hasMore = true;
+
+    while (hasMore && running) {
+      try {
+        const result = await client.queryEvents({
+          query: { MoveEventType: source.eventType },
+          cursor: currentCursor,
+          limit: 50,
+          order: 'ascending',
+        });
+
+        if (result.data.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        for (const event of result.data) {
+          const json = event.parsedJson as (OrderPlacedParsedJson | OrderCanceledParsedJson) | undefined;
+          if (!json) continue;
+
+          const bmId = json.balance_manager_id;
+          const ownerAddress = await resolveBalanceManager(bmId);
+          if (!ownerAddress) {
+            console.warn(`[Indexer] Skipping ${source.label} event (unresolvable BM): ${bmId.slice(0, 12)}`);
+            continue;
+          }
+
+          const eventSeq = event.id?.eventSeq ?? '0';
+          const txDigest = event.id?.txDigest ?? '';
+
+          // For OrderPlaced, quantity field is placed_quantity; for OrderCanceled, base_quantity
+          const quantity = source.label === 'placed'
+            ? (json as OrderPlacedParsedJson).placed_quantity || '0'
+            : (json as OrderCanceledParsedJson).base_quantity || '0';
+
+          insertOrderEvent({
+            tx_digest: txDigest,
+            event_seq: eventSeq,
+            event_type: source.label,
+            pool_id: json.pool_id,
+            balance_manager_id: bmId,
+            owner_address: ownerAddress,
+            order_id: String(json.order_id),
+            price: json.price,
+            quantity,
+            is_bid: json.is_bid ? 1 : 0,
+            timestamp_ms: Number(event.timestampMs) || Date.now(),
+          });
+
+          totalIndexed++;
+        }
+
+        // Save cursor after processing this page
+        if (result.nextCursor) {
+          currentCursor = result.nextCursor;
+          setIndexerState(source.cursorKey, JSON.stringify(currentCursor));
+        }
+
+        hasMore = result.hasNextPage;
+
+        if (hasMore) {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+      } catch (err) {
+        console.error(`[Indexer] Poll ${source.label} error:`, (err as Error).message);
+        hasMore = false;
+      }
+    }
+  }
+
+  return totalIndexed;
+}
+
 // ===== Lifecycle =====
 
 function schedulePoll(): void {
   if (!running || !config) return;
 
   pollTimer = setTimeout(async () => {
-    const indexed = await pollOrderFilled();
-    if (indexed > 0) {
-      console.log(`[Indexer] Indexed ${indexed} fills`);
+    const fillCount = await pollOrderFilled();
+    const orderCount = await pollOrderEvents();
+    if (fillCount > 0 || orderCount > 0) {
+      console.log(`[Indexer] Indexed ${fillCount} fills, ${orderCount} order events`);
       setIndexerState('last_indexed_at', String(Date.now()));
     }
     schedulePoll();
@@ -246,9 +374,9 @@ export function startIndexer(cfg: LeaderboardConfig, largeTrade?: LargeTradeOpti
   console.log(`[Indexer] DeepBook package: ${cfg.deepbookPackage.slice(0, 16)}...`);
 
   // Initial poll immediately, then schedule
-  pollOrderFilled().then((indexed) => {
-    if (indexed > 0) {
-      console.log(`[Indexer] Initial poll indexed ${indexed} fills`);
+  Promise.all([pollOrderFilled(), pollOrderEvents()]).then(([fills, orders]) => {
+    if (fills > 0 || orders > 0) {
+      console.log(`[Indexer] Initial poll indexed ${fills} fills, ${orders} order events`);
       setIndexerState('last_indexed_at', String(Date.now()));
     }
     schedulePoll();

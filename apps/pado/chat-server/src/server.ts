@@ -24,6 +24,7 @@ import {
   getCompetitionResults,
   getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
   getTraderFillsByAddress, computeCostBasis,
+  getOrderEventsByAddress,
 } from './leaderboard-store.js';
 import { getPoolBaseDecimals } from './rooms.js';
 import { startIndexer, stopIndexer } from './indexer.js';
@@ -834,6 +835,72 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       }));
     } catch (err) {
       console.error('[CostBasis] API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // Rate limit order history API
+  if (url.pathname.startsWith('/api/orders')) {
+    const clientIp = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      || 'unknown';
+    if (!checkApiRateLimit(clientIp)) {
+      res.writeHead(429, corsHeaders);
+      res.end(JSON.stringify({ error: 'Too many requests' }));
+      return;
+    }
+  }
+
+  // GET /api/orders/:address - order events + fills for order history
+  const ordersMatch = url.pathname.match(/^\/api\/orders\/(0x[a-fA-F0-9]{64})$/);
+  if (ordersMatch && req.method === 'GET') {
+    try {
+      const address = ordersMatch[1];
+      const pool = url.searchParams.get('pool') || undefined;
+      const parsedLimit = parseInt(url.searchParams.get('limit') || '100', 10);
+      const limit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 100, 1), 200);
+      const cursorParam = url.searchParams.get('cursor');
+      const cursor = cursorParam ? parseInt(cursorParam, 10) : undefined;
+
+      if (pool && !/^0x[a-fA-F0-9]{64}$/.test(pool)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid pool address' }));
+        return;
+      }
+
+      if (cursor !== undefined && (!Number.isFinite(cursor) || cursor < 0)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid cursor' }));
+        return;
+      }
+
+      // Fetch order events (placed + canceled)
+      const { events, nextCursor, hasMore } = getOrderEventsByAddress(address, { pool, limit, cursor });
+
+      // Fetch recent fills for this address+pool to allow frontend to compute executed quantities
+      const { fills } = getTraderFillsByAddress(address, { pool, limit: 200 });
+
+      // Serialize fills with role info
+      const fillsWithRole = fills.map(f => ({
+        tx_digest: f.tx_digest,
+        event_seq: f.event_seq,
+        pool_id: f.pool_id,
+        maker_order_id: f.maker_order_id ?? null,
+        taker_order_id: f.taker_order_id ?? null,
+        price: f.price,
+        base_quantity: f.base_quantity,
+        quote_quantity: f.quote_quantity,
+        taker_is_bid: f.taker_is_bid,
+        timestamp_ms: f.timestamp_ms,
+        is_maker: f.maker_address === address,
+        is_taker: f.taker_address === address,
+      }));
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ events, fills: fillsWithRole, nextCursor, hasMore }));
+    } catch (err) {
+      console.error('[Orders] API error:', (err as Error).message);
       res.writeHead(500, corsHeaders);
       res.end(JSON.stringify({ error: 'Internal server error' }));
     }

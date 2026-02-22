@@ -65,7 +65,14 @@ let tmpDir: string;
 
 beforeAll(() => {
   tmpDir = mkdtempSync(join(tmpdir(), 'pado-test-'));
-  initLeaderboardStore({ leaderboardDbPath: join(tmpDir, 'test.db') });
+  initLeaderboardStore({
+    leaderboardDbPath: join(tmpDir, 'test.db'),
+    deepbookPackage: '0x0',
+    rpcUrl: 'http://localhost',
+    indexerPollIntervalMs: 5000,
+    aggregationIntervalMs: 30000,
+    excludedAddresses: new Set(),
+  });
 });
 
 afterAll(() => {
