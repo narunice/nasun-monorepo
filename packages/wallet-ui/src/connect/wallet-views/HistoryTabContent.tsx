@@ -13,7 +13,7 @@ export function HistoryTabContent({
   setSendRecipient: (addr: string | undefined) => void;
 }) {
   return (
-    <div className="max-h-[280px] overflow-y-auto overflow-x-hidden mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-t-lg nasun-thin-scroll">
+    <div className="overflow-x-hidden mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-t-lg nasun-thin-scroll">
       <TransactionHistoryPanel
         hideHeader
         limit={10}

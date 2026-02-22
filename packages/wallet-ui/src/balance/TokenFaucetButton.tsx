@@ -70,9 +70,12 @@ export function TokenFaucetButton({
       onError?.(err instanceof Error ? err : new Error('Unknown error'));
     }
 
+    // Immediately refresh cooldown text (avoid waiting for 60s poll)
+    setCooldownText(getCooldownFormatted(symbol));
+
     // Auto-hide message after 5s
     setTimeout(() => setMessage(null), 5000);
-  }, [disabled, requestFaucet, symbol, onSuccess, onError]);
+  }, [disabled, requestFaucet, symbol, onSuccess, onError, getCooldownFormatted]);
 
   // Tooltip message for when NSN is needed
   const nsnRequiredMessage = `NSN tokens are required for gas fees. Please get NSN first before requesting ${symbol}.`;

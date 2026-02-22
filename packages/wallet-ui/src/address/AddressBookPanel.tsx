@@ -236,7 +236,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
       )}
 
       {/* Address List */}
-      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+      <div className="space-y-2">
         {sortedEntries.length === 0 ? (
           <div className="text-center py-8">
             <svg
