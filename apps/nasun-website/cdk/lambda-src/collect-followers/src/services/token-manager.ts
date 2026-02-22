@@ -100,26 +100,8 @@ export class TokenManager {
       console.log(`[TOKEN_MANAGER] ✅ Tokens loaded successfully`);
       return tokens;
     } catch (error) {
-      console.error(`[TOKEN_MANAGER] ❌ Failed to get tokens:`, error);
-
-      // Fallback to environment variables
-      console.log(`[TOKEN_MANAGER] 🔄 Falling back to environment variables`);
-      return this.getFallbackTokens();
+      console.error(`[TOKEN_MANAGER] Failed to get tokens from Secrets Manager:`, error);
+      throw new Error('Secrets Manager unavailable. Check IAM permissions and secret name.');
     }
-  }
-
-  /**
-   * Fallback to environment variables
-   */
-  private getFallbackTokens(): TwitterTokens {
-    return {
-      bearerToken: process.env.TWITTER_BEARER_TOKEN || '',
-      oauth2: {
-        clientId: process.env.OAUTH2_CLIENT_ID || '',
-        clientSecret: process.env.OAUTH2_CLIENT_SECRET || '',
-        userAccessToken: process.env.OAUTH2_USER_ACCESS_TOKEN,
-        refreshToken: process.env.OAUTH2_REFRESH_TOKEN,
-      },
-    };
   }
 }
