@@ -88,25 +88,6 @@ const ENV_MAPPINGS: Record<string, Record<string, () => string>> = {
     VITE_NSA_PACKAGE_ID: () => config.nsa?.packageId || '',
   },
 
-  'apps/baram': {
-    VITE_SUI_RPC_URL: () => config.network.rpcUrl,
-    VITE_FAUCET_URL: () => config.network.faucetUrl,
-    VITE_CHAIN_ID: () => config.network.chainId,
-
-    // Baram contracts
-    VITE_BARAM_PACKAGE_ID: () => config.baram.packageId,
-    VITE_BARAM_REGISTRY_ID: () => config.baram.registry,
-    VITE_BARAM_UPGRADE_CAP: () => config.baram.upgradeCap,
-
-    // Executor
-    VITE_EXECUTOR_PACKAGE_ID: () => config.baram.executorPackageId,
-    VITE_EXECUTOR_REGISTRY_ID: () => config.baram.executorRegistry,
-    VITE_EXECUTOR_ADMIN_CAP: () => config.baram.executorAdminCap,
-
-    // Shared NUSDC from devnet-tokens
-    VITE_NUSDC_TYPE: () => `${config.tokens.packageId}::nusdc::NUSDC`,
-  },
-
   'apps/nasun-website': {
     VITE_RPC_URL: () => config.network.rpcUrl,
     VITE_CHAIN_ID: () => config.network.chainId,

@@ -3,8 +3,8 @@
 > 이 문서는 **baram-aer** 앱 전용 가이드입니다 (활발히 개발 중).
 > 공통 원칙은 [루트 CLAUDE.md](../../CLAUDE.md)를 참조하세요.
 >
-> **주의**: `apps/baram`은 TEE 프라이버시 추론 프로토타입으로 **Legacy 상태**입니다.
-> baram의 코드는 절대 수정하지 마세요. 모든 새 개발은 이 `apps/baram-aer`에서 진행합니다.
+> **참고**: Legacy `apps/baram`은 `~/my_apps/nasun-baram-legacy/` 별도 레포로 이전되었습니다.
+> 모든 새 개발은 이 `apps/baram-aer`에서 진행합니다.
 
 ---
 
@@ -30,7 +30,7 @@
 ## Directory Structure
 
 ```
-apps/baram/
+apps/baram-aer/
 ├── frontend/                    # React 19 + Vite 7 (포트 5177)
 │   └── src/
 │       ├── features/request/    # 요청 생성 UI + hooks (useExecutors, useCreateRequest, selectExecutorWeightedRandom)
@@ -90,15 +90,15 @@ apps/baram/
 ### Frontend (포트 5177)
 
 ```bash
-pnpm dev:baram                   # 모노레포 루트에서
-cd apps/baram/frontend && pnpm dev  # 직접 실행
+pnpm dev:baram-aer               # 모노레포 루트에서
+cd apps/baram-aer/frontend && pnpm dev  # 직접 실행
 ```
 
 ### Move 컨트랙트
 
 ```bash
 # 빌드
-cd apps/baram/contracts-executor
+cd apps/baram-aer/contracts-executor
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui move build
 
 # 배포 (새 패키지)
@@ -115,7 +115,7 @@ cd apps/baram/contracts-executor
 > 상세 운영 가이드: [SPOT_INSTANCE_GUIDE.md](docs/SPOT_INSTANCE_GUIDE.md)
 
 ```bash
-cd apps/baram/executor-nitro
+cd apps/baram-aer/executor-nitro
 ./scripts/launch-spot.sh           # Custom AMI, 2-3분 소요
 ./scripts/update-executor.sh <IP>  # On-chain endpoint 업데이트 (두 Registry 모두)
 # ... 개발 ...

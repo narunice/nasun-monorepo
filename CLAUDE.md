@@ -177,7 +177,7 @@ Security expectations:
 
 | 앱                             | 패키지명                | 상태      | 배포 방식    | 설명                                                  |
 | ------------------------------ | ----------------------- | --------- | ------------ | ----------------------------------------------------- |
-| `apps/baram`                   | @nasun/baram            | ⛔ Legacy | AWS CDK      | AI Settlement Layer (TEE + Escrow) — 코드 변경 금지   |
+| ~~`apps/baram`~~               | ~~@nasun/baram~~        | 🗄️ Removed | -            | nasun-baram-legacy 레포로 이전됨 (~/my_apps/nasun-baram-legacy) |
 | `apps/baram-aer`               | @nasun/baram-aer        | 🔨 Active | TBD          | Baram AER — AI Compliance Settlement Layer (활발히 개발 중) |
 | `apps/network-explorer`        | @nasun/network-explorer | ✅ 완료   | EC2 스크립트 | Nasun Explorer (블록 탐색기)                          |
 | `apps/nasun-website`           | @nasun/nasun-website    | ✅ 완료   | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
@@ -358,12 +358,6 @@ VITE_EXPLORER_API_URL=/api/v1  # 인덱서 API (기본값: /api/v1, nginx 프록
 ```
 nasun-monorepo/
 ├── apps/
-│   ├── baram/                     # @nasun/baram - AI Settlement Layer (⛔ LEGACY — 코드 변경 금지)
-│   │   ├── frontend/              # Vite React 앱
-│   │   ├── contracts/             # baram.move (에스크로)
-│   │   ├── contracts-executor/    # executor.move (Executor 등록)
-│   │   ├── executor-nitro/        # TEE Executor (AWS Nitro)
-│   │   └── cdk/                   # AWS CDK 인프라
 │   ├── baram-aer/                 # @nasun/baram-aer - AI Compliance Settlement Layer (🔨 ACTIVE)
 │   │   ├── frontend/              # Vite React 앱
 │   │   ├── contracts/             # baram.move (에스크로)
@@ -403,7 +397,6 @@ nasun-monorepo/
 
 | 앱               | 구조              | package.json 위치                           |
 | ---------------- | ----------------- | ------------------------------------------- |
-| baram (Legacy)   | frontend 서브폴더 | `apps/baram/frontend/package.json`          |
 | baram-aer        | frontend 서브폴더 | `apps/baram-aer/frontend/package.json`      |
 | network-explorer | 단일 레벨         | `apps/network-explorer/package.json`        |
 | nasun-website    | frontend 서브폴더 | `apps/nasun-website/frontend/package.json`  |
@@ -524,7 +517,6 @@ Nasun 브랜드 색상 팔레트:
 pnpm install
 
 # 개발 서버 (개별)
-pnpm dev:baram               # 포트 5177
 pnpm dev:network-explorer    # 포트 5175
 pnpm dev:nasun-website       # 포트 5174
 pnpm dev:gensol-website      # 포트 5173
@@ -559,7 +551,6 @@ pnpm deploy:pado:bots:prod       # LP Bot to pado.finance
 
 | 앱               | 배포 방식    | 트리거    | 대상 URL                         |
 | ---------------- | ------------ | --------- | -------------------------------- |
-| baram (Legacy)   | AWS CDK      | -         | Lambda API (코드 변경 금지)      |
 | baram-aer        | TBD          | 수동 실행 | TBD                              |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
 | explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-2) |
@@ -652,8 +643,6 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 | 디렉토리                          | 설명                                 |
 | --------------------------------- | ------------------------------------ |
-| `apps/baram/contracts/`           | (Legacy) Baram 에스크로 + 정산 + Budget + BetaAccess |
-| `apps/baram/contracts-executor/`  | (Legacy) Executor 등록 시스템                 |
 | `apps/baram-aer/contracts/`       | Baram AER 에스크로 + 정산 + Budget + BetaAccess |
 | `apps/baram-aer/contracts-aer/`   | AIExecutionReport (8카테고리, 31필드) |
 | `apps/baram-aer/contracts-executor/` | Executor 등록 + Staking + Tier    |
