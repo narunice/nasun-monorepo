@@ -314,7 +314,7 @@ async function initialize(
     const deficit = Math.max(0, minBaseNeeded - totalBase);
     const faucetRounds = Math.min(
       Math.max(1, Math.ceil(deficit / MARKET.faucetBaseAmount)),
-      10, // Max 10 faucet calls to prevent infinite loop
+      30, // Max 30 faucet calls for 10x liquidity accumulation
     );
     console.log(`[${timestamp()}] Insufficient funds (have ${totalBase.toFixed(4)}, need ~${minBaseNeeded.toFixed(4)} ${MARKET.name}), accumulating via faucet (${faucetRounds} rounds)...`);
 
