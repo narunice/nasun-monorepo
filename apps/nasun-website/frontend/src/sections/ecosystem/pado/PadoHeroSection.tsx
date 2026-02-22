@@ -4,13 +4,14 @@ import { InlineLoading } from "@/components/ui/InlineLoading";
 import waldenVideoDesktop from "../../../assets/videos/walden-hero-token-desktop.mp4";
 import waldenVideoMobile from "../../../assets/videos/Walden-Dex-Token-Mobile-rf18.mp4";
 import { Button } from "@/components/ui";
-import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
+import { useTranslation } from "react-i18next";
 
 interface PadoHeroSectionProps {
   onVideoReady?: () => void;
   isVideoReady?: boolean;
+  translationNs?: string;
 }
 
 /**
@@ -18,7 +19,11 @@ interface PadoHeroSectionProps {
  *
  * Pado 페이지의 Hero 섹션 - 반응형 배경 동영상과 텍스트+아이콘
  */
-function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
+function PadoHeroSection({ onVideoReady, translationNs = "pado" }: PadoHeroSectionProps) {
+  // Dynamic namespace — strict key typing not applicable
+  const { t } = useTranslation(translationNs as "pado") as {
+    t: (key: string, options?: Record<string, unknown>) => string;
+  };
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -26,7 +31,7 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
   // Resize observer - 모바일/데스크탑 동영상 전환
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // md breakpoint
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
     };
 
     handleResize(); // 초기 설정
@@ -74,7 +79,7 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
 
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
-  const containerClassName = `relative !p-0 -mt-14 md:mt-0 mx-auto flex items-center justify-center bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
+  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
 
   return (
     <div className={containerClassName}>
@@ -119,31 +124,41 @@ function PadoHeroSection({ onVideoReady }: PadoHeroSectionProps) {
       {isVideoPlaying && (
         <div className="absolute inset-0 max-w-9xl mx-auto pointer-events-none">
           <div
-            className="absolute 
-            /* Mobile: Bottom Center */
-            bottom-[15%] sm:bottom-[30%] left-0 right-0 
-            /* Desktop: Right Center */
-            md:bottom-[15%] lg:bottom-[15%] xl:bottom-[20%] 2xl:bottom-[25%] md:pl-[35%] lg:pl-[38%] xl:pl-[41%] md:-translate-y-1/2
+            className="absolute
+            /* Mobile: Bottom Center (< 1024px) */
+            bottom-[15%] sm:bottom-[30%] left-0 right-0
+            /* Desktop: Right Center (>= 1024px) */
+            lg:bottom-[15%] xl:bottom-[20%] 2xl:bottom-[25%] lg:pl-[38%] xl:pl-[41%] lg:-translate-y-1/2
             /* Alignment */
-            flex flex-col items-center 
+            flex flex-col items-center
             text-center
             px-4
             pointer-events-auto"
           >
             <FadeInUp>
-              <h2 className="">The Next Wave</h2>
-              <h4 className=" text-nasun-white/70 text-[19px] md:text-[22px] lg:text-[31px]">
-                of Financial Autonomy
-              </h4>
+              <h3 className="2xl:!text-5xl mb-2">{t("hero.title")}</h3>
+              {(t("hero.subtitleLine1") || t("hero.subtitle")) && (
+                <h5 className="xl:text-3xl  text-nasun-white/70">
+                  {t("hero.subtitleLine1", { defaultValue: "" }) ? (
+                    <>
+                      {t("hero.subtitleLine1")}
+                      <br />
+                      {t("hero.subtitleLine2")}
+                    </>
+                  ) : (
+                    t("hero.subtitle")
+                  )}
+                </h5>
+              )}
               <Button variant="white" size="lg" asChild className="mt-6">
-                <Link
-                  to={import.meta.env.VITE_PADO_ALPHA_URL}
+                <a
+                  href={import.meta.env.VITE_PADO_ALPHA_URL || "https://staging.pado.finance"}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Pado Open Alpha
+                  {t("hero.cta")}
                   <ExternalLink className="w-4 h-4 ml-2" />
-                </Link>
+                </a>
               </Button>
             </FadeInUp>
           </div>

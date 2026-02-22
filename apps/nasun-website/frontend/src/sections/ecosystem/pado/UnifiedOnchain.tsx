@@ -1,385 +1,247 @@
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui/OuterBox";
-import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, User, Layers, ShieldCheck, Zap, Repeat, Globe, Lock } from "lucide-react";
-import { useTranslation, Trans } from "react-i18next";
+import { FadeInUp } from "@/components/ui/FadeInUp";
+import {
+  ExternalLink,
+  Layers,
+  Users,
+  Bot,
+  ShieldCheck,
+  Crown,
+  Building2,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export const UnifiedOnchain = () => {
   const { t } = useTranslation("pado");
 
+  const howItWorksFeatures = t("howItWorks.features", { returnObjects: true }) as Array<{
+    title: string;
+    description: string;
+  }>;
+
+  const riskModes = t("riskLevel.modes", { returnObjects: true }) as Array<{
+    title: string;
+    label: string;
+    description: string;
+  }>;
+
+  const devnetItems = t("liveNow.devnet.items", { returnObjects: true }) as string[];
+  const testnetItems = t("liveNow.testnet.items", { returnObjects: true }) as string[];
+
+  const whatYouGet = t("earlyAccess.whatYouGet", { returnObjects: true }) as string[];
+
+  const howItWorksIcons = [Layers, Users, Bot];
+  const riskIcons = [ShieldCheck, Crown, Building2];
+
   return (
     <SectionLayout className="!pt-0 !max-w-6xl">
-      {/* ========== MAIN TITLE ========== */}
-      <PageTitle as="h2" className="normal-case ">
-        {t("unifiedOnchain.pageTitle")}
-      </PageTitle>
-
-      <div className="flex flex-col gap-6 md:gap-8 lg:gap-10 -mt-4 md:-mt-5 lg:-mt-6">
-        {/* Subtitle Box */}
-        <OuterBox color="w1" padding="md" className="!bg-[#3D3D3D]">
-          <p className="text-nasun-white font-medium text-lg md:text-xl text-center ">
-            {t("unifiedOnchain.subtitle.text")}
-          </p>
-          <Button
-            variant="c1"
-            size="lg"
-            className="flex w-fit items-center gap-2 mt-6 mx-auto text-nasun-black"
-            asChild
-          >
-            <a href="https://staging.pado.finance/" target="_blank" rel="noopener noreferrer">
-              {t("unifiedOnchain.subtitle.button")}
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </Button>
-        </OuterBox>
-
-        {/* ========== CONTENT SECTIONS ========== */}
-
-        {/* 1. Executive Summary */}
+      <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
+        {/* ===== Section 1: One Account for Everything ===== */}
         <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section1.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>{t("unifiedOnchain.section1.p1")}</p>
-            <p>
-              <Trans
-                t={t}
-                i18nKey="unifiedOnchain.section1.p2"
-                components={[
-                  <strong className="text-nasun-white font-medium" key="0" />, // Pado
-                ]}
-              />
-            </p>
-            <p>{t("unifiedOnchain.section1.p3")}</p>
-          </div>
-        </section>
-
-        {/* 2. The One-Account Experience */}
-        <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section2.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>{t("unifiedOnchain.section2.intro")}</p>
-
-            <div className="flex flex-col gap-4 pt-2">
-              <DividerBox
-                color="w4"
-                hideDivider={true}
-                padding="sm"
-                title={t("unifiedOnchain.section2.box1.title")}
-                icon={<User className="w-5 h-5 text-nasun-c1" />}
-              >
-                <p className="text-sm md:text-base">
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section2.box1.content"
-                    components={[<strong className="text-nasun-white font-medium" key="0" />]}
-                  />
-                </p>
-              </DividerBox>
-
-              <DividerBox
-                color="w4"
-                hideDivider={true}
-                padding="sm"
-                title={t("unifiedOnchain.section2.box2.title")}
-                icon={<ShieldCheck className="w-5 h-5 text-nasun-c1" />}
-              >
-                <p className="text-sm md:text-base">
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section2.box2.content"
-                    components={[<strong className="text-nasun-white font-medium" key="0" />]}
-                  />
-                </p>
-              </DividerBox>
-
-              <DividerBox
-                color="w4"
-                hideDivider={true}
-                padding="sm"
-                title={t("unifiedOnchain.section2.box3.title")}
-                icon={<Lock className="w-5 h-5 text-nasun-c1" />}
-              >
-                <p className="text-sm md:text-base">
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section2.box3.content"
-                    components={[<strong className="text-nasun-white font-medium" key="0" />]}
-                  />
-                </p>
-              </DividerBox>
-            </div>
-
-            <p className="pt-2">{t("unifiedOnchain.section2.conclusion")}</p>
-          </div>
-        </section>
-
-        {/* 3. Object-Oriented Markets and Parallel Execution */}
-        <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section3.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>{t("unifiedOnchain.section3.intro")}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              <DividerBox color="w5" padding="sm" className="h-full">
-                <p>
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section3.box1"
-                    components={[<strong className="text-nasun-c1 font-medium" key="0" />]}
-                  />
-                </p>
-              </DividerBox>
-              <DividerBox color="w5" padding="sm" className="h-full">
-                <p>
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section3.box2"
-                    components={[<strong className="text-nasun-c1 font-medium" key="0" />]}
-                  />
-                </p>
-              </DividerBox>
-              <DividerBox color="w5" padding="sm" className="h-full">
-                <p>
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section3.box3"
-                    components={[<strong className="text-nasun-c1 font-medium" key="0" />]}
-                  />
-                </p>
-              </DividerBox>
-              <DividerBox color="w5" padding="sm" className="h-full">
-                <p>
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section3.box4"
-                    components={[<strong className="text-nasun-c1 font-medium" key="0" />]}
-                  />
-                </p>
-              </DividerBox>
-            </div>
-
-            <p className="pt-2 italic text-base">{t("unifiedOnchain.section3.conclusion")}</p>
-          </div>
-        </section>
-
-        {/* 4. Unified Risk and Margin Engine */}
-        <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section4.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>
-              <Trans
-                t={t}
-                i18nKey="unifiedOnchain.section4.intro"
-                components={[<strong className="text-nasun-white font-medium" key="0" />]}
-              />
-            </p>
-
-            <OuterBox color="c1" padding="md" className="space-y-4">
-              <div className="flex gap-3">
-                <Zap className="w-6 h-6 text-nasun-c1 shrink-0 mt-1" />
-                <p>
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section4.box.item1"
-                    components={[<strong className="text-nasun-white font-medium" key="0" />]}
-                  />
-                </p>
-              </div>
-
-              <div className="pl-9 space-y-2">
-                <p className="font-medium text-nasun-white underline underline-offset-4 decoration-nasun-c1/50 mb-3">
-                  {t("unifiedOnchain.section4.box.listTitle")}
-                </p>
-                <ul className="space-y-2 list-disc pl-5">
-                  {(t("unifiedOnchain.section4.box.list", { returnObjects: true }) as string[]).map(
-                    (_, index) => (
-                      <li key={index}>
-                        <Trans
-                          t={t}
-                          i18nKey={`unifiedOnchain.section4.box.list.${index}` as never}
-                          components={[<strong className="text-nasun-white font-medium" key="0" />]}
-                        />
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-
-              <div className="flex gap-3">
-                <ShieldCheck className="w-6 h-6 text-nasun-c1 shrink-0 mt-1" />
-                <p>
-                  <Trans
-                    t={t}
-                    i18nKey="unifiedOnchain.section4.box.item2"
-                    components={[<strong className="text-nasun-white font-medium" key="0" />]}
-                  />
-                </p>
+          <FadeInUp>
+            <SectionTitle as="h4" className="uppercase">
+              {t("oneAccount.title")}
+            </SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.1">
+            <p className="text-nasun-white/70 mb-4">{t("oneAccount.intro")}</p>
+          </FadeInUp>
+          <FadeInUp delay="0.15">
+            <OuterBox color="nw0" padding="md">
+              <div className="space-y-5">
+                <div>
+                  <h6 className="text-nasun-nw4 font-semibold mb-1">
+                    {t("oneAccount.problemLabel")}
+                  </h6>
+                  <p className="leading-relaxed">{t("oneAccount.problem")}</p>
+                </div>
+                <div className="h-px bg-gradient-to-r from-transparent via-nasun-nw4/20 to-transparent" />
+                <div>
+                  <h6 className="text-nasun-nw4 font-semibold mb-1">
+                    {t("oneAccount.solutionLabel")}
+                  </h6>
+                  <p className="leading-relaxed">{t("oneAccount.solution")}</p>
+                </div>
               </div>
             </OuterBox>
+          </FadeInUp>
+        </section>
 
-            <p>{t("unifiedOnchain.section4.conclusion")}</p>
+        {/* ===== Section 2: How It Works ===== */}
+        <section>
+          <FadeInUp>
+            <SectionTitle as="h4" className="uppercase">
+              {t("howItWorks.title")}
+            </SectionTitle>
+          </FadeInUp>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {howItWorksFeatures.map((feat, i) => {
+              const Icon = howItWorksIcons[i];
+              return (
+                <FadeInUp key={i} delay={`${0.1 + i * 0.05}`}>
+                  <DividerBox
+                    color="nw1"
+                    hideDivider
+                    padding="sm"
+                    title={feat.title}
+                    icon={<Icon className="w-5 h-5 text-nasun-nw4" />}
+                    titleClassName="!text-nasun-nw4"
+                    className="h-full"
+                  >
+                    <p>{feat.description}</p>
+                  </DividerBox>
+                </FadeInUp>
+              );
+            })}
           </div>
         </section>
 
-        {/* 5. Native Lending, Borrowing, and Staking */}
+        {/* ===== Section 3: Choose Your Risk Level ===== */}
         <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section5.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>{t("unifiedOnchain.section5.intro")}</p>
-
-            <div className="grid md:grid-col-1 lg:grid-cols-3 gap-6 pt-2">
-              <DividerBox
-                color="w4"
-                hideDivider={true}
-                padding="sm"
-                title={t("unifiedOnchain.section5.box1.title")}
-                icon={<Layers className="w-5 h-5 text-nasun-c1" />}
-                titleClassName="!text-nasun-c1"
-              >
-                <p className="text-sm md:text-base">{t("unifiedOnchain.section5.box1.content")}</p>
-              </DividerBox>
-
-              <DividerBox
-                color="w4"
-                hideDivider={true}
-                padding="sm"
-                title={t("unifiedOnchain.section5.box2.title")}
-                icon={<Repeat className="w-5 h-5 text-nasun-c1" />}
-                titleClassName="!text-nasun-c1"
-              >
-                <p className="text-sm md:text-base">{t("unifiedOnchain.section5.box2.content")}</p>
-              </DividerBox>
-
-              <DividerBox
-                color="w4"
-                hideDivider={true}
-                padding="sm"
-                title={t("unifiedOnchain.section5.box3.title")}
-                icon={<Globe className="w-5 h-5 text-nasun-c1" />}
-                titleClassName="!text-nasun-c1 lg:min-h-[46px]"
-              >
-                <p className="text-sm md:text-base">{t("unifiedOnchain.section5.box3.content")}</p>
-              </DividerBox>
-            </div>
-
-            <p className="pt-2">{t("unifiedOnchain.section5.conclusion")}</p>
+          <FadeInUp>
+            <SectionTitle as="h4" className="uppercase">
+              {t("riskLevel.title")}
+            </SectionTitle>
+          </FadeInUp>
+          <div className="flex flex-col gap-4">
+            {riskModes.map((mode, i) => {
+              const Icon = riskIcons[i];
+              return (
+                <FadeInUp key={i} delay={`${0.1 + i * 0.05}`}>
+                  <DividerBox color="nw0" hideDivider padding="sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Icon className="w-5 h-5 text-nasun-nw4" />
+                      <h6 className="font-medium">{mode.title}</h6>
+                      {mode.label && (
+                        <span className="text-xs text-nasun-nw4/60">({mode.label})</span>
+                      )}
+                    </div>
+                    <p>{mode.description}</p>
+                  </DividerBox>
+                </FadeInUp>
+              );
+            })}
           </div>
+          <FadeInUp delay="0.3">
+            <p className="text-nasun-nw4 mt-6 italic">{t("riskLevel.closing")}</p>
+          </FadeInUp>
         </section>
 
-        {/* 6. Programmable Cross-Chain Asset Access */}
+        {/* ===== Section 4: What's Live Now ===== */}
         <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section6.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>
-              <Trans
-                t={t}
-                i18nKey="unifiedOnchain.section6.intro"
-                components={[<strong className="text-nasun-white font-medium" key="0" />]}
-              />
-            </p>
+          <FadeInUp>
+            <SectionTitle as="h4" className="uppercase">
+              {t("liveNow.title")}
+            </SectionTitle>
+          </FadeInUp>
 
-            <ul className="space-y-3 list-disc pl-8 md:pl-12 marker:text-nasun-c1">
-              {(t("unifiedOnchain.section6.list", { returnObjects: true }) as string[]).map(
-                (item, index) => (
-                  <li key={index}>{item}</li>
-                ),
-              )}
-            </ul>
-
-            <p>{t("unifiedOnchain.section6.conclusion")}</p>
+          {/* Devnet - Live */}
+          <FadeInUp delay="0.1">
+            <h6 className="text-nasun-nw4 font-medium mb-4 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              {t("liveNow.devnet.label")}
+            </h6>
+          </FadeInUp>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+            {devnetItems.map((item, i) => (
+              <FadeInUp key={i} delay={`${0.15 + i * 0.03}`}>
+                <div className="bg-nasun-nw4/5 border border-nasun-nw4/20 rounded-lg p-4 h-full">
+                  <p className="text-nasun-white font-medium flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-nasun-nw4 shrink-0" />
+                    {item}
+                  </p>
+                </div>
+              </FadeInUp>
+            ))}
           </div>
+
+          {/* Testnet - Coming */}
+          <FadeInUp delay="0.3">
+            <h6 className="text-nasun-nw2 font-medium mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              {t("liveNow.testnet.label")}
+            </h6>
+          </FadeInUp>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            {testnetItems.map((item, i) => (
+              <FadeInUp key={i} delay={`${0.35 + i * 0.03}`}>
+                <div className="bg-nasun-nw2/5 border border-nasun-nw2/20 rounded-lg p-4 h-full">
+                  <p className="font-medium flex items-center gap-2">
+                    <ArrowRight className="w-4 h-4 text-nasun-nw2 shrink-0" />
+                    {item}
+                  </p>
+                </div>
+              </FadeInUp>
+            ))}
+          </div>
+
+          <FadeInUp delay="0.5">
+            <p className="text-nasun-white/60 italic">{t("liveNow.closing")}</p>
+          </FadeInUp>
         </section>
 
-        {/* 7. Insurance and Extreme Risk Management */}
+        {/* ===== Section 5: Early Access ===== */}
         <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section7.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>
-              <Trans
-                t={t}
-                i18nKey="unifiedOnchain.section7.intro"
-                components={[<strong className="text-nasun-white font-medium" key="0" />]}
-              />
-            </p>
+          <FadeInUp>
+            <SectionTitle as="h4" className="uppercase">
+              {t("earlyAccess.title")}
+            </SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.1">
+            <OuterBox color="nw1" padding="md">
+              <p className="leading-relaxed mb-6">{t("earlyAccess.intro")}</p>
 
-            <ul className="space-y-3 list-disc pl-8 md:pl-12 marker:text-nasun-c1">
-              {(t("unifiedOnchain.section7.list", { returnObjects: true }) as string[]).map(
-                (item, index) => (
-                  <li key={index}>{item}</li>
-                ),
-              )}
-            </ul>
-
-            <p>{t("unifiedOnchain.section7.conclusion")}</p>
-          </div>
-        </section>
-
-        {/* 8. Compliance and Global Readiness */}
-        <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section8.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4 ">
-            <p>
-              <Trans
-                t={t}
-                i18nKey="unifiedOnchain.section8.intro"
-                components={[<strong className="text-nasun-white font-medium" key="0" />]}
-              />
-            </p>
-
-            <ul className="space-y-3 list-disc pl-8 md:pl-12 marker:text-nasun-c1">
-              {(t("unifiedOnchain.section8.list", { returnObjects: true }) as string[]).map(
-                (_, index) => (
-                  <li key={index}>
-                    <Trans
-                      t={t}
-                      i18nKey={`unifiedOnchain.section8.list.${index}` as never}
-                      components={[<strong className="text-nasun-white font-medium" key="0" />]}
-                    />
+              <h6 className="text-nasun-nw4 font-semibold mb-2">
+                {t("earlyAccess.whatYouGetLabel")}
+              </h6>
+              <ul className="space-y-2 mb-6">
+                {whatYouGet.map((item, i) => (
+                  <li key={i} className="text-nasun-white/70 flex gap-2">
+                    <span className="text-nasun-nw4 mt-0.5 shrink-0">•</span>
+                    {item}
                   </li>
-                ),
-              )}
-            </ul>
+                ))}
+              </ul>
 
-            <p>{t("unifiedOnchain.section8.conclusion")}</p>
-          </div>
+              <h6 className="text-nasun-nw4 font-semibold mb-1">
+                {t("earlyAccess.prioritizingLabel")}
+              </h6>
+              <p className="text-nasun-white/70 mb-8">{t("earlyAccess.prioritizing")}</p>
+
+              <div className="flex flex-wrap gap-3 justify-center">
+                <Button variant="white" size="lg" asChild>
+                  <a
+                    href={import.meta.env.VITE_PADO_ALPHA_URL || "https://staging.pado.finance"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t("earlyAccess.ctaPrimary")}
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </a>
+                </Button>
+                <Button variant="outlineNw2" size="lg" asChild>
+                  <a href="/pado-revised" target="_blank" rel="noopener noreferrer">
+                    {t("earlyAccess.ctaSecondary")}
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </a>
+                </Button>
+              </div>
+            </OuterBox>
+          </FadeInUp>
         </section>
 
-        {/* 9. The Result */}
+        {/* ===== Footer Badge ===== */}
         <section>
-          <SectionTitle as="h4">{t("unifiedOnchain.section9.title")}</SectionTitle>
-          <div className="space-y-6">
-            <p className="text-nasun-white/90 text-lg font-light">
-              {t("unifiedOnchain.section9.intro")}
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <DividerBox color="w4" hideDivider={true} padding="sm">
-                <p className="text-nasun-c1 font-medium flex items-center gap-2">
-                  {t("unifiedOnchain.section9.box1.title")}
-                </p>
-                <p className="text-sm mt-1">{t("unifiedOnchain.section9.box1.content")}</p>
-              </DividerBox>
-              <DividerBox color="w4" hideDivider={true} padding="sm">
-                <p className="text-nasun-c1 font-medium flex items-center gap-2">
-                  {t("unifiedOnchain.section9.box2.title")}
-                </p>
-                <p className="text-sm mt-1">{t("unifiedOnchain.section9.box2.content")}</p>
-              </DividerBox>
-              <DividerBox color="w4" hideDivider={true} padding="sm">
-                <p className="text-nasun-c1 font-medium flex items-center gap-2">
-                  {t("unifiedOnchain.section9.box3.title")}
-                </p>
-                <p className="text-sm mt-1">{t("unifiedOnchain.section9.box3.content")}</p>
-              </DividerBox>
-            </div>
-
-            <p className="text-nasun-white/90 leading-relaxed text-lg font-light italic">
-              {t("unifiedOnchain.section9.conclusion")}
-            </p>
-          </div>
+          <FadeInUp>
+            <p className="text-nasun-nw4/60 text-center">{t("footer.badge")}</p>
+          </FadeInUp>
         </section>
       </div>
     </SectionLayout>

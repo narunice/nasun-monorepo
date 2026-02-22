@@ -607,14 +607,8 @@ export const PadoRevisedContent = () => {
                   </a>
                 </Button>
                 <Button variant="outlineC1" size="lg" asChild>
-                  <Link to="/pado-new">
+                  <Link to="/pado">
                     {t("cta.secondary")}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Link>
-                </Button>
-                <Button variant="outlineC1" size="lg" asChild>
-                  <Link to="/pado-new2">
-                    {t("cta.tertiary")}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
                 </Button>

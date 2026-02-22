@@ -43,16 +43,16 @@ export const Pages = {
   About: lazyWithRetry(() => import("../pages/AboutPage")),
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
-  PadoVision: lazyWithRetry(() => import("../pages/ecosystem/PadoVisionPage")),
-  PadoTech: lazyWithRetry(() => import("../pages/ecosystem/PadoTechPage")),
-  PadoPitch: lazyWithRetry(() => import("../pages/ecosystem/PadoPitchPage")),
   PadoRevised: lazyWithRetry(() => import("../pages/ecosystem/PadoRevisedPage")),
   Baram: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
+  BaramAer: lazyWithRetry(() => import("../pages/ecosystem/BaramAerPage")),
   // Infra Pages
   InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
   // About Pages (new)
   AboutOverview: lazyWithRetry(() => import("../pages/about/AboutOverviewPage")),
   Investors: lazyWithRetry(() => import("../pages/about/InvestorsPage")),
+  // Draft Pages
+  PadoDraft: lazyWithRetry(() => import("../pages/PadoDraftPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -518,12 +518,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  padoNew: {
-    path: "/pado-new",
-    component: Pages.PadoVision,
+  padoRevised: {
+    path: "/pado-revised",
+    component: Pages.PadoRevised,
     navItem: {
-      name: "navigation.padoNew",
-      path: "/pado-new",
+      name: "navigation.padoRevised",
+      path: "/pado-revised",
       hidden: true,
     },
     meta: {
@@ -532,40 +532,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  padoNew2: {
-    path: "/pado-new2",
-    component: Pages.PadoTech,
+  padoDraft: {
+    path: "/pado",
+    component: Pages.PadoDraft,
     navItem: {
-      name: "navigation.padoNew2",
-      path: "/pado-new2",
-      hidden: true,
-    },
-    meta: {
-      title: "Pado Tech - NASUN",
-      description: "Pado: Architecture That Composes",
-    },
-  },
-
-  padoNew3: {
-    path: "/pado-new3",
-    component: Pages.PadoPitch,
-    navItem: {
-      name: "navigation.padoNew3",
-      path: "/pado-new3",
-      hidden: true,
-    },
-    meta: {
-      title: "Pado Pitch - NASUN",
-      description: "Pado: The Opportunity",
-    },
-  },
-
-  padoRevised: {
-    path: "/pado-revised",
-    component: Pages.PadoRevised,
-    navItem: {
-      name: "navigation.padoRevised",
-      path: "/pado-revised",
+      name: "navigation.padoDraft",
+      path: "/pado",
       hidden: true,
     },
     meta: {
@@ -585,6 +557,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Baram - NASUN",
       description: "Baram: AI Compliance Settlement Layer on Nasun Network",
+    },
+  },
+
+  baramAer: {
+    path: "/baram-aer",
+    component: Pages.BaramAer,
+    navItem: {
+      name: "navigation.baramAer",
+      path: "/baram-aer",
+      hidden: true,
+    },
+    meta: {
+      title: "Baram - NASUN",
+      description: "Baram: AI Compliance Settlement Layer — Auditable, Accountable, Governed",
     },
   },
 

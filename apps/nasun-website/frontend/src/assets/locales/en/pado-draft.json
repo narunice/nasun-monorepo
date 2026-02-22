@@ -1,0 +1,122 @@
+{
+  "hero": {
+    "title": "Pado: Unified Onchain Finance",
+    "subtitleLine1": "Performance without custody.",
+    "subtitleLine2": "Control without compromise.",
+    "cta": "Pado Open Alpha"
+  },
+  "oneAccount": {
+    "title": "One Account for Everything",
+    "intro": "Pado is a self-custodial smart account that unifies spot trading, perpetual futures, prediction markets, lending, and DeFi staking on Nasun \u2014 a Move-based L1 blockchain built for DeFi.",
+    "problemLabel": "The problem:",
+    "problem": "Your capital is fragmented across protocols. Stablecoins sit idle. Trading opportunities disappear before you can act.",
+    "solutionLabel": "Pado\u2019s solution:",
+    "solution": "Unified margin architecture across all products. One balance that earns yield, backs positions, and stays liquid."
+  },
+  "whyKorea": {
+    "title": "Global Product, Korea Market Entry",
+    "intro": "Pado is a global unified onchain finance application. Our regional entry strategy begins with South Korea \u2014 one of the world\u2019s most concentrated and active crypto markets.",
+    "strategyLabel": "The strategy:",
+    "strategy": "Establish a Korean legal entity and obtain VASP registration. Launch with self-custodial spot trading as the compliant entry point \u2014 a service Korean traders need and regulators can approve.",
+    "regulatoryLabel": "The regulatory landscape:",
+    "regulatory": "South Korea ended a nine-year ban on corporate crypto trading in 2026. An estimated $110B in Korean capital moved offshore due to limited domestic options. As regulations evolve, Pado\u2019s full product suite is ready to unlock market by market.",
+    "visionLabel": "The long-term vision:",
+    "vision": "Korea is the first market, not the only market. The same compliance-first playbook \u2014 local entity, VASP registration, progressive feature rollout \u2014 scales to every jurisdiction where on-chain finance is gaining regulatory clarity."
+  },
+  "howItWorks": {
+    "title": "How It Works",
+    "features": [
+      {
+        "title": "Unified Margin",
+        "description": "Cross-collateral margin across spot, perpetuals, and prediction markets \u2014 currently unavailable in Korean-focused platforms. Your entire portfolio backs all positions simultaneously."
+      },
+      {
+        "title": "Protocol-Level Execution",
+        "description": "Because Nasun controls the consensus layer, conditional orders \u2014 take-profit, stop-loss, trailing stops \u2014 can execute at the validator level. No keeper bots. No single points of failure."
+      },
+      {
+        "title": "Intent-Based Automation",
+        "description": "Set rules, not transactions. AI-integrated intent solvers enable advanced execution strategies. Solvers compete to execute \u2014 or your intent reverts."
+      },
+      {
+        "title": "Social Trading",
+        "description": "Copy traders with protocol-enforced risk limits. Position-gated groups ensure participants have skin in the game. Prove your track record with zero-knowledge proofs."
+      }
+    ]
+  },
+  "riskLevel": {
+    "title": "Choose Your Risk Level",
+    "modes": [
+      {
+        "title": "Safe Mode",
+        "label": "Default",
+        "description": "Isolated positions. No leverage. Your collateral backs one thing at a time."
+      },
+      {
+        "title": "Pro Mode",
+        "label": "",
+        "description": "Portfolio-level margin. Yield-bearing collateral. One balance across all products."
+      },
+      {
+        "title": "Institutional",
+        "label": "",
+        "description": "Custom APIs, position limits, and compliance controls."
+      }
+    ],
+    "closing": "Start simple. Scale when ready."
+  },
+  "liveNow": {
+    "title": "What\u2019s Live Now",
+    "devnet": {
+      "label": "Devnet (Q2 2026)",
+      "items": [
+        "Spot trading",
+        "Prediction markets",
+        "Lottery",
+        "Chat",
+        "Leaderboard",
+        "Client-side conditional orders"
+      ]
+    },
+    "coming": {
+      "label": "Testnet (Q3 2026)",
+      "items": [
+        "Perpetual futures",
+        "Lending",
+        "DeFi staking",
+        "Unified margin architecture",
+        "Protocol-level conditional orders",
+        "AI-integrated intent solvers"
+      ]
+    },
+    "closing": "Built on Nasun: Move-based architecture, parallel execution, atomic transactions, sub-second finality."
+  },
+  "flywheel": {
+    "title": "Three Verticals, One Flywheel",
+    "intro": "Pado is not a standalone product. It is the financial engine of the Nasun ecosystem.",
+    "items": [
+      {
+        "from": "Pado \u2192 Gen Sol",
+        "description": "DeFi users already hold NSN and operate on-chain wallets \u2014 zero-friction adopters of Gen Sol\u2019s competitive gaming economy."
+      },
+      {
+        "from": "Gen Sol \u2192 Pado",
+        "description": "In-game transactions \u2014 NFT mints, tournament entries, marketplace trades \u2014 flow back through Pado\u2019s DEX as token demand."
+      },
+      {
+        "from": "Baram \u2192 Pado",
+        "description": "Enterprise clients settle AI inference in stablecoin acquired through Pado. Executors lock NSN in staking tiers, tightening circulating supply."
+      }
+    ],
+    "closing": "One passkey wallet spans all three products. NSN serves triple duty as trading collateral, in-game currency, and executor stake."
+  },
+  "tryPado": {
+    "title": "Try Pado",
+    "intro": "The trading interface is operational. This is not a mockup.",
+    "ctaPrimary": "Open Pado on Devnet",
+    "ctaSecondary": "View Pitchdeck"
+  },
+  "footer": {
+    "badge": "Built on Nasun L1 \u2022 Move-based \u2022 Self-custodial \u2022 Apache 2.0"
+  }
+}

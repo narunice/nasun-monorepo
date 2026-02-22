@@ -28,6 +28,7 @@ i18n
       },
     },
     fallbackLng: "en",
+    load: "languageOnly", // Strip region codes: en-US → en, ko-KR → ko
     ns: [
       "common",
       "home",
@@ -52,10 +53,12 @@ i18n
       "pado",
       "news",
       "baram",
+      "baram-aer",
       "pado-vision",
       "pado-tech",
       "pado-pitch",
       "pado-revised",
+      "pado-draft",
     ],
     defaultNS: "home",
     backend: {
