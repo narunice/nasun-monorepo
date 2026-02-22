@@ -38,13 +38,13 @@ const EWMA_ALPHA = 0.1; // Smoothing factor for baseline price
 // Alert thresholds
 const PRICE_MOVE_THRESHOLD = 0.03;     // 3% from baseline
 const VOLUME_SPIKE_MULTIPLIER = 3;     // 3x above previous window
-const MOMENTUM_CONSECUTIVE = 5;        // 5 consecutive same-direction trades
+const MOMENTUM_CONSECUTIVE = 15;       // 15 consecutive same-direction trades (raised from 5 to reduce noise from LP bot fills)
 
 // Per-alert-type cooldown (ms)
 const COOLDOWNS: Record<AlertType, number> = {
   price_move: 5 * 60 * 1000,   // 5 minutes
   volume_spike: 10 * 60 * 1000, // 10 minutes
-  momentum: 3 * 60 * 1000,      // 3 minutes
+  momentum: 10 * 60 * 1000,     // 10 minutes (raised from 3 to reduce repetitive messages)
 };
 
 // ===== State =====
