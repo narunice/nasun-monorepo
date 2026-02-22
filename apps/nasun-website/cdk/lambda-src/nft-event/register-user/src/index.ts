@@ -23,6 +23,7 @@ import {
 } from './types';
 import { WhitelistService } from './services/whitelistService';
 import { TaskTracker } from './services/taskTracker';
+import { getWalletProofSecret } from './utils/wallet-proof';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
@@ -37,7 +38,6 @@ function getCorsOrigin(origin?: string): string {
 const env: NftEventEnv = {
   WHITELIST_TABLE_NAME: process.env.WHITELIST_TABLE_NAME!,
   TASKS_TABLE_NAME: process.env.TASKS_TABLE_NAME!,
-  X_API_BEARER_TOKEN: process.env.X_API_BEARER_TOKEN!,
   X_TARGET_USERNAME: process.env.X_TARGET_USERNAME || 'Nasun_io',
   X_TARGET_TWEET_ID: process.env.X_TARGET_TWEET_ID!,
   ENABLE_RATE_LIMIT_CACHE: process.env.ENABLE_RATE_LIMIT_CACHE || 'true',
@@ -64,7 +64,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     validateRequest(request);
 
     // 2.5. HMAC wallet proof validation (from MetaMask verify Lambda)
-    validateWalletProof(request.walletAddress, request.walletProof, request.proofIssuedAt);
+    const walletProofSecret = await getWalletProofSecret();
+    validateWalletProof(request.walletAddress, request.walletProof, request.proofIssuedAt, walletProofSecret);
 
     // 3. 서비스 초기화
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
@@ -198,13 +199,7 @@ const PROOF_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
  * Validate HMAC wallet proof token issued by MetaMask verify Lambda.
  * Proves the caller completed wallet ownership verification within the time window.
  */
-function validateWalletProof(walletAddress: string, proof: string, issuedAt: string): void {
-  // Runtime guard: secret must be configured
-  const secret = process.env.WALLET_PROOF_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error('WALLET_PROOF_SECRET is not configured');
-  }
-
+function validateWalletProof(walletAddress: string, proof: string, issuedAt: string, secret: string): void {
   // Format validation: HMAC-SHA256 hex is always 64 chars
   if (!/^[a-f0-9]{64}$/.test(proof)) {
     throw new NftEventError('Invalid wallet proof format', ErrorCode.INVALID_SIGNATURE, 400);

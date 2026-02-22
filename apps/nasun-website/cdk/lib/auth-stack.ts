@@ -17,11 +17,8 @@ export class AuthStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
 
-    // Validate required secrets at synth time
-    const walletProofSecret = process.env.WALLET_PROOF_SECRET;
-    if (!walletProofSecret) {
-      throw new Error('WALLET_PROOF_SECRET is required. Set it in cdk/.env before deploying.');
-    }
+    // Secret names for Secrets Manager runtime reads
+    const walletProofSecretName = process.env.WALLET_PROOF_SECRET_NAME || 'nasun-wallet-proof';
 
     const twitterSessionsTable = dynamodb.Table.fromTableName(this, "TwitterOAuthSessionsTable", "TwitterOAuthSessions");
 
@@ -177,7 +174,7 @@ export class AuthStack extends cdk.Stack {
         COGNITO_DEVELOPER_PROVIDER_NAME: process.env.COGNITO_DEVELOPER_PROVIDER_NAME || 'nasun.io',
         ETHEREUM_CHAIN_ID_MAINNET: process.env.ETHEREUM_CHAIN_ID_MAINNET || '1',
         ETHEREUM_CHAIN_ID_SEPOLIA: process.env.ETHEREUM_CHAIN_ID_SEPOLIA || '11155111',
-        WALLET_PROOF_SECRET: walletProofSecret,
+        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: '--enable-source-maps',
       },
@@ -202,6 +199,17 @@ export class AuthStack extends cdk.Stack {
         ],
         resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`],
       })
+    );
+
+    // Secrets Manager 권한 (wallet proof secret)
+    metamaskAuthFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
+        ],
+      }),
     );
 
     // 5. API Gateway for MetaMask Auth with rate limiting

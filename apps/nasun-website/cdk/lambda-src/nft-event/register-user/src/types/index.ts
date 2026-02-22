@@ -180,7 +180,6 @@ export interface NftEventEnv {
   TASKS_TABLE_NAME: string;
 
   // X API Configuration
-  X_API_BEARER_TOKEN: string;
   X_TARGET_USERNAME: string; // 팔로우 대상 (예: "Nasun_io")
   X_TARGET_TWEET_ID: string; // 좋아요/리트윗 대상
 
