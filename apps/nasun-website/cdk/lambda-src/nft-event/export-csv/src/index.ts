@@ -39,7 +39,6 @@ function getCorsOrigin(origin?: string): string {
 const env: NftEventEnv = {
   WHITELIST_TABLE_NAME: process.env.WHITELIST_TABLE_NAME!,
   TASKS_TABLE_NAME: process.env.TASKS_TABLE_NAME!,
-  X_API_BEARER_TOKEN: process.env.X_API_BEARER_TOKEN || '',
   X_TARGET_USERNAME: process.env.X_TARGET_USERNAME || '',
   X_TARGET_TWEET_ID: process.env.X_TARGET_TWEET_ID || '',
   ENABLE_RATE_LIMIT_CACHE: process.env.ENABLE_RATE_LIMIT_CACHE || 'true',

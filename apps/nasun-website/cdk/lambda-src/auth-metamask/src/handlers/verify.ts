@@ -1,5 +1,6 @@
 import { createHmac } from 'crypto';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { getWalletProofSecret } from '../utils/wallet-proof';
 import { verifySignature } from '../utils/ethereum';
 import { getCognitoIdentityId } from '../utils/cognito';
 import { getAndDeleteNonce } from '../utils/dynamodb';
@@ -122,10 +123,7 @@ Nonce: ${nonce}`;
   }
 
   // 7. Generate HMAC wallet proof token (for downstream register/withdraw Lambdas)
-  const walletProofSecret = process.env.WALLET_PROOF_SECRET;
-  if (!walletProofSecret || walletProofSecret.length < 32) {
-    throw new Error('WALLET_PROOF_SECRET is not configured');
-  }
+  const walletProofSecret = await getWalletProofSecret();
   const proofIssuedAt = new Date().toISOString();
   const walletProof = createHmac('sha256', walletProofSecret)
     .update(`${walletAddress.toLowerCase()}:${proofIssuedAt}`)

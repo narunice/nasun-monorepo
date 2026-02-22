@@ -31,11 +31,9 @@ export class NftEventStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Validate required secrets at synth time
-    const walletProofSecret = process.env.WALLET_PROOF_SECRET;
-    if (!walletProofSecret) {
-      throw new Error('WALLET_PROOF_SECRET is required. Set it in cdk/.env before deploying.');
-    }
+    // Secret names for Secrets Manager runtime reads
+    const twitterTokensSecretName = process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens';
+    const walletProofSecretName = process.env.WALLET_PROOF_SECRET_NAME || 'nasun-wallet-proof';
 
     // ========== 1. DynamoDB Tables ==========
 
@@ -177,6 +175,7 @@ export class NftEventStack extends cdk.Stack {
         "@aws-sdk/util-dynamodb",
         "@aws-sdk/client-s3",
         "@aws-sdk/s3-request-presigner",
+        "@aws-sdk/client-secrets-manager",
       ],
     };
 
@@ -194,7 +193,7 @@ export class NftEventStack extends cdk.Stack {
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
         TASKS_TABLE_NAME: this.tasksTable.tableName,
-        X_API_BEARER_TOKEN: process.env.TWITTER_BEARER_TOKEN || "",
+        TWITTER_TOKENS_SECRET_NAME: twitterTokensSecretName,
         X_TARGET_USERNAME,
         X_TARGET_USER_ID,
         X_TARGET_TWEET_ID,
@@ -208,6 +207,17 @@ export class NftEventStack extends cdk.Stack {
     // IAM 권한: DynamoDB 읽기/쓰기
     this.whitelistTable.grantReadWriteData(verifyEligibilityLambda);
     this.tasksTable.grantReadWriteData(verifyEligibilityLambda);
+
+    // IAM 권한: Secrets Manager (Twitter bearer token)
+    verifyEligibilityLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:GetSecretValue"],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${twitterTokensSecretName}-*`,
+        ],
+      }),
+    );
 
     // Lambda 2: register-user
     const registerUserLambda = new NodejsFunction(this, "RegisterUserLambda", {
@@ -223,12 +233,11 @@ export class NftEventStack extends cdk.Stack {
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
         TASKS_TABLE_NAME: this.tasksTable.tableName,
-        X_API_BEARER_TOKEN: process.env.TWITTER_BEARER_TOKEN || "",
+        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         X_TARGET_USERNAME,
         X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
-        WALLET_PROOF_SECRET: walletProofSecret,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
@@ -236,6 +245,17 @@ export class NftEventStack extends cdk.Stack {
 
     this.whitelistTable.grantReadWriteData(registerUserLambda);
     this.tasksTable.grantReadWriteData(registerUserLambda); // copyTasks() PutItem 권한 필요
+
+    // IAM 권한: Secrets Manager (wallet proof only)
+    registerUserLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:GetSecretValue"],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
+        ],
+      }),
+    );
 
     // Lambda 3: withdraw-user
     const withdrawUserLambda = new NodejsFunction(this, "WithdrawUserLambda", {
@@ -250,13 +270,24 @@ export class NftEventStack extends cdk.Stack {
       logGroup: withdrawLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        WALLET_PROOF_SECRET: walletProofSecret,
+        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
     });
 
     this.whitelistTable.grantReadWriteData(withdrawUserLambda);
+
+    // IAM 권한: Secrets Manager (wallet proof)
+    withdrawUserLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsmanager:GetSecretValue"],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
+        ],
+      }),
+    );
 
     // Lambda 4: export-csv (OpenSea Allowlist)
     const exportCsvLambda = new NodejsFunction(this, "ExportCsvLambda", {
@@ -272,7 +303,6 @@ export class NftEventStack extends cdk.Stack {
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
         TASKS_TABLE_NAME: this.tasksTable.tableName,
-        X_API_BEARER_TOKEN: process.env.TWITTER_BEARER_TOKEN || "",
         X_TARGET_USERNAME,
         X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: "true",
