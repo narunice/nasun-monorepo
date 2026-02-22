@@ -83,16 +83,8 @@ export const handler: Handler<RefreshTokenEvent, RefreshTokenResult> =
     try {
       const secretId =
         process.env.TWITTER_TOKENS_SECRET_NAME || "nasun-twitter-tokens";
-      const clientId = process.env.OAUTH2_CLIENT_ID;
-      const clientSecret = process.env.OAUTH2_CLIENT_SECRET;
 
-      if (!clientId || !clientSecret) {
-        throw new Error(
-          "Missing OAUTH2_CLIENT_ID or OAUTH2_CLIENT_SECRET env vars",
-        );
-      }
-
-      // 1. Fetch current tokens from Secrets Manager
+      // 1. Fetch current tokens + client credentials from Secrets Manager
       console.log(`[SECRETS_MANAGER] Fetching secret: ${secretId}`);
       const getSecretResponse = await secretsClient.send(
         new GetSecretValueCommand({ SecretId: secretId }),
@@ -103,9 +95,17 @@ export const handler: Handler<RefreshTokenEvent, RefreshTokenResult> =
       );
       const { oauth2 } = currentValue;
 
+      if (!oauth2?.clientId || !oauth2?.clientSecret) {
+        throw new Error(
+          "Missing oauth2.clientId or oauth2.clientSecret in Secrets Manager",
+        );
+      }
+
       if (!oauth2?.refreshToken) {
         throw new Error("No refresh token found in Secrets Manager");
       }
+
+      const { clientId, clientSecret } = oauth2;
 
       // 2. Check token expiry
       const expiryDate = new Date(oauth2.expiresAt);
@@ -141,7 +141,7 @@ export const handler: Handler<RefreshTokenEvent, RefreshTokenResult> =
       // Secrets Manager update MUST succeed or token becomes permanently invalid.
       const oldRefreshToken = oauth2.refreshToken;
       console.log(
-        `[REFRESH] Requesting new token... (old RT: ${oldRefreshToken.substring(0, 20)}...)`,
+        `[REFRESH] Requesting new token... (old RT: ${oldRefreshToken.substring(0, 8)}...)`,
       );
 
       let newTokenResponse;
