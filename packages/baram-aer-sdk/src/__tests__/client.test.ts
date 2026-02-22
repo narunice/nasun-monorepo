@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AERClient } from '../client';
 import { createDevnetConfig } from '../config';
 import type { AERRecord } from '../types/aer';
@@ -17,6 +17,17 @@ vi.mock('../services/chain', () => ({
   traceChainForward: vi.fn(),
 }));
 
+vi.mock('../services/indexer', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/indexer')>();
+  return {
+    ...actual,
+    indexerGetRecent: vi.fn(),
+    indexerGetByAddress: vi.fn(),
+    indexerGetByBudgetId: vi.fn(),
+    indexerTraceChain: vi.fn(),
+  };
+});
+
 import {
   fetchAERObject,
   fetchAERByRequestId,
@@ -25,6 +36,13 @@ import {
   fetchAERByBudgetId,
 } from '../services/fetch';
 import { traceChainBackward, traceChainForward } from '../services/chain';
+import {
+  indexerGetRecent,
+  indexerGetByAddress,
+  indexerGetByBudgetId,
+  indexerTraceChain,
+  IndexerError,
+} from '../services/indexer';
 
 const mockFetchAERObject = vi.mocked(fetchAERObject);
 const mockFetchAERByRequestId = vi.mocked(fetchAERByRequestId);
@@ -33,6 +51,10 @@ const mockFetchAERByAddress = vi.mocked(fetchAERByAddress);
 const mockFetchAERByBudgetId = vi.mocked(fetchAERByBudgetId);
 const mockTraceChainBackward = vi.mocked(traceChainBackward);
 const mockTraceChainForward = vi.mocked(traceChainForward);
+const mockIndexerGetRecent = vi.mocked(indexerGetRecent);
+const mockIndexerGetByAddress = vi.mocked(indexerGetByAddress);
+const mockIndexerGetByBudgetId = vi.mocked(indexerGetByBudgetId);
+const mockIndexerTraceChain = vi.mocked(indexerTraceChain);
 
 function makeRecord(overrides: Partial<AERRecord> = {}): AERRecord {
   return {
@@ -238,5 +260,139 @@ describe('AERClient', () => {
     const records = [makeRecord({ teeVerified: true }), makeRecord({ teeVerified: false })];
     const profile = client.trustProfile(records);
     expect(profile.teeVerifiedPercentage).toBe(50);
+  });
+});
+
+// ===== withFallback tests =====
+
+describe('AERClient withFallback (indexer → RPC)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  const INDEXER_URL = 'http://localhost:3201';
+  const indexerPaginatedResult = {
+    data: [makeRecord({ objectId: '0xfromIndexer' })],
+    hasNextPage: false,
+    nextCursor: null,
+  };
+  const rpcPaginatedResult = {
+    data: [makeRecord({ objectId: '0xfromRpc' })],
+    hasNextPage: false,
+    nextCursor: null,
+  };
+
+  it('uses indexer when indexerUrl is set and indexer succeeds', async () => {
+    mockIndexerGetRecent.mockResolvedValueOnce(indexerPaginatedResult);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    const result = await client.getRecent({ limit: 10 });
+
+    expect(result.data[0].objectId).toBe('0xfromIndexer');
+    expect(mockIndexerGetRecent).toHaveBeenCalled();
+    expect(mockFetchRecentAEREvents).not.toHaveBeenCalled();
+  });
+
+  it('falls back to RPC when indexer fails with 5xx error', async () => {
+    mockIndexerGetRecent.mockRejectedValueOnce(new IndexerError('Server error', 500));
+    mockFetchRecentAEREvents.mockResolvedValueOnce(rpcPaginatedResult);
+
+    const onFallback = vi.fn();
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL, onFallback });
+    const result = await client.getRecent({ limit: 10 });
+
+    expect(result.data[0].objectId).toBe('0xfromRpc');
+    expect(onFallback).toHaveBeenCalledWith('getRecent', expect.any(IndexerError));
+  });
+
+  it('falls back to RPC on network timeout', async () => {
+    mockIndexerGetRecent.mockRejectedValueOnce(new IndexerError('Timeout', 0));
+    mockFetchRecentAEREvents.mockResolvedValueOnce(rpcPaginatedResult);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    const result = await client.getRecent();
+
+    expect(result.data[0].objectId).toBe('0xfromRpc');
+  });
+
+  it('throws on 4xx error (no fallback)', async () => {
+    mockIndexerGetRecent.mockRejectedValueOnce(new IndexerError('Bad request', 400));
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    await expect(client.getRecent()).rejects.toThrow('Bad request');
+    expect(mockFetchRecentAEREvents).not.toHaveBeenCalled();
+  });
+
+  it('uses RPC directly when indexerUrl is not set', async () => {
+    mockFetchRecentAEREvents.mockResolvedValueOnce(rpcPaginatedResult);
+
+    const client = new AERClient({ config }); // no indexerUrl
+    const result = await client.getRecent();
+
+    expect(result.data[0].objectId).toBe('0xfromRpc');
+    expect(mockIndexerGetRecent).not.toHaveBeenCalled();
+  });
+
+  it('withFallback works for getByInitiator', async () => {
+    const records = [makeRecord({ objectId: '0xidxInit' })];
+    mockIndexerGetByAddress.mockResolvedValueOnce(records);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    const result = await client.getByInitiator('0xalice');
+
+    expect(result[0].objectId).toBe('0xidxInit');
+    expect(mockIndexerGetByAddress).toHaveBeenCalledWith(
+      INDEXER_URL, 5000, '0xalice', 'initiator', undefined,
+    );
+  });
+
+  it('withFallback works for getByExecutor with fallback', async () => {
+    mockIndexerGetByAddress.mockRejectedValueOnce(new IndexerError('Down', 503));
+    mockFetchAERByAddress.mockResolvedValueOnce([makeRecord({ objectId: '0xrpcExec' })]);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    const result = await client.getByExecutor('0xexec');
+
+    expect(result[0].objectId).toBe('0xrpcExec');
+  });
+
+  it('withFallback works for getByBudgetId', async () => {
+    const records = [makeRecord({ objectId: '0xidxBudget' })];
+    mockIndexerGetByBudgetId.mockResolvedValueOnce(records);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    const result = await client.getByBudgetId('0xbudget');
+
+    expect(result[0].objectId).toBe('0xidxBudget');
+  });
+
+  it('withFallback works for traceChainBackward', async () => {
+    const chain = [makeRecord({ objectId: '0xroot' }), makeRecord({ objectId: '0xleaf' })];
+    mockIndexerTraceChain.mockResolvedValueOnce(chain);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    const result = await client.traceChainBackward('0xleaf', 10);
+
+    expect(result).toHaveLength(2);
+    expect(mockIndexerTraceChain).toHaveBeenCalledWith(
+      INDEXER_URL, 5000, '0xleaf', 'backward', 10,
+    );
+  });
+
+  it('withFallback works for traceChainForward with fallback', async () => {
+    mockIndexerTraceChain.mockRejectedValueOnce(new IndexerError('Error', 502));
+    mockTraceChainForward.mockResolvedValueOnce([makeRecord({ objectId: '0xfwd' })]);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL });
+    const result = await client.traceChainForward('0xroot');
+
+    expect(result[0].objectId).toBe('0xfwd');
+  });
+
+  it('custom indexerTimeoutMs is passed to indexer functions', async () => {
+    mockIndexerGetRecent.mockResolvedValueOnce(indexerPaginatedResult);
+
+    const client = new AERClient({ config, indexerUrl: INDEXER_URL, indexerTimeoutMs: 3000 });
+    await client.getRecent();
+
+    expect(mockIndexerGetRecent).toHaveBeenCalledWith(INDEXER_URL, 3000, undefined);
   });
 });

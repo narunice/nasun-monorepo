@@ -73,6 +73,23 @@ export class AERClient {
     this.onFallback = options.onFallback;
   }
 
+  /** Try indexer first, fall back to RPC on transient errors. */
+  private async withFallback<T>(
+    method: string,
+    indexerFn: (url: string, timeout: number) => Promise<T>,
+    rpcFn: () => Promise<T>,
+  ): Promise<T> {
+    if (this.indexerUrl) {
+      try {
+        return await indexerFn(this.indexerUrl, this.indexerTimeoutMs);
+      } catch (err) {
+        if (!shouldFallback(err)) throw err;
+        this.onFallback?.(method, err);
+      }
+    }
+    return rpcFn();
+  }
+
   // === Single Record Queries (always RPC — freshness required) ===
 
   async getByRequestId(requestId: number): Promise<AERRecord | null> {
@@ -86,20 +103,14 @@ export class AERClient {
   // === List Queries (indexer when available, RPC fallback) ===
 
   async getRecent(options?: QueryOptions): Promise<PaginatedResult<AERRecord>> {
-    if (this.indexerUrl) {
-      try {
-        return await indexerGetRecent(this.indexerUrl, this.indexerTimeoutMs, options);
-      } catch (err) {
-        if (!shouldFallback(err)) throw err;
-        this.onFallback?.('getRecent', err);
-      }
-    }
-    return fetchRecentAEREvents(this.client, this.config, options);
+    return this.withFallback(
+      'getRecent',
+      (url, timeout) => indexerGetRecent(url, timeout, options),
+      () => fetchRecentAEREvents(this.client, this.config, options),
+    );
   }
 
   async query(filter: AERFilter): Promise<AERRecord[]> {
-    // For indexer-backed queries, we could translate AERFilter to query params.
-    // For now, fetch via getRecent + in-memory filter (same as before).
     const limit = Math.min(filter.limit ?? 50, 200);
     const result = await this.getRecent({
       limit: Math.min(Math.max(limit * 2, 100), 200),
@@ -110,61 +121,37 @@ export class AERClient {
   // === Address-based Queries (indexer when available) ===
 
   async getByInitiator(address: string, options?: QueryOptions): Promise<AERRecord[]> {
-    if (this.indexerUrl) {
-      try {
-        return await indexerGetByAddress(
-          this.indexerUrl, this.indexerTimeoutMs, address, 'initiator', options,
-        );
-      } catch (err) {
-        if (!shouldFallback(err)) throw err;
-        this.onFallback?.('getByInitiator', err);
-      }
-    }
-    return fetchAERByAddress(this.client, this.config, address, 'initiator', options);
+    return this.withFallback(
+      'getByInitiator',
+      (url, timeout) => indexerGetByAddress(url, timeout, address, 'initiator', options),
+      () => fetchAERByAddress(this.client, this.config, address, 'initiator', options),
+    );
   }
 
   async getByExecutor(address: string, options?: QueryOptions): Promise<AERRecord[]> {
-    if (this.indexerUrl) {
-      try {
-        return await indexerGetByAddress(
-          this.indexerUrl, this.indexerTimeoutMs, address, 'executor', options,
-        );
-      } catch (err) {
-        if (!shouldFallback(err)) throw err;
-        this.onFallback?.('getByExecutor', err);
-      }
-    }
-    return fetchAERByAddress(this.client, this.config, address, 'executor', options);
+    return this.withFallback(
+      'getByExecutor',
+      (url, timeout) => indexerGetByAddress(url, timeout, address, 'executor', options),
+      () => fetchAERByAddress(this.client, this.config, address, 'executor', options),
+    );
   }
 
   async getByAuthorizer(address: string, options?: QueryOptions): Promise<AERRecord[]> {
-    if (this.indexerUrl) {
-      try {
-        return await indexerGetByAddress(
-          this.indexerUrl, this.indexerTimeoutMs, address, 'authorizer', options,
-        );
-      } catch (err) {
-        if (!shouldFallback(err)) throw err;
-        this.onFallback?.('getByAuthorizer', err);
-      }
-    }
-    return fetchAERByAddress(this.client, this.config, address, 'authorizer', options);
+    return this.withFallback(
+      'getByAuthorizer',
+      (url, timeout) => indexerGetByAddress(url, timeout, address, 'authorizer', options),
+      () => fetchAERByAddress(this.client, this.config, address, 'authorizer', options),
+    );
   }
 
   // === Budget Queries (indexer when available) ===
 
   async getByBudgetId(budgetId: string, options?: QueryOptions): Promise<AERRecord[]> {
-    if (this.indexerUrl) {
-      try {
-        return await indexerGetByBudgetId(
-          this.indexerUrl, this.indexerTimeoutMs, budgetId, options,
-        );
-      } catch (err) {
-        if (!shouldFallback(err)) throw err;
-        this.onFallback?.('getByBudgetId', err);
-      }
-    }
-    return fetchAERByBudgetId(this.client, this.config, budgetId, options);
+    return this.withFallback(
+      'getByBudgetId',
+      (url, timeout) => indexerGetByBudgetId(url, timeout, budgetId, options),
+      () => fetchAERByBudgetId(this.client, this.config, budgetId, options),
+    );
   }
 
   async getBudgetUtilization(budgetId: string): Promise<BudgetUtilization> {
@@ -175,31 +162,19 @@ export class AERClient {
   // === Decision Chain Traversal (indexer when available) ===
 
   async traceChainBackward(objectId: string, maxDepth?: number): Promise<AERRecord[]> {
-    if (this.indexerUrl) {
-      try {
-        return await indexerTraceChain(
-          this.indexerUrl, this.indexerTimeoutMs, objectId, 'backward', maxDepth,
-        );
-      } catch (err) {
-        if (!shouldFallback(err)) throw err;
-        this.onFallback?.('traceChainBackward', err);
-      }
-    }
-    return traceChainBackward(this.client, this.config, objectId, maxDepth);
+    return this.withFallback(
+      'traceChainBackward',
+      (url, timeout) => indexerTraceChain(url, timeout, objectId, 'backward', maxDepth),
+      () => traceChainBackward(this.client, this.config, objectId, maxDepth),
+    );
   }
 
   async traceChainForward(objectId: string, maxDepth?: number): Promise<AERRecord[]> {
-    if (this.indexerUrl) {
-      try {
-        return await indexerTraceChain(
-          this.indexerUrl, this.indexerTimeoutMs, objectId, 'forward', maxDepth,
-        );
-      } catch (err) {
-        if (!shouldFallback(err)) throw err;
-        this.onFallback?.('traceChainForward', err);
-      }
-    }
-    return traceChainForward(this.client, this.config, objectId, maxDepth);
+    return this.withFallback(
+      'traceChainForward',
+      (url, timeout) => indexerTraceChain(url, timeout, objectId, 'forward', maxDepth),
+      () => traceChainForward(this.client, this.config, objectId, maxDepth),
+    );
   }
 
   // === Analytics (synchronous, pure functions) ===
