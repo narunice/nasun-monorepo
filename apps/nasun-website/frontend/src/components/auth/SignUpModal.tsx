@@ -85,9 +85,11 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
           >
             Join Nasun
           </DialogTitle>
-          <DialogDescription className="text-nasun-black/80 text-center text-base">
-            Choose your sign-up method
-          </DialogDescription>
+          {!isAuthenticated && (
+            <DialogDescription className="text-nasun-black/80 text-center text-base">
+              Choose your sign-up method
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         {isAuthenticated ? (

@@ -18,7 +18,12 @@ export async function refreshAndSaveUserProfile(
     throw new Error("Failed to fetch updated profile");
   }
 
-  const { updateUserProfile } = useUserStore.getState();
+  // Preserve cognitoToken from current session (not stored in DynamoDB)
+  const { user, updateUserProfile } = useUserStore.getState();
+  if (user?.cognitoToken && !updatedProfile.cognitoToken) {
+    updatedProfile.cognitoToken = user.cognitoToken;
+  }
+
   updateUserProfile(updatedProfile);
   sessionStorage.setItem(
     "nasun_user_profile",
