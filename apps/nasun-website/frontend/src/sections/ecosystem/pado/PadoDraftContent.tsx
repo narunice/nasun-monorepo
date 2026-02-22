@@ -21,6 +21,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import padoUiVideo from "@/assets/videos/Pado-Ui-Full-rf16.mp4";
 
 export const PadoDraftContent = () => {
   // Dynamic namespace — strict key typing not applicable
@@ -30,29 +31,35 @@ export const PadoDraftContent = () => {
   };
 
   const rawFeatures = t("howItWorks.features", { returnObjects: true });
-  const howItWorksFeatures = Array.isArray(rawFeatures) ? rawFeatures as Array<{
-    title: string;
-    description: string;
-  }> : [];
+  const howItWorksFeatures = Array.isArray(rawFeatures)
+    ? (rawFeatures as Array<{
+        title: string;
+        description: string;
+      }>)
+    : [];
 
   const rawModes = t("riskLevel.modes", { returnObjects: true });
-  const riskModes = Array.isArray(rawModes) ? rawModes as Array<{
-    title: string;
-    label: string;
-    description: string;
-  }> : [];
+  const riskModes = Array.isArray(rawModes)
+    ? (rawModes as Array<{
+        title: string;
+        label: string;
+        description: string;
+      }>)
+    : [];
 
   const rawDevnet = t("liveNow.devnet.items", { returnObjects: true });
-  const devnetItems = Array.isArray(rawDevnet) ? rawDevnet as string[] : [];
+  const devnetItems = Array.isArray(rawDevnet) ? (rawDevnet as string[]) : [];
 
   const rawComing = t("liveNow.coming.items", { returnObjects: true });
-  const comingItems = Array.isArray(rawComing) ? rawComing as string[] : [];
+  const comingItems = Array.isArray(rawComing) ? (rawComing as string[]) : [];
 
   const rawFlywheel = t("flywheel.items", { returnObjects: true });
-  const flywheelItems = Array.isArray(rawFlywheel) ? rawFlywheel as Array<{
-    from: string;
-    description: string;
-  }> : [];
+  const flywheelItems = Array.isArray(rawFlywheel)
+    ? (rawFlywheel as Array<{
+        from: string;
+        description: string;
+      }>)
+    : [];
 
   if (!ready) return null;
 
@@ -71,9 +78,7 @@ export const PadoDraftContent = () => {
             </SectionTitle>
           </FadeInUp>
           <FadeInUp delay="0.1">
-            <p className="text-nasun-white/70 mb-4">
-              {t("oneAccount.intro")}
-            </p>
+            <p className="text-nasun-white/70 mb-4">{t("oneAccount.intro")}</p>
           </FadeInUp>
           <FadeInUp delay="0.15">
             <OuterBox color="nw0" padding="md">
@@ -82,18 +87,14 @@ export const PadoDraftContent = () => {
                   <h6 className="text-nasun-nw4 font-semibold mb-1">
                     {t("oneAccount.problemLabel")}
                   </h6>
-                  <p className="leading-relaxed">
-                    {t("oneAccount.problem")}
-                  </p>
+                  <p className="leading-relaxed">{t("oneAccount.problem")}</p>
                 </div>
                 <div className="h-px bg-gradient-to-r from-transparent via-nasun-nw4/20 to-transparent" />
                 <div>
                   <h6 className="text-nasun-nw4 font-semibold mb-1">
                     {t("oneAccount.solutionLabel")}
                   </h6>
-                  <p className="leading-relaxed">
-                    {t("oneAccount.solution")}
-                  </p>
+                  <p className="leading-relaxed">{t("oneAccount.solution")}</p>
                 </div>
               </div>
             </OuterBox>
@@ -108,14 +109,12 @@ export const PadoDraftContent = () => {
             </SectionTitle>
           </FadeInUp>
           <FadeInUp delay="0.1">
-            <p className="text-nasun-white/70 mb-4">
-              {t("whyKorea.intro")}
-            </p>
+            <p className="text-nasun-white/70 mb-4">{t("whyKorea.intro")}</p>
           </FadeInUp>
           <div className="flex flex-col gap-4">
             <FadeInUp delay="0.15">
               <DividerBox
-                color="nw1"
+                color="nw0"
                 hideDivider
                 padding="sm"
                 title={t("whyKorea.strategyLabel")}
@@ -127,7 +126,7 @@ export const PadoDraftContent = () => {
             </FadeInUp>
             <FadeInUp delay="0.2">
               <DividerBox
-                color="nw1"
+                color="nw0"
                 hideDivider
                 padding="sm"
                 title={t("whyKorea.regulatoryLabel")}
@@ -139,7 +138,7 @@ export const PadoDraftContent = () => {
             </FadeInUp>
             <FadeInUp delay="0.25">
               <DividerBox
-                color="nw1"
+                color="nw0"
                 hideDivider
                 padding="sm"
                 title={t("whyKorea.visionLabel")}
@@ -166,13 +165,13 @@ export const PadoDraftContent = () => {
               return (
                 <FadeInUp key={i} delay={`${0.1 + i * 0.05}`}>
                   <DividerBox
-                    color="nw0"
+                    color="nw1"
                     hideDivider
                     padding="sm"
                     title={feat.title}
                     icon={<Icon className={`${iconSize} text-nasun-nw4`} />}
                     titleClassName="!text-nasun-nw4"
-                    className="h-full"
+                    className="h-full border-nasun-nw4/30 !bg-[#212E57]/50"
                   >
                     <p>{feat.description}</p>
                   </DividerBox>
@@ -194,7 +193,7 @@ export const PadoDraftContent = () => {
               const Icon = riskIcons[i];
               return (
                 <FadeInUp key={i} delay={`${0.1 + i * 0.05}`}>
-                  <DividerBox color="nw1" hideDivider padding="sm">
+                  <DividerBox color="nw0" hideDivider padding="sm">
                     <div className="flex items-center gap-2 mb-2">
                       <Icon className="w-5 h-5 text-nasun-nw4" />
                       <h6 className="font-medium">{mode.title}</h6>
@@ -209,9 +208,7 @@ export const PadoDraftContent = () => {
             })}
           </div>
           <FadeInUp delay="0.3">
-            <p className="text-nasun-nw4 mt-6 italic">
-              {t("riskLevel.closing")}
-            </p>
+            <p className="text-nasun-nw4 mt-6 italic">{t("riskLevel.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -221,6 +218,19 @@ export const PadoDraftContent = () => {
             <SectionTitle as="h4" className="uppercase">
               {t("liveNow.title")}
             </SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.05">
+            <div className="mt-2 md:mt-4 lg:mt-6 mb-6">
+              <video
+                src={padoUiVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="w-full rounded-lg"
+              />
+            </div>
           </FadeInUp>
 
           {/* Devnet - Live */}
@@ -264,9 +274,7 @@ export const PadoDraftContent = () => {
           </div>
 
           <FadeInUp delay="0.5">
-            <p className="text-nasun-white/60 italic">
-              {t("liveNow.closing")}
-            </p>
+            <p className="text-nasun-white/60 italic">{t("liveNow.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -278,20 +286,19 @@ export const PadoDraftContent = () => {
             </SectionTitle>
           </FadeInUp>
           <FadeInUp delay="0.1">
-            <p className="text-nasun-white/70 mb-4">
-              {t("flywheel.intro")}
-            </p>
+            <p className="text-nasun-white/70 mb-4">{t("flywheel.intro")}</p>
           </FadeInUp>
           <div className="flex flex-col gap-4">
             {flywheelItems.map((item, i) => (
               <FadeInUp key={i} delay={`${0.15 + i * 0.05}`}>
                 <DividerBox
-                  color="nw0"
+                  color="nw1"
                   hideDivider
                   padding="sm"
                   title={item.from}
                   icon={<RefreshCw className="w-5 h-5 text-nasun-nw4" />}
                   titleClassName="!text-nasun-nw4"
+                  className="h-full border-nasun-nw4/30 !bg-[#212E57]/50"
                 >
                   <p>{item.description}</p>
                 </DividerBox>
@@ -299,9 +306,7 @@ export const PadoDraftContent = () => {
             ))}
           </div>
           <FadeInUp delay="0.35">
-            <p className="text-nasun-nw4 mt-6 italic">
-              {t("flywheel.closing")}
-            </p>
+            <p className="text-nasun-nw4 mt-6 italic">{t("flywheel.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -314,9 +319,7 @@ export const PadoDraftContent = () => {
           </FadeInUp>
           <FadeInUp delay="0.1">
             <OuterBox color="nw1" padding="md">
-              <p className="leading-relaxed mb-8 text-center">
-                {t("tryPado.intro")}
-              </p>
+              <p className="leading-relaxed mb-8 text-center">{t("tryPado.intro")}</p>
 
               <div className="flex flex-wrap gap-3 justify-center">
                 <Button variant="white" size="lg" asChild>
@@ -343,9 +346,7 @@ export const PadoDraftContent = () => {
         {/* ===== Footer Badge ===== */}
         <section>
           <FadeInUp>
-            <p className="text-nasun-nw4/60 text-center">
-              {t("footer.badge")}
-            </p>
+            <p className="text-nasun-nw4/60 text-center">{t("footer.badge")}</p>
           </FadeInUp>
         </section>
       </div>

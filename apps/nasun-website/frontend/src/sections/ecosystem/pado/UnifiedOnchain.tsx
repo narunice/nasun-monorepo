@@ -17,6 +17,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import padoUiVideo from "@/assets/videos/Pado-Ui-Full-rf16.mp4";
 
 export const UnifiedOnchain = () => {
   const { t } = useTranslation("pado");
@@ -140,6 +141,19 @@ export const UnifiedOnchain = () => {
             <SectionTitle as="h4" className="uppercase">
               {t("liveNow.title")}
             </SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.05">
+            <div className="mt-2 md:mt-4 lg:mt-6 mb-6">
+              <video
+                src={padoUiVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="w-full rounded-lg"
+              />
+            </div>
           </FadeInUp>
 
           {/* Devnet - Live */}
