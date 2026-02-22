@@ -11,7 +11,7 @@ import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
 import gensolVideo from "../../assets/videos/Trakker-Flying-26rf.mp4";
 import baramVideo from "../../assets/videos/Baram-U-rf10.mp4";
-import padoVideo from "../../assets/videos/Pado-Ui-Demo-Final-rf26.mp4";
+import padoVideo from "../../assets/videos/Pado-Ui-Short-rf20.mp4";
 import explorerVideo from "../../assets/videos/Network-Explorer-Ui-rf12.mp4";
 
 const CustomArrow = ({
@@ -91,7 +91,6 @@ const SLIDES: SlideData[] = [
     buttonVariant: "pado",
     link: "/pado",
     video: padoVideo,
-    videoStartTime: 16,
   },
   {
     id: "protocol",
