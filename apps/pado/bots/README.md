@@ -50,9 +50,9 @@ pnpm lp-bot:all
 |----------|------|------|------|-------------|
 | `LP_SPREAD_BPS` | 20 | 30 | 40 | Base spread in basis points |
 | `LP_LEVEL_SPACING_BPS` | 8 | 12 | 15 | Price spacing between levels |
-| `LP_ORDER_SIZE` | 0.005 | 0.2 | 3 | Base token quantity per level |
-| `LP_MAX_ORDER_SIZE` | 0.05 | 2.0 | 30 | Maximum single order size |
-| `LP_MAX_ARB_QUANTITY` | 0.01 | 0.5 | 10 | Max arbitrage trade size |
+| `LP_ORDER_SIZE` | 0.05 | 2 | 30 | Base token quantity per level |
+| `LP_MAX_ORDER_SIZE` | 0.5 | 20 | 300 | Maximum single order size |
+| `LP_MAX_ARB_QUANTITY` | 0.1 | 5 | 100 | Max arbitrage trade size |
 | `LP_MIN_PRICE` | 50000 | 1000 | 10 | Sanity check lower bound |
 | `LP_MAX_PRICE` | 200000 | 10000 | 1000 | Sanity check upper bound |
 
