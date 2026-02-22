@@ -513,6 +513,8 @@ describe('Points Aggregation Integration', () => {
         pool_id: poolId,
         maker_address: maker,
         taker_address: taker,
+        maker_order_id: null,
+        taker_order_id: null,
         price: '97000000000000',
         base_quantity: '1000000000',
         quote_quantity: quoteQty,
