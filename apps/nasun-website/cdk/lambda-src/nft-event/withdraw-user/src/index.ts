@@ -20,6 +20,7 @@ import {
   NftEventError,
 } from './types';
 import { WhitelistService } from './services/whitelistService';
+import { getWalletProofSecret } from './utils/wallet-proof';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
@@ -81,7 +82,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     }
 
     // 3. Validate HMAC wallet proof (from MetaMask verify Lambda)
-    validateWalletProof(request.walletAddress, request.walletProof, request.proofIssuedAt);
+    const walletProofSecret = await getWalletProofSecret();
+    validateWalletProof(request.walletAddress, request.walletProof, request.proofIssuedAt, walletProofSecret);
 
     // 4. 화이트리스트에서 사용자 제거 (Soft Delete)
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
@@ -129,13 +131,7 @@ const PROOF_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 /**
  * Validate HMAC wallet proof token issued by MetaMask verify Lambda.
  */
-function validateWalletProof(walletAddress: string, proof: string, issuedAt: string): void {
-  // Runtime guard: secret must be configured
-  const secret = process.env.WALLET_PROOF_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error('WALLET_PROOF_SECRET is not configured');
-  }
-
+function validateWalletProof(walletAddress: string, proof: string, issuedAt: string, secret: string): void {
   // Format validation: HMAC-SHA256 hex is always 64 chars
   if (!/^[a-f0-9]{64}$/.test(proof)) {
     throw new NftEventError('Invalid wallet proof format', ErrorCode.INVALID_SIGNATURE, 400);

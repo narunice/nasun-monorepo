@@ -25,6 +25,7 @@ import {
 } from './types';
 import { VerificationService } from './services/verificationService';
 import { handleError } from './utils/errorHandler';
+import { getBearerToken } from './utils/bearer-token';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 
@@ -41,7 +42,6 @@ function getCorsOrigin(origin?: string): string {
 const env: NftEventEnv = {
   WHITELIST_TABLE_NAME: process.env.WHITELIST_TABLE_NAME!,
   TASKS_TABLE_NAME: process.env.TASKS_TABLE_NAME!,
-  X_API_BEARER_TOKEN: process.env.X_API_BEARER_TOKEN!,
   X_TARGET_USERNAME: process.env.X_TARGET_USERNAME || 'Nasun_io',
   X_TARGET_USER_ID: process.env.X_TARGET_USER_ID || '1725466995565752320',
   X_TARGET_TWEET_ID: process.env.X_TARGET_TWEET_ID!,
@@ -102,9 +102,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     // 4. VerificationService — always uses App Bearer Token for base client
     //    User Context (xAccessToken) is passed to verifyAllTasks for Tier 3
+    const bearerToken = await getBearerToken();
     const verificationService = new VerificationService({
       xApiConfig: {
-        bearerToken: env.X_API_BEARER_TOKEN,
+        bearerToken,
         targetUserId: env.X_TARGET_USER_ID,
         targetTweetId: env.X_TARGET_TWEET_ID,
       },
