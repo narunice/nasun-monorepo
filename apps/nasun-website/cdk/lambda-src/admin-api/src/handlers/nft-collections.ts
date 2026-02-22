@@ -277,7 +277,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     // POST /nft-collections - Create collection
     if (event.httpMethod === "POST") {
-      const body = event.body ? JSON.parse(event.body) : {};
+      let body: Record<string, unknown>;
+      try {
+        body = event.body ? JSON.parse(event.body) : {};
+      } catch {
+        return errorResponse(400, "Invalid JSON in request body", requestOrigin);
+      }
       const { contractAddress, chain, collectionName } = body;
 
       if (!contractAddress || !chain || !collectionName) {
@@ -307,7 +312,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       if (!isValidUUID(collectionId)) {
         return errorResponse(400, "Invalid collection ID format", requestOrigin);
       }
-      const body = event.body ? JSON.parse(event.body) : {};
+      let body: Record<string, unknown>;
+      try {
+        body = event.body ? JSON.parse(event.body) : {};
+      } catch {
+        return errorResponse(400, "Invalid JSON in request body", requestOrigin);
+      }
       const { collectionName, enabled, contractAddress, chain } = body;
 
       // Validate optional fields if provided
@@ -349,8 +359,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     }
 
     return errorResponse(404, "Not found", requestOrigin);
-  } catch (error: any) {
-    console.error("NFT Collections API error:", error);
+  } catch (error: unknown) {
+    console.error("NFT Collections API error:", error instanceof Error ? error.message : String(error));
     return errorResponse(500, "Internal server error", requestOrigin);
   }
 };

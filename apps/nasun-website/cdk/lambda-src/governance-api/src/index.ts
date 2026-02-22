@@ -256,7 +256,7 @@ async function getProposalType(proposalId: string): Promise<number> {
 
     return value.variant === "Poll" ? 1 : 0;
   } catch (error) {
-    console.error("Failed to get proposal type:", error);
+    console.error("Failed to get proposal type:", error instanceof Error ? error.message : String(error));
     return 0;
   }
 }
@@ -311,7 +311,7 @@ async function getV3AccountByHandle(twitterHandle: string): Promise<V3Account | 
     );
     return (result.Items?.[0] as V3Account) || null;
   } catch (error) {
-    console.error("Error looking up V3 account:", error);
+    console.error("Error looking up V3 account:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -331,7 +331,7 @@ async function getV3ActiveSeason(): Promise<V3Season | null> {
     );
     return (result.Items?.[0] as V3Season) || null;
   } catch (error) {
-    console.error("Error finding active season:", error);
+    console.error("Error finding active season:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -355,7 +355,7 @@ async function getV3MostRecentEndedSeason(): Promise<V3Season | null> {
     );
     return sorted[0] as V3Season;
   } catch (error) {
-    console.error("Error finding last ended season:", error);
+    console.error("Error finding last ended season:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -374,7 +374,7 @@ async function getV3SeasonAccountScore(
     );
     return (result.Item as V3SeasonAccountScore) || null;
   } catch (error) {
-    console.error("Error getting season account score:", error);
+    console.error("Error getting season account score:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -494,7 +494,7 @@ async function calculateOnChainScore(address: string): Promise<number> {
 
     return Math.floor(score);
   } catch (error) {
-    console.error("Error calculating on-chain score:", error);
+    console.error("Error calculating on-chain score:", error instanceof Error ? error.message : String(error));
     return 0;
   }
 }
@@ -530,7 +530,7 @@ async function checkBattalionAllowlist(walletAddress: string): Promise<boolean> 
     }));
     return result.Item?.status === "ACTIVE";
   } catch (error) {
-    console.error("Error checking battalion allowlist:", error);
+    console.error("Error checking battalion allowlist:", error instanceof Error ? error.message : String(error));
     return false;
   }
 }
@@ -730,7 +730,17 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
-      const { voter, proposalId, twitterHandle: rawTwitterHandle, walletAddress, ethAddress } = JSON.parse(event.body);
+      let certBody: Record<string, unknown>;
+      try {
+        certBody = JSON.parse(event.body);
+      } catch {
+        return {
+          statusCode: 400,
+          headers: corsHeaders(),
+          body: JSON.stringify({ error: "Invalid JSON in request body" }),
+        };
+      }
+      const { voter, proposalId, twitterHandle: rawTwitterHandle, walletAddress, ethAddress } = certBody;
 
       if (!voter || !proposalId) {
         return {
@@ -805,15 +815,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           headers: corsHeaders(),
           body: JSON.stringify(certificate),
         };
-      } catch (error: any) {
-        console.error("Certificate issuance error:", maskSensitiveData({ message: error.message, stack: error.stack }));
+      } catch (error: unknown) {
+        console.error("Certificate issuance error:", maskSensitiveData({
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        }));
         return {
           statusCode: 500,
           headers: corsHeaders(),
-          body: JSON.stringify({
-            error: "Failed to issue certificate",
-            message: error.message,
-          }),
+          body: JSON.stringify({ error: "Failed to issue certificate" }),
         };
       }
     }
@@ -828,7 +838,17 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
-      const { txKindBytes, sender } = JSON.parse(event.body);
+      let sponsorBody: Record<string, unknown>;
+      try {
+        sponsorBody = JSON.parse(event.body);
+      } catch {
+        return {
+          statusCode: 400,
+          headers: corsHeaders(),
+          body: JSON.stringify({ error: "Invalid JSON in request body" }),
+        };
+      }
+      const { txKindBytes, sender } = sponsorBody;
 
       if (!txKindBytes || !sender) {
         return {
@@ -919,11 +939,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             sponsorSignature: sponsorSignature.signature,
           }),
         };
-      } catch (error: any) {
-        console.error("Sponsor error:", maskSensitiveData({ message: error.message, stack: error.stack }));
+      } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error("Sponsor error:", maskSensitiveData({
+          message: errorMsg,
+          stack: error instanceof Error ? error.stack : undefined,
+        }));
 
         // Detect "already voted" abort from Move contract (ECertificateAlreadyIssued = 6)
-        if (error.message?.includes("MoveAbort") && error.message?.includes(", 6)")) {
+        if (errorMsg.includes("MoveAbort") && errorMsg.includes(", 6)")) {
           return {
             statusCode: 409,
             headers: corsHeaders(),
@@ -937,10 +961,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         return {
           statusCode: 500,
           headers: corsHeaders(),
-          body: JSON.stringify({
-            error: "Failed to sponsor transaction",
-            message: error.message,
-          }),
+          body: JSON.stringify({ error: "Failed to sponsor transaction" }),
         };
       }
     }
@@ -950,15 +971,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       headers: corsHeaders(),
       body: JSON.stringify({ error: "Not found" }),
     };
-  } catch (error: any) {
-    console.error("Governance API error:", maskSensitiveData({ message: error.message, stack: error.stack }));
+  } catch (error: unknown) {
+    console.error("Governance API error:", maskSensitiveData({
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    }));
     return {
       statusCode: 500,
       headers: corsHeaders(),
-      body: JSON.stringify({
-        error: "Internal server error",
-        message: error.message,
-      }),
+      body: JSON.stringify({ error: "Internal server error" }),
     };
   }
 };

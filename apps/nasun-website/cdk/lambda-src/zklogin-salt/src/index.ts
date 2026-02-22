@@ -247,8 +247,13 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
   // Route requests
   if (path.endsWith('/salt') && method === 'POST') {
-    const body = event.body ? JSON.parse(event.body) : {};
-    const jwt = body.jwt;
+    let body: Record<string, unknown>;
+    try {
+      body = event.body ? JSON.parse(event.body) : {};
+    } catch {
+      return error(400, 'Invalid JSON in request body', origin);
+    }
+    const jwt = body.jwt as string | undefined;
 
     if (!jwt) {
       return error(400, 'Missing jwt parameter', origin);
