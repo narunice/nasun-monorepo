@@ -12,7 +12,7 @@ Requires=nitro-enclaves-allocator.service
 [Service]
 Type=simple
 User=ec2-user
-WorkingDirectory=/home/ec2-user/nasun-monorepo/apps/baram/executor-nitro
+WorkingDirectory=/home/ec2-user/nasun-monorepo/apps/baram-aer/executor-nitro
 Environment=NODE_ENV=production
 Environment=USE_VSOCK=true
 Environment=ENCLAVE_CID=16
@@ -20,7 +20,7 @@ Environment=HOST_PORT=3000
 Environment=NVM_DIR=/home/ec2-user/.nvm
 
 # Load .env for settlement variables (contract IDs, private key, etc.)
-EnvironmentFile=-/home/ec2-user/nasun-monorepo/apps/baram/executor-nitro/.env
+EnvironmentFile=-/home/ec2-user/nasun-monorepo/apps/baram-aer/executor-nitro/.env
 
 # Use bash to load nvm and run node
 ExecStart=/bin/bash -c 'source $NVM_DIR/nvm.sh && exec node dist/host/main.js'

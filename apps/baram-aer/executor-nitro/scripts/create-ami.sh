@@ -21,9 +21,9 @@ echo "AMI Name: $AMI_NAME"
 echo ""
 echo "Cleaning up temporary files..."
 rm -rf /home/ec2-user/nasun-monorepo/node_modules 2>/dev/null || true
-rm -rf /home/ec2-user/nasun-monorepo/apps/baram/executor-nitro/node_modules 2>/dev/null || true
-rm -rf /home/ec2-user/nasun-monorepo/apps/baram/executor-nitro/eif/*.eif 2>/dev/null || true
-rm -rf /home/ec2-user/nasun-monorepo/apps/baram/executor-nitro/dist 2>/dev/null || true
+rm -rf /home/ec2-user/nasun-monorepo/apps/baram-aer/executor-nitro/node_modules 2>/dev/null || true
+rm -rf /home/ec2-user/nasun-monorepo/apps/baram-aer/executor-nitro/eif/*.eif 2>/dev/null || true
+rm -rf /home/ec2-user/nasun-monorepo/apps/baram-aer/executor-nitro/dist 2>/dev/null || true
 sudo rm -rf /tmp/* 2>/dev/null || true
 
 # Terminate any running enclave

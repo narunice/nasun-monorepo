@@ -4,7 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  envDir: '../', // Load .env from parent directory (apps/baram/)
+  envDir: '../', // Load .env from parent directory (apps/baram-aer/)
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

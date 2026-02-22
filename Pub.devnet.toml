@@ -15,7 +15,7 @@ build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0xef52338fb8b2f564938f830ae2822818dfce49491508d95bcc85c0e3e7ddf269"
 
 [[published]]
-source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram/contracts" }
+source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram-aer/contracts" }
 published-at = "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f"
 original-id = "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f"
 version = 1

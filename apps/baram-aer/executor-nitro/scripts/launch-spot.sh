@@ -97,7 +97,7 @@ else
   git checkout $BRANCH 2>/dev/null || git checkout -b $BRANCH origin/$BRANCH
 fi
 
-cd apps/baram/executor-nitro
+cd apps/baram-aer/executor-nitro
 
 # Link models from AMI (if not already linked)
 if [ ! -d "models" ] && [ -d "/home/ec2-user/models" ]; then
@@ -116,7 +116,7 @@ EOF
 
 # Copy and configure systemd service
 echo "Setting up systemd services..."
-cd /home/ec2-user/nasun-monorepo/apps/baram/executor-nitro
+cd /home/ec2-user/nasun-monorepo/apps/baram-aer/executor-nitro
 
 # Copy service file
 cp scripts/baram-host.service /etc/systemd/system/

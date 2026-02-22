@@ -6,7 +6,7 @@ build-env = "devnet"
 chain-id = "272218f1"
 
 [[published]]
-source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram/contracts-executor" }
+source = { local = "/home/naru/my_apps/nasun-monorepo/apps/baram-aer/contracts-executor" }
 published-at = "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd"
 original-id = "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd"
 version = 1
