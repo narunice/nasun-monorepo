@@ -15,15 +15,17 @@ function parseLimit(raw: string | undefined): number {
   );
 }
 
-// Validate Sui address format (0x + 64 hex chars)
+// Validate Sui address format (0x + exactly 64 hex chars)
 function isValidAddress(addr: string): boolean {
-  return /^0x[0-9a-fA-F]{1,64}$/.test(addr);
+  return /^0x[0-9a-fA-F]{64}$/.test(addr);
 }
 
-// Validate Sui object ID format
+// Validate Sui object ID format (0x + exactly 64 hex chars)
 function isValidObjectId(id: string): boolean {
-  return /^0x[0-9a-fA-F]{1,64}$/.test(id);
+  return /^0x[0-9a-fA-F]{64}$/.test(id);
 }
+
+const MAX_MODEL_NAME_LENGTH = 100;
 
 const MAX_CHAIN_DEPTH = 20;
 
@@ -61,6 +63,9 @@ app.get('/', async (c) => {
   }
   if (budgetId && !isValidObjectId(budgetId)) {
     return c.json({ error: 'invalid_budget_id' }, 400);
+  }
+  if (modelName && modelName.length > MAX_MODEL_NAME_LENGTH) {
+    return c.json({ error: 'model_name_too_long' }, 400);
   }
 
   // Build cache key from all parameters
@@ -229,6 +234,7 @@ app.get('/:objectId/chain', async (c) => {
           WHERE c.depth < $2
         )
         SELECT * FROM chain ORDER BY depth DESC
+        LIMIT 100
         `,
         [objectId, maxDepth],
       );
@@ -245,6 +251,7 @@ app.get('/:objectId/chain', async (c) => {
           WHERE c.depth < $2
         )
         SELECT * FROM chain ORDER BY depth ASC
+        LIMIT 100
         `,
         [objectId, maxDepth],
       );
