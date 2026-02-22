@@ -22,6 +22,8 @@ export interface TradeFillRow {
   pool_id: string;
   maker_address: string;
   taker_address: string;
+  maker_order_id: string | null;
+  taker_order_id: string | null;
   price: string;
   base_quantity: string;
   quote_quantity: string;
@@ -225,6 +227,44 @@ export interface OrderFilledParsedJson {
   taker_balance_manager_id: string;
   timestamp: string;
   [key: string]: unknown;
+}
+
+export interface OrderPlacedParsedJson {
+  balance_manager_id: string;
+  pool_id: string;
+  order_id: string;
+  price: string;
+  placed_quantity: string;
+  is_bid: boolean;
+  [key: string]: unknown;
+}
+
+export interface OrderCanceledParsedJson {
+  balance_manager_id: string;
+  pool_id: string;
+  order_id: string;
+  price: string;
+  base_quantity?: string;
+  is_bid: boolean;
+  [key: string]: unknown;
+}
+
+// ===== Order Event Row (for order_events table) =====
+
+export type OrderEventType = 'placed' | 'canceled' | 'filled';
+
+export interface OrderEventRow {
+  tx_digest: string;
+  event_seq: string;
+  event_type: OrderEventType;
+  pool_id: string;
+  balance_manager_id: string;
+  owner_address: string;
+  order_id: string;
+  price: string;
+  quantity: string;
+  is_bid: number; // 0 or 1
+  timestamp_ms: number;
 }
 
 // ===== Market Narrator Types =====

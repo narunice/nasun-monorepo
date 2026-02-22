@@ -83,6 +83,14 @@ export async function verifySignature(
  * Verifies that the client possesses the ephemeral private key matching
  * the provided public key. The claimed zkLogin address is accepted without
  * cryptographic binding — acceptable for non-financial chat auth on devnet.
+ *
+ * TODO(production): Before mainnet launch, add cryptographic binding between
+ * ephemeralPubKey and zkLogin address. Current implementation allows address
+ * spoofing — an attacker can sign with their own ephemeral key while claiming
+ * another user's zkLogin address. Options:
+ * 1. Require ZK proof submission and verify via zkLogin salt API + Prover
+ * 2. Server-side ephemeralPubKey -> zkLogin address mapping verification
+ * See: security-assessment-2026-02-22 [HIGH-2]
  */
 async function verifyEphemeralSignature(
   challenge: string,

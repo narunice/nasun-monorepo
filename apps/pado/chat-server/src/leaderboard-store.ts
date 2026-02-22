@@ -13,6 +13,8 @@ import type {
   CompetitionStatus,
   Period,
   VALID_PERIODS,
+  OrderEventRow,
+  OrderEventType,
 } from './leaderboard-types.js';
 
 let db: Database.Database | null = null;
@@ -146,7 +148,37 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
 
     CREATE INDEX IF NOT EXISTS idx_points_rank
       ON trader_points(rank ASC);
+
+    CREATE TABLE IF NOT EXISTS order_events (
+      tx_digest TEXT NOT NULL,
+      event_seq TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      pool_id TEXT NOT NULL,
+      balance_manager_id TEXT NOT NULL,
+      owner_address TEXT NOT NULL,
+      order_id TEXT NOT NULL,
+      price TEXT NOT NULL,
+      quantity TEXT NOT NULL,
+      is_bid INTEGER NOT NULL,
+      timestamp_ms INTEGER NOT NULL,
+      PRIMARY KEY (tx_digest, event_seq)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_order_events_owner_pool
+      ON order_events(owner_address, pool_id, timestamp_ms DESC);
+    CREATE INDEX IF NOT EXISTS idx_order_events_owner_ts
+      ON order_events(owner_address, timestamp_ms DESC);
   `);
+
+  // Migration: add maker_order_id and taker_order_id to trade_fills (nullable for existing rows)
+  const columns = db.prepare("PRAGMA table_info('trade_fills')").all() as Array<{ name: string }>;
+  const columnNames = new Set(columns.map(c => c.name));
+  if (!columnNames.has('maker_order_id')) {
+    db.exec('ALTER TABLE trade_fills ADD COLUMN maker_order_id TEXT');
+  }
+  if (!columnNames.has('taker_order_id')) {
+    db.exec('ALTER TABLE trade_fills ADD COLUMN taker_order_id TEXT');
+  }
 }
 
 export function getLeaderboardDb(): Database.Database {
@@ -199,6 +231,80 @@ export function setBalanceManagerOwner(bmId: string, ownerAddress: string): void
     .run(bmId, ownerAddress, Date.now());
 }
 
+// ===== Order Events =====
+
+export function insertOrderEvent(event: OrderEventRow): boolean {
+  const result = getLeaderboardDb()
+    .prepare(
+      `INSERT OR IGNORE INTO order_events
+         (tx_digest, event_seq, event_type, pool_id, balance_manager_id,
+          owner_address, order_id, price, quantity, is_bid, timestamp_ms)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      event.tx_digest, event.event_seq, event.event_type,
+      event.pool_id, event.balance_manager_id,
+      event.owner_address, event.order_id,
+      event.price, event.quantity,
+      event.is_bid, event.timestamp_ms,
+    );
+  return result.changes > 0;
+}
+
+export function getOrderEventsByAddress(
+  address: string,
+  options: { pool?: string; limit?: number; cursor?: number } = {},
+): { events: OrderEventRow[]; nextCursor: number | null; hasMore: boolean } {
+  const ldb = getLeaderboardDb();
+  const limit = Math.min(options.limit || 100, 200);
+  const fetchLimit = limit + 1;
+
+  let query: string;
+  let params: unknown[];
+
+  if (options.pool) {
+    if (options.cursor) {
+      query = `SELECT * FROM order_events
+               WHERE owner_address = ? AND pool_id = ? AND timestamp_ms < ?
+               ORDER BY timestamp_ms DESC LIMIT ?`;
+      params = [address, options.pool, options.cursor, fetchLimit];
+    } else {
+      query = `SELECT * FROM order_events
+               WHERE owner_address = ? AND pool_id = ?
+               ORDER BY timestamp_ms DESC LIMIT ?`;
+      params = [address, options.pool, fetchLimit];
+    }
+  } else {
+    if (options.cursor) {
+      query = `SELECT * FROM order_events
+               WHERE owner_address = ? AND timestamp_ms < ?
+               ORDER BY timestamp_ms DESC LIMIT ?`;
+      params = [address, options.cursor, fetchLimit];
+    } else {
+      query = `SELECT * FROM order_events
+               WHERE owner_address = ?
+               ORDER BY timestamp_ms DESC LIMIT ?`;
+      params = [address, fetchLimit];
+    }
+  }
+
+  const rows = ldb.prepare(query).all(...params) as OrderEventRow[];
+  const hasMore = rows.length > limit;
+  const events = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = hasMore && events.length > 0
+    ? events[events.length - 1].timestamp_ms
+    : null;
+
+  return { events, nextCursor, hasMore };
+}
+
+export function getTotalOrderEventsCount(): number {
+  const row = getLeaderboardDb()
+    .prepare('SELECT COUNT(*) as count FROM order_events')
+    .get() as { count: number };
+  return row.count;
+}
+
 // ===== Trade Fills =====
 
 export function insertTradeFill(fill: Omit<TradeFillRow, 'id'>): boolean {
@@ -206,12 +312,14 @@ export function insertTradeFill(fill: Omit<TradeFillRow, 'id'>): boolean {
     .prepare(
       `INSERT OR IGNORE INTO trade_fills
          (tx_digest, event_seq, pool_id, maker_address, taker_address,
+          maker_order_id, taker_order_id,
           price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       fill.tx_digest, fill.event_seq, fill.pool_id,
       fill.maker_address, fill.taker_address,
+      fill.maker_order_id ?? null, fill.taker_order_id ?? null,
       fill.price, fill.base_quantity, fill.quote_quantity,
       fill.taker_is_bid, fill.timestamp_ms,
     );
@@ -408,6 +516,8 @@ export interface TradeHistoryRow {
   pool_id: string;
   maker_address: string;
   taker_address: string;
+  maker_order_id: string | null;
+  taker_order_id: string | null;
   price: string;
   base_quantity: string;
   quote_quantity: string;
@@ -435,11 +545,13 @@ export function getTraderFillsByAddress(
   const query = `
     SELECT * FROM (
       SELECT id, tx_digest, event_seq, pool_id, maker_address, taker_address,
+             maker_order_id, taker_order_id,
              price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
       FROM trade_fills
       WHERE maker_address = ? ${cursorClause} ${poolClause}
       UNION
       SELECT id, tx_digest, event_seq, pool_id, maker_address, taker_address,
+             maker_order_id, taker_order_id,
              price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
       FROM trade_fills
       WHERE taker_address = ? ${cursorClause} ${poolClause}
