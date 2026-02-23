@@ -1,0 +1,257 @@
+{
+  "problem": {
+    "title": "Why Pado Exists",
+    "intro": "Modern DeFi is powerful — but fragmented.",
+    "points": [
+      {
+        "title": "Fragmented Capital",
+        "description": "Users manage multiple wallets and lock capital into isolated pools for trading, lending, or payments — reducing capital efficiency and increasing operational risk."
+      },
+      {
+        "title": "Protocol Sprawl",
+        "description": "Each DeFi vertical — DEXs, perpetuals, lending protocols, staking — operates in isolation, forcing users to bridge liquidity and accept inconsistent custody assumptions."
+      },
+      {
+        "title": "Context Switching",
+        "description": "Discussion and coordination happen off-platform — on X, Discord, and Telegram — far from execution. Insight rarely becomes action in time."
+      },
+      {
+        "title": "No Shared Financial Context",
+        "description": "Existing platforms separate execution from information. Users constantly switch between trading interfaces and external channels to learn, coordinate, and compete."
+      }
+    ],
+    "closing": "Pado consolidates these functions into a single onchain financial system — one account with shared collateral, deterministic risk management, and embedded financial context."
+  },
+  "coreInnovation": {
+    "title": "The Core Innovation",
+    "subtitle": "One Account, One Risk Engine",
+    "intro": "At the center of Pado is a Smart Account that represents a user's complete financial state.",
+    "features": [
+      {
+        "title": "Portfolio-Level Risk",
+        "description": "All assets, positions, and liabilities are evaluated at the portfolio level — not per protocol, not per product. One unified view of your entire financial exposure."
+      },
+      {
+        "title": "Deterministic Enforcement",
+        "description": "Risk is enforced deterministically onchain — no discretionary liquidations, no hidden rules. The same transparent rules apply to everyone."
+      },
+      {
+        "title": "Yield on Collateral",
+        "description": "Capital earns yield while simultaneously backing leveraged positions — enabling capital efficiency previously only available in centralized exchanges, without the custody trade-off."
+      }
+    ],
+    "closing": "This architecture delivers centralized-exchange capital efficiency — without custody, opaque controls, or fragmented workflows."
+  },
+  "howItWorks": {
+    "title": "How It Works",
+    "features": [
+      {
+        "title": "Unified Margin",
+        "description": "Cross-collateral margin across spot, perpetuals, and prediction markets. Your entire portfolio backs all positions simultaneously — no capital locked in silos."
+      },
+      {
+        "title": "Protocol-Level Execution",
+        "description": "Because Nasun controls the consensus layer, conditional orders — take-profit, stop-loss, trailing stops — can execute at the validator level. No keeper bots. No single points of failure."
+      },
+      {
+        "title": "Intent-Based Automation",
+        "description": "Set rules, not transactions. AI-integrated intent solvers enable advanced execution strategies — maintaining yield targets, rebalancing positions, or executing complex multi-step operations automatically."
+      },
+      {
+        "title": "Social Trading",
+        "description": "Copy top traders with protocol-enforced risk limits. Position-gated groups ensure participants have skin in the game. Global chat, leaderboards, and real-time PnL sharing built into the execution layer."
+      }
+    ]
+  },
+  "products": {
+    "title": "A Unified Financial Experience",
+    "trading": {
+      "title": "Trading",
+      "status": "Live on Devnet",
+      "features": [
+        "Spot and perpetual markets from the same account",
+        "Real CLOB orderbook powered by DeepBook V3",
+        "TradingView charts with 100+ indicators"
+      ]
+    },
+    "prediction": {
+      "title": "Prediction Markets",
+      "status": "Live on Devnet",
+      "features": [
+        "YES/NO outcome orderbooks with real-time settlement",
+        "Create and trade on any verifiable event",
+        "Transparent odds driven by market participants"
+      ]
+    },
+    "lottery": {
+      "title": "Weekly Lottery",
+      "status": "Live on Devnet",
+      "features": [
+        "Verifiable onchain randomness for provably fair draws",
+        "Multi-tier prizes with weekly rollover jackpots",
+        "Participate directly from your unified account"
+      ]
+    },
+    "lending": {
+      "title": "Lending & Borrowing",
+      "status": "Coming Soon",
+      "features": [
+        "Idle assets automatically earn yield",
+        "Instant borrowing against existing balances",
+        "No separate deposits or protocol interactions"
+      ]
+    },
+    "payments": {
+      "title": "Payments",
+      "status": "Live on Devnet",
+      "features": [
+        "QR code transfers with instant settlement",
+        "Stablecoins remain liquid and usable at all times",
+        "Capital is never locked — it remains continuously productive"
+      ]
+    },
+    "social": {
+      "title": "Social & Community",
+      "status": "Live on Devnet",
+      "features": [
+        "Global chat, leaderboards, and real-time PnL sharing",
+        "Copy-trading with protocol-enforced risk limits",
+        "Competitions and points system built into the execution layer"
+      ]
+    }
+  },
+  "riskModes": {
+    "title": "Risk Modes for Every User",
+    "intro": "Pado allows users to opt into sophistication at their own pace.",
+    "modes": [
+      {
+        "title": "Safe Mode",
+        "label": "Default",
+        "status": "Live",
+        "features": [
+          "Isolated margin — each trade stands alone",
+          "No leverage",
+          "Ideal for new users"
+        ]
+      },
+      {
+        "title": "Pro Mode",
+        "label": "Opt-In",
+        "status": "Planned",
+        "features": [
+          "Cross-product collateral",
+          "Portfolio margin",
+          "Yield on collateral backing positions"
+        ]
+      },
+      {
+        "title": "Institutional Mode",
+        "label": "Verified",
+        "status": "Planned",
+        "features": [
+          "Custom margin parameters",
+          "API access",
+          "Advanced asset support"
+        ]
+      }
+    ],
+    "closing": "All modes are enforced by the same onchain risk engine — ensuring fairness, predictability, and transparency across all participants."
+  },
+  "koreaMarket": {
+    "title": "Global Product, Korea Market Entry",
+    "intro": "Pado is a global unified onchain finance application. Our regional entry strategy begins with South Korea — one of the world's most concentrated and active crypto markets.",
+    "items": [
+      {
+        "label": "The strategy",
+        "description": "Establish a Korean legal entity and obtain VASP registration. Launch with self-custodial spot trading as the compliant entry point — a service Korean traders need and regulators can approve."
+      },
+      {
+        "label": "The regulatory landscape",
+        "description": "South Korea ended a nine-year ban on corporate crypto trading in February 2026. An estimated $110B in Korean capital moved offshore due to limited domestic options. As regulations evolve, Pado's full product suite is ready to unlock market by market."
+      },
+      {
+        "label": "The long-term vision",
+        "description": "Korea is the first market, not the only market. The same compliance-first playbook — local entity, VASP registration, progressive feature rollout — scales to every jurisdiction where onchain finance is gaining regulatory clarity."
+      }
+    ]
+  },
+  "flywheel": {
+    "title": "Three Verticals, One Flywheel",
+    "intro": "Pado is not a standalone product. It is the financial engine of the Nasun ecosystem.",
+    "items": [
+      {
+        "from": "Pado → Gen Sol",
+        "description": "DeFi users already hold NSN and operate onchain wallets — zero-friction adopters of Gen Sol's competitive gaming economy."
+      },
+      {
+        "from": "Gen Sol → Pado",
+        "description": "In-game transactions — NFT mints, tournament entries, marketplace trades — flow back through Pado's DEX as token demand."
+      },
+      {
+        "from": "Baram → Pado",
+        "description": "Enterprise clients settle AI inference in stablecoin acquired through Pado. Executors lock NSN in staking tiers, tightening circulating supply."
+      }
+    ],
+    "closing": "One passkey wallet spans all three products. NSN serves triple duty as trading collateral, in-game currency, and executor stake. Reputation is chain-native — leaving means abandoning accumulated status across three systems simultaneously."
+  },
+  "launchStatus": {
+    "title": "Launch Status",
+    "intro": "Pado Alpha is live on Nasun devnet. The trading interface is operational — this is not a mockup.",
+    "live": [
+      {
+        "title": "Smart Account",
+        "description": "Passkey authentication with biometric login. No seed phrases required."
+      },
+      {
+        "title": "Spot Trading",
+        "description": "DeepBook V3 CLOB with 4 markets. TradingView charts, TP/SL orders, trailing stops."
+      },
+      {
+        "title": "Prediction Markets",
+        "description": "YES/NO outcome orderbooks with real-time settlement and admin resolution."
+      },
+      {
+        "title": "Weekly Lottery",
+        "description": "Multi-tier prizes with verifiable randomness via Sui Random."
+      },
+      {
+        "title": "Social Layer",
+        "description": "Global chat, leaderboards, PnL sharing, competitions, and points system."
+      },
+      {
+        "title": "Portfolio Dashboard",
+        "description": "PnL equity curves, per-market stats, risk metrics, and CSV export."
+      }
+    ],
+    "coming": [
+      {
+        "title": "Perpetual Futures",
+        "description": "Contracts deployed. UI complete. LP liquidity activation pending."
+      },
+      {
+        "title": "Lending Markets",
+        "description": "Earn yield on idle assets. Contracts deployed on devnet."
+      },
+      {
+        "title": "Cross-Chain Bridge",
+        "description": "Bring assets from Ethereum and other major chains."
+      },
+      {
+        "title": "Protocol-Level Conditional Orders",
+        "description": "Validator-level execution — eliminating keeper bot dependency entirely."
+      }
+    ]
+  },
+  "cta": {
+    "title": "The Opportunity",
+    "body": "As DeFi matures, users are migrating toward platforms that offer fewer accounts, shared collateral, transparent risk, and integrated execution. Korean retail investors — 16 million strong — have no credible onchain venue for self-custody and transparent price discovery. Pado is built for this transition.",
+    "tagline": "One account. One margin system. One execution layer.",
+    "closing": "A financial platform designed for scale, safety, capital efficiency — and context.",
+    "motto": "Start simple. Grow sophisticated. Always in control.",
+    "primary": "Try Pado Alpha",
+    "secondary": "Read the Vision"
+  },
+  "footer": {
+    "badge": "Built on Nasun L1 · Move-based · Self-custodial · Apache 2.0"
+  }
+}
