@@ -130,7 +130,7 @@ into every surface.
 Smart Account Architecture
 
 [Intro]
-Users interact through a non-custodial smart account that replaces seed phrases
+Users interact through a self-custodial smart account that replaces seed phrases
 with modern authentication while preserving full key control.
 
 [Feature 1 - zkLogin]

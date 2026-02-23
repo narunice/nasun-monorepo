@@ -13,7 +13,7 @@
 
 Trade Together.
 
-The non-custodial financial platform where community lives inside.
+The self-custodial financial platform where community lives inside.
 
 ---
 
@@ -165,7 +165,7 @@ zkLogin (Google OAuth, no seed phrase) · Passkey (Face ID) · Social Recovery
 **Entry Strategy:**
 Korean KOL partnerships · Cultural event campaigns · Korea-focused prediction markets · Progressive DeFi education
 
-> Speaker Notes: Long-term vision is non-custodial architecture compatible with emerging Korean regulatory frameworks — exchange-grade compliance without surrendering asset control.
+> Speaker Notes: Long-term vision is self-custodial architecture compatible with emerging Korean regulatory frameworks — exchange-grade compliance without surrendering asset control.
 
 ---
 

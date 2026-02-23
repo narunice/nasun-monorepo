@@ -45,7 +45,7 @@ Or if you need something catchy: **"The Pado Commons"** — evokes a shared publ
 
 **Core Social Features** (launch with spot + lending):
 - **Live Leaderboards**: Real-time rankings by P&L, volume, yield earned, risk-adjusted returns
-- **Private DMs**: Secure messaging between users (encrypted, non-custodial)
+- **Private DMs**: Secure messaging between users (encrypted, self-custodial)
 - **Group Chats**: Topic-based rooms (e.g., "ETH Traders," "Yield Strategies," "Beginners")
 - **Activity Feed**: Opt-in sharing of big wins, strategies (users control what's visible)
 
@@ -95,7 +95,7 @@ Unlike social-fi projects that force financial mechanics into every post and com
 
 **Core Features:**
 - **Live Leaderboards**: Real-time rankings by P&L, volume, and risk-adjusted returns
-- **Secure Messaging**: Private DMs and topic-based group chats (encrypted, non-custodial)
+- **Secure Messaging**: Private DMs and topic-based group chats (encrypted, self-custodial)
 - **AI Agent Assistance**: Educational agents that provide contextual help, risk alerts, and market commentary—always clearly labeled as AI
 - **Opt-In Privacy**: All social features are voluntary; users control what data is visible
 
@@ -194,7 +194,7 @@ Users choose Pado not only because it's more capital-efficient, but because it's
 - Anonymous participation by default; public profiles are opt-in and earned
 
 **3. Secure Messaging & Coordination**
-- **Private DMs**: Encrypted, non-custodial messaging between users
+- **Private DMs**: Encrypted, self-custodial messaging between users
 - **Strategy Sharing**: Export/import trading templates with position-sizing rules
 - **Copy Trading**: Follow top performers' strategies with automated risk controls
 - All features respect user-defined privacy settings—no forced exposure

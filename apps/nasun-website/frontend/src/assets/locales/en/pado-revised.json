@@ -5,7 +5,7 @@
     "button": "Try Pado Alpha"
   },
   "intro": {
-    "body": "Pado is a high-performance, non-custodial financial platform that unifies trading, lending, payments, and contextual finance into a single onchain account. Built on Nasun — an object-oriented, Move-based Layer 1 optimized for parallel execution — Pado delivers exchange-grade performance while preserving full user control, transparency, and deterministic risk enforcement.",
+    "body": "Pado is a high-performance, self-custodial financial platform that unifies trading, lending, payments, and contextual finance into a single onchain account. Built on Nasun — an object-oriented, Move-based Layer 1 optimized for parallel execution — Pado delivers exchange-grade performance while preserving full user control, transparency, and deterministic risk enforcement.",
     "valueProps": "Instead of forcing users to fragment capital and decision-making across multiple protocols, wallets, and external social channels, Pado introduces one smart account governed by a unified risk engine — where capital earns yield, backs trades, remains instantly usable across products, and operates within a shared financial context."
   },
   "problem": {
@@ -175,7 +175,7 @@
       },
       {
         "title": "Secure Messaging",
-        "description": "Encrypted, non-custodial DMs and strategy sharing with built-in risk controls. No forced exposure, no open spam channels.",
+        "description": "Encrypted, self-custodial DMs and strategy sharing with built-in risk controls. No forced exposure, no open spam channels.",
         "status": "Roadmap"
       },
       {

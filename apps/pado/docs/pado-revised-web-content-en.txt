@@ -50,7 +50,7 @@ Performance without custody. Control without compromise.
 
 --- 1. Introduction ---
 
-Pado is a high-performance, non-custodial financial platform that unifies
+Pado is a high-performance, self-custodial financial platform that unifies
 trading, lending, payments, and contextual finance into a single onchain
 account. Built on Nasun — an object-oriented, Move-based Layer 1 optimized
 for parallel execution — Pado delivers exchange-grade performance while
@@ -215,7 +215,7 @@ Modes, Not Feeds:
     opt-in public exposure. Designed to reward discipline over speculation.
 
   * Secure Messaging [Roadmap]
-    Encrypted, non-custodial DMs and strategy sharing with built-in risk
+    Encrypted, self-custodial DMs and strategy sharing with built-in risk
     controls. No forced exposure, no open spam channels.
 
   * AI Agents as Financial Tools [Roadmap]

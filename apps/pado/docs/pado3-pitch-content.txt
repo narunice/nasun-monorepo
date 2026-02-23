@@ -63,7 +63,7 @@ external chain governance or congestion.
 The Product
 
 [Intro]
-Pado is a non-custodial unified finance application live on Nasun Devnet.
+Pado is a self-custodial unified finance application live on Nasun Devnet.
 
 [Product Highlight 1]
 [Title] Finance-First Social
