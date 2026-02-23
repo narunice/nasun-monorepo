@@ -233,14 +233,6 @@ export function BudgetsPage() {
               ? 'No budgets yet. Create your first budget to delegate spending to AI agents.'
               : `No ${filter} budgets found.`}
           </p>
-          {filter === 'all' && (
-            <button
-              onClick={() => { resetTxStatus(); setShowCreateModal(true); }}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
-            >
-              Create Budget
-            </button>
-          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
