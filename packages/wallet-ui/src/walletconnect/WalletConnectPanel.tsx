@@ -18,7 +18,7 @@ const WC_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? "";
 
 const WC_METADATA = {
   name: "Nasun Wallet",
-  description: "Non-custodial wallet for Nasun Network",
+  description: "Self-custodial wallet for Nasun Network",
   url: "https://nasun.io",
   icons: ["https://nasun.io/favicon.ico"],
 };

@@ -7,9 +7,9 @@
 
 ## Vision: Unified Onchain Finance
 
-**Pado**는 Nasun Network 위에서 동작하는 **비수탁형(non-custodial) 통합 금융 애플리케이션**입니다.
+**Pado**는 Nasun Network 위에서 동작하는 **자기수탁형(self-custodial) 통합 금융 애플리케이션**입니다.
 
-> *"Unified, non-custodial spot, derivatives, lending, staking, prediction markets, and payments through a single smart account on the Nasun Network."*
+> *"Unified, self-custodial spot, derivatives, lending, staking, prediction markets, and payments through a single smart account on the Nasun Network."*
 
 ### 핵심 철학
 
@@ -17,7 +17,7 @@
 |------|------|
 | **Single Smart Account** | 모든 금융 활동(거래, 대출, 스테이킹, 결제)을 하나의 계정으로 통합 관리 |
 | **Unified Margin System** | 포트폴리오 레벨의 통합 마진 - 자산이 모든 상품에 걸쳐 담보로 기능 |
-| **Non-Custodial Control** | 사용자가 자산에 대한 완전한 통제권 유지, 개인키 노출 없음 |
+| **Self-Custodial Control** | 사용자가 자산에 대한 완전한 통제권 유지, 개인키 노출 없음 |
 | **Object-Based Architecture** | Nasun의 객체 기반 상태 모델로 복잡한 금융 상호작용을 온체인에서 네이티브하게 모델링 |
 | **CEX-Grade UX, DEX-Level Transparency** | 중앙화 거래소 수준의 사용자 경험 + 온체인 검증 가능성 |
 
