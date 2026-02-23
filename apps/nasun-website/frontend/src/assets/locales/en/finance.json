@@ -37,7 +37,7 @@
       },
       {
         "title": "Yield on Collateral",
-        "description": "Capital earns yield while simultaneously backing leveraged positions — enabling capital efficiency previously only available in centralized exchanges, without the custody trade-off."
+        "description": "Lending contracts are deployed on devnet, enabling collateral to earn yield while backing positions. As lending markets activate, capital efficiency will match centralized exchanges — without the custody trade-off."
       }
     ],
     "closing": "This architecture delivers centralized-exchange capital efficiency — without custody, opaque controls, or fragmented workflows."
@@ -50,16 +50,16 @@
         "description": "Cross-collateral margin across spot, perpetuals, and prediction markets. Your entire portfolio backs all positions simultaneously — no capital locked in silos."
       },
       {
-        "title": "Protocol-Level Execution",
-        "description": "Because Nasun controls the consensus layer, conditional orders — take-profit, stop-loss, trailing stops — can execute at the validator level. No keeper bots. No single points of failure."
+        "title": "Conditional Orders",
+        "description": "Take-profit, stop-loss, and trailing stops currently execute via a dedicated keeper service with browser fallback. Because Nasun is our own L1, these will be upgraded to validator-native execution — removing off-chain dependencies entirely."
       },
       {
-        "title": "Intent-Based Automation",
-        "description": "Set rules, not transactions. AI-integrated intent solvers enable advanced execution strategies — maintaining yield targets, rebalancing positions, or executing complex multi-step operations automatically."
+        "title": "Automated Infrastructure",
+        "description": "Market-making bots maintain liquidity across all pairs. Oracle price feeds update every 30 seconds. Liquidation keepers monitor margin health and execute forced closes when thresholds are breached — all running 24/7. This infrastructure will evolve into AI-integrated intent solvers for advanced execution strategies."
       },
       {
-        "title": "Social Trading",
-        "description": "Copy top traders with protocol-enforced risk limits. Position-gated groups ensure participants have skin in the game. Global chat, leaderboards, and real-time PnL sharing built into the execution layer."
+        "title": "Embedded Social Layer",
+        "description": "Global chat with signature-based authentication, AI market narrator Wavi for real-time trade alerts, leaderboards with trader profiles and badges, PnL share cards, competitions, and a points system — all integrated directly into the trading interface."
       }
     ]
   },
@@ -69,23 +69,23 @@
       "title": "Trading",
       "status": "Live on Devnet",
       "features": [
-        "Spot and perpetual markets from the same account",
+        "Spot markets with 4 trading pairs from a unified account",
         "Real CLOB orderbook powered by DeepBook V3",
         "TradingView charts with 100+ indicators"
       ]
     },
     "prediction": {
       "title": "Prediction Markets",
-      "status": "Live on Devnet",
+      "status": "Deployed on Devnet",
       "features": [
         "YES/NO outcome orderbooks with real-time settlement",
-        "Create and trade on any verifiable event",
+        "Trade on verifiable events with transparent odds",
         "Transparent odds driven by market participants"
       ]
     },
     "lottery": {
       "title": "Weekly Lottery",
-      "status": "Live on Devnet",
+      "status": "Deployed on Devnet",
       "features": [
         "Verifiable onchain randomness for provably fair draws",
         "Multi-tier prizes with weekly rollover jackpots",
@@ -115,7 +115,7 @@
       "status": "Live on Devnet",
       "features": [
         "Global chat, leaderboards, and real-time PnL sharing",
-        "Copy-trading with protocol-enforced risk limits",
+        "AI market narrator Wavi with real-time trade alerts",
         "Competitions and points system built into the execution layer"
       ]
     }
@@ -139,9 +139,9 @@
         "label": "Opt-In",
         "status": "Planned",
         "features": [
-          "Cross-product collateral",
-          "Portfolio margin",
-          "Yield on collateral backing positions"
+          "Cross-product collateral across all markets",
+          "Portfolio-level margin for improved capital efficiency",
+          "Yield on collateral backing active positions"
         ]
       },
       {
@@ -149,13 +149,51 @@
         "label": "Verified",
         "status": "Planned",
         "features": [
-          "Custom margin parameters",
-          "API access",
-          "Advanced asset support"
+          "Custom margin parameters and risk limits",
+          "Programmatic API access for automated strategies",
+          "Multi-asset collateral with custom haircuts"
         ]
       }
     ],
     "closing": "All modes are enforced by the same onchain risk engine — ensuring fairness, predictability, and transparency across all participants."
+  },
+  "contextualFinance": {
+    "title": "Contextual Finance",
+    "subtitle": "The Social Layer for Serious Capital",
+    "intro": "Finance is inherently social — traders compare performance, share strategies, learn from peers, and compete. Today, these interactions happen outside the execution layer, across disconnected platforms with no shared context or verification.",
+    "inversion": "Pado inverts this model. Instead of injecting financial mechanics into social feeds, Pado embeds optional, high-signal social surfaces directly into the financial execution layer — eliminating context switching while preserving privacy and focus.",
+    "designPrinciple": "Social features must make users better traders, better allocators, or better learners. If they don't, they don't ship.",
+    "sectionTitle": "Modes, Not Feeds",
+    "features": [
+      {
+        "title": "War Rooms",
+        "description": "Position-gated discussion spaces designed to filter noise through skin-in-the-game participation.",
+        "status": "Roadmap"
+      },
+      {
+        "title": "Privacy-First Leaderboards",
+        "description": "Risk-adjusted performance rankings with opt-in privacy controls. Designed to reward discipline over speculation.",
+        "status": "Roadmap"
+      },
+      {
+        "title": "Secure Messaging",
+        "description": "Direct messaging between traders with end-to-end encryption and built-in risk controls. No forced exposure, no open spam channels.",
+        "status": "Roadmap"
+      },
+      {
+        "title": "AI Agents as Financial Tools",
+        "description": "Market narrator Wavi is live today with real-time trade alerts. Planned extensions include:",
+        "bullets": [
+          "Risk alerts and margin health monitoring",
+          "Market explanations and volatility summaries",
+          "Strategy simulations before execution",
+          "Guided onboarding for new users"
+        ],
+        "status": "Roadmap"
+      }
+    ],
+    "liveNow": "Live today: global chat with signature-based authentication, integrated directly into the trading interface.",
+    "closing": "Social features scale with risk modes — educational in Safe Mode, performance-oriented in Pro Mode, and private, team-based in Institutional Mode."
   },
   "koreaMarket": {
     "title": "Global Product, Korea Market Entry",
@@ -181,18 +219,18 @@
     "items": [
       {
         "from": "Pado → Gen Sol",
-        "description": "DeFi users already hold NSN and operate onchain wallets — zero-friction adopters of Gen Sol's competitive gaming economy."
+        "description": "DeFi users who hold NSN and operate onchain wallets are positioned to become zero-friction adopters of Gen Sol's competitive gaming economy."
       },
       {
         "from": "Gen Sol → Pado",
-        "description": "In-game transactions — NFT mints, tournament entries, marketplace trades — flow back through Pado's DEX as token demand."
+        "description": "In-game transactions — NFT mints, tournament entries, marketplace trades — will flow back through Pado's DEX as token demand."
       },
       {
         "from": "Baram → Pado",
-        "description": "Enterprise clients settle AI inference in stablecoin acquired through Pado. Executors lock NSN in staking tiers, tightening circulating supply."
+        "description": "Enterprise clients will settle AI inference in stablecoin acquired through Pado. Executors will lock NSN in staking tiers, tightening circulating supply."
       }
     ],
-    "closing": "One passkey wallet spans all three products. NSN serves triple duty as trading collateral, in-game currency, and executor stake. Reputation is chain-native — leaving means abandoning accumulated status across three systems simultaneously."
+    "closing": "One passkey wallet is designed to span all three products. NSN will serve triple duty as trading collateral, in-game currency, and executor stake. Reputation is chain-native — leaving means abandoning accumulated status across three systems simultaneously."
   },
   "launchStatus": {
     "title": "Launch Status",
@@ -207,44 +245,42 @@
         "description": "DeepBook V3 CLOB with 4 markets. TradingView charts, TP/SL orders, trailing stops."
       },
       {
-        "title": "Prediction Markets",
-        "description": "YES/NO outcome orderbooks with real-time settlement and admin resolution."
-      },
-      {
-        "title": "Weekly Lottery",
-        "description": "Multi-tier prizes with verifiable randomness via Sui Random."
-      },
-      {
-        "title": "Social Layer",
-        "description": "Global chat, leaderboards, PnL sharing, competitions, and points system."
+        "title": "Global Chat & AI Bot",
+        "description": "Signature-based chat with AI market narrator Wavi. Leaderboards, PnL sharing, and competitions."
       },
       {
         "title": "Portfolio Dashboard",
         "description": "PnL equity curves, per-market stats, risk metrics, and CSV export."
       }
     ],
+    "deployed": [
+      {
+        "title": "Prediction Markets",
+        "description": "YES/NO outcome orderbooks with real-time settlement. Contracts and UI complete."
+      },
+      {
+        "title": "Weekly Lottery",
+        "description": "Multi-tier prizes with verifiable onchain randomness. Ticket purchase verified."
+      }
+    ],
     "coming": [
       {
         "title": "Perpetual Futures",
-        "description": "Contracts deployed. UI complete. LP liquidity activation pending."
+        "description": "20x leverage with 8-hour funding rates. Contracts and UI complete. LP liquidity activation pending."
       },
       {
-        "title": "Lending Markets",
+        "title": "Lending & Borrowing",
         "description": "Earn yield on idle assets. Contracts deployed on devnet."
       },
       {
-        "title": "Cross-Chain Bridge",
-        "description": "Bring assets from Ethereum and other major chains."
-      },
-      {
         "title": "Protocol-Level Conditional Orders",
-        "description": "Validator-level execution — eliminating keeper bot dependency entirely."
+        "description": "Validator-level TP/SL execution — eliminating keeper bot dependency."
       }
     ]
   },
   "cta": {
     "title": "The Opportunity",
-    "body": "As DeFi matures, users are migrating toward platforms that offer fewer accounts, shared collateral, transparent risk, and integrated execution. Korean retail investors — 16 million strong — have no credible onchain venue for self-custody and transparent price discovery. Pado is built for this transition.",
+    "body": "As DeFi matures, users are migrating toward platforms that offer fewer accounts, shared collateral, transparent risk, and integrated execution. Korean crypto participants — 16 million strong — have no credible onchain venue for self-custody and transparent price discovery. Pado is built for this transition.",
     "tagline": "One account. One margin system. One execution layer.",
     "closing": "A financial platform designed for scale, safety, capital efficiency — and context.",
     "motto": "Start simple. Grow sophisticated. Always in control.",
