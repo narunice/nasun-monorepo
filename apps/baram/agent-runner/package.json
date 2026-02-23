@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@mysten/sui": "^1.21.0",
@@ -14,6 +15,7 @@
   "devDependencies": {
     "@nasun/tsconfig": "workspace:*",
     "tsx": "^4.19.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

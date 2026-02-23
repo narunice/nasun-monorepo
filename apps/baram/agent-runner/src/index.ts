@@ -8,9 +8,10 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
-import { loadConfig, type PresetName } from './config.js';
-import { checkBudget, createRequest, categorizeError } from './baram-client.js';
-import { executeRequest } from './executor-client.js';
+import { loadConfig, maskApiKey, type PresetName } from './config.js';
+import { checkBudget, createRequest, sha256Hex, categorizeError } from './baram-client.js';
+import { executeRequest, recordRequest } from './executor-client.js';
+import { callLLM } from './llm-client.js';
 import { researchPreset } from './presets/research.js';
 import { contentPreset } from './presets/content.js';
 import {
@@ -74,10 +75,24 @@ async function runSingleStepCycle(
   const steps = preset.generateSteps();
   const step = steps[0];
 
-  // 3. Create on-chain request
+  if (config.mode === 'record') {
+    await runRecordStep(client, config, step.prompt, step.category);
+  } else {
+    await runLambdaStep(client, config, step.prompt, step.category);
+  }
+}
+
+async function runLambdaStep(
+  client: SuiClient,
+  config: ReturnType<typeof loadConfig>,
+  prompt: string,
+  category: string,
+): Promise<{ success: boolean; result?: string }> {
+  // Create on-chain request
   let requestId: number;
   try {
-    requestId = await createRequest(client, config.keypair, config, step.prompt, step.category);
+    const req = await createRequest(client, config.keypair, config, prompt, category);
+    requestId = req.requestId;
     log(`On-chain request created: requestId=${requestId}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -87,22 +102,21 @@ async function runSingleStepCycle(
       log('[fatal] Fatal error. Stopping agent.');
       shuttingDown = true;
     }
-    return;
+    return { success: false };
   }
 
-  // 4. Call Lambda /execute
+  // Call Lambda /execute
   const result = await executeRequest(
     config.lambdaUrl,
     config.apiKey,
     requestId,
-    step.prompt,
+    prompt,
     config.model
   );
 
   if (result.success) {
     log(`Lambda execution success. Digest: ${result.digest ?? 'n/a'}`);
     if (result.result) {
-      // Show first 200 chars of result
       const preview = result.result.length > 200
         ? result.result.slice(0, 200) + '...'
         : result.result;
@@ -111,6 +125,79 @@ async function runSingleStepCycle(
   } else {
     log(`[error] Lambda execution failed: ${result.error}. Skipping to next cycle.`);
   }
+  return { success: result.success, result: result.result };
+}
+
+async function runRecordStep(
+  client: SuiClient,
+  config: ReturnType<typeof loadConfig>,
+  prompt: string,
+  category: string,
+): Promise<{ success: boolean; result?: string }> {
+  // 1. Call own LLM first (fail-safe: no budget deduction if this fails)
+  let llmResult;
+  try {
+    log(`Calling LLM: ${config.llmModel}`);
+    llmResult = await callLLM(config.llmApiUrl, config.llmApiKey, config.llmModel, prompt);
+    log(`LLM response: ${llmResult.content.length} chars, ${llmResult.totalTokens} tokens, ${llmResult.durationMs}ms`);
+  } catch (err) {
+    log(`[error] LLM call failed: ${err instanceof Error ? err.message : String(err)}. No funds deducted.`);
+    return { success: false };
+  }
+
+  // 2. Validate result length before on-chain request (avoid orphaned requests)
+  const MAX_RESULT_LENGTH = 10_000;
+  const MIN_RESULT_LENGTH = 50;
+  if (llmResult.content.length > MAX_RESULT_LENGTH) {
+    log(`[warn] LLM response too long (${llmResult.content.length} chars). Truncating to ${MAX_RESULT_LENGTH}.`);
+    llmResult.content = llmResult.content.slice(0, MAX_RESULT_LENGTH);
+  }
+  if (llmResult.content.length < MIN_RESULT_LENGTH) {
+    log(`[error] LLM response too short (${llmResult.content.length} chars < ${MIN_RESULT_LENGTH}). Skipping.`);
+    return { success: false };
+  }
+
+  // 3. Generate promptHash as hex string for Lambda verification
+  const promptHashHex = sha256Hex(prompt);
+
+  // 5. Create on-chain request (model = llmModel for accurate audit trail)
+  let requestId: number;
+  try {
+    const req = await createRequest(client, config.keypair, config, prompt, category, config.llmModel);
+    requestId = req.requestId;
+    log(`On-chain request created: requestId=${requestId}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const { message, fatal } = categorizeError(msg);
+    log(`[error] Request creation failed: ${message}`);
+    if (fatal) {
+      log('[fatal] Fatal error. Stopping agent.');
+      shuttingDown = true;
+    }
+    return { success: false };
+  }
+
+  // 6. Call Lambda /record for settlement
+  const result = await recordRequest(
+    config.lambdaUrl,
+    config.apiKey,
+    requestId,
+    llmResult.content,
+    promptHashHex,
+    llmResult.durationMs,
+  );
+
+  if (result.success) {
+    log(`Record settlement success. Digest: ${result.digest ?? 'n/a'}`);
+    const preview = llmResult.content.length > 200
+      ? llmResult.content.slice(0, 200) + '...'
+      : llmResult.content;
+    log(`Result preview: ${preview}`);
+  } else {
+    log(`[orphan] Record settlement failed for requestId=${requestId}: ${result.error}`);
+    log(`[orphan] On-chain request will auto-refund after timeout.`);
+  }
+  return { success: result.success, result: llmResult.content };
 }
 
 async function runAnalysisCycle(
@@ -144,38 +231,20 @@ async function runAnalysisCycle(
       return;
     }
 
-    // Create on-chain request
-    let requestId: number;
-    try {
-      requestId = await createRequest(client, config.keypair, config, step.prompt, step.category);
-      log(`Step ${i + 1} request created: requestId=${requestId}`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const { message, fatal } = categorizeError(msg);
-      log(`[error] Step ${i + 1} failed: ${message}`);
-      if (fatal) {
-        log('[fatal] Fatal error. Stopping agent.');
-        shuttingDown = true;
-      }
-      // Non-fatal: checkpoint and retry next cycle
-      saveCheckpoint({ step: i, results, startedAt: checkpoint?.startedAt ?? new Date().toISOString() });
-      return;
+    // Execute step (lambda or record mode)
+    let stepResult: { success: boolean; result?: string };
+    if (config.mode === 'record') {
+      stepResult = await runRecordStep(client, config, step.prompt, step.category);
+    } else {
+      stepResult = await runLambdaStep(client, config, step.prompt, step.category);
     }
 
-    // Call Lambda
-    const result = await executeRequest(
-      config.lambdaUrl,
-      config.apiKey,
-      requestId,
-      step.prompt,
-      config.model
-    );
-
-    if (result.success && result.result) {
-      results[i] = result.result;
-      log(`Step ${i + 1} completed. Result length: ${result.result.length} chars`);
+    if (stepResult.success && stepResult.result) {
+      results[i] = stepResult.result;
+      log(`Step ${i + 1} completed. Result length: ${stepResult.result.length} chars`);
     } else {
-      log(`[error] Step ${i + 1} Lambda failed: ${result.error}. Checkpointing.`);
+      if (shuttingDown) return; // Fatal error already logged
+      log(`[error] Step ${i + 1} failed. Checkpointing.`);
       saveCheckpoint({ step: i, results, startedAt: checkpoint?.startedAt ?? new Date().toISOString() });
       return;
     }
@@ -228,10 +297,16 @@ async function main(): Promise<void> {
   const preset = PRESETS[config.preset];
 
   log(`Agent: ${config.agentAddress}`);
+  log(`Mode: ${config.mode} (${config.mode === 'record' ? 'Model B — self-reported' : 'Model A — Lambda verified'})`);
   log(`Preset: ${preset.name} (${config.preset})`);
   log(`Interval: ${config.intervalMinutes} minutes`);
-  log(`Model: ${config.model}`);
+  log(`Model: ${config.mode === 'record' ? config.llmModel : config.model}`);
   log(`Price per request: ${config.price / 1e6} NUSDC`);
+  log(`API Key: ${maskApiKey(config.apiKey)}`);
+  if (config.mode === 'record') {
+    log(`LLM API: ${config.llmApiUrl}`);
+    log(`LLM Key: ${maskApiKey(config.llmApiKey)}`);
+  }
 
   // Run first cycle immediately
   await runCycle(client, config);

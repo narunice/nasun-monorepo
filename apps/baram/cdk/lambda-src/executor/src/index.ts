@@ -16,7 +16,7 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
-import { ExecuteRequest, ExecuteResponse, DEFAULT_MODEL } from './types';
+import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, DEFAULT_MODEL } from './types';
 
 // AWS Secrets Manager client
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
@@ -85,7 +85,7 @@ function maskSensitive<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
 
-  const sensitiveFields = ['encryptedPrompt', 'prompt', 'privateKey', 'apiKey', 'secret'];
+  const sensitiveFields = ['encryptedPrompt', 'prompt', 'privateKey', 'apiKey', 'secret', 'result'];
 
   if (Array.isArray(obj)) {
     return obj.map((item) => maskSensitive(item)) as T;
@@ -192,6 +192,11 @@ function classifyError(err: Error): { status: number; message: string } {
     return { status: 502, message: 'AI provider authentication failed. Please contact the operator.' };
   }
 
+  // /record input validation
+  if (msg.includes('Result too short') || msg.includes('Result too long')) {
+    return { status: 400, message: 'Invalid result length (50-10,000 chars required)' };
+  }
+
   // On-chain verification issues
   if (msg.includes('Executor mismatch')) {
     return { status: 400, message: 'Executor assignment mismatch. This request is assigned to a different executor.' };
@@ -199,7 +204,7 @@ function classifyError(err: Error): { status: number; message: string } {
   if (msg.includes('Request not found')) {
     return { status: 400, message: 'Request not found on-chain. It may have expired or been cancelled.' };
   }
-  if (msg.includes('already completed') || msg.includes('already cancelled')) {
+  if (msg.includes('already completed') || msg.includes('already cancelled') || msg.includes('status is not PENDING')) {
     return { status: 409, message: 'Request has already been completed or cancelled.' };
   }
 
@@ -280,7 +285,7 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
     budgetId: null,
     budgetRemaining: null,
     modelMetadata: null,
-    purpose: null,
+    purpose: 'lambda_verified',
     constraints: null,
     executorTier: executorStats.tier,
     executorReputation: executorStats.reputation,
@@ -315,6 +320,105 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
       requestId,
       error: classified.message,
     };
+  }
+}
+
+/**
+ * Handle record request (Model B: self-reported LLM results)
+ * Lambda performs settlement only — no AI inference.
+ */
+async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
+  const { requestId, result, promptHash, executionTimeMs = 0 } = body;
+
+  console.log(`[Record] Processing request ${requestId}`);
+
+  // Validate result length (50–10,000 chars)
+  if (result.length < 50) {
+    throw new Error('Result too short: minimum 50 characters required');
+  }
+  if (result.length > 10_000) {
+    throw new Error('Result too long: maximum 10,000 characters allowed');
+  }
+
+  // Validate promptHash format
+  if (!/^[0-9a-f]{64}$/i.test(promptHash)) {
+    return {
+      success: false,
+      requestId,
+      error: 'promptHash must be a 64-character hex string (SHA-256)',
+    };
+  }
+
+  // Validate executionTimeMs
+  if (executionTimeMs < 0 || !Number.isFinite(executionTimeMs)) {
+    return {
+      success: false,
+      requestId,
+      error: 'executionTimeMs must be a non-negative number',
+    };
+  }
+
+  // Verify request on-chain
+  const verification = await verifyRequest(requestId, promptHash);
+  if (!verification.valid) {
+    return {
+      success: false,
+      requestId,
+      error: verification.error,
+    };
+  }
+
+  console.log(`[Record] Request verified, executor: ${getExecutorAddress()}`);
+
+  // Generate result hash
+  const resultHash = sha256(result);
+
+  // Submit proof + AER on-chain
+  const executorAddress = getExecutorAddress();
+  const executorStats = await getExecutorStats(executorAddress);
+
+  const aerData: AERReportData = {
+    initiator: verification.request!.requester,
+    delegationPath: [],
+    executorPrincipal: null,
+    feeDetail: null,
+    budgetId: null,
+    budgetRemaining: null,
+    modelMetadata: null,
+    purpose: 'self_reported',
+    constraints: null,
+    executorTier: executorStats.tier,
+    executorReputation: executorStats.reputation,
+    executorStakeAmount: executorStats.stakeAmount,
+    teeVerified: false,
+    teeAttestationHash: null,
+    triggeredBy: null,
+    triggeredAction: null,
+  };
+
+  try {
+    const txDigest = await submitProofWithAER(
+      requestId, resultHash, executionTimeMs, verification.request!, aerData,
+    );
+
+    console.log(`[Record] Proof + AER submitted, tx: ${txDigest}`);
+
+    return {
+      success: true,
+      requestId,
+      resultHash,
+      txDigest,
+    };
+  } catch (err) {
+    const e = err as Error;
+    console.error('[Record] Proof submission failed:', e.message);
+    const classified = classifyError(e);
+    return {
+      success: false,
+      requestId,
+      error: classified.message,
+      _httpStatus: classified.status,
+    } as RecordResponse;
   }
 }
 
@@ -424,6 +528,64 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         statusCode: response.success ? 200 : 400,
         headers: corsHeaders,
         body: JSON.stringify(response),
+      };
+    }
+
+    // POST /record (Model B: self-reported settlement)
+    if (path.endsWith('/record') && event.httpMethod === 'POST') {
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Request body is required' }),
+        };
+      }
+
+      const parsed = safeJsonParse(event.body);
+      if (!parsed || typeof parsed !== 'object') {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Invalid JSON body' }),
+        };
+      }
+
+      const body = parsed as RecordRequest;
+
+      if (!isSafeRequestId(body.requestId)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'requestId must be a non-negative integer' }),
+        };
+      }
+
+      if (!body.result || typeof body.result !== 'string') {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Missing or invalid result' }),
+        };
+      }
+
+      if (!body.promptHash || typeof body.promptHash !== 'string') {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Missing or invalid promptHash' }),
+        };
+      }
+
+      const response = await handleRecord(body);
+
+      // Use _httpStatus from handleRecord's classifyError (settlement errors: 409, 503, etc.)
+      // Validation errors (no _httpStatus) default to 400
+      const { _httpStatus, ...publicResponse } = response as RecordResponse & { _httpStatus?: number };
+      const statusCode = response.success ? 200 : (_httpStatus ?? 400);
+      return {
+        statusCode,
+        headers: corsHeaders,
+        body: JSON.stringify(publicResponse),
       };
     }
 

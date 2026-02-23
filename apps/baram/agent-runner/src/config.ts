@@ -9,6 +9,7 @@ const MIN_INTERVAL_MINUTES = 5;
 const CLOCK_ID = '0x0000000000000000000000000000000000000000000000000000000000000006';
 
 export type PresetName = 'research' | 'content' | 'analysis';
+export type RunMode = 'lambda' | 'record';
 
 interface PresetDefaults {
   intervalMinutes: number;
@@ -92,6 +93,17 @@ export function loadConfig() {
 
   const keypair = loadKeypair(requireEnv('AGENT_PRIVATE_KEY'));
 
+  // Run mode: lambda (Model A) or record (Model B)
+  const mode = (process.env.MODE ?? 'lambda') as RunMode;
+  if (!['lambda', 'record'].includes(mode)) {
+    throw new Error(`Invalid MODE: ${mode}. Must be: lambda, record`);
+  }
+
+  // Record mode requires LLM configuration
+  const llmApiUrl = mode === 'record' ? requireHttpsUrl(requireEnv('LLM_API_URL'), 'LLM_API_URL') : '';
+  const llmApiKey = mode === 'record' ? requireEnv('LLM_API_KEY') : '';
+  const llmModel = mode === 'record' ? (process.env.LLM_MODEL ?? 'llama-3.3-70b-versatile') : '';
+
   return {
     keypair,
     agentAddress: keypair.toSuiAddress(),
@@ -108,6 +120,7 @@ export function loadConfig() {
     executorAddress: requireEnv('EXECUTOR_ADDRESS'),
 
     // Agent behavior
+    mode,
     model: process.env.MODEL ?? 'llama-3.3-70b-versatile',
     preset,
     category: defaults.category,
@@ -115,9 +128,22 @@ export function loadConfig() {
     intervalMs: intervalMinutes * 60 * 1000,
     price: parsePriceOrDefault(process.env.PRICE, 1000000),
 
+    // Record mode (Model B) — LLM configuration
+    llmApiUrl,
+    llmApiKey,
+    llmModel,
+
     // Network
     rpcUrl: process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
   } as const;
 }
 
 export type Config = ReturnType<typeof loadConfig>;
+
+/**
+ * Mask API key for safe logging: show first 4 + last 4 chars
+ */
+export function maskApiKey(key: string): string {
+  if (key.length <= 12) return '***';
+  return `${key.slice(0, 4)}...${key.slice(-4)}`;
+}

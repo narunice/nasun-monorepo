@@ -45,3 +45,19 @@ export const MODEL_PRICING: Record<string, number> = {
 } as const;
 
 export const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+
+// /record endpoint — Model B (self-reported LLM results)
+export interface RecordRequest {
+  requestId: number;
+  result: string;              // LLM output (50–10,000 chars)
+  promptHash: string;          // SHA-256 hex (64 chars)
+  executionTimeMs?: number;    // LLM call duration (default 0)
+}
+
+export interface RecordResponse {
+  success: boolean;
+  requestId: number;
+  resultHash?: string;
+  txDigest?: string;
+  error?: string;
+}
