@@ -20,6 +20,7 @@ const KNOWN_PACKAGES = [
   { id: '0xe2fb0947f43473e21d1f8aef40e1d6799aa61b3d4fa80b6a1973d1e658de1256', name: 'Governance V2', description: 'Upgraded governance', category: 'nasun' as const },
   { id: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6', name: 'Baram V1', description: 'AI Settlement Layer (escrow)', category: 'baram' as const },
   { id: '0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1', name: 'Baram V2', description: 'Upgraded Baram + BetaAccess', category: 'baram' as const },
+  { id: '0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9', name: 'Baram V3', description: 'SettlementReceipt + receipt-verified AER', category: 'baram' as const },
   { id: '0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd', name: 'Baram Executor', description: 'Executor registry and staking', category: 'baram' as const },
   { id: '0x809f22f2262fd4211e51c1d890addfaeadb21e4bbf61748d7714306272427692', name: 'Baram AER', description: 'AI Execution Reports', category: 'baram' as const },
   { id: '0x6ab728f371455e7db3530794a1c02426f673ec5d2292835bdf365dd248519b9a', name: 'Baram Attestation', description: 'TEE PCR baseline registry', category: 'baram' as const },

@@ -13,8 +13,8 @@ export const CLOCK_ID = '0x00000000000000000000000000000000000000000000000000000
 
 // ========== Contract Addresses ==========
 
-// Baram (escrow + budget) — latest upgraded package (v5)
-export const BARAM_PACKAGE_ID = '0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1';
+// Baram (escrow + budget) — latest upgraded package (v6, with SettlementReceipt)
+export const BARAM_PACKAGE_ID = '0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9';
 export const BARAM_REGISTRY = '0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833';
 
 // Agent Profile

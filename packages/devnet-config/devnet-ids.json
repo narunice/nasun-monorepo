@@ -45,11 +45,11 @@
     "proposalTypeRegistry": "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b"
   },
   "baram": {
-    "packageId": "0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1",
+    "packageId": "0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9",
     "originalPackageId": "0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6",
     "registry": "0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833",
     "upgradeCap": "0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291",
-    "budgetPackageId": "0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1",
+    "budgetPackageId": "0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9",
     "budgetTypeOrigin": "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7",
     "budgetV2TypeOrigin": "0x6e61bf5e77da096616071308e9b53f96b34431135e9dbea7dd42465690266a8e",
     "executorPackageId": "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd",
