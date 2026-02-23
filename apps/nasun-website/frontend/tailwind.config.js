@@ -19,6 +19,15 @@ module.exports = {
         20: "5rem",
         24: "6rem",
       },
+      keyframes: {
+        "marquee-scroll": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+      },
+      animation: {
+        marquee: "marquee-scroll 28s linear infinite",
+      },
     },
   },
   plugins: [require("@tailwindcss/typography")],
