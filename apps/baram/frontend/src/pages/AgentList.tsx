@@ -114,11 +114,13 @@ export function AgentList() {
   const { walletAddress, isConnected } = useWalletSession();
   const { data: agents, isLoading: agentsLoading, refetch } = useAgentProfiles(walletAddress);
   const { data: budgets } = useAgentBudgets(walletAddress);
-  const { createAgent, txStatus, txError, resetTxStatus } = useCreateAgent();
+  const { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus } = useCreateAgent();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleCreate = async (params: {
-    agentAddress: string;
+    mode: 'generate' | 'import';
+    agentAddress?: string;
+    passphrase?: string;
     name: string;
     role: string;
     capabilities: string[];
@@ -195,6 +197,8 @@ export function AgentList() {
           onCreate={handleCreate}
           txStatus={txStatus}
           txError={txError}
+          generatedAddress={generatedAddress}
+          fallbackKey={fallbackKey}
         />
       )}
     </div>
