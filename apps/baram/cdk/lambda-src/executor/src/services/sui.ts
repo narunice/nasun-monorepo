@@ -218,65 +218,6 @@ export async function verifyRequest(
 }
 
 /**
- * Submit execution proof and receive payment
- *
- * @param requestId - Request ID
- * @param resultHash - SHA-256 hash of result (32 bytes hex)
- * @param executionTimeMs - Execution time in milliseconds
- * @returns Transaction digest
- */
-export async function submitProof(
-  requestId: number,
-  resultHash: string,
-  executionTimeMs: number
-): Promise<string> {
-  const client = getClient();
-  const keypair = getKeypair();
-
-  console.log(`[Sui] Submitting proof for request ${requestId}`);
-
-  // Validate hash format before PTB construction
-  if (resultHash.length !== 64 || !/^[0-9a-f]+$/i.test(resultHash)) {
-    throw new Error(`Invalid result hash: expected 64 hex chars, got ${resultHash.length}`);
-  }
-
-  // Build transaction
-  const tx = new Transaction();
-
-  // Convert result hash from hex to bytes
-  const resultHashBytes = Array.from(Buffer.from(resultHash, 'hex'));
-
-  tx.moveCall({
-    target: `${BARAM_PACKAGE_ID}::baram::submit_proof`,
-    arguments: [
-      tx.object(BARAM_REGISTRY_ID), // registry
-      tx.pure.u64(requestId), // request_id
-      tx.pure.vector('u8', resultHashBytes), // result_hash
-      tx.pure.u64(executionTimeMs), // execution_time_ms
-      tx.object(SUI_CLOCK_ID),
-    ],
-  });
-
-  // Sign and execute
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: {
-      showEffects: true,
-      showEvents: true,
-    },
-  });
-
-  if (result.effects?.status?.status !== 'success') {
-    const error = result.effects?.status?.error || 'Unknown error';
-    throw new Error(`Transaction failed: ${error}`);
-  }
-
-  console.log(`[Sui] Proof submitted successfully: ${result.digest}`);
-  return result.digest;
-}
-
-/**
  * AER report data for create_report_with_receipt call.
  * Fields extracted from SettlementReceipt: request_id, requester (authorizer),
  * executor, price (payment_amount), model_name, output_hash, execution_time_ms, settled_at.
@@ -321,8 +262,9 @@ export async function submitProofWithAER(
   aer: AERReportData,
 ): Promise<string> {
   if (!AER_PACKAGE_ID || !AER_REGISTRY_ID) {
-    console.warn('[Sui] AER not configured, falling back to submitProof');
-    return submitProof(requestId, resultHash, executionTimeMs);
+    throw new Error(
+      'AER not configured: AER_PACKAGE_ID and AER_REGISTRY_ID environment variables are required.'
+    );
   }
 
   // Validate hash format before PTB construction

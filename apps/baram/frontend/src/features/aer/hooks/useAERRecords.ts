@@ -114,7 +114,7 @@ function parseAERRecord(fields: Record<string, unknown>): AERRecord | null {
 }
 
 async function fetchFromRpc(ownerAddress: string): Promise<AERRecord[]> {
-  const aerType = `${AER_CONFIG.packageId}::aer::AIExecutionReport`;
+  const aerType = `${AER_CONFIG.typeOrigin}::aer::AIExecutionReport`;
   const records: AERRecord[] = [];
   let cursor: string | null | undefined = undefined;
 

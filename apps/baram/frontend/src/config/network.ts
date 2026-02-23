@@ -40,6 +40,7 @@ export const EXECUTOR_CONFIG = {
 // AER (AI Execution Report) Configuration
 export const AER_CONFIG = {
   packageId: import.meta.env.VITE_AER_PACKAGE_ID || BARAM.aerPackageId,
+  typeOrigin: BARAM.aerTypeOrigin,
   registryId: BARAM.aerRegistry,
   indexerApiUrl: import.meta.env.VITE_AER_INDEXER_API_URL || '',
 } as const;
