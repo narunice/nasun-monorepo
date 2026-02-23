@@ -41,7 +41,9 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  const openseaCollectionUrl = import.meta.env.VITE_OPENSEA_COLLECTION_URL || "https://opensea.io/collection/wave1-battalion-nasun";
+  const openseaCollectionUrl =
+    import.meta.env.VITE_OPENSEA_COLLECTION_URL ||
+    "https://opensea.io/collection/wave1-battalion-nasun";
 
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
@@ -90,7 +92,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Whitelist Info - 등록 정보 */}
         <DividerBox
-          color="nw3"
+          color="nw4"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -123,7 +125,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Minting Guide */}
         <DividerBox
-          color="nw3"
+          color="nw4"
           icon={
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -178,11 +180,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
               rel="noopener noreferrer"
               className="flex items-center gap-2"
             >
-              <img
-                src="/opensea-logomark-white.svg"
-                alt="OpenSea"
-                className="w-6 h-6"
-              />
+              <img src="/opensea-logomark-white.svg" alt="OpenSea" className="w-6 h-6" />
               <span>{t("step6.mintingGuide.button")}</span>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -198,7 +196,13 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* Navigation Buttons */}
         <div className="mt-4 lg:mt-6 flex flex-col sm:flex-row gap-4">
-          <ButtonV3 onClick={handleShareToTwitter} variant="nw1" outline size="md" className="w-full">
+          <ButtonV3
+            onClick={handleShareToTwitter}
+            variant="nw1"
+            outline
+            size="md"
+            className="w-full"
+          >
             <span>{t("step6.shareEventOnX")}</span>
             <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 ml-1" />
           </ButtonV3>
