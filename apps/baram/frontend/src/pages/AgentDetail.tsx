@@ -1,21 +1,33 @@
 /**
  * AgentDetail - Detailed view for a single agent profile
  * Shows overview, budget details with spending limits, and activity
+ *
+ * Features:
+ * - Fund Gas: Transfer NASUN to agent address for transaction gas
+ * - Export Key: Export encrypted agent keypair as base64 for agent-runner
+ * - Kill Switch: Deactivate/reactivate agent (also deactivates budget)
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Transaction } from '@mysten/sui/transactions';
+import { useSigner } from '@nasun/wallet';
 import { useWalletSession } from '../hooks/useWalletSession';
 import { useAgentProfiles } from '../features/agents/hooks/useAgentProfiles';
 import { useAgentBudgets, useSpendingLimits } from '../features/agents/hooks/useAgentBudgets';
 import { useAgentActions } from '../hooks/useAgentActions';
+import { suiClient } from '../config/client';
 import { formatNusdcValue as formatNUSDC, truncateAddress as formatAddress, formatTimestamp } from '../utils/format';
+import { exportAgentKeypairBase64, hasAgentKey } from '../services/agentKeyStorage';
 
 type Tab = 'overview' | 'budget' | 'activity';
+
+const MAX_FUND_NASUN = 100;
 
 export function AgentDetail() {
   const { id } = useParams<{ id: string }>();
   const { walletAddress } = useWalletSession();
+  const { signer, address: signerAddress } = useSigner();
   const { data: agents, refetch: refetchAgents } = useAgentProfiles(walletAddress);
   const { data: budgets } = useAgentBudgets(walletAddress);
   const { deactivateAgent, reactivateAgent, txStatus: actionTxStatus, txError: actionTxError, resetTxStatus: resetActionTxStatus } = useAgentActions();
@@ -23,9 +35,168 @@ export function AgentDetail() {
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
 
+  // Fund Gas state
+  const [showFundGas, setShowFundGas] = useState(false);
+  const [fundAmount, setFundAmount] = useState('0.1');
+  const [fundStatus, setFundStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [fundError, setFundError] = useState<string | null>(null);
+
+  // Export Key state
+  const [showExportKey, setShowExportKey] = useState(false);
+  const [exportPassphrase, setExportPassphrase] = useState('');
+  const [exportedKey, setExportedKey] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [hasKey, setHasKey] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Rate limiting for export passphrase attempts (persisted to localStorage)
+  const rateLimitKey = `baram:export-attempts:${id}`;
+  const exportFailedAttempts = useRef(0);
+  const [exportLockedUntil, setExportLockedUntil] = useState<number | null>(null);
+
+  // Load persisted rate limit state on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(rateLimitKey);
+      if (raw) {
+        const saved = JSON.parse(raw) as { attempts: number; lockedUntil: number | null };
+        exportFailedAttempts.current = saved.attempts;
+        if (saved.lockedUntil && Date.now() < saved.lockedUntil) {
+          setExportLockedUntil(saved.lockedUntil);
+        }
+      }
+    } catch { /* ignore corrupt data */ }
+  }, [rateLimitKey]);
+
+  // Auto-clear exported key after 30 seconds for security
+  useEffect(() => {
+    if (!exportedKey) return;
+    const timer = setTimeout(() => {
+      setExportedKey(null);
+    }, 30_000);
+    return () => clearTimeout(timer);
+  }, [exportedKey]);
+
+  // Agent NASUN balance
+  const [agentBalance, setAgentBalance] = useState<string | null>(null);
+
   const agent = agents?.find(a => a.id === id);
   const budget = budgets?.find(b => agent && b.agent === agent.agentAddress);
   const { data: spendingLimits } = useSpendingLimits(budget?.id ?? null);
+
+  // Check if agent has stored key
+  useEffect(() => {
+    if (id) {
+      hasAgentKey(id).then(setHasKey).catch(() => setHasKey(false));
+    }
+  }, [id]);
+
+  // Fetch agent NASUN balance
+  const fetchAgentBalance = useCallback(async () => {
+    if (!agent) return;
+    try {
+      const bal = await suiClient.getBalance({ owner: agent.agentAddress });
+      setAgentBalance((Number(bal.totalBalance) / 1e9).toFixed(4));
+    } catch {
+      setAgentBalance(null);
+    }
+  }, [agent]);
+
+  useEffect(() => {
+    fetchAgentBalance();
+  }, [fetchAgentBalance]);
+
+  // Fund Gas handler
+  const handleFundGas = async () => {
+    if (!signer || !signerAddress || !agent) return;
+    const amount = parseFloat(fundAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setFundError('Invalid amount');
+      return;
+    }
+    if (amount > MAX_FUND_NASUN) {
+      setFundError(`Maximum ${MAX_FUND_NASUN} NASUN per transfer`);
+      return;
+    }
+    const amountSoe = Math.round(amount * 1e9);
+
+    setFundStatus('sending');
+    setFundError(null);
+
+    try {
+      const tx = new Transaction();
+      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amountSoe)]);
+      tx.transferObjects([coin], tx.pure.address(agent.agentAddress));
+      tx.setSender(signerAddress);
+
+      const txBytes = await tx.build({ client: suiClient });
+      const { signature } = await signer.sign(txBytes);
+
+      const result = await suiClient.executeTransactionBlock({
+        transactionBlock: txBytes,
+        signature,
+        options: { showEffects: true },
+      });
+
+      if (result.effects?.status?.status !== 'success') {
+        throw new Error(result.effects?.status?.error || 'Transaction failed');
+      }
+
+      setFundStatus('success');
+      // Refresh agent balance
+      setTimeout(fetchAgentBalance, 2000);
+    } catch (err) {
+      setFundError(err instanceof Error ? err.message : 'Transfer failed');
+      setFundStatus('error');
+    }
+  };
+
+  // Export Key handler with rate limiting
+  const handleExportKey = async () => {
+    if (!id || !walletAddress) return;
+
+    // Check rate limit lockout
+    if (exportLockedUntil && Date.now() < exportLockedUntil) {
+      const seconds = Math.ceil((exportLockedUntil - Date.now()) / 1000);
+      setExportError(`Too many attempts. Try again in ${seconds}s`);
+      return;
+    }
+
+    setExportError(null);
+    setExportedKey(null);
+
+    try {
+      const key = await exportAgentKeypairBase64(id, walletAddress, exportPassphrase);
+      setExportedKey(key);
+      exportFailedAttempts.current = 0;
+      setExportLockedUntil(null);
+      localStorage.removeItem(rateLimitKey);
+    } catch (err) {
+      const attempts = ++exportFailedAttempts.current;
+      let lockUntil: number | null = null;
+      if (attempts >= 16) {
+        lockUntil = Date.now() + 30 * 60_000;
+      } else if (attempts >= 12) {
+        lockUntil = Date.now() + 5 * 60_000;
+      } else if (attempts >= 8) {
+        lockUntil = Date.now() + 30_000;
+      }
+      if (lockUntil) setExportLockedUntil(lockUntil);
+      localStorage.setItem(rateLimitKey, JSON.stringify({ attempts, lockedUntil: lockUntil }));
+      // AES-GCM decryption with wrong key throws DOMException with unhelpful message
+      const isDecryptionError = err instanceof DOMException || (err instanceof Error && err.name === 'OperationError');
+      setExportError(isDecryptionError ? 'Wrong passphrase' : (err instanceof Error ? err.message : 'Export failed'));
+    }
+  };
+
+  // Clear exported key + passphrase when closing Export Key modal
+  const handleCloseExportModal = () => {
+    setExportedKey(null);
+    setExportPassphrase('');
+    setExportError(null);
+    setCopied(false);
+    setShowExportKey(false);
+  };
 
   if (!agent) {
     return (
@@ -87,6 +258,24 @@ export function AgentDetail() {
         </div>
       </div>
 
+      {/* Agent Runner Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => { setFundStatus('idle'); setFundError(null); setShowFundGas(true); }}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+        >
+          Fund Gas {agentBalance !== null && `(${agentBalance} NASUN)`}
+        </button>
+        {hasKey && (
+          <button
+            onClick={() => { setExportPassphrase(''); setExportedKey(null); setExportError(null); setShowExportKey(true); }}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+          >
+            Export Key for Agent Runner
+          </button>
+        )}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[var(--color-border)]">
         {tabs.map(tab => (
@@ -118,7 +307,7 @@ export function AgentDetail() {
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <OverviewTab agent={agent} budget={budget ?? null} />
+        <OverviewTab agent={agent} budget={budget ?? null} agentBalance={agentBalance} />
       )}
       {activeTab === 'budget' && (
         <BudgetTab budget={budget ?? null} spendingLimits={spendingLimits ?? null} />
@@ -198,13 +387,145 @@ export function AgentDetail() {
           </div>
         </div>
       )}
+
+      {/* Fund Gas modal */}
+      {showFundGas && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowFundGas(false)} />
+          <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Fund Agent Gas</h3>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Transfer NASUN to agent address for transaction gas fees.
+            </p>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Amount (NASUN)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={MAX_FUND_NASUN}
+                value={fundAmount}
+                onChange={(e) => setFundAmount(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+              />
+            </div>
+            {fundStatus === 'success' && (
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-xs text-emerald-400 text-center">Transfer successful</div>
+            )}
+            {fundError && (
+              <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400 text-center">{fundError}</div>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowFundGas(false)}
+                className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleFundGas}
+                disabled={fundStatus === 'sending'}
+                className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {fundStatus === 'sending' ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Key modal */}
+      {showExportKey && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={handleCloseExportModal} />
+          <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Export Agent Key</h3>
+            <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <p className="text-[10px] text-amber-400">
+                This key can access funds connected to this agent's Budget. Store it securely and never share it.
+              </p>
+            </div>
+            {!exportedKey ? (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Agent Passphrase</label>
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    value={exportPassphrase}
+                    onChange={(e) => setExportPassphrase(e.target.value)}
+                    placeholder="Enter your agent passphrase"
+                    className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                  />
+                </div>
+                {exportError && (
+                  <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400 text-center">{exportError}</div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCloseExportModal}
+                    className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleExportKey}
+                    disabled={!exportPassphrase || (exportLockedUntil !== null && Date.now() < exportLockedUntil)}
+                    className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    Decrypt & Export
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Private Key</label>
+                  <textarea
+                    readOnly
+                    value={exportedKey}
+                    rows={3}
+                    className="w-full px-3 py-2 text-[10px] font-mono rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] resize-none"
+                  />
+                </div>
+                <p className="text-[10px] text-[var(--color-text-muted)]">
+                  Copy this value into your agent-runner .env file as AGENT_PRIVATE_KEY. Key auto-clears in 30 seconds.
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(exportedKey);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                      // Auto-clear clipboard after 30s for security
+                      setTimeout(() => navigator.clipboard.writeText('').catch(() => {}), 30_000);
+                    } catch {
+                      setExportError('Failed to copy. Please select and copy manually.');
+                    }
+                  }}
+                  className="w-full py-1.5 text-xs font-medium rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                >
+                  {copied ? 'Copied!' : 'Copy to Clipboard'}
+                </button>
+                <button
+                  onClick={handleCloseExportModal}
+                  className="w-full py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+                >
+                  Done
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function OverviewTab({ agent, budget }: {
+function OverviewTab({ agent, budget, agentBalance }: {
   agent: { role: string; capabilities: string[]; createdAt: number; totalExecutions: number; totalSpent: number; agentAddress: string };
   budget: { balance: number; totalSpent: number; requestCount: number; isActive: boolean } | null;
+  agentBalance: string | null;
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -223,6 +544,10 @@ function OverviewTab({ agent, budget }: {
           <div className="flex justify-between">
             <dt className="text-[var(--color-text-muted)]">Registered</dt>
             <dd className="text-[var(--color-text-primary)]">{formatTimestamp(agent.createdAt)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-[var(--color-text-muted)]">Gas Balance</dt>
+            <dd className="text-[var(--color-text-primary)]">{agentBalance !== null ? `${agentBalance} NASUN` : 'Loading...'}</dd>
           </div>
           <div>
             <dt className="text-[var(--color-text-muted)] mb-1">Capabilities</dt>
@@ -369,4 +694,3 @@ function ActivityTab({ agent }: { agent: { totalExecutions: number; lastActiveAt
     </div>
   );
 }
-

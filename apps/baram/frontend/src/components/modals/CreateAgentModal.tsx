@@ -1,20 +1,28 @@
 /**
  * CreateAgentModal - Modal for registering a new agent profile on-chain
+ *
+ * Two modes:
+ * - Generate Keypair: Baram generates a new Ed25519 keypair, encrypts with passphrase, stores in IndexedDB
+ * - Import Existing Key: User provides an existing agent address (no key stored locally)
  */
 
 import { useState, type KeyboardEvent } from 'react';
-import type { AgentTxStatus } from '@/hooks/useCreateAgent';
+import type { AgentTxStatus, AgentCreationMode } from '@/hooks/useCreateAgent';
 
 interface CreateAgentModalProps {
   onClose: () => void;
   onCreate: (params: {
-    agentAddress: string;
+    mode: AgentCreationMode;
+    agentAddress?: string;
+    passphrase?: string;
     name: string;
     role: string;
     capabilities: string[];
   }) => Promise<string | null>;
   txStatus: AgentTxStatus;
   txError: string | null;
+  generatedAddress: string | null;
+  fallbackKey: string | null;
 }
 
 const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -22,9 +30,13 @@ const MAX_NAME = 64;
 const MAX_ROLE = 32;
 const MAX_CAPABILITIES = 10;
 const MAX_CAPABILITY_LENGTH = 64;
+const MIN_PASSPHRASE = 6;
 
-export function CreateAgentModal({ onClose, onCreate, txStatus, txError }: CreateAgentModalProps) {
+export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generatedAddress, fallbackKey }: CreateAgentModalProps) {
+  const [mode, setMode] = useState<AgentCreationMode>('generate');
   const [agentAddress, setAgentAddress] = useState('');
+  const [passphrase, setPassphrase] = useState('');
+  const [passphraseConfirm, setPassphraseConfirm] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [capabilities, setCapabilities] = useState<string[]>([]);
@@ -33,14 +45,29 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError }: Creat
   const isBusy = txStatus === 'signing' || txStatus === 'executing';
   const isSuccess = txStatus === 'success';
 
-  const isAddressValid = SUI_ADDRESS_RE.test(agentAddress);
+  const isAddressValid = mode === 'import' ? SUI_ADDRESS_RE.test(agentAddress) : true;
+  const isPassphraseValid = mode === 'generate'
+    ? passphrase.length >= MIN_PASSPHRASE && passphrase === passphraseConfirm
+    : true;
   const isNameValid = name.length > 0 && name.length <= MAX_NAME;
   const isRoleValid = role.length > 0 && role.length <= MAX_ROLE;
-  const isFormValid = isAddressValid && isNameValid && isRoleValid && !isBusy;
+  const isFormValid = isAddressValid && isPassphraseValid && isNameValid && isRoleValid && !isBusy;
 
   const handleSubmit = async () => {
     if (!isFormValid) return;
-    await onCreate({ agentAddress, name, role, capabilities });
+    const result = await onCreate({
+      mode,
+      agentAddress: mode === 'import' ? agentAddress : undefined,
+      passphrase: mode === 'generate' ? passphrase : undefined,
+      name,
+      role,
+      capabilities,
+    });
+    // Clear sensitive state after successful submission
+    if (result) {
+      setPassphrase('');
+      setPassphraseConfirm('');
+    }
   };
 
   const addCapability = (value: string) => {
@@ -76,6 +103,15 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError }: Creat
           <p className="text-xs text-[var(--color-text-muted)]">
             {name} has been registered as an agent
           </p>
+          {generatedAddress && (
+            <div className="p-2 rounded-lg bg-[var(--color-bg-tertiary)] text-left space-y-1">
+              <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">Generated Address</p>
+              <p className="text-[10px] font-mono text-[var(--color-text-primary)] break-all">{generatedAddress}</p>
+              <p className="text-[10px] text-amber-400 mt-1">
+                Key stored encrypted. You'll need your passphrase to export it later.
+              </p>
+            </div>
+          )}
           <button
             onClick={onClose}
             className="w-full py-2 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
@@ -108,26 +144,107 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError }: Creat
 
         {/* Form */}
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-          {/* Agent Address */}
+          {/* Mode Toggle */}
           <div className="space-y-1">
             <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
-              Agent Address *
+              Key Mode
             </label>
-            <input
-              type="text"
-              value={agentAddress}
-              onChange={(e) => setAgentAddress(e.target.value)}
-              placeholder="0x..."
-              className={`w-full px-3 py-2 text-xs font-mono rounded-lg bg-[var(--color-bg-primary)] border text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none transition-colors
-                ${agentAddress && !isAddressValid
-                  ? 'border-red-400 focus:border-red-400'
-                  : 'border-[var(--color-border)] focus:border-[var(--color-accent)]'
+            <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--color-bg-primary)]">
+              <button
+                onClick={() => setMode('generate')}
+                className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${
+                  mode === 'generate'
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
                 }`}
-            />
-            {agentAddress && !isAddressValid && (
-              <p className="text-[10px] text-red-400">Invalid address (0x + 64 hex chars)</p>
-            )}
+              >
+                Generate Keypair
+              </button>
+              <button
+                onClick={() => setMode('import')}
+                className={`flex-1 py-1.5 text-xs rounded-md transition-colors ${
+                  mode === 'import'
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                }`}
+              >
+                Import Existing Key
+              </button>
+            </div>
           </div>
+
+          {/* Mode-specific fields */}
+          {mode === 'import' ? (
+            /* Agent Address (import mode) */
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                Agent Address *
+              </label>
+              <input
+                type="text"
+                value={agentAddress}
+                onChange={(e) => setAgentAddress(e.target.value)}
+                placeholder="0x..."
+                className={`w-full px-3 py-2 text-xs font-mono rounded-lg bg-[var(--color-bg-primary)] border text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none transition-colors
+                  ${agentAddress && !isAddressValid
+                    ? 'border-red-400 focus:border-red-400'
+                    : 'border-[var(--color-border)] focus:border-[var(--color-accent)]'
+                  }`}
+              />
+              {agentAddress && !isAddressValid && (
+                <p className="text-[10px] text-red-400">Invalid address (0x + 64 hex chars)</p>
+              )}
+            </div>
+          ) : (
+            /* Passphrase fields (generate mode) */
+            <>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                  Agent Passphrase *
+                </label>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                  placeholder="Min 6 characters"
+                  className={`w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none transition-colors
+                    ${passphrase && passphrase.length < MIN_PASSPHRASE
+                      ? 'border-red-400 focus:border-red-400'
+                      : 'border-[var(--color-border)] focus:border-[var(--color-accent)]'
+                    }`}
+                />
+                {passphrase && passphrase.length < MIN_PASSPHRASE && (
+                  <p className="text-[10px] text-red-400">Passphrase must be at least {MIN_PASSPHRASE} characters</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                  Confirm Passphrase *
+                </label>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={passphraseConfirm}
+                  onChange={(e) => setPassphraseConfirm(e.target.value)}
+                  placeholder="Re-enter passphrase"
+                  className={`w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none transition-colors
+                    ${passphraseConfirm && passphrase !== passphraseConfirm
+                      ? 'border-red-400 focus:border-red-400'
+                      : 'border-[var(--color-border)] focus:border-[var(--color-accent)]'
+                    }`}
+                />
+                {passphraseConfirm && passphrase !== passphraseConfirm && (
+                  <p className="text-[10px] text-red-400">Passphrases do not match</p>
+                )}
+              </div>
+              <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                <p className="text-[10px] text-amber-400">
+                  This passphrase encrypts the agent's private key. You'll need it to export the key for the Agent Runner. If lost, the key cannot be recovered.
+                </p>
+              </div>
+            </>
+          )}
 
           {/* Name */}
           <div className="space-y-1">
@@ -230,6 +347,24 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError }: Creat
           {txError && (
             <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400 text-center">
               {txError}
+            </div>
+          )}
+
+          {/* Fallback key display (shown only when IndexedDB storage fails) */}
+          {fallbackKey && (
+            <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20 space-y-2">
+              <p className="text-[10px] text-red-400 font-medium">
+                Copy this key now. It cannot be recovered after closing this dialog.
+              </p>
+              <textarea
+                readOnly
+                value={fallbackKey}
+                rows={3}
+                className="w-full px-2 py-1 text-[10px] font-mono rounded bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] resize-none"
+              />
+              <p className="text-[10px] text-amber-400">
+                Store this in a password manager or secure location.
+              </p>
             </div>
           )}
         </div>
