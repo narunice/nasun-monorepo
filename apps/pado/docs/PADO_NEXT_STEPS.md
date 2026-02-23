@@ -1,6 +1,6 @@
 # Pado Next Steps: Prototype Launch
 
-> Last Updated: 2026-02-15
+> Last Updated: 2026-02-23
 > Vision: **Finance-first social -- a financial platform where community forms around execution, not hype.**
 > Strategic Reference: [SOCIAL_LAYER_DISCUSSION.md](SOCIAL_LAYER_DISCUSSION.md)
 
@@ -8,120 +8,46 @@
 
 ## Current State Summary
 
-Pado has **22 completed development phases** covering spot trading (4 pools), perpetuals, prediction markets, lottery, payments, unified margin, zkLogin, social layer (chat + leaderboard + competitions + PnL share + badges + market narrator), LP bot, and testnet launch polish (Phase 22: critical bug fixes, onboarding flow, first-trade celebration, points system, mobile UX, enhanced share cards). All contracts deployed on V7. The core financial engine and community infrastructure are functional and polished.
+Pado has **22 completed development phases** covering spot trading (4 pools), perpetuals, prediction markets, lottery, payments, unified margin, zkLogin, passkey auth, social layer (chat + leaderboard + competitions + PnL share + badges + market narrator + points system), LP bot, TP/SL keeper, and testnet launch polish. All contracts deployed on V7. The core financial engine and community infrastructure are functional and polished.
 
 ### Devnet V7 Deployment Status (2026-02-04)
 
 | Category | Status |
 |----------|--------|
-| Tokens (NBTC, NUSDC, Faucet) | ✅ V7 |
-| DeepBook V3 (Spot CLOB) | ✅ V7 |
+| Tokens (NBTC, NUSDC, Faucet V1+V2) | ✅ V7 |
+| DeepBook V3 (Spot CLOB, 4 pools) | ✅ V7 |
 | Prediction Markets | ✅ V7 |
 | Lottery | ✅ V7 |
 | Governance | ✅ V7 |
-| Baram (Escrow + Executor) | ✅ V7 |
 | Oracle (pado_oracle) | ✅ V7 |
 | Lending (pado_lending) | ✅ V7 |
 | Margin (unified_margin) | ✅ V7 |
 | Perpetuals (pado_perp) | ✅ V7 |
+| Nasun Smart Account (NSA) | ✅ V7 |
 
 ---
 
-## Priority 1: Prototype Polish (Phase 18) -- ✅ Complete
+## Completed Phases (Summary)
 
-The single most important thing at launch: **a visitor creates a wallet, gets faucet tokens, and executes a trade on a real orderbook -- all within 60 seconds**.
-
-### 18.1 End-to-End Trading Flow QA
-
-Walk through the full visitor journey and fix every friction point:
-
-1. Land on Pado → First impression (landing page or direct to trading)
-2. Create wallet → Must be < 30 seconds, zero confusion
-3. Get faucet tokens → Instant, never fails silently
-4. Place a limit order → Confirm it appears in orderbook
-5. Fill the order → Confirm balance updates correctly
-6. View order history → Confirm trade is recorded
-
-**Known areas to verify**:
-- Faucet claim flow (ClaimRecord shared object contention under load)
-- DeepBook balance manager deposit/withdraw reliability
-- Orderbook real-time sync (WebSocket vs polling)
-- ~~Chart data population (needs active trading data)~~ **Resolved: LP Bot provides liquidity**
-
-**LP Bot (Implemented 2026-02-05)**:
-- Location: `apps/pado/bots/`
-- Provides 20 bid + 20 ask orders on NBTC/NUSDC orderbook
-- Binance API price feed with 0.3% spread
-- Auto-refill from faucet when balance is low
-- PM2 deployment for staging/production
-
-### 18.2 Onboarding UX
-
-- Consider a first-time guided flow (tooltip or modal sequence)
-- Ensure wallet creation → faucet → first trade is a single unbroken flow
-- Error messages must be human-readable, not raw RPC errors
-
-### 18.3 UI Polish
-
-- Consistent loading states across all pages
-- Empty states for orderbook, trade history, portfolio
-- Mobile responsiveness check on trading page
-- Navigation clarity: Trading / Prediction / Lottery clearly accessible
+- **Phase 18 (Prototype Polish)**: ✅ -- E2E trading flow, onboarding tour, GettingStartedCard, first-trade celebration, keyboard shortcuts, error parsing
+- **Phase 19 (Social Layer)**: ✅ -- Global chat, leaderboard, trader profiles, competitions, PnL share, badges, market narrator
+- **Phase 20 (LP Bot)**: ✅ -- Grid market making (NBTC/NETH/NSOL), Binance price feed, auto-faucet
+- **Phase 21 (V7 Redeployment)**: ✅ -- All contracts redeployed on V7
+- **Phase 22 (Testnet Polish)**: ✅ -- Bug fixes, points system, enhanced share cards, mobile UX, loading skeletons, actionable errors
 
 ---
 
-## Priority 2: Social Layer MVP (Phase 19) -- ✅ Complete
+## Priority: Launch Activation (Operational)
 
-All social layer features are implemented and deployed.
-
-### 19.1 Global Chat -- ✅ Done
-- WebSocket server with signature-based authentication (`apps/pado/chat-server/`)
-- Nicknames (wallet-signed verification), SQLite storage (90-day retention)
-- Floating chat popup, mobile drawer, collapsible sidebar on trading page
-
-### 19.2 Leaderboard -- ✅ Done
-- DeepBook OrderFilled event indexer → SQLite aggregation
-- Volume rankings by period (24h, 7d, 30d, all-time)
-- Dedicated `/leaderboard` page + MyRankCard widget
-
-### 19.3 Trader Profiles -- ✅ Done
-- Per-address stats page (`/leaderboard/trader/:address`)
-- Fill history table, volume breakdown
-
-### 19.4 Trading Competitions -- ✅ Done
-- Admin CRUD API with Bearer token auth
-- Time-limited competitions with dedicated leaderboards
-- `/competitions` and `/competitions/:id` pages
-
-### 19.5 Chat-Trading Integration -- ✅ Done
-- FloatingChatPopup, MobileChatDrawer, ChatToggleButton
-- Chat lives alongside trading UI, collapsible
-
-**NFT whitelist connection**: Leaderboard ranking can be used as a factor in NFT whitelist allocation (trade → climb leaderboard → earn whitelist priority).
-
----
-
-## Priority 3: Activation (Phase 20)
-
-Ensure the vision-differentiating features are live at launch.
-
-### 20.1 Prediction Market
-
+### Prediction Market Activation
 - Create 1-2 markets with clear outcomes (e.g., a time-bound event)
 - Seed with initial liquidity so the market isn't empty
 - Verify resolution flow works end-to-end
 
-### 20.2 Lottery
-
+### Lottery Activation
 - Create 1 active round before launch
-- Verify ticket purchase → draw → settlement → claim flow
+- Verify ticket purchase -> draw -> settlement -> claim flow
 - Ensure prize pool display is clear and compelling
-
-### 20.3 Navigation & Discovery
-
-- Main nav clearly shows: Trading | Predictions | Lottery
-- Each section has a clear value proposition visible on first load
-- Portfolio/Dashboard accessible but not primary navigation focus for prototype
 
 ---
 
@@ -181,14 +107,31 @@ a governance or political one.
 
 ---
 
+## Post-Launch Improvements (Tier 3)
+
+Items migrated from the completed improvement roadmap. Prioritize based on community feedback.
+
+| Item | Effort | Impact | Description |
+|------|--------|--------|-------------|
+| Daily quests system | 12h | Retention | "Trade 3 times today" +10pt, homepage checklist |
+| Referral system | 7h | Growth | Unique links, referrer point bonus |
+| Empty state CTAs | 2.5h | UX | Action buttons on empty orderbook/history/portfolio |
+| Button/typography consistency | 5h | Polish | Button variant system, text size standardization |
+| Sound effects additions | 1.5h | Feel | Badge unlock, lottery draw, chat notification sounds |
+| Narrator bot dynamic pool names | 1h | Accuracy | "NBTC" hardcoded -> pool-specific display |
+| TODO comment cleanup | 2h | Code quality | Remove/track production TODO comments |
+
+---
+
 ## Not For Prototype (Tier 4)
 
 These are explicitly deferred. Do not work on them until after community formation and funding.
 
-- Perpetuals UI activation (contracts V7 deployed, .env integration pending)
+- Perpetuals LP liquidity (Perp UI 100% complete, LP bot does not yet provide perp liquidity)
 - Unified Margin v2 (Spot-Perp integration, contracts V7 deployed)
 - Lending & Borrowing full UI (contract V7 deployed, UI stubs at 40%)
 - Chat Tabs / Room system (server-side room support exists)
+- AI Market Narrator v2 (multi-pool support, richer summaries)
 - Encrypted DMs
 - Copy Trading
 - Reputation System / ZKP Leaderboards
@@ -201,11 +144,13 @@ These are explicitly deferred. Do not work on them until after community formati
 
 | Need | Solution | Cost |
 |------|----------|------|
-| LP Bot | PM2 process on existing EC2 (staging/production) | $0 additional |
-| WebSocket server (chat) | Run on existing EC2 alongside RPC/Faucet | $0 additional |
+| LP Bot (3 markets) | PM2 processes on existing EC2 (staging/production) | $0 additional |
+| Price Updater | PM2 process, Binance/CoinGecko -> DevOracle (30s interval) | $0 additional |
+| TP/SL Keeper | PM2 process, HTTP API port 4001, TradeCap delegation | $0 additional |
+| Liquidation Keeper | PM2 process, perp position monitoring (10s interval) | $0 additional |
+| WebSocket server (chat) | Run on existing EC2, single service (chat + leaderboard + competitions) | $0 additional |
 | Message storage | SQLite file on EC2 | $0 |
-| Leaderboard indexer | Node.js process on EC2, polling RPC for trade events | $0 |
-| Domain/SSL | Already configured (pado.nasun.io or similar) | $0 |
+| Domain/SSL | pado.finance (prod), staging.pado.finance (staging) | $0 |
 
 No new AWS resources required for prototype launch.
 
@@ -213,11 +158,10 @@ No new AWS resources required for prototype launch.
 
 ## Open Questions
 
-1. ~~Should the chat and leaderboard backend be a single Node.js service or separate processes?~~ **Resolved**: Single service (`apps/pado/chat-server/`) handles chat, leaderboard, and competitions.
-2. What testnet campaign (leaderboard competition, faucet event) will drive initial activity at launch?
-3. Should leaderboard rankings carry weight in NFT whitelist allocation?
-4. Landing page: should visitors land on a dedicated landing page or go directly to the trading view?
-5. What is the target concurrent user count for launch day?
+1. What testnet campaign (leaderboard competition, faucet event) will drive initial activity at launch?
+2. Should leaderboard rankings carry weight in NFT whitelist allocation?
+3. Landing page: should visitors land on a dedicated landing page or go directly to the trading view?
+4. What is the target concurrent user count for launch day?
 
 ---
 
@@ -225,13 +169,8 @@ No new AWS resources required for prototype launch.
 
 | Date | Change |
 |------|--------|
-| 2026-02-15 | TP/SL Keeper modal + TPSLKeeperBadge wired into TradingPanel; Protocol-Level Roadmap section added |
-| 2026-02-15 | Phase 22 (Testnet Launch Polish) complete: T1 (7 items) + T2 (5 items), 1175 tests passing |
-| 2026-02-14 | Full sync: Phase 18 marked complete, Tier 4 list updated (AI Agents → Market Narrator done), Chat Tabs added to deferred |
-| 2026-02-07 | Phase 19 (Social Layer) marked complete. V7 deployment status updated for all contracts |
-| 2026-02-05 | LP Bot implementation complete -- orderbook now has liquidity |
+| 2026-02-23 | Doc cleanup: consolidated Tier 3 items from IMPROVEMENT_ROADMAP.md, removed completed phases detail, updated infrastructure table |
+| 2026-02-15 | Phase 22 (Testnet Launch Polish) complete: T1+T2 done, TP/SL Keeper modal wired |
+| 2026-02-07 | Phase 19 (Social Layer) marked complete |
+| 2026-02-05 | LP Bot implementation complete |
 | 2026-01-31 | Full rewrite: prototype launch priorities aligned with social layer strategy |
-| 2026-01-17 | Phase 11.4, 16 v1, 17 completion. Package IDs updated |
-| 2026-01-10 | Phase 16 v1, 11.1-11.2 completion |
-| 2026-01-09 | Phase 17: Lottery completion |
-| 2026-01-04 | Vision analysis-based full restructure |

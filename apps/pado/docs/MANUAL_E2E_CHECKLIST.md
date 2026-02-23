@@ -1,7 +1,7 @@
 # Pado Spot Trading - Manual E2E Test Checklist
 
-> Last updated: 2026-02-15
-> Total test cases: ~120 (15 phases)
+> Last updated: 2026-02-23
+> Total test cases: ~153 (23 phases)
 
 ## Test Execution Order
 
@@ -186,60 +186,63 @@
 | 101 | Auto-deposit flow on NETH market | Auto-deposit message references NETH, correct amount deposited | |
 | 102 | Faucet button on NETH market shows correct token | Button says "Get NETH" or references NETH (not NBTC) | |
 
-### Phase 15: PerpsComingSoon & Earn Page (T1)
+### Phase 15: Perpetual Trading & Earn Page
 
 | # | Test Case | Expected Result | Pass |
 |---|-----------|-----------------|------|
-| 103 | Navigate to Perps page | Shows updated info: "20x leverage", "deployed" status, link to PerpTradePage | |
-| 104 | Click "Go to Perps Trading" link (if present) | Navigates to actual PerpTradePage | |
-| 105 | Navigate to Earn page | Staking tab hidden or shows "Coming Soon" banner, no broken stubs | |
-| 106 | Earn page does not show incomplete forms | No input fields or buttons for unimplemented staking features | |
+| 103 | Navigate to /markets/perp | PerpTradePage loads with leverage slider, orderbook, position panel | |
+| 104 | Open long BTC position (5x leverage) | Position opens, shown in position list with entry price and leverage | |
+| 105 | Adjust leverage slider (1x to 20x) | Leverage updates, margin requirement recalculates | |
+| 106 | View funding rate display | Current funding rate and next funding time shown | |
+| 107 | Close perp position | Position removed from list, realized PnL shown | |
+| 108 | Navigate to Earn page | Staking tab hidden or shows "Coming Soon" banner, no broken stubs | |
+| 109 | Earn page does not show incomplete forms | No input fields or buttons for unimplemented staking features | |
 
 ### Phase 16: Mobile Chart & Orderbook Improvements (T2)
 
 | # | Test Case | Expected Result | Pass |
 |---|-----------|-----------------|------|
-| 107 | Resize to mobile (<1024px), check chart height | Chart container height is approximately min(40vh, 350px), NOT fixed 250px | |
-| 108 | Verify chart is usable on 375px width (iPhone SE) | Chart renders without overflow, candles visible, touch zoom works | |
-| 109 | Verify chart on 430px width (iPhone 14 Pro Max) | Chart takes advantage of larger viewport, taller than on iPhone SE | |
-| 110 | MiniOrderbook shows 8 levels | Count visible ask (red) and bid (green) rows: should be 8 each | |
-| 111 | MiniOrderbook price click on mobile | Tapping a price level fills the order form price field | |
-| 112 | MiniOrderbook spread display | Spread row visible between asks and bids with percentage | |
-| 113 | Scroll behavior: chart -> orderbook -> trade form | Smooth scroll, no content overlap or z-index issues | |
+| 110 | Resize to mobile (<1024px), check chart height | Chart container height is approximately min(40vh, 350px), NOT fixed 250px | |
+| 111 | Verify chart is usable on 375px width (iPhone SE) | Chart renders without overflow, candles visible, touch zoom works | |
+| 112 | Verify chart on 430px width (iPhone 14 Pro Max) | Chart takes advantage of larger viewport, taller than on iPhone SE | |
+| 113 | MiniOrderbook shows 8 levels | Count visible ask (red) and bid (green) rows: should be 8 each | |
+| 114 | MiniOrderbook price click on mobile | Tapping a price level fills the order form price field | |
+| 115 | MiniOrderbook spread display | Spread row visible between asks and bids with percentage | |
+| 116 | Scroll behavior: chart -> orderbook -> trade form | Smooth scroll, no content overlap or z-index issues | |
 
 ### Phase 17: Enhanced Share Cards (T2)
 
 | # | Test Case | Expected Result | Pass |
 |---|-----------|-----------------|------|
-| 114 | Open PnL share modal after a trade | ShareCardModal opens with trade performance data | |
-| 115 | Canvas card rendering | Card includes: PnL data, "Built by 2 people" watermark, Pado branding | |
-| 116 | Points/rank display on card | If user has points, they appear on the share card | |
-| 117 | Download share card | "Download" button saves PNG to device | |
-| 118 | Twitter share button | Opens Twitter with pre-attached image or intent URL, correct hashtags | |
-| 119 | Share card on mobile viewport | Card renders correctly, buttons are touch-friendly | |
-| 120 | Share card with negative PnL | Red color scheme, correct negative percentage display | |
-| 121 | Share card with zero trades | Graceful empty state or disabled share button | |
+| 117 | Open PnL share modal after a trade | ShareCardModal opens with trade performance data | |
+| 118 | Canvas card rendering | Card includes: PnL data, "Built by 2 people" watermark, Pado branding | |
+| 119 | Points/rank display on card | If user has points, they appear on the share card | |
+| 120 | Download share card | "Download" button saves PNG to device | |
+| 121 | Twitter share button | Opens Twitter with pre-attached image or intent URL, correct hashtags | |
+| 122 | Share card on mobile viewport | Card renders correctly, buttons are touch-friendly | |
+| 123 | Share card with negative PnL | Red color scheme, correct negative percentage display | |
+| 124 | Share card with zero trades | Graceful empty state or disabled share button | |
 
 ### Phase 18: Loading Skeletons (T2)
 
 | # | Test Case | Expected Result | Pass |
 |---|-----------|-----------------|------|
-| 122 | Dashboard page initial load (clear cache) | Skeleton placeholders shown for NetWorthCard, HotMarketsCard while data loads | |
-| 123 | Portfolio page initial load | Skeleton for AssetOverview, TokenBalanceList, RecentTrades | |
-| 124 | Leaderboard page initial load | Skeleton rows in leaderboard table while fetching rankings | |
-| 125 | Throttle network to Slow 3G in DevTools | Skeletons visible for extended period, smooth transition to real content | |
-| 126 | No flash of empty content | Content areas show skeletons immediately, never blank white space | |
+| 125 | Dashboard page initial load (clear cache) | Skeleton placeholders shown for NetWorthCard, HotMarketsCard while data loads | |
+| 126 | Portfolio page initial load | Skeleton for AssetOverview, TokenBalanceList, RecentTrades | |
+| 127 | Leaderboard page initial load | Skeleton rows in leaderboard table while fetching rankings | |
+| 128 | Throttle network to Slow 3G in DevTools | Skeletons visible for extended period, smooth transition to real content | |
+| 129 | No flash of empty content | Content areas show skeletons immediately, never blank white space | |
 
 ### Phase 19: Actionable Error Messages (T2)
 
 | # | Test Case | Expected Result | Pass |
 |---|-----------|-----------------|------|
-| 127 | Trigger "InsufficientBalance" RPC error | Toast shows user-friendly message + "Deposit funds or use Faucet" guidance | |
-| 128 | Trigger "GasPaymentError" (0 NASUN gas) | Toast says "You need NASUN for gas fees" + "Get NASUN from Faucet" button | |
-| 129 | Trigger network timeout/RPC unavailable | Toast says "Network connection issue" + "Try again in a few seconds" | |
-| 130 | Trigger "ObjectNotFound" error | Toast explains object was deleted/doesn't exist, suggests refresh | |
-| 131 | Verify error message includes action button | At least one error type has a clickable CTA (e.g., "Go to Faucet") | |
-| 132 | Error messages do not show raw hex/RPC data | No `0x...` addresses, Move abort codes, or stack traces in user-facing toasts | |
+| 130 | Trigger "InsufficientBalance" RPC error | Toast shows user-friendly message + "Deposit funds or use Faucet" guidance | |
+| 131 | Trigger "GasPaymentError" (0 NASUN gas) | Toast says "You need NASUN for gas fees" + "Get NASUN from Faucet" button | |
+| 132 | Trigger network timeout/RPC unavailable | Toast says "Network connection issue" + "Try again in a few seconds" | |
+| 133 | Trigger "ObjectNotFound" error | Toast explains object was deleted/doesn't exist, suggests refresh | |
+| 134 | Verify error message includes action button | At least one error type has a clickable CTA (e.g., "Go to Faucet") | |
+| 135 | Error messages do not show raw hex/RPC data | No `0x...` addresses, Move abort codes, or stack traces in user-facing toasts | |
 
 ### Phase 20: Points System & Leaderboard (T2)
 
@@ -247,15 +250,39 @@
 
 | # | Test Case | Expected Result | Pass |
 |---|-----------|-----------------|------|
-| 133 | Navigate to /leaderboard, find "Points" tab/mode | Points leaderboard tab visible alongside Volume tab | |
-| 134 | Points leaderboard shows ranked traders | Table with rank, address/nickname, total points, breakdown columns | |
-| 135 | Execute a trade, wait for aggregation cycle | Trader appears in points leaderboard (or points increase) | |
-| 136 | Trade on multiple pools (NBTC + NETH) | Diversity points increase (unique_pools * 25 pts each) | |
-| 137 | First trade bonus | New wallet's first trade awards 100 bonus points | |
-| 138 | Volume-based points | $1K+ volume awards 5 points per $1K (check after large trade) | |
-| 139 | Points leaderboard sorting | Sorted by total points descending, rank numbers sequential | |
-| 140 | Points tab on mobile viewport | Table scrolls horizontally or adapts to narrow width | |
-| 141 | Verify prev_rank tracking | After multiple aggregation cycles, rank changes reflected (up/down arrows) | |
+| 136 | Navigate to /leaderboard, find "Points" tab/mode | Points leaderboard tab visible alongside Volume tab | |
+| 137 | Points leaderboard shows ranked traders | Table with rank, address/nickname, total points, breakdown columns | |
+| 138 | Execute a trade, wait for aggregation cycle | Trader appears in points leaderboard (or points increase) | |
+| 139 | Trade on multiple pools (NBTC + NETH) | Diversity points increase (unique_pools * 25 pts each) | |
+| 140 | First trade bonus | New wallet's first trade awards 100 bonus points | |
+| 141 | Volume-based points | $1K+ volume awards 5 points per $1K (check after large trade) | |
+
+### Phase 21: Passkey Wallet
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 142 | Create passkey-based wallet | Passkey registered, wallet created with device credential | |
+| 143 | Authenticate with passkey (biometric/PIN) | Passkey verification succeeds, wallet unlocked | |
+| 144 | Execute trade with passkey signer | Transaction signed via passkey, trade completes | |
+| 145 | Passkey persists across sessions | Close and reopen browser, passkey still available | |
+
+### Phase 22: Competitions
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 146 | Navigate to /competitions | Competition list page loads | |
+| 147 | View active competition with countdown | Timer shows remaining time, participant count visible | |
+| 148 | Competition leaderboard loads | Ranked participants with volume/PnL displayed | |
+| 149 | Navigate to /competitions/:id | Competition detail page with rules and leaderboard | |
+
+### Phase 23: PWA Features
+
+| # | Test Case | Expected Result | Pass |
+|---|-----------|-----------------|------|
+| 150 | Install PWA from browser | "Install app" prompt appears, installs to home screen | |
+| 151 | Launch from home screen | App opens in standalone mode (no browser chrome) | |
+| 152 | Service worker caches assets | After first load, static assets served from cache | |
+| 153 | Offline banner on disconnect | OfflineBanner shown when network disconnected | |
 
 ---
 
