@@ -83,6 +83,80 @@ export async function executeRequest(
   return { success: false, error: lastError ?? 'All retries exhausted' };
 }
 
+/**
+ * Call Lambda /record endpoint for self-reported settlement (Model B)
+ * 409 responses are treated as idempotent success.
+ */
+export async function recordRequest(
+  lambdaUrl: string,
+  apiKey: string,
+  requestId: number,
+  result: string,
+  promptHash: string,
+  executionTimeMs: number,
+): Promise<ExecuteResult> {
+  let lastError: string | undefined;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      let response: Response;
+      try {
+        response = await fetch(`${lambdaUrl}/record`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            requestId,
+            result,
+            promptHash,
+            executionTimeMs,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // 409 = already completed — treat as idempotent success
+      if (response.status === 409) {
+        console.log(`[executor] Request ${requestId} already completed (409). Treating as success.`);
+        return { success: true };
+      }
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => 'Unknown error');
+        const truncated = text.length > 200 ? text.slice(0, 200) + '...' : text;
+        lastError = `HTTP ${response.status}: ${truncated}`;
+        if (attempt < MAX_RETRIES) {
+          console.warn(`[executor] Record attempt ${attempt}/${MAX_RETRIES} failed: ${lastError}`);
+          await sleep(RETRY_DELAY_MS * attempt);
+          continue;
+        }
+        return { success: false, error: lastError };
+      }
+
+      const data = await response.json() as Record<string, unknown>;
+      return {
+        success: true,
+        digest: data.txDigest as string | undefined,
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      if (attempt < MAX_RETRIES) {
+        console.warn(`[executor] Record attempt ${attempt}/${MAX_RETRIES} failed: ${lastError}`);
+        await sleep(RETRY_DELAY_MS * attempt);
+        continue;
+      }
+    }
+  }
+
+  return { success: false, error: lastError ?? 'All retries exhausted' };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

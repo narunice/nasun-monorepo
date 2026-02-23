@@ -43,6 +43,16 @@ function AERRow({ record, isExpanded, onToggle }: { record: AERRecord; isExpande
               TEE
             </span>
           )}
+          {record.purpose === 'lambda_verified' && (
+            <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400" title="Lambda Verified">
+              Verified
+            </span>
+          )}
+          {record.purpose === 'self_reported' && (
+            <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-400" title="Self-Reported">
+              Self-Reported
+            </span>
+          )}
         </td>
         <td className="px-3 py-2.5 text-right text-[var(--color-text-muted)] text-xs">
           {record.executionTimeMs}ms

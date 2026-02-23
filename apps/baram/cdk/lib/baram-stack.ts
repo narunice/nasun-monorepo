@@ -137,6 +137,12 @@ export class BaramStack extends cdk.Stack {
       apiKeyRequired: true,
     });
 
+    // POST /record — requires API key (Model B: self-reported settlement)
+    const recordResource = this.apiGateway.root.addResource('record');
+    recordResource.addMethod('POST', lambdaIntegration, {
+      apiKeyRequired: true,
+    });
+
     // Outputs
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: this.apiGateway.url,

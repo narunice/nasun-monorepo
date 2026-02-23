@@ -21,6 +21,15 @@ export function sha256(input: string): Uint8Array {
   return new Uint8Array(createHash('sha256').update(input).digest());
 }
 
+export function sha256Hex(input: string): string {
+  return createHash('sha256').update(input).digest('hex');
+}
+
+export interface CreateRequestResult {
+  requestId: number;
+  promptHashHex: string;
+}
+
 /**
  * Read budget state from chain (balance, limits, active status)
  */
@@ -52,9 +61,12 @@ export async function createRequest(
   keypair: Ed25519Keypair,
   config: Config,
   prompt: string,
-  category: string
-): Promise<number> {
+  category: string,
+  modelOverride?: string,
+): Promise<CreateRequestResult> {
   const promptHash = sha256(prompt);
+  const promptHashHex = sha256Hex(prompt);
+  const model = modelOverride ?? config.model;
 
   const tx = new Transaction();
   tx.moveCall({
@@ -63,7 +75,7 @@ export async function createRequest(
       tx.object(config.registryId),
       tx.object(config.budgetId),
       tx.pure.vector('u8', Array.from(promptHash)),
-      tx.pure.string(config.model),
+      tx.pure.string(model),
       tx.pure.address(config.executorAddress),
       tx.pure.u64(config.price),
       tx.pure.string(category),
@@ -89,7 +101,7 @@ export async function createRequest(
   if (!Number.isFinite(requestId)) {
     throw new Error(`RequestCreated event has invalid request_id: ${JSON.stringify(raw)}`);
   }
-  return requestId;
+  return { requestId, promptHashHex };
 }
 
 /**
