@@ -49,7 +49,7 @@ Nasun is a **bootstrapped web3 project with zero external funding**. The team is
 ### Engineering Principles
 
 - Read before write: always read files before modifying
-- No over-engineering: implement only what is requested
+- Balanced elegance: for simple fixes, keep it minimal — for non-trivial changes, pause and ask "is there a cleaner way?" If a fix feels hacky, implement the proper solution instead
 - Prefer editing existing files over creating new ones
 - Maintain simplicity: minimal complexity to solve the task
 - No backwards-compatibility hacks: if unused, delete completely
@@ -64,6 +64,18 @@ Nasun is a **bootstrapped web3 project with zero external funding**. The team is
 - Development environment is not an excuse for shortcuts — treat all code as production-ready
 - If a quick hack is unavoidable, document it immediately with a plan for proper implementation
 - Prefer proper abstractions over copy-paste, even for small pieces of code
+
+**Verification Before Done:**
+
+- Never mark a task complete without proving it works (run tests, check logs, verify behavior)
+- For non-trivial changes, diff behavior between main and your changes
+- Ask yourself: "Would a staff engineer approve this?"
+
+**Autonomous Bug Fixing:**
+
+- When given a bug report: investigate and fix it directly — don't ask for hand-holding
+- Point at logs, errors, failing tests — then resolve them
+- Zero context switching required from the user
 
 Security expectations:
 
@@ -178,7 +190,7 @@ Security expectations:
 | 앱                             | 패키지명                | 상태      | 배포 방식    | 설명                                                  |
 | ------------------------------ | ----------------------- | --------- | ------------ | ----------------------------------------------------- |
 | ~~`apps/baram`~~               | ~~@nasun/baram~~        | 🗄️ Removed | -            | nasun-baram-legacy 레포로 이전됨 (~/my_apps/nasun-baram-legacy) |
-| `apps/baram-aer`               | @nasun/baram-aer        | 🔨 Active | TBD          | Baram AER — AI Compliance Settlement Layer (활발히 개발 중) |
+| `apps/baram`                   | @nasun/baram            | 🔨 Active | TBD          | Baram AER — AI Compliance Settlement Layer (활발히 개발 중) |
 | `apps/network-explorer`        | @nasun/network-explorer | ✅ 완료   | EC2 스크립트 | Nasun Explorer (블록 탐색기)                          |
 | `apps/nasun-website`           | @nasun/nasun-website    | ✅ 완료   | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
 | `apps/gensol-website`          | @nasun/gensol-website   | ✅ 완료   | EC2 스크립트 | GenSol 웹사이트                                       |
@@ -353,7 +365,7 @@ VITE_EXPLORER_API_URL=/api/v1  # 인덱서 API (기본값: /api/v1, nginx 프록
 ```
 nasun-monorepo/
 ├── apps/
-│   ├── baram-aer/                 # @nasun/baram-aer - AI Compliance Settlement Layer (🔨 ACTIVE)
+│   ├── baram/                     # @nasun/baram - AI Compliance Settlement Layer (🔨 ACTIVE)
 │   │   ├── frontend/              # Vite React 앱
 │   │   ├── contracts/             # baram.move (에스크로)
 │   │   ├── contracts-aer/         # aer.move (AIExecutionReport)
@@ -392,7 +404,7 @@ nasun-monorepo/
 
 | 앱               | 구조              | package.json 위치                           |
 | ---------------- | ----------------- | ------------------------------------------- |
-| baram-aer        | frontend 서브폴더 | `apps/baram-aer/frontend/package.json`      |
+| baram            | frontend 서브폴더 | `apps/baram/frontend/package.json`          |
 | network-explorer | 단일 레벨         | `apps/network-explorer/package.json`        |
 | nasun-website    | frontend 서브폴더 | `apps/nasun-website/frontend/package.json`  |
 | gensol-website   | frontend 서브폴더 | `apps/gensol-website/frontend/package.json` |
@@ -546,7 +558,7 @@ pnpm deploy:pado:bots:prod       # LP Bot to pado.finance
 
 | 앱               | 배포 방식    | 트리거    | 대상 URL                         |
 | ---------------- | ------------ | --------- | -------------------------------- |
-| baram-aer        | TBD          | 수동 실행 | TBD                              |
+| baram            | TBD          | 수동 실행 | TBD                              |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
 | explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-2) |
 | nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
@@ -638,11 +650,11 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 | 디렉토리                          | 설명                                 |
 | --------------------------------- | ------------------------------------ |
-| `apps/baram-aer/contracts/`       | Baram AER 에스크로 + 정산 + Budget + BetaAccess |
-| `apps/baram-aer/contracts-aer/`   | AIExecutionReport (8카테고리, 31필드) |
-| `apps/baram-aer/contracts-executor/` | Executor 등록 + Staking + Tier    |
-| `apps/baram-aer/contracts-attestation/` | PCR baseline 등록/검증         |
-| `apps/baram-aer/contracts-compliance/`  | ECR (FROZEN — 기존 보존)       |
+| `apps/baram/contracts/`              | Baram AER 에스크로 + 정산 + Budget + BetaAccess |
+| `apps/baram/contracts-aer/`          | AIExecutionReport (8카테고리, 31필드) |
+| `apps/baram/contracts-executor/`     | Executor 등록 + Staking + Tier    |
+| `apps/baram/contracts-attestation/`  | PCR baseline 등록/검증         |
+| `apps/baram/contracts-compliance/`   | ECR (FROZEN — 기존 보존)       |
 | `apps/pado/contracts/`            | NBTC, NUSDC 토큰 + Faucet            |
 | `apps/pado/contracts-prediction/` | 예측 시장 컨트랙트                   |
 | `apps/pado/contracts-oracle/`     | DevOracle 가격 피드                  |

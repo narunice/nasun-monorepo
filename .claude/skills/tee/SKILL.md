@@ -1,9 +1,9 @@
 ---
 name: tee
-description: Baram-AER TEE spot 인스턴스를 관리합니다. 인스턴스 시작, 상태 확인, nginx 프록시 업데이트, 종료를 수행합니다. "tee 켜줘", "스팟 인스턴스 시작", "tee start", "tee stop", "tee status" 등의 요청에 사용합니다.
+description: Baram TEE spot 인스턴스를 관리합니다. 인스턴스 시작, 상태 확인, nginx 프록시 업데이트, 종료를 수행합니다. "tee 켜줘", "스팟 인스턴스 시작", "tee start", "tee stop", "tee status" 등의 요청에 사용합니다.
 ---
 
-# TEE: Baram-AER Spot Instance 관리
+# TEE: Baram Spot Instance 관리
 
 AWS Nitro Enclave 기반 TEE spot 인스턴스의 전체 라이프사이클을 관리합니다. 시작, 상태 확인, 프록시 업데이트, 종료를 단일 명령으로 수행합니다.
 
@@ -33,8 +33,8 @@ aws ec2 describe-instances \
 
 2. **필수 파일 존재 확인** (Bash `test -f`로 검증):
 
-   - `apps/baram-aer/executor-nitro/.env.ami` — AMI/SG/인스턴스 설정
-   - `apps/baram-aer/executor-nitro/.env` — executor 런타임 환경변수
+   - `apps/baram/executor-nitro/.env.ami` — AMI/SG/인스턴스 설정
+   - `apps/baram/executor-nitro/.env` — executor 런타임 환경변수
    - `~/.ssh/baram-nitro.pem` — EC2 SSH 키
    - `~/.ssh/.awskey/nasun-devnet-key.pem` — nasun-node-1 SSH 키
 
@@ -53,7 +53,7 @@ aws ec2 describe-instances \
 ### 2단계: Spot 인스턴스 시작
 
 ```bash
-cd /home/naru/my_apps/nasun-monorepo/apps/baram-aer/executor-nitro && bash ./scripts/launch-spot.sh
+cd /home/naru/my_apps/nasun-monorepo/apps/baram/executor-nitro && bash ./scripts/launch-spot.sh
 ```
 
 - timeout: 600초 (EIF 빌드 + 엔클레이브 시작 포함)
@@ -92,7 +92,7 @@ ssh -i ~/.ssh/baram-nitro.pem -o StrictHostKeyChecking=accept-new \
 
 ```bash
 scp -i ~/.ssh/baram-nitro.pem -o StrictHostKeyChecking=accept-new \
-  /home/naru/my_apps/nasun-monorepo/apps/baram-aer/executor-nitro/.env \
+  /home/naru/my_apps/nasun-monorepo/apps/baram/executor-nitro/.env \
   ec2-user@<IP>:~/nasun-monorepo/apps/baram/executor-nitro/.env
 ```
 
@@ -116,7 +116,7 @@ ssh -i ~/.ssh/baram-nitro.pem ec2-user@<IP> \
   "grep -oP '^[A-Z_]+(?==)' ~/nasun-monorepo/apps/baram/executor-nitro/.env | sort" > /tmp/ec2_keys.txt
 
 # 로컬 .env 변수 키 목록 추출
-grep -oP '^[A-Z_]+(?==)' /home/naru/my_apps/nasun-monorepo/apps/baram-aer/executor-nitro/.env | sort > /tmp/local_keys.txt
+grep -oP '^[A-Z_]+(?==)' /home/naru/my_apps/nasun-monorepo/apps/baram/executor-nitro/.env | sort > /tmp/local_keys.txt
 
 # 차이 확인
 comm -23 /tmp/local_keys.txt /tmp/ec2_keys.txt
@@ -127,7 +127,7 @@ comm -23 /tmp/local_keys.txt /tmp/ec2_keys.txt
 ### 5단계: Nginx 프록시 + On-chain Endpoint 업데이트
 
 ```bash
-cd /home/naru/my_apps/nasun-monorepo/apps/baram-aer/executor-nitro && bash ./scripts/update-executor.sh <PUBLIC_IP>
+cd /home/naru/my_apps/nasun-monorepo/apps/baram/executor-nitro && bash ./scripts/update-executor.sh <PUBLIC_IP>
 ```
 
 스크립트 내부 동작:
@@ -219,7 +219,7 @@ aws ec2 terminate-instances --instance-ids <INSTANCE_ID> --region ap-northeast-2
 3. update-executor.sh 실행:
 
 ```bash
-cd /home/naru/my_apps/nasun-monorepo/apps/baram-aer/executor-nitro && bash ./scripts/update-executor.sh <IP>
+cd /home/naru/my_apps/nasun-monorepo/apps/baram/executor-nitro && bash ./scripts/update-executor.sh <IP>
 ```
 
 4. HTTPS health check 검증
@@ -250,9 +250,9 @@ cd /home/naru/my_apps/nasun-monorepo/apps/baram-aer/executor-nitro && bash ./scr
 
 | 항목               | 값                                                                   |
 | ------------------ | -------------------------------------------------------------------- |
-| 스크립트 디렉토리  | `apps/baram-aer/executor-nitro/scripts/`                             |
-| .env.ami           | `apps/baram-aer/executor-nitro/.env.ami`                             |
-| .env (런타임)      | `apps/baram-aer/executor-nitro/.env`                                 |
+| 스크립트 디렉토리  | `apps/baram/executor-nitro/scripts/`                             |
+| .env.ami           | `apps/baram/executor-nitro/.env.ami`                             |
+| .env (런타임)      | `apps/baram/executor-nitro/.env`                                 |
 | EC2 SSH 키         | `~/.ssh/baram-nitro.pem`                                            |
 | nasun-node-1 SSH 키 | `~/.ssh/.awskey/nasun-devnet-key.pem`                               |
 | HTTPS 엔드포인트   | `https://tee.baram.nasun.io`                                        |

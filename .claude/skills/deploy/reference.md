@@ -97,11 +97,11 @@
 
 ---
 
-### baram-aer
+### baram
 
 | 항목 | 값 |
 | ---- | -- |
-| CDK 경로 | `apps/baram-aer/cdk/` |
+| CDK 경로 | `apps/baram/cdk/` |
 | Entry | `bin/cdk.ts` |
 | NODE_ENV 매핑 | 환경 분리 없음 (단일 `.env`) |
 
@@ -115,9 +115,9 @@
 
 | 환경 | 파일 경로 |
 | ---- | -------- |
-| 공통 | `apps/baram-aer/.env` |
+| 공통 | `apps/baram/.env` |
 
-> Note: baram-aer의 dotenv는 `apps/baram-aer/.env`를 직접 참조합니다 (`cdk/` 디렉토리가 아님).
+> Note: baram의 dotenv는 `apps/baram/.env`를 직접 참조합니다 (`cdk/` 디렉토리가 아님).
 
 **CDK `bin/cdk.ts`가 읽는 필수 환경변수:**
 
@@ -140,7 +140,7 @@ API URL 교차 검증(5단계)에서 참조합니다.
 | -- | --- | ---- |
 | nasun-website | `apps/nasun-website/frontend/.env.development` | `apps/nasun-website/frontend/.env.production` |
 | pado | `apps/pado/frontend/.env.development` | `apps/pado/frontend/.env.production` |
-| baram-aer | `apps/baram-aer/.env` | `apps/baram-aer/.env` |
+| baram | `apps/baram/.env` | `apps/baram/.env` |
 
 ## 알려진 이슈
 
