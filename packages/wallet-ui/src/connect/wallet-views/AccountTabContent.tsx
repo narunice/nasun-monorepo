@@ -4,11 +4,11 @@
  * plus variant-specific items for self-custody wallets.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { ViewMode } from "../types";
 import { WALLET_STYLES } from "../../shared";
 import { useUISettingsStore, useGettingStarted } from "../../stores/uiSettingsStore";
-import { useWallet, usePasskeyStore, useRefreshBalance, requestFaucet } from "@nasun/wallet";
+import { useTokenFaucet } from "@nasun/wallet";
 
 // SVG path constants for menu icons
 const ICON_PATHS = {
@@ -58,29 +58,39 @@ export function GettingStartedChecklist({
   onNavigate: (mode: ViewMode) => void;
 }) {
   const { gettingStarted, markDone, dismiss, isVisible } = useGettingStarted();
-  const account = useWallet((s) => s.account);
-  const passkeyAddress = usePasskeyStore((s) => s.address);
-  const refreshBalance = useRefreshBalance();
-  const [faucetLoading, setFaucetLoading] = useState(false);
+  const { requestFaucet, isLoading, isCooldown, getCooldownFormatted, canUseFaucet } = useTokenFaucet();
   const [faucetError, setFaucetError] = useState<string | null>(null);
+  const [cooldownText, setCooldownText] = useState('');
 
-  const faucetAddress = account?.address || passkeyAddress;
+  const faucetLoading = isLoading('NSN');
+  const faucetCooldown = isCooldown('NSN');
+
+  // Poll cooldown remaining time
+  useEffect(() => {
+    const update = () => setCooldownText(getCooldownFormatted('NSN'));
+    update();
+    const interval = setInterval(update, 60_000);
+    return () => clearInterval(interval);
+  }, [getCooldownFormatted]);
 
   const handleFaucetRequest = useCallback(async () => {
-    if (!faucetAddress || faucetLoading) return;
-    setFaucetLoading(true);
+    if (faucetLoading || faucetCooldown || !canUseFaucet) return;
     setFaucetError(null);
     try {
-      await requestFaucet(faucetAddress);
-      await refreshBalance();
-      markDone('faucetDone');
+      const result = await requestFaucet('NSN');
+      if (result.success) {
+        markDone('faucetDone');
+      } else {
+        setFaucetError(result.error || 'Faucet request failed');
+        setTimeout(() => setFaucetError(null), 5000);
+      }
     } catch (err) {
       setFaucetError(err instanceof Error ? err.message : 'Faucet request failed');
       setTimeout(() => setFaucetError(null), 5000);
-    } finally {
-      setFaucetLoading(false);
     }
-  }, [faucetAddress, faucetLoading, refreshBalance, markDone]);
+    // Refresh cooldown text immediately
+    setCooldownText(getCooldownFormatted('NSN'));
+  }, [faucetLoading, faucetCooldown, canUseFaucet, requestFaucet, markDone, getCooldownFormatted]);
 
   if (!isVisible) return null;
 
@@ -92,6 +102,7 @@ export function GettingStartedChecklist({
     hidden?: boolean;
     loading?: boolean;
     error?: string | null;
+    cooldown?: boolean;
   }> = [
     {
       key: 'backupDone',
@@ -106,11 +117,12 @@ export function GettingStartedChecklist({
     },
     {
       key: 'faucetDone',
-      label: 'Get NSN from Faucet',
-      description: 'Request free test tokens',
+      label: faucetCooldown && cooldownText ? `Faucet ${cooldownText}` : 'Get NSN from Faucet',
+      description: faucetCooldown ? 'Cooldown active' : 'Request free test tokens',
       action: handleFaucetRequest,
       loading: faucetLoading,
       error: faucetError,
+      cooldown: faucetCooldown,
     },
     {
       key: 'stakingDone',
@@ -152,14 +164,18 @@ export function GettingStartedChecklist({
         {visibleItems.map((item) => {
           const done = gettingStarted[item.key] as boolean;
           const isLoading = item.loading ?? false;
+          const isCooldownActive = item.cooldown ?? false;
+          const isDisabled = done || isLoading || isCooldownActive;
           return (
             <div key={item.key}>
               <button
                 onClick={item.action}
-                disabled={done || isLoading}
+                disabled={isDisabled}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
                   done
                     ? 'opacity-50 cursor-default'
+                    : isCooldownActive
+                    ? 'opacity-70 cursor-default'
                     : isLoading
                     ? 'cursor-wait'
                     : 'hover:bg-blue-100/60 dark:hover:bg-blue-800/20'
@@ -170,6 +186,8 @@ export function GettingStartedChecklist({
                   className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
                     done
                       ? 'border-blue-500 bg-blue-500'
+                      : isCooldownActive
+                      ? 'border-yellow-400 bg-yellow-400/20'
                       : 'border-blue-300 dark:border-blue-600'
                   }`}
                 >
@@ -180,7 +198,11 @@ export function GettingStartedChecklist({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs xl:text-sm font-medium ${done ? 'line-through text-gray-400 dark:text-zinc-500' : 'text-gray-800 dark:text-zinc-200'}`}>
+                  <p className={`text-xs xl:text-sm font-medium ${
+                    done ? 'line-through text-gray-400 dark:text-zinc-500'
+                    : isCooldownActive ? 'text-yellow-600 dark:text-yellow-400'
+                    : 'text-gray-800 dark:text-zinc-200'
+                  }`}>
                     {isLoading ? 'Requesting tokens...' : item.label}
                   </p>
                   {!done && !isLoading && (
@@ -194,7 +216,7 @@ export function GettingStartedChecklist({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                ) : !done && (
+                ) : !done && !isCooldownActive && (
                   <svg className="w-4 h-4 text-blue-400 dark:text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>

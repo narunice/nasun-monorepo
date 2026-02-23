@@ -9,7 +9,7 @@
  * All tokens enforce 24h cooldown via localStorage + on-chain enforcement.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
@@ -21,6 +21,7 @@ import {
   getCooldownRemaining as getRawCooldownRemaining,
   setCooldownTimestamp,
   formatCooldownRemaining,
+  COOLDOWN_CHANGE_EVENT,
 } from '../sui/faucetCooldown';
 
 export interface FaucetResult {
@@ -59,6 +60,15 @@ export function useTokenFaucet(): UseTokenFaucetResult {
   const refreshBalance = useRefreshMultiBalance();
 
   const [loadingTokens, setLoadingTokens] = useState<Set<string>>(new Set());
+
+  // Re-render counter: increments when any component sets/clears a cooldown,
+  // ensuring all useTokenFaucet instances re-evaluate isCooldown() immediately.
+  const [, setCooldownTick] = useState(0);
+  useEffect(() => {
+    const handler = () => setCooldownTick((n) => n + 1);
+    window.addEventListener(COOLDOWN_CHANGE_EVENT, handler);
+    return () => window.removeEventListener(COOLDOWN_CHANGE_EVENT, handler);
+  }, []);
 
   const address = account?.address || zkState?.address || passkeyAddress;
   const canUseFaucet = (isDevnet || isTestnet) && !!address;
