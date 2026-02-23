@@ -20,6 +20,7 @@ import { AgentList } from './pages/AgentList';
 import { AgentDetail } from './pages/AgentDetail';
 import { AERTimeline } from './pages/AERTimeline';
 import { ChatPage } from './pages/ChatPage';
+import { BudgetsPage } from './pages/BudgetsPage';
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
                   <Route path="/" element={<DashboardOverview />} />
                   <Route path="/agents" element={<AgentList />} />
                   <Route path="/agents/:id" element={<AgentDetail />} />
+                  <Route path="/budgets" element={<BudgetsPage />} />
                   <Route path="/aer" element={<AERTimeline />} />
                   <Route path="/chat" element={<ChatPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />

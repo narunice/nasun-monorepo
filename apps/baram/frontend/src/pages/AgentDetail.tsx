@@ -8,6 +8,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useWalletSession } from '../hooks/useWalletSession';
 import { useAgentProfiles } from '../features/agents/hooks/useAgentProfiles';
 import { useAgentBudgets, useSpendingLimits } from '../features/agents/hooks/useAgentBudgets';
+import { useAgentActions } from '../hooks/useAgentActions';
 import { formatNusdcValue as formatNUSDC, truncateAddress as formatAddress, formatTimestamp } from '../utils/format';
 
 type Tab = 'overview' | 'budget' | 'activity';
@@ -15,9 +16,12 @@ type Tab = 'overview' | 'budget' | 'activity';
 export function AgentDetail() {
   const { id } = useParams<{ id: string }>();
   const { walletAddress } = useWalletSession();
-  const { data: agents } = useAgentProfiles(walletAddress);
+  const { data: agents, refetch: refetchAgents } = useAgentProfiles(walletAddress);
   const { data: budgets } = useAgentBudgets(walletAddress);
+  const { deactivateAgent, reactivateAgent, txStatus: actionTxStatus, txError: actionTxError, resetTxStatus: resetActionTxStatus } = useAgentActions();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
 
   const agent = agents?.find(a => a.id === id);
   const budget = budgets?.find(b => agent && b.agent === agent.agentAddress);
@@ -55,15 +59,32 @@ export function AgentDetail() {
             {formatAddress(agent.agentAddress)}
           </p>
         </div>
-        <span
-          className={`text-[10px] px-2 py-1 rounded ${
-            agent.isActive
-              ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
-              : 'bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)]'
-          }`}
-        >
-          {agent.isActive ? 'Active' : 'Inactive'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-[10px] px-2 py-1 rounded ${
+              agent.isActive
+                ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
+                : 'bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)]'
+            }`}
+          >
+            {agent.isActive ? 'Active' : 'Inactive'}
+          </span>
+          {agent.isActive ? (
+            <button
+              onClick={() => { resetActionTxStatus(); setShowDeactivateConfirm(true); }}
+              className="px-3 py-1 text-xs rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              Deactivate
+            </button>
+          ) : (
+            <button
+              onClick={() => { resetActionTxStatus(); setShowReactivateConfirm(true); }}
+              className="px-3 py-1 text-xs rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            >
+              Reactivate
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -83,6 +104,18 @@ export function AgentDetail() {
         ))}
       </div>
 
+      {/* Action TX status */}
+      {actionTxStatus === 'success' && (
+        <div className="p-2 rounded-lg bg-emerald-500/10 text-xs text-emerald-400 text-center">
+          Agent updated successfully
+        </div>
+      )}
+      {actionTxError && (
+        <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400 text-center">
+          {actionTxError}
+        </div>
+      )}
+
       {/* Tab Content */}
       {activeTab === 'overview' && (
         <OverviewTab agent={agent} budget={budget ?? null} />
@@ -92,6 +125,78 @@ export function AgentDetail() {
       )}
       {activeTab === 'activity' && (
         <ActivityTab agent={agent} />
+      )}
+
+      {/* Deactivate confirmation modal */}
+      {showDeactivateConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowDeactivateConfirm(false)} />
+          <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-5 space-y-3">
+            <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+              <p className="text-xs text-red-400">
+                Deactivate this agent? It will no longer process requests.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeactivateConfirm(false)}
+                disabled={actionTxStatus === 'signing' || actionTxStatus === 'executing'}
+                className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const ok = await deactivateAgent(agent.id);
+                  if (ok) {
+                    setShowDeactivateConfirm(false);
+                    refetchAgents();
+                  }
+                }}
+                disabled={actionTxStatus === 'signing' || actionTxStatus === 'executing'}
+                className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {actionTxStatus === 'signing' || actionTxStatus === 'executing' ? 'Processing...' : 'Confirm Deactivate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reactivate confirmation modal */}
+      {showReactivateConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowReactivateConfirm(false)} />
+          <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-5 space-y-3">
+            <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+              <p className="text-xs text-emerald-400">
+                Reactivate this agent? It will resume processing requests.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowReactivateConfirm(false)}
+                disabled={actionTxStatus === 'signing' || actionTxStatus === 'executing'}
+                className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const ok = await reactivateAgent(agent.id);
+                  if (ok) {
+                    setShowReactivateConfirm(false);
+                    refetchAgents();
+                  }
+                }}
+                disabled={actionTxStatus === 'signing' || actionTxStatus === 'executing'}
+                className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
+              >
+                {actionTxStatus === 'signing' || actionTxStatus === 'executing' ? 'Processing...' : 'Confirm Reactivate'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

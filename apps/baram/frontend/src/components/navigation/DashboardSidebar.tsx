@@ -21,6 +21,7 @@ interface DashboardSidebarProps {
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: GridIcon, end: true },
   { to: '/agents', label: 'Agents', icon: AgentIcon },
+  { to: '/budgets', label: 'Budgets', icon: BudgetIcon },
   { to: '/aer', label: 'Execution Reports', icon: ReportIcon },
 ] as const;
 
@@ -158,6 +159,15 @@ function ReportIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
       <rect x="2" y="1.5" width="12" height="13" rx="1.5" />
       <path d="M5 5h6M5 8h6M5 11h3" />
+    </svg>
+  );
+}
+
+function BudgetIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
+      <path d="M1.5 7h13" />
     </svg>
   );
 }

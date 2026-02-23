@@ -16,6 +16,9 @@ import {
   buildDepositToBudgetTransaction,
   buildWithdrawFromBudgetTransaction,
   buildDeactivateBudgetTransaction,
+  buildUpdateConstraintsTransaction,
+  buildSetSpendingLimitsTransaction,
+  buildSetCategoriesTransaction,
   type BuildCreateBudgetParams,
 } from '@/features/request/services/transactionBuilder';
 
@@ -40,6 +43,19 @@ interface UseBudgetsReturn {
   depositToBudget: (budgetId: string, amount: number) => Promise<boolean>;
   withdrawFromBudget: (budgetId: string, amount: number) => Promise<boolean>;
   deactivateBudget: (budgetId: string) => Promise<boolean>;
+  updateConstraints: (budgetId: string, params: {
+    maxPerRequest: number;
+    allowedModels: string[];
+    allowedExecutors: string[];
+    expiresAt: number;
+  }) => Promise<boolean>;
+  setSpendingLimits: (budgetId: string, params: {
+    dailyLimit: number;
+    weeklyLimit: number;
+    monthlyLimit: number;
+    minIntervalMs: number;
+  }) => Promise<boolean>;
+  setCategories: (budgetId: string, categories: string[]) => Promise<boolean>;
   resetTxStatus: () => void;
 }
 
@@ -220,6 +236,76 @@ export function useBudgets(): UseBudgetsReturn {
     [address, signAndExecute, refresh]
   );
 
+  const updateConstraints = useCallback(
+    async (budgetId: string, params: {
+      maxPerRequest: number;
+      allowedModels: string[];
+      allowedExecutors: string[];
+      expiresAt: number;
+    }): Promise<boolean> => {
+      try {
+        const tx = buildUpdateConstraintsTransaction({ budgetId, ...params });
+        const digest = await signAndExecute(tx);
+        if (digest) {
+          await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
+          await refreshBudget(suiClient, budgetId);
+        }
+        return !!digest;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to update constraints';
+        setTxError(msg);
+        setTxStatus('error');
+        return false;
+      }
+    },
+    [signAndExecute, refreshBudget]
+  );
+
+  const setSpendingLimits = useCallback(
+    async (budgetId: string, params: {
+      dailyLimit: number;
+      weeklyLimit: number;
+      monthlyLimit: number;
+      minIntervalMs: number;
+    }): Promise<boolean> => {
+      try {
+        const tx = buildSetSpendingLimitsTransaction({ budgetId, ...params });
+        const digest = await signAndExecute(tx);
+        if (digest) {
+          await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
+          await refreshBudget(suiClient, budgetId);
+        }
+        return !!digest;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to set spending limits';
+        setTxError(msg);
+        setTxStatus('error');
+        return false;
+      }
+    },
+    [signAndExecute, refreshBudget]
+  );
+
+  const setCategories = useCallback(
+    async (budgetId: string, categories: string[]): Promise<boolean> => {
+      try {
+        const tx = buildSetCategoriesTransaction({ budgetId, allowedCategories: categories });
+        const digest = await signAndExecute(tx);
+        if (digest) {
+          await suiClient.waitForTransaction({ digest, options: { showEffects: true } });
+          await refreshBudget(suiClient, budgetId);
+        }
+        return !!digest;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to set categories';
+        setTxError(msg);
+        setTxStatus('error');
+        return false;
+      }
+    },
+    [signAndExecute, refreshBudget]
+  );
+
   const resetTxStatus = useCallback(() => {
     setTxStatus('idle');
     setTxError(null);
@@ -238,6 +324,9 @@ export function useBudgets(): UseBudgetsReturn {
     depositToBudget,
     withdrawFromBudget,
     deactivateBudget,
+    updateConstraints,
+    setSpendingLimits,
+    setCategories,
     resetTxStatus,
   };
 }

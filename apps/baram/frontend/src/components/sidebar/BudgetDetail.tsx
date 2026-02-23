@@ -16,6 +16,7 @@ interface BudgetDetailProps {
   onWithdraw: (budgetId: string, amount: number) => Promise<boolean>;
   onDeactivate: (budgetId: string) => Promise<boolean>;
   onRefresh: () => Promise<void>;
+  onOpenSettings?: (budgetId: string) => void;
   txStatus: BudgetTxStatus;
   txError: string | null;
 }
@@ -34,6 +35,7 @@ export function BudgetDetail({
   onWithdraw,
   onDeactivate,
   onRefresh,
+  onOpenSettings,
   txStatus,
   txError,
 }: BudgetDetailProps) {
@@ -141,28 +143,38 @@ export function BudgetDetail({
           {budget.isActive && (
             <div className="space-y-2">
               {actionMode === 'none' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setActionMode('deposit')}
-                    disabled={isBusy}
-                    className="flex-1 py-2 text-xs font-medium rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
-                  >
-                    Deposit
-                  </button>
-                  <button
-                    onClick={() => setActionMode('withdraw')}
-                    disabled={isBusy || budget.balance === 0}
-                    className="flex-1 py-2 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
-                  >
-                    Withdraw
-                  </button>
-                  <button
-                    onClick={() => setActionMode('deactivate-confirm')}
-                    disabled={isBusy}
-                    className="flex-1 py-2 text-xs font-medium rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                  >
-                    Deactivate
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setActionMode('deposit')}
+                      disabled={isBusy}
+                      className="flex-1 py-2 text-xs font-medium rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                    >
+                      Deposit
+                    </button>
+                    <button
+                      onClick={() => setActionMode('withdraw')}
+                      disabled={isBusy || budget.balance === 0}
+                      className="flex-1 py-2 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                    >
+                      Withdraw
+                    </button>
+                    <button
+                      onClick={() => setActionMode('deactivate-confirm')}
+                      disabled={isBusy}
+                      className="flex-1 py-2 text-xs font-medium rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                    >
+                      Deactivate
+                    </button>
+                  </div>
+                  {onOpenSettings && (
+                    <button
+                      onClick={() => onOpenSettings(budget.id)}
+                      className="w-full py-2 text-xs font-medium rounded-lg bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                    >
+                      Settings
+                    </button>
+                  )}
                 </div>
               )}
 
