@@ -9,10 +9,10 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
-import gensolVideo from "../../assets/videos/Trakker-Flying-26rf.mp4";
-import baramVideo from "../../assets/videos/Baram-U-rf10.mp4";
-import padoVideo from "../../assets/videos/Pado-Ui-Short-rf20.mp4";
-import explorerVideo from "../../assets/videos/Network-Explorer-Ui-rf12.mp4";
+const gensolVideo = "/videos/Trakker-Flying-26rf.mp4";
+const baramVideo = "/videos/Baram-U-rf10.mp4";
+const padoVideo = "/videos/Pado-Ui-Short-rf20.mp4";
+const explorerVideo = "/videos/Network-Explorer-Ui-rf12.mp4";
 
 const CustomArrow = ({
   onClick,

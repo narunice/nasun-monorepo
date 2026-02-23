@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import { usePageLoading } from "../contexts/PageLoadingContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 import GenesisNftHeroSkeleton from "../sections/wave1/genesisNft/GenesisNftHeroSkeleton";
-import genesisVideoDesktop from "../assets/videos/Founders-Nft-Portal-Rotate-rf22.mp4";
-import genesisVideoMobile from "../assets/videos/Founders-Nft-Portal-Rotate-Mobile-rf23.mp4";
+const genesisVideoDesktop = "/videos/Founders-Nft-Portal-Rotate-rf22.mp4";
+const genesisVideoMobile = "/videos/Founders-Nft-Portal-Rotate-Mobile-rf23.mp4";
 
 const GenesisNftHeroSection = lazy(() => import("../sections/wave1/genesisNft/GenesisNftHeroSection"));
 const KeyBenefitsSection = lazy(() => import("../sections/wave1/genesisNft/KeyBenefitsSection"));
