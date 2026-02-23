@@ -1,6 +1,6 @@
 # Pado DEX - Competitive Analysis & Improvement Roadmap
 
-> Last updated: 2026-02-15
+> Last updated: 2026-02-23
 
 ## Overview
 
@@ -45,6 +45,10 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 - Keyboard shortcuts (B/S/L/M/Esc)
 - Dark/light theme support
 - PWA support (installable, offline-capable via vite-plugin-pwa)
+- Passkey authentication (device credentials, biometric login)
+- Points system with trade/volume/diversity scoring + Points leaderboard tab
+- TP/SL keeper bot with server-side execution (TradeCap delegation, port 4001)
+- Passkey wallet support (device credential-based authentication)
 
 ## Key Gaps
 
@@ -162,7 +166,7 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 
 P1-P8, P11, and P16-P18 are completed (2026-02-14). Phase 22 Testnet Launch Polish (T1+T2) completed 2026-02-15.
 Overall score improved from 60 to 86. Points system, enhanced share cards, loading skeletons, actionable errors, mobile UX, onboarding flow all added.
-PWA support and social layer features (Market Narrator, PnL share, badges, competitions) added since initial completion.
+PWA support, passkey auth, TP/SL keeper (server-side execution), and social layer features (Market Narrator, PnL share, badges, competitions) added since initial completion.
 
 Next priorities by impact-to-effort ratio:
 

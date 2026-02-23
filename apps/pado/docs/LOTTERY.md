@@ -33,18 +33,26 @@
 ### 2.2 Prize Distribution
 ```
 Total Sales 100%
-├── 70% → Prize Pool (Jackpot Winners)
+├── 70% → Prize Pool
+│   ├── 60% → Tier 1: Jackpot (5 numbers match)
+│   ├── 25% → Tier 2: 2nd Prize (4 numbers match)
+│   └── 15% → Tier 3: 3rd Prize (3 numbers match)
 ├── 20% → Rollover (Next Round)
 └── 10% → Treasury (Operations)
 
-No Winners Case:
-├── 90% → Rollover
-└── 10% → Treasury
+No Winners in a Tier:
+  Unclaimed tier share → Rollover
 ```
 
-### 2.3 Winning Condition (MVP)
-- **Jackpot**: All 5 numbers match (order-independent)
-- Multiple winners: Equal split
+### 2.3 Winning Conditions (v2 Multi-Tier)
+| Tier | Match | Prize Share (of 70% pool) | Example |
+|------|-------|--------------------------|---------|
+| Tier 1 (Jackpot) | 5/5 numbers | 60% | All 5 match |
+| Tier 2 | 4/5 numbers | 25% | 4 of 5 match |
+| Tier 3 | 3/5 numbers | 15% | 3 of 5 match |
+
+- Order-independent matching (numbers sorted)
+- Multiple winners within a tier: equal split
 
 ---
 
