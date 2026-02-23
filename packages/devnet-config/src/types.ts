@@ -91,6 +91,8 @@ export interface BaramConfig {
   aerRegistry: ObjectId;
   aerAdminCap: ObjectId;
   aerUpgradeCap: ObjectId;
+  // AER type origin (package ID where AIExecutionReport struct was first defined)
+  aerTypeOrigin: ObjectId;
   // Budget type origin (package ID where budget module was first introduced)
   budgetTypeOrigin: ObjectId;
   // Budget V2 type origin (SpendingLimits/Categories structs added in upgrade)
