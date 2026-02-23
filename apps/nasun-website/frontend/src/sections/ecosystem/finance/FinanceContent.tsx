@@ -20,7 +20,6 @@ import {
   Building2,
   MessageCircle,
   Users,
-  Bot,
   Target,
   DollarSign,
   Shield,
@@ -30,6 +29,12 @@ import {
   Landmark,
   Eye,
   ArrowRightLeft,
+  Crosshair,
+  Trophy,
+  Mail,
+  Sparkles,
+  Package,
+  Server,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -69,6 +74,11 @@ export const FinanceContent = () => {
     description: string;
   }>;
 
+  const deployedItems = t("launchStatus.deployed", { returnObjects: true }) as Array<{
+    title: string;
+    description: string;
+  }>;
+
   const comingItems = t("launchStatus.coming", { returnObjects: true }) as Array<{
     title: string;
     description: string;
@@ -76,7 +86,7 @@ export const FinanceContent = () => {
 
   const problemIcons = [Wallet, Layers, Zap, MessageCircle];
   const coreIcons = [ShieldCheck, Lock, DollarSign];
-  const howItWorksIcons = [Layers, Shield, Bot, Users];
+  const howItWorksIcons = [Layers, Shield, Server, Users];
   const koreaIcons = [Globe, Landmark, Eye];
   const flywheelIcons = [ArrowRightLeft, ArrowRightLeft, ArrowRightLeft];
 
@@ -208,7 +218,9 @@ export const FinanceContent = () => {
                   status: string;
                   features: string[];
                 };
-                const isLive = product.status.toLowerCase().includes("live");
+                const statusLower = product.status.toLowerCase();
+                const isLive = statusLower.includes("live");
+                const isDeployed = statusLower.includes("deployed");
                 return (
                   <FadeInUp key={key} delay={`${0.1 + i * 0.05}s`}>
                     <DividerBox color="w4" hideDivider padding="sm" className="h-full relative">
@@ -216,7 +228,9 @@ export const FinanceContent = () => {
                         className={`absolute top-5 right-5 text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
                           isLive
                             ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-amber-500/20 text-amber-400"
+                            : isDeployed
+                              ? "bg-blue-500/20 text-blue-400"
+                              : "bg-amber-500/20 text-amber-400"
                         }`}
                       >
                         {product.status}
@@ -298,7 +312,89 @@ export const FinanceContent = () => {
           </FadeInUp>
         </section>
 
-        {/* ===== Section 6: Korea Market Entry ===== */}
+        {/* ===== Section 6: Contextual Finance ===== */}
+        <section>
+          <FadeInUp>
+            <SectionTitle as="h4" className={sectionTitleClass}>
+              {t("contextualFinance.title")}
+            </SectionTitle>
+            <p className="text-nasun-white/60 text-lg md:text-xl -mt-2 mb-2">
+              {t("contextualFinance.subtitle")}
+            </p>
+          </FadeInUp>
+          <FadeInUp delay="0.1s">
+            <p className="text-nasun-white/70 text-base md:text-lg mb-4">
+              {t("contextualFinance.intro")}
+            </p>
+          </FadeInUp>
+          <FadeInUp delay="0.15s">
+            <OuterBox color="c1" padding="md" className="!bg-black/30 mb-4">
+              <p className="text-nasun-white/80 text-base md:text-lg">
+                {t("contextualFinance.inversion")}
+              </p>
+              <p className="text-nasun-c1 text-sm md:text-base mt-3 italic">
+                {t("contextualFinance.designPrinciple")}
+              </p>
+            </OuterBox>
+          </FadeInUp>
+
+          <FadeInUp delay="0.2s">
+            <p className="text-nasun-white font-medium text-xl md:text-2xl mb-4">
+              {t("contextualFinance.sectionTitle")}
+            </p>
+          </FadeInUp>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(
+              t("contextualFinance.features", { returnObjects: true }) as Array<{
+                title: string;
+                description: string;
+                status: string;
+                bullets?: string[];
+              }>
+            ).map((feat, i) => {
+              const contextIcons = [Crosshair, Trophy, Mail, Sparkles];
+              const Icon = contextIcons[i];
+              return (
+                <FadeInUp key={i} delay={`${0.25 + i * 0.05}s`}>
+                  <DividerBox color="w4" hideDivider padding="sm" className="h-full relative">
+                    <span className="absolute top-5 right-5 text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-blue-500/20 text-blue-400">
+                      {feat.status}
+                    </span>
+                    <div className="flex items-center gap-2 mb-2 pr-24">
+                      <Icon className="w-5 h-5 text-nasun-c1 shrink-0" />
+                      <p className="text-nasun-white font-medium">{feat.title}</p>
+                    </div>
+                    <p className="text-sm md:text-base">{feat.description}</p>
+                    {feat.bullets && (
+                      <ul className="mt-2 space-y-1">
+                        {feat.bullets.map((bullet, j) => (
+                          <li key={j} className="text-sm flex gap-2 text-nasun-white/70">
+                            <span className="text-nasun-c1 mt-0.5 shrink-0">•</span>
+                            {bullet}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </DividerBox>
+                </FadeInUp>
+              );
+            })}
+          </div>
+
+          <FadeInUp delay="0.5s">
+            <p className="text-emerald-400/80 text-sm md:text-base mt-4 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {t("contextualFinance.liveNow")}
+            </p>
+          </FadeInUp>
+          <FadeInUp delay="0.55s">
+            <p className="text-nasun-white/70 text-base mt-4">
+              {t("contextualFinance.closing")}
+            </p>
+          </FadeInUp>
+        </section>
+
+        {/* ===== Section 7: Korea Market Entry ===== */}
         <section>
           <FadeInUp>
             <SectionTitle as="h4" className={sectionTitleClass}>
@@ -376,6 +472,19 @@ export const FinanceContent = () => {
               {t("launchStatus.title")}
             </SectionTitle>
           </FadeInUp>
+          <FadeInUp delay="0.05s">
+            <div className="mt-2 md:mt-4 lg:mt-6 mb-6">
+              <video
+                src="/videos/Pado-Ui-Full-rf16.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="w-full rounded-lg"
+              />
+            </div>
+          </FadeInUp>
           <FadeInUp delay="0.1s">
             <p className="text-nasun-white/70 text-base md:text-lg mb-8">
               {t("launchStatus.intro")}
@@ -389,7 +498,7 @@ export const FinanceContent = () => {
               Live Now
             </p>
           </FadeInUp>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
             {liveItems.map((item, i) => (
               <FadeInUp key={i} delay={`${0.2 + i * 0.03}s`}>
                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4 h-full">
@@ -400,16 +509,34 @@ export const FinanceContent = () => {
             ))}
           </div>
 
+          {/* Deployed on Devnet */}
+          <FadeInUp delay="0.35s">
+            <p className="text-blue-400 font-medium text-lg mb-4 flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Deployed on Devnet
+            </p>
+          </FadeInUp>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+            {deployedItems.map((item, i) => (
+              <FadeInUp key={i} delay={`${0.4 + i * 0.03}s`}>
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 h-full">
+                  <p className="text-nasun-white font-medium text-sm md:text-base">{item.title}</p>
+                  <p className="text-nasun-white/60 text-xs md:text-sm mt-1">{item.description}</p>
+                </div>
+              </FadeInUp>
+            ))}
+          </div>
+
           {/* Coming Next */}
-          <FadeInUp delay="0.4s">
+          <FadeInUp delay="0.5s">
             <p className="text-amber-400 font-medium text-lg mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5" />
               Coming Next
             </p>
           </FadeInUp>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {comingItems.map((item, i) => (
-              <FadeInUp key={i} delay={`${0.45 + i * 0.03}s`}>
+              <FadeInUp key={i} delay={`${0.55 + i * 0.03}s`}>
                 <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 h-full">
                   <p className="text-nasun-white font-medium text-sm md:text-base">{item.title}</p>
                   <p className="text-nasun-white/60 text-xs md:text-sm mt-1">{item.description}</p>
