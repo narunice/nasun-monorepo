@@ -14,7 +14,7 @@
 Nasun is a bootstrapped L1 blockchain project built by a 2-person team with no external funding. The ecosystem includes:
 
 - **Nasun Network** -- Sui-forked L1 (Devnet V7 live)
-- **Pado** -- Unified non-custodial finance app (trading, prediction, lottery, payments)
+- **Pado** -- Unified self-custodial finance app (trading, prediction, lottery, payments)
 - **Baram** -- AI Settlement Layer (TEE + Escrow)
 - **GenSol / Spectra** -- Shooter game
 
@@ -134,7 +134,7 @@ This section captures the complete social layer vision discussed across multiple
 | **Category Chats** | Tabs: General, Spot, Perps, Predictions, Learn/Strategy |
 | **Dual-Location Chat** | Sidebar in trading view + dedicated full-page chat |
 | **Privacy-First Leaderboards** | Multi-dimensional: PnL, risk-adjusted returns, consistency, strategy discipline. ZKP-verified performance without revealing wallet or portfolio size |
-| **Secure DMs** | Encrypted, non-custodial. Off-chain storage + on-chain attestation (Signal-like architecture with blockchain key exchange) |
+| **Secure DMs** | Encrypted, self-custodial. Off-chain storage + on-chain attestation (Signal-like architecture with blockchain key exchange) |
 | **Follow System** | Follow top leaderboard traders without approval required. Social proof without management overhead |
 
 ### AI Agent Integration

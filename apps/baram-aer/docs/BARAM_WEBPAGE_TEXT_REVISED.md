@@ -36,7 +36,7 @@ Baram provides the neutral settlement and verification layer for AI markets — 
 Baram does not run AI workloads on-chain.
 Baram settles who ran what, where, under what conditions — and who gets paid.
 
-AI execution becomes a financial transaction: verifiable, auditable, and non-custodial.
+AI execution becomes a financial transaction: verifiable, auditable, and self-custodial.
 
 
 ## The Baram Boundary
@@ -113,7 +113,7 @@ These guarantees are enforced at the Move compiler level, making misuse structur
 | ComputeCap | Tokenized Compute Rights | Verifiable claims to execution capacity from registered providers |
 | ModelObject | Digital Property | AI models with embedded, cryptographically-enforced royalties |
 | Execution Report | Execution Lineage | Immutable records of who requested, who executed, how much was paid, and what was produced |
-| SovereignAgent | Non-Custodial Actor | Optional autonomous participant with budget and authority |
+| SovereignAgent | Self-Custodial Actor | Optional autonomous participant with budget and authority |
 
 This object-centric design enables programmable ownership, enforcement, and composability that account-based systems cannot provide.
 
@@ -224,7 +224,7 @@ For extended sessions, the provider maintains context for efficiency. If a provi
 
 ## 7. Who Baram Is For
 
-Baram serves participants who require neutral settlement, verifiable execution, and non-custodial economics as AI workloads move beyond centralized platforms.
+Baram serves participants who require neutral settlement, verifiable execution, and self-custodial economics as AI workloads move beyond centralized platforms.
 
 **Model Creators**
 Earn protocol-enforced royalties with no platform custody of models, prompts, or IP, through transparent, cryptographically-enforced licensing.
@@ -239,7 +239,7 @@ Build AI-powered products on auditable infrastructure, with execution guarantees
 Obtain verifiable execution records for sensitive workloads, with privacy guarantees that prevent exposure of proprietary data or prompts.
 
 **Autonomous Systems**
-Participate as non-custodial actors under explicit, machine-readable rules, with defined budgets and authority for machine-to-machine AI transactions.
+Participate as self-custodial actors under explicit, machine-readable rules, with defined budgets and authority for machine-to-machine AI transactions.
 
 **Early Beachhead**
 

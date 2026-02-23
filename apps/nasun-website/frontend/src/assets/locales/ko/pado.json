@@ -6,7 +6,7 @@
   },
   "oneAccount": {
     "title": "One Account for Everything",
-    "intro": "Pado is a non-custodial smart account that unifies trading, prediction markets, lending, and payments on Nasun\u2014a Move-based L1 blockchain built for DeFi.",
+    "intro": "Pado is a self-custodial smart account that unifies trading, prediction markets, lending, and payments on Nasun\u2014a Move-based L1 blockchain built for DeFi.",
     "problemLabel": "The problem:",
     "problem": "Your capital is fragmented across protocols. Stablecoins sit idle. Trading opportunities disappear before you can act.",
     "solutionLabel": "Pado's solution:",
@@ -87,6 +87,6 @@
     "ctaSecondary": "View Pitchdeck"
   },
   "footer": {
-    "badge": "Built on Nasun L1 \u2022 Move-based \u2022 Non-custodial \u2022 Apache 2.0"
+    "badge": "Built on Nasun L1 \u2022 Move-based \u2022 Self-custodial \u2022 Apache 2.0"
   }
 }

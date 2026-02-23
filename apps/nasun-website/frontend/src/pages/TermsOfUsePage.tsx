@@ -41,7 +41,7 @@ const TERMS_CONTENT = {
     "3": {
       "title": "3. Wallet, Identity, and Security",
       "content": [
-        "3.1 Non-Custodial Service: Nasun Wallet is a non-custodial interface. You retain full control over your private keys and assets. We cannot access or recover your funds if you lose your private keys or seed phrases.",
+        "3.1 Self-Custodial Service: Nasun Wallet is a self-custodial interface. You retain full control over your private keys and assets. We cannot access or recover your funds if you lose your private keys or seed phrases.",
         "3.2 Nasun Link (URL Transfer): The \"Nasun Link\" feature allows asset transfer via URL. You acknowledge that anyone with access to the link can claim the asset. Nasun is not responsible for losses due to link sharing, interception, expiration, or misuse.",
         "3.3 zkLogin & Third-Party Auth: Access via Web3 social login (zkLogin) depends on third-party providers (Google, Apple, etc.). Nasun is not responsible for loss of access due to third-party policy changes or outages."
       ]
