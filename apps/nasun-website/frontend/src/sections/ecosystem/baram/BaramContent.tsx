@@ -3,22 +3,45 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import type { ReactNode } from "react";
+
 import { ScrollReveal } from "./animations";
-import { ProblemDiagram } from "./diagrams/ProblemDiagram";
-import { ProblemDetailDiagram } from "./diagrams/ProblemDetailDiagram";
-import { SolutionFlowDiagram } from "./diagrams/SolutionFlowDiagram";
-import { ArchitectureLayerCards } from "./diagrams/ArchitectureLayerCards";
-import { ArchitectureMermaid } from "./diagrams/ArchitectureMermaid";
-import { TrustModelDiagram } from "./diagrams/TrustModelDiagram";
-import { TrustModelDetailDiagram } from "./diagrams/TrustModelDetailDiagram";
-import { ExecutorDiagram } from "./diagrams/ExecutorDiagram";
-import { ExecutorDetailDiagram } from "./diagrams/ExecutorDetailDiagram";
+
+// Extracted diagram components
+import { ProblemCards } from "./diagrams/ProblemCards";
+import { GuaranteesGrid } from "./diagrams/GuaranteesGrid";
+import { ExecutionFlowDiagram } from "./diagrams/ExecutionFlowDiagram";
+import { ExecutionFlowDetail } from "./diagrams/ExecutionFlowDetail";
+import { TrustPillarsDiagram } from "./diagrams/TrustPillarsDiagram";
+import { TrustDetail } from "./diagrams/TrustDetail";
+import { ExecutorOverviewDiagram } from "./diagrams/ExecutorOverviewDiagram";
+import { ExecutorDetail } from "./diagrams/ExecutorDetail";
+import { MarketCards } from "./diagrams/MarketCards";
+import { MarketDetail } from "./diagrams/MarketDetail";
+
+// -- Shared section components --
+
+function SectionDivider() {
+  return (
+    <div className="w-full max-w-2xl mx-auto px-8">
+      <div className="h-px bg-gradient-to-r from-transparent via-nasun-c4/15 to-transparent" />
+    </div>
+  );
+}
+
+function SectionLabel({ text }: { text: string }) {
+  return (
+    <p className="text-nasun-c4 font-medium text-sm uppercase tracking-wider mb-2">
+      {text}
+    </p>
+  );
+}
 
 interface DiagramSectionProps {
   title: string;
   headline: string;
-  overview: React.ReactNode;
-  detail: React.ReactNode;
+  overview: ReactNode;
+  detail: ReactNode;
   viewLabel: string;
   hideLabel: string;
 }
@@ -36,8 +59,8 @@ function DiagramSection({
   return (
     <div className="w-full">
       <div className="mb-6">
-        <p className="text-nasun-c4 font-medium text-sm uppercase tracking-wider mb-2">{title}</p>
-        <h3 className="text-2xl md:text-3xl font-bold text-nasun-black">{headline}</h3>
+        <SectionLabel text={title} />
+        <h3 className="font-bold">{headline}</h3>
       </div>
 
       {overview}
@@ -45,7 +68,7 @@ function DiagramSection({
       <div className="mt-6">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 text-nasun-c4 hover:text-nasun-c5 transition-colors duration-200 text-sm font-medium group"
+          className="flex items-center gap-2 text-nasun-c4 hover:text-nasun-c5 transition-colors duration-200 text-sm font-medium group cursor-pointer"
         >
           {expanded ? hideLabel : viewLabel}
           {expanded ? (
@@ -69,22 +92,18 @@ function DiagramSection({
   );
 }
 
-function SectionDivider() {
-  return (
-    <div className="w-full max-w-2xl mx-auto px-8">
-      <div className="h-px bg-gradient-to-r from-transparent via-nasun-c4/15 to-transparent" />
-    </div>
-  );
-}
+// ============================================================
+// Main Content
+// ============================================================
 
 export default function BaramContent() {
   const { t } = useTranslation("baram");
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6 lg:gap-8 ">
-      {/* Hero */}
+    <div className="flex flex-col gap-4 md:gap-6 lg:gap-8">
+      {/* ========== HERO ========== */}
       <SectionLayout className="!pt-32 md:!pt-44 !pb-12 md:!pb-18 relative overflow-hidden">
-        {/* Sky-blue gradient backdrop — fades to transparent at bottom */}
+        {/* Sky gradient backdrop */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -92,44 +111,28 @@ export default function BaramContent() {
               "linear-gradient(180deg, rgba(135,195,235,0.45) 0%, rgba(145,200,238,0.40) 40%, rgba(160,210,242,0.20) 70%, rgba(180,225,245,0.06) 90%, transparent 100%)",
           }}
         />
-
-        {/* Drifting white cloud layers */}
+        {/* Drifting clouds */}
         <div
           className="baram-cloud-1 absolute pointer-events-none"
           style={{
-            top: "20%",
-            left: "5%",
-            width: "420px",
-            height: "130px",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.5) 40%, transparent 70%)",
+            top: "20%", left: "5%", width: "420px", height: "130px", borderRadius: "50%",
+            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.5) 40%, transparent 70%)",
             filter: "blur(18px)",
           }}
         />
         <div
           className="baram-cloud-2 absolute pointer-events-none"
           style={{
-            top: "65%",
-            left: "30%",
-            width: "520px",
-            height: "150px",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 40%, transparent 70%)",
+            top: "65%", left: "30%", width: "520px", height: "150px", borderRadius: "50%",
+            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 40%, transparent 70%)",
             filter: "blur(24px)",
           }}
         />
         <div
           className="baram-cloud-3 absolute pointer-events-none"
           style={{
-            top: "40%",
-            left: "50%",
-            width: "350px",
-            height: "110px",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.45) 40%, transparent 70%)",
+            top: "40%", left: "50%", width: "350px", height: "110px", borderRadius: "50%",
+            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.45) 40%, transparent 70%)",
             filter: "blur(16px)",
           }}
         />
@@ -152,7 +155,6 @@ export default function BaramContent() {
             {t("hero.subtitle")}
           </motion.p>
 
-          {/* Breeze line divider */}
           <motion.div
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
@@ -160,19 +162,19 @@ export default function BaramContent() {
             className="h-px w-32 mx-auto my-14 md:my-16 lg:my-20 bg-gradient-to-r from-transparent via-nasun-c4/30 to-transparent"
           />
 
-          <motion.p
+          <motion.h3
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
-            className="text-2xl md:text-3xl font-semibold text-nasun-black mb-4"
+            className="font-semibold text-nasun-black/70 mb-4"
           >
             {t("hero.tagline")}
-          </motion.p>
+          </motion.h3>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.45 }}
-            className="text-nasun-black/70 text-lg mb-2"
+            className="!text-lg mb-2"
           >
             {t("hero.description")}
           </motion.p>
@@ -180,7 +182,7 @@ export default function BaramContent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.55 }}
-            className="text-nasun-black/40 text-sm italic"
+            className="text-nasun-black/60 !text-sm italic"
           >
             {t("hero.target")}
           </motion.p>
@@ -189,39 +191,33 @@ export default function BaramContent() {
 
       <SectionDivider />
 
-      {/* Section 1: The Problem */}
+      {/* ========== THE PROBLEM ========== */}
       <ScrollReveal>
         <SectionLayout className="!max-w-7xl mx-auto">
           <div className="w-full">
             <div className="mb-6">
-              <p className="text-nasun-c4 font-medium text-sm uppercase tracking-wider mb-2">
-                {t("problem.sectionTitle")}
-              </p>
-              <h3 className="text-2xl md:text-3xl font-bold text-nasun-black">
+              <SectionLabel text={t("problem.sectionLabel")} />
+              <h3 className="font-bold">
                 {t("problem.headline")}
               </h3>
             </div>
-            <ProblemDiagram />
+            <ProblemCards />
           </div>
         </SectionLayout>
       </ScrollReveal>
 
-      {/* Section 2: The Solution */}
+      {/* ========== FOUR GUARANTEES ========== */}
       <div className="bg-gradient-to-r from-nasun-c7/[0.06] via-transparent to-nasun-c3/[0.06]">
         <ScrollReveal>
           <SectionLayout className="!max-w-7xl mx-auto">
             <div className="w-full">
               <div className="mb-6">
-                <p className="text-nasun-c4 font-medium text-sm uppercase tracking-wider mb-2">
-                  {t("solution.sectionTitle")}
-                </p>
-                <h3 className="text-2xl md:text-3xl font-bold text-nasun-black">
-                  {t("solution.headline")}
+                <SectionLabel text={t("guarantees.sectionLabel")} />
+                <h3 className="font-bold">
+                  {t("guarantees.headline")}
                 </h3>
               </div>
-              <SolutionFlowDiagram>
-                <ProblemDetailDiagram />
-              </SolutionFlowDiagram>
+              <GuaranteesGrid />
             </div>
           </SectionLayout>
         </ScrollReveal>
@@ -229,14 +225,14 @@ export default function BaramContent() {
 
       <SectionDivider />
 
-      {/* Section: Architecture */}
+      {/* ========== HOW BARAM WORKS (merged: flow + AER + budget) ========== */}
       <ScrollReveal>
         <SectionLayout className="!max-w-7xl mx-auto">
           <DiagramSection
-            title={t("architecture.sectionTitle")}
-            headline={t("architecture.headline")}
-            overview={<ArchitectureLayerCards />}
-            detail={<ArchitectureMermaid />}
+            title={t("flow.sectionLabel")}
+            headline={t("flow.headline")}
+            overview={<ExecutionFlowDiagram />}
+            detail={<ExecutionFlowDetail />}
             viewLabel={t("common.viewDetails")}
             hideLabel={t("common.hideDetails")}
           />
@@ -245,14 +241,14 @@ export default function BaramContent() {
 
       <SectionDivider />
 
-      {/* Section 3: The Trust Model */}
+      {/* ========== TRUST & SECURITY (merged: trust + security invariants) ========== */}
       <ScrollReveal>
         <SectionLayout className="!max-w-7xl mx-auto">
           <DiagramSection
-            title={t("trust.sectionTitle")}
+            title={t("trust.sectionLabel")}
             headline={t("trust.headline")}
-            overview={<TrustModelDiagram />}
-            detail={<TrustModelDetailDiagram />}
+            overview={<TrustPillarsDiagram />}
+            detail={<TrustDetail />}
             viewLabel={t("common.viewDetails")}
             hideLabel={t("common.hideDetails")}
           />
@@ -261,21 +257,38 @@ export default function BaramContent() {
 
       <SectionDivider />
 
-      {/* Section 4: Executor Infrastructure */}
-      <div className="bg-gradient-to-br from-nasun-c3/[0.04] to-nasun-c2/[0.06] pb-16 md:pb-24">
+      {/* ========== EXECUTOR INFRASTRUCTURE ========== */}
+      <div className="bg-gradient-to-br from-nasun-c3/[0.04] to-nasun-c2/[0.06]">
         <ScrollReveal>
           <SectionLayout className="!max-w-7xl mx-auto">
             <DiagramSection
-              title={t("executor.sectionTitle")}
+              title={t("executor.sectionLabel")}
               headline={t("executor.headline")}
-              overview={<ExecutorDiagram />}
-              detail={<ExecutorDetailDiagram />}
+              overview={<ExecutorOverviewDiagram />}
+              detail={<ExecutorDetail />}
               viewLabel={t("common.viewDetails")}
               hideLabel={t("common.hideDetails")}
             />
           </SectionLayout>
         </ScrollReveal>
       </div>
+
+      <SectionDivider />
+
+      {/* ========== MARKET & GTM (merged) ========== */}
+      <ScrollReveal>
+        <SectionLayout className="!max-w-7xl mx-auto">
+          <DiagramSection
+            title={t("market.sectionLabel")}
+            headline={t("market.headline")}
+            overview={<MarketCards />}
+            detail={<MarketDetail />}
+            viewLabel={t("common.viewDetails")}
+            hideLabel={t("common.hideDetails")}
+          />
+        </SectionLayout>
+      </ScrollReveal>
+
     </div>
   );
 }

@@ -45,7 +45,6 @@ export const Pages = {
   // Ecosystem Pages
   PadoRevised: lazyWithRetry(() => import("../pages/ecosystem/PadoRevisedPage")),
   Baram: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
-  BaramAer: lazyWithRetry(() => import("../pages/ecosystem/BaramAerPage")),
   // Infra Pages
   InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
   // About Pages (new)
@@ -552,20 +551,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     navItem: {
       name: "navigation.baram",
       path: "/baram",
-      hidden: true,
-    },
-    meta: {
-      title: "Baram - NASUN",
-      description: "Baram: AI Compliance Settlement Layer on Nasun Network",
-    },
-  },
-
-  baramAer: {
-    path: "/baram-aer",
-    component: Pages.BaramAer,
-    navItem: {
-      name: "navigation.baramAer",
-      path: "/baram-aer",
       hidden: true,
     },
     meta: {
