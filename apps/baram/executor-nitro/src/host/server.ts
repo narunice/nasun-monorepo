@@ -320,21 +320,17 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
 
             const aerData: AERReportData = {
               // WHO — Requester
-              authorizer: (typeof authorizer === 'string' && authorizer) || onChainRequest.requester,
               delegationPath: [],
               // WHO — Executor
               executorPrincipal: null,
-              // HOW MUCH
-              paymentToken: 0, // NUSDC
-              executorReceived: onChainRequest.price, // No fee split yet
+              // HOW MUCH (payment_amount, executor_received, payment_token from receipt)
               feeDetail: null,
               budgetId: (typeof budgetId === 'string' && budgetId) || null,
               budgetRemaining: null,
-              // WHAT
+              // WHAT (model_name, output_hash, execution_time_ms from receipt)
               modelMetadata: null,
               // WHY
               purpose: null,
-              policyVersion: null,
               constraints: null,
               // HOW TRUSTWORTHY
               executorTier: executorStats.tier,
