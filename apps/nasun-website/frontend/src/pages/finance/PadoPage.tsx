@@ -6,13 +6,12 @@ import PadoHeroSectionSkeleton from "../../sections/ecosystem/pado/PadoHeroSecti
 
 const FinanceHeroSection = lazy(() => import("@/sections/ecosystem/finance/FinanceHeroSection"));
 const OneAccountSection = lazy(() => import("@/sections/ecosystem/finance/OneAccountSection"));
-const UnifiedOnchain = lazy(() => import("@/sections/ecosystem/pado/UnifiedOnchain"));
+const FinanceContent = lazy(() => import("@/sections/ecosystem/finance/FinanceContent"));
 
 /**
  * PadoPage - /ecosystem/finance
  *
- * Redesigned finance page with new hero + OneAccount intro,
- * preserving the original UnifiedOnchain content below.
+ * Hero + OneAccount intro + FinanceContent (9 sections following pado-revised design).
  */
 export default function PadoPage() {
   const [isVideoReady, setIsVideoReady] = useState(false);
@@ -27,7 +26,7 @@ export default function PadoPage() {
 
     await Promise.all([
       import("../../sections/ecosystem/finance/OneAccountSection"),
-      import("../../sections/ecosystem/pado/UnifiedOnchain"),
+      import("../../sections/ecosystem/finance/FinanceContent"),
     ]);
 
     requestAnimationFrame(() => {
@@ -50,7 +49,7 @@ export default function PadoPage() {
         {isVideoReady && (
           <>
             <OneAccountSection />
-            <UnifiedOnchain />
+            <FinanceContent />
           </>
         )}
       </Suspense>
