@@ -7,6 +7,13 @@ import { BARAM_CONFIG, AGENT_CONFIG } from '@/config/network';
 import type { CoinRef } from './coinService';
 
 const SUI_CLOCK_ID = '0x6';
+const SUI_OBJECT_ID_RE = /^0x[0-9a-fA-F]{64}$/;
+
+function validateObjectId(id: string, label: string): void {
+  if (!SUI_OBJECT_ID_RE.test(id)) {
+    throw new Error(`Invalid ${label}: expected 0x + 64 hex chars`);
+  }
+}
 
 export interface BuildRequestParams {
   coins: CoinRef[];
@@ -126,6 +133,7 @@ export function buildDepositToBudgetTransaction(
   coins: CoinRef[],
   amount: number
 ): Transaction {
+  validateObjectId(budgetId, 'budgetId');
   const tx = new Transaction();
 
   if (coins.length > 1) {
@@ -156,6 +164,7 @@ export function buildWithdrawFromBudgetTransaction(
   budgetId: string,
   amount: number
 ): Transaction {
+  validateObjectId(budgetId, 'budgetId');
   const tx = new Transaction();
   tx.moveCall({
     target: `${BARAM_CONFIG.packageId}::budget::withdraw_from_budget`,
@@ -168,6 +177,7 @@ export function buildWithdrawFromBudgetTransaction(
 }
 
 export function buildDeactivateBudgetTransaction(budgetId: string): Transaction {
+  validateObjectId(budgetId, 'budgetId');
   const tx = new Transaction();
   tx.moveCall({
     target: `${BARAM_CONFIG.packageId}::budget::deactivate_budget`,
@@ -186,6 +196,7 @@ export function buildCreateAgentTransaction(params: {
   role: string;
   capabilities: string[];
 }): Transaction {
+  validateObjectId(params.agentAddress, 'agentAddress');
   const tx = new Transaction();
   tx.moveCall({
     target: `${AGENT_CONFIG.packageId}::agent_profile::create_agent`,
@@ -202,6 +213,7 @@ export function buildCreateAgentTransaction(params: {
 }
 
 export function buildDeactivateAgentTransaction(profileId: string): Transaction {
+  validateObjectId(profileId, 'profileId');
   const tx = new Transaction();
   tx.moveCall({
     target: `${AGENT_CONFIG.packageId}::agent_profile::deactivate_agent`,
@@ -214,6 +226,7 @@ export function buildDeactivateAgentTransaction(profileId: string): Transaction 
 }
 
 export function buildReactivateAgentTransaction(profileId: string): Transaction {
+  validateObjectId(profileId, 'profileId');
   const tx = new Transaction();
   tx.moveCall({
     target: `${AGENT_CONFIG.packageId}::agent_profile::reactivate_agent`,
@@ -234,6 +247,7 @@ export function buildUpdateConstraintsTransaction(params: {
   allowedExecutors: string[];
   expiresAt: number;
 }): Transaction {
+  validateObjectId(params.budgetId, 'budgetId');
   const tx = new Transaction();
   tx.moveCall({
     target: `${BARAM_CONFIG.packageId}::budget::update_constraints`,
@@ -256,6 +270,7 @@ export function buildSetSpendingLimitsTransaction(params: {
   monthlyLimit: number;
   minIntervalMs: number;
 }): Transaction {
+  validateObjectId(params.budgetId, 'budgetId');
   const tx = new Transaction();
   tx.moveCall({
     target: `${BARAM_CONFIG.packageId}::budget::set_spending_limits`,
@@ -275,6 +290,7 @@ export function buildSetCategoriesTransaction(params: {
   budgetId: string;
   allowedCategories: string[];
 }): Transaction {
+  validateObjectId(params.budgetId, 'budgetId');
   const tx = new Transaction();
   tx.moveCall({
     target: `${BARAM_CONFIG.packageId}::budget::set_categories`,

@@ -23,14 +23,23 @@ export function formatNusdcValue(amount: number): string {
 
 /**
  * Convert user-entered NUSDC display amount to raw integer (6 decimals).
- * Uses Math.round to avoid floating-point precision issues.
- * Returns 0 for invalid inputs.
+ * Uses string-based arithmetic to avoid IEEE-754 floating-point drift.
+ * Returns 0 for invalid inputs or amounts exceeding Number.MAX_SAFE_INTEGER.
  */
 export function nusdcToRaw(displayAmount: string): number {
-  const parsed = parseFloat(displayAmount);
-  if (isNaN(parsed) || parsed < 0) return 0;
-  const raw = Math.round(parsed * 1e6);
-  if (!Number.isSafeInteger(raw)) return 0;
+  const trimmed = displayAmount.trim();
+  if (!trimmed) return 0;
+
+  // Only allow digits with optional single decimal point
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) return 0;
+
+  const [wholePart, fracPart = ''] = trimmed.split('.');
+  // Pad or truncate fractional part to exactly 6 digits
+  const paddedFrac = (fracPart + '000000').slice(0, 6);
+
+  // Integer arithmetic only — no floating-point multiplication
+  const raw = Number(wholePart) * 1_000_000 + Number(paddedFrac);
+  if (!Number.isSafeInteger(raw) || raw < 0) return 0;
   return raw;
 }
 
