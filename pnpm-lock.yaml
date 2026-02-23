@@ -20,6 +20,25 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  apps/baram/agent-runner:
+    dependencies:
+      '@mysten/sui':
+        specifier: 1.45.2
+        version: 1.45.2(typescript@5.9.3)
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
+    devDependencies:
+      '@nasun/tsconfig':
+        specifier: workspace:*
+        version: link:../../../packages/tsconfig
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   apps/baram/api-server:
     dependencies:
       '@hono/node-server':
@@ -14812,7 +14831,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.19.3)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
+      vitest: 3.2.4(@types/node@24.10.4)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@1.21.7)(jsdom@27.4.0)(terser@5.44.1)(tsx@4.21.0)
 
   '@vitest/utils@2.1.9':
     dependencies:
