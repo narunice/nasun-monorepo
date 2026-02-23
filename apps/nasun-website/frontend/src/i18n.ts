@@ -53,7 +53,6 @@ i18n
       "pado",
       "news",
       "baram",
-      "baram-aer",
       "pado-vision",
       "pado-tech",
       "pado-pitch",

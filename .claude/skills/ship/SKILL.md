@@ -38,7 +38,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 ```
 
 **type**: `feat`, `fix`, `chore`, `refactor`, `docs`, `style`, `test`, `perf`
-**scope**: 앱/패키지 이름 (예: `pado`, `baram-aer`, `wallet`)
+**scope**: 앱/패키지 이름 (예: `pado`, `baram`, `wallet`)
 
 규칙:
 - 제목은 영어, 간결하게 (50자 이내 권장)

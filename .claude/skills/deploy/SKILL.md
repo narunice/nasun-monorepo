@@ -19,14 +19,13 @@ Nasun 모노레포의 CDK 인프라를 안전하게 배포합니다. Pre-flight 
 
 | 인자 | 필수 | 값 | 설명 |
 | ---- | ---- | -- | ---- |
-| `app` | O | `nasun-website`, `pado`, `baram-aer` | 배포 대상 앱 |
+| `app` | O | `nasun-website`, `pado`, `baram` | 배포 대상 앱 |
 | `env` | O | `dev`, `prod` | 배포 환경 (`dev` = development) |
 | `stack` | X | 예: `LeaderboardV3Stack` | 특정 스택만 배포 (생략 시 `--all`) |
 | `--check` | X | - | Pre-flight 검사만 실행 (배포 안 함) |
 
 **검증 규칙:**
 
-- `baram` 감지 시: "apps/baram은 Legacy 코드입니다. apps/baram-aer을 사용하세요." 출력 후 중단
 - 앱이 위 3개 중 하나가 아니면 에러
 - `env`가 `dev` 또는 `prod`가 아니면 에러
 
@@ -100,7 +99,7 @@ CDK `.env` 파일의 존재 여부와 필수 변수를 확인합니다.
 | -- | --- | ---- |
 | nasun-website | `apps/nasun-website/cdk/.env.development` | `apps/nasun-website/cdk/.env.production` |
 | pado | `apps/pado/cdk/.env.development` | `apps/pado/cdk/.env.production` |
-| baram-aer | `apps/baram-aer/cdk/.env` | `apps/baram-aer/cdk/.env` |
+| baram | `apps/baram/cdk/.env` | `apps/baram/cdk/.env` |
 
 **nasun-website 필수 변수:**
 
@@ -361,7 +360,7 @@ aws lambda get-function-configuration \
 | ---- | ---- | ---- |
 | (없음) | 에러: 앱과 환경을 지정하세요 | `/deploy` |
 | `<app> dev` | Dev 환경 전체 스택 배포 | `/deploy nasun-website dev` |
-| `<app> prod` | Prod 환경 전체 스택 배포 | `/deploy nasun-website prod` |
+| `<app> prod` | Prod 환경 전체 스택 배포 | `/deploy baram prod` |
 | `<app> <env> <stack>` | 특정 스택만 배포 | `/deploy nasun-website dev LeaderboardV3Stack` |
 | `--check <app> <env>` | Pre-flight 검사만 (배포 안 함) | `/deploy --check nasun-website prod` |
 
@@ -372,7 +371,7 @@ aws lambda get-function-configuration \
 | Stale `.js/.d.ts` 무시하고 배포 | TS 소스를 가려서 배포 실패 | 2단계에서 반드시 삭제 |
 | `--profile` 없이 prod 배포 | 기본 계정(dev)에 배포됨 | 자동으로 `nasun-prod` 선택 |
 | `cdk deploy --all` 무조건 실행 | 불필요한 스택까지 배포 | 가능하면 변경된 스택만 지정 |
-| baram 앱에 배포 시도 | Legacy 코드, 절대 수정 금지 | baram-aer 사용 |
+| `baram-aer` 경로 참조 | 디렉토리가 `apps/baram`으로 변경됨 | `apps/baram` 사용 |
 | 기존 deploy-safe-env.sh 직접 실행 | interactive prompt 지원 안 됨 | 이 스킬의 단계별 실행 사용 |
 | Lambda 개별 업데이트 (`aws lambda update-function-code`) | CDK 상태와 불일치 | CDK로 배포 |
 | 프론트엔드 .env URL 미확인 후 배포 | 배포된 스택의 API를 프론트엔드가 참조하지 않아 방치됨 | 8.3단계에서 반드시 동기화 확인 |
