@@ -17,7 +17,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import padoUiVideo from "@/assets/videos/Pado-Ui-Full-rf16.mp4";
+const padoUiVideo = "/videos/Pado-Ui-Full-rf16.mp4";
 
 export const UnifiedOnchain = () => {
   const { t } = useTranslation("pado");

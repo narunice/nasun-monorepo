@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 
 import { InlineLoading } from "@/components/ui/InlineLoading";
-import waldenVideoDesktop from "../../../assets/videos/walden-hero-token-desktop.mp4";
-import waldenVideoMobile from "../../../assets/videos/Walden-Dex-Token-Mobile-rf18.mp4";
+const waldenVideoDesktop = "/videos/walden-hero-token-desktop.mp4";
+const waldenVideoMobile = "/videos/Walden-Dex-Token-Mobile-rf18.mp4";
 import { Button } from "@/components/ui";
 import { ExternalLink } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";

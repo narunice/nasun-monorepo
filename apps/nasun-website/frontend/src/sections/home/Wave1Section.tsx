@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import wave1VideoMP4 from "../../assets/videos/Home-Wave1-rf24.mp4";
-import leaderboardVideoMP4 from "../../assets/videos/Leaderboard-Ui-rf22.mp4";
+const wave1VideoMP4 = "/videos/Home-Wave1-rf24.mp4";
+const leaderboardVideoMP4 = "/videos/Leaderboard-Ui-rf22.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";

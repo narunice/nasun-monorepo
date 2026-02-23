@@ -5,7 +5,7 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import progressVideo from "@/assets/videos/Progress-Video-rf28.mp4";
+const progressVideo = "/videos/Progress-Video-rf28.mp4";
 
 interface ItemData {
   title: string;

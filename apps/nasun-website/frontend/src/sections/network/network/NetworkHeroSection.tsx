@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
-import nsnNetworkVideo from "../../../assets/videos/Nsn-Network-Section-rf29.mp4";
-import nsnNetworkVideoMobile from "../../../assets/videos/Nsn-Network-Section-Mobile-rf27.mp4";
+const nsnNetworkVideo = "/videos/Nsn-Network-Section-rf29.mp4";
+const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-Mobile-rf27.mp4";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
