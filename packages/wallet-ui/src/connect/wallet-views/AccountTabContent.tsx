@@ -117,7 +117,7 @@ export function GettingStartedChecklist({
     },
     {
       key: 'faucetDone',
-      label: faucetCooldown && cooldownText ? `Faucet ${cooldownText}` : 'Get NSN from Faucet',
+      label: faucetCooldown && cooldownText ? `NSN Faucet ${cooldownText}` : 'Get NSN from Faucet',
       description: faucetCooldown ? 'Cooldown active' : 'Request free test tokens',
       action: handleFaucetRequest,
       loading: faucetLoading,
