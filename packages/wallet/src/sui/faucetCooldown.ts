@@ -34,15 +34,34 @@ export function getCooldownRemaining(address: string, symbol: string): number {
 
 /**
  * Record a successful faucet claim timestamp.
+ * Dispatches a custom event so all useTokenFaucet instances re-render.
  */
 export function setCooldownTimestamp(address: string, symbol: string): void {
   try {
     const key = getCooldownKey(address, symbol);
     localStorage.setItem(key, String(Date.now()));
+    // Notify all hook instances on this page to re-check cooldown
+    window.dispatchEvent(new CustomEvent(COOLDOWN_CHANGE_EVENT));
   } catch {
     // localStorage may be unavailable
   }
 }
+
+/**
+ * Remove a previously set cooldown (used for rollback on failed requests).
+ */
+export function clearCooldownTimestamp(address: string, symbol: string): void {
+  try {
+    const key = getCooldownKey(address, symbol);
+    localStorage.removeItem(key);
+    window.dispatchEvent(new CustomEvent(COOLDOWN_CHANGE_EVENT));
+  } catch {
+    // localStorage may be unavailable
+  }
+}
+
+/** Custom event name for cross-instance cooldown notifications */
+export const COOLDOWN_CHANGE_EVENT = 'nasun-faucet-cooldown-change';
 
 /**
  * Format remaining cooldown time for display.

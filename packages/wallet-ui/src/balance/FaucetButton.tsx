@@ -1,10 +1,10 @@
 /**
  * Nasun Wallet Faucet Button
- * Test token request UI
+ * Test token request UI — delegates to useTokenFaucet for proper 24h cooldown.
  */
 
-import { useState, useCallback } from 'react';
-import { useWallet, useRefreshBalance, requestFaucet, usePasskey } from '@nasun/wallet';
+import { useState, useCallback, useEffect } from 'react';
+import { useWallet, usePasskey, useTokenFaucet } from '@nasun/wallet';
 
 interface FaucetButtonProps {
   // Button style variant
@@ -18,51 +18,46 @@ interface FaucetButtonProps {
 export function FaucetButton({ variant = 'default', className = '', onSuccess }: FaucetButtonProps) {
   const { status, account } = useWallet();
   const { isUnlocked: isPasskeyUnlocked, address: passkeyAddress } = usePasskey();
-  const refreshBalance = useRefreshBalance();
+  const { requestFaucet, isLoading: isTokenLoading, isCooldown, getCooldownFormatted, canUseFaucet } = useTokenFaucet();
 
   const faucetAddress = account?.address || passkeyAddress;
 
-  const [isLoading, setIsLoading] = useState(false);
+  const isLoading = isTokenLoading('NSN');
+  const cooldown = isCooldown('NSN');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [cooldown, setCooldown] = useState(false);
+  const [cooldownText, setCooldownText] = useState('');
+
+  // Poll cooldown remaining time every 60s
+  useEffect(() => {
+    const update = () => setCooldownText(getCooldownFormatted('NSN'));
+    update();
+    const interval = setInterval(update, 60_000);
+    return () => clearInterval(interval);
+  }, [getCooldownFormatted]);
 
   const handleRequest = useCallback(async () => {
-    if (!faucetAddress || cooldown) return;
+    if (!faucetAddress || cooldown || isLoading || !canUseFaucet) return;
 
-    setIsLoading(true);
     setError(null);
     setSuccess(false);
 
     try {
-      await requestFaucet(faucetAddress);
-      setSuccess(true);
-
-      // Refresh balance
-      await refreshBalance();
-
-      onSuccess?.();
-
-      // Start cooldown to prevent rapid re-clicks
-      setCooldown(true);
-      setTimeout(() => setCooldown(false), 5000);
-
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setSuccess(false);
-      }, 3000);
+      const result = await requestFaucet('NSN');
+      if (result.success) {
+        setSuccess(true);
+        onSuccess?.();
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        setError(result.error || 'Faucet request failed');
+        setTimeout(() => setError(null), 5000);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Faucet request failed';
       setError(message);
-
-      // Hide error message after 5 seconds
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
-    } finally {
-      setIsLoading(false);
+      setTimeout(() => setError(null), 5000);
     }
-  }, [faucetAddress, refreshBalance, onSuccess, cooldown]);
+  }, [faucetAddress, cooldown, isLoading, canUseFaucet, requestFaucet, onSuccess]);
 
   // Wallet not connected
   if (status !== 'unlocked' && !isPasskeyUnlocked) {
@@ -97,7 +92,7 @@ export function FaucetButton({ variant = 'default', className = '', onSuccess }:
             Requesting
           </span>
         ) : cooldown ? (
-          'Wait...'
+          cooldownText || 'Cooldown'
         ) : success ? (
           'Received!'
         ) : error ? (

@@ -155,7 +155,9 @@ export {
 export {
   getCooldownRemaining,
   setCooldownTimestamp,
+  clearCooldownTimestamp,
   formatCooldownRemaining,
+  COOLDOWN_CHANGE_EVENT,
 } from './sui/faucetCooldown';
 
 // Token Registry
