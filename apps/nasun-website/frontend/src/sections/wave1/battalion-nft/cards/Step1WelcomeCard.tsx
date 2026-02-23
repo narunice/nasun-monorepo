@@ -120,24 +120,28 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
               ))}
             </ul>
             <div className="flex flex-row justify-around md:flex-col gap-2 flex-shrink-0">
-              <a
-                href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-nasun-nw4/40 text-nasun-nw4 text-xs hover:bg-nasun-nw4/10 transition-colors"
-              >
-                {t("step1.links.followAccount")}
-                <ExternalLink size={13} />
-              </a>
-              <a
-                href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}/status/${import.meta.env.VITE_EVENT_TWEET_ID}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-nasun-nw4/40 text-nasun-nw4 text-xs hover:bg-nasun-nw4/10 transition-colors"
-              >
-                {t("step1.links.announcementPost")}
-                <ExternalLink size={13} />
-              </a>
+              <ButtonV3 variant="green" size="sm" asChild>
+                <a
+                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gap-1.5 font-normal"
+                >
+                  {t("step1.links.followAccount")}
+                  <ExternalLink size={13} />
+                </a>
+              </ButtonV3>
+              <ButtonV3 variant="green" size="sm" asChild>
+                <a
+                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}/status/${import.meta.env.VITE_EVENT_TWEET_ID}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gap-1.5 font-normal"
+                >
+                  {t("step1.links.announcementPost")}
+                  <ExternalLink size={13} />
+                </a>
+              </ButtonV3>
             </div>
           </div>
         </DividerBox>

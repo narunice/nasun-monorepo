@@ -4,20 +4,20 @@ import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 import PadoHeroSectionSkeleton from "../../sections/ecosystem/pado/PadoHeroSectionSkeleton";
 
-// Lazy load section components (4 sections total)
+const FinanceHeroSection = lazy(() => import("@/sections/ecosystem/finance/FinanceHeroSection"));
+const OneAccountSection = lazy(() => import("@/sections/ecosystem/finance/OneAccountSection"));
 const UnifiedOnchain = lazy(() => import("@/sections/ecosystem/pado/UnifiedOnchain"));
-const PadoHeroSection = lazy(() => import("@/sections/ecosystem/pado/PadoHeroSection"));
 
 /**
- * PadoPage 컴포넌트
+ * PadoPage - /ecosystem/finance
  *
- * The Pado Initiative 소개 페이지
+ * Redesigned finance page with new hero + OneAccount intro,
+ * preserving the original UnifiedOnchain content below.
  */
 export default function PadoPage() {
   const [isVideoReady, setIsVideoReady] = useState(false);
   const { setIsPageReady } = usePageLoading();
 
-  // Page mount: hide footer
   useEffect(() => {
     setIsPageReady(false);
   }, [setIsPageReady]);
@@ -25,18 +25,17 @@ export default function PadoPage() {
   const handleVideoReady = useCallback(async () => {
     setIsVideoReady(true);
 
-    // Preload critical sections
-    await Promise.all([import("../../sections/ecosystem/pado/UnifiedOnchain")]);
+    await Promise.all([
+      import("../../sections/ecosystem/finance/OneAccountSection"),
+      import("../../sections/ecosystem/pado/UnifiedOnchain"),
+    ]);
 
-    // 비디오가 화면에 렌더링된 후 Footer 표시 (레이아웃 시프트 방지)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setIsPageReady(true);
       });
     });
   }, [setIsPageReady]);
-
-  // 스켈레톤 방식: 스크롤 방지 불필요 (공간이 이미 확보됨)
 
   return (
     <ErrorBoundary
@@ -47,10 +46,10 @@ export default function PadoPage() {
       }
     >
       <Suspense fallback={<PadoHeroSectionSkeleton />}>
-        <PadoHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
-        {/* 비디오 준비 후 렌더링하여 레이아웃 시프트 방지 */}
+        <FinanceHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
         {isVideoReady && (
           <>
+            <OneAccountSection />
             <UnifiedOnchain />
           </>
         )}
