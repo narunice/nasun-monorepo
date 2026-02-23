@@ -27,12 +27,11 @@ const PartnerLogo = ({ logo }: { logo: (typeof partnerLogos)[0] }) => {
         <img
           src={logo.src}
           alt={logo.alt}
-          className="object-contain w-full h-auto max-h-16 md:max-h-20 lg:max-h-24 xl:max-h-28 2xl:max-h-32
+          className="object-contain w-full h-auto max-h-16 md:max-h-20
                   filter grayscale-0 contrast-75 opacity-100
                   group-hover:grayscale group-hover:opacity-90 group-hover:contrast-100 group-hover:scale-105
                   group-active:scale-95
                   transition-all ease-in-out"
-          loading="lazy"
         />
       </a>
     </div>
@@ -69,25 +68,41 @@ export default function Footer() {
             </div>
           </FadeInUp>
 
-          <div className="w-full max-w-5xl mx-auto">
+          <div className="w-full">
             <FadeInUp>
-              <p className="text-center pb-4">{t("footer.supportedBy")}</p>
-              <div className="flex flex-wrap justify-center px-8 md:px-10 gap-5 lg:gap-8">
-                {partnerLogos.map((logo) => (
-                  <div
-                    key={logo.id}
-                    className="flex justify-center items-center md:px-4
-                        w-[calc(50%-12px)] px-6
-                        sm:w-[calc(33.333%-16px)]
-                        md:w-[calc(25%-20px)]
-                        lg:w-[calc(20%-24px)]
-                        xl:w-[calc(12.5%-28px)]
-                        2xl:w-[210px]
-                        min-w-[140px] md:min-w-[175px] lg:min-w-[210px]"
-                  >
-                    <PartnerLogo logo={logo} />
+              <p className="text-center pb-4 max-w-5xl mx-auto">{t("footer.supportedBy")}</p>
+              <div
+                className="marquee-container w-full overflow-hidden"
+                role="marquee"
+                aria-label={t("footer.supportedBy")}
+              >
+                <div
+                  className="flex animate-marquee hover:[animation-play-state:paused]"
+                  style={{ width: "max-content" }}
+                >
+                  {/* Set A */}
+                  <div className="flex gap-10 shrink-0 pr-10">
+                    {partnerLogos.map((logo) => (
+                      <div
+                        key={logo.id}
+                        className="flex-shrink-0 flex items-center justify-center w-[180px] md:w-[210px]"
+                      >
+                        <PartnerLogo logo={logo} />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                  {/* Set B (duplicate for seamless loop) */}
+                  <div className="flex gap-10 shrink-0 pr-10" aria-hidden="true">
+                    {partnerLogos.map((logo) => (
+                      <div
+                        key={`dup-${logo.id}`}
+                        className="flex-shrink-0 flex items-center justify-center w-[180px] md:w-[210px]"
+                      >
+                        <PartnerLogo logo={logo} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </FadeInUp>
           </div>

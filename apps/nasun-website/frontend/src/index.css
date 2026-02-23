@@ -551,6 +551,37 @@
   @apply bg-gradient-to-r from-transparent via-white/70 to-transparent;
 }
 
+/* Partner logo marquee */
+.marquee-container {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 40px,
+    black calc(100% - 40px),
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 40px,
+    black calc(100% - 40px),
+    transparent
+  );
+}
+
+.animate-marquee {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: auto !important;
+  }
+}
+
 /* 로드맵 섹션 */
 
 .scroll-container {

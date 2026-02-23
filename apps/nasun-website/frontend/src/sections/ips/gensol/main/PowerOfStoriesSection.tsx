@@ -1,15 +1,34 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { OuterBox } from "@/components/ui/OuterBox";
-import SectionTitle from "@/components/ui/SectionTitle";
-import { FadeInUp } from "@/components/ui/FadeInUp";
-
+import { DividerBox } from "@/components/ui/DividerBox";
 // 배경 이미지
 import bgImage from "@/assets/images/boliviainteligente-iVgqztKXxwM-unsplash.jpg";
 
 function PowerOfStoriesSection() {
   const { t } = useTranslation("genSol");
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+
+    // Target the DividerBox child directly so opacity animates
+    // on the same element as backdrop-filter (avoids stacking context issue)
+    const target = el.firstElementChild as HTMLElement | null;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          observer.unobserve(entry.target);
+          target?.classList.add("animate-fadeInUp");
+        }
+      },
+      { threshold: 0.2 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <SectionLayout className="!px-8 sm:!px-10 md:!px-12  overflow-hidden bg-nasun-black min-h-[80vh]">
@@ -28,22 +47,21 @@ function PowerOfStoriesSection() {
       </div>
 
       {/* 콘텐츠 */}
-      <div className="relative z-10 w-full max-w-5xl mx-auto ">
-        <OuterBox color="n1" className="w-full bg-nasun-c6/50 mt-20 mb-28">
-          <FadeInUp>
-            {/* 섹션 타이틀 */}
-            <SectionTitle as="h3" className="!font-rubik text-center uppercase mb-8 md:mb-10 ">
-              {t("powerOfStories.title")}
-            </SectionTitle>
-
-            {/* 문단들 - 세련된 타이포그래피 */}
-            <div className="space-y-4 md:space-y-6 ">
-              <p>{t("powerOfStories.paragraph1")}</p>
-              <p>{t("powerOfStories.paragraph2")}</p>
-              <p>{t("powerOfStories.paragraph3")}</p>
-            </div>
-          </FadeInUp>
-        </OuterBox>
+      <div ref={boxRef} className="relative z-10 w-full max-w-5xl mx-auto">
+        <DividerBox
+          color="c1"
+          hideDivider={true}
+          className="!bg-gray-950/50 !border-sf-orange/40 !backdrop-blur-md w-full mt-20 mb-28 opacity-0 translate-y-[10px]"
+        >
+          <h3 className="!font-rubik text-center uppercase text-sf-orange font-medium text-2xl md:text-3xl lg:text-4xl mb-2 md:mb-4">
+            {t("powerOfStories.title")}
+          </h3>
+          <div className="space-y-4 md:space-y-6">
+            <p>{t("powerOfStories.paragraph1")}</p>
+            <p>{t("powerOfStories.paragraph2")}</p>
+            <p>{t("powerOfStories.paragraph3")}</p>
+          </div>
+        </DividerBox>
       </div>
     </SectionLayout>
   );

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import visionVideoMP4 from "../../assets/videos/Home-Vision-rf24.mp4";
+const visionVideoMP4 = "/videos/Home-Vision-rf24.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { SignUpModal } from "@/components/auth/SignUpModal";
@@ -126,23 +126,16 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
               </h1>
             </FadeInUp>
 
-            {/* COORDINATED CREATION */}
+            {/* Categories */}
             <FadeInUp delay="0.3s">
               <h5 className="font-medium text-nasun-black/80 -mt-4 !tracking-normal">
-                For Coordinated Creation
+                Finance &bull; AI &bull; Entertainment
               </h5>
-            </FadeInUp>
-
-            {/* Categories */}
-            <FadeInUp delay="0.4s">
-              <h6 className="font-medium text-nasun-black/60 mt-4">
-                Finance &bull; AI &bull; Games &bull; Films
-              </h6>
             </FadeInUp>
 
             {/* Description */}
             <FadeInUp delay="0.5s">
-              <h6 className="font-medium text-nasun-black/60 -mt-2 xl:max-w-none">
+              <h6 className="font-medium text-nasun-black/60 mt-4 md:mt-5 lg:mt-6 xl:max-w-none">
                 Communities build, own, and grow IP together
               </h6>
             </FadeInUp>
@@ -150,7 +143,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             {/* CTA Buttons */}
             <div className="lg:self-stretch lg:w-full">
               <FadeInUp delay="0.6s">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mt-3 lg:mt-4 max-w-xs lg:max-w-none mx-auto lg:mx-0 xl:w-auto xl:flex xl:flex-row">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mt-1 lg:mt-2 max-w-xs lg:max-w-none mx-auto lg:mx-0 xl:w-auto xl:flex xl:flex-row">
                   <ButtonV3
                     variant="gradient"
                     size="lg"
