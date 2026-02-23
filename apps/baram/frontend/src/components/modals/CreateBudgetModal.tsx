@@ -18,6 +18,7 @@ interface CreateBudgetModalProps {
   }) => Promise<string | null>;
   txStatus: BudgetTxStatus;
   txError: string | null;
+  prefillAgent?: string;
 }
 
 const AVAILABLE_MODELS = Object.entries(MODEL_PRICING).map(([id, info]) => ({
@@ -27,8 +28,8 @@ const AVAILABLE_MODELS = Object.entries(MODEL_PRICING).map(([id, info]) => ({
 
 const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
 
-export function CreateBudgetModal({ onClose, onCreate, txStatus, txError }: CreateBudgetModalProps) {
-  const [agent, setAgent] = useState('');
+export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefillAgent }: CreateBudgetModalProps) {
+  const [agent, setAgent] = useState(prefillAgent ?? '');
   const [deposit, setDeposit] = useState('');
   const [maxPerRequest, setMaxPerRequest] = useState('');
   const [selectedModels, setSelectedModels] = useState<string[]>([]);

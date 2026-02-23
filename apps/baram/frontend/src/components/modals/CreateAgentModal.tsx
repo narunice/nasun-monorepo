@@ -41,6 +41,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
   const [role, setRole] = useState('');
   const [capabilities, setCapabilities] = useState<string[]>([]);
   const [capInput, setCapInput] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const isBusy = txStatus === 'signing' || txStatus === 'executing';
   const isSuccess = txStatus === 'success';
@@ -105,7 +106,35 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           </p>
           {generatedAddress && (
             <div className="p-2 rounded-lg bg-[var(--color-bg-tertiary)] text-left space-y-1">
-              <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">Generated Address</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">Generated Address</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedAddress).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    });
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-[var(--color-accent)] hover:opacity-80 transition-opacity"
+                >
+                  {copied ? (
+                    <>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <rect x="9" y="9" width="13" height="13" rx="2" strokeWidth={2} />
+                        <path strokeWidth={2} d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                      </svg>
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
               <p className="text-[10px] font-mono text-[var(--color-text-primary)] break-all">{generatedAddress}</p>
               <p className="text-[10px] text-amber-400 mt-1">
                 Key stored encrypted. You'll need your passphrase to export it later.
@@ -127,7 +156,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={isBusy ? undefined : onClose} />
 
-      <div className="relative w-full max-w-md bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-md bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Register Agent</h2>
@@ -145,7 +174,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
         {/* Form */}
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Mode Toggle */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
               Key Mode
             </label>
@@ -158,7 +187,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
                 }`}
               >
-                Generate Keypair
+                Generate New Key
               </button>
               <button
                 onClick={() => setMode('import')}
@@ -171,6 +200,11 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                 Import Existing Key
               </button>
             </div>
+            <p className="text-[10px] text-[var(--color-text-muted)]">
+              {mode === 'generate'
+                ? 'A new Ed25519 keypair will be generated and encrypted with your passphrase when you register.'
+                : 'Use an existing agent address. The private key stays outside Baram.'}
+            </p>
           </div>
 
           {/* Mode-specific fields */}

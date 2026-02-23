@@ -171,12 +171,6 @@ export function AgentList() {
           <p className="text-sm text-[var(--color-text-muted)]">
             Register your first agent to start managing AI budgets.
           </p>
-          <button
-            onClick={() => { resetTxStatus(); setShowCreateModal(true); }}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
-          >
-            Register Agent
-          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

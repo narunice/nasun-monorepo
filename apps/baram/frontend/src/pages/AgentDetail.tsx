@@ -19,6 +19,8 @@ import { useAgentActions } from '../hooks/useAgentActions';
 import { suiClient } from '../config/client';
 import { formatNusdcValue as formatNUSDC, truncateAddress as formatAddress, formatTimestamp } from '../utils/format';
 import { exportAgentKeypairBase64, hasAgentKey } from '../services/agentKeyStorage';
+import { useBudgets } from '../hooks/useBudgets';
+import { CreateBudgetModal } from '../components/modals/CreateBudgetModal';
 
 type Tab = 'overview' | 'budget' | 'activity';
 
@@ -31,15 +33,18 @@ export function AgentDetail() {
   const { data: agents, refetch: refetchAgents } = useAgentProfiles(walletAddress);
   const { data: budgets } = useAgentBudgets(walletAddress);
   const { deactivateAgent, reactivateAgent, txStatus: actionTxStatus, txError: actionTxError, resetTxStatus: resetActionTxStatus } = useAgentActions();
+  const { createBudget, txStatus: budgetTxStatus, txError: budgetTxError, resetTxStatus: resetBudgetTxStatus, refresh: refreshBudgets } = useBudgets();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
+  const [showCreateBudget, setShowCreateBudget] = useState(false);
 
   // Fund Gas state
   const [showFundGas, setShowFundGas] = useState(false);
   const [fundAmount, setFundAmount] = useState('0.1');
   const [fundStatus, setFundStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [fundError, setFundError] = useState<string | null>(null);
+  const [fundTxDigest, setFundTxDigest] = useState<string | null>(null);
 
   // Export Key state
   const [showExportKey, setShowExportKey] = useState(false);
@@ -122,6 +127,7 @@ export function AgentDetail() {
 
     setFundStatus('sending');
     setFundError(null);
+    setFundTxDigest(null);
 
     try {
       const tx = new Transaction();
@@ -142,6 +148,7 @@ export function AgentDetail() {
         throw new Error(result.effects?.status?.error || 'Transaction failed');
       }
 
+      setFundTxDigest(result.digest);
       setFundStatus('success');
       // Refresh agent balance
       setTimeout(fetchAgentBalance, 2000);
@@ -310,7 +317,11 @@ export function AgentDetail() {
         <OverviewTab agent={agent} budget={budget ?? null} agentBalance={agentBalance} />
       )}
       {activeTab === 'budget' && (
-        <BudgetTab budget={budget ?? null} spendingLimits={spendingLimits ?? null} />
+        <BudgetTab
+          budget={budget ?? null}
+          spendingLimits={spendingLimits ?? null}
+          onCreateBudget={() => { resetBudgetTxStatus(); setShowCreateBudget(true); }}
+        />
       )}
       {activeTab === 'activity' && (
         <ActivityTab agent={agent} />
@@ -410,7 +421,22 @@ export function AgentDetail() {
               />
             </div>
             {fundStatus === 'success' && (
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-xs text-emerald-400 text-center">Transfer successful</div>
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-xs text-emerald-400 text-center space-y-1">
+                <p>Transfer successful</p>
+                {fundTxDigest && (
+                  <a
+                    href={`https://explorer.nasun.io/devnet/tx/${fundTxDigest}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
+                  >
+                    View on Explorer
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
             )}
             {fundError && (
               <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400 text-center">{fundError}</div>
@@ -432,6 +458,17 @@ export function AgentDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Create Budget modal */}
+      {showCreateBudget && agent && (
+        <CreateBudgetModal
+          onClose={() => { setShowCreateBudget(false); refreshBudgets(); }}
+          onCreate={createBudget}
+          txStatus={budgetTxStatus}
+          txError={budgetTxError}
+          prefillAgent={agent.agentAddress}
+        />
       )}
 
       {/* Export Key modal */}
@@ -594,15 +631,28 @@ function OverviewTab({ agent, budget, agentBalance }: {
   );
 }
 
-function BudgetTab({ budget, spendingLimits }: {
+function BudgetTab({ budget, spendingLimits, onCreateBudget }: {
   budget: { id: string; balance: number; totalSpent: number; maxPerRequest: number; requestCount: number; createdAt: number; expiresAt: number } | null;
   spendingLimits: import('../features/agents/hooks/useAgentBudgets').SpendingLimits | null;
+  onCreateBudget: () => void;
 }) {
   if (!budget) {
     return (
-      <p className="text-sm text-[var(--color-text-muted)] text-center py-8">
-        No budget delegated to this agent.
-      </p>
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
+        <svg className="w-10 h-10 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+        <p className="text-sm text-[var(--color-text-muted)]">
+          No budget delegated to this agent.
+        </p>
+        <button
+          onClick={onCreateBudget}
+          className="px-4 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+        >
+          Create Budget
+        </button>
+      </div>
     );
   }
 
