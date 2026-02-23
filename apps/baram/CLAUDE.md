@@ -6,7 +6,7 @@
 
 ## Overview
 
-**Baram AER**은 나선 네트워크의 AI Compliance Settlement Layer다.
+**Baram**은 나선 네트워크의 AI Compliance Settlement Layer다.
 
 | 요소 | 설명 |
 |------|------|
@@ -29,17 +29,38 @@
 apps/baram/
 ├── frontend/                    # React 19 + Vite 7 (포트 5177)
 │   └── src/
-│       ├── features/request/    # 요청 생성 UI + hooks (useExecutors, useCreateRequest, selectExecutorWeightedRandom)
+│       ├── features/
+│       │   ├── request/         # 요청 생성 UI + hooks (useExecutors, useCreateRequest, selectExecutorWeightedRandom)
+│       │   │   ├── hooks/       # useExecutors, useCreateRequest, useAER, useAttestation, useRequestWithRetry
+│       │   │   ├── services/    # transactionBuilder.ts (TX builders), coinService.ts
+│       │   │   └── components/  # ECRReceipt.tsx (AER detail modal)
+│       │   ├── aer/             # AER data fetching
+│       │   │   └── hooks/useAERRecords.ts  # Dual-mode: indexer API first, RPC fallback
+│       │   └── agents/          # Agent data fetching
+│       │       └── hooks/       # useAgentProfiles.ts, useAgentBudgets.ts
+│       ├── pages/               # Dashboard pages
+│       │   ├── DashboardOverview.tsx  # 메인 대시보드
+│       │   ├── AgentList.tsx          # Agent 목록 + Register Agent
+│       │   ├── AgentDetail.tsx        # Agent 상세 (5 tabs) + Deactivate/Reactivate
+│       │   ├── BudgetsPage.tsx        # Budget 관리 (통계, 필터, CRUD)
+│       │   ├── AERTimeline.tsx        # AER 타임라인
+│       │   ├── ChatPage.tsx           # Standalone chat page (/chat route)
+│       │   └── AuthCallback.tsx       # zkLogin OAuth callback
 │       ├── components/
 │       │   ├── input/           # ChatInput, InputFooter
 │       │   ├── badges/          # TierBadge, DormantBadge
-│       │   ├── sidebar/         # SidebarSettings
+│       │   ├── modals/          # CreateBudgetModal, BudgetSettingsModal, CreateAgentModal
+│       │   ├── sidebar/         # BudgetDetail, SidebarSettings
+│       │   ├── navigation/      # DashboardSidebar, DashboardHeader
+│       │   ├── receipt/         # AER receipt components (Row, Section, CopyableHash, ReceiptFooter, LocalReceiptContent, OnChainReceiptContent)
+│       │   ├── chat/            # Chat UI (AssistantMessage, ChatTopBar, MessageList, UserMessage)
 │       │   ├── empty/           # LandingScreen, WelcomeScreen, NFTGateScreen
 │       │   └── theme/           # ThemeProvider, ThemeToggle
-│       ├── hooks/               # useNFTGate.ts (BetaAccessNFT 게이팅), useIdleTimeout.ts
-│       ├── config/network.ts    # Tier 상수, MODEL_PRICING, TEE_TYPES, EXECUTOR_SELECTION, nftGateEnabled
+│       ├── hooks/               # useNFTGate, useIdleTimeout, useBudgets, useCreateAgent, useAgentActions, useWalletSession
+│       ├── stores/              # budgetStore.ts, chatStore.ts (Zustand)
+│       ├── config/              # network.ts (Tier 상수, MODEL_PRICING, AER_CONFIG), attestation.ts, client.ts
 │       ├── services/            # chatCrypto.ts (AES-256-GCM), chatStorage.ts (IndexedDB)
-│       └── utils/crypto.ts      # RSA-OAEP 암호화
+│       └── utils/               # crypto.ts (RSA-OAEP), format.ts (NUSDC formatting), budget.ts, tee.ts, suiPagination.ts, executor.ts, encoding.ts
 │
 ├── contracts/                   # baram 패키지 (에스크로 + Budget + BetaAccess)
 │   └── sources/
@@ -63,10 +84,14 @@ apps/baram/
 │
 ├── contracts-aer/               # AER 패키지 (AIExecutionReport — 8카테고리, 31필드)
 │   └── sources/
-│       └── aer.move             # AIExecutionReport + AERRegistry + create_report()
+│       └── aer.move             # AIExecutionReport + AERRegistry + create_report_with_receipt()
+│
+├── contracts-agent/             # Agent 패키지 (AgentProfile + Registry)
+│   └── sources/
+│       └── agent_profile.move   # AgentProfile + AgentProfileRegistry + Kill Switch
 │
 ├── executor-nitro/              # TEE Executor (AWS Nitro)
-│   ├── src/host/                # Host HTTP 서버 + Attestation 검증 + Settlement (PTB 4-call)
+│   ├── src/host/                # Host HTTP 서버 + Attestation 검증 + Settlement (PTB 4-call: submit_proof_with_receipt → create_report_with_receipt → record_job_completion → refresh_tier_from_state)
 │   ├── src/enclave/             # Enclave (crypto, inference, local-llm, attestation)
 │   ├── src/shared/              # protocol.ts, vsock.ts
 │   ├── scripts/                 # Spot 인스턴스 관리 + decay-reputation.ts (cron)
@@ -127,8 +152,13 @@ cd apps/baram/executor-nitro
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
 | `create_request` | User | NUSDC 에스크로 + 요청 생성 |
+| `create_request_with_budget` | Agent | **DEPRECATED** — Budget 연동 요청 생성 (v1, 전액 지출) |
+| `create_request_with_budget_v2` | Agent | **ACTIVE** — Budget 연동 요청 생성 (v2, 카테고리 지원) |
 | `cancel_request` | User | 타임아웃 전 취소 + 환불 (Frontend auto-cancel on execution failure) |
-| `submit_proof` | Executor | 결과 해시 제출 + 지급 |
+| `claim_timeout_refund` | User | 타임아웃 후 환불 요청 |
+| `mark_executing` | Executor | 요청 실행 시작 표시 (executor가 작업 claim) |
+| `submit_proof` | Executor | 결과 해시 제출 + 지급 (witness 없는 레거시 경로, 유지) |
+| `submit_proof_with_receipt` | Executor | **PRIMARY** — 결과 해시 제출 + SettlementReceipt 반환 (AER 강제 생성) |
 
 ### budget.move (Budget Delegation)
 
@@ -140,8 +170,11 @@ cd apps/baram/executor-nitro
 | `deposit_to_budget` | User (Owner) | Budget에 NUSDC 입금 |
 | `withdraw_from_budget` | User (Owner) | Budget에서 NUSDC 출금 |
 | `deactivate_budget` | User (Owner) | Budget 비활성화 + 잔액 반환 |
-| `update_constraints` | User (Owner) | 모델/Executor 화이트리스트, 최대 건당 금액 업데이트 |
-| `spend_from_budget` | Agent | Budget에서 NUSDC 차감 (모델/Executor/금액 제약 검증) |
+| `update_constraints` | User (Owner) | 모델/Executor 화이트리스트, 최대 건당 금액, 만료 업데이트 |
+| `set_spending_limits` | User (Owner) | 일/주/월 지출 한도 + rate limiting 설정 (Dynamic Field) |
+| `set_categories` | User (Owner) | 허용 카테고리 설정 (Dynamic Field) |
+| `spend_from_budget` | Agent | Budget에서 NUSDC 차감 (모델/Executor/금액/rate 제약 검증) |
+| `spend_from_budget_with_category` | Agent | Budget에서 NUSDC 차감 (v2, 카테고리 포함) |
 | `get_balance` / `get_stats` | View | Budget 잔액/통계 조회 |
 | `is_model_allowed` / `is_executor_allowed` | View | 화이트리스트 확인 |
 
@@ -158,6 +191,18 @@ cd apps/baram/executor-nitro
 | `is_valid` | View | 만료/사용횟수 확인 |
 | `get_remaining_uses` / `get_expires_at` | View | NFT 상태 조회 |
 | `get_total_minted` | View | Registry 총 민팅 수 조회 |
+
+### agent_profile.move (Agent Identity + Kill Switch)
+
+> 온체인 AI 에이전트 프로필. 소유자만 생성/수정 가능. 별도 패키지 (`AGENT_CONFIG`).
+
+| 함수 | 호출자 | 설명 |
+|------|--------|------|
+| `create_agent` | User (Owner) | AgentProfile 생성 (agent 주소, name, role, capabilities) |
+| `deactivate_agent` | User (Owner) | 에이전트 비활성화 (is_active=false, 즉시 지출 차단) |
+| `reactivate_agent` | User (Owner) | 에이전트 재활성화 (is_active=true) |
+| `increment_stats` | Internal | 실행 횟수/지출 누적 업데이트 |
+| `is_active` / `get_owner` / `get_agent_address` | View | 프로필 상태 조회 |
 
 ### executor.move (Registry + Self-Service)
 
@@ -221,7 +266,8 @@ cd apps/baram/executor-nitro
 
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
-| `create_report` | Executor (PTB) | AER 생성 (8카테고리 파라미터, initiator에게 전송) |
+| `create_report` | ~~Executor~~ | **DEPRECATED** — `abort E_DEPRECATED (405)`. 시그니처만 유지 (compatible upgrade). |
+| `create_report_with_receipt` | Executor (PTB) | **ACTIVE** — SettlementReceipt를 소비하여 AER 생성. initiator==requester 검증 포함. |
 | `update_policy` | Admin | 정책 버전 증가 |
 | `get_total_records` | View | 총 AER 개수 |
 | `has_record` / `get_record_id` | View | request_id로 AER 존재 확인/ID 조회 |
@@ -243,12 +289,12 @@ cd apps/baram/executor-nitro
 > **Chain ID**: `272218f1` (V7 리셋, 2026-02-04)
 > 전체 주소: `packages/devnet-config/devnet-ids.json` 참조
 
-### Baram Contract (v3 — baram + budget + beta_access)
+### Baram Contract (v6 — baram + budget + beta_access)
 
 | 항목 | 주소 |
 |------|------|
-| Package ID (v3) | `0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6` |
-| Original Package ID | `0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f` |
+| Package ID (v6) | `0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9` |
+| Original Package ID | `0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6` |
 | BaramRegistry | `0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833` |
 | UpgradeCap | `0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291` |
 | BetaAccessRegistry | `0xaf2fd2a1ccfd1f41afe51071981047860b81f9cfaa775fc12acadf099577e4f7` |
@@ -277,11 +323,12 @@ cd apps/baram/executor-nitro
 | AdminCap | `0xd83e429f303284ae7a0f9e27d31cfa92f3fc186a0736930edf6bdddaab152c9c` |
 | UpgradeCap | `0x5b8076bc7f8a8777549ff4772ec8e2f3a8c729fa4ebc1537e2338db839223492` |
 
-### AER Registry (AIExecutionReport — ACTIVE)
+### AER Registry (AIExecutionReport — ACTIVE, v3)
 
 | 항목 | 주소 |
 |------|------|
-| Package ID | `0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0` |
+| Package ID (v3) | `0x809f22f2262fd4211e51c1d890addfaeadb21e4bbf61748d7714306272427692` |
+| Type Origin | `0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0` |
 | AERRegistry | `0xf1acc0794f5aa692de3f825953b708f940c5ccd83655bf79fe0c520052588583` |
 | AdminCap | `0x5d74e5e8bf827b95c6c19ee6697e3edac706aeb2cf3870a39100a06a12c73c7d` |
 | UpgradeCap | `0x9179431462d03a1ae337ba5bff9bfe0de7cfec5854436f119b4c56b2bcd95af4` |
@@ -303,13 +350,16 @@ cd apps/baram/executor-nitro
 | TokenFaucet | `0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92` |
 | ClaimRecord | `0x6416304b56cd61238fe552ddb3d07ecc4c12c749fc7038b04d20de3e52953fe1` |
 
-### Lambda Backend (Cloud Models)
+### Lambda Backend (Cloud Models — Groq only)
 
 | 항목 | 값 |
 |------|-----|
 | API Endpoint | `https://ncn10xkbfh.execute-api.ap-northeast-2.amazonaws.com/prod` |
 | Region | ap-northeast-2 |
-| Active Models | llama-3.3-70b-versatile (Groq), llama-3.2-3b-local (TEE) |
+| Active Models (Lambda) | llama-3.3-70b-versatile (Groq proxy) |
+| Active Models (TEE) | llama-3.2-3b-local (executor-nitro enclave) |
+
+> Lambda는 Groq cloud 모델만 처리. TEE 로컬 모델(llama-3.2-3b)은 executor-nitro에서 처리.
 
 ---
 
@@ -408,7 +458,7 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | [aer.move](contracts-aer/sources/aer.move) | AIExecutionReport (8카테고리, 31필드) |
 | [chatCrypto.ts](frontend/src/services/chatCrypto.ts) | AES-256-GCM 암호화 (PBKDF2 키 파생: address + password) |
 | [chatStorage.ts](frontend/src/services/chatStorage.ts) | IndexedDB 암호화 저장 (per-wallet database) |
-| [transactionBuilder.ts](frontend/src/features/request/services/transactionBuilder.ts) | create_request + cancel_request TX 빌더 |
+| [transactionBuilder.ts](frontend/src/features/request/services/transactionBuilder.ts) | TX builders (request, cancel, budget CRUD, agent, constraints) + object ID 검증 |
 | [useIdleTimeout.ts](frontend/src/hooks/useIdleTimeout.ts) | 15분 idle timeout hook (DOM 이벤트 기반) |
 | [network.ts](frontend/src/config/network.ts) | Tier 상수, MODEL_PRICING, TEE_TYPES |
 | [useExecutors.ts](frontend/src/features/request/hooks/useExecutors.ts) | Executor 목록 + tier 데이터 + selectExecutorWeightedRandom |
@@ -419,6 +469,19 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | [decay-reputation.ts](executor-nitro/scripts/decay-reputation.ts) | Permissionless decay cron 스크립트 |
 | [protocol.ts](executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 (v1.3.0) |
 | [ECRReceipt.tsx](frontend/src/features/request/components/ECRReceipt.tsx) | Execution Report 모달 (8카테고리 AER 표시) |
+| [receipt/](frontend/src/components/receipt/) | AER receipt display components (Row, Section, CopyableHash, LocalReceiptContent, OnChainReceiptContent) |
+| [useAERRecords.ts](frontend/src/features/aer/hooks/useAERRecords.ts) | AER 조회 hook (dual-mode: indexer API first, RPC fallback) |
+| [useAgentProfiles.ts](frontend/src/features/agents/hooks/useAgentProfiles.ts) | Agent profile 조회 hook |
+| [useWalletSession.ts](frontend/src/hooks/useWalletSession.ts) | 통합 지갑 세션 관리 hook |
+| [ChatPage.tsx](frontend/src/pages/ChatPage.tsx) | Standalone 채팅 페이지 (/chat route) |
+| [BudgetsPage.tsx](frontend/src/pages/BudgetsPage.tsx) | Budget 관리 페이지 (통계, 필터, 카드 그리드, CRUD 모달) |
+| [BudgetSettingsModal.tsx](frontend/src/components/modals/BudgetSettingsModal.tsx) | Budget 제약조건 관리 (Constraints/SpendingLimits/Categories 3-tab) |
+| [CreateAgentModal.tsx](frontend/src/components/modals/CreateAgentModal.tsx) | Agent 등록 모달 (주소 검증, character counter, tag input) |
+| [useBudgets.ts](frontend/src/hooks/useBudgets.ts) | Budget CRUD hook (create/deposit/withdraw/deactivate/constraints/limits/categories) |
+| [useCreateAgent.ts](frontend/src/hooks/useCreateAgent.ts) | Agent 등록 hook (sign+execute) |
+| [useAgentActions.ts](frontend/src/hooks/useAgentActions.ts) | Agent deactivate/reactivate hook |
+| [budgetStore.ts](frontend/src/stores/budgetStore.ts) | Budget Zustand store (BudgetInfo 타입, fetch/refresh) |
+| [format.ts](frontend/src/utils/format.ts) | NUSDC formatting (nusdcToRaw: string-based arithmetic, IEEE-754 방지) |
 | [useNFTGate.ts](frontend/src/hooks/useNFTGate.ts) | BetaAccessNFT 게이팅 hook |
 | [NFTGateScreen.tsx](frontend/src/components/empty/NFTGateScreen.tsx) | NFT 게이트 화면 |
 | [mint-beta-access.sh](scripts/mint-beta-access.sh) | BetaAccessNFT 민팅 스크립트 |
@@ -450,6 +513,8 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 | **F-12** | **BetaAccessNFT Gate (베타 테스터 NFT 게이팅, beta_access.move)** | **✅ 완료** |
 | **F-13** | **SDK E2E Tests (execute 5/5 + budget 4/4, coin isolation fix)** | **✅ 완료** |
 | **F-14** | **AER Implementation (ECR→AIExecutionReport, contracts-aer fresh deploy, 8카테고리/31필드, Executor/SDK/Frontend 전환)** | **✅ 완료** |
+| **F-15** | **Dashboard 기능 완성 (Budget 관리 페이지, Agent 등록 UI, Kill Switch, Budget 제약조건 관리, 보안 강화)** | **✅ 완료** |
+| **F-16** | **Contract v6 Upgrade (SettlementReceipt 기반 AER 강제 생성, baram v0.0.6)** | **✅ 완료** |
 | G | Model Marketplace | 계획 |
 | H | Production (Validator 통합, 분산 Executor) | 계획 |
 
@@ -459,7 +524,7 @@ EXECUTOR_STAKE_ID=...          # ExecutorStake owned object (for tier refresh)
 
 ## Nasun Indexer Infrastructure (공유 인프라)
 
-Baram AER에서 온체인 집계 데이터(Executor TX 통계, AER 이력 집계 등)가 필요한 경우,
+Baram에서 온체인 집계 데이터(Executor TX 통계, AER 이력 집계 등)가 필요한 경우,
 **Nasun Indexer API**를 활용할 수 있습니다.
 
 - **API Base URL**: `https://explorer.nasun.io/api/v1`

@@ -185,12 +185,12 @@ Security expectations:
 - 공통 패키지(@nasun/wallet, @nasun/tsconfig 등) 재사용
 - 일관된 개발 환경과 빌드 설정
 
-### 현재 상태 (2026-02-20)
+### 현재 상태 (2026-02-23)
 
 | 앱                             | 패키지명                | 상태      | 배포 방식    | 설명                                                  |
 | ------------------------------ | ----------------------- | --------- | ------------ | ----------------------------------------------------- |
 | ~~`apps/baram`~~               | ~~@nasun/baram~~        | 🗄️ Removed | -            | nasun-baram-legacy 레포로 이전됨 (~/my_apps/nasun-baram-legacy) |
-| `apps/baram`                   | @nasun/baram            | 🔨 Active | TBD          | Baram AER — AI Compliance Settlement Layer (활발히 개발 중) |
+| `apps/baram`                   | @nasun/baram            | 🔨 Active | TBD          | Baram — AI Compliance Settlement Layer (활발히 개발 중) |
 | `apps/network-explorer`        | @nasun/network-explorer | ✅ 완료   | EC2 스크립트 | Nasun Explorer (블록 탐색기)                          |
 | `apps/nasun-website`           | @nasun/nasun-website    | ✅ 완료   | EC2 스크립트 | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
 | `apps/gensol-website`          | @nasun/gensol-website   | ✅ 완료   | EC2 스크립트 | GenSol 웹사이트                                       |
@@ -366,10 +366,11 @@ VITE_EXPLORER_API_URL=/api/v1  # 인덱서 API (기본값: /api/v1, nginx 프록
 nasun-monorepo/
 ├── apps/
 │   ├── baram/                     # @nasun/baram - AI Compliance Settlement Layer (🔨 ACTIVE)
-│   │   ├── frontend/              # Vite React 앱
-│   │   ├── contracts/             # baram.move (에스크로)
+│   │   ├── frontend/              # Vite React 앱 (Dashboard + Budget 관리 + Agent 등록)
+│   │   ├── contracts/             # baram.move (에스크로 + Budget + BetaAccess)
 │   │   ├── contracts-aer/         # aer.move (AIExecutionReport)
-│   │   ├── contracts-executor/    # executor.move (Executor 등록)
+│   │   ├── contracts-agent/       # agent_profile.move (AgentProfile + Kill Switch)
+│   │   ├── contracts-executor/    # executor.move (Executor 등록 + Staking + Tier)
 │   │   ├── contracts-attestation/ # attestation_registry.move
 │   │   ├── contracts-compliance/  # compliance.move (FROZEN)
 │   │   ├── executor-nitro/        # TEE Executor (AWS Nitro)
@@ -391,6 +392,7 @@ nasun-monorepo/
 │   ├── wallet/                    # @nasun/wallet - 지갑 핵심 로직 + hooks
 │   ├── wallet-ui/                 # @nasun/wallet-ui - React UI 컴포넌트
 │   ├── devnet-config/             # @nasun/devnet-config - 컨트랙트 주소 관리
+│   ├── baram-sdk/                 # @nasun/baram-sdk - Baram AER Node.js SDK (v0.1.0)
 │   ├── devnet-tokens/             # Move 스마트계약 (NBTC, NUSDC)
 │   ├── tsconfig/                  # @nasun/tsconfig - 공유 TypeScript 설정
 │   └── tailwind-config/           # @nasun/tailwind-config - Nasun 브랜드 색상
@@ -500,6 +502,34 @@ const tokenFaucet = DEVNET_IDS.tokens.tokenFaucet;
 const baramRegistry = DEVNET_IDS.baram.baramRegistry;
 ```
 
+### @nasun/baram-sdk
+
+Baram AER 분석 및 조회를 위한 Node.js SDK (v0.1.0).
+
+**주요 기능:**
+
+- AER 조회: `getAERByRequestId()`, `getAERsByOwner()`, `getAERsByExecutor()`
+- 분석: `getAERAnalytics()` (기간별 집계, 모델/카테고리별 통계)
+- 체인 순회: `traverseAERChain()` (parent_report_id 기반 실행 체인 추적)
+- Budget 분석: `getBudgetUtilization()` (예산 사용률)
+- Dual-mode: 인덱서 API 우선, RPC fallback
+
+**사용법:**
+
+```typescript
+import { AERClient } from '@nasun/baram-sdk';
+
+const client = new AERClient({
+  rpcUrl: 'https://rpc.devnet.nasun.io',
+  indexerUrl: 'https://explorer.nasun.io/api/v1', // optional
+});
+
+const reports = await client.getAERsByOwner(ownerAddress);
+const analytics = await client.getAERAnalytics({ period: '7d' });
+```
+
+**빌드:** ESM/CJS dual build via tsup.
+
 ### @nasun/tsconfig
 
 공유 TypeScript 설정:
@@ -560,7 +590,7 @@ pnpm deploy:pado:bots:prod       # LP Bot to pado.finance
 | ---------------- | ------------ | --------- | -------------------------------- |
 | baram            | TBD          | 수동 실행 | TBD                              |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
-| explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-2) |
+| explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-3) |
 | nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
 | pado             | EC2 스크립트 | 수동 실행 | https://pado.finance             |
@@ -650,8 +680,9 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 | 디렉토리                          | 설명                                 |
 | --------------------------------- | ------------------------------------ |
-| `apps/baram/contracts/`              | Baram AER 에스크로 + 정산 + Budget + BetaAccess |
+| `apps/baram/contracts/`              | Baram 에스크로 + 정산 + Budget + BetaAccess |
 | `apps/baram/contracts-aer/`          | AIExecutionReport (8카테고리, 31필드) |
+| `apps/baram/contracts-agent/`        | AgentProfile + Kill Switch (agent_profile.move) |
 | `apps/baram/contracts-executor/`     | Executor 등록 + Staking + Tier    |
 | `apps/baram/contracts-attestation/`  | PCR baseline 등록/검증         |
 | `apps/baram/contracts-compliance/`   | ECR (FROZEN — 기존 보존)       |
@@ -699,8 +730,9 @@ cd apps/pado/contracts
 | Lottery    | lottery (LotteryRegistry)                     | ✅ V7          |
 | Governance | governance (Dashboard)                        | ✅ V7          |
 | DeepBook   | DeepBook V3 (CLOB)                            | ✅ V7          |
-| Baram      | baram (BaramRegistry + Budget + BetaAccess)   | ✅ V7 (v3)     |
-| Baram      | baram_aer (AERRegistry + AIExecutionReport)   | ✅ V7          |
+| Baram      | baram (BaramRegistry + Budget + BetaAccess)   | ✅ V7 (v6)     |
+| Baram      | baram_aer (AERRegistry + AIExecutionReport)   | ✅ V7 (v3)     |
+| Baram      | baram_agent (AgentProfileRegistry)            | ✅ V7          |
 | Baram      | executor (ExecutorRegistry + Staking + Tier)  | ✅ V7          |
 | Oracle     | pado_oracle                                   | ✅ V7          |
 | Lending    | pado_lending                                  | ✅ V7          |

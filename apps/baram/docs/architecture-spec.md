@@ -1,11 +1,11 @@
-# Baram-AER Architecture Specification
+# Baram Architecture Specification
 # AI Agent Admin Dashboard + AER
 
-> Version: 1.1
-> Date: 2026-02-10
+> Version: 1.2
+> Date: 2026-02-23
 > Author: protocol-architect (based on research by product-researcher, infra-researcher, security-researcher)
 > Status: **Implemented — Deployed on Devnet V7**
-> Deployment: contracts v0.0.5, contracts-aer v0.0.3, contracts-agent v1.0.0
+> Deployment: contracts v0.0.6 (packageId `0x949af6...`), contracts-aer v0.0.3 (packageId `0x809f22...`), contracts-agent v0.0.1
 
 ---
 
@@ -37,7 +37,7 @@ AI 에이전트가 자율적으로 금융 활동을 하는 시대가 오고 있�
 
 ### 1.3 Solution
 
-Baram-AER은 AI 에이전트의 재무 활동을 위한 **관리 대시보드 + 온체인 블랙박스**를 제공한다:
+Baram은 AI 에이전트의 재무 활동을 위한 **관리 대시보드 + 온체인 블랙박스**를 제공한다:
 
 | 레이어 | 역할 | 비유 |
 |--------|------|------|
@@ -55,7 +55,7 @@ Baram-AER은 AI 에이전트의 재무 활동을 위한 **관리 대시보드 + 
  Virtuals (토큰화)                               │
  ElizaOS (프레임워크)                             │
  Fetch.ai (마켓플레이스)                          │
- AgentKit (결제 인프라)              Baram-AER ◄──┤  유일한 포지션
+ AgentKit (결제 인프라)              Baram ◄──┤  유일한 포지션
  Turnkey (TEE 지갑)                              │
  ERC-8004 (신원)                                 │
 ```
@@ -80,13 +80,13 @@ Baram-AER은 AI 에이전트의 재무 활동을 위한 **관리 대시보드 + 
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        BARAM-AER DASHBOARD                         │
+│                         BARAM DASHBOARD                             │
 │                     (React + Vite Frontend)                        │
 │                                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌──────────────────┐  │
-│  │Dashboard │  │My Agents │  │ Execution │  │ Agent Detail      │  │
-│  │Overview  │  │  List    │  │ Reports   │  │ (Chat Tab inside) │  │
-│  └──────────┘  └──────────┘  └───────────┘  └──────────────────┘  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌────────────────┐  │
+│  │Dashboard │  │My Agents │  │ Budgets  │  │ Execution │  │ Agent Detail    │  │
+│  │Overview  │  │  List    │  │ Page     │  │ Reports   │  │ (Chat+KillSw)  │  │
+│  └──────────┘  └──────────┘  └──────────┘  └───────────┘  └────────────────┘  │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │                    @nasun/wallet Integration                 │  │
@@ -164,7 +164,7 @@ baram_attestation (existing, no changes in MVP)
      └── Budget validates: agent auth, spending limits, categories
      └── Creates ComputeRequest with escrow
 [4] Executor processes request
-     └── submit_proof_with_aer()       ← NEW: atomic settlement + AER
+     └── submit_proof_with_receipt()    ← NEW: atomic settlement + AER
      └── Returns SettlementReceipt     ← NEW: witness for AER
 [5] AER created atomically             → AIExecutionReport NFT (to owner)
      └── Budget snapshot: before/after
@@ -177,7 +177,7 @@ baram_attestation (existing, no changes in MVP)
 
 ### 2.4 Pado DEX Integration (Demo Agent Trading)
 
-Baram-AER 프로토타입의 핵심 데모 시나리오는 "DeFi Trader + Budget Guardian"이다.
+Baram 프로토타입의 핵심 데모 시나리오는 "DeFi Trader + Budget Guardian"이다.
 에이전트가 AI 분석 후 Pado DEX에서 자율 거래하고, 예산 한도 초과 시 온체인에서 거부되는 것을 시연한다.
 
 **왜 Pado DEX인가:**
@@ -640,6 +640,15 @@ module baram::baram {
 
     // KEEP existing submit_proof for backwards compatibility during transition
     // Mark as deprecated via comment
+
+    /// Create request with budget v2 (active path — replaces create_request_with_budget)
+    public entry fun create_request_with_budget_v2(/* ... */) { /* ... */ }
+
+    /// Claim timeout refund (requester can reclaim after timeout)
+    public entry fun claim_timeout_refund(/* ... */) { /* ... */ }
+
+    /// Mark request as executing (executor claims the job)
+    public entry fun mark_executing(/* ... */) { /* ... */ }
 }
 ```
 
@@ -859,66 +868,86 @@ baram = { local = "../contracts" }
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### 4.3 Frontend Architecture
+### 4.3 Frontend Architecture (Implemented)
 
 ```
 src/
 ├── App.tsx                          // Router: DashboardLayout wrapping routes
 ├── layouts/
-│   ├── DashboardLayout.tsx          // NEW: Sidebar + Main content
-│   └── ChatLayout.tsx               // KEEP: Reused inside Agent Chat tab
+│   ├── DashboardLayout.tsx          // Sidebar + Header + Main content
+│   └── ChatLayout.tsx               // Reused inside Agent Chat tab
 ├── pages/
-│   ├── DashboardOverview.tsx        // NEW
-│   ├── AgentList.tsx                // NEW
-│   ├── AgentDetail.tsx              // NEW (tabs: overview/wallet/budget/aer/chat)
-│   ├── AERTimeline.tsx              // NEW
-│   ├── AERDetail.tsx                // NEW
-│   ├── Settings.tsx                 // NEW
-│   └── AuthCallback.tsx             // KEEP
+│   ├── DashboardOverview.tsx        // Summary stats, agent cards, recent AERs
+│   ├── AgentList.tsx                // Agent grid + Register Agent modal
+│   ├── AgentDetail.tsx              // 5 tabs: overview/wallet/budget/aer/chat + kill switch
+│   ├── BudgetsPage.tsx              // Budget management: stats, filters, CRUD modals
+│   ├── AERTimeline.tsx              // AER timeline with filtering
+│   ├── ChatPage.tsx                 // Standalone chat page (/chat route)
+│   └── AuthCallback.tsx             // zkLogin OAuth callback
 ├── features/
-│   ├── agents/                      // NEW feature module
-│   │   ├── components/
-│   │   │   ├── AgentCard.tsx
-│   │   │   ├── AgentCreateForm.tsx
-│   │   │   ├── AgentStatusBadge.tsx
-│   │   │   └── BudgetEditor.tsx
+│   ├── request/                     // Chat/request feature + TX builders
 │   │   ├── hooks/
-│   │   │   ├── useAgentProfiles.ts  // Fetch AgentProfile objects from chain
-│   │   │   ├── useAgentBudgets.ts   // Fetch Budget objects linked to agent
-│   │   │   └── useCreateAgent.ts    // Transaction builder for agent creation
-│   │   └── types.ts
-│   ├── aer/                         // NEW feature module
-│   │   ├── components/
-│   │   │   ├── AERTimelineItem.tsx
-│   │   │   ├── AERDetailCard.tsx
-│   │   │   ├── AERFilter.tsx
-│   │   │   └── BudgetChart.tsx      // Budget consumption over time
-│   │   ├── hooks/
-│   │   │   ├── useAERRecords.ts     // Fetch AER NFTs owned by user
-│   │   │   └── useAERStats.ts       // Aggregate AER statistics
-│   │   └── types.ts
-│   ├── dashboard/                   // NEW feature module
-│   │   ├── components/
-│   │   │   ├── StatCard.tsx
-│   │   │   ├── AlertCard.tsx
-│   │   │   └── RecentActivity.tsx
+│   │   │   ├── useExecutors.ts      // Executor list + tier data + weighted random
+│   │   │   └── useCreateRequest.ts  // Request creation hook
+│   │   ├── services/
+│   │   │   ├── transactionBuilder.ts // All TX builders (request, cancel, budget, agent, constraints)
+│   │   │   └── coinService.ts       // NUSDC coin selection
+│   │   └── components/
+│   │       └── ECRReceipt.tsx       // AER detail modal (8 categories)
+│   ├── aer/                         // AER feature (data fetching)
 │   │   └── hooks/
-│   │       └── useDashboardStats.ts
-│   └── request/                     // KEEP: Existing chat/request feature
-│       └── ...
+│   │       └── useAERRecords.ts     // Dual-mode: indexer API first, RPC fallback
+│   └── agents/                      // Agent feature (data fetching)
+│       └── hooks/
+│           ├── useAgentProfiles.ts   // Agent profile queries
+│           └── useAgentBudgets.ts    // Agent-linked budget queries
 ├── components/
 │   ├── navigation/
-│   │   └── Sidebar.tsx              // NEW
-│   └── ...existing...
+│   │   ├── DashboardSidebar.tsx     // Nav items: Dashboard, Agents, Budgets, AER, Chat
+│   │   └── DashboardHeader.tsx      // Top header bar
+│   ├── modals/
+│   │   ├── CreateBudgetModal.tsx    // Budget creation form
+│   │   ├── BudgetSettingsModal.tsx  // 3-tab: Constraints, Spending Limits, Categories
+│   │   └── CreateAgentModal.tsx     // Agent registration (address validation, tag input)
+│   ├── sidebar/
+│   │   └── BudgetDetail.tsx         // Budget detail with deposit/withdraw/deactivate/settings
+│   ├── receipt/                     // AER receipt display components (7 files)
+│   │   ├── LocalReceiptContent.tsx  // Local (pre-chain) receipt view
+│   │   └── OnChainReceiptContent.tsx // On-chain AER receipt view
+│   ├── chat/                        // Chat UI components
+│   │   ├── AssistantMessage.tsx     // AI response rendering
+│   │   ├── ChatTopBar.tsx           // Chat header
+│   │   ├── MessageList.tsx          // Message list
+│   │   └── UserMessage.tsx          // User message rendering
+│   ├── input/                       // ChatInput, InputFooter
+│   ├── badges/                      // TierBadge, DormantBadge
+│   ├── empty/                       // LandingScreen, WelcomeScreen, NFTGateScreen
+│   └── theme/                       // ThemeProvider, ThemeToggle
 ├── hooks/
-│   └── ...existing...
-├── services/
-│   └── nasunClient.ts               // RPC queries for on-chain data
+│   ├── useBudgets.ts                // Budget CRUD (create/deposit/withdraw/deactivate/constraints/limits/categories)
+│   ├── useCreateAgent.ts            // Agent registration (sign+execute)
+│   ├── useAgentActions.ts           // Agent deactivate/reactivate
+│   ├── useWalletSession.ts          // Unified wallet state (session management)
+│   ├── useNFTGate.ts                // BetaAccessNFT gate
+│   └── useIdleTimeout.ts            // 15min idle timeout
 ├── stores/
-│   ├── chatStore.ts                  // KEEP
-│   └── agentStore.ts                 // NEW: Agent management state
+│   ├── chatStore.ts                 // Chat session state (Zustand)
+│   └── budgetStore.ts               // Budget list + BudgetInfo type (Zustand)
+├── services/
+│   ├── chatCrypto.ts                // AES-256-GCM (PBKDF2 key derivation)
+│   └── chatStorage.ts              // IndexedDB encrypted storage
+├── utils/
+│   ├── format.ts                    // NUSDC formatting (nusdcToRaw: string-based arithmetic)
+│   ├── budget.ts                    // getBudgetStatus helper
+│   ├── crypto.ts                    // RSA-OAEP encryption
+│   ├── tee.ts                       // TEE utility functions
+│   ├── suiPagination.ts             // Sui RPC pagination helper
+│   ├── executor.ts                  // Executor utility functions
+│   └── encoding.ts                  // Encoding helpers
 └── config/
-    └── network.ts                    // KEEP + extend with agent contract addresses
+    ├── network.ts                   // BARAM_CONFIG, AER_CONFIG, AGENT_CONFIG, tier constants, pricing
+    ├── attestation.ts               // Attestation configuration
+    └── client.ts                    // Sui client configuration
 ```
 
 ### 4.4 데이터 소싱 전략
@@ -1055,11 +1084,11 @@ Step 1: [DONE] Deploy baram_agent (NEW package)
         → AgentProfileRegistry: 0x1e236dfab7e4c3df21651fa4b5dc846d8d1bed314a2615474dd1b805445b9f11
         → PackageID: 0x05edb7edec6e69af66e5d2564e6ca7cb46b60469a0897291c51f8d5c949424de
 
-Step 2: [DONE] Upgrade baram package (contracts/ → v0.0.5)
+Step 2: [DONE] Upgrade baram package (contracts/ → v0.0.6)
         → budget.move: SpendingLimits DF + CategoryLimits DF + rate limiting + owner-only deposit
         → baram.move: SettlementReceipt + submit_proof_with_receipt
-        → PackageID: 0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1
-        → TX: 8GoppSivipkunjWE8tfSfiPGh2d878ZaeaX1jJ4cV2GQ
+        → v0.0.5 PackageID: 0x60375a271223b222ac7060f2c076d0041ef9b1d2fed8d360556eeb29eb43a8b1
+        → v0.0.6 PackageID: 0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9
 
 Step 3: [DONE] Upgrade baram_aer package (contracts-aer/ → v0.0.3)
         → aer.move: create_report_with_receipt + executor/initiator 검증
@@ -1090,13 +1119,18 @@ Step 4: [DONE] Update devnet-config
 ### Phase 2: Dashboard Frontend -- DONE
 
 ```
-[x] DashboardLayout + Sidebar + Routing 구조
-[x] DashboardOverview 페이지
-[x] AgentList + AgentCreateForm
+[x] DashboardLayout + DashboardSidebar + Routing 구조
+[x] DashboardOverview 페이지 (summary stats, agent cards)
+[x] AgentList + CreateAgentModal (주소 검증, character counter, tag input)
 [x] AgentDetail (5 tabs: Overview, Wallet, Budget, Activity, Chat)
-[x] BudgetEditor (SpendingLimits 설정 UI)
+[x] AgentDetail Kill Switch (Deactivate/Reactivate 버튼 + 확인 모달)
+[x] BudgetsPage (통계 그리드, pill 필터, 카드 그리드, CRUD 모달)
+[x] BudgetSettingsModal (3-tab: Constraints, SpendingLimits, Categories)
 [x] AERTimeline + AERDetailCard
 [x] Existing ChatLayout → Agent Chat Tab으로 이동
+[x] TX Builders: agent (create/deactivate/reactivate), budget constraints (update/limits/categories)
+[x] Object ID 검증 (0x + 64 hex) 모든 TX builder에 적용
+[x] nusdcToRaw 문자열 기반 산술 (IEEE-754 부동소수점 방지)
 ```
 
 ### Phase 2.5: Demo Agent Script -- DONE
@@ -1121,6 +1155,12 @@ Step 4: [DONE] Update devnet-config
     - H-2: deposit_to_budget owner-only 제한
     - H-4: create_report_with_receipt initiator 검증
     - H-3: create_request_with_budget v1 deprecation 문서화
+[x] Dashboard 기능 완성 (F-15)
+    - Budget 관리 페이지 (고아 코드 연결 + 통계/필터/카드 그리드)
+    - Agent 등록 UI (CreateAgentModal + useCreateAgent hook)
+    - Agent Kill Switch (AgentDetail에 Deactivate/Reactivate + 확인 모달)
+    - Budget 제약조건 (BudgetSettingsModal 3-tab + TX builders)
+    - 보안 강화: nusdcToRaw string arithmetic, object ID validation, input limits
 ```
 
 ### Phase 3.5: Remaining Polish (TODO)
@@ -1129,6 +1169,7 @@ Step 4: [DONE] Update devnet-config
 [ ] Alert system (budget threshold warnings)
 [ ] AER filter & search
 [ ] Budget consumption chart (Recharts)
+[ ] Dynamic field pre-populate (SpendingLimits, Categories — on-chain RPC query)
 [ ] Responsive design / mobile
 [ ] Move 단위 테스트 (sui move test)
 [ ] 프론트엔드 통합 테스트
@@ -1188,8 +1229,8 @@ Step 4: [DONE] Update devnet-config
 
 | Contract | Package | Version | PackageID |
 |----------|---------|---------|-----------|
-| baram.move | baram | **v0.0.5** | `0x60375a...a8b1` |
-| budget.move | baram | **v0.0.5** | (same package) |
+| baram.move | baram | **v0.0.6** | `0x949af6...f9` |
+| budget.move | baram | **v0.0.6** | (same package) |
 | aer.move | baram_aer | **v0.0.3** | `0x809f22...7692` |
 | agent_profile.move | baram_agent | v1.0.0 | `0x05edb7...24de` |
 | executor.move | baram_executor | v1.0.0 | devnet-ids.json |
@@ -1199,7 +1240,7 @@ Step 4: [DONE] Update devnet-config
 
 > Full object IDs: `packages/devnet-config/devnet-ids.json`
 >
-> Upgrade history: baram v1→v5 (5 upgrades), aer v1→v3 (2 upgrades), agent v1 (new deploy)
+> Upgrade history: baram v1→v6 (6 upgrades), aer v1→v3 (2 upgrades), agent v1 (new deploy)
 
 ## Appendix B: Error Code Registry
 

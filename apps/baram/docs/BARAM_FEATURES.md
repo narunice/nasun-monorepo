@@ -1,12 +1,12 @@
-# Baram-AER: AI Compliance Settlement Layer — Features Overview
+# Baram: AI Compliance Settlement Layer — Features Overview
 
-> Last updated: 2026-02-18
+> Last updated: 2026-02-23
 
 ---
 
-## What Is Baram-AER?
+## What Is Baram?
 
-Baram-AER is an **AI Compliance Settlement Layer** built on the Nasun blockchain. Its purpose is to make AI agent activity **auditable, accountable, and financially governed** — on-chain.
+Baram is an **AI Compliance Settlement Layer** built on the Nasun blockchain. Its purpose is to make AI agent activity **auditable, accountable, and financially governed** — on-chain.
 
 When a person delegates tasks and money to an AI agent, three questions naturally arise:
 
@@ -14,7 +14,7 @@ When a person delegates tasks and money to an AI agent, three questions naturall
 - **Did it stay within the budget I set?**
 - **Can I prove, to anyone, what the agent did with my money?**
 
-Today, no AI provider — OpenAI, Anthropic, Google, or otherwise — offers a per-inference, tamper-proof audit record. Baram-AER fills that gap. Every AI execution that passes through it produces an on-chain receipt called an **AIExecutionReport (AER)**. This receipt cannot be forged, cannot be omitted, and cannot be altered after the fact.
+Today, no AI provider — OpenAI, Anthropic, Google, or otherwise — offers a per-inference, tamper-proof audit record. Baram fills that gap. Every AI execution that passes through it produces an on-chain receipt called an **AIExecutionReport (AER)**. This receipt cannot be forged, cannot be omitted, and cannot be altered after the fact.
 
 > **Core promise**: Your agent works for you. Baram proves it.
 
@@ -273,7 +273,7 @@ If any check fails, execution stops. The attestation hash is recorded in the AER
 
 ## The Full Execution Flow
 
-From the user's perspective, a complete Baram-AER cycle looks like this:
+From the user's perspective, a complete Baram cycle looks like this:
 
 **1. Register an agent**
 Create an `AgentProfile` on-chain, linking your address to your AI agent's address. This is a one-time setup step.
@@ -303,22 +303,25 @@ All four steps succeed or all four fail. There is no partial settlement.
 The AER NFT appears in the initiator's wallet. It serves as a permanent, portable proof of the execution. Anyone can read it on-chain.
 
 **8. Review in the Dashboard**
-The Baram-AER Dashboard shows:
-- Active agents and their status
-- Budget consumption (remaining balance, daily/weekly/monthly spend)
+The Baram Dashboard shows:
+- Dashboard overview with summary statistics
+- Agent list with status badges, budget gauges, and kill switch controls
+- Budget management page with filtering, statistics, and CRUD operations
+- Budget constraint management (spending limits, categories, rate limiting)
+- Chat page for direct AI inference (Standard cloud models or Private TEE mode)
 - Full AER timeline with filtering
-- Individual AER detail views
+- Individual AER detail views (8-category receipt with on-chain verification)
 
 ---
 
-## Feature 7: Baram-AER SDK — Programmatic Access to Audit Data
+## Feature 7: Baram SDK — Programmatic Access to Audit Data
 
-The `@nasun/baram-sdk` is a read-only TypeScript library for querying and analyzing AER data. It requires no signing keys or credentials — only a connection to the Nasun RPC.
+The `@nasun/baram-sdk` (package: `packages/baram-sdk/`) is a read-only TypeScript library for querying and analyzing AER data. It requires no signing keys or credentials — only a connection to the Nasun RPC. It supports dual-mode operation: indexer API (when available) with automatic RPC fallback.
 
 ### Query Capabilities
 
 **By record identifier**
-- Fetch a single AER by its blockchain request ID or object ID
+- Fetch a single AER by its blockchain request ID or object ID (always RPC for freshness)
 
 **By time**
 - Fetch recent AERs with cursor-based pagination (most recent first)
@@ -331,6 +334,7 @@ The `@nasun/baram-sdk` is a read-only TypeScript library for querying and analyz
 
 **By filter**
 - Combine any number of criteria: address, model name, tier level, TEE verification status, payment range, time window, whether the execution is part of a decision chain, and more
+- In-memory filtering with AND logic (Sui RPC only supports event-type filtering)
 
 ### Analytics Capabilities
 
@@ -358,6 +362,47 @@ Because AERs record `triggeredBy` (which AER triggered this one) and `triggeredA
 **Forward tracing**: Given an AER, walk forward through `triggeredAction` links to find everything downstream — all the follow-on actions the agent took.
 
 This allows auditors to reconstruct, after the fact, why a specific on-chain action happened and what the agent's full decision sequence was.
+
+---
+
+## Feature 8: Dashboard — Admin Control Center
+
+### What It Is
+The Baram Dashboard is a web-based admin interface that gives agent owners full visibility and control over their AI agents, budgets, and execution history. It is built with React 19 + Vite 7 and uses the Nasun blockchain as its sole source of truth.
+
+### Routes
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | DashboardOverview | Summary stats, agent cards, recent AERs |
+| `/agents` | AgentList | Agent list + registration |
+| `/agents/:id` | AgentDetail | Agent detail (5 tabs) + kill switch |
+| `/budgets` | BudgetsPage | Budget management (CRUD, filters, stats) |
+| `/aer` | AERTimeline | Execution report timeline |
+| `/chat` | ChatPage | Direct AI inference (Standard/Private mode) |
+| `/callback` | AuthCallback | zkLogin OAuth callback |
+
+### Dashboard Overview
+The main landing page shows summary statistics: total agents, active budgets, total balance, total AER records. Below, agent status cards show each agent's health at a glance — name, role, budget remaining, and recent activity.
+
+### Agent Management
+- **Agent List**: Displays all registered agents with their status badges (Active/Inactive), associated budget gauges, and capability tags. Agents are fetched directly from the on-chain `AgentProfileRegistry`.
+- **Agent Registration**: A modal form that creates an `AgentProfile` on-chain. Validates the agent address format (0x + 64 hex chars), enforces character limits on name (64) and role (32), and provides a tag input for capabilities (max 10, max 64 chars each).
+- **Kill Switch**: Each agent detail page includes explicit Deactivate/Reactivate buttons with a confirmation modal. Deactivation is a high-risk action — the UI uses red-tinted warning panels and requires explicit confirmation. The effect is immediate: the agent loses Budget access on the next transaction.
+
+### Budget Management
+- **Budget List Page**: Shows all budgets with statistics (total balance, total spent, active count, total requests), pill-style filter tabs (All/Active/Inactive/Expired), and a card grid. Each card displays agent address, status badge, balance gauge bar with low-balance warning (< 20%), and summary stats.
+- **Budget CRUD**: Create Budget modal handles coin selection, deposit amount (with string-based NUSDC conversion to avoid floating-point drift), agent address, model whitelist, expiration, and per-request maximum.
+- **Budget Detail**: Displays full budget info with Deposit, Withdraw, Deactivate, and Settings actions.
+- **Budget Constraints** (Settings Modal, 3 tabs):
+  - **Constraints Tab**: Max per request, allowed models (multi-select), allowed executors (tag input with address validation, max 20), expiration date (with past-date validation).
+  - **Spending Limits Tab**: Daily/weekly/monthly NUSDC limits and minimum interval between requests (seconds).
+  - **Categories Tab**: Allowed spending categories (tag input, max 20, max 64 chars each).
+
+### Security Measures in the Dashboard
+- **Object ID validation**: All transaction builders validate Sui object IDs (0x + 64 hex chars) before submitting transactions.
+- **String-based NUSDC conversion**: The `nusdcToRaw` function uses integer-only arithmetic (split decimal, pad fractional to 6 digits) to prevent IEEE-754 floating-point drift that could cause incorrect payment amounts.
+- **Input limits**: Enforced maximums on all free-text inputs — executor addresses (20), categories (20, 64 chars each), capabilities (10, 64 chars each).
+- **Past expiration prevention**: Budget constraint forms reject expiration dates in the past.
 
 ---
 
