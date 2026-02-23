@@ -29,6 +29,7 @@ import padoVisionEN from "../assets/locales/en/pado-vision.json";
 import padoTechEN from "../assets/locales/en/pado-tech.json";
 import padoPitchEN from "../assets/locales/en/pado-pitch.json";
 import padoRevisedEN from "../assets/locales/en/pado-revised.json";
+import financeEN from "../assets/locales/en/finance.json";
 
 declare module "i18next" {
   interface CustomTypeOptions {
@@ -61,6 +62,7 @@ declare module "i18next" {
       "pado-tech": typeof padoTechEN;
       "pado-pitch": typeof padoPitchEN;
       "pado-revised": typeof padoRevisedEN;
+      finance: typeof financeEN;
     };
   }
 }
