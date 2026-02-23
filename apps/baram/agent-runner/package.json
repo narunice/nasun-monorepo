@@ -1,0 +1,19 @@
+{
+  "name": "@nasun/baram-agent-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.21.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@nasun/tsconfig": "workspace:*",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
