@@ -3,7 +3,7 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import { BARAM_CONFIG } from '@/config/network';
+import { BARAM_CONFIG, AGENT_CONFIG } from '@/config/network';
 import type { CoinRef } from './coinService';
 
 const SUI_CLOCK_ID = '0x6';
@@ -173,6 +173,114 @@ export function buildDeactivateBudgetTransaction(budgetId: string): Transaction 
     target: `${BARAM_CONFIG.packageId}::budget::deactivate_budget`,
     arguments: [
       tx.object(budgetId),
+    ],
+  });
+  return tx;
+}
+
+// ========== Agent Profile Transaction Builders ==========
+
+export function buildCreateAgentTransaction(params: {
+  agentAddress: string;
+  name: string;
+  role: string;
+  capabilities: string[];
+}): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${AGENT_CONFIG.packageId}::agent_profile::create_agent`,
+    arguments: [
+      tx.object(AGENT_CONFIG.registryId),
+      tx.pure.address(params.agentAddress),
+      tx.pure.string(params.name),
+      tx.pure.string(params.role),
+      tx.pure.vector('string', params.capabilities),
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
+  return tx;
+}
+
+export function buildDeactivateAgentTransaction(profileId: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${AGENT_CONFIG.packageId}::agent_profile::deactivate_agent`,
+    arguments: [
+      tx.object(AGENT_CONFIG.registryId),
+      tx.object(profileId),
+    ],
+  });
+  return tx;
+}
+
+export function buildReactivateAgentTransaction(profileId: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${AGENT_CONFIG.packageId}::agent_profile::reactivate_agent`,
+    arguments: [
+      tx.object(AGENT_CONFIG.registryId),
+      tx.object(profileId),
+    ],
+  });
+  return tx;
+}
+
+// ========== Budget Constraints Transaction Builders ==========
+
+export function buildUpdateConstraintsTransaction(params: {
+  budgetId: string;
+  maxPerRequest: number;
+  allowedModels: string[];
+  allowedExecutors: string[];
+  expiresAt: number;
+}): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::budget::update_constraints`,
+    arguments: [
+      tx.object(params.budgetId),
+      tx.pure.u64(params.maxPerRequest),
+      tx.pure.vector('string', params.allowedModels),
+      tx.pure.vector('address', params.allowedExecutors),
+      tx.pure.u64(params.expiresAt),
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
+  return tx;
+}
+
+export function buildSetSpendingLimitsTransaction(params: {
+  budgetId: string;
+  dailyLimit: number;
+  weeklyLimit: number;
+  monthlyLimit: number;
+  minIntervalMs: number;
+}): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::budget::set_spending_limits`,
+    arguments: [
+      tx.object(params.budgetId),
+      tx.pure.u64(params.dailyLimit),
+      tx.pure.u64(params.weeklyLimit),
+      tx.pure.u64(params.monthlyLimit),
+      tx.pure.u64(params.minIntervalMs),
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
+  return tx;
+}
+
+export function buildSetCategoriesTransaction(params: {
+  budgetId: string;
+  allowedCategories: string[];
+}): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM_CONFIG.packageId}::budget::set_categories`,
+    arguments: [
+      tx.object(params.budgetId),
+      tx.pure.vector('string', params.allowedCategories),
     ],
   });
   return tx;

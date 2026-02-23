@@ -2,10 +2,13 @@
  * AgentList - Display all agent profiles with their budget status
  */
 
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWalletSession } from '../hooks/useWalletSession';
 import { useAgentProfiles } from '../features/agents/hooks/useAgentProfiles';
 import { useAgentBudgets, type BudgetInfo } from '../features/agents/hooks/useAgentBudgets';
+import { useCreateAgent } from '../hooks/useCreateAgent';
+import { CreateAgentModal } from '../components/modals/CreateAgentModal';
 import { formatNusdcValue as formatNUSDC, truncateAddress as formatAddress, formatDate } from '../utils/format';
 
 function AgentCard({
@@ -25,12 +28,13 @@ function AgentCard({
   };
   budget?: BudgetInfo;
 }) {
+  const budgetTotal = budget ? Math.max(1, budget.balance + budget.totalSpent) : 1;
   const spentPercent = budget
-    ? (budget.totalSpent / (budget.balance + budget.totalSpent || 1)) * 100
+    ? Math.max(0, Math.min(100, (budget.totalSpent / budgetTotal) * 100))
     : 0;
 
   const isLow = budget && budget.balance > 0
-    ? budget.balance / (budget.balance + budget.totalSpent || 1) < 0.2
+    ? budget.balance / budgetTotal < 0.2
     : false;
 
   return (
@@ -108,8 +112,23 @@ function AgentCard({
 
 export function AgentList() {
   const { walletAddress, isConnected } = useWalletSession();
-  const { data: agents, isLoading: agentsLoading } = useAgentProfiles(walletAddress);
+  const { data: agents, isLoading: agentsLoading, refetch } = useAgentProfiles(walletAddress);
   const { data: budgets } = useAgentBudgets(walletAddress);
+  const { createAgent, txStatus, txError, resetTxStatus } = useCreateAgent();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const handleCreate = async (params: {
+    agentAddress: string;
+    name: string;
+    role: string;
+    capabilities: string[];
+  }) => {
+    const digest = await createAgent(params);
+    if (digest) {
+      refetch?.();
+    }
+    return digest;
+  };
 
   if (!isConnected) {
     return (
@@ -133,19 +152,29 @@ export function AgentList() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Agents</h2>
-        <span className="text-xs text-[var(--color-text-muted)]">
-          {agents?.length ?? 0} registered
-        </span>
+        <button
+          onClick={() => { resetTxStatus(); setShowCreateModal(true); }}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+        >
+          Register Agent
+        </button>
       </div>
 
       {!agents || agents.length === 0 ? (
-        <div className="text-center py-16">
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <svg className="w-10 h-10 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <circle cx="12" cy="8" r="4" strokeWidth={1.5} />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 20c0-3.87 3.13-7 7-7s7 3.13 7 7" />
+          </svg>
           <p className="text-sm text-[var(--color-text-muted)]">
-            No agents registered yet.
+            Register your first agent to start managing AI budgets.
           </p>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Run the demo agent script to create your first agent.
-          </p>
+          <button
+            onClick={() => { resetTxStatus(); setShowCreateModal(true); }}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+          >
+            Register Agent
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -157,6 +186,16 @@ export function AgentList() {
             />
           ))}
         </div>
+      )}
+
+      {/* Create Agent Modal */}
+      {showCreateModal && (
+        <CreateAgentModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreate}
+          txStatus={txStatus}
+          txError={txError}
+        />
       )}
     </div>
   );
