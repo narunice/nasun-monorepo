@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import fullTrailerVideoMP4 from "../../assets/videos/Full-Trailer184s-rf29.mp4";
+const fullTrailerVideoMP4 = "/videos/Full-Trailer184s-rf29.mp4";
 import { InlineLoading } from "@/components/ui";
 
 interface HeroSectionProps {

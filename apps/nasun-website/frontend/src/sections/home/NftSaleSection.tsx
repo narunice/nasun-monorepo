@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import battalionNftVideo from "../../assets/videos/Battalion-Nft-Letterbox-01-rf22.mp4";
+const battalionNftVideo = "/videos/Battalion-Nft-Letterbox-01-rf22.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
 

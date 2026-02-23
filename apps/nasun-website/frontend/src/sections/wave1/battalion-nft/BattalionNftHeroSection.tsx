@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { InlineLoading } from "@/components/ui/InlineLoading";
-import battalionNftVideoDesktop from "../../../assets/videos/Battalion-Nft-Letterbox-01-rf22.mp4";
-import battalionNftVideoMobile from "../../../assets/videos/Battalion-Nft-White-Square-01-mobile-rf20.mp4";
+const battalionNftVideoDesktop = "/videos/Battalion-Nft-Letterbox-01-rf22.mp4";
+const battalionNftVideoMobile = "/videos/Battalion-Nft-White-Square-01-mobile-rf20.mp4";
 
 interface BattalionNftHeroSectionProps {
   onVideoReady?: () => void;
