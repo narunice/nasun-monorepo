@@ -41,6 +41,8 @@ export const AER_PACKAGE_ID = config.baram.aerPackageId as ObjectId;
 export const AER_REGISTRY = config.baram.aerRegistry as ObjectId;
 export const AER_ADMIN_CAP = config.baram.aerAdminCap as ObjectId;
 export const AER_UPGRADE_CAP = config.baram.aerUpgradeCap as ObjectId;
+// AER type origin (runtime type origin for AIExecutionReport struct)
+export const AER_TYPE_ORIGIN = config.baram.aerTypeOrigin as ObjectId;
 
 // Budget type origin (runtime type origin for budget module types)
 export const BUDGET_TYPE_ORIGIN = config.baram.budgetTypeOrigin as ObjectId;
@@ -83,6 +85,7 @@ export const BARAM: BaramConfig = {
   aerRegistry: AER_REGISTRY,
   aerAdminCap: AER_ADMIN_CAP,
   aerUpgradeCap: AER_UPGRADE_CAP,
+  aerTypeOrigin: AER_TYPE_ORIGIN,
   budgetTypeOrigin: BUDGET_TYPE_ORIGIN,
   budgetV2TypeOrigin: BUDGET_V2_TYPE_ORIGIN,
   agentPackageId: AGENT_PACKAGE_ID,

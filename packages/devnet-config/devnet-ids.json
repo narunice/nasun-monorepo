@@ -73,6 +73,7 @@
     "aerRegistry": "0xf1acc0794f5aa692de3f825953b708f940c5ccd83655bf79fe0c520052588583",
     "aerAdminCap": "0x5d74e5e8bf827b95c6c19ee6697e3edac706aeb2cf3870a39100a06a12c73c7d",
     "aerUpgradeCap": "0x9179431462d03a1ae337ba5bff9bfe0de7cfec5854436f119b4c56b2bcd95af4",
+    "aerTypeOrigin": "0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0",
     "agentPackageId": "0x05edb7edec6e69af66e5d2564e6ca7cb46b60469a0897291c51f8d5c949424de",
     "agentProfileRegistry": "0x1e236dfab7e4c3df21651fa4b5dc846d8d1bed314a2615474dd1b805445b9f11",
     "agentUpgradeCap": "0xa78f6958f57c63f99fa237556769c9f21be1a315d90c9ef380502ad4a9f273f9",
