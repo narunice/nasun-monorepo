@@ -25,22 +25,18 @@ export interface ComputeRequestOnChain {
 }
 
 export interface AERReportData {
-  // WHO — Requester (initiator/executor derived from request + keypair)
-  authorizer: string;
+  // WHO — Requester (initiator derived from request)
   delegationPath: string[];
   // WHO — Executor
   executorPrincipal: string | null;
-  // HOW MUCH
-  paymentToken: number;
-  executorReceived: number;
+  // HOW MUCH (payment_amount, executor_received, payment_token from receipt)
   feeDetail: string | null;
   budgetId: string | null;
   budgetRemaining: number | null;
-  // WHAT
+  // WHAT (model_name, output_hash, execution_time_ms from receipt)
   modelMetadata: string | null;
   // WHY
   purpose: string | null;
-  policyVersion: number | null;
   constraints: string | null;
   // HOW TRUSTWORTHY
   executorTier: number;
@@ -501,9 +497,10 @@ export async function submitProofWithAER(
     ? request.promptHash as unknown as number[]
     : Array.from(Buffer.from(request.promptHash, 'hex'));
 
-  // Call 1: submit_proof (settlement + payment)
-  tx.moveCall({
-    target: `${cfg.packageId}::baram::submit_proof`,
+  // Call 1: submit_proof_with_receipt (settlement + payment + hot-potato receipt)
+  // Receipt is consumed by create_report_with_receipt in the same PTB.
+  const [receipt] = tx.moveCall({
+    target: `${cfg.packageId}::baram::submit_proof_with_receipt`,
     arguments: [
       tx.object(cfg.registryId),
       tx.pure.u64(requestId),
@@ -513,36 +510,29 @@ export async function submitProofWithAER(
     ],
   });
 
-  // Call 2: create_report (AER — same PTB for atomicity)
+  // Call 2: create_report_with_receipt (AER — consumes hot-potato receipt)
+  // Fields from receipt: request_id, authorizer, executor, payment_amount, model_name,
+  // output_hash, execution_time_ms, settled_at
   if (cfg.aerPackageId && cfg.aerRegistryId) {
     tx.moveCall({
-      target: `${cfg.aerPackageId}::aer::create_report`,
+      target: `${cfg.aerPackageId}::aer::create_report_with_receipt`,
       arguments: [
         tx.object(cfg.aerRegistryId),
-        // 1. WHO — Requester
-        tx.pure.u64(requestId),
+        receipt,                                                                // SettlementReceipt
+        // 1. WHO — Requester (authorizer from receipt)
         tx.pure.address(request.requester),                                    // initiator
-        tx.pure.address(aer.authorizer),                                       // authorizer
         tx.pure.vector('address', aer.delegationPath),                         // delegation_path
-        // 2. WHO — Executor
-        tx.pure.address(request.executor),                                     // executor
+        // 2. WHO — Executor (executor from receipt)
         tx.pure(bcs.option(bcs.Address).serialize(aer.executorPrincipal)),     // executor_principal
-        // 3. HOW MUCH
-        tx.pure.u64(request.price),                                            // payment_amount
-        tx.pure.u8(aer.paymentToken),                                         // payment_token
-        tx.pure.u64(aer.executorReceived),                                     // executor_received
+        // 3. HOW MUCH (payment_amount, executor_received from receipt)
         tx.pure(bcs.option(bcs.string()).serialize(aer.feeDetail)),            // fee_detail
         tx.pure(bcs.option(bcs.Address).serialize(aer.budgetId)),              // budget_id
         tx.pure(bcs.option(bcs.u64()).serialize(aer.budgetRemaining != null ? BigInt(aer.budgetRemaining) : null)), // budget_remaining
-        // 4. WHAT
-        tx.pure.string(request.model),                                         // model_name
+        // 4. WHAT (model_name, output_hash, execution_time_ms from receipt)
         tx.pure(bcs.option(bcs.string()).serialize(aer.modelMetadata)),        // model_metadata
         tx.pure.vector('u8', promptHashBytes),                                 // input_hash
-        tx.pure.vector('u8', resultHashBytes),                                 // output_hash
-        tx.pure.u64(executionTimeMs),                                          // execution_time_ms
         // 5. WHY
         tx.pure(bcs.option(bcs.string()).serialize(aer.purpose)),              // purpose
-        tx.pure(bcs.option(bcs.u64()).serialize(aer.policyVersion != null ? BigInt(aer.policyVersion) : null)), // policy_version
         tx.pure(bcs.option(bcs.string()).serialize(aer.constraints)),          // constraints
         // 6. HOW TRUSTWORTHY
         tx.pure.u8(aer.executorTier),                                          // executor_tier
@@ -550,13 +540,11 @@ export async function submitProofWithAER(
         tx.pure.u64(aer.executorStakeAmount),                                  // executor_stake_amount
         tx.pure.bool(aer.teeVerified),                                         // tee_verified
         tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(aer.teeAttestationHash)), // tee_attestation_hash
-        // 7. WHEN
+        // 7. WHEN (settled_at from receipt)
         tx.pure.u64(request.createdAt),                                        // requested_at
         // 8. CHAIN
         tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredBy)),           // triggered_by
         tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredAction)),       // triggered_action
-        // System
-        tx.object('0x6'), // Clock
       ],
     });
   } else {
