@@ -29,8 +29,27 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         setCopied(false);
       }, 30000);
     } catch {
-      setCopyError(true);
-      setTimeout(() => setCopyError(false), 5000);
+      // Fallback for older browsers or non-secure contexts
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = mnemonic;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        setCopied(true);
+        setCopyError(false);
+        setTimeout(async () => {
+          try { await navigator.clipboard.writeText(''); } catch { /* best-effort */ }
+          setCopied(false);
+        }, 30000);
+      } catch {
+        setCopyError(true);
+        setShowWords(true);
+        setTimeout(() => setCopyError(false), 5000);
+      }
     }
   }, [mnemonic]);
 
