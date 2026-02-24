@@ -212,7 +212,7 @@ ExecutionComplianceRecord:
 
 3. **Agent economy is the largest addressable market** — $52.62B by 2030. Baram's escrow infrastructure directly applies to Agent-to-Agent transactions. The pipeline (escrow → execute → settle → ECR) is already agent-compatible.
 
-4. **2-person team reality** — Direct-to-Consumer marketing is cost-prohibitive. B2B strategy (provide infrastructure to AI startups / dApp builders) or Developer Platform strategy is more realistic. The working demo + code quality is the pitch.
+4. **Bootstrapped team reality** — Direct-to-Consumer marketing is cost-prohibitive. B2B strategy (provide infrastructure to AI startups / dApp builders) or Developer Platform strategy is more realistic. The working demo + code quality is the pitch.
 
 5. **Demonstrable at prototype stage** — ECR is already implemented (`compliance.move`). Agent SDK is achievable as an MVP. A working demo proving these value propositions is the strongest fundraising material.
 

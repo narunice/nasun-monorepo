@@ -221,7 +221,7 @@ The solutions Gemini proposed (ExecutionGroup, ModelLineageTree, SessionObject, 
 
 Reasons:
 
-1. **A 2-person team cannot build a universal AI Settlement Protocol.** Implementing all of Gemini's solutions would require a 50-person team and 2 years.
+1. **A bootstrapped team cannot build a universal AI Settlement Protocol.** Implementing all of Gemini's solutions would require a 50-person team and 2 years.
 
 2. **A prototype demonstrates vision, it doesn't solve every problem.** Showing "we can go in this direction" is sufficient.
 
@@ -251,7 +251,7 @@ Align positioning to **what Baram actually does**:
 Implement the expansions Gemini proposed in stages.
 
 **Pros**: Big vision. Can appeal to investors.
-**Cons**: Impossible with a 2-person team. Over-promise → under-deliver risk.
+**Cons**: Impossible for a bootstrapped team. Over-promise → under-deliver risk.
 
 ### Option C: Big Vision, Honest Prototype (Hybrid)
 

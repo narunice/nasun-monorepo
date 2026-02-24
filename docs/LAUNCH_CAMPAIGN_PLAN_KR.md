@@ -95,7 +95,7 @@
 
 | 날짜 | 콘텐츠 | 형태 | 공개 대상 |
 |------|--------|------|----------|
-| **2/23 (Mon)** | **"How we built Nasun" Thread**: 기술 아키텍처 + 팀 스토리. "A 2-person team forked Sui, built a custom L1, and shipped a DEX + AI platform on top." — 이 시점에서 사람들은 이미 프로덕트를 봤으므로, 팀 규모가 감탄 포인트가 됨. 개발자/빌더 타겟 | Thread | 기술 아키텍처 + 팀 스토리 |
+| **2/23 (Mon)** | **"How we built Nasun" Thread**: 기술 아키텍처 + 팀 스토리. "A bootstrapped team forked Sui, built a custom L1, and shipped a DEX + AI platform on top." — 이 시점에서 사람들은 이미 프로덕트를 봤으므로, 부트스트랩 팀의 실행력이 감탄 포인트가 됨. 개발자/빌더 타겟 | Thread | 기술 아키텍처 + 팀 스토리 |
 | **2/25 (Wed)** | **Heist 티저**: 애니메이션 시리즈 Heist Episode 1 컨셉/스크립트 일부 공개. GenSol IP 세계관 확장 | 이미지 + 텍스트 | Heist |
 | **2/27 (Fri)** | **Battalion NFT 첫 티저**: 라이플 영상 활용. "The weapon of the first battalion." — NFT 비주얼 첫 공개 | 영상 | NFT 아트 |
 

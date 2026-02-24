@@ -380,7 +380,7 @@ Both are valid distributed architectures. Session-affine binding is a **topology
 ### Why Stateless for the Prototype — But KV Cache Is Next
 
 **Prototype phase (current):**
-- **2-person team**: Session management is real engineering cost that doesn't serve the demo
+- **Bootstrapped team**: Session management is real engineering cost that doesn't serve the demo
 - **Single executor**: Session-affine routing provides no benefit when there's only one TEE executor
 - **Prototype goal**: Demonstrating vision (E2E encryption + TEE + on-chain settlement) matters more than inference optimization
 

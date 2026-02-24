@@ -7,7 +7,7 @@
 
 ## Mission
 
-Nasun Network Explorer (`apps/network-explorer/`) -- a frontend-only React app totaling ~67 source files (~4,960 lines) -- undergoes a full code review. This codebase is a blockchain explorer for the Nasun Devnet (Sui fork), featuring wallet integration, zkLogin authentication, and NFT display. Built via **vibe coding (LLM-generated) + manual refinement** by a 2-person bootstrapped team.
+Nasun Network Explorer (`apps/network-explorer/`) -- a frontend-only React app totaling ~67 source files (~4,960 lines) -- undergoes a full code review. This codebase is a blockchain explorer for the Nasun Devnet (Sui fork), featuring wallet integration, zkLogin authentication, and NFT display. Built via **vibe coding (LLM-generated) + manual refinement** by a bootstrapped team.
 
 **Deliverable**: A prioritized list of findings and remediation recommendations (text only). **Never modify code files.**
 
@@ -52,7 +52,7 @@ Network Explorer (`explorer.nasun.io/devnet`) is the **blockchain explorer** for
 - **External content rendering**: NFT images/videos from IPFS and arbitrary URLs -- primary XSS vector
 - **Wallet key management**: Handled by @nasun/wallet package (AES-256-GCM + PBKDF2) -- out of scope for this review but critical dependency
 - **zkLogin OAuth**: Token exchange and salt management via Lambda endpoints (shared with nasun-website)
-- **2-person team, bootstrapped startup**: No dedicated security team
+- **Bootstrapped startup**: No dedicated security team
 
 ### Risk Assessment
 

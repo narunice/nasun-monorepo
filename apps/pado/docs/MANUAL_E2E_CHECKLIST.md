@@ -215,7 +215,7 @@
 | # | Test Case | Expected Result | Pass |
 |---|-----------|-----------------|------|
 | 117 | Open PnL share modal after a trade | ShareCardModal opens with trade performance data | |
-| 118 | Canvas card rendering | Card includes: PnL data, "Built by 2 people" watermark, Pado branding | |
+| 118 | Canvas card rendering | Card includes: PnL data, Pado branding watermark | |
 | 119 | Points/rank display on card | If user has points, they appear on the share card | |
 | 120 | Download share card | "Download" button saves PNG to device | |
 | 121 | Twitter share button | Opens Twitter with pre-attached image or intent URL, correct hashtags | |

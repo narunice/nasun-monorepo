@@ -221,7 +221,7 @@ Gemini가 제안한 해법들 (ExecutionGroup, ModelLineageTree, SessionObject, 
 
 이유:
 
-1. **2인 팀이 범용 AI Settlement Protocol을 만들 수 없다.** Gemini의 해법을 다 구현하려면 50명 팀 + 2년이 필요하다.
+1. **부트스트랩 팀이 범용 AI Settlement Protocol을 만들 수 없다.** Gemini의 해법을 다 구현하려면 50명 팀 + 2년이 필요하다.
 
 2. **프로토타입은 비전을 보여주는 것이지, 모든 문제를 해결하는 것이 아니다.** "이 방향으로 갈 수 있다"를 보여주면 충분하다.
 
@@ -251,7 +251,7 @@ Baram이 **실제로 하는 것**에 포지셔닝을 맞춘다:
 Gemini가 제안한 확장을 단계적으로 구현한다.
 
 **장점**: 비전이 크다. 투자자에게 어필할 수 있다.
-**단점**: 2인 팀으로 불가능. Over-promise → under-deliver 위험.
+**단점**: 부트스트랩 팀으로 불가능. Over-promise → under-deliver 위험.
 
 ### 옵션 C: 비전은 크게, 프로토타입은 정직하게 (하이브리드)
 

@@ -22,7 +22,7 @@ Nasun은 Sui fork L1이지만 현재 devnet(2노드)만 운영 중. Ethereum Ope
 - NFT는 Ethereum 위에 있고, 앱은 Nasun devnet 위에서 동작
 - MetaMask 인증은 이미 nasun.io에 구현됨 (challenge-response, EIP-191)
 - AWS Lambda + DynamoDB 인프라 활용 (거의 무료)
-- 2인 팀이 12개월+ 유지 가능한 범위
+- 부트스트랩 팀이 12개월+ 유지 가능한 범위
 - Nasun 고유 기술 스택(Pado DEX, Baram AI TEE, GenSol 게임)을 활용한 차별화
 
 ### 유틸리티 전체 우선순위

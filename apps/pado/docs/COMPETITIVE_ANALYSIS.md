@@ -62,7 +62,7 @@ Comparison of Pado's spot trading UI/UX against leading CEX and DEX platforms in
 
 ### 2. Social/Gamification (88/100) - Now exceeds Bybit/Binance
 - Points system with trade/volume/diversity scoring + Points leaderboard tab
-- Enhanced share cards with "Built by 2 people" watermark, one-click Twitter share
+- Enhanced share cards with Pado branding watermark, one-click Twitter share
 - Followed traders, leaderboard trader profiles, large trade alerts in chat
 - Market Narrator bot, PnL share cards, badges, trading competitions all implemented
 - No copy trading (would require smart contract changes)

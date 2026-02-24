@@ -95,7 +95,7 @@ Every post includes an Allowlist CTA. The tasks (Follow/RT) themselves serve as 
 
 | Date | Content | Format | Reveal |
 |------|---------|--------|--------|
-| **2/23 (Mon)** | **"How we built Nasun" Thread**: Technical architecture + team story. "A 2-person team forked Sui, built a custom L1, and shipped a DEX + AI platform on top." — By this point people have already seen the products, so team size becomes an impressive reveal. Developer/builder audience. | Thread | Architecture + Team story |
+| **2/23 (Mon)** | **"How we built Nasun" Thread**: Technical architecture + team story. "A bootstrapped team forked Sui, built a custom L1, and shipped a DEX + AI platform on top." — By this point people have already seen the products, so the bootstrapped execution becomes an impressive reveal. Developer/builder audience. | Thread | Architecture + Team story |
 | **2/25 (Wed)** | **Heist Teaser**: Animation series Heist Episode 1 concept/script excerpt. GenSol IP world-building. | Image + Text | Heist |
 | **2/27 (Fri)** | **Battalion NFT First Teaser**: Rifle video showcase. "The weapon of the first battalion." — First visual reveal of NFT. | Video | NFT art |
 

@@ -309,7 +309,7 @@ struct BetaAccessNFT has key, store {
 
 ## The Pitch
 
-> A 2-person team, zero external funding, built:
+> Zero external funding, built:
 > - A working L1 blockchain (Sui fork)
 > - E2E encrypted AI inference inside AWS Nitro TEE
 > - On-chain escrow settlement with compliance records

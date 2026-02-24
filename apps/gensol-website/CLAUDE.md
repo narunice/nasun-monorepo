@@ -140,10 +140,6 @@ NODE_ENV=production pnpm cdk deploy AuthStack
 
 The app fetches content from a WordPress backend. The dev server proxies `/wp-api` to `https://staging.gensol.io/content/wp-json`.
 
-## Related Documentation
+## 참조 문서
 
-Nasun Network의 상세 문서는 `../nasun-website/CLAUDE.md` 참조:
-- 인증 시스템 (Google OAuth, Twitter OAuth, MetaMask)
-- X(Twitter) 리더보드 시스템
-- AWS CDK 인프라 구조
-- 배포 프로세스 및 트러블슈팅
+- 인증 시스템, CDK 인프라, 배포 프로세스 → [nasun-website CLAUDE.md](../nasun-website/CLAUDE.md)

@@ -178,10 +178,10 @@ WEEK 3: TECHNICAL STORY + HEIST + NFT TEASER
 
   Mon 2/23   "HOW WE BUILT NASUN" THREAD
              Technical architecture + team story.
-             "A 2-person team forked Sui, built a custom L1, and shipped
+             "A bootstrapped team forked Sui, built a custom L1, and shipped
              a DEX + AI platform on top."
-             By this point people have already seen the products, so team
-             size becomes an impressive reveal. Developer/builder audience.
+             By this point people have already seen the products, so the
+             bootstrapped execution becomes an impressive reveal. Developer/builder audience.
              Format: Thread
 
   Wed 2/25   HEIST TEASER

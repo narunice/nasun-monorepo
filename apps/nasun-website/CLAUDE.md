@@ -2,120 +2,23 @@
 
 > 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
 
-**Last Updated**: 2026-02-24
-**Version**: 2.22.0 (Telegram channel verification + GSI optimization)
-
 ## 기본 규칙
 
 - 문서로 저장해달라는 프롬프트를 받으면 별도의 주문이 없는 이상 항상 `doc/` 경로에 저장하세요.
-
----
-
-## 변경 이력
-
-> 과거 업데이트 이력은 [doc/CHANGELOG.md](doc/CHANGELOG.md) 참조
+- 변경 이력은 [doc/CHANGELOG.md](doc/CHANGELOG.md) 참조
 
 ---
 
 ## 프로젝트 개요
 
-### 나선 프로젝트 전체 구성
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Nasun Project                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│  nasun-website             nasun-devnet           network-explorer  │
-│  ─────────────────        ─────────────────      ─────────────────  │
-│  공식 웹사이트              블록체인 노드           블록 탐색기        │
-│  • 리더보드 V3             • SUI 포크             • TX/Block 조회    │
-│  • Governance              • 2노드 Validator      • 주소/객체 조회   │
-│  • NFT 이벤트              • Faucet 서비스        • 네트워크 상태    │
-│  • OAuth 인증              • 스마트 컨트랙트      • 검색 기능        │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**NASUN Website (nasun.io)**는 Web3 프로젝트 "NASUN"의 공식 플랫폼입니다.
-
-### 현재 상태
+**NASUN Website (nasun.io)** 는 Web3 프로젝트 "NASUN"의 공식 플랫폼입니다.
 
 - **Production**: https://nasun.io
 - **Staging**: https://staging.nasun.io
 - **인프라**: AWS 서버리스 스택 (Lambda, DynamoDB, API Gateway, Step Functions)
 - **아키텍처**: V3 통합 파이프라인 기반
-
-### 저장소
-
 - **위치**: `/home/naru/my_apps/nasun-monorepo/apps/nasun-website`
 - **브랜치**: `main`
-
----
-
-## 기술 스택
-
-### 프론트엔드
-- **Framework**: React 19 + Vite 7
-- **Language**: TypeScript 5.9
-- **UI**: Radix UI + Tailwind CSS 3.4
-- **상태 관리**: Zustand
-- **국제화**: i18next
-- **Web3**: ethers.js 6.x
-
-### 백엔드 (AWS CDK)
-- **IaC**: AWS CDK (TypeScript)
-- **Runtime**: Node.js 18.x
-- **Lambda**: TypeScript + esbuild
-
-### 인프라 (AWS)
-- **Compute**: Lambda
-- **Database**: DynamoDB
-- **Auth**: Cognito
-- **API**: API Gateway (REST)
-- **Orchestration**: Step Functions
-
----
-
-## 프로젝트 구조
-
-```
-nasun-website/
-├── frontend/                      # React 프론트엔드
-│   ├── src/
-│   │   ├── components/           # React 컴포넌트
-│   │   ├── services/             # API 클라이언트
-│   │   ├── providers/            # Context Providers
-│   │   ├── stores/               # Zustand 스토어
-│   │   └── i18n/                 # 국제화 설정
-│   ├── .env.development
-│   ├── .env.production
-│   └── vite.config.ts
-│
-├── cdk/                          # AWS CDK 인프라
-│   ├── lib/                      # CDK 스택 정의
-│   ├── lambda-src/               # Lambda 함수 소스
-│   │   ├── auth-metamask/        # MetaMask 인증
-│   │   ├── auth-twitter/         # Twitter OAuth
-│   │   ├── link-account/         # 계정 연결
-│   │   ├── leaderboard-v3/       # Leaderboard V3 + Telegram
-│   │   │   └── src/handlers/
-│   │   │       ├── verify-telegram.ts      # Telegram 인증 + 채널 검증
-│   │   │       ├── disconnect-telegram.ts  # Telegram 연결 해제
-│   │   │       ├── telegram-status.ts      # Telegram 연결 상태 조회
-│   │   │       ├── get-leaderboard.ts      # 리더보드 조회
-│   │   │       ├── create-post.ts          # 포스트 등록
-│   │   │       ├── generate-snapshot.ts    # 일일 스냅샷
-│   │   │       └── ...                     # 기타 핸들러
-│   │   └── nft-event/            # Battalion NFT Event
-│   │       ├── verify-eligibility/   # 3-Tier 검증
-│   │       ├── register-user/        # Allowlist 등록
-│   │       ├── admin-users/          # 관리자 대시보드
-│   │       ├── withdraw-user/        # 등록 철회
-│   │       └── check-registration-status/  # 등록 상태 확인
-│   └── .env
-│
-└── doc/                          # 프로젝트 문서
-    └── CHANGELOG.md              # 과거 업데이트 이력
-```
 
 ---
 
@@ -311,9 +214,7 @@ cdk/lib/nft-event-stack.ts             # CDK: NFT Event 인프라
 
 ---
 
-## 인증 시스템
-
-### 인증 아키텍처
+## 인증 시스템 아키텍처
 
 ```
 [클라이언트]
@@ -354,112 +255,6 @@ Response: { "identityId": "...", "token": "..." }
 
 ---
 
-## 개발 워크플로우
-
-### 로컬 개발
-
-```bash
-# 프론트엔드 개발 서버
-cd frontend && pnpm dev
-# http://localhost:5174
-
-# Lambda 빌드
-cd cdk/lambda-src/auth-metamask && npm run build
-```
-
-### CDK 배포
-
-```bash
-cd cdk
-
-# 개발 환경 배포
-pnpm deploy:dev
-
-# 프로덕션 환경 배포
-pnpm deploy:prod
-```
-
-**배포 스크립트가 자동 처리하는 작업:**
-- Lambda 빌드 및 검증
-- 환경별 .env 파일 전환
-- AWS 자격 증명 검증
-- CDK synth/diff
-
----
-
-## 배포 프로세스
-
-### 프론트엔드 배포
-
-```bash
-cd frontend
-npm run build
-# dist/ 폴더를 EC2로 배포
-```
-
-### 백엔드 배포
-
-```bash
-cd cdk
-pnpm deploy:prod  # 프로덕션
-pnpm deploy:dev   # 개발
-```
-
-### 배포 후 검증
-
-```bash
-# Lambda 로그 확인
-aws logs tail /aws/lambda/nasun-auth-metamask --follow
-
-# API 테스트
-curl -X POST https://API_URL/prod/auth/metamask/challenge \
-  -H "Content-Type: application/json" \
-  -d '{"walletAddress": "0x..."}'
-```
-
----
-
-## 트러블슈팅
-
-### Lambda "Cannot find module" 에러
-
-```typescript
-// CDK에서 전체 디렉토리 배포
-code: lambda.Code.fromAsset('lambda-src/auth-metamask'),
-handler: 'dist/index.handler',
-```
-
-### Twitter 로그인 502 에러
-
-```bash
-cd cdk/lambda-src/auth-twitter
-rm -rf node_modules package-lock.json
-npm install && npm run build
-cd ../../ && pnpm cdk deploy AuthStack
-```
-
-### Nonce expired 에러
-
-- Nonce는 5분 후 자동 만료
-- 로그인 프로세스를 처음부터 재시작
-
----
-
-## 문서 참조
-
-### 프로젝트 문서 (doc/)
-- [CHANGELOG.md](doc/CHANGELOG.md) - 과거 업데이트 이력
-- [METAMASK_IMPLEMENTATION_PLAN.md](doc/METAMASK_IMPLEMENTATION_PLAN.md) - MetaMask 구현 계획
-- [LEADERBOARD_MECHANISM_GUIDE.md](doc/LEADERBOARD_MECHANISM_GUIDE.md) - 리더보드 메커니즘
-- [BUILD_CONFIGURATION_GUIDE.md](doc/BUILD_CONFIGURATION_GUIDE.md) - 빌드 설정 가이드
-- [LAMBDA_CREATION_GUIDE.md](doc/LAMBDA_CREATION_GUIDE.md) - Lambda 생성 가이드
-
-### CDK 문서
-- [cdk/README.md](cdk/README.md) - CDK 상세 가이드
-- [cdk/DEPLOYMENT_CHECKLIST.md](cdk/DEPLOYMENT_CHECKLIST.md) - 배포 체크리스트
-
----
-
 ## 주요 고려사항
 
 ### MetaMask 인증
@@ -481,5 +276,10 @@ cd ../../ && pnpm cdk deploy AuthStack
 
 ---
 
-**문서 버전**: 2.22.0
-**마지막 업데이트**: 2026-02-24
+## 참조 문서
+
+| 문서 | 설명 |
+|------|------|
+| [doc/architecture.md](doc/architecture.md) | 기술 스택 + 프로젝트 구조 |
+| [doc/deployment.md](doc/deployment.md) | 개발 워크플로우 + 배포 프로세스 + 트러블슈팅 |
+| [doc/CHANGELOG.md](doc/CHANGELOG.md) | 변경 이력 |
