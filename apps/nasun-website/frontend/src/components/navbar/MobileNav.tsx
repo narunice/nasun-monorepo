@@ -3,7 +3,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { NavItem, SubMenuItem } from "../../types/routes";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faBars, faXmark, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faBars, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { ExternalLink } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useActiveState } from "../../hooks/useActiveState";
 import { MOBILE_NAVIGATION_STYLES } from "../../utils/navigationStyles";
@@ -187,10 +188,7 @@ export default function MobileNav({
                                 <span className="flex items-center gap-2">
                                   {subItem.name}
                                   {subItem.external && (
-                                    <FontAwesomeIcon
-                                      icon={faArrowUpRightFromSquare}
-                                      className="text-xs opacity-70"
-                                    />
+                                    <ExternalLink className="w-3 h-3 opacity-70" />
                                   )}
                                 </span>
                               </span>
@@ -205,7 +203,7 @@ export default function MobileNav({
                               >
                                 <span className="flex items-center gap-2">
                                   {subItem.name}
-                                  <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="text-xs opacity-70" />
+                                  <ExternalLink className="w-3 h-3 opacity-70" />
                                 </span>
                               </a>
                             ) : (

@@ -1,7 +1,7 @@
 // sections/news/FeaturedPost.tsx
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowTopRightIcon } from "@radix-ui/react-icons";
+import { ArrowRight } from "lucide-react";
 import { Post } from "../../types/post.d";
 import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";
@@ -109,7 +109,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
             <div className="flex justify-end">
               <ButtonV3 variant="gradient" size="sm" className="capitalize">
                 {t("actions.readMore")}
-                <ArrowTopRightIcon className="ml-2 w-4 h-4" />
+                <ArrowRight className="ml-2 w-4 h-4" />
               </ButtonV3>
             </div>
           </div>

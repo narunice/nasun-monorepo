@@ -21,6 +21,14 @@ export default function PadoPage() {
     setIsPageReady(false);
   }, [setIsPageReady]);
 
+  // Scope pado-navy-theme to this page only
+  useEffect(() => {
+    document.documentElement.classList.add("pado-navy-theme");
+    return () => {
+      document.documentElement.classList.remove("pado-navy-theme");
+    };
+  }, []);
+
   const handleVideoReady = useCallback(async () => {
     setIsVideoReady(true);
 
@@ -44,15 +52,17 @@ export default function PadoPage() {
         </SectionLayout>
       }
     >
-      <Suspense fallback={<PadoHeroSectionSkeleton />}>
-        <FinanceHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
-        {isVideoReady && (
-          <>
-            <OneAccountSection />
-            <FinanceContent />
-          </>
-        )}
-      </Suspense>
+      <div className="bg-[#080c16] text-pd4 min-h-screen">
+        <Suspense fallback={<PadoHeroSectionSkeleton />}>
+          <FinanceHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
+          {isVideoReady && (
+            <>
+              <OneAccountSection />
+              <FinanceContent />
+            </>
+          )}
+        </Suspense>
+      </div>
     </ErrorBoundary>
   );
 }

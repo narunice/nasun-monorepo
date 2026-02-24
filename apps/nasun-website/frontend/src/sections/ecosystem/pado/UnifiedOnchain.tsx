@@ -4,8 +4,9 @@ import { OuterBox } from "@/components/ui/OuterBox";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 import { FadeInUp } from "@/components/ui/FadeInUp";
+import { Link } from "react-router-dom";
 import {
-  ExternalLink,
+  ArrowUpRight,
   Layers,
   Users,
   Bot,
@@ -237,14 +238,14 @@ export const UnifiedOnchain = () => {
                     rel="noopener noreferrer"
                   >
                     {t("earlyAccess.ctaPrimary")}
-                    <ExternalLink className="w-4 h-4 ml-2" />
+                    <ArrowUpRight className="w-4 h-4 ml-2" />
                   </a>
                 </Button>
                 <Button variant="outlineNw2" size="lg" asChild>
-                  <a href="/pado-revised" target="_blank" rel="noopener noreferrer">
+                  <Link to="/pado-revised">
                     {t("earlyAccess.ctaSecondary")}
-                    <ExternalLink className="w-4 h-4 ml-2" />
-                  </a>
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Link>
                 </Button>
               </div>
             </OuterBox>
