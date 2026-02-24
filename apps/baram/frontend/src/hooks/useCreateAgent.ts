@@ -153,7 +153,7 @@ export function useCreateAgent() {
   return { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus };
 }
 
-function extractProfileId(result: { objectChanges?: Array<{ type: string; objectType?: string; objectId?: string }> }): string | null {
+function extractProfileId(result: { objectChanges?: Array<{ type: string; objectType?: string; objectId?: string }> | null }): string | null {
   const created = result.objectChanges?.find(
     (c) => c.type === 'created' && c.objectType?.includes('AgentProfile') && !c.objectType?.includes('Registry')
   );

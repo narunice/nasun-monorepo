@@ -246,6 +246,7 @@ describe('zklogin.ts core functions', () => {
         proverUrl: 'https://prover.example.com',
         providers: {
           google: {
+            provider: 'google',
             clientId: 'test-google-client-id',
             redirectUri: 'https://app.example.com/callback',
           },
@@ -271,6 +272,7 @@ describe('zklogin.ts core functions', () => {
         proverUrl: 'https://prover.example.com',
         providers: {
           google: {
+            provider: 'google',
             clientId: 'test-id',
             redirectUri: 'https://app.example.com/callback',
           },
@@ -289,6 +291,7 @@ describe('zklogin.ts core functions', () => {
         proverUrl: 'https://prover.example.com',
         providers: {
           apple: {
+            provider: 'apple',
             clientId: 'test-apple-client-id',
             redirectUri: 'https://app.example.com/callback',
           },
@@ -311,6 +314,7 @@ describe('zklogin.ts core functions', () => {
         proverUrl: 'https://prover.example.com',
         providers: {
           twitch: {
+            provider: 'twitch',
             clientId: 'test-twitch-client-id',
             redirectUri: 'https://app.example.com/callback',
           },

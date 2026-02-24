@@ -95,7 +95,7 @@ class CorsCompatibleTransport implements SuiTransport {
    */
   #remapCoinType(params: unknown): unknown {
     if (typeof params === 'string') {
-      return params.replaceAll('0x2::sui::SUI', this.#nativeCoinType!);
+      return params.replace(/0x2::sui::SUI/g, this.#nativeCoinType!);
     }
     if (Array.isArray(params)) {
       return params.map((p) => this.#remapCoinType(p));
