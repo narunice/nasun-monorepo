@@ -1,8 +1,8 @@
 # NASUN Website 문서
 
 **프로젝트**: NASUN Website (nasun.io)
-**최종 업데이트**: 2026-01-24
-**버전**: 3.4.0 (Leaderboard V3 Documentation)
+**최종 업데이트**: 2026-02-24
+**버전**: 3.5.0 (Telegram Channel Verification)
 
 ---
 
@@ -26,11 +26,12 @@
 ### 🚀 최근 완료 프로젝트
 
 #### **Community Leaderboard V3 (완료)** ✅
-관리자 큐레이션 기반 시즌 리더보드 시스템 (Phase 1-6 완료)
+관리자 큐레이션 기반 시즌 리더보드 시스템 (Phase 1-7 완료)
 - **[LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)**
   - 시즌 기반 독립 리더보드
   - Top Climbers Spotlight, Rank Change Indicators
   - Featured Feed, My Rank Sidebar
+  - **Telegram 채널 검증 통합 (Phase 7)** — Login Widget + Bot API + GSI 최적화
   - 라우트: `/wave1/leaderboard`
 
 #### **지갑 재연결 UX 개선 (완료)** ✅
@@ -101,11 +102,12 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 ### ✅ 완료된 프로젝트
 
-#### 1. Community Leaderboard V3 (2026-01)
-- **시즌 기반 독립 리더보드**: Phase 1-6 전체 완료
+#### 1. Community Leaderboard V3 (2026-01 ~ 2026-02)
+- **시즌 기반 독립 리더보드**: Phase 1-7 전체 완료
 - **Top Climbers Spotlight**: 순위 급상승자 하이라이트
 - **Featured Feed**: 큐레이팅된 포스트 피드
 - **My Rank Sidebar**: 로그인 사용자 순위 표시
+- **Telegram 채널 검증 (Phase 7)**: Login Widget + Bot API + 채널 멤버십 배지
 
 **문서**: [LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)
 **Legacy V2 문서**: [_legacy-leaderboard/](./_legacy-leaderboard/) (archived)
@@ -139,7 +141,7 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 #### V3 (현재 운영 중)
 - **[LEADERBOARD_V3_SPEC.md](./LEADERBOARD_V3_SPEC.md)** ⭐ **주요 참조**
-  Community Leaderboard V3 전체 기획안 및 구현 상태 (Phase 1-6 완료)
+  Community Leaderboard V3 전체 기획안 및 구현 상태 (Phase 1-7 완료, Telegram 통합 포함)
 
 #### Legacy V2 (archived)
 - **[_legacy-leaderboard/](./_legacy-leaderboard/)** - X API 기반 리더보드 관련 문서 (archived)
@@ -210,7 +212,13 @@ NFT Event 등록 후 지갑 해제 시 재연결 유도
 
 ## 문서 버전 히스토리
 
-### v3.4.0 (2026-01-24) - Leaderboard V3 문서 정리 ⭐ **최신**
+### v3.5.0 (2026-02-24) - Telegram Channel Verification ⭐ **최신**
+- ✅ **Phase 7 Telegram 통합**: LEADERBOARD_V3_SPEC.md에 Phase 7 추가
+- ✅ **AUTH_ARCHITECTURE_GUIDE.md**: Telegram provider 문서 추가
+- ✅ **MY_ACCOUNT_WALLET_UX_IMPROVEMENT_PLAN.md**: Telegram Connected Account 행 + Disconnect 흐름 추가
+- ✅ **CLAUDE.md v2.22.0**: Telegram 섹션, 인증 다이어그램, 프로젝트 구조 업데이트
+
+### v3.4.0 (2026-01-24) - Leaderboard V3 문서 정리
 - ✅ **V3 리더보드 Phase 6 완료 반영**: LEADERBOARD_V3_SPEC.md 업데이트
 - ✅ **Legacy 문서 이동 (3개)**: `_legacy-leaderboard/`로 아카이빙
   - `LEADERBOARD_EVENT_ADDITION_GUIDE.md`
