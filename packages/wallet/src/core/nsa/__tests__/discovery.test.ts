@@ -11,7 +11,7 @@
  * - buildCreateAccount (create_account_v2 with registry)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock getSuiClient before importing modules that use it
 const mockGetObject = vi.fn();
@@ -55,7 +55,7 @@ function hexToBytes(hex: string): number[] {
 }
 
 // Helper: create mock account state response
-function mockAccountStateResponse(objectId: string, signerAddress: string) {
+function mockAccountStateResponse(_objectId: string, signerAddress: string) {
   return {
     data: {
       content: {

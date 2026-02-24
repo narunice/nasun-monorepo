@@ -13,7 +13,6 @@ import {
   MODEL_CATEGORY_ORDER,
   PRIVACY_MODE_CONFIG,
   type ModelId,
-  type ModelCategory,
 } from '../../config/network';
 
 interface ModelSelectorProps {
