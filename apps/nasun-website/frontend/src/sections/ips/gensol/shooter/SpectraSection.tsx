@@ -1,5 +1,17 @@
 import React from "react";
-import { Ghost, Crown, Crosshair } from "lucide-react";
+import {
+  Ghost,
+  Crown,
+  Crosshair,
+  CheckCircle2,
+  Wrench,
+  Gamepad2,
+  ShieldCheck,
+  Timer,
+  Server,
+  Wifi,
+  Box,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -22,8 +34,8 @@ function SpectraSection() {
       <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
         {/* ========== HERO ========== */}
         <div className="flex flex-col items-center text-center">
-          <PageTitle className="">{t("pageTitle")}</PageTitle>
-          <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium ">{t("tagline")}</h5>
+          <PageTitle>{t("pageTitle")}</PageTitle>
+          <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">{t("tagline")}</h5>
 
           {/* Gameplay Video */}
           <div className="mt-2 md:mt-4 lg:mt-6">
@@ -91,7 +103,7 @@ function SpectraSection() {
               <p className="text-nasun-white/90 font-medium">
                 An unstable lava planet moments from destruction.
               </p>
-              <p className="text-nasun-white/80">
+              <p>
                 <span className="font-semibold">Dorakken Empire</span> transport crashes after a{" "}
                 <span className="font-semibold">Raider</span> ambush. Both factions fight over the
                 wreckage as the planet tears itself apart:
@@ -119,7 +131,7 @@ function SpectraSection() {
         {/* Death Isn't the End */}
         <section>
           <SectionTitle as="h4">DEATH ISN'T THE END</SectionTitle>
-          <p className="text-nasun-white/80 mb-4">
+          <p className="mb-4">
             Die and you return as a <span className="font-semibold">Phantom</span>—an invisible
             ghost in first-person view.
           </p>
@@ -132,7 +144,7 @@ function SpectraSection() {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <p className="   font-semibold my-3">As a Phantom you can:</p>
+                <p className="font-semibold my-3">As a Phantom you can:</p>
                 <ul className="space-y-2">
                   {[
                     "Move unseen through the battlefield",
@@ -148,7 +160,7 @@ function SpectraSection() {
                 </ul>
               </div>
               <div>
-                <p className="   font-semibold my-3">You cannot:</p>
+                <p className="font-semibold my-3">You cannot:</p>
                 <ul className="space-y-2">
                   {["Directly attack living players", "Be seen by the living"].map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-nasun-white/80">
@@ -160,7 +172,7 @@ function SpectraSection() {
               </div>
             </div>
           </DividerBox>
-          <p className="  mt-4">
+          <p className="mt-4">
             Death becomes a tactical role. Every fallen player reshapes the match from the shadows.
           </p>
         </section>
@@ -169,7 +181,7 @@ function SpectraSection() {
         <section>
           <SectionTitle as="h4">COMPETITIVE DEPTH</SectionTitle>
           <div className="space-y-4">
-            <p className="text-nasun-white/80">Matches reward:</p>
+            <p>Matches reward:</p>
             <ul className="space-y-2">
               {[
                 "Team coordination and role assignment",
@@ -204,19 +216,26 @@ function SpectraSection() {
                 icon={<Crown className="w-5 h-5" />}
                 className="h-full"
               >
-                <p className="  ">
+                <p>
                   Controls the primary Spectra zones across the galaxy. Militarized. Disciplined.
                   Ruthless in defending their monopoly.
                 </p>
               </DividerBox>
-              <DividerBox color="w4" hideDivider padding="sm" title="Raiders" icon={<Crosshair className="w-5 h-5" />} className="h-full">
-                <p className="  ">
+              <DividerBox
+                color="w4"
+                hideDivider
+                padding="sm"
+                title="Raiders"
+                icon={<Crosshair className="w-5 h-5" />}
+                className="h-full"
+              >
+                <p>
                   Insurgents and pirates who steal and weaponize Spectra. Fast. Aggressive. Willing
                   to risk everything.
                 </p>
               </DividerBox>
             </div>
-            <p className=" ">
+            <p>
               Neutral worlds like Kramok become battlegrounds where both sides fight for
               survival—and neither is guaranteed to escape.
             </p>
@@ -227,8 +246,8 @@ function SpectraSection() {
         <section>
           <SectionTitle as="h4">PROGRESSION & TOURNAMENTS</SectionTitle>
           <div className="space-y-4">
-            <p className="  ">Competitive ranked play and tournaments coming.</p>
-            <p className=" ">As you progress:</p>
+            <p className="font-medium">Competitive ranked play and tournaments coming.</p>
+            <p>As you progress:</p>
             <ul className="space-y-2">
               {[
                 "Unlock rare Spectra variants (enhanced strength, speed, healing)",
@@ -248,110 +267,156 @@ function SpectraSection() {
         {/* Optional Ownership */}
         <section>
           <SectionTitle as="h4">OPTIONAL OWNERSHIP</SectionTitle>
-          <OuterBox color="c1" className="!bg-black/30">
-            <div className="space-y-4">
-              <p className="text-nasun-c1 font-semibold">Web3 features are entirely optional.</p>
-              <div>
-                <p className="  mb-3">If you want:</p>
-                <ul className="space-y-2">
-                  {[
-                    "Excess Spectra retained as tradeable assets",
-                    "Weapons and cosmetics you actually own (not locked to servers)",
-                    "Tournament rewards you can trade or keep",
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3 text-nasun-white/80">
-                      <span className="text-nasun-c1 shrink-0 mt-0.5">✓</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <p className=" ">You can. If you just want to play the game, nothing changes.</p>
-            </div>
-          </OuterBox>
+          <div className="space-y-4">
+            <p className="text-nasun-white/90 font-medium">Web3 features are entirely optional.</p>
+            <p>If you want:</p>
+            <ul className="space-y-2">
+              {[
+                "Excess Spectra retained as tradeable assets",
+                "Weapons and cosmetics you actually own (not locked to servers)",
+                "Tournament rewards you can trade or keep",
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="text-nasun-c1 shrink-0 mt-0.5">✓</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p>You can. If you just want to play the game, nothing changes.</p>
+          </div>
         </section>
 
         {/* What's Live Now */}
         <section>
           <SectionTitle as="h4">WHAT'S LIVE NOW</SectionTitle>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h6 className="font-bold tracking-widest text-nasun-c1 uppercase mb-3">
-                  Alpha Prototype (Playable)
-                </h6>
-                <ul className="space-y-2">
-                  {[
-                    "Dedicated servers running on AWS GameLift",
-                    "Networked combat with multiple weapon classes",
-                    "Full animation and effects pipeline",
-                    "Battle Royale test mode",
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-nasun-white/80">
-                      <span className="shrink-0">✅</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h6 className="font-bold tracking-widest text-nasun-c1 uppercase mb-3">
-                  In Development
-                </h6>
-                <ul className="space-y-2">
-                  {[
-                    "Kramok lava planet environment",
-                    "Dorakken Guards and Raider characters",
-                    "Team mission objectives and match flow",
-                    "Production HUD and menu systems",
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-nasun-white/60">
-                      <span className="shrink-0">🔨</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+          <div className="space-y-8">
+            {/* Playable */}
+            <div>
+              <p className="text-emerald-400 font-medium text-lg mb-4 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5" />
+                Alpha Prototype (Playable)
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  "Dedicated servers running on AWS GameLift",
+                  "Networked combat with multiple weapon classes",
+                  "Full animation and effects pipeline",
+                  "Battle Royale test mode",
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4"
+                  >
+                    <p className="text-nasun-white font-medium text-sm md:text-base">{item}</p>
+                  </div>
+                ))}
               </div>
             </div>
-            <OuterBox color="w1" padding="sm" className="!bg-[#2a2a2a]">
-              <p className="text-nasun-c1 font-semibold">
-                Target: Q3-4 2026 — Public playtests on Escape from Kramok
+
+            {/* In Development */}
+            <div>
+              <p className="text-amber-400 font-medium text-lg mb-4 flex items-center gap-2">
+                <Wrench className="w-5 h-5" />
+                In Development
               </p>
-            </OuterBox>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  "Kramok lava planet environment",
+                  "Dorakken Guards and Raider characters",
+                  "Team mission objectives and match flow",
+                  "Production HUD and menu systems",
+                ].map((item, i) => (
+                  <div key={i} className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4">
+                    <p className="text-nasun-white font-medium text-sm md:text-base">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Target */}
+            <p className="text-nasun-white/90 font-semibold">
+              Target: Q3-4 2026 — Public playtests on Escape from Kramok
+            </p>
           </div>
         </section>
 
         {/* Technical Foundation */}
         <section>
           <SectionTitle as="h4">TECHNICAL FOUNDATION</SectionTitle>
-          <div className="space-y-4">
-            <p className="  ">Built for competitive fairness and scale:</p>
-            <OuterBox color="c1" padding="sm" className="!bg-black/30">
-              <ul className="space-y-3">
-                {[
-                  { bold: "Unreal Engine 5", rest: " C++ codebase" },
-                  {
-                    bold: "Server-authoritative",
-                    rest: " (health, damage, ammo verified server-side)",
-                  },
-                  {
-                    bold: "Lag compensation",
-                    rest: " with client-side prediction and server rewind",
-                  },
-                  { bold: "AWS GameLift", rest: " scaling for matchmaking and dedicated servers" },
-                  { bold: "Network-optimized", rest: " for bandwidth efficiency" },
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-nasun-white/80">
-                    <span className="text-nasun-c1 shrink-0 mt-0.5 text-xs">▶</span>
-                    <span>
-                      <span className="font-semibold text-nasun-c1">{item.bold}</span>
-                      {item.rest}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </OuterBox>
-            <p className="text-nasun-c1 font-medium italic">
+          <div className="space-y-6">
+            <p>Built for competitive fairness and scale:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                {
+                  icon: <Gamepad2 className="w-5 h-5" />,
+                  title: "Unreal Engine 5",
+                  bullets: [
+                    "C++ codebase with full source access",
+                    "Production-grade rendering and physics",
+                  ],
+                },
+                {
+                  icon: <ShieldCheck className="w-5 h-5" />,
+                  title: "Server-Authoritative",
+                  bullets: [
+                    "Health, damage, ammo verified server-side",
+                    "No client-side trust for competitive integrity",
+                  ],
+                },
+                {
+                  icon: <Timer className="w-5 h-5" />,
+                  title: "Lag Compensation",
+                  bullets: [
+                    "Client-side prediction for responsive input",
+                    "Server rewind for accurate hit detection",
+                  ],
+                },
+                {
+                  icon: <Server className="w-5 h-5" />,
+                  title: "AWS GameLift",
+                  bullets: [
+                    "Auto-scaling dedicated servers",
+                    "Low-latency matchmaking infrastructure",
+                  ],
+                },
+                {
+                  icon: <Wifi className="w-5 h-5" />,
+                  title: "Network-Optimized",
+                  bullets: [
+                    "Bandwidth-efficient replication",
+                    "Designed for competitive tick rates",
+                  ],
+                },
+                {
+                  icon: <Box className="w-5 h-5" />,
+                  title: "3D Art Pipeline",
+                  bullets: [
+                    "Characters, weapons, environments built in-house",
+                    "Custom animations and VFX pipeline",
+                  ],
+                },
+              ].map((card, i) => (
+                <DividerBox
+                  key={i}
+                  color="w4"
+                  hideDivider
+                  padding="sm"
+                  title={card.title}
+                  icon={card.icon}
+                  className="h-full"
+                >
+                  <ul className="space-y-1.5">
+                    {card.bullets.map((bullet, j) => (
+                      <li key={j} className="flex items-start gap-2 text-nasun-white/80 text-sm">
+                        <span className="text-nasun-c1 shrink-0 mt-0.5 text-xs">•</span>
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </DividerBox>
+              ))}
+            </div>
+            <p>
               This isn't a blockchain game with a shooter attached. It's a competitive multiplayer
               shooter that happens to support ownership.
             </p>
@@ -362,7 +427,7 @@ function SpectraSection() {
         <section>
           <SectionTitle as="h4">BATTALION NFT → ALPHA FUNDING</SectionTitle>
           <div className="space-y-4">
-            <p className="  ">The Battalion NFT sale will fund:</p>
+            <p>The Battalion NFT sale will fund:</p>
             <ul className="space-y-2">
               {[
                 "Core multiplayer infrastructure",
@@ -376,7 +441,7 @@ function SpectraSection() {
                 </li>
               ))}
             </ul>
-            <p className="text-nasun-c1 font-medium">
+            <p className="font-medium">
               Battalion holders get early access and become the first players in the Gen Sol
               universe.
             </p>
@@ -388,11 +453,11 @@ function SpectraSection() {
           <SectionTitle as="h4">WHAT'S NEXT</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <DividerBox
-              color="w4"
+              color="c1"
               hideDivider
               padding="sm"
               title="Immediate (2026)"
-              className="h-full"
+              className="h-full !bg-black/30"
             >
               <ul className="space-y-2">
                 {[
@@ -407,7 +472,13 @@ function SpectraSection() {
                 ))}
               </ul>
             </DividerBox>
-            <DividerBox color="w4" hideDivider padding="sm" title="Beyond Alpha" className="h-full">
+            <DividerBox
+              color="c1"
+              hideDivider
+              padding="sm"
+              title="Beyond Alpha"
+              className="h-full !bg-black/30"
+            >
               <ul className="space-y-2">
                 {[
                   "Expanded player counts",
@@ -425,204 +496,7 @@ function SpectraSection() {
           </div>
         </section>
 
-        {/* LEGACY CONTENT — hidden, preserved for reference
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
-            {t("communityEngagement.title")}
-          </SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>{t("communityEngagement.p1")}</p>
-            <p>{t("communityEngagement.p2")}</p>
-            <p>{t("communityEngagement.p3")}</p>
-          </div>
-        </section>
 
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">
-            {t("overview.title")}
-          </SectionTitle>
-          <OuterBox color="n1" className="mb-2 md:mb-3 lg:mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-nasun-white/80">
-              <div><span className="text-nasun-c1 font-medium">Genre:</span> {t("overview.specs.genre")}</div>
-              <div><span className="text-nasun-c1 font-medium">Player Perspective:</span> {t("overview.specs.perspective")}</div>
-              <div><span className="text-nasun-c1 font-medium">Number of Players:</span> {t("overview.specs.players")}</div>
-              <div><span className="text-nasun-c1 font-medium">Setting:</span> {t("overview.specs.setting")}</div>
-              <div className="md:col-span-2"><span className="text-nasun-c1 font-medium">Visual Style:</span> {t("overview.specs.visualStyle")}</div>
-            </div>
-          </OuterBox>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>{t("overview.p1")}</p>
-            <p>{t("overview.p2")}</p>
-            <p>{t("overview.p3")}</p>
-            <p>{t("overview.p4")}</p>
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("gameDescription.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>{t("gameDescription.p1")}</p>
-            <p>{t("gameDescription.p2")}</p>
-            <p>{t("gameDescription.p3")}</p>
-            <p>{t("gameDescription.p4")}</p>
-            <p>{t("gameDescription.p5")}</p>
-            <p>{t("gameDescription.p6")}</p>
-            <p>{t("gameDescription.p7")}</p>
-            <p>{t("gameDescription.p8")}</p>
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("strategy.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>{t("strategy.p1")}</p>
-            <p>{t("strategy.p2")}</p>
-            <p>{t("strategy.p3")}</p>
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("details.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>{t("details.p1")}</p>
-            <p>{t("details.p2")}</p>
-            <p>{t("details.p3")}</p>
-            <p>{t("details.p4")}</p>
-            <p>{t("details.p5")}</p>
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("mainFactors.title")}</SectionTitle>
-          <ul className="list-disc pl-6 space-y-2 marker:text-nasun-c1">
-            {mainFactorItems.map((item, index) => (<li key={index}>{item}</li>))}
-          </ul>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("tournaments.title")}</SectionTitle>
-          <p className="mb-2 md:mb-3 lg:mb-4">{t("tournaments.intro")}</p>
-          <ul className="list-disc pl-6 space-y-2 marker:text-nasun-c1">
-            {tournamentItems.map((item, index) => (<li key={index}>{item}</li>))}
-          </ul>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("web3.title")}</SectionTitle>
-          <div className="space-y-2 md:space-y-3 lg:space-y-4"><p>{t("web3.p1")}</p></div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("currentState.title")}</SectionTitle>
-          <p className="mb-4">{t("currentState.intro")}</p>
-          <div className="space-y-4">
-            {currentStateItems.map((item, index) => (
-              <div key={index} className="flex gap-4">
-                <div className="w-0.5 bg-nasun-c1 flex-shrink-0 my-1" />
-                <div><h6 className="font-semibold text-nasun-white mb-1">{item.title}</h6><p>{item.description}</p></div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("prototypeDevelopment.title")}</SectionTitle>
-          <div className="space-y-4">
-            {prototypeItems.map((item, index) => (
-              <div key={index} className="flex gap-4">
-                <div className="w-0.5 bg-nasun-c1 flex-shrink-0 my-1" />
-                <div><h6 className="font-semibold text-nasun-white mb-1">{item.title}</h6><p>{item.description}</p></div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("beyondPrototype.title")}</SectionTitle>
-          <div className="space-y-4">
-            {beyondItems.map((item, index) => (
-              <div key={index} className="flex gap-4">
-                <div className="w-0.5 bg-nasun-c1 flex-shrink-0 my-1" />
-                <div><h6 className="font-semibold text-nasun-white mb-1">{item.title}</h6><p>{item.description}</p></div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("foundersNftFunds.title")}</SectionTitle>
-          <div className="space-y-6">
-            {categories.map(({ key, data }) => (
-              <div key={key}>
-                <h6 className="font-semibold text-nasun-white mb-2">{data.title}</h6>
-                <ul className="list-disc pl-6 space-y-2 marker:text-nasun-c1">
-                  {data.items.map((item, index) => (<li key={index}>{item}</li>))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("hires.title")}</SectionTitle>
-          <div className="space-y-6">
-            {positions.map(({ key, data }) => (
-              <div key={key} className="flex gap-4">
-                <div className="w-0.5 bg-nasun-c1 flex-shrink-0 my-1" />
-                <div>
-                  <h6 className="font-semibold text-nasun-white mb-2">{data.title}</h6>
-                  <div className="space-y-3">
-                    <p><span className="font-medium text-nasun-c1">Skills: </span>{data.skills}</p>
-                    <div>
-                      <span className="font-medium text-nasun-c1 block mb-1">Work:</span>
-                      <ul className="list-disc pl-6 space-y-1 marker:text-nasun-c1">
-                        {data.work.map((item, index) => (<li key={index}>{item}</li>))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle as="h4" className="mb-2 md:mb-3 lg:mb-4">{t("schedule.title")}</SectionTitle>
-          <div className="space-y-6">
-            {phaseKeys.map((phaseKey, phaseIndex) => {
-              const phaseData = t(`schedule.phases.${phaseKey}` as never, { returnObjects: true }) as unknown as PhaseData;
-              if (!phaseData || typeof phaseData !== "object" || !Array.isArray(phaseData.sections)) return null;
-              return (
-                <div key={phaseKey} className="flex gap-4">
-                  <div className="w-0.5 bg-nasun-c1 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h6 className="text-nasun-c1 font-semibold mb-3">Phase {phaseIndex + 1}</h6>
-                    <div className="space-y-3">
-                      {phaseData.sections.map((section: SectionData, sectionIndex: number) => (
-                        <div key={sectionIndex}>
-                          <p className="font-medium text-nasun-white mb-1">{section.title}</p>
-                          {section.items && section.items.length > 0 && (
-                            <ul className="list-disc pl-6 space-y-1 marker:text-nasun-c1 text-sm opacity-80">
-                              {section.items.map((item: string, itemIndex: number) => (<li key={itemIndex}>{item}</li>))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="text-center pt-6 border-t border-nasun-white/20">
-          <p className="text-lg mb-4">{t("contact.text")}</p>
-          <Button variant="c1" size="lg" asChild>
-            <a href="mailto:admin@nasun.io">{t("contact.button")}</a>
-          </Button>
-        </section>
-        END LEGACY CONTENT */}
       </div>
     </SectionLayout>
   );
