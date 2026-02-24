@@ -26,7 +26,7 @@ export function BudgetCard({ budget, isSelected, onClick }: BudgetCardProps) {
     >
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs text-[var(--color-text-muted)]">Agent</span>
-        <span className={`text-[10px] font-medium ${status.color}`}>{status.label}</span>
+        <span className={`text-2xs font-medium ${status.color}`}>{status.label}</span>
       </div>
       <div className="text-xs font-mono text-[var(--color-text-secondary)] mb-1.5">
         {truncateAddress(budget.agent)}

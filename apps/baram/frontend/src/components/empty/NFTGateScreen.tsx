@@ -20,7 +20,7 @@ export function NFTGateScreen() {
             />
           </svg>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-3">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[var(--color-text-primary)] mb-3">
           Beta Access Required
         </h1>
         <p className="text-[var(--color-text-secondary)] max-w-md text-sm leading-relaxed">
@@ -37,25 +37,25 @@ export function NFTGateScreen() {
           </h2>
           <ol className="text-xs text-[var(--color-text-secondary)] space-y-2.5">
             <li className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-[10px] font-semibold mt-0.5">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-2xs font-semibold mt-0.5">
                 1
               </span>
               <span>Join the Nasun Discord server</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-[10px] font-semibold mt-0.5">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-2xs font-semibold mt-0.5">
                 2
               </span>
               <span>Apply in the #beta-access channel</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-[10px] font-semibold mt-0.5">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-2xs font-semibold mt-0.5">
                 3
               </span>
               <span>Share your wallet address</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-[10px] font-semibold mt-0.5">
+              <span className="flex-shrink-0 w-5 h-5 rounded-full bg-br-1/10 text-br-1 flex items-center justify-center text-2xs font-semibold mt-0.5">
                 4
               </span>
               <span>Receive your BetaAccessNFT and start chatting</span>

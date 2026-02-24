@@ -100,11 +100,11 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
           {aer.purpose && (
             <Row label="Verification">
               {aer.purpose === 'lambda_verified' ? (
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400">
+                <span className="px-1.5 py-0.5 rounded text-2xs bg-blue-500/10 text-blue-400">
                   Lambda Verified
                 </span>
               ) : aer.purpose === 'self_reported' ? (
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400">
+                <span className="px-1.5 py-0.5 rounded text-2xs bg-amber-500/10 text-amber-400">
                   Self-Reported
                 </span>
               ) : (

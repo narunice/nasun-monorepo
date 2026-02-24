@@ -121,9 +121,9 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
             <div>
               <span className="text-[var(--color-text-muted)]">Purpose: </span>
               {record.purpose === 'lambda_verified' ? (
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400">Lambda Verified</span>
+                <span className="px-1.5 py-0.5 rounded text-2xs bg-blue-500/10 text-blue-400">Lambda Verified</span>
               ) : record.purpose === 'self_reported' ? (
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400">Self-Reported</span>
+                <span className="px-1.5 py-0.5 rounded text-2xs bg-amber-500/10 text-amber-400">Self-Reported</span>
               ) : (
                 <span className="text-[var(--color-text-primary)]">{record.purpose || '-'}</span>
               )}
@@ -143,14 +143,14 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
           {hashValid !== null && (
             <div className="mt-2">
               {hashValid ? (
-                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+                <span className="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Hash Verified
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
+                <span className="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>

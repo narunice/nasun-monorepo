@@ -104,7 +104,7 @@ export function ModelSelector({ selectedModel, onSelectModel, privacyMode }: Mod
                   <div className="mx-3 my-1 border-t border-[var(--color-border)]" />
                 )}
                 <div className="px-3 py-1.5">
-                  <span className="text-[10px] uppercase tracking-wider font-medium text-[var(--color-text-muted)]">
+                  <span className="text-2xs uppercase tracking-wider font-medium text-[var(--color-text-muted)]">
                     {group.label}
                   </span>
                 </div>
@@ -130,11 +130,11 @@ export function ModelSelector({ selectedModel, onSelectModel, privacyMode }: Mod
                         }`}>
                           {model.name}
                         </span>
-                        <span className="text-[10px] text-[var(--color-text-muted)]">
+                        <span className="text-2xs text-[var(--color-text-muted)]">
                           {model.description}
                         </span>
                       </div>
-                      <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 rounded shrink-0 ml-2">
+                      <span className="text-2xs text-[var(--color-text-muted)] bg-[var(--color-bg-primary)] px-1.5 py-0.5 rounded shrink-0 ml-2">
                         {formatPrice(model.price)}
                       </span>
                     </button>

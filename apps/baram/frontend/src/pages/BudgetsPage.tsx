@@ -18,7 +18,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   return (
     <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
       <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-semibold text-[var(--color-text-primary)] mt-1">{value}</p>
+      <p className="text-2xl lg:text-3xl font-semibold text-[var(--color-text-primary)] mt-1">{value}</p>
       {sub && <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{sub}</p>}
     </div>
   );
@@ -38,14 +38,14 @@ function BudgetPageCard({ budget, onClick }: { budget: BudgetInfo; onClick: () =
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+          <p className="text-sm lg:text-base font-semibold text-[var(--color-text-primary)]">
             Agent Budget
           </p>
           <p className="text-xs font-mono text-[var(--color-text-muted)] mt-0.5">
             {formatAddress(budget.agent)}
           </p>
         </div>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+        <span className={`text-2xs px-1.5 py-0.5 rounded ${
           status.label === 'Active'
             ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
             : status.label === 'Expired'
@@ -76,13 +76,13 @@ function BudgetPageCard({ budget, onClick }: { budget: BudgetInfo; onClick: () =
 
       {/* Stats row */}
       <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--color-border)]">
-        <span className="text-[10px] text-[var(--color-text-muted)]">
+        <span className="text-2xs text-[var(--color-text-muted)]">
           {budget.requestCount} requests
         </span>
-        <span className="text-[10px] text-[var(--color-text-muted)]">
+        <span className="text-2xs text-[var(--color-text-muted)]">
           {formatNUSDC(budget.totalSpent)} spent
         </span>
-        <span className="text-[10px] text-[var(--color-text-muted)]">
+        <span className="text-2xs text-[var(--color-text-muted)]">
           Created {formatDate(budget.createdAt)}
         </span>
       </div>
@@ -158,7 +158,7 @@ export function BudgetsPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Budgets</h2>
+        <h2 className="text-lg lg:text-xl font-semibold text-[var(--color-text-primary)]">Budgets</h2>
         <button
           onClick={() => { resetTxStatus(); setShowCreateModal(true); }}
           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"

@@ -34,7 +34,7 @@ function AERRow({ record, isExpanded, onToggle, onViewResult, onViewFullReport }
           {formatNUSDC(record.paymentAmount)}
         </td>
         <td className="px-3 py-2.5 text-xs">
-          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+          <span className={`px-1.5 py-0.5 rounded text-2xs ${
             record.status === 0
               ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
               : record.status === 1
@@ -44,17 +44,17 @@ function AERRow({ record, isExpanded, onToggle, onViewResult, onViewFullReport }
             {record.statusName}
           </span>
           {record.teeVerified && (
-            <span className="ml-1.5 text-[10px] text-[var(--color-success)]" title="TEE Verified">
+            <span className="ml-1.5 text-2xs text-[var(--color-success)]" title="TEE Verified">
               TEE
             </span>
           )}
           {record.purpose === 'lambda_verified' && (
-            <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400" title="Lambda Verified">
+            <span className="ml-1.5 text-2xs px-1 py-0.5 rounded bg-blue-500/10 text-blue-400" title="Lambda Verified">
               Verified
             </span>
           )}
           {record.purpose === 'self_reported' && (
-            <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-400" title="Self-Reported">
+            <span className="ml-1.5 text-2xs px-1 py-0.5 rounded bg-amber-500/10 text-amber-400" title="Self-Reported">
               Self-Reported
             </span>
           )}
@@ -204,7 +204,7 @@ export function AERTimeline() {
   return (
     <div className="max-w-6xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Execution Reports</h2>
+        <h2 className="text-lg lg:text-xl font-semibold text-[var(--color-text-primary)]">Execution Reports</h2>
         <span className="text-xs text-[var(--color-text-muted)]">
           {filteredRecords.length} records | {formatNUSDC(totalCost)} NUSDC total
         </span>
@@ -238,13 +238,13 @@ export function AERTimeline() {
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
-                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-[10px] font-medium uppercase tracking-wider">ID</th>
-                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-[10px] font-medium uppercase tracking-wider">Model</th>
-                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-[10px] font-medium uppercase tracking-wider">Executor</th>
-                <th className="text-right px-3 py-2 text-[var(--color-text-muted)] text-[10px] font-medium uppercase tracking-wider">Cost</th>
-                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-[10px] font-medium uppercase tracking-wider">Status</th>
-                <th className="text-right px-3 py-2 text-[var(--color-text-muted)] text-[10px] font-medium uppercase tracking-wider">Latency</th>
-                <th className="text-right px-3 py-2 text-[var(--color-text-muted)] text-[10px] font-medium uppercase tracking-wider">Time</th>
+                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-2xs font-medium uppercase tracking-wider">ID</th>
+                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-2xs font-medium uppercase tracking-wider">Model</th>
+                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-2xs font-medium uppercase tracking-wider">Executor</th>
+                <th className="text-right px-3 py-2 text-[var(--color-text-muted)] text-2xs font-medium uppercase tracking-wider">Cost</th>
+                <th className="text-left px-3 py-2 text-[var(--color-text-muted)] text-2xs font-medium uppercase tracking-wider">Status</th>
+                <th className="text-right px-3 py-2 text-[var(--color-text-muted)] text-2xs font-medium uppercase tracking-wider">Latency</th>
+                <th className="text-right px-3 py-2 text-[var(--color-text-muted)] text-2xs font-medium uppercase tracking-wider">Time</th>
                 <th className="w-10 px-2 py-2"></th>
               </tr>
             </thead>

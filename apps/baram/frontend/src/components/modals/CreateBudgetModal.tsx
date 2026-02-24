@@ -119,7 +119,7 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Agent Address */}
           <div className="space-y-1">
-            <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+            <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
               Agent Address *
             </label>
             <input
@@ -134,13 +134,13 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
                 }`}
             />
             {agent && !isAgentValid && (
-              <p className="text-[10px] text-red-400">Invalid address (0x + 64 hex chars)</p>
+              <p className="text-2xs text-red-400">Invalid address (0x + 64 hex chars)</p>
             )}
           </div>
 
           {/* Initial Deposit */}
           <div className="space-y-1">
-            <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+            <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
               Initial Deposit (NUSDC) *
             </label>
             <input
@@ -157,7 +157,7 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
                 }`}
             />
             {deposit && !isDepositValid && (
-              <p className="text-[10px] text-red-400">
+              <p className="text-2xs text-red-400">
                 Minimum deposit: {formatNusdcValue(BUDGET_CONFIG.MIN_DEPOSIT)} NUSDC
               </p>
             )}
@@ -165,7 +165,7 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
 
           {/* Max Per Request (optional) */}
           <div className="space-y-1">
-            <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+            <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
               Max Per Request (NUSDC)
             </label>
             <input
@@ -181,10 +181,10 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
 
           {/* Allowed Models (optional multi-select) */}
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+            <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
               Allowed Models
             </label>
-            <p className="text-[10px] text-[var(--color-text-muted)]">
+            <p className="text-2xs text-[var(--color-text-muted)]">
               Leave empty to allow all models
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -192,7 +192,7 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
                 <button
                   key={id}
                   onClick={() => toggleModel(id)}
-                  className={`px-2.5 py-1 text-[10px] rounded-full border transition-colors
+                  className={`px-2.5 py-1 text-2xs rounded-full border transition-colors
                     ${selectedModels.includes(id)
                       ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)] text-[var(--color-accent)]'
                       : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
@@ -206,7 +206,7 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
 
           {/* Expiration (optional) */}
           <div className="space-y-1">
-            <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+            <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
               Expiration Date
             </label>
             <input
@@ -216,7 +216,7 @@ export function CreateBudgetModal({ onClose, onCreate, txStatus, txError, prefil
               min={new Date().toISOString().slice(0, 16)}
               className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
             />
-            <p className="text-[10px] text-[var(--color-text-muted)]">Leave empty for no expiration</p>
+            <p className="text-2xs text-[var(--color-text-muted)]">Leave empty for no expiration</p>
           </div>
 
           {/* Error */}

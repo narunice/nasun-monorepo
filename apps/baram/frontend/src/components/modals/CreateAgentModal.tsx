@@ -107,7 +107,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           {generatedAddress && (
             <div className="p-2 rounded-lg bg-[var(--color-bg-tertiary)] text-left space-y-1">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">Generated Address</p>
+                <p className="text-2xs text-[var(--color-text-muted)] uppercase tracking-wide">Generated Address</p>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(generatedAddress).then(() => {
@@ -115,7 +115,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                       setTimeout(() => setCopied(false), 2000);
                     });
                   }}
-                  className="flex items-center gap-1 text-[10px] text-[var(--color-accent)] hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-1 text-2xs text-[var(--color-accent)] hover:opacity-80 transition-opacity"
                 >
                   {copied ? (
                     <>
@@ -135,8 +135,8 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                   )}
                 </button>
               </div>
-              <p className="text-[10px] font-mono text-[var(--color-text-primary)] break-all">{generatedAddress}</p>
-              <p className="text-[10px] text-amber-400 mt-1">
+              <p className="text-2xs font-mono text-[var(--color-text-primary)] break-all">{generatedAddress}</p>
+              <p className="text-2xs text-amber-400 mt-1">
                 Key stored encrypted. You'll need your passphrase to export it later.
               </p>
             </div>
@@ -175,7 +175,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Mode Toggle */}
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+            <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
               Key Mode
             </label>
             <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--color-bg-primary)]">
@@ -200,7 +200,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                 Import Existing Key
               </button>
             </div>
-            <p className="text-[10px] text-[var(--color-text-muted)]">
+            <p className="text-2xs text-[var(--color-text-muted)]">
               {mode === 'generate'
                 ? 'A new Ed25519 keypair will be generated and encrypted with your passphrase when you register.'
                 : 'Use an existing agent address. The private key stays outside Baram.'}
@@ -211,7 +211,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           {mode === 'import' ? (
             /* Agent Address (import mode) */
             <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+              <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
                 Agent Address *
               </label>
               <input
@@ -226,14 +226,14 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                   }`}
               />
               {agentAddress && !isAddressValid && (
-                <p className="text-[10px] text-red-400">Invalid address (0x + 64 hex chars)</p>
+                <p className="text-2xs text-red-400">Invalid address (0x + 64 hex chars)</p>
               )}
             </div>
           ) : (
             /* Passphrase fields (generate mode) */
             <>
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
                   Agent Passphrase *
                 </label>
                 <input
@@ -249,11 +249,11 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                     }`}
                 />
                 {passphrase && passphrase.length < MIN_PASSPHRASE && (
-                  <p className="text-[10px] text-red-400">Passphrase must be at least {MIN_PASSPHRASE} characters</p>
+                  <p className="text-2xs text-red-400">Passphrase must be at least {MIN_PASSPHRASE} characters</p>
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
                   Confirm Passphrase *
                 </label>
                 <input
@@ -269,11 +269,11 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                     }`}
                 />
                 {passphraseConfirm && passphrase !== passphraseConfirm && (
-                  <p className="text-[10px] text-red-400">Passphrases do not match</p>
+                  <p className="text-2xs text-red-400">Passphrases do not match</p>
                 )}
               </div>
               <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                <p className="text-[10px] text-amber-400">
+                <p className="text-2xs text-amber-400">
                   This passphrase encrypts the agent's private key. You'll need it to export the key for the Agent Runner. If lost, the key cannot be recovered.
                 </p>
               </div>
@@ -283,10 +283,10 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           {/* Name */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+              <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
                 Name *
               </label>
-              <span className={`text-[10px] ${
+              <span className={`text-2xs ${
                 name.length > MAX_NAME ? 'text-red-400' : name.length === MAX_NAME ? 'text-amber-400' : 'text-[var(--color-text-muted)]'
               }`}>
                 {name.length} / {MAX_NAME}
@@ -308,10 +308,10 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           {/* Role */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+              <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
                 Role *
               </label>
-              <span className={`text-[10px] ${
+              <span className={`text-2xs ${
                 role.length > MAX_ROLE ? 'text-red-400' : role.length === MAX_ROLE ? 'text-amber-400' : 'text-[var(--color-text-muted)]'
               }`}>
                 {role.length} / {MAX_ROLE}
@@ -333,10 +333,10 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           {/* Capabilities */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+              <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
                 Capabilities
               </label>
-              <span className={`text-[10px] ${
+              <span className={`text-2xs ${
                 capabilities.length >= MAX_CAPABILITIES ? 'text-amber-400' : 'text-[var(--color-text-muted)]'
               }`}>
                 {capabilities.length} / {MAX_CAPABILITIES}
@@ -349,7 +349,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
                 {capabilities.map((cap, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+                    className="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
                   >
                     {cap}
                     <button
@@ -387,16 +387,16 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           {/* Fallback key display (shown only when IndexedDB storage fails) */}
           {fallbackKey && (
             <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20 space-y-2">
-              <p className="text-[10px] text-red-400 font-medium">
+              <p className="text-2xs text-red-400 font-medium">
                 Copy this key now. It cannot be recovered after closing this dialog.
               </p>
               <textarea
                 readOnly
                 value={fallbackKey}
                 rows={3}
-                className="w-full px-2 py-1 text-[10px] font-mono rounded bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] resize-none"
+                className="w-full px-2 py-1 text-2xs font-mono rounded bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] resize-none"
               />
-              <p className="text-[10px] text-amber-400">
+              <p className="text-2xs text-amber-400">
                 Store this in a password manager or secure location.
               </p>
             </div>

@@ -13,6 +13,9 @@ module.exports = {
       fontFamily: {
         'sans': ['Rubik', 'system-ui', 'sans-serif'],
       },
+      fontSize: {
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+      },
       colors: {},
     },
   },
