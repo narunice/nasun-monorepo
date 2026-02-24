@@ -1,6 +1,6 @@
 # Nasun Community Leaderboard System v3 기획안
 
-## 구현 현황 (2026-01-24 업데이트)
+## 구현 현황 (2026-02-24 업데이트)
 
 | Phase | 설명 | 상태 |
 |-------|------|------|
@@ -10,6 +10,7 @@
 | Phase 4 | 프로필 데이터 동기화 | ✅ 완료 |
 | Phase 5 | 시즌 기반 독립 리더보드 (백엔드) | ✅ 완료 |
 | Phase 6 | 시즌 기반 독립 리더보드 (프론트엔드) | ✅ 완료 |
+| Phase 7 | Telegram 채널 검증 통합 | ✅ 완료 |
 
 ### 현재 라우트
 
@@ -872,6 +873,14 @@ GET    /v3/leaderboard?cumulative=true        # 전체 누적 (관리자 인증 
 GET    /v3/leaderboard/top-climbers           # Top Climbers
 ```
 
+### Telegram 채널 검증 ✅ (Phase 7)
+
+```
+POST   /v3/leaderboard/verify-telegram        # Telegram 인증 + 채널 멤버십 검증
+GET    /v3/leaderboard/telegram-status         # Telegram 연결 상태 조회
+POST   /v3/leaderboard/disconnect-telegram     # Telegram 연결 해제
+```
+
 ### Query Parameters
 
 **GET /v3/leaderboard**
@@ -1014,3 +1023,85 @@ const season1: Season = {
 - [ ] 스냅샷 생성 < 30초 (500명 기준)
 - [ ] Top Climbers 조회 < 1초
 - [ ] 시즌별 리더보드 조회 < 500ms
+
+---
+
+## 21. Phase 7: Telegram 채널 검증 통합 ✅ 구현 완료
+
+### 목적
+
+커뮤니티 참여도를 높이기 위해 Telegram 채널 멤버십 검증을 LeaderboardV3Stack에 통합. 리더보드에서 Telegram 채널 가입자에게 하늘색 체크마크 배지를 표시하여 커뮤니티 가시성을 제공합니다.
+
+### 설계 결정
+
+- **LeaderboardV3Stack에 배치**: 기존 `link-account` Lambda 대신 LeaderboardV3Stack에 전용 핸들러를 생성. verify-telegram이 이미 UserProfiles + Accounts + SeasonAccounts 3개 테이블에 쓰기 권한을 보유하므로, Telegram 관련 로직을 한 곳에 응집.
+- **Cognito Identity 미생성**: Telegram은 독립적인 로그인 수단이 아니라, 기존 인증 사용자의 **계정 연결(Link)** 방식으로만 동작.
+
+### Lambda 핸들러
+
+| Lambda | 파일 | 역할 |
+|--------|------|------|
+| `verify-telegram` | `handlers/verify-telegram.ts` | Telegram Login Widget 인증 + 채널 멤버십 검증 + DB 업데이트 |
+| `telegram-status` | `handlers/telegram-status.ts` | JWT → identityId로 UserProfiles 조회 → 연결 상태 반환 |
+| `disconnect-telegram` | `handlers/disconnect-telegram.ts` | 연결 해제 (UserProfiles + Accounts + SeasonAccounts 정리) |
+
+### 데이터 모델 변경
+
+**UserProfiles 테이블 (추가 필드):**
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `isTelegramMember` | Boolean | Telegram 채널 멤버십 상태 |
+| `telegramUserId` | String | Telegram User ID |
+| `telegramUsername` | String | Telegram @username |
+
+**GSI 추가: `telegramUserId-index`**
+- Partition Key: `telegramUserId`
+- Projection: KEYS_ONLY
+- 목적: 중복 계정 검사 시 O(1) Query (full table Scan 대체)
+
+**Accounts 테이블 (리더보드 연동):**
+- `isTelegramMember`: Boolean — 리더보드 표시용
+- `telegramUserId`, `telegramUsername`: 프로필 동기화
+
+**SeasonAccounts 테이블:**
+- `isTelegramMember`: Boolean — 시즌별 리더보드 표시용
+
+### 검증 흐름 (verify-telegram)
+
+1. JWT 토큰에서 `identityId` 추출 (Cognito JWKS 검증)
+2. Telegram Login Widget 데이터의 HMAC-SHA256 해시 검증
+3. `auth_date` 유효성 검증 (5분 이내)
+4. Telegram Bot API `getChatMember`로 채널 멤버십 확인
+5. `telegramUserId-index` GSI Query로 중복 검사
+6. UserProfiles 업데이트 (`isTelegramMember`, `telegramUserId`, `telegramUsername`)
+7. twitterHandle 존재 시 Accounts + SeasonAccounts 동기화
+
+### 프론트엔드 변경
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `hooks/useTelegramVerify.tsx` | connect/disconnect/status 로직, Telegram Login Widget 스크립트 동적 로드 |
+| `ProfileHeroCard.tsx` | Telegram AccountItem 행 추가 (5번째 Connected Account) |
+| `components/AccountItem.tsx` | "telegram" provider 지원, 하늘색(#26A5E4) 브랜딩 |
+| `components/AccountIcons.tsx` | Telegram 아이콘 추가 |
+| `components/StatusBadges.tsx` | Telegram 멤버십 배지 추가 |
+
+### 환경 변수
+
+| 변수 | 위치 | 설명 |
+|------|------|------|
+| `TELEGRAM_BOT_TOKEN_SECRET_NAME` | CDK .env | Secrets Manager 시크릿 이름 |
+| `TELEGRAM_CHANNEL_USERNAME` | CDK .env | 검증 대상 채널 |
+| `VITE_TELEGRAM_BOT_ID` | Frontend .env | Login Widget Bot ID |
+
+### Phase 7 검증 계획
+
+- [x] Telegram Login Widget 팝업 인증 정상 작동
+- [x] HMAC-SHA256 해시 검증 통과
+- [x] 채널 미가입 시 에러 메시지 표시
+- [x] 채널 가입 후 재시도 시 성공
+- [x] 중복 계정 방지 (GSI Query)
+- [x] Disconnect 후 재연결 가능
+- [x] 리더보드 하늘색 체크마크 표시/제거
+- [x] Dev + Prod 배포 완료

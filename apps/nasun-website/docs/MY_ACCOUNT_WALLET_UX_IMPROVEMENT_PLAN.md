@@ -40,8 +40,10 @@
 | **Google** | naru@... | <span style="color:gray">Linked</span> | `[Switch]` `[Unlink]` |
 | **MetaMask** | 0x12...ab34 | <span style="color:green">● Active wallet</span> | `[Unlink]` |
 | **Nasun Wallet**| (Not linked) | - | `[Link]` |
+| **Telegram** | @username | <span style="color:#26A5E4">● Channel member</span> | `[Disconnect]` |
 
 > **Note**: 기존 'Sui Wallet' 명칭은 나선 네트워크 환경에 맞춰 **'Nasun Wallet'**으로 통일합니다.
+> **Note (2026-02-24)**: Telegram 행이 추가됨. Telegram은 채널 멤버십 검증 방식으로, 공식 Telegram Login Widget → 채널 가입 확인 → 리더보드 배지 표시 흐름을 따릅니다.
 
 ---
 
@@ -127,9 +129,30 @@ const handleLinkMetaMask = async () => {
 
 ---
 
-## 6. 기대 효과
+## 6. Telegram 연결 (2026-02-24 구현 완료)
+
+### 상태: ✅ Connected (채널 멤버)
+- **UI**: `@username` + `<Badge>● Channel member</Badge>` (하늘색 #26A5E4)
+- **액션**: `[Disconnect]` 버튼
+- **동작**: `POST /v3/leaderboard/disconnect-telegram` → UserProfiles/Accounts/SeasonAccounts 정리
+
+### 상태: ❌ Not Connected
+- **UI**: `[Connect]` 버튼
+- **동작 (2-Step Flow)**:
+    1. Telegram Login Widget 팝업 열림
+    2. 사용자 Telegram 인증
+    3. `POST /v3/leaderboard/verify-telegram` (HMAC 검증 + 채널 멤버십 확인)
+    4. 성공 시 UI가 "Connected" 상태로 전환
+
+### 에러 상태
+- **채널 미가입**: "Please join our Telegram channel first" 메시지 + 채널 링크
+- **이미 다른 계정에 연결됨**: "This Telegram account is already linked to another account"
+
+---
+
+## 7. 기대 효과
 
 1.  **직관성**: 사용자는 "내 계정에 지갑을 등록한다"는 하나의 멘탈 모델만 가지면 됩니다.
 2.  **효율성**: Link와 Connect가 한 번의 클릭으로 처리되어 불필요한 단계를 제거합니다.
-3.  **확장성**: 추후 다른 지갑이나 소셜 로그인 수단이 추가되더라도 동일한 테이블 구조 내에서 일관되게 관리할 수 있습니다.
+3.  **확장성**: 추후 다른 지갑이나 소셜 로그인 수단이 추가되더라도 동일한 테이블 구조 내에서 일관되게 관리할 수 있습니다. (실증: Telegram이 동일 패턴으로 추가됨)
 4.  **모바일 최적화**: 두 개의 박스를 하나로 통합하여 모바일 화면 공간을 절약합니다.
