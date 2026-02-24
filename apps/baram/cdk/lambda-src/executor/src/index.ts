@@ -16,6 +16,7 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
+import { initResultStore, saveResult, getResult } from './services/resultStore';
 import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, DEFAULT_MODEL } from './types';
 
 // AWS Secrets Manager client
@@ -148,6 +149,11 @@ async function initialize(): Promise<void> {
     aerRegistryId: process.env.AER_REGISTRY_ID || '',
     executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
   });
+
+  // Initialize DynamoDB result store (if configured)
+  if (process.env.RESULT_TABLE_NAME) {
+    initResultStore({ tableName: process.env.RESULT_TABLE_NAME });
+  }
 
   // Clear raw secrets from memory — SDKs hold their own copies internally
   groqApiKey = null;
@@ -303,6 +309,20 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
 
     console.log(`[Execute] Proof + AER submitted, tx: ${txDigest}`);
 
+    // Store result text in DynamoDB (fire-and-forget)
+    try {
+      await saveResult({
+        requestId,
+        requesterAddress: verification.request!.requester,
+        result,
+        resultHash,
+        model: body.model || DEFAULT_MODEL,
+        purpose: 'lambda_verified',
+      });
+    } catch (e) {
+      console.warn('[Execute] SAVE_FAILED', { requestId, error: (e as Error).message });
+    }
+
     return {
       success: true,
       requestId,
@@ -402,6 +422,20 @@ async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
     );
 
     console.log(`[Record] Proof + AER submitted, tx: ${txDigest}`);
+
+    // Store result text in DynamoDB (fire-and-forget)
+    try {
+      await saveResult({
+        requestId,
+        requesterAddress: verification.request!.requester,
+        result,
+        resultHash,
+        model: verification.request!.model || 'unknown',
+        purpose: 'self_reported',
+      });
+    } catch (e) {
+      console.warn('[Record] SAVE_FAILED', { requestId, error: (e as Error).message });
+    }
 
     return {
       success: true,
@@ -586,6 +620,53 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         statusCode,
         headers: corsHeaders,
         body: JSON.stringify(publicResponse),
+      };
+    }
+
+    // GET /result?requestId=N&authorizer=0x...
+    if (path.endsWith('/result') && event.httpMethod === 'GET') {
+      const qp = event.queryStringParameters || {};
+      const requestId = Number(qp.requestId);
+      const authorizer = qp.authorizer || '';
+
+      if (!isSafeRequestId(requestId)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'requestId query parameter required (non-negative integer)' }),
+        };
+      }
+
+      if (!/^0x[0-9a-fA-F]{64}$/.test(authorizer)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'authorizer query parameter required (valid Sui address)' }),
+        };
+      }
+
+      const record = await getResult(requestId);
+
+      if (!record || record.requesterAddress !== authorizer) {
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Result not found or expired' }),
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          requestId: record.requestId,
+          result: record.result,
+          resultHash: record.resultHash,
+          model: record.model,
+          purpose: record.purpose,
+          createdAt: record.createdAt,
+          expiresAt: record.ttl * 1000,
+        }),
       };
     }
 
