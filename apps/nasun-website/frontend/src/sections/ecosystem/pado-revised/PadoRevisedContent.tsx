@@ -5,7 +5,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import {
-  ExternalLink,
+  ArrowUpRight,
   ArrowRight,
   Wallet,
   ShieldCheck,
@@ -111,7 +111,7 @@ export const PadoRevisedContent = () => {
                   rel="noopener noreferrer"
                 >
                   {t("cta.primary")}
-                  <ExternalLink className="w-4 h-4 ml-1" />
+                  <ArrowUpRight className="w-4 h-4 ml-1" />
                 </a>
               </Button>
             </OuterBox>
@@ -603,7 +603,7 @@ export const PadoRevisedContent = () => {
                     rel="noopener noreferrer"
                   >
                     {t("cta.primary")}
-                    <ExternalLink className="w-4 h-4 ml-2" />
+                    <ArrowUpRight className="w-4 h-4 ml-2" />
                   </a>
                 </Button>
                 <Button variant="outlineC1" size="lg" asChild>

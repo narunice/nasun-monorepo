@@ -10,7 +10,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { FC } from 'react';
-import { ExternalLinkIcon } from '@radix-ui/react-icons';
+import { ExternalLink } from 'lucide-react';
 import type { EthereumNFT as EthereumNFTType } from '../../types/ethereum';
 import { getEtherscanNFTUrl, getOpenSeaNFTUrl } from '../../services/ethereumApi';
 import { NFTCard, renderFieldIfExists } from './components/NFTCard';
@@ -128,7 +128,7 @@ export const EthereumNFT: FC<EthereumNFTProps> = ({ nft }) => {
           className="text-nasun-c4 hover:underline flex items-center gap-1"
         >
           {t('nft.viewOnEtherscan', 'View on Etherscan')}
-          <ExternalLinkIcon className="w-3 h-3" />
+          <ExternalLink className="w-3 h-3" />
         </a>
 
         {openSeaUrl && (
@@ -139,7 +139,7 @@ export const EthereumNFT: FC<EthereumNFTProps> = ({ nft }) => {
             className="text-nasun-c4 hover:underline flex items-center gap-1"
           >
             {t('nft.viewOnOpenSea', 'View on OpenSea')}
-            <ExternalLinkIcon className="w-3 h-3" />
+            <ExternalLink className="w-3 h-3" />
           </a>
         )}
       </div>

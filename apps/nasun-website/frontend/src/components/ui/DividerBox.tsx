@@ -28,6 +28,7 @@ type NasunColor =
   | "nw2"
   | "nw3"
   | "nw4"
+  | "pd0"
   | "pd1"
   | "pd2";
 
@@ -257,11 +258,18 @@ const colorStyles: Record<
     backgroundHover: "hover:bg-nasun-nw4/15 transition-colors",
     text: "text-nasun-nw4",
   },
+  pd0: {
+    border: "border-pd3/50",
+    borderHover: "hover:border-pd3/70 transition-colors",
+    background: "bg-pd4/15",
+    backgroundHover: "hover:bg-pd4/20 transition-colors",
+    text: "text-pd5",
+  },
   pd1: {
     border: "border-pd2/40",
     borderHover: "hover:border-pd2/60 transition-colors",
-    background: "bg-pd0s/80",
-    backgroundHover: "hover:bg-pd0s/60 transition-colors",
+    background: "bg-[#111a28]",
+    backgroundHover: "hover:bg-[#111a28]/80 transition-colors",
     text: "text-pado-2",
   },
   pd2: {

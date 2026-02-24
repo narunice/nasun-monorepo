@@ -4,7 +4,7 @@ import { ButtonV3 } from "@/components/ui/button-v3";
 import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { Mail, ExternalLink } from "lucide-react";
+import { Mail, ArrowUpRight } from "lucide-react";
 
 const lookingForItems = [
   "Content creators (X, YouTube, other platforms)",
@@ -97,7 +97,7 @@ function EarlyContributorsSection() {
               className="inline-flex items-center gap-2"
             >
               DM @Nasun_io
-              <ExternalLink size={16} />
+              <ArrowUpRight size={16} />
             </a>
           </ButtonV3>
         </div>

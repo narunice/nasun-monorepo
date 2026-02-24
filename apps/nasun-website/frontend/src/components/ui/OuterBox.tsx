@@ -44,13 +44,15 @@ type ColorVariant =
   | "nw2"
   | "nw3"
   | "nw4"
-  | "nw0";
+  | "nw0"
+  | "pd1"
+  | "pd0";
 
 type PaddingVariant = "lg" | "md" | "sm";
 
 const variantStyles: Record<ColorVariant, string> = {
   default: "border-nasun-c5/50 bg-nasun-c6/90", // 현재 기본값 (c5 border + c6 bg)
-  white: "border-nasun-white/50 bg-nasun-white/5",
+  white: "border-white/40 bg-white/5",
   c1: "border-nasun-c1/50 bg-[#312107]/40",
   c2: "border-nasun-c2/50 bg-[#312d20]/40",
   c3: "border-nasun-c3/50 bg-[#1d2d2a]/40",
@@ -75,6 +77,8 @@ const variantStyles: Record<ColorVariant, string> = {
   nw3: "border-nasun-nw2/40 bg-nasun-nw3/30", // NW dark card (modal panels)
   nw4: "border-nasun-nw4/40 bg-nasun-nw4/10", // NW accent card (nw4 light blue)
   nw0: "border-nasun-nw4/30 bg-[#212E57]/50", // NW accent card (nw4 light blue) -
+  pd1: "border-pado-2/50 bg-[#111a28]", // Pado teal accent border
+  pd0: "border-pd3/50 bg-pd4/15", // Pado muted border
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {

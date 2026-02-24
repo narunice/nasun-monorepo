@@ -27,7 +27,7 @@ export async function getCognitoIdentityId(
       Logins: {
         [developerProviderName]: developerUserIdentifier,
       },
-      TokenDuration: 86400, // 24 hours — admin sessions for 2-person team
+      TokenDuration: 86400, // 24 hours — extended admin sessions
     });
 
     const response = await client.send(command);

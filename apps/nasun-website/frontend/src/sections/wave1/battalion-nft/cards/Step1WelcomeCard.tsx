@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ButtonV3 } from "@/components/ui/button-v3";
-import { ExternalLink } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { FiCheck } from "react-icons/fi";
 import { OuterBox, DividerBox } from "@/components/ui";
 
@@ -36,7 +36,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
   }, []);
 
   return (
-    <OuterBox color="nw0" className="max-w-3xl mx-auto">
+    <OuterBox color="nw0" className="max-w-3xl mx-auto !bg-gray-950/80">
       <div className="pt-2 md:pt-3 lg:pt-4">
         {/* Title */}
         <h4 className="!font-rubik font-medium mb-4 text-center">{t("step1.title")}</h4>
@@ -96,7 +96,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
           title={t("step1.joinAllowlist.title")}
           hideDivider
           color="nw0"
-          className="mb-6 md:mb-8 lg:mb-10"
+          className="mb-6 md:mb-8 lg:mb-10 !bg-[#212E57]/50"
           titleClassName="!w-full !text-center"
           disableHover
         >
@@ -120,7 +120,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
               ))}
             </ul>
             <div className="flex flex-row justify-around md:flex-col gap-2 flex-shrink-0">
-              <ButtonV3 variant="green" size="sm" asChild>
+              <ButtonV3 variant="nw5" outline size="sm" asChild>
                 <a
                   href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
                   target="_blank"
@@ -128,10 +128,10 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
                   className="gap-1.5 font-normal"
                 >
                   {t("step1.links.followAccount")}
-                  <ExternalLink size={13} />
+                  <ArrowUpRight size={13} />
                 </a>
               </ButtonV3>
-              <ButtonV3 variant="green" size="sm" asChild>
+              <ButtonV3 variant="nw5" outline size="sm" asChild>
                 <a
                   href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}/status/${import.meta.env.VITE_EVENT_TWEET_ID}`}
                   target="_blank"
@@ -139,7 +139,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
                   className="gap-1.5 font-normal"
                 >
                   {t("step1.links.announcementPost")}
-                  <ExternalLink size={13} />
+                  <ArrowUpRight size={13} />
                 </a>
               </ButtonV3>
             </div>

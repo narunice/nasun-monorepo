@@ -54,12 +54,12 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
+  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-[#080c16] ${!isVideoPlaying ? "h-screen" : ""}`;
 
   return (
     <div className={containerClassName}>
       {!isVideoPlaying && (
-        <div className="absolute inset-0 bg-nasun-black flex items-center justify-center z-20">
+        <div className="absolute inset-0 bg-[#080c16] flex items-center justify-center z-20">
           <InlineLoading message="Loading..." size="lg" />
         </div>
       )}
@@ -87,7 +87,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
       <div
         className="absolute inset-0 pointer-events-none z-10"
         style={{
-          background: "linear-gradient(to bottom, transparent 66%, rgb(25, 22, 21) 100%)",
+          background: "linear-gradient(to bottom, transparent 66%, rgb(8, 12, 22) 100%)",
         }}
       />
 
@@ -108,7 +108,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
                   PADO:
                   <br /> Unified Onchain Finance
                 </h3>
-                <h5 className="font-semibold text-nasun-white/60">
+                <h5 className="font-semibold text-pd4/70">
                   Performance without custody
                   <br />
                   Control without compromise
