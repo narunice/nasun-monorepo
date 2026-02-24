@@ -268,6 +268,9 @@ async function syncProfileFromUserProfiles(
     const profile = result.Items[0] as {
       username?: string;
       profileImageUrl?: string;
+      isTelegramMember?: boolean;
+      telegramUserId?: string;
+      telegramUsername?: string;
     };
 
     const freshDisplayName = profile.username;
@@ -278,23 +281,43 @@ async function syncProfileFromUserProfiles(
 
     const updates: Promise<unknown>[] = [];
 
+    // Sync isTelegramMember from UserProfiles → Account (v2: UserProfiles is source of truth)
+    const telegramNeedsSync = profile.isTelegramMember === true && !account.isTelegramMember;
+
     // Update Account table if profile data changed
     const accountNeedsUpdate =
       (freshDisplayName && freshDisplayName !== account.displayName) ||
-      (freshProfileImage && freshProfileImage !== account.profileImageUrl);
+      (freshProfileImage && freshProfileImage !== account.profileImageUrl) ||
+      telegramNeedsSync;
 
     if (accountNeedsUpdate) {
+      const updateParts = ['displayName = :dn', 'profileImageUrl = :img', 'isRegistered = :reg'];
+      const expressionValues: Record<string, unknown> = {
+        ':dn': resolvedDisplayName,
+        ':img': resolvedProfileImage,
+        ':reg': true,
+      };
+
+      if (telegramNeedsSync) {
+        updateParts.push('isTelegramMember = :tgMember');
+        expressionValues[':tgMember'] = true;
+        if (profile.telegramUserId) {
+          updateParts.push('telegramUserId = :tgId');
+          expressionValues[':tgId'] = profile.telegramUserId;
+        }
+        if (profile.telegramUsername) {
+          updateParts.push('telegramUsername = :tgUsername');
+          expressionValues[':tgUsername'] = profile.telegramUsername;
+        }
+      }
+
       updates.push(
         docClient.send(
           new UpdateCommand({
             TableName: ACCOUNTS_TABLE,
             Key: { accountId: account.accountId },
-            UpdateExpression: 'SET displayName = :dn, profileImageUrl = :img, isRegistered = :reg',
-            ExpressionAttributeValues: {
-              ':dn': resolvedDisplayName,
-              ':img': resolvedProfileImage,
-              ':reg': true,
-            },
+            UpdateExpression: `SET ${updateParts.join(', ')}`,
+            ExpressionAttributeValues: expressionValues,
           })
         )
       );
@@ -302,6 +325,18 @@ async function syncProfileFromUserProfiles(
 
     // Always sync profile to SeasonAccounts table (leaderboard table reads from here)
     if (seasonId && resolvedDisplayName) {
+      const seasonUpdateParts = ['displayName = :dn', 'profileImageUrl = :img', 'isRegistered = :reg'];
+      const seasonExprValues: Record<string, unknown> = {
+        ':dn': resolvedDisplayName,
+        ':img': resolvedProfileImage,
+        ':reg': true,
+      };
+
+      if (telegramNeedsSync) {
+        seasonUpdateParts.push('isTelegramMember = :tgMember');
+        seasonExprValues[':tgMember'] = true;
+      }
+
       updates.push(
         docClient.send(
           new UpdateCommand({
@@ -310,12 +345,8 @@ async function syncProfileFromUserProfiles(
               pk: `SEASON#${seasonId}#ACCOUNT#${account.accountId}`,
               sk: 'SCORE',
             },
-            UpdateExpression: 'SET displayName = :dn, profileImageUrl = :img, isRegistered = :reg',
-            ExpressionAttributeValues: {
-              ':dn': resolvedDisplayName,
-              ':img': resolvedProfileImage,
-              ':reg': true,
-            },
+            UpdateExpression: `SET ${seasonUpdateParts.join(', ')}`,
+            ExpressionAttributeValues: seasonExprValues,
             ConditionExpression: 'attribute_exists(pk)',
           })
         ).catch(() => { /* Season-account record may not exist yet */ })

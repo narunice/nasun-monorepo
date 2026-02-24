@@ -60,3 +60,13 @@ export const DifferentWalletBadge: FC = () => (
     Different wallet active
   </span>
 );
+
+export const ChannelMemberBadge: FC = () => (
+  <span
+    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-[10px] font-medium border border-sky-400/20"
+    aria-label="Telegram channel member"
+  >
+    <Check className="w-3 h-3" />
+    Channel Member
+  </span>
+);

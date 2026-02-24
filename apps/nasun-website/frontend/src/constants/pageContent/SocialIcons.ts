@@ -6,6 +6,12 @@ export const socialIcons = [
     url: "https://x.com/Nasun_io",
   },
   {
+    platform: "telegram",
+    icon: "telegram",
+    alt: "Telegram",
+    url: "https://t.me/nasun_official",
+  },
+  {
     platform: "instagram",
     icon: "instagram",
     alt: "Instagram",
