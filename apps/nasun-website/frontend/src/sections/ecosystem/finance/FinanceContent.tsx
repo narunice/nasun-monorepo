@@ -44,39 +44,38 @@ const sectionTitleClass = "uppercase";
 export const FinanceContent = () => {
   const { t } = useTranslation("finance");
 
-  const asArray = <T,>(val: unknown): T[] =>
-    Array.isArray(val) ? val : [];
+  const asArray = <T,>(val: unknown): T[] => (Array.isArray(val) ? val : []);
 
   const problemPoints = asArray<{ title: string; description: string }>(
-    t("problem.points", { returnObjects: true })
+    t("problem.points", { returnObjects: true }),
   );
 
   const coreFeatures = asArray<{ title: string; description: string }>(
-    t("coreInnovation.features", { returnObjects: true })
+    t("coreInnovation.features", { returnObjects: true }),
   );
 
   const howItWorksFeatures = asArray<{ title: string; description: string }>(
-    t("howItWorks.features", { returnObjects: true })
+    t("howItWorks.features", { returnObjects: true }),
   );
 
   const koreaItems = asArray<{ label: string; description: string }>(
-    t("koreaMarket.items", { returnObjects: true })
+    t("koreaMarket.items", { returnObjects: true }),
   );
 
   const flywheelItems = asArray<{ from: string; description: string }>(
-    t("flywheel.items", { returnObjects: true })
+    t("flywheel.items", { returnObjects: true }),
   );
 
   const liveItems = asArray<{ title: string; description: string }>(
-    t("launchStatus.live", { returnObjects: true })
+    t("launchStatus.live", { returnObjects: true }),
   );
 
   const deployedItems = asArray<{ title: string; description: string }>(
-    t("launchStatus.deployed", { returnObjects: true })
+    t("launchStatus.deployed", { returnObjects: true }),
   );
 
   const comingItems = asArray<{ title: string; description: string }>(
-    t("launchStatus.coming", { returnObjects: true })
+    t("launchStatus.coming", { returnObjects: true }),
   );
 
   const problemIcons = [Wallet, Layers, Zap, MessageCircle];
@@ -96,7 +95,7 @@ export const FinanceContent = () => {
             </SectionTitle>
           </FadeInUp>
           <FadeInUp delay="0.1s">
-            <p className="text-nasun-white/70 text-lg md:text-xl mb-4">{t("problem.intro")}</p>
+            <p className=" text-lg md:text-xl mb-4">{t("problem.intro")}</p>
           </FadeInUp>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {problemPoints.map((point, i) => {
@@ -118,9 +117,7 @@ export const FinanceContent = () => {
             })}
           </div>
           <FadeInUp delay="0.4s">
-            <p className="text-nasun-white/60 text-base md:text-lg mt-4 leading-relaxed">
-              {t("problem.closing")}
-            </p>
+            <p className=" text-base md:text-lg mt-4 leading-relaxed">{t("problem.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -130,14 +127,10 @@ export const FinanceContent = () => {
             <SectionTitle as="h4" className={sectionTitleClass}>
               {t("coreInnovation.title")}
             </SectionTitle>
-            <p className="text-nasun-white/60 text-lg md:text-xl -mt-2 mb-2">
-              {t("coreInnovation.subtitle")}
-            </p>
+            <p className=" text-lg md:text-xl -mt-2 mb-2">{t("coreInnovation.subtitle")}</p>
           </FadeInUp>
           <FadeInUp delay="0.1s">
-            <p className="text-nasun-white/70 text-base md:text-lg mb-4">
-              {t("coreInnovation.intro")}
-            </p>
+            <p className="  text-base md:text-lg mb-4">{t("coreInnovation.intro")}</p>
           </FadeInUp>
           <div className="flex flex-col gap-4">
             {coreFeatures.map((feat, i) => {
@@ -151,9 +144,7 @@ export const FinanceContent = () => {
                         <p className="text-nasun-white font-medium text-base md:text-lg">
                           {feat.title}
                         </p>
-                        <p className="text-nasun-white/70 text-sm md:text-base mt-1">
-                          {feat.description}
-                        </p>
+                        <p className="  text-sm md:text-base mt-1">{feat.description}</p>
                       </div>
                     </div>
                   </OuterBox>
@@ -162,9 +153,7 @@ export const FinanceContent = () => {
             })}
           </div>
           <FadeInUp delay="0.35s">
-            <p className="text-nasun-white/70 text-base md:text-lg mt-4 italic">
-              {t("coreInnovation.closing")}
-            </p>
+            <p className="  text-base md:text-lg mt-4 italic">{t("coreInnovation.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -258,7 +247,7 @@ export const FinanceContent = () => {
             </SectionTitle>
           </FadeInUp>
           <FadeInUp delay="0.1s">
-            <p className="text-nasun-white/70 text-base md:text-lg mb-4">{t("riskModes.intro")}</p>
+            <p className="  text-base md:text-lg mb-4">{t("riskModes.intro")}</p>
           </FadeInUp>
           <div className="flex flex-col gap-4">
             {(
@@ -303,7 +292,7 @@ export const FinanceContent = () => {
             })}
           </div>
           <FadeInUp delay="0.35s">
-            <p className="text-nasun-white/70 text-base mt-4">{t("riskModes.closing")}</p>
+            <p className="  text-base mt-4">{t("riskModes.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -313,20 +302,14 @@ export const FinanceContent = () => {
             <SectionTitle as="h4" className={sectionTitleClass}>
               {t("contextualFinance.title")}
             </SectionTitle>
-            <p className="text-nasun-white/60 text-lg md:text-xl -mt-2 mb-2">
-              {t("contextualFinance.subtitle")}
-            </p>
+            <p className=" text-lg md:text-xl -mt-2 mb-2">{t("contextualFinance.subtitle")}</p>
           </FadeInUp>
           <FadeInUp delay="0.1s">
-            <p className="text-nasun-white/70 text-base md:text-lg mb-4">
-              {t("contextualFinance.intro")}
-            </p>
+            <p className="  text-base md:text-lg mb-4">{t("contextualFinance.intro")}</p>
           </FadeInUp>
           <FadeInUp delay="0.15s">
             <OuterBox color="c1" padding="md" className="!bg-black/30 mb-4">
-              <p className="text-nasun-white/80 text-base md:text-lg">
-                {t("contextualFinance.inversion")}
-              </p>
+              <p className="  text-base md:text-lg">{t("contextualFinance.inversion")}</p>
               <p className="text-nasun-c1 text-sm md:text-base mt-3 italic">
                 {t("contextualFinance.designPrinciple")}
               </p>
@@ -363,7 +346,7 @@ export const FinanceContent = () => {
                     {feat.bullets && (
                       <ul className="mt-2 space-y-1">
                         {feat.bullets.map((bullet, j) => (
-                          <li key={j} className="text-sm flex gap-2 text-nasun-white/70">
+                          <li key={j} className="text-sm flex gap-2  ">
                             <span className="text-nasun-c1 mt-0.5 shrink-0">•</span>
                             {bullet}
                           </li>
@@ -383,9 +366,7 @@ export const FinanceContent = () => {
             </p>
           </FadeInUp>
           <FadeInUp delay="0.55s">
-            <p className="text-nasun-white/70 text-base mt-4">
-              {t("contextualFinance.closing")}
-            </p>
+            <p className="  text-base mt-4">{t("contextualFinance.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -397,9 +378,7 @@ export const FinanceContent = () => {
             </SectionTitle>
           </FadeInUp>
           <FadeInUp delay="0.1s">
-            <p className="text-nasun-white/70 text-base md:text-lg mb-8">
-              {t("koreaMarket.intro")}
-            </p>
+            <p className="  text-base md:text-lg mb-8">{t("koreaMarket.intro")}</p>
           </FadeInUp>
           <div className="flex flex-col gap-4">
             {koreaItems.map((item, i) => {
@@ -429,7 +408,7 @@ export const FinanceContent = () => {
             </SectionTitle>
           </FadeInUp>
           <FadeInUp delay="0.1s">
-            <p className="text-nasun-white/70 text-base md:text-lg mb-8">{t("flywheel.intro")}</p>
+            <p className="  text-base md:text-lg mb-8">{t("flywheel.intro")}</p>
           </FadeInUp>
           <div className="flex flex-col gap-4">
             {flywheelItems.map((item, i) => {
@@ -443,9 +422,7 @@ export const FinanceContent = () => {
                         <p className="text-nasun-white font-medium text-base md:text-lg">
                           {item.from}
                         </p>
-                        <p className="text-nasun-white/70 text-sm md:text-base mt-1">
-                          {item.description}
-                        </p>
+                        <p className="  text-sm md:text-base mt-1">{item.description}</p>
                       </div>
                     </div>
                   </OuterBox>
@@ -454,9 +431,7 @@ export const FinanceContent = () => {
             })}
           </div>
           <FadeInUp delay="0.35s">
-            <p className="text-nasun-white/70 text-base md:text-lg mt-6 italic">
-              {t("flywheel.closing")}
-            </p>
+            <p className="  text-base md:text-lg mt-6 italic">{t("flywheel.closing")}</p>
           </FadeInUp>
         </section>
 
@@ -481,9 +456,7 @@ export const FinanceContent = () => {
             </div>
           </FadeInUp>
           <FadeInUp delay="0.1s">
-            <p className="text-nasun-white/70 text-base md:text-lg mb-8">
-              {t("launchStatus.intro")}
-            </p>
+            <p className="  text-base md:text-lg mb-8">{t("launchStatus.intro")}</p>
           </FadeInUp>
 
           {/* Live Now */}
@@ -498,7 +471,7 @@ export const FinanceContent = () => {
               <FadeInUp key={i} delay={`${0.2 + i * 0.03}s`}>
                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4 h-full">
                   <p className="text-nasun-white font-medium text-sm md:text-base">{item.title}</p>
-                  <p className="text-nasun-white/60 text-xs md:text-sm mt-1">{item.description}</p>
+                  <p className=" text-xs md:text-sm mt-1">{item.description}</p>
                 </div>
               </FadeInUp>
             ))}
@@ -516,7 +489,7 @@ export const FinanceContent = () => {
               <FadeInUp key={i} delay={`${0.4 + i * 0.03}s`}>
                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 h-full">
                   <p className="text-nasun-white font-medium text-sm md:text-base">{item.title}</p>
-                  <p className="text-nasun-white/60 text-xs md:text-sm mt-1">{item.description}</p>
+                  <p className=" text-xs md:text-sm mt-1">{item.description}</p>
                 </div>
               </FadeInUp>
             ))}
@@ -534,7 +507,7 @@ export const FinanceContent = () => {
               <FadeInUp key={i} delay={`${0.55 + i * 0.03}s`}>
                 <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 h-full">
                   <p className="text-nasun-white font-medium text-sm md:text-base">{item.title}</p>
-                  <p className="text-nasun-white/60 text-xs md:text-sm mt-1">{item.description}</p>
+                  <p className=" text-xs md:text-sm mt-1">{item.description}</p>
                 </div>
               </FadeInUp>
             ))}
@@ -550,16 +523,12 @@ export const FinanceContent = () => {
           </FadeInUp>
           <FadeInUp delay="0.1s">
             <OuterBox color="w1" padding="md" className="!bg-[#2a2a2a]">
-              <p className="text-nasun-white/80 text-base md:text-lg leading-relaxed">
-                {t("cta.body")}
-              </p>
+              <p className="  text-base md:text-lg leading-relaxed">{t("cta.body")}</p>
               <p className="text-nasun-white font-medium text-xl md:text-2xl mt-6">
                 {t("cta.tagline")}
               </p>
               <p className="text-nasun-c1 text-base md:text-lg mt-2">{t("cta.closing")}</p>
-              <p className="text-nasun-white/60 text-base md:text-lg mt-1 italic">
-                {t("cta.motto")}
-              </p>
+              <p className=" text-base md:text-lg mt-1 italic">{t("cta.motto")}</p>
 
               <div className="flex flex-wrap gap-3 mt-8 justify-center">
                 <Button variant="c1" size="lg" className="text-nasun-black" asChild>
