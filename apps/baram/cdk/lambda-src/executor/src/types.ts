@@ -61,3 +61,15 @@ export interface RecordResponse {
   txDigest?: string;
   error?: string;
 }
+
+// DynamoDB result storage (7-day TTL)
+export interface ResultRecord {
+  requestId: number;
+  requesterAddress: string;
+  result: string;
+  resultHash: string;
+  model: string;
+  purpose: string;
+  createdAt: number;
+  ttl: number; // Unix epoch seconds
+}

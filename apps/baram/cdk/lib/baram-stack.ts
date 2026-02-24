@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 import * as path from 'path';
@@ -41,6 +42,15 @@ export class BaramStack extends cdk.Stack {
       corsAllowedOrigins = ['https://baram.nasun.io', 'http://localhost:5177'],
     } = props;
 
+    // DynamoDB table for AI execution results (TTL: 7 days)
+    const resultTable = new dynamodb.Table(this, 'ResultTable', {
+      tableName: 'baram-execution-results',
+      partitionKey: { name: 'requestId', type: dynamodb.AttributeType.NUMBER },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'ttl',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // Import existing secrets (must be created manually in AWS Secrets Manager)
     // Secret format: { "apiKey": "gsk_..." } for Groq
     // Secret format: { "privateKey": "hex-encoded-32-bytes" } for Executor
@@ -76,13 +86,15 @@ export class BaramStack extends cdk.Stack {
         EXECUTOR_SECRET_NAME: 'baram/executor',
         GROQ_SECRET_NAME: 'baram/groq',
         CORS_ALLOWED_ORIGINS: corsAllowedOrigins.join(','),
+        RESULT_TABLE_NAME: resultTable.tableName,
       },
       description: 'Baram AI Executor - Processes AI requests and submits proofs on-chain',
     });
 
-    // Grant Lambda access to secrets
+    // Grant Lambda access to secrets and DynamoDB
     executorSecret.grantRead(this.executorLambda);
     groqSecret.grantRead(this.executorLambda);
+    resultTable.grantReadWriteData(this.executorLambda);
 
     // Create API Gateway
     this.apiGateway = new apigateway.RestApi(this, 'BaramApi', {
@@ -140,6 +152,12 @@ export class BaramStack extends cdk.Stack {
     // POST /record — requires API key (Model B: self-reported settlement)
     const recordResource = this.apiGateway.root.addResource('record');
     recordResource.addMethod('POST', lambdaIntegration, {
+      apiKeyRequired: true,
+    });
+
+    // GET /result — requires API key (fetch stored AI result text)
+    const resultResource = this.apiGateway.root.addResource('result');
+    resultResource.addMethod('GET', lambdaIntegration, {
       apiKeyRequired: true,
     });
 
