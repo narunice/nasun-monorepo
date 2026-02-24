@@ -13,29 +13,23 @@ import type {
 
 const DEEPBOOK_PACKAGE = import.meta.env.VITE_DEEPBOOK_PACKAGE || '';
 
-// Estimated checkpoint interval in ms (~3 seconds)
-const ESTIMATED_CP_INTERVAL_MS = 3000;
-
 // ===== Binary Search for Checkpoint at Target Time =====
 
 /**
  * Find the checkpoint closest to a target timestamp using binary search.
  * Returns the checkpoint whose timestamp is <= targetMs (or the earliest available).
+ * Uses full range [0, latestSeq] — covers up to 2^30 (~1B) checkpoints.
  */
 async function findCheckpointAtTime(
   targetMs: number,
   latestSeq: number,
-  latestTimestampMs: number,
 ): Promise<Checkpoint> {
-  // Estimate the starting sequence based on time difference
-  const msDiff = latestTimestampMs - targetMs;
-  const estimatedSeqDiff = Math.floor(msDiff / ESTIMATED_CP_INTERVAL_MS);
-  let low = Math.max(0, latestSeq - estimatedSeqDiff * 2); // wide range
+  let low = 0;
   let high = latestSeq;
   let bestMatch: Checkpoint | null = null;
 
-  // Binary search (max ~20 iterations)
-  for (let i = 0; i < 20; i++) {
+  // Binary search — 30 iterations covers up to ~1 billion checkpoints
+  for (let i = 0; i < 30; i++) {
     if (low > high) break;
 
     const mid = Math.floor((low + high) / 2);
@@ -85,45 +79,42 @@ async function fetchDayBoundaries(timeRange: TimeRange): Promise<DayBoundary[]> 
   const latestCp = await suiClient.getCheckpoint({ id: latestSeqStr });
   const latestTimestampMs = Number(latestCp.timestampMs);
 
-  // Build list of target times (day boundaries: 0:00 UTC for each day)
-  const boundaries: DayBoundary[] = [];
-
-  // Add "now" as the final boundary
-  boundaries.push({
+  // "now" boundary — re-appended after dedup to preserve today's partial-day data
+  const nowBoundary: DayBoundary = {
     date: toDayKey(now),
     checkpointSeq: latestCp.sequenceNumber,
     networkTotalTx: Number(latestCp.networkTotalTransactions),
     timestampMs: latestTimestampMs,
-  });
+  };
 
-  // For each day boundary going backwards
+  // Build target times for each day boundary (0:00 UTC) and search in parallel
+  const targets: { targetMs: number }[] = [];
   for (let d = 0; d < days; d++) {
     const targetDate = new Date(now);
     targetDate.setUTCDate(targetDate.getUTCDate() - d);
     targetDate.setUTCHours(0, 0, 0, 0);
     const targetMs = targetDate.getTime();
-
-    // Skip if target is after latest checkpoint (shouldn't happen)
-    if (targetMs >= latestTimestampMs) continue;
-
-    const cp = await findCheckpointAtTime(targetMs, latestSeq, latestTimestampMs);
-    const cpDate = toDayKey(Number(cp.timestampMs));
-
-    // Avoid duplicate date entries
-    if (boundaries.some((b) => b.date === cpDate && b.checkpointSeq === cp.sequenceNumber)) {
-      continue;
+    if (targetMs < latestTimestampMs) {
+      targets.push({ targetMs });
     }
-
-    boundaries.push({
-      date: cpDate,
-      checkpointSeq: cp.sequenceNumber,
-      networkTotalTx: Number(cp.networkTotalTransactions),
-      timestampMs: Number(cp.timestampMs),
-    });
   }
 
-  // Sort by date ascending
-  boundaries.sort((a, b) => a.timestampMs - b.timestampMs);
+  const results = await Promise.all(
+    targets.map(({ targetMs }) =>
+      findCheckpointAtTime(targetMs, latestSeq)
+        .then((cp): DayBoundary => ({
+          date: toDayKey(Number(cp.timestampMs)),
+          checkpointSeq: cp.sequenceNumber,
+          networkTotalTx: Number(cp.networkTotalTransactions),
+          timestampMs: Number(cp.timestampMs),
+        }))
+        .catch(() => null),
+    ),
+  );
+
+  const boundaries: DayBoundary[] = results.filter(
+    (b): b is DayBoundary => b !== null,
+  );
 
   // Deduplicate by date (keep the one closest to midnight)
   const deduped = new Map<string, DayBoundary>();
@@ -134,7 +125,14 @@ async function fetchDayBoundaries(timeRange: TimeRange): Promise<DayBoundary[]> 
     }
   }
 
-  return Array.from(deduped.values()).sort((a, b) => a.timestampMs - b.timestampMs);
+  // Sort ascending, then re-append "now" as the final boundary
+  // This ensures today's midnight-to-now partial data is captured
+  const sorted = Array.from(deduped.values()).sort((a, b) => a.timestampMs - b.timestampMs);
+  if (sorted.length === 0 || nowBoundary.timestampMs > sorted[sorted.length - 1].timestampMs) {
+    sorted.push(nowBoundary);
+  }
+
+  return sorted;
 }
 
 // ===== Public API: Fetch Analytics Data =====
