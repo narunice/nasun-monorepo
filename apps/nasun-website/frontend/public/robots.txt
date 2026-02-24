@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /callback
+Disallow: /logout
+Disallow: /my-account
+Disallow: /pado-revised
+
+Sitemap: https://nasun.io/sitemap.xml

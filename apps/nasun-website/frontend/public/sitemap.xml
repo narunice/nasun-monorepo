@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://nasun.io/</loc><priority>1.0</priority><changefreq>weekly</changefreq></url>
+  <!-- Protocol -->
+  <url><loc>https://nasun.io/network/nsn</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/network/governance</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <!-- Ecosystem -->
+  <url><loc>https://nasun.io/ecosystem/ai-economy</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/ecosystem/finance</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/ecosystem/gensol</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/ecosystem/gensol/main</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/ecosystem/gensol/shooter</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/ecosystem/gensol/animation</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/ecosystem/gensol/plan</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <!-- Updates -->
+  <url><loc>https://nasun.io/updates/news</loc><priority>0.7</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://nasun.io/updates/awards</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/updates/roadmap</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <!-- About -->
+  <url><loc>https://nasun.io/about/overview</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/about/founders</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/about/strategy</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/about/investors</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <!-- Wave 1 Campaign -->
+  <url><loc>https://nasun.io/wave1/battalion-nft</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://nasun.io/wave1/early-contributors</loc><priority>0.7</priority><changefreq>weekly</changefreq></url>
+  <url><loc>https://nasun.io/wave1/leaderboard</loc><priority>0.8</priority><changefreq>daily</changefreq></url>
+  <url><loc>https://nasun.io/wave1/leaderboard-guide</loc><priority>0.6</priority><changefreq>monthly</changefreq></url>
+  <!-- Standalone -->
+  <url><loc>https://nasun.io/baram</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/pado</loc><priority>0.7</priority><changefreq>monthly</changefreq></url>
+  <url><loc>https://nasun.io/privacy-policy</loc><priority>0.3</priority><changefreq>yearly</changefreq></url>
+  <url><loc>https://nasun.io/terms-of-use</loc><priority>0.3</priority><changefreq>yearly</changefreq></url>
+</urlset>
