@@ -17,7 +17,9 @@ import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
 import { initResultStore, saveResult, getResult } from './services/resultStore';
-import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, DEFAULT_MODEL } from './types';
+import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, ResultRequest, DEFAULT_MODEL } from './types';
+import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
+import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 
 // AWS Secrets Manager client
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
@@ -86,7 +88,7 @@ function maskSensitive<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
 
-  const sensitiveFields = ['encryptedPrompt', 'prompt', 'privateKey', 'apiKey', 'secret', 'result'];
+  const sensitiveFields = ['encryptedPrompt', 'prompt', 'privateKey', 'apiKey', 'secret', 'result', 'signature', 'ephemeralPubKey'];
 
   if (Array.isArray(obj)) {
     return obj.map((item) => maskSensitive(item)) as T;
@@ -220,6 +222,48 @@ function classifyError(err: Error): { status: number; message: string } {
   }
 
   return { status: 500, message: 'Internal server error' };
+}
+
+// Maximum age for result request signatures (5 minutes)
+const RESULT_SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000;
+
+/**
+ * Verify wallet ownership for result retrieval.
+ * Throws descriptive error on failure (caller maps to generic 403).
+ */
+async function verifyResultOwnership(req: ResultRequest, expectedAddress: string): Promise<void> {
+  // Validate timestamp freshness (replay protection)
+  const age = Date.now() - req.timestamp;
+  if (age < 0 || age > RESULT_SIGNATURE_MAX_AGE_MS) {
+    throw new Error('TIMESTAMP_EXPIRED');
+  }
+
+  // Reconstruct the signed message
+  const message = new TextEncoder().encode(
+    `baram:view-result:${req.requestId}:${req.timestamp}`
+  );
+
+  if (req.signerType === 'standard') {
+    // Full verification: SDK verifies signature and checks address match (throws on failure)
+    await verifyPersonalMessageSignature(message, req.signature, { address: expectedAddress });
+  } else if (req.signerType === 'zklogin') {
+    // Partial verification: verify ephemeral key signature
+    // Cannot fully bind ephemeral key to zkLogin address without ZK proof verification
+    if (!req.ephemeralPubKey) {
+      throw new Error('MISSING_EPHEMERAL_KEY');
+    }
+    const pubKey = new Ed25519PublicKey(Buffer.from(req.ephemeralPubKey, 'base64'));
+    const isValid = await pubKey.verify(message, Buffer.from(req.signature, 'base64'));
+    if (!isValid) {
+      throw new Error('INVALID_SIGNATURE');
+    }
+    // Address check: client must provide the correct address
+    if (req.address !== expectedAddress) {
+      throw new Error('ADDRESS_MISMATCH');
+    }
+  } else {
+    throw new Error('UNSUPPORTED_SIGNER_TYPE');
+  }
 }
 
 /**
@@ -623,8 +667,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // GET /result?requestId=N&authorizer=0x...
+    // GET /result?requestId=N&authorizer=0x... (DEPRECATED — use POST /result)
     if (path.endsWith('/result') && event.httpMethod === 'GET') {
+      console.warn('[DEPRECATED] GET /result used — migrate to POST /result with wallet signature');
+
       const qp = event.queryStringParameters || {};
       const requestId = Number(qp.requestId);
       const authorizer = qp.authorizer || '';
@@ -652,6 +698,117 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           statusCode: 404,
           headers: corsHeaders,
           body: JSON.stringify({ error: 'Result not found or expired' }),
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          requestId: record.requestId,
+          result: record.result,
+          resultHash: record.resultHash,
+          model: record.model,
+          purpose: record.purpose,
+          createdAt: record.createdAt,
+          expiresAt: record.ttl * 1000,
+        }),
+      };
+    }
+
+    // POST /result — authenticated result retrieval with wallet signature
+    if (path.endsWith('/result') && event.httpMethod === 'POST') {
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Request body is required' }),
+        };
+      }
+
+      const parsed = safeJsonParse(event.body);
+      if (!parsed || typeof parsed !== 'object') {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Invalid JSON body' }),
+        };
+      }
+
+      const body = parsed as ResultRequest;
+
+      // Input validation
+      if (!isSafeRequestId(body.requestId)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'requestId must be a non-negative integer' }),
+        };
+      }
+
+      if (typeof body.timestamp !== 'number' || !Number.isFinite(body.timestamp)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'timestamp must be a number' }),
+        };
+      }
+
+      if (!body.signature || typeof body.signature !== 'string' || body.signature.length > 512) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'signature is required and must be under 512 characters' }),
+        };
+      }
+
+      if (body.ephemeralPubKey && (typeof body.ephemeralPubKey !== 'string' || body.ephemeralPubKey.length > 256)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'ephemeralPubKey must be under 256 characters' }),
+        };
+      }
+
+      if (!/^0x[0-9a-fA-F]{64}$/.test(body.address)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'address must be a valid Sui address' }),
+        };
+      }
+
+      if (body.signerType !== 'standard' && body.signerType !== 'zklogin') {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'signerType must be "standard" or "zklogin"' }),
+        };
+      }
+
+      // Fetch stored result
+      const record = await getResult(body.requestId);
+      if (!record) {
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Result not found or expired' }),
+        };
+      }
+
+      // Verify ownership via wallet signature
+      try {
+        await verifyResultOwnership(body, record.requesterAddress);
+      } catch (err) {
+        console.warn('[POST /result] Verification failed:', (err as Error).message, {
+          requestId: body.requestId,
+          address: body.address,
+          signerType: body.signerType,
+        });
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Access denied' }),
         };
       }
 
