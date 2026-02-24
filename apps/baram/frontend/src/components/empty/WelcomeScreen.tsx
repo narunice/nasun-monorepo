@@ -58,7 +58,7 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
       </div>
 
       {/* Welcome Text */}
-      <h2 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2 text-center">
+      <h2 className="text-2xl lg:text-3xl font-semibold text-[var(--color-text-primary)] mb-2 text-center">
         AI Inference with Cryptographic Proof
       </h2>
       <p className="text-[var(--color-text-secondary)] text-center max-w-md mb-8">

@@ -12,7 +12,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   return (
     <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
       <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-semibold text-[var(--color-text-primary)] mt-1">{value}</p>
+      <p className="text-2xl lg:text-3xl font-semibold text-[var(--color-text-primary)] mt-1">{value}</p>
       {sub && <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{sub}</p>}
     </div>
   );
@@ -52,7 +52,7 @@ export function DashboardOverview() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Dashboard</h2>
+      <h2 className="text-lg lg:text-xl font-semibold text-[var(--color-text-primary)]">Dashboard</h2>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -81,7 +81,7 @@ export function DashboardOverview() {
       {/* Agent Cards */}
       {activeAgents.length > 0 && (
         <section>
-          <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Active Agents</h3>
+          <h3 className="text-sm lg:text-base font-medium text-[var(--color-text-secondary)] mb-3">Active Agents</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {activeAgents.map(agent => {
               const agentBudget = budgets?.find(b => b.agent === agent.agentAddress);
@@ -94,7 +94,7 @@ export function DashboardOverview() {
                     <span className="text-sm font-medium text-[var(--color-text-primary)]">
                       {agent.name}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-success)]/10 text-[var(--color-success)]">
+                    <span className="text-2xs px-1.5 py-0.5 rounded bg-[var(--color-success)]/10 text-[var(--color-success)]">
                       Active
                     </span>
                   </div>
@@ -126,12 +126,12 @@ export function DashboardOverview() {
 
       {/* Recent AER Records */}
       <section>
-        <h3 className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Recent Execution Reports</h3>
+        <h3 className="text-sm lg:text-base font-medium text-[var(--color-text-secondary)] mb-3">Recent Execution Reports</h3>
         {recentAER.length === 0 ? (
           <p className="text-xs text-[var(--color-text-muted)]">No execution reports yet.</p>
         ) : (
           <div className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs lg:text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
                   <th className="text-left px-3 py-2 text-[var(--color-text-muted)] font-medium">ID</th>
@@ -154,7 +154,7 @@ export function DashboardOverview() {
                       {formatNUSDC(record.paymentAmount)} NUSDC
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                      <span className={`px-1.5 py-0.5 rounded text-2xs ${
                         record.status === 0
                           ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
                           : record.status === 1

@@ -73,6 +73,14 @@
   --color-warning: #d97706;
 }
 
+/* Responsive root font-size: scales all rem-based Tailwind classes globally */
+html {
+  font-size: 16px;
+}
+@media (min-width: 1280px) {
+  html { font-size: 18px; }
+}
+
 body {
   font-family: 'Rubik', system-ui, sans-serif;
   background-color: var(--color-bg-primary);

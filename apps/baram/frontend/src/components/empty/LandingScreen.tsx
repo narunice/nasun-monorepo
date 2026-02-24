@@ -17,7 +17,7 @@ export function LandingScreen() {
             />
           </svg>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] mb-3">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[var(--color-text-primary)] mb-3">
           Your Prompts, For Your Eyes Only
         </h1>
         <p className="text-[var(--color-text-secondary)] max-w-3xl text-sm leading-relaxed">

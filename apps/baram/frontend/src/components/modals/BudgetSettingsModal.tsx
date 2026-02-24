@@ -207,7 +207,7 @@ function ConstraintsTab({ budget, onSave, isBusy }: {
     <div className="space-y-4">
       {/* Max per request */}
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
           Max Per Request (NUSDC)
         </label>
         <input
@@ -223,16 +223,16 @@ function ConstraintsTab({ budget, onSave, isBusy }: {
 
       {/* Allowed models */}
       <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
           Allowed Models
         </label>
-        <p className="text-[10px] text-[var(--color-text-muted)]">Leave empty to allow all</p>
+        <p className="text-2xs text-[var(--color-text-muted)]">Leave empty to allow all</p>
         <div className="flex flex-wrap gap-1.5">
           {AVAILABLE_MODELS.map(({ id, name }) => (
             <button
               key={id}
               onClick={() => toggleModel(id)}
-              className={`px-2.5 py-1 text-[10px] rounded-full border transition-colors
+              className={`px-2.5 py-1 text-2xs rounded-full border transition-colors
                 ${selectedModels.includes(id)
                   ? 'bg-[var(--color-accent)]/10 border-[var(--color-accent)] text-[var(--color-accent)]'
                   : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
@@ -247,10 +247,10 @@ function ConstraintsTab({ budget, onSave, isBusy }: {
       {/* Allowed executors */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+          <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
             Allowed Executors
           </label>
-          <span className={`text-[10px] ${executors.length >= MAX_EXECUTORS ? 'text-amber-400' : 'text-[var(--color-text-muted)]'}`}>
+          <span className={`text-2xs ${executors.length >= MAX_EXECUTORS ? 'text-amber-400' : 'text-[var(--color-text-muted)]'}`}>
             {executors.length} / {MAX_EXECUTORS}
           </span>
         </div>
@@ -259,7 +259,7 @@ function ConstraintsTab({ budget, onSave, isBusy }: {
             {executors.map((addr, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] font-mono"
+                className="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] font-mono"
                 title={addr}
               >
                 {addr.slice(0, 6)}...{addr.slice(-4)}
@@ -292,7 +292,7 @@ function ConstraintsTab({ budget, onSave, isBusy }: {
 
       {/* Expiration */}
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
           Expiration Date
         </label>
         <input
@@ -302,8 +302,8 @@ function ConstraintsTab({ budget, onSave, isBusy }: {
           min={new Date().toISOString().slice(0, 16)}
           className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
         />
-        <p className="text-[10px] text-[var(--color-text-muted)]">Leave empty for no expiration</p>
-        {expirationError && <p className="text-[10px] text-red-400">{expirationError}</p>}
+        <p className="text-2xs text-[var(--color-text-muted)]">Leave empty for no expiration</p>
+        {expirationError && <p className="text-2xs text-red-400">{expirationError}</p>}
       </div>
 
       <button
@@ -341,7 +341,7 @@ function SpendingLimitsTab({ budget, onSave, isBusy }: {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
           Daily Limit (NUSDC)
         </label>
         <input
@@ -356,7 +356,7 @@ function SpendingLimitsTab({ budget, onSave, isBusy }: {
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
           Weekly Limit (NUSDC)
         </label>
         <input
@@ -371,7 +371,7 @@ function SpendingLimitsTab({ budget, onSave, isBusy }: {
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
           Monthly Limit (NUSDC)
         </label>
         <input
@@ -386,7 +386,7 @@ function SpendingLimitsTab({ budget, onSave, isBusy }: {
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+        <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
           Minimum Interval (seconds)
         </label>
         <input
@@ -443,14 +443,14 @@ function CategoriesTab({ budget, onSave, isBusy }: {
     <div className="space-y-4">
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+          <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">
             Allowed Categories
           </label>
-          <span className={`text-[10px] ${categories.length >= MAX_CATEGORIES ? 'text-amber-400' : 'text-[var(--color-text-muted)]'}`}>
+          <span className={`text-2xs ${categories.length >= MAX_CATEGORIES ? 'text-amber-400' : 'text-[var(--color-text-muted)]'}`}>
             {categories.length} / {MAX_CATEGORIES}
           </span>
         </div>
-        <p className="text-[10px] text-[var(--color-text-muted)]">
+        <p className="text-2xs text-[var(--color-text-muted)]">
           Leave empty to allow all categories
         </p>
 
@@ -459,7 +459,7 @@ function CategoriesTab({ budget, onSave, isBusy }: {
             {categories.map((cat, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+                className="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
               >
                 {cat}
                 <button

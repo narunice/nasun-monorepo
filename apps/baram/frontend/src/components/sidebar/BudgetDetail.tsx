@@ -86,7 +86,7 @@ export function BudgetDetail({
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
           <div>
             <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Budget Detail</h2>
-            <span className={`text-[10px] font-medium ${status.color}`}>{status.label}</span>
+            <span className={`text-2xs font-medium ${status.color}`}>{status.label}</span>
           </div>
           <button
             onClick={onClose}
@@ -102,7 +102,7 @@ export function BudgetDetail({
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           {/* Agent Info */}
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Agent</span>
+            <span className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Agent</span>
             <p className="text-xs font-mono text-[var(--color-text-secondary)] mt-0.5 break-all">
               {budget.agent}
             </p>
@@ -118,7 +118,7 @@ export function BudgetDetail({
 
           {/* Constraints */}
           <div className="space-y-2">
-            <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Constraints</span>
+            <span className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Constraints</span>
             <div className="space-y-1">
               <ConstraintRow
                 label="Max per request"
@@ -252,7 +252,7 @@ export function BudgetDetail({
           {/* Refresh */}
           <button
             onClick={onRefresh}
-            className="w-full py-1.5 text-[10px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+            className="w-full py-1.5 text-2xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
           >
             Refresh data
           </button>
@@ -265,7 +265,7 @@ export function BudgetDetail({
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="p-2.5 rounded-lg bg-[var(--color-bg-tertiary)]">
-      <span className="text-[10px] text-[var(--color-text-muted)]">{label}</span>
+      <span className="text-2xs text-[var(--color-text-muted)]">{label}</span>
       <p className="text-xs font-medium text-[var(--color-text-primary)] mt-0.5">{value}</p>
     </div>
   );
@@ -274,8 +274,8 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function ConstraintRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span className="text-[10px] text-[var(--color-text-muted)]">{label}</span>
-      <span className="text-[10px] text-[var(--color-text-secondary)] text-right max-w-[60%] truncate">{value}</span>
+      <span className="text-2xs text-[var(--color-text-muted)]">{label}</span>
+      <span className="text-2xs text-[var(--color-text-secondary)] text-right max-w-[60%] truncate">{value}</span>
     </div>
   );
 }
@@ -300,7 +300,7 @@ function ActionForm({
 }: ActionFormProps) {
   return (
     <div className="space-y-2">
-      <label className="text-[10px] text-[var(--color-text-muted)]">{label}</label>
+      <label className="text-2xs text-[var(--color-text-muted)]">{label}</label>
       <input
         type="number"
         step="0.01"

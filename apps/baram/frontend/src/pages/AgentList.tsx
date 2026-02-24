@@ -45,13 +45,13 @@ function AgentCard({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{agent.name}</h3>
+          <h3 className="text-sm lg:text-base font-semibold text-[var(--color-text-primary)]">{agent.name}</h3>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
             {agent.role} | {formatAddress(agent.agentAddress)}
           </p>
         </div>
         <span
-          className={`text-[10px] px-1.5 py-0.5 rounded ${
+          className={`text-2xs px-1.5 py-0.5 rounded ${
             agent.isActive
               ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
               : 'bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)]'
@@ -66,7 +66,7 @@ function AgentCard({
         {agent.capabilities.map((cap) => (
           <span
             key={cap}
-            className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+            className="text-2xs px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
           >
             {cap}
           </span>
@@ -90,7 +90,7 @@ function AgentCard({
               style={{ width: `${Math.min(100, 100 - spentPercent)}%` }}
             />
           </div>
-          <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mt-1">
+          <div className="flex justify-between text-2xs text-[var(--color-text-muted)] mt-1">
             <span>{budget.requestCount} requests</span>
             <span>{formatNUSDC(budget.totalSpent)} spent</span>
           </div>
@@ -99,10 +99,10 @@ function AgentCard({
 
       {/* Stats row */}
       <div className="flex items-center gap-4 mt-3 pt-3 border-t border-[var(--color-border)]">
-        <span className="text-[10px] text-[var(--color-text-muted)]">
+        <span className="text-2xs text-[var(--color-text-muted)]">
           Created {formatDate(agent.createdAt)}
         </span>
-        <span className="text-[10px] text-[var(--color-text-muted)]">
+        <span className="text-2xs text-[var(--color-text-muted)]">
           {agent.totalExecutions} executions
         </span>
       </div>
@@ -153,7 +153,7 @@ export function AgentList() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Agents</h2>
+        <h2 className="text-lg lg:text-xl font-semibold text-[var(--color-text-primary)]">Agents</h2>
         <button
           onClick={() => { resetTxStatus(); setShowCreateModal(true); }}
           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"

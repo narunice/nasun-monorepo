@@ -232,14 +232,14 @@ export function AgentDetail() {
       {/* Agent header */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{agent.name}</h2>
+          <h2 className="text-lg lg:text-xl font-semibold text-[var(--color-text-primary)]">{agent.name}</h2>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5 font-mono">
             {formatAddress(agent.agentAddress)}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`text-[10px] px-2 py-1 rounded ${
+            className={`text-2xs px-2 py-1 rounded ${
               agent.isActive
                 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
                 : 'bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)]'
@@ -409,7 +409,7 @@ export function AgentDetail() {
               Transfer NASUN to agent address for transaction gas fees.
             </p>
             <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Amount (NASUN)</label>
+              <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Amount (NASUN)</label>
               <input
                 type="number"
                 step="0.01"
@@ -478,14 +478,14 @@ export function AgentDetail() {
           <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-5 space-y-3">
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Export Agent Key</h3>
             <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20">
-              <p className="text-[10px] text-amber-400">
+              <p className="text-2xs text-amber-400">
                 This key can access funds connected to this agent's Budget. Store it securely and never share it.
               </p>
             </div>
             {!exportedKey ? (
               <>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Agent Passphrase</label>
+                  <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Agent Passphrase</label>
                   <input
                     type="password"
                     autoComplete="off"
@@ -517,15 +517,15 @@ export function AgentDetail() {
             ) : (
               <>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Private Key</label>
+                  <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Private Key</label>
                   <textarea
                     readOnly
                     value={exportedKey}
                     rows={3}
-                    className="w-full px-3 py-2 text-[10px] font-mono rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] resize-none"
+                    className="w-full px-3 py-2 text-2xs font-mono rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] resize-none"
                   />
                 </div>
-                <p className="text-[10px] text-[var(--color-text-muted)]">
+                <p className="text-2xs text-[var(--color-text-muted)]">
                   Copy this value into your agent-runner .env file as AGENT_PRIVATE_KEY. Key auto-clears in 30 seconds.
                 </p>
                 <button
@@ -568,7 +568,7 @@ function OverviewTab({ agent, budget, agentBalance }: {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Identity */}
       <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
-        <h4 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Identity</h4>
+        <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Identity</h4>
         <dl className="space-y-2 text-xs">
           <div className="flex justify-between">
             <dt className="text-[var(--color-text-muted)]">Role</dt>
@@ -590,7 +590,7 @@ function OverviewTab({ agent, budget, agentBalance }: {
             <dt className="text-[var(--color-text-muted)] mb-1">Capabilities</dt>
             <dd className="flex gap-1.5 flex-wrap">
               {agent.capabilities.map(cap => (
-                <span key={cap} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]">
+                <span key={cap} className="text-2xs px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]">
                   {cap}
                 </span>
               ))}
@@ -601,7 +601,7 @@ function OverviewTab({ agent, budget, agentBalance }: {
 
       {/* Stats */}
       <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
-        <h4 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Statistics</h4>
+        <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Statistics</h4>
         <dl className="space-y-2 text-xs">
           <div className="flex justify-between">
             <dt className="text-[var(--color-text-muted)]">Executions</dt>
@@ -662,7 +662,7 @@ function BudgetTab({ budget, spendingLimits, onCreateBudget }: {
     <div className="space-y-4">
       {/* Budget overview */}
       <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
-        <h4 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Budget Overview</h4>
+        <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Budget Overview</h4>
         <div className="flex justify-between text-sm text-[var(--color-text-primary)] mb-2">
           <span>Balance</span>
           <span className="font-semibold">{formatNUSDC(budget.balance)} / {formatNUSDC(totalDeposit)} NUSDC</span>
@@ -692,7 +692,7 @@ function BudgetTab({ budget, spendingLimits, onCreateBudget }: {
       {/* Spending Limits */}
       {spendingLimits && (
         <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)]">
-          <h4 className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Spending Limits</h4>
+          <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide mb-3">Spending Limits</h4>
           <div className="space-y-3">
             <LimitGauge label="Daily" spent={spendingLimits.dailySpent} limit={spendingLimits.dailyLimit} />
             <LimitGauge label="Weekly" spent={spendingLimits.weeklySpent} limit={spendingLimits.weeklyLimit} />

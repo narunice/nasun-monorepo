@@ -125,7 +125,7 @@ export function DashboardSidebar({ isOpen }: DashboardSidebarProps) {
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-[var(--color-border)] shrink-0">
-        <p className="text-[10px] text-[var(--color-text-muted)]">
+        <p className="text-2xs text-[var(--color-text-muted)]">
           Nasun Devnet
         </p>
       </div>
