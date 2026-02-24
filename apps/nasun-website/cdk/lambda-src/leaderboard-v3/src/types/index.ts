@@ -114,6 +114,11 @@ export interface Account {
   profileImageUrl?: string; // X profile image URL
   isRegistered?: boolean; // Whether user has logged in to Nasun website
 
+  // Telegram channel membership (set via verify-telegram endpoint)
+  isTelegramMember?: boolean; // Whether user has verified Telegram channel membership
+  telegramUserId?: string; // Telegram user ID (for uniqueness check)
+  telegramUsername?: string; // Telegram @username (for display)
+
   // Aggregated fields (updated on post registration)
   totalPostScore: number; // Σ(PostScore)
   postCount: number; // Number of registered posts
@@ -154,6 +159,7 @@ export interface ComputedUserScore {
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
+  isTelegramMember?: boolean;
 
   // Raw aggregates from Account
   totalPostScore: number;
@@ -187,6 +193,7 @@ export interface LeaderboardEntry {
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
+  isTelegramMember?: boolean;
 
   // Breakdown for transparency (optional)
   breakdown?: {
@@ -383,6 +390,7 @@ export interface DailySnapshot {
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
+  isTelegramMember?: boolean;
   // Meta
   snapshotDate: string; // "2026-01-21"
   snapshotTime: string; // ISO timestamp
@@ -425,6 +433,7 @@ export interface SeasonAccountScore {
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
+  isTelegramMember?: boolean;
   // Timestamps
   firstSeenAt: string;
   lastSeenAt: string;
@@ -555,6 +564,8 @@ export interface MyRankData {
   originalUsername?: string;
   displayName?: string;
   profileImageUrl?: string;
+  isRegistered?: boolean;
+  isTelegramMember?: boolean;
   rankChange?: RankChange;
   totalUsers?: number;
   message?: string; // e.g., "Your rank will be updated at 9:00 AM KST"

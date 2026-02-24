@@ -38,8 +38,8 @@ export function LeaderboardMainContent({
                 </span>
                 <span className="col-span-6 text-left font-medium text-nasun-white uppercase relative group cursor-help">
                   USER
-                  <span className="invisible group-hover:visible absolute left-0 top-full mt-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
-                    Checkmark indicates a community member signed up on Nasun Website
+                  <span className="invisible group-hover:visible absolute left-0 top-full mt-2 px-3 py-1.5 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
+                    <span className="text-nasun-c7">Green</span>: signed up on Nasun Website &middot; <span className="text-sky-400">Blue</span>: joined Telegram channel
                   </span>
                 </span>
                 <span className="col-span-2 text-right font-medium text-nasun-white uppercase relative group cursor-help">

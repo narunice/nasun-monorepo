@@ -26,6 +26,7 @@ import { WalletConnect } from "@nasun/wallet-ui";
 import { AccountItem } from "./components/AccountItem";
 import {
   ActiveBadge,
+  ChannelMemberBadge,
   ConnectedBadge,
   DifferentWalletBadge,
   InactiveBadge,
@@ -33,6 +34,7 @@ import {
   LoggedInBadge,
 } from "./components/StatusBadges";
 import { useAccountLinking } from "./hooks/useAccountLinking";
+import { useTelegramVerify } from "./hooks/useTelegramVerify";
 
 interface ProfileHeroCardProps {
   className?: string;
@@ -86,6 +88,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const { isLinking, handleLinkGoogle, handleLinkTwitter, unlinkAccount } = useAccountLinking({
     user,
   });
+  const telegram = useTelegramVerify({ user });
 
   // Nasun Wallet Hooks
   const { status, account } = useWallet();
@@ -361,7 +364,46 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 4. Nasun Wallet */}
+            {/* 4. Telegram */}
+            <AccountItem
+              provider="telegram"
+              identifier={
+                telegram.isLoading
+                  ? "Loading..."
+                  : telegram.isVerified
+                    ? telegram.telegramUsername
+                      ? `@${telegram.telegramUsername}`
+                      : "Verified"
+                    : "Not connected"
+              }
+              statusBadge={telegram.isVerified ? <ChannelMemberBadge /> : undefined}
+              actions={[
+                !telegram.isVerified && !telegram.isLoading ? (
+                  <Button
+                    key="connect"
+                    size="sm"
+                    variant="filledOutlineC7"
+                    onClick={telegram.connect}
+                    disabled={telegram.isVerifying}
+                  >
+                    {telegram.isVerifying ? "Verifying..." : "Connect"}
+                  </Button>
+                ) : null,
+                telegram.isVerified ? (
+                  <Button
+                    key="disconnect"
+                    size="sm"
+                    variant="filledOutlineScarlet"
+                    onClick={telegram.disconnect}
+                    disabled={telegram.isDisconnecting}
+                  >
+                    {telegram.isDisconnecting ? "Disconnecting..." : "Disconnect"}
+                  </Button>
+                ) : null,
+              ]}
+            />
+
+            {/* 5. Nasun Wallet */}
             <AccountItem
               provider="nasun"
               identifier={
