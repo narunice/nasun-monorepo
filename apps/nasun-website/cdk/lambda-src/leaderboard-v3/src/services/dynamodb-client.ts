@@ -238,6 +238,7 @@ export async function createPost(params: {
       displayName: account.displayName,
       profileImageUrl: account.profileImageUrl,
       isRegistered: account.isRegistered,
+      isTelegramMember: account.isTelegramMember,
       postType, // Phase 9: For per-type aggregation
     });
   }
@@ -622,6 +623,7 @@ export async function createAccount(
     displayName: profileData?.displayName,
     profileImageUrl: profileData?.profileImageUrl,
     isRegistered: profileData?.isRegistered ?? false,
+    isTelegramMember: false,
     totalPostScore: 0,
     postCount: 0,
     signalCountTotal: 0,
@@ -876,6 +878,7 @@ export async function updateSeasonAccountAggregates(params: {
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
+  isTelegramMember?: boolean;
   postType?: PostType; // Phase 9: For per-type aggregation
 }): Promise<SeasonAccountScore> {
   const {
@@ -891,6 +894,7 @@ export async function updateSeasonAccountAggregates(params: {
     displayName,
     profileImageUrl,
     isRegistered,
+    isTelegramMember,
     postType = 'original',
   } = params;
 
@@ -962,6 +966,7 @@ export async function updateSeasonAccountAggregates(params: {
       'freshnessMultiplier = :freshnessMultiplier',
       'lastSeenAt = :lastSeen',
       'isRegistered = :isRegistered',
+      'isTelegramMember = :isTelegramMember',
       // Phase 9: Per-type fields
       'originalPostCount = :originalPostCount',
       'originalTotalScore = :originalTotalScore',
@@ -983,6 +988,7 @@ export async function updateSeasonAccountAggregates(params: {
       ':freshnessMultiplier': freshnessMultiplier,
       ':lastSeen': lastSeenAt,
       ':isRegistered': isRegistered ?? false,
+      ':isTelegramMember': isTelegramMember ?? false,
       // Phase 9: Per-type values
       ':originalPostCount': newOriginalCount,
       ':originalTotalScore': newOriginalScore,
@@ -1062,6 +1068,7 @@ export async function updateSeasonAccountAggregates(params: {
       displayName,
       profileImageUrl,
       isRegistered: isRegistered ?? false,
+      isTelegramMember: isTelegramMember ?? false,
       // Phase 9: Per-type aggregation
       originalPostCount: initialOriginalCount,
       originalTotalScore: initialOriginalScore,

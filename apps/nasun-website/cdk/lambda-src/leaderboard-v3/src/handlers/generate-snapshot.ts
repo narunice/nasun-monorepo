@@ -285,6 +285,7 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
           displayName: score.displayName,
           profileImageUrl: score.profileImageUrl,
           isRegistered: score.isRegistered,
+          isTelegramMember: score.isTelegramMember,
           snapshotDate: todayDate,
           snapshotTime,
         };

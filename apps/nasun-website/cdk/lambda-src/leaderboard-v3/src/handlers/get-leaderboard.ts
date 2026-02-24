@@ -230,6 +230,7 @@ function toSeasonLeaderboardEntry(
     displayName: score.displayName,
     profileImageUrl: score.profileImageUrl,
     isRegistered: score.isRegistered,
+    isTelegramMember: score.isTelegramMember,
     rankChange,
   };
 
@@ -263,6 +264,7 @@ function snapshotToLeaderboardEntry(
     displayName: snapshot.displayName,
     profileImageUrl: snapshot.profileImageUrl,
     isRegistered: snapshot.isRegistered,
+    isTelegramMember: snapshot.isTelegramMember,
     rankChange: snapshot.rankChange,
   };
 
@@ -297,6 +299,7 @@ function toLeaderboardEntry(
     displayName: score.displayName,
     profileImageUrl: score.profileImageUrl,
     isRegistered: score.isRegistered,
+    isTelegramMember: score.isTelegramMember,
   };
 
   if (includeBreakdown) {

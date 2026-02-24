@@ -54,6 +54,7 @@ export interface SeasonLeaderboardEntry {
   displayName?: string;
   profileImageUrl?: string;
   isRegistered?: boolean;
+  isTelegramMember?: boolean;
   rankChange?: RankChange;
   breakdown?: ScoreBreakdown;
 }
@@ -176,6 +177,8 @@ export interface MyRankData {
   originalUsername?: string;
   displayName?: string;
   profileImageUrl?: string;
+  isRegistered?: boolean;
+  isTelegramMember?: boolean;
   rankChange?: RankChange;
   totalUsers?: number;
 }

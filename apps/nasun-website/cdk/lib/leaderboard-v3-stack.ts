@@ -428,6 +428,64 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Verify Telegram Lambda (Telegram channel membership verification)
+    const verifyTelegramLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3VerifyTelegramFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-verify-telegram`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'verify-telegram.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Verify Telegram channel membership for sky-blue checkmark',
+        environment: {
+          ...lambdaEnvironment,
+          TELEGRAM_BOT_TOKEN_SECRET_NAME: process.env.TELEGRAM_BOT_TOKEN_SECRET_NAME || 'nasun-telegram-bot-token',
+          TELEGRAM_CHANNEL_USERNAME: process.env.TELEGRAM_CHANNEL_USERNAME || '',
+        },
+        bundling: {
+          ...bundlingOptions,
+          externalModules: [
+            '@aws-sdk/client-dynamodb',
+            '@aws-sdk/lib-dynamodb',
+            '@aws-sdk/client-secrets-manager',
+          ],
+        },
+      }
+    );
+
+    // Telegram Status Lambda (lightweight GET endpoint for checking verification status)
+    const telegramStatusLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3TelegramStatusFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-telegram-status`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'telegram-status.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 128,
+        description: 'Leaderboard V3: Check Telegram verification status from UserProfiles',
+      }
+    );
+
+    // Disconnect Telegram Lambda (unlink Telegram from user account)
+    const disconnectTelegramLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3DisconnectTelegramFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-disconnect-telegram`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'disconnect-telegram.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(15),
+        memorySize: 128,
+        description: 'Leaderboard V3: Disconnect Telegram from user account',
+      }
+    );
+
     // Grant DynamoDB permissions
     this.postsTable.grantReadWriteData(createPostLambda);
     this.postsTable.grantReadData(getLeaderboardLambda);
@@ -504,6 +562,33 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // Profile data lookup (non-admin)
     userProfilesTable.grantReadData(getMyRankLambda);
 
+    // Verify Telegram permissions
+    this.accountsTable.grantReadWriteData(verifyTelegramLambda);
+    this.seasonAccountsTable.grantReadWriteData(verifyTelegramLambda);
+    this.seasonsTable.grantReadData(verifyTelegramLambda);
+    userProfilesTable.grantReadWriteData(verifyTelegramLambda); // v2: primary storage in UserProfiles
+
+    // Telegram Status permissions (read-only)
+    userProfilesTable.grantReadData(telegramStatusLambda);
+
+    // Disconnect Telegram permissions (same tables as verify-telegram)
+    this.accountsTable.grantReadWriteData(disconnectTelegramLambda);
+    this.seasonAccountsTable.grantReadWriteData(disconnectTelegramLambda);
+    this.seasonsTable.grantReadData(disconnectTelegramLambda);
+    userProfilesTable.grantReadWriteData(disconnectTelegramLambda);
+
+    // Secrets Manager read for Telegram bot token
+    verifyTelegramLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${
+            process.env.TELEGRAM_BOT_TOKEN_SECRET_NAME || 'nasun-telegram-bot-token'
+          }*`,
+        ],
+      })
+    );
+
     // fromTableName() doesn't include GSI permissions - add explicitly
     const userProfilesIndexPolicy = new iam.PolicyStatement({
       actions: ['dynamodb:Query'],
@@ -569,6 +654,27 @@ export class LeaderboardV3Stack extends cdk.Stack {
     rankHistoryResource.addMethod(
       'GET',
       new apigw.LambdaIntegration(getRankHistoryLambda)
+    );
+
+    // POST /v3/leaderboard/verify-telegram
+    const verifyTelegramResource = leaderboardResource.addResource('verify-telegram');
+    verifyTelegramResource.addMethod(
+      'POST',
+      new apigw.LambdaIntegration(verifyTelegramLambda)
+    );
+
+    // GET /v3/leaderboard/telegram-status
+    const telegramStatusResource = leaderboardResource.addResource('telegram-status');
+    telegramStatusResource.addMethod(
+      'GET',
+      new apigw.LambdaIntegration(telegramStatusLambda)
+    );
+
+    // POST /v3/leaderboard/disconnect-telegram
+    const disconnectTelegramResource = leaderboardResource.addResource('disconnect-telegram');
+    disconnectTelegramResource.addMethod(
+      'POST',
+      new apigw.LambdaIntegration(disconnectTelegramLambda)
     );
 
     // GET /v3/feed/featured
