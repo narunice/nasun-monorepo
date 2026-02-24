@@ -100,6 +100,25 @@ body {
   background: var(--color-text-muted);
 }
 
+/* Markdown prose for ResultViewerModal */
+.prose-baram h1 { font-size: 1.25rem; font-weight: 600; margin: 1rem 0 0.5rem; color: var(--color-text-primary); }
+.prose-baram h2 { font-size: 1.1rem; font-weight: 600; margin: 0.875rem 0 0.375rem; color: var(--color-text-primary); }
+.prose-baram h3 { font-size: 1rem; font-weight: 500; margin: 0.75rem 0 0.25rem; color: var(--color-text-primary); }
+.prose-baram p { margin: 0.375rem 0; }
+.prose-baram ul, .prose-baram ol { margin: 0.375rem 0; padding-left: 1.25rem; }
+.prose-baram li { margin: 0.125rem 0; }
+.prose-baram li::marker { color: var(--color-text-muted); }
+.prose-baram strong { color: var(--color-text-primary); font-weight: 600; }
+.prose-baram a { color: var(--color-accent); text-decoration: underline; }
+.prose-baram code { font-size: 0.8em; padding: 0.125rem 0.375rem; border-radius: 0.25rem; background: var(--color-bg-tertiary); color: var(--color-text-primary); }
+.prose-baram pre { margin: 0.5rem 0; padding: 0.75rem; border-radius: 0.5rem; background: var(--color-bg-tertiary); overflow-x: auto; }
+.prose-baram pre code { padding: 0; background: none; }
+.prose-baram blockquote { margin: 0.5rem 0; padding-left: 0.75rem; border-left: 2px solid var(--color-border); color: var(--color-text-muted); }
+.prose-baram table { width: 100%; margin: 0.5rem 0; border-collapse: collapse; font-size: 0.85em; }
+.prose-baram th, .prose-baram td { padding: 0.375rem 0.5rem; border: 1px solid var(--color-border); text-align: left; }
+.prose-baram th { background: var(--color-bg-tertiary); font-weight: 500; color: var(--color-text-primary); }
+.prose-baram hr { margin: 0.75rem 0; border: none; border-top: 1px solid var(--color-border); }
+
 /* Baram gradient utilities */
 @layer utilities {
   .bg-br-linear {
