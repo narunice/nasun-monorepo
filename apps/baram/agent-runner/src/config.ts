@@ -135,6 +135,9 @@ export function loadConfig() {
 
     // Network
     rpcUrl: process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
+
+    // Testing
+    singleCycle: process.env.SINGLE_CYCLE === 'true',
   } as const;
 }
 
