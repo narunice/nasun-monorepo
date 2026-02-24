@@ -204,25 +204,39 @@ app.get('/top-accounts', async (c) => {
   return c.json({ data, count: data.length });
 });
 
-// Active addresses: unique senders per day (from tx_affected_addresses table)
+// Active addresses: unique senders per day (checkpoint-derived tx ranges — avoids scanning transactions table)
 app.get('/active-addresses', async (c) => {
   const days = parseDays(c.req.query('range'));
 
   const getActiveAddresses = cached(`active-addresses-${days}`, 5 * 60 * 1000, async () => {
-    const rows = await sql`
-      SELECT
-        DATE(to_timestamp(t.timestamp_ms / 1000.0))::text as day,
-        COUNT(DISTINCT a.sender) as active_count
-      FROM tx_affected_addresses a
-      JOIN transactions t ON t.tx_sequence_number = a.tx_sequence_number
-      WHERE t.timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
-      GROUP BY DATE(to_timestamp(t.timestamp_ms / 1000.0))
-      ORDER BY day ASC
-    `;
-    return rows.map((r) => ({
-      date: r.day,
-      activeAddresses: Number(r.active_count),
-    }));
+    try {
+      const rows = await sql`
+        WITH date_ranges AS (
+          SELECT
+            DATE(to_timestamp(timestamp_ms / 1000.0))::text AS day,
+            MIN(min_tx_sequence_number) AS day_min_seq,
+            MAX(max_tx_sequence_number) AS day_max_seq
+          FROM checkpoints
+          WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
+          GROUP BY DATE(to_timestamp(timestamp_ms / 1000.0))
+        )
+        SELECT
+          dr.day,
+          COUNT(DISTINCT a.sender) AS active_count
+        FROM date_ranges dr
+        JOIN tx_affected_addresses a
+          ON a.tx_sequence_number BETWEEN dr.day_min_seq AND dr.day_max_seq
+        GROUP BY dr.day
+        ORDER BY dr.day ASC
+      `;
+      return rows.map((r) => ({
+        date: r.day,
+        activeAddresses: Number(r.active_count),
+      }));
+    } catch (err) {
+      console.error('Active addresses query failed:', err);
+      return [];
+    }
   });
 
   const data = await getActiveAddresses();
@@ -265,24 +279,29 @@ app.get('/network-summary', async (c) => {
   return c.json({ data });
 });
 
-// Daily transaction counts
+// Daily transaction counts (derived from checkpoints — fast even on 60M+ tx)
 app.get('/daily-transactions', async (c) => {
   const days = parseDays(c.req.query('range'));
 
   const getDailyTx = cached(`daily-tx-${days}`, 5 * 60 * 1000, async () => {
-    const rows = await sql`
-      SELECT
-        DATE(to_timestamp(timestamp_ms / 1000.0))::text as day,
-        COUNT(*) as tx_count
-      FROM transactions
-      WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
-      GROUP BY DATE(to_timestamp(timestamp_ms / 1000.0))
-      ORDER BY day ASC
-    `;
-    return rows.map((r) => ({
-      date: r.day,
-      transactions: Number(r.tx_count),
-    }));
+    try {
+      const rows = await sql`
+        SELECT
+          DATE(to_timestamp(timestamp_ms / 1000.0))::text AS day,
+          SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::int AS tx_count
+        FROM checkpoints
+        WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
+        GROUP BY DATE(to_timestamp(timestamp_ms / 1000.0))
+        ORDER BY day ASC
+      `;
+      return rows.map((r) => ({
+        date: r.day,
+        transactions: Number(r.tx_count),
+      }));
+    } catch (err) {
+      console.error('Daily transactions query failed:', err);
+      return [];
+    }
   });
 
   const data = await getDailyTx();
