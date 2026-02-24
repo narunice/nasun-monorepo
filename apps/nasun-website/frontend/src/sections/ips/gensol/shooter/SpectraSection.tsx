@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-const progressVideo = "/videos/Progress-Video-rf28.mp4";
+const progressVideo = "/videos/Opensea-Battalion-Nft-Pipeline-rf26.mp4";
 
 interface ItemData {
   title: string;
@@ -131,8 +132,8 @@ function SpectraSection() {
         {/* The Core Loop */}
         <section>
           <SectionTitle as="h4">THE CORE LOOP</SectionTitle>
-          <OuterBox color="nw0">
-            <h4 className="font-bold text-nasun-nw4 mb-5">Crash. Compete. Escape—or perish.</h4>
+          <OuterBox color="c1" className="!bg-black/30">
+            <h4 className="font-bold text-nasun-c1 mb-5">Crash. Compete. Escape—or perish.</h4>
             <div className="space-y-3">
               <p>
                 Your team crash-lands on a hostile alien world. Spectra—the galaxy's fuel source—is
@@ -157,10 +158,10 @@ function SpectraSection() {
           <SectionTitle as="h4">ESCAPE FROM KRAMOK</SectionTitle>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold tracking-widest text-nasun-nw1 border border-nasun-nw1/50 px-3 py-1 rounded-sm uppercase">
+              <span className="text-sm font-bold tracking-widest text-nasun-c1 border border-nasun-c1/50 px-3 py-1 rounded-sm uppercase">
                 First Playable Map
               </span>
-              <span className="text-sm font-bold tracking-widest text-nasun-nw4 border border-nasun-nw4/50 px-3 py-1 rounded-sm uppercase">
+              <span className="text-sm font-bold tracking-widest text-nasun-c1 border border-nasun-c1/50 px-3 py-1 rounded-sm uppercase">
                 8v8
               </span>
             </div>
@@ -168,11 +169,11 @@ function SpectraSection() {
               An unstable lava planet moments from destruction.
             </p>
             <p className="text-nasun-white/70">
-              <span className="font-semibold text-nasun-nw4">Dorakken Empire</span> transport
-              crashes after a <span className="font-semibold text-nasun-nw4">Raider</span> ambush.
+              <span className="font-semibold text-nasun-c1">Dorakken Empire</span> transport
+              crashes after a <span className="font-semibold text-nasun-c1">Raider</span> ambush.
               Both factions fight over the wreckage as the planet tears itself apart:
             </p>
-            <OuterBox color="nw1" padding="sm">
+            <OuterBox color="c1" padding="sm" className="!bg-black/30">
               <ul className="space-y-2">
                 {[
                   "Volcanic eruptions",
@@ -181,13 +182,13 @@ function SpectraSection() {
                   "Match ends when planet collapses",
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-nasun-white/80">
-                    <span className="text-nasun-nw1 mt-0.5 shrink-0 text-xs">▶</span>
+                    <span className="text-nasun-c1 mt-0.5 shrink-0 text-xs">▶</span>
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
             </OuterBox>
-            <p className="text-nasun-nw4 font-semibold">
+            <p className="text-nasun-c1 font-semibold">
               First team to fuel their escape ship survives. Everyone else burns.
             </p>
           </div>
@@ -198,16 +199,15 @@ function SpectraSection() {
           <SectionTitle as="h4">DEATH ISN'T THE END</SectionTitle>
           <div className="space-y-4">
             <div>
-              <h6 className="font-bold tracking-widest text-nasun-nw1 uppercase">Phantom System</h6>
+              <h6 className="font-bold tracking-widest text-nasun-c1 uppercase">Phantom System</h6>
               <p className="text-nasun-white/80">
                 Die and you return as a{" "}
-                <span className="text-nasun-nw4 font-semibold">Phantom</span>—an invisible ghost in
+                <span className="text-nasun-c1 font-semibold">Phantom</span>—an invisible ghost in
                 first-person view.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <OuterBox color="nw0" padding="sm">
-                <p className="text-nasun-nw4 font-semibold mb-3">As a Phantom you can:</p>
+              <DividerBox color="w4" hideDivider padding="sm" title="As a Phantom you can:" className="h-full">
                 <ul className="space-y-2">
                   {[
                     "Move unseen through the battlefield",
@@ -216,13 +216,13 @@ function SpectraSection() {
                     "Sabotage enemy movements and plans",
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-nasun-white/80">
-                      <span className="text-nasun-nw1 shrink-0 mt-0.5">✓</span>
+                      <span className="text-nasun-c1 shrink-0 mt-0.5">✓</span>
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
-              </OuterBox>
-              <OuterBox color="nw4" padding="sm" className="opacity-50">
+              </DividerBox>
+              <DividerBox color="w5" hideDivider padding="sm" className="h-full opacity-50">
                 <p className="text-nasun-white/80 font-semibold mb-3">You cannot:</p>
                 <ul className="space-y-2">
                   {["Directly attack living players", "Be seen by the living"].map((item, i) => (
@@ -232,7 +232,7 @@ function SpectraSection() {
                     </li>
                   ))}
                 </ul>
-              </OuterBox>
+              </DividerBox>
             </div>
             <p className="text-nasun-white/60 italic">
               Death becomes a tactical role. Every fallen player reshapes the match from the
@@ -254,12 +254,12 @@ function SpectraSection() {
                 "Weapon loadouts and positioning",
                 "Phantom interference and counter-play",
               ].map((item, i) => (
-                <OuterBox key={i} color="nw1" padding="sm">
+                <DividerBox key={i} color="w4" hideDivider padding="sm" className="h-full">
                   <p className="text-nasun-white/80">{item}</p>
-                </OuterBox>
+                </DividerBox>
               ))}
             </div>
-            <p className="text-nasun-nw4 font-medium">
+            <p className="text-nasun-c1 font-medium">
               Carry only what you need to escape—or risk it all for maximum Spectra and higher
               rewards.
             </p>
@@ -271,22 +271,18 @@ function SpectraSection() {
           <SectionTitle as="h4">FACTIONS & CONFLICT</SectionTitle>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <OuterBox color="nw0" padding="sm">
-                <h6 className="text-nasun-nw4 font-bold mb-2 tracking-wide uppercase">
-                  Dorakken Empire
-                </h6>
+              <DividerBox color="w4" hideDivider padding="sm" title="Dorakken Empire" className="h-full">
                 <p className="text-nasun-white/70">
                   Controls the primary Spectra zones across the galaxy. Militarized. Disciplined.
                   Ruthless in defending their monopoly.
                 </p>
-              </OuterBox>
-              <OuterBox color="nw0" padding="sm">
-                <h6 className="text-nasun-nw4 font-bold mb-2 tracking-wide uppercase">Raiders</h6>
+              </DividerBox>
+              <DividerBox color="w4" hideDivider padding="sm" title="Raiders" className="h-full">
                 <p className="text-nasun-white/70">
                   Insurgents and pirates who steal and weaponize Spectra. Fast. Aggressive. Willing
                   to risk everything.
                 </p>
-              </OuterBox>
+              </DividerBox>
             </div>
             <p className="text-nasun-white/60">
               Neutral worlds like Kramok become battlegrounds where both sides fight for
@@ -309,7 +305,7 @@ function SpectraSection() {
                 "Enter faction wars that shape the Gen Sol universe",
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-nasun-white/80">
-                  <span className="text-nasun-nw1 mt-0.5 shrink-0 text-xs">▶</span>
+                  <span className="text-nasun-c1 mt-0.5 shrink-0 text-xs">▶</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -320,9 +316,9 @@ function SpectraSection() {
         {/* Optional Ownership */}
         <section>
           <SectionTitle as="h4">OPTIONAL OWNERSHIP</SectionTitle>
-          <OuterBox color="nw1">
+          <OuterBox color="c1" className="!bg-black/30">
             <div className="space-y-4">
-              <p className="text-nasun-nw4 font-semibold">Web3 features are entirely optional.</p>
+              <p className="text-nasun-c1 font-semibold">Web3 features are entirely optional.</p>
               <div>
                 <p className="text-nasun-white/60 mb-3">If you want:</p>
                 <ul className="space-y-2">
@@ -332,7 +328,7 @@ function SpectraSection() {
                     "Tournament rewards you can trade or keep",
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3 text-nasun-white/80">
-                      <span className="text-nasun-nw1 shrink-0 mt-0.5">✓</span>
+                      <span className="text-nasun-c1 shrink-0 mt-0.5">✓</span>
                       <span>{item}</span>
                     </li>
                   ))}
@@ -351,7 +347,7 @@ function SpectraSection() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h6 className="font-bold tracking-widest text-nasun-nw1 uppercase mb-3">
+                <h6 className="font-bold tracking-widest text-nasun-c1 uppercase mb-3">
                   Alpha Prototype (Playable)
                 </h6>
                 <ul className="space-y-2">
@@ -369,7 +365,7 @@ function SpectraSection() {
                 </ul>
               </div>
               <div>
-                <h6 className="font-bold tracking-widest text-nasun-nw4 uppercase mb-3">
+                <h6 className="font-bold tracking-widest text-nasun-c1 uppercase mb-3">
                   In Development
                 </h6>
                 <ul className="space-y-2">
@@ -387,8 +383,8 @@ function SpectraSection() {
                 </ul>
               </div>
             </div>
-            <OuterBox color="nw0" padding="sm">
-              <p className="text-nasun-nw4 font-semibold">
+            <OuterBox color="w1" padding="sm" className="!bg-[#2a2a2a]">
+              <p className="text-nasun-c1 font-semibold">
                 Target: Q3-4 2026 — Public playtests on Escape from Kramok
               </p>
             </OuterBox>
@@ -400,7 +396,7 @@ function SpectraSection() {
           <SectionTitle as="h4">TECHNICAL FOUNDATION</SectionTitle>
           <div className="space-y-4">
             <p className="text-nasun-white/70">Built for competitive fairness and scale:</p>
-            <OuterBox color="nw1" padding="sm">
+            <OuterBox color="c1" padding="sm" className="!bg-black/30">
               <ul className="space-y-3">
                 {[
                   { bold: "Unreal Engine 5", rest: " C++ codebase" },
@@ -416,16 +412,16 @@ function SpectraSection() {
                   { bold: "Network-optimized", rest: " for bandwidth efficiency" },
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-nasun-white/80">
-                    <span className="text-nasun-nw1 shrink-0 mt-0.5 text-xs">▶</span>
+                    <span className="text-nasun-c1 shrink-0 mt-0.5 text-xs">▶</span>
                     <span>
-                      <span className="font-semibold text-nasun-nw4">{item.bold}</span>
+                      <span className="font-semibold text-nasun-c1">{item.bold}</span>
                       {item.rest}
                     </span>
                   </li>
                 ))}
               </ul>
             </OuterBox>
-            <p className="text-nasun-nw4 font-medium italic">
+            <p className="text-nasun-c1 font-medium italic">
               This isn't a blockchain game with a shooter attached. It's a competitive multiplayer
               shooter that happens to support ownership.
             </p>
@@ -445,12 +441,12 @@ function SpectraSection() {
                 "Community playtests and iteration",
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-nasun-white/80">
-                  <span className="text-nasun-nw1 mt-0.5 shrink-0 text-xs">▶</span>
+                  <span className="text-nasun-c1 mt-0.5 shrink-0 text-xs">▶</span>
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
-            <p className="text-nasun-nw4 font-medium">
+            <p className="text-nasun-c1 font-medium">
               Battalion holders get early access and become the first players in the Gen Sol
               universe.
             </p>
@@ -461,10 +457,7 @@ function SpectraSection() {
         <section>
           <SectionTitle as="h4">WHAT'S NEXT</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <OuterBox color="nw0" padding="sm">
-              <h6 className="text-nasun-nw4 font-semibold mb-3 uppercase tracking-widest">
-                Immediate (2026)
-              </h6>
+            <DividerBox color="w4" hideDivider padding="sm" title="Immediate (2026)" className="h-full">
               <ul className="space-y-2">
                 {[
                   "Complete Escape from Kramok map",
@@ -472,16 +465,13 @@ function SpectraSection() {
                   "Additional modes (Team Deathmatch, Capture the Flag)",
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-2 text-nasun-white/80">
-                    <span className="text-nasun-nw1 shrink-0 mt-0.5 text-xs">▶</span>
+                    <span className="text-nasun-c1 shrink-0 mt-0.5 text-xs">▶</span>
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
-            </OuterBox>
-            <OuterBox color="nw0" padding="sm">
-              <h6 className="text-nasun-nw4 font-semibold mb-3 uppercase tracking-widest">
-                Beyond Alpha
-              </h6>
+            </DividerBox>
+            <DividerBox color="w4" hideDivider padding="sm" title="Beyond Alpha" className="h-full">
               <ul className="space-y-2">
                 {[
                   "Expanded player counts",
@@ -490,12 +480,12 @@ function SpectraSection() {
                   "Cinematic story integration with Gen Sol films and shows",
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-2 text-nasun-white/80">
-                    <span className="text-nasun-nw1 shrink-0 mt-0.5 text-xs">▶</span>
+                    <span className="text-nasun-c1 shrink-0 mt-0.5 text-xs">▶</span>
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
-            </OuterBox>
+            </DividerBox>
           </div>
         </section>
 
