@@ -148,7 +148,7 @@ export async function fetchAERByRequestId(requestId: number): Promise<AERData | 
   try {
     const events = await client.queryEvents({
       query: {
-        MoveEventType: `${AER_CONFIG.packageId}::aer::ExecutionReportCreated`,
+        MoveEventType: `${AER_CONFIG.typeOrigin}::aer::ExecutionReportCreated`,
       },
       limit: 50,
       order: 'descending',
