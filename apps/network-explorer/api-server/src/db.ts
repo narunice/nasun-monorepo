@@ -9,4 +9,7 @@ export const sql = postgres(DATABASE_URL, {
   max: 25,
   idle_timeout: 20,
   connect_timeout: 10,
+  connection: {
+    statement_timeout: 30000,
+  },
 });
