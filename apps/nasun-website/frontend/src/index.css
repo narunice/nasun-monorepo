@@ -405,6 +405,20 @@
     color: rgba(25, 22, 21, 0.7);
   }
 
+  /* Pado finance page: cool navy (pd palette) overrides */
+  .pado-navy-theme h1,
+  .pado-navy-theme h2,
+  .pado-navy-theme h3,
+  .pado-navy-theme h4,
+  .pado-navy-theme h5,
+  .pado-navy-theme h6 {
+    color: #e1e5ea; /* pd5 */
+  }
+  .pado-navy-theme p,
+  .pado-navy-theme li {
+    color: rgba(170, 201, 213, 0.85); /* pd4/85 */
+  }
+
   /* Award/Grants 섹션 슬라이더 점 스타일 (다크 모드 기본) */
   .slick-dots li button:before {
     @apply text-gray-400 !important;
@@ -630,4 +644,11 @@
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 225, 211, 0.4) rgba(0, 0, 0, 0.2);
+}
+
+/* Pado finance page: override bg-nasun-black globally when pado-navy-theme is active.
+   Placed outside @layer to beat Tailwind utility classes (@layer utilities). */
+html.pado-navy-theme .bg-nasun-black,
+html.pado-navy-theme .bg-black {
+  background-color: #0b1120; /* pd0 */
 }
