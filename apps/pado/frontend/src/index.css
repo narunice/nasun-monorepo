@@ -94,8 +94,8 @@
 .dark {
   /* Dark Theme — pd palette based */
   --color-bg-primary: #080c16;      /* pd0 -30% lightness */
-  --color-bg-secondary: #0d141e;    /* pd0s -30% lightness */
-  --color-bg-tertiary: #121a26;
+  --color-bg-secondary: #111a28;    /* ~10% lightness, +4% from primary */
+  --color-bg-tertiary: #182130;     /* ~13% lightness, +3% from secondary */
   --color-text-primary: #eaecf0;    /* pd5+ (brighter for readability) */
   --color-text-secondary: #d4e2ea;  /* pd4→pd5 midpoint (brighter for readability) */
   --color-text-muted: #a3bfd3;      /* pd3→pd4 midpoint (brighter for readability) */
