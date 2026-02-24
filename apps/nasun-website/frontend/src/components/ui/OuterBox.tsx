@@ -46,7 +46,7 @@ type ColorVariant =
   | "nw4"
   | "nw0";
 
-type PaddingVariant = "md" | "sm";
+type PaddingVariant = "lg" | "md" | "sm";
 
 const variantStyles: Record<ColorVariant, string> = {
   default: "border-nasun-c5/50 bg-nasun-c6/90", // 현재 기본값 (c5 border + c6 bg)
@@ -78,6 +78,7 @@ const variantStyles: Record<ColorVariant, string> = {
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {
+  lg: "px-6 md:px-8 lg:px-10 py-5 md:py-7 lg:py-9",
   md: "px-4 md:px-6 lg:px-8 py-3 md:py-5 lg:py-7",
   sm: "px-4 md:px-5 lg:px-6 py-3 md:py-4 lg:py-5",
 };
