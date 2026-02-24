@@ -6,7 +6,7 @@
  */
 
 import { FC, useState } from 'react';
-import { ExternalLinkIcon } from '@radix-ui/react-icons';
+import { ExternalLink } from 'lucide-react';
 import type { EthereumNFT } from '../../../types/ethereum';
 import type { NFTChain } from '../../../services/ethereumApi';
 import { getExplorerNFTUrl, getOpenSeaNFTUrl } from '../../../services/ethereumApi';
@@ -118,7 +118,7 @@ const NftThumbnail: FC<NftThumbnailProps> = ({ nft }) => {
           <p className="text-xs text-gray-200 truncate font-medium flex-1">
             {displayName}
           </p>
-          <ExternalLinkIcon className="w-3 h-3 text-gray-500 group-hover:text-nasun-c4 flex-shrink-0" />
+          <ExternalLink className="w-3 h-3 text-gray-500 group-hover:text-nasun-c4 flex-shrink-0" />
         </div>
         <div className="flex items-center gap-1.5">
           <ChainBadge chain={chain} />

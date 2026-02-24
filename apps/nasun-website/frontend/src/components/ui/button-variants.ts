@@ -134,6 +134,13 @@ export const buttonVariants = cva(
         filledOutlineNw1:
           "ring-1 ring-inset ring-nasun-nw1/70 bg-nasun-nw1/10 text-nasun-nw1 hover:bg-transparent hover:ring-nasun-nw1",
 
+        // Pado: Solid teal button
+        pado: "bg-pado-2 text-pd0 hover:bg-pado-3",
+
+        // Outline Pado (teal outline)
+        outlinePado:
+          "ring-1 ring-inset ring-pado-2/70 bg-transparent text-pado-2 hover:bg-pado-2/10",
+
         // Destructive: 위험한 동작용 빨간색 버튼 (Unlink, Delete 등)
         destructive:
           "ring-1 ring-inset ring-red-500 bg-red-500/10 text-red-500 hover:bg-transparent",

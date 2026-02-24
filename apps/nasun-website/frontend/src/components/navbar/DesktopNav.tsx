@@ -3,7 +3,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { NavItem } from "../../types/routes";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { ExternalLink } from "lucide-react";
 import { useActiveState } from "../../hooks/useActiveState";
 import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -104,10 +105,7 @@ export default function DesktopNav({ navItems }: Props) {
                             <span className="flex items-center gap-2">
                               {subItem.name}
                               {subItem.external && (
-                                <FontAwesomeIcon
-                                  icon={faArrowUpRightFromSquare}
-                                  className="text-xs opacity-70"
-                                />
+                                <ExternalLink className="w-3 h-3 opacity-70" />
                               )}
                             </span>
                           </span>
@@ -120,10 +118,7 @@ export default function DesktopNav({ navItems }: Props) {
                           >
                             <span className="flex items-center gap-2">
                               {subItem.name}
-                              <FontAwesomeIcon
-                                icon={faArrowUpRightFromSquare}
-                                className="text-xs opacity-70"
-                              />
+                              <ExternalLink className="w-3 h-3 opacity-70" />
                             </span>
                           </a>
                         ) : (

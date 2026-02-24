@@ -650,5 +650,5 @@
    Placed outside @layer to beat Tailwind utility classes (@layer utilities). */
 html.pado-navy-theme .bg-nasun-black,
 html.pado-navy-theme .bg-black {
-  background-color: #0b1120; /* pd0 */
+  background-color: #080c16; /* pado app bg-primary */
 }

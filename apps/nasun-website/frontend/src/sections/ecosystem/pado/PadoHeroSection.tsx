@@ -4,7 +4,7 @@ import { InlineLoading } from "@/components/ui/InlineLoading";
 const waldenVideoDesktop = "/videos/walden-hero-token-desktop.mp4";
 const waldenVideoMobile = "/videos/Walden-Dex-Token-Mobile-rf18.mp4";
 import { Button } from "@/components/ui";
-import { ExternalLink } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { useTranslation } from "react-i18next";
 
@@ -157,7 +157,7 @@ function PadoHeroSection({ onVideoReady, translationNs = "pado" }: PadoHeroSecti
                   rel="noopener noreferrer"
                 >
                   {t("hero.cta")}
-                  <ExternalLink className="w-4 h-4 ml-2" />
+                  <ArrowUpRight className="w-4 h-4 ml-2" />
                 </a>
               </Button>
             </FadeInUp>

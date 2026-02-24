@@ -1,5 +1,5 @@
 import { FC, ReactNode } from 'react';
-import { ExternalLinkIcon } from '@radix-ui/react-icons';
+import { ExternalLink } from 'lucide-react';
 
 export interface NFTCardProps {
   id: string; // Token ID or Object ID
@@ -51,7 +51,7 @@ export const NFTCard: FC<NFTCardProps> = ({
                 className="text-gray-500 hover:text-gray-300"
                 title={`View on ${explorerLabel}`}
               >
-                <ExternalLinkIcon />
+                <ExternalLink className="w-4 h-4" />
               </a>
             )}
           </div>
@@ -84,7 +84,7 @@ export const renderFieldIfExists = (label: string, value?: string | number) => {
           title={`Open ${label} in new tab`}
           className="text-gray-500 hover:text-gray-300"
         >
-          <ExternalLinkIcon />
+          <ExternalLink className="w-4 h-4" />
         </a>
       )}
     </div>

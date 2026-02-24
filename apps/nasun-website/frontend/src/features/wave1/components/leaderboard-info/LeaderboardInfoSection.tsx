@@ -15,8 +15,8 @@ import {
   faDice,
   faTag,
   faBullhorn,
-  faArrowRight,
 } from "@fortawesome/free-solid-svg-icons";
+import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "../../../ui/button-variants";
 
 const TARGET_ACCOUNT = import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io";
@@ -212,7 +212,7 @@ const LeaderboardInfoSection: React.FC = () => {
       <div className="flex justify-center mt-10 md:mt-14">
         <Link to="/leaderboard" className={buttonVariants({ variant: "c3", size: "xl" })}>
           {t("info.goToLeaderboard")}
-          <FontAwesomeIcon icon={faArrowRight} className="ml-2" />
+          <ArrowRight className="w-4 h-4 ml-2" />
         </Link>
       </div>
     </SectionLayout>

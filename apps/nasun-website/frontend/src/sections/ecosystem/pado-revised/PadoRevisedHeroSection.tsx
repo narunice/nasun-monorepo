@@ -4,7 +4,7 @@ import { InlineLoading } from "@/components/ui/InlineLoading";
 const waldenVideoDesktop = "/videos/walden-hero-token-desktop.mp4";
 const waldenVideoMobile = "/videos/Walden-Dex-Token-Mobile-rf18.mp4";
 import { Button } from "@/components/ui";
-import { ExternalLink } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 interface PadoRevisedHeroSectionProps {
   onVideoReady?: () => void;
@@ -114,7 +114,7 @@ function PadoRevisedHeroSection({ onVideoReady }: PadoRevisedHeroSectionProps) {
                   rel="noopener noreferrer"
                 >
                   Try Pado Alpha
-                  <ExternalLink className="w-4 h-4 ml-2" />
+                  <ArrowUpRight className="w-4 h-4 ml-2" />
                 </a>
               </Button>
             </FadeInUp>
