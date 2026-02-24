@@ -42,7 +42,7 @@ function generateParticles(): Particle[] {
 }
 
 const TWEET_TEXT = encodeURIComponent(
-  'Just made my first trade on @PadoFinance \u2014 a real on-chain CLOB orderbook on Nasun L1!\n\nBuilt by a 2-person team. Try it yourself:\nhttps://pado.finance',
+  'Just made my first trade on @PadoFinance \u2014 a real on-chain CLOB orderbook on Nasun L1!\n\nBootstrapped and built from scratch. Try it yourself:\nhttps://pado.finance',
 );
 const TWITTER_URL = `https://x.com/intent/tweet?text=${TWEET_TEXT}`;
 
