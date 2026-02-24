@@ -73,3 +73,13 @@ export interface ResultRecord {
   createdAt: number;
   ttl: number; // Unix epoch seconds
 }
+
+// POST /result — wallet-signature-authenticated result fetch
+export interface ResultRequest {
+  requestId: number;
+  timestamp: number;
+  signature: string;
+  address: string;
+  signerType: 'standard' | 'zklogin';
+  ephemeralPubKey?: string;
+}

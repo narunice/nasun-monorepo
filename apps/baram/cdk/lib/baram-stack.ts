@@ -155,9 +155,12 @@ export class BaramStack extends cdk.Stack {
       apiKeyRequired: true,
     });
 
-    // GET /result — requires API key (fetch stored AI result text)
+    // /result — requires API key (fetch stored AI result text)
     const resultResource = this.apiGateway.root.addResource('result');
     resultResource.addMethod('GET', lambdaIntegration, {
+      apiKeyRequired: true,
+    });
+    resultResource.addMethod('POST', lambdaIntegration, {
       apiKeyRequired: true,
     });
 
