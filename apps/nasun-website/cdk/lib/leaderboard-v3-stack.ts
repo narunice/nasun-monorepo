@@ -596,6 +596,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
     });
     createPostLambda.addToRolePolicy(userProfilesIndexPolicy);
     getMyRankLambda.addToRolePolicy(userProfilesIndexPolicy);
+    verifyTelegramLambda.addToRolePolicy(userProfilesIndexPolicy);
 
     // ============================================
     // API Gateway
