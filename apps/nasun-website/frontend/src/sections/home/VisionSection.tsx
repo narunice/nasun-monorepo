@@ -121,7 +121,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
           <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-2 lg:gap-3 lg:flex-[3] min-w-0">
             {/* NASUN Wordmark */}
             <FadeInUp delay="0.2s">
-              <h1 className="!font-changeling font-bold tracking-wider text-nasun-black/80 -mt-4 md:text-[54px] lg:text-[66px]">
+              <h1 className="!font-changeling font-bold tracking-wider text-nasun-black/80 -mt-4 text-[50px] md:text-[61px] lg:text-[73px] ">
                 NASUN
               </h1>
             </FadeInUp>
@@ -129,13 +129,14 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             {/* Categories */}
             <FadeInUp delay="0.3s">
               <h5 className="font-medium text-nasun-black/80 -mt-4 !tracking-normal">
+                The Infrastructure Layer <br />
                 Finance &bull; AI &bull; Entertainment
               </h5>
             </FadeInUp>
 
             {/* Description */}
             <FadeInUp delay="0.5s">
-              <h6 className="font-medium text-nasun-black/60 mt-4 md:mt-5 lg:mt-6 xl:max-w-none">
+              <h6 className="font-medium text-nasun-black/60 mt-0 md:mt-1 lg:mt-2 xl:max-w-none">
                 Communities build, own, and grow IP together
               </h6>
             </FadeInUp>

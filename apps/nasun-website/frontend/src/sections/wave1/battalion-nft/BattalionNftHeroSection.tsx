@@ -13,9 +13,6 @@ const TITLE_START_TIME = 1.1;
 const WORD_FADE_DURATION = 0.45;
 const TITLE_END_TIME = 4.33;
 
-// Wave title animation timing
-const WAVE_TITLE_START_TIME = 15.7;
-const WAVE_TITLE_FADE_DURATION = 0.5;
 
 /**
  * BattalionNftHeroSection 컴포넌트
@@ -28,7 +25,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [titleVisible, setTitleVisible] = useState(false);
   const [wordOpacities, setWordOpacities] = useState([0, 0, 0]);
-  const [waveTitleOpacity, setWaveTitleOpacity] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -85,21 +81,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
       setWordOpacities([0, 0, 0]);
     }
 
-    // "BATTALION" animation
-    if (
-      duration > 0 &&
-      !isNaN(duration) &&
-      currentTime >= WAVE_TITLE_START_TIME &&
-      currentTime < duration - 0.05
-    ) {
-      const fadeProgress = Math.min(
-        1,
-        (currentTime - WAVE_TITLE_START_TIME) / WAVE_TITLE_FADE_DURATION
-      );
-      setWaveTitleOpacity(fadeProgress);
-    } else {
-      setWaveTitleOpacity(0);
-    }
   }, []);
 
   // Animation loop for title
@@ -196,34 +177,24 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
 
           {/* Title Section - Below Video */}
           <div className="relative z-20 flex flex-col items-center text-center px-4 -mt-12">
-            <div className="relative flex flex-col items-center">
-              {/* POWER YOUR DESTINY */}
-              <div className="flex flex-col items-center">
-                <h2
-                  className="!font-changeling text-3xl"
-                  style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
-                >
-                  POWER
-                </h2>
-                <h2
-                  className="!font-changeling text-3xl"
-                  style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
-                >
-                  YOUR
-                </h2>
-                <h2
-                  className="!font-changeling text-3xl"
-                  style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
-                >
-                  DESTINY
-                </h2>
-              </div>
-              {/* BATTALION */}
+            <div className="flex flex-col items-center">
               <h2
-                className="absolute inset-0 flex items-center justify-center !font-changeling text-3xl"
-                style={{ opacity: waveTitleOpacity }}
+                className="!font-changeling text-3xl"
+                style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
               >
-                BATTALION
+                POWER
+              </h2>
+              <h2
+                className="!font-changeling text-3xl"
+                style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
+              >
+                YOUR
+              </h2>
+              <h2
+                className="!font-changeling text-3xl"
+                style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
+              >
+                DESTINY
               </h2>
             </div>
           </div>
@@ -275,12 +246,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
                 style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
               >
                 DESTINY
-              </h2>
-            </div>
-            {/* BATTALION */}
-            <div className="absolute inset-0 flex justify-center items-baseline pt-6">
-              <h2 className="!font-changeling" style={{ opacity: waveTitleOpacity }}>
-                BATTALION
               </h2>
             </div>
           </div>
