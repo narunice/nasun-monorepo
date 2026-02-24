@@ -317,6 +317,10 @@ async function main(): Promise<void> {
       log('[shutdown] Agent stopped gracefully.');
       process.exit(0);
     }
+    if (config.singleCycle) {
+      log('[done] SINGLE_CYCLE=true. Exiting after first cycle.');
+      process.exit(0);
+    }
     log(`Next cycle in ${config.intervalMinutes} minutes.`);
     pendingTimer = setTimeout(async () => {
       pendingTimer = null;
