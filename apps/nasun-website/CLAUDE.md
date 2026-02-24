@@ -2,8 +2,8 @@
 
 > 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
 
-**Last Updated**: 2026-01-31
-**Version**: 2.21.0 (3-tier X API verification for 100+ participants)
+**Last Updated**: 2026-02-24
+**Version**: 2.22.0 (Telegram channel verification + GSI optimization)
 
 ## 기본 규칙
 
@@ -96,6 +96,15 @@ nasun-website/
 │   │   ├── auth-metamask/        # MetaMask 인증
 │   │   ├── auth-twitter/         # Twitter OAuth
 │   │   ├── link-account/         # 계정 연결
+│   │   ├── leaderboard-v3/       # Leaderboard V3 + Telegram
+│   │   │   └── src/handlers/
+│   │   │       ├── verify-telegram.ts      # Telegram 인증 + 채널 검증
+│   │   │       ├── disconnect-telegram.ts  # Telegram 연결 해제
+│   │   │       ├── telegram-status.ts      # Telegram 연결 상태 조회
+│   │   │       ├── get-leaderboard.ts      # 리더보드 조회
+│   │   │       ├── create-post.ts          # 포스트 등록
+│   │   │       ├── generate-snapshot.ts    # 일일 스냅샷
+│   │   │       └── ...                     # 기타 핸들러
 │   │   └── nft-event/            # Battalion NFT Event
 │   │       ├── verify-eligibility/   # 3-Tier 검증
 │   │       ├── register-user/        # Allowlist 등록
@@ -122,10 +131,12 @@ nasun-website/
 - **Google OAuth 2.0** - Cognito Federated Identity
 - **Twitter OAuth 2.0** - Developer Identity
 - **MetaMask Web3** - Developer Identity
+- **Telegram** - Login Widget + Channel Membership Verification
 
 ### 3. 계정 연결 (Account Linking)
 - 여러 인증 방식을 하나의 계정으로 통합
 - 양방향 연결 (Primary ↔ Secondary)
+- Telegram 채널 멤버십 검증 (Connect/Disconnect)
 
 ### 4. Governance
 - Proposal 생성 및 투표
@@ -223,6 +234,83 @@ cdk/lib/nft-event-stack.ts             # CDK: NFT Event 인프라
 
 ---
 
+## Telegram Channel Verification
+
+### 배경
+
+커뮤니티 참여도를 높이기 위해 Telegram 채널 멤버십 검증을 도입. 사용자가 Telegram 계정을 연결하고 공식 채널에 가입했는지 확인하여 리더보드에 체크마크(하늘색 배지)를 표시합니다.
+
+### 아키텍처
+
+```
+사용자 "Connect" 클릭 (My Account)
+    ↓
+┌─ Step 1: Telegram Login Widget ───────────────────────────────┐
+│  공식 Telegram Login Widget (popup 방식)                       │
+│  → 인증 성공 시 auth_date, hash, id, username 반환            │
+└───────────────────────────────────────────────────────────────┘
+    ↓
+┌─ Step 2: Backend Verification (verify-telegram Lambda) ───────┐
+│  1. JWT → identityId 추출                                      │
+│  2. HMAC-SHA256 해시 검증 (Bot Token 기반)                     │
+│  3. auth_date 유효성 검증 (5분 이내)                           │
+│  4. Telegram Bot API → getChatMember 채널 멤버십 확인          │
+│  5. UserProfiles 중복 검사 (telegramUserId-index GSI Query)   │
+│  6. UserProfiles 업데이트 (isTelegramMember, telegramUserId)  │
+│  7. Accounts/SeasonAccounts 동기화 (twitterHandle 존재 시)    │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Lambda 구성
+
+| Lambda | 메서드 | 엔드포인트 | 역할 |
+|--------|--------|-----------|------|
+| `verify-telegram` | POST | `/v3/leaderboard/verify-telegram` | 인증 + 채널 검증 + DB 업데이트 |
+| `telegram-status` | GET | `/v3/leaderboard/telegram-status` | 연결 상태 조회 |
+| `disconnect-telegram` | POST | `/v3/leaderboard/disconnect-telegram` | 연결 해제 |
+
+### DynamoDB 설계
+
+**UserProfiles 테이블 (기존 테이블에 필드 추가):**
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `isTelegramMember` | Boolean | 채널 멤버십 상태 |
+| `telegramUserId` | String | Telegram User ID |
+| `telegramUsername` | String | Telegram @username |
+
+**GSI: `telegramUserId-index`** (2026-02-24 추가):
+- Partition Key: `telegramUserId`
+- Projection: KEYS_ONLY
+- 용도: 중복 검사 시 O(1) Query (기존 Scan → Query 최적화)
+
+### 환경 변수
+
+| 변수명 | 설명 | 저장 위치 |
+|--------|------|----------|
+| `TELEGRAM_BOT_TOKEN_SECRET_NAME` | Secrets Manager 시크릿 이름 | CDK .env |
+| `TELEGRAM_CHANNEL_USERNAME` | 검증 대상 채널 (예: `@nasun_io`) | CDK .env |
+| `VITE_TELEGRAM_BOT_ID` | Login Widget용 Bot ID | Frontend .env |
+
+### 프론트엔드 구성
+
+| 파일 | 역할 |
+|------|------|
+| `sections/myAccount/hooks/useTelegramVerify.tsx` | Telegram 연결/해제 로직 |
+| `sections/myAccount/ProfileHeroCard.tsx` | AccountItem에 Telegram 행 추가 |
+| `sections/myAccount/components/AccountItem.tsx` | "telegram" provider 지원 |
+| `sections/myAccount/components/AccountIcons.tsx` | Telegram 아이콘 |
+| `sections/myAccount/components/StatusBadges.tsx` | Telegram 상태 배지 |
+
+### 보안
+
+- HMAC-SHA256 해시 검증: Telegram Login Widget 데이터의 무결성 확인 (Bot Token 기반)
+- auth_date 유효성: 5분 이내의 인증 데이터만 수락 (replay attack 방지)
+- Bot Token: AWS Secrets Manager에 저장 (환경 변수에 직접 노출하지 않음)
+- 중복 방지: telegramUserId-index GSI로 1개 Telegram 계정 = 1개 Nasun 계정 보장
+
+---
+
 ## 인증 시스템
 
 ### 인증 아키텍처
@@ -233,7 +321,8 @@ cdk/lib/nft-event-stack.ts             # CDK: NFT Event 인프라
 [인증 방식 선택]
     ├── Google OAuth → [Cognito Federated Identity]
     ├── Twitter OAuth → [Lambda] → [Cognito Developer Identity]
-    └── MetaMask → [Lambda] → [Cognito Developer Identity]
+    ├── MetaMask → [Lambda] → [Cognito Developer Identity]
+    └── Telegram → [Login Widget] → [Lambda: verify-telegram] → [UserProfiles 업데이트]
     ↓
 [Cognito Identity Pool]
     ↓
@@ -241,6 +330,8 @@ cdk/lib/nft-event-stack.ts             # CDK: NFT Event 인프라
     ↓
 [UserProfiles DynamoDB Table]
 ```
+
+**Note**: Telegram은 Cognito Identity를 생성하지 않음. 기존 Cognito 인증 사용자가 Telegram 계정을 **연결(Link)**하는 방식.
 
 ### MetaMask 인증 플로우
 
@@ -390,5 +481,5 @@ cd ../../ && pnpm cdk deploy AuthStack
 
 ---
 
-**문서 버전**: 2.21.0
-**마지막 업데이트**: 2026-01-31
+**문서 버전**: 2.22.0
+**마지막 업데이트**: 2026-02-24
