@@ -67,7 +67,7 @@
     "title": "A Unified Financial Experience",
     "trading": {
       "title": "Trading",
-      "status": "Live on Devnet",
+      "status": "Live",
       "features": [
         "Spot markets with 4 trading pairs from a unified account",
         "Real CLOB orderbook powered by DeepBook V3",
@@ -76,7 +76,7 @@
     },
     "prediction": {
       "title": "Prediction Markets",
-      "status": "Deployed on Devnet",
+      "status": "Deployed",
       "features": [
         "YES/NO outcome orderbooks with real-time settlement",
         "Trade on verifiable events with transparent odds",
@@ -85,7 +85,7 @@
     },
     "lottery": {
       "title": "Weekly Lottery",
-      "status": "Deployed on Devnet",
+      "status": "Deployed",
       "features": [
         "Verifiable onchain randomness for provably fair draws",
         "Multi-tier prizes with weekly rollover jackpots",
@@ -103,7 +103,7 @@
     },
     "payments": {
       "title": "Payments",
-      "status": "Live on Devnet",
+      "status": "Live",
       "features": [
         "QR code transfers with instant settlement",
         "Stablecoins remain liquid and usable at all times",
@@ -112,7 +112,7 @@
     },
     "social": {
       "title": "Social & Community",
-      "status": "Live on Devnet",
+      "status": "Live",
       "features": [
         "Global chat, leaderboards, and real-time PnL sharing",
         "AI market narrator Wavi with real-time trade alerts",

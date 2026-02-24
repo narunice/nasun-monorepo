@@ -5,33 +5,7 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui";
-import { Button } from "@/components/ui/button";
 const progressVideo = "/videos/Opensea-Battalion-Nft-Pipeline-rf26.mp4";
-
-interface ItemData {
-  title: string;
-  description: string;
-}
-
-interface CategoryData {
-  title: string;
-  items: string[];
-}
-
-interface PositionData {
-  title: string;
-  skills: string;
-  work: string[];
-}
-
-interface SectionData {
-  title: string;
-  items?: string[];
-}
-
-interface PhaseData {
-  sections: SectionData[];
-}
 
 /**
  * SpectraSection - Unified Spectra Game Page
@@ -41,66 +15,6 @@ interface PhaseData {
  */
 function SpectraSection() {
   const { t } = useTranslation("spectra");
-
-  // Features data
-  const mainFactorItems = t("mainFactors.items", { returnObjects: true }) as string[];
-  const tournamentItems = t("tournaments.items", { returnObjects: true }) as string[];
-
-  // Development data
-  const currentStateItems = t("currentState.items", { returnObjects: true }) as ItemData[];
-  const prototypeItems = t("prototypeDevelopment.items", { returnObjects: true }) as ItemData[];
-  const beyondItems = t("beyondPrototype.items", { returnObjects: true }) as ItemData[];
-
-  // Resources data
-  const categoryKeys = [
-    "serverBackend",
-    "awsSetup",
-    "alienSoldier",
-    "aerioWeapons",
-    "raidersWeapon",
-    "weaponParticles",
-    "environment",
-    "gameImplementation",
-    "creatureMugox",
-  ];
-
-  const categories = categoryKeys
-    .map((key) => {
-      const data = t(`foundersNftFunds.categories.${key}` as never, {
-        returnObjects: true,
-      }) as unknown as CategoryData;
-      if (!data || typeof data !== "object" || !Array.isArray(data.items)) {
-        return null;
-      }
-      return { key, data };
-    })
-    .filter((c): c is { key: string; data: CategoryData } => c !== null);
-
-  const positionKeys = ["artist2d", "artist3d", "ueDesigner", "ueProgrammer"];
-
-  const positions = positionKeys
-    .map((key) => {
-      const data = t(`hires.positions.${key}` as never, {
-        returnObjects: true,
-      }) as unknown as PositionData;
-      if (!data || typeof data !== "object" || !Array.isArray(data.work)) {
-        return null;
-      }
-      return { key, data };
-    })
-    .filter((p): p is { key: string; data: PositionData } => p !== null);
-
-  const phaseKeys = [
-    "phase1",
-    "phase2",
-    "phase3",
-    "phase4",
-    "phase5",
-    "phase6",
-    "phase7",
-    "phase8",
-    "phase9",
-  ];
 
   return (
     <SectionLayout className="!max-w-6xl">
@@ -132,48 +46,52 @@ function SpectraSection() {
         {/* The Core Loop */}
         <section>
           <SectionTitle as="h4">THE CORE LOOP</SectionTitle>
-          <OuterBox color="c1" className="!bg-black/30">
-            <h4 className="font-bold text-nasun-c1 mb-5">Crash. Compete. Escape—or perish.</h4>
-            <div className="space-y-3">
-              <p>
-                Your team crash-lands on a hostile alien world. Spectra—the galaxy's fuel source—is
-                scattered across the wreckage. Both factions race to extract enough to power an
-                escape ship.
-              </p>
-              <p>
-                But the planet is collapsing. Lava eruptions intensify. Earthquakes tear the ground
-                apart. Hostile parasites latch on. Delay too long and the environment kills
-                everyone, regardless of who's winning.
-              </p>
-              <p>
-                Victory requires combat, timing, and risk management. Carrying extra Spectra
-                increases your rewards—but slows your escape as the world violently falls apart.
-              </p>
-            </div>
-          </OuterBox>
+          <h5 className="font-medium text-nasun-white/80 mb-0 md:mb-1 lg:mb-2">
+            Crash. Compete. Escape—or perish.
+          </h5>
+          <div className="space-y-3">
+            <p>
+              Your team crash-lands on a hostile alien world. Spectra—the galaxy's fuel source—is
+              scattered across the wreckage. Both factions race to extract enough to power an escape
+              ship.
+            </p>
+            <p>
+              But the planet is collapsing. Lava eruptions intensify. Earthquakes tear the ground
+              apart. Hostile parasites latch on. Delay too long and the environment kills everyone,
+              regardless of who's winning.
+            </p>
+            <p>
+              Victory requires combat, timing, and risk management. Carrying extra Spectra increases
+              your rewards—but slows your escape as the world violently falls apart.
+            </p>
+          </div>
         </section>
 
         {/* Escape from Kramok */}
         <section>
-          <SectionTitle as="h4">ESCAPE FROM KRAMOK</SectionTitle>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold tracking-widest text-nasun-c1 border border-nasun-c1/50 px-3 py-1 rounded-sm uppercase">
-                First Playable Map
-              </span>
-              <span className="text-sm font-bold tracking-widest text-nasun-c1 border border-nasun-c1/50 px-3 py-1 rounded-sm uppercase">
-                8v8
-              </span>
+          <OuterBox color="w1" padding="md" className="!bg-[#2a2a2a]">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h4 className="!font-rubik uppercase font-medium text-xl md:text-2xl lg:text-3xl">
+                ESCAPE FROM KRAMOK
+              </h4>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-nasun-c1/20 text-nasun-c1">
+                  TPS
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-nasun-c1/20 text-nasun-c1">
+                  PvPvE
+                </span>
+              </div>
             </div>
-            <p className="text-nasun-white/90 font-medium">
-              An unstable lava planet moments from destruction.
-            </p>
-            <p className="text-nasun-white/70">
-              <span className="font-semibold text-nasun-c1">Dorakken Empire</span> transport
-              crashes after a <span className="font-semibold text-nasun-c1">Raider</span> ambush.
-              Both factions fight over the wreckage as the planet tears itself apart:
-            </p>
-            <OuterBox color="c1" padding="sm" className="!bg-black/30">
+            <div className="">
+              <p className="text-nasun-white/90 ">
+                An unstable lava planet moments from destruction.
+              </p>
+              <p className="text-nasun-white/80">
+                <span className="font-semibold">Dorakken Empire</span> transport crashes after a{" "}
+                <span className="font-semibold">Raider</span> ambush. Both factions fight over the
+                wreckage as the planet tears itself apart:
+              </p>
               <ul className="space-y-2">
                 {[
                   "Volcanic eruptions",
@@ -187,11 +105,11 @@ function SpectraSection() {
                   </li>
                 ))}
               </ul>
-            </OuterBox>
-            <p className="text-nasun-c1 font-semibold">
-              First team to fuel their escape ship survives. Everyone else burns.
-            </p>
-          </div>
+              <p className="text-nasun-white/90 font-semibold">
+                First team to fuel their escape ship survives. Everyone else burns.
+              </p>
+            </div>
+          </OuterBox>
         </section>
 
         {/* Death Isn't the End */}
@@ -201,13 +119,18 @@ function SpectraSection() {
             <div>
               <h6 className="font-bold tracking-widest text-nasun-c1 uppercase">Phantom System</h6>
               <p className="text-nasun-white/80">
-                Die and you return as a{" "}
-                <span className="text-nasun-c1 font-semibold">Phantom</span>—an invisible ghost in
-                first-person view.
+                Die and you return as a <span className="text-nasun-c1 font-semibold">Phantom</span>
+                —an invisible ghost in first-person view.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <DividerBox color="w4" hideDivider padding="sm" title="As a Phantom you can:" className="h-full">
+              <DividerBox
+                color="w4"
+                hideDivider
+                padding="sm"
+                title="As a Phantom you can:"
+                className="h-full"
+              >
                 <ul className="space-y-2">
                   {[
                     "Move unseen through the battlefield",
@@ -271,7 +194,13 @@ function SpectraSection() {
           <SectionTitle as="h4">FACTIONS & CONFLICT</SectionTitle>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <DividerBox color="w4" hideDivider padding="sm" title="Dorakken Empire" className="h-full">
+              <DividerBox
+                color="w4"
+                hideDivider
+                padding="sm"
+                title="Dorakken Empire"
+                className="h-full"
+              >
                 <p className="text-nasun-white/70">
                   Controls the primary Spectra zones across the galaxy. Militarized. Disciplined.
                   Ruthless in defending their monopoly.
@@ -457,7 +386,13 @@ function SpectraSection() {
         <section>
           <SectionTitle as="h4">WHAT'S NEXT</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <DividerBox color="w4" hideDivider padding="sm" title="Immediate (2026)" className="h-full">
+            <DividerBox
+              color="w4"
+              hideDivider
+              padding="sm"
+              title="Immediate (2026)"
+              className="h-full"
+            >
               <ul className="space-y-2">
                 {[
                   "Complete Escape from Kramok map",
