@@ -442,19 +442,31 @@ export function AgentDetail() {
               <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400 text-center">{fundError}</div>
             )}
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowFundGas(false)}
-                className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleFundGas}
-                disabled={fundStatus === 'sending'}
-                className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {fundStatus === 'sending' ? 'Sending...' : 'Send'}
-              </button>
+              {fundStatus === 'success' ? (
+                <button
+                  onClick={() => setShowFundGas(false)}
+                  className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+                >
+                  Done
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowFundGas(false)}
+                    disabled={fundStatus === 'sending'}
+                    className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={handleFundGas}
+                    disabled={fundStatus === 'sending'}
+                    className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {fundStatus === 'sending' ? 'Sending...' : 'Send'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
