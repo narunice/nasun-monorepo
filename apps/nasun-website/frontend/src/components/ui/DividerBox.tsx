@@ -27,7 +27,9 @@ type NasunColor =
   | "nw1"
   | "nw2"
   | "nw3"
-  | "nw4";
+  | "nw4"
+  | "pd1"
+  | "pd2";
 
 type PaddingVariant = "md" | "sm";
 
@@ -254,6 +256,20 @@ const colorStyles: Record<
     background: "bg-nasun-nw4/10",
     backgroundHover: "hover:bg-nasun-nw4/15 transition-colors",
     text: "text-nasun-nw4",
+  },
+  pd1: {
+    border: "border-pd2/40",
+    borderHover: "hover:border-pd2/60 transition-colors",
+    background: "bg-pd0s/80",
+    backgroundHover: "hover:bg-pd0s/60 transition-colors",
+    text: "text-pado-2",
+  },
+  pd2: {
+    border: "border-pd2/40",
+    borderHover: "hover:border-pd2/60 transition-colors",
+    background: "bg-pd1/50",
+    backgroundHover: "hover:bg-pd1/40 transition-colors",
+    text: "text-pd5",
   },
 };
 

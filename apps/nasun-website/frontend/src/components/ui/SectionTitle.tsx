@@ -3,7 +3,7 @@ import React from "react";
 interface SectionTitleProps {
   children: React.ReactNode;
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
-  color?: "scarlet" | "white" | "black";
+  color?: "scarlet" | "white" | "black" | "pd";
   className?: string;
 }
 
@@ -35,6 +35,7 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
     scarlet: "text-nasun-scarlet ",
     white: "text-nasun-white/90", // 다크 모드 기본 색상
     black: "text-nasun-black/90",
+    pd: "text-pd5", // Pado navy theme (cool white)
   };
 
   return (
