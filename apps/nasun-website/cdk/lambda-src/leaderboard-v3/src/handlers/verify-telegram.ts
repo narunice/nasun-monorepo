@@ -20,8 +20,8 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   QueryCommand,
-  UpdateCommand,
   ScanCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import {
   SecretsManagerClient,
@@ -233,28 +233,24 @@ async function checkTelegramDuplicateInUserProfiles(
   telegramUserId: string,
   excludeIdentityId: string
 ): Promise<boolean> {
-  // Scan UserProfiles for matching telegramUserId (different from current user)
-  let lastEvaluatedKey: Record<string, unknown> | undefined;
+  // Query GSI for matching telegramUserId (O(1) vs full table scan)
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: USER_PROFILES_TABLE,
+      IndexName: 'telegramUserId-index',
+      KeyConditionExpression: 'telegramUserId = :tgId',
+      ExpressionAttributeValues: {
+        ':tgId': telegramUserId,
+      },
+      ProjectionExpression: 'identityId',
+      Limit: 10,
+    })
+  );
 
-  do {
-    const result = await docClient.send(
-      new ScanCommand({
-        TableName: USER_PROFILES_TABLE,
-        FilterExpression: 'telegramUserId = :tgId AND identityId <> :excludeId',
-        ExpressionAttributeValues: {
-          ':tgId': telegramUserId,
-          ':excludeId': excludeIdentityId,
-        },
-        ProjectionExpression: 'identityId',
-        ExclusiveStartKey: lastEvaluatedKey,
-      })
-    );
-
-    if ((result.Items?.length ?? 0) > 0) return true;
-    lastEvaluatedKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
-  } while (lastEvaluatedKey);
-
-  return false;
+  // Check if any result belongs to a different user
+  return (result.Items ?? []).some(
+    (item) => item.identityId !== excludeIdentityId
+  );
 }
 
 async function updateUserProfileTelegram(
