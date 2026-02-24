@@ -44,45 +44,40 @@ const sectionTitleClass = "uppercase";
 export const FinanceContent = () => {
   const { t } = useTranslation("finance");
 
-  const problemPoints = t("problem.points", { returnObjects: true }) as Array<{
-    title: string;
-    description: string;
-  }>;
+  const asArray = <T,>(val: unknown): T[] =>
+    Array.isArray(val) ? val : [];
 
-  const coreFeatures = t("coreInnovation.features", { returnObjects: true }) as Array<{
-    title: string;
-    description: string;
-  }>;
+  const problemPoints = asArray<{ title: string; description: string }>(
+    t("problem.points", { returnObjects: true })
+  );
 
-  const howItWorksFeatures = t("howItWorks.features", { returnObjects: true }) as Array<{
-    title: string;
-    description: string;
-  }>;
+  const coreFeatures = asArray<{ title: string; description: string }>(
+    t("coreInnovation.features", { returnObjects: true })
+  );
 
-  const koreaItems = t("koreaMarket.items", { returnObjects: true }) as Array<{
-    label: string;
-    description: string;
-  }>;
+  const howItWorksFeatures = asArray<{ title: string; description: string }>(
+    t("howItWorks.features", { returnObjects: true })
+  );
 
-  const flywheelItems = t("flywheel.items", { returnObjects: true }) as Array<{
-    from: string;
-    description: string;
-  }>;
+  const koreaItems = asArray<{ label: string; description: string }>(
+    t("koreaMarket.items", { returnObjects: true })
+  );
 
-  const liveItems = t("launchStatus.live", { returnObjects: true }) as Array<{
-    title: string;
-    description: string;
-  }>;
+  const flywheelItems = asArray<{ from: string; description: string }>(
+    t("flywheel.items", { returnObjects: true })
+  );
 
-  const deployedItems = t("launchStatus.deployed", { returnObjects: true }) as Array<{
-    title: string;
-    description: string;
-  }>;
+  const liveItems = asArray<{ title: string; description: string }>(
+    t("launchStatus.live", { returnObjects: true })
+  );
 
-  const comingItems = t("launchStatus.coming", { returnObjects: true }) as Array<{
-    title: string;
-    description: string;
-  }>;
+  const deployedItems = asArray<{ title: string; description: string }>(
+    t("launchStatus.deployed", { returnObjects: true })
+  );
+
+  const comingItems = asArray<{ title: string; description: string }>(
+    t("launchStatus.coming", { returnObjects: true })
+  );
 
   const problemIcons = [Wallet, Layers, Zap, MessageCircle];
   const coreIcons = [ShieldCheck, Lock, DollarSign];
