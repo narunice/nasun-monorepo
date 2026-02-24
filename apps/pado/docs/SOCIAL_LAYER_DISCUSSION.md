@@ -2,7 +2,7 @@
 
 > Date: 2026-01-31
 > Status: Pre-prototype planning
-> Context: 2-person bootstrapped team, zero external funding, preparing for public launch
+> Context: Bootstrapped, zero external funding, preparing for public launch
 > Source: Multi-AI discussion + internal strategic evaluation
 
 ---
@@ -11,7 +11,7 @@
 
 ### The Nasun Situation
 
-Nasun is a bootstrapped L1 blockchain project built by a 2-person team with no external funding. The ecosystem includes:
+Nasun is a bootstrapped L1 blockchain project with no external funding. The ecosystem includes:
 
 - **Nasun Network** -- Sui-forked L1 (Devnet V7 live)
 - **Pado** -- Unified self-custodial finance app (trading, prediction, lottery, payments)
@@ -77,7 +77,7 @@ The social layer's role in the prototype is best understood through the intended
 5. See the chat          → "Other people are here" (community signal)
 6. Check leaderboard     → "I want to climb this" (return motivation)
 7. Try prediction/lottery → "This is more than a DEX" (vision differentiation)
-8. Decision point        → "This team built all this with 2 people? I'm buying the NFT."
+8. Decision point        → "This team built all this? I'm buying the NFT."
 ```
 
 Steps 5-6 are where the social layer converts a one-time visitor into a returning community member. Without them, the journey ends at step 4 and the visitor moves on.
@@ -203,7 +203,7 @@ These are deliberate design decisions to avoid repeating SocialFi failures:
 | Risk | Mitigation |
 |------|------------|
 | **Empty chat room problem** | Launch chat alongside an active testnet campaign (leaderboard competition, faucet events). Ensure minimum 10-20 concurrent users at launch |
-| **2-person team bandwidth** | Ruthless scoping: only global chat + leaderboard for prototype. Everything else is post-funding |
+| **Team bandwidth** | Ruthless scoping: only global chat + leaderboard for prototype. Everything else is post-funding |
 | **AI agent costs** | Defer LLM-based agents entirely. Most proposed features are achievable with rule-based alerts + good dashboards |
 | **"Just another chat"** | Differentiation comes from integration tightness (chat next to live orderbook, leaderboard tied to real trades), not the chat technology itself |
 

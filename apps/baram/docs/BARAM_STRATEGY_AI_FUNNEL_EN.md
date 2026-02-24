@@ -286,7 +286,7 @@ This is not a technology problem but a **community building + incentive design**
 | **Cocoon (TON)** | Telegram-based distributed AI computing | TON | Pavel Durov announcement | Early. Privacy focused |
 | **ChainGPT AIVM** | AI-dedicated blockchain (Cosmos SDK) | Own chain | Series unknown | 2026 mainnet planned |
 
-**Key finding**: This space is **already saturated with heavily funded projects**. Entry is impossible with a 2-person team.
+**Key finding**: This space is **already saturated with heavily funded projects**. Entry is impossible for a bootstrapped team.
 
 ---
 
@@ -608,7 +608,7 @@ Synthesizing all the above, the core issues the team must consider converge into
 |--------|------------|------|
 | A. Receipt Layer | Per-inference on-chain receipts | "Too small" (VC perspective) |
 | B. Accountability Infrastructure | Economic accountability infra for AI acts | "Invisible product" |
-| C. Settlement Standard | GAAP/SWIFT for AI settlement | "Too big" (2-person team) |
+| C. Settlement Standard | GAAP/SWIFT for AI settlement | "Too big" (bootstrapped team) |
 | D. Something entirely different | Pivot based on insights from the above conversation | Unknown |
 
 **What the current code actually does**: Escrow + TEE execution + ECR recording = **closest to Receipt Layer**
@@ -671,7 +671,7 @@ Gemini's analysis is 95% accurate. But there are a few overstatements/omissions:
 
 ### What Gemini Missed
 
-1. **The reality of a 2-person team** — Every analysis says "you must do this and that," but the executable scope is extremely limited. For a prototype, **one compelling demo** is sufficient.
+1. **The reality of a bootstrapped team** — Every analysis says "you must do this and that," but the executable scope is extremely limited. For a prototype, **one compelling demo** is sufficient.
 
 2. **The strategic value of Nasun L1** — Operating on your own L1 is not just lock-in but the ability to make your own rules. Governance, gas policies, consensus-level guarantees, etc.
 

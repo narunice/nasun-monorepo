@@ -7,7 +7,7 @@
 
 ## Mission
 
-Nasun Website (`apps/nasun-website/`) -- totaling ~490 frontend files (~47,000 lines) and ~90 Lambda source files (~17,500 lines) -- undergoes a full code review. This codebase was built via **vibe coding (LLM-generated) + manual refinement** by a 2-person bootstrapped team. The purpose is to identify security vulnerabilities and code quality issues before production deployment.
+Nasun Website (`apps/nasun-website/`) -- totaling ~490 frontend files (~47,000 lines) and ~90 Lambda source files (~17,500 lines) -- undergoes a full code review. This codebase was built via **vibe coding (LLM-generated) + manual refinement** by a bootstrapped team. The purpose is to identify security vulnerabilities and code quality issues before production deployment.
 
 **Deliverable**: A prioritized list of findings and remediation recommendations (text only). **Never modify code files.**
 
@@ -46,7 +46,7 @@ Nasun Website (`nasun.io`) is the **official website and community platform** fo
 - **Oracle/Sponsor Keys**: Lambda holds private keys for oracle signatures and sponsored transactions -- key exposure = vote forgery
 - **PII Exposure**: User profiles contain Twitter handles, email, Ethereum addresses, Cognito IDs -- DynamoDB queries must not leak cross-user data
 - **Admin Functions**: CSV export, blacklist, season management -- improper access control = data breach
-- **2-person team, bootstrapped startup**: No dedicated security team or automated security tooling
+- **Bootstrapped startup**: No dedicated security team or automated security tooling
 
 ---
 

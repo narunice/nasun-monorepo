@@ -195,7 +195,7 @@ All steps succeed or all fail. No partial settlement.
 
 Not a whitepaper. A working prototype.
 
-> Speaker Notes: The full pipeline works end-to-end on devnet: escrow creation, executor selection (reputation-weighted), AI inference (Groq cloud + local TEE LLaMA 3.2), settlement with automatic AER generation, reputation/tier updates. SDK provides query, analytics, decision chain tracing, and budget utilization analysis. All built by a 2-person team with zero external funding.
+> Speaker Notes: The full pipeline works end-to-end on devnet: escrow creation, executor selection (reputation-weighted), AI inference (Groq cloud + local TEE LLaMA 3.2), settlement with automatic AER generation, reputation/tier updates. SDK provides query, analytics, decision chain tracing, and budget utilization analysis. All built with zero external funding.
 
 ---
 
