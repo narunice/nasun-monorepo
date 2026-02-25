@@ -9,7 +9,7 @@
 **핵심 가치:**
 - **Privacy**: TEE(AWS Nitro Enclave) 내에서 프롬프트 복호화/처리 — Executor조차 원문을 볼 수 없음
 - **Payment Guarantee**: NUSDC 에스크로 + 온체인 정산
-- **Compliance**: ExecutionComplianceRecord로 모든 작업의 감사 추적 가능
+- **Compliance**: AIExecutionReport(AER)로 모든 작업의 감사 추적 (8카테고리, 31필드)
 - **Trustless Settlement**: 양측 모두 상대방을 신뢰할 필요 없음
 
 **설계 원칙:**
@@ -19,7 +19,7 @@
 
 ---
 
-## 구현 상태 (2026-02-08)
+## 구현 상태 (2026-02-25)
 
 | Phase | Status | 설명 |
 |-------|--------|------|
@@ -44,7 +44,11 @@
 | **Phase F-11: Budget Delegation** | ✅ | budget.move — 에이전트 예산 위임, 모델/Executor 화이트리스트, 만료, 건당 최대 금액 |
 | **Phase F-12: BetaAccessNFT Gate** | ✅ | beta_access.move — 베타 테스터 NFT 게이팅 (민팅, 만료, 사용 횟수 제한) + Frontend useNFTGate hook |
 | **Phase F-13: SDK E2E Tests** | ✅ | execute.e2e.ts (5/5), budget.e2e.ts (4/4) — 전체 파이프라인 + Budget 라이프사이클 검증 |
-| **Phase F-14: AER Design** | 📝 설계 완료 | [AER_DESIGN.md](AER_DESIGN.md) — ECR → AIExecutionReport 확장 설계 (30 필드, Authorization/Lineage/Economic Context 추가) |
+| **Phase F-14: AER Implementation** | ✅ | aer.move 배포 (8카테고리, 31필드) + SettlementReceipt hot-potato 패턴 + SDK/Frontend 통합. [AER_DESIGN.md](AER_DESIGN.md) 참조 |
+| **Phase F-15: Agent Profile** | ✅ | agent_profile.move — AgentProfile + Registry + Kill Switch (deactivate/reactivate) + Frontend CRUD |
+| **Phase F-16: Dashboard UI** | ✅ | 6 routes — DashboardOverview, AgentList, AgentDetail (5 tabs), BudgetsPage (CRUD+필터+통계), AERTimeline, ChatPage |
+| **Phase F-17: API Server** | ✅ | Hono.js AER 인덱서 — PostgreSQL, 30초 RPC 이벤트 동기화, rate limiting, 포트 3201 |
+| **Phase F-18: Agent Runner** | ✅ | 자율 에이전트 실행기 — research/content/analysis 프리셋, Budget 잔액 체크, 체크포인팅 |
 
 ---
 
@@ -71,21 +75,26 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 ### On-Chain Layer
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Nasun Devnet (Chain ID: 272218f1)             │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
-│  │  baram.move  │  │ baram_executor   │  │  compliance.move │  │
-│  │  (Escrow +   │  │ (Registry+Stake  │  │  (ECR + Audit)   │  │
-│  │   Budget +   │  │  +Tier)          │  │                  │  │
-│  │   BetaAccess)│  │                  │  │                  │  │
-│  └──────────────┘  └──────────────────┘  └──────────────────┘  │
-│                                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐                    │
-│  │  attestation     │  │  devnet_tokens   │                    │
-│  │  (PCR Baseline)  │  │  (NUSDC, NBTC)   │                    │
-│  └──────────────────┘  └──────────────────┘                    │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                      Nasun Devnet (Chain ID: 272218f1)                    │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────┐           │
+│  │  baram.move  │  │ baram_executor   │  │  baram_aer       │           │
+│  │  (Escrow +   │  │ (Registry+Stake  │  │  (AER 31필드,    │           │
+│  │   Budget +   │  │  +Tier)          │  │   8카테고리)     │           │
+│  │   BetaAccess)│  │                  │  │                  │           │
+│  └──────────────┘  └──────────────────┘  └──────────────────┘           │
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐       │
+│  │  agent_profile   │  │  attestation     │  │  devnet_tokens   │       │
+│  │  (Agent+Registry │  │  (PCR Baseline)  │  │  (NUSDC, NBTC)   │       │
+│  │   +Kill Switch)  │  │                  │  │                  │       │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘       │
+│                                                                          │
+│  ┌──────────────────┐                                                    │
+│  │  compliance.move │  ← FROZEN (기존 ECR 보존, 신규 생성 없음)          │
+│  └──────────────────┘                                                    │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Inference Modes
@@ -171,13 +180,14 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | `get_tier` | View | 특정 Executor tier 조회 |
 | `calculate_tier` | Pure | stake + reputation → tier 계산 |
 
-### compliance.move (Execution Compliance Record)
+### compliance.move (ECR — FROZEN, AER로 대체)
+
+> 기존 ECR 오브젝트는 보존되지만, 새 레코드는 더 이상 생성되지 않음. `contracts-aer/aer.move` 참조.
 
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
-| `create_record` | Admin/Executor | ECR 생성 (request_id, executor, model, tier, tee_type 등) |
-| `update_status` | Admin | ECR 상태 업데이트 |
-| `get_record` / `get_executor_records` | View | ECR 조회 |
+| `create_record` | Admin/Executor | ECR 생성 (**FROZEN — 호출하지 않음**) |
+| `get_record` / `get_executor_records` | View | 기존 ECR 조회 (읽기 전용) |
 
 ### attestation_registry.move (PCR Baseline)
 
@@ -195,12 +205,12 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 > **Chain ID**: `272218f1` (V7, 2026-02-04 리셋)
 > 전체 주소: `packages/devnet-config/devnet-ids.json` 참조
 
-### Baram Contract (v3 — baram + budget + beta_access)
+### Baram Contract (v6 — baram + budget + beta_access)
 
 | 항목 | 주소 |
 |------|------|
-| Package ID (v3) | `0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6` |
-| Original Package ID | `0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f` |
+| Package ID (v6) | `0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9` |
+| Original Package ID | `0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6` |
 | BaramRegistry | `0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833` |
 | UpgradeCap | `0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291` |
 | BetaAccessRegistry | `0xaf2fd2a1ccfd1f41afe51071981047860b81f9cfaa775fc12acadf099577e4f7` |
@@ -229,14 +239,26 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | AdminCap | `0xd83e429f303284ae7a0f9e27d31cfa92f3fc186a0736930edf6bdddaab152c9c` |
 | UpgradeCap | `0x5b8076bc7f8a8777549ff4772ec8e2f3a8c729fa4ebc1537e2338db839223492` |
 
-### Compliance Registry
+### AER Registry (v3)
+
+| 항목 | 주소 |
+|------|------|
+| Package ID (v3) | `0x809f22f2262fd4211e51c1d890addfaeadb21e4bbf61748d7714306272427692` |
+| AERRegistry | `0xf1acc0794f5aa692de3f825953b708f940c5ccd83655bf79fe0c520052588583` |
+
+### Agent Profile Registry
+
+| 항목 | 주소 |
+|------|------|
+| Package ID | `0x05edb7edec6e69af66e5d2564e6ca7cb46b60469a0897291c51f8d5c949424de` |
+| AgentProfileRegistry | `0x1e236dfab7e4c3df21651fa4b5dc846d8d1bed314a2615474dd1b805445b9f11` |
+
+### Compliance Registry (FROZEN — AER로 대체)
 
 | 항목 | 주소 |
 |------|------|
 | Package ID | `0x601d879d176f5f22f1c3f267bb8895c6b18f1020878ac38a5f88f27ffeed55c3` |
 | ComplianceRegistry | `0x884af83cb0b9d5dc1f584a29018e812e777fb36ea99b8b0d96a8645188a4bec0` |
-| AdminCap | `0xd0ea98aa3eac954c0edb4218ceab9c9d3c1c8d4f8082efcbdd54ac1347253cbe` |
-| UpgradeCap | `0x57af57b0be77ddb9a85fafb7cab68b2387e80785874fa1198cf73d12638804a5` |
 
 ### Unified Tokens (devnet_tokens)
 
@@ -282,9 +304,17 @@ apps/baram/
 │   └── sources/
 │       └── attestation_registry.move  # PCR baseline 등록/검증
 │
-├── contracts-compliance/        # Compliance 패키지 (Phase E-3)
+├── contracts-aer/               # AER 패키지 (AIExecutionReport -- 8카테고리, 31필드)
 │   └── sources/
-│       └── compliance.move      # ExecutionComplianceRecord
+│       └── aer.move             # AIExecutionReport + AERRegistry + create_report_with_receipt()
+│
+├── contracts-agent/             # Agent 패키지 (AgentProfile + Registry)
+│   └── sources/
+│       └── agent_profile.move   # AgentProfile + Kill Switch
+│
+├── contracts-compliance/        # Compliance 패키지 (FROZEN -- AER로 대체)
+│   └── sources/
+│       └── compliance.move      # ExecutionComplianceRecord (신규 생성 없음)
 │
 ├── executor-nitro/              # TEE Executor (AWS Nitro)
 │   ├── src/
@@ -298,12 +328,24 @@ apps/baram/
 ├── cdk/                         # AWS CDK (Lambda Executor)
 │   └── lambda-src/executor/     # Lambda handler (Groq cloud models)
 │
+├── api-server/                  # AER 인덱서 API (Hono.js + PostgreSQL, 포트 3201)
+│   └── src/
+│       ├── index.ts             # 메인 서버
+│       ├── db.ts                # PostgreSQL 스키마 (aer_records)
+│       ├── routes/aer.ts        # /api/v1/aer 엔드포인트
+│       └── sync/aer-sync.ts     # RPC 이벤트 동기화 워커 (30초)
+│
+├── agent-runner/                # 자율 에이전트 실행기
+│   └── src/
+│       ├── index.ts             # 메인 루프 + runCycle
+│       ├── baram-client.ts      # 온체인: Budget 체크, 요청 생성
+│       ├── executor-client.ts   # Lambda 클라이언트
+│       └── presets/             # research, content, analysis
+│
 ├── scripts/                     # Admin 스크립트
 │   └── mint-beta-access.sh      # BetaAccessNFT 민팅
 │
 └── docs/                        # 문서
-    ├── BARAM_IMPLEMENTATION_PLAN.md  # 이 문서
-    └── SPOT_INSTANCE_GUIDE.md       # Spot instance 운영 가이드
 ```
 
 ---
@@ -350,39 +392,43 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 ## 다음 단계
 
-> **현재 상태**: Phase F-14까지 핵심 기능 완료 + AER 설계, TEE 인스턴스 OFF
+> **현재 상태**: Phase F-18까지 완료 (AER 구현, Dashboard, API Server, Agent Runner). TEE 인스턴스 OFF.
 
 ### 잔여 과제
 
 | 항목 | 설명 | 우선순위 |
 |------|------|----------|
-| Budget 프론트엔드 통합 | Budget 생성/관리 UI, Agent Budget 선택 (executeWithBudget) | 높음 |
-| ~~Budget 통합 테스트~~ | ~~E2E: Budget 생성 → Agent 실행 → 정산 검증~~ | ✅ 완료 (2026-02-08) |
 | BetaAccessNFT 운영 | NFT 민팅 → 베타 테스터 배포, gate 활성화 | 높음 |
+| Agent Framework 통합 | LangChain/CrewAI/AutoGen 플러그인 (SDK 기반) | 높음 |
+| 분산 Executor 네트워크 | 외부 Executor 온보딩 프로세스, 다수 Executor 운영 | 높음 |
 | HTTPS/도메인 설정 | Production TEE endpoint (현재 HTTP) | 중간 |
-| AER 스마트컨트랙트 구현 | compliance.move 확장 (8 신규 필드) — [AER_DESIGN.md](AER_DESIGN.md) | 중간 |
+| Protocol Fee 구현 | fee_detail JSON → 실제 fee split 로직 | 중간 |
+| Enclave 출력 서명 | secp256k1 서명 → Move 온체인 검증 (Oyster 패턴) | 중간 |
 
 ### Roadmap
 
-#### Near-term (Phase F 완료)
+#### Phase F (완료)
 
-| 목표 | 상태 | 설명 |
-|------|------|------|
-| **F-1: Executor 자동 배정** | ✅ | Weighted Random, eligible set filter (Bronze+), re-roll on failure |
-| **F-3: Automated ECR** | ✅ | 정산 시 ComplianceRecord 자동 생성 (submitProofWithCompliance) |
-| **F-4: Frontend Attestation UI** | ✅ | AttestationDisplay, PCR Verified, Audit Trail (ECRReceipt) |
-| **F-5: Executor Registration Check** | ✅ | Host 시작 시 키 검증, 불일치 시 fatal exit |
-| **F-6: Auto-cancel on Failure** | ✅ | /execute 실패 시 에스크로 즉시 해제 (cancel_request TX) |
-| **F-7: Chat Encryption with Password** | ✅ | PBKDF2(address+password) 키 파생, DB v2 마이그레이션 |
-| **F-7.1: zkLogin Dual-Mode + Idle Timeout** | ✅ | zkLogin address-only fallback, 15분 idle timeout (DOM 이벤트 기반) |
-| **F-2: Admin 의존도 제거** | ✅ | Self-service 함수 5개 + ProcessedRequests dedup + permissionless decay/tier refresh |
-| **F-9: Pipeline Atomicity** | ✅ | Settlement-gated response (3x retry), auto-cancel retry (2x), AES key sessionStorage backup |
-| **F-10: @nasun/baram-sdk** | ✅ | Node.js SDK v0.1.0 — BaramClient, Executor 선택, ECR 조회, CLI demo |
-| **F-11: Budget Delegation** | ✅ | budget.move — 에이전트 예산 위임, 모델/Executor 화이트리스트, 만료, 건당 최대 금액 |
-| **F-12: BetaAccessNFT Gate** | ✅ | beta_access.move + useNFTGate hook + NFTGateScreen — 베타 테스터 NFT 게이팅 |
-| **F-13: SDK E2E Tests** | ✅ | execute.e2e.ts (5/5), budget.e2e.ts (4/4) — coin isolation fix, executeWithBudget happy path |
-| **F-14: AER Design** | 📝 | [AER_DESIGN.md](AER_DESIGN.md) — ECR→AER 확장 설계 (Authorization Proof, Decision Lineage, Economic Context) |
-| F-8: HTTPS/도메인 설정 | 계획 | Production TEE endpoint |
+| 목표 | 상태 |
+|------|------|
+| F-1: Executor 자동 배정 | ✅ |
+| F-2: Admin 의존도 제거 | ✅ |
+| F-3: Automated ECR → AER | ✅ |
+| F-4: Frontend Attestation UI | ✅ |
+| F-5: Executor Registration Check | ✅ |
+| F-6: Auto-cancel on Failure | ✅ |
+| F-7/7.1: Chat Encryption + Idle Timeout | ✅ |
+| F-8: HTTPS/도메인 설정 | 계획 |
+| F-9: Pipeline Atomicity | ✅ |
+| F-10: @nasun/baram-sdk | ✅ |
+| F-11: Budget Delegation | ✅ |
+| F-12: BetaAccessNFT Gate | ✅ |
+| F-13: SDK E2E Tests | ✅ |
+| F-14: AER Implementation | ✅ |
+| F-15: Agent Profile | ✅ |
+| F-16: Dashboard UI | ✅ |
+| F-17: API Server | ✅ |
+| F-18: Agent Runner | ✅ |
 
 #### Mid-term (Phase G: Model Marketplace)
 

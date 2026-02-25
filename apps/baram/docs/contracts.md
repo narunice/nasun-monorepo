@@ -156,6 +156,18 @@
 | Package ID (v3) | `0x809f22f2262fd4211e51c1d890addfaeadb21e4bbf61748d7714306272427692` |
 | AERRegistry | `0xf1acc0794f5aa692de3f825953b708f940c5ccd83655bf79fe0c520052588583` |
 
+### Agent Profile Registry
+| 항목 | 주소 |
+|------|------|
+| Package ID | `0x05edb7edec6e69af66e5d2564e6ca7cb46b60469a0897291c51f8d5c949424de` |
+| AgentProfileRegistry | `0x1e236dfab7e4c3df21651fa4b5dc846d8d1bed314a2615474dd1b805445b9f11` |
+
+### Compliance Registry (FROZEN)
+| 항목 | 주소 |
+|------|------|
+| Package ID | `0x601d879d176f5f22f1c3f267bb8895c6b18f1020878ac38a5f88f27ffeed55c3` |
+| ComplianceRegistry | `0x884af83cb0b9d5dc1f584a29018e812e777fb36ea99b8b0d96a8645188a4bec0` |
+
 ### Lambda Backend (Cloud Models -- Groq only)
 | 항목 | 값 |
 |------|-----|

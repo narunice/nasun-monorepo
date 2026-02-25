@@ -23,6 +23,35 @@
 
 ---
 
+## Sub-Components
+
+| 컴포넌트 | 위치 | 설명 |
+|----------|------|------|
+| **Frontend** | `frontend/` | React 19 + Vite 7 Dashboard (포트 5177) |
+| **Contracts** | `contracts/` | baram.move (에스크로+Budget+BetaAccess) |
+| **Contracts-Executor** | `contracts-executor/` | Executor Registry + Staking + Tier |
+| **Contracts-AER** | `contracts-aer/` | AIExecutionReport (8카테고리, 31필드) |
+| **Contracts-Agent** | `contracts-agent/` | AgentProfile + Registry + Kill Switch |
+| **Contracts-Attestation** | `contracts-attestation/` | PCR baseline 등록/검증 |
+| **Contracts-Compliance** | `contracts-compliance/` | ECR (FROZEN -- AER로 대체) |
+| **Executor-Nitro** | `executor-nitro/` | TEE Executor (AWS Nitro Enclave) |
+| **CDK/Lambda** | `cdk/` | Lambda Executor (Groq cloud models) |
+| **API Server** | `api-server/` | AER 인덱서 API (Hono.js, PostgreSQL, 포트 3201) |
+| **Agent Runner** | `agent-runner/` | 자율 에이전트 실행기 (research/content/analysis 프리셋) |
+
+### Dashboard Routes
+
+| Route | Page | 설명 |
+|-------|------|------|
+| `/` | DashboardOverview | 요약 통계, Agent 카드, 최근 AER |
+| `/agents` | AgentList | Agent 목록 + 등록 |
+| `/agents/:id` | AgentDetail | Agent 상세 (5 tabs) + Kill Switch |
+| `/budgets` | BudgetsPage | Budget 관리 (CRUD, 필터, 통계) |
+| `/aer` | AERTimeline | AER 타임라인 |
+| `/chat` | ChatPage | AI 추론 (Standard/Private mode) |
+
+---
+
 ## Development Commands
 
 ### Frontend (포트 5177)
@@ -100,7 +129,9 @@ VITE_NFT_GATE_ENABLED=false      # Beta Access NFT Gate
 
 ## 참조 문서
 
+- [docs/BARAM_FEATURES.md](docs/BARAM_FEATURES.md) -- 기능 상세 (AER, Budget, Agent, Executor, TEE, SDK, Dashboard)
 - [docs/codebase-map.md](docs/codebase-map.md) -- 디렉토리 구조, 파일 레퍼런스
 - [docs/contracts.md](docs/contracts.md) -- 컨트랙트 함수 테이블, 배포 주소
 - [docs/environment.md](docs/environment.md) -- executor-nitro 환경 변수 상세
 - [docs/BARAM_IMPLEMENTATION_PLAN.md](docs/BARAM_IMPLEMENTATION_PLAN.md) -- 구현 로드맵
+- [docs/AER_DESIGN.md](docs/AER_DESIGN.md) -- AER 설계 레퍼런스 (ECR→AER 전환 근거)
