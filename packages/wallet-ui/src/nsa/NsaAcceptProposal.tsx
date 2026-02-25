@@ -156,6 +156,7 @@ export function NsaAcceptProposal({ onClose, initialProposalId = '' }: NsaAccept
               type="text"
               value={proposalId}
               onChange={(e) => setProposalId(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && proposalId.trim() && !isLoading && fetchProposal()}
               placeholder="0x..."
               className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm xl:text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             />

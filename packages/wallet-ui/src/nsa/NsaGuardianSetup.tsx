@@ -161,6 +161,7 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
               type="text"
               value={recoveryOwner}
               onChange={(e) => setRecoveryOwner(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && isFormValid && setStep('review')}
               placeholder={address ? `Default: ${address.slice(0, 10)}...` : '0x...'}
               className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
             />
