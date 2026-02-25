@@ -193,7 +193,7 @@ export type { UseNetworkResult } from './hooks/useNetwork';
 
 // Token Faucet Hook
 export { useTokenFaucet } from './hooks/useTokenFaucet';
-export type { FaucetResult, UseTokenFaucetResult } from './hooks/useTokenFaucet';
+export type { FaucetResult, BatchFaucetOptions, BatchFaucetResult, UseTokenFaucetResult } from './hooks/useTokenFaucet';
 
 // Crypto utilities
 export {
@@ -767,10 +767,10 @@ export type { UseSessionKeyResult } from './hooks/useSessionKey';
 // without needing to manually call registerTokenFaucet()
 
 import { nativeFaucetHandler } from './sui/faucet';
-import { nbtcFaucetHandler, nusdcFaucetHandler, nethFaucetHandler, nsolFaucetHandler, buildNbtcFaucetTx, buildNusdcFaucetTx, buildNethFaucetTx, buildNsolFaucetTx } from './sui/tokenFaucet';
+import { nbtcFaucetHandler, nusdcFaucetHandler, nethFaucetHandler, nsolFaucetHandler, buildNbtcFaucetTx, buildNusdcFaucetTx, buildNethFaucetTx, buildNsolFaucetTx, buildBatchFaucetTx, ONCHAIN_FAUCET_SYMBOLS } from './sui/tokenFaucet';
 
 // Re-export faucet transaction builders for direct use by apps
-export { buildNbtcFaucetTx, buildNusdcFaucetTx, buildNethFaucetTx, buildNsolFaucetTx };
+export { buildNbtcFaucetTx, buildNusdcFaucetTx, buildNethFaucetTx, buildNsolFaucetTx, buildBatchFaucetTx, ONCHAIN_FAUCET_SYMBOLS };
 import { registerTokenFaucet } from './config/tokens';
 
 // NSN - Native token faucet (HTTP API)

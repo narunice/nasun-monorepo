@@ -46,7 +46,7 @@ export function MultiBalanceDisplay({
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        {!compact && <span className="text-sm xl:text-base text-zinc-400">Loading balances...</span>}
+        {!compact && <span className="text-sm xl:text-base text-[var(--color-text-muted,#a1a1aa)]">Loading balances...</span>}
       </div>
     );
   }
@@ -55,10 +55,10 @@ export function MultiBalanceDisplay({
   if (error) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
-        <span className="text-sm xl:text-base text-red-400">Failed to load balances</span>
+        <span className="text-sm xl:text-base text-[var(--color-error,#f87171)]">Failed to load balances</span>
         <button
           onClick={() => refetch()}
-          className="text-xs xl:text-sm text-zinc-400 hover:text-white underline"
+          className="text-xs xl:text-sm text-[var(--color-text-muted,#a1a1aa)] hover:text-[var(--color-text-primary,white)] underline"
         >
           Retry
         </button>
@@ -101,8 +101,8 @@ export function MultiBalanceDisplay({
       <div className={`flex items-center gap-3 ${className}`}>
         {tokensToShow.map((token) => (
           <div key={token.symbol} className="flex items-center gap-1.5">
-            <span className="text-sm xl:text-base font-medium text-white">{token.formatted}</span>
-            <span className="text-xs xl:text-sm text-blue-400">{token.symbol}</span>
+            <span className="text-sm xl:text-base font-medium text-[var(--color-text-primary,white)]">{token.formatted}</span>
+            <span className="text-xs xl:text-sm text-[var(--color-text-muted,#60a5fa)]">{token.symbol}</span>
             {showFaucet && <TokenFaucetButton symbol={token.symbol} compact />}
           </div>
         ))}
@@ -116,8 +116,8 @@ export function MultiBalanceDisplay({
       {tokensToShow.map((token) => (
         <div key={token.symbol} className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-xl xl:text-2xl font-bold text-white">{token.formatted}</span>
-            <span className="text-sm xl:text-base text-blue-400 font-medium">{token.symbol}</span>
+            <span className="text-xl xl:text-2xl font-bold text-[var(--color-text-primary,white)]">{token.formatted}</span>
+            <span className="text-sm xl:text-base text-[var(--color-text-muted,#60a5fa)] font-medium">{token.symbol}</span>
           </div>
           {showFaucet && <TokenFaucetButton symbol={token.symbol} compact />}
         </div>
@@ -125,7 +125,7 @@ export function MultiBalanceDisplay({
 
       <button
         onClick={() => refreshBalance()}
-        className="text-xs xl:text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-1 self-start"
+        className="text-xs xl:text-sm text-[var(--color-text-muted,#a1a1aa)] hover:text-[var(--color-text-primary,white)] transition-colors flex items-center gap-1 self-start"
         title="Refresh balances"
       >
         <svg

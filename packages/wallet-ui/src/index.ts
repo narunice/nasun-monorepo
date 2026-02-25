@@ -30,6 +30,7 @@ export { WalletConnect } from './connect/WalletConnect';
 export { BalanceDisplay } from './balance/BalanceDisplay';
 export { FaucetButton } from './balance/FaucetButton';
 export { TokenFaucetButton } from './balance/TokenFaucetButton';
+export { ClaimAllButton } from './balance/ClaimAllButton';
 export { MultiBalanceDisplay } from './balance/MultiBalanceDisplay';
 export { TokenSelector } from './balance/TokenSelector';
 
