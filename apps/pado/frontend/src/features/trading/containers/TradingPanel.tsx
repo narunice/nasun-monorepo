@@ -195,6 +195,16 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // TradeCap delegation for server-side TP/SL execution
   const tradeCap = useTradeCap(balanceManagerId, walletAddress);
 
+  // Notify user when TradeCap delegation is auto-cleared (keeper address change or invalid state)
+  useEffect(() => {
+    if (!tradeCap.resetReason) return;
+    const msg = tradeCap.resetReason === 'keeper_changed'
+      ? 'Server-side TP/SL has been reset due to keeper update. Please re-enable Server Mode.'
+      : 'Server-side TP/SL delegation is no longer valid. Please re-delegate.';
+    showToast(msg, 'warning');
+    tradeCap.clearResetReason();
+  }, [tradeCap.resetReason, tradeCap.clearResetReason, showToast]);
+
   // Order fill notifier — browser notification + sound when user's orders are filled
   useOrderFillNotifier({
     balanceManagerId,
