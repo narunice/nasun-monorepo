@@ -15,13 +15,13 @@ export default function useScrollToTop() {
 
   useEffect(() => {
     if (prevPathnameRef.current !== location.pathname) {
-      window.scrollTo({ top: 0, behavior: "auto" });
+      window.scrollTo({ top: 0, behavior: "instant" });
       prevPathnameRef.current = location.pathname;
     }
   }, [location.pathname]);
 
   // Scroll to top on initial mount (page reload support)
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
 }

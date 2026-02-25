@@ -1,8 +1,6 @@
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
-import { Button } from "@/components/ui/button";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import { ArrowUpRight } from "lucide-react";
 
 export default function OneAccountSection() {
   return (
@@ -20,21 +18,15 @@ export default function OneAccountSection() {
             engine. One balance that earns yield, backs trades, remains instantly usable across all
             products, and stays liquid.
           </p>
-          <Button
+          {/* <Button
             variant="pado"
             size="lg"
             className="flex w-fit items-center gap-2 mt-6 mx-auto text-pd0"
-            asChild
+            disabled
           >
-            <a
-              href={import.meta.env.VITE_PADO_ALPHA_URL || "https://staging.pado.finance"}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Try Pado Alpha
-              <ArrowUpRight className="w-4 h-4 ml-1" />
-            </a>
-          </Button>
+            Try Pado Alpha
+            <ArrowUpRight className="w-4 h-4 ml-1" />
+          </Button> */}
         </OuterBox>
       </FadeInUp>
     </SectionLayout>

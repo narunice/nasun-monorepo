@@ -138,7 +138,7 @@ function NarrativeContent() {
           </FadeInUp>
         </div>
 
-        {/* WEBSITE 버튼 */}
+        {/* WEBSITE 버튼 (hidden)
         <FadeInUp delay="0.4s">
           <div className="flex justify-center mt-8 md:mt-10">
             <ButtonV3
@@ -152,6 +152,7 @@ function NarrativeContent() {
             </ButtonV3>
           </div>
         </FadeInUp>
+        */}
       </div>
     </SectionLayout>
   );

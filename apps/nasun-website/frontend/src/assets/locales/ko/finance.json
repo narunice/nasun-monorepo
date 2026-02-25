@@ -50,64 +50,64 @@
         "description": "Cross-collateral margin across spot, perpetuals, and prediction markets. Your entire portfolio backs all positions simultaneously — no capital locked in silos."
       },
       {
-        "title": "Conditional Orders",
-        "description": "Take-profit, stop-loss, and trailing stops currently execute via a dedicated keeper service with browser fallback. Because Nasun is our own L1, these will be upgraded to validator-native execution — removing off-chain dependencies entirely."
+        "title": "Protocol-Native Execution",
+        "description": "Sub-second finality and parallel execution on Nasun L1. Conditional orders (TP/SL, trailing stops) will be upgraded to validator-native execution — removing off-chain dependencies entirely."
       },
       {
-        "title": "Automated Infrastructure",
-        "description": "Market-making bots maintain liquidity across all pairs. Oracle price feeds update every 30 seconds. Liquidation keepers monitor margin health and execute forced closes when thresholds are breached — all running 24/7. This infrastructure will evolve into AI-integrated intent solvers for advanced execution strategies."
+        "title": "AI-Integrated Intent Solvers",
+        "description": "AI agents that interpret user intent, optimize execution, and coordinate across markets — replacing manual workflows with protocol-native automation."
       },
       {
         "title": "Embedded Social Layer",
-        "description": "Global chat with signature-based authentication, AI market narrator Wavi for real-time trade alerts, leaderboards with trader profiles and badges, PnL share cards, competitions, and a points system — all integrated directly into the trading interface."
+        "description": "Global chat with signature-based authentication, AI market narrator Wavi, leaderboards with trader profiles, PnL share cards, competitions, and a points system — all integrated into the trading interface."
       }
     ]
   },
   "products": {
     "title": "A Unified Financial Experience",
     "trading": {
-      "title": "Trading",
+      "title": "Spot Trading",
       "status": "Live",
       "features": [
-        "Spot markets with 4 trading pairs from a unified account",
-        "Real CLOB orderbook powered by DeepBook V3",
-        "TradingView charts with 100+ indicators"
+        "4 trading pairs on a full CLOB orderbook powered by DeepBook V3",
+        "TradingView charts with 100+ indicators",
+        "TP/SL and trailing stops with keeper and browser fallback"
+      ]
+    },
+    "perps": {
+      "title": "Perpetual Futures",
+      "status": "Alpha Deployed",
+      "features": [
+        "Up to 20x leverage with 8-hour funding rates",
+        "Same unified account — shared collateral across spot and perps",
+        "LP liquidity activation pending"
       ]
     },
     "prediction": {
       "title": "Prediction Markets",
-      "status": "Deployed",
+      "status": "Live",
       "features": [
-        "YES/NO outcome orderbooks with real-time settlement",
+        "YES/NO outcome orderbooks with admin-resolved settlement",
         "Trade on verifiable events with transparent odds",
-        "Transparent odds driven by market participants"
+        "Oracle-based real-time settlement on roadmap"
       ]
     },
     "lottery": {
       "title": "Weekly Lottery",
-      "status": "Deployed",
+      "status": "Live",
       "features": [
         "Verifiable onchain randomness for provably fair draws",
         "Multi-tier prizes with weekly rollover jackpots",
-        "Participate directly from your unified account"
+        "Admin-resolved draws today — oracle-based automation on roadmap"
       ]
     },
     "lending": {
-      "title": "Lending & Borrowing",
+      "title": "Lending & Staking",
       "status": "Coming Soon",
       "features": [
         "Idle assets automatically earn yield",
         "Instant borrowing against existing balances",
-        "No separate deposits or protocol interactions"
-      ]
-    },
-    "payments": {
-      "title": "Payments",
-      "status": "Live",
-      "features": [
-        "QR code transfers with instant settlement",
-        "Stablecoins remain liquid and usable at all times",
-        "Capital is never locked — it remains continuously productive"
+        "Stake to earn protocol rewards and secure the network"
       ]
     },
     "social": {
@@ -120,42 +120,14 @@
       ]
     }
   },
-  "riskModes": {
-    "title": "Risk Modes for Every User",
-    "intro": "Pado allows users to opt into sophistication at their own pace.",
-    "modes": [
-      {
-        "title": "Safe Mode",
-        "label": "Default",
-        "status": "Live",
-        "features": [
-          "Isolated margin — each trade stands alone",
-          "No leverage",
-          "Ideal for new users"
-        ]
-      },
-      {
-        "title": "Pro Mode",
-        "label": "Opt-In",
-        "status": "Planned",
-        "features": [
-          "Cross-product collateral across all markets",
-          "Portfolio-level margin for improved capital efficiency",
-          "Yield on collateral backing active positions"
-        ]
-      },
-      {
-        "title": "Institutional Mode",
-        "label": "Verified",
-        "status": "Planned",
-        "features": [
-          "Custom margin parameters and risk limits",
-          "Programmatic API access for automated strategies",
-          "Multi-asset collateral with custom haircuts"
-        ]
-      }
-    ],
-    "closing": "All modes are enforced by the same onchain risk engine — ensuring fairness, predictability, and transparency across all participants."
+  "builtNotPromised": {
+    "title": "Built, Not Promised",
+    "stats": [
+      { "value": "9", "label": "Packages Deployed" },
+      { "value": "1,175+", "label": "Tests Passing" },
+      { "value": "$0", "label": "External Funding" },
+      { "value": "2", "label": "Builders" }
+    ]
   },
   "contextualFinance": {
     "title": "Contextual Finance",
@@ -163,16 +135,30 @@
     "intro": "Finance is inherently social — traders compare performance, share strategies, learn from peers, and compete. Today, these interactions happen outside the execution layer, across disconnected platforms with no shared context or verification.",
     "inversion": "Pado inverts this model. Instead of injecting financial mechanics into social feeds, Pado embeds optional, high-signal social surfaces directly into the financial execution layer — eliminating context switching while preserving privacy and focus.",
     "designPrinciple": "Social features must make users better traders, better allocators, or better learners. If they don't, they don't ship.",
-    "sectionTitle": "Modes, Not Feeds",
     "features": [
+      {
+        "title": "Live Chat & AI Narrator",
+        "description": "Global chat with signature-based authentication. AI market narrator Wavi delivers real-time trade alerts and market commentary.",
+        "status": "Live"
+      },
+      {
+        "title": "News Feed",
+        "description": "Real-time crypto news integrated into the trading interface. Discuss and trade without leaving the app.",
+        "status": "Live"
+      },
       {
         "title": "War Rooms",
         "description": "Position-gated discussion spaces designed to filter noise through skin-in-the-game participation.",
         "status": "Roadmap"
       },
       {
-        "title": "Privacy-First Leaderboards",
+        "title": "Leaderboards",
         "description": "Risk-adjusted performance rankings with opt-in privacy controls. Designed to reward discipline over speculation.",
+        "status": "Alpha Deployed"
+      },
+      {
+        "title": "Copy Trading",
+        "description": "Follow and automatically replicate the trades of top-performing traders. Transparent track records ensure informed decisions.",
         "status": "Roadmap"
       },
       {
@@ -182,18 +168,11 @@
       },
       {
         "title": "AI Agents as Financial Tools",
-        "description": "Market narrator Wavi is live today with real-time trade alerts. Planned extensions include:",
-        "bullets": [
-          "Risk alerts and margin health monitoring",
-          "Market explanations and volatility summaries",
-          "Strategy simulations before execution",
-          "Guided onboarding for new users"
-        ],
+        "description": "AI agents that interpret user intent, optimize execution, and coordinate across markets — from risk alerts and strategy simulations to guided onboarding.",
         "status": "Roadmap"
       }
     ],
-    "liveNow": "Live today: global chat with signature-based authentication, integrated directly into the trading interface.",
-    "closing": "Social features scale with risk modes — educational in Safe Mode, performance-oriented in Pro Mode, and private, team-based in Institutional Mode."
+    "closing": ""
   },
   "koreaMarket": {
     "title": "Global Product, Korea Market Entry",
@@ -201,11 +180,11 @@
     "items": [
       {
         "label": "The strategy",
-        "description": "Establish a Korean legal entity and obtain VASP registration. Launch with self-custodial spot trading as the compliant entry point — a service Korean traders need and regulators can approve."
+        "description": "Establish a Korean legal entity and secure VASP registration aligned with mainnet launch. Enter with self-custodial spot trading as the compliant entry point — a service Korean traders need and regulators can approve."
       },
       {
         "label": "The regulatory landscape",
-        "description": "South Korea ended a nine-year ban on corporate crypto trading in February 2026. An estimated $110B in Korean capital moved offshore due to limited domestic options. As regulations evolve, Pado's full product suite is ready to unlock market by market."
+        "description": "South Korea ended a nine-year ban on corporate crypto trading in February 2026. An estimated $110B in Korean capital moved offshore — yet no self-custodial trading venue exists domestically. As regulations evolve, Pado's full feature suite is ready to unlock market by market."
       },
       {
         "label": "The long-term vision",
@@ -213,32 +192,13 @@
       }
     ]
   },
-  "flywheel": {
-    "title": "Three Verticals, One Flywheel",
-    "intro": "Pado is not a standalone product. It is the financial engine of the Nasun ecosystem.",
-    "items": [
-      {
-        "from": "Pado → Gen Sol",
-        "description": "DeFi users who hold NSN and operate onchain wallets are positioned to become zero-friction adopters of Gen Sol's competitive gaming economy."
-      },
-      {
-        "from": "Gen Sol → Pado",
-        "description": "In-game transactions — NFT mints, tournament entries, marketplace trades — will flow back through Pado's DEX as token demand."
-      },
-      {
-        "from": "Baram → Pado",
-        "description": "Enterprise clients will settle AI inference in stablecoin acquired through Pado. Executors will lock NSN in staking tiers, tightening circulating supply."
-      }
-    ],
-    "closing": "One passkey wallet is designed to span all three products. NSN will serve triple duty as trading collateral, in-game currency, and executor stake. Reputation is chain-native — leaving means abandoning accumulated status across three systems simultaneously."
-  },
   "launchStatus": {
     "title": "Launch Status",
-    "intro": "Pado Alpha is live on Nasun devnet. The trading interface is operational — this is not a mockup.",
+    "intro": "Pado Alpha is live on Nasun devnet. Validating core logic through continuous iteration.",
     "live": [
       {
         "title": "Smart Account",
-        "description": "Passkey authentication with biometric login. No seed phrases required."
+        "description": "zkLogin (Google OAuth) and Passkey authentication with biometric login. Social recovery in testing. No seed phrases required."
       },
       {
         "title": "Spot Trading",
@@ -251,32 +211,70 @@
       {
         "title": "Portfolio Dashboard",
         "description": "PnL equity curves, per-market stats, risk metrics, and CSV export."
-      }
-    ],
-    "deployed": [
-      {
-        "title": "Prediction Markets",
-        "description": "YES/NO outcome orderbooks with real-time settlement. Contracts and UI complete."
       },
       {
         "title": "Weekly Lottery",
         "description": "Multi-tier prizes with verifiable onchain randomness. Ticket purchase verified."
+      },
+      {
+        "title": "Prediction Markets",
+        "description": "YES/NO outcome orderbooks with admin-resolved settlement. Contracts and UI complete."
+      },
+      {
+        "title": "News Feed",
+        "description": "Real-time crypto news integrated into the trading interface. Discuss and trade in context."
       }
     ],
-    "coming": [
+    "deployed": [
       {
         "title": "Perpetual Futures",
         "description": "20x leverage with 8-hour funding rates. Contracts and UI complete. LP liquidity activation pending."
       },
       {
-        "title": "Lending & Borrowing",
-        "description": "Earn yield on idle assets. Contracts deployed on devnet."
+        "title": "Leaderboard",
+        "description": "On-chain performance rankings with verifiable data. Risk-adjusted metrics and opt-in privacy controls."
+      }
+    ],
+    "coming": [
+      {
+        "title": "Lending & Staking",
+        "description": "Earn yield on idle assets and stake for protocol rewards. Contracts deployed on devnet."
       },
+      {
+        "title": "Protocol-Level Conditional Orders",
+        "description": "Validator-level TP/SL execution — eliminating keeper bot dependency."
+      },
+      {
+        "title": "Advanced Social",
+        "description": "War rooms, copy trading, and secure messaging — context-rich coordination for serious capital."
+      }
+    ]
+  },
+  "unified": {
+    "title": "What We've Built",
+    "intro": "Pado Alpha is live on Nasun devnet. Validating core logic through continuous iteration.",
+    "alsoRunning": [
+      {
+        "title": "Smart Account",
+        "description": "zkLogin (Google OAuth) and Passkey authentication with biometric login. Social recovery in testing. No seed phrases required."
+      },
+      {
+        "title": "Portfolio Dashboard",
+        "description": "PnL equity curves, per-market stats, risk metrics, and CSV export."
+      }
+    ],
+    "comingNext": [
       {
         "title": "Protocol-Level Conditional Orders",
         "description": "Validator-level TP/SL execution — eliminating keeper bot dependency."
       }
     ]
+  },
+  "downloadCta": {
+    "title": "Want the Full Picture?",
+    "description": "Download the pitchdeck for the investor narrative, or the litepaper for the complete technical and economic vision.",
+    "pitchdeck": "PADO Pitchdeck",
+    "litepaper": "Nasun Litepaper"
   },
   "cta": {
     "title": "The Opportunity",

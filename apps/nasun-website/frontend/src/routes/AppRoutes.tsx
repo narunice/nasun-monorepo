@@ -34,8 +34,9 @@ const adminRoutes = [
 
 const AppRoutes = () => {
   return (
-    <Suspense fallback={<PageLoading />}>
+    <>
       <ScrollHandler />
+      <Suspense fallback={<PageLoading />}>
       <Routes>
         {/* Auth Routes */}
         <Route path="/callback" element={<Pages.Callback />} />
@@ -80,7 +81,7 @@ const AppRoutes = () => {
         </Route>
 
         <Route path="/ecosystem">
-          {renderNestedRoutes("Ecosystem", routesV2.ecosystem, "ai-economy", pageTitleMaps.ecosystem)}
+          {renderNestedRoutes("Ecosystem", routesV2.ecosystem, null, pageTitleMaps.ecosystem)}
         </Route>
 
         <Route path="/team">
@@ -101,6 +102,8 @@ const AppRoutes = () => {
 
         {/* Legacy redirects */}
         <Route path="/protocol" element={<Navigate to="/network" replace />} />
+        <Route path="/ecosystem/ai-economy" element={<Navigate to="/ecosystem/baram" replace />} />
+        <Route path="/ecosystem/finance" element={<Navigate to="/ecosystem/pado" replace />} />
         <Route path="/finance" element={<Navigate to="/ecosystem" replace />} />
         <Route path="/ips" element={<Navigate to="/ecosystem" replace />} />
         <Route path="/ip/gensol/*" element={<Navigate to="/ecosystem/gensol/main" replace />} />
@@ -126,7 +129,8 @@ const AppRoutes = () => {
         {/* Fallback Route */}
         <Route path="*" element={<Pages.NotFound />} />
       </Routes>
-    </Suspense>
+      </Suspense>
+    </>
   );
 };
 

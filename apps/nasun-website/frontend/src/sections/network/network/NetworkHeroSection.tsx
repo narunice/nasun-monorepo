@@ -119,7 +119,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
             <h3 className="font-medium text-nasun-white text-3xl sm:text-[34px] uppercase ">
               IP Infrastructure
             </h3>
-            <h4 className=" text-nasun-white/70 text-lg  sm:text-xl">
+            <h4 className=" text-nasun-white/60 text-lg  sm:text-xl">
               Entertainment, Finance, and AI
             </h4>
           </div>

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Spinner } from "../ui/Spinner";
 import logger from "../../lib/logger";
 
 interface Props {
@@ -56,7 +57,7 @@ class ErrorBoundary extends Component<Props, State> {
       if (this.state.isRetrying) {
         return (
           <div className="flex items-center justify-center min-h-screen bg-nasun-black">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-nasun-c4" />
+            <Spinner size="xl" />
           </div>
         );
       }

@@ -47,39 +47,31 @@
       "description": "unlock our collective potential and shape a future beyond imagination."
     },
     "cta": {
-      "unifiedVision": "A UNIFIED VISION",
-      "signUp": "SIGN UP"
+      "unifiedVision": "JOIN THE PRE-SEED",
+      "signUp": "INVESTOR MATERIALS"
     }
   },
   "wave1": {
     "title": "WAVE 1",
-    "communityDriven": {
-      "title": "Nasun is a community-driven project",
-      "description": ", supported by its members, grants, and pitch competitions. We are not seeking venture capital funding during this startup phase to stay true to our ethos of putting the community first."
-    },
-    "coreVoice": {
-      "title": "You are the core voice",
-      "description": " and consensus of Nasun. Before engaging, we encourage you to explore our vision for the future of entertainment, finance, and technology on our website—and see if our values align."
-    },
+    "tagline": "Build With Us From Day 1",
+    "intro": "Nasun is opening its first cohort of contributors ahead of mainnet. There are three ways to participate:",
     "leaderboard": {
-      "title": "Leaderboard",
-      "description": "Climb the Ranks Early and meaningful contribution is recognized. Top contributors share in the launch reward pool and a chance to receive a Frontiers NFT.",
+      "title": "For the Community – Leaderboard",
+      "line1": "Contribute content, bring people in, and help create network effects.",
+      "line2": "Climb the ranks to access the Launch Pool and earn Battalion NFTs.",
       "cta": "Register Now"
     },
-    "leader": {
-      "title": "If you're a leader",
-      "description": "or active participant in a relevant community or industry, we invite you to join us as an Wave 1 Contributor.",
-      "cta": "Get started →"
-    },
     "battalionNft": {
-      "title": "Battalion NFT Free Mint",
-      "description": "The Gateway Pass Mint your free pass to unlock Frontiers Event multipliers, eligibility for exclusive giveaways, and early testing access.",
+      "title": "For Founders – Battalion NFT",
+      "line1": "Be recognized onchain as an early founder of Nasun.",
+      "line2": "Get staking rewards, multipliers, and early access to the network.",
       "cta": "Join Allowlist"
     },
     "earlyContributor": {
-      "title": "Early Contributors",
-      "description": "Lasting Status Lead in Wave 1 to earn a rare Brigadier NFT with exclusive utilities and long-term recognition.",
-      "cta": "Join Program"
+      "title": "For Builders – Early Contributors",
+      "line1": "Developers and creators who want to build directly with the core team.",
+      "line2": "Receive Launch Pool allocation and secure a rare Battalion NFT.",
+      "cta": "Apply Now"
     }
   },
   "whatWeBuilding": {

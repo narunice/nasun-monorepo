@@ -52,7 +52,7 @@ export default function PadoPage() {
         </SectionLayout>
       }
     >
-      <div className="bg-[#080c16] text-pd4 min-h-screen">
+      <div className="bg-[#080c16] text-pd4 min-h-screen overflow-x-hidden">
         <Suspense fallback={<PadoHeroSectionSkeleton />}>
           <FinanceHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
           {isVideoReady && (

@@ -29,9 +29,9 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
         throw new Error(t("error.notAuthenticated", { ns: "common" }));
       }
 
-      const apiUrl = `${import.meta.env.VITE_DEACTIVATE_USER_API_URL}?identityId=${
-        encodeURIComponent(user.identityId)
-      }&provider=${encodeURIComponent(user.provider)}`;
+      const apiUrl = `${import.meta.env.VITE_DEACTIVATE_USER_API_URL}?identityId=${encodeURIComponent(
+        user.identityId,
+      )}&provider=${encodeURIComponent(user.provider)}`;
 
       const response = await fetch(apiUrl, {
         method: "DELETE",
@@ -57,21 +57,17 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
   };
 
   return (
-    <OuterBox color="scarlet" padding="sm" className={`animate-fade-slide-up ${className}`}>
+    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h5 className="font-medium uppercase text-red-400">
-            {t("accountDeletion.title")}
-          </h5>
-          <p className="text-nasun-white/50 mt-1">
-            {t("accountDeletion.description")}
-          </p>
+          <h5 className="font-medium uppercase">{t("accountDeletion.title")}</h5>
+          <p className="text-nasun-white/50 mt-1">{t("accountDeletion.description")}</p>
         </div>
         <Button
           onClick={handleDeleteAccount}
-          variant="destructive"
+          variant="outlineScarlet"
           size="sm"
-          className="whitespace-nowrap self-start sm:self-center sm:flex-shrink-0"
+          className="text-red-600 whitespace-nowrap self-start sm:self-center sm:flex-shrink-0"
         >
           {t("accountDeletion.button")}
         </Button>
