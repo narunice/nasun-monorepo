@@ -27,6 +27,7 @@
     "deploy:pado:chat:prod": "./scripts/deploy-pado-chat-server.sh --env=production",
     "deploy:pado:bots:staging": "./scripts/deploy-pado-bots.sh --staging",
     "deploy:pado:bots:prod": "./scripts/deploy-pado-bots.sh --production",
+    "deploy:baram:prod": "./scripts/deploy-baram-production.sh",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",
@@ -34,6 +35,7 @@
     "check:x-tokens": "./scripts/check-x-tokens.sh"
   },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3"
   },
   "engines": {
