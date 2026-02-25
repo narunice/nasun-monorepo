@@ -101,7 +101,78 @@ export function buildNsolFaucetTx(): Transaction {
   return tx;
 }
 
+// ============================================
+// Batch PTB Builder
+// ============================================
+
+/** MoveCall appenders for each on-chain faucet token (excludes NSN which is HTTP) */
+const FAUCET_MOVE_CALLS: Record<string, (tx: Transaction) => void> = {
+  NBTC: (tx) => {
+    tx.moveCall({
+      target: `${DEVNET_TOKEN_FAUCET.package}::faucet::request_nbtc_individual`,
+      arguments: [
+        tx.object(DEVNET_TOKEN_FAUCET.faucet),
+        tx.object(DEVNET_TOKEN_FAUCET.perTokenClaimRecord),
+        tx.object(CLOCK_ID),
+      ],
+    });
+  },
+  NUSDC: (tx) => {
+    tx.moveCall({
+      target: `${DEVNET_TOKEN_FAUCET.package}::faucet::request_nusdc_individual`,
+      arguments: [
+        tx.object(DEVNET_TOKEN_FAUCET.faucet),
+        tx.object(DEVNET_TOKEN_FAUCET.perTokenClaimRecord),
+        tx.object(CLOCK_ID),
+      ],
+    });
+  },
+  NETH: (tx) => {
+    tx.moveCall({
+      target: `${NETH_PACKAGE_ID}::faucet_v2::request_neth_with_cooldown`,
+      arguments: [
+        tx.object(NETH_FAUCET_V2),
+        tx.object(NETH_CLAIM_RECORD_V2),
+        tx.object(CLOCK_ID),
+      ],
+    });
+  },
+  NSOL: (tx) => {
+    tx.moveCall({
+      target: `${TOKENS_V2_PACKAGE_ID}::faucet_v2::request_nsol_with_cooldown`,
+      arguments: [
+        tx.object(TOKEN_FAUCET_V2),
+        tx.object(CLAIM_RECORD_V2),
+        tx.object(CLOCK_ID),
+      ],
+    });
+  },
+};
+
+/** All on-chain faucet token symbols (excludes NSN which uses HTTP API) */
+export const ONCHAIN_FAUCET_SYMBOLS = Object.keys(FAUCET_MOVE_CALLS);
+
+/**
+ * Build a single PTB that claims multiple tokens at once.
+ * Avoids gas coin contention by combining all moveCall into one transaction.
+ *
+ * @param symbols - Token symbols to include (e.g., ['NBTC', 'NUSDC', 'NETH', 'NSOL'])
+ * @returns Transaction with all faucet moveCall commands, or null if no valid symbols
+ */
+export function buildBatchFaucetTx(symbols: string[]): Transaction | null {
+  const validSymbols = symbols.filter((s) => s in FAUCET_MOVE_CALLS);
+  if (validSymbols.length === 0) return null;
+
+  const tx = new Transaction();
+  for (const symbol of validSymbols) {
+    FAUCET_MOVE_CALLS[symbol](tx);
+  }
+  return tx;
+}
+
+// ============================================
 // Faucet handlers for wallet-ui TokenFaucetButton
+// ============================================
 export const nbtcFaucetHandler: TokenFaucetHandler = {
   buildTransaction: buildNbtcFaucetTx,
   successMessage: '0.1 NBTC received!',

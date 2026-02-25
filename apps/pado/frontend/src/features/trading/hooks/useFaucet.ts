@@ -4,7 +4,7 @@
  * Keeps loading spinner active until balance is actually refreshed.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { requestFaucet } from "../../../lib/sui-client";
 import { waitForTxIndexing } from "../../../lib/tx-helpers";
@@ -58,6 +58,8 @@ export interface UseFaucetResult {
   isNusdcLoading: boolean;
   isNethLoading: boolean;
   isNsolLoading: boolean;
+  /** Whether ANY faucet request is in flight (prevents concurrent gas coin usage) */
+  isAnyFaucetLoading: boolean;
   isCooldown: (token: string) => boolean;
   getCooldownFormatted: (token: string) => string;
   handleNasunFaucet: () => Promise<void>;
@@ -82,6 +84,11 @@ export function useFaucet(): UseFaucetResult {
   const [isNusdcLoading, setIsNusdcLoading] = useState(false);
   const [isNethLoading, setIsNethLoading] = useState(false);
   const [isNsolLoading, setIsNsolLoading] = useState(false);
+
+  // Mutual exclusion: prevent concurrent faucet requests (gas coin contention)
+  const isAnyFaucetLoading = isNasunLoading || isNbtcLoading || isNusdcLoading || isNethLoading || isNsolLoading;
+  const isAnyFaucetLoadingRef = useRef(false);
+  isAnyFaucetLoadingRef.current = isAnyFaucetLoading;
 
   // localStorage-based 24h cooldown (persists across page refresh)
   const [, setTick] = useState(0);
@@ -138,7 +145,7 @@ export function useFaucet(): UseFaucetResult {
 
   // NASUN Faucet (HTTP API — no digest available)
   const handleNasunFaucet = useCallback(async () => {
-    if (!address) return;
+    if (!address || isAnyFaucetLoadingRef.current) return;
 
     // Check 24h localStorage cooldown
     const remaining = getCooldownRemaining(address, 'NSN');
@@ -167,7 +174,7 @@ export function useFaucet(): UseFaucetResult {
 
   // NBTC Faucet (Move contract — 24h per-token cooldown)
   const handleNbtcFaucet = useCallback(async () => {
-    if (!address) return;
+    if (!address || isAnyFaucetLoadingRef.current) return;
 
     const remaining = getCooldownRemaining(address, 'NBTC');
     if (remaining > 0) {
@@ -199,7 +206,7 @@ export function useFaucet(): UseFaucetResult {
 
   // NUSDC Faucet (Move contract — 24h per-token cooldown)
   const handleNusdcFaucet = useCallback(async () => {
-    if (!address) return;
+    if (!address || isAnyFaucetLoadingRef.current) return;
 
     const remaining = getCooldownRemaining(address, 'NUSDC');
     if (remaining > 0) {
@@ -231,7 +238,7 @@ export function useFaucet(): UseFaucetResult {
 
   // NETH Faucet (V2 Move contract — 24h cooldown)
   const handleNethFaucet = useCallback(async () => {
-    if (!address) return;
+    if (!address || isAnyFaucetLoadingRef.current) return;
 
     const remaining = getCooldownRemaining(address, 'NETH');
     if (remaining > 0) {
@@ -263,7 +270,7 @@ export function useFaucet(): UseFaucetResult {
 
   // NSOL Faucet (V2 Move contract — 24h cooldown)
   const handleNsolFaucet = useCallback(async () => {
-    if (!address) return;
+    if (!address || isAnyFaucetLoadingRef.current) return;
 
     const remaining = getCooldownRemaining(address, 'NSOL');
     if (remaining > 0) {
@@ -299,6 +306,7 @@ export function useFaucet(): UseFaucetResult {
     isNusdcLoading,
     isNethLoading,
     isNsolLoading,
+    isAnyFaucetLoading,
     isCooldown,
     getCooldownFormatted: getCooldownFormattedCb,
     handleNasunFaucet,

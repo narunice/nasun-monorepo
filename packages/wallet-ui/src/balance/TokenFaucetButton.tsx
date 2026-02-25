@@ -28,7 +28,7 @@ export function TokenFaucetButton({
   onError,
 }: TokenFaucetButtonProps) {
   const { isDevnet, isTestnet } = useNetwork();
-  const { requestFaucet, isLoading, isCooldown, getCooldownFormatted, canUseFaucet } = useTokenFaucet();
+  const { requestFaucet, isLoading, isAnyLoading, isCooldown, getCooldownFormatted, canUseFaucet } = useTokenFaucet();
   const { data: balances } = useMultiBalance({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string; detail?: string } | null>(null);
   const [cooldownText, setCooldownText] = useState('');
@@ -48,7 +48,9 @@ export function TokenFaucetButton({
   const nsnBalance = balances?.native?.balance ?? 0n;
   const needsNsnFirst = symbol !== 'NSN' && nsnBalance === 0n;
 
-  const disabled = loading || cooldown || !canUseFaucet || needsNsnFirst;
+  // Disable when another faucet tx is in flight (cross-component mutual exclusion)
+  const otherLoading = isAnyLoading && !loading;
+  const disabled = loading || cooldown || !canUseFaucet || needsNsnFirst || otherLoading;
 
   const handleClick = useCallback(async () => {
     if (disabled) return;
