@@ -17,6 +17,59 @@ const litepaper = {
   file: "Nasun-Litepaper-2026.pdf",
 };
 
+// Fetch the file with Accept: application/pdf so Vite's SPA fallback middleware
+// (which intercepts Accept: text/html and */*) does not rewrite to index.html in dev.
+async function fetchPdfBlob(file: string): Promise<Blob> {
+  const res = await fetch(`/downloads/${file}`, { headers: { Accept: "application/pdf" } });
+  if (!res.ok) throw new Error(`Failed to fetch ${file}: ${res.status}`);
+  return res.blob();
+}
+
+async function viewPdf(file: string) {
+  try {
+    const blob = await fetchPdfBlob(file);
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch {
+    window.open(`/downloads/${file}`, "_blank");
+  }
+}
+
+async function downloadPdf(file: string) {
+  try {
+    const blob = await fetchPdfBlob(file);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  } catch {
+    const a = document.createElement("a");
+    a.href = `/downloads/${file}`;
+    a.download = file;
+    a.click();
+  }
+}
+
+function PdfActions({ file }: { file: string }) {
+  return (
+    <div className="flex gap-2">
+      <Button variant="outlineNw2" size="sm" className="flex-1" onClick={() => viewPdf(file)}>
+        <Eye className="w-4 h-4 mr-2" />
+        View
+      </Button>
+      <Button variant="outlineNw2" size="sm" className="flex-1" onClick={() => downloadPdf(file)}>
+        <Download className="w-4 h-4 mr-2" />
+        Download
+      </Button>
+    </div>
+  );
+}
+
 export default function InvestorsPage() {
   return (
     <PageLayout>
@@ -38,20 +91,7 @@ export default function InvestorsPage() {
                     <p className="text-sm text-nasun-white/60">{deck.description}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outlineNw2" size="sm" asChild>
-                    <a href={`/downloads/${deck.file}`} target="_blank" rel="noopener noreferrer">
-                      <Eye className="w-4 h-4 mr-2" />
-                      View
-                    </a>
-                  </Button>
-                  <Button variant="outlineNw2" size="sm" asChild>
-                    <a href={`/downloads/${deck.file}`} download={deck.file}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </a>
-                  </Button>
-                </div>
+                <PdfActions file={deck.file} />
               </OuterBox>
             ))}
           </div>
@@ -65,20 +105,7 @@ export default function InvestorsPage() {
                 <h4 className="font-medium text-nasun-white">{litepaper.name}</h4>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outlineNw2" size="sm" asChild>
-                <a href={`/downloads/${litepaper.file}`} target="_blank" rel="noopener noreferrer">
-                  <Eye className="w-4 h-4 mr-2" />
-                  View
-                </a>
-              </Button>
-              <Button variant="outlineNw2" size="sm" asChild>
-                <a href={`/downloads/${litepaper.file}`} download={litepaper.file}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </a>
-              </Button>
-            </div>
+            <PdfActions file={litepaper.file} />
           </OuterBox>
         </div>
       </SectionLayout>
