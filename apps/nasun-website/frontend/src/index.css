@@ -187,10 +187,17 @@
   /* Default fallback font based on content language */
   html {
     font-family: "Rubik", "Pretendard", sans-serif;
-    /* Prevent layout shift when scrollbar appears/disappears */
-    scrollbar-gutter: stable;
     /* 전체 웹사이트 배경색 설정 (다크 모드 기본) */
     @apply bg-black;
+  }
+
+  /* Prevent layout shift when scrollbar appears/disappears.
+     Desktop only: mobile browsers use overlay scrollbars so the gutter is
+     unnecessary and would create a visible black strip on narrow viewports. */
+  @media (min-width: 768px) {
+    html {
+      scrollbar-gutter: stable;
+    }
   }
 
   /* 전체 페이지 배경색을 NASUN 색상으로 설정 (다크 모드 기본) */
