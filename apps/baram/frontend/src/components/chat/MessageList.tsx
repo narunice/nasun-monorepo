@@ -5,15 +5,17 @@
 import { useEffect, useRef } from 'react';
 import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
+import type { RequestStatus } from '@/features/request/hooks/useCreateRequest';
 import type { Message } from '@/types/chat';
 
 interface MessageListProps {
   messages: Message[];
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
+  requestStatus?: RequestStatus;
 }
 
-export function MessageList({ messages, isProcessing, isTeeExecutor }: MessageListProps) {
+export function MessageList({ messages, isProcessing, isTeeExecutor, requestStatus }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -53,6 +55,7 @@ export function MessageList({ messages, isProcessing, isTeeExecutor }: MessageLi
           timestamp={Date.now()}
           isProcessing={true}
           isTeeExecutor={isTeeExecutor}
+          requestStatus={requestStatus}
         />
       )}
 

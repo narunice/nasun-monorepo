@@ -5,7 +5,36 @@
  * gradient icon, and community links.
  */
 
-export function NFTGateScreen() {
+import { useState } from 'react';
+
+interface NFTGateScreenProps {
+  walletAddress?: string | null;
+  onRefresh?: () => void;
+}
+
+export function NFTGateScreen({ walletAddress, onRefresh }: NFTGateScreenProps) {
+  const [copied, setCopied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const truncatedAddress = walletAddress
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+    : null;
+
+  const handleCopy = async () => {
+    if (!walletAddress) return;
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard may fail in non-HTTPS context */ }
+  };
+
+  const handleRefresh = () => {
+    if (!onRefresh || refreshing) return;
+    setRefreshing(true);
+    onRefresh();
+    setTimeout(() => setRefreshing(false), 2000);
+  };
   return (
     <div className="flex flex-col items-center py-4">
       {/* Hero */}
@@ -61,7 +90,35 @@ export function NFTGateScreen() {
               <span>Receive your BetaAccessNFT and start chatting</span>
             </li>
           </ol>
+
+          {/* Wait time estimate */}
+          <p className="mt-3 text-2xs text-[var(--color-text-muted)] italic">
+            Access is typically granted within 24 hours.
+          </p>
         </div>
+
+        {/* Connected wallet address + actions */}
+        {truncatedAddress && (
+          <div className="mt-3 flex items-center justify-between gap-2 p-2.5 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded-lg">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-2xs text-[var(--color-text-muted)]">Your wallet:</span>
+              <button
+                onClick={handleCopy}
+                className="text-xs font-mono text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                title="Copy full address"
+              >
+                {copied ? 'Copied!' : truncatedAddress}
+              </button>
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="text-xs text-br-1 hover:text-br-2 font-medium transition-colors disabled:opacity-50"
+            >
+              {refreshing ? 'Checking...' : 'Check Access'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Trust badges */}
