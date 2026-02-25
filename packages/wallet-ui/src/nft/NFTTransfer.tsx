@@ -224,6 +224,7 @@ export function NFTTransfer({ nft, onClose, onSuccess }: NFTTransferProps) {
           placeholder="0x..."
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && canSubmit && setShowConfirm(true)}
           className={`w-full px-3 py-2 bg-gray-50 dark:bg-zinc-700 border rounded text-gray-900 dark:text-white text-sm xl:text-base font-mono focus:outline-none transition-colors ${
             !isValidRecipient
               ? 'border-red-500 focus:border-red-500'

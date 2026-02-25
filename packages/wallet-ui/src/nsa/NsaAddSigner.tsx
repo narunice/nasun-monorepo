@@ -175,6 +175,7 @@ export function NsaAddSigner({ onClose }: NsaAddSignerProps) {
               max={10}
               value={weight}
               onChange={(e) => setWeight(Math.max(1, Math.min(10, Number(e.target.value))))}
+              onKeyDown={(e) => e.key === 'Enter' && isFormValid && !isDuplicate && setStep('confirm')}
               className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm xl:text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
