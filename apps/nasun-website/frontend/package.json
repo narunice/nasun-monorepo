@@ -56,7 +56,7 @@
     "react-dom": "^19.2.3",
     "react-helmet-async": "^2.0.5",
     "react-i18next": "^15.5.3",
-    "react-router-dom": "^7.6.3",
+    "react-router-dom": "^7.13.1",
     "react-slick": "^0.30.3",
     "react-toastify": "^11.0.5",
     "react-tweet": "^3.3.0",
