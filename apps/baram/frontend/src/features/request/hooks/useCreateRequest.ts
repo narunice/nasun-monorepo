@@ -231,8 +231,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
 
         if (!cancelSucceeded) {
           throw new Error(
-            `Execution failed and auto-refund failed. Your NUSDC is locked in request #${requestId}. ` +
-            `Timeout refund available in ~5 minutes.`
+            `Payment is being automatically refunded. Usually takes about 5 minutes. No action needed.`
           );
         }
 

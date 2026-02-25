@@ -14,6 +14,32 @@ import { ModelId, EXECUTOR_SELECTION, MODEL_PRICING, type TierLevel } from '@/co
 import type { RequestResult } from './useCreateRequest';
 import type { AttestationState } from './useAttestation';
 
+/** Map raw error messages to user-friendly explanations */
+function classifyError(rawError: string | null): string {
+  if (!rawError) return 'Something went wrong. Please try again.';
+  const lower = rawError.toLowerCase();
+
+  if (lower.includes('insufficient') || lower.includes('not enough') || lower.includes('balance')) {
+    return 'Insufficient NUSDC balance. Claim test tokens and try again.';
+  }
+  if (lower.includes('abort') || lower.includes('timeout') || lower.includes('timed out')) {
+    return 'The request timed out. The executor may be busy — please try again in a moment.';
+  }
+  if (lower.includes('network') || lower.includes('fetch') || lower.includes('failed to fetch')) {
+    return 'Network connection issue. Please check your connection and try again.';
+  }
+  if (lower.includes('refund')) {
+    return rawError; // Already user-friendly from useCreateRequest
+  }
+  if (lower.includes('signer') || lower.includes('wallet') || lower.includes('rejected') || lower.includes('denied')) {
+    return 'Transaction was not signed. Please approve the wallet prompt to continue.';
+  }
+  if (lower.includes('execution failed')) {
+    return 'The AI executor encountered an error. Please try again.';
+  }
+  return `Request failed: ${rawError}`;
+}
+
 export interface UseRequestWithRetryReturn {
   submit: (prompt: string) => Promise<void>;
   isProcessing: boolean;
@@ -129,13 +155,11 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
       }
     }
 
-    // All retries exhausted — show error in chat
+    // All retries exhausted — show error in chat with user-friendly message
     updateMessage(userMessageId, { failed: true });
     addMessage({
       role: 'assistant',
-      content: lastError
-        ? `Request failed: ${lastError}`
-        : 'Request failed after multiple attempts. Please try again.',
+      content: classifyError(lastError),
       failed: true,
     });
     setFailedExecutorIds(excluded);

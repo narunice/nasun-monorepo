@@ -2,7 +2,7 @@
  * DashboardHeader - Top header bar for the dashboard
  */
 
-import { WalletConnect } from '@nasun/wallet-ui';
+import { WalletConnect, MultiBalanceDisplay } from '@nasun/wallet-ui';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { NETWORK_CONFIG } from '../../config/network';
 
@@ -23,7 +23,10 @@ export function DashboardHeader({ onMenuToggle }: DashboardHeaderProps) {
         </svg>
       </button>
 
-      <div className="hidden md:block" />
+      {/* Center: token balances + faucet (desktop) */}
+      <div className="hidden md:block">
+        <MultiBalanceDisplay tokens={['NUSDC']} showNative showFaucet compact />
+      </div>
 
       {/* Right: controls */}
       <div className="flex items-center gap-3">

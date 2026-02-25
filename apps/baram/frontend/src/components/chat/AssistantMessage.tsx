@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { NETWORK_CONFIG } from '@/config/network';
 import { ExecutionReport } from '@/features/request/components/ExecutionReport';
 import { formatMessageTime } from '@/utils/format';
+import type { RequestStatus } from '@/features/request/hooks/useCreateRequest';
 import type { MessageMetadata } from '@/types/chat';
 
 interface AssistantMessageProps {
@@ -15,6 +16,16 @@ interface AssistantMessageProps {
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
   failed?: boolean;
+  requestStatus?: RequestStatus;
+}
+
+function getProcessingLabel(requestStatus?: RequestStatus, isTeeExecutor?: boolean): string {
+  switch (requestStatus) {
+    case 'creating': return 'Signing transaction...';
+    case 'executing': return isTeeExecutor ? 'Executing with TEE protection...' : 'Running AI model...';
+    case 'cancelling': return 'Cancelling and refunding...';
+    default: return isTeeExecutor ? 'Processing with TEE protection...' : 'Processing your request...';
+  }
 }
 
 export function AssistantMessage({
@@ -24,6 +35,7 @@ export function AssistantMessage({
   isProcessing = false,
   isTeeExecutor = false,
   failed = false,
+  requestStatus,
 }: AssistantMessageProps) {
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -79,7 +91,7 @@ export function AssistantMessage({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            <span>{isTeeExecutor ? 'Processing with TEE protection...' : 'Processing your request...'}</span>
+            <span>{getProcessingLabel(requestStatus, isTeeExecutor)}</span>
           </div>
         </div>
       ) : (
@@ -140,29 +152,15 @@ export function AssistantMessage({
                   </a>
                 )}
                 {metadata.requestId !== undefined && (
-                  metadata.teeVerified ? (
-                    <button
-                      onClick={() => setShowReceipt(true)}
-                      className="flex items-center gap-1.5 text-xs font-medium transition-colors text-br-1 hover:text-br-2 border border-br-1/30 rounded-md px-2 py-0.5 hover:border-br-1/60 hover:bg-br-1/5"
-                    >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Execution Report
-                    </button>
-                  ) : (
-                    <span className="relative group inline-flex">
-                      <span className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] opacity-40 cursor-not-allowed">
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Execution Report
-                      </span>
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 text-xs rounded-lg shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border border-[var(--color-border)]">
-                        Only created for TEE-protected executions
-                      </span>
-                    </span>
-                  )
+                  <button
+                    onClick={() => setShowReceipt(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium transition-colors text-br-1 hover:text-br-2 border border-br-1/30 rounded-md px-2 py-0.5 hover:border-br-1/60 hover:bg-br-1/5"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Execution Report
+                  </button>
                 )}
               </div>
             </div>

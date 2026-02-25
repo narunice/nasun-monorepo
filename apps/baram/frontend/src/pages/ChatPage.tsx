@@ -12,6 +12,7 @@ import { ChatInput } from '../components/input/ChatInput';
 import { WelcomeScreen } from '../components/empty/WelcomeScreen';
 import { LandingScreen } from '../components/empty/LandingScreen';
 import { NFTGateScreen } from '../components/empty/NFTGateScreen';
+import { OnboardingChecklist } from '../components/empty/OnboardingChecklist';
 import { MessageList } from '../components/chat/MessageList';
 import { AttestationDisplay } from '../features/request/components/AttestationDisplay';
 import { useWalletSession } from '../hooks/useWalletSession';
@@ -19,20 +20,26 @@ import { useNFTGate } from '../hooks/useNFTGate';
 import { useRequestWithRetry } from '../features/request/hooks/useRequestWithRetry';
 import { MODEL_PRICING, ModelId } from '../config/network';
 import { useChatStore } from '../stores/chatStore';
+import { useMultiBalance } from '@nasun/wallet';
+import { ClaimAllButton } from '@nasun/wallet-ui';
 
 export function ChatPage() {
   const { isConnected, walletAddress } = useWalletSession();
-  const { hasAccess, isLoading: nftLoading } = useNFTGate(walletAddress);
+  const { hasAccess, isLoading: nftLoading, refresh: refreshNFTGate } = useNFTGate(walletAddress);
   const {
     submit,
     isProcessing,
-    error,
     selectedExecutor,
+    requestStatus,
     result,
     executorsLoading,
     executorsError,
     attestation,
   } = useRequestWithRetry();
+
+  const { data: balances } = useMultiBalance();
+  const nusdcBalance = balances?.tokens['NUSDC']?.balance ?? 0n;
+  const hasNusdc = nusdcBalance > 0n;
 
   const messages = useChatStore((state) => state.messages);
   const createSession = useChatStore((state) => state.createSession);
@@ -56,6 +63,12 @@ export function ChatPage() {
     }
   }, [isConnected, currentWalletAddress, activeSessionId, createSession, isLoading]);
 
+  // Wrap submit to pre-check NUSDC balance
+  const handleSubmit = (prompt: string) => {
+    if (!hasNusdc) return; // Block submission when no NUSDC
+    submit(prompt);
+  };
+
   const hasMessages = messages.length > 0 || isProcessing;
 
   return (
@@ -73,10 +86,11 @@ export function ChatPage() {
               <span className="text-sm text-[var(--color-text-muted)]">Checking access...</span>
             </div>
           ) : !hasAccess ? (
-            <NFTGateScreen />
+            <NFTGateScreen walletAddress={walletAddress} onRefresh={refreshNFTGate} />
           ) : !hasMessages ? (
             <>
-              <WelcomeScreen onSuggestionClick={submit} />
+              <OnboardingChecklist hasTokens={hasNusdc} />
+              <WelcomeScreen onSuggestionClick={handleSubmit} />
               {selectedExecutor && MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee' && (
                 <div className="max-w-lg mx-auto mt-6">
                   <AttestationDisplay teeType={selectedExecutor.teeType} attestation={attestation} />
@@ -92,6 +106,7 @@ export function ChatPage() {
                   (selectedExecutor?.teeType ?? 0) > 0 &&
                   MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee'
                 }
+                requestStatus={requestStatus}
               />
               {selectedExecutor && attestation.isVerified && (
                 <div className="mt-4 text-center">
@@ -116,9 +131,21 @@ export function ChatPage() {
       {/* Fixed input area at bottom */}
       <div className="bg-[var(--color-bg-primary)] border-t border-[var(--color-border)]">
         <div className="max-w-3xl mx-auto px-4 py-4 space-y-2">
+          {/* Faucet banner when connected but no NUSDC */}
+          {isConnected && hasAccess && !hasNusdc && (
+            <div className="flex items-center gap-3 p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">Get test tokens to start</p>
+                <p className="text-xs text-[var(--color-text-muted)]">You need NUSDC to pay for AI inference. Claim free devnet tokens below.</p>
+              </div>
+              <div className="shrink-0 w-40">
+                <ClaimAllButton />
+              </div>
+            </div>
+          )}
           <ChatInput
-            onSubmit={submit}
-            disabled={isProcessing || !isConnected || !selectedExecutor || !hasAccess}
+            onSubmit={handleSubmit}
+            disabled={isProcessing || !isConnected || !selectedExecutor || !hasAccess || !hasNusdc}
             placeholder={
               !isConnected
                 ? 'Connect wallet to start...'
@@ -126,9 +153,11 @@ export function ChatPage() {
                   ? 'Loading executors...'
                   : executorsError
                     ? 'Failed to load executors'
-                    : !selectedExecutor
-                      ? 'No eligible executors available'
-                      : 'Ask anything...'
+                    : !hasNusdc
+                      ? 'Claim test tokens above to get started...'
+                      : !selectedExecutor
+                        ? 'No eligible executors available'
+                        : 'Ask anything...'
             }
             privacyMode={privacyMode}
             onTogglePrivacy={(mode) => setPrivacyMode(mode)}
@@ -139,11 +168,6 @@ export function ChatPage() {
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] px-1">
               {result?.requestId !== undefined && <span>Request #{result.requestId}</span>}
               {result?.executionTimeMs !== undefined && <span>{(result.executionTimeMs / 1000).toFixed(2)}s</span>}
-            </div>
-          )}
-          {error && (
-            <div className="p-2 bg-[var(--color-error)]/10 border border-[var(--color-error)]/30 rounded-lg">
-              <p className="text-xs text-[var(--color-error)]">{error}</p>
             </div>
           )}
         </div>
