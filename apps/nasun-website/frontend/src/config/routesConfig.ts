@@ -50,8 +50,6 @@ export const Pages = {
   // About Pages (new)
   AboutOverview: lazyWithRetry(() => import("../pages/about/AboutOverviewPage")),
   Investors: lazyWithRetry(() => import("../pages/about/InvestorsPage")),
-  // Draft Pages
-  PadoDraft: lazyWithRetry(() => import("../pages/PadoDraftPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -95,19 +93,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.governance",
           path: "/network/governance",
           element: Pages.Web3,
-        },
-        {
-          name: "navigation.identity",
-          path: "/network/identity",
-          element: Pages.VisionNetwork, // Placeholder
-          disabled: true, // Coming Soon
-        },
-        {
-          name: "navigation.litepaper",
-          path: "/network/litepaper",
-          element: Pages.VisionNetwork, // Placeholder
-          disabled: true, // Coming Soon
-          external: true,
         },
       ],
     },
@@ -172,19 +157,19 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   // Ecosystem 섹션 (IP 통합)
   ecosystem: {
     path: "/ecosystem",
-    component: Pages.AiEconomy, // 기본 서브페이지: Baram - AI
+    component: Pages.Baram, // 기본 서브페이지: Baram - AI
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
       subMenu: [
         {
           name: "navigation.baramAi",
-          path: "/ecosystem/ai-economy",
-          element: Pages.AiEconomy,
+          path: "/ecosystem/baram",
+          element: Pages.Baram,
         },
         {
           name: "navigation.padoFinance",
-          path: "/ecosystem/finance",
+          path: "/ecosystem/pado",
           element: Pages.FinancePado,
         },
         {
@@ -301,11 +286,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       name: "navigation.about",
       path: "/about",
       subMenu: [
-        {
-          name: "navigation.aboutOverview",
-          path: "/about/overview",
-          element: Pages.AboutOverview,
-        },
+        // {
+        //   name: "navigation.aboutOverview",
+        //   path: "/about/overview",
+        //   element: Pages.AboutOverview,
+        // },
         {
           name: "navigation.founders",
           path: "/about/founders",
@@ -323,11 +308,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.Opportunities,
           disabled: true, // Coming Soon
         },
-        {
-          name: "navigation.strategy",
-          path: "/about/strategy",
-          element: Pages.VisionStrategy,
-        },
+        // {
+        //   name: "navigation.strategy",
+        //   path: "/about/strategy",
+        //   element: Pages.VisionStrategy,
+        // },
         {
           name: "navigation.investors",
           path: "/about/investors",
@@ -531,23 +516,9 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  padoDraft: {
-    path: "/pado",
-    component: Pages.PadoDraft,
-    navItem: {
-      name: "navigation.padoDraft",
-      path: "/pado",
-      hidden: true,
-    },
-    meta: {
-      title: "Pado - NASUN",
-      description: "Pado: Unified Onchain Finance",
-    },
-  },
-
   baram: {
     path: "/baram",
-    component: Pages.Baram,
+    component: Pages.AiEconomy,
     navItem: {
       name: "navigation.baram",
       path: "/baram",

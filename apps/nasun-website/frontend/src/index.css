@@ -124,6 +124,15 @@
   src: url("/fonts/eurostile-extended/EurostileExtended-Medium.woff2") format("woff2");
 }
 
+/* Pirulen Font Face */
+@font-face {
+  font-family: "pirulen";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/pirulen/pirulen-regular.woff2") format("woff2");
+}
+
 /* FoundersGrotesk Font Family */
 @font-face {
   font-family: "Founders Grotesk";
@@ -180,8 +189,6 @@
     font-family: "Rubik", "Pretendard", sans-serif;
     /* Prevent layout shift when scrollbar appears/disappears */
     scrollbar-gutter: stable;
-    /* Smooth scroll for scroll snap */
-    scroll-behavior: smooth;
     /* 전체 웹사이트 배경색 설정 (다크 모드 기본) */
     @apply bg-black;
   }
@@ -337,59 +344,6 @@
 }
 
 @layer components {
-  /* Baram cloud drift animations */
-  @keyframes cloud-drift-1 {
-    0% {
-      transform: translateX(-20%) translateY(0);
-    }
-    50% {
-      transform: translateX(60%) translateY(-10px);
-    }
-    100% {
-      transform: translateX(120%) translateY(0);
-    }
-  }
-  @keyframes cloud-drift-2 {
-    0% {
-      transform: translateX(80%) translateY(0);
-    }
-    50% {
-      transform: translateX(10%) translateY(8px);
-    }
-    100% {
-      transform: translateX(-30%) translateY(0);
-    }
-  }
-  @keyframes cloud-drift-3 {
-    0% {
-      transform: translateX(10%) translateY(0);
-    }
-    50% {
-      transform: translateX(70%) translateY(-6px);
-    }
-    100% {
-      transform: translateX(110%) translateY(0);
-    }
-  }
-
-  .baram-cloud-1 {
-    animation: cloud-drift-1 30s ease-in-out infinite alternate;
-  }
-  .baram-cloud-2 {
-    animation: cloud-drift-2 40s ease-in-out infinite alternate;
-  }
-  .baram-cloud-3 {
-    animation: cloud-drift-3 25s ease-in-out infinite alternate;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .baram-cloud-1,
-    .baram-cloud-2,
-    .baram-cloud-3 {
-      animation: none;
-    }
-  }
-
   /* Baram page light theme overrides */
   .baram-light-theme h1:not(.text-transparent),
   .baram-light-theme h2,

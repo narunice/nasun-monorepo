@@ -89,7 +89,7 @@ const SLIDES: SlideData[] = [
     projectName: "PADO",
     nameKey: "pado",
     buttonVariant: "pado",
-    link: "/pado",
+    link: "/ecosystem/pado",
     video: padoVideo,
   },
   {

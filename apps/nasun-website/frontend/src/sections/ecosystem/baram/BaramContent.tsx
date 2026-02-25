@@ -111,31 +111,6 @@ export default function BaramContent() {
               "linear-gradient(180deg, rgba(135,195,235,0.45) 0%, rgba(145,200,238,0.40) 40%, rgba(160,210,242,0.20) 70%, rgba(180,225,245,0.06) 90%, transparent 100%)",
           }}
         />
-        {/* Drifting clouds */}
-        <div
-          className="baram-cloud-1 absolute pointer-events-none"
-          style={{
-            top: "20%", left: "5%", width: "420px", height: "130px", borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.5) 40%, transparent 70%)",
-            filter: "blur(18px)",
-          }}
-        />
-        <div
-          className="baram-cloud-2 absolute pointer-events-none"
-          style={{
-            top: "65%", left: "30%", width: "520px", height: "150px", borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 40%, transparent 70%)",
-            filter: "blur(24px)",
-          }}
-        />
-        <div
-          className="baram-cloud-3 absolute pointer-events-none"
-          style={{
-            top: "40%", left: "50%", width: "350px", height: "110px", borderRadius: "50%",
-            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.45) 40%, transparent 70%)",
-            filter: "blur(16px)",
-          }}
-        />
 
         <div className="text-center max-w-3xl mx-auto relative z-10">
           <motion.h1

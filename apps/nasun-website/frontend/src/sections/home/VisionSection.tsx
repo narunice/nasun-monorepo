@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 const visionVideoMP4 = "/videos/Home-Vision-rf24.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import { SignUpModal } from "@/components/auth/SignUpModal";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import visionTriangle from "../../assets/images/home-vision-triangle.png";
 
@@ -16,7 +15,6 @@ interface VisionSectionV2Props {
 function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectionV2Props) {
   const { t } = useTranslation("home");
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -151,16 +149,16 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
                     asChild
                     className="lg:px-4 xl:px-12 xl:w-[280px]"
                   >
-                    <Link to="/about/strategy">{t("vision.cta.unifiedVision")}</Link>
+                    <Link to="/wave1/battalion-nft">{t("vision.cta.unifiedVision")}</Link>
                   </ButtonV3>
                   <ButtonV3
                     variant="nw1"
                     outline
                     size="lg"
-                    onClick={() => setIsSignUpModalOpen(true)}
+                    asChild
                     className="lg:px-4 xl:px-12 xl:w-[280px]"
                   >
-                    {t("vision.cta.signUp")}
+                    <Link to="/about/investors">{t("vision.cta.signUp")}</Link>
                   </ButtonV3>
                 </div>
               </FadeInUp>
@@ -179,8 +177,6 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
         */}
       </div>
 
-      {/* Sign Up Modal */}
-      <SignUpModal isOpen={isSignUpModalOpen} onClose={() => setIsSignUpModalOpen(false)} />
     </SectionLayout>
   );
 }
