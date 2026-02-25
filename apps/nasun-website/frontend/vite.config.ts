@@ -55,24 +55,6 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
-      // Serve public/downloads/* before Vite's history API fallback intercepts .pdf URLs.
-      // Without this, the SPA fallback rewrites /downloads/*.pdf to index.html in dev.
-      {
-        name: "serve-public-downloads",
-        configureServer(server) {
-          const downloadsDir = path.resolve(__dirname, "public/downloads");
-          server.middlewares.use((req, res, next) => {
-            if (!req.url?.startsWith("/downloads/")) return next();
-            const filename = decodeURIComponent(req.url.slice("/downloads/".length).split("?")[0]);
-            const filePath = path.resolve(downloadsDir, filename);
-            // Prevent path traversal
-            if (!filePath.startsWith(downloadsDir + path.sep)) return next();
-            if (!fs.existsSync(filePath)) return next();
-            res.setHeader("Content-Type", "application/pdf");
-            fs.createReadStream(filePath).pipe(res);
-          });
-        },
-      },
       react(),
       createHtmlPlugin({
         minify: true,
