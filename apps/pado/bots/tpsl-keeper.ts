@@ -206,8 +206,13 @@ async function checkAndExecuteOrders(
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      // TradeCap deleted or gas issues are permanent failures
-      const permanent = msg.includes('ObjectNotFound') || msg.includes('deleted');
+      // TradeCap deleted, ownership mismatch, or signer issues are permanent failures
+      const permanent = msg.includes('ObjectNotFound')
+        || msg.includes('ObjectDeleted')
+        || msg.includes('Object is not owned')
+        || msg.includes('not owned by the keeper')
+        || msg.includes('OwnerMismatch')
+        || msg.includes('InvalidSigner');
       store.markFailed(order.id, msg, permanent);
       console.error(`[keeper] Order ${order.id} error (permanent=${permanent}): ${msg}`);
     }
@@ -627,6 +632,52 @@ async function main() {
   console.log(`  Keeper: ${keeperAddress.slice(0, 16)}...`);
   console.log(`  Auth: ${API_KEY ? 'API key configured' : 'No API key (dev mode)'}`);
   console.log(`  Orders: ${store.stats().active} active\n`);
+
+  // Startup validation: fail orphaned orders whose TradeCap is not owned by this keeper
+  const activeOrders = store.getActive();
+  if (activeOrders.length > 0) {
+    // Deduplicate TradeCap IDs to minimize RPC calls
+    const uniqueTradeCapIds = [...new Set(activeOrders.map((o) => o.tradeCapId))];
+    const invalidTradeCaps = new Set<string>();
+
+    for (const tradeCapId of uniqueTradeCapIds) {
+      // Retry up to 3 times to avoid marking valid orders as failed on transient RPC issues
+      let check: { valid: boolean; error?: string } = { valid: false, error: 'verification not attempted' };
+      let networkError = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        check = await verifyTradeCapOwnership(client, tradeCapId, keeperAddress);
+        if (check.valid || !check.error?.includes('Failed to verify TradeCap on-chain')) {
+          // Definitive result (valid, not found, or wrong owner) — stop retrying
+          break;
+        }
+        // Network error — retry after delay
+        networkError = true;
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 2000));
+      }
+
+      if (networkError && !check.valid && check.error?.includes('Failed to verify TradeCap on-chain')) {
+        // All retries exhausted with network errors — skip, don't mark as failed
+        console.warn(`[keeper] Could not verify TradeCap ${tradeCapId.slice(0, 16)}... after retries, skipping`);
+        continue;
+      }
+
+      if (!check.valid) {
+        invalidTradeCaps.add(tradeCapId);
+        console.warn(`[keeper] TradeCap ${tradeCapId.slice(0, 16)}... is not owned by this keeper: ${check.error}`);
+      }
+    }
+
+    if (invalidTradeCaps.size > 0) {
+      let failedCount = 0;
+      for (const order of activeOrders) {
+        if (invalidTradeCaps.has(order.tradeCapId)) {
+          store.markFailed(order.id, 'TradeCap not owned by current keeper (key change)', true);
+          failedCount++;
+        }
+      }
+      console.warn(`[keeper] Marked ${failedCount} orphaned order(s) as permanently failed`);
+    }
+  }
 
   // Start HTTP server
   const server = createServer(createHttpHandler(store, client, keeperAddress, startTime));
