@@ -5,7 +5,8 @@
  * Flow: mint_trade_cap → transfer to keeper address → keeper can execute orders
  * Revoke: owner calls revoke_trade_cap on BalanceManager (keeper TradeCap becomes invalid)
  *
- * On-chain validation: verifies TradeCap object exists when loading from localStorage.
+ * On-chain validation: verifies TradeCap exists AND is owned by keeper when loading from localStorage.
+ * Keeper address change detection: fast-path clear when stored keeperAddress differs from current config.
  * Revoke cleanup: cancels all active keeper orders after revoking TradeCap.
  */
 
@@ -69,26 +70,49 @@ function clearTradeCapState(walletAddress: string): void {
   }
 }
 
+type TradeCapVerifyResult = 'valid' | 'not_found' | 'wrong_owner' | 'network_error';
+
 /**
- * Verify TradeCap object exists on-chain.
- * Fail-closed: returns false on network errors to prevent operating with
- * a potentially revoked TradeCap. The UI will re-verify on next load.
+ * Verify TradeCap exists on-chain AND is owned by the expected keeper address.
+ * Returns a discriminated result so callers can distinguish definitive failures
+ * (clear state) from transient network errors (preserve state).
  */
-async function verifyTradeCapOnChain(tradeCapId: string): Promise<boolean> {
+async function verifyTradeCapOnChain(
+  tradeCapId: string,
+  expectedOwner: string,
+): Promise<TradeCapVerifyResult> {
   try {
     const client = getSuiClient();
-    const obj = await client.getObject({ id: tradeCapId });
-    return !obj.error && !!obj.data;
+    const obj = await client.getObject({ id: tradeCapId, options: { showOwner: true } });
+
+    if (obj.error || !obj.data) return 'not_found';
+
+    const owner = obj.data.owner;
+    if (
+      typeof owner === 'object' &&
+      owner !== null &&
+      'AddressOwner' in owner &&
+      (owner as { AddressOwner: string }).AddressOwner === expectedOwner
+    ) {
+      return 'valid';
+    }
+
+    return 'wrong_owner';
   } catch {
-    return false;
+    return 'network_error';
   }
 }
+
+export type TradeCapResetReason = 'keeper_changed' | 'invalid_tradecap' | null;
 
 export interface UseTradeCapResult {
   status: TradeCapStatus;
   tradeCapId: string | null;
   keeperAddress: string | null;
   isKeeperAvailable: boolean;
+  /** Non-null when delegation was auto-cleared. Consumer should show toast and call clearResetReason(). */
+  resetReason: TradeCapResetReason;
+  clearResetReason: () => void;
   delegate: () => Promise<{ success: boolean; error?: string }>;
   revoke: () => Promise<{ success: boolean; error?: string }>;
 }
@@ -103,6 +127,7 @@ export function useTradeCap(
   const { executeTransaction } = useTransactionExecutor();
   const [status, setStatus] = useState<TradeCapStatus>('none');
   const [state, setState] = useState<TradeCapState | null>(null);
+  const [resetReason, setResetReason] = useState<TradeCapResetReason>(null);
 
   // Load stored state on mount / address change, with on-chain verification (P2-1)
   // Syncing state from localStorage (external system) — setState in effect is intentional
@@ -126,18 +151,35 @@ export function useTradeCap(
         return;
       }
 
-      // Verify TradeCap still exists on-chain
-      const isValid = await verifyTradeCapOnChain(stored.tradeCapId);
+      // Fast-path: detect keeper address change without RPC call
+      if (KEEPER_ADDRESS && stored.keeperAddress !== KEEPER_ADDRESS) {
+        console.warn('[TradeCap] Keeper address changed, clearing stale delegation');
+        clearTradeCapState(walletAddress);
+        if (!cancelled) {
+          setStatus('none');
+          setState(null);
+          setResetReason('keeper_changed');
+        }
+        return;
+      }
+
+      // Verify TradeCap ownership on-chain
+      const result = await verifyTradeCapOnChain(stored.tradeCapId, KEEPER_ADDRESS);
       if (cancelled) return;
 
-      if (isValid) {
+      if (result === 'valid') {
+        setStatus('delegated');
+        setState(stored);
+      } else if (result === 'network_error') {
+        // Transient failure — preserve state to avoid unnecessary re-delegation
         setStatus('delegated');
         setState(stored);
       } else {
-        // TradeCap no longer exists — clear stale state
+        // not_found or wrong_owner — clear stale state
         clearTradeCapState(walletAddress);
         setStatus('none');
         setState(null);
+        setResetReason('invalid_tradecap');
       }
     };
 
@@ -265,11 +307,15 @@ export function useTradeCap(
     }
   }, [balanceManagerId, walletAddress, state, executeTransaction]);
 
+  const clearResetReason = useCallback(() => setResetReason(null), []);
+
   return {
     status,
     tradeCapId: state?.tradeCapId ?? null,
     keeperAddress: state?.keeperAddress ?? null,
     isKeeperAvailable: isKeeperConfigured() && !!KEEPER_ADDRESS,
+    resetReason,
+    clearResetReason,
     delegate,
     revoke,
   };
