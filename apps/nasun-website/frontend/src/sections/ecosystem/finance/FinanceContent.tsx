@@ -5,39 +5,36 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import {
-  ArrowUpRight,
-  ArrowRight,
   Wallet,
   ShieldCheck,
   Zap,
   Layers,
   BarChart3,
   Banknote,
-  CreditCard,
   Ticket,
   Lock,
-  Crown,
-  Building2,
   MessageCircle,
   Users,
   Target,
   DollarSign,
-  Shield,
   CheckCircle2,
   Clock,
   Globe,
   Landmark,
   Eye,
-  ArrowRightLeft,
   Crosshair,
   Trophy,
+  Copy,
   Mail,
   Sparkles,
   Package,
-  Server,
+  Newspaper,
+  Bot,
+  Download,
+  FileText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+
 
 const sectionTitleClass = "uppercase";
 
@@ -62,10 +59,6 @@ export const FinanceContent = () => {
     t("koreaMarket.items", { returnObjects: true }),
   );
 
-  const flywheelItems = asArray<{ from: string; description: string }>(
-    t("flywheel.items", { returnObjects: true }),
-  );
-
   const liveItems = asArray<{ title: string; description: string }>(
     t("launchStatus.live", { returnObjects: true }),
   );
@@ -80,12 +73,11 @@ export const FinanceContent = () => {
 
   const problemIcons = [Wallet, Layers, Zap, MessageCircle];
   const coreIcons = [ShieldCheck, Lock, DollarSign];
-  const howItWorksIcons = [Layers, Shield, Server, Users];
+  const howItWorksIcons = [Layers, Zap, Bot, Users];
   const koreaIcons = [Globe, Landmark, Eye];
-  const flywheelIcons = [ArrowRightLeft, ArrowRightLeft, ArrowRightLeft];
 
   return (
-    <SectionLayout className="!pt-0 !max-w-6xl">
+    <SectionLayout className="!max-w-6xl">
       <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
         {/* ===== Section 1: Why Pado Exists ===== */}
         <section>
@@ -183,7 +175,7 @@ export const FinanceContent = () => {
           </div>
         </section>
 
-        {/* ===== Section 4: Products ===== */}
+        {/* ===== Section 4: A Unified Financial Experience ===== */}
         <section>
           <FadeInUp>
             <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
@@ -191,9 +183,9 @@ export const FinanceContent = () => {
             </SectionTitle>
           </FadeInUp>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(["trading", "prediction", "lottery", "lending", "payments", "social"] as const).map(
+            {(["trading", "perps", "prediction", "lottery", "lending", "social"] as const).map(
               (key, i) => {
-                const icons = [BarChart3, Target, Ticket, Banknote, CreditCard, Users];
+                const icons = [BarChart3, Layers, Target, Ticket, Banknote, Users];
                 const Icon = icons[i];
                 const product = t(`products.${key}`, { returnObjects: true }) as {
                   title: string;
@@ -237,69 +229,7 @@ export const FinanceContent = () => {
           </div>
         </section>
 
-        {/* ===== Section 5: Risk Modes ===== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
-              {t("riskModes.title")}
-            </SectionTitle>
-          </FadeInUp>
-          <FadeInUp delay="0.1s">
-            <p className="mb-4">{t("riskModes.intro")}</p>
-          </FadeInUp>
-          <div className="flex flex-col gap-4">
-            {(
-              t("riskModes.modes", { returnObjects: true }) as Array<{
-                title: string;
-                label: string;
-                status: string;
-                features: string[];
-              }>
-            ).map((mode, i) => {
-              const modeIcons = [Lock, Crown, Building2];
-              const Icon = modeIcons[i];
-              const isLive = mode.status === "Live";
-              return (
-                <FadeInUp key={i} delay={`${0.15 + i * 0.05}s`}>
-                  <DividerBox
-                    color="pd1"
-                    hideDivider
-                    padding="sm"
-                    className="relative !bg-gray-950"
-                  >
-                    <span
-                      className={`absolute top-5 right-5 text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
-                        isLive
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : "bg-amber-500/20 text-amber-400"
-                      }`}
-                    >
-                      {mode.status}
-                    </span>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Icon className="w-5 h-5 text-pado-2 shrink-0" />
-                      <h6 className="!text-pado-2 font-medium">{mode.title}</h6>
-                      <span className="text-xs text-pd3">({mode.label})</span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {mode.features.map((feat, j) => (
-                        <p key={j} className="flex gap-2">
-                          <span className="text-pado-2 mt-0.5 shrink-0">•</span>
-                          {feat}
-                        </p>
-                      ))}
-                    </div>
-                  </DividerBox>
-                </FadeInUp>
-              );
-            })}
-          </div>
-          <FadeInUp delay="0.35s">
-            <p className="mt-4">{t("riskModes.closing")}</p>
-          </FadeInUp>
-        </section>
-
-        {/* ===== Section 6: Contextual Finance ===== */}
+        {/* ===== Section 5: Contextual Finance ===== */}
         <section>
           <FadeInUp>
             <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
@@ -309,21 +239,10 @@ export const FinanceContent = () => {
           </FadeInUp>
           <FadeInUp delay="0.1s">
             <p className="mb-4">{t("contextualFinance.intro")}</p>
-          </FadeInUp>
-          <FadeInUp delay="0.15s">
-            <OuterBox color="pd1" padding="md" className="!bg-pd0/50 mb-4">
-              <p>{t("contextualFinance.inversion")}</p>
-              <p className="text-pado-2 mt-3">
-                {t("contextualFinance.designPrinciple")}
-              </p>
-            </OuterBox>
+            <p className="mb-4">{t("contextualFinance.inversion")}</p>
+            <p className="text-pado-2 mb-4">{t("contextualFinance.designPrinciple")}</p>
           </FadeInUp>
 
-          <FadeInUp delay="0.2s">
-            <h5 className="text-pd5 font-medium mb-4">
-              {t("contextualFinance.sectionTitle")}
-            </h5>
-          </FadeInUp>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(
               t("contextualFinance.features", { returnObjects: true }) as Array<{
@@ -333,12 +252,20 @@ export const FinanceContent = () => {
                 bullets?: string[];
               }>
             ).map((feat, i) => {
-              const contextIcons = [Crosshair, Trophy, Mail, Sparkles];
+              const contextIcons = [MessageCircle, Newspaper, Crosshair, Trophy, Copy, Mail, Sparkles];
               const Icon = contextIcons[i];
               return (
                 <FadeInUp key={i} delay={`${0.25 + i * 0.05}s`}>
                   <DividerBox color="pd1" hideDivider padding="sm" className="h-full relative">
-                    <span className="absolute top-5 right-5 text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-blue-500/20 text-blue-400">
+                    <span
+                      className={`absolute top-5 right-5 text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
+                        feat.status.toLowerCase() === "live"
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : feat.status.toLowerCase().includes("deployed")
+                            ? "bg-blue-500/20 text-blue-400"
+                            : "bg-amber-500/20 text-amber-400"
+                      }`}
+                    >
                       {feat.status}
                     </span>
                     <div className="flex items-center gap-2 mb-2 pr-24">
@@ -362,81 +289,9 @@ export const FinanceContent = () => {
             })}
           </div>
 
-          <FadeInUp delay="0.5s">
-            <p className="text-emerald-400/80 mt-4 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              {t("contextualFinance.liveNow")}
-            </p>
-          </FadeInUp>
-          <FadeInUp delay="0.55s">
-            <p className="mt-4">{t("contextualFinance.closing")}</p>
-          </FadeInUp>
         </section>
 
-        {/* ===== Section 7: Korea Market Entry ===== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
-              {t("koreaMarket.title")}
-            </SectionTitle>
-          </FadeInUp>
-          <FadeInUp delay="0.1s">
-            <p className="mb-8">{t("koreaMarket.intro")}</p>
-          </FadeInUp>
-          <div className="flex flex-col gap-4">
-            {koreaItems.map((item, i) => {
-              const Icon = koreaIcons[i];
-              return (
-                <FadeInUp key={i} delay={`${0.15 + i * 0.05}s`}>
-                  <DividerBox color="pd2" padding="sm">
-                    <div className="flex gap-3">
-                      <Icon className="w-5 h-5 text-pado-2 shrink-0 mt-0.5" />
-                      <div>
-                        <h6 className="text-pd5 font-medium">{item.label}</h6>
-                        <p className="mt-1">{item.description}</p>
-                      </div>
-                    </div>
-                  </DividerBox>
-                </FadeInUp>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ===== Section 8: Three Verticals, One Flywheel ===== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
-              {t("flywheel.title")}
-            </SectionTitle>
-          </FadeInUp>
-          <FadeInUp delay="0.1s">
-            <p className="mb-8">{t("flywheel.intro")}</p>
-          </FadeInUp>
-          <div className="flex flex-col gap-4">
-            {flywheelItems.map((item, i) => {
-              const Icon = flywheelIcons[i];
-              return (
-                <FadeInUp key={i} delay={`${0.15 + i * 0.05}s`}>
-                  <OuterBox color="pd1" padding="md">
-                    <div className="flex gap-4">
-                      <Icon className="w-6 h-6 text-pado-2 shrink-0 mt-0.5" />
-                      <div>
-                        <h6 className="text-pd5 font-medium">{item.from}</h6>
-                        <p className="mt-1">{item.description}</p>
-                      </div>
-                    </div>
-                  </OuterBox>
-                </FadeInUp>
-              );
-            })}
-          </div>
-          <FadeInUp delay="0.35s">
-            <p className="mt-6">{t("flywheel.closing")}</p>
-          </FadeInUp>
-        </section>
-
-        {/* ===== Section 9: Launch Status ===== */}
+        {/* ===== Section 6: Launch Status ===== */}
         <section>
           <FadeInUp>
             <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
@@ -478,11 +333,11 @@ export const FinanceContent = () => {
             ))}
           </div>
 
-          {/* Deployed on Devnet */}
+          {/* Alpha Deployed */}
           <FadeInUp delay="0.35s">
             <h6 className="text-blue-400 flex items-center gap-2 mb-4">
               <Package className="w-5 h-5" />
-              Deployed on Devnet
+              Alpha Deployed
             </h6>
           </FadeInUp>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
@@ -515,7 +370,37 @@ export const FinanceContent = () => {
           </div>
         </section>
 
-        {/* ===== Section 10: CTA ===== */}
+        {/* ===== Section 7: Korea Market Entry ===== */}
+        <section>
+          <FadeInUp>
+            <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
+              {t("koreaMarket.title")}
+            </SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.1s">
+            <p className="mb-8">{t("koreaMarket.intro")}</p>
+          </FadeInUp>
+          <div className="flex flex-col gap-4">
+            {koreaItems.map((item, i) => {
+              const Icon = koreaIcons[i];
+              return (
+                <FadeInUp key={i} delay={`${0.15 + i * 0.05}s`}>
+                  <DividerBox color="pd2" padding="sm">
+                    <div className="flex gap-3">
+                      <Icon className="w-5 h-5 text-pado-2 shrink-0 mt-0.5" />
+                      <div>
+                        <h6 className="text-pd5 font-medium">{item.label}</h6>
+                        <p className="mt-1">{item.description}</p>
+                      </div>
+                    </div>
+                  </DividerBox>
+                </FadeInUp>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ===== Section 8: The Opportunity ===== */}
         <section>
           <FadeInUp>
             <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
@@ -529,32 +414,36 @@ export const FinanceContent = () => {
               <p className="text-pado-2 mt-2">{t("cta.closing")}</p>
               <p className="mt-1">{t("cta.motto")}</p>
 
-              <div className="flex flex-wrap gap-3 mt-8 justify-center">
-                <Button variant="pado" size="lg" className="text-pd0" asChild>
+              <h5 className="!font-rubik uppercase font-medium text-xl md:text-2xl mt-10 mb-2 text-center">
+                {t("downloadCta.title")}
+              </h5>
+              <p className="text-pd3 text-center">{t("downloadCta.description")}</p>
+              <div className="flex flex-wrap gap-3 mt-4 justify-center">
+                <Button variant="outlinePado" size="lg" asChild>
                   <a
-                    href={import.meta.env.VITE_PADO_ALPHA_URL || "https://staging.pado.finance"}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href="/downloads/PADO-pitchdeck.pdf"
+                    download="PADO-pitchdeck.pdf"
                   >
-                    {t("cta.primary")}
-                    <ArrowUpRight className="w-4 h-4 ml-2" />
+                    <FileText className="w-4 h-4 mr-2" />
+                    {t("downloadCta.pitchdeck")}
+                    <Download className="w-4 h-4 ml-2" />
                   </a>
                 </Button>
                 <Button variant="outlinePado" size="lg" asChild>
-                  <Link to="/pado">
-                    {t("cta.secondary")}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Link>
+                  <a
+                    href="/downloads/Nasun-Litepaper-2026.pdf"
+                    download="Nasun-Litepaper-2026.pdf"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    {t("downloadCta.litepaper")}
+                    <Download className="w-4 h-4 ml-2" />
+                  </a>
                 </Button>
               </div>
             </OuterBox>
           </FadeInUp>
         </section>
 
-        {/* Footer badge */}
-        <FadeInUp>
-          <p className="text-pd3/80 text-center">{t("footer.badge")}</p>
-        </FadeInUp>
       </div>
     </SectionLayout>
   );

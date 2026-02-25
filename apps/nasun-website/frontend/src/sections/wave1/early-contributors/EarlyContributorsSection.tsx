@@ -31,8 +31,8 @@ function EarlyContributorsSection() {
           We're looking for early contributors to help build Nasun from the ground up.
         </p>
         <p>
-          If you're a creator, developer, artist, or community leader who wants to help shape
-          Nasun from Day 1, we'd love to hear from you.
+          If you're a creator, developer, artist, or community leader who wants to help shape Nasun
+          from Day 1, we'd love to hear from you.
         </p>
       </div>
 
@@ -54,7 +54,7 @@ function EarlyContributorsSection() {
 
         {/* What you get */}
         <section>
-          <SectionTitle as="h4">What you get:</SectionTitle>
+          <SectionTitle as="h4">What you receive:</SectionTitle>
           <OuterBox color="nw0" padding="sm">
             <ul className="space-y-2">
               {whatYouGetItems.map(({ head, rest }) => (
@@ -73,12 +73,10 @@ function EarlyContributorsSection() {
         {/* Closing */}
         <div className="max-w-3xl mx-auto space-y-4">
           <p>
-            Nasun is community-funded, not VC-backed. We're building this with our people, not
-            with a fund.
+            Nasun is community-funded, not VC-backed. We're building this with our people, not with
+            a fund.
           </p>
-          <p>
-            Spots are limited. If you're interested, email us or DM @Nasun_io.
-          </p>
+          <p>Spots are limited. If you're interested, email us or DM @Nasun_io.</p>
         </div>
 
         {/* CTA */}

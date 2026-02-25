@@ -40,15 +40,20 @@ export type PageTitleMap = Record<string, string>;
 export function renderNestedRoutes(
   sectionName: string,
   routeConfig: EnhancedRouteConfig,
-  defaultSubPath: string,
+  defaultSubPath: string | null,
   pageTitleMap: PageTitleMap
 ): React.ReactNode {
   const basePath = routeConfig.path;
   const subMenu = routeConfig.navItem?.subMenu || [];
+  const Component = routeConfig.component;
+
+  const indexElement = defaultSubPath
+    ? <Navigate to={`${basePath}/${defaultSubPath}`} replace />
+    : <RouteWithMeta route={{ component: Component, meta: routeConfig.meta }} />;
 
   return (
     <>
-      <Route index element={<Navigate to={`${basePath}/${defaultSubPath}`} replace />} />
+      <Route index element={indexElement} />
       {subMenu
         .filter((subItem) => !subItem.external)
         .map((subItem) => renderSubMenuItem(subItem, basePath, sectionName, routeConfig, pageTitleMap))}
@@ -67,24 +72,14 @@ function renderSubMenuItem(
   const SubComponent = subItem.element!;
   const pageTitle = pageTitleMap[subItem.name] || subItem.name;
 
-  // Handle nested sub-menus (e.g., /ip/gensol/shooter)
+  // Handle nested sub-menus (e.g., /ecosystem/gensol/shooter)
   if (subItem.subMenu && subItem.subMenu.length > 0) {
+    const defaultNestedPath = subItem.subMenu[0].path;
     return (
       <Route key={subItem.path} path={subPath}>
         <Route
           index
-          element={
-            <RouteWithMeta
-              route={{
-                ...routeConfig,
-                component: SubComponent,
-                meta: {
-                  title: `NASUN - ${pageTitle}`,
-                  description: `${pageTitle} page in ${sectionName} section`,
-                },
-              }}
-            />
-          }
+          element={<Navigate to={defaultNestedPath} replace />}
         />
         {subItem.subMenu.map((nestedItem) => {
           if (nestedItem.path === subItem.path) return null;

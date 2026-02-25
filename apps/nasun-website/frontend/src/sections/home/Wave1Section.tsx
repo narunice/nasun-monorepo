@@ -70,6 +70,30 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
     return () => observer.disconnect();
   }, [shouldLoadVideo]);
 
+  const cards = [
+    {
+      titleKey: "wave1.leaderboard.title",
+      line1Key: "wave1.leaderboard.line1",
+      line2Key: "wave1.leaderboard.line2",
+      ctaKey: "wave1.leaderboard.cta",
+      to: "/wave1/leaderboard-guide",
+    },
+    {
+      titleKey: "wave1.battalionNft.title",
+      line1Key: "wave1.battalionNft.line1",
+      line2Key: "wave1.battalionNft.line2",
+      ctaKey: "wave1.battalionNft.cta",
+      to: "/wave1/battalion-nft",
+    },
+    {
+      titleKey: "wave1.earlyContributor.title",
+      line1Key: "wave1.earlyContributor.line1",
+      line2Key: "wave1.earlyContributor.line2",
+      ctaKey: "wave1.earlyContributor.cta",
+      to: "/wave1/early-contributors",
+    },
+  ] as const;
+
   return (
     <SectionLayout className="max-w-none relative min-h-screen">
       {/* Background video container */}
@@ -111,80 +135,47 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
       {/* Content */}
       <FadeInUp>
         <div className="relative z-20 flex flex-col lg:flex-row lg:gap-10 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto px-4 lg:px-0 mt-8 sm:mt-12 md:mt-16 lg:mt-20 mb-6 md:mb-12 lg:mb-14">
-          {/* Left: Cards */}
-          <div className="flex flex-col gap-5 w-full lg:w-[50%] mt-6 lg:mt-0 order-2 lg:order-1">
-            {/* LEADERBOARD */}
-            <Link
-              to="/wave1/leaderboard-guide"
-              className="block w-full flex-1 group transition-all duration-300 ease-out"
-            >
-              <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
-                <h6 className="mb-2 uppercase font-medium text-nasun-black tracking-wide">
-                  LEADERBOARD
-                </h6>
-                <p className="flex-1 text-nasun-black/90 ">
-                  Climb ranks to unlock Launch Pool access and Battalion NFT eligibility
-                  <br />
-                  Complete tasks: Follow on X, create content, test features
-                </p>
-                <div className="flex justify-end mt-auto pt-3">
-                  <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                    {t("wave1.leaderboard.cta")}
-                  </ButtonV3>
-                </div>
-              </div>
-            </Link>
+          {/* Left: intro + cards */}
+          <div className="flex flex-col w-full lg:w-[50%] order-2 lg:order-1 mt-6 lg:mt-0">
+            <p className="font-medium text-nasun-black/90 text-sm md:text-base mb-5 leading-relaxed">
+              {t("wave1.intro")}
+            </p>
 
-            {/* BATTALION NFT */}
-            <Link
-              to="/wave1/battalion-nft"
-              className="block w-full flex-1 group transition-all duration-300 ease-out"
-            >
-              <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
-                <h6 className="mb-2 uppercase font-medium text-nasun-black tracking-wide">
-                  BATTALION NFT
-                </h6>
-                <p className="flex-1 text-nasun-black/90">
-                  Boost rewards by staking on Devnet/Testnet with Battalion NFT multipliers.
-                  <br />
-                  Earn toward Mainnet $NSN airdrop, alpha access, and exclusive giveaways.
-                </p>
-                <div className="flex justify-end mt-auto pt-3">
-                  <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                    {t("wave1.battalionNft.cta")}
-                  </ButtonV3>
-                </div>
-              </div>
-            </Link>
-
-            {/* EARLY CONTRIBUTORS */}
-            <Link
-              to="/wave1/early-contributors"
-              className="block w-full flex-1 group transition-all duration-300 ease-out"
-            >
-              <div className="h-full flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
-                <h6 className="mb-2 uppercase font-medium text-nasun-black tracking-wide">
-                  EARLY CONTRIBUTORS
-                </h6>
-                <p className="flex-1 text-nasun-black/90 ">
-                  Limited spots for builders and creators
-                  <br />
-                  Launch pool allocation and Rare Battalion NFTs with exclusive utilities
-                </p>
-                <div className="flex justify-end mt-auto pt-3">
-                  <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                    {t("wave1.earlyContributor.cta")}
-                  </ButtonV3>
-                </div>
-              </div>
-            </Link>
+            <div className="flex flex-col gap-4">
+              {cards.map((card) => (
+                <Link
+                  key={card.to}
+                  to={card.to}
+                  className="block w-full group transition-all duration-300 ease-out"
+                >
+                  <div className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
+                    <h6 className="mb-2 font-semibold text-nasun-black tracking-wide">
+                      {t(card.titleKey)}
+                    </h6>
+                    <p className="text-nasun-black/80 text-xs md:text-sm leading-relaxed">
+                      {t(card.line1Key)}
+                      <br />
+                      {t(card.line2Key)}
+                    </p>
+                    <div className="flex justify-end mt-3">
+                      <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
+                        {t(card.ctaKey)}
+                      </ButtonV3>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {/* Right: WAVE 1 title + Leaderboard image */}
-          <div className="flex flex-col items-center lg:items-start lg:justify-between w-full lg:w-[50%] order-1 lg:order-2">
-            <h2 className="!font-eurostile text-3xl/tight md:text-4xl/tight lg:text-5xl/tight text-nasun-black/80 mb-4 lg:mb-6 lg:-mt-4 tracking-wide whitespace-nowrap w-full text-center">
-              WAVE 1
+          {/* Right: title + video */}
+          <div className="flex flex-col items-center lg:items-start w-full lg:w-[50%] order-1 lg:order-2">
+            <h2 className="!font-eurostile text-3xl/tight md:text-4xl/tight lg:text-5xl/tight text-nasun-black/80 mb-1 lg:mb-2 tracking-wide w-full text-center">
+              {t("wave1.title")}
             </h2>
+            <p className="font-normal text-lg md:text-xl text-nasun-black/70 mb-4 lg:mb-6 w-full text-center">
+              {t("wave1.tagline")}
+            </p>
             <video
               autoPlay
               loop

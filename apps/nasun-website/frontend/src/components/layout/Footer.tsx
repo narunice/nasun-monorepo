@@ -62,7 +62,7 @@ export default function Footer() {
                 <img
                   src={theme === "dark" ? "/nasun-wordmark-white.svg" : "/nasun-wordmark-black.svg"}
                   alt="NASUN"
-                  className="h-9 md:h-[43px] lg:h-[50px] w-auto transition-all ease-in-out hover:scale-105 active:scale-95"
+                  className="h-9 md:h-[43px] lg:h-[50px] w-auto"
                 />
               </Link>
             </div>

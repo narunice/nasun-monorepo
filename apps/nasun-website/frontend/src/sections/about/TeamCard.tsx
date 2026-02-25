@@ -29,7 +29,7 @@ const TeamCard: React.FC<TeamMember> = ({
   const descriptionArray = Array.isArray(description) ? description : [description];
 
   return (
-    <OuterBox color="nw1" className="flex flex-col md:flex-row gap-6 md:gap-10 mb-6 md:mb-10 ">
+    <OuterBox color="nw0" className="flex flex-col md:flex-row gap-6 md:gap-10 mb-6 md:mb-10 ">
       {/* Left Column - Profile */}
       <div className="md:w-1/4 flex flex-col items-center md:items-start">
         {/* Profile Image */}

@@ -47,7 +47,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
           <p>{t("step1.intro2")}</p>
         </div>
 
-        {/* What you get */}
+        {/* What you receive */}
         <div className="mb-6 md:mb-8">
           <h5 className="text-nasun-white font-medium mb-3">{t("step1.whatYouGet.title")}</h5>
           <ul className="space-y-2">

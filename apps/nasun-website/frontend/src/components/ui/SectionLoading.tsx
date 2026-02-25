@@ -12,6 +12,7 @@
 import React from "react";
 import { SectionLayout } from "../layout/SectionLayout";
 import { useTranslation } from "react-i18next";
+import { Spinner } from "./Spinner";
 
 interface SectionLoadingProps {
   /** 커스텀 로딩 메시지 */
@@ -58,7 +59,7 @@ export const SectionLoading: React.FC<SectionLoadingProps> = ({
   const content = (
     <div className={`${containerClass} ${className}`}>
       <div className="flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-100"></div>
+        <Spinner size="lg" />
         <span className="ml-3 text-base text-nasun-white">
           {message || t("info.loading")}
         </span>
