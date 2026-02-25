@@ -111,7 +111,7 @@ sudo systemctl start sui-indexer
 
 | 앱               | 배포 방식    | 트리거    | 대상 URL                         |
 | ---------------- | ------------ | --------- | -------------------------------- |
-| baram            | TBD          | 수동 실행 | TBD                              |
+| baram            | EC2 스크립트 | 수동 실행 | https://baram.nasun.io           |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
 | explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-3) |
 | nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
