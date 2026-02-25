@@ -77,6 +77,23 @@ apps/baram/
 │
 ├── cdk/                         # AWS CDK 인프라
 │   └── lambda-src/executor/     # Lambda executor (Groq cloud models)
+│
+├── api-server/                  # AER 인덱서 API (Hono.js + PostgreSQL, 포트 3201)
+│   └── src/
+│       ├── index.ts             # 메인 서버 (CORS, rate limiting, graceful shutdown)
+│       ├── db.ts                # PostgreSQL 스키마 (aer_records 31필드 인덱싱)
+│       ├── cache.ts             # In-memory TTL 캐시 (15초)
+│       ├── routes/aer.ts        # /api/v1/aer (필터, 페이지네이션)
+│       └── sync/aer-sync.ts     # RPC 이벤트 동기화 워커 (30초 간격)
+│
+├── agent-runner/                # 자율 에이전트 실행기 (CLI 데몬)
+│   └── src/
+│       ├── index.ts             # 메인 루프 + runCycle 오케스트레이션
+│       ├── config.ts            # 환경 변수 로딩 + 검증
+│       ├── baram-client.ts      # 온체인: Budget 체크, create_request_with_budget_v2
+│       ├── executor-client.ts   # Lambda /execute + /record 클라이언트
+│       └── presets/             # research (30분), content (24시간), analysis (24시간, 3단계 체크포인팅)
+│
 ├── scripts/                     # mint-beta-access.sh (BetaAccessNFT 민팅)
 └── docs/                        # 설계 문서
 ```
@@ -104,5 +121,10 @@ apps/baram/
 | [sui-client.ts](../executor-nitro/src/host/sui-client.ts) | On-chain settlement + AER 생성 |
 | [decay-reputation.ts](../executor-nitro/scripts/decay-reputation.ts) | Permissionless decay cron 스크립트 |
 | [protocol.ts](../executor-nitro/src/shared/protocol.ts) | 메시지 프로토콜 (v1.3.0) |
+| [agent_profile.move](../contracts-agent/sources/agent_profile.move) | AgentProfile + Registry + Kill Switch |
+| [index.ts (api-server)](../api-server/src/index.ts) | AER 인덱서 API 메인 서버 |
+| [aer-sync.ts](../api-server/src/sync/aer-sync.ts) | RPC 이벤트 → PostgreSQL 동기화 |
+| [index.ts (agent-runner)](../agent-runner/src/index.ts) | 자율 에이전트 메인 루프 |
+| [baram-client.ts](../agent-runner/src/baram-client.ts) | Agent → Budget → 온체인 요청 |
 | [SPOT_INSTANCE_GUIDE.md](SPOT_INSTANCE_GUIDE.md) | Spot 인스턴스 운영 가이드 |
 | [AER_DESIGN.md](AER_DESIGN.md) | AIExecutionReport 구현 레퍼런스 |
