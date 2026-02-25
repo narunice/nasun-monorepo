@@ -17,6 +17,7 @@ const PRODUCTION_ORIGINS = [
   'https://staging.gensol.io',
   'https://pado.finance',
   'https://staging.pado.finance',
+  'https://baram.nasun.io',
 ];
 
 const DEV_ORIGINS = [
