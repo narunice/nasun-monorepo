@@ -622,6 +622,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
             placeholder="0.0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && canSubmit && setShowConfirm(true)}
             onWheel={(e) => e.currentTarget.blur()}
             step="0.0001"
             min="0"

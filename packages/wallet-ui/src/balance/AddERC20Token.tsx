@@ -122,6 +122,7 @@ export function AddERC20Token({ onClose }: AddERC20TokenProps) {
             setMetadata(null);
             setError("");
           }}
+          onKeyDown={(e) => e.key === 'Enter' && isValidAddress && !isLooking && handleLookup()}
           placeholder="0x..."
           className="flex-1 px-3 py-2 text-sm xl:text-base bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500"
         />

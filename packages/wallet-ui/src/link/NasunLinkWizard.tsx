@@ -345,6 +345,7 @@ export function NasunLinkWizard({
             type="text"
             value={form.message}
             onChange={(e) => updateForm('message', e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && hasEnoughBalance && setStep('conditions')}
             placeholder="Welcome gift!"
             maxLength={100}
             className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -453,6 +454,7 @@ export function NasunLinkWizard({
               type="text"
               value={form.password}
               onChange={(e) => updateForm('password', e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && form.password && !isLoading && handleCreate()}
               placeholder="Enter password"
               className="w-full px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
