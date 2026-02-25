@@ -11,6 +11,7 @@
 import { type NFTInfo, type ERC20Balance } from "@nasun/wallet";
 import { NFTCard } from "../../nft/NFTCard";
 import { TokenFaucetButton } from "../../balance/TokenFaucetButton";
+import { ClaimAllButton } from "../../balance/ClaimAllButton";
 
 /** Format ERC-20 balance for display (max 6 decimals) */
 function formatERC20Display(balance: ERC20Balance): string {
@@ -175,6 +176,12 @@ export function AssetsTabContent({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {/* Claim All Faucet Button — devnet/testnet Nasun chains only */}
+        {!isEVM && !isExternalMove && networkType !== 'mainnet' && (
+          <div className="mt-2">
+            <ClaimAllButton />
           </div>
         )}
       </div>
