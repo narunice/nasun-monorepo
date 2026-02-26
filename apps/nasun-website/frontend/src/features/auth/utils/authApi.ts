@@ -26,12 +26,14 @@ export const linkAccounts = async (
   secondaryProvider: "Google" | "Twitter",
   cognitoToken?: string
 ) => {
+  if (!cognitoToken) {
+    throw new Error("Session expired. Please sign in again to link accounts.");
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "Authorization": `Bearer ${cognitoToken}`,
   };
-  if (cognitoToken) {
-    headers["Authorization"] = `Bearer ${cognitoToken}`;
-  }
 
   const response = await fetch(`${import.meta.env.VITE_LINK_ACCOUNT_API}/link`, {
     method: "POST",
