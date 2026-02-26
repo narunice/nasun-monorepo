@@ -15,6 +15,8 @@ import { withdrawUserApi } from "../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
 import { authenticateWithMetaMask } from "../../services/metamaskApi";
 import { connectWallet, signMessage } from "../../utils/metamaskUtils";
+import { connectMetaMaskSDK, signMessageViaSDK } from "../../lib/wallet/metamaskSdkProvider";
+import { isMobileBrowser } from "../../utils/mobileDetect";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { JoinWhitelistButton } from "@/components/whitelist/JoinWhitelistButton";
@@ -138,14 +140,16 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
       setIsBattalionWithdrawing(true);
 
       // Authenticate with MetaMask to get wallet proof
-      const connectedAddress = await connectWallet();
+      // Mobile: use MetaMask SDK (Socket.io relay), Desktop: use injected provider
+      const mobile = isMobileBrowser();
+      const connectedAddress = mobile ? await connectMetaMaskSDK() : await connectWallet();
       if (connectedAddress.toLowerCase() !== registeredWallet.toLowerCase()) {
         toast.error(`Please connect the registered wallet (${registeredWallet.slice(0, 6)}...${registeredWallet.slice(-4)}).`);
         return;
       }
 
       const authResult = await authenticateWithMetaMask(connectedAddress, async (message) => {
-        return await signMessage(message, connectedAddress);
+        return mobile ? await signMessageViaSDK(message, connectedAddress) : await signMessage(message, connectedAddress);
       });
 
       if (!authResult.walletProof || !authResult.proofIssuedAt) {
@@ -180,14 +184,16 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
 
     try {
       setIsGenesisWithdrawing(true);
-      const connectedAddress = await connectWallet();
+      // Mobile: use MetaMask SDK (Socket.io relay), Desktop: use injected provider
+      const mobile = isMobileBrowser();
+      const connectedAddress = mobile ? await connectMetaMaskSDK() : await connectWallet();
       if (connectedAddress.toLowerCase() !== walletAddress.toLowerCase()) {
         toast.error(`Please connect the registered wallet (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}).`);
         return;
       }
       await withdrawWhitelistWithSignature(
         walletAddress.toLowerCase(),
-        (message) => signMessage(message, connectedAddress)
+        (message) => mobile ? signMessageViaSDK(message, connectedAddress) : signMessage(message, connectedAddress)
       );
       refetchFounders();
       toast.success("Successfully withdrawn from Frontiers Whitelist.");

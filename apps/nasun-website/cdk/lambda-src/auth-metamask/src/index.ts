@@ -1,6 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { handleChallenge } from './handlers/challenge';
 import { handleVerify } from './handlers/verify';
+import { handlePrepare } from './handlers/prepare';
+import { handleConnectVerify } from './handlers/connect-verify';
 import { maskSensitiveData } from './utils/log-utils';
 
 // Read from environment variable (set by CDK from shared constants/cors.ts)
@@ -39,7 +41,12 @@ export const handler = async (
   try {
     const path = event.path || event.resource || '';
 
-    if (path.includes('/challenge')) {
+    // Order matters: /connect-verify must match before /verify (substring overlap)
+    if (path.includes('/prepare')) {
+      return await handlePrepare(event, headers);
+    } else if (path.includes('/connect-verify')) {
+      return await handleConnectVerify(event, headers);
+    } else if (path.includes('/challenge')) {
       return await handleChallenge(event, headers);
     } else if (path.includes('/verify')) {
       return await handleVerify(event, headers);

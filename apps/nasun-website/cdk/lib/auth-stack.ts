@@ -239,6 +239,14 @@ export class AuthStack extends cdk.Stack {
     const verifyResource = metamask.addResource('verify');
     verifyResource.addMethod('POST', new apigw.LambdaIntegration(metamaskAuthFunction));
 
+    // POST /auth/metamask/prepare (1-trip connectAndSign flow — no address required)
+    const prepareResource = metamask.addResource('prepare');
+    prepareResource.addMethod('POST', new apigw.LambdaIntegration(metamaskAuthFunction));
+
+    // POST /auth/metamask/connect-verify (1-trip connectAndSign flow — recovers address from signature)
+    const connectVerifyResource = metamask.addResource('connect-verify');
+    connectVerifyResource.addMethod('POST', new apigw.LambdaIntegration(metamaskAuthFunction));
+
     // 6. CloudFormation Outputs
     new cdk.CfnOutput(this, 'MetaMaskAuthApiUrl', {
       value: metamaskAuthApi.url,

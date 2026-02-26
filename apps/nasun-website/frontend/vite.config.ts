@@ -2,6 +2,7 @@
 
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 import path from "path";
 import fs from "fs";
 import { createHtmlPlugin } from "vite-plugin-html";
@@ -55,6 +56,10 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
+      nodePolyfills({
+        globals: { Buffer: true, global: true, process: true },
+        protocolImports: false,
+      }),
       react(),
       createHtmlPlugin({
         minify: true,
@@ -95,7 +100,7 @@ export default defineConfig(({ mode }) => {
     },
 
     optimizeDeps: {
-      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core", "zustand", "@nasun/wallet", "@nasun/wallet-ui"],
+      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core", "zustand", "@nasun/wallet", "@nasun/wallet-ui", "@metamask/sdk"],
     },
 
     // 4) 명시적으로 VITE_* 변수만 process.env에 주입
@@ -192,6 +197,9 @@ export default defineConfig(({ mode }) => {
             // Web3 (Note: @mysten/sui uses subpath exports, handled by Vite automatically)
             "vendor-web3": ["ethers", "@mysten/dapp-kit"],
 
+            // MetaMask SDK (lazy-loaded, separate chunk)
+            "vendor-metamask-sdk": ["@metamask/sdk"],
+
             // AWS
             "vendor-aws": ["aws-amplify"],
 
@@ -202,6 +210,7 @@ export default defineConfig(({ mode }) => {
             "vendor-i18n": ["i18next", "react-i18next"],
 
             // Heavy Libraries
+            "vendor-framer-motion": ["framer-motion"],
             "vendor-chart": ["chart.js", "react-chartjs-2", "recharts"],
             "vendor-carousel": ["react-slick", "slick-carousel"],
           },
