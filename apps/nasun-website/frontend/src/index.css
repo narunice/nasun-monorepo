@@ -185,6 +185,12 @@
 @tailwind utilities;
 
 @layer base {
+  /* Remove browser focus outlines globally */
+  :focus,
+  :focus-visible {
+    outline: none;
+  }
+
   /* Default fallback font based on content language */
   html {
     font-family: "Rubik", "Pretendard", sans-serif;

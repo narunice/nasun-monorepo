@@ -108,7 +108,7 @@ export default function MobileNav({
           </Link>
           <button
             onClick={closeAllMenus}
-            className="p-2 text-nasun-black hover:opacity-70 transition-all"
+            className="p-2 text-nasun-black hover:opacity-70 transition-all outline-none"
             aria-label="Close Menu"
           >
             <FontAwesomeIcon icon={faXmark} className="text-lg" />

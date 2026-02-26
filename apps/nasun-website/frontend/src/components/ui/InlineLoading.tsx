@@ -34,7 +34,7 @@ export const InlineLoading: React.FC<InlineLoadingProps> = ({
 }) => {
   return (
     <div className={`inline-flex items-center ${className}`}>
-      <Spinner size={size} />
+      <Spinner size={size} colorClass="border-white" />
       {message && (
         <span className={`ml-2 text-nasun-white ${textSizeClasses[size]}`}>
           {message}

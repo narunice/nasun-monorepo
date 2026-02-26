@@ -319,9 +319,20 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                     onClick={handleLinkMetaMask}
                     disabled={isMetaMaskLinking || isLinking}
                   >
-                    {isMetaMaskLinking
-                      ? "Linking..."
-                      : `Link Wallet${activeWalletAddress ? ` (${activeWalletAddress.slice(0, 6)}...)` : ""}`}
+                    {isMetaMaskLinking ? (
+                      "Linking..."
+                    ) : (
+                      <>
+                        <span className="sm:hidden">
+                          {activeWalletAddress
+                            ? `Link (${activeWalletAddress.slice(0, 6)}...)`
+                            : "Link"}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {`Link Wallet${activeWalletAddress ? ` (${activeWalletAddress.slice(0, 6)}...)` : ""}`}
+                        </span>
+                      </>
+                    )}
                   </Button>
                 ) : // Case 2: Linked but Inactive or Different -> Activate/Switch Button
                 !isMetaMaskActive ? (

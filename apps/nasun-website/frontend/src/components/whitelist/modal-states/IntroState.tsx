@@ -66,19 +66,6 @@ export function IntroState({ onClose, onProceed }: IntroStateProps) {
           </p>
         </DividerBox>
 
-        {/* Safety Notice Section */}
-        <div className="space-y-2 px-2">
-          <p className="flex items-start gap-2 text-nasun-c3 text-xs/snug md:text-sm/snug xl:text-base/snug">
-            <span>{t("whitelist.modal.intro.safetyNotice.line1")}</span>
-          </p>
-          <p className="flex items-start gap-2 text-nasun-c4 text-xs/snug md:text-sm/snug xl:text-base/snug">
-            <span>{t("whitelist.modal.intro.safetyNotice.line2")}</span>
-          </p>
-          <p className="flex items-start gap-2 text-nasun-c1 text-xs/snug md:text-sm/snug xl:text-base/snug">
-            <span>{t("whitelist.modal.intro.safetyNotice.line3")}</span>
-          </p>
-        </div>
-
         <p className="text-center text-nasun-white/70 text-xs/snug md:text-sm/snug xl:text-base/snug">
           {t("whitelist.modal.intro.noMetaMask")}{" "}
           <a
