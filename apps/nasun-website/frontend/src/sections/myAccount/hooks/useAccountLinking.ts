@@ -94,10 +94,14 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) throw new Error("Link Account API is not configured");
 
-      const linkHeaders: Record<string, string> = { "Content-Type": "application/json" };
-      if (user?.cognitoToken) {
-        linkHeaders["Authorization"] = `Bearer ${user.cognitoToken}`;
+      if (!user?.cognitoToken) {
+        throw new Error("Session expired. Please sign in again to link accounts.");
       }
+
+      const linkHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${user.cognitoToken}`,
+      };
 
       const linkResponse = await fetch(linkAccountApi, {
         method: "POST",
@@ -113,8 +117,10 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
 
       await refreshAndSaveUserProfile(user!.identityId);
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to link MetaMask account";
       logger.error("Failed to link MetaMask account:", err);
-      setError(err instanceof Error ? err.message : "Failed to link MetaMask account");
+      setError(message);
+      alert(message);
     } finally {
       setIsLinking(false);
     }
@@ -128,10 +134,14 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) throw new Error("Link Account API is not configured");
 
-      const unlinkHeaders: Record<string, string> = { "Content-Type": "application/json" };
-      if (user?.cognitoToken) {
-        unlinkHeaders["Authorization"] = `Bearer ${user.cognitoToken}`;
+      if (!user?.cognitoToken) {
+        throw new Error("Session expired. Please sign in again to unlink accounts.");
       }
+
+      const unlinkHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${user.cognitoToken}`,
+      };
 
       const response = await fetch(`${linkAccountApi}/unlink`, {
         method: "POST",
@@ -153,8 +163,10 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
 
       alert(`${provider} account unlinked successfully!`);
     } catch (err) {
+      const message = err instanceof Error ? err.message : `Failed to unlink ${provider} account`;
       logger.error(`Failed to unlink ${provider} account:`, err);
-      setError(err instanceof Error ? err.message : `Failed to unlink ${provider} account`);
+      setError(message);
+      alert(message);
     } finally {
       setIsLinking(false);
     }
