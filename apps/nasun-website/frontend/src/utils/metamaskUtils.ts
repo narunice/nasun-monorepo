@@ -18,6 +18,21 @@ export function isMetaMaskInstalled(): boolean {
 }
 
 /**
+ * Select the MetaMask provider from potentially multiple injected providers.
+ * Brave, Opera, and other browsers may inject their own window.ethereum alongside MetaMask.
+ * This ensures we always interact with the actual MetaMask provider.
+ */
+function getMetaMaskProvider(): typeof window.ethereum {
+  // @ts-expect-error - providers array exists when multiple wallets are injected
+  if (window.ethereum?.providers?.length > 0) {
+    // @ts-expect-error - selecting from providers
+    const mmProvider = window.ethereum.providers.find((p: { isMetaMask: boolean }) => p.isMetaMask);
+    if (mmProvider) return mmProvider;
+  }
+  return window.ethereum!;
+}
+
+/**
  * 현재 연결된 지갑 주소 가져오기
  * @throws {Error} MetaMask가 설치되지 않았거나 연결되지 않은 경우
  */
@@ -51,7 +66,8 @@ export async function connectWallet(): Promise<string> {
   }
 
   try {
-    const accounts = await window.ethereum!.request({
+    const provider = getMetaMaskProvider();
+    const accounts = await provider.request({
       method: 'eth_requestAccounts',
     }) as string[];
 
@@ -208,51 +224,26 @@ export async function switchNetwork(chainId: number | string): Promise<void> {
  * @throws {Error} 서명 실패 또는 사용자 거부 시
  */
 export async function signMessage(message: string, walletAddress: string): Promise<string> {
-  console.log('[DEBUG] signMessage called with:', { message: message.substring(0, 50) + '...', walletAddress });
-
   if (!isMetaMaskInstalled()) {
-    console.error('[DEBUG] MetaMask not installed!');
     throw new Error('MetaMask is not installed');
   }
 
-  console.log('[DEBUG] MetaMask is installed, using raw JSON-RPC method...');
-
   try {
-    // MetaMask provider 명시적 선택 (multiple wallet 충돌 방지)
-    let provider = window.ethereum!;
+    const provider = getMetaMaskProvider();
 
-    // @ts-expect-error - providers 배열이 있는 경우 MetaMask만 선택
-    if (window.ethereum?.providers?.length > 0) {
-      console.log('[DEBUG] Multiple providers detected, selecting MetaMask...');
-      // @ts-expect-error - selecting from providers
-      provider = window.ethereum.providers.find((p: { isMetaMask: boolean }) => p.isMetaMask) || window.ethereum;
-    }
-
-    console.log('[DEBUG] Using provider:', provider.isMetaMask ? 'MetaMask' : 'Unknown');
-
-    // MetaMask의 personal_sign 메서드를 직접 호출 (ethers.js 우회)
-    // params: [message, address]
-    // message는 hex 형식으로 변환해야 함
-    console.log('[DEBUG] Converting message to hex...');
     const messageHex = '0x' + Array.from(new TextEncoder().encode(message))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-
-    console.log('[DEBUG] Message hex length:', messageHex.length);
-    console.log('[DEBUG] Calling personal_sign...');
 
     const signature = await provider.request({
       method: 'personal_sign',
       params: [messageHex, walletAddress.toLowerCase()],
     }) as string;
 
-    console.log('[DEBUG] Signature obtained:', signature.substring(0, 20) + '...');
-
     return signature;
   } catch (error) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const err = error as any;
-    console.error('[DEBUG] signMessage error:', err);
     // 사용자가 서명을 거부한 경우
     if (err.code === 4001 || err.code === 'ACTION_REJECTED') {
       throw new Error('User rejected the signature request');

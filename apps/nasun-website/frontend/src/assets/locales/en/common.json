@@ -134,6 +134,11 @@
           "description": "Free, no gas fees. Only your wallet address is registered."
         },
         "notice": "No funds will be transferred. Signing is for submitting a valid address. ",
+        "safetyNotice": {
+          "line1": "Your wallet address is only used for whitelist registration.",
+          "line2": "No tokens or NFTs will be transferred during this process.",
+          "line3": "Never share your seed phrase with anyone, including Nasun."
+        },
         "noMetaMask": "Don't have MetaMask?",
         "installLink": "Install MetaMask",
         "cancel": "Cancel",

@@ -14,6 +14,8 @@ import {
   WhitelistApiError,
 } from "../../services/whitelistApi";
 import { authenticateWithMetaMask } from "../../services/metamaskApi";
+import { connectMetaMaskSDK, signMessageViaSDK } from "../../lib/wallet/metamaskSdkProvider";
+import { isMobileBrowser } from "../../utils/mobileDetect";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "../../store/userStore";
 import type { WhitelistModalData } from "../../types/whitelist";
@@ -56,14 +58,21 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
   const autoLinkWallet = async (walletAddress: string) => {
     if (!user?.identityId) return;
 
+    const mobile = isMobileBrowser();
+
     try {
-      const expectedChainId = import.meta.env.VITE_ETHEREUM_CHAIN_ID;
-      if (expectedChainId) {
-        await switchNetwork(expectedChainId);
+      // switchNetwork uses window.ethereum — skip on mobile (SDK handles connection)
+      if (!mobile) {
+        const expectedChainId = import.meta.env.VITE_ETHEREUM_CHAIN_ID;
+        if (expectedChainId) {
+          await switchNetwork(expectedChainId);
+        }
       }
 
       const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
-        return await signMessage(message, walletAddress);
+        return mobile
+          ? await signMessageViaSDK(message, walletAddress)
+          : await signMessage(message, walletAddress);
       });
 
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
@@ -102,7 +111,10 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
   };
 
   const handleProceed = async () => {
-    if (!isMetaMaskInstalled()) {
+    const mobile = isMobileBrowser();
+
+    // On mobile, MetaMask SDK handles connection via deep link — no window.ethereum needed
+    if (!mobile && !isMetaMaskInstalled()) {
       setModalData({
         state: "error",
         error: t("common:wallet.metamask_not_installed"),
@@ -114,7 +126,7 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
     try {
       setModalData({ state: "connecting" });
 
-      const walletAddress = await connectWallet();
+      const walletAddress = mobile ? await connectMetaMaskSDK() : await connectWallet();
       const normalizedAddress = walletAddress.toLowerCase();
 
       if (registeredEthAddress && normalizedAddress !== registeredEthAddress.toLowerCase()) {
@@ -145,7 +157,7 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
       setModalData({ state: "signing", walletAddress });
 
       const response = await joinWhitelistWithSignature(walletAddress, (message) =>
-        signMessage(message, walletAddress),
+        mobile ? signMessageViaSDK(message, walletAddress) : signMessage(message, walletAddress),
       );
 
       if (!registeredEthAddress && user?.identityId) {
@@ -207,11 +219,15 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
   const handleWithdraw = async () => {
     if (!modalData.walletAddress) return;
 
+    const mobile = isMobileBrowser();
+
     try {
       setModalData({ ...modalData, state: "signing" });
 
       await withdrawWhitelistWithSignature(modalData.walletAddress, (message) => {
-        return signMessage(message, modalData.walletAddress!);
+        return mobile
+          ? signMessageViaSDK(message, modalData.walletAddress!)
+          : signMessage(message, modalData.walletAddress!);
       });
 
       setModalOpen(false);

@@ -173,7 +173,12 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
 
         {/* OpenSea Button */}
         <div className="flex justify-center">
-          <ButtonV3 variant="nw1" size="lg" asChild>
+          <ButtonV3
+            variant="nw1"
+            size="lg"
+            asChild
+            className="w-full sm:w-auto !text-sm sm:!text-lg !px-6 sm:!px-14"
+          >
             <a
               href={openseaCollectionUrl}
               target="_blank"

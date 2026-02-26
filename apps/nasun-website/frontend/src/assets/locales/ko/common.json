@@ -134,6 +134,11 @@
           "description": "가스비 없이 무료입니다. 지갑 주소만 등록됩니다."
         },
         "notice": "서명은 유효한 주소 제출용이며, 자산 이동은 발생하지 않습니다.",
+        "safetyNotice": {
+          "line1": "지갑 주소는 화이트리스트 등록에만 사용됩니다.",
+          "line2": "이 과정에서 토큰이나 NFT가 이동하지 않습니다.",
+          "line3": "시드 구문을 Nasun을 포함한 누구에게도 공유하지 마세요."
+        },
         "noMetaMask": "MetaMask가 없으신가요?",
         "installLink": "MetaMask 설치하기",
         "cancel": "취소",

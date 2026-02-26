@@ -136,7 +136,7 @@ export async function verifySignature(
 }
 
 /**
- * 전체 MetaMask 인증 플로우 실행
+ * 전체 MetaMask 인증 플로우 실행 (2-trip: connect → sign)
  *
  * 1. Challenge 요청
  * 2. 메시지 서명 (외부에서 signMessage 호출)
@@ -166,4 +166,93 @@ export async function authenticateWithMetaMask(
   );
 
   return verifyResponse;
+}
+
+// ============================================================
+// 1-trip connectAndSign flow (for iOS Safari — single MetaMask trip)
+// ============================================================
+
+export interface ConnectVerifyResponse extends MetaMaskVerifyResponse {
+  walletAddress: string;
+}
+
+/**
+ * Prepare: Get nonce + message from server (no wallet address needed).
+ * First step of the 1-trip connectAndSign flow.
+ */
+export async function prepareChallenge(): Promise<MetaMaskChallengeResponse> {
+  const url = `${METAMASK_API_BASE_URL}/prepare`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new MetaMaskApiError(
+        data.message || 'Failed to prepare challenge',
+        response.status,
+        data
+      );
+    }
+
+    return data as MetaMaskChallengeResponse;
+  } catch (error) {
+    if (error instanceof MetaMaskApiError) {
+      throw error;
+    }
+
+    console.error('Failed to prepare challenge:', error);
+    throw new MetaMaskApiError(
+      error instanceof Error ? error.message : 'Network error occurred'
+    );
+  }
+}
+
+/**
+ * Connect-verify: Send signature + nonce to server.
+ * Server recovers wallet address from signature and issues Cognito identity.
+ * Final step of the 1-trip connectAndSign flow.
+ */
+export async function connectVerify(
+  signature: string,
+  nonce: string,
+): Promise<ConnectVerifyResponse> {
+  const url = `${METAMASK_API_BASE_URL}/connect-verify`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ signature, nonce }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new MetaMaskApiError(
+        data.message || 'Failed to verify connect signature',
+        response.status,
+        data
+      );
+    }
+
+    return data as ConnectVerifyResponse;
+  } catch (error) {
+    if (error instanceof MetaMaskApiError) {
+      throw error;
+    }
+
+    console.error('Failed to connect-verify:', error);
+    throw new MetaMaskApiError(
+      error instanceof Error ? error.message : 'Network error occurred'
+    );
+  }
 }
