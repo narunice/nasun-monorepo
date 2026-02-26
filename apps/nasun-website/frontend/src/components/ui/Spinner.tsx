@@ -9,6 +9,7 @@ import { FC } from "react";
 
 interface SpinnerProps {
   size?: "sm" | "md" | "lg" | "xl";
+  colorClass?: string;
   className?: string;
 }
 
@@ -19,10 +20,10 @@ const sizeClasses = {
   xl: "h-12 w-12 border-[3px]",
 };
 
-export const Spinner: FC<SpinnerProps> = ({ size = "md", className = "" }) => {
+export const Spinner: FC<SpinnerProps> = ({ size = "md", colorClass = "border-nasun-c4", className = "" }) => {
   return (
     <div
-      className={`animate-spin rounded-full border-nasun-c4 border-t-transparent ${sizeClasses[size]} ${className}`}
+      className={`animate-spin rounded-full ${colorClass} border-t-transparent ${sizeClasses[size]} ${className}`}
       role="status"
       aria-label="Loading"
     >

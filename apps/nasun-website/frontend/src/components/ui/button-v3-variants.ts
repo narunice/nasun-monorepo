@@ -3,7 +3,7 @@
 import { cva } from "class-variance-authority";
 
 export const buttonV3Variants = cva(
-  "inline-flex items-center justify-center rounded-full font-light whitespace-nowrap active:scale-[0.97] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 transition-all cursor-pointer",
+  "inline-flex items-center justify-center rounded-full font-light whitespace-nowrap active:scale-[0.97] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:active:scale-100 transition-all cursor-pointer",
   {
     variants: {
       variant: {

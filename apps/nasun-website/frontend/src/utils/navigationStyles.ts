@@ -13,7 +13,7 @@ export const DESKTOP_NAVIGATION_STYLES = {
   // 패딩을 base에 통일하여 active/inactive 전환 시 레이아웃 시프트 방지
   // whitespace-nowrap으로 메뉴 항목 줄바꿈 방지
   mainLink: {
-    base: "transition-all text-base text-nasun-black outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1 px-5 py-1.5 whitespace-nowrap",
+    base: "transition-all text-base text-nasun-black outline-none px-5 py-1.5 whitespace-nowrap",
     active: "bg-nasun-c4/20 rounded-2xl",
     inactive: "text-nasun-black hover:opacity-70",
   },
@@ -22,7 +22,7 @@ export const DESKTOP_NAVIGATION_STYLES = {
   // 패딩을 base에 통일하여 active/inactive 전환 시 레이아웃 시프트 방지
   // whitespace-nowrap으로 메뉴 항목 줄바꿈 방지
   parentButton: {
-    base: "flex items-center gap-1 xl:gap-2 transition-all text-base text-nasun-black outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1 pl-4 pr-2 xl:pl-5 xl:pr-3 py-1.5 whitespace-nowrap",
+    base: "flex items-center gap-1 xl:gap-2 transition-all text-base text-nasun-black outline-none pl-4 pr-2 xl:pl-5 xl:pr-3 py-1.5 whitespace-nowrap",
     active: "bg-nasun-c4/20 rounded-2xl",
     inactive: "text-nasun-black hover:opacity-70",
   },
@@ -58,14 +58,14 @@ export const DESKTOP_NAVIGATION_STYLES = {
 export const MOBILE_NAVIGATION_STYLES = {
   // 메인 네비게이션 링크 (서브메뉴가 없는 항목)
   mainLink: {
-    base: "block text-base py-1.5 px-2 transition-all text-left rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1",
+    base: "block text-base py-1.5 px-2 transition-all text-left rounded-xl outline-none",
     active: "bg-nasun-c4/20",
     inactive: "text-nasun-black hover:bg-slate-800/60",
   },
 
   // 서브메뉴를 가진 부모 버튼
   parentButton: {
-    base: "flex items-center justify-between gap-2 w-full text-base py-1.5 px-2 transition-all rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1",
+    base: "flex items-center justify-between gap-2 w-full text-base py-1.5 px-2 transition-all rounded-xl outline-none",
     active: "bg-nasun-c4/20",
     inactive: "text-nasun-black hover:bg-slate-800/60",
   },
