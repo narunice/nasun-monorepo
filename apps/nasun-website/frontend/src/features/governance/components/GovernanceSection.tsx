@@ -100,7 +100,7 @@ const ProposalList = () => {
   const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
   const [filter, setFilter] = useState<ProposalFilter>("all");
 
-  const { data: hiddenIdsArray = [] } = useQuery({
+  const { data: hiddenIdsArray = [], isPending: isHiddenPending } = useQuery({
     queryKey: ["hiddenProposals"],
     queryFn: fetchHiddenProposalIds,
     staleTime: 30 * 1000,
@@ -118,7 +118,7 @@ const ProposalList = () => {
     },
   });
 
-  if (isDashboardPending) {
+  if (isDashboardPending || isHiddenPending) {
     return <SectionLoading showLayout={false} />;
   }
 
@@ -126,7 +126,7 @@ const ProposalList = () => {
     const error = dashboardError || nftsError;
     return (
       <div className="text-red-500">
-        {t("error.generic")}: {error?.message}
+        {t("error.generic")}
       </div>
     );
   }
