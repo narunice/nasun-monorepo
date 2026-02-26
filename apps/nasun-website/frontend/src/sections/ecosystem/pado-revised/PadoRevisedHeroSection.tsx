@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 
 import { InlineLoading } from "@/components/ui/InlineLoading";
 const waldenVideoDesktop = "/videos/walden-hero-token-desktop.mp4";
-const waldenVideoMobile = "/videos/Walden-Dex-Token-Mobile-rf18.mp4";
+const waldenVideoMobile = "/videos/Walden-Dex-Token-Mobile-rf24.mp4";
 import { Button } from "@/components/ui";
 import { ArrowUpRight } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
@@ -71,6 +71,7 @@ function PadoRevisedHeroSection({ onVideoReady }: PadoRevisedHeroSectionProps) {
         loop
         muted
         playsInline
+        poster={isMobile ? "/images/posters/Walden-Dex-Token-Mobile-rf24.webp" : "/images/posters/walden-hero-token-desktop.webp"}
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`w-full h-full max-w-9xl ${!isVideoPlaying ? "opacity-0" : "opacity-100"} ${

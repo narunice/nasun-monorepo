@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { InlineLoading } from "@/components/ui/InlineLoading";
-const battalionNftVideoDesktop = "/videos/Battalion-Nft-Letterbox-01-rf22.mp4";
+const battalionNftVideoDesktop = "/videos/Battalion-Nft-Leeterbox-01-rf25.mp4";
 const battalionNftVideoMobile = "/videos/Battalion-Nft-White-Square-01-mobile-rf20.mp4";
 
 interface BattalionNftHeroSectionProps {
@@ -151,6 +151,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
               muted
               playsInline
               preload="auto"
+              poster="/images/posters/Battalion-Nft-White-Square-01-mobile-rf20.webp"
               onCanPlay={handleVideoCanPlay}
               onPlaying={handleVideoPlaying}
               className={videoClassName}
@@ -210,6 +211,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
             muted
             playsInline
             preload="auto"
+            poster="/images/posters/Battalion-Nft-Leeterbox-01-rf25.webp"
             onCanPlay={handleVideoCanPlay}
             onPlaying={handleVideoPlaying}
             className={videoClassName}

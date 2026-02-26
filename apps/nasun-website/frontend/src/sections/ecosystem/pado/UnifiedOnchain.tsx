@@ -18,7 +18,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-const padoUiVideo = "/videos/Pado-Ui-Full-rf16.mp4";
+const padoUiVideo = "/videos/Pado-Ui-Full-rf24.mp4";
 
 export const UnifiedOnchain = () => {
   const { t } = useTranslation("pado");
@@ -152,6 +152,7 @@ export const UnifiedOnchain = () => {
                 muted
                 playsInline
                 controls
+                poster="/images/posters/Pado-Ui-Full-rf24.webp"
                 className="w-full rounded-lg"
               />
             </div>

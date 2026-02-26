@@ -301,12 +301,13 @@ export const FinanceContent = () => {
           <FadeInUp delay="0.05s">
             <div className="mt-2 md:mt-4 lg:mt-6 mb-6">
               <video
-                src="/videos/Pado-Ui-Full-rf16.mp4"
+                src="/videos/Pado-Ui-Full-rf24.mp4"
                 autoPlay
                 loop
                 muted
                 playsInline
                 controls
+                poster="/images/posters/Pado-Ui-Full-rf24.webp"
                 className="w-full rounded-lg"
               />
             </div>
