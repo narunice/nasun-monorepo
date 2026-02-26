@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useEffect, useState, useCallback, useRef } from "react";
 import logger from "@/lib/logger";
 import { formatErrorMessage } from "@/lib/errorParser";
 import { useUserStore } from "@/store/userStore";
@@ -17,6 +17,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading, setUser, clearUser, setIsLoading } = useUserStore();
   const [error, setError] = useState<Error | null>(null);
+  const oauthProcessingRef = useRef(false);
 
   const clearError = () => setError(null);
 
@@ -38,7 +39,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [setIsLoading, setUser, clearUser]);
 
   const handleOAuthRedirect = useCallback(async (): Promise<boolean> => {
-    const provider = localStorage.getItem("auth_provider_preference");
+    // Prevent double-execution from StrictMode double-fire or re-renders.
+    // Without this guard, replaceState() below wipes URL params on the first call,
+    // causing the second call to see a clean URL and fall through to checkAuthStatus().
+    if (oauthProcessingRef.current) return false;
+
+    const storedProvider = localStorage.getItem("auth_provider_preference");
     const url = new URL(window.location.href);
 
     // Check for account linking flow
@@ -47,20 +53,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isLinkingFlow = !!twitterLinkSession || !!googleLinkSession;
 
     // Skip Twitter OAuth if this is Battalion NFT flow
-    // Note: Step2XAuthCard stores this in sessionStorage (not localStorage)
-    const isBattalionNftTwitterSession = sessionStorage.getItem("battalion_nft_twitter_session");
+    // Primary: sessionStorage (secure), Fallback: localStorage flow type flag (non-sensitive)
+    const isBattalionNftTwitterSession = sessionStorage.getItem("battalion_nft_twitter_session")
+      || localStorage.getItem("auth_flow_type") === "battalion_nft";
     if (isBattalionNftTwitterSession && url.searchParams.has("code")) {
       logger.debug("Skipping AuthContext Twitter OAuth - Battalion NFT flow detected");
       return false;
     }
 
-    const isGoogleRedirect = provider === "Google" && url.hash.includes("id_token");
-    const isTwitterRedirect = provider === "Twitter" && url.searchParams.has("code");
+    const hasIdToken = url.hash.includes("id_token");
+    const hasCodeAndState = url.searchParams.has("code") && url.searchParams.has("state");
+    const isZkLoginSession = !!sessionStorage.getItem("nasun:zklogin:session");
 
+    // Primary: localStorage gatekeeper (preserves existing security)
+    let isGoogleRedirect = storedProvider === "Google" && hasIdToken;
+    let isTwitterRedirect = storedProvider === "Twitter" && hasCodeAndState;
+
+    // Fallback: URL-based detection when localStorage is lost (mobile browser storage eviction)
     if (!isGoogleRedirect && !isTwitterRedirect) {
+      if (hasIdToken && !isZkLoginSession) {
+        isGoogleRedirect = true;
+        logger.warn("OAuth fallback: detected Google redirect without localStorage gatekeeper");
+      } else if (hasCodeAndState) {
+        isTwitterRedirect = true;
+        logger.warn("OAuth fallback: detected Twitter redirect without localStorage gatekeeper");
+      }
+    }
+
+    const provider = isGoogleRedirect ? "Google" : isTwitterRedirect ? "Twitter" : null;
+    if (!provider) {
       return false;
     }
 
+    oauthProcessingRef.current = true;
     setIsLoading(true);
     clearError();
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -145,7 +170,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       localStorage.removeItem("auth_provider_preference");
       localStorage.removeItem("twitter_oauth_session");
+      localStorage.removeItem("auth_flow_type");
       setIsLoading(false);
+      oauthProcessingRef.current = false;
 
       // Fallback redirect for non-/callback pages.
       // When on /callback, Callback.tsx handles post-auth navigation via React Router.
@@ -264,6 +291,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Battalion NFT state
       localStorage.removeItem("battalion-nft-state");
+      localStorage.removeItem("auth_flow_type");
       sessionStorage.removeItem("battalion_nft_twitter_session");
 
       // Clear all remaining sessionStorage items
