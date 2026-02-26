@@ -2,12 +2,29 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// 환경별 .env 파일 로드
-const nodeEnv = process.env.NODE_ENV || 'production';
+// Require explicit NODE_ENV to prevent accidental cross-account contamination.
+// Without this guard, omitting NODE_ENV would silently load production env vars
+// and deploy them to the wrong AWS account.
+const nodeEnv = process.env.NODE_ENV;
+if (!nodeEnv || !['development', 'production'].includes(nodeEnv)) {
+  console.error('[CDK] ERROR: NODE_ENV must be explicitly set to "development" or "production".');
+  console.error('[CDK] Usage: NODE_ENV=development npx cdk deploy <stack>');
+  console.error('[CDK] Or use: /deploy nasun-website dev <stack>');
+  process.exit(1);
+}
+
 const envFile = nodeEnv === 'production' ? '.env.production' : '.env.development';
 dotenv.config({ path: path.resolve(__dirname, '..', envFile) });
 
 console.log(`[CDK] Loading environment: ${envFile} (NODE_ENV=${nodeEnv})`);
+
+// Account-env mapping: ensures env vars are deployed to the correct AWS account.
+// CDK will refuse to deploy if the current AWS credentials don't match env.account.
+const EXPECTED_ACCOUNTS: Record<string, string> = {
+  development: '__AWS_DEV_ACCOUNT__',
+  production: '__AWS_PROD_ACCOUNT__',
+};
+const cdkEnv = { account: EXPECTED_ACCOUNTS[nodeEnv], region: 'ap-northeast-2' };
 
 import * as cdk from 'aws-cdk-lib';
 import { AuthStack } from '../lib/auth-stack';
@@ -21,32 +38,30 @@ import { LeaderboardV3Stack } from '../lib/leaderboard-v3-stack';
 const app = new cdk.App();
 
 // Common infrastructure stack (NFT, User Profile, Price API, AWS Credentials)
-const commonStack = new CommonStack(app, 'CommonStack', {
-  env: { region: 'ap-northeast-2' }
-});
+const commonStack = new CommonStack(app, 'CommonStack', { env: cdkEnv });
 
 // Auth stack, depends on the common stack for the user profiles table
 const authStack = new AuthStack(app, 'AuthStack', {
+  env: cdkEnv,
   userProfilesTable: commonStack.userProfilesTable,
 });
 authStack.addDependency(commonStack);
 
 // Monitoring stack, depends on common stack
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
+  env: cdkEnv,
   priceApiGateway: commonStack.priceApiGateway,
   priceUpdaterLambda: commonStack.priceUpdaterLambda,
 });
 monitoringStack.addDependency(commonStack);
 
 // NFT Event stack (Wave 1 Battalion Free Mint)
-const nftEventStack = new NftEventStack(app, 'NftEventStack', {
-  env: { region: 'ap-northeast-2' },
-});
+const nftEventStack = new NftEventStack(app, 'NftEventStack', { env: cdkEnv });
 // No dependencies - standalone stack with Feature Flag
 
 // Admin stack (Whitelist Export, Governance Management)
 const adminStack = new AdminStack(app, 'AdminStack', {
-  env: { region: 'ap-northeast-2' },
+  env: cdkEnv,
   userProfilesTableName: 'UserProfiles',
   genesisTableName: 'GenesisNftWhitelist',
   battalionTableName: 'nasun-nft-whitelist',
@@ -55,7 +70,7 @@ const adminStack = new AdminStack(app, 'AdminStack', {
 
 // Follower collection stack (X API daily follower tracking + OAuth2 token refresh)
 const followerStack = new FollowerStack(app, 'FollowerStack', {
-  env: { region: 'ap-northeast-2' },
+  env: cdkEnv,
   targetAccounts: process.env.TARGET_ACCOUNTS || '[]',
   twitterTokensSecretName: process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens',
 });
@@ -68,7 +83,7 @@ if (!cognitoIdentityPoolId) {
 }
 
 const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
-  env: { region: 'ap-northeast-2' },
+  env: cdkEnv,
   environmentName: 'prod',
   cognitoIdentityPoolId,
   userProfilesTableName: 'UserProfiles',
