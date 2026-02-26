@@ -78,7 +78,11 @@
     },
     "fairPlay": {
       "title": "Fair Play",
-      "description": "No bots, no spam. Organic only."
+      "items": [
+        "No bots, scripts, or fake accounts",
+        "No spam or coordinated manipulation",
+        "Violators will be banned"
+      ]
     },
     "viewLeaderboard": "View Live Leaderboard"
   }
