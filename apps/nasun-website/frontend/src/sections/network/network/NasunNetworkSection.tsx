@@ -73,12 +73,13 @@ function NasunNetworkSection() {
                 {t("network.communityBuilds")}
               </h6>
 
-              {/* Button */}
+              {/* Button - hidden until ecosystem page is ready
               <div className="pt-6 md:pt-8 text-center">
                 <ButtonV3 variant="gradientDark" size="md" disabled className="opacity-50 cursor-not-allowed">
                   {t("network.buttonText")}
                 </ButtonV3>
               </div>
+              */}
             </OuterBox>
           </div>
         </div>

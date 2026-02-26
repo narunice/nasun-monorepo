@@ -20,8 +20,9 @@ import {
   formatTimeRemaining,
   getStatusBadge,
 } from "@/features/governance/utils/proposalHelpers";
+import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { OuterBox, PageTitle } from "@/components/ui";
+import { OuterBox, PageTitle, SectionLoading } from "@/components/ui";
 import { toast } from "react-toastify";
 import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
 import { ButtonV3 } from "@/components/ui/button-v3";
@@ -68,37 +69,35 @@ const ProposalDetailPage: FC = () => {
 
   if (!isValidId) {
     return (
-      <SectionLayout className="!max-w-4xl">
-        <div className="text-center py-20">
+      <PageLayout className="!pt-0">
+        <div className="flex-1 flex flex-col items-center justify-center py-20">
           <p className="text-red-400 mb-4">Invalid proposal ID</p>
           <ButtonV3 variant="nw2" outline onClick={() => navigate("/network/governance")}>
             Back to Governance
           </ButtonV3>
         </div>
-      </SectionLayout>
+      </PageLayout>
     );
   }
 
   if (isPending || isTypeLoading) {
     return (
-      <SectionLayout className="!max-w-4xl">
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-nw1 border-t-transparent" />
-        </div>
-      </SectionLayout>
+      <PageLayout className="!pt-0">
+        <SectionLoading fullScreen />
+      </PageLayout>
     );
   }
 
   if (error || !dataResponse?.data) {
     return (
-      <SectionLayout className="!max-w-4xl">
-        <div className="text-center py-20">
+      <PageLayout className="!pt-0">
+        <div className="flex-1 flex flex-col items-center justify-center py-20">
           <p className="text-red-400 mb-4">Proposal not found</p>
           <ButtonV3 variant="nw2" outline onClick={() => navigate("/network/governance")}>
             Back to Governance
           </ButtonV3>
         </div>
-      </SectionLayout>
+      </PageLayout>
     );
   }
 
@@ -106,11 +105,11 @@ const ProposalDetailPage: FC = () => {
 
   if (!proposal) {
     return (
-      <SectionLayout className="!max-w-4xl">
-        <div className="text-center py-20">
+      <PageLayout className="!pt-0">
+        <div className="flex-1 flex items-center justify-center py-20">
           <p className="text-red-400">Failed to parse proposal data</p>
         </div>
-      </SectionLayout>
+      </PageLayout>
     );
   }
 
@@ -178,6 +177,7 @@ const ProposalDetailPage: FC = () => {
     import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet";
 
   return (
+    <PageLayout className="!pt-0">
     <SectionLayout className="!max-w-6xl gap-4 !pt-24">
       {/* Top Row: Back Button (left) + Badges (right) */}
       <div className="flex items-center justify-between">
@@ -381,6 +381,7 @@ const ProposalDetailPage: FC = () => {
         }}
       />
     </SectionLayout>
+    </PageLayout>
   );
 };
 

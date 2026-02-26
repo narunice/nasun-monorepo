@@ -11,7 +11,7 @@ const ProposalPage = () => {
   return (
     <PageLayout>
       <ErrorBoundary fallback={<div className="text-red-500">Failed to load section</div>}>
-        <Suspense fallback={<SectionLoading showLayout={false} />}>
+        <Suspense fallback={<SectionLoading fullScreen />}>
           <GovernanceSection />
         </Suspense>
       </ErrorBoundary>
