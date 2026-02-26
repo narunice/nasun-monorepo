@@ -17,7 +17,7 @@ export default function CategoryFilter({ activeCategory, onCategoryChange }: Cat
         <button
           key={cat.key}
           onClick={() => onCategoryChange(cat.key)}
-          className="focus:outline-none focus:ring-2 focus:ring-nasun-c7/50 rounded-full"
+          className="focus:outline-none rounded-full"
         >
           <Tag
             variant={activeCategory === cat.key ? "filledc7" : "outlinec7"}
