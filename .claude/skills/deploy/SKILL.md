@@ -225,7 +225,7 @@ NODE_ENV={node_env} npx cdk diff {stack_or_all} \
 - diff 출력에서 `[+]` (추가), `[~]` (수정), `[-]` (삭제) 카운트
 - `[+].*Lambda::Function` 또는 `[+].*DynamoDB::Table` 발견 시 비용 경고:
   "새 AWS 리소스가 생성됩니다. 비용이 발생할 수 있습니다."
-- diff가 없으면 (exit code 0, 출력 없음): "변경사항이 없습니다." 출력 후 종료
+- diff가 없으면 (exit code 0, 출력 없음): "CDK 변경사항이 없습니다." 출력 후 종료. nasun-website의 경우 프론트엔드 배포가 필요할 수 있음을 안내 (프론트엔드 배포는 이 스킬의 범위 밖 — 아래 "프론트엔드 배포" 섹션 참조)
 
 **사용자 확인:**
 
@@ -354,15 +354,31 @@ aws lambda get-function-configuration \
 
 배포 환경, 계정, 스택, 상태를 테이블로 출력합니다.
 
+---
+
 ## $ARGUMENTS 처리
 
 | 패턴 | 동작 | 예시 |
 | ---- | ---- | ---- |
 | (없음) | 에러: 앱과 환경을 지정하세요 | `/deploy` |
-| `<app> dev` | Dev 환경 전체 스택 배포 | `/deploy nasun-website dev` |
-| `<app> prod` | Prod 환경 전체 스택 배포 | `/deploy baram prod` |
+| `<app> dev` | Dev 환경 CDK 배포 | `/deploy nasun-website dev` |
+| `<app> prod` | Prod 환경 CDK 배포 | `/deploy baram prod` |
 | `<app> <env> <stack>` | 특정 스택만 배포 | `/deploy nasun-website dev LeaderboardV3Stack` |
 | `--check <app> <env>` | Pre-flight 검사만 (배포 안 함) | `/deploy --check nasun-website prod` |
+
+## 프론트엔드 배포 (nasun-website)
+
+nasun-website 프론트엔드는 이 스킬의 범위 밖입니다. 사용자가 직접 전용 스크립트를 실행합니다:
+
+```bash
+# Staging
+bash scripts/deploy-nasun-website-staging.sh
+
+# Production
+bash scripts/deploy-nasun-website-production.sh
+```
+
+스크립트는 TypeScript 타입 체크, 빌드, 백업(prod), rsync, Nginx reload, 헬스 체크를 자동 수행합니다. CDK 배포 후 프론트엔드 변경이 있으면 사용자에게 스크립트 실행을 안내하세요.
 
 ## 안티 패턴
 
@@ -372,7 +388,6 @@ aws lambda get-function-configuration \
 | `--profile` 없이 prod 배포 | 기본 계정(dev)에 배포됨 | 자동으로 `nasun-prod` 선택 |
 | `cdk deploy --all` 무조건 실행 | 불필요한 스택까지 배포 | 가능하면 변경된 스택만 지정 |
 | `baram-aer` 경로 참조 | 디렉토리가 `apps/baram`으로 변경됨 | `apps/baram` 사용 |
-| 기존 deploy-safe-env.sh 직접 실행 | interactive prompt 지원 안 됨 | 이 스킬의 단계별 실행 사용 |
 | Lambda 개별 업데이트 (`aws lambda update-function-code`) | CDK 상태와 불일치 | CDK로 배포 |
 | 프론트엔드 .env URL 미확인 후 배포 | 배포된 스택의 API를 프론트엔드가 참조하지 않아 방치됨 | 8.3단계에서 반드시 동기화 확인 |
 | dev/prod .env에서 다른 계정의 API 참조 | 환경 분리 무효화, 데이터 격리 실패 | 5단계 양방향 교차 검증으로 감지 |
@@ -388,3 +403,4 @@ aws lambda get-function-configuration \
 - 새 AWS 리소스 생성 시 비용 영향을 사용자에게 고지
 - **모든 Lambda가 `NodejsFunction`(esbuild 자동 번들링)을 사용** — 수동 빌드, npm/pnpm 구분, `dist/` 관리 모두 불필요
 - CDK 명령어는 반드시 `apps/{app}/cdk/` 디렉토리에서 실행
+- nasun-website 프론트엔드 배포는 사용자가 직접 `scripts/deploy-nasun-website-*.sh` 스크립트를 실행
