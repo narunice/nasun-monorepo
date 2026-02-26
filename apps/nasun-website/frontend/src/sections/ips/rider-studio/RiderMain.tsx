@@ -3,7 +3,7 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 
 // 배경 이미지 (기존 경로 유지)
-import bgImage from "../../../assets/images/Firefly_Remove only the single camera and tripod at the far left edge of the image. _Do not r 609126.png";
+import bgImage from "../../../assets/images/firefly-rider.webp";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 /**
