@@ -119,7 +119,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
                 </li>
               ))}
             </ul>
-            <div className="flex flex-row justify-around md:flex-col gap-2 flex-shrink-0">
+            <div className="flex flex-col gap-2 flex-shrink-0">
               <ButtonV3 variant="nw5" outline size="sm" asChild>
                 <a
                   href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
