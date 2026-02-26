@@ -3,6 +3,7 @@ import { Suspense, lazy, useState, useCallback, useEffect } from "react";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
+import { useEpochInfo, useTPS } from "../../hooks/network/useNetworkData";
 
 import NetworkHeroSectionSkeleton from "../../sections/network/network/NetworkHeroSectionSkeleton";
 
@@ -45,6 +46,11 @@ const ForBuildersSection = lazy(
 const VisionNetworkPage = () => {
   const [isVideoReady, setIsVideoReady] = useState(false);
   const { setIsPageReady } = usePageLoading();
+
+  // Prefetch RPC data in parallel with video loading
+  // React Query cache ensures NetworkActivitySection gets instant data on mount
+  useEpochInfo();
+  useTPS();
 
   // 페이지 마운트 시 페이지 준비 상태를 false로 설정 (Footer 숨김)
   useEffect(() => {
