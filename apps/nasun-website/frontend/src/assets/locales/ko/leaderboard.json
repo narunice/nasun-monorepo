@@ -78,7 +78,11 @@
     },
     "fairPlay": {
       "title": "Fair Play",
-      "description": "No bots, no spam. Organic only."
+      "items": [
+        "봇, 스크립트, 가짜 계정 금지",
+        "스팸 및 조직적 조작 금지",
+        "위반 시 차단"
+      ]
     },
     "viewLeaderboard": "View Live Leaderboard"
   }

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -30,36 +31,31 @@ const TIER_CONFIG: Record<
     accentClass: string;
     iconColorClass: string;
     bgClass: string;
-    borderClass: string;
   }
 > = {
   platinum: {
     icon: faTrophy,
     accentClass: "text-nasun-white",
     iconColorClass: "text-amber-300",
-    bgClass: "bg-nasun-white/[0.04]",
-    borderClass: "border-l-nasun-white/60",
+    bgClass: "bg-nasun-white/[0.08]",
   },
   gold: {
     icon: faGem,
     accentClass: "text-nasun-c1",
     iconColorClass: "text-nasun-c1",
-    bgClass: "bg-nasun-c1/[0.04]",
-    borderClass: "border-l-nasun-c1/60",
+    bgClass: "bg-nasun-c1/[0.08]",
   },
   silver: {
     icon: faBolt,
     accentClass: "text-nasun-nw4",
     iconColorClass: "text-nasun-nw4",
-    bgClass: "bg-nasun-nw4/[0.04]",
-    borderClass: "border-l-nasun-nw4/60",
+    bgClass: "bg-nasun-nw4/[0.08]",
   },
   bronze: {
     icon: null,
     accentClass: "text-nasun-white/50",
     iconColorClass: "",
-    bgClass: "bg-nasun-white/[0.02]",
-    borderClass: "border-l-nasun-white/20",
+    bgClass: "bg-nasun-white/[0.05]",
   },
 };
 
@@ -85,6 +81,10 @@ const LeaderboardInfoSection: React.FC = () => {
   const hasTwitter = user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter?.twitterHandle;
 
   const earnPointsItems = t("info.earnPoints.items", {
+    returnObjects: true,
+  }) as string[];
+
+  const fairPlayItems = t("info.fairPlay.items", {
     returnObjects: true,
   }) as string[];
 
@@ -130,7 +130,7 @@ const LeaderboardInfoSection: React.FC = () => {
                       {t("info.howToJoin.linkAccount.link")}
                     </Link>
                     {t("info.howToJoin.linkAccount.post")}{" "}
-                    <span className="text-nasun-white/40 text-xs">
+                    <span className="text-nasun-white/40">
                       {t("info.howToJoin.linkAccount.label")}
                     </span>
                   </>
@@ -145,9 +145,7 @@ const LeaderboardInfoSection: React.FC = () => {
                       {t("info.howToJoin.signUp.link")}
                     </button>
                     {t("info.howToJoin.signUp.post")}{" "}
-                    <span className="text-nasun-white/60 text-xs">
-                      {t("info.howToJoin.signUp.label")}
-                    </span>
+                    <span className="text-nasun-white/60">{t("info.howToJoin.signUp.label")}</span>
                   </>
                 )}
               </p>
@@ -167,9 +165,7 @@ const LeaderboardInfoSection: React.FC = () => {
                   {t("info.howToJoin.telegram.link")}
                 </a>
                 {t("info.howToJoin.telegram.post")}{" "}
-                <span className="text-nasun-white/60 text-xs">
-                  {t("info.howToJoin.telegram.label")}
-                </span>
+                <span className="text-nasun-white/60">{t("info.howToJoin.telegram.label")}</span>
               </p>
             </li>
           </ul>
@@ -184,14 +180,14 @@ const LeaderboardInfoSection: React.FC = () => {
           </div>
 
           {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto bg-nasun-nw3/10 border border-nasun-nw4/30 rounded-sm">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-nasun-nw3/30">
+                <tr className="bg-nasun-nw3/20 border-b border-nasun-nw4/30">
                   {COLUMNS.map((col) => (
                     <th
                       key={col}
-                      className="px-4 py-3 text-left uppercase tracking-wider text-nasun-nw4 font-medium text-sm"
+                      className="px-4 py-3 text-left uppercase tracking-wider text-nasun-nw4 font-medium"
                     >
                       {t(`info.rewards.columns.${col}`)}
                     </th>
@@ -207,7 +203,7 @@ const LeaderboardInfoSection: React.FC = () => {
                   return (
                     <tr
                       key={tier}
-                      className={`${config.bgClass} border-l-2 ${config.borderClass} transition-colors hover:bg-nasun-white/[0.03]`}
+                      className={`${config.bgClass} transition-colors hover:bg-nasun-white/[0.03]`}
                     >
                       <td className="px-4 py-4 text-nasun-white/90 font-mono">
                         {t(`info.rewards.${tier}.rank`)}
@@ -259,7 +255,7 @@ const LeaderboardInfoSection: React.FC = () => {
               return (
                 <div
                   key={tier}
-                  className={`${config.bgClass} border border-nasun-white/[0.08] border-l-2 ${config.borderClass} rounded-sm p-4`}
+                  className={`${config.bgClass} border border-nasun-white/[0.08] rounded-sm p-4`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h6 className={`flex items-center gap-2 font-medium ${config.accentClass}`}>
@@ -278,19 +274,19 @@ const LeaderboardInfoSection: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                     <div>
-                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-xs">
+                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-sm">
                         {t("info.rewards.columns.poolShare")}
                       </span>
                       <p className="mt-0.5">{t(`info.rewards.${tier}.poolShare`)}</p>
                     </div>
                     <div>
-                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-xs">
+                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-sm">
                         {t("info.rewards.columns.battalionNft")}
                       </span>
                       <p className="mt-0.5">{t(`info.rewards.${tier}.nft`)}</p>
                     </div>
                     <div>
-                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-xs">
+                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-sm">
                         {t("info.rewards.columns.allowlist")}
                       </span>
                       <div className="mt-1">
@@ -305,7 +301,7 @@ const LeaderboardInfoSection: React.FC = () => {
                       </div>
                     </div>
                     <div>
-                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-xs">
+                      <span className="text-nasun-nw1/60 uppercase tracking-wider text-sm">
                         {t("info.rewards.columns.drawings")}
                       </span>
                       <div className="mt-1">
@@ -322,7 +318,7 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- Bottom Grid: Earn Points + Fair Play --- */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-5">
           {/* Earn Points */}
-          <div className="md:col-span-3 bg-nasun-nw2/10 border border-nasun-nw4/20 rounded-sm p-5 md:p-6">
+          <OuterBox color="nw0" padding="sm" className="md:col-span-3">
             <div className="flex items-center gap-2.5 mb-4">
               <FontAwesomeIcon icon={faCircleDot} className="w-4 h-4 text-nasun-nw1" />
               <h6 className="font-medium uppercase tracking-wider">{t("info.earnPoints.title")}</h6>
@@ -332,20 +328,27 @@ const LeaderboardInfoSection: React.FC = () => {
               {earnPointsItems.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="mt-2 w-1.5 h-1.5 rounded-full bg-nasun-nw1 shrink-0" />
-                  <span className="text-nasun-white/85">{item}</span>
+                  {item}
                 </li>
               ))}
             </ul>
-          </div>
+          </OuterBox>
 
           {/* Fair Play */}
-          <div className="md:col-span-2  bg-nasun-nw2/10 border border-nasun-nw4/20  rounded-sm p-5 md:p-6 flex flex-col">
+          <OuterBox color="nw0" padding="sm" className="md:col-span-2 flex flex-col">
             <div className="flex items-center gap-2.5 mb-4">
-              <FontAwesomeIcon icon={faShieldHalved} className="text-nasun-nw1 w-4 h-4 " />
+              <FontAwesomeIcon icon={faShieldHalved} className="text-nasun-nw1 w-4 h-4" />
               <h6 className="font-medium uppercase tracking-wider">{t("info.fairPlay.title")}</h6>
             </div>
-            <p className="flex-1 !text-nasun-scarlet/80">{t("info.fairPlay.description")}</p>
-          </div>
+            <ul className="space-y-2.5 flex-1">
+              {fairPlayItems.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 !text-nasun-scarlet">
+                  <span className="mt-2 w-1.5 h-1.5 rounded-full bg-nasun-scarlet shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </OuterBox>
         </div>
 
         {/* --- CTA Button --- */}
