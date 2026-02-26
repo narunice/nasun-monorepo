@@ -2,9 +2,20 @@
   "info": {
     "pageTitle": "Leaderboard Guide",
     "subtitle": "Contribute content, bring people in, and help create network effects. Climb the ranks to access the Launch Pool and earn Battalion NFTs.",
-    "howToJoin": "How to join: Follow",
-    "howToJoinMiddle": "and sign up to this website",
-    "howToJoinSuffix": "(auto-enrolled).",
+    "howToJoin": "How to join:",
+    "howToJoinGuest": {
+      "pre": "sign up to this website with your ",
+      "xLink": "X account",
+      "mid": " (required), or join our ",
+      "telegramLink": "Telegram channel",
+      "post": " (optional)."
+    },
+    "howToJoinNoTwitter": {
+      "pre": "Connect your X account on your ",
+      "accountLink": "account page",
+      "post": " to participate in the leaderboard."
+    },
+    "howToJoinEligible": "You're eligible to participate in this leaderboard event.",
     "rewards": {
       "title": "Rewards",
       "columns": {
