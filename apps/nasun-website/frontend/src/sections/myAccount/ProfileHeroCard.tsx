@@ -121,7 +121,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
       }
     };
 
-    checkWallet();
+    checkWallet().catch(() => {
+      // MetaMask not installed — no active wallet to report
+    });
 
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length > 0) {

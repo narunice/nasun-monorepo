@@ -108,6 +108,15 @@ export default function Callback() {
         });
     }
 
+    // Case 4: isLoading finished but not authenticated and no error.
+    // This can happen if the linking flow failed silently (e.g. refreshAndSaveUserProfile threw
+    // but the error was not propagated to AuthContext).
+    if (!isLoading && !isAuthenticated && !error) {
+      hasHandledRef.current = true;
+      navigate("/login?error=session_expired", { replace: true });
+      return;
+    }
+
     // Otherwise, we are still loading, so the component will just keep showing the spinner.
 
   }, [navigate, searchParams, isAuthenticated, isLoading, user, error, isZkLogin]);
