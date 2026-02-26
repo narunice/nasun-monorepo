@@ -209,17 +209,9 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
                 exit="exit"
                 className="flex items-center justify-center"
               >
-                {activeItem.id === "LOGO" ? (
-                  <img
-                    src="/nasun-wordmark-white.svg"
-                    alt="NASUN"
-                    className="h-[60px] md:h-[68px] lg:h-[82px] xl:h-24 drop-shadow-lg"
-                  />
-                ) : (
-                  <h1 className="text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wide text-center uppercase drop-shadow-lg">
+                <h1 className={`text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wide text-center uppercase drop-shadow-lg ${activeItem.id === "LOGO" ? "font-bold tracking-wider" : ""}`}>
                     {activeItem.content}
                   </h1>
-                )}
               </motion.div>
             )}
           </AnimatePresence>

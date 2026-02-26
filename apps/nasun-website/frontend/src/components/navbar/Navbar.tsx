@@ -114,11 +114,9 @@ export default function Navbar() {
               // 다른 페이지에서는 Link의 기본 동작 (홈으로 이동)
             }}
           >
-            <img
-              src="/nasun-wordmark-black.svg"
-              alt="NASUN"
-              className="hidden min-[440px]:block h-6 md:h-7 lg:h-8 w-auto transition-all"
-            />
+            <span className="hidden min-[440px]:block !font-changeling font-bold text-nasun-black text-xl md:text-2xl tracking-wider transition-all">
+              NASUN
+            </span>
           </Link>
         </div>
 

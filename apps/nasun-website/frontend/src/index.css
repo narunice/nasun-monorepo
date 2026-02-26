@@ -133,48 +133,12 @@
   src: url("/fonts/pirulen/pirulen-regular.woff2") format("woff2");
 }
 
-/* FoundersGrotesk Font Family */
-@font-face {
-  font-family: "Founders Grotesk";
-  src: url("./assets/FoundersGroteskFontFamily/TestFoundersGrotesk-Light-BF66175e9730f02.otf")
-    format("opentype");
-  font-weight: 300;
-  font-style: normal;
-  font-display: block;
-}
-
-@font-face {
-  font-family: "Founders Grotesk";
-  src: url("./assets/FoundersGroteskFontFamily/TestFoundersGrotesk-Regular-BF66175e972ac1c.otf")
-    format("opentype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: block;
-}
-
+/* FoundersGrotesk Font Family (Medium only - used in GenesisNftHeroSection) */
 @font-face {
   font-family: "Founders Grotesk";
   src: url("./assets/FoundersGroteskFontFamily/TestFoundersGrotesk-Medium-BF66175e9723b7a.otf")
     format("opentype");
   font-weight: 500;
-  font-style: normal;
-  font-display: block;
-}
-
-@font-face {
-  font-family: "Founders Grotesk";
-  src: url("./assets/FoundersGroteskFontFamily/TestFoundersGrotesk-Semibold-BF66175e972c958.otf")
-    format("opentype");
-  font-weight: 600;
-  font-style: normal;
-  font-display: block;
-}
-
-@font-face {
-  font-family: "Founders Grotesk";
-  src: url("./assets/FoundersGroteskFontFamily/TestFoundersGrotesk-Bold-BF66175e9700615.otf")
-    format("opentype");
-  font-weight: 700;
   font-style: normal;
   font-display: block;
 }

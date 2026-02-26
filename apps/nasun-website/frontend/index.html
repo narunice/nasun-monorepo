@@ -7,6 +7,12 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Preconnect to critical origins for faster first requests -->
+    <link rel="preconnect" href="https://bumvhwfbj4.execute-api.ap-northeast-2.amazonaws.com" crossorigin />
+    <link rel="preconnect" href="https://signin.auth.ap-northeast-2.amazoncognito.com" crossorigin />
+    <link rel="dns-prefetch" href="https://rpc.devnet.nasun.io" />
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+
     <!-- CSP (Content Security Policy) - vite.config.ts에서 자동 주입됨 (inject.tags 사용) -->
 
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
