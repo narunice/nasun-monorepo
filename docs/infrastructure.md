@@ -107,6 +107,62 @@ sudo systemctl start sui-indexer
 
 ---
 
+## EC2 서버 접속
+
+### Production EC2 (nasun-prod-web, 43.200.67.52)
+
+- **AWS 계정**: nasun-prod (466841130170)
+- **인스턴스 ID**: i-01b39553e9ef34b04
+- **AMI**: Amazon Linux 2023 → 사용자명: `ec2-user`
+- **AZ**: ap-northeast-2a
+
+**SSH 접속 (로컬 키 사용)**:
+```bash
+ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52
+```
+> `~/.ssh/.awskey/nasun-prod-key` (ED25519, 2026-02-26 등록)
+
+**SSH 접속 (EC2 Instance Connect — 키 없을 때 fallback)**:
+```bash
+# 1회용 임시 키 생성 (60초 유효)
+ssh-keygen -t rsa -b 2048 -f /tmp/ec2_temp_key -N ''
+aws ec2-instance-connect send-ssh-public-key \
+  --profile nasun-prod \
+  --instance-id i-01b39553e9ef34b04 \
+  --availability-zone ap-northeast-2a \
+  --instance-os-user ec2-user \
+  --ssh-public-key file:///tmp/ec2_temp_key.pub \
+  --region ap-northeast-2
+ssh -i /tmp/ec2_temp_key ec2-user@43.200.67.52
+```
+
+### Staging EC2 (15.165.19.180)
+
+- **AWS 계정**: default (135808943968)
+- **SSH**: `ssh -i ~/.ssh/.awskey/naru_seoul.pem ubuntu@15.165.19.180`
+
+### nasun-website 프론트엔드 배포
+
+프론트엔드는 CDK와 무관하게 로컬 빌드 → rsync 방식으로 배포합니다.
+
+```bash
+# Dev 빌드 → Staging (staging.nasun.io)
+pnpm --filter @nasun/nasun-website exec -- vite build --mode development
+rsync -avz --delete \
+  -e "ssh -i ~/.ssh/.awskey/naru_seoul.pem" \
+  apps/nasun-website/frontend/dist/ \
+  ubuntu@15.165.19.180:/var/www/staging.nasun.io/
+
+# Prod 빌드 → Production (nasun.io)
+pnpm --filter @nasun/nasun-website exec -- vite build
+rsync -avz --delete \
+  -e "ssh -i ~/.ssh/.awskey/nasun-prod-key" \
+  apps/nasun-website/frontend/dist/ \
+  ec2-user@43.200.67.52:/var/www/nasun/dist/
+```
+
+---
+
 ## 배포 방식
 
 | 앱               | 배포 방식    | 트리거    | 대상 URL                         |
@@ -114,7 +170,7 @@ sudo systemctl start sui-indexer
 | baram            | EC2 스크립트 | 수동 실행 | https://baram.nasun.io           |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
 | explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-3) |
-| nasun-website    | EC2 스크립트 | 수동 실행 | https://nasun.io                 |
+| nasun-website    | 로컬 빌드 + rsync | 수동 실행 | https://nasun.io (prod), https://staging.nasun.io (dev) |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
 | pado             | EC2 스크립트 | 수동 실행 | https://pado.finance             |
 | pado LP Bot      | EC2 + PM2    | 수동 실행 | staging/prod EC2 인스턴스        |

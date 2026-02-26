@@ -132,6 +132,36 @@
 
 ---
 
+## nasun-website 프론트엔드 배포
+
+nasun-website 프론트엔드는 **CDK와 별도**로 로컬 빌드 → rsync 방식으로 배포합니다.
+CDK diff에서 변경사항이 없어도 프론트엔드 코드가 변경된 경우 아래 절차로 배포해야 합니다.
+
+### EC2 서버 정보
+
+| 환경 | IP | 사용자 | SSH 키 | Web root |
+| ---- | -- | ------ | ------ | -------- |
+| Staging (dev) | 15.165.19.180 | ubuntu | `~/.ssh/.awskey/naru_seoul.pem` | `/var/www/staging.nasun.io` |
+| Production (prod) | 43.200.67.52 | ec2-user | `~/.ssh/.awskey/nasun-prod-key` | `/var/www/nasun/dist` |
+
+> Production EC2 키 분실 시: EC2 Instance Connect로 임시 접속 후 `~/.ssh/authorized_keys`에 새 키 등록 (2026-02-26 설정됨).
+
+### 배포 명령어
+
+```bash
+# Staging (dev 환경변수 사용)
+pnpm --filter @nasun/nasun-website exec -- vite build --mode development
+rsync -avz --delete -e "ssh -i ~/.ssh/.awskey/naru_seoul.pem" \
+  apps/nasun-website/frontend/dist/ ubuntu@15.165.19.180:/var/www/staging.nasun.io/
+
+# Production
+pnpm --filter @nasun/nasun-website exec -- vite build
+rsync -avz --delete -e "ssh -i ~/.ssh/.awskey/nasun-prod-key" \
+  apps/nasun-website/frontend/dist/ ec2-user@43.200.67.52:/var/www/nasun/dist/
+```
+
+---
+
 ## 프론트엔드 환경 파일 위치
 
 API URL 교차 검증(5단계)에서 참조합니다.
