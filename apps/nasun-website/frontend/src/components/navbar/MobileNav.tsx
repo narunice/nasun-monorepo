@@ -85,13 +85,13 @@ export default function MobileNav({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/70 z-50" />
 
-        <Dialog.Content className="fixed top-0 left-0 w-3/5 h-full pt-5 pb-10 px-6 z-[65] bg-nasun-white rounded-r-lg shadow-lg">
+        <Dialog.Content className="fixed top-0 left-0 w-3/5 h-full pt-5 pb-10 pl-6 pr-2 z-[65] bg-nasun-white rounded-r-lg shadow-lg flex flex-col">
           <Dialog.Title className="sr-only">Mobile Menu</Dialog.Title>
         <Dialog.Description className="sr-only">
           사이트 내비게이션 링크를 탐색할 수 있는 패널입니다.
         </Dialog.Description>
 
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 pr-4">
           <Link to="/" onClick={(e) => handleLinkClick(e, "/")} className="flex items-center">
             {/* 흰색 심볼 */}
             <img
@@ -115,16 +115,22 @@ export default function MobileNav({
           </button>
         </div>
 
+        <div className="overflow-y-auto flex-1 min-h-0 pr-4">
         <nav className="flex flex-col items-start">
-          {navItems.map((item, index) => {
-            // 메뉴 항목 간격 설정
-            const getMarginClass = () => {
-              if (index === 0) return ""; // 첫 번째 항목은 마진 없음
-              return "mt-1"; // 나머지 항목들은 일정한 간격
-            };
-
-            return (
-              <div key={item.name} className={getMarginClass()}>
+          {/* Home link - mobile only */}
+          <div>
+            <Link
+              to="/"
+              onClick={(e) => handleLinkClick(e, "/")}
+              className={`block text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
+                location.pathname === "/" ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
+              }`}
+            >
+              Home
+            </Link>
+          </div>
+          {navItems.map((item) => (
+              <div key={item.name} className="mt-1">
                 {item.subMenu ? (
                   <div className="space-y-0.5">
                     {/* 1) 부모 메뉴: 클릭하면 토글만 */}
@@ -235,9 +241,9 @@ export default function MobileNav({
                   </Link>
                 )}
               </div>
-            );
-          })}
+          ))}
         </nav>
+        </div>
       </Dialog.Content>
     </Dialog.Portal>
     </Dialog.Root>
