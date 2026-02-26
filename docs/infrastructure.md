@@ -163,6 +163,70 @@ rsync -avz --delete \
 
 ---
 
+## CloudFront CDN (nasun.io)
+
+nasun.io는 CloudFront를 통해 글로벌 CDN으로 서빙됩니다.
+
+| 항목 | 값 |
+|------|-----|
+| Distribution ID | `E362CCGDH7WA7C` |
+| Domain | `d1b7p63gzchrkh.cloudfront.net` |
+| Origin | `ec2-43-200-67-52.ap-northeast-2.compute.amazonaws.com` (HTTP, port 80) |
+| ACM Certificate | `arn:aws:acm:us-east-1:466841130170:certificate/ad93e5d8-9fee-4696-bcf6-423c93610552` |
+| Origin 인증 | Custom header `X-CloudFront-Secret` (nginx에서 검증) |
+
+### 캐시 정책
+
+| 경로 | TTL | 설명 |
+|------|-----|------|
+| `/assets/*` | 10년 (immutable) | 해시 파일명, 장기 캐시 |
+| `/videos/*` | 30일 (immutable) | 비디오 파일 |
+| `/images/*` | 30일 (immutable) | 포스터 이미지 |
+| `index.html` (default) | 1시간 | SPA 엔트리, 배포 시 갱신 필요 |
+| `/locales/*` | no-cache | 다국어 JSON, 항상 origin 히트 |
+
+### 배포 후 캐시 무효화
+
+```bash
+# 긴급 배포 후 index.html 캐시 즉시 갱신
+aws cloudfront create-invalidation --profile nasun-prod \
+  --distribution-id E362CCGDH7WA7C \
+  --paths "/index.html" "/"
+
+# 전체 캐시 무효화 (비용: 1,000건까지 무료/월)
+aws cloudfront create-invalidation --profile nasun-prod \
+  --distribution-id E362CCGDH7WA7C \
+  --paths "/*"
+```
+
+### DNS 전환 (런칭 시)
+
+Porkbun에서 nasun.io DNS 레코드를 변경:
+
+```
+# 변경 전 (현재)
+nasun.io    A    43.200.67.52
+
+# 변경 후 (CloudFront)
+nasun.io    CNAME    d1b7p63gzchrkh.cloudfront.net
+www.nasun.io    CNAME    d1b7p63gzchrkh.cloudfront.net
+```
+
+> **주의**: CNAME은 zone apex (nasun.io)에 설정 불가한 DNS 제공자가 있음.
+> Porkbun은 ALIAS/CNAME flattening을 지원하므로 가능.
+> 만약 안되면 A record로 CloudFront IP를 설정하되, IP가 변경될 수 있으므로 비추.
+
+### 런칭 체크리스트
+
+1. [ ] nasun.conf에서 Basic Auth 제거 (2줄 주석 처리)
+2. [ ] `sudo nginx -t && sudo systemctl reload nginx`
+3. [ ] Porkbun에서 nasun.io A record → CNAME `d1b7p63gzchrkh.cloudfront.net` 변경
+4. [ ] Porkbun에서 www.nasun.io CNAME → `d1b7p63gzchrkh.cloudfront.net` 추가/변경
+5. [ ] `curl -sI https://nasun.io` 로 `x-cache` 헤더 확인
+6. [ ] 글로벌 테스트: https://www.webpagetest.org/ 에서 US/EU 지역 테스트
+
+---
+
 ## 배포 방식
 
 | 앱               | 배포 방식    | 트리거    | 대상 URL                         |
@@ -170,7 +234,7 @@ rsync -avz --delete \
 | baram            | EC2 스크립트 | 수동 실행 | https://baram.nasun.io           |
 | network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
 | explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-3) |
-| nasun-website    | 로컬 빌드 + rsync | 수동 실행 | https://nasun.io (prod), https://staging.nasun.io (dev) |
+| nasun-website    | 로컬 빌드 + rsync + CF invalidation | 수동 실행 | https://nasun.io (prod, CloudFront CDN), https://staging.nasun.io (dev) |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
 | pado             | EC2 스크립트 | 수동 실행 | https://pado.finance             |
 | pado LP Bot      | EC2 + PM2    | 수동 실행 | staging/prod EC2 인스턴스        |
