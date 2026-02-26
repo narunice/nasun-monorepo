@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "@/components/ui/DividerBox";
 // 배경 이미지
-import bgImage from "@/assets/images/boliviainteligente-iVgqztKXxwM-unsplash.jpg";
+import bgImage from "@/assets/images/boliviainteligente.webp";
 
 function PowerOfStoriesSection() {
   const { t } = useTranslation("genSol");
