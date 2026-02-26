@@ -68,7 +68,7 @@ export default function Navbar() {
   // Authentication is now handled by AuthContext
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-8xl px-0 lg:px-4 flex gap-6 items-stretch">
+    <nav aria-label="Main navigation" className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-8xl px-0 lg:px-4 flex gap-6 items-stretch">
       {/* 데스크탑: 심볼 박스 (가장 왼쪽, 독립적) */}
       <Link
         to="/"
@@ -159,6 +159,6 @@ export default function Navbar() {
           <LanguageSwitcher />
         </div>
       </div>
-    </div>
+    </nav>
   );
 }
