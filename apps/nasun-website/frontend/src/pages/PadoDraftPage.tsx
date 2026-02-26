@@ -13,6 +13,8 @@ export default function PadoDraftPage() {
 
   useEffect(() => {
     setIsPageReady(false);
+    // Prefetch content section in parallel with video loading
+    import("../sections/ecosystem/pado/PadoDraftContent");
   }, [setIsPageReady]);
 
   const handleVideoReady = useCallback(async () => {
