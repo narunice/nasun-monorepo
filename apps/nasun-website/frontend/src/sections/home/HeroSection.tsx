@@ -209,9 +209,9 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
                 exit="exit"
                 className="flex items-center justify-center"
               >
-                <h1 className={`text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl tracking-wide text-center uppercase drop-shadow-lg ${activeItem.id === "LOGO" ? "font-bold tracking-wider" : ""}`}>
-                    {activeItem.content}
-                  </h1>
+                <h1 className={`text-nasun-white !font-changeling text-5xl md:text-6xl lg:text-7xl ${activeItem.id === "LOGO" ? "font-bold tracking-wider" : "tracking-wide"} text-center uppercase drop-shadow-lg`}>
+                  {activeItem.content}
+                </h1>
               </motion.div>
             )}
           </AnimatePresence>
