@@ -15,8 +15,8 @@ export interface DistributionItem {
 export const distributionData: DistributionItem[] = [
   {
     name: "Community & Ecosystem",
-    value: 50,
-    amount: 5000000000,
+    value: 40,
+    amount: 4000000000,
   },
   {
     name: "Team & Advisors",
@@ -24,23 +24,28 @@ export const distributionData: DistributionItem[] = [
     amount: 1700000000,
   },
   {
-    name: "Public Sale & Liquidity",
-    value: 15,
-    amount: 1500000000,
+    name: "Public & Private Investors (all rounds)",
+    value: 16,
+    amount: 1600000000,
   },
   {
-    name: "Early Contributors",
-    value: 10,
-    amount: 1000000000,
-  },
-  {
-    name: "Strategic Partners",
-    value: 5,
-    amount: 500000000,
+    name: "Treasury Reserve",
+    value: 12,
+    amount: 1200000000,
   },
   {
     name: "Foundation",
-    value: 3,
-    amount: 300000000,
+    value: 7,
+    amount: 700000000,
+  },
+  {
+    name: "Early Contributors",
+    value: 4,
+    amount: 400000000,
+  },
+  {
+    name: "Ecosystem Liquidity & Market Making",
+    value: 4,
+    amount: 400000000,
   },
 ];
