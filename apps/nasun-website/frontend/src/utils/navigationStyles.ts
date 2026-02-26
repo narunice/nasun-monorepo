@@ -29,7 +29,7 @@ export const DESKTOP_NAVIGATION_STYLES = {
 
   // 서브메뉴 드롭다운 항목
   subMenuItem: {
-    base: "w-full px-4 py-2 transition-colors text-base rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1 data-[highlighted]:bg-slate-500/40 data-[highlighted]:text-white flex items-center gap-2",
+    base: "w-full px-4 py-2 transition-colors text-base rounded-lg outline-none data-[highlighted]:bg-slate-500/40 data-[highlighted]:text-white flex items-center gap-2",
     active: "text-nasun-black bg-nasun-c4/20 rounded-2xl",
     inactive: "text-nasun-black hover:bg-slate-800/70 hover:text-white !border-none",
   },
@@ -41,7 +41,7 @@ export const DESKTOP_NAVIGATION_STYLES = {
 
   // 중첩된 서브메뉴 항목 (인라인, 세로선 안쪽에 유지)
   nestedSubMenuItem: {
-    base: "w-full pl-4 pr-4 py-1.5 transition-colors text-base rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1 data-[highlighted]:bg-slate-500/40 data-[highlighted]:text-white flex items-center gap-2",
+    base: "w-full pl-4 pr-4 py-1.5 transition-colors text-base rounded-lg outline-none data-[highlighted]:bg-slate-500/40 data-[highlighted]:text-white flex items-center gap-2",
     active: "text-nasun-black bg-nasun-c4/20",
     inactive: "text-nasun-black/80 hover:bg-slate-800/70 hover:text-white",
   },
@@ -72,7 +72,7 @@ export const MOBILE_NAVIGATION_STYLES = {
 
   // 서브메뉴 항목 (들여쓰기된 항목)
   subMenuItem: {
-    base: "block py-1.5 px-3 transition-all text-left rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1",
+    base: "block py-1.5 px-3 transition-all text-left rounded-xl outline-none",
     active: "text-nasun-black bg-nasun-c4/20",
     inactive: "text-nasun-black hover:bg-slate-800/70 hover:text-white !border-none",
   },
@@ -84,7 +84,7 @@ export const MOBILE_NAVIGATION_STYLES = {
 
   // 중첩된 서브메뉴 항목 (인라인, 세로선 안쪽에 유지)
   nestedSubMenuItem: {
-    base: "block w-full pl-3 pr-2 py-1.5 transition-all text-left rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-nasun-c4/50 focus-visible:ring-offset-1",
+    base: "block w-full pl-3 pr-2 py-1.5 transition-all text-left rounded-lg outline-none",
     active: "text-nasun-black bg-nasun-c4/20",
     inactive: "text-nasun-black/80 hover:bg-slate-800/70 hover:text-white",
   },
