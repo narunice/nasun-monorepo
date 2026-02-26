@@ -208,13 +208,13 @@
       "ownershipVerification": "⚠️ 이 지갑이 본인 소유인지 확인하기 위함입니다"
     },
     "withdrawBattalionNft": {
-      "title": "NASUN 배틀리온 NFT 참여 취소",
+      "title": "NASUN 배탈리언 NFT 참여 취소",
       "securityNotice": "⚠️ 중요 안내:",
       "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
       "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다"
     },
     "registerBattalionNft": {
-      "title": "NASUN 배틀리온 NFT 등록",
+      "title": "NASUN 배탈리언 NFT 등록",
       "securityNotice": "⚠️ 중요 안내:",
       "noTransaction": "• 이 서명으로 돈이 빠져나가지 않습니다",
       "ownershipVerification": "• 지갑 소유자 본인임을 확인하기 위한 것입니다"
