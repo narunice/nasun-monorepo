@@ -174,7 +174,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
   const videoSrc = fullTrailerVideoMP4;
 
   return (
-    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-screen overflow-hidden flex items-center justify-center bg-nasun-black">
+    <div className="w-full relative h-screen overflow-hidden flex items-center justify-center bg-nasun-black">
       {/* 배경 비디오 */}
       <video
         ref={videoRef}

@@ -117,9 +117,9 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
 
   return (
     <div ref={sectionRef}>
-      <SectionLayout className="relative h-screen overflow-hidden">
+      <SectionLayout className="max-w-none relative h-screen overflow-hidden">
         {/* Background Video */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full bg-nasun-black">
+        <div className="absolute inset-0 bg-nasun-black">
           {shouldLoadVideo && (
             <video
               ref={videoRef}

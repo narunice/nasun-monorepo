@@ -6,7 +6,7 @@ import { InlineLoading } from "@/components/ui";
  */
 export default function HeroSectionSkeleton() {
   return (
-    <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-screen overflow-hidden flex items-center justify-center bg-nasun-black">
+    <div className="w-full relative h-screen overflow-hidden flex items-center justify-center bg-nasun-black">
       <div className="absolute inset-0 bg-nasun-black flex items-center justify-center z-20">
         <InlineLoading message="Loading..." size="lg" />
       </div>

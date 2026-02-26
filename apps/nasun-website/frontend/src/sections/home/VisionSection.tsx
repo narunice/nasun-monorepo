@@ -73,11 +73,11 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
   }, [shouldLoadVideo]);
 
   return (
-    <SectionLayout className="relative min-h-screen">
-      {/* Background video container - full browser width */}
+    <SectionLayout className="max-w-none relative min-h-screen">
+      {/* Background video container */}
       <div
         ref={containerRef}
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full bg-nasun-white"
+        className="absolute inset-0 bg-nasun-white"
       >
         {shouldLoadVideo && (
           <video
