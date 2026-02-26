@@ -14,6 +14,7 @@ import {
   faCircleDot,
   faShieldHalved,
   faBullseye,
+  faArrowRightToBracket,
 } from "@fortawesome/free-solid-svg-icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { SignUpModal } from "@/components/auth/SignUpModal";
@@ -81,8 +82,7 @@ const LeaderboardInfoSection: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
 
-  const hasTwitter =
-    user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter?.twitterHandle;
+  const hasTwitter = user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter?.twitterHandle;
 
   const earnPointsItems = t("info.earnPoints.items", {
     returnObjects: true,
@@ -98,54 +98,82 @@ const LeaderboardInfoSection: React.FC = () => {
           </PageTitle>
 
           <p className="max-w-2xl">{t("info.subtitle")}</p>
-
-          {/* How To Join — conditional by auth state */}
-          {isAuthenticated && hasTwitter ? (
-            // State 3: logged in with X → eligible
-            <p className="flex items-center gap-2 text-sm text-emerald-400/90">
-              <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 shrink-0" />
-              {t("info.howToJoinEligible")}
-            </p>
-          ) : (
-            <p className="text-sm text-nasun-nw4">
-              {t("info.howToJoin")}{" "}
-              {isAuthenticated && !hasTwitter ? (
-                // State 2: logged in but no X account
-                <>
-                  {t("info.howToJoinNoTwitter.pre")}
-                  <Link
-                    to="/my-account"
-                    className="text-nasun-nw1 underline underline-offset-4 decoration-nasun-nw1/30 hover:decoration-nasun-nw1 transition-colors"
-                  >
-                    {t("info.howToJoinNoTwitter.accountLink")}
-                  </Link>
-                  {t("info.howToJoinNoTwitter.post")}
-                </>
-              ) : (
-                // State 1: not authenticated
-                <>
-                  {t("info.howToJoinGuest.pre")}
-                  <button
-                    onClick={() => setIsSignUpModalOpen(true)}
-                    className="text-nasun-white underline underline-offset-4 decoration-nasun-white/30 hover:decoration-nasun-white transition-colors cursor-pointer"
-                  >
-                    {t("info.howToJoinGuest.xLink")}
-                  </button>
-                  {t("info.howToJoinGuest.mid")}
-                  <a
-                    href={TELEGRAM_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-nasun-nw4 underline underline-offset-4 decoration-nasun-nw4/30 hover:decoration-nasun-nw4 transition-colors"
-                  >
-                    {t("info.howToJoinGuest.telegramLink")}
-                  </a>
-                  {t("info.howToJoinGuest.post")}
-                </>
-              )}
-            </p>
-          )}
         </header>
+
+        {/* --- How To Join --- */}
+        <section>
+          <div className="flex items-center gap-3 mb-5 md:mb-6">
+            <FontAwesomeIcon icon={faArrowRightToBracket} className="w-4 h-4 text-nasun-nw1" />
+            <h5 className="font-medium uppercase tracking-wider">{t("info.howToJoin.title")}</h5>
+            <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
+          </div>
+
+          <ul className="flex flex-col gap-3">
+            {/* Bullet 1: X account sign up / link */}
+            <li className="flex items-baseline gap-3">
+              <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-nasun-nw1 shrink-0" />
+              <p className="">
+                {isAuthenticated && hasTwitter ? (
+                  // State 3: eligible
+                  <span className="flex items-center gap-1.5 text-emerald-400/90">
+                    <FontAwesomeIcon icon={faCheck} className="w-3 h-3 shrink-0" />
+                    {t("info.howToJoin.eligible")}
+                  </span>
+                ) : isAuthenticated && !hasTwitter ? (
+                  // State 2: logged in but no X
+                  <>
+                    {t("info.howToJoin.linkAccount.pre")}
+                    <Link
+                      to="/my-account"
+                      className="text-nasun-nw1 underline underline-offset-4 decoration-nasun-nw1/30 hover:decoration-nasun-nw1 transition-colors"
+                    >
+                      {t("info.howToJoin.linkAccount.link")}
+                    </Link>
+                    {t("info.howToJoin.linkAccount.post")}{" "}
+                    <span className="text-nasun-white/40 text-xs">
+                      {t("info.howToJoin.linkAccount.label")}
+                    </span>
+                  </>
+                ) : (
+                  // State 1: not authenticated
+                  <>
+                    {t("info.howToJoin.signUp.pre")}
+                    <button
+                      onClick={() => setIsSignUpModalOpen(true)}
+                      className="text-nasun-white underline underline-offset-4 decoration-nasun-white/30 hover:decoration-nasun-white transition-colors cursor-pointer"
+                    >
+                      {t("info.howToJoin.signUp.link")}
+                    </button>
+                    {t("info.howToJoin.signUp.post")}{" "}
+                    <span className="text-nasun-white/60 text-xs">
+                      {t("info.howToJoin.signUp.label")}
+                    </span>
+                  </>
+                )}
+              </p>
+            </li>
+
+            {/* Bullet 2: Telegram */}
+            <li className="flex items-baseline gap-3">
+              <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-nasun-nw1 shrink-0" />
+              <p className="">
+                {t("info.howToJoin.telegram.pre")}
+                <a
+                  href={TELEGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-nasun-white underline underline-offset-4 decoration-nasun-white/30 hover:decoration-nasun-white transition-colors"
+                >
+                  {t("info.howToJoin.telegram.link")}
+                </a>
+                {t("info.howToJoin.telegram.post")}{" "}
+                <span className="text-nasun-white/60 text-xs">
+                  {t("info.howToJoin.telegram.label")}
+                </span>
+              </p>
+            </li>
+          </ul>
+        </section>
 
         {/* --- Rewards Table --- */}
         <section>
@@ -328,7 +356,11 @@ const LeaderboardInfoSection: React.FC = () => {
         </div>
       </div>
 
-      <SignUpModal isOpen={isSignUpModalOpen} onClose={() => setIsSignUpModalOpen(false)} twitterOnly />
+      <SignUpModal
+        isOpen={isSignUpModalOpen}
+        onClose={() => setIsSignUpModalOpen(false)}
+        twitterOnly
+      />
     </SectionLayout>
   );
 };
