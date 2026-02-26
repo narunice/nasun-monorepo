@@ -69,7 +69,7 @@ i18n
     },
     returnObjects: true,
     detection: {
-      order: ["querystring", "cookie", "localStorage", "navigator", "htmlTag"],
+      order: ["querystring", "cookie", "localStorage"],
       caches: ["cookie", "localStorage"],
     },
   });
