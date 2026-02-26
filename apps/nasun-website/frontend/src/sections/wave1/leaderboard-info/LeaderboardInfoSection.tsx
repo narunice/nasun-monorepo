@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -15,9 +16,9 @@ import {
   faBullseye,
 } from "@fortawesome/free-solid-svg-icons";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { SignUpModal } from "@/components/auth/SignUpModal";
 
-const TARGET_ACCOUNT = import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io";
-const FOLLOW_INTENT_URL = `https://twitter.com/intent/follow?screen_name=${TARGET_ACCOUNT}`;
+const TELEGRAM_URL = "https://t.me/nasun_official";
 
 const TIERS = ["platinum", "gold", "silver", "bronze"] as const;
 
@@ -77,6 +78,11 @@ const DashMark: React.FC = () => (
 
 const LeaderboardInfoSection: React.FC = () => {
   const { t } = useTranslation("leaderboard");
+  const { user, isAuthenticated } = useAuth();
+  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
+
+  const hasTwitter =
+    user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter?.twitterHandle;
 
   const earnPointsItems = t("info.earnPoints.items", {
     returnObjects: true,
@@ -93,18 +99,52 @@ const LeaderboardInfoSection: React.FC = () => {
 
           <p className="max-w-2xl">{t("info.subtitle")}</p>
 
-          <p className="text-nasun-nw4">
-            {t("info.howToJoin")}{" "}
-            <a
-              href={FOLLOW_INTENT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-nasun-nw1 underline underline-offset-4 decoration-nasun-nw1/40 hover:decoration-nasun-nw1 transition-colors"
-            >
-              @{TARGET_ACCOUNT}
-            </a>{" "}
-            {t("info.howToJoinMiddle")} {t("info.howToJoinSuffix")}
-          </p>
+          {/* How To Join — conditional by auth state */}
+          {isAuthenticated && hasTwitter ? (
+            // State 3: logged in with X → eligible
+            <p className="flex items-center gap-2 text-sm text-emerald-400/90">
+              <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 shrink-0" />
+              {t("info.howToJoinEligible")}
+            </p>
+          ) : (
+            <p className="text-sm text-nasun-nw4">
+              {t("info.howToJoin")}{" "}
+              {isAuthenticated && !hasTwitter ? (
+                // State 2: logged in but no X account
+                <>
+                  {t("info.howToJoinNoTwitter.pre")}
+                  <Link
+                    to="/my-account"
+                    className="text-nasun-nw1 underline underline-offset-4 decoration-nasun-nw1/30 hover:decoration-nasun-nw1 transition-colors"
+                  >
+                    {t("info.howToJoinNoTwitter.accountLink")}
+                  </Link>
+                  {t("info.howToJoinNoTwitter.post")}
+                </>
+              ) : (
+                // State 1: not authenticated
+                <>
+                  {t("info.howToJoinGuest.pre")}
+                  <button
+                    onClick={() => setIsSignUpModalOpen(true)}
+                    className="text-nasun-white underline underline-offset-4 decoration-nasun-white/30 hover:decoration-nasun-white transition-colors cursor-pointer"
+                  >
+                    {t("info.howToJoinGuest.xLink")}
+                  </button>
+                  {t("info.howToJoinGuest.mid")}
+                  <a
+                    href={TELEGRAM_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-nasun-nw4 underline underline-offset-4 decoration-nasun-nw4/30 hover:decoration-nasun-nw4 transition-colors"
+                  >
+                    {t("info.howToJoinGuest.telegramLink")}
+                  </a>
+                  {t("info.howToJoinGuest.post")}
+                </>
+              )}
+            </p>
+          )}
         </header>
 
         {/* --- Rewards Table --- */}
@@ -287,6 +327,8 @@ const LeaderboardInfoSection: React.FC = () => {
           </Link>
         </div>
       </div>
+
+      <SignUpModal isOpen={isSignUpModalOpen} onClose={() => setIsSignUpModalOpen(false)} twitterOnly />
     </SectionLayout>
   );
 };
