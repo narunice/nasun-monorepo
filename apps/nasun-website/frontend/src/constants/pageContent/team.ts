@@ -1,7 +1,7 @@
 // src/constants/team.ts
 import { TeamMember } from "../../types/team.d";
 import naru from "../../assets/images/naru-profile.webp";
-import overclocked from "../../assets/images/overclocked-profile.png";
+import overclocked from "../../assets/images/overclocked-profile.webp";
 
 export const TEAM_MEMBERS: TeamMember[] = [
   {
