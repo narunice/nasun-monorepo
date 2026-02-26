@@ -203,6 +203,9 @@
   /* 전체 페이지 배경색을 NASUN 색상으로 설정 (다크 모드 기본) */
   body {
     @apply bg-nasun-black text-nasun-white;
+    /* Prevent horizontal scroll/drag on mobile */
+    overflow-x: clip;
+    overscroll-behavior-x: none;
   }
 
   /* When modal opens, react-remove-scroll hides the scrollbar via overflow:hidden.
