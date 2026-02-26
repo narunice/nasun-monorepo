@@ -67,7 +67,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 8000);
+    }, 5000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
@@ -92,6 +92,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         loop
         muted
         playsInline
+        preload="auto"
         poster={isMobile ? "/images/posters/Nsn-Network-Section-Mobile-rf27.webp" : "/images/posters/Nsn-Network-Section-rf29.webp"}
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}

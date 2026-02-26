@@ -1,4 +1,4 @@
-import { useState, useCallback, Suspense, lazy } from "react";
+import { useState, useCallback, useEffect, Suspense, lazy } from "react";
 import { usePageLoading } from "@/contexts/PageLoadingContext";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import PadoHeroSectionSkeleton from "@/sections/ecosystem/pado/PadoHeroSectionSkeleton";
@@ -13,6 +13,12 @@ const PadoRevisedContent = lazy(
 export default function PadoRevisedPage() {
   const [isVideoReady, setIsVideoReady] = useState(false);
   const { setIsPageReady } = usePageLoading();
+
+  useEffect(() => {
+    setIsPageReady(false);
+    // Prefetch content section in parallel with video loading
+    import("@/sections/ecosystem/pado-revised/PadoRevisedContent");
+  }, [setIsPageReady]);
 
   const handleVideoReady = useCallback(async () => {
     setIsVideoReady(true);

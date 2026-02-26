@@ -19,6 +19,9 @@ export default function PadoPage() {
 
   useEffect(() => {
     setIsPageReady(false);
+    // Prefetch content sections in parallel with video loading
+    import("../../sections/ecosystem/finance/OneAccountSection");
+    import("../../sections/ecosystem/finance/FinanceContent");
   }, [setIsPageReady]);
 
   // Scope pado-navy-theme to this page only

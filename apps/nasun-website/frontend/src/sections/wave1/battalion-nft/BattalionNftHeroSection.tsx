@@ -109,7 +109,7 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
         setIsVideoPlaying(true);
         onVideoReady?.();
       }
-    }, 8000);
+    }, 5000);
 
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
