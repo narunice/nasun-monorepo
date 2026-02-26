@@ -3,8 +3,7 @@ import { socialIcons } from "../../constants/pageContent/SocialIcons";
 import { IconName, library } from "@fortawesome/fontawesome-svg-core";
 import { fab } from "@fortawesome/free-brands-svg-icons";
 import { partnerLogos } from "../../constants/pageContent/logos";
-// Update the import path or export in ThemeContext if needed
-import { useTheme } from "../../providers/theme/useTheme";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { routesV2 } from "../../config/routesConfig";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -40,7 +39,6 @@ const PartnerLogo = ({ logo }: { logo: (typeof partnerLogos)[0] }) => {
 
 export default function Footer() {
   const { t } = useTranslation("common");
-  const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -57,10 +55,10 @@ export default function Footer() {
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>
-            <div className="flex-col items-center py-6 md:py-8 lg:py-10">
+            <div className="flex-col items-center pt-6 pb-3 md:py-8 lg:py-10">
               <Link to="/" onClick={handleLogoClick} className="flex items-center justify-center">
                 <img
-                  src={theme === "dark" ? "/nasun-wordmark-white.svg" : "/nasun-wordmark-black.svg"}
+                  src="/nasun-wordmark-white.png"
                   alt="NASUN"
                   className="h-9 md:h-[43px] lg:h-[50px] w-auto"
                 />
@@ -110,21 +108,11 @@ export default function Footer() {
       </div>
       <FadeInUp>
         <div className="flex flex-col md:flex-row justify-center items-center py-12 md:py-16 ">
-          <h3 className="font-medium  md:pr-10">{t("footer.stayConnected")}</h3>
+          <h3 className="font-medium mb-4 md:mb-0 md:pr-10">{t("footer.stayConnected")}</h3>
           <div className="flex justify-center items-center gap-6 md:gap-8">
-            {socialIcons.map((icon) =>
-              icon.disabled ? (
-                <span
-                  key={icon.platform}
-                  className="text-nasun-white/20 cursor-not-allowed"
-                  aria-label={`${icon.alt} (coming soon)`}
-                >
-                  <FontAwesomeIcon
-                    icon={["fab", icon.icon as IconName]}
-                    className="w-5 h-5 md:w-6 md:h-6 align-middle"
-                  />
-                </span>
-              ) : (
+            {socialIcons
+              .filter((icon) => !icon.disabled)
+              .map((icon) => (
                 <a
                   key={icon.platform}
                   href={icon.url}
@@ -138,8 +126,7 @@ export default function Footer() {
                     className="w-5 h-5 md:w-6 md:h-6 hover:scale-110 transition-transform align-middle"
                   />
                 </a>
-              )
-            )}
+              ))}
           </div>
         </div>
       </FadeInUp>
