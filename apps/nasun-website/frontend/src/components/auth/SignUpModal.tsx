@@ -13,9 +13,10 @@ import { InlineLoading } from "@/components/ui/InlineLoading";
 interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
+  twitterOnly?: boolean;
 }
 
-export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
+export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModalProps) {
   const navigate = useNavigate();
   const { isAuthenticated, signInWithGoogle, signInWithTwitter, signInWithMetaMask } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -80,14 +81,16 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
       >
         <DialogHeader>
           <DialogTitle
-            className="text-nasun-black 
+            className="text-nasun-black
           text-xl tracking-wide font-medium text-center"
           >
-            Join Nasun
+            {twitterOnly ? "Connect with X" : "Join Nasun"}
           </DialogTitle>
           {!isAuthenticated && (
             <DialogDescription className="text-nasun-black/80 text-center text-base">
-              Choose your sign-up method
+              {twitterOnly
+                ? "Sign in with your X account to participate in the leaderboard."
+                : "Choose your sign-up method"}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -118,21 +121,25 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
               </button>
             )}
 
-            <button
-              onClick={() => handleSignIn("google")}
-              disabled={isSigningIn}
-              className={providerBtnClass}
-            >
-              <img src="/Google__G__logo.svg" alt="Google" className="w-5 h-5" />
-              {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
-            </button>
+            {!twitterOnly && (
+              <>
+                <button
+                  onClick={() => handleSignIn("google")}
+                  disabled={isSigningIn}
+                  className={providerBtnClass}
+                >
+                  <img src="/Google__G__logo.svg" alt="Google" className="w-5 h-5" />
+                  {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
+                </button>
 
-            {isMetaMaskEnabled && (
-              <MetaMaskLoginButton
-                className={providerBtnClass}
-                onSuccess={handleMetaMaskSuccess}
-                onError={handleMetaMaskError}
-              />
+                {isMetaMaskEnabled && (
+                  <MetaMaskLoginButton
+                    className={providerBtnClass}
+                    onSuccess={handleMetaMaskSuccess}
+                    onError={handleMetaMaskError}
+                  />
+                )}
+              </>
             )}
           </div>
         )}
