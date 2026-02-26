@@ -87,9 +87,10 @@ function TokenDistributionSection() {
     t("distribution.community_treasury.title"),
     t("distribution.team_advisors.title"),
     t("distribution.public_sales.title"),
-    t("distribution.early_contributors.title"),
-    t("distribution.strategic_partners.title"),
+    t("distribution.treasury_reserve.title"),
     t("distribution.foundation.title"),
+    t("distribution.early_contributors.title"),
+    t("distribution.ecosystem_liquidity.title"),
   ];
 
   return (

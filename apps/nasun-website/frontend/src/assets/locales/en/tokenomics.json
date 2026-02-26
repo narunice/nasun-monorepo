@@ -130,8 +130,8 @@
     }
   },
   "distribution": {
-    "title": "NSN TOKEN",
-    "heading": "NSN TOKEN",
+    "title": "NSN TOKEN DISTRIBUTION",
+    "heading": "NSN TOKEN DISTRIBUTION",
     "description_top": "The total supply of NSN tokens will be 10 billion.",
     "subheading": "Preliminary allocation",
     "supply": "Total Supply",
@@ -143,16 +143,19 @@
       "title": "Team & Advisors"
     },
     "public_sales": {
-      "title": "Public Sale & Liquidity"
+      "title": "Public & Private Investors (all rounds)"
+    },
+    "treasury_reserve": {
+      "title": "Treasury Reserve"
+    },
+    "foundation": {
+      "title": "Foundation"
     },
     "early_contributors": {
       "title": "Early Contributors"
     },
-    "strategic_partners": {
-      "title": "Strategic Partners"
-    },
-    "foundation": {
-      "title": "Foundation"
+    "ecosystem_liquidity": {
+      "title": "Ecosystem Liquidity & Market Making"
     }
   },
   "network_details": {
