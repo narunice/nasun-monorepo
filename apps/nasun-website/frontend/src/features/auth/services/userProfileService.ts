@@ -18,13 +18,30 @@ export async function refreshAndSaveUserProfile(
     throw new Error("Failed to fetch updated profile");
   }
 
-  // Preserve cognitoToken from current session (not stored in DynamoDB)
-  const { user, updateUserProfile } = useUserStore.getState();
-  if (user?.cognitoToken && !updatedProfile.cognitoToken) {
-    updatedProfile.cognitoToken = user.cognitoToken;
+  const { user, updateUserProfile, setUser } = useUserStore.getState();
+
+  // Preserve cognitoToken (not stored in DynamoDB): check store first, then sessionStorage.
+  // In OAuth redirect flow, checkAuthStatus is skipped so user may be null in store,
+  // but sessionStorage still has the pre-redirect profile with cognitoToken.
+  let existingToken = user?.cognitoToken;
+  if (!existingToken) {
+    try {
+      const cached = sessionStorage.getItem("nasun_user_profile");
+      if (cached) existingToken = JSON.parse(cached).cognitoToken;
+    } catch { /* ignore parse error */ }
+  }
+  if (existingToken && !updatedProfile.cognitoToken) {
+    updatedProfile.cognitoToken = existingToken;
   }
 
-  updateUserProfile(updatedProfile);
+  if (user) {
+    updateUserProfile(updatedProfile);
+  } else {
+    // OAuth redirect flow: checkAuthStatus was skipped, user is null in store.
+    // updateUserProfile silently no-ops when user is null. Use setUser instead.
+    setUser(updatedProfile);
+  }
+
   sessionStorage.setItem(
     "nasun_user_profile",
     JSON.stringify(updatedProfile)
