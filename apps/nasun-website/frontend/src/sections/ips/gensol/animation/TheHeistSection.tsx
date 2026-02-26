@@ -3,6 +3,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { OuterBox } from "@/components/ui";
+import heroImage from "@/assets/images/The-Heist-Hero-Section.webp";
 
 /**
  * TheHeistSection - Gen Sol Animation Series Page
@@ -17,9 +18,14 @@ function TheHeistSection() {
         {/* ========== HERO ========== */}
         <div className="flex flex-col items-center text-center">
           <PageTitle>THE HEIST</PageTitle>
-          <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">3D Animated Sci-Fi Series</h5>
 
-          <p className="mt-6 md:mt-8 py-10 text-nasun-white/70 italic text-center">
+          <img
+            src={heroImage}
+            alt="The Heist — 3D Animated Sci-Fi Series"
+            className="w-full rounded-md"
+          />
+
+          <p className="py-4 text-nasun-white/70 text-center">
             A grieving father must pull off an impossible heist across the galaxy to save his
             kidnapped daughter.
           </p>
@@ -51,27 +57,16 @@ function TheHeistSection() {
                   him worry, Naro begins hiding small truths—decisions that unknowingly set disaster
                   in motion.
                 </p>
-              </div>
-            </div>
+                <p className="text-nasun-nw4/80 tracking-[0.3em] uppercase text-center mb-6">
+                  When Naro is kidnapped by a ruthless alien syndicate, <br /> Josen receives an
+                  ultimatum:
+                </p>
 
-            {/* Transition beat */}
-            <div className="text-center space-y-2 py-2">
-              <p className="text-nasun-white/50 italic">Then, without warning—</p>
-              <h5 className="font-bold text-nasun-white">Naro is gone.</h5>
-            </div>
-
-            {/* THE ULTIMATUM — emotional peak */}
-            <div className="bg-slate-900 border border-slate-700 backdrop-blur-lg rounded-sm shadow-lg px-4 md:px-5 lg:px-6 py-3 md:py-4 lg:py-5">
-              <p className="text-nasun-nw4/80 tracking-[0.3em] uppercase text-center mb-6">
-                When Naro is kidnapped by a ruthless alien syndicate, <br /> Josen receives an
-                ultimatum:
-              </p>
-              <blockquote className="border-l-2 border-nasun-nw4/60 pl-5 space-y-1">
                 <p className="text-nasun-nw4 font-semibold">
                   Steal a rare cache of Spectra energy from the Dorakken Empire's vaults.
                 </p>
                 <p className="text-nasun-nw4 font-semibold">Or never see his daughter again.</p>
-              </blockquote>
+              </div>
             </div>
 
             {/* ACT II — The Alliance */}
