@@ -130,8 +130,8 @@
     }
   },
   "distribution": {
-    "title": "NSN TOKEN",
-    "heading": "NSN TOKEN",
+    "title": "NSN TOKEN DISTRIBUTION",
+    "heading": "NSN TOKEN DISTRIBUTION",
     "subheading": "예비 배분",
     "description_top": "NSN 토큰의 총 공급량은 100억 개입니다.",
     "description_bottom": "이 내용은 초기 배분 계획이며, 구체적인 프로그램 할당, 토큰 분배를 위한 거버넌스 모델, 락업 및 베스팅 일정 등 세부 사항은 추후 공개될 예정입니다.\n우리는 런칭 이후 커뮤니티 피드백을 반영하여 이러한 세부 사항을 확정할 계획이며, 나선의 토크노믹스가 우리 생태계의 가치, 정서, 그리고 선의에 부합하도록 발전시켜 나갈 것입니다.",
@@ -143,16 +143,19 @@
       "title": "팀 & 어드바이저"
     },
     "public_sales": {
-      "title": "퍼블릭 세일 & 유동성"
+      "title": "퍼블릭 & 프라이빗 투자자 (전 라운드)"
+    },
+    "treasury_reserve": {
+      "title": "트레저리 리저브"
+    },
+    "foundation": {
+      "title": "재단"
     },
     "early_contributors": {
       "title": "초기 기여자"
     },
-    "strategic_partners": {
-      "title": "전략적 파트너"
-    },
-    "foundation": {
-      "title": "재단"
+    "ecosystem_liquidity": {
+      "title": "생태계 유동성 & 시장 조성"
     }
   },
   "network_details": {
