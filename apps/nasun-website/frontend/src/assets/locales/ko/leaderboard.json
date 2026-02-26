@@ -2,20 +2,28 @@
   "info": {
     "pageTitle": "Leaderboard Guide",
     "subtitle": "콘텐츠를 기여하고, 사람들을 초대하고, 네트워크 효과를 만드세요. 순위를 올려 Launch Pool에 접근하고 Battalion NFT를 획득하세요.",
-    "howToJoin": "참여 방법:",
-    "howToJoinGuest": {
-      "pre": "",
-      "xLink": "X 계정",
-      "mid": "으로 이 웹사이트에 가입하세요 (필수). 또는 ",
-      "telegramLink": "텔레그램 채널",
-      "post": "에 참여하세요 (선택)."
+    "howToJoin": {
+      "title": "참여 방법",
+      "signUp": {
+        "pre": "이 웹사이트에 ",
+        "link": "X 계정",
+        "post": "으로 가입하세요",
+        "label": "(필수)"
+      },
+      "linkAccount": {
+        "pre": "",
+        "link": "내 계정 페이지",
+        "post": "에서 X 계정을 연결하세요",
+        "label": "(필수)"
+      },
+      "telegram": {
+        "pre": "",
+        "link": "텔레그램 채널",
+        "post": "에 참여하세요",
+        "label": "(선택)"
+      },
+      "eligible": "X 계정이 연결되어 있습니다 — 참여 자격이 있습니다!"
     },
-    "howToJoinNoTwitter": {
-      "pre": "리더보드에 참여하려면 ",
-      "accountLink": "내 계정 페이지",
-      "post": "에서 X 계정을 연결하세요."
-    },
-    "howToJoinEligible": "이 리더보드 이벤트에 참여할 자격이 있습니다.",
     "rewards": {
       "title": "Rewards",
       "columns": {
