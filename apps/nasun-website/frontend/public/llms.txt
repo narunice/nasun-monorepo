@@ -1,0 +1,28 @@
+# Nasun
+
+> A new Layer 1 blockchain with sub-second finality, built on a Sui fork. Nasun powers a unified onchain ecosystem: DEX, prediction markets, AI compliance settlement, and gaming.
+
+## Core Products
+
+- [Pado](https://nasun.io/ecosystem/pado): Unified onchain finance — DEX, prediction markets, lottery, and margin trading on Nasun Network.
+- [Baram](https://nasun.io/ecosystem/baram): AI Compliance Settlement Layer — automated regulatory enforcement for onchain transactions using TEE-based AI agents.
+- [GenSol / Spectra](https://nasun.io/ecosystem/gensol): Onchain gaming studio — Spectra is a competitive team-based FPS built on Nasun.
+
+## Network
+
+- Chain: Nasun Network (Sui fork, Chain ID 272218f1)
+- Consensus: Sub-second finality
+- RPC: https://rpc.devnet.nasun.io
+- Explorer: https://explorer.nasun.io/devnet
+- Native Token: NASUN (smallest unit: SOE)
+
+## Wave 1 Campaign
+
+- [Battalion NFT](https://nasun.io/wave1/battalion-nft): Free mint allowlist — connect X account, complete tasks, secure your spot.
+- [Leaderboard](https://nasun.io/wave1/leaderboard): Community engagement leaderboard with point-based ranking.
+
+## Links
+
+- Website: https://nasun.io
+- Twitter: https://twitter.com/Nasun_io
+- Discord: https://discord.gg/nasun

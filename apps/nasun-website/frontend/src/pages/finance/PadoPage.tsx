@@ -3,6 +3,7 @@ import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 import PadoHeroSectionSkeleton from "../../sections/ecosystem/pado/PadoHeroSectionSkeleton";
+import { JsonLd, PADO_APP_SCHEMA } from "../../utils/jsonLd";
 
 const FinanceHeroSection = lazy(() => import("@/sections/ecosystem/finance/FinanceHeroSection"));
 const OneAccountSection = lazy(() => import("@/sections/ecosystem/finance/OneAccountSection"));
@@ -55,6 +56,7 @@ export default function PadoPage() {
         </SectionLayout>
       }
     >
+      <JsonLd data={PADO_APP_SCHEMA} />
       <div className="bg-[#080c16] text-pd4 min-h-screen overflow-x-hidden">
         <Suspense fallback={<PadoHeroSectionSkeleton />}>
           <FinanceHeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />

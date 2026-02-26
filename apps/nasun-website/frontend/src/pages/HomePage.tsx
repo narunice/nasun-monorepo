@@ -4,6 +4,7 @@ import { SectionLayout } from "../components/layout/SectionLayout";
 import { ScrollSnapContainer } from "../components/layout/ScrollSnapContainer";
 import { ScrollSnapSection } from "../components/layout/ScrollSnapSection";
 import { useHomePageLoading } from "../contexts/PageLoadingContext";
+import { JsonLd, NASUN_ORG_SCHEMA } from "../utils/jsonLd";
 
 import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 
@@ -65,6 +66,7 @@ export default function HomePage() {
   // This prevents re-mounting and state reset issues
   return (
     <div className="bg-nasun-black">
+      <JsonLd data={NASUN_ORG_SCHEMA} />
       {/* Snap Scroll 섹션들 (Hero ~ Wave1) */}
       <ScrollSnapContainer>
         <ErrorBoundary fallback={errorFallback}>

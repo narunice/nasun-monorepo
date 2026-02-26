@@ -6,3 +6,4 @@ Disallow: /my-account
 Disallow: /pado-revised
 
 Sitemap: https://nasun.io/sitemap.xml
+Llms-txt: https://nasun.io/llms.txt
