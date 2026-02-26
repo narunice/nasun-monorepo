@@ -74,7 +74,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
 
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
-  const containerClassName = `relative !p-0 -mt-14 md:mt-0 bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
+  const containerClassName = `relative !p-0 mt-0 md:mt-0 bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
 
   return (
     <SectionLayout className={containerClassName}>
@@ -115,7 +115,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
 
       {/* Hero 타이틀 - 모바일 (md 미만): 인라인, 자연스러운 줄바꿈 + 버튼 중앙 정렬 */}
       {isVideoPlaying && (
-        <div className="absolute inset-x-0 bottom-[5%] sm:bottom-[10%] z-20 px-6 md:hidden">
+        <div className="absolute inset-x-0 bottom-[2%] sm:bottom-[10%] z-20 px-6 md:hidden">
           <div className="leading-tight text-center">
             <h3 className="font-medium text-nasun-white text-3xl sm:text-[34px] uppercase ">
               IP Infrastructure
@@ -157,7 +157,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
                   rel="noopener noreferrer"
                 >
                   Open Devnet & Wallet
-                <ArrowUpRight className="ml-1.5 size-4 shrink-0" />
+                  <ArrowUpRight className="ml-1.5 size-4 shrink-0" />
                 </Link>
               </Button>
             </FadeInUp>
