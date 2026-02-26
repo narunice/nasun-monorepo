@@ -266,7 +266,7 @@
           "id": "gensol-partnerships",
           "title": "젠솔: 파트너십",
           "status": "upcoming",
-          "description": "제작사 및 탤런트 에이전시 협력"
+          "description": "프로듀서, 제작사 및 탤런트 에이전시"
         },
         {
           "id": "the-heir-dev",
@@ -453,7 +453,7 @@
           "id": "move-vm-custom",
           "title": "Move VM 커스텀",
           "status": "upcoming",
-          "description": "게임 및 DeFi 최적화"
+          "description": "게임/DeFi 최적화를 위한 나선 특화 확장 기능"
         },
         {
           "id": "permissionless-validators",
@@ -557,7 +557,7 @@
           "id": "the-heir-preprod",
           "title": "젠솔: The Heir Apparent",
           "status": "upcoming",
-          "description": "프리 프로덕션"
+          "description": "실사 시리즈 프리 프로덕션"
         },
         {
           "id": "gensol-tge",
