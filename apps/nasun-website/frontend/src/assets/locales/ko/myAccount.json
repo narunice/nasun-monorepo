@@ -139,7 +139,7 @@
       "button": "X에 공유",
       "processing": "처리 중...",
       "message": "NASUN에서 나의 랭킹 히스토리를 확인해보세요! 📊\n\n#{{hashtag}}",
-      "hashtag": "웹3",
+      "hashtag": "Web3",
       "success": "📋 이미지가 클립보드에 복사되었습니다! X를 여는 중...",
       "instruction": "💡 Ctrl+V (Mac은 Cmd+V)로 이미지를 붙여넣으세요",
       "error": {
