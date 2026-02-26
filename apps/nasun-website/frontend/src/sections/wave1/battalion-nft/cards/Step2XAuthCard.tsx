@@ -87,6 +87,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
 
         // Clean up
         sessionStorage.removeItem("battalion_nft_twitter_session");
+        localStorage.removeItem("auth_flow_type");
         window.history.replaceState({}, document.title, window.location.pathname);
 
         // Notify parent component (pass cognitoToken for link-account API auth)
@@ -140,6 +141,11 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
       // Save session ID for callback verification
       // Security: Using sessionStorage instead of localStorage to reduce XSS exposure
       sessionStorage.setItem("battalion_nft_twitter_session", sessionId);
+
+      // Non-sensitive flow type flag in localStorage as fallback for mobile browsers
+      // that may lose sessionStorage during OAuth redirect (e.g. Chrome Custom Tabs)
+      localStorage.setItem("auth_flow_type", "battalion_nft");
+      localStorage.setItem("auth_provider_preference", "Twitter");
 
       // Redirect to Twitter OAuth
       window.location.href = authUrl;

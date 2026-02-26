@@ -33,8 +33,9 @@ export default function Callback() {
     // Battalion NFT OAuth callback — must be checked FIRST before any auth logic
     // The user may already be authenticated (e.g. MetaMask), so we must intercept
     // the battalion NFT flow before the "already authenticated" redirect fires
-    // Note: Step2XAuthCard stores this in sessionStorage (not localStorage)
-    const isBattalionNftSession = sessionStorage.getItem('battalion_nft_twitter_session');
+    // Primary: sessionStorage (secure), Fallback: localStorage flow type flag (non-sensitive)
+    const isBattalionNftSession = sessionStorage.getItem('battalion_nft_twitter_session')
+      || localStorage.getItem('auth_flow_type') === 'battalion_nft';
     if (isBattalionNftSession) {
       hasHandledRef.current = true;
       const code = searchParams.get('code');
@@ -42,6 +43,7 @@ export default function Callback() {
       const target = code && state
         ? `/wave1/battalion-nft?code=${code}&state=${state}`
         : '/wave1/battalion-nft';
+      localStorage.removeItem('auth_flow_type');
       logger.log("Battalion NFT OAuth callback detected, redirecting to", target);
       navigate(target, { replace: true });
       return;
@@ -73,9 +75,9 @@ export default function Callback() {
         return;
       }
 
-      // Otherwise, it's a regular login error - redirect to login page
+      // Otherwise, it's a regular login error - redirect to home
       hasHandledRef.current = true;
-      navigate("/login?error=auth_provider_error", { replace: true });
+      navigate("/", { replace: true });
       return;
     }
 
@@ -83,7 +85,7 @@ export default function Callback() {
     if (error) {
       logger.error("AuthContext reported an error:", error);
       hasHandledRef.current = true;
-      navigate("/login?error=processing_failed", { replace: true });
+      navigate("/", { replace: true });
       return;
     }
 
@@ -113,7 +115,7 @@ export default function Callback() {
     // but the error was not propagated to AuthContext).
     if (!isLoading && !isAuthenticated && !error) {
       hasHandledRef.current = true;
-      navigate("/login?error=session_expired", { replace: true });
+      navigate("/", { replace: true });
       return;
     }
 
