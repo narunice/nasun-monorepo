@@ -146,8 +146,6 @@ export default function Footer() {
 
       <FadeInUp>
         <div className="max-w-8xl mx-auto p-4 md:p-6 lg:p-8 ">
-          {/* AI 문구 */}
-          <p className=" text-nasun-white/60 py-2 !text-sm">{t("footer.ai")}</p>
           {/* 저작권 및 링크 섹션 */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-8 !text-sm">
             <div className="flex flex-col gap-2">
