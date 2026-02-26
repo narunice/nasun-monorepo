@@ -79,7 +79,7 @@ const SLIDES: SlideData[] = [
     projectName: "BARAM",
     nameKey: "baram",
     buttonVariant: "baram",
-    link: "/baram",
+    link: "/ecosystem/baram",
     video: baramVideo,
   },
   {
@@ -99,7 +99,7 @@ const SLIDES: SlideData[] = [
     projectName: "NASUN",
     nameKey: "nasun",
     buttonVariant: "nasun-network",
-    link: "/about/strategy",
+    link: "/network/nsn",
     video: explorerVideo,
   },
 ];
