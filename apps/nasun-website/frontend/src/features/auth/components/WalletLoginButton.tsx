@@ -1,22 +1,26 @@
 /**
- * MetaMask 로그인 버튼 컴포넌트
+ * MetaMask Login Button
  *
- * MetaMask 지갑으로 로그인하는 독립적인 버튼 컴포넌트
- * 기존 Google/Twitter 로그인과 함께 사용 가능
+ * Hybrid desktop/mobile flow:
+ * - Desktop: 1-trip via connectAndSignSDK (single MetaMask extension popup)
+ * - Mobile: 2-trip via connectMetaMaskSDK + signMessageViaSDK (two MetaMask app switches)
+ *
+ * Uses prepare + connect-verify endpoints (address-agnostic server challenge).
  */
 
-import { useState, forwardRef } from "react";
+import { useState, useRef, forwardRef } from "react";
+import { isMetaMaskInstalled } from "@/utils/metamaskUtils";
+import { prepareChallenge, connectVerify } from "@/services/metamaskApi";
 import {
-  isMetaMaskInstalled,
-  connectWallet,
-  signMessage,
-  getChainId,
-  isCorrectNetwork,
-  switchNetwork,
-} from "@/utils/metamaskUtils";
-import { authenticateWithMetaMask } from "@/services/metamaskApi";
-import type { MetaMaskAuthStatus, MetaMaskErrorType } from "@/types/metamask";
+  connectAndSignSDK,
+  connectMetaMaskSDK,
+  signMessageViaSDK,
+  disconnectMetaMaskSDK,
+} from "@/lib/wallet/metamaskSdkProvider";
+import { isMobileBrowser } from "@/utils/mobileDetect";
+import type { MetaMaskErrorType } from "@/types/metamask";
 import { InlineLoading } from "@/components/ui/InlineLoading";
+import logger from "@/lib/logger";
 
 interface WalletLoginButtonProps {
   onSuccess?: (identityId: string, token: string, walletAddress: string) => void;
@@ -26,146 +30,120 @@ interface WalletLoginButtonProps {
 
 const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
   ({ onSuccess, onError, className = "" }, ref) => {
-    const [status, setStatus] = useState<MetaMaskAuthStatus>("NOT_CONNECTED" as MetaMaskAuthStatus);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [connectStep, setConnectStep] = useState(0); // 0=idle, 1=mobile connect, 2=mobile sign, 3=verifying
     const [errorMessage, setErrorMessage] = useState<string>("");
+    const [isSuccess, setIsSuccess] = useState(false);
+    const inFlightRef = useRef(false);
 
-    // 환경변수에서 MetaMask 로그인 활성화 여부 확인
     const isMetaMaskEnabled = import.meta.env.VITE_ENABLE_METAMASK_LOGIN === "true";
-    const expectedChainId = parseInt(import.meta.env.VITE_ETHEREUM_CHAIN_ID || "1", 10);
-    const networkName = import.meta.env.VITE_ETHEREUM_NETWORK_NAME || "Ethereum";
 
-    // Feature flag가 비활성화된 경우 버튼 숨김
     if (!isMetaMaskEnabled) {
       return null;
     }
 
     const handleMetaMaskLogin = async () => {
-      console.log("[DEBUG] handleMetaMaskLogin called");
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+
+      const mobile = isMobileBrowser();
       setErrorMessage("");
-      setStatus("CONNECTING" as MetaMaskAuthStatus);
+      setIsConnecting(true);
+      setConnectStep(0);
 
       try {
-        // 1. MetaMask 설치 확인
-        console.log("[DEBUG] Checking MetaMask installation...");
-        if (!isMetaMaskInstalled()) {
+        // Desktop: check MetaMask extension is installed
+        if (!mobile && !isMetaMaskInstalled()) {
           throw new Error("MetaMask is not installed. Please install MetaMask browser extension.");
         }
 
-        // 2. 지갑 연결
-        console.log("[DEBUG] Connecting wallet...");
-        const walletAddress = await connectWallet();
-        console.log("[DEBUG] Connected wallet:", walletAddress);
-        setStatus("CONNECTED" as MetaMaskAuthStatus);
+        // Step 1: Get server challenge (no wallet address needed)
+        logger.log("[WalletLoginButton] Preparing challenge...");
+        const { nonce, message } = await prepareChallenge();
 
-        // 3. 네트워크 확인 및 전환
-        console.log("[DEBUG] Checking network...");
-        const correctNetwork = await isCorrectNetwork(expectedChainId);
-        if (!correctNetwork) {
-          const currentChainId = await getChainId();
-          console.log(`Wrong network. Current: ${currentChainId}, Expected: ${expectedChainId}`);
-
-          // 네트워크 전환 시도
-          try {
-            await switchNetwork(expectedChainId);
-            console.log(`Switched to ${networkName} (Chain ID: ${expectedChainId})`);
-          } catch {
-            throw new Error(
-              `Please switch to ${networkName} network in MetaMask. Current network is not supported.`,
-            );
-          }
+        // Step 2: Connect + sign
+        let signature: string;
+        if (mobile) {
+          // Mobile 2-trip: connect first, then sign (connectAndSign broken on iOS MetaMask)
+          logger.log("[WalletLoginButton] Mobile — 2-trip flow");
+          setConnectStep(1);
+          const address = await connectMetaMaskSDK();
+          logger.log("[WalletLoginButton] Connected:", address);
+          setConnectStep(2);
+          signature = await signMessageViaSDK(message, address);
+        } else {
+          // Desktop 1-trip: single extension popup for connect + sign
+          logger.log("[WalletLoginButton] Desktop — 1-trip connectAndSign");
+          signature = await connectAndSignSDK(message);
         }
+        logger.log("[WalletLoginButton] Signature obtained");
 
-        // 4. 인증 시작
-        console.log("[DEBUG] Starting authentication...");
-        setStatus("AUTHENTICATING" as MetaMaskAuthStatus);
+        // Step 3: Server verifies signature, recovers address
+        setConnectStep(3);
+        const authResult = await connectVerify(signature, nonce);
+        logger.log("[WalletLoginButton] Verified:", authResult.walletAddress);
 
-        // 5. MetaMask 인증 플로우 실행
-        console.log("[DEBUG] Calling authenticateWithMetaMask...");
-        const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
-          // 메시지 서명 (MetaMask 팝업 표시)
-          console.log("[DEBUG] authenticateWithMetaMask callback invoked, message:", message);
-          return await signMessage(message, walletAddress);
-        });
-        console.log("[DEBUG] Authentication result:", authResult);
-
-        console.log("Authentication successful:", authResult);
-        setStatus("AUTHENTICATED" as MetaMaskAuthStatus);
-
-        // 6. 성공 콜백 호출
-        if (onSuccess) {
-          onSuccess(authResult.identityId, authResult.token, walletAddress);
-        }
+        setIsSuccess(true);
+        onSuccess?.(authResult.identityId, authResult.token, authResult.walletAddress);
       } catch (error: unknown) {
-        console.error("MetaMask login failed:", error);
-        setStatus("ERROR" as MetaMaskAuthStatus);
+        console.error("[WalletLoginButton] Login failed:", error);
 
-        // 사용자 친화적인 에러 메시지
         const errorMsg = error instanceof Error ? error.message : "An unknown error occurred";
         let userMessage = errorMsg;
 
-        if (errorMsg.includes("User rejected")) {
+        if (errorMsg.includes("User rejected") || errorMsg.includes("rejected")) {
           userMessage = "You rejected the request. Please try again.";
         } else if (errorMsg.includes("not installed")) {
-          userMessage = "MetaMask is not installed. Please install MetaMask extension.";
-        } else if (errorMsg.includes("network")) {
-          userMessage = `Please connect to ${networkName} network in MetaMask.`;
+          userMessage = mobile
+            ? "Please install the MetaMask app to continue."
+            : "MetaMask is not installed. Please install MetaMask extension.";
+        } else if (errorMsg.includes("timed out")) {
+          userMessage = "Connection timed out. Please try again.";
+          await disconnectMetaMaskSDK();
         }
 
         setErrorMessage(userMessage);
 
-        // 에러 콜백 호출
         if (onError) {
           const errorType = getErrorType(error);
           onError(error instanceof Error ? error : new Error(errorMsg), errorType);
         }
+      } finally {
+        setIsConnecting(false);
+        setConnectStep(0);
+        inFlightRef.current = false;
       }
     };
 
     const getErrorType = (error: unknown): MetaMaskErrorType => {
       const message = error instanceof Error ? error.message : "";
-      if (message.includes("not installed")) {
-        return "NO_METAMASK" as MetaMaskErrorType;
-      }
-      if (message.includes("rejected")) {
-        return "USER_REJECTED" as MetaMaskErrorType;
-      }
-      if (message.includes("network")) {
-        return "WRONG_NETWORK" as MetaMaskErrorType;
-      }
-      if (message.includes("signature")) {
-        return "SIGNATURE_FAILED" as MetaMaskErrorType;
-      }
+      if (message.includes("not installed")) return "NO_METAMASK" as MetaMaskErrorType;
+      if (message.includes("rejected")) return "USER_REJECTED" as MetaMaskErrorType;
+      if (message.includes("timed out")) return "SIGNATURE_FAILED" as MetaMaskErrorType;
       return "UNKNOWN" as MetaMaskErrorType;
     };
 
     const getButtonText = () => {
-      switch (status) {
-        case "CONNECTING":
-          return "Connecting...";
-        case "CONNECTED":
-          return "Connected";
-        case "AUTHENTICATING":
-          return "Authenticating...";
-        case "AUTHENTICATED":
-          return "Authenticated!";
-        case "ERROR":
-          return "Try Again";
-        default:
-          return "Continue with MetaMask";
-      }
-    };
+      if (isSuccess) return "Authenticated!";
+      if (!isConnecting) return errorMessage ? "Try Again" : "Continue with MetaMask";
 
-    const isLoading =
-      status === ("CONNECTING" as MetaMaskAuthStatus) ||
-      status === ("AUTHENTICATING" as MetaMaskAuthStatus);
-    const isDisabled = isLoading || status === ("AUTHENTICATED" as MetaMaskAuthStatus);
+      if (connectStep === 1) return "Connecting wallet... (1/2)";
+      if (connectStep === 2) return "Sign in MetaMask (2/2)";
+      if (connectStep === 3) return "Verifying...";
+      return "Connecting...";
+    };
 
     return (
       <>
-        <button ref={ref} onClick={handleMetaMaskLogin} disabled={isDisabled} className={className}>
+        <button
+          ref={ref}
+          onClick={handleMetaMaskLogin}
+          disabled={isConnecting || isSuccess}
+          className={className}
+        >
           <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6 flex-shrink-0" />
           <span>{getButtonText()}</span>
-          {isLoading && <InlineLoading size="sm" className="ml-auto" />}
+          {isConnecting && <InlineLoading size="sm" className="ml-auto" />}
         </button>
 
         {errorMessage && <div className="text-sm text-red-400 px-2 py-1">{errorMessage}</div>}

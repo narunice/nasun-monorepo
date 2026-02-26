@@ -22,6 +22,7 @@
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
+    "@metamask/sdk": "^0.34.0",
     "@mysten/dapp-kit": "^0.19.11",
     "@mysten/sui": "^1.45.2",
     "@nasun/devnet-config": "workspace:*",
@@ -93,6 +94,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.18.2",
     "vite": "^7.3.0",
+    "vite-plugin-node-polyfills": "^0.25.0",
     "vitest": "^4.0.18"
   }
 }

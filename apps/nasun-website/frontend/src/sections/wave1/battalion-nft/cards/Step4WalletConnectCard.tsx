@@ -2,24 +2,29 @@
  * Wallet Connect Card Component
  *
  * @description
- * MetaMask 지갑 연결을 위한 카드 컴포넌트
+ * MetaMask SDK를 사용한 지갑 연결 카드 컴포넌트
+ * Hybrid flow: prepare → connect+sign → connect-verify
+ * - Desktop: 1-trip connectAndSign (extension popup)
+ * - Mobile: 2-trip fallback (connect → sign) — connectAndSign broken on iOS MetaMask
  *
  * @author Claude Code
  * @date 2025-10-25
+ * @updated 2026-02-26 - Hybrid desktop/mobile flow for iOS Safari compatibility
  */
 
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
-import { useUserStore } from "../../../../store/userStore";
 import { useBattalionNftStore } from "../../../../stores/useBattalionNftStore";
 import {
-  isMetaMaskInstalled as checkMetaMaskInstalled,
-  connectWallet,
-  signMessage,
-} from "../../../../utils/metamaskUtils";
-import { authenticateWithMetaMask } from "../../../../services/metamaskApi";
+  connectAndSignSDK,
+  connectMetaMaskSDK,
+  signMessageViaSDK,
+  disconnectMetaMaskSDK,
+} from "../../../../lib/wallet/metamaskSdkProvider";
+import { isMobileBrowser } from "../../../../utils/mobileDetect";
+import { prepareChallenge, connectVerify } from "../../../../services/metamaskApi";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import logger from "../../../../lib/logger";
 import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
@@ -28,102 +33,77 @@ interface WalletConnectCardProps {
   onWalletConnected: (address: string) => void;
 }
 
-/**
- * Wallet Connect Card 컴포넌트
- *
- * @features
- * - MetaMask 설치 확인
- * - 지갑 연결 버튼
- * - 연결된 지갑 주소 표시 (축약 형식)
- * - MetaMask 설치 링크
- * - 연결 상태 표시
- */
 export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletConnected }) => {
   const { t } = useTranslation("battalion-nft");
   const { user } = useAuth();
-  const { updateUserProfile } = useUserStore();
   const { cognitoIdentityId, cognitoToken: storeCognitoToken, setWalletProof } = useBattalionNftStore();
-  const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectStep, setConnectStep] = useState(0); // 0=idle, 1=mobile connect, 2=mobile sign, 3=verifying
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Restore connected state from linked account profile
   useEffect(() => {
-    setIsMetaMaskInstalled(checkMetaMaskInstalled());
-
-    // ✅ linkedWallet 확인 (이미 연결된 경우)
     const linkedWallet = user?.linkedAccounts?.metamask?.walletAddress;
-
-    if (linkedWallet && window.ethereum) {
-      // 이미 link된 경우 - eth_accounts로 확인
-      window.ethereum
-        .request({ method: "eth_accounts" })
-        .then((accounts: string[]) => {
-          if (accounts.length > 0) {
-            const address = accounts[0];
-
-            if (linkedWallet.toLowerCase() === address.toLowerCase()) {
-              // 연결된 지갑과 일치 - 정상
-              console.log("[WalletConnectCard] Wallet already linked:", address);
-              setConnectedAddress(address);
-            } else {
-              // 다른 지갑으로 변경됨
-              console.warn("[WalletConnectCard] Wallet address mismatch - clearing");
-              setConnectedAddress(null);
-            }
-          } else {
-            // MetaMask에 계정이 없음
-            console.warn("[WalletConnectCard] No accounts in MetaMask");
-            setConnectedAddress(null);
-          }
-        })
-        .catch((err: Error) => {
-          console.error("Failed to check accounts:", err);
-          setConnectedAddress(null);
-        });
+    if (linkedWallet) {
+      logger.log("[WalletConnectCard] Wallet already linked:", linkedWallet);
+      setConnectedAddress(linkedWallet.toLowerCase());
     } else {
-      // linkedWallet이 없으면 connect button 표시
-      console.log("[WalletConnectCard] No linked wallet - showing connect button");
       setConnectedAddress(null);
     }
   }, [user]);
 
+  /**
+   * 1-trip connect handler:
+   * 1. /prepare → nonce + message (HTTP only)
+   * 2. connectAndSign → signature (single MetaMask trip)
+   * 3. /connect-verify → walletAddress + auth tokens (HTTP only)
+   */
   const handleConnect = async () => {
     try {
       setIsConnecting(true);
       setError(null);
 
-      // 1. Check if already linked
+      // Step 1: Get server-generated nonce + message
+      const { nonce, message } = await prepareChallenge();
+      logger.log("[WalletConnectCard] Challenge prepared");
+
+      // Step 2: Connect + sign
+      // Desktop: single-trip connectAndSign (extension popup handles both)
+      // Mobile: 2-trip fallback (connectAndSign broken on iOS MetaMask app)
+      let signature: string;
+      if (isMobileBrowser()) {
+        logger.log("[WalletConnectCard] Mobile detected — using 2-trip flow");
+        setConnectStep(1);
+        const address = await connectMetaMaskSDK();
+        logger.log("[WalletConnectCard] Connected:", address);
+        setConnectStep(2);
+        signature = await signMessageViaSDK(message, address);
+      } else {
+        logger.log("[WalletConnectCard] Desktop detected — using 1-trip connectAndSign");
+        signature = await connectAndSignSDK(message);
+      }
+      logger.log("[WalletConnectCard] Signature obtained");
+
+      // Step 3: Server verifies signature, recovers address, issues Cognito identity
+      setConnectStep(3);
+      const authResult = await connectVerify(signature, nonce);
+      const walletAddress = authResult.walletAddress;
+      logger.log("[WalletConnectCard] Verification successful:", walletAddress);
+
+      // Store wallet proof
+      if (authResult.walletProof && authResult.proofIssuedAt) {
+        setWalletProof(authResult.walletProof, authResult.proofIssuedAt);
+      }
+
+      // Link accounts if not already linked
       const linkedWallet = user?.linkedAccounts?.metamask?.walletAddress;
-
-      // 2. Connect wallet
-      const walletAddress = await connectWallet();
-      logger.log("[WalletConnectCard] Connected wallet:", walletAddress);
-
-      // 3. Determine the primary identity ID (from store or auth context)
-      const primaryIdentityId = cognitoIdentityId || user?.identityId;
-
-      // 4. If not linked, authenticate and link account
       if (!linkedWallet) {
-        logger.log("[WalletConnectCard] Wallet not linked - authenticating...");
-
+        const primaryIdentityId = cognitoIdentityId || user?.identityId;
         if (!primaryIdentityId) {
           throw new Error("Missing Cognito identity ID. Please restart the event from Step 1.");
         }
 
-        // 4a. Authenticate with MetaMask (Challenge/Response)
-        const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
-          return await signMessage(message, walletAddress);
-        });
-
-        logger.log("[WalletConnectCard] MetaMask auth successful:", authResult);
-
-        // 4a-2. Save wallet proof for downstream register/withdraw
-        if (authResult.walletProof && authResult.proofIssuedAt) {
-          setWalletProof(authResult.walletProof, authResult.proofIssuedAt);
-        }
-
-        // 4b. Link accounts
         const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
         if (!linkAccountApi) {
           throw new Error("Link Account API is not configured");
@@ -132,7 +112,6 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         const linkHeaders: Record<string, string> = {
           "Content-Type": "application/json",
         };
-        // Use Battalion NFT store token (from Step 2 Twitter auth) or logged-in user's token
         const cognitoToken = storeCognitoToken || user?.cognitoToken;
         if (cognitoToken) {
           linkHeaders["Authorization"] = `Bearer ${cognitoToken}`;
@@ -155,73 +134,31 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         }
 
         logger.log("[WalletConnectCard] Account linked successfully");
-
-        // 4c. Refresh and save user profile (ensures full state sync)
         await refreshAndSaveUserProfile(primaryIdentityId);
         logger.log("[WalletConnectCard] User profile refreshed and saved");
-      } else {
-        logger.log("[WalletConnectCard] Wallet already linked - authenticating for proof only...");
-
-        // Still need MetaMask auth to get wallet proof (HMAC token for register/withdraw)
-        const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
-          return await signMessage(message, walletAddress);
-        });
-
-        if (authResult.walletProof && authResult.proofIssuedAt) {
-          setWalletProof(authResult.walletProof, authResult.proofIssuedAt);
-        }
       }
 
-      // 5. Set connected address and proceed to next step
       setConnectedAddress(walletAddress);
       onWalletConnected(walletAddress);
     } catch (err: unknown) {
       console.error("[WalletConnectCard] Connection error:", err);
-      const errorMessage = err instanceof Error ? err.message : t("step4.errors.connectionFailed");
+      const errorMessage =
+        err instanceof Error ? err.message : t("step4.errors.connectionFailed");
       setError(errorMessage);
+
+      // Reset SDK on timeout or unrecoverable errors
+      if (err instanceof Error && err.message.includes("timed out")) {
+        await disconnectMetaMaskSDK();
+      }
     } finally {
       setIsConnecting(false);
+      setConnectStep(0);
     }
   };
 
   const shortenAddress = (address: string): string => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
-
-  if (!isMetaMaskInstalled) {
-    return (
-      <OuterBox color="nw0" className=" max-w-3xl mx-auto">
-        <div className="text-center">
-          {/* MetaMask Logo */}
-          <div className="mb-6 flex justify-center">
-            <div className="w-20 h-20 bg-orange-900/20 rounded-full flex items-center justify-center">
-              <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-12 h-12" />
-            </div>
-          </div>
-
-          <h3 className="!font-rubik font-medium mb-3">{t("step4.title")}</h3>
-
-          <p className="mb-6">{t("step4.errors.noMetaMask")}</p>
-
-          <ButtonV3 variant="nw4" size="lg" asChild>
-            <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer">
-              {t("step4.installLink")}
-              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                />
-              </svg>
-            </a>
-          </ButtonV3>
-
-          <p className="mt-4">{t("step4.installing")}</p>
-        </div>
-      </OuterBox>
-    );
-  }
 
   return (
     <OuterBox color="nw0" className=" max-w-3xl mx-auto">
@@ -258,7 +195,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
             </div>
           </DividerBox>
 
-          {/* Next Step Button — triggers MetaMask auth to get wallet proof */}
+          {/* Next Step Button */}
           <ButtonV3
             onClick={handleConnect}
             disabled={isConnecting}
@@ -279,7 +216,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         </>
       ) : (
         <>
-          {/* MetaMask Info */}
+          {/* Info Box */}
           <DividerBox
             color="nw3"
             padding="sm"
@@ -291,25 +228,54 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           >
             <p className="pt-2">{t("step4.infoDescription")}</p>
             <p className="mt-2 text-yellow-200"> {t("step4.signatureNote")}</p>
+            <p className="mt-2 text-nasun-nw4/60 text-sm">{t("step4.mobileReturnHint")}</p>
           </DividerBox>
 
           {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-900/20 rounded-lg border border-red-700">
-              <p className="text-red-200">❌ {error}</p>
+              <p className="text-red-200">{error}</p>
             </div>
           )}
 
-          {/* Connect Button */}
+          {/* Primary Connect Button */}
           <ButtonV3
             onClick={handleConnect}
             disabled={isConnecting}
             variant="nw1"
             size="lg"
-            className="flex mx-auto"
+            className={isConnecting && connectStep > 0 ? "w-full" : "flex mx-auto"}
           >
             {isConnecting ? (
-              <InlineLoading message={t("step4.connecting")} size="md" className="text-white" />
+              connectStep === 1 || connectStep === 2 ? (
+                <div className="flex flex-col items-center gap-1 py-1">
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <span className="text-white font-bold text-lg">{connectStep} / 2</span>
+                  </div>
+                  <span className="text-white/90 text-base">
+                    {connectStep === 1 ? t("step4.connectingStep1") : t("step4.connectingStep2")}
+                  </span>
+                </div>
+              ) : (
+                <InlineLoading
+                  message={connectStep === 3 ? t("step4.verifying") : t("step4.connecting")}
+                  size="md"
+                  className="text-white"
+                />
+              )
             ) : (
               <>
                 <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6 mr-2" />

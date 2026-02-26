@@ -5,6 +5,8 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { EnterIcon, ExitIcon } from "@radix-ui/react-icons";
 import { useAuth, WalletLoginButton as MetaMaskLoginButton } from "@/features/auth";
+import { SignUpModal } from "../auth/SignUpModal";
+import { isMobileBrowser } from "../../utils/mobileDetect";
 import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
 
 const LoginButton = () => {
@@ -20,6 +22,8 @@ const LoginButton = () => {
     logout,
   } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signUpModalOpen, setSignUpModalOpen] = useState(false);
+  const mobile = isMobileBrowser();
 
   // 로그인 메뉴 항목은 항상 inactive 스타일 사용 (active 상태 없음)
   const loginMenuItemClass = `${DESKTOP_NAVIGATION_STYLES.subMenuItem.base} ${DESKTOP_NAVIGATION_STYLES.subMenuItem.inactive}`;
@@ -116,6 +120,16 @@ const LoginButton = () => {
             <Tooltip.Arrow className="fill-gray-300" />
           </Tooltip.Content>
         </Tooltip.Root>
+      ) : mobile ? (
+        <>
+          <button
+            onClick={() => setSignUpModalOpen(true)}
+            className="rounded-lg cursor-pointer p-1 text-nasun-black hover:opacity-70 transition-all"
+          >
+            <EnterIcon className="size-5 xl:size-6" />
+          </button>
+          <SignUpModal isOpen={signUpModalOpen} onClose={() => setSignUpModalOpen(false)} />
+        </>
       ) : (
         <DropdownMenu.Root modal={false}>
           {/* layout shift 방지: 스크롤바 사라짐으로 인한 텍스트 이동 방지 */}
