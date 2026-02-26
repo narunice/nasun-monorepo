@@ -18,6 +18,7 @@ import { SectionLayout } from "../../components/layout/SectionLayout";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
 import BattalionNftHeroSectionSkeleton from "../../sections/wave1/battalion-nft/BattalionNftHeroSectionSkeleton";
+import { JsonLd, BATTALION_NFT_EVENT_SCHEMA } from "../../utils/jsonLd";
 
 const BattalionNftHeroSection = lazy(
   () => import("../../sections/wave1/battalion-nft/BattalionNftHeroSection")
@@ -62,6 +63,7 @@ const BattalionNftPage: React.FC = () => {
 
   return (
     <PageLayout className="!pt-0">
+      <JsonLd data={BATTALION_NFT_EVENT_SCHEMA} />
       <ErrorBoundary
         fallback={
           <SectionLayout>
