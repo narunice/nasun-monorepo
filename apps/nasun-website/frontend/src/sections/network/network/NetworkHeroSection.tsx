@@ -92,6 +92,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         loop
         muted
         playsInline
+        poster={isMobile ? "/images/posters/Nsn-Network-Section-Mobile-rf27.webp" : "/images/posters/Nsn-Network-Section-rf29.webp"}
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`w-full h-full ${

@@ -18,7 +18,7 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui";
-const progressVideo = "/videos/Opensea-Battalion-Nft-Pipeline-rf26.mp4";
+const progressVideo = "/videos/Progress-Video-Final-rf35.mp4";
 
 /**
  * SpectraSection - Unified Spectra Game Page
@@ -46,6 +46,7 @@ function SpectraSection() {
               muted
               playsInline
               controls
+              poster="/images/posters/Progress-Video-Final-rf35.webp"
               className="w-full rounded-lg"
             />
 

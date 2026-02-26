@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-const battalionNftVideo = "/videos/Battalion-Nft-Letterbox-01-rf22.mp4";
+const battalionNftVideo = "/videos/Battalion-Nft-Leeterbox-01-rf25.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
 
@@ -127,7 +127,8 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
               muted
               playsInline
               webkit-playsinline="true"
-              preload="metadata"
+              preload="none"
+              poster="/images/posters/Battalion-Nft-Leeterbox-01-rf25.webp"
               onPlaying={handleVideoPlaying}
               className="absolute left-1/2 -translate-x-1/2 -mt-[10%] max-w-9xl w-full min-h-[120%] object-cover object-center"
             >

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-const wave1VideoMP4 = "/videos/Home-Wave1-rf24.mp4";
+const wave1VideoMP4 = "/videos/Home-Wave1-rf28.mp4";
 const leaderboardVideoMP4 = "/videos/Leaderboard-Ui-rf22.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
@@ -107,7 +107,8 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             muted
             playsInline
             webkit-playsinline="true"
-            preload="metadata"
+            preload="none"
+            poster="/images/posters/Home-Wave1-rf28.webp"
             x-webkit-airplay="allow"
             style={{
               position: "absolute",
@@ -181,6 +182,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               loop
               muted
               playsInline
+              poster="/images/posters/Leaderboard-Ui-rf22.webp"
               className="w-full max-w-lg lg:max-w-none object-contain rounded-md shadow-lg"
             >
               <source src={leaderboardVideoMP4} type="video/mp4" />

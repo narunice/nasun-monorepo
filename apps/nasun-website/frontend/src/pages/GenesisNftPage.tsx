@@ -54,6 +54,7 @@ const GenesisNftPage = () => {
           muted
           playsInline
           preload="auto"
+          poster={isMobile ? "/images/posters/Founders-Nft-Portal-Rotate-Mobile-rf23.webp" : "/images/posters/Founders-Nft-Portal-Rotate-rf22.webp"}
           onCanPlay={handleCanPlay}
           className={`w-full h-full transition-opacity duration-500 ${
             isVideoReady ? "opacity-100" : "opacity-0"
