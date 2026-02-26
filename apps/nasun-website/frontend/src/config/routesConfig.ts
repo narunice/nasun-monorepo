@@ -199,18 +199,18 @@ export const routesV2: EnhancedRouteConfigBuilder = {
             },
           ],
         },
-        {
-          name: "navigation.riderStudio",
-          path: "/ecosystem/riderstudio",
-          element: Pages.IPsRiderStudioMain, // Placeholder
-          disabled: true,
-        },
-        {
-          name: "navigation.oneLight",
-          path: "/ecosystem/1light",
-          element: Pages.AiEconomy, // Placeholder
-          disabled: true,
-        },
+        // {
+        //   name: "navigation.riderStudio",
+        //   path: "/ecosystem/riderstudio",
+        //   element: Pages.IPsRiderStudioMain, // Placeholder
+        //   disabled: true,
+        // },
+        // {
+        //   name: "navigation.oneLight",
+        //   path: "/ecosystem/1light",
+        //   element: Pages.AiEconomy, // Placeholder
+        //   disabled: true,
+        // },
       ],
     },
     meta: {
@@ -296,18 +296,18 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/about/founders",
           element: Pages.Founders,
         },
-        {
-          name: "navigation.aboutTeam",
-          path: "/about/team",
-          element: Pages.AboutTeam,
-          disabled: true, // Coming Soon
-        },
-        {
-          name: "navigation.opportunities",
-          path: "/about/opportunities",
-          element: Pages.Opportunities,
-          disabled: true, // Coming Soon
-        },
+        // {
+        //   name: "navigation.aboutTeam",
+        //   path: "/about/team",
+        //   element: Pages.AboutTeam,
+        //   disabled: true, // Coming Soon
+        // },
+        // {
+        //   name: "navigation.opportunities",
+        //   path: "/about/opportunities",
+        //   element: Pages.Opportunities,
+        //   disabled: true, // Coming Soon
+        // },
         // {
         //   name: "navigation.strategy",
         //   path: "/about/strategy",
@@ -380,18 +380,18 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/wave1/leaderboard-guide",
           element: Pages.LeaderboardInfo,
         },
-        {
-          name: "navigation.genesisEvent",
-          path: "/wave1/frontiers-event",
-          element: Pages.GenesisNft,
-          disabled: true,
-        },
-        {
-          name: "navigation.contests",
-          path: "/wave1/contests",
-          element: Pages.BattalionNft, // Placeholder - disabled anyway
-          disabled: true, // Coming Soon
-        },
+        // {
+        //   name: "navigation.genesisEvent",
+        //   path: "/wave1/frontiers-event",
+        //   element: Pages.GenesisNft,
+        //   disabled: true,
+        // },
+        // {
+        //   name: "navigation.contests",
+        //   path: "/wave1/contests",
+        //   element: Pages.BattalionNft, // Placeholder - disabled anyway
+        //   disabled: true, // Coming Soon
+        // },
       ],
     },
     meta: {
