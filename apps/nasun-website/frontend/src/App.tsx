@@ -61,7 +61,7 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary fallback={<ErrorFallback />}>
-      <div className="min-h-screen bg-nasun-black">
+      <div className="min-h-screen bg-nasun-black overflow-x-clip">
         <HelmetProvider>
           <Router>
             <HomePageLoadingProvider>
