@@ -184,6 +184,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
         muted
         playsInline
         preload="auto"
+        poster="/images/posters/Full-Trailer184s-rf29.webp"
         className={`w-full max-w-none h-full object-cover transition-opacity duration-500 ${
           isVideoPlaying ? "opacity-100" : "opacity-0"
         }`}

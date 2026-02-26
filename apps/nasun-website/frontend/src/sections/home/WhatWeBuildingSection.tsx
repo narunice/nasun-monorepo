@@ -9,10 +9,10 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
-const gensolVideo = "/videos/Trakker-Flying-26rf.mp4";
-const baramVideo = "/videos/Baram-U-rf10.mp4";
+const gensolVideo = "/videos/Trakker-Flying-rf24.mp4";
+const baramVideo = "/videos/Baram-Ui-rf28.mp4";
 const padoVideo = "/videos/Pado-Ui-Short-rf20.mp4";
-const explorerVideo = "/videos/Network-Explorer-Ui-rf12.mp4";
+const explorerVideo = "/videos/Network-Explorer-Ui-rf20.mp4";
 
 const CustomArrow = ({
   onClick,
@@ -56,6 +56,7 @@ type SlideData = {
     | "nasun-network";
   link: string;
   video?: string;
+  poster?: string;
   videoStartTime?: number;
   contentPosition?: ContentPosition;
 };
@@ -70,6 +71,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "sf-orange",
     link: "/ip/gensol",
     video: gensolVideo,
+    poster: "/images/posters/Trakker-Flying-rf24.webp",
     contentPosition: "right-center",
   },
   {
@@ -81,6 +83,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "baram",
     link: "/ecosystem/baram",
     video: baramVideo,
+    poster: "/images/posters/Baram-Ui-rf28.webp",
   },
   {
     id: "pado",
@@ -91,6 +94,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "pado",
     link: "/ecosystem/pado",
     video: padoVideo,
+    poster: "/images/posters/Pado-Ui-Short-rf20.webp",
   },
   {
     id: "protocol",
@@ -101,6 +105,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "nasun-network",
     link: "/network/nsn",
     video: explorerVideo,
+    poster: "/images/posters/Network-Explorer-Ui-rf20.webp",
   },
 ];
 
@@ -132,6 +137,26 @@ function WhatWeBuildingSection() {
     return () => observer.disconnect();
   }, []);
 
+  // Preload adjacent slides so the next transition is seamless
+  const preloadAdjacentSlides = useCallback((index: number) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const adjacent = [
+      (index - 1 + SLIDES.length) % SLIDES.length,
+      (index + 1) % SLIDES.length,
+    ];
+    adjacent.forEach((i) => {
+      const video = container.querySelector<HTMLVideoElement>(
+        `.slick-slide[data-index="${i}"]:not(.slick-cloned) video`,
+      );
+      if (video && video.preload === "none") {
+        video.preload = "auto";
+        video.load();
+      }
+    });
+  }, []);
+
   // Play only the first slide's video once section is in view
   useEffect(() => {
     if (!hasEnteredView) return;
@@ -142,7 +167,8 @@ function WhatWeBuildingSection() {
       `.slick-slide[data-index="0"]:not(.slick-cloned) video`,
     );
     activeVideo?.play().catch(() => {});
-  }, [hasEnteredView]);
+    preloadAdjacentSlides(0);
+  }, [hasEnteredView, preloadAdjacentSlides]);
 
   // Pause cloned videos to prevent currentTime drift.
   // Paused clones never accumulate drift, making sync before transitions reliable.
@@ -216,7 +242,9 @@ function WhatWeBuildingSection() {
     container.querySelectorAll<HTMLVideoElement>(".slick-cloned video").forEach((v) => {
       if (!v.paused) v.pause();
     });
-  }, []);
+
+    preloadAdjacentSlides(index);
+  }, [preloadAdjacentSlides]);
 
   const sliderSettings = {
     dots: false,
@@ -270,7 +298,8 @@ function WhatWeBuildingSection() {
                           }}
                           muted
                           playsInline
-                          preload="auto"
+                          preload="none"
+                          poster={slide.poster}
                           onEnded={(e) => {
                             // Ignore events from cloned slides
                             const slideEl = e.currentTarget.closest(".slick-slide");

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-const visionVideoMP4 = "/videos/Home-Vision-rf24.mp4";
+const visionVideoMP4 = "/videos/Home-Vision-rf30.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
@@ -88,7 +88,8 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             muted
             playsInline
             webkit-playsinline="true"
-            preload="auto"
+            preload="none"
+            poster="/images/posters/Home-Vision-rf30.webp"
             x-webkit-airplay="allow"
             onPlaying={handleVideoPlaying}
             className={`absolute top-0 left-0 w-full h-full object-cover object-center transition-opacity duration-500 ${
