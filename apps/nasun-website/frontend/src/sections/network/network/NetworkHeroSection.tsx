@@ -6,6 +6,7 @@ const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-Mobile-rf27.mp4";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
+import { ArrowUpRight } from "lucide-react";
 
 interface NetworkHeroSectionProps {
   onVideoReady?: () => void;
@@ -131,6 +132,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
                 rel="noopener noreferrer"
               >
                 Open Devnet & Wallet
+                <ArrowUpRight className="ml-1.5 size-4 shrink-0" />
               </Link>
             </Button>
           </div>
@@ -155,6 +157,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
                   rel="noopener noreferrer"
                 >
                   Open Devnet & Wallet
+                <ArrowUpRight className="ml-1.5 size-4 shrink-0" />
                 </Link>
               </Button>
             </FadeInUp>
