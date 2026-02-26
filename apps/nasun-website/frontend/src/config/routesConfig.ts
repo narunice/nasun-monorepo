@@ -66,8 +66,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "NASUN",
-      description: "NASUN official website",
+      title: "Nasun — Layer 1 Blockchain",
+      description: "A new Layer 1 blockchain with DEX, prediction markets, AI settlement, and more. All live on devnet.",
     },
   },
 
@@ -97,8 +97,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Protocol - NASUN",
-      description: "NASUN Protocol",
+      title: "Nasun Network — High-Performance L1 Blockchain",
+      description: "Nasun Network is a high-performance Layer 1 blockchain with sub-second finality, parallel execution, and native AI integration.",
     },
   },
 
@@ -149,8 +149,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Infra - NASUN",
-      description: "NASUN Decentralized Infrastructure",
+      title: "Infrastructure — NASUN",
+      description: "Nasun's decentralized infrastructure layer — AI executors, compute, storage, streaming, and game servers.",
     },
   },
 
@@ -214,8 +214,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Ecosystem - NASUN",
-      description: "NASUN Ecosystem",
+      title: "Ecosystem — NASUN",
+      description: "Explore the Nasun ecosystem — Baram AI settlement, Pado DEX with prediction markets, and GenSol gaming studio.",
     },
   },
 
@@ -228,8 +228,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true, // Updates 드롭다운으로 이동
     },
     meta: {
-      title: "Awards - NASUN",
-      description: "Awards and Grant programs",
+      title: "Awards & Grants — NASUN",
+      description: "Nasun awards, grant programs, and ecosystem funding opportunities for builders and contributors.",
     },
   },
 
@@ -242,8 +242,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true, // Updates 드롭다운으로 이동
     },
     meta: {
-      title: "News - NASUN",
-      description: "Latest news and updates",
+      title: "News — NASUN",
+      description: "Latest news, announcements, and updates from the Nasun ecosystem.",
     },
   },
 
@@ -273,8 +273,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Updates - NASUN",
-      description: "News, Awards, and Roadmap",
+      title: "Updates — NASUN",
+      description: "Nasun updates — news, awards, grants, and development roadmap.",
     },
   },
 
@@ -321,8 +321,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "About - NASUN",
-      description: "About NASUN",
+      title: "About — NASUN",
+      description: "About Nasun — meet the founders, learn our vision, and explore investment opportunities.",
     },
   },
 
@@ -347,8 +347,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Team - NASUN",
-      description: "Meet the NASUN team",
+      title: "Team — NASUN",
+      description: "Meet the Nasun team — the people building the next generation of onchain applications.",
     },
   },
 
@@ -395,8 +395,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Wave 1 - NASUN",
-      description: "Wave 1 activities and events",
+      title: "Wave 1 — NASUN",
+      description: "Nasun Wave 1 campaign — Battalion NFT free mint, community leaderboard, and early contributor rewards.",
     },
   },
 
@@ -409,8 +409,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Frontiers Event - NASUN",
-      description: "NASUN Frontiers Event",
+      title: "Frontiers Event — NASUN",
+      description: "Nasun Frontiers Event — exclusive early access and community engagement opportunities.",
     },
   },
 
@@ -423,8 +423,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Community Leaderboard - NASUN",
-      description: "Community engagement leaderboard",
+      title: "Community Leaderboard — NASUN Wave 1",
+      description: "Climb the Nasun community leaderboard. Track your participation, compete with other members, and earn ecosystem rewards.",
     },
   },
 
@@ -455,8 +455,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Privacy Policy - NASUN",
-      description: "NASUN privacy policy",
+      title: "Privacy Policy — NASUN",
+      description: "Nasun privacy policy — how we collect, use, and protect your data.",
     },
   },
 
@@ -469,8 +469,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Terms of Use - NASUN",
-      description: "NASUN terms of service",
+      title: "Terms of Use — NASUN",
+      description: "Nasun terms of use — conditions for using the Nasun website and services.",
     },
   },
 
@@ -511,8 +511,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Pado - NASUN",
-      description: "Pado: Unified Onchain Finance",
+      title: "Pado — Unified Onchain Finance",
+      description: "Trade on Pado — a decentralized exchange with prediction markets, lottery, and margin trading. Built on Nasun Network.",
     },
   },
 

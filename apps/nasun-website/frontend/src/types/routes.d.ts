@@ -42,6 +42,8 @@ export interface EnhancedRouteConfig {
     description?: string;
     requiresAuth?: boolean;
     preload?: boolean;
+    ogImage?: string;
+    ogType?: string;
   };
 }
 

@@ -1,8 +1,11 @@
 import React from "react";
-import { Route, Navigate } from "react-router-dom";
+import { Route, Navigate, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import type { EnhancedRouteConfig, SubMenuItem } from "../types/routes.d";
 import { AdminRoute } from "../features/admin";
+
+const BASE_URL = "https://nasun.io";
+const DEFAULT_OG_IMAGE = `${BASE_URL}/Nasun-OG.png`;
 
 interface RouteWithMetaProps {
   route: {
@@ -11,19 +14,39 @@ interface RouteWithMetaProps {
       title?: string;
       description?: string;
       requiresAuth?: boolean;
+      ogImage?: string;
+      ogType?: string;
     };
   };
 }
 
 export const RouteWithMeta: React.FC<RouteWithMetaProps> = ({ route }) => {
   const Component = route.component;
+  const location = useLocation();
+  const meta = route.meta;
+
+  const canonicalUrl = `${BASE_URL}${location.pathname.replace(/\/+$/, "") || "/"}`;
+  const ogImage = meta?.ogImage || DEFAULT_OG_IMAGE;
+
   return (
     <>
-      {route.meta && (
+      {meta && (
         <Helmet>
-          {route.meta.title && <title>{route.meta.title}</title>}
-          {route.meta.description && <meta name="description" content={route.meta.description} />}
-          {route.meta.requiresAuth && <meta name="robots" content="noindex" />}
+          {meta.title && <title>{meta.title}</title>}
+          {meta.description && <meta name="description" content={meta.description} />}
+          {meta.requiresAuth && <meta name="robots" content="noindex" />}
+          <link rel="canonical" href={canonicalUrl} />
+          {/* Open Graph */}
+          {meta.title && <meta property="og:title" content={meta.title} />}
+          {meta.description && <meta property="og:description" content={meta.description} />}
+          <meta property="og:url" content={canonicalUrl} />
+          <meta property="og:image" content={ogImage} />
+          <meta property="og:type" content={meta.ogType || "website"} />
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary_large_image" />
+          {meta.title && <meta name="twitter:title" content={meta.title} />}
+          {meta.description && <meta name="twitter:description" content={meta.description} />}
+          <meta name="twitter:image" content={ogImage} />
         </Helmet>
       )}
       <Component />
