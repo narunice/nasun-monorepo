@@ -191,9 +191,9 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
       {/* Tasks List */}
       <div className="space-y-4 !py-4">
         {/* Follow Recommendation (Not Required) */}
-        <div className="flex items-center justify-between px-4 py-3 rounded-md border border-gray-600 bg-gray-900/50">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-md border border-gray-600 bg-gray-900/50">
           <div className="flex items-center space-x-3">
-            <svg className="w-6 h-6 text-nasun-nw4" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-nasun-nw4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
             </svg>
             <span className=" text-nasun-white">
@@ -201,7 +201,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
               <span className="text-nasun-nw4/80">({t("step3.recommended")})</span>
             </span>
           </div>
-          <ButtonV3 variant="nw4" outline size="sm" asChild>
+          <ButtonV3 variant="nw4" outline size="sm" className="w-full sm:w-auto" asChild>
             <a href={followIntentUrl} target="_blank" rel="noopener noreferrer">
               <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-4 h-4 mr-1" />
               {t("step3.followButton")}
