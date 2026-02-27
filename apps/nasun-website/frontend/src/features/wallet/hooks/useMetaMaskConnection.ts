@@ -19,6 +19,12 @@ import {
   isMetaMaskInstalled,
 } from '../../../utils/metamaskUtils';
 import { authenticateWithMetaMask } from '../../../services/metamaskApi';
+import {
+  connectMetaMaskSDK,
+  signMessageViaSDK,
+  disconnectMetaMaskSDK,
+} from '@/lib/wallet/metamaskSdkProvider';
+import { isMobileBrowser } from '@/utils/mobileDetect';
 
 export type MetaMaskConnectionMode = 'login' | 'link';
 
@@ -63,8 +69,11 @@ export function useMetaMaskConnection(
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async () => {
-    // Check if MetaMask is installed before proceeding
-    if (!isMetaMaskInstalled()) {
+    const mobile = isMobileBrowser();
+
+    // Desktop: check MetaMask extension is installed
+    // Mobile: skip — MetaMask SDK handles connection via deep link
+    if (!mobile && !isMetaMaskInstalled()) {
       const installConfirm = confirm(
         "MetaMask is not installed.\n\n" +
         "Would you like to install it?"
@@ -79,18 +88,22 @@ export function useMetaMaskConnection(
       setIsConnecting(true);
 
       // 1. MetaMask 연결
-      const address = await connectWallet();
+      const address = mobile ? await connectMetaMaskSDK() : await connectWallet();
 
-      // 2. 네트워크 확인 및 전환
-      const expectedChainId = import.meta.env.VITE_ETHEREUM_CHAIN_ID;
-      if (!expectedChainId) {
-        throw new Error('VITE_ETHEREUM_CHAIN_ID is not configured');
+      // 2. 네트워크 확인 및 전환 (desktop only — personal_sign is chain-agnostic)
+      if (!mobile) {
+        const expectedChainId = import.meta.env.VITE_ETHEREUM_CHAIN_ID;
+        if (!expectedChainId) {
+          throw new Error('VITE_ETHEREUM_CHAIN_ID is not configured');
+        }
+        await switchNetwork(expectedChainId);
       }
-      await switchNetwork(expectedChainId);
 
       // 3. Backend 인증 (Challenge-Response)
       const authResult = await authenticateWithMetaMask(address, async (message) => {
-        return await signMessage(message, address);
+        return mobile
+          ? await signMessageViaSDK(message, address)
+          : await signMessage(message, address);
       });
 
       // 4. 모드별 분기
@@ -159,19 +172,33 @@ export function useMetaMaskConnection(
           updatedProfile.walletAddress = address;
         }
 
+        // Preserve cognitoToken (not stored in DynamoDB, session-only)
+        if (user.cognitoToken && !updatedProfile.cognitoToken) {
+          updatedProfile.cognitoToken = user.cognitoToken;
+        }
+
         updateUserProfile(updatedProfile);
         sessionStorage.setItem(
           'nasun_user_profile',
           JSON.stringify(updatedProfile)
         );
 
-        // Auto-connect dApp session after successful linking
-        await connectWallet();
+        // Auto-connect dApp session after successful linking (desktop only)
+        if (!mobile) {
+          await connectWallet();
+        }
 
         onSuccess?.(address);
       }
     } catch (error) {
       console.error('[useMetaMaskConnection] Error:', error);
+
+      // Clean up SDK on timeout
+      const errorMsg = error instanceof Error ? error.message : '';
+      if (errorMsg.includes('timed out')) {
+        await disconnectMetaMaskSDK();
+      }
+
       onError?.(error as Error);
       throw error;
     } finally {
