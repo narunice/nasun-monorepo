@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks';
 import { useAnalyticsData } from '../hooks/useAnalyticsData';
 import { useTradingActivity } from '../hooks/useTradingActivity';
 import {
@@ -20,6 +21,7 @@ function parseTimeRange(raw: string | null): TimeRange {
 }
 
 export default function Analytics() {
+  useDocumentTitle('Analytics');
   const [searchParams, setSearchParams] = useSearchParams();
   const timeRange = parseTimeRange(searchParams.get('range'));
 

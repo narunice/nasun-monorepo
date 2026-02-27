@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getAddressTransactions } from '../lib/sui-client';
+import { useDocumentTitle } from '../hooks';
 import { useAddressObjects } from '../hooks/useAddressObjects';
 import { Card } from '../components/ui/Card';
 
@@ -16,6 +17,7 @@ const HEX_ADDR_RE = /^0x[0-9a-fA-F]{1,64}$/;
 
 export default function Address() {
   const { addr } = useParams<{ addr: string }>();
+  useDocumentTitle(addr ? `Address ${addr.slice(0, 10)}...` : 'Address');
   const isValidAddr = addr ? HEX_ADDR_RE.test(addr) : false;
   const [txLimit, setTxLimit] = useState(20);
 

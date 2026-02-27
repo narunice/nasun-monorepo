@@ -4,10 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { getTopAccounts } from '../lib/explorer-api';
 import type { TopAccount } from '../lib/explorer-api';
 import { formatBalance, truncateAddress } from '../lib/format';
+import { useDocumentTitle } from '../hooks';
 
 const LIMIT_OPTIONS = [25, 50, 100, 200] as const;
 
 export default function TopAccounts() {
+  useDocumentTitle('Top Accounts');
   const [limit, setLimit] = useState<number>(50);
 
   const { data: accounts, isLoading, error } = useQuery<TopAccount[]>({

@@ -2,11 +2,13 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCheckpoint } from '../lib/sui-client';
 import { formatTimestamp, formatSoe } from '../lib/format';
+import { useDocumentTitle } from '../hooks';
 import { Card } from '../components/ui/Card';
 import { SectionBox } from '../components/ui/SectionBox';
 
 export default function Checkpoint() {
   const { sequence } = useParams<{ sequence: string }>();
+  useDocumentTitle(sequence ? `Checkpoint #${sequence}` : 'Checkpoint');
 
   const { data: checkpoint, isLoading } = useQuery({
     queryKey: ['checkpoint', sequence],

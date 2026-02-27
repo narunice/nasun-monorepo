@@ -6,6 +6,7 @@ import {
   useRecentTransactions,
   useTPSHistory,
   useMinDuration,
+  useDocumentTitle,
 } from '../hooks';
 
 // Sub-components
@@ -14,6 +15,8 @@ import NetworkActivityCharts from '../components/home/NetworkActivityCharts';
 import RecentTransactionsTable from '../components/home/RecentTransactionsTable';
 
 export default function Home() {
+  useDocumentTitle();
+
   // Network data queries
   const {
     data: networkStatus,

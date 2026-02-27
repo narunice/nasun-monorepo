@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPackageModules } from '../lib/sui-client';
+import { useDocumentTitle } from '../hooks';
 import { Card } from '../components/ui/Card';
 import { SectionBox } from '../components/ui/SectionBox';
 import CopyableId from '../components/CopyableId';
@@ -11,6 +12,7 @@ const MODULES_PER_PAGE = 20;
 
 export default function Package() {
   const { id } = useParams<{ id: string }>();
+  useDocumentTitle(id ? `Package ${id.slice(0, 10)}...` : 'Package');
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
 

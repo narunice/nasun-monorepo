@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { sql } from './db.js';
+import { rateLimiter } from './rate-limit.js';
 import healthRoutes from './routes/health.js';
 import statsRoutes from './routes/stats.js';
 
@@ -23,6 +24,9 @@ app.use(
     maxAge: 3600,
   }),
 );
+
+// Rate limiting: 120 requests per minute per IP
+app.use('/api/v1/stats/*', rateLimiter({ windowMs: 60_000, max: 120 }));
 
 // Routes
 app.route('/api/v1/health', healthRoutes);

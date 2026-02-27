@@ -2,11 +2,12 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { suiClient } from '../lib/sui-client';
 import { formatTimestamp, truncateDigest, getTxTypeInfo } from '../lib/format';
-import { useCursorPagination } from '../hooks';
+import { useCursorPagination, useDocumentTitle } from '../hooks';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 
 export default function Transactions() {
+  useDocumentTitle('Transactions');
   const { cursor, pageIndex, handleNextPage, handlePrevPage } = useCursorPagination<string>();
 
   const { data, isLoading, isFetching } = useQuery({

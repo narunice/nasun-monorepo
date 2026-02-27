@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getValidatorByAddress } from '../lib/sui-client';
 import { formatBalance, formatSoe, formatPercentage } from '../lib/format';
+import { useDocumentTitle } from '../hooks';
 import { resolveMediaUrl, sanitizeHref } from '../lib/media';
 import { Card } from '../components/ui/Card';
 import { SectionBox } from '../components/ui/SectionBox';
@@ -9,12 +10,12 @@ import ValidatorStaking from '../components/staking/ValidatorStaking';
 
 export default function Validator() {
   const { address } = useParams<{ address: string }>();
-
   const { data: validator, isLoading } = useQuery({
     queryKey: ['validator', address],
     queryFn: () => getValidatorByAddress(address!),
     enabled: !!address,
   });
+  useDocumentTitle(validator?.name || 'Validator');
 
   if (isLoading) {
     return <div className="text-muted-foreground">Loading...</div>;

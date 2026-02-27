@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useEpochInfo } from '../hooks';
+import { useEpochInfo, useDocumentTitle } from '../hooks';
 import { formatBalance, formatDuration } from '../lib/format';
 import InfoRow from '../components/InfoRow';
 import { SectionBox } from '../components/ui/SectionBox';
@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 
 export default function Epoch() {
   const { id } = useParams<{ id: string }>();
+  useDocumentTitle(id ? `Epoch #${id}` : 'Epoch');
   const { data: epochInfo, isLoading } = useEpochInfo();
 
   const isCurrentEpoch = epochInfo && id && epochInfo.epoch === id;

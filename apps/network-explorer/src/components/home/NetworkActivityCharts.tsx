@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { TPSChart, EpochProgress } from '../charts';
 import type { EpochInfo } from '../../lib/types';
 import type { TPSDataPoint } from '../../hooks/types';
@@ -7,7 +8,7 @@ interface NetworkActivityChartsProps {
   epochInfo: EpochInfo | undefined;
 }
 
-export default function NetworkActivityCharts({
+export default memo(function NetworkActivityCharts({
   tpsHistory,
   epochInfo,
 }: NetworkActivityChartsProps) {
@@ -20,4 +21,4 @@ export default function NetworkActivityCharts({
       </div>
     </section>
   );
-}
+});
