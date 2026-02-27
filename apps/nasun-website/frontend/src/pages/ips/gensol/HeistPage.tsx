@@ -8,7 +8,7 @@ const TheHeistSection = lazy(() => import("@/sections/ips/gensol/animation/TheHe
 export default function HeistPage() {
   return (
     <ErrorBoundary>
-      <PageLayout>
+      <PageLayout className="!pt-0">
         <Suspense fallback={<SectionLoading fullScreen />}>
           <TheHeistSection />
         </Suspense>
