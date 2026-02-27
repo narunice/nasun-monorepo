@@ -2,10 +2,11 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCheckpoints } from '../lib/sui-client';
 import { formatTimestamp, truncateDigest, formatSoe, formatLastUpdated } from '../lib/format';
-import { useCursorPagination, useMinDuration } from '../hooks';
+import { useCursorPagination, useMinDuration, useDocumentTitle } from '../hooks';
 import { Card } from '../components/ui/Card';
 
 export default function Checkpoints() {
+  useDocumentTitle('Checkpoints');
   const { cursor, pageIndex, handleNextPage, handlePrevPage } = useCursorPagination<string>();
 
   const { data, isLoading, isFetching, dataUpdatedAt } = useQuery({

@@ -4,9 +4,10 @@ import { getValidators } from '../lib/sui-client';
 import { formatBalance, formatPercentage, truncateAddress, formatLastUpdated } from '../lib/format';
 import { resolveMediaUrl } from '../lib/media';
 import { Card } from '../components/ui/Card';
-import { useMinDuration } from '../hooks';
+import { useMinDuration, useDocumentTitle } from '../hooks';
 
 export default function Validators() {
+  useDocumentTitle('Validators');
   const { data, isLoading, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['validators'],
     queryFn: getValidators,

@@ -4,3 +4,4 @@ export * from './useNetworkData';
 export * from './useMinDuration';
 export * from './useCursorPagination';
 export * from './useCopyToClipboard';
+export * from './useDocumentTitle';

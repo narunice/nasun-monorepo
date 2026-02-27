@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://explorer.nasun.io/devnet/</loc><priority>1.0</priority><changefreq>always</changefreq></url>
+  <url><loc>https://explorer.nasun.io/devnet/transactions</loc><priority>0.8</priority><changefreq>always</changefreq></url>
+  <url><loc>https://explorer.nasun.io/devnet/validators</loc><priority>0.7</priority><changefreq>daily</changefreq></url>
+  <url><loc>https://explorer.nasun.io/devnet/checkpoints</loc><priority>0.7</priority><changefreq>always</changefreq></url>
+  <url><loc>https://explorer.nasun.io/devnet/packages</loc><priority>0.6</priority><changefreq>daily</changefreq></url>
+  <url><loc>https://explorer.nasun.io/devnet/tokens</loc><priority>0.6</priority><changefreq>daily</changefreq></url>
+  <url><loc>https://explorer.nasun.io/devnet/analytics</loc><priority>0.7</priority><changefreq>hourly</changefreq></url>
+  <url><loc>https://explorer.nasun.io/devnet/top-accounts</loc><priority>0.5</priority><changefreq>daily</changefreq></url>
+</urlset>

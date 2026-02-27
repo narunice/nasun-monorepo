@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card } from '../ui/Card';
 import { formatLastUpdated, formatDuration, formatBalance } from '../../lib/format';
 import type { NetworkStatus, EpochInfo } from '../../lib/types';
@@ -11,7 +12,7 @@ interface NetworkStatusCardsProps {
   updatedAt: number | undefined;
 }
 
-export default function NetworkStatusCards({
+export default memo(function NetworkStatusCards({
   status,
   epochInfo,
   tps,
@@ -97,4 +98,4 @@ export default function NetworkStatusCards({
       )}
     </section>
   );
-}
+});
