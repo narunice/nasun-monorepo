@@ -1,0 +1,16 @@
+{
+  "name": "Nasun Explorer",
+  "short_name": "Explorer",
+  "description": "Blockchain explorer for the Nasun Network.",
+  "start_url": "/devnet/",
+  "display": "standalone",
+  "background_color": "#14202e",
+  "theme_color": "#14202e",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

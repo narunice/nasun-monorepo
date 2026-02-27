@@ -1,22 +1,25 @@
+import { lazy } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { ErrorBoundary, Layout } from './components/layout';
 import Home from './pages/Home';
-import Analytics from './pages/Analytics';
-import Transaction from './pages/Transaction';
-import Transactions from './pages/Transactions';
-import ObjectPage from './pages/Object';
-import Address from './pages/Address';
-import Validators from './pages/Validators';
-import Validator from './pages/Validator';
-import Checkpoints from './pages/Checkpoints';
-import Checkpoint from './pages/Checkpoint';
-import Package from './pages/Package';
-import Packages from './pages/Packages';
-import Tokens from './pages/Tokens';
-import Epoch from './pages/Epoch';
-import TopAccounts from './pages/TopAccounts';
-import AuthCallback from './pages/AuthCallback';
 import { Card } from './components/ui/Card';
+
+// Lazy-loaded pages — each becomes a separate chunk
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Transaction = lazy(() => import('./pages/Transaction'));
+const Transactions = lazy(() => import('./pages/Transactions'));
+const ObjectPage = lazy(() => import('./pages/Object'));
+const Address = lazy(() => import('./pages/Address'));
+const Validators = lazy(() => import('./pages/Validators'));
+const Validator = lazy(() => import('./pages/Validator'));
+const Checkpoints = lazy(() => import('./pages/Checkpoints'));
+const Checkpoint = lazy(() => import('./pages/Checkpoint'));
+const Package = lazy(() => import('./pages/Package'));
+const Packages = lazy(() => import('./pages/Packages'));
+const Tokens = lazy(() => import('./pages/Tokens'));
+const Epoch = lazy(() => import('./pages/Epoch'));
+const TopAccounts = lazy(() => import('./pages/TopAccounts'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 
 function NotFound() {
   return (

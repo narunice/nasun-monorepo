@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /callback
+
+Sitemap: https://explorer.nasun.io/devnet/sitemap.xml

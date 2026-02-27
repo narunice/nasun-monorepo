@@ -76,6 +76,13 @@ export default defineConfig(({ mode }) => ({
           ) {
             return 'wallet-vendor'
           }
+          // Charts library — only needed by Analytics page (lazy loaded)
+          if (
+            id.includes('node_modules/recharts') ||
+            id.includes('node_modules/d3-')
+          ) {
+            return 'chart-vendor'
+          }
         },
       },
     },

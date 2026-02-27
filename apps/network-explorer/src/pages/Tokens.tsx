@@ -4,6 +4,7 @@ import { NBTC_TYPE, NUSDC_TYPE, NETH_TYPE, NSOL_TYPE, TOKENS, TOKENS_V2, NETH_PA
 import { getCoinTotalSupply } from '../lib/sui-client';
 import { getTokenStats } from '../lib/explorer-api';
 import { formatTokenBalance, truncateType } from '../lib/format';
+import { useDocumentTitle } from '../hooks';
 
 const KNOWN_TOKENS = [
   { coinType: '0x2::sui::SUI', symbol: 'NSN', name: 'Nasun', decimals: 9, packageLink: null },
@@ -18,6 +19,7 @@ function brandedType(coinType: string): string {
 }
 
 export default function Tokens() {
+  useDocumentTitle('Tokens');
   const navigate = useNavigate();
 
   // API: holder count + circulating supply (DB-backed)

@@ -2,9 +2,47 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nasun Explorer</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <title>Nasun Explorer — Blockchain Explorer for Nasun Network</title>
+    <meta name="description" content="Explore transactions, addresses, validators, and on-chain activity on the Nasun Network. Real-time blockchain data for Nasun's Layer 1 devnet." />
+    <meta name="theme-color" content="#14202e" />
+    <link rel="canonical" href="https://explorer.nasun.io/devnet/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Nasun Explorer" />
+    <meta property="og:title" content="Nasun Explorer — Blockchain Explorer" />
+    <meta property="og:description" content="Explore transactions, addresses, validators, and on-chain activity on the Nasun Network." />
+    <meta property="og:image" content="https://explorer.nasun.io/devnet/ne-og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:url" content="https://explorer.nasun.io/devnet/" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Nasun_io" />
+    <meta name="twitter:title" content="Nasun Explorer — Blockchain Explorer" />
+    <meta name="twitter:description" content="Explore transactions, addresses, validators, and on-chain activity on the Nasun Network." />
+    <meta name="twitter:image" content="https://explorer.nasun.io/devnet/ne-og.jpg" />
+
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/nasun_symbol_black.svg" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Preload critical fonts -->
+    <link rel="preload" href="/fonts/rubik/Rubik-Regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/rubik/Rubik-Medium.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!-- Preconnect to critical origins -->
+    <link rel="preconnect" href="https://rpc.devnet.nasun.io" crossorigin />
+    <link rel="dns-prefetch" href="https://faucet.devnet.nasun.io" />
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+
     <!-- CSP enforced via nginx HTTP header (/etc/nginx/snippets/explorer-security-headers.conf) -->
   </head>
   <body>

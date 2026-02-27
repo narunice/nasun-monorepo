@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useDocumentTitle } from '../hooks';
 import { Badge } from '../components/ui/Badge';
 import { truncateId } from '../lib/format';
 
@@ -43,6 +44,7 @@ const CATEGORY_VARIANT: Record<Category, 'immutable' | 'child' | 'info' | 'succe
 };
 
 export default function Packages() {
+  useDocumentTitle('Packages');
   return (
     <>
       <div className="mb-6">

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -11,7 +12,7 @@ interface RecentTransactionsTableProps {
   updatedAt: number | undefined;
 }
 
-export default function RecentTransactionsTable({
+export default memo(function RecentTransactionsTable({
   transactions,
   isLoading,
   isFetching,
@@ -92,4 +93,4 @@ export default function RecentTransactionsTable({
       )}
     </section>
   );
-}
+});

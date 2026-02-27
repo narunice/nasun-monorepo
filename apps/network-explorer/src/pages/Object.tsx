@@ -2,6 +2,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getObject } from '../lib/sui-client';
 import { formatObjectType, formatSoe } from '../lib/format';
+import { useDocumentTitle } from '../hooks';
 import { getDisplayMediaUrl, isNFTObject } from '../lib/media';
 import { parseContent, isCoinType, extractPackageId, getOwnerDisplay, getOwnerLink } from '../lib/object-utils';
 import InfoRow from '../components/InfoRow';
@@ -46,6 +47,7 @@ const HEX_ID_RE = /^0x[0-9a-fA-F]{1,64}$/;
 
 export default function ObjectPage() {
   const { id } = useParams<{ id: string }>();
+  useDocumentTitle(id ? `Object ${id.slice(0, 10)}...` : 'Object');
   const [searchParams, setSearchParams] = useSearchParams();
   const isValidId = id ? HEX_ID_RE.test(id) : false;
   const activeTab = searchParams.get('tab') || 'overview';
