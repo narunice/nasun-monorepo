@@ -96,27 +96,92 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     );
 
     if (isDuplicate) {
-      // 이미 등록된 경우 기존 정보 반환 (Idempotent)
-      // Duplicate could be by walletAddress or xUserId — check both
+      // Check if duplicate is by wallet (idempotent) or by X account (upsert)
       const existingByWallet = await whitelistService.findByWalletAddress(request.walletAddress);
-      const existing = existingByWallet || await whitelistService.findByXUserId(request.xUserId);
 
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': getCorsOrigin(origin),
-          'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
-        },
-        body: JSON.stringify({
-          success: true,
-          registered: true,
-          whitelist: existing,
-          message: existingByWallet
-            ? '이미 등록된 지갑 주소입니다.'
-            : '이 X 계정은 이미 다른 지갑으로 등록되었습니다.',
-        } as RegisterUserResponse),
-      };
+      if (existingByWallet) {
+        // Check if same X account (idempotent) or different X account (conflict)
+        if (existingByWallet.xUserId !== request.xUserId) {
+          throw new NftEventError(
+            'This wallet address is already registered to a different X account.',
+            ErrorCode.ALREADY_REGISTERED,
+            409,
+          );
+        }
+
+        // Idempotent: same wallet + same X registering again — return existing record
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': getCorsOrigin(origin),
+            'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
+          },
+          body: JSON.stringify({
+            success: true,
+            registered: true,
+            whitelist: existingByWallet,
+            message: '이미 등록된 지갑 주소입니다.',
+          } as RegisterUserResponse),
+        };
+      }
+
+      // Different wallet, same X account → upsert (replace old wallet with new)
+      const existingByX = await whitelistService.findByXUserId(request.xUserId);
+
+      if (existingByX) {
+        // Guard: reject if NFT was already minted — wallet changes no longer allowed
+        if (existingByX.mintedAt) {
+          throw new NftEventError(
+            'This X account has already minted an NFT. Wallet changes are no longer allowed.',
+            ErrorCode.ALREADY_MINTED,
+            409,
+          );
+        }
+
+        // Upsert: register new wallet first (PUT), then delete old record (DELETE).
+        // PUT-before-DELETE prevents data loss on partial failure.
+        console.log(`[register-user] Upsert: replacing wallet ${existingByX.walletAddress} → ${request.walletAddress}`);
+
+        let whitelist;
+        try {
+          whitelist = await whitelistService.registerUser(request);
+        } catch (regErr: any) {
+          // New wallet is already registered to a different X account
+          if (regErr.message?.includes('ALREADY_REGISTERED')) {
+            throw new NftEventError(
+              'This wallet address is already registered to a different X account.',
+              ErrorCode.ALREADY_REGISTERED,
+              409,
+            );
+          }
+          throw regErr;
+        }
+
+        // Best-effort delete: new record is already saved, so return success even if delete fails.
+        // An orphaned old record is detectable and recoverable; data loss is not.
+        try {
+          await whitelistService.deleteByWalletAddress(existingByX.walletAddress);
+          console.log(`[register-user] Upsert complete: old record deleted`);
+        } catch (delErr) {
+          console.error(`[register-user] Upsert: failed to delete old record ${existingByX.walletAddress}. Orphaned record may exist.`, delErr);
+        }
+
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': getCorsOrigin(origin),
+            'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
+          },
+          body: JSON.stringify({
+            success: true,
+            registered: true,
+            whitelist,
+            message: '지갑 주소가 업데이트되었습니다.',
+          } as RegisterUserResponse),
+        };
+      }
     }
 
     // 7. 화이트리스트 등록
@@ -153,7 +218,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           success: false,
           registered: false,
           message: error.message,
-        } as RegisterUserResponse),
+          code: error.code,
+        }),
       };
     }
 

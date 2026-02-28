@@ -54,6 +54,9 @@ export function useBattalionNftStatus(
       const response = await checkBattalionNftStatus(walletAddress || undefined, xUserId || undefined);
 
       if (response.success) {
+        // With upsert support, the registered wallet may differ from the profile wallet
+        // (user changed wallets via Battalion NFT Step 4). The xUserId is the identity
+        // anchor, so a record found by xUserId is valid regardless of wallet match.
         setIsRegistered(response.registered);
         setStatus(response.data);
       } else {

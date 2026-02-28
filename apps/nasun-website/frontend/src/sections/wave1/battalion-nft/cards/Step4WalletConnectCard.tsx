@@ -2,32 +2,32 @@
  * Wallet Connect Card Component
  *
  * @description
- * MetaMask SDK를 사용한 지갑 연결 카드 컴포넌트
- * Hybrid flow: prepare → connect+sign → connect-verify
- * - Desktop: 1-trip connectAndSign (extension popup)
- * - Mobile: 2-trip fallback (connect → sign) — connectAndSign broken on iOS MetaMask
+ * MetaMask 지갑 연결 카드 컴포넌트
+ * Hybrid flow: prepare → connect + sign → connect-verify
+ * - Desktop: 2-step via window.ethereum (connectWallet + signMessage)
+ * - Mobile: 2-trip via MetaMask SDK (connect → sign deep links)
  *
  * @author Claude Code
  * @date 2025-10-25
- * @updated 2026-02-26 - Hybrid desktop/mobile flow for iOS Safari compatibility
+ * @updated 2026-03-01 - Desktop: SDK headless → window.ethereum direct for extension popup
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import { useBattalionNftStore } from "../../../../stores/useBattalionNftStore";
 import {
-  connectAndSignSDK,
   connectMetaMaskSDK,
   signMessageViaSDK,
   disconnectMetaMaskSDK,
 } from "../../../../lib/wallet/metamaskSdkProvider";
+import { connectWallet, signMessage, isMetaMaskInstalled } from "../../../../utils/metamaskUtils";
 import { isMobileBrowser } from "../../../../utils/mobileDetect";
 import { prepareChallenge, connectVerify } from "../../../../services/metamaskApi";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import logger from "../../../../lib/logger";
-import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
+import { InlineLoading, DividerBox, OuterBox, Spinner } from "@/components/ui";
 
 interface WalletConnectCardProps {
   onWalletConnected: (address: string) => void;
@@ -41,38 +41,43 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   const [connectStep, setConnectStep] = useState(0); // 0=idle, 1=mobile connect, 2=mobile sign, 3=verifying
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const inFlightRef = useRef(false);
 
-  // Restore connected state from linked account profile
-  useEffect(() => {
-    const linkedWallet = user?.linkedAccounts?.metamask?.walletAddress;
-    if (linkedWallet) {
-      logger.log("[WalletConnectCard] Wallet already linked:", linkedWallet);
-      setConnectedAddress(linkedWallet.toLowerCase());
-    } else {
-      setConnectedAddress(null);
-    }
-  }, [user]);
+  // NOTE: No auto-restore from profile. The user must freshly connect MetaMask
+  // on each Step 4 visit to get a valid walletProof (in-memory only, lost on reload).
+  // Profile's linkedAccounts.metamask.walletAddress can be stale (different wallet
+  // from a previous session). connectedAddress is set only by handleConnect().
 
   /**
-   * 1-trip connect handler:
+   * Connect handler:
    * 1. /prepare → nonce + message (HTTP only)
-   * 2. connectAndSign → signature (single MetaMask trip)
+   * 2. connect + sign → signature (desktop: extension, mobile: SDK deep links)
    * 3. /connect-verify → walletAddress + auth tokens (HTTP only)
    */
   const handleConnect = async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+
+    const mobile = isMobileBrowser();
+
     try {
       setIsConnecting(true);
       setError(null);
+
+      // Desktop: check MetaMask extension is installed
+      if (!mobile && !isMetaMaskInstalled()) {
+        throw new Error("MetaMask is not installed. Please install MetaMask browser extension.");
+      }
 
       // Step 1: Get server-generated nonce + message
       const { nonce, message } = await prepareChallenge();
       logger.log("[WalletConnectCard] Challenge prepared");
 
       // Step 2: Connect + sign
-      // Desktop: single-trip connectAndSign (extension popup handles both)
-      // Mobile: 2-trip fallback (connectAndSign broken on iOS MetaMask app)
+      // Desktop: 2-step via window.ethereum (extension popup)
+      // Mobile: 2-trip via MetaMask SDK (deep links to MetaMask app)
       let signature: string;
-      if (isMobileBrowser()) {
+      if (mobile) {
         logger.log("[WalletConnectCard] Mobile detected — using 2-trip flow");
         setConnectStep(1);
         const address = await connectMetaMaskSDK();
@@ -80,8 +85,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         setConnectStep(2);
         signature = await signMessageViaSDK(message, address);
       } else {
-        logger.log("[WalletConnectCard] Desktop detected — using 1-trip connectAndSign");
-        signature = await connectAndSignSDK(message);
+        logger.log("[WalletConnectCard] Desktop detected — extension connect + sign");
+        const address = await connectWallet();
+        signature = await signMessage(message, address);
       }
       logger.log("[WalletConnectCard] Signature obtained");
 
@@ -96,45 +102,53 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         setWalletProof(authResult.walletProof, authResult.proofIssuedAt);
       }
 
-      // Link accounts if not already linked
+      // Link accounts if not linked, or re-link if the profile wallet differs from the actual wallet.
+      // Stale profile data can occur when a previous session linked a different wallet to this identity.
       const linkedWallet = user?.linkedAccounts?.metamask?.walletAddress;
-      if (!linkedWallet) {
-        const primaryIdentityId = cognitoIdentityId || user?.identityId;
+      const needsLink = !linkedWallet || linkedWallet.toLowerCase() !== walletAddress.toLowerCase();
+
+      if (needsLink) {
+        const primaryIdentityId = user?.identityId || cognitoIdentityId;
         if (!primaryIdentityId) {
           throw new Error("Missing Cognito identity ID. Please restart the event from Step 1.");
         }
 
-        const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
-        if (!linkAccountApi) {
-          throw new Error("Link Account API is not configured");
+        // Only call link-account when the identities are different (avoid self-linking)
+        if (primaryIdentityId !== authResult.identityId) {
+          const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
+          if (!linkAccountApi) {
+            throw new Error("Link Account API is not configured");
+          }
+
+          const linkHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+          const cognitoToken = user?.cognitoToken || storeCognitoToken;
+          if (cognitoToken) {
+            linkHeaders["Authorization"] = `Bearer ${cognitoToken}`;
+          }
+
+          const linkResponse = await fetch(linkAccountApi, {
+            method: "POST",
+            headers: linkHeaders,
+            body: JSON.stringify({
+              primaryIdentityId,
+              secondaryIdentityId: authResult.identityId,
+              secondaryProvider: "MetaMask",
+            }),
+          });
+
+          if (!linkResponse.ok) {
+            const errorBody = await linkResponse.text();
+            console.error("[WalletConnectCard] Link API error:", linkResponse.status, errorBody);
+            throw new Error(`Failed to link MetaMask account: ${linkResponse.status} ${errorBody}`);
+          }
+
+          logger.log("[WalletConnectCard] Account linked successfully");
         }
 
-        const linkHeaders: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        const cognitoToken = storeCognitoToken || user?.cognitoToken;
-        if (cognitoToken) {
-          linkHeaders["Authorization"] = `Bearer ${cognitoToken}`;
-        }
-
-        const linkResponse = await fetch(linkAccountApi, {
-          method: "POST",
-          headers: linkHeaders,
-          body: JSON.stringify({
-            primaryIdentityId,
-            secondaryIdentityId: authResult.identityId,
-            secondaryProvider: "MetaMask",
-          }),
-        });
-
-        if (!linkResponse.ok) {
-          const errorBody = await linkResponse.text();
-          console.error("[WalletConnectCard] Link API error:", linkResponse.status, errorBody);
-          throw new Error(`Failed to link MetaMask account: ${linkResponse.status} ${errorBody}`);
-        }
-
-        logger.log("[WalletConnectCard] Account linked successfully");
-        await refreshAndSaveUserProfile(primaryIdentityId);
+        // Always refresh profile to sync the wallet address
+        await refreshAndSaveUserProfile(user?.identityId || primaryIdentityId);
         logger.log("[WalletConnectCard] User profile refreshed and saved");
       }
 
@@ -153,6 +167,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
     } finally {
       setIsConnecting(false);
       setConnectStep(0);
+      inFlightRef.current = false;
     }
   };
 
@@ -250,19 +265,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
               connectStep === 1 || connectStep === 2 ? (
                 <div className="flex flex-col items-center gap-1 py-1">
                   <div className="flex items-center gap-2">
-                    <svg
-                      className="animate-spin h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
+                    <Spinner size="sm" />
                     <span className="text-white font-bold text-lg">{connectStep} / 2</span>
                   </div>
                   <span className="text-white/90 text-base">
