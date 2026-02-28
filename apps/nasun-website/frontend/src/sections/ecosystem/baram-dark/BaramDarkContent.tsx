@@ -152,8 +152,7 @@ export default function BaramDarkContent() {
             transition={{ duration: 0.5, delay: 0.45 }}
             className="text-lg text-nasun-white/90 mb-2"
           >
-            Every prompt encrypted. Every response encrypted.
-            <br className="hidden md:block" /> Every execution recorded. Every payment guaranteed.
+            {t("hero.description")}
           </motion.p>
           <motion.p
             initial={{ opacity: 0 }}
