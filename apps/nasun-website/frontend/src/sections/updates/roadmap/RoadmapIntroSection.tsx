@@ -73,7 +73,7 @@ export const RoadmapIntroSection = () => {
 
         {/* Metrics */}
         <div className="mt-6 pt-4 md:pt-6 lg:pt-8 xl:pt-10 border-t border-nasun-white/10">
-          <div className="grid grid-cols-3 gap-4 md:gap-8">
+          <div className="grid grid-cols-3 gap-1 -mx-2 md:mx-0 md:gap-8">
             {metrics.map((metric) => (
               <MetricCard key={metric.label} {...metric} />
             ))}

@@ -120,10 +120,10 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         <div className="absolute inset-x-0 bottom-[2%] sm:bottom-[10%] z-20 px-6 md:hidden">
           <div className="leading-tight text-center">
             <h3 className="font-medium text-nasun-white text-3xl sm:text-[34px] uppercase ">
-              IP Infrastructure
+              ONE NETWORK
             </h3>
             <h4 className=" text-nasun-white/60 text-lg  sm:text-xl">
-              Entertainment, Finance, and AI
+              One Unified Economy
             </h4>
           </div>
           <div className="flex justify-center mt-3">
@@ -147,10 +147,10 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
           <div>
             <FadeInUp>
               <h3 className="font-medium text-nasun-white text-2xl/tight md:text-[32px] lg:text-[39px] uppercase">
-                IP Infrastructure
+                ONE NETWORK
               </h3>
               <h5 className="text-nasun-white/70 text-2xl/tight md:text-[22px] lg:text-[27px]">
-                Entertainment, Finance, and AI
+                One Unified Economy
               </h5>
               <Button variant="white" size="lg" asChild className="mt-5">
                 <Link

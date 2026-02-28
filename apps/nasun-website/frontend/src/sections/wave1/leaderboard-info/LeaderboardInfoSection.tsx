@@ -17,7 +17,7 @@ import {
   faBullseye,
   faArrowRightToBracket,
 } from "@fortawesome/free-solid-svg-icons";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { SignUpModal } from "@/components/auth/SignUpModal";
 
 const TELEGRAM_URL = "https://t.me/nasun_official";
@@ -318,7 +318,7 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- Bottom Grid: Earn Points + Fair Play --- */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-5">
           {/* Earn Points */}
-          <OuterBox color="nw0" padding="sm" className="md:col-span-3">
+          <OuterBox color="noborder" padding="sm" className="md:col-span-3 bg-nasun-c6">
             <div className="flex items-center gap-2.5 mb-4">
               <FontAwesomeIcon icon={faCircleDot} className="w-4 h-4 text-nasun-nw1" />
               <h6 className="font-medium uppercase tracking-wider">{t("info.earnPoints.title")}</h6>
@@ -335,7 +335,11 @@ const LeaderboardInfoSection: React.FC = () => {
           </OuterBox>
 
           {/* Fair Play */}
-          <OuterBox color="nw0" padding="sm" className="md:col-span-2 flex flex-col">
+          <OuterBox
+            color="noborder"
+            padding="sm"
+            className="md:col-span-2 flex flex-col bg-nasun-c6"
+          >
             <div className="flex items-center gap-2.5 mb-4">
               <FontAwesomeIcon icon={faShieldHalved} className="text-red-500 w-4 h-4" />
               <h6 className="font-medium uppercase tracking-wider">{t("info.fairPlay.title")}</h6>
@@ -353,9 +357,9 @@ const LeaderboardInfoSection: React.FC = () => {
 
         {/* --- CTA Button --- */}
         <div className="flex justify-center">
-          <Link to="/wave1/leaderboard" className={buttonVariants({ variant: "nw2", size: "xl" })}>
-            {t("info.viewLeaderboard")}
-          </Link>
+          <ButtonV3 asChild variant="nw2" size="md">
+            <Link to="/wave1/leaderboard">{t("info.viewLeaderboard")}</Link>
+          </ButtonV3>
         </div>
       </div>
 

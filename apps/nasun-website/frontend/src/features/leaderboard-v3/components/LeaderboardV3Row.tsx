@@ -5,6 +5,7 @@
  */
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FaCrown } from "react-icons/fa";
 import type { SeasonLeaderboardEntry } from "../types";
 import { RankChangeIndicatorV3 } from "./RankChangeIndicatorV3";
@@ -25,6 +26,7 @@ function DefaultAvatar({ username }: { username: string }) {
 }
 
 const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighted = false }) => {
+  const { t } = useTranslation("leaderboard");
   const isTopThree = entry.rank <= 3;
   const rankColors: Record<number, string> = {
     1: "text-yellow-400",
@@ -78,7 +80,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
               {entry.isRegistered && (
                 <span
                   className="inline-flex items-center justify-center w-4 h-4 bg-nasun-c7/20 rounded-full flex-shrink-0"
-                  title="Registered Member"
+                  title={t("v3.table.registeredMember")}
                 >
                   <svg
                     className="w-2.5 h-2.5 text-nasun-c7"
@@ -96,7 +98,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
               {entry.isTelegramMember && (
                 <span
                   className="inline-flex items-center justify-center w-4 h-4 bg-sky-500/20 rounded-full flex-shrink-0"
-                  title="Telegram Channel Member"
+                  title={t("v3.table.telegramMember")}
                 >
                   <svg
                     className="w-2.5 h-2.5 text-sky-400"

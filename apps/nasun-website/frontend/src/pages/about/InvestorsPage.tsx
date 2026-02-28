@@ -1,21 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { Button } from "@/components/ui/button";
 import { FileText, Eye, Download } from "lucide-react";
-
-const pitchDecks = [
-  { name: "Nasun Pitch Deck", description: "Nasun Protocol Overview", file: "Nasun-Pitchdeck.pdf" },
-  { name: "Baram Pitch Deck", description: "AI Compliance Settlement Layer", file: "Baram-Pitchdeck.pdf" },
-  { name: "Pado Pitch Deck", description: "Unified Onchain Finance", file: "PADO-pitchdeck.pdf" },
-  { name: "Gen Sol Pitch Deck", description: "Sci-Fi Entertainment IP", file: "GenSol-Pitchdeck.pdf" },
-];
-
-const litepaper = {
-  name: "Nasun Litepaper",
-  file: "Nasun-Litepaper-2026.pdf",
-};
 
 // Fetch the file with Accept: application/pdf so Vite's SPA fallback middleware
 // (which intercepts Accept: text/html and */*) does not rewrite to index.html in dev.
@@ -56,21 +45,37 @@ async function downloadPdf(file: string) {
 }
 
 function PdfActions({ file }: { file: string }) {
+  const { t } = useTranslation("investors");
+
   return (
     <div className="flex gap-2">
       <Button variant="outlineNw2" size="sm" className="flex-1" onClick={() => viewPdf(file)}>
         <Eye className="w-4 h-4 mr-2" />
-        View
+        {t("actions.view")}
       </Button>
       <Button variant="outlineNw2" size="sm" className="flex-1" onClick={() => downloadPdf(file)}>
         <Download className="w-4 h-4 mr-2" />
-        Download
+        {t("actions.download")}
       </Button>
     </div>
   );
 }
 
 export default function InvestorsPage() {
+  const { t } = useTranslation("investors");
+
+  const pitchDecks = [
+    { name: t("pitchDecks.nasun.name"), description: t("pitchDecks.nasun.description"), file: "Nasun-Pitchdeck.pdf" },
+    { name: t("pitchDecks.baram.name"), description: t("pitchDecks.baram.description"), file: "Baram-Pitchdeck.pdf" },
+    { name: t("pitchDecks.pado.name"), description: t("pitchDecks.pado.description"), file: "PADO-pitchdeck.pdf" },
+    { name: t("pitchDecks.genSol.name"), description: t("pitchDecks.genSol.description"), file: "GenSol-Pitchdeck.pdf" },
+  ];
+
+  const litepaper = {
+    name: t("litepaper.name"),
+    file: "Nasun-Litepaper-2026.pdf",
+  };
+
   return (
     <PageLayout>
       <SectionLayout className="!max-w-6xl">
@@ -79,11 +84,11 @@ export default function InvestorsPage() {
             Investors
           </PageTitle>
 
-          <h3 className="text-nasun-white/80 font-medium text-lg mb-4">Pitch Decks</h3>
+          <h3 className="text-nasun-white/80 font-medium text-lg mb-4">{t("pitchDecks.title")}</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {pitchDecks.map((deck) => (
-              <OuterBox key={deck.name} color="nw0" padding="md" className="flex flex-col gap-4">
+              <OuterBox key={deck.file} color="nw0" padding="md" className="flex flex-col gap-4">
                 <div className="flex items-center gap-4">
                   <FileText className="w-8 h-8 text-nasun-nw4/50 flex-shrink-0" />
                   <div>
@@ -96,7 +101,7 @@ export default function InvestorsPage() {
             ))}
           </div>
 
-          <h3 className="text-nasun-white/80 font-medium text-lg mb-4 mt-12">Litepaper</h3>
+          <h3 className="text-nasun-white/80 font-medium text-lg mb-4 mt-12">{t("litepaper.title")}</h3>
 
           <OuterBox color="nw0" padding="md" className="flex flex-col gap-4 md:w-1/2">
             <div className="flex items-center gap-4">

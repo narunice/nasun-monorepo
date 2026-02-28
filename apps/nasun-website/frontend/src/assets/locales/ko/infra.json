@@ -1,0 +1,38 @@
+{
+  "intro": {
+    "subtitle": "차세대 IP를 위한 탈중앙화 컴퓨팅.",
+    "line1": "AWS 종속 없음. 검열 없음. 투명한 가격과 온체인 SLA.",
+    "line2_pre": "나선의 글로벌 노드 네트워크가 ",
+    "line2_highlight": "AI 추론, 게임 서버, 스트리밍",
+    "line2_post": "을 지원하며, 모두 ",
+    "line2_chain": "Nasun L1"
+  },
+  "nodeTypes": {
+    "title": "노드 유형",
+    "headers": {
+      "nodeType": "노드 유형",
+      "powers": "역할",
+      "earnNsn": "NSN 수익"
+    },
+    "validators": { "type": "검증자", "powers": "합의 및 완결성", "earn": "스테이킹 보상" },
+    "executors": { "type": "실행자", "powers": "AI / LLM 추론 (TEE)", "earn": "사용 수수료" },
+    "compute": { "type": "컴퓨팅", "powers": "앱 및 API", "earn": "컴퓨팅 수요" },
+    "storage": { "type": "스토리지", "powers": "파일 및 데이터", "earn": "스토리지 수수료" },
+    "streamers": { "type": "스트리머", "powers": "실시간 및 온디맨드 영상", "earn": "시청 수익" },
+    "gameServers": { "type": "게임 서버", "powers": "멀티플레이어 월드", "earn": "플레이어 세션" }
+  },
+  "howItWorks": {
+    "title": "작동 방식",
+    "step1": "NSN 스테이킹",
+    "step2": "서비스 제공",
+    "step3": "사용량 기반 수익",
+    "conclusion": "온체인 증명과 자동 슬래싱이 서비스 품질과 안정성을 보장합니다."
+  },
+  "participants": {
+    "title": "네트워크 참여자",
+    "users": "사용자",
+    "usersDesc": "검열 저항성을 갖춘 안정적인 인프라에 NSN으로 비용을 지불합니다.",
+    "operators": "운영자",
+    "operatorsDesc": "중개자 없이 글로벌 수요에 접근합니다."
+  }
+}

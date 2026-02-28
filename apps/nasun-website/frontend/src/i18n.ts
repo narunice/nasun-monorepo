@@ -59,6 +59,9 @@ i18n
       "pado-revised",
       "pado-draft",
       "finance",
+      "about",
+      "infra",
+      "investors",
     ],
     defaultNS: "home",
     backend: {

@@ -4,6 +4,7 @@
  * Displays a single featured post using react-tweet for authentic X look & feel.
  */
 
+import { useTranslation } from "react-i18next";
 import { Tweet } from "react-tweet";
 import type { FeaturedFeedItem, BadgeType } from "../types";
 
@@ -17,42 +18,42 @@ const BADGE_CONFIG: Record<
 > = {
   "rank-1": {
     icon: "🥇",
-    label: "Ranker",
+    label: "ranker",
     color: "text-yellow-400",
     bgColor: "bg-yellow-400/10",
     borderColor: "border-yellow-400/20",
   },
   "rank-2": {
     icon: "🥈",
-    label: "Ranker",
+    label: "ranker",
     color: "text-gray-300",
     bgColor: "bg-gray-300/10",
     borderColor: "border-gray-300/20",
   },
   "rank-3": {
     icon: "🥉",
-    label: "Ranker",
+    label: "ranker",
     color: "text-orange-400",
     bgColor: "bg-orange-400/10",
     borderColor: "border-orange-400/20",
   },
   "climber-1": {
     icon: "🚀",
-    label: "Climber",
+    label: "climber",
     color: "text-nasun-c7",
     bgColor: "bg-nasun-c7/10",
     borderColor: "border-nasun-c7/20",
   },
   "climber-2": {
     icon: "🚀",
-    label: "Climber",
+    label: "climber",
     color: "text-nasun-c7",
     bgColor: "bg-nasun-c7/10",
     borderColor: "border-nasun-c7/20",
   },
   "climber-3": {
     icon: "🚀",
-    label: "Climber",
+    label: "climber",
     color: "text-nasun-c7",
     bgColor: "bg-nasun-c7/10",
     borderColor: "border-nasun-c7/20",
@@ -60,6 +61,7 @@ const BADGE_CONFIG: Record<
 };
 
 export function FeedPostCard({ item }: FeedPostCardProps) {
+  const { t } = useTranslation("leaderboard");
   const { author, content } = item;
 
   // Extract tweet ID from URL
@@ -95,7 +97,7 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         >
           <span className="text-xs">{badgeConfig.icon}</span>
           <span className={`text-[10px] font-bold uppercase tracking-wider ${badgeConfig.color}`}>
-            {badgeConfig.label}
+            {badgeConfig.label === "ranker" ? t("v3.feed.ranker") : t("v3.feed.climber")}
           </span>
         </div>
       </div>

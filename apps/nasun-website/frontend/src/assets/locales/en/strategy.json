@@ -73,6 +73,81 @@
     ],
     "conclusion": "By separating signal discovery, collaboration, and execution, Nasun enables scalable coordination while maintaining decentralized control and accountability."
   },
+  "v2": {
+    "section1": {
+      "title": "The Core Problem",
+      "subtitle": "Creation Has Exploded. Value Has Not.",
+      "p1": "AI tools and social platforms allow millions to create instantly.",
+      "p2": "But:",
+      "box1": "Stories launch then vanish.",
+      "box2": "Content spreads and disappears.",
+      "box3": "Platforms extract while creators get scraps.",
+      "p3": "The issue is not creativity.",
+      "p3b": "It is continuity.",
+      "p4": "Without continuity, there is no compounding value.",
+      "p5": "Communities need a way to build intellectual property together and share in its long-term success."
+    },
+    "section2": {
+      "title": "The Nasun Framework",
+      "intro": "Nasun treats on-chain execution as the final step, not the starting point.",
+      "collaborate": "Collaborate",
+      "collaborateDesc": "Open creative iteration where anyone can contribute ideas or improvements.",
+      "propose": "Propose",
+      "proposeDesc": "Refined ideas are formalized with clear scope, contributors, and resource requirements.",
+      "vote": "Vote",
+      "voteDesc": "The community decides what gets built and funded.",
+      "execute": "Execute",
+      "executeDesc": "Approved proposals are executed with transparent treasury flows and contributor attribution recorded on-chain."
+    },
+    "section3": {
+      "title": "The Network as Economic Backbone",
+      "intro": "Shared IP requires enforceable ownership.",
+      "providesIntro": "The Nasun Network provides:",
+      "provides": [
+        "Transparent treasury flows",
+        "Composable digital assets",
+        "Verifiable governance"
+      ],
+      "conclusion": "When an IP generates revenue, through a game, film, AI platform, or financial application, net revenue flows back to the projects and treasury."
+    },
+    "section4": {
+      "title": "Built by Creators, Not Just Engineers",
+      "intro": "Nasun began in production, not speculation.",
+      "naru": "Head editor and producer on Korean films premiering at Cannes, Berlin, and Venice.",
+      "overclocked": "20+ years in media production. Built Gen Sol multiplayer alpha in UE5 (C++).",
+      "understand": "We understand both:",
+      "understanding": [
+        "Professional creative pipelines",
+        "Technical systems engineering"
+      ],
+      "conclusion": "Nasun exists because existing platforms failed to coordinate both."
+    },
+    "section5": {
+      "title": "Why Korea, Why Global",
+      "intro": "Korea is the launchpad:",
+      "advantages": [
+        "Proven global cultural exports (Hallyu)",
+        "High crypto adoption",
+        "Advanced gaming ecosystem",
+        "Production efficiency"
+      ],
+      "global": "Global from day one."
+    },
+    "section6": {
+      "title": "Why Now: The Relevance Era",
+      "p1": "AI is flooding the world with content.",
+      "p2": "Crypto has onboarded millions, but relevance remains shallow.",
+      "p3": "The next era will not be defined by speculation or infinite content.",
+      "p4": "It will be defined by systems that allow communities to:",
+      "pillars": ["Create together", "Decide together", "Own together"],
+      "conclusion": "Nasun is the infrastructure that makes this coordination technically possible and economically sustainable."
+    },
+    "cta": {
+      "litepaper": "Litepaper",
+      "joinBeta": "Join Beta",
+      "teamDeck": "Team Deck"
+    }
+  },
   "overviewV2": {
     "pageTitle": {
       "line1": "NASUN: A Unified Vision",

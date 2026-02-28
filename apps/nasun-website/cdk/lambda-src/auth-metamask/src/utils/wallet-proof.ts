@@ -38,7 +38,7 @@ export async function getWalletProofSecret(): Promise<string> {
     throw new Error('Invalid wallet proof secret in Secrets Manager (must be 32+ chars).');
   }
 
-  cachedSecret = secrets.secret;
+  cachedSecret = secrets.secret as string;
   console.log('[wallet-proof] HMAC secret loaded from Secrets Manager');
-  return cachedSecret;
+  return cachedSecret!;
 }

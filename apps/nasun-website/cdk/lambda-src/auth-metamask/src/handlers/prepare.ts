@@ -47,8 +47,9 @@ Nonce: ${nonce}`
 Nonce: ${nonce}`;
 
   // Store in DynamoDB with "prepare:" prefix key (5-minute TTL)
+  // Store the original message so connect-verify uses the exact same text for ecrecover
   const expiresAt = Math.floor(Date.now() / 1000) + 300;
-  await saveNonce(`prepare:${nonce}`, nonce, expiresAt);
+  await saveNonce(`prepare:${nonce}`, nonce, expiresAt, message);
 
   console.log('[prepare] Challenge prepared for 1-trip connectAndSign flow');
 

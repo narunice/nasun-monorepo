@@ -1,5 +1,6 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { FC, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { EcText } from "@/components/ui/Shared";
 import { VoteNft } from "../types/voting";
 import { VoteModal } from "./VoteModal";
@@ -28,6 +29,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
   voteNft,
   onVoteTxSuccess,
 }) => {
+  const { t } = useTranslation("proposals");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   const {
@@ -90,11 +92,11 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
             <div className="flex items-center gap-2">
               {proposal.proposalType === "Poll" ? (
                 <span className="px-2 py-0.5 text-xs uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
-                  Poll
+                  {t("detail.poll")}
                 </span>
               ) : (
                 <span className="px-2 py-0.5 text-xs uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
-                  Governance
+                  {t("detail.governance")}
                 </span>
               )}
               <span
@@ -141,10 +143,10 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span className={isExpired ? "text-nasun-white/30" : "text-green-400"}>
-                Yes {yesPercent.toFixed(0)}% ({proposal.yesVotes})
+                {t("detail.yes")} {yesPercent.toFixed(0)}% ({proposal.yesVotes})
               </span>
               <span className={isExpired ? "text-nasun-white/30" : "text-red-400"}>
-                No {(100 - yesPercent).toFixed(0)}% ({proposal.noVotes})
+                {t("detail.no")} {(100 - yesPercent).toFixed(0)}% ({proposal.noVotes})
               </span>
             </div>
           </div>
@@ -152,7 +154,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
           {/* Countdown / Date */}
           <div className="flex items-center justify-between">
             <p className={`text-sm ${isExpired ? "text-nasun-white/30" : "text-nasun-white/50"}`}>
-              {isDelisted ? "Delisted" : formatTimeRemaining(expiration)}
+              {isDelisted ? t("detail.delisted") : formatTimeRemaining(expiration)}
             </p>
           </div>
         </div>
@@ -168,7 +170,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
             className="mt-3 w-full uppercase"
             disabled={!!voteNft}
           >
-            {voteNft ? "Voted" : "Vote"}
+            {voteNft ? t("section.voted") : t("section.voteButton")}
           </ButtonV3>
         )}
       </OuterBox>

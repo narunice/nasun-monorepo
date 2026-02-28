@@ -4,6 +4,7 @@
  * Dropdown/tabs for selecting active or past seasons.
  */
 
+import { useTranslation } from "react-i18next";
 import type { Season } from '../types';
 
 interface SeasonSelectorProps {
@@ -21,6 +22,7 @@ export function SeasonSelector({
   isLoading = false,
   selectedSeason,
 }: SeasonSelectorProps) {
+  const { t } = useTranslation("leaderboard");
   // Sort seasons: active first, then by startDate desc
   const sortedSeasons = [...seasons].sort((a, b) => {
     // Active/default first
@@ -37,21 +39,21 @@ export function SeasonSelector({
     if (status === 'active') {
       return (
         <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c7/20 text-nasun-c7">
-          Live
+          {t("v3.season.live")}
         </span>
       );
     }
     if (status === 'upcoming') {
       return (
         <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c4/20 text-nasun-c4">
-          Soon
+          {t("v3.season.soon")}
         </span>
       );
     }
     if (status === 'ended' || status === 'archived') {
       return (
         <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-600/50 text-gray-400">
-          Ended
+          {t("v3.season.ended")}
         </span>
       );
     }
@@ -132,11 +134,11 @@ export function SeasonSelector({
           {sortedSeasons.map((season) => {
             const statusLabel =
               season.status === 'active'
-                ? ' (Live)'
+                ? ` (${t("v3.season.live")})`
                 : season.status === 'upcoming'
-                  ? ' (Soon)'
+                  ? ` (${t("v3.season.soon")})`
                   : season.status === 'ended' || season.status === 'archived'
-                    ? ' (Ended)'
+                    ? ` (${t("v3.season.ended")})`
                     : '';
             return (
               <option key={season.seasonId} value={season.seasonId} className="bg-gray-800">

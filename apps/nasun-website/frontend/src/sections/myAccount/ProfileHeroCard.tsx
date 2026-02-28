@@ -177,11 +177,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask;
 
   // MetaMask Status Logic
+  // MetaMask primary users are always considered "active" — they authenticated
+  // with this wallet, so the session is valid regardless of MetaMask's UI state.
   const isMetaMaskLinked = !!metamaskData;
   const linkedWalletAddress = metamaskData?.walletAddress?.toLowerCase();
-  const isMetaMaskActive = isMetaMaskLinked && activeWalletAddress === linkedWalletAddress;
+  const isMetaMaskActive = isMetaMaskLinked &&
+    (isMetaMaskPrimary || activeWalletAddress === linkedWalletAddress);
   const isDifferentWalletActive =
-    isMetaMaskLinked && activeWalletAddress && activeWalletAddress !== linkedWalletAddress;
+    isMetaMaskLinked && !isMetaMaskPrimary && activeWalletAddress && activeWalletAddress !== linkedWalletAddress;
 
   return (
     <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
@@ -301,7 +304,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   : "Not linked"
               }
               statusBadge={
-                isMetaMaskActive ? (
+                isMetaMaskPrimary ? (
+                  <LoggedInBadge />
+                ) : isMetaMaskActive ? (
                   <ActiveBadge />
                 ) : isDifferentWalletActive ? (
                   <DifferentWalletBadge />

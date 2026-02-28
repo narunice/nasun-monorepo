@@ -17,25 +17,25 @@ function AwardsSection() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <OuterBox color="nw0" padding="sm">
-              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
+              <p className="block font-semibold text-nasun-nw4 tracking-widest uppercase mb-3">
                 Track Record
-              </small>
+              </p>
               <p>{t("paragraph1")}</p>
             </OuterBox>
 
-            <OuterBox color="nw0" padding="sm">
-              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
+              <p className="block font-semibold text-nasun-nw4 tracking-widest uppercase mb-3">
                 Why It Matters
-              </small>
-              <p className="">{t("paragraph2")}</p>
+              </p>
+              <p>{t("paragraph2")}</p>
             </OuterBox>
 
-            <OuterBox color="nw0" padding="sm">
-              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
+              <p className="block font-semibold text-nasun-nw4 tracking-widest uppercase mb-3">
                 What's Next
-              </small>
-              <p className="text-nasun-white/70">{t("paragraph3")}</p>
+              </p>
+              <p>{t("paragraph3")}</p>
             </OuterBox>
           </div>
         </div>

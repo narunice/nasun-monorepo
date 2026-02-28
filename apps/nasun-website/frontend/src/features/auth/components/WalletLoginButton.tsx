@@ -2,17 +2,16 @@
  * MetaMask Login Button
  *
  * Hybrid desktop/mobile flow:
- * - Desktop: 1-trip via connectAndSignSDK (single MetaMask extension popup)
- * - Mobile: 2-trip via connectMetaMaskSDK + signMessageViaSDK (two MetaMask app switches)
+ * - Desktop: 2-step via window.ethereum (connectWallet + signMessage)
+ * - Mobile: 2-trip via MetaMask SDK (connectMetaMaskSDK + signMessageViaSDK)
  *
  * Uses prepare + connect-verify endpoints (address-agnostic server challenge).
  */
 
 import { useState, useRef, forwardRef } from "react";
-import { isMetaMaskInstalled } from "@/utils/metamaskUtils";
+import { isMetaMaskInstalled, connectWallet, signMessage, revokeAccountPermissions } from "@/utils/metamaskUtils";
 import { prepareChallenge, connectVerify } from "@/services/metamaskApi";
 import {
-  connectAndSignSDK,
   connectMetaMaskSDK,
   signMessageViaSDK,
   disconnectMetaMaskSDK,
@@ -21,6 +20,7 @@ import { isMobileBrowser } from "@/utils/mobileDetect";
 import type { MetaMaskErrorType } from "@/types/metamask";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 import logger from "@/lib/logger";
+import { trackEvent, AnalyticsEvent } from "@/lib/analytics";
 
 interface WalletLoginButtonProps {
   onSuccess?: (identityId: string, token: string, walletAddress: string) => void;
@@ -51,6 +51,8 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
       setIsConnecting(true);
       setConnectStep(0);
 
+      trackEvent(AnalyticsEvent.AUTH_METAMASK_START, { platform: mobile ? "mobile" : "desktop" });
+
       try {
         // Desktop: check MetaMask extension is installed
         if (!mobile && !isMetaMaskInstalled()) {
@@ -64,7 +66,7 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
         // Step 2: Connect + sign
         let signature: string;
         if (mobile) {
-          // Mobile 2-trip: connect first, then sign (connectAndSign broken on iOS MetaMask)
+          // Mobile 2-trip: connect via SDK deep link, then sign
           logger.log("[WalletLoginButton] Mobile — 2-trip flow");
           setConnectStep(1);
           const address = await connectMetaMaskSDK();
@@ -72,9 +74,18 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
           setConnectStep(2);
           signature = await signMessageViaSDK(message, address);
         } else {
-          // Desktop 1-trip: single extension popup for connect + sign
-          logger.log("[WalletLoginButton] Desktop — 1-trip connectAndSign");
-          signature = await connectAndSignSDK(message);
+          // Desktop: use window.ethereum extension directly (SDK headless mode
+          // doesn't trigger extension popups reliably)
+          logger.log("[WalletLoginButton] Desktop — extension connect + sign");
+
+          // Revoke stale site permissions so eth_requestAccounts shows a fresh
+          // account picker. Without this, MetaMask silently returns the previously
+          // connected account even when the user wants to log in with a different one.
+          await revokeAccountPermissions();
+
+          const address = await connectWallet();
+          logger.log("[WalletLoginButton] Connected account:", address);
+          signature = await signMessage(message, address);
         }
         logger.log("[WalletLoginButton] Signature obtained");
 
@@ -84,6 +95,7 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
         logger.log("[WalletLoginButton] Verified:", authResult.walletAddress);
 
         setIsSuccess(true);
+        trackEvent(AnalyticsEvent.AUTH_METAMASK_SUCCESS, { platform: mobile ? "mobile" : "desktop" });
         onSuccess?.(authResult.identityId, authResult.token, authResult.walletAddress);
       } catch (error: unknown) {
         console.error("[WalletLoginButton] Login failed:", error);
@@ -103,6 +115,7 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
         }
 
         setErrorMessage(userMessage);
+        trackEvent(AnalyticsEvent.AUTH_METAMASK_ERROR, { reason: getErrorType(error) });
 
         if (onError) {
           const errorType = getErrorType(error);

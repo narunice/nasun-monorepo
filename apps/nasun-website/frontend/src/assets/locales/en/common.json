@@ -243,5 +243,9 @@
     "title": "Something went wrong",
     "description": "An unexpected error occurred. Refreshing the page may resolve the issue.",
     "reload": "Refresh Page"
+  },
+  "forBuilders": {
+    "openDevnet": "Open Devnet & Wallet",
+    "governance": "Governance"
   }
 }

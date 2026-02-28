@@ -90,7 +90,7 @@
     "globals": "^15.14.0",
     "jsdom": "^27.0.0",
     "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.18.2",
     "vite": "^7.3.0",

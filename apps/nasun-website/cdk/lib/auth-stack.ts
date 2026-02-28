@@ -14,6 +14,8 @@ export interface AuthStackProps extends cdk.StackProps {
 }
 
 export class AuthStack extends cdk.Stack {
+  public readonly metamaskAuthApi: apigw.RestApi;
+
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
 
@@ -123,8 +125,8 @@ export class AuthStack extends cdk.Stack {
       },
       // Rate limiting to prevent abuse
       deployOptions: {
-        throttlingBurstLimit: 50, // Max concurrent requests
-        throttlingRateLimit: 20, // Requests per second
+        throttlingBurstLimit: 500, // Max concurrent requests
+        throttlingRateLimit: 200, // Requests per second
       },
     });
 
@@ -213,7 +215,7 @@ export class AuthStack extends cdk.Stack {
     );
 
     // 5. API Gateway for MetaMask Auth with rate limiting
-    const metamaskAuthApi = new apigw.RestApi(this, 'MetaMaskAuthApi', {
+    this.metamaskAuthApi = new apigw.RestApi(this, 'MetaMaskAuthApi', {
       restApiName: 'MetaMask Auth Service',
       description: 'API for MetaMask Ethereum wallet authentication',
       defaultCorsPreflightOptions: {
@@ -223,12 +225,12 @@ export class AuthStack extends cdk.Stack {
       },
       // Rate limiting to prevent abuse
       deployOptions: {
-        throttlingBurstLimit: 50, // Max concurrent requests
-        throttlingRateLimit: 20, // Requests per second
+        throttlingBurstLimit: 500, // Max concurrent requests
+        throttlingRateLimit: 200, // Requests per second
       },
     });
 
-    const metamaskAuth = metamaskAuthApi.root.addResource('auth');
+    const metamaskAuth = this.metamaskAuthApi.root.addResource('auth');
     const metamask = metamaskAuth.addResource('metamask');
 
     // POST /auth/metamask/challenge
@@ -249,7 +251,7 @@ export class AuthStack extends cdk.Stack {
 
     // 6. CloudFormation Outputs
     new cdk.CfnOutput(this, 'MetaMaskAuthApiUrl', {
-      value: metamaskAuthApi.url,
+      value: this.metamaskAuthApi.url,
       description: 'The URL of the MetaMask Auth API Gateway',
       exportName: 'MetaMaskAuthApiUrl',
     });
@@ -309,8 +311,8 @@ export class AuthStack extends cdk.Stack {
       },
       // Rate limiting to prevent abuse
       deployOptions: {
-        throttlingBurstLimit: 50, // Max concurrent requests
-        throttlingRateLimit: 20, // Requests per second
+        throttlingBurstLimit: 500, // Max concurrent requests
+        throttlingRateLimit: 200, // Requests per second
       },
     });
 

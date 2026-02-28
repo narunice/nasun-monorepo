@@ -56,8 +56,28 @@ export async function handleConnectVerify(
     };
   }
 
-  // 3. Verify signature — try Korean message first, then English (same as verify.ts)
-  const messageKo = `Nasun 지갑 인증
+  // 3. Verify signature using the stored message from prepare step.
+  // The stored message is the exact text the client signed, so ecrecover
+  // returns the correct wallet address. This avoids the bilingual message
+  // mismatch bug where ethers.verifyMessage() returns a garbage address
+  // instead of throwing when the wrong message variant is used.
+  let walletAddress: string;
+
+  if (nonceData.message) {
+    // Use the exact message stored during prepare (preferred path)
+    try {
+      walletAddress = await verifySignature(nonceData.message, signature);
+    } catch {
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ message: 'Invalid signature' }),
+      };
+    }
+  } else {
+    // Backwards compatibility: nonces created before the message field was added.
+    // Both messages are verified and the results are compared to detect mismatch.
+    const messageKo = `Nasun 지갑 인증
 
 ✅ 자금이 이체되지 않습니다
 ✅ 트랜잭션이 실행되지 않습니다
@@ -66,7 +86,7 @@ export async function handleConnectVerify(
 
 Nonce: ${nonce}`;
 
-  const messageEn = `Nasun Wallet Verification
+    const messageEn = `Nasun Wallet Verification
 
 ✅ NO funds will be transferred
 ✅ NO transaction will be executed
@@ -75,19 +95,37 @@ Nonce: ${nonce}`;
 
 Nonce: ${nonce}`;
 
-  // Recover wallet address from signature (no client-provided address needed)
-  let walletAddress: string;
-  try {
-    walletAddress = await verifySignature(messageKo, signature);
-  } catch {
-    try {
-      walletAddress = await verifySignature(messageEn, signature);
-    } catch {
+    // Recover address from both messages — only one will be correct
+    const [addrKo, addrEn] = await Promise.all([
+      verifySignature(messageKo, signature).catch(() => null),
+      verifySignature(messageEn, signature).catch(() => null),
+    ]);
+
+    // Both calls return an address (ethers never throws on mismatch),
+    // so pick the one that matches — if both are non-null but different,
+    // the user signed one language and the other returned garbage.
+    if (addrKo && addrEn && addrKo.toLowerCase() === addrEn.toLowerCase()) {
+      // Extremely unlikely: both languages recovered same address
+      walletAddress = addrKo;
+    } else if (addrKo && addrEn) {
+      // Different addresses — cannot determine which is correct without stored message.
+      // Log both and reject.
+      console.error('[connect-verify] Ambiguous legacy recovery — ko:', addrKo, 'en:', addrEn);
       return {
         statusCode: 401,
         headers: corsHeaders,
-        body: JSON.stringify({ message: 'Invalid signature' }),
+        body: JSON.stringify({ message: 'Signature verification ambiguous. Please try again.' }),
       };
+    } else {
+      // At least one threw (malformed signature)
+      walletAddress = (addrKo || addrEn)!;
+      if (!walletAddress) {
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Invalid signature' }),
+        };
+      }
     }
   }
 

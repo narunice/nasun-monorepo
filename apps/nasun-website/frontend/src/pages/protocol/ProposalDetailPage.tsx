@@ -7,6 +7,7 @@
 
 import { FC, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
@@ -30,6 +31,7 @@ import { ButtonV3 } from "@/components/ui/button-v3";
 const ProposalDetailPage: FC = () => {
   const { proposalId } = useParams<{ proposalId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation("proposals");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
@@ -71,9 +73,9 @@ const ProposalDetailPage: FC = () => {
     return (
       <PageLayout className="!pt-0">
         <div className="flex-1 flex flex-col items-center justify-center py-20">
-          <p className="text-red-400 mb-4">Invalid proposal ID</p>
+          <p className="text-red-400 mb-4">{t("detail.invalidId")}</p>
           <ButtonV3 variant="nw2" outline onClick={() => navigate("/network/governance")}>
-            Back to Governance
+            {t("detail.backToGovernance")}
           </ButtonV3>
         </div>
       </PageLayout>
@@ -92,9 +94,9 @@ const ProposalDetailPage: FC = () => {
     return (
       <PageLayout className="!pt-0">
         <div className="flex-1 flex flex-col items-center justify-center py-20">
-          <p className="text-red-400 mb-4">Proposal not found</p>
+          <p className="text-red-400 mb-4">{t("detail.notFound")}</p>
           <ButtonV3 variant="nw2" outline onClick={() => navigate("/network/governance")}>
-            Back to Governance
+            {t("detail.backToGovernance")}
           </ButtonV3>
         </div>
       </PageLayout>
@@ -107,7 +109,7 @@ const ProposalDetailPage: FC = () => {
     return (
       <PageLayout className="!pt-0">
         <div className="flex-1 flex items-center justify-center py-20">
-          <p className="text-red-400">Failed to parse proposal data</p>
+          <p className="text-red-400">{t("detail.parseFailed")}</p>
         </div>
       </PageLayout>
     );
@@ -126,7 +128,7 @@ const ProposalDetailPage: FC = () => {
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast.success("URL copied to clipboard");
+    toast.success(t("detail.urlCopied"));
   };
 
   const handleShareToX = async () => {
@@ -157,7 +159,7 @@ const ProposalDetailPage: FC = () => {
         await navigator.clipboard.write([
           new ClipboardItem({ "image/png": blob }),
         ]);
-        toast.info("Proposal screenshot copied! Paste (Ctrl+V) in your post to attach it.");
+        toast.info(t("detail.screenshotCopied"));
       }
 
       // Open X post window
@@ -167,7 +169,7 @@ const ProposalDetailPage: FC = () => {
 
     } catch (error) {
       console.error("Failed to share to X:", error);
-      toast.error("Failed to capture screenshot. Please try again.");
+      toast.error(t("detail.screenshotFailed"));
     } finally {
       setIsSharing(false);
     }
@@ -186,16 +188,16 @@ const ProposalDetailPage: FC = () => {
           className="inline-flex items-center text-nasun-nw1 hover:text-nasun-nw4 transition-colors text-xs md:text-sm lg:text-base uppercase font-medium"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Governance
+          {t("detail.backToGovernance")}
         </button>
         <div className="flex items-center gap-2">
           {proposal.proposalType === "Poll" ? (
             <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
-              Poll
+              {t("detail.poll")}
             </span>
           ) : (
             <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
-              Governance
+              {t("detail.governance")}
             </span>
           )}
           <span
@@ -205,7 +207,7 @@ const ProposalDetailPage: FC = () => {
           </span>
           {voteNft && (
             <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
-              You Voted
+              {t("detail.youVoted")}
             </span>
           )}
         </div>
@@ -236,7 +238,7 @@ const ProposalDetailPage: FC = () => {
           {/* Vote Results */}
           <OuterBox color="nw1" padding="md">
             <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
-              Vote Results
+              {t("detail.voteResults")}
             </h3>
             <div className="mb-3">
               <div
@@ -251,17 +253,17 @@ const ProposalDetailPage: FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-green-500/10 border border-green-500/20 rounded-sm p-3 text-center">
                 <div className="text-2xl font-bold text-green-400">{yesPercent.toFixed(1)}%</div>
-                <div className="text-sm text-nasun-white/70">Yes</div>
+                <div className="text-sm text-nasun-white/70">{t("detail.yes")}</div>
                 <div className="text-base font-medium text-green-400 mt-1">{proposal.yesVotes}</div>
-                <div className="text-xs text-nasun-white/30">voting power</div>
+                <div className="text-xs text-nasun-white/30">{t("detail.votingPower")}</div>
               </div>
               <div className="bg-red-500/10 border border-red-500/20 rounded-sm p-3 text-center">
                 <div className="text-2xl font-bold text-red-400">
                   {(100 - yesPercent).toFixed(1)}%
                 </div>
-                <div className="text-sm text-nasun-white/70">No</div>
+                <div className="text-sm text-nasun-white/70">{t("detail.no")}</div>
                 <div className="text-base font-medium text-red-400 mt-1">{proposal.noVotes}</div>
-                <div className="text-xs text-nasun-white/30">voting power</div>
+                <div className="text-xs text-nasun-white/30">{t("detail.votingPower")}</div>
               </div>
             </div>
           </OuterBox>
@@ -269,11 +271,11 @@ const ProposalDetailPage: FC = () => {
           {/* Details */}
           <OuterBox color="nw1" padding="md" className="flex-1">
             <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
-              Details
+              {t("detail.details")}
             </h3>
             <div className="space-y-2 text-base">
               <div className="flex justify-between">
-                <span className="text-nasun-white/70">Proposal ID</span>
+                <span className="text-nasun-white/70">{t("detail.proposalId")}</span>
                 <a
                   href={`${explorerUrl}/object/${proposalId}`}
                   target="_blank"
@@ -285,7 +287,7 @@ const ProposalDetailPage: FC = () => {
                 </a>
               </div>
               <div className="flex justify-between">
-                <span className="text-nasun-white/70">Creator</span>
+                <span className="text-nasun-white/70">{t("detail.creator")}</span>
                 <a
                   href={`${explorerUrl}/address/${proposal.creator}`}
                   target="_blank"
@@ -297,21 +299,21 @@ const ProposalDetailPage: FC = () => {
                 </a>
               </div>
               <div className="flex justify-between">
-                <span className="text-nasun-white/70">Expiration</span>
+                <span className="text-nasun-white/70">{t("detail.expiration")}</span>
                 <span className="text-nasun-white/80 text-sm">
                   {isDelisted
-                    ? "Delisted"
+                    ? t("detail.delisted")
                     : isExpired
-                      ? `Ended ${new Date(proposal.expiration).toLocaleString("en-US")}`
+                      ? `${t("detail.ended")} ${new Date(proposal.expiration).toLocaleString("en-US")}`
                       : formatTimeRemaining(proposal.expiration)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-nasun-white/70">Type</span>
+                <span className="text-nasun-white/70">{t("detail.type")}</span>
                 <span className="text-nasun-white/80 text-sm">
                   {proposal.proposalType === "Poll"
-                    ? "Poll (Zero Gas)"
-                    : "Governance (Gas Required)"}
+                    ? t("detail.pollType")
+                    : t("detail.governanceType")}
                 </span>
               </div>
             </div>
@@ -327,7 +329,7 @@ const ProposalDetailPage: FC = () => {
               className="w-full flex items-center justify-center gap-2"
             >
               <Copy className="w-4 h-4" />
-              Copy URL
+              {t("detail.copyUrl")}
             </ButtonV3>
 
             {/* Share on X Button */}
@@ -341,7 +343,7 @@ const ProposalDetailPage: FC = () => {
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
-              {isSharing ? "Capturing..." : "Share on X"}
+              {isSharing ? t("detail.capturing") : t("detail.shareOnX")}
             </ButtonV3>
 
             {/* Vote Button */}
@@ -353,7 +355,7 @@ const ProposalDetailPage: FC = () => {
                   disabled={!!voteNft}
                   className="w-full"
                 >
-                  {voteNft ? "Already Voted" : "Vote on this Proposal"}
+                  {voteNft ? t("detail.alreadyVoted") : t("detail.voteOnProposal")}
                 </ButtonV3>
               ) : (
                 <div className="w-full [&_>_div]:w-full [&_button]:w-full">

@@ -1,0 +1,17 @@
+{
+  "pitchDecks": {
+    "title": "Pitch Decks",
+    "nasun": { "name": "Nasun Pitch Deck", "description": "Nasun Protocol Overview" },
+    "baram": { "name": "Baram Pitch Deck", "description": "AI Compliance Settlement Layer" },
+    "pado": { "name": "Pado Pitch Deck", "description": "Unified Onchain Finance" },
+    "genSol": { "name": "Gen Sol Pitch Deck", "description": "Sci-Fi Entertainment IP" }
+  },
+  "litepaper": {
+    "title": "Litepaper",
+    "name": "Nasun Litepaper"
+  },
+  "actions": {
+    "view": "View",
+    "download": "Download"
+  }
+}

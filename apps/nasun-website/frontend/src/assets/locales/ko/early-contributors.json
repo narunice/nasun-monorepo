@@ -1,4 +1,26 @@
 {
+  "v2": {
+    "intro1": "나선을 처음부터 함께 만들어갈 초기 기여자를 찾고 있습니다.",
+    "intro2": "크리에이터, 개발자, 아티스트, 커뮤니티 리더로서 첫날부터 나선을 함께 만들어가고 싶다면, 연락해 주세요.",
+    "lookingFor": "찾고 있는 분들:",
+    "lookingForItems": [
+      "콘텐츠 크리에이터 (X, YouTube, 기타 플랫폼)",
+      "개발자 및 기술 기여자",
+      "아티스트 및 디자이너",
+      "커뮤니티 리더"
+    ],
+    "whatYouGet": "혜택:",
+    "whatYouGetItems": {
+      "item1": { "head": "희귀 Battalion NFT", "rest": " 유틸리티 및 에어드롭 배수 포함" },
+      "item2": { "head": "코어 팀에 직접 접근", "rest": "" },
+      "item3": { "head": "허용 리스트", "rest": " Battalion 드롭 대상" },
+      "item4": { "head": "런칭 마케팅 예산", "rest": "의 일부 배분" }
+    },
+    "closing1": "나선은 VC가 아닌 커뮤니티가 후원하는 프로젝트입니다. 펀드가 아닌 우리의 사람들과 함께 만들고 있습니다.",
+    "closing2": "자리가 한정되어 있습니다. 관심 있으시면 이메일이나 @Nasun_io로 DM을 보내주세요.",
+    "emailUs": "이메일 보내기",
+    "dmNasun": "DM @Nasun_io"
+  },
   "title": "초기 기여자",
   "intro": {
     "highlight": "Wave 1 초기 기여자",

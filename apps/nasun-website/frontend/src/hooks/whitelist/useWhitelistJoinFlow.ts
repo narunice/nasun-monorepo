@@ -137,50 +137,58 @@ export function useWhitelistJoinFlow(
       setModalData({ state: 'connecting' });
 
       const walletAddress = await connectWallet();
-      const normalizedAddress = walletAddress.toLowerCase();
+      let activeAddress = walletAddress.toLowerCase();
 
-      if (registeredEthAddress && normalizedAddress !== registeredEthAddress.toLowerCase()) {
+      // Wallet mismatch check.
+      // personal_sign only works with the currently selected MetaMask account,
+      // so the active account must match the registered wallet.
+      if (registeredEthAddress && activeAddress !== registeredEthAddress.toLowerCase()) {
+        const isMetaMaskPrimary = user?.provider === 'MetaMask';
         setModalData({
           state: 'error',
-          walletAddress,
-          error:
-            `The connected wallet does not match the wallet linked to your profile.\n\n` +
-            `Profile wallet: ${shortenAddress(registeredEthAddress)}\n` +
-            `Connected wallet: ${shortenAddress(walletAddress)}`,
+          walletAddress: activeAddress,
+          error: isMetaMaskPrimary
+            ? `Your MetaMask is set to a different account.\n\n` +
+              `Please switch to your login wallet in MetaMask:\n` +
+              `${registeredEthAddress}\n\n` +
+              `Open MetaMask → click the account icon → select the correct account, then try again.`
+            : `The connected wallet does not match the wallet linked to your profile.\n\n` +
+              `Profile wallet: ${shortenAddress(registeredEthAddress)}\n` +
+              `Connected wallet: ${shortenAddress(walletAddress)}`,
           errorCode: 'WALLET_MISMATCH',
         });
         return;
       }
 
-      setModalData({ state: 'connecting', walletAddress });
+      setModalData({ state: 'connecting', walletAddress: activeAddress });
 
-      const statusResponse = await checkWhitelistStatus(walletAddress);
+      const statusResponse = await checkWhitelistStatus(activeAddress);
       if (statusResponse.data.registered) {
         setModalData({
           state: 'already_joined',
-          walletAddress,
+          walletAddress: activeAddress,
           joinedAt: statusResponse.data.joinedAt,
         });
         return;
       }
 
-      setModalData({ state: 'signing', walletAddress });
+      setModalData({ state: 'signing', walletAddress: activeAddress });
 
-      const response = await joinWhitelistWithSignature(walletAddress, (message) =>
-        signMessage(message, walletAddress)
+      const response = await joinWhitelistWithSignature(activeAddress, (message) =>
+        signMessage(message, activeAddress)
       );
 
       if (!registeredEthAddress && user?.identityId) {
-        autoLinkWallet(normalizedAddress);
+        autoLinkWallet(activeAddress);
       }
 
       setModalData({
         state: 'success',
-        walletAddress,
+        walletAddress: activeAddress,
         joinedAt: response.data.joinedAt,
       });
 
-      options?.onSuccess?.(walletAddress);
+      options?.onSuccess?.(activeAddress);
     } catch (error: unknown) {
       console.error('Join whitelist error:', error);
 
@@ -222,7 +230,7 @@ export function useWhitelistJoinFlow(
         errorCode: 'UNKNOWN',
       }));
     }
-  }, [t, registeredEthAddress, user?.identityId, autoLinkWallet, options]);
+  }, [t, registeredEthAddress, user?.provider, user?.identityId, autoLinkWallet, options]);
 
   const handleWithdraw = useCallback(async () => {
     if (!modalData.walletAddress) {

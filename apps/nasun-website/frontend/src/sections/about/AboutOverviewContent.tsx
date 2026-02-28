@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { OuterBox } from "@/components/ui/OuterBox";
@@ -7,6 +8,8 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Orbit, Wind, Wallet, Layers, Server, Sparkles, Users } from "lucide-react";
 
 const AboutOverviewContent = () => {
+  const { t } = useTranslation("about");
+
   return (
     <SectionLayout className="!max-w-5xl">
       {/* Hero */}
@@ -21,26 +24,26 @@ const AboutOverviewContent = () => {
       <div className="flex flex-col gap-10 md:gap-14 lg:gap-16">
         {/* The Problem */}
         <section>
-          <SectionTitle as="h4">The Problem</SectionTitle>
+          <SectionTitle as="h4">{t("problem.title")}</SectionTitle>
           <div className="border-l-4 border-nasun-nw1/50 pl-6 md:pl-8 py-2 space-y-4">
             <div>
-              <p className="text-lg md:text-xl text-nasun-white/90">Platforms capture value.</p>
-              <p className="text-lg md:text-xl text-nasun-nw4">Communities create it.</p>
+              <p className="text-lg md:text-xl text-nasun-white/90">{t("problem.line1")}</p>
+              <p className="text-lg md:text-xl text-nasun-nw4">{t("problem.line2")}</p>
             </div>
             <div>
-              <p className="text-lg md:text-xl text-nasun-white/90">Creators compete.</p>
-              <p className="text-lg md:text-xl text-nasun-white/90">Fans consume.</p>
-              <p className="text-lg md:text-xl text-nasun-white/90">Platforms extract.</p>
+              <p className="text-lg md:text-xl text-nasun-white/90">{t("problem.line3")}</p>
+              <p className="text-lg md:text-xl text-nasun-white/90">{t("problem.line4")}</p>
+              <p className="text-lg md:text-xl text-nasun-white/90">{t("problem.line5")}</p>
             </div>
             <p className="text-lg md:text-xl font-medium text-nasun-white">
-              IP should be built and owned together.
+              {t("problem.conclusion")}
             </p>
           </div>
         </section>
 
         {/* The Flagships */}
         <section>
-          <SectionTitle as="h4">The Flagships</SectionTitle>
+          <SectionTitle as="h4">{t("flagships.title")}</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <OuterBox color="nw0" padding="sm">
               <div className="flex items-center gap-3 mb-3">
@@ -48,7 +51,7 @@ const AboutOverviewContent = () => {
                 <h6 className="font-bold text-nasun-white">Gen Sol</h6>
               </div>
               <p className="text-nasun-white/80">
-                A sci-fi universe powering games, films, and shows.
+                {t("flagships.genSol")}
               </p>
             </OuterBox>
             <OuterBox color="nw0" padding="sm">
@@ -56,91 +59,91 @@ const AboutOverviewContent = () => {
                 <Wind className="w-5 h-5 text-nasun-nw1 flex-shrink-0" />
                 <h6 className="font-bold text-nasun-white">Baram</h6>
               </div>
-              <p className="text-nasun-white/80">The global settlement layer for AI.</p>
+              <p className="text-nasun-white/80">{t("flagships.baram")}</p>
             </OuterBox>
             <OuterBox color="nw0" padding="sm">
               <div className="flex items-center gap-3 mb-3">
                 <Wallet className="w-5 h-5 text-nasun-nw1 flex-shrink-0" />
                 <h6 className="font-bold text-nasun-white">Pado</h6>
               </div>
-              <p className="text-nasun-white/80">Unified onchain financial platform.</p>
+              <p className="text-nasun-white/80">{t("flagships.pado")}</p>
             </OuterBox>
           </div>
           <p className="mt-5 text-nasun-white/80 text-center">
-            NASUN aligns creation, coordination, and capital in a single system.
+            {t("flagships.conclusion")}
           </p>
         </section>
 
         {/* Our Approach */}
         <section>
-          <SectionTitle as="h4">Our Approach</SectionTitle>
+          <SectionTitle as="h4">{t("approach.title")}</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <OuterBox color="nw1" padding="sm">
               <div className="flex items-center gap-3 mb-2">
                 <Layers className="w-5 h-5 text-nasun-nw4 flex-shrink-0" />
                 <h6 className="font-medium text-nasun-white uppercase tracking-wider text-sm">
-                  Ownership Layer
+                  {t("approach.ownershipLayer")}
                 </h6>
               </div>
               <p className="text-nasun-white/80">
-                A Move-based L1 for coordination and asset ownership.
+                {t("approach.ownershipLayerDesc")}
               </p>
             </OuterBox>
             <OuterBox color="nw1" padding="sm">
               <div className="flex items-center gap-3 mb-2">
                 <Server className="w-5 h-5 text-nasun-nw4 flex-shrink-0" />
                 <h6 className="font-medium text-nasun-white uppercase tracking-wider text-sm">
-                  Infrastructure
+                  {t("approach.infrastructure")}
                 </h6>
               </div>
               <p className="text-nasun-white/80">
-                Decentralized compute, AI, storage, and finance.
+                {t("approach.infrastructureDesc")}
               </p>
             </OuterBox>
             <OuterBox color="nw1" padding="sm">
               <div className="flex items-center gap-3 mb-2">
                 <Sparkles className="w-5 h-5 text-nasun-nw4 flex-shrink-0" />
                 <h6 className="font-medium text-nasun-white uppercase tracking-wider text-sm">
-                  Flagship Projects
+                  {t("approach.flagshipProjects")}
                 </h6>
               </div>
-              <p className="text-nasun-white/80">We build products to seed demand.</p>
+              <p className="text-nasun-white/80">{t("approach.flagshipProjectsDesc")}</p>
             </OuterBox>
             <OuterBox color="nw1" padding="sm">
               <div className="flex items-center gap-3 mb-2">
                 <Users className="w-5 h-5 text-nasun-nw4 flex-shrink-0" />
                 <h6 className="font-medium text-nasun-white uppercase tracking-wider text-sm">
-                  Community Governance
+                  {t("approach.communityGovernance")}
                 </h6>
               </div>
-              <p className="text-nasun-white/80">Contributors shape what gets built and funded.</p>
+              <p className="text-nasun-white/80">{t("approach.communityGovernanceDesc")}</p>
             </OuterBox>
           </div>
         </section>
 
         {/* Current Stage */}
         <section>
-          <SectionTitle as="h4">Current Stage</SectionTitle>
+          <SectionTitle as="h4">{t("currentStage.title")}</SectionTitle>
           <OuterBox color="nw0" padding="sm" className="!bg-gray-900">
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm md:text-base">
               <span>
-                <span className="text-nasun-nw4 font-medium">Devnet:</span>{" "}
-                <span className="text-nasun-white">Live</span>
+                <span className="text-nasun-nw4 font-medium">{t("currentStage.devnet")}</span>{" "}
+                <span className="text-nasun-white">{t("currentStage.devnetStatus")}</span>
               </span>
               <span className="text-nasun-white/30 hidden sm:inline">|</span>
               <span>
-                <span className="text-nasun-nw4 font-medium">Nodes:</span>{" "}
-                <span className="text-nasun-white">Testing</span>
+                <span className="text-nasun-nw4 font-medium">{t("currentStage.nodes")}</span>{" "}
+                <span className="text-nasun-white">{t("currentStage.nodesStatus")}</span>
               </span>
               <span className="text-nasun-white/30 hidden sm:inline">|</span>
               <span>
-                <span className="text-nasun-nw4 font-medium">Apps:</span>{" "}
-                <span className="text-nasun-white">In development</span>
+                <span className="text-nasun-nw4 font-medium">{t("currentStage.apps")}</span>{" "}
+                <span className="text-nasun-white">{t("currentStage.appsStatus")}</span>
               </span>
               <span className="text-nasun-white/30 hidden sm:inline">|</span>
               <span>
-                <span className="text-nasun-nw4 font-medium">Governance:</span>{" "}
-                <span className="text-nasun-white">Rolling out</span>
+                <span className="text-nasun-nw4 font-medium">{t("currentStage.governance")}</span>{" "}
+                <span className="text-nasun-white">{t("currentStage.governanceStatus")}</span>
               </span>
             </div>
           </OuterBox>
@@ -148,14 +151,14 @@ const AboutOverviewContent = () => {
 
         {/* The Vision */}
         <section className="text-center py-4 md:py-8">
-          <SectionTitle as="h4">The Vision</SectionTitle>
+          <SectionTitle as="h4">{t("vision.title")}</SectionTitle>
           <div className="space-y-1 mb-8">
             <p className="text-lg md:text-xl text-nasun-white">
-              Communities build the next generation of global IP.
+              {t("vision.line1")}
             </p>
-            <p className="text-lg md:text-xl text-nasun-white/70">Not rented from platforms.</p>
+            <p className="text-lg md:text-xl text-nasun-white/70">{t("vision.line2")}</p>
             <p className="text-lg md:text-xl font-medium text-nasun-white">
-              Owned by the people who build it.
+              {t("vision.line3")}
             </p>
           </div>
 

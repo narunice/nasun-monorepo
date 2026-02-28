@@ -5,6 +5,7 @@
  * Based on V2 RankChangeIndicator pattern.
  */
 
+import { useTranslation } from "react-i18next";
 import type { RankChangeDirection } from '../types';
 
 interface RankChangeIndicatorV3Props {
@@ -18,6 +19,7 @@ export function RankChangeIndicatorV3({
   amount,
   variant = 'short',
 }: RankChangeIndicatorV3Props) {
+  const { t } = useTranslation("leaderboard");
   if (direction === 'same') {
     return <span className="font-medium text-gray-500">-</span>;
   }
@@ -25,9 +27,9 @@ export function RankChangeIndicatorV3({
   // Full variant for cards/expanded views
   if (variant === 'full') {
     const config = {
-      up: { color: 'text-green-400', text: `+${amount} ranks` },
-      down: { color: 'text-red-400', text: `-${amount} ranks` },
-      new: { color: 'text-green-400', text: 'NEW' },
+      up: { color: 'text-green-400', text: t("v3.rankChange.upRanks", { amount }) },
+      down: { color: 'text-red-400', text: t("v3.rankChange.downRanks", { amount }) },
+      new: { color: 'text-green-400', text: t("v3.rankChange.new") },
     };
 
     const { color, text } = config[direction];
@@ -60,7 +62,7 @@ export function RankChangeIndicatorV3({
           <span className="text-green-500" style={{ fontSize: '0.7em' }}>
             ▲
           </span>
-          <span className="text-green-500 mt-0.5 text-xs">NEW</span>
+          <span className="text-green-500 mt-0.5 text-xs">{t("v3.rankChange.new")}</span>
         </div>
       );
     default:

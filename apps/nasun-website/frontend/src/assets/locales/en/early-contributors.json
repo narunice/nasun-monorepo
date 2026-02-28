@@ -1,4 +1,26 @@
 {
+  "v2": {
+    "intro1": "We're looking for early contributors to help build Nasun from the ground up.",
+    "intro2": "If you're a creator, developer, artist, or community leader who wants to help shape Nasun from Day 1, we'd love to hear from you.",
+    "lookingFor": "What we're looking for:",
+    "lookingForItems": [
+      "Content creators (X, YouTube, other platforms)",
+      "Developers and technical contributors",
+      "Artists and designers",
+      "Community leads"
+    ],
+    "whatYouGet": "What you receive:",
+    "whatYouGetItems": {
+      "item1": { "head": "A rare Battalion NFT", "rest": " with utilities and airdrop multipliers" },
+      "item2": { "head": "Direct access", "rest": " to the core team" },
+      "item3": { "head": "Allowlist", "rest": " for the Battalion drop" },
+      "item4": { "head": "A share", "rest": " of the launch marketing budget" }
+    },
+    "closing1": "Nasun is community-funded, not VC-backed. We're building this with our people, not with a fund.",
+    "closing2": "Spots are limited. If you're interested, email us or DM @Nasun_io.",
+    "emailUs": "Email Us",
+    "dmNasun": "DM @Nasun_io"
+  },
   "title": "EARLY CONTRIBUTORS",
   "intro": {
     "highlight": "Wave 1 Early Contributors",

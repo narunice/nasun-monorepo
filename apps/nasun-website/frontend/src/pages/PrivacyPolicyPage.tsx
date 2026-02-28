@@ -9,7 +9,7 @@ import { AlertTriangle } from "lucide-react";
 
 const PRIVACY_CONTENT = {
   title: "Privacy Policy",
-  lastUpdated: "Last Updated: January 18, 2026",
+  lastUpdated: "Last Updated: February 28, 2026",
   devnetNotice: {
     title: "Important Notice for Devnet",
     content: "Nasun currently operates on a Developer Network (\"Devnet\"). All on-chain transactions are public, and all assets (except Frontiers NFTs) are test assets with no real monetary value."
@@ -18,7 +18,7 @@ const PRIVACY_CONTENT = {
     "1": {
       "title": "1. Introduction",
       "content": [
-        "Nasun (\"we\", \"us\", or \"our\") is committed to protecting your privacy. This Privacy Policy (\"Policy\") explains how we collect, use, and safeguard your personal data when you use the Nasun website (nasun.io), Nasun Wallet, Pado application, and Frontiers NFT services (collectively, \"Services\")."
+        "The entity or individuals operating under the name \"Nasun\" (\"we,\" \"us,\" or \"our\") is committed to protecting your privacy. This Privacy Policy (\"Policy\") explains how we collect, use, and safeguard your personal data when you use all products, applications, websites, smart contracts, blockchain networks, digital assets, and any other services operated by or on behalf of Nasun, whether currently existing or developed in the future (collectively, the \"Services\")."
       ]
     },
     "2": {
@@ -30,20 +30,28 @@ const PRIVACY_CONTENT = {
           "items": [
             "Contact Information: Email address or social media handles (if you subscribe to newsletters or participate in community events).",
             "Authentication Data (zkLogin): If you use zkLogin (Google, Apple, etc.), we receive a proof of authentication. We do not see or store your social media passwords.",
+            "Twitter/X OAuth Data: If you connect your Twitter/X account (e.g., for leaderboard participation), we receive your public profile information including username, display name, profile image, and follower/following counts. We do not access your direct messages or post on your behalf without explicit consent.",
             "Wallet Information: Your public wallet address. We NEVER collect or store your private keys or seed phrases."
           ]
         },
         {
           "title": "2.2 Automatically Collected Data:",
           "items": [
-            "Usage Data: IP address, browser type, device info, and pages visited (via privacy-friendly analytics).",
+            "Usage Data: IP address, browser type, device info, and pages visited. We use Umami Analytics, a self-hosted, privacy-focused analytics platform that does not send personal data to third parties.",
             "Blockchain Data: Transaction hashes, wallet balances, and smart contract interactions which are inherently public on the Nasun ledger."
           ]
         },
         {
           "title": "2.3 Third-Party Data:",
           "items": [
-            "Transaction details from NFT marketplaces (e.g., OpenSea) for Frontiers NFT verification."
+            "Transaction details from third-party platforms or blockchain networks used for NFT verification and service integration."
+          ]
+        },
+        {
+          "title": "2.4 Third-Party Wallet Providers:",
+          "items": [
+            "When you connect a third-party wallet (e.g., MetaMask), we receive your public wallet address and network information. We do not access or store your private keys.",
+            "Your use of third-party wallet providers is governed by their respective privacy policies and terms of service. Nasun disclaims any liability for data handling practices of third-party wallet providers."
           ]
         }
       ]
@@ -51,7 +59,7 @@ const PRIVACY_CONTENT = {
     "3": {
       "title": "3. How We Use Your Data",
       "items": [
-        "Service Delivery: To enable wallet connections, NFT minting, and Pado trading features.",
+        "Service Delivery: To enable wallet connections, NFT minting, and platform features.",
         "Security: To detect and prevent sybil attacks, bot activity, and fraudulent transactions.",
         "Communication: To send technical updates or marketing materials (only with your consent).",
         "Compliance: To screen for sanctioned jurisdictions as required by law."
@@ -61,7 +69,7 @@ const PRIVACY_CONTENT = {
       "title": "4. Blockchain Transparency & Immortality",
       "intro": "By using Nasun, you acknowledge that on-chain data is public and permanent.",
       "items": [
-        "We cannot delete, modify, or \"forget\" data recorded on the blockchain (e.g., a Pado trade or an NFT transfer).",
+        "We cannot delete, modify, or \"forget\" data recorded on the blockchain (e.g., a trade or an NFT transfer).",
         "Your public wallet address is visible to anyone using a block explorer."
       ]
     },
@@ -69,13 +77,20 @@ const PRIVACY_CONTENT = {
       "title": "5. Data Sharing",
       "intro": "We do not sell your personal data. We only share data with:",
       "items": [
-        "Service Providers: Cloud hosting (AWS/Google Cloud) and analytics providers.",
+        "Service Providers: Cloud hosting (AWS) and self-hosted analytics (Umami).",
         "Legal Authorities: When required by a valid legal request or to comply with AML/sanctions laws.",
         "Ecosystem Partners: Only with your explicit consent for specific integrations."
       ]
     },
     "6": {
-      "title": "6. Your Rights (GDPR / CCPA / PIPA)",
+      "title": "6. Cookies",
+      "content": [
+        "We use only essential cookies necessary for the functioning of the Services, such as session management and authentication state. We do not use tracking cookies or third-party advertising cookies.",
+        "Our analytics are powered by Umami, a self-hosted platform that does not use cookies and does not track users across websites. You may manage cookie preferences through your browser settings."
+      ]
+    },
+    "7": {
+      "title": "7. Your Rights (GDPR / CCPA / PIPA)",
       "intro": "Depending on your location, you have the right to:",
       "items": [
         "Access/Portability: Request a copy of your off-chain data.",
@@ -84,21 +99,28 @@ const PRIVACY_CONTENT = {
       ],
       "note": "Note: These rights do not apply to data already written to the blockchain."
     },
-    "7": {
-      "title": "7. Data Retention",
+    "8": {
+      "title": "8. Data Retention",
       "items": [
-        "Off-chain data: Retained only as long as necessary for the purpose or as required by law (typically 1–2 years).",
+        "Off-chain data: Retained only as long as necessary for the purpose or as required by law (typically 1\u20132 years).",
         "On-chain data: Retained indefinitely due to the nature of blockchain technology."
       ]
     },
-    "8": {
-      "title": "8. Children's Privacy",
+    "9": {
+      "title": "9. Children's Privacy",
       "content": [
         "Our Services are not intended for individuals under 18. If we discover we have collected data from a minor, we will delete it immediately."
       ]
     },
-    "9": {
-      "title": "9. Contact Us",
+    "10": {
+      "title": "10. Changes to This Policy",
+      "content": [
+        "We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. We will notify you of material changes by updating the \"Last Updated\" date at the top of this Policy and, where practicable, through announcements on our website or community channels.",
+        "Your continued use of the Services after any changes constitutes your acceptance of the updated Policy. We encourage you to review this Policy periodically."
+      ]
+    },
+    "11": {
+      "title": "11. Contact Us",
       "content": [
         "For any privacy concerns: admin@nasun.io"
       ]
