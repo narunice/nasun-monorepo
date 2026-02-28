@@ -8,7 +8,7 @@
 import { FC } from "react";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVoteHistory } from "../hooks/useVoteHistory";
-import { OuterBox } from "@/components/ui";
+import { OuterBox, Spinner } from "@/components/ui";
 
 interface GovernanceStatsProps {
   className?: string;
@@ -29,7 +29,7 @@ export const GovernanceStats: FC<GovernanceStatsProps> = ({ className = "" }) =>
     return (
       <OuterBox color="nw2" padding="md" className={className}>
         <div className="flex items-center justify-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 "></div>
+          <Spinner size="md" />
         </div>
       </OuterBox>
     );

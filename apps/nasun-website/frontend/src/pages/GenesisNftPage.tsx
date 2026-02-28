@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next";
 import { usePageLoading } from "../contexts/PageLoadingContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 import GenesisNftHeroSkeleton from "../sections/wave1/genesisNft/GenesisNftHeroSkeleton";
-const genesisVideoDesktop = "/videos/Founders-Nft-Portal-Rotate-rf22.mp4";
-const genesisVideoMobile = "/videos/Founders-Nft-Portal-Rotate-Mobile-rf23.mp4";
+const genesisVideoDesktop = "/videos/Founders-Nft-Portal-Rotate-rf28.mp4";
+const genesisVideoMobile = "/videos/Founders-Nft-Portal-Rotate-Mobile-rf28.mp4";
 
 const GenesisNftHeroSection = lazy(() => import("../sections/wave1/genesisNft/GenesisNftHeroSection"));
 const KeyBenefitsSection = lazy(() => import("../sections/wave1/genesisNft/KeyBenefitsSection"));
@@ -54,7 +54,7 @@ const GenesisNftPage = () => {
           muted
           playsInline
           preload="auto"
-          poster={isMobile ? "/images/posters/Founders-Nft-Portal-Rotate-Mobile-rf23.webp" : "/images/posters/Founders-Nft-Portal-Rotate-rf22.webp"}
+          poster={isMobile ? "/images/posters/Founders-Nft-Portal-Rotate-Mobile-rf28.webp" : "/images/posters/Founders-Nft-Portal-Rotate-rf28.webp"}
           onCanPlay={handleCanPlay}
           className={`w-full h-full transition-opacity duration-500 ${
             isVideoReady ? "opacity-100" : "opacity-0"

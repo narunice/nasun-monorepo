@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-const fullTrailerVideoMP4 = "/videos/Full-Trailer184s-rf29.mp4";
+const fullTrailerVideoMP4 = "/videos/Full-Trailer184s-rf28.mp4";
 import { InlineLoading } from "@/components/ui";
 
 interface HeroSectionProps {
@@ -184,7 +184,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
         muted
         playsInline
         preload="auto"
-        poster="/images/posters/Full-Trailer184s-rf29.webp"
+        poster="/images/posters/Full-Trailer184s-rf28.webp"
         className={`w-full max-w-none h-full object-cover transition-opacity duration-500 ${
           isVideoPlaying ? "opacity-100" : "opacity-0"
         }`}

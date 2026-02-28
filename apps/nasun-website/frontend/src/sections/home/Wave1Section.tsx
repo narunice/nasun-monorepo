@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 const wave1VideoMP4 = "/videos/Home-Wave1-rf28.mp4";
-const leaderboardVideoMP4 = "/videos/Leaderboard-Ui-rf22.mp4";
+const leaderboardVideoMP4 = "/videos/Leaderboard-Ui-rf28.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
@@ -182,7 +182,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               loop
               muted
               playsInline
-              poster="/images/posters/Leaderboard-Ui-rf22.webp"
+              poster="/images/posters/Leaderboard-Ui-rf28.webp"
               className="w-full max-w-lg lg:max-w-none object-contain rounded-md shadow-lg"
             >
               <source src={leaderboardVideoMP4} type="video/mp4" />

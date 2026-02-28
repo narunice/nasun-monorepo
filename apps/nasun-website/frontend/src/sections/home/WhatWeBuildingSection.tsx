@@ -9,10 +9,10 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
-const gensolVideo = "/videos/Trakker-Flying-rf24.mp4";
+const gensolVideo = "/videos/Trakker-Flying-rf28.mp4";
 const baramVideo = "/videos/Baram-Ui-rf28.mp4";
-const padoVideo = "/videos/Pado-Ui-Short-rf20.mp4";
-const explorerVideo = "/videos/Network-Explorer-Ui-rf20.mp4";
+const padoVideo = "/videos/Pado-Ui-Short-rf28.mp4";
+const explorerVideo = "/videos/Network-Explorer-Ui-rf28.mp4";
 
 const CustomArrow = ({
   onClick,
@@ -71,7 +71,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "sf-orange",
     link: "/ip/gensol",
     video: gensolVideo,
-    poster: "/images/posters/Trakker-Flying-rf24.webp",
+    poster: "/images/posters/Trakker-Flying-rf28.webp",
     contentPosition: "right-center",
   },
   {
@@ -94,7 +94,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "pado",
     link: "/ecosystem/pado",
     video: padoVideo,
-    poster: "/images/posters/Pado-Ui-Short-rf20.webp",
+    poster: "/images/posters/Pado-Ui-Short-rf28.webp",
   },
   {
     id: "protocol",
@@ -105,7 +105,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "nasun-network",
     link: "/network/nsn",
     video: explorerVideo,
-    poster: "/images/posters/Network-Explorer-Ui-rf20.webp",
+    poster: "/images/posters/Network-Explorer-Ui-rf28.webp",
   },
 ];
 

@@ -11,7 +11,7 @@ import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "@/store/userStore";
-import { OuterBox, DividerBox } from "@/components/ui";
+import { OuterBox, DividerBox, Spinner } from "@/components/ui";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { InfoCircledIcon, ChevronDownIcon, CheckCircledIcon } from "@radix-ui/react-icons";
 
@@ -90,7 +90,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
         </div>
       ) : isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-nw1 border-t-transparent"></div>
+          <Spinner size="lg" />
         </div>
       ) : (
         <div className="space-y-4">

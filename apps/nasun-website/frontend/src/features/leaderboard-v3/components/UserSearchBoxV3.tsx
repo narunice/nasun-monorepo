@@ -9,6 +9,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Search, X, User } from "lucide-react";
 import { useUserSearchV3 } from "../hooks/useUserSearchV3";
 import type { SearchAccountResult } from "../services/leaderboardV3Api";
+import { Spinner } from "@/components/ui";
 
 interface UserSearchBoxV3Props {
   seasonId?: string;
@@ -116,7 +117,7 @@ export function UserSearchBoxV3({
         <div className="absolute z-50 w-full mt-1 bg-nasun-c6 border border-nasun-c4/50 rounded-sm shadow-xl overflow-hidden">
           {isLoading && (
             <div className="px-4 py-3 text-sm text-nasun-white/50 flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-nasun-c7/30 border-t-nasun-c7 rounded-full animate-spin" />
+              <Spinner size="sm" />
               Searching...
             </div>
           )}

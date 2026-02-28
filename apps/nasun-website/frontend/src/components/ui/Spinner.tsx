@@ -1,8 +1,8 @@
 /**
  * Spinner Component
  *
- * Unified loading spinner component for consistent loading states across the app.
- * Uses nasun-c4 color for brand consistency.
+ * SVG circular spinner with faint track + rounded arc.
+ * Uses currentColor — pair with text-* Tailwind classes.
  */
 
 import { FC } from "react";
@@ -13,21 +13,33 @@ interface SpinnerProps {
   className?: string;
 }
 
-const sizeClasses = {
-  sm: "h-4 w-4 border",
-  md: "h-6 w-6 border-2",
-  lg: "h-8 w-8 border-2",
-  xl: "h-12 w-12 border-[3px]",
+const sizes = {
+  sm: "h-4 w-4",
+  md: "h-6 w-6",
+  lg: "h-8 w-8",
+  xl: "h-12 w-12",
 };
 
-export const Spinner: FC<SpinnerProps> = ({ size = "md", colorClass = "border-nasun-c4", className = "" }) => {
+export const Spinner: FC<SpinnerProps> = ({ size = "md", colorClass = "text-white", className = "" }) => {
   return (
-    <div
-      className={`animate-spin rounded-full ${colorClass} border-t-transparent ${sizeClasses[size]} ${className}`}
+    <svg
+      className={`animate-spinner ${sizes[size]} ${colorClass} ${className}`}
+      viewBox="0 0 24 24"
+      fill="none"
       role="status"
       aria-label="Loading"
     >
-      <span className="sr-only">Loading...</span>
-    </div>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.15" strokeWidth="2.5" />
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray="32 63"
+      />
+      <title>Loading...</title>
+    </svg>
   );
 };

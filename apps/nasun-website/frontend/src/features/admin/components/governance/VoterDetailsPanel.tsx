@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { OuterBox } from '@/components/ui/OuterBox';
+import { Spinner } from '@/components/ui';
 import type { ProposalSummary } from '@/features/admin/types';
 import type { VoterInfo } from '@/features/admin/hooks/useProposalVoters';
 
@@ -58,7 +59,7 @@ export function VoterDetailsPanel({
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-nasun-c4 border-t-transparent" />
+            <Spinner size="lg" />
             <p className="text-nasun-white/40 text-sm">Fetching on-chain voter data...</p>
           </div>
         ) : voters.length === 0 ? (

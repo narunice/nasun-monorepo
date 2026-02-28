@@ -33,10 +33,7 @@ const BaseEnvSchema = z.object({
 
   // 5. 워드프레스 설정
   VITE_WORDPRESS_DOMAIN: z.string().url(),
-  // Note: WP credentials are server-only (vite dev proxy) — excluded from client bundle via SENSITIVE_KEYS filter
-  VITE_WP_REST_NONCE: z.string().optional(),
-  VITE_WORDPRESS_USERNAME: z.string().optional(),
-  VITE_WORDPRESS_PASSWORD: z.string().optional(),
+  // WP credentials use non-VITE_ prefix (WP_USERNAME, WP_PASSWORD) — server-only, never in client bundle
 
   // 6. CSP 정책 (다중 라인 문자열 허용)
   VITE_CSP_POLICY: z.string().optional(),

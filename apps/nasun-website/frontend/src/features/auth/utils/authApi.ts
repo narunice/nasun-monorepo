@@ -97,17 +97,12 @@ export const fetchUserProfile = async (identityId: string): Promise<UserData | n
 
 export const ensureUserProfile = async (userData: UserData): Promise<UserData | null> => {
   try {
-    // 1. Check if profile exists
-    let profile = await fetchUserProfile(userData.identityId);
+    const profile = await fetchUserProfile(userData.identityId);
+    if (profile) return profile;
 
-    // 2. If not, create it
-    if (!profile) {
-      logger.log("User profile not found, creating...", userData.identityId);
-      await createUserProfile(userData);
-      profile = await fetchUserProfile(userData.identityId);
-    }
-
-    return profile;
+    logger.log("User profile not found, creating...", userData.identityId);
+    await createUserProfile(userData);
+    return userData;
   } catch (error) {
     logger.error("Error ensuring user profile:", error);
     return null;
