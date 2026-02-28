@@ -3,7 +3,7 @@
     "title": "Baram",
     "subtitle": "AI Compliance Settlement Layer",
     "tagline": "AI You Can Audit.",
-    "description": "Every prompt encrypted. Every response encrypted. Every execution recorded. Every payment guaranteed.",
+    "description": "Every execution recorded. Every payment settled. Every action auditable. Every budget enforced.",
     "target": "For developers, enterprises, and regulators who need AI they can prove."
   },
   "problem": {
@@ -99,7 +99,7 @@
       "active": { "number": "2", "name": "Active Status", "rule": "Owner can pause all spending instantly" },
       "expiry": { "number": "3", "name": "Expiry", "rule": "Spending rejected after expiration" },
       "balance": { "number": "4", "name": "Balance", "rule": "Must have sufficient NUSDC" },
-      "perRequest": { "number": "5", "name": "Per-Request Cap", "rule": "Max cost per request (default: 10 NUSDC)" },
+      "perRequest": { "number": "5", "name": "Per-Request Cap", "rule": "Configurable per-request spending limit" },
       "category": { "number": "6", "name": "Category Allowlist", "rule": "Request category must be approved" },
       "rateLimit": { "number": "7", "name": "Rate Limiting", "rule": "Minimum interval between requests" }
     },
@@ -122,7 +122,7 @@
       "budget": { "title": "Create Budget", "subtitle": "NUSDC Deposit", "detail": "Define constraints and deposit NUSDC" },
       "request": { "title": "Request", "subtitle": "7 Checks", "detail": "All 7 constraints verified on-chain. NUSDC locked in escrow." },
       "assign": { "title": "Assign Executor", "subtitle": "Weighted Random", "detail": "Filtered by tier, weighted by reputation" },
-      "execute": { "title": "AI Inference", "subtitle": "Nitro Enclave", "detail": "Prompt decrypted inside TEE, LLM runs, output hashed" },
+      "execute": { "title": "AI Inference", "subtitle": "Cloud or TEE", "detail": "LLM runs via cloud API or inside Nitro Enclave. Output hashed for AER." },
       "settle": { "title": "Settlement", "subtitle": "Atomic PTB", "detail": "NUSDC released, AER minted, reputation updated" },
       "receive": { "title": "Receive AER", "subtitle": "NFT Receipt", "detail": "Permanent, portable proof of execution" },
       "dashboard": { "title": "Dashboard", "subtitle": "Review", "detail": "Agents, budgets, and AER timeline" }
@@ -134,7 +134,7 @@
     "pillars": {
       "hardware": {
         "title": "Hardware Isolation",
-        "description": "Prompts encrypted with RSA-OAEP, decrypted only inside AWS Nitro Enclave. Operator cannot read your data."
+        "description": "For sensitive workloads: prompts encrypted with RSA-OAEP, decrypted only inside AWS Nitro Enclave. Operator cannot read your data."
       },
       "escrow": {
         "title": "Escrow Settlement",
@@ -142,7 +142,7 @@
       },
       "stake": {
         "title": "Skin in the Game",
-        "description": "Executors stake NASUN. Timeout: 5% slashed. Bad attestation: 10%. Fraud: 100%."
+        "description": "Executors stake NSN. Violations result in proportional slashing — from minor penalties to full stake forfeiture."
       },
       "compliance": {
         "title": "Immutable Audit Trail",
@@ -158,13 +158,13 @@
           "Host (Untrusted) — HTTP server + vsock proxy, sees only ciphertext",
           "Enclave (Trusted) — Decrypts prompt, runs LLM, encrypts response"
         ],
-        "note": "E2E encryption ensures only the user's browser and the TEE ever see plaintext."
+        "note": "When TEE is enabled, E2E encryption ensures only the user's browser and the enclave ever see plaintext."
       },
       "escrow": {
         "title": "Escrow State Machine",
         "states": {
           "pending": "NUSDC locked, awaiting executor assignment",
-          "executing": "TEE processing, 5-minute timeout",
+          "executing": "Executor processing, timeout enforced",
           "completed": "Proof verified, NUSDC released to executor",
           "cancelled": "Refund — user cancel or auto-cancel on failure",
           "timedOut": "Executor failed, full refund + slashing"
@@ -176,28 +176,28 @@
     "sectionLabel": "Executor Infrastructure",
     "headline": "Trust through stake, reputation, and hardware.",
     "cards": {
-      "reputation": { "title": "Reputation Score", "description": "0–1000 scale. +10 success, -20 failure, -50 for 30-day inactivity." },
-      "staking": { "title": "Staking & Slashing", "description": "NASUN staked as collateral. Slashing only for provable on-chain violations." },
+      "reputation": { "title": "Reputation Score", "description": "Reputation tracks reliability. Increases with successful jobs, decreases with failures and extended inactivity." },
+      "staking": { "title": "Staking & Slashing", "description": "NSN staked as collateral. Slashing only for provable on-chain violations." },
       "tiers": { "title": "Tier System", "description": "tier = min(stake_tier, reputation_tier). Both dimensions must qualify." },
-      "tee": { "title": "TEE Privacy", "description": "AWS Nitro Enclave. Prompt encrypted end-to-end. Key destroyed on shutdown." }
+      "tee": { "title": "TEE Privacy", "description": "Optional privacy layer. When enabled: AWS Nitro Enclave, E2E encryption, key destroyed on shutdown." }
     },
     "tierTable": {
-      "headers": { "tier": "Tier", "name": "Name", "stake": "Min Stake", "reputation": "Min Reputation" },
+      "headers": { "tier": "Tier", "name": "Name", "stake": "Stake Requirement", "reputation": "Reputation Requirement" },
       "rows": {
         "open": { "tier": "0", "name": "Open", "stake": "None", "reputation": "None" },
-        "bronze": { "tier": "1", "name": "Bronze", "stake": "1,000 NASUN", "reputation": "300" },
-        "silver": { "tier": "2", "name": "Silver", "stake": "5,000 NASUN", "reputation": "500" },
-        "gold": { "tier": "3", "name": "Gold", "stake": "10,000 NASUN", "reputation": "700" }
+        "bronze": { "tier": "1", "name": "Bronze", "stake": "Low", "reputation": "Low" },
+        "silver": { "tier": "2", "name": "Silver", "stake": "Medium", "reputation": "Medium" },
+        "gold": { "tier": "3", "name": "Gold", "stake": "High", "reputation": "High" }
       }
     },
     "slashingTable": {
       "headers": { "violation": "Violation", "penalty": "Stake Penalty", "reputation": "Reputation" },
       "rows": {
-        "timeout": { "violation": "Execution Timeout", "penalty": "5%", "reputation": "-20" },
-        "attestation": { "violation": "Bad Attestation", "penalty": "10%", "reputation": "-20" },
-        "fraud": { "violation": "Fraud / Manipulation", "penalty": "100%", "reputation": "-20" }
+        "timeout": { "violation": "Execution Timeout", "penalty": "Minor", "reputation": "Decrease" },
+        "attestation": { "violation": "Bad Attestation", "penalty": "Moderate", "reputation": "Decrease" },
+        "fraud": { "violation": "Fraud / Manipulation", "penalty": "Full Slash", "reputation": "Decrease" }
       },
-      "dormancy": "Executors inactive for 30 days lose 50 reputation per period."
+      "dormancy": "Extended inactivity results in reputation decay."
     }
   },
   "security": {
@@ -234,7 +234,7 @@
       "beta": { "number": "Stage 1", "title": "Developer Beta", "detail": "BetaAccessNFT-gated access for AI agent developers. AER generation free during beta." },
       "sdk": { "number": "Stage 2", "title": "SDK Integration", "detail": "Framework plugins for LangChain, CrewAI, AutoGen. Configuration change, not architecture change." },
       "enterprise": { "number": "Stage 3", "title": "Enterprise Inbound", "detail": "Regulatory deadlines drive natural demand. Live system + developer ecosystem." },
-      "network": { "number": "Stage 4", "title": "Network Growth", "detail": "More demand, more executors, better pricing. Staking locks NSN supply." }
+      "network": { "number": "Stage 4", "title": "Executor Network Growth", "detail": "More demand, more executors, better pricing. Staking locks NSN supply." }
     },
     "target": "2026 Target: 10,000 AER records generated by independent developers during beta."
   },
