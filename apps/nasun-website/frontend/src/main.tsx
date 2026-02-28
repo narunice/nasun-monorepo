@@ -49,7 +49,20 @@ if (googleClientId && saltApiUrl) {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
+      retry: (failureCount, error) => {
+        // 4xx errors (client errors, throttling): no retry
+        if (error && typeof error === "object" && "status" in error) {
+          const status = (error as { status: number }).status;
+          if (status >= 400 && status < 500) return false;
+        }
+        // 5xx server errors: retry once
+        if (error && typeof error === "object" && "status" in error) {
+          const status = (error as { status: number }).status;
+          if (status >= 500) return failureCount < 1;
+        }
+        // Network errors: retry up to 2 times
+        return failureCount < 2;
+      },
       staleTime: 1000 * 60 * 5, // 5 minutes
     },
   },

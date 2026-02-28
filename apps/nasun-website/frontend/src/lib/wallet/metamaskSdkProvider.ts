@@ -1,12 +1,10 @@
 /**
- * MetaMask SDK Provider
+ * MetaMask SDK Provider (Mobile Only)
  *
- * Provides wallet connection via MetaMask's official SDK.
- * Handles all environments automatically:
- * - Desktop with extension: uses injected provider
- * - Desktop without extension: shows QR code / install prompt
- * - Mobile: deep links to MetaMask app via SDK's Socket.io relay
+ * Provides wallet connection via MetaMask's official SDK for mobile browsers.
+ * Desktop browsers should use window.ethereum directly (see metamaskUtils.ts).
  *
+ * Mobile: deep links to MetaMask app via SDK's Socket.io relay.
  * Replaces WalletConnect v2 which was unreliable on iOS Safari.
  */
 
@@ -54,6 +52,12 @@ function withTimeout<T>(
  * Uses dedup guard to prevent concurrent initialization.
  */
 async function getSDK(): Promise<MetaMaskSDK> {
+  if (!isMobileBrowser()) {
+    throw new Error(
+      "MetaMask SDK is only supported on mobile. Use window.ethereum for desktop.",
+    );
+  }
+
   if (sdkInstance) return sdkInstance;
   if (initPromise) return initPromise;
 
@@ -101,31 +105,7 @@ async function getSDK(): Promise<MetaMaskSDK> {
 }
 
 /**
- * Connect AND sign a message in a single MetaMask interaction.
- * Uses SDK's connectAndSign to reduce iOS Safari from 2 app switches to 1.
- * @param message - Message to sign (server-generated, includes nonce)
- * @returns Hex-encoded signature (address is recovered server-side)
- */
-export async function connectAndSignSDK(
-  message: string,
-): Promise<string> {
-  const sdk = await getSDK();
-  _activeOperation = true;
-  _redirectedForCurrentOp = false;
-  try {
-    const signature = (await withTimeout(
-      sdk.connectAndSign({ msg: message }),
-      CONNECT_TIMEOUT_MS,
-      "Wallet connection timed out. Please try again.",
-    )) as string;
-    return signature;
-  } finally {
-    _activeOperation = false;
-  }
-}
-
-/**
- * Connect to MetaMask. Desktop: uses extension. Mobile: deep links to app.
+ * Connect to MetaMask via SDK. Mobile: deep links to MetaMask app.
  * @returns Connected wallet address (lowercase)
  */
 export async function connectMetaMaskSDK(): Promise<string> {

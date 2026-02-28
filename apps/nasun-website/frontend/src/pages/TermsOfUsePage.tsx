@@ -9,14 +9,14 @@ import { AlertTriangle } from "lucide-react";
 
 const TERMS_CONTENT = {
   title: "Terms of Use",
-  lastUpdated: "Last Updated: January 18, 2026",
+  lastUpdated: "Last Updated: February 28, 2026",
   disclaimer: {
     title: "IMPORTANT INVESTMENT DISCLAIMER",
     subtitle: "PLEASE READ THIS SECTION CAREFULLY. IT LIMITS THE SCOPE OF OUR RELATIONSHIP.",
     intro: "The relationship between you and Nasun is NOT an investment relationship. NFTs, rewards, tokens, and any digital assets distributed through the Nasun platform are NOT investment products and do not represent securities, profit-sharing arrangements, or any form of financial instrument.",
     header: "You acknowledge and agree that:",
     items: [
-      "(i) No Investment: You are not making an investment in Nasun, the Nasun Team, or any of its affiliates.",
+      "(i) No Investment: You are not making an investment in Nasun, the entity or individuals operating under the name Nasun, or any of its affiliates.",
       "(ii) No Profit Expectation: You have no expectation of profits from the efforts of Nasun or others.",
       "(iii) No Equity: Your purchase or acquisition of NFTs, or participation in platform activities, does not create any equity interest, ownership stake, or profit-sharing right.",
       "(iv) Purpose: The platform is designed for entertainment, community participation, technical testing, and creative expression purposes only."
@@ -26,7 +26,7 @@ const TERMS_CONTENT = {
     "1": {
       "title": "1. Introduction and Acceptance",
       "content": [
-        "These Terms of Use (\"Terms\") constitute a binding agreement between you (\"User,\" \"you\") and the Nasun Team (\"Nasun,\" \"we,\" \"us\"). These Terms govern your access to and use of the Nasun website (nasun.io), the Nasun Network Devnet, the Pado application, the Frontiers NFT, and related services (collectively, the \"Services\").",
+        "These Terms of Use (\"Terms\") constitute a binding agreement between you (\"User,\" \"you\") and the entity or individuals operating under the name \"Nasun\" (\"Nasun,\" \"we,\" \"us\"). These Terms govern your access to and use of all products, applications, websites, smart contracts, blockchain networks, digital assets, and any other services operated by or on behalf of Nasun, whether currently existing or developed in the future (collectively, the \"Services\"). This includes, without limitation, nasun.io, the Nasun Network, and any decentralized applications, tools, or platforms we offer.",
         "By connecting your wallet, purchasing an NFT, or using any Service, you agree to be bound by these Terms. If you do not agree, you must not use the Services."
       ]
     },
@@ -62,7 +62,25 @@ const TERMS_CONTENT = {
       ]
     },
     "6": {
-      "title": "6. Assumption of Risk",
+      "title": "6. Prohibited Activities",
+      "intro": "You agree not to engage in any of the following activities in connection with the Services:",
+      "items": [
+        "(i) Using bots, scripts, or automated tools to interact with the Services, manipulate rankings, or gain unfair advantages;",
+        "(ii) Market manipulation, wash trading, front-running, or any form of deceptive trading activity;",
+        "(iii) Using VPNs or other tools to circumvent geographic restrictions or sanctions compliance measures;",
+        "(iv) Scraping, data mining, or reverse engineering any part of the Services;",
+        "(v) Engaging in fraud, identity theft, or misrepresentation of any kind;",
+        "(vi) Any activity that violates applicable laws or these Terms."
+      ]
+    },
+    "7": {
+      "title": "7. No Professional Advice",
+      "content": [
+        "Nothing in the Services constitutes investment, financial, legal, or tax advice. Nasun does not act as a fiduciary, broker, or advisor to any user. You are solely responsible for evaluating the risks and merits of using the Services and should consult qualified professionals before making any financial or legal decisions."
+      ]
+    },
+    "8": {
+      "title": "8. Assumption of Risk",
       "intro": "You understand and agree that your access to and use of the Services involves certain risks, including but not limited to:",
       "items": [
         "(i) Volatility: The price and liquidity of blockchain assets, including NFTs, are highly volatile and subject to significant fluctuations.",
@@ -72,8 +90,8 @@ const TERMS_CONTENT = {
         "(v) No Advice: Nasun does not provide any investment advice or recommendations regarding NFTs. You access and use the Services entirely at your own risk."
       ]
     },
-    "7": {
-      "title": "7. Disclaimers (\"AS IS\" Basis)",
+    "9": {
+      "title": "9. Disclaimers (\"AS IS\" Basis)",
       "intro": "The Services, including the website, content, and NFTs, are provided on an \"AS IS\" and \"AS AVAILABLE\" basis, without warranties or conditions of any kind, either express or implied.",
       "warrantyHeader": "Nasun makes no warranty that the Site will:",
       "warranties": [
@@ -89,19 +107,19 @@ const TERMS_CONTENT = {
         "(iv) Loss of NFTs or access to third-party services."
       ]
     },
-    "8": {
-      "title": "8. Limitation of Liability",
+    "10": {
+      "title": "10. Limitation of Liability",
       "content": [
         "To the fullest extent permitted by law, Nasun shall not be liable to you or any third party for any lost profits or any indirect, consequential, exemplary, incidental, special, or punitive damages arising from these Terms or the Services.",
         "In no event shall the maximum aggregate liability of Nasun arising out of or related to these Terms, your access to or use of the website, content, NFTs, or any products exceed the greater of:"
       ],
       "limits": [
-        "(a) US$1,000; or",
+        "(a) US$100; or",
         "(b) The total amount of fees paid by you to Nasun in the twelve (12) months immediately preceding the event giving rise to the claim."
       ]
     },
-    "9": {
-      "title": "9. Indemnification",
+    "11": {
+      "title": "11. Indemnification",
       "intro": "You agree to indemnify, defend, and hold harmless Nasun and our past, present, and future employees, officers, directors, contractors, consultants, equity holders, suppliers, vendors, service providers, parent companies, subsidiaries, affiliates, agents, representatives, predecessors, successors, and assigns (collectively, \"Nasun Parties\"), from and against all actual or alleged third-party claims that are caused by, arise out of, or are related to:",
       "items": [
         "(a) Your use or misuse of the Site, Content, or NFTs;",
@@ -109,17 +127,33 @@ const TERMS_CONTENT = {
         "(c) Your breach or violation of the rights of a third party."
       ]
     },
-    "10": {
-      "title": "10. Eligibility",
+    "12": {
+      "title": "12. Eligibility",
       "content": [
-        "You represent that you are not located in, or a resident of, any jurisdiction subject to comprehensive sanctions (e.g., North Korea, Iran, Cuba, Russia, Syria) imposed by the US (OFAC), UN, or other relevant authorities."
+        "You must be at least 18 years of age to use the Services. By using the Services, you represent and warrant that you meet this age requirement.",
+        "You represent that you are not located in, incorporated in, or a citizen or resident of any jurisdiction subject to comprehensive sanctions, including but not limited to North Korea (DPRK), Iran, Cuba, Russia, Syria, the Crimea, Donetsk, and Luhansk regions of Ukraine, Belarus, and Myanmar. You further represent that you are not listed on any sanctions list maintained by the U.S. Office of Foreign Assets Control (OFAC), the United Nations Security Council, the European Union, or any other applicable governmental authority."
       ]
     },
-    "11": {
-      "title": "11. Governing Law and Dispute Resolution",
+    "13": {
+      "title": "13. Termination and Suspension",
       "content": [
-        "These Terms and any action related thereto will be governed by the laws of Singapore without regard to its conflict of laws provisions.",
-        "Any dispute arising out of or in connection with this contract, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration administered by the Singapore International Arbitration Centre (\"SIAC\") in accordance with the Arbitration Rules of the Singapore International Arbitration Centre for the time being in force."
+        "Nasun reserves the right to suspend, restrict, or terminate your access to any or all of the Services at any time, at our sole discretion, with or without notice, and for any reason, including but not limited to suspected violations of these Terms or applicable law.",
+        "Nasun shall not be liable to you or any third party for any suspension or termination of your access to the Services. Upon termination, all provisions of these Terms that by their nature should survive will remain in effect."
+      ]
+    },
+    "14": {
+      "title": "14. Modifications to Terms",
+      "content": [
+        "Nasun reserves the right to modify these Terms at any time. We will provide reasonable notice of material changes by updating the \"Last Updated\" date and, where practicable, through announcements on our website or community channels.",
+        "Your continued use of the Services after any modification constitutes your acceptance of the updated Terms. If you do not agree with the changes, you must discontinue use of the Services."
+      ]
+    },
+    "15": {
+      "title": "15. Governing Law and Dispute Resolution",
+      "content": [
+        "These Terms and any action related thereto will be governed by the laws of the British Virgin Islands without regard to its conflict of laws provisions.",
+        "Any dispute arising out of or in connection with this contract, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration administered by the BVI International Arbitration Centre (\"BVIAC\") in accordance with the BVIAC Arbitration Rules for the time being in force.",
+        "To the fullest extent permitted by applicable law, you agree that any dispute resolution proceedings will be conducted on an individual basis only, and not as a class, consolidated, or representative action. You expressly waive any right to participate in a class action lawsuit or class-wide arbitration."
       ]
     }
   }

@@ -5,6 +5,7 @@
  */
 
 import { Suspense } from 'react';
+import { useTranslation } from "react-i18next";
 import { PageLayout } from '../components/layout/PageLayout';
 import ErrorBoundary from '../components/layout/ErrorBoundary';
 import { SectionLayout } from '../components/layout/SectionLayout';
@@ -12,12 +13,13 @@ import { SectionLoading } from '../components/ui/SectionLoading';
 import { LeaderboardV3 } from '@/features/leaderboard-v3';
 
 const LeaderboardV3Page = () => {
+  const { t } = useTranslation("leaderboard");
   return (
     <PageLayout>
       <ErrorBoundary
         fallback={
           <SectionLayout>
-            <p className="text-nasun-latte">Failed to load leaderboard. Please try again later.</p>
+            <p className="text-nasun-latte">{t("v3.loadError")}</p>
           </SectionLayout>
         }
       >

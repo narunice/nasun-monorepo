@@ -84,7 +84,7 @@ function SpectraSection() {
         {/* Escape from Kramok */}
         <section>
           <OuterBox color="w1" padding="lg" className="!bg-[#2a2a2a] relative">
-            <div className="absolute top-5 right-5 flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-3 md:mb-0 md:absolute md:top-5 md:right-5">
               <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-nasun-c1/20 text-nasun-c1">
                 TPS
               </span>

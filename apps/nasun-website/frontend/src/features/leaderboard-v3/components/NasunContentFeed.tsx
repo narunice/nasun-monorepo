@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame } from "lucide-react";
 import { useFeaturedFeed } from "../hooks/useFeaturedFeed";
@@ -9,6 +10,7 @@ interface NasunContentFeedProps {
 }
 
 export function NasunContentFeed({ seasonId }: NasunContentFeedProps) {
+  const { t } = useTranslation("leaderboard");
   const { data, isLoading, isError } = useFeaturedFeed(seasonId);
   const rotatedItems = useFeedRotation(data?.items);
 
@@ -19,7 +21,7 @@ export function NasunContentFeed({ seasonId }: NasunContentFeedProps) {
         <div className="p-1.5 rounded-lg bg-nasun-c1/20 ">
           <Flame className="w-5 h-5 text-nasun-c1" />
         </div>
-        <h5 className="uppercase font-medium">Featured Posts</h5>
+        <h5 className="uppercase font-medium">{t("v3.feed.title")}</h5>
       </div>
 
       {/* Feed Content */}
@@ -37,13 +39,13 @@ export function NasunContentFeed({ seasonId }: NasunContentFeedProps) {
 
         {isError && (
           <div className="py-12 text-center bg-nasun-c4/5 border border-white/5 rounded-sm px-4">
-            <p className="text-sm text-nasun-white/40">Failed to load feed</p>
+            <p className="text-sm text-nasun-white/40">{t("v3.feed.loadError")}</p>
           </div>
         )}
 
         {!isLoading && !isError && rotatedItems.length === 0 && (
           <div className="py-12 text-center bg-nasun-c4/5 border border-white/5 rounded-sm px-4">
-            <p className="text-sm text-nasun-white/40">No featured posts yet</p>
+            <p className="text-sm text-nasun-white/40">{t("v3.feed.noData")}</p>
           </div>
         )}
 

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SeasonSelector } from "./SeasonSelector";
@@ -13,6 +14,7 @@ import { Spinner } from "@/components/ui";
 const ITEMS_PER_PAGE = 50;
 
 export function LeaderboardV3() {
+  const { t } = useTranslation("leaderboard");
   const {
     seasons,
     seasonsLoading,
@@ -36,7 +38,7 @@ export function LeaderboardV3() {
     <SectionLayout className="!max-w-7xl px-auto">
       {/* Header */}
       <PageTitle as="h2" align="center">
-        Community Leaderboard
+        {t("v3.title")}
       </PageTitle>
 
       {/* Season Selector */}
@@ -69,14 +71,14 @@ export function LeaderboardV3() {
       {/* Error State */}
       {leaderboardError && (
         <div className="p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-sm text-center">
-          Failed to load leaderboard. Please try again later.
+          {t("v3.loadError")}
         </div>
       )}
 
       {/* No Active Season */}
       {!seasonsLoading && (!seasons || seasons.length === 0) && (
         <div className="text-center py-12">
-          <p className="text-nasun-white/50 text-lg">No active season at the moment.</p>
+          <p className="text-nasun-white/50 text-lg">{t("v3.noSeason")}</p>
         </div>
       )}
 
@@ -108,7 +110,7 @@ export function LeaderboardV3() {
           <UserSearchBoxV3
             seasonId={selectedSeasonId}
             onUserSelect={handleUserSelect}
-            placeholder="Search user..."
+            placeholder={t("v3.searchPlaceholder")}
           />
         </div>
 

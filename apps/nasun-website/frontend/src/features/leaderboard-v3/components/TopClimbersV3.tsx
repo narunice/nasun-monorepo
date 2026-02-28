@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Trophy } from "lucide-react";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { useTopClimbersV3 } from "../hooks/useTopClimbersV3";
@@ -35,6 +36,7 @@ const getVisibilityClass = (index: number): string => {
 };
 
 const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
+  const { t } = useTranslation("leaderboard");
   const [timeRange, setTimeRange] = useState<TimeRangeV3>("today");
 
   const { data, isLoading, error } = useTopClimbersV3({
@@ -51,7 +53,7 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
           <div className="flex items-center gap-2">
             <Trophy className="w-6 h-6 text-yellow-500" />
             <SectionTitle as="h3" className="uppercase font-medium !mb-0">
-              Top Climbers Spotlight
+              {t("v3.climbers.title")}
             </SectionTitle>
           </div>
           <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-sm animate-pulse">
@@ -75,7 +77,7 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
   if (error) {
     return (
       <div className="w-full text-center py-8 text-nasun-white/50">
-        Failed to load top climbers. Please try again later.
+        {t("v3.climbers.loadError")}
       </div>
     );
   }
@@ -88,7 +90,7 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
           <div className="flex items-center gap-2">
             <Trophy className="w-6 h-6 text-yellow-500" />
             <SectionTitle as="h3" className="uppercase font-medium !mb-0">
-              Top Climbers Spotlight
+              {t("v3.climbers.title")}
             </SectionTitle>
           </div>
           <TimeRangeSelectorInline
@@ -98,7 +100,7 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
           />
         </div>
         <div className="text-center py-8 text-nasun-white/50">
-          No rank improvements in this period yet.
+          {t("v3.climbers.noData")}
         </div>
       </div>
     );
@@ -111,7 +113,7 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6 text-yellow-500" />
           <SectionTitle as="h3" className="uppercase font-medium !mb-0">
-            Top Climbers Spotlight
+            {t("v3.climbers.title")}
           </SectionTitle>
         </div>
         <TimeRangeSelectorInline

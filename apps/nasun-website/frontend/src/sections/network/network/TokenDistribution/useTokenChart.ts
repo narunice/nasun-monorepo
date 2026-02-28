@@ -8,9 +8,9 @@ const COLORS = [
   { border: "#2A64C5", bg: "#2A64C5BB" }, // c5 (Team and Advisors)
   { border: "#ff9900", bg: "#ff9900BB" }, // c4 (Public & Private Investors)
   { border: "#10b981", bg: "#10b981BB" }, // emerald (Treasury Reserve)
-  { border: "#9333ea", bg: "#9333eaBB" }, // purple (Foundation)
-  { border: "#ff4d4f", bg: "#ff4d4fBB" }, // (Early Contributors)
-  { border: "#fa3102", bg: "#fa3102BB" }, // scarlet (Ecosystem Liquidity & Market Making)
+  { border: "#fa3102", bg: "#fa3102BB" }, // scarlet (Foundation)
+  { border: "#9333ea", bg: "#9333eaBB" }, // purple (Early Contributors)
+  { border: "#ff4d4f", bg: "#ff4d4fBB" }, // (Ecosystem Liquidity & Market Making)
 ];
 
 export const useTokenChart = () => {

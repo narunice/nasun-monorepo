@@ -6,6 +6,7 @@
  */
 
 import React, { FormEvent, memo } from 'react';
+import { useTranslation } from "react-i18next";
 import type { PaginationRange } from '../hooks/usePaginationV3';
 
 interface PaginationControlsV3Props {
@@ -37,11 +38,12 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
     onPageInputChange,
     onPageInputSubmit,
   }) => {
+    const { t } = useTranslation("leaderboard");
     return (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
         {/* Left: Page info */}
         <div className="text-gray-400 text-sm">
-          Page {currentPage} of {totalPages}
+          {t("v3.pagination.page", { current: currentPage, total: totalPages })}
         </div>
 
         {/* Right: Navigation */}
@@ -52,7 +54,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
             disabled={!hasPrev}
             className={buttonStyle}
           >
-            First
+            {t("v3.pagination.first")}
           </button>
 
           {/* Prev */}
@@ -61,7 +63,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
             disabled={!hasPrev}
             className={buttonStyle}
           >
-            Prev
+            {t("v3.pagination.prev")}
           </button>
 
           {/* Page numbers */}
@@ -88,7 +90,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
             disabled={!hasNext}
             className={buttonStyle}
           >
-            Next
+            {t("v3.pagination.next")}
           </button>
 
           {/* Last */}
@@ -97,7 +99,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
             disabled={!hasNext}
             className={buttonStyle}
           >
-            Last
+            {t("v3.pagination.last")}
           </button>
 
           {/* Direct input */}
@@ -111,7 +113,7 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
               max={totalPages}
             />
             <button type="submit" className={buttonStyle}>
-              Go
+              {t("v3.pagination.go")}
             </button>
           </form>
         </div>

@@ -1,0 +1,38 @@
+{
+  "intro": {
+    "subtitle": "Decentralized compute for the next generation of IP.",
+    "line1": "No AWS lock-in. No censorship. Transparent pricing and on-chain SLAs.",
+    "line2_pre": "Nasun's global node network powers ",
+    "line2_highlight": "AI inference, game servers, and streaming",
+    "line2_post": ", all coordinated by ",
+    "line2_chain": "Nasun L1"
+  },
+  "nodeTypes": {
+    "title": "Node Types",
+    "headers": {
+      "nodeType": "Node Type",
+      "powers": "Powers",
+      "earnNsn": "Earn NSN"
+    },
+    "validators": { "type": "Validators", "powers": "Consensus & finality", "earn": "Staking rewards" },
+    "executors": { "type": "Executors", "powers": "AI / LLM inference (TEE)", "earn": "Usage fees" },
+    "compute": { "type": "Compute", "powers": "Apps & APIs", "earn": "Compute demand" },
+    "storage": { "type": "Storage", "powers": "Files & data", "earn": "Storage fees" },
+    "streamers": { "type": "Streamers", "powers": "Live & on-demand video", "earn": "Viewership" },
+    "gameServers": { "type": "Game Servers", "powers": "Multiplayer worlds", "earn": "Player sessions" }
+  },
+  "howItWorks": {
+    "title": "How It Works",
+    "step1": "Stake NSN",
+    "step2": "Deliver service",
+    "step3": "Earn on usage",
+    "conclusion": "On-chain proofs and automatic slashing enforce service quality and reliability."
+  },
+  "participants": {
+    "title": "Network Participants",
+    "users": "Users",
+    "usersDesc": "Pay NSN for reliable, censorship-resistant infrastructure.",
+    "operators": "Operators",
+    "operatorsDesc": "Access global demand with no intermediaries."
+  }
+}

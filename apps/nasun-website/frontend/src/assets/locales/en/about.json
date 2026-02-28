@@ -1,0 +1,50 @@
+{
+  "problem": {
+    "title": "The Problem",
+    "line1": "Platforms capture value.",
+    "line2": "Communities create it.",
+    "line3": "Creators compete.",
+    "line4": "Fans consume.",
+    "line5": "Platforms extract.",
+    "conclusion": "IP should be built and owned together."
+  },
+  "flagships": {
+    "title": "The Flagships",
+    "genSol": "A sci-fi universe powering games, films, and shows.",
+    "baram": "The global settlement layer for AI.",
+    "pado": "Unified onchain financial platform.",
+    "conclusion": "NASUN aligns creation, coordination, and capital in a single system."
+  },
+  "approach": {
+    "title": "Our Approach",
+    "ownershipLayer": "Ownership Layer",
+    "ownershipLayerDesc": "A Move-based L1 for coordination and asset ownership.",
+    "infrastructure": "Infrastructure",
+    "infrastructureDesc": "Decentralized compute, AI, storage, and finance.",
+    "flagshipProjects": "Flagship Projects",
+    "flagshipProjectsDesc": "We build products to seed demand.",
+    "communityGovernance": "Community Governance",
+    "communityGovernanceDesc": "Contributors shape what gets built and funded."
+  },
+  "currentStage": {
+    "title": "Current Stage",
+    "devnet": "Devnet:",
+    "devnetStatus": "Live",
+    "nodes": "Nodes:",
+    "nodesStatus": "Testing",
+    "apps": "Apps:",
+    "appsStatus": "In development",
+    "governance": "Governance:",
+    "governanceStatus": "Rolling out"
+  },
+  "vision": {
+    "title": "The Vision",
+    "line1": "Communities build the next generation of global IP.",
+    "line2": "Not rented from platforms.",
+    "line3": "Owned by the people who build it."
+  },
+  "cta": {
+    "battalionNft": "Battalion NFT",
+    "frontiers": "Frontiers"
+  }
+}

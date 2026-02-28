@@ -8,6 +8,7 @@ const tableName = process.env.NONCE_TABLE_NAME || 'MetaMaskAuthNonces';
 export interface NonceData {
   nonce: string;
   expiresAt: number;
+  message?: string;
 }
 
 /**
@@ -16,16 +17,21 @@ export interface NonceData {
 export async function saveNonce(
   walletAddress: string,
   nonce: string,
-  expiresAt: number
+  expiresAt: number,
+  message?: string
 ): Promise<void> {
+  const item: Record<string, unknown> = {
+    walletAddress,
+    nonce,
+    expiresAt,
+  };
+  if (message) {
+    item.message = message;
+  }
   await dynamoClient.send(
     new PutCommand({
       TableName: tableName,
-      Item: {
-        walletAddress,
-        nonce,
-        expiresAt,
-      },
+      Item: item,
     })
   );
 }
@@ -48,6 +54,7 @@ export async function getNonce(walletAddress: string): Promise<NonceData | null>
   return {
     nonce: result.Item.nonce,
     expiresAt: result.Item.expiresAt,
+    ...(result.Item.message && { message: result.Item.message }),
   };
 }
 
@@ -83,5 +90,6 @@ export async function getAndDeleteNonce(walletAddress: string): Promise<NonceDat
   return {
     nonce: result.Attributes.nonce,
     expiresAt: result.Attributes.expiresAt,
+    ...(result.Attributes.message && { message: result.Attributes.message }),
   };
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { OuterBox } from "@/components/ui";
@@ -6,40 +7,32 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Mail, ArrowUpRight } from "lucide-react";
 
-const lookingForItems = [
-  "Content creators (X, YouTube, other platforms)",
-  "Developers and technical contributors",
-  "Artists and designers",
-  "Community leads",
-];
-
-const whatYouGetItems = [
-  { head: "A rare Battalion NFT", rest: " with utilities and airdrop multipliers" },
-  { head: "Direct access", rest: " to the core team" },
-  { head: "Allowlist", rest: " for the Battalion drop" },
-  { head: "A share", rest: " of the launch marketing budget" },
-];
-
 function EarlyContributorsSection() {
+  const { t } = useTranslation("early-contributors");
+
+  const lookingForItems = t("v2.lookingForItems", { returnObjects: true }) as string[];
+
+  const whatYouGetItems = [
+    { head: t("v2.whatYouGetItems.item1.head"), rest: t("v2.whatYouGetItems.item1.rest") },
+    { head: t("v2.whatYouGetItems.item2.head"), rest: t("v2.whatYouGetItems.item2.rest") },
+    { head: t("v2.whatYouGetItems.item3.head"), rest: t("v2.whatYouGetItems.item3.rest") },
+    { head: t("v2.whatYouGetItems.item4.head"), rest: t("v2.whatYouGetItems.item4.rest") },
+  ];
+
   return (
     <SectionLayout className="!max-w-5xl">
       <PageTitle>EARLY CONTRIBUTORS</PageTitle>
 
       {/* Intro */}
       <div className="mb-8 md:mb-10 lg:mb-12 max-w-3xl mx-auto">
-        <p className="mb-4">
-          We're looking for early contributors to help build Nasun from the ground up.
-        </p>
-        <p>
-          If you're a creator, developer, artist, or community leader who wants to help shape Nasun
-          from Day 1, we'd love to hear from you.
-        </p>
+        <p className="mb-4">{t("v2.intro1")}</p>
+        <p>{t("v2.intro2")}</p>
       </div>
 
       <div className="flex flex-col gap-8 md:gap-10">
         {/* What we're looking for */}
         <section>
-          <SectionTitle as="h4">What we're looking for:</SectionTitle>
+          <SectionTitle as="h4">{t("v2.lookingFor")}</SectionTitle>
           <OuterBox color="nw0" padding="sm">
             <ul className="space-y-2">
               {lookingForItems.map((item) => (
@@ -54,7 +47,7 @@ function EarlyContributorsSection() {
 
         {/* What you get */}
         <section>
-          <SectionTitle as="h4">What you receive:</SectionTitle>
+          <SectionTitle as="h4">{t("v2.whatYouGet")}</SectionTitle>
           <OuterBox color="nw0" padding="sm">
             <ul className="space-y-2">
               {whatYouGetItems.map(({ head, rest }) => (
@@ -72,11 +65,8 @@ function EarlyContributorsSection() {
 
         {/* Closing */}
         <div className="max-w-3xl mx-auto space-y-4">
-          <p>
-            Nasun is community-funded, not VC-backed. We're building this with our people, not with
-            a fund.
-          </p>
-          <p>Spots are limited. If you're interested, email us or DM @Nasun_io.</p>
+          <p>{t("v2.closing1")}</p>
+          <p>{t("v2.closing2")}</p>
         </div>
 
         {/* CTA */}
@@ -84,7 +74,7 @@ function EarlyContributorsSection() {
           <ButtonV3 variant="nw1" size="md" asChild>
             <a href="mailto:admin@nasun.io" className="inline-flex items-center gap-2">
               <Mail size={16} />
-              Email Us
+              {t("v2.emailUs")}
             </a>
           </ButtonV3>
           <ButtonV3 variant="nw1" size="md" asChild>
@@ -94,7 +84,7 @@ function EarlyContributorsSection() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2"
             >
-              DM @Nasun_io
+              {t("v2.dmNasun")}
               <ArrowUpRight size={16} />
             </a>
           </ButtonV3>

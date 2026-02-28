@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from "react-i18next";
 import type { TopClimberEntry } from '../types';
 
 interface ClimberCardV3Props {
@@ -26,6 +27,7 @@ function DefaultAvatar({ username, originalUsername }: { username: string; origi
 }
 
 const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
+  const { t } = useTranslation("leaderboard");
   const rankImprovement = climber.rankChange.direction === 'up' ? climber.rankChange.amount : 0;
 
   return (
@@ -88,7 +90,7 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
       <div className="space-y-3">
         {/* Rank Change label + transition */}
         <div className="text-sm">
-          <span className="text-nasun-white/50">Rank Change </span>
+          <span className="text-nasun-white/50">{t("v3.climbers.rankChange")} </span>
           <span className="text-nasun-white/40">#{climber.previousRank}</span>
           <span className="text-nasun-white/30 mx-1">→</span>
           <span className="text-nasun-white font-semibold">#{climber.currentRank}</span>
@@ -101,7 +103,7 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
             <span className="text-green-300 font-semibold text-sm">
-              {rankImprovement} {rankImprovement === 1 ? 'rank' : 'ranks'}
+              {rankImprovement} {rankImprovement === 1 ? t("v3.climbers.rank") : t("v3.climbers.ranks")}
             </span>
           </div>
         )}
@@ -110,7 +112,7 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
             <svg className="w-4 h-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
-            <span className="text-green-300 font-semibold text-sm">NEW</span>
+            <span className="text-green-300 font-semibold text-sm">{t("v3.climbers.new")}</span>
           </div>
         )}
       </div>
@@ -118,15 +120,15 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
       {/* Stats section (V2 style) */}
       <div className="border-t border-nasun-c4/50 pt-3 mt-3 space-y-1.5">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">Point Increase</span>
+          <span className="text-gray-400">{t("v3.climbers.pointIncrease")}</span>
           <span className="text-gray-200">{climber.scoreIncrease?.toFixed(2) || '0'}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">Percentage</span>
+          <span className="text-gray-400">{t("v3.climbers.percentage")}</span>
           <span className="text-gray-200">{climber.percentageIncrease?.toFixed(2) || '0.00'}%</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">Current Points</span>
+          <span className="text-gray-400">{t("v3.climbers.currentPoints")}</span>
           <span className="text-gray-200">{climber.currentScore.toFixed(2)}</span>
         </div>
       </div>

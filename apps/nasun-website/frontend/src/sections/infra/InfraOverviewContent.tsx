@@ -1,18 +1,21 @@
+import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Coins, ChevronRight, Server, TrendingUp, User, Wrench } from "lucide-react";
 
-const nodeTypes = [
-  { type: "Validators", powers: "Consensus & finality", earn: "Staking rewards" },
-  { type: "Executors", powers: "AI / LLM inference (TEE)", earn: "Usage fees" },
-  { type: "Compute", powers: "Apps & APIs", earn: "Compute demand" },
-  { type: "Storage", powers: "Files & data", earn: "Storage fees" },
-  { type: "Streamers", powers: "Live & on-demand video", earn: "Viewership" },
-  { type: "Game Servers", powers: "Multiplayer worlds", earn: "Player sessions" },
-];
-
 const InfraOverviewContent = () => {
+  const { t } = useTranslation("infra");
+
+  const nodeTypes = [
+    { type: t("nodeTypes.validators.type"), powers: t("nodeTypes.validators.powers"), earn: t("nodeTypes.validators.earn") },
+    { type: t("nodeTypes.executors.type"), powers: t("nodeTypes.executors.powers"), earn: t("nodeTypes.executors.earn") },
+    { type: t("nodeTypes.compute.type"), powers: t("nodeTypes.compute.powers"), earn: t("nodeTypes.compute.earn") },
+    { type: t("nodeTypes.storage.type"), powers: t("nodeTypes.storage.powers"), earn: t("nodeTypes.storage.earn") },
+    { type: t("nodeTypes.streamers.type"), powers: t("nodeTypes.streamers.powers"), earn: t("nodeTypes.streamers.earn") },
+    { type: t("nodeTypes.gameServers.type"), powers: t("nodeTypes.gameServers.powers"), earn: t("nodeTypes.gameServers.earn") },
+  ];
+
   return (
     <SectionLayout className="!max-w-6xl">
       {/* Page Title */}
@@ -21,15 +24,16 @@ const InfraOverviewContent = () => {
       <div className="flex flex-col gap-8 md:gap-10 lg:gap-12 xl:gap-14">
         {/* Intro */}
         <section>
-          <SectionTitle as="h4">Decentralized compute for the next generation of IP.</SectionTitle>
+          <SectionTitle as="h4">{t("intro.subtitle")}</SectionTitle>
           <div className="space-y-2 md:space-y-3 lg:space-y-4">
-            <p>No AWS lock-in. No censorship. Transparent pricing and on-chain SLAs.</p>
+            <p>{t("intro.line1")}</p>
             <p>
-              Nasun&apos;s global node network powers{" "}
+              {t("intro.line2_pre")}
               <strong className="text-nasun-white">
-                AI inference, game servers, and streaming
+                {t("intro.line2_highlight")}
               </strong>
-              , all coordinated by <strong className="text-nasun-white">Nasun L1</strong>.
+              {t("intro.line2_post")}
+              <strong className="text-nasun-white">{t("intro.line2_chain")}</strong>.
             </p>
           </div>
         </section>
@@ -37,7 +41,7 @@ const InfraOverviewContent = () => {
         {/* Node Types - Table */}
         <section>
           <SectionTitle as="h4" className="font-normal uppercase text-center">
-            Node Types
+            {t("nodeTypes.title")}
           </SectionTitle>
 
           {/* Mobile: Card layout */}
@@ -46,10 +50,10 @@ const InfraOverviewContent = () => {
               <div key={node.type} className="border border-nasun-nw4/30 rounded-sm p-4 bg-gray-950">
                 <p className="font-semibold text-nasun-nw4 mb-1">{node.type}</p>
                 <p className="text-nasun-white/70 text-sm mb-2">
-                  <span className="font-medium">Powers:</span> {node.powers}
+                  <span className="font-medium">{t("nodeTypes.headers.powers")}:</span> {node.powers}
                 </p>
                 <p className="text-nasun-white/70 text-sm">
-                  <span className="font-medium">Earn NSN:</span> {node.earn}
+                  <span className="font-medium">{t("nodeTypes.headers.earnNsn")}:</span> {node.earn}
                 </p>
               </div>
             ))}
@@ -61,13 +65,13 @@ const InfraOverviewContent = () => {
               <thead>
                 <tr className="border-b border-nasun-nw4/30 bg-[#212E57]/50">
                   <th className="text-left py-3 px-6 uppercase tracking-wider">
-                    <h6 className="font-semibold text-nasun-nw4">Node Type</h6>
+                    <h6 className="font-semibold text-nasun-nw4">{t("nodeTypes.headers.nodeType")}</h6>
                   </th>
                   <th className="text-left py-3 px-6 uppercase tracking-wider">
-                    <h6 className="font-semibold text-nasun-nw4">Powers</h6>
+                    <h6 className="font-semibold text-nasun-nw4">{t("nodeTypes.headers.powers")}</h6>
                   </th>
                   <th className="text-left py-3 px-6 uppercase tracking-wider">
-                    <h6 className="font-semibold text-nasun-nw4">Earn NSN</h6>
+                    <h6 className="font-semibold text-nasun-nw4">{t("nodeTypes.headers.earnNsn")}</h6>
                   </th>
                 </tr>
               </thead>
@@ -93,7 +97,7 @@ const InfraOverviewContent = () => {
         {/* How It Works */}
         <section>
           <SectionTitle as="h4" className="uppercase text-center">
-            How It Works
+            {t("howItWorks.title")}
           </SectionTitle>
 
           {/* Flow Diagram */}
@@ -104,7 +108,7 @@ const InfraOverviewContent = () => {
                 <Coins className="w-7 h-7 text-nasun-nw4" />
               </div>
               <div>
-                <p className="font-medium text-nasun-white text-lg">Stake NSN</p>
+                <p className="font-medium text-nasun-white text-lg">{t("howItWorks.step1")}</p>
               </div>
             </div>
 
@@ -118,7 +122,7 @@ const InfraOverviewContent = () => {
                 <Server className="w-7 h-7 text-nasun-nw4" />
               </div>
               <div>
-                <p className="font-medium text-nasun-white text-lg">Deliver service</p>
+                <p className="font-medium text-nasun-white text-lg">{t("howItWorks.step2")}</p>
               </div>
             </div>
 
@@ -132,20 +136,20 @@ const InfraOverviewContent = () => {
                 <TrendingUp className="w-7 h-7 text-nasun-nw4" />
               </div>
               <div>
-                <p className="font-medium text-nasun-white text-lg">Earn on usage</p>
+                <p className="font-medium text-nasun-white text-lg">{t("howItWorks.step3")}</p>
               </div>
             </div>
           </div>
 
           <p className="text-center mt-2">
-            On-chain proofs and automatic slashing enforce service quality and reliability.
+            {t("howItWorks.conclusion")}
           </p>
         </section>
 
         {/* Network Participants */}
         <section>
           <SectionTitle as="h4" className="uppercase text-center">
-            Network Participants
+            {t("participants.title")}
           </SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-start gap-4 p-5 rounded-sm border border-nasun-nw3/40 bg-gray-900/70">
@@ -153,9 +157,9 @@ const InfraOverviewContent = () => {
                 <User className="w-5 h-5 text-nasun-nw4" />
               </div>
               <div>
-                <p className="font-medium text-nasun-white text-lg mb-1">Users</p>
+                <p className="font-medium text-nasun-white text-lg mb-1">{t("participants.users")}</p>
                 <p className="text-nasun-white/70">
-                  Pay NSN for reliable, censorship-resistant infrastructure.
+                  {t("participants.usersDesc")}
                 </p>
               </div>
             </div>
@@ -164,8 +168,8 @@ const InfraOverviewContent = () => {
                 <Wrench className="w-5 h-5 text-nasun-nw4" />
               </div>
               <div>
-                <p className="font-medium text-nasun-white text-lg mb-1">Operators</p>
-                <p className="text-nasun-white/70">Access global demand with no intermediaries.</p>
+                <p className="font-medium text-nasun-white text-lg mb-1">{t("participants.operators")}</p>
+                <p className="text-nasun-white/70">{t("participants.operatorsDesc")}</p>
               </div>
             </div>
           </div>

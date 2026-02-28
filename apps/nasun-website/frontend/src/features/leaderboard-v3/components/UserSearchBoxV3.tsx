@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, X, User } from "lucide-react";
 import { useUserSearchV3 } from "../hooks/useUserSearchV3";
 import type { SearchAccountResult } from "../services/leaderboardV3Api";
@@ -20,8 +21,9 @@ interface UserSearchBoxV3Props {
 export function UserSearchBoxV3({
   seasonId,
   onUserSelect,
-  placeholder = "Search user...",
+  placeholder,
 }: UserSearchBoxV3Props) {
+  const { t } = useTranslation("leaderboard");
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -99,7 +101,7 @@ export function UserSearchBoxV3({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
-          placeholder={placeholder}
+          placeholder={placeholder || t("v3.searchPlaceholder")}
           className="w-full bg-black/60 border border-nasun-c4/50 rounded-sm pl-10 pr-8 py-2 text-sm text-nasun-white placeholder-nasun-white/60 focus:outline-none focus:border-nasun-c7/50"
         />
         {query && (
@@ -118,12 +120,12 @@ export function UserSearchBoxV3({
           {isLoading && (
             <div className="px-4 py-3 text-sm text-nasun-white/50 flex items-center gap-2">
               <Spinner size="sm" />
-              Searching...
+              {t("v3.search.searching")}
             </div>
           )}
 
           {!isLoading && data?.accounts && data.accounts.length === 0 && (
-            <div className="px-4 py-3 text-sm text-nasun-white/50">No users found</div>
+            <div className="px-4 py-3 text-sm text-nasun-white/50">{t("v3.search.noResults")}</div>
           )}
 
           {!isLoading && data?.accounts && data.accounts.length > 0 && (

@@ -393,6 +393,28 @@ export function removeListener(event: string, callback: (...args: unknown[]) => 
 }
 
 /**
+ * Revoke MetaMask site permissions so the next eth_requestAccounts
+ * shows a fresh account picker instead of silently returning a stale account.
+ *
+ * Safe to call when no permissions exist — the request simply resolves.
+ * Falls back silently on older MetaMask versions that lack wallet_revokePermissions.
+ */
+export async function revokeAccountPermissions(): Promise<void> {
+  if (!isMetaMaskInstalled()) return;
+
+  try {
+    const provider = getMetaMaskProvider();
+    await provider.request({
+      method: 'wallet_revokePermissions',
+      params: [{ eth_accounts: {} }],
+    });
+    console.log('[MetaMask] revokePermissions succeeded');
+  } catch (err) {
+    console.warn('[MetaMask] revokePermissions failed (may be unsupported):', err);
+  }
+}
+
+/**
  * MetaMask 에러 타입 판별
  *
  * @param error - 에러 객체

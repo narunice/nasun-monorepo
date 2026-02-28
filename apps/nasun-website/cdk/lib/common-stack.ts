@@ -23,6 +23,8 @@ export class CommonStack extends cdk.Stack {
   public readonly priceApiGateway: apigw.LambdaRestApi;
   public readonly priceUpdaterLambda: lambda.Function;
   public readonly userProfilesTable: dynamodb.ITable;
+  public readonly governanceApi: apigw.LambdaRestApi;
+  public readonly governanceApiLambda: lambda.Function;
 
   constructor(scope: Construct, id: string, props?: CommonStackProps) {
     super(scope, id, props);
@@ -294,14 +296,15 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 2-4. Governance API (with VotingPowerCertificate + Sponsored Transaction)
-    const governanceApiLambda = new NodejsFunction(this, "GovernanceApiLambda", {
+    this.governanceApiLambda = new NodejsFunction(this, "GovernanceApiLambda", {
       functionName: "nasun-common-governance-api",
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(lambdaSrcPath, 'governance-api', 'src', 'index.ts'),
       handler: 'handler',
       depsLockFilePath,
       bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(60),
       environment: {
         // Leaderboard V3 tables
         LEADERBOARD_V3_ACCOUNTS_TABLE: "leaderboard-v3-accounts",
@@ -337,12 +340,12 @@ export class CommonStack extends cdk.Stack {
     const v3AccountsTable = dynamodb.Table.fromTableName(this, "V3AccountsTableRef", "leaderboard-v3-accounts");
     const v3SeasonsTable = dynamodb.Table.fromTableName(this, "V3SeasonsTableRef", "leaderboard-v3-seasons");
     const v3SeasonAccountsTable = dynamodb.Table.fromTableName(this, "V3SeasonAccountsTableRef", "leaderboard-v3-season-accounts");
-    v3AccountsTable.grantReadData(governanceApiLambda);
-    v3SeasonsTable.grantReadData(governanceApiLambda);
-    v3SeasonAccountsTable.grantReadData(governanceApiLambda);
+    v3AccountsTable.grantReadData(this.governanceApiLambda);
+    v3SeasonsTable.grantReadData(this.governanceApiLambda);
+    v3SeasonAccountsTable.grantReadData(this.governanceApiLambda);
 
     // Grant GSI query access (grantReadData only covers base table, not indexes)
-    governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
+    this.governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ["dynamodb:Query"],
       resources: [
@@ -352,12 +355,12 @@ export class CommonStack extends cdk.Stack {
 
     // Grant allowlist table read access for V2 voting power (Battalion + Genesis)
     const battalionTableRef = dynamodb.Table.fromTableName(this, "BattalionTableRef", "nasun-nft-whitelist");
-    battalionTableRef.grantReadData(governanceApiLambda);
+    battalionTableRef.grantReadData(this.governanceApiLambda);
     const genesisTableRef = dynamodb.Table.fromTableName(this, "GenesisTableRef", "GenesisNftWhitelist");
-    genesisTableRef.grantReadData(governanceApiLambda);
+    genesisTableRef.grantReadData(this.governanceApiLambda);
 
     // Grant Secrets Manager access for Oracle/Sponsor keypairs
-    governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
+    this.governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ["secretsmanager:GetSecretValue"],
       resources: [
@@ -365,8 +368,8 @@ export class CommonStack extends cdk.Stack {
       ],
     }));
 
-    const governanceApi = new apigw.LambdaRestApi(this, "GovernanceApi", {
-      handler: governanceApiLambda,
+    this.governanceApi = new apigw.LambdaRestApi(this, "GovernanceApi", {
+      handler: this.governanceApiLambda,
       restApiName: "NASUN Governance API (Common)",
       proxy: true,
       defaultCorsPreflightOptions: {
@@ -718,7 +721,7 @@ export class CommonStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, "GovernanceApiUrl", {
-      value: governanceApi.url,
+      value: this.governanceApi.url,
       description: "Governance API URL (CommonStack)",
     });
 
@@ -805,8 +808,8 @@ export class CommonStack extends cdk.Stack {
         allowMethods: apigw.Cors.ALL_METHODS,
       },
       deployOptions: {
-        throttlingBurstLimit: 10,
-        throttlingRateLimit: 5, // 5 requests per second
+        throttlingBurstLimit: 500,
+        throttlingRateLimit: 200, // 200 requests per second
       },
     });
 
@@ -837,8 +840,8 @@ export class CommonStack extends cdk.Stack {
         allowMethods: apigw.Cors.ALL_METHODS,
       },
       deployOptions: {
-        throttlingBurstLimit: 10,
-        throttlingRateLimit: 5, // 5 requests per second
+        throttlingBurstLimit: 500,
+        throttlingRateLimit: 200, // 200 requests per second
       },
     });
 
@@ -869,8 +872,8 @@ export class CommonStack extends cdk.Stack {
         allowMethods: apigw.Cors.ALL_METHODS,
       },
       deployOptions: {
-        throttlingBurstLimit: 20,
-        throttlingRateLimit: 10, // 10 requests per second (read-only, higher limit)
+        throttlingBurstLimit: 500,
+        throttlingRateLimit: 200, // 200 requests per second (read-only)
       },
     });
 
