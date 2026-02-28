@@ -28,6 +28,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { checkBattalionNftStatus, registerUserApi } from "../../../services/battalionNftApi";
 import { FadeInUp } from "@/components/ui/FadeInUp";
+import { trackEvent, AnalyticsEvent } from "@/lib/analytics";
 
 export const BattalionNftPage: React.FC = () => {
   const { t } = useTranslation("battalion-nft");
@@ -162,12 +163,14 @@ export const BattalionNftPage: React.FC = () => {
   }, [currentStep]);
 
   const handleXAuthSuccess = (userId: string, username: string, identityId: string, cognitoToken?: string) => {
+    trackEvent(AnalyticsEvent.NFT_X_AUTH_SUCCESS);
     setXAuth(userId, username, identityId, cognitoToken);
     setError(null);
   };
 
   const handleVerificationSuccess = (result: VerificationResult) => {
     console.log("[BattalionNftPage] Verification successful:", result);
+    trackEvent(AnalyticsEvent.NFT_TASK_VERIFIED);
     setVerification(result);
 
     setError(null);
@@ -176,6 +179,7 @@ export const BattalionNftPage: React.FC = () => {
   const handleWalletConnected = (address: string) => {
     // WalletConnectCard에서 이미 link 완료했으므로 바로 진행
     console.log("[BattalionNftPage] Wallet connected:", address);
+    trackEvent(AnalyticsEvent.NFT_WALLET_CONNECTED);
     setWalletAddress(address);
     setError(null);
   };
@@ -188,6 +192,7 @@ export const BattalionNftPage: React.FC = () => {
     try {
       setError(null);
       setIsRegistering(true);
+      trackEvent(AnalyticsEvent.NFT_REGISTER_START);
       const result = await registerUserApi({
         walletAddress: walletAddress.toLowerCase(),
         xUserId,
@@ -196,11 +201,13 @@ export const BattalionNftPage: React.FC = () => {
         proofIssuedAt,
       });
       if (result.success && result.whitelist) {
+        trackEvent(AnalyticsEvent.NFT_REGISTER_SUCCESS);
         setRegistered(result.whitelist);
       } else if (result.success && result.registered && !result.whitelist) {
         // Already registered but whitelist data not returned — fetch it
         const statusResponse = await checkBattalionNftStatus(walletAddress, xUserId || user?.twitterId || undefined);
         if (statusResponse.registered && statusResponse.data) {
+          trackEvent(AnalyticsEvent.NFT_REGISTER_SUCCESS);
           setRegistered(statusResponse.data);
         } else {
           throw new Error(result.message || t("errors.registrationFailed"));
@@ -209,6 +216,7 @@ export const BattalionNftPage: React.FC = () => {
         throw new Error(result.message || t("errors.registrationFailed"));
       }
     } catch (err: unknown) {
+      trackEvent(AnalyticsEvent.NFT_REGISTER_ERROR);
       const apiError = err as ApiError;
       const errorCode = apiError.code;
       const i18nKey = errorCode ? `errors.${errorCode}` : null;
@@ -268,7 +276,7 @@ export const BattalionNftPage: React.FC = () => {
         <ErrorAlert message={error} />
 
         <div key={currentStep} className="animate-fadeIn">
-          {currentStep === 1 && <Step1WelcomeCard onStartClick={() => setStep(2)} />}
+          {currentStep === 1 && <Step1WelcomeCard onStartClick={() => { trackEvent(AnalyticsEvent.NFT_STEP_START); setStep(2); }} />}
 
           {currentStep === 2 && <XAuthCard onAuthSuccess={handleXAuthSuccess} />}
           {currentStep === 3 && xUserId && xUsername && (

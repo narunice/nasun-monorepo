@@ -337,13 +337,13 @@ const LeaderboardInfoSection: React.FC = () => {
           {/* Fair Play */}
           <OuterBox color="nw0" padding="sm" className="md:col-span-2 flex flex-col">
             <div className="flex items-center gap-2.5 mb-4">
-              <FontAwesomeIcon icon={faShieldHalved} className="text-nasun-nw1 w-4 h-4" />
+              <FontAwesomeIcon icon={faShieldHalved} className="text-red-500 w-4 h-4" />
               <h6 className="font-medium uppercase tracking-wider">{t("info.fairPlay.title")}</h6>
             </div>
             <ul className="space-y-2.5 flex-1">
               {fairPlayItems.map((item, i) => (
-                <li key={i} className="flex items-start gap-3 !text-nasun-scarlet">
-                  <span className="mt-2 w-1.5 h-1.5 rounded-full bg-nasun-scarlet shrink-0" />
+                <li key={i} className="flex items-start gap-3">
+                  <span className="mt-2 w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                   {item}
                 </li>
               ))}

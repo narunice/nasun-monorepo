@@ -22,7 +22,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-const padoUiVideo = "/videos/Pado-Ui-Full-rf24.mp4";
+const padoUiVideo = "/videos/Pado-Ui-Full-rf28.mp4";
 
 export const PadoDraftContent = () => {
   // Dynamic namespace — strict key typing not applicable
@@ -229,7 +229,7 @@ export const PadoDraftContent = () => {
                 muted
                 playsInline
                 controls
-                poster="/images/posters/Pado-Ui-Full-rf24.webp"
+                poster="/images/posters/Pado-Ui-Full-rf28.webp"
                 className="w-full rounded-lg"
               />
             </div>

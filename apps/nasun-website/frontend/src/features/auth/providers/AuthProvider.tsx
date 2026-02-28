@@ -193,7 +193,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       const redirectHandled = await handleOAuthRedirect();
-      if (!redirectHandled) {
+      // Skip checkAuthStatus if another mount is already processing OAuth
+      // (prevents StrictMode double-mount race condition)
+      if (!redirectHandled && !oauthProcessingRef.current) {
         await checkAuthStatus();
       }
     };

@@ -25,11 +25,8 @@ const logger = {
     }
   },
   error: (...args: unknown[]) => {
-    // In production, you could integrate with a reporting service like Sentry, Datadog, etc.
-    // For example: if (import.meta.env.PROD) { Sentry.captureException(args); }
-    if (import.meta.env.DEV) {
-      console.error(...args);
-    }
+    // Always log errors regardless of environment for debuggability
+    console.error(...args);
   },
 };
 

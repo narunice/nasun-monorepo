@@ -8,6 +8,7 @@ import { MyRankCardV3 } from "./sidebar/MyRank";
 import { LeaderboardSidebar } from "./sidebar/LeaderboardSidebar";
 import { LeaderboardMainContent } from "./main/LeaderboardMainContent";
 import { useLeaderboardState } from "../hooks/useLeaderboardState";
+import { Spinner } from "@/components/ui";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -61,7 +62,7 @@ export function LeaderboardV3() {
       {/* Loading State */}
       {leaderboardLoading && (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nasun-c7/50"></div>
+          <Spinner size="lg" colorClass="text-white/50" />
         </div>
       )}
 

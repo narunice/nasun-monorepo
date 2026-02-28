@@ -8,7 +8,6 @@ import { useAuth } from "../hooks/useAuth"; // 내부 경로는 상대 경로 �
 import logger from "@/lib/logger";
 import { ZkLoginCallback } from "@nasun/wallet-ui";
 import { getZkLoginReturnUrl, clearZkLoginReturnUrl } from "@nasun/wallet";
-import { fetchUserProfile } from "@/features/admin/hooks/useUserProfile";
 import { isValidReturnUrl } from "../utils/urlValidation";
 
 export default function Callback() {
@@ -100,14 +99,8 @@ export default function Callback() {
         return;
       }
 
-      // No explicit return path — check if admin for smart redirect
-      fetchUserProfile(user.identityId)
-        .then((profile) => {
-          navigate(profile?.role === 'ADMIN' ? '/admin' : '/my-account', { replace: true });
-        })
-        .catch(() => {
-          navigate('/my-account', { replace: true });
-        });
+      // Use role from user store (populated by ensureUserProfile during OAuth flow)
+      navigate(user.role === 'ADMIN' ? '/admin' : '/my-account', { replace: true });
     }
 
     // Case 4: isLoading finished but not authenticated and no error.

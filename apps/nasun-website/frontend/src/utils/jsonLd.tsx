@@ -23,8 +23,8 @@ export const NASUN_ORG_SCHEMA = {
   description:
     "Layer 1 blockchain with DEX, prediction markets, AI compliance settlement, and onchain gaming. Built on a Sui fork with sub-second finality.",
   sameAs: [
-    "https://twitter.com/Nasun_io",
-    "https://discord.gg/nasun",
+    "https://x.com/Nasun_io",
+    "https://t.me/nasun_official",
   ],
 };
 
@@ -42,7 +42,6 @@ export const BATTALION_NFT_EVENT_SCHEMA = {
     "@type": "VirtualLocation",
     url: "https://nasun.io/wave1/battalion-nft",
   },
-  startDate: "2026-03-15T00:00:00Z", // TODO: Update with actual mint date
   organizer: {
     "@type": "Organization",
     name: "Nasun",

@@ -1,4 +1,5 @@
 import { DashboardCard } from "@/components/ui/DashboardCard";
+import { Spinner } from "@/components/ui";
 
 interface EpochInfo {
   epoch: string;
@@ -84,7 +85,7 @@ export function EpochProgress({ epochInfo }: EpochProgressProps) {
         </div>
       ) : (
         <div className="h-[180px] flex flex-col items-center justify-center text-nasun-white/30 text-xs gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border border-nasun-c3 border-t-transparent" />
+          <Spinner size="sm" />
           <span>Loading epoch information...</span>
         </div>
       )}
