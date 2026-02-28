@@ -40,7 +40,7 @@ function NarrativeContent() {
       {/* ============ 데스크톱 배경 (lg 이상) ============ */}
       <div className="hidden lg:flex absolute inset-0 z-0 items-start justify-center">
         <div className="relative w-full max-w-[1920px]">
-          <img src={bgImage} alt="Spectra Plant Raid" className="w-full h-auto object-contain" />
+          <img src={bgImage} alt="Spectra Plant Raid" loading="lazy" className="w-full h-auto object-contain" />
           {/* 하단 그래디언트 오버레이 - 이미지 높이에 맞춤 */}
           <div
             className="absolute inset-0"
@@ -58,6 +58,7 @@ function NarrativeContent() {
           <img
             src={bgImage}
             alt="Spectra Plant Raid"
+            loading="lazy"
             className="w-full h-auto object-contain"
             style={{ objectPosition: "60% top" }}
           />
@@ -78,6 +79,7 @@ function NarrativeContent() {
           <img
             src={bgImage}
             alt="Spectra Plant Raid"
+            loading="lazy"
             className="w-full h-full object-cover"
             style={{ objectPosition: "60% top" }}
           />

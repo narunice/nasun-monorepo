@@ -115,6 +115,7 @@ function NewsEventsSection() {
                             <img
                               src={imageUrl}
                               alt="Featured"
+                              loading="lazy"
                               className="block w-full h-64 md:h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                             />
                           ) : (
