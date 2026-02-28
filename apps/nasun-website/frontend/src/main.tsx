@@ -1,6 +1,6 @@
 // main.tsx
 import "./i18n"; // i18n 설정 파일 임포트 (가장 먼저 로드)
-import { StrictMode } from "react";
+import { StrictMode, lazy, Suspense } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import { createRoot } from "react-dom/client";
@@ -9,41 +9,15 @@ import { ToastContainer } from "react-toastify";
 import { Amplify } from "aws-amplify";
 import awsConfig from "./config/awsConfig"; // 기존 awsConfig 임포트 유지
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { NasunProvider } from "./providers/NasunProvider";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
-import { AuthProvider } from "@/features/auth";
+import { AuthProvider } from "@/features/auth/providers/AuthProvider";
 import { validateEnv } from "./utils/envValidation";
-import { configureWallet, initZkLogin } from "@nasun/wallet";
-import { WalletProvider } from "@nasun/wallet-ui";
 import "./index.css";
 import App from "./App";
 
-// Configure Nasun Wallet
-// Note: NBTC and NUSDC are automatically registered by @nasun/wallet (DEVNET_TOKENS)
-configureWallet({
-  rpcUrl: import.meta.env.VITE_NASUN_RPC_URL || "https://rpc.devnet.nasun.io",
-  faucetUrl: import.meta.env.VITE_NASUN_FAUCET_URL || "https://faucet.devnet.nasun.io",
-  networkName: "Nasun Devnet",
-  sessionPersist: true, // Keep wallet unlocked during browser session
-});
-
-// Initialize zkLogin (Google OAuth)
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const saltApiUrl = import.meta.env.VITE_ZKLOGIN_SALT_API_URL;
-
-if (googleClientId && saltApiUrl) {
-  initZkLogin({
-    saltApiUrl,
-    proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL,
-    providers: {
-      google: {
-        provider: "google",
-        clientId: googleClientId,
-        redirectUri: `${window.location.origin}/callback`,
-      },
-    },
-  });
-}
+// Lazy-load wallet layer: @nasun/wallet + @nasun/wallet-ui + @mysten/dapp-kit
+// are deferred until after the app shell renders (~667KB gzip saved from initial load)
+const WalletLayer = lazy(() => import("./providers/WalletLayer"));
 
 // 1. QueryClient 인스턴스 생성 (가장 먼저 실행)
 const queryClient = new QueryClient({
@@ -132,11 +106,11 @@ createRoot(container).render(
         <ThemeProvider>
           <AuthProvider>
             <QueryClientProvider client={queryClient}>
-              <WalletProvider>
-                <NasunProvider>
+              <Suspense fallback={null}>
+                <WalletLayer>
                   <App />
-                </NasunProvider>
-              </WalletProvider>
+                </WalletLayer>
+              </Suspense>
             </QueryClientProvider>
             <ToastContainer
               position="top-right"

@@ -194,6 +194,7 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       assetsDir: "assets",
       emptyOutDir: true,
+      modulePreload: false,
       rollupOptions: {
         output: {
           manualChunks: {
@@ -208,11 +209,13 @@ export default defineConfig(({ mode }) => {
               "@radix-ui/react-tooltip",
             ],
 
-            // Web3 (Note: @mysten/sui uses subpath exports, handled by Vite automatically)
+            // Web3 — lazy-loaded via WalletLayer and page-level imports
             "vendor-web3": ["ethers", "@mysten/dapp-kit"],
 
-            // MetaMask SDK (lazy-loaded, separate chunk)
-            "vendor-metamask-sdk": ["@metamask/sdk"],
+            // MetaMask SDK — NOT assigned to manual chunk.
+            // Let Rollup place it in the lazy chunk (WalletLoginButton).
+            // Assigning it causes __vitePreload to live in this chunk,
+            // forcing a static import from index.
 
             // AWS
             "vendor-aws": ["aws-amplify"],

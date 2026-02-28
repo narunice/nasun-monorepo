@@ -1,15 +1,19 @@
 // App.tsx
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter as Router, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { NFTMintedModal } from "./sections/wave1/genesisNft/nftMintedModal/NFTMintedModal";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/layout/Footer";
 import AppRoutes from "./routes/AppRoutes";
 import { HomePageLoadingProvider, useHomePageLoading } from "./contexts/PageLoadingContext";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import { Button } from "./components/ui/button";
+
+// Lazy-load: pulls @mysten/dapp-kit (~497KB gzip) out of initial bundle
+const NFTMintedModal = lazy(() =>
+  import("./sections/wave1/genesisNft/nftMintedModal/NFTMintedModal").then(m => ({ default: m.NFTMintedModal }))
+);
 
 /**
  * Error fallback component with i18n support
@@ -58,7 +62,9 @@ function AppContent() {
       </a>
       <Navbar />
       <AppRoutes />
-      <NFTMintedModal />
+      <Suspense fallback={null}>
+        <NFTMintedModal />
+      </Suspense>
       {isPageReady && !isAdminPage && <Footer />}
     </>
   );
