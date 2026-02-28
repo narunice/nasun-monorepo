@@ -108,7 +108,11 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       const needsLink = !linkedWallet || linkedWallet.toLowerCase() !== walletAddress.toLowerCase();
 
       if (needsLink) {
-        const primaryIdentityId = user?.identityId || cognitoIdentityId;
+        // Use X identity (from Step 2) as primary so that the X account's profile
+        // gets the MetaMask wallet linked. This ensures test_handle's profile has
+        // linkedAccounts.metamask.walletAddress = wallet B, and wallet B's profile
+        // gets a reverse link with twitterId.
+        const primaryIdentityId = cognitoIdentityId || user?.identityId;
         if (!primaryIdentityId) {
           throw new Error("Missing Cognito identity ID. Please restart the event from Step 1.");
         }
@@ -123,7 +127,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           const linkHeaders: Record<string, string> = {
             "Content-Type": "application/json",
           };
-          const cognitoToken = user?.cognitoToken || storeCognitoToken;
+          // Use X identity's token to match primaryIdentityId
+          // (link-account Lambda verifies primaryIdentityId === authenticatedIdentityId)
+          const cognitoToken = storeCognitoToken || user?.cognitoToken;
           if (cognitoToken) {
             linkHeaders["Authorization"] = `Bearer ${cognitoToken}`;
           }
