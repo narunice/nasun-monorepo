@@ -7,19 +7,13 @@ import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { useAuth } from "@/features/auth";
 import {
-  exportGenesisWhitelist,
   exportBattalionAllowlist,
   downloadBlob,
 } from "../services/adminApi";
 import { useWhitelistStats } from "../hooks/useWhitelistStats";
 
-type TabType = "genesis" | "battalion";
-
 export function WhitelistManagement() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("battalion");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,31 +30,14 @@ export function WhitelistManagement() {
     setError(null);
 
     try {
-      if (activeTab === "genesis") {
-        const blob = await exportGenesisWhitelist({
-          cognitoToken: user.cognitoToken,
-          status: "ACTIVE",
-          format,
-        });
-        const date = new Date().toISOString().split("T")[0];
-        const prefix = format === "opensea" ? "frontiers-opensea-allowlist" : "frontiers-whitelist";
-        downloadBlob(blob, `${prefix}-active-${date}.csv`);
-      } else {
-        const blob = await exportBattalionAllowlist({
-          cognitoToken: user.cognitoToken,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-          format,
-        });
-        const date = new Date().toISOString().split("T")[0];
-        let suffix = "all";
-        if (startDate || endDate) {
-          suffix = `${startDate || "start"}-to-${endDate || "end"}`;
-        }
-        const prefix =
-          format === "opensea" ? "battalion-opensea-allowlist" : "battalion-nft-allowlist";
-        downloadBlob(blob, `${prefix}-${suffix}-${date}.csv`);
-      }
+      const blob = await exportBattalionAllowlist({
+        cognitoToken: user.cognitoToken,
+        format,
+      });
+      const date = new Date().toISOString().split("T")[0];
+      const prefix =
+        format === "opensea" ? "battalion-opensea-allowlist" : "battalion-nft-allowlist";
+      downloadBlob(blob, `${prefix}-all-${date}.csv`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Export failed";
       setError(message);
@@ -143,64 +120,26 @@ export function WhitelistManagement() {
           <div className="w-full">
             <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-sm w-fit border border-nasun-c5/20">
               <button
-                onClick={() => setActiveTab("battalion")}
-                className={`px-6 py-2 rounded-sm font-medium transition-all ${
-                  activeTab === "battalion"
-                    ? "bg-nasun-c4 text-nasun-white shadow-lg"
-                    : "text-nasun-white/50 hover:text-nasun-white hover:bg-white/5"
-                }`}
+                className="px-6 py-2 rounded-sm font-medium bg-nasun-c4 text-nasun-white shadow-lg"
               >
                 Battalion NFT
               </button>
               <button
-                onClick={() => setActiveTab("genesis")}
-                className={`px-6 py-2 rounded-sm font-medium transition-all ${
-                  activeTab === "genesis"
-                    ? "bg-nasun-c4 text-nasun-white shadow-lg"
-                    : "text-nasun-white/50 hover:text-nasun-white hover:bg-white/5"
-                }`}
+                disabled
+                className="px-6 py-2 rounded-sm font-medium text-nasun-white/30 cursor-not-allowed"
               >
                 Frontiers Event
+                <span className="ml-2 text-xs text-nasun-white/20">(Coming Soon)</span>
               </button>
             </div>
 
             <OuterBox color="w5" padding="md" className="w-full">
               <h3 className="text-xl font-medium text-nasun-white mb-2">
-                {activeTab === "genesis" ? "Frontiers Whitelist" : "Battalion NFT Allowlist"}
+                Battalion NFT Allowlist
               </h3>
               <p className="text-nasun-white/60 text-base mb-8">
-                {activeTab === "genesis"
-                  ? "Export wallet addresses currently registered for the Frontiers whitelist."
-                  : "Export wallet addresses for the Battalion NFT allowlist. You can filter by registration date."}
+                Export all wallet addresses registered for the Battalion NFT allowlist.
               </p>
-
-              {/* Date Filter (Battalion only) */}
-              {activeTab === "battalion" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                  <div className="space-y-2">
-                    <label className="block text-sm uppercase tracking-widest text-nasun-white/50 font-medium">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c4/50 transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm uppercase tracking-widest text-nasun-white/50 font-medium">
-                      End Date
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c4/50 transition-colors"
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Error message */}
               {error && (
@@ -215,7 +154,7 @@ export function WhitelistManagement() {
                 <Button
                   onClick={() => handleExport("default")}
                   disabled={isExporting}
-                  variant="c4"
+                  variant="outlineC5"
                   size="lg"
                   className="min-w-[180px]"
                 >
@@ -224,7 +163,7 @@ export function WhitelistManagement() {
                 <Button
                   onClick={() => handleExport("opensea")}
                   disabled={isExporting}
-                  variant="outlineC5"
+                  variant="c4"
                   size="lg"
                   className="min-w-[180px]"
                 >
@@ -247,9 +186,7 @@ export function WhitelistManagement() {
                     Standard Format
                   </span>
                   <p className="text-nasun-white/50 text-sm mt-1 leading-relaxed">
-                    {activeTab === "genesis"
-                      ? "walletAddress, joinedAt, signature, status, withdrawnAt"
-                      : "walletAddress, verifiedAt, xUserId, xUsername, allowlistBatchId, status"}
+                    walletAddress, verifiedAt, xUserId, xUsername, allowlistBatchId, status
                   </p>
                 </div>
                 <div>
