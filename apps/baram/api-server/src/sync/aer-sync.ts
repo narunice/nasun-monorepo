@@ -10,8 +10,19 @@ import { SuiClient } from '@mysten/sui/client';
 import { sql } from '../db.js';
 
 const SYNC_INTERVAL_MS = 30_000;
+const MAX_BACKOFF_MS = 300_000; // 5 minutes
 const EVENTS_PER_PAGE = 50;
 const MAX_RETRY_QUEUE_SIZE = 100;
+
+// Backoff state
+let consecutiveFailures = 0;
+
+function getNextInterval(): number {
+  if (consecutiveFailures === 0) return SYNC_INTERVAL_MS;
+  // 30s → 60s → 120s → 240s → 300s (cap)
+  const backoff = SYNC_INTERVAL_MS * Math.pow(2, Math.min(consecutiveFailures, 4));
+  return Math.min(backoff, MAX_BACKOFF_MS);
+}
 
 interface EventCursor {
   txDigest: string;
@@ -324,8 +335,22 @@ async function syncCycle(client: SuiClient, eventType: string): Promise<void> {
         `[sync] Inserted ${inserted}, failed ${failedIds.length}, retry queue ${retryQueue.size}`,
       );
     }
+
+    // Reset backoff on successful cycle
+    if (consecutiveFailures > 0) {
+      console.log(`[sync] Recovered after ${consecutiveFailures} consecutive failures`);
+    }
+    consecutiveFailures = 0;
   } catch (err) {
-    console.error('[sync] Sync cycle error:', err);
+    consecutiveFailures++;
+    const nextSec = Math.round(getNextInterval() / 1000);
+    // Throttle logging: first 3 failures, then every 10th
+    if (consecutiveFailures <= 3 || consecutiveFailures % 10 === 0) {
+      console.error(
+        `[sync] Sync cycle error (failure #${consecutiveFailures}, next retry in ${nextSec}s):`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   } finally {
     syncing = false;
   }
@@ -333,7 +358,9 @@ async function syncCycle(client: SuiClient, eventType: string): Promise<void> {
 
 /**
  * Start the AER sync worker.
- * Runs immediately, then every SYNC_INTERVAL_MS.
+ * Runs immediately, then schedules next cycle with adaptive backoff.
+ * On consecutive failures, interval grows: 30s → 60s → 120s → 240s → 300s (cap).
+ * On success, resets to normal 30s interval.
  */
 export function startSyncWorker(rpcUrl: string, aerPackageId: string): void {
   const client = new SuiClient({ url: rpcUrl });
@@ -342,17 +369,14 @@ export function startSyncWorker(rpcUrl: string, aerPackageId: string): void {
   console.log(`[sync] Starting AER sync worker (interval: ${SYNC_INTERVAL_MS / 1000}s)`);
   console.log(`[sync] Event type: ${eventType}`);
 
-  // Run immediately
-  syncCycle(client, eventType).catch((err) =>
-    console.error('[sync] Initial sync failed:', err),
-  );
+  async function scheduleNext() {
+    await syncCycle(client, eventType);
+    const interval = getNextInterval();
+    setTimeout(scheduleNext, interval);
+  }
 
-  // Then on interval
-  setInterval(() => {
-    syncCycle(client, eventType).catch((err) =>
-      console.error('[sync] Scheduled sync failed:', err),
-    );
-  }, SYNC_INTERVAL_MS);
+  // Run immediately, then self-schedule
+  scheduleNext();
 }
 
 /**
