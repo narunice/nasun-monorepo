@@ -141,9 +141,9 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         </div>
       )}
 
-      {/* Hero 타이틀 - 데스크탑 (md 이상): 우측 정렬, xl에서 레이아웃 변경 */}
+      {/* Hero 타이틀 - 데스크탑 (md 이상): 우측 하단 위치, 내부 중앙 정렬 */}
       {isVideoPlaying && (
-        <div className="absolute hidden md:flex md:flex-col md:inset-x-auto md:right-[10%] md:bottom-[25%]  lg:right-[10%] xl:right-[17%] xl:bottom-[25%] z-20 text-end">
+        <div className="absolute hidden md:flex md:flex-col md:items-center md:inset-x-auto md:right-[10%] md:bottom-[25%] lg:right-[10%] xl:right-[17%] xl:bottom-[25%] z-20 text-center">
           <div>
             <FadeInUp>
               <h3 className="font-medium text-nasun-white text-2xl/tight md:text-[32px] lg:text-[39px] uppercase">

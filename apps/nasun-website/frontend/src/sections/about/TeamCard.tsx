@@ -34,7 +34,7 @@ const TeamCard: React.FC<TeamMember> = ({
       <div className="md:w-1/4 flex flex-col items-center md:items-start">
         {/* Profile Image */}
         <div className="relative w-full h-auto rounded-3xl overflow-hidden mb-4">
-          <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          <img src={imageUrl} alt={name} loading="lazy" className="w-full h-full object-cover" />
         </div>
 
         {/* Name & Position */}
