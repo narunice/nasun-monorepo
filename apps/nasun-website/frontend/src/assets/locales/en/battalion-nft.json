@@ -14,6 +14,7 @@
     "networkError": "A network error occurred. Please try again later.",
     "statusCheckError": "An error occurred while checking status.",
     "ALREADY_REGISTERED": "This wallet address is already registered.",
+    "X_ACCOUNT_ALREADY_REGISTERED": "This X account is already registered with a different wallet address.",
     "INVALID_WALLET_ADDRESS": "Invalid wallet address.",
     "INVALID_X_USER_ID": "Invalid X user ID.",
     "INVALID_X_USERNAME": "Invalid X username.",
@@ -25,7 +26,8 @@
     "RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later.",
     "UNKNOWN_ERROR": "An unknown error occurred. Please try again.",
     "INVALID_SIGNATURE": "Invalid wallet signature. Please try again.",
-    "SIGNATURE_EXPIRED": "Signature expired. Please try again."
+    "SIGNATURE_EXPIRED": "Signature expired. Please try again.",
+    "ALREADY_MINTED": "This X account has already minted an NFT. Wallet changes are no longer allowed."
   },
   "share": "Share on",
   "goToHome": "Go to Home",

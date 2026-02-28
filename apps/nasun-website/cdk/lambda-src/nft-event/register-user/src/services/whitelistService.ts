@@ -20,6 +20,7 @@ import {
   PutCommand,
   GetCommand,
   QueryCommand,
+  DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { NftWhitelist, RegisterUserRequest } from '../types';
 import { ethers } from 'ethers';
@@ -145,6 +146,31 @@ export class WhitelistService {
       return result.Items[0] as NftWhitelist;
     } catch (error: any) {
       console.error('[WhitelistService] Error finding by xUserId:', error);
+      throw new Error(`DYNAMODB_ERROR: ${error.message}`);
+    }
+  }
+
+  /**
+   * Delete a whitelist record by wallet address.
+   * Used during upsert when the same X account re-registers with a different wallet.
+   */
+  async deleteByWalletAddress(walletAddress: string): Promise<void> {
+    try {
+      const normalizedAddress = this.normalizeAddress(walletAddress);
+      console.log(`[WhitelistService] Deleting record for wallet: ${normalizedAddress}`);
+
+      await this.docClient.send(
+        new DeleteCommand({
+          TableName: this.tableName,
+          Key: { walletAddress: normalizedAddress },
+          // Defense-in-depth: never delete a record that has already been minted
+          ConditionExpression: 'attribute_not_exists(mintedAt)',
+        })
+      );
+
+      console.log(`[WhitelistService] Record deleted: ${normalizedAddress}`);
+    } catch (error: any) {
+      console.error('[WhitelistService] Error deleting by wallet address:', error);
       throw new Error(`DYNAMODB_ERROR: ${error.message}`);
     }
   }

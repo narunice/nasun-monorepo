@@ -137,14 +137,18 @@ export const BattalionNftPage: React.FC = () => {
 
       // Check registration status from backend (only on initial page load)
       console.log("[BattalionNftPage] Checking registration status for:", userWalletAddress);
-      checkBattalionNftStatus(userWalletAddress, user?.twitterId || undefined)
+      // Also pass linkedAccounts twitterId for MetaMask-primary logins
+      const twitterIdForLookup = user?.twitterId || user?.linkedAccounts?.twitter?.twitterId || undefined;
+      checkBattalionNftStatus(userWalletAddress, twitterIdForLookup)
         .then((response) => {
           if (response.registered && response.data) {
+            // With upsert support, the registered wallet may differ from the profile wallet
+            // (user changed wallets via Step 4). Accept the registration regardless of wallet match.
             console.log("[BattalionNftPage] User is registered - moving to Step 6:", response.data);
             setRegistered(response.data);
           } else {
             console.log("[BattalionNftPage] User is not registered - keeping current step");
-            // ✅ Do NOT reset here - let user progress through steps normally
+            // Do NOT reset here - let user progress through steps normally
           }
         })
         .catch((error) => {
@@ -201,12 +205,20 @@ export const BattalionNftPage: React.FC = () => {
         proofIssuedAt,
       });
       if (result.success && result.whitelist) {
+        // Defensive: log if returned wallet differs (should not happen with upsert)
+        if (result.whitelist.walletAddress?.toLowerCase() !== walletAddress.toLowerCase()) {
+          console.warn("[BattalionNftPage] Register response wallet mismatch (unexpected):", {
+            response: result.whitelist.walletAddress,
+            current: walletAddress,
+          });
+        }
         trackEvent(AnalyticsEvent.NFT_REGISTER_SUCCESS);
         setRegistered(result.whitelist);
       } else if (result.success && result.registered && !result.whitelist) {
         // Already registered but whitelist data not returned — fetch it
         const statusResponse = await checkBattalionNftStatus(walletAddress, xUserId || user?.twitterId || undefined);
         if (statusResponse.registered && statusResponse.data) {
+          // With upsert support, accept registration regardless of wallet match
           trackEvent(AnalyticsEvent.NFT_REGISTER_SUCCESS);
           setRegistered(statusResponse.data);
         } else {

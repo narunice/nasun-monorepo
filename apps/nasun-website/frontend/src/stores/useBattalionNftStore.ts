@@ -80,6 +80,12 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
           cognitoIdentityId: identityId,
           cognitoToken,
           currentStep: 3, // X Auth 완료 시 Step 3 (Task Verification)로 이동
+          // Clear stale registration data from previous sessions
+          registered: false,
+          whitelist: undefined,
+          walletAddress: undefined,
+          walletProof: undefined,
+          proofIssuedAt: undefined,
         });
       },
 

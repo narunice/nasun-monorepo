@@ -71,6 +71,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       ? await whitelistService.findByWalletAddress(walletAddress)
       : null;
 
+    // Skip WITHDRAWN records from wallet lookup — fall through to xUserId
+    // to find the user's current ACTIVE registration (wallet may have changed via upsert)
+    if (whitelist?.status === 'WITHDRAWN') {
+      whitelist = null;
+    }
+
     if (!whitelist && xUserId) {
       whitelist = await whitelistService.findByXUserId(xUserId);
     }
