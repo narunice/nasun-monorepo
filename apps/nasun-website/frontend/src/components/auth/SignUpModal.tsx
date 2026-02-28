@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -7,8 +7,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { useAuth, WalletLoginButton as MetaMaskLoginButton } from "@/features/auth";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { InlineLoading } from "@/components/ui/InlineLoading";
+
+const MetaMaskLoginButton = lazy(() => import("@/features/auth/components/WalletLoginButton"));
 
 interface SignUpModalProps {
   isOpen: boolean;
@@ -133,11 +135,13 @@ export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModa
                 </button>
 
                 {isMetaMaskEnabled && (
-                  <MetaMaskLoginButton
-                    className={providerBtnClass}
-                    onSuccess={handleMetaMaskSuccess}
-                    onError={handleMetaMaskError}
-                  />
+                  <Suspense fallback={null}>
+                    <MetaMaskLoginButton
+                      className={providerBtnClass}
+                      onSuccess={handleMetaMaskSuccess}
+                      onError={handleMetaMaskError}
+                    />
+                  </Suspense>
                 )}
               </>
             )}
