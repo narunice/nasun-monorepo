@@ -61,11 +61,12 @@ const MyAccountPage = () => {
     }
   }, [searchParams, setSearchParams, t]);
 
-  // Get MetaMask wallet address from user data
+  // Prefer linked MetaMask wallet (updated during Battalion NFT Step 4 linking)
+  // over login wallet. When user re-registers with a different wallet,
+  // the linked wallet reflects their most recent choice.
   const walletAddress =
-    user?.provider === "MetaMask"
-      ? user.walletAddress
-      : user?.linkedAccounts?.metamask?.walletAddress;
+    user?.linkedAccounts?.metamask?.walletAddress
+      || (user?.provider === "MetaMask" ? user.walletAddress : null);
 
   return (
     <PageLayout>

@@ -81,12 +81,16 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   // Battalion NFT Status — pass twitterId for xUserId fallback lookup
   // Check both direct twitterId (Twitter login) and linkedAccounts (MetaMask login with linked Twitter)
   const twitterId = user?.twitterId ?? user?.linkedAccounts?.twitter?.twitterId;
+  // Final fallback: use Battalion NFT store's xUserId if registration completed
+  // Covers MetaMask-primary login where reverse link hasn't been established yet
+  const battalionXUserId = useBattalionNftStore((s) => s.registered ? s.xUserId : undefined);
+  const effectiveXUserId = twitterId ?? battalionXUserId;
   const {
     status: battalionStatus,
     isRegistered: isBattalionRegistered,
     isLoading: isBattalionLoading,
     refetch: refetchBattalion,
-  } = useBattalionNftStatus(walletAddress, twitterId);
+  } = useBattalionNftStatus(walletAddress, effectiveXUserId);
 
   // Founders WL Status
   const [isFoundersRegistered, setIsFoundersRegistered] = useState(false);
@@ -205,7 +209,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
     }
   };
 
-  if (!walletAddress) {
+  if (!walletAddress && !effectiveXUserId) {
     return (
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
