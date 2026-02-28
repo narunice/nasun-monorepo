@@ -1,13 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { EnterIcon, ExitIcon } from "@radix-ui/react-icons";
-import { useAuth, WalletLoginButton as MetaMaskLoginButton } from "@/features/auth";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { SignUpModal } from "../auth/SignUpModal";
 import { isMobileBrowser } from "../../utils/mobileDetect";
 import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
+
+const MetaMaskLoginButton = lazy(() => import("@/features/auth/components/WalletLoginButton"));
 
 const LoginButton = () => {
   const { t } = useTranslation("common");
@@ -166,13 +168,15 @@ const LoginButton = () => {
               </button>
             </DropdownMenu.Item>
             {isMetaMaskEnabled && (
-              <DropdownMenu.Item asChild>
-                <MetaMaskLoginButton
-                  className={loginMenuItemClass}
-                  onSuccess={handleMetaMaskSuccess}
-                  onError={handleMetaMaskError}
-                />
-              </DropdownMenu.Item>
+              <Suspense fallback={null}>
+                <DropdownMenu.Item asChild>
+                  <MetaMaskLoginButton
+                    className={loginMenuItemClass}
+                    onSuccess={handleMetaMaskSuccess}
+                    onError={handleMetaMaskError}
+                  />
+                </DropdownMenu.Item>
+              </Suspense>
             )}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>

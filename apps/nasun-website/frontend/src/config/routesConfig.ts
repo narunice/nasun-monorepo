@@ -29,7 +29,7 @@ export const Pages = {
   TermsOfUse: lazyWithRetry(() => import("../pages/TermsOfUsePage")),
   PostDetailPage: lazyWithRetry(() => import("../pages/PostDetailPage")), // Headless WP Post Page
   News: lazyWithRetry(() => import("../pages/NewsPage")),
-  Callback: lazyWithRetry(() => import("@/features/auth").then(module => ({ default: module.Callback }))),
+  Callback: lazyWithRetry(() => import("@/features/auth/components/Callback")),
   Logout: lazyWithRetry(() => import("../pages/LogoutPage")),
   LeaderboardV3: lazyWithRetry(() => import("../pages/LeaderboardV3Page")),
   AiEconomy: lazyWithRetry(() => import("../pages/ecosystem/AiEconomyPage")),
