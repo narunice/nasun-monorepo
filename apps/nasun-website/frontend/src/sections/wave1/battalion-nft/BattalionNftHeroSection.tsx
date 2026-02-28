@@ -199,6 +199,19 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
               </h2>
             </div>
           </div>
+
+          {/* Scroll indicator - mobile */}
+          <div className="flex justify-center py-8">
+            <svg
+              className="w-5 h-5 text-nasun-white/50 animate-bounce"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
         </div>
       ) : (
         /* 데스크탑: Wrapper 없이 직접 렌더링 (컨테이너 전체 커버) */
@@ -250,6 +263,19 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
                 DESTINY
               </h2>
             </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center">
+            <svg
+              className="w-6 h-6 text-nasun-white/50 animate-bounce"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
           </div>
         </>
       )}
