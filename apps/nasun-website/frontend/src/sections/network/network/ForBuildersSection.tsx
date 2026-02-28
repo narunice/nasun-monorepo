@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 function ForBuildersSection() {
+  const { t } = useTranslation("common");
+
   return (
     <SectionLayout maxWidth="6xl">
       <FadeInUp>
@@ -15,12 +18,12 @@ function ForBuildersSection() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open Devnet & Wallet
+              {t("forBuilders.openDevnet")}
               <ArrowUpRight className="ml-1.5 size-4 shrink-0" />
             </Link>
           </ButtonV3>
           <ButtonV3 variant="nw1" outline size="lg" asChild className="w-64 justify-center">
-            <Link to="/network/governance">Governance</Link>
+            <Link to="/network/governance">{t("forBuilders.governance")}</Link>
           </ButtonV3>
         </div>
       </FadeInUp>

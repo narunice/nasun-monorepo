@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Trophy, User, Eye } from "lucide-react";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ interface RankedCardProps {
 }
 
 export function RankedCard({ data, seasonId }: RankedCardProps) {
+  const { t } = useTranslation("leaderboard");
   const cardRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
   const { handleViewRank, handleShareToX } = useRankedActions(seasonId, data);
@@ -29,7 +31,7 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (blob) {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        toast.info("My Rank Card image copied! Paste (Ctrl+V) in your post to attach it.");
+        toast.info(t("v3.myRank.cardCopied"));
       }
     } catch (error) {
       console.error("Failed to copy card image:", error);
@@ -51,7 +53,7 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
             <div className="p-1.5 bg-nasun-c7/20 rounded-lg">
               <Trophy className="w-4 h-4 text-nasun-c7" />
             </div>
-            <h4 className="font-bold text-nasun-white text-sm uppercase tracking-tight">My Rank</h4>
+            <h4 className="font-bold text-nasun-white text-sm uppercase tracking-tight">{t("v3.myRank.title")}</h4>
           </div>
           <RankChangeIndicatorV3
             direction={data.rankChange?.direction ?? "same"}
@@ -82,7 +84,7 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
                 <span className="text-xs text-nasun-white/40">/ {data.totalUsers}</span>
               )}
             </div>
-            <div className="text-sm text-nasun-white/60">{data.userScore?.toFixed(2)} score</div>
+            <div className="text-sm text-nasun-white/60">{data.userScore?.toFixed(2)} {t("v3.myRank.score")}</div>
           </div>
         </div>
 
@@ -102,13 +104,13 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outlineC1" size="sm" onClick={handleViewRank}>
             <Eye className="w-3.5 h-3.5 mr-1.5" />
-            View
+            {t("v3.myRank.view")}
           </Button>
           <Button variant="c1" size="sm" onClick={handleShare} disabled={isSharing}>
             <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
-            Share
+            {t("v3.myRank.share")}
           </Button>
         </div>
       </div>

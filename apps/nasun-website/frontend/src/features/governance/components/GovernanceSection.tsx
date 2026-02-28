@@ -51,7 +51,7 @@ const GovernanceSection = () => {
               onClick={() => setIsInfoOpen(!isInfoOpen)}
               className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
             >
-              <span>My Governance Info</span>
+              <span>{t("proposals:section.myGovernanceInfo")}</span>
               {isInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </ButtonV3>
             <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
@@ -72,7 +72,7 @@ const GovernanceSection = () => {
           <p className="text-sm text-nasun-white/50">
             {status === "locked"
               ? t("proposals:wallet.locked")
-              : "Connect your wallet to view your voting power and participate"}
+              : t("proposals:section.connectToParticipate")}
           </p>
           <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
         </div>
@@ -94,7 +94,7 @@ export default GovernanceSection;
 
 // Internal component for proposal list rendering
 const ProposalList = () => {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation(["common", "proposals"]);
   const dashboardId = useNetworkVariable("dashboardId");
   const { account } = useWallet();
   const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
@@ -149,9 +149,9 @@ const ProposalList = () => {
   }
 
   const filterButtons: { value: ProposalFilter; label: string }[] = [
-    { value: "all", label: "All" },
-    { value: "active", label: "Active" },
-    { value: "expired", label: "Expired" },
+    { value: "all", label: t("proposals:section.filterAll") },
+    { value: "active", label: t("proposals:section.filterActive") },
+    { value: "expired", label: t("proposals:section.filterExpired") },
   ];
 
   return (

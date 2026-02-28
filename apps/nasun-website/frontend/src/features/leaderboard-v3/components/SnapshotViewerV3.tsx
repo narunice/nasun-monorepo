@@ -5,6 +5,7 @@
  * V2 SnapshotHeader pattern.
  */
 
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 
 interface SnapshotViewerV3Props {
@@ -23,6 +24,7 @@ export function SnapshotViewerV3({
   maxDate,
   isEnded = false,
 }: SnapshotViewerV3Props) {
+  const { t } = useTranslation("leaderboard");
   const handleClear = () => {
     onDateChange(undefined);
   };
@@ -32,13 +34,13 @@ export function SnapshotViewerV3({
       {/* Status indicator */}
       {!selectedDate ? (
         isEnded ? (
-          <span className="px-2 py-0.5 bg-gray-600 rounded text-xs text-gray-200 uppercase tracking-wide">Final Rankings</span>
+          <span className="px-2 py-0.5 bg-gray-600 rounded text-xs text-gray-200 uppercase tracking-wide">{t("v3.snapshot.finalRankings")}</span>
         ) : (
-          <span className="text-nasun-c4/70 text-sm">Viewing: Latest Rankings</span>
+          <span className="text-nasun-c4/70 text-sm">{t("v3.snapshot.viewingLatest")}</span>
         )
       ) : (
         <span className="text-nasun-c4/90 text-sm">
-          Viewing:{" "}
+          {t("v3.snapshot.viewing")}{" "}
           {new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -48,7 +50,7 @@ export function SnapshotViewerV3({
       )}
       <div className="flex items-center gap-3">
         {/* Snapshot Viewer label */}
-        <span className="text-sm font-medium text-nasun-white/70">Snapshot Viewer</span>
+        <span className="text-sm font-medium text-nasun-white/70">{t("v3.snapshot.title")}</span>
         {/* Date picker */}
         <div className="flex items-center gap-2">
           <input
@@ -63,7 +65,7 @@ export function SnapshotViewerV3({
             <button
               onClick={handleClear}
               className="p-1.5 rounded-md hover:bg-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white transition-colors"
-              title="Clear date"
+              title={t("v3.snapshot.clearDate")}
             >
               <X className="w-4 h-4" />
             </button>

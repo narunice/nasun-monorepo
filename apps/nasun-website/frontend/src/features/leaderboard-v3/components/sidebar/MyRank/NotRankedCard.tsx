@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -7,6 +8,7 @@ interface NotRankedCardProps {
 }
 
 export function NotRankedCard({ username, originalUsername }: NotRankedCardProps) {
+  const { t } = useTranslation("leaderboard");
   const targetAccount = import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io";
 
   return (
@@ -17,17 +19,17 @@ export function NotRankedCard({ username, originalUsername }: NotRankedCardProps
         </div>
         <div>
           <h4 className="font-bold text-nasun-white text-sm uppercase tracking-tight">
-            Not Ranked Yet
+            {t("v3.myRank.notRanked")}
           </h4>
           <p className="text-xs text-nasun-white/50 mt-0.5">
             @{originalUsername || username}
           </p>
         </div>
       </div>
-      <p className="text-xs text-nasun-white/50 mb-3">Engage with Nasun content to get ranked!</p>
+      <p className="text-xs text-nasun-white/50 mb-3">{t("v3.myRank.notRankedDesc")}</p>
       <Button variant="c4" size="sm" className="w-full text-xs" asChild>
         <a href={`https://x.com/${targetAccount}`} target="_blank" rel="noopener noreferrer">
-          View @{targetAccount} on X
+          {t("v3.myRank.viewOnX", { handle: targetAccount })}
         </a>
       </Button>
     </div>

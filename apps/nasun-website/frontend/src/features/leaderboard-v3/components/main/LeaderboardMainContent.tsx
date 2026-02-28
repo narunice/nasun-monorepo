@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import LeaderboardV3Row from "../LeaderboardV3Row";
 import PaginationControlsV3 from "../PaginationControlsV3";
 import type { SeasonLeaderboardResponse } from "../../types";
@@ -26,6 +27,7 @@ export function LeaderboardMainContent({
   handlePageChange,
   ITEMS_PER_PAGE,
 }: LeaderboardMainContentProps) {
+  const { t } = useTranslation("leaderboard");
   return (
     <div className="min-w-0 w-full">
         {leaderboardData && leaderboardData.entries.length > 0 && (
@@ -34,24 +36,24 @@ export function LeaderboardMainContent({
               {/* Table Header */}
               <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-nasun-c7/20">
                 <span className="col-span-2 text-left font-medium text-nasun-white uppercase">
-                  RANK
+                  {t("v3.table.rank")}
                 </span>
                 <span className="col-span-6 text-left font-medium text-nasun-white uppercase relative group cursor-help">
-                  USER
+                  {t("v3.table.user")}
                   <span className="invisible group-hover:visible absolute left-0 top-full mt-2 px-3 py-1.5 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
-                    <span className="text-nasun-c7">Green</span>: signed up on Nasun Website &middot; <span className="text-sky-400">Blue</span>: joined Telegram channel
+                    <span className="text-nasun-c7">{t("v3.table.userTooltipGreen")}</span> &middot; <span className="text-sky-400">{t("v3.table.userTooltipBlue")}</span>
                   </span>
                 </span>
                 <span className="col-span-2 text-right font-medium text-nasun-white uppercase relative group cursor-help">
-                  SCORE
+                  {t("v3.table.score")}
                   <span className="invisible group-hover:visible absolute right-0 top-full mt-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
-                    Score may decay over time
+                    {t("v3.table.scoreTooltip")}
                   </span>
                 </span>
                 <span className="col-span-2 text-center font-medium text-nasun-white uppercase relative group cursor-help">
-                  CHANGE
+                  {t("v3.table.change")}
                   <span className="invisible group-hover:visible absolute right-0 top-full mt-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
-                    Rank change compared to latest snapshot
+                    {t("v3.table.changeTooltip")}
                   </span>
                 </span>
               </div>
@@ -70,10 +72,10 @@ export function LeaderboardMainContent({
               {/* Footer */}
               <div className="px-6 py-3 border-t border-gray-600 flex justify-between items-center">
                 <span className="text-gray-500">
-                  Total: {leaderboardData.totalCount} contributors
+                  {t("v3.table.total", { count: leaderboardData.totalCount })}
                 </span>
                 <span className="text-gray-500">
-                  Last updated: {new Date(leaderboardData.calculatedAt).toLocaleString("en-US")}
+                  {t("v3.table.lastUpdated", { date: new Date(leaderboardData.calculatedAt).toLocaleString("en-US") })}
                 </span>
               </div>
             </div>
@@ -107,7 +109,7 @@ export function LeaderboardMainContent({
         {/* Empty State */}
         {leaderboardData && leaderboardData.entries.length === 0 && (
           <div className="text-center py-12 bg-black/90 rounded-sm border border-gray-600">
-            <p className="text-gray-100">No entries found for this season.</p>
+            <p className="text-gray-100">{t("v3.table.noEntries")}</p>
           </div>
         )}
       </div>

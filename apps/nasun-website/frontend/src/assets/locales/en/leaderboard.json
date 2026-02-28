@@ -86,5 +86,93 @@
       ]
     },
     "viewLeaderboard": "View Live Leaderboard"
+  },
+  "v3": {
+    "title": "Community Leaderboard",
+    "searchPlaceholder": "Search user...",
+    "loadError": "Failed to load leaderboard. Please try again later.",
+    "noSeason": "No active season at the moment.",
+    "table": {
+      "rank": "RANK",
+      "user": "USER",
+      "userTooltipGreen": "Green: signed up on Nasun Website",
+      "userTooltipBlue": "Blue: joined Telegram channel",
+      "score": "SCORE",
+      "scoreTooltip": "Score may decay over time",
+      "change": "CHANGE",
+      "changeTooltip": "Rank change compared to latest snapshot",
+      "total": "Total: {{count}} contributors",
+      "lastUpdated": "Last updated: {{date}}",
+      "noEntries": "No entries found for this season.",
+      "registeredMember": "Registered Member",
+      "telegramMember": "Telegram Channel Member"
+    },
+    "search": {
+      "searching": "Searching...",
+      "noResults": "No users found"
+    },
+    "season": {
+      "live": "Live",
+      "soon": "Soon",
+      "ended": "Ended"
+    },
+    "climbers": {
+      "title": "Top Climbers Spotlight",
+      "loadError": "Failed to load top climbers. Please try again later.",
+      "noData": "No rank improvements in this period yet.",
+      "rankChange": "Rank Change",
+      "rank": "rank",
+      "ranks": "ranks",
+      "new": "NEW",
+      "pointIncrease": "Point Increase",
+      "percentage": "Percentage",
+      "currentPoints": "Current Points"
+    },
+    "snapshot": {
+      "finalRankings": "Final Rankings",
+      "viewingLatest": "Viewing: Latest Rankings",
+      "viewing": "Viewing:",
+      "title": "Snapshot Viewer",
+      "clearDate": "Clear date"
+    },
+    "pagination": {
+      "page": "Page {{current}} of {{total}}",
+      "first": "First",
+      "prev": "Prev",
+      "next": "Next",
+      "last": "Last",
+      "go": "Go"
+    },
+    "feed": {
+      "title": "Featured Posts",
+      "loadError": "Failed to load feed",
+      "noData": "No featured posts yet",
+      "subtitle": "Recent posts from top rankers and climbers",
+      "ranker": "Ranker",
+      "climber": "Climber"
+    },
+    "myRank": {
+      "title": "My Rank",
+      "score": "score",
+      "cardCopied": "My Rank Card image copied! Paste (Ctrl+V) in your post to attach it.",
+      "view": "View",
+      "share": "Share",
+      "notRanked": "Not Ranked Yet",
+      "notRankedDesc": "Engage with Nasun content to get ranked!",
+      "viewOnX": "View @{{handle}} on X",
+      "signIn": "Sign in to see your ranking",
+      "signInWith": "Sign in with"
+    },
+    "connectX": {
+      "title": "Connect X Account",
+      "description": "Link your X to track your rank",
+      "connect": "Connect",
+      "account": "Account"
+    },
+    "rankChange": {
+      "upRanks": "+{{amount}} ranks",
+      "downRanks": "-{{amount}} ranks",
+      "new": "NEW"
+    }
   }
 }

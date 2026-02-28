@@ -47,14 +47,6 @@ const authStack = new AuthStack(app, 'AuthStack', {
 });
 authStack.addDependency(commonStack);
 
-// Monitoring stack, depends on common stack
-const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
-  env: cdkEnv,
-  priceApiGateway: commonStack.priceApiGateway,
-  priceUpdaterLambda: commonStack.priceUpdaterLambda,
-});
-monitoringStack.addDependency(commonStack);
-
 // NFT Event stack (Wave 1 Battalion Free Mint)
 const nftEventStack = new NftEventStack(app, 'NftEventStack', { env: cdkEnv });
 // No dependencies - standalone stack with Feature Flag
@@ -89,3 +81,17 @@ const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
   userProfilesTableName: 'UserProfiles',
 });
 // No dependencies - completely independent from V2
+
+// Monitoring stack — depends on Common, Auth, and LeaderboardV3 stacks
+const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
+  env: cdkEnv,
+  priceApiGateway: commonStack.priceApiGateway,
+  priceUpdaterLambda: commonStack.priceUpdaterLambda,
+  governanceApi: commonStack.governanceApi,
+  governanceApiLambda: commonStack.governanceApiLambda,
+  metamaskAuthApi: authStack.metamaskAuthApi,
+  leaderboardV3Api: leaderboardV3Stack.api,
+});
+monitoringStack.addDependency(commonStack);
+monitoringStack.addDependency(authStack);
+monitoringStack.addDependency(leaderboardV3Stack);
