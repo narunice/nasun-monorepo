@@ -99,7 +99,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       // Check if duplicate is by wallet (idempotent) or by X account (upsert)
       const existingByWallet = await whitelistService.findByWalletAddress(request.walletAddress);
 
-      if (existingByWallet) {
+      if (existingByWallet && existingByWallet.status !== 'WITHDRAWN') {
         // Check if same X account (idempotent) or different X account (conflict)
         if (existingByWallet.xUserId !== request.xUserId) {
           throw new NftEventError(

@@ -232,7 +232,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               provider="twitter"
               identifier={
                 twitterData?.twitterHandle
-                  ? `@${twitterData.originalTwitterHandle || twitterData.twitterHandle}`
+                  ? `@${twitterData.originalTwitterHandle || user.originalTwitterHandle || twitterData.twitterHandle}`
                   : undefined
               }
               statusBadge={
