@@ -81,8 +81,10 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   // Battalion NFT Status — pass twitterId for xUserId fallback lookup
   // Check both direct twitterId (Twitter login) and linkedAccounts (MetaMask login with linked Twitter)
   const twitterId = user?.twitterId ?? user?.linkedAccounts?.twitter?.twitterId;
-  // Final fallback: use Battalion NFT store's xUserId if registration completed
-  // Covers MetaMask-primary login where reverse link hasn't been established yet
+  // Final fallback: use Battalion NFT store's xUserId if registration completed.
+  // Covers MetaMask-primary login where reverse link hasn't been established yet.
+  // When registration completes, `registered` flips true → selector returns xUserId
+  // → effectiveXUserId changes → useBattalionNftStatus refetches status via API.
   const battalionXUserId = useBattalionNftStore((s) => s.registered ? s.xUserId : undefined);
   const effectiveXUserId = twitterId ?? battalionXUserId;
   const {

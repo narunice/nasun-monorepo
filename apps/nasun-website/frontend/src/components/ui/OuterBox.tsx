@@ -93,9 +93,9 @@ const variantStyles: Record<ColorVariant, string> = {
   sf2: "border-sf-yellow/30 bg-black/20", // GenSol sci-fi card alternative
   sf3: "border-sf-blue/40 bg-sf-blue/10", // GenSol sci-fi card alternative 2
   "sf-gold": "border-none bg-[#f1a403]", // GenSol gold solid card
-  br1: "border-nasun-br-1d/40 bg-nasun-br-1d/10", // Baram mint accent
-  br2: "border-nasun-br-2d/40 bg-nasun-br-2d/10", // Baram blue accent
-  br3: "border-nasun-br-3d/40 bg-nasun-br-3d/10", // Baram lavender accent
+  br1: "border-br-1/40 bg-br-1", // Baram mint accent
+  br2: "border-br-2/40 bg-br-2/30", // Baram blue accent
+  br3: "border-br-3/40 bg-br-3/30", // Baram lavender accent
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {

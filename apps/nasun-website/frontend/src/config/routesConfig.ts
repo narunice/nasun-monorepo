@@ -44,7 +44,8 @@ export const Pages = {
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
   PadoRevised: lazyWithRetry(() => import("../pages/ecosystem/PadoRevisedPage")),
-  Baram: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
+  BaramDark: lazyWithRetry(() => import("../pages/ecosystem/BaramDarkPage")),
+  BaramLight: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
   // Infra Pages
   InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
   // About Pages (new)
@@ -66,7 +67,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Nasun — Layer 1 Blockchain",
+      title: "Nasun",
       description: "A new Layer 1 blockchain with DEX, prediction markets, AI settlement, and more. All live on devnet.",
     },
   },
@@ -157,7 +158,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   // Ecosystem 섹션 (IP 통합)
   ecosystem: {
     path: "/ecosystem",
-    component: Pages.Baram, // 기본 서브페이지: Baram - AI
+    component: Pages.BaramDark, // 기본 서브페이지: Baram - AI
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
@@ -165,7 +166,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         {
           name: "navigation.baramAi",
           path: "/ecosystem/baram",
-          element: Pages.Baram,
+          element: Pages.BaramDark,
         },
         {
           name: "navigation.padoFinance",
@@ -527,6 +528,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Baram - NASUN",
       description: "Baram: AI Compliance Settlement Layer — Auditable, Accountable, Governed",
+    },
+  },
+
+  baramLight: {
+    path: "/baram-light",
+    component: Pages.BaramLight,
+    navItem: {
+      name: "navigation.baramLight",
+      path: "/baram-light",
+      hidden: true,
+    },
+    meta: {
+      title: "Baram (Light) — NASUN",
+      description: "Baram: AI Compliance Settlement Layer (light theme)",
     },
   },
 
