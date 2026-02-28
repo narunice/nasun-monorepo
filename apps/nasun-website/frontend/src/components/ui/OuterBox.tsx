@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { cn } from "../../utils/utils";
 
 /**
  * OuterBox 컴포넌트
@@ -20,6 +21,7 @@ import React, { ReactNode } from "react";
 
 type ColorVariant =
   | "default"
+  | "noborder"
   | "c1"
   | "c2"
   | "c3"
@@ -46,12 +48,17 @@ type ColorVariant =
   | "nw4"
   | "nw0"
   | "pd1"
-  | "pd0";
+  | "pd0"
+  | "sf1"
+  | "sf2"
+  | "sf3"
+  | "sf-gold";
 
 type PaddingVariant = "lg" | "md" | "sm";
 
 const variantStyles: Record<ColorVariant, string> = {
   default: "border-nasun-c5/50 bg-nasun-c6/90", // 현재 기본값 (c5 border + c6 bg)
+  noborder: "border-none", // border 없는 버전 (c6 bg)
   white: "border-white/40 bg-white/5",
   c1: "border-nasun-c1/50 bg-[#312107]/40",
   c2: "border-nasun-c2/50 bg-[#312d20]/40",
@@ -79,6 +86,10 @@ const variantStyles: Record<ColorVariant, string> = {
   nw0: "border-nasun-nw4/30 bg-[#212E57]/50", // NW accent card (nw4 light blue) -
   pd1: "border-pado-2/50 bg-[#111a28]", // Pado teal accent border
   pd0: "border-pd3/50 bg-pd4/15", // Pado muted border
+  sf1: "border-sf-orange/30 bg-black/20", // GenSol sci-fi card
+  sf2: "border-sf-yellow/30 bg-black/20", // GenSol sci-fi card alternative
+  sf3: "border-sf-blue/40 bg-sf-blue/10", // GenSol sci-fi card alternative 2
+  "sf-gold": "border-none bg-[#f1a403]", // GenSol gold solid card
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {
@@ -105,7 +116,12 @@ export const OuterBox: React.FC<OuterBoxProps> = ({
 
   return (
     <div
-      className={`${paddingClass} backdrop-blur-lg rounded-sm shadow-lg border ${variantStyles[color]} ${className}`}
+      className={cn(
+        paddingClass,
+        "backdrop-blur-lg rounded-sm shadow-lg border",
+        variantStyles[color],
+        className,
+      )}
       {...props}
     >
       {children}

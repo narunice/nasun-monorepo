@@ -15,9 +15,8 @@ export default defineConfig(({ mode }) => {
   // 2) Turn VITE_* vars into definitions under process.env.*
   //    SECURITY: Only expose VITE_* prefixed vars to the client bundle.
   //    Sensitive server-only vars (credentials, secrets) MUST NOT use the VITE_ prefix.
-  const SENSITIVE_KEYS = ['VITE_WORDPRESS_USERNAME', 'VITE_WORDPRESS_PASSWORD', 'VITE_WP_REST_NONCE'];
   const defineEnv = Object.entries(env).reduce<Record<string, string>>((acc, [key, val]) => {
-    if (key.startsWith('VITE_') && !SENSITIVE_KEYS.includes(key)) {
+    if (key.startsWith('VITE_')) {
       acc[`process.env.${key}`] = JSON.stringify(val);
     }
     return acc;
@@ -28,8 +27,8 @@ export default defineConfig(({ mode }) => {
   const cspPolicy = (env.VITE_CSP_POLICY || DEFAULT_CSP).replace(/\s+/g, " ").trim();
 
   // HTTP 기본 인증을 위한 Authorization 헤더 값 생성
-  const wpUser = env.VITE_WORDPRESS_USERNAME;
-  const wpPassword = env.VITE_WORDPRESS_PASSWORD;
+  const wpUser = env.WP_USERNAME;
+  const wpPassword = env.WP_PASSWORD;
   const basicAuth = Buffer.from(`${wpUser}:${wpPassword}`).toString("base64");
 
   return {
@@ -63,6 +62,21 @@ export default defineConfig(({ mode }) => {
       react(),
       createHtmlPlugin({
         minify: true,
+        inject: {
+          tags: env.VITE_UMAMI_WEBSITE_ID && env.VITE_UMAMI_HOST
+            ? [
+                {
+                  injectTo: "head",
+                  tag: "script",
+                  attrs: {
+                    defer: true,
+                    src: `${env.VITE_UMAMI_HOST}/ns.js`,
+                    "data-website-id": env.VITE_UMAMI_WEBSITE_ID,
+                  },
+                },
+              ]
+            : [],
+        },
       }),
       // CSP injection plugin — always applies (uses DEFAULT_CSP as fallback)
       {

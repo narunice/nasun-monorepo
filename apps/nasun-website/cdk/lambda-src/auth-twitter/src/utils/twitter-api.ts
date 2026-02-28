@@ -64,7 +64,7 @@ export class TwitterAPI {
    */
   async getUserInfo(accessToken: string): Promise<TwitterUser> {
     const response: AxiosResponse<TwitterUserResponse> = await axios.get(
-      'https://api.twitter.com/2/users/me',
+      'https://api.x.com/2/users/me',
       {
         params: {
           'user.fields': 'id,name,username,profile_image_url,verified'

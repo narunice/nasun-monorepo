@@ -1,5 +1,6 @@
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { DashboardCard } from "@/components/ui/DashboardCard";
+import { Spinner } from "@/components/ui";
 import type { TPSDataPoint } from "../../../../hooks/network/types";
 
 interface TPSChartProps {
@@ -65,7 +66,7 @@ export function TPSChart({ data }: TPSChartProps) {
         </div>
       ) : (
         <div className="h-[180px] flex flex-col items-center justify-center text-nasun-white/30 text-xs gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border border-nasun-c3 border-t-transparent" />
+          <Spinner size="sm" />
           <span>Syncing real-time network data...</span>
         </div>
       )}

@@ -365,11 +365,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/wave1/battalion-nft",
           element: Pages.BattalionNft,
         },
-        {
-          name: "navigation.earlyContributors",
-          path: "/wave1/early-contributors",
-          element: Pages.EarlyContributors,
-        },
+        // {
+        //   name: "navigation.earlyContributors",
+        //   path: "/wave1/early-contributors",
+        //   element: Pages.EarlyContributors,
+        // },
         {
           name: "navigation.leaderboard",
           path: "/wave1/leaderboard",

@@ -20,7 +20,7 @@ export const FadeInUp = ({ children, className = "", delay = "0.1s" }: Props) =>
           el.classList.add("animate-fadeInUp");
         }
       },
-      { threshold: 0.3 }
+      { threshold: 0.2 }
     );
 
     observer.observe(el);

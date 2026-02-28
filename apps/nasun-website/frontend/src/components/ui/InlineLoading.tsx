@@ -1,23 +1,17 @@
 /**
  * InlineLoading Component
  *
- * @description
- * 버튼 내부, 작은 영역에서 사용하는 인라인 로딩 컴포넌트
- * 크기 조절 가능한 스피너 + 옵션 텍스트
- *
- * @author Claude Code
- * @date 2025-10-27
+ * Inline loading indicator with circular spinner + optional text.
+ * Used in buttons, modals, and compact areas.
  */
 
 import React from "react";
 import { Spinner } from "./Spinner";
 
 interface InlineLoadingProps {
-  /** 커스텀 로딩 메시지 (옵션) */
   message?: string;
-  /** 스피너 크기 */
   size?: "sm" | "md" | "lg";
-  /** 추가 CSS 클래스 */
+  colorClass?: string;
   className?: string;
 }
 
@@ -30,11 +24,12 @@ const textSizeClasses = {
 export const InlineLoading: React.FC<InlineLoadingProps> = ({
   message,
   size = "md",
+  colorClass = "text-white",
   className = "",
 }) => {
   return (
     <div className={`inline-flex items-center ${className}`}>
-      <Spinner size={size} colorClass="border-white" />
+      <Spinner size={size} colorClass={colorClass} />
       {message && (
         <span className={`ml-2 text-nasun-white ${textSizeClasses[size]}`}>
           {message}

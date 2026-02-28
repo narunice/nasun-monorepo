@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
-const nsnNetworkVideo = "/videos/Nsn-Network-Section-rf29.mp4";
+const nsnNetworkVideo = "/videos/Nsn-Network-Section-rf28.mp4";
 const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-Mobile-rf27.mp4";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -93,7 +93,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         muted
         playsInline
         preload="auto"
-        poster={isMobile ? "/images/posters/Nsn-Network-Section-Mobile-rf27.webp" : "/images/posters/Nsn-Network-Section-rf29.webp"}
+        poster={isMobile ? "/images/posters/Nsn-Network-Section-Mobile-rf27.webp" : "/images/posters/Nsn-Network-Section-rf28.webp"}
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`w-full h-full ${

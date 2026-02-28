@@ -32,6 +32,8 @@ export interface UserData {
   walletAddress?: string;
   // Cognito OIDC token for authenticated API calls
   cognitoToken?: string;
+  // Admin role (set via admin action, returned from DB)
+  role?: string;
   // Linked accounts
   linkedAccounts?: {
     google?: LinkedAccount;
