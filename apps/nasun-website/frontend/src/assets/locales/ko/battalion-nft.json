@@ -14,6 +14,7 @@
     "networkError": "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
     "statusCheckError": "상태를 확인하는 중 오류가 발생했습니다.",
     "ALREADY_REGISTERED": "이미 등록된 지갑 주소입니다.",
+    "X_ACCOUNT_ALREADY_REGISTERED": "이 X 계정은 이미 다른 지갑 주소로 등록되어 있습니다.",
     "INVALID_WALLET_ADDRESS": "유효하지 않은 지갑 주소입니다.",
     "INVALID_X_USER_ID": "유효하지 않은 X 사용자 ID입니다.",
     "INVALID_X_USERNAME": "유효하지 않은 X 사용자명입니다.",
@@ -25,7 +26,8 @@
     "RATE_LIMIT_EXCEEDED": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
     "UNKNOWN_ERROR": "알 수 없는 오류가 발생했습니다. 다시 시도해주세요.",
     "INVALID_SIGNATURE": "잘못된 지갑 서명입니다. 다시 시도해주세요.",
-    "SIGNATURE_EXPIRED": "서명이 만료되었습니다. 다시 시도해주세요."
+    "SIGNATURE_EXPIRED": "서명이 만료되었습니다. 다시 시도해주세요.",
+    "ALREADY_MINTED": "이 X 계정은 이미 NFT를 발행했습니다. 지갑 변경이 불가합니다."
   },
   "share": "공유하기",
   "goToHome": "홈으로 가기",
