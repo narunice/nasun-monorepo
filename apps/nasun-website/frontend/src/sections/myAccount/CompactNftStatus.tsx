@@ -1,16 +1,18 @@
 /**
  * CompactNftStatus Component
  *
- * Combined Battalion NFT + Founders WL status in a compact horizontal layout.
+ * Battalion NFT Allowlist status in a compact layout.
  * For the Bento Grid dashboard.
+ *
+ * NOTE: Frontiers Whitelist is hidden during Battalion NFT campaign.
+ * It will be re-added when Frontiers NFT campaign starts (post-Battalion sales).
  */
 
-import { FC, useState, useEffect, ReactNode } from "react";
+import { FC, useState, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
-import { checkWhitelistStatus, withdrawWhitelistWithSignature } from "../../services/whitelistApi";
 import { withdrawUserApi } from "../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
 import { authenticateWithMetaMask } from "../../services/metamaskApi";
@@ -19,7 +21,6 @@ import { connectMetaMaskSDK, signMessageViaSDK } from "../../lib/wallet/metamask
 import { isMobileBrowser } from "../../utils/mobileDetect";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { JoinWhitelistButton } from "@/components/whitelist/JoinWhitelistButton";
 
 interface CompactNftStatusProps {
   walletAddress: string | null | undefined;
@@ -32,7 +33,6 @@ interface NftStatusItemProps {
   isLoading: boolean;
   onJoin?: () => void;
   onWithdraw?: () => void;
-  /** Custom join button to render instead of default */
   renderJoinButton?: ReactNode;
 }
 
@@ -76,7 +76,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   const { user } = useAuth();
   const { reset: resetBattalionStore } = useBattalionNftStore();
   const [isBattalionWithdrawing, setIsBattalionWithdrawing] = useState(false);
-  const [isGenesisWithdrawing, setIsGenesisWithdrawing] = useState(false);
 
   // Battalion NFT Status — pass twitterId for xUserId fallback lookup
   // Check both direct twitterId (Twitter login) and linkedAccounts (MetaMask login with linked Twitter)
@@ -93,42 +92,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
     isLoading: isBattalionLoading,
     refetch: refetchBattalion,
   } = useBattalionNftStatus(walletAddress, effectiveXUserId);
-
-  // Founders WL Status
-  const [isFoundersRegistered, setIsFoundersRegistered] = useState(false);
-  const [isFoundersLoading, setIsFoundersLoading] = useState(true);
-
-  useEffect(() => {
-    if (!walletAddress) {
-      setIsFoundersLoading(false);
-      return;
-    }
-
-    const fetchFoundersStatus = async () => {
-      try {
-        setIsFoundersLoading(true);
-        const response = await checkWhitelistStatus(walletAddress);
-        setIsFoundersRegistered(response.data.registered);
-      } catch {
-        setIsFoundersRegistered(false);
-      } finally {
-        setIsFoundersLoading(false);
-      }
-    };
-
-    fetchFoundersStatus();
-  }, [walletAddress]);
-
-  // Refetch Founders status
-  const refetchFounders = async () => {
-    if (!walletAddress) return;
-    try {
-      const response = await checkWhitelistStatus(walletAddress);
-      setIsFoundersRegistered(response.data.registered);
-    } catch {
-      setIsFoundersRegistered(false);
-    }
-  };
 
   /**
    * Battalion NFT Withdraw Handler
@@ -178,39 +141,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
     }
   };
 
-  /**
-   * Genesis NFT Withdraw Handler (MetaMask signature required)
-   */
-  const handleGenesisWithdraw = async () => {
-    if (!walletAddress || isGenesisWithdrawing) return;
-
-    if (!confirm("Are you sure you want to withdraw from Frontiers Whitelist?")) {
-      return;
-    }
-
-    try {
-      setIsGenesisWithdrawing(true);
-      // Mobile: use MetaMask SDK (Socket.io relay), Desktop: use injected provider
-      const mobile = isMobileBrowser();
-      const connectedAddress = mobile ? await connectMetaMaskSDK() : await connectWallet();
-      if (connectedAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-        toast.error(`Please connect the registered wallet (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}).`);
-        return;
-      }
-      await withdrawWhitelistWithSignature(
-        walletAddress.toLowerCase(),
-        (message) => mobile ? signMessageViaSDK(message, connectedAddress) : signMessage(message, connectedAddress)
-      );
-      refetchFounders();
-      toast.success("Successfully withdrawn from Frontiers Whitelist.");
-    } catch (err) {
-      console.error("[CompactNftStatus] Founders withdraw error:", err);
-      toast.error("Failed to withdraw. Please try again.");
-    } finally {
-      setIsGenesisWithdrawing(false);
-    }
-  };
-
   if (!walletAddress && !effectiveXUserId) {
     return (
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
@@ -230,21 +160,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
           isLoading={isBattalionLoading || isBattalionWithdrawing}
           onJoin={() => navigate("/wave1/battalion-nft")}
           onWithdraw={handleBattalionWithdraw}
-        />
-        <NftStatusItem
-          title="Frontiers Whitelist"
-          isRegistered={isFoundersRegistered}
-          isLoading={isFoundersLoading || isGenesisWithdrawing}
-          onWithdraw={handleGenesisWithdraw}
-          renderJoinButton={
-            <JoinWhitelistButton
-              variant="filledOutlineC7"
-              size="sm"
-              onSuccess={() => refetchFounders()}
-            >
-              Join
-            </JoinWhitelistButton>
-          }
         />
       </div>
     </OuterBox>
