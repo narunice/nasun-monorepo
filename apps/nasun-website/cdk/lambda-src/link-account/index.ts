@@ -282,6 +282,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     if (secondaryProfile.twitterHandle) {
       linkedInfo.twitterHandle = secondaryProfile.twitterHandle;
     }
+    if (secondaryProfile.originalTwitterHandle) {
+      linkedInfo.originalTwitterHandle = secondaryProfile.originalTwitterHandle;
+    }
     if (secondaryProfile.twitterId) {
       linkedInfo.twitterId = secondaryProfile.twitterId;
     }
@@ -326,6 +329,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     if (primaryProfile.email) reverseLinkInfo.email = primaryProfile.email;
     if (primaryProfile.twitterHandle) reverseLinkInfo.twitterHandle = primaryProfile.twitterHandle;
+    if (primaryProfile.originalTwitterHandle) reverseLinkInfo.originalTwitterHandle = primaryProfile.originalTwitterHandle;
     if (primaryProfile.twitterId) reverseLinkInfo.twitterId = primaryProfile.twitterId;
     if (primaryProfile.profileImageUrl) reverseLinkInfo.profileImageUrl = primaryProfile.profileImageUrl;
     // MetaMask-specific field

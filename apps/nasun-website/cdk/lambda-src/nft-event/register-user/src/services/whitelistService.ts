@@ -130,10 +130,12 @@ export class WhitelistService {
           TableName: this.tableName,
           IndexName: 'xUserId-index',
           KeyConditionExpression: 'xUserId = :xUserId',
+          FilterExpression: '#status <> :withdrawn',
+          ExpressionAttributeNames: { '#status': 'status' },
           ExpressionAttributeValues: {
             ':xUserId': xUserId,
+            ':withdrawn': 'WITHDRAWN',
           },
-          Limit: 1,
         })
       );
 
