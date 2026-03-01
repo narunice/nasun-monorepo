@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -62,7 +62,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
 
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
-  const containerClassName = `relative !p-0 mt-0 md:mt-0 bg-nasun-black overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
+  const containerClassName = `relative !p-0 mt-0 md:mt-0 bg-nasun-black overflow-hidden !justify-start ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:!h-auto"}`;
 
   return (
     <SectionLayout className={containerClassName}>
@@ -84,12 +84,12 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         poster="/images/posters/Nsn-Network-Section-rf28.webp"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
-        className={`w-full h-full ${
+        className={`block w-full h-full md:h-auto ${
           !isVideoPlaying ? "opacity-0" : "opacity-100"
         } transition-opacity duration-500`}
         style={{
-          objectFit: isMobile ? "cover" : "contain",
-          objectPosition: isMobile ? "left center" : "center center",
+          objectFit: isMobile ? "cover" : undefined,
+          objectPosition: isMobile ? "left center" : undefined,
         }}
       >
         <source src={isMobile ? nsnNetworkVideoMobile : nsnNetworkVideo} type="video/mp4" />
@@ -105,15 +105,15 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
 
       {/* Hero 타이틀 - 모바일 (md 미만): 인라인, 자연스러운 줄바꿈 + 버튼 중앙 정렬 */}
       {isVideoPlaying && (
-        <div className="absolute inset-x-0 bottom-[2%] sm:bottom-[10%] z-20 px-6 md:hidden">
+        <div className="absolute inset-x-0 bottom-[10%] sm:bottom-[15%] z-20 px-6 md:hidden">
           <div className="leading-tight text-center">
             <h3 className="font-medium text-nasun-white text-3xl sm:text-[34px] uppercase ">
               ONE NETWORK
             </h3>
             <h4 className=" text-nasun-white/60 text-lg  sm:text-xl">One Unified Economy</h4>
           </div>
-          <div className="mt-3 w-full">
-            <ButtonV3 variant="nw5" size="lg" asChild className="mt-5 w-full justify-center">
+          <div className="flex justify-center">
+            <ButtonV3 variant="nw1" size="lg" asChild className="mt-5">
               <Link
                 to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                 target="_blank"
@@ -138,7 +138,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
               <h5 className="text-nasun-white/70 text-2xl/tight md:text-[22px] lg:text-[27px]">
                 One Unified Economy
               </h5>
-              <ButtonV3 variant="nw5" size="lg" asChild className="mt-5 w-full justify-center">
+              <ButtonV3 variant="nw1" size="lg" asChild className="mt-5 w-full justify-center">
                 <Link
                   to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                   target="_blank"

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState, useCallback, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { SectionLayout } from "../components/layout/SectionLayout";
 import { ScrollSnapContainer } from "../components/layout/ScrollSnapContainer";
@@ -9,7 +10,7 @@ import { JsonLd, NASUN_ORG_SCHEMA } from "../utils/jsonLd";
 import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 
 // All sections lazy-loaded for optimal code splitting.
-// HeroSection's poster image is preloaded via index.html <link rel="preload">,
+// HeroSection's poster image is preloaded via <Helmet> (home-page only),
 // so LCP is fast even with lazy loading. Static import was reverted because
 // it pulled framer-motion (123KB) into the critical path, tripling TBT.
 const HeroSection = lazy(() => import("../sections/home/HeroSection"));
@@ -71,6 +72,9 @@ export default function HomePage() {
   // This prevents re-mounting and state reset issues
   return (
     <div className="bg-nasun-black">
+      <Helmet>
+        <link rel="preload" as="image" href="/images/posters/Full-Trailer184s-rf28.webp" type="image/webp" />
+      </Helmet>
       <JsonLd data={NASUN_ORG_SCHEMA} />
       {/* Snap Scroll 섹션들 (Hero ~ Wave1) */}
       <ScrollSnapContainer>

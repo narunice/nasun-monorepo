@@ -47,14 +47,14 @@
       "description": "unlock our collective potential and shape a future beyond imagination."
     },
     "cta": {
-      "unifiedVision": "JOIN THE PRE-SEED",
-      "signUp": "INVESTOR MATERIALS"
+      "unifiedVision": "JOIN THE BATTALION",
+      "signUp": "LITEPAPER"
     }
   },
   "wave1": {
     "title": "WAVE 1",
     "tagline": "Build With Us From Day 1",
-    "intro": "Nasun is opening its first cohort of contributors ahead of mainnet. There are three ways to participate:",
+    "intro": "Nasun is opening its first cohort of contributors ahead of mainnet. There are two ways to participate:",
     "leaderboard": {
       "title": "For the Community – Leaderboard",
       "line1": "Contribute content, bring people in, and help create network effects.",
