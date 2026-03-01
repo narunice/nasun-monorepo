@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 
 import { InlineLoading } from "@/components/ui/InlineLoading";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
 const waldenVideoDesktop = "/videos/Walden-Dex-Token-rf28.mp4";
-const waldenVideoMobile = "/videos/Walden-Dex-Token-Mobile-rf24.mp4";
+const waldenVideoMobile = "/videos/Walden-Dex-Token-mobile-rf28.mp4";
 import { Button } from "@/components/ui";
 import { ArrowUpRight } from "lucide-react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
@@ -26,21 +28,7 @@ function PadoHeroSection({ onVideoReady, translationNs = "pado" }: PadoHeroSecti
   };
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Resize observer - 모바일/데스크탑 동영상 전환
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
-    };
-
-    handleResize(); // 초기 설정
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+  const isMobile = useIsMobile();
 
   // 비디오 소스 변경 시 로딩 상태 리셋
   useEffect(() => {
@@ -79,7 +67,7 @@ function PadoHeroSection({ onVideoReady, translationNs = "pado" }: PadoHeroSecti
 
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
-  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
+  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-nasun-black overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
 
   return (
     <div className={containerClassName}>
@@ -98,7 +86,7 @@ function PadoHeroSection({ onVideoReady, translationNs = "pado" }: PadoHeroSecti
         loop
         muted
         playsInline
-        poster={isMobile ? "/images/posters/Walden-Dex-Token-Mobile-rf24.webp" : "/images/posters/Walden-Dex-Token-rf28.webp"}
+        poster="/images/posters/Walden-Dex-Token-rf28.webp"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`w-full h-full max-w-9xl ${!isVideoPlaying ? "opacity-0" : "opacity-100"} ${

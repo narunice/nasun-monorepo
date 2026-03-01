@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-const fullTrailerVideoMP4 = "/videos/Full-Trailer184s-rf28.mp4";
 import { InlineLoading } from "@/components/ui";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
+const fullTrailerVideoDesktop = "/videos/Full-Trailer184s-rf28.mp4";
+const fullTrailerVideoMobile = "/videos/Full-Trailer184s-mobile-rf28.mp4";
 
 interface HeroSectionProps {
   onVideoReady?: () => void;
@@ -93,6 +96,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
   const [areImagesReady, setAreImagesReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const rafRef = useRef<number | null>(null);
+  const isMobile = useIsMobile();
 
   // 로고 이미지 프리로드 (심볼만)
   useEffect(() => {
@@ -174,7 +178,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  const videoSrc = fullTrailerVideoMP4;
+  const videoSrc = isMobile ? fullTrailerVideoMobile : fullTrailerVideoDesktop;
 
   return (
     <div className="w-full relative h-screen overflow-hidden flex items-center justify-center bg-nasun-black">

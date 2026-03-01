@@ -1,9 +1,13 @@
 import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-const wave1VideoMP4 = "/videos/Home-Wave1-rf28.mp4";
-const leaderboardVideoMP4 = "/videos/Leaderboard-Ui-rf28.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
+const wave1VideoDesktop = "/videos/Home-Wave1-rf28.mp4";
+const wave1VideoMobile = "/videos/Home-Wave1-mobile-rf28.mp4";
+const leaderboardVideoDesktop = "/videos/Leaderboard-Ui-rf28.mp4";
+const leaderboardVideoMobile = "/videos/Leaderboard-Ui-mobile-rf28.mp4";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
 
@@ -17,8 +21,10 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const isMobile = useIsMobile();
 
-  const videoSrc = wave1VideoMP4;
+  const videoSrc = isMobile ? wave1VideoMobile : wave1VideoDesktop;
+  const leaderboardSrc = isMobile ? leaderboardVideoMobile : leaderboardVideoDesktop;
 
   // Video autoplay handling (iOS support)
   useEffect(() => {
@@ -185,7 +191,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               poster="/images/posters/Leaderboard-Ui-rf28.webp"
               className="w-full max-w-lg lg:max-w-none object-contain rounded-md shadow-lg"
             >
-              <source src={leaderboardVideoMP4} type="video/mp4" />
+              <source src={leaderboardSrc} type="video/mp4" />
             </video>
           </div>
         </div>

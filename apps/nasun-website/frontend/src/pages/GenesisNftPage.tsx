@@ -39,7 +39,7 @@ const GenesisNftPage = () => {
   return (
     <PageLayout className="relative">
       {/* Background Video Container - Full Browser Width */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1920px] aspect-[16/9] min-h-[700px] z-0">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1920px] h-[80vh] landscape:h-screen md:aspect-[16/9] md:h-auto md:min-h-[700px] z-0 overflow-hidden">
         {/* Skeleton Overlay */}
         {!isVideoReady && (
           <div className="absolute inset-0 z-20">

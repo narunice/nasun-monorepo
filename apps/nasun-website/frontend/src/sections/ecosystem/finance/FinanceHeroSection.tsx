@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 
 import { InlineLoading } from "@/components/ui/InlineLoading";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
 const waldenVideoDesktop = "/videos/Walden-Dex-Token-rf28.mp4";
-const waldenVideoMobile = "/videos/Walden-Dex-Token-Mobile-rf24.mp4";
+const waldenVideoMobile = "/videos/Walden-Dex-Token-mobile-rf28.mp4";
 
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
@@ -14,16 +16,7 @@ interface FinanceHeroSectionProps {
 function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setIsVideoLoaded(false);
@@ -54,7 +47,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-[#080c16] ${!isVideoPlaying ? "h-screen" : ""}`;
+  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-[#080c16] overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
 
   return (
     <div className={containerClassName}>
@@ -71,7 +64,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
         loop
         muted
         playsInline
-        poster={isMobile ? "/images/posters/Walden-Dex-Token-Mobile-rf24.webp" : "/images/posters/Walden-Dex-Token-rf28.webp"}
+        poster="/images/posters/Walden-Dex-Token-rf28.webp"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`w-full h-full max-w-9xl ${!isVideoPlaying ? "opacity-0" : "opacity-100"} ${

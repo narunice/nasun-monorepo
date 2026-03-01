@@ -22,9 +22,13 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-const padoUiVideo = "/videos/Pado-Ui-Full-rf28.mp4";
+import { useIsMobile } from "@/hooks/useIsMobile";
+const padoUiVideoDesktop = "/videos/Pado-Ui-Full-rf28.mp4";
+const padoUiVideoMobile = "/videos/Pado-Ui-Full-mobile-rf28.mp4";
 
 export const PadoDraftContent = () => {
+  const isMobile = useIsMobile();
+  const padoUiVideo = isMobile ? padoUiVideoMobile : padoUiVideoDesktop;
   // Dynamic namespace — strict key typing not applicable
   const { t, ready } = useTranslation("pado-draft" as "pado") as {
     t: (key: string, options?: Record<string, unknown>) => string;

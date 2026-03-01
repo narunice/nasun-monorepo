@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-const battalionNftVideo = "/videos/Battalion-Nft-Leeterbox-01-rf25.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
+const battalionNftVideoDesktop = "/videos/Battalion-Nft-Leeterbox-01-rf25.mp4";
+const battalionNftVideoMobile = "/videos/Battalion-Nft-Leeterbox-01-mobile-rf28.mp4";
 
 interface NftSaleSectionProps {
   shouldLoadVideo?: boolean;
@@ -23,20 +26,10 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [titleVisible, setTitleVisible] = useState(false);
   const [wordOpacities, setWordOpacities] = useState([0, 0, 0]);
-
-  // Mobile detection (< 1024px)
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   // IntersectionObserver on sectionRef (normal-flow wrapper)
   // threshold: 0.5 ensures video only plays when section is meaningfully visible
@@ -117,7 +110,7 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
 
   return (
     <div ref={sectionRef}>
-      <SectionLayout className="max-w-none relative h-screen overflow-hidden">
+      <SectionLayout className="max-w-none relative h-[80vh] landscape:h-screen md:h-screen overflow-hidden">
         {/* Background Video */}
         <div className="absolute inset-0 bg-nasun-black">
           {shouldLoadVideo && (
@@ -132,7 +125,7 @@ function NftSaleSection({ shouldLoadVideo = false }: NftSaleSectionProps) {
               onPlaying={handleVideoPlaying}
               className="absolute left-1/2 -translate-x-1/2 -mt-[10%] max-w-9xl w-full min-h-[120%] object-cover object-center"
             >
-              <source src={battalionNftVideo} type="video/mp4" />
+              <source src={isMobile ? battalionNftVideoMobile : battalionNftVideoDesktop} type="video/mp4" />
             </video>
           )}
         </div>
