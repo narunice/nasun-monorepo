@@ -11,6 +11,7 @@ import type {
   MetaMaskVerifyResponse,
   MetaMaskErrorResponse,
 } from '../types/metamask';
+import i18n from '../i18n';
 
 // 환경변수에서 API URL 가져오기
 const METAMASK_API_BASE_URL = import.meta.env.VITE_METAMASK_AUTH_API;
@@ -45,8 +46,9 @@ export async function requestChallenge(
 ): Promise<MetaMaskChallengeResponse> {
   const url = `${METAMASK_API_BASE_URL}/challenge`;
 
-  const requestBody: MetaMaskChallengeRequest = {
+  const requestBody: MetaMaskChallengeRequest & { lang: string } = {
     walletAddress: walletAddress.toLowerCase(),
+    lang: i18n.language,
   };
 
   try {
@@ -189,6 +191,7 @@ export async function prepareChallenge(): Promise<MetaMaskChallengeResponse> {
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ lang: i18n.language }),
     });
 
     const data = await response.json();

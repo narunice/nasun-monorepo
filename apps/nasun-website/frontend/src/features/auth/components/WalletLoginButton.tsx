@@ -33,6 +33,7 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
     const [isConnecting, setIsConnecting] = useState(false);
     const [connectStep, setConnectStep] = useState(0); // 0=idle, 1=mobile connect, 2=mobile sign, 3=verifying
     const [errorMessage, setErrorMessage] = useState<string>("");
+    const [mobileInstallHint, setMobileInstallHint] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const inFlightRef = useRef(false);
 
@@ -48,6 +49,7 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
 
       const mobile = isMobileBrowser();
       setErrorMessage("");
+      setMobileInstallHint(false);
       setIsConnecting(true);
       setConnectStep(0);
 
@@ -69,7 +71,9 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
           // Mobile 2-trip: connect via SDK deep link, then sign
           logger.log("[WalletLoginButton] Mobile — 2-trip flow");
           setConnectStep(1);
-          const address = await connectMetaMaskSDK();
+          const address = await connectMetaMaskSDK({
+            onAppNotDetected: () => setMobileInstallHint(true),
+          });
           logger.log("[WalletLoginButton] Connected:", address);
           setConnectStep(2);
           signature = await signMessageViaSDK(message, address);
@@ -160,6 +164,20 @@ const WalletLoginButton = forwardRef<HTMLButtonElement, WalletLoginButtonProps>(
         </button>
 
         {errorMessage && <div className="text-sm text-red-400 px-2 py-1">{errorMessage}</div>}
+
+        {isConnecting && mobileInstallHint && (
+          <div className="text-sm text-orange-400 px-2 py-1">
+            MetaMask app not detected on your device.{" "}
+            <a
+              href="https://metamask.io/download/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-orange-300 hover:text-white font-medium"
+            >
+              Install MetaMask
+            </a>
+          </div>
+        )}
       </>
     );
   },

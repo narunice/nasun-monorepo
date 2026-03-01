@@ -28,6 +28,12 @@ let _redirectedForCurrentOp = false;
 const INIT_TIMEOUT_MS = 15_000;
 const CONNECT_TIMEOUT_MS = 120_000;
 const SIGN_TIMEOUT_MS = 60_000;
+const MOBILE_APP_DETECT_TIMEOUT_MS = 8_000;
+
+export interface MobileConnectOptions {
+  /** Called after ~8s if connect hasn't resolved — MetaMask app likely not installed */
+  onAppNotDetected?: () => void;
+}
 
 /**
  * Race a promise against a timeout. On timeout, rejects with given message.
@@ -106,12 +112,27 @@ async function getSDK(): Promise<MetaMaskSDK> {
 
 /**
  * Connect to MetaMask via SDK. Mobile: deep links to MetaMask app.
+ *
+ * @param options.onAppNotDetected - Called after 8s if connect hasn't resolved.
+ *   On mobile, MetaMask deep links resolve in 1-3s if the app is installed.
+ *   If still pending after 8s, the app is likely not installed.
+ *   The connection attempt continues (not cancelled) so the user can install and retry.
  * @returns Connected wallet address (lowercase)
  */
-export async function connectMetaMaskSDK(): Promise<string> {
+export async function connectMetaMaskSDK(
+  options?: MobileConnectOptions,
+): Promise<string> {
   const sdk = await getSDK();
   _activeOperation = true;
   _redirectedForCurrentOp = false;
+
+  let detectTimeoutId: ReturnType<typeof setTimeout> | undefined;
+  if (options?.onAppNotDetected) {
+    detectTimeoutId = setTimeout(() => {
+      options.onAppNotDetected!();
+    }, MOBILE_APP_DETECT_TIMEOUT_MS);
+  }
+
   try {
     const accounts = await withTimeout(
       sdk.connect(),
@@ -124,6 +145,7 @@ export async function connectMetaMaskSDK(): Promise<string> {
     return accounts[0].toLowerCase();
   } finally {
     _activeOperation = false;
+    if (detectTimeoutId) clearTimeout(detectTimeoutId);
   }
 }
 

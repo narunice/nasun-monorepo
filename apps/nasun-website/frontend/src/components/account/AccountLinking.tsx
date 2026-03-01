@@ -100,6 +100,7 @@ export const AccountLinking: React.FC<AccountLinkingProps> = ({ onLinkSuccess })
   const {
     isLinking,
     error,
+    mobileInstallHint,
     handleLinkGoogle,
     handleLinkTwitter,
     handleLinkMetaMask,
@@ -154,6 +155,20 @@ export const AccountLinking: React.FC<AccountLinkingProps> = ({ onLinkSuccess })
 
       {error && (
         <div className="p-3 bg-red-900 text-red-200 rounded-lg">{error}</div>
+      )}
+
+      {isLinking && mobileInstallHint && (
+        <div className="p-3 bg-orange-900/50 text-orange-200 rounded-lg border border-orange-700">
+          MetaMask app not detected on your device.{" "}
+          <a
+            href="https://metamask.io/download/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-orange-100 hover:text-white font-medium"
+          >
+            Install MetaMask
+          </a>
+        </div>
       )}
 
       <div className="space-y-3">

@@ -248,6 +248,7 @@ export const BattalionNftPage: React.FC = () => {
   const handleReconnectX = () => {
     console.log("[BattalionNftPage] X token expired - clearing tokens and returning to Step 2");
     sessionStorage.removeItem("battalion_nft_twitter_session");
+    localStorage.removeItem("battalion_nft_session_id");
     localStorage.removeItem("auth_flow_type");
     setStep(2);
   };

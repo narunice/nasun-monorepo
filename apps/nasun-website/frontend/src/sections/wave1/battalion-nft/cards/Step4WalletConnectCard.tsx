@@ -41,6 +41,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   const [connectStep, setConnectStep] = useState(0); // 0=idle, 1=mobile connect, 2=mobile sign, 3=verifying
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mobileInstallHint, setMobileInstallHint] = useState(false);
   const inFlightRef = useRef(false);
 
   // NOTE: No auto-restore from profile. The user must freshly connect MetaMask
@@ -63,6 +64,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
     try {
       setIsConnecting(true);
       setError(null);
+      setMobileInstallHint(false);
 
       // Desktop: check MetaMask extension is installed
       if (!mobile && !isMetaMaskInstalled()) {
@@ -80,7 +82,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       if (mobile) {
         logger.log("[WalletConnectCard] Mobile detected — using 2-trip flow");
         setConnectStep(1);
-        const address = await connectMetaMaskSDK();
+        const address = await connectMetaMaskSDK({
+          onAppNotDetected: () => setMobileInstallHint(true),
+        });
         logger.log("[WalletConnectCard] Connected:", address);
         setConnectStep(2);
         signature = await signMessageViaSDK(message, address);
@@ -256,6 +260,23 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           {error && (
             <div className="mb-6 p-4 bg-red-900/20 rounded-lg border border-red-700">
               <p className="text-red-200">{error}</p>
+            </div>
+          )}
+
+          {/* Mobile install hint (shown during connection if MetaMask app not detected) */}
+          {isConnecting && mobileInstallHint && (
+            <div className="mb-6 p-4 bg-orange-900/30 rounded-lg border border-orange-600">
+              <p className="text-orange-200">
+                MetaMask app not detected on your device.{" "}
+                <a
+                  href="https://metamask.io/download/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-orange-100 hover:text-white font-medium"
+                >
+                  Install MetaMask
+                </a>
+              </p>
             </div>
           )}
 

@@ -40,19 +40,19 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
   const hasHandledRef = useRef(false);
 
   const handleTwitterCallback = useCallback(
-    async (code: string, state: string, sessionId: string) => {
+    async (code: string, compositeState: string, sessionId: string) => {
       try {
         setIsLoading(true);
         setError(null);
 
-        console.log("[XAuthCard] Handling Twitter callback:", { code, state, sessionId });
+        console.log("[XAuthCard] Handling Twitter callback:", { code, compositeState, sessionId });
 
         const response = await fetch(`${import.meta.env.VITE_TWITTER_AUTH_API}/callback`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ code, state, sessionId, battalionNft: true }),
+          body: JSON.stringify({ code, state: compositeState, sessionId, battalionNft: true }),
         });
 
         if (!response.ok) {
@@ -85,8 +85,9 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         // X access token is now stored server-side (backend proxy pattern)
         // No token handling needed in frontend
 
-        // Clean up
+        // Clean up all storage used by the OAuth flow
         sessionStorage.removeItem("battalion_nft_twitter_session");
+        localStorage.removeItem("battalion_nft_session_id");
         localStorage.removeItem("auth_flow_type");
         window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -112,12 +113,32 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
     // Check if we're coming back from Twitter OAuth redirect
     const url = new URL(window.location.href);
     const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state");
-    const sessionId = sessionStorage.getItem("battalion_nft_twitter_session");
+    const compositeState = url.searchParams.get("state");
 
-    if (code && state && sessionId) {
+    if (!code || !compositeState) return;
+
+    // Primary: extract sessionId from composite state "{randomState}.{sessionId}"
+    // This survives mobile app-switch that clears browser storage
+    let sessionId: string | null = null;
+    const dotIdx = compositeState.lastIndexOf(".");
+    if (dotIdx > 0) {
+      sessionId = compositeState.substring(dotIdx + 1);
+    }
+
+    // Fallback: browser storage (backward compat)
+    if (!sessionId) {
+      sessionId = sessionStorage.getItem("battalion_nft_twitter_session")
+        || localStorage.getItem("battalion_nft_session_id");
+    }
+
+    if (sessionId) {
       hasHandledRef.current = true;
-      handleTwitterCallback(code, state, sessionId);
+      handleTwitterCallback(code, compositeState, sessionId);
+    } else {
+      // All sessionId sources exhausted — show retry prompt
+      hasHandledRef.current = true;
+      setError("Authentication session expired. Please try again.");
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [handleTwitterCallback]);
 
@@ -126,29 +147,17 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
       setIsLoading(true);
       setError(null);
 
-      console.log("[XAuthCard] Initiating X OAuth...");
+      console.log("[XAuthCard] Initiating X OAuth via redirect mode...");
 
-      const response = await fetch(`${import.meta.env.VITE_TWITTER_AUTH_API}/login`);
-
-      if (!response.ok) {
-        throw new Error("Failed to initiate X OAuth");
-      }
-
-      const { authUrl, sessionId } = await response.json();
-
-      console.log("[XAuthCard] X OAuth initiated:", { authUrl, sessionId });
-
-      // Save session ID for callback verification
-      // Security: Using sessionStorage instead of localStorage to reduce XSS exposure
-      sessionStorage.setItem("battalion_nft_twitter_session", sessionId);
-
-      // Non-sensitive flow type flag in localStorage as fallback for mobile browsers
-      // that may lose sessionStorage during OAuth redirect (e.g. Chrome Custom Tabs)
+      // Non-sensitive routing flags in localStorage (survives mobile app-switch)
       localStorage.setItem("auth_flow_type", "battalion_nft");
       localStorage.setItem("auth_provider_preference", "Twitter");
 
-      // Redirect to Twitter OAuth
-      window.location.href = authUrl;
+      // Navigate to backend redirect endpoint. Server-side 302 is less likely to trigger
+      // Android App Links / iOS Universal Links, reducing X app interception.
+      // sessionId is encoded in the OAuth state parameter (composite state),
+      // eliminating browser storage dependency that breaks on mobile app-switch.
+      window.location.href = `${import.meta.env.VITE_TWITTER_AUTH_API}/login?mode=redirect`;
     } catch (err: unknown) {
       const error = err as Error;
       console.error("[XAuthCard] X login error:", error);
