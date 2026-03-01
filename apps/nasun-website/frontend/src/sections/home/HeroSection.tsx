@@ -83,6 +83,9 @@ const animVariants: Variants = {
   }),
 };
 
+// Defer video autoplay on mobile to prioritize critical resources (JS, fonts, poster)
+const isMobileViewport = typeof window !== "undefined" && window.innerWidth < 768;
+
 function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -175,7 +178,18 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
 
   return (
     <div className="w-full relative h-screen overflow-hidden flex items-center justify-center bg-nasun-black">
-      {/* 배경 비디오 */}
+      {/* Poster image — always visible as LCP element while video loads */}
+      <img
+        src="/images/posters/Full-Trailer184s-rf28.webp"
+        alt="Nasun"
+        fetchPriority="high"
+        width={1920}
+        height={1080}
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+
+      {/* Background video — fades in over the poster once playing.
+          On mobile: preload="metadata" to save bandwidth for critical resources. */}
       <video
         ref={videoRef}
         key={videoSrc}
@@ -183,16 +197,14 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
         loop
         muted
         playsInline
-        preload="auto"
-        poster="/images/posters/Full-Trailer184s-rf28.webp"
-        className={`w-full max-w-none h-full object-cover transition-opacity duration-500 ${
+        preload={isMobileViewport ? "metadata" : "auto"}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
           isVideoPlaying ? "opacity-100" : "opacity-0"
         }`}
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
       >
         <source src={videoSrc} type="video/mp4" />
-        Your browser does not support the video tag.
       </video>
 
       {/* 텍스트/이미지 애니메이션 오버레이 */}
@@ -229,9 +241,9 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
         </div>
       )}
 
-      {/* 로딩 오버레이 */}
+      {/* Loading overlay — semi-transparent so poster image remains visible as LCP */}
       {!isVideoPlaying && (
-        <div className="absolute inset-0 bg-nasun-black flex items-center justify-center z-20">
+        <div className="absolute inset-0 bg-nasun-black/40 flex items-center justify-center z-20">
           <InlineLoading message="Loading..." size="lg" />
         </div>
       )}

@@ -194,6 +194,10 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       assetsDir: "assets",
       emptyOutDir: true,
+      // modulePreload disabled: vendor-chart (505KB raw) gets modulepreloaded
+      // and parsed before FCP on slow CPUs, tripling TBT (120ms → 390ms).
+      // With modulePreload off, browser discovers chunks after parsing index.js,
+      // deferring non-critical chunk parsing to after first paint.
       modulePreload: false,
       rollupOptions: {
         output: {
@@ -210,7 +214,11 @@ export default defineConfig(({ mode }) => {
             ],
 
             // Web3 — lazy-loaded via WalletLayer and page-level imports
-            "vendor-web3": ["ethers", "@mysten/dapp-kit"],
+            // NOTE: @mysten/dapp-kit intentionally NOT assigned here.
+            // It imports clsx + zustand internally, which forces vendor-web3
+            // into the critical path (index statically imports shared deps).
+            // Letting Rollup place dapp-kit in lazy chunks naturally avoids this.
+            "vendor-web3": ["ethers"],
 
             // MetaMask SDK — NOT assigned to manual chunk.
             // Let Rollup place it in the lazy chunk (WalletLoginButton).
@@ -228,7 +236,10 @@ export default defineConfig(({ mode }) => {
 
             // Heavy Libraries
             "vendor-framer-motion": ["framer-motion"],
-            "vendor-chart": ["chart.js", "react-chartjs-2", "recharts"],
+            // chart.js/recharts — NOT assigned to manual chunk.
+            // Only used in lazy-loaded pages (Network, MyAccount).
+            // Assigning to manual chunk forces Rollup to place it in index's
+            // dependency graph, adding 505KB raw JS to the critical path.
             "vendor-carousel": ["react-slick", "slick-carousel"],
           },
         },

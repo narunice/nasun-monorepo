@@ -8,8 +8,13 @@ import { JsonLd, NASUN_ORG_SCHEMA } from "../utils/jsonLd";
 
 import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 
-// Lazy load all sections
+// All sections lazy-loaded for optimal code splitting.
+// HeroSection's poster image is preloaded via index.html <link rel="preload">,
+// so LCP is fast even with lazy loading. Static import was reverted because
+// it pulled framer-motion (123KB) into the critical path, tripling TBT.
 const HeroSection = lazy(() => import("../sections/home/HeroSection"));
+
+// Below-fold sections
 const VisionSection = lazy(() => import("../sections/home/VisionSection"));
 const WhatWeBuildingSection = lazy(() => import("../sections/home/WhatWeBuildingSection"));
 const Wave1Section = lazy(() => import("../sections/home/Wave1Section"));
