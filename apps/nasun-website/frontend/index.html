@@ -16,6 +16,14 @@
     <link rel="dns-prefetch" href="https://rpc.devnet.nasun.io" />
     <link rel="dns-prefetch" href="https://accounts.google.com" />
 
+    <!-- Preload hero poster image for fast LCP -->
+    <link rel="preload" as="image" href="/images/posters/Full-Trailer184s-rf28.webp" type="image/webp" fetchpriority="high" />
+
+    <!-- Preload critical fonts to avoid FOUT -->
+    <link rel="preload" as="font" href="/fonts/rubik/Rubik-Regular.woff2" type="font/woff2" crossorigin />
+    <link rel="preload" as="font" href="/fonts/rubik/Rubik-Medium.woff2" type="font/woff2" crossorigin />
+    <link rel="preload" as="font" href="/fonts/changeling-neo/ChangellingNeo-Bold.woff2" type="font/woff2" crossorigin />
+
     <!-- CSP (Content Security Policy) - vite.config.ts에서 자동 주입됨 (inject.tags 사용) -->
 
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
