@@ -97,13 +97,13 @@ export default function MobileNav({
             <img
               src="/nasun_symbol_white.svg"
               alt="NASUN"
-              className="h-8 w-auto transition-all dark:hidden"
+              className="h-6 w-auto transition-all dark:hidden"
             />
             {/* 검은색 심볼 */}
             <img
               src="/nasun_symbol_black.svg"
               alt="NASUN"
-              className="h-8 w-auto transition-all block"
+              className="h-6 w-auto transition-all block"
             />
           </Link>
           <button

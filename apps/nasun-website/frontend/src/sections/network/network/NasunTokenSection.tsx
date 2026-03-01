@@ -40,7 +40,7 @@ function NasunTokenSection() {
                 description={t(`token.uses.${key}.description`)}
                 descriptionClassName="!mb-0"
                 hideDivider
-                className="!bg-[#212E57]/50 !border-nasun-nw4/30 min-h-[160px] xl:min-h-[192px] flex flex-col justify-center !py-6 md:!py-8"
+                className="!bg-[#212E57]/50 !border-nasun-nw4/30 min-h-[160px] xl:min-h-[192px] flex flex-col justify-center !py-6 md:!py-8 hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]"
               />
             ))}
           </div>
