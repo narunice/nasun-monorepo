@@ -23,7 +23,7 @@ import { MarketDetailDark } from "./diagrams/MarketDetailDark";
 
 function SectionDivider() {
   return (
-    <div className="w-full max-w-2xl mx-auto px-8">
+    <div className="w-full max-w-2xl mx-auto px-8 -my-1 md:-my-1.5 lg:-my-2">
       <div className="h-px bg-gradient-to-r from-transparent via-nasun-br-1/20 to-transparent" />
     </div>
   );
@@ -105,9 +105,9 @@ export default function BaramDarkContent() {
   const { t } = useTranslation("baram");
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6 lg:gap-8">
+    <div className="flex flex-col gap-2 md:gap-3 lg:gap-4">
       {/* ========== HERO ========== */}
-      <SectionLayout className="!pt-32 md:!pt-44 !pb-12 md:!pb-18 relative overflow-hidden">
+      <SectionLayout className="!pt-32 md:!pt-44 !pb-8 md:!pb-12 relative overflow-hidden">
         <div className="text-center max-w-3xl mx-auto relative z-10">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -131,7 +131,7 @@ export default function BaramDarkContent() {
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
-            className="h-px w-32 mx-auto my-14 md:my-16 lg:my-20"
+            className="h-px w-32 mx-auto my-8 md:my-10 lg:my-12"
             style={{
               backgroundImage:
                 "linear-gradient(to right, transparent, rgba(167,215,191,0.6), transparent)",
@@ -169,7 +169,7 @@ export default function BaramDarkContent() {
 
       {/* ========== THE PROBLEM ========== */}
       <ScrollReveal>
-        <SectionLayout className="!max-w-7xl mx-auto">
+        <SectionLayout className="!max-w-7xl mx-auto !py-2 md:!py-4 lg:!py-5 xl:!py-6">
           <div className="w-full">
             <div className="mb-6">
               <SectionLabel text={t("problem.sectionLabel")} className="text-br-3" />
@@ -183,7 +183,7 @@ export default function BaramDarkContent() {
       {/* ========== FOUR GUARANTEES ========== */}
       <div className="bg-gradient-to-r from-nasun-br-1d/[0.06] via-transparent to-nasun-br-3d/[0.06]">
         <ScrollReveal>
-          <SectionLayout className="!max-w-7xl mx-auto">
+          <SectionLayout className="!max-w-7xl mx-auto !py-2 md:!py-4 lg:!py-5 xl:!py-6">
             <div className="w-full">
               <div className="mb-6">
                 <SectionLabel text={t("guarantees.sectionLabel")} className="text-br-1" />
@@ -199,7 +199,7 @@ export default function BaramDarkContent() {
 
       {/* ========== HOW BARAM WORKS ========== */}
       <ScrollReveal>
-        <SectionLayout className="!max-w-7xl mx-auto">
+        <SectionLayout className="!max-w-7xl mx-auto !py-2 md:!py-4 lg:!py-5 xl:!py-6">
           <DiagramSection
             title={t("flow.sectionLabel")}
             headline={t("flow.headline")}
@@ -215,7 +215,7 @@ export default function BaramDarkContent() {
 
       {/* ========== TRUST & SECURITY ========== */}
       <ScrollReveal>
-        <SectionLayout className="!max-w-7xl mx-auto">
+        <SectionLayout className="!max-w-7xl mx-auto !py-2 md:!py-4 lg:!py-5 xl:!py-6">
           <DiagramSection
             title={t("trust.sectionLabel")}
             headline={t("trust.headline")}
@@ -249,7 +249,7 @@ export default function BaramDarkContent() {
 
       {/* ========== MARKET & GTM ========== */}
       <ScrollReveal>
-        <SectionLayout className="!max-w-7xl mx-auto">
+        <SectionLayout className="!max-w-7xl mx-auto !py-2 md:!py-4 lg:!py-5 xl:!py-6">
           <DiagramSection
             title={t("market.sectionLabel")}
             headline={t("market.headline")}

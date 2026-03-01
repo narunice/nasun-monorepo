@@ -245,7 +245,7 @@
     "reload": "Refresh Page"
   },
   "forBuilders": {
-    "openDevnet": "Open Devnet & Wallet",
+    "openDevnet": "Devnet & Wallet",
     "governance": "Governance"
   }
 }
