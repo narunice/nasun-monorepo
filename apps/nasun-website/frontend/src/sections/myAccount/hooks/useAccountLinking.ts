@@ -3,16 +3,14 @@ import logger from "@/lib/logger";
 import { User } from "@/types/user";
 import { buildGoogleAuthUrl } from "@/features/auth/utils/googleAuthUrl";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
+import { prepareChallenge, connectVerify } from "@/services/metamaskApi";
+import { connectWallet, signMessage, isMetaMaskInstalled } from "@/utils/metamaskUtils";
 import {
-  authenticateWithMetaMask,
-} from "@/services/metamaskApi";
-import {
-  connectWallet,
-  signMessage,
-  isMetaMaskInstalled,
-  isCorrectNetwork,
-  switchNetwork,
-} from "@/utils/metamaskUtils";
+  connectMetaMaskSDK,
+  signMessageViaSDK,
+  disconnectMetaMaskSDK,
+} from "@/lib/wallet/metamaskSdkProvider";
+import { isMobileBrowser } from "@/utils/mobileDetect";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 
 interface UseAccountLinkingProps {
@@ -22,6 +20,7 @@ interface UseAccountLinkingProps {
 export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
   const [isLinking, setIsLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mobileInstallHint, setMobileInstallHint] = useState(false);
 
   const handleLinkGoogle = async () => {
     setIsLinking(true);
@@ -55,14 +54,16 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       if (!response.ok) throw new Error("Failed to initialize Twitter OAuth");
 
       const data = await response.json();
-      sessionStorage.setItem(
-        "twitter_link_session",
-        JSON.stringify({
-          sessionId: data.sessionId,
-          state: data.state,
-          primaryIdentityId: user?.identityId,
-        })
-      );
+      const linkData = JSON.stringify({
+        sessionId: data.sessionId,
+        state: data.state,
+        primaryIdentityId: user?.identityId,
+      });
+
+      // Primary: sessionStorage
+      sessionStorage.setItem("twitter_link_session", linkData);
+      // Fallback: localStorage survives mobile app-switch (Chrome Custom Tabs, iOS Safari)
+      localStorage.setItem("twitter_link_session", linkData);
       localStorage.setItem("auth_provider_preference", "Twitter");
       window.location.href = data.authUrl;
     } catch (err) {
@@ -75,22 +76,34 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
   const handleLinkMetaMask = async () => {
     setIsLinking(true);
     setError(null);
+    setMobileInstallHint(false);
+    const mobile = isMobileBrowser();
+
     try {
-      if (!isMetaMaskInstalled()) {
-        throw new Error("MetaMask is not installed. Please install MetaMask extension.");
+      // Desktop: check MetaMask extension is installed
+      if (!mobile && !isMetaMaskInstalled()) {
+        throw new Error("MetaMask is not installed. Please install MetaMask browser extension.");
       }
 
-      const walletAddress = await connectWallet();
-      const expectedChainId = parseInt(import.meta.env.VITE_ETHEREUM_CHAIN_ID || "1", 10);
-      const correctNetwork = await isCorrectNetwork(expectedChainId);
-      if (!correctNetwork) {
-        await switchNetwork(expectedChainId);
+      // Step 1: Get server challenge (no wallet address needed)
+      const { nonce, message } = await prepareChallenge();
+
+      // Step 2: Connect + sign (mobile: SDK deep link, desktop: extension popup)
+      let signature: string;
+      if (mobile) {
+        const address = await connectMetaMaskSDK({
+          onAppNotDetected: () => setMobileInstallHint(true),
+        });
+        signature = await signMessageViaSDK(message, address);
+      } else {
+        const address = await connectWallet();
+        signature = await signMessage(message, address);
       }
 
-      const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
-        return await signMessage(message, walletAddress);
-      });
+      // Step 3: Server verifies signature, recovers address
+      const authResult = await connectVerify(signature, nonce);
 
+      // Step 4: Link accounts
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) throw new Error("Link Account API is not configured");
 
@@ -98,29 +111,42 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
         throw new Error("Session expired. Please sign in again to link accounts.");
       }
 
-      const linkHeaders: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${user.cognitoToken}`,
-      };
+      // Skip self-linking (same identity)
+      if (user.identityId !== authResult.identityId) {
+        const linkResponse = await fetch(linkAccountApi, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${user.cognitoToken}`,
+          },
+          body: JSON.stringify({
+            primaryIdentityId: user.identityId,
+            secondaryIdentityId: authResult.identityId,
+            secondaryProvider: "MetaMask",
+          }),
+        });
 
-      const linkResponse = await fetch(linkAccountApi, {
-        method: "POST",
-        headers: linkHeaders,
-        body: JSON.stringify({
-          primaryIdentityId: user?.identityId,
-          secondaryIdentityId: authResult.identityId,
-          secondaryProvider: "MetaMask",
-        }),
-      });
-
-      if (!linkResponse.ok) throw new Error("Failed to link MetaMask account");
+        if (!linkResponse.ok) throw new Error("Failed to link MetaMask account");
+      }
 
       await refreshAndSaveUserProfile(user!.identityId);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to link MetaMask account";
+      const errorMsg = err instanceof Error ? err.message : "Failed to link MetaMask account";
       logger.error("Failed to link MetaMask account:", err);
-      setError(message);
-      alert(message);
+
+      let userMessage = errorMsg;
+      if (errorMsg.includes("not installed")) {
+        userMessage = mobile
+          ? "Please install the MetaMask app to continue."
+          : "MetaMask is not installed. Please install MetaMask extension.";
+      } else if (errorMsg.includes("rejected")) {
+        userMessage = "You rejected the request. Please try again.";
+      } else if (errorMsg.includes("timed out")) {
+        userMessage = "Connection timed out. Please try again.";
+        await disconnectMetaMaskSDK();
+      }
+
+      setError(userMessage);
     } finally {
       setIsLinking(false);
     }
@@ -175,6 +201,7 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
   return {
     isLinking,
     error,
+    mobileInstallHint,
     handleLinkGoogle,
     handleLinkTwitter,
     handleLinkMetaMask,

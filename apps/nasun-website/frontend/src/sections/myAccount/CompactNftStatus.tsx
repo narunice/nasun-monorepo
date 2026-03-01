@@ -15,12 +15,16 @@ import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
 import { withdrawUserApi } from "../../services/battalionNftApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
-import { authenticateWithMetaMask } from "../../services/metamaskApi";
-import { connectWallet, signMessage } from "../../utils/metamaskUtils";
-import { connectMetaMaskSDK, signMessageViaSDK } from "../../lib/wallet/metamaskSdkProvider";
-import { isMobileBrowser } from "../../utils/mobileDetect";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface CompactNftStatusProps {
   walletAddress: string | null | undefined;
@@ -76,6 +80,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   const { user } = useAuth();
   const { reset: resetBattalionStore } = useBattalionNftStore();
   const [isBattalionWithdrawing, setIsBattalionWithdrawing] = useState(false);
+  const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
 
   // Battalion NFT Status — pass twitterId for xUserId fallback lookup
   // Check both direct twitterId (Twitter login) and linkedAccounts (MetaMask login with linked Twitter)
@@ -95,43 +100,21 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
 
   /**
    * Battalion NFT Withdraw Handler
-   * Authenticates with MetaMask to get HMAC wallet proof before withdrawing.
+   * Uses xUserId matching instead of MetaMask signature for better mobile UX.
    */
   const handleBattalionWithdraw = async () => {
     const registeredWallet = battalionStatus?.walletAddress;
-    if (!registeredWallet || isBattalionWithdrawing) return;
-
-    if (!confirm("Are you sure you want to withdraw from Battalion NFT Allowlist?")) {
-      return;
-    }
+    if (!registeredWallet || !effectiveXUserId || !user?.cognitoToken || isBattalionWithdrawing) return;
 
     try {
       setIsBattalionWithdrawing(true);
-
-      // Authenticate with MetaMask to get wallet proof
-      // Mobile: use MetaMask SDK (Socket.io relay), Desktop: use injected provider
-      const mobile = isMobileBrowser();
-      const connectedAddress = mobile ? await connectMetaMaskSDK() : await connectWallet();
-      if (connectedAddress.toLowerCase() !== registeredWallet.toLowerCase()) {
-        toast.error(`Please connect the registered wallet (${registeredWallet.slice(0, 6)}...${registeredWallet.slice(-4)}).`);
-        return;
-      }
-
-      const authResult = await authenticateWithMetaMask(connectedAddress, async (message) => {
-        return mobile ? await signMessageViaSDK(message, connectedAddress) : await signMessage(message, connectedAddress);
-      });
-
-      if (!authResult.walletProof || !authResult.proofIssuedAt) {
-        throw new Error("Failed to get wallet proof");
-      }
-
       await withdrawUserApi({
         walletAddress: registeredWallet.toLowerCase(),
-        walletProof: authResult.walletProof,
-        proofIssuedAt: authResult.proofIssuedAt,
-      });
+        xUserId: effectiveXUserId,
+      }, user.cognitoToken);
       resetBattalionStore();
       refetchBattalion();
+      setShowWithdrawDialog(false);
       toast.success("Successfully withdrawn from Battalion NFT Allowlist.");
     } catch (err) {
       console.error("[CompactNftStatus] Battalion withdraw error:", err);
@@ -151,18 +134,51 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
-      <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
-      <div className="flex flex-col gap-3">
-        <NftStatusItem
-          title="Battalion NFT Allowlist"
-          isRegistered={isBattalionRegistered}
-          isLoading={isBattalionLoading || isBattalionWithdrawing}
-          onJoin={() => navigate("/wave1/battalion-nft")}
-          onWithdraw={handleBattalionWithdraw}
-        />
-      </div>
-    </OuterBox>
+    <>
+      <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+        <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
+        <div className="flex flex-col gap-3">
+          <NftStatusItem
+            title="Battalion NFT Allowlist"
+            isRegistered={isBattalionRegistered}
+            isLoading={isBattalionLoading || isBattalionWithdrawing}
+            onJoin={() => navigate("/wave1/battalion-nft")}
+            onWithdraw={() => setShowWithdrawDialog(true)}
+          />
+        </div>
+      </OuterBox>
+
+      {/* Withdraw Confirmation Dialog */}
+      <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
+        <DialogContent className="bg-gray-900 border-nasun-c5/30">
+          <DialogHeader>
+            <DialogTitle className="text-nasun-white">Withdraw from Allowlist</DialogTitle>
+            <DialogDescription className="text-nasun-white/70">
+              Are you sure you want to withdraw from the Battalion NFT Allowlist?
+              You can re-register later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="filledOutlineC7"
+              size="sm"
+              onClick={() => setShowWithdrawDialog(false)}
+              disabled={isBattalionWithdrawing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="filledOutlineScarlet"
+              size="sm"
+              onClick={handleBattalionWithdraw}
+              disabled={isBattalionWithdrawing}
+            >
+              {isBattalionWithdrawing ? "Withdrawing..." : "Withdraw"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

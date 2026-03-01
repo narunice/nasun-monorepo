@@ -124,7 +124,7 @@ export function ConnectMetaMaskWallet() {
 
   // Use the unified MetaMask connection hook in 'login' mode
   // MY WALLET STATUS: Login with MetaMask (change provider to "MetaMask")
-  const { handleConnect, isConnecting } = useMetaMaskConnection({
+  const { handleConnect, isConnecting, mobileInstallHint } = useMetaMaskConnection({
     mode: "login",
     onSuccess: (address) => {
       console.log("MetaMask login successful:", address);
@@ -222,17 +222,32 @@ export function ConnectMetaMaskWallet() {
           isOnlyLoginMethod={isOnlyLoginMethod}
         />
       ) : (
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleConnectWithCheck}
-          disabled={isConnecting}
-          className="w-full md:max-w-[60%]"
-        >
-          {isConnecting
-            ? t("wallet.connecting") || "Connecting..."
-            : t("wallet.connect_metamask_wallet") || "Connect MetaMask"}
-        </Button>
+        <div className="w-full md:max-w-[60%] space-y-1">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleConnectWithCheck}
+            disabled={isConnecting}
+            className="w-full"
+          >
+            {isConnecting
+              ? t("wallet.connecting") || "Connecting..."
+              : t("wallet.connect_metamask_wallet") || "Connect MetaMask"}
+          </Button>
+          {isConnecting && mobileInstallHint && (
+            <div className="text-sm text-orange-400 px-2 py-1">
+              MetaMask app not detected on your device.{" "}
+              <a
+                href="https://metamask.io/download/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-orange-300 hover:text-white font-medium"
+              >
+                Install MetaMask
+              </a>
+            </div>
+          )}
+        </div>
       )}
     </>
   );

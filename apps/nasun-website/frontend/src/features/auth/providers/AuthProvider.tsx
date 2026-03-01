@@ -48,7 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const url = new URL(window.location.href);
 
     // Check for account linking flow
-    const twitterLinkSession = sessionStorage.getItem("twitter_link_session");
+    // Fallback: localStorage survives mobile app-switch that clears sessionStorage
+    const twitterLinkSession = sessionStorage.getItem("twitter_link_session")
+      || localStorage.getItem("twitter_link_session");
     const googleLinkSession = sessionStorage.getItem("google_link_session");
     const isLinkingFlow = !!twitterLinkSession || !!googleLinkSession;
 
@@ -105,10 +107,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cognitoToken = result.cognitoToken;
         userInfo = result.userInfo;
       } else {
-        const sessionId =
-          isLinkingFlow && twitterLinkSession
+        // Primary: parse sessionId from composite state "{randomState}.{sessionId}"
+        // This survives mobile app-switch that clears sessionStorage/localStorage
+        let sessionId = "";
+        const compositeState = url.searchParams.get("state") || "";
+        const dotIdx = compositeState.lastIndexOf(".");
+        if (dotIdx > 0) {
+          sessionId = compositeState.substring(dotIdx + 1);
+        }
+
+        // Fallback: browser storage (backward compat + account linking)
+        if (!sessionId) {
+          sessionId = isLinkingFlow && twitterLinkSession
             ? JSON.parse(twitterLinkSession).sessionId
             : localStorage.getItem("twitter_oauth_session") || "";
+        }
         const result = await handleTwitterOAuthRedirect(url, sessionId);
         identityId = result.identityId;
         cognitoToken = result.cognitoToken;
@@ -172,6 +185,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("auth_provider_preference");
       localStorage.removeItem("twitter_oauth_session");
       localStorage.removeItem("auth_flow_type");
+      localStorage.removeItem("battalion_nft_session_id");
+      localStorage.removeItem("twitter_link_session");
       setIsLoading(false);
       oauthProcessingRef.current = false;
 
@@ -220,20 +235,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem("auth_provider_preference", "Twitter");
     localStorage.setItem("auth_return_to", window.location.pathname);
 
-    try {
-      const response = await fetch(`${import.meta.env.VITE_TWITTER_AUTH_API}/login`);
-      if (!response.ok) {
-        throw new Error(`Twitter login request failed: ${response.status}`);
-      }
-      const { authUrl, sessionId } = await response.json();
-
-      localStorage.setItem("twitter_oauth_session", sessionId);
-      window.location.href = authUrl;
-    } catch (error) {
-      const formattedError = new Error(formatErrorMessage(error));
-      setError(formattedError);
-      setIsLoading(false);
-    }
+    // Navigate to backend redirect endpoint. Server-side 302 redirect is less likely
+    // to trigger Android App Links / iOS Universal Links, reducing X app interception.
+    // sessionId is encoded in the OAuth state parameter (composite state), eliminating
+    // browser storage dependency that breaks on mobile app-switch.
+    window.location.href = `${import.meta.env.VITE_TWITTER_AUTH_API}/login?mode=redirect`;
   };
 
   const signInWithMetaMask = async (identityId: string, cognitoToken: string | undefined, walletAddress: string) => {
@@ -295,6 +301,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Battalion NFT state
       localStorage.removeItem("battalion-nft-state");
       localStorage.removeItem("auth_flow_type");
+      localStorage.removeItem("battalion_nft_session_id");
+      localStorage.removeItem("twitter_link_session");
       sessionStorage.removeItem("battalion_nft_twitter_session");
 
       // Clear all remaining sessionStorage items
