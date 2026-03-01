@@ -560,8 +560,8 @@
 
 /* Global scrollbar - subtle default for all scrollable elements */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -569,8 +569,8 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(160, 160, 160, 0.5);
-  border-radius: 3px;
+  background: rgba(170, 170, 170, 0.5);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -587,8 +587,8 @@
 
 /* Custom scrollbar - subtle and modern */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
