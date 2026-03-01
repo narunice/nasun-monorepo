@@ -4,6 +4,7 @@
  * API client for the season-based leaderboard system.
  */
 
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import type {
   Season,
   SeasonLeaderboardResponse,
@@ -53,7 +54,7 @@ export async function getSeasonLeaderboard(
 
   const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard?${searchParams}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ export async function getTopClimbersV3(
 
   const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard/top-climbers?${searchParams}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -106,7 +107,7 @@ export async function getTopClimbersV3(
 export async function getSeasons(): Promise<Season[]> {
   const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard?listSeasons=true`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -136,7 +137,7 @@ export async function getFeaturedFeed(seasonId?: string): Promise<FeaturedFeedRe
 
   const url = `${LEADERBOARD_V3_API_URL}/v3/feed/featured?${searchParams}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ export async function searchAccounts(params: {
 
   const url = `${LEADERBOARD_V3_API_URL}/v3/accounts/search?${searchParams}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -204,7 +205,7 @@ export async function getMyRank(params: {
 
   const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard/my-rank?${searchParams}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -237,7 +238,7 @@ export async function getRankHistory(params: {
 
   const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard/rank-history?${searchParams}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',

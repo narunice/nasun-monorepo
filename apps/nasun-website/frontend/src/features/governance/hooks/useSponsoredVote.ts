@@ -18,6 +18,7 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { fromBase64, toBase64 } from "@mysten/bcs";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "@/store/userStore";
+import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
 
@@ -51,7 +52,7 @@ export function useSponsoredVote() {
       }
 
       // 1. Request Certificate from API
-      const certResponse = await fetch(`${API_URL}/certificate`, {
+      const certResponse = await fetchWithTimeout(`${API_URL}/certificate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,7 +106,7 @@ export function useSponsoredVote() {
       const suiClient = new SuiClient({ url: SUI_RPC_URL });
       const kindBytes = await tx.build({ client: suiClient, onlyTransactionKind: true });
 
-      const sponsorResponse = await fetch(`${API_URL}/sponsor`, {
+      const sponsorResponse = await fetchWithTimeout(`${API_URL}/sponsor`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

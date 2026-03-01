@@ -19,8 +19,13 @@ import {
   ApiError,
 } from "../types/battalion-nft";
 import i18n from "../i18n";
+import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 const API_BASE_URL = import.meta.env.VITE_BATTALION_NFT_API || "";
+
+// Verify eligibility may invoke 3-Tier X API flow (up to 30s)
+const VERIFY_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 if (!API_BASE_URL) {
   console.warn("[battalionNftApi] VITE_BATTALION_NFT_API is not configured");
@@ -74,13 +79,13 @@ export async function verifyEligibilityApi(
     if (import.meta.env.DEV) console.log("[battalionNftApi] Verifying eligibility:", request);
 
     // X access token is now stored server-side — no frontend token handling needed
-    const response = await fetch(`${API_BASE_URL}/event/verify`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/event/verify`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
-    });
+    }, VERIFY_TIMEOUT_MS);
 
     const data = await handleResponse<VerifyEligibilityResponse>(response);
 
@@ -114,13 +119,13 @@ export async function registerUserApi(request: RegisterUserRequest): Promise<Reg
   try {
     if (import.meta.env.DEV) console.log("[battalionNftApi] Registering user:", request);
 
-    const response = await fetch(`${API_BASE_URL}/event/register`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/event/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
-    });
+    }, DEFAULT_TIMEOUT_MS);
 
     const data = await handleResponse<RegisterUserResponse>(response);
 
@@ -167,7 +172,7 @@ export async function checkBattalionNftStatus(
     if (xUserId) {
       params.set("xUserId", xUserId);
     }
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${API_BASE_URL}/event/status?${params.toString()}`,
       {
         method: "GET",
@@ -175,6 +180,7 @@ export async function checkBattalionNftStatus(
           "Content-Type": "application/json",
         },
       },
+      DEFAULT_TIMEOUT_MS,
     );
 
     const data = await handleResponse<BattalionNftStatusResponse>(response);
@@ -209,13 +215,13 @@ export async function withdrawUserApi(request: WithdrawUserRequest): Promise<Wit
   try {
     if (import.meta.env.DEV) console.log("[battalionNftApi] Withdrawing user:", request.walletAddress);
 
-    const response = await fetch(`${API_BASE_URL}/event/withdraw`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/event/withdraw`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
-    });
+    }, DEFAULT_TIMEOUT_MS);
 
     const data = await handleResponse<WithdrawUserResponse>(response);
 
