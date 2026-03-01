@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -14,101 +13,19 @@ import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as path from 'path';
 
 export interface FollowerStackProps extends cdk.StackProps {
-  readonly targetAccounts: string; // JSON array of { userId, username }
   readonly twitterTokensSecretName: string;
 }
 
 export class FollowerStack extends cdk.Stack {
-  public readonly followersTable: dynamodb.Table;
-  public readonly collectFollowersFunction: lambda.Function;
   public readonly refreshOAuth2TokenFunction: lambda.Function;
 
   constructor(scope: Construct, id: string, props: FollowerStackProps) {
     super(scope, id, props);
 
-    // ========================================
-    // DynamoDB Table: NasunTargetFollowers
-    // ========================================
-    this.followersTable = new dynamodb.Table(this, 'TargetFollowersTable', {
-      tableName: 'NasunTargetFollowers',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN, // Retain data on stack deletion
-      pointInTimeRecoverySpecification: {
-        pointInTimeRecoveryEnabled: true,
-      },
-    });
-
-    // GSI for querying by status (active/unfollowed)
-    this.followersTable.addGlobalSecondaryIndex({
-      indexName: 'status-lastSeenAt-index',
-      partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'lastSeenAt', type: dynamodb.AttributeType.STRING },
-      projectionType: dynamodb.ProjectionType.ALL,
-    });
-
-    // ========================================
-    // Lambda Function: collect-followers
-    // ========================================
-    this.collectFollowersFunction = new NodejsFunction(this, 'CollectFollowersFunction', {
-      functionName: 'nasun-collect-followers',
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(__dirname, '..', 'lambda-src', 'collect-followers', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath: path.join(__dirname, '..', 'pnpm-lock.yaml'),
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        externalModules: [
-          '@aws-sdk/client-dynamodb',
-          '@aws-sdk/lib-dynamodb',
-          '@aws-sdk/client-secrets-manager',
-        ],
-      },
-      timeout: cdk.Duration.minutes(10), // 10 minutes for large follower lists
-      memorySize: 512,
-      environment: {
-        TARGET_ACCOUNTS: props.targetAccounts,
-        FOLLOWERS_TABLE_NAME: this.followersTable.tableName,
-        TWITTER_TOKENS_SECRET_NAME: props.twitterTokensSecretName,
-        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
-        NODE_OPTIONS: '--enable-source-maps',
-      },
-      logRetention: logs.RetentionDays.ONE_MONTH,
-    });
-
-    // Grant DynamoDB permissions
-    this.followersTable.grantReadWriteData(this.collectFollowersFunction);
-
-    // Grant Secrets Manager read access for bearer token
-    this.collectFollowersFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${props.twitterTokensSecretName}-*`,
-        ],
-      }),
-    );
-
-    // ========================================
-    // EventBridge Rule: Daily Schedule (09:00 UTC)
-    // ========================================
-    const dailyScheduleRule = new events.Rule(this, 'DailyFollowerCollectRule', {
-      ruleName: 'nasun-daily-follower-collect',
-      description: 'Trigger follower collection Lambda daily at 09:00 UTC',
-      schedule: events.Schedule.cron({
-        hour: '9',
-        minute: '0',
-      }),
-    });
-
-    dailyScheduleRule.addTarget(
-      new targets.LambdaFunction(this.collectFollowersFunction, {
-        retryAttempts: 2,
-      })
-    );
+    // collect-followers Lambda, EventBridge rule, and NasunTargetFollowers DynamoDB table
+    // were removed. The daily follower collection was the primary X API cost driver
+    // ($0.010/user object, ~$10/day for ~1150 followers) with no downstream consumers.
+    // The physical DynamoDB table is retained in AWS (RemovalPolicy.RETAIN was set).
 
     // ========================================
     // OAuth2 Token Refresh Lambda
@@ -274,21 +191,6 @@ export class FollowerStack extends cdk.Stack {
     // ========================================
     // Outputs
     // ========================================
-    new cdk.CfnOutput(this, 'FollowersTableName', {
-      value: this.followersTable.tableName,
-      description: 'DynamoDB table for storing follower data',
-    });
-
-    new cdk.CfnOutput(this, 'CollectFollowersFunctionArn', {
-      value: this.collectFollowersFunction.functionArn,
-      description: 'Lambda function ARN for collecting followers',
-    });
-
-    new cdk.CfnOutput(this, 'DailyScheduleRuleName', {
-      value: dailyScheduleRule.ruleName,
-      description: 'EventBridge rule for daily scheduling',
-    });
-
     new cdk.CfnOutput(this, 'RefreshOAuth2TokenFunctionArn', {
       value: this.refreshOAuth2TokenFunction.functionArn,
       description: 'Lambda function ARN for OAuth2 token refresh',
