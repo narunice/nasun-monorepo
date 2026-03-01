@@ -9,10 +9,16 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV2 } from "@/components/ui/button-v2";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
 const gensolVideo = "/videos/Trakker-Flying-rf28.mp4";
+const gensolVideoMobile = "/videos/Trakker-Flying-mobile-rf28.mp4";
 const baramVideo = "/videos/Baram-Ui-rf28.mp4";
+const baramVideoMobile = "/videos/Baram-Ui-mobile-rf28.mp4";
 const padoVideo = "/videos/Pado-Ui-Short-rf28.mp4";
+const padoVideoMobile = "/videos/Pado-Ui-Short-mobile-rf28.mp4";
 const explorerVideo = "/videos/Network-Explorer-Ui-rf28.mp4";
+const explorerVideoMobile = "/videos/Network-Explorer-Ui-mobile-rf28.mp4";
 
 const CustomArrow = ({
   onClick,
@@ -56,6 +62,7 @@ type SlideData = {
     | "nasun-network";
   link: string;
   video?: string;
+  mobileVideo?: string;
   poster?: string;
   videoStartTime?: number;
   contentPosition?: ContentPosition;
@@ -71,6 +78,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "sf-orange",
     link: "/ip/gensol",
     video: gensolVideo,
+    mobileVideo: gensolVideoMobile,
     poster: "/images/posters/Trakker-Flying-rf28.webp",
     contentPosition: "right-center",
   },
@@ -83,6 +91,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "baram",
     link: "/ecosystem/baram",
     video: baramVideo,
+    mobileVideo: baramVideoMobile,
     poster: "/images/posters/Baram-Ui-rf28.webp",
   },
   {
@@ -94,6 +103,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "pado",
     link: "/ecosystem/pado",
     video: padoVideo,
+    mobileVideo: padoVideoMobile,
     poster: "/images/posters/Pado-Ui-Short-rf28.webp",
   },
   {
@@ -105,6 +115,7 @@ const SLIDES: SlideData[] = [
     buttonVariant: "nasun-network",
     link: "/network/nsn",
     video: explorerVideo,
+    mobileVideo: explorerVideoMobile,
     poster: "/images/posters/Network-Explorer-Ui-rf28.webp",
   },
 ];
@@ -117,6 +128,7 @@ function WhatWeBuildingSection() {
   const activeSlideRef = useRef(0);
   const [hasEnteredView, setHasEnteredView] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const isMobile = useIsMobile();
 
   // Start video playback only when the section enters the viewport
   useEffect(() => {
@@ -290,6 +302,7 @@ function WhatWeBuildingSection() {
                       {/* Background Video */}
                       {slide.video && (
                         <video
+                          key={isMobile && slide.mobileVideo ? `${slide.id}-mobile` : slide.id}
                           ref={(el) => {
                             if (!el) return;
                             if (slide.videoStartTime && el.currentTime === 0) {
@@ -308,7 +321,7 @@ function WhatWeBuildingSection() {
                           }}
                           className={`absolute inset-0 w-full h-full ${slide.id === "baram" ? "object-contain" : "object-cover"} ${slide.id === "pado" ? "object-top" : ""}`}
                         >
-                          <source src={slide.video} type="video/mp4" />
+                          <source src={isMobile && slide.mobileVideo ? slide.mobileVideo : slide.video} type="video/mp4" />
                         </video>
                       )}
 

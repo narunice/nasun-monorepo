@@ -18,7 +18,9 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui";
-const progressVideo = "/videos/Progress-Video-Final-rf36.mp4";
+import { useIsMobile } from "@/hooks/useIsMobile";
+const progressVideoDesktop = "/videos/Progress-Video-Final-rf36.mp4";
+const progressVideoMobile = "/videos/Progress-Video-Final-mobile-rf28.mp4";
 
 /**
  * SpectraSection - Unified Spectra Game Page
@@ -28,6 +30,8 @@ const progressVideo = "/videos/Progress-Video-Final-rf36.mp4";
  */
 function SpectraSection() {
   const { t } = useTranslation("spectra");
+  const isMobile = useIsMobile();
+  const progressVideo = isMobile ? progressVideoMobile : progressVideoDesktop;
 
   return (
     <SectionLayout className="!max-w-6xl">

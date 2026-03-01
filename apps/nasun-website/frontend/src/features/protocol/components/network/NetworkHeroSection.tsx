@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "../../../ui/InlineLoading";
+import { useIsMobile } from "@/hooks/useIsMobile";
 const nsnNetworkVideo = "/videos/Nsn-Network-Section-rf28.mp4";
-const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-Mobile-rf27.mp4";
+const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-mobile-rf28.mp4";
 
 interface NetworkHeroSectionProps {
   onVideoReady?: () => void;
@@ -17,21 +18,7 @@ interface NetworkHeroSectionProps {
 function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Resize observer - 모바일/데스크탑 동영상 전환
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // md breakpoint
-    };
-
-    handleResize(); // 초기 설정
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+  const isMobile = useIsMobile();
 
   // 비디오 소스 변경 시 로딩 상태 리셋
   useEffect(() => {
@@ -67,7 +54,7 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
   // 로딩 완료 후: 정상 섹션으로 전환
   const containerClassName = !isVideoReady
     ? "fixed inset-0 z-40 bg-nasun-black h-screen overflow-hidden flex items-center justify-center"
-    : "relative !p-0 -mt-14 md:mt-0";
+    : `relative !p-0 -mt-14 md:mt-0 overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
 
   return (
     <SectionLayout className={containerClassName}>
@@ -92,7 +79,7 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
         } transition-opacity duration-500`}
         style={{
           objectFit: isMobile ? "cover" : "contain",
-          objectPosition: isMobile ? "center center" : "center center",
+          objectPosition: isMobile ? "left center" : "center center",
         }}
       >
         <source src={isMobile ? nsnNetworkVideoMobile : nsnNetworkVideo} type="video/mp4" />

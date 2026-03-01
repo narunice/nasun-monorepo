@@ -18,9 +18,13 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-const padoUiVideo = "/videos/Pado-Ui-Full-rf28.mp4";
+import { useIsMobile } from "@/hooks/useIsMobile";
+const padoUiVideoDesktop = "/videos/Pado-Ui-Full-rf28.mp4";
+const padoUiVideoMobile = "/videos/Pado-Ui-Full-mobile-rf28.mp4";
 
 export const UnifiedOnchain = () => {
+  const isMobile = useIsMobile();
+  const padoUiVideo = isMobile ? padoUiVideoMobile : padoUiVideoDesktop;
   const { t } = useTranslation("pado");
 
   const howItWorksFeatures = t("howItWorks.features", { returnObjects: true }) as Array<{

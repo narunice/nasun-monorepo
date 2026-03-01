@@ -34,12 +34,17 @@ import {
   FileText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
+const padoUiVideoDesktop = "/videos/Pado-Ui-Full-rf28.mp4";
+const padoUiVideoMobile = "/videos/Pado-Ui-Full-mobile-rf28.mp4";
 
 const sectionTitleClass = "uppercase";
 
 export const FinanceContent = () => {
   const { t } = useTranslation("finance");
+  const isMobile = useIsMobile();
+  const padoUiVideo = isMobile ? padoUiVideoMobile : padoUiVideoDesktop;
 
   const asArray = <T,>(val: unknown): T[] => (Array.isArray(val) ? val : []);
 
@@ -301,7 +306,7 @@ export const FinanceContent = () => {
           <FadeInUp delay="0.05s">
             <div className="mt-2 md:mt-4 lg:mt-6 mb-6">
               <video
-                src="/videos/Pado-Ui-Full-rf28.mp4"
+                src={padoUiVideo}
                 autoPlay
                 loop
                 muted
