@@ -36,7 +36,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
   }, []);
 
   return (
-    <OuterBox color="nw0" className="max-w-3xl mx-auto !bg-gray-950/80">
+    <OuterBox color="c6" className="max-w-3xl mx-auto ">
       <div className="pt-2 md:pt-3 lg:pt-4">
         {/* Title */}
         <h4 className="!font-rubik font-medium mb-4 text-center">{t("step1.title")}</h4>
@@ -95,8 +95,8 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
         <DividerBox
           title={t("step1.joinAllowlist.title")}
           hideDivider
-          color="nw0"
-          className="mb-6 md:mb-8 lg:mb-10 !bg-[#212E57]/50"
+          color="nw4"
+          className="mb-6 md:mb-8 lg:mb-10 !bg-gray-900"
           titleClassName="!w-full !text-center"
           disableHover
         >

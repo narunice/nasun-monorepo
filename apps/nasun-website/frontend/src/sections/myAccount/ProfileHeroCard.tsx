@@ -97,7 +97,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const nasunWalletAddress = account?.address;
 
   // MetaMask Connection Logic
-  const { handleConnect: handleLinkMetaMask, isConnecting: isMetaMaskLinking } =
+  const { handleConnect: handleLinkMetaMask, isConnecting: isMetaMaskLinking, mobileInstallHint } =
     useMetaMaskConnection({
       mode: "link",
       onSuccess: async (address) => {
@@ -380,7 +380,21 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   </Button>
                 ) : null,
               ]}
-            />
+            >
+              {isMetaMaskLinking && mobileInstallHint && (
+                <div className="text-sm text-orange-400 px-2 py-1">
+                  MetaMask app not detected on your device.{" "}
+                  <a
+                    href="https://metamask.io/download/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-orange-300 hover:text-white font-medium"
+                  >
+                    Install MetaMask
+                  </a>
+                </div>
+              )}
+            </AccountItem>
 
             {/* 4. Telegram */}
             <AccountItem

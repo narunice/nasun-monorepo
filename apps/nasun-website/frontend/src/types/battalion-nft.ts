@@ -84,11 +84,12 @@ export interface RegisterUserResponse {
 
 /**
  * POST /event/withdraw - 화이트리스트 참여 취소 요청
+ *
+ * xUserId 매칭으로 레코드 소유권을 검증합니다 (MetaMask 서명 제거 — 모바일 UX 개선).
  */
 export interface WithdrawUserRequest {
   walletAddress: string; // MetaMask 지갑 주소
-  walletProof: string; // HMAC-SHA256 proof from MetaMask verify
-  proofIssuedAt: string; // ISO 8601 timestamp when proof was issued
+  xUserId: string; // X(Twitter) User ID — 레코드 소유권 검증용
 }
 
 /**
@@ -114,7 +115,7 @@ export interface BattalionNftStatusResponse {
  */
 export interface NftWhitelist {
   walletAddress: string; // 지갑 주소 (소문자 정규화)
-  xUserId: string; // X(Twitter) User ID
+  xUserId?: string; // X(Twitter) User ID (omitted from public API response for security)
   xUsername: string; // X(Twitter) Username
   verifiedAt: string; // ISO 8601 타임스탬프
   engagementScore: number; // 초기값: 0

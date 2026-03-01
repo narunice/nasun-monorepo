@@ -37,6 +37,7 @@ export interface UseMetaMaskConnectionOptions {
 export interface UseMetaMaskConnectionReturn {
   handleConnect: () => Promise<void>;
   isConnecting: boolean;
+  mobileInstallHint: boolean;
 }
 
 /**
@@ -67,6 +68,7 @@ export function useMetaMaskConnection(
   const { user, signInWithMetaMask } = useAuth();
   const updateUserProfile = useUserStore((state) => state.updateUserProfile);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [mobileInstallHint, setMobileInstallHint] = useState(false);
 
   const handleConnect = async () => {
     const mobile = isMobileBrowser();
@@ -86,9 +88,14 @@ export function useMetaMaskConnection(
 
     try {
       setIsConnecting(true);
+      setMobileInstallHint(false);
 
       // 1. MetaMask 연결
-      const address = mobile ? await connectMetaMaskSDK() : await connectWallet();
+      const address = mobile
+        ? await connectMetaMaskSDK({
+            onAppNotDetected: () => setMobileInstallHint(true),
+          })
+        : await connectWallet();
 
       // 2. 네트워크 확인 및 전환 (desktop only — personal_sign is chain-agnostic)
       if (!mobile) {
@@ -209,5 +216,6 @@ export function useMetaMaskConnection(
   return {
     handleConnect,
     isConnecting,
+    mobileInstallHint,
   };
 }

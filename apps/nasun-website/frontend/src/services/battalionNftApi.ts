@@ -209,9 +209,10 @@ export async function checkBattalionNftStatus(
  * 화이트리스트 참여 취소 API
  *
  * @param request - 취소 요청 정보
+ * @param cognitoToken - Cognito OIDC token (JWT) for authentication
  * @returns 취소 결과
  */
-export async function withdrawUserApi(request: WithdrawUserRequest): Promise<WithdrawUserResponse> {
+export async function withdrawUserApi(request: WithdrawUserRequest, cognitoToken: string): Promise<WithdrawUserResponse> {
   try {
     if (import.meta.env.DEV) console.log("[battalionNftApi] Withdrawing user:", request.walletAddress);
 
@@ -219,6 +220,7 @@ export async function withdrawUserApi(request: WithdrawUserRequest): Promise<Wit
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${cognitoToken}`,
       },
       body: JSON.stringify(request),
     }, DEFAULT_TIMEOUT_MS);

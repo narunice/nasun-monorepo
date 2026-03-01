@@ -126,7 +126,17 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
     try {
       setModalData({ state: "connecting" });
 
-      const walletAddress = mobile ? await connectMetaMaskSDK() : await connectWallet();
+      const walletAddress = mobile
+        ? await connectMetaMaskSDK({
+            onAppNotDetected: () => {
+              setModalData({
+                state: "error",
+                error: "MetaMask app not detected on your device. Install it at metamask.io/download",
+                errorCode: "NO_METAMASK",
+              });
+            },
+          })
+        : await connectWallet();
       let activeAddress = walletAddress.toLowerCase();
 
       // Wallet mismatch check.
