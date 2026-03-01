@@ -168,7 +168,14 @@ const LoginButton = () => {
               </button>
             </DropdownMenu.Item>
             {isMetaMaskEnabled && (
-              <Suspense fallback={null}>
+              <Suspense
+                fallback={
+                  <div className={`${loginMenuItemClass} pointer-events-none`}>
+                    <div className="w-6 h-6 rounded-full bg-nasun-black/10 animate-pulse flex-shrink-0" />
+                    <div className="h-4 w-32 rounded bg-nasun-black/10 animate-pulse" />
+                  </div>
+                }
+              >
                 <DropdownMenu.Item asChild>
                   <MetaMaskLoginButton
                     className={loginMenuItemClass}

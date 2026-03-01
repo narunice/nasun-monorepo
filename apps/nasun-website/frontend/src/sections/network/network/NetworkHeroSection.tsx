@@ -3,7 +3,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 const nsnNetworkVideo = "/videos/Nsn-Network-Section-rf28.mp4";
 const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-Mobile-rf27.mp4";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { Link } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ArrowUpRight } from "lucide-react";
@@ -93,7 +93,11 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         muted
         playsInline
         preload="auto"
-        poster={isMobile ? "/images/posters/Nsn-Network-Section-Mobile-rf27.webp" : "/images/posters/Nsn-Network-Section-rf28.webp"}
+        poster={
+          isMobile
+            ? "/images/posters/Nsn-Network-Section-Mobile-rf27.webp"
+            : "/images/posters/Nsn-Network-Section-rf28.webp"
+        }
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`w-full h-full ${
@@ -122,21 +126,19 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
             <h3 className="font-medium text-nasun-white text-3xl sm:text-[34px] uppercase ">
               ONE NETWORK
             </h3>
-            <h4 className=" text-nasun-white/60 text-lg  sm:text-xl">
-              One Unified Economy
-            </h4>
+            <h4 className=" text-nasun-white/60 text-lg  sm:text-xl">One Unified Economy</h4>
           </div>
-          <div className="flex justify-center mt-3">
-            <Button variant="white" size="lg" asChild className="mt-5">
+          <div className="mt-3 w-full">
+            <ButtonV3 variant="nw5" size="lg" asChild className="mt-5 w-full justify-center">
               <Link
                 to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open Devnet & Wallet
+                Devnet & Wallet
                 <ArrowUpRight className="ml-1.5 size-4 shrink-0" />
               </Link>
-            </Button>
+            </ButtonV3>
           </div>
         </div>
       )}
@@ -152,16 +154,16 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
               <h5 className="text-nasun-white/70 text-2xl/tight md:text-[22px] lg:text-[27px]">
                 One Unified Economy
               </h5>
-              <Button variant="white" size="lg" asChild className="mt-5">
+              <ButtonV3 variant="nw5" size="lg" asChild className="mt-5 w-full justify-center">
                 <Link
                   to={import.meta.env.VITE_DEVNET_EXPLORER_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Open Devnet & Wallet
+                  Devnet & Wallet
                   <ArrowUpRight className="ml-1.5 size-4 shrink-0" />
                 </Link>
-              </Button>
+              </ButtonV3>
             </FadeInUp>
           </div>
         </div>

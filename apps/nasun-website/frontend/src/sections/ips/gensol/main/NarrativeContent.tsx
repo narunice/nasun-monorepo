@@ -115,7 +115,7 @@ function NarrativeContent() {
               color="c1"
               hideDivider={true}
               titleClassName="!text-sf-orange"
-              className="!bg-gray-950/50 !border-sf-orange/40 h-full"
+              className="!bg-gray-950/50 !border-sf-orange/40 h-full hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]"
             />
           </FadeInUp>
           <FadeInUp delay="0.2s" className="h-full">
@@ -125,7 +125,7 @@ function NarrativeContent() {
               color="c1"
               hideDivider={true}
               titleClassName="!text-sf-orange"
-              className="!bg-gray-950/50 !border-sf-orange/40 h-full"
+              className="!bg-gray-950/50 !border-sf-orange/40 h-full hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]"
             />
           </FadeInUp>
           <FadeInUp delay="0.3s" className="h-full">
@@ -135,7 +135,7 @@ function NarrativeContent() {
               color="c1"
               hideDivider={true}
               titleClassName="!text-sf-orange"
-              className=" !bg-gray-950/50 !border-sf-orange/40 h-full"
+              className="!bg-gray-950/50 !border-sf-orange/40 h-full hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]"
             />
           </FadeInUp>
         </div>
