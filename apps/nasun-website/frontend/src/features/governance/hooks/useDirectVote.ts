@@ -16,6 +16,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SuiClient } from "@mysten/sui/client";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useAuth } from "@/features/auth";
+import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
 
@@ -48,7 +49,7 @@ export function useDirectVote() {
       }
 
       // 1. Request Certificate from API (still needed for voting power)
-      const certResponse = await fetch(`${API_URL}/certificate`, {
+      const certResponse = await fetchWithTimeout(`${API_URL}/certificate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
