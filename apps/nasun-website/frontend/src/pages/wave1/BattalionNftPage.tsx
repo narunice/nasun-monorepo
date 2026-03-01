@@ -62,7 +62,7 @@ const BattalionNftPage: React.FC = () => {
   const suspenseFallback = <BattalionNftHeroSectionSkeleton />;
 
   return (
-    <PageLayout className="!pt-0">
+    <PageLayout className={showHeroVideo ? "!pt-0" : ""}>
       <JsonLd data={BATTALION_NFT_EVENT_SCHEMA} />
       <ErrorBoundary
         fallback={

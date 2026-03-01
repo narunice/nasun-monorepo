@@ -171,7 +171,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
           </div>
         </DividerBox>
 
-        {/* OpenSea Button */}
+        {/* OpenSea Button — hidden until collection is live
         <div className="flex justify-center">
           <ButtonV3
             variant="nw1"
@@ -198,6 +198,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
             </a>
           </ButtonV3>
         </div>
+        */}
 
         {/* Navigation Buttons */}
         <div className="mt-4 lg:mt-6 flex flex-col sm:flex-row gap-4">
