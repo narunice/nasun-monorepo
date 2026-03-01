@@ -227,12 +227,47 @@ www.nasun.io    CNAME    d1b7p63gzchrkh.cloudfront.net
 
 ---
 
+## CloudFront CDN (explorer.nasun.io)
+
+network-explorer는 CloudFront를 통해 글로벌 CDN으로 서빙됩니다.
+
+| 항목 | 값 |
+|------|-----|
+| Distribution ID | `E31QOCW4WNY9FL` |
+| Domain | `d3950nhuogw1zy.cloudfront.net` |
+| Origin | `ec2-43-200-67-52.ap-northeast-2.compute.amazonaws.com` (HTTP, port 80) |
+| ACM Certificate | `arn:aws:acm:us-east-1:466841130170:certificate/885a2c6f-04b4-4469-8257-8f4bc9fa4bf9` (`*.nasun.io` 와일드카드) |
+
+### 캐시 정책
+
+| 경로 | 정책 | 설명 |
+|------|------|------|
+| `/devnet/assets/*` | CachingOptimized | 해시 파일명, 장기 캐시 |
+| `/api/*` | CachingDisabled | API는 origin 직통 (캐시 없음) |
+| 기본 (나머지) | CachingOptimized | index.html 등 정적 파일 |
+
+### 배포 후 캐시 무효화
+
+```bash
+aws cloudfront create-invalidation --profile nasun-prod \
+  --distribution-id E31QOCW4WNY9FL \
+  --paths "/devnet/index.html" "/devnet/"
+```
+
+### DNS 설정
+
+```
+explorer.nasun.io    CNAME    d3950nhuogw1zy.cloudfront.net
+```
+
+---
+
 ## 배포 방식
 
 | 앱               | 배포 방식    | 트리거    | 대상 URL                         |
 | ---------------- | ------------ | --------- | -------------------------------- |
 | baram            | EC2 스크립트 | 수동 실행 | https://baram.nasun.io           |
-| network-explorer | EC2 스크립트 | 수동 실행 | https://explorer.nasun.io/devnet |
+| network-explorer | 로컬 빌드 + rsync + CF invalidation | 수동 실행 | https://explorer.nasun.io/devnet (CloudFront CDN) |
 | explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-3) |
 | nasun-website    | 로컬 빌드 + rsync + CF invalidation | 수동 실행 | https://nasun.io (prod, CloudFront CDN), https://staging.nasun.io (dev) |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
