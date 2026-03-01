@@ -4,13 +4,26 @@
  */
 
 const API_BASE = import.meta.env.VITE_EXPLORER_API_URL || '/api/v1';
+const DEFAULT_TIMEOUT_MS = 15_000;
 
-async function fetchApi<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
-  if (!res.ok) {
-    throw new Error(`Explorer API error: ${res.status} ${res.statusText}`);
+async function fetchApi<T>(path: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
+    if (!res.ok) {
+      throw new Error(`Explorer API error: ${res.status} ${res.statusText}`);
+    }
+    return res.json() as Promise<T>;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(`Explorer API request timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(id);
   }
-  return res.json() as Promise<T>;
 }
 
 // ============================================
@@ -74,8 +87,14 @@ export interface DailyGas {
 
 export async function getApiHealth(): Promise<ApiHealth> {
   // Health endpoint returns valid JSON body even on 503 (chain reset), so parse directly
-  const res = await fetch(`${API_BASE}/health`);
-  return res.json() as Promise<ApiHealth>;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}/health`, { signal: controller.signal });
+    return res.json() as Promise<ApiHealth>;
+  } finally {
+    clearTimeout(id);
+  }
 }
 
 export async function getTopAccounts(limit = 50): Promise<TopAccount[]> {
