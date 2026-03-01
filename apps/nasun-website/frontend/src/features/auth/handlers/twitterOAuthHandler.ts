@@ -5,6 +5,7 @@ export interface TwitterOAuthResult {
   cognitoToken?: string;
   userInfo: { name: string };
   twitterHandle?: string;
+  originalTwitterHandle?: string;
   twitterId?: string;
   profileImageUrl?: string;
 }
@@ -30,6 +31,7 @@ export async function handleTwitterOAuthRedirect(
     cognitoToken: twitterUserData.cognitoToken,
     userInfo: { name: twitterUserData.username || "Twitter User" },
     twitterHandle: twitterUserData.twitterHandle,
+    originalTwitterHandle: twitterUserData.originalTwitterHandle,
     twitterId: twitterUserData.twitterId,
     profileImageUrl: twitterUserData.profileImageUrl,
   };
