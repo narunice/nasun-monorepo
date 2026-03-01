@@ -5,6 +5,7 @@
  */
 
 import i18n from '../i18n';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 import type {
   JoinWhitelistRequest,
   JoinWhitelistResponse,
@@ -64,7 +65,7 @@ export async function joinWhitelist(
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -122,7 +123,7 @@ export async function withdrawWhitelist(
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -170,7 +171,7 @@ export async function checkWhitelistStatus(
   )}`;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
