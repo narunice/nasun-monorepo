@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
 const nsnNetworkVideo = "/videos/Nsn-Network-Section-rf28.mp4";
-const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-Mobile-rf27.mp4";
+const nsnNetworkVideoMobile = "/videos/Nsn-Network-Section-mobile-rf28.mp4";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { Link } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
@@ -21,21 +23,7 @@ interface NetworkHeroSectionProps {
 function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
-
-  // Resize observer - 모바일/데스크탑 동영상 전환
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // md breakpoint
-    };
-
-    handleResize(); // 초기 설정
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+  const isMobile = useIsMobile();
 
   // 비디오 소스 변경 시 로딩 상태 리셋
   useEffect(() => {
@@ -74,7 +62,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
 
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
-  const containerClassName = `relative !p-0 mt-0 md:mt-0 bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}`;
+  const containerClassName = `relative !p-0 mt-0 md:mt-0 bg-nasun-black overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
 
   return (
     <SectionLayout className={containerClassName}>
@@ -93,11 +81,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         muted
         playsInline
         preload="auto"
-        poster={
-          isMobile
-            ? "/images/posters/Nsn-Network-Section-Mobile-rf27.webp"
-            : "/images/posters/Nsn-Network-Section-rf28.webp"
-        }
+        poster="/images/posters/Nsn-Network-Section-rf28.webp"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`w-full h-full ${
@@ -105,7 +89,7 @@ function NetworkHeroSection({ onVideoReady }: NetworkHeroSectionProps) {
         } transition-opacity duration-500`}
         style={{
           objectFit: isMobile ? "cover" : "contain",
-          objectPosition: isMobile ? "center center" : "center center",
+          objectPosition: isMobile ? "left center" : "center center",
         }}
       >
         <source src={isMobile ? nsnNetworkVideoMobile : nsnNetworkVideo} type="video/mp4" />

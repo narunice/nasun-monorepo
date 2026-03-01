@@ -1,8 +1,11 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-const visionVideoMP4 = "/videos/Home-Vision-rf30.mp4";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
+const visionVideoDesktop = "/videos/Home-Vision-rf30.mp4";
+const visionVideoMobile = "/videos/Home-Vision-mobile-rf28.mp4";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import visionTriangle from "../../assets/images/home-vision-triangle.png";
@@ -17,12 +20,13 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const isMobile = useIsMobile();
 
   const handleVideoPlaying = () => {
     setIsVideoPlaying(true);
   };
 
-  const videoSrc = visionVideoMP4;
+  const videoSrc = isMobile ? visionVideoMobile : visionVideoDesktop;
 
   // Video autoplay handling for iOS
   useEffect(() => {
@@ -73,7 +77,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
   }, [shouldLoadVideo]);
 
   return (
-    <SectionLayout className="max-w-none relative min-h-screen">
+    <SectionLayout className="max-w-none relative min-h-[80vh] landscape:min-h-screen md:min-h-screen">
       {/* Background video container */}
       <div
         ref={containerRef}
@@ -102,7 +106,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
       </div>
 
       {/* Content */}
-      <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 lg:px-8">
+      <div className="relative z-30 flex flex-col items-center justify-center min-h-[80vh] landscape:min-h-screen md:min-h-screen px-4 lg:px-8">
         {/* Main row: Triangle + Text */}
         <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-20 xl:gap-28 w-full">
           {/* Left: Triangle Symbol */}

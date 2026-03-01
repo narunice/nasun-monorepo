@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { InlineLoading } from "@/components/ui/InlineLoading";
+import { useIsMobile } from "@/hooks/useIsMobile";
+
 const battalionNftVideoDesktop = "/videos/Battalion-Nft-Leeterbox-01-rf25.mp4";
-const battalionNftVideoMobile = "/videos/Battalion-Nft-White-Square-01-rf28.mp4";
+const battalionNftVideoMobile = "/videos/Battalion-Nft-Leeterbox-01-mobile-rf28.mp4";
 
 interface BattalionNftHeroSectionProps {
   onVideoReady?: () => void;
@@ -22,25 +24,11 @@ const TITLE_END_TIME = 4.33;
 function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+  const isMobile = useIsMobile();
   const [titleVisible, setTitleVisible] = useState(false);
   const [wordOpacities, setWordOpacities] = useState([0, 0, 0]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const animationFrameRef = useRef<number | null>(null);
-
-  // 모바일 뷰포트 감지 (1024px 미만)
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-
-    // 초기 체크
-    checkMobile();
-
-    // 리사이즈 이벤트 리스너
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   // 비디오 can play 핸들러 - 비디오 준비 완료
   const handleVideoCanPlay = () => {
@@ -117,12 +105,11 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
   // 스켈레톤 방식: 비디오 로딩 전에만 h-screen으로 공간 확보 (레이아웃 시프트 방지)
   // 비디오 로딩 후에는 비디오 자체 크기로 표시
   const containerClassName = isMobile
-    ? `relative bg-nasun-black ${!isVideoPlaying ? "h-screen" : ""}` // 모바일: 로딩 전 h-screen, 로딩 후 동영상 크기
-    : "relative flex items-start justify-center h-screen overflow-hidden bg-nasun-black"; // 데스크탑: 뷰포트 높이, 상단 정렬
+    ? `relative bg-nasun-black h-[80vh] landscape:h-screen overflow-hidden ${!isVideoPlaying ? "" : ""}`
+    : "relative flex items-start justify-center h-screen overflow-hidden bg-nasun-black";
 
-  // 비디오 클래스: 모바일/데스크탑 완전 분리
   const videoClassName = isMobile
-    ? ` w-full object-contain ${
+    ? `w-full h-full object-cover object-center ${
         !isVideoPlaying ? "opacity-0" : "opacity-100"
       } transition-opacity duration-500`
     : `-mt-20 max-w-9xl w-full min-h-[calc(100%+5rem)] object-cover object-center ${
@@ -138,147 +125,66 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
         </div>
       )}
 
-      {isMobile ? (
-        /* 모바일: 비디오 + 타이틀 스택 레이아웃 */
-        <div className="flex flex-col pt-16">
-          {/* Video Container */}
-          <div className="relative">
-            <video
-              ref={videoRef}
-              key="mobile"
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              poster="/images/posters/Battalion-Nft-White-Square-01-rf28.webp"
-              onCanPlay={handleVideoCanPlay}
-              onPlaying={handleVideoPlaying}
-              className={videoClassName}
-            >
-              <source src={battalionNftVideoMobile} type="video/mp4" />
-            </video>
+      <video
+        ref={videoRef}
+        key={isMobile ? "mobile" : "desktop"}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+        poster="/images/posters/Battalion-Nft-Leeterbox-01-rf25.webp"
+        onCanPlay={handleVideoCanPlay}
+        onPlaying={handleVideoPlaying}
+        className={videoClassName}
+      >
+        <source src={isMobile ? battalionNftVideoMobile : battalionNftVideoDesktop} type="video/mp4" />
+      </video>
 
-            {/* Top Gradient Overlay */}
-            <div
-              className="absolute inset-x-0 top-0 h-24 pointer-events-none z-10"
-              style={{
-                background: "linear-gradient(to bottom, rgb(25, 22, 21) 0%, transparent 100%)",
-              }}
-            />
+      {/* Gradient Overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background: "linear-gradient(to bottom, transparent 66%, rgb(25, 22, 21) 100%)",
+        }}
+      />
 
-            {/* Bottom Gradient Overlay */}
-            <div
-              className="absolute inset-x-0 bottom-0 h-32 pointer-events-none z-10"
-              style={{
-                background: "linear-gradient(to top, rgb(25, 22, 21) 0%, transparent 100%)",
-              }}
-            />
-          </div>
-
-          {/* Title Section - Below Video */}
-          <div className="relative z-20 flex flex-col items-center text-center px-4 -mt-12">
-            <div className="flex flex-col items-center">
-              <h2
-                className="!font-changeling text-3xl"
-                style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
-              >
-                POWER
-              </h2>
-              <h2
-                className="!font-changeling text-3xl"
-                style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
-              >
-                YOUR
-              </h2>
-              <h2
-                className="!font-changeling text-3xl"
-                style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
-              >
-                DESTINY
-              </h2>
-            </div>
-          </div>
-
-          {/* Scroll indicator - mobile */}
-          <div className="flex justify-center py-8">
-            <svg
-              className="w-5 h-5 text-nasun-white/50 animate-bounce"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
-          </div>
-        </div>
-      ) : (
-        /* 데스크탑: Wrapper 없이 직접 렌더링 (컨테이너 전체 커버) */
-        <>
-          <video
-            ref={videoRef}
-            key="desktop"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="auto"
-            poster="/images/posters/Battalion-Nft-Leeterbox-01-rf25.webp"
-            onCanPlay={handleVideoCanPlay}
-            onPlaying={handleVideoPlaying}
-            className={videoClassName}
+      {/* Title Overlay */}
+      <div className={`absolute ${isMobile ? "bottom-[15%]" : "bottom-[23%]"} left-0 right-0 z-30`}>
+        <div className={`flex ${isMobile ? "flex-col items-center" : "justify-center items-baseline gap-4"}`}>
+          <h2
+            className={`!font-changeling ${isMobile ? "text-3xl" : ""}`}
+            style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
           >
-            <source src={battalionNftVideoDesktop} type="video/mp4" />
-          </video>
+            POWER
+          </h2>
+          <h2
+            className={`!font-changeling ${isMobile ? "text-3xl" : ""}`}
+            style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
+          >
+            YOUR
+          </h2>
+          <h2
+            className={`!font-changeling ${isMobile ? "text-3xl" : ""}`}
+            style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
+          >
+            DESTINY
+          </h2>
+        </div>
+      </div>
 
-          {/* Gradient Overlay */}
-          <div
-            className="absolute inset-0 pointer-events-none z-10"
-            style={{
-              background: "linear-gradient(to bottom, transparent 66%, rgb(25, 22, 21) 100%)",
-            }}
-          />
-
-          {/* Title Overlay */}
-          <div className="absolute bottom-[23%] left-0 right-0 z-30">
-            {/* POWER YOUR DESTINY */}
-            <div className="flex justify-center items-baseline gap-4">
-              <h2
-                className="!font-changeling"
-                style={{ opacity: titleVisible ? wordOpacities[0] : 0 }}
-              >
-                POWER
-              </h2>
-              <h2
-                className="!font-changeling"
-                style={{ opacity: titleVisible ? wordOpacities[1] : 0 }}
-              >
-                YOUR
-              </h2>
-              <h2
-                className="!font-changeling"
-                style={{ opacity: titleVisible ? wordOpacities[2] : 0 }}
-              >
-                DESTINY
-              </h2>
-            </div>
-          </div>
-
-          {/* Scroll indicator */}
-          <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center">
-            <svg
-              className="w-6 h-6 text-nasun-white/50 animate-bounce"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
-          </div>
-        </>
-      )}
+      {/* Scroll indicator */}
+      <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center">
+        <svg
+          className="w-5 h-5 md:w-6 md:h-6 text-nasun-white/50 animate-bounce"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </div>
     </div>
   );
 }
