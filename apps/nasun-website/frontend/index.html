@@ -16,8 +16,7 @@
     <link rel="dns-prefetch" href="https://rpc.devnet.nasun.io" />
     <link rel="dns-prefetch" href="https://accounts.google.com" />
 
-    <!-- Preload hero poster image for fast LCP -->
-    <link rel="preload" as="image" href="/images/posters/Full-Trailer184s-rf28.webp" type="image/webp" fetchpriority="high" />
+    <!-- Hero poster preload is handled per-page to avoid wasting bandwidth on non-home routes -->
 
     <!-- Preload critical fonts to avoid FOUT -->
     <link rel="preload" as="font" href="/fonts/rubik/Rubik-Regular.woff2" type="font/woff2" crossorigin />
@@ -32,6 +31,9 @@
     <!-- SEO -->
     <meta name="description" content="Nasun — A new Layer 1 blockchain with a DEX, AI platform, prediction markets, and more. All live on devnet." />
     <link rel="canonical" href="https://nasun.io" />
+    <link rel="alternate" hreflang="en" href="https://nasun.io" />
+    <link rel="alternate" hreflang="ko" href="https://nasun.io" />
+    <link rel="alternate" hreflang="x-default" href="https://nasun.io" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />

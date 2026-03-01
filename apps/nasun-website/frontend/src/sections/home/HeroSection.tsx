@@ -3,7 +3,7 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import { InlineLoading } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
-const fullTrailerVideoDesktop = "/videos/Full-Trailer184s-rf28.mp4";
+const fullTrailerVideoDesktop = "/videos/Full-Trailer184s-rf24.mp4";
 const fullTrailerVideoMobile = "/videos/Full-Trailer184s-mobile-rf28.mp4";
 
 interface HeroSectionProps {
