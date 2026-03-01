@@ -147,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: userInfo.email,
           cognitoToken,
           ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
+          ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
           ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
           ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
         };
