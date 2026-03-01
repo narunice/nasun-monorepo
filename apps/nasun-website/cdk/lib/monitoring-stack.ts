@@ -12,6 +12,7 @@ export interface MonitoringStackProps extends cdk.StackProps {
   governanceApiLambda?: lambda.Function;
   metamaskAuthApi?: apigw.RestApi;
   leaderboardV3Api?: apigw.RestApi;
+  nftEventApi?: apigw.RestApi;
 }
 
 export class MonitoringStack extends cdk.Stack {
@@ -192,6 +193,36 @@ export class MonitoringStack extends cdk.Stack {
       });
       leaderboardApiErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
     }
+
+    // NFT Event API 5xx
+    if (props.nftEventApi) {
+      const nftEventApiErrorAlarm = new cloudwatch.Alarm(this, "NftEventApiServerErrorAlarm", {
+        alarmName: "NASUN-NftEventAPI-서버에러",
+        alarmDescription: "NFT Event API 5xx 에러가 5분간 5회 이상 발생",
+        metric: props.nftEventApi.metricServerError({ period }),
+        threshold: 5,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
+      });
+      nftEventApiErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+    }
+
+    // DynamoDB Throttling — on-demand tables should never throttle
+    const whitelistThrottleAlarm = new cloudwatch.Alarm(this, "WhitelistTableThrottleAlarm", {
+      alarmName: "NASUN-DynamoDB-Whitelist-Throttle",
+      alarmDescription: "NFT Whitelist 테이블에서 throttling 발생 (온디맨드 모드에서 비정상)",
+      metric: new cloudwatch.Metric({
+        namespace: "AWS/DynamoDB",
+        metricName: "ThrottledRequests",
+        dimensionsMap: { TableName: "nasun-nft-whitelist" },
+        statistic: "Sum",
+        period,
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
+    });
+    whitelistThrottleAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
     new cdk.CfnOutput(this, "MonitoringDashboardUrl", {
       value: `https://console.aws.amazon.com/cloudwatch/home?region=${this.region}#dashboards:name=NASUN-Operations-Monitoring`,

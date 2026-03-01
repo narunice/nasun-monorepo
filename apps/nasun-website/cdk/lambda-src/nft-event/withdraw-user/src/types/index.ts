@@ -10,11 +10,13 @@
 
 /**
  * Withdraw 요청
+ *
+ * walletAddress + xUserId 조합으로 레코드 소유권을 검증합니다.
+ * MetaMask 서명 기반 walletProof는 제거 — 모바일 UX 개선 목적.
  */
 export interface WithdrawUserRequest {
   walletAddress: string;   // 지갑 주소 (0x...)
-  walletProof: string;     // HMAC-SHA256 proof from MetaMask verify
-  proofIssuedAt: string;   // ISO 8601 timestamp when proof was issued
+  xUserId: string;         // X(Twitter) User ID — 레코드 소유권 검증용
 }
 
 /**

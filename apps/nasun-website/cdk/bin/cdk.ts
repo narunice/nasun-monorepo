@@ -60,10 +60,9 @@ const adminStack = new AdminStack(app, 'AdminStack', {
 });
 // No dependencies - references existing tables by name
 
-// Follower collection stack (X API daily follower tracking + OAuth2 token refresh)
+// OAuth2 token refresh stack (collect-followers removed — X API cost optimization)
 const followerStack = new FollowerStack(app, 'FollowerStack', {
   env: cdkEnv,
-  targetAccounts: process.env.TARGET_ACCOUNTS || '[]',
   twitterTokensSecretName: process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens',
 });
 // No dependencies - standalone stack
@@ -82,7 +81,7 @@ const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
 });
 // No dependencies - completely independent from V2
 
-// Monitoring stack — depends on Common, Auth, and LeaderboardV3 stacks
+// Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
   env: cdkEnv,
   priceApiGateway: commonStack.priceApiGateway,
@@ -91,7 +90,9 @@ const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
   governanceApiLambda: commonStack.governanceApiLambda,
   metamaskAuthApi: authStack.metamaskAuthApi,
   leaderboardV3Api: leaderboardV3Stack.api,
+  nftEventApi: nftEventStack.api,
 });
 monitoringStack.addDependency(commonStack);
 monitoringStack.addDependency(authStack);
 monitoringStack.addDependency(leaderboardV3Stack);
+monitoringStack.addDependency(nftEventStack);

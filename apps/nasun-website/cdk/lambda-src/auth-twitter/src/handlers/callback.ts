@@ -93,9 +93,25 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
   try {
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
-    const { code, state, sessionId } = requestBody;
+    const { code, state: compositeState, sessionId: explicitSessionId } = requestBody;
 
-    if (!code || !state || !sessionId) {
+    // Parse sessionId from composite state: "{randomState}.{sessionId}"
+    // Fallback to explicit sessionId field for backward compatibility
+    let resolvedSessionId = explicitSessionId;
+    let originalState = compositeState;
+
+    if (compositeState) {
+      const dotIdx = compositeState.lastIndexOf('.');
+      if (dotIdx > 0) {
+        originalState = compositeState.substring(0, dotIdx);
+        const parsedSessionId = compositeState.substring(dotIdx + 1);
+        if (!resolvedSessionId && parsedSessionId) {
+          resolvedSessionId = parsedSessionId;
+        }
+      }
+    }
+
+    if (!code || !compositeState || !resolvedSessionId) {
       return {
         statusCode: 400,
         headers,
@@ -127,7 +143,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 
     // 1. Atomically get and delete session (prevents replay attacks)
-    const session = await sessionManager.getAndDeleteSession(sessionId);
+    const session = await sessionManager.getAndDeleteSession(resolvedSessionId);
     if (!session) {
       return {
         statusCode: 400,
@@ -139,7 +155,9 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       };
     }
 
-    if (session.state !== state) {
+    // Validate original state (CSRF protection) — compare against the random state stored in session,
+    // not the composite state which includes the sessionId suffix
+    if (session.state !== originalState) {
       return {
         statusCode: 400,
         headers,

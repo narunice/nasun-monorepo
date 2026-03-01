@@ -84,10 +84,17 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     // 5. 응답 생성 (Soft delete: WITHDRAWN 상태는 미등록으로 처리)
     const isActive = whitelist !== null && whitelist.status !== 'WITHDRAWN';
 
+    // Security: omit xUserId from public response to prevent enumeration attacks
+    let sanitizedData = null;
+    if (isActive && whitelist) {
+      const { xUserId: _omit, ...rest } = whitelist;
+      sanitizedData = rest;
+    }
+
     const response: CheckStatusResponse = {
       success: true,
       registered: isActive,
-      data: isActive ? whitelist : null,
+      data: sanitizedData,
     };
 
     console.log('[check-registration-status] Response:', response);

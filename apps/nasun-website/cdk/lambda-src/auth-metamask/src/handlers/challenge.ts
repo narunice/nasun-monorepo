@@ -37,9 +37,12 @@ export async function handleChallenge(
   // 무작위 nonce 생성 (32바이트 hex)
   const nonce = randomBytes(32).toString('hex');
 
-  // 언어 감지 (Accept-Language 헤더 확인)
+  // Language detection: prefer explicit lang from request body, fallback to Accept-Language
+  const lang = body.lang;
   const acceptLanguage = event.headers['Accept-Language'] || event.headers['accept-language'] || '';
-  const isKorean = acceptLanguage.toLowerCase().startsWith('ko');
+  const isKorean = lang
+    ? lang.toLowerCase().startsWith('ko')
+    : acceptLanguage.toLowerCase().startsWith('ko');
 
   // 다국어 메시지 생성 (WalletConnectionBar 스타일과 통일)
   const message = isKorean

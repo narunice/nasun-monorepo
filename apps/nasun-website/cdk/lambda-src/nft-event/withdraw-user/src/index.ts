@@ -3,14 +3,16 @@
  *
  * @description
  * NFT Event 화이트리스트에서 사용자 참여를 취소합니다:
- * 1. 지갑 주소 검증
+ * 1. 지갑 주소 + xUserId 검증 (레코드 소유권 확인)
  * 2. NftWhitelist 테이블에서 status를 'WITHDRAWN'으로 업데이트
+ *
+ * MetaMask 서명 기반 walletProof는 제거 — 모바일 UX 개선 목적.
+ * 대신 walletAddress + xUserId 조합으로 레코드 소유권을 검증합니다.
  *
  * @author Claude Code
  * @date 2025-11-01
  */
 
-import { createHmac, timingSafeEqual } from 'crypto';
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import {
   WithdrawUserRequest,
@@ -20,7 +22,6 @@ import {
   NftEventError,
 } from './types';
 import { WhitelistService } from './services/whitelistService';
-import { getWalletProofSecret } from './utils/wallet-proof';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
@@ -77,17 +78,13 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       throw new NftEventError('Invalid wallet address', ErrorCode.INVALID_WALLET_ADDRESS, 400);
     }
 
-    if (!request.walletProof || !request.proofIssuedAt) {
-      throw new NftEventError('Missing wallet proof', ErrorCode.INVALID_SIGNATURE, 400);
+    if (!request.xUserId || !/^\d+$/.test(request.xUserId)) {
+      throw new NftEventError('Missing or invalid xUserId', ErrorCode.INVALID_WALLET_ADDRESS, 400);
     }
 
-    // 3. Validate HMAC wallet proof (from MetaMask verify Lambda)
-    const walletProofSecret = await getWalletProofSecret();
-    validateWalletProof(request.walletAddress, request.walletProof, request.proofIssuedAt, walletProofSecret);
-
-    // 4. 화이트리스트에서 사용자 제거 (Soft Delete)
+    // 3. Withdraw with xUserId ownership verification
     const whitelistService = new WhitelistService(env.WHITELIST_TABLE_NAME);
-    await whitelistService.withdrawUser(request.walletAddress);
+    await whitelistService.withdrawUser(request.walletAddress, request.xUserId);
 
     const response: WithdrawUserResponse = {
       success: true,
@@ -125,33 +122,3 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     };
   }
 };
-
-const PROOF_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
-
-/**
- * Validate HMAC wallet proof token issued by MetaMask verify Lambda.
- */
-function validateWalletProof(walletAddress: string, proof: string, issuedAt: string, secret: string): void {
-  // Format validation: HMAC-SHA256 hex is always 64 chars
-  if (!/^[a-f0-9]{64}$/.test(proof)) {
-    throw new NftEventError('Invalid wallet proof format', ErrorCode.INVALID_SIGNATURE, 400);
-  }
-
-  const age = Date.now() - new Date(issuedAt).getTime();
-  if (isNaN(age) || age < 0 || age > PROOF_MAX_AGE_MS) {
-    throw new NftEventError('Wallet proof expired', ErrorCode.SIGNATURE_EXPIRED, 401);
-  }
-
-  const expected = createHmac('sha256', secret)
-    .update(`${walletAddress.toLowerCase()}:${issuedAt}`)
-    .digest('hex');
-
-  const proofBuf = Buffer.from(proof);
-  const expectedBuf = Buffer.from(expected);
-
-  if (proofBuf.length !== expectedBuf.length || !timingSafeEqual(proofBuf, expectedBuf)) {
-    throw new NftEventError('Invalid wallet proof', ErrorCode.INVALID_SIGNATURE, 401);
-  }
-
-  console.log('[withdraw-user] Wallet proof validated:', `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`);
-}

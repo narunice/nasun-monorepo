@@ -8,9 +8,19 @@ import { getOAuthClientCredentials } from '../utils/secrets';
 // Read from environment variable (set by CDK from shared constants/cors.ts)
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
+// Extract origin (protocol + host) from a raw header value that may include path
+function extractOrigin(raw: string): string {
+  try {
+    const url = new URL(raw);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return raw.replace(/\/$/, '').split('/callback')[0];
+  }
+}
+
 // SECURITY: Dynamic CORS headers based on validated origin + security headers
 const getSecurityHeaders = (origin?: string) => {
-  const normalizedOrigin = origin?.replace(/\/$/, '').split('/callback')[0];
+  const normalizedOrigin = origin ? extractOrigin(origin) : undefined;
   const allowedOrigin = normalizedOrigin && ALLOWED_ORIGINS.includes(normalizedOrigin)
     ? normalizedOrigin
     : ALLOWED_ORIGINS[0];
@@ -53,8 +63,8 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
     let redirectUri = TWITTER_REDIRECT_URI || 'https://nasun.io/callback';
 
     if (origin) {
-      // Extract base URL from origin (remove trailing slash)
-      const baseUrl = origin.replace(/\/$/, '').split('/callback')[0];
+      // Extract base URL from origin/referer (handles full URLs from Referer header)
+      const baseUrl = extractOrigin(origin);
 
       // Validate origin against whitelist
       if (!ALLOWED_ORIGINS.includes(baseUrl)) {
@@ -85,7 +95,12 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
     const state = generateState();
     const sessionId = generateSessionId();
 
-    // Store session in DynamoDB
+    // Composite state: encode sessionId in OAuth state parameter so it survives
+    // mobile browser app-switching (Chrome Custom Tabs, iOS Safari) which clears
+    // sessionStorage/localStorage. The '.' delimiter is safe (both are hex strings).
+    const compositeState = `${state}.${sessionId}`;
+
+    // Store session in DynamoDB (store original state for CSRF validation)
     await sessionManager.createSession({
       sessionId,
       codeVerifier,
@@ -98,20 +113,33 @@ export const loginHandler = async (event: APIGatewayProxyEvent): Promise<APIGate
     const authUrl = twitterAPI.generateAuthUrl(
       redirectUri,
       codeChallenge,
-      state,
+      compositeState,
       ['tweet.read', 'users.read', 'offline.access', 'follows.read', 'like.read']
     );
 
     console.log('Generated auth URL:', authUrl);
     console.log('Session created:', sessionId);
 
+    // Redirect mode: return 302 instead of JSON.
+    // Server-side redirects are less likely to trigger Android App Links / iOS Universal Links,
+    // reducing the chance of the X app intercepting the OAuth URL on mobile.
+    const queryParams = event.queryStringParameters || {};
+    if (queryParams.mode === 'redirect') {
+      return {
+        statusCode: 302,
+        headers: { ...headers, Location: authUrl },
+        body: '',
+      };
+    }
+
+    // JSON mode (default, backward compatible)
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         authUrl,
         sessionId,
-        state,
+        state: compositeState,
       }),
     };
   } catch (error: any) {

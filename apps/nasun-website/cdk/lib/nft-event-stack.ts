@@ -258,6 +258,7 @@ export class NftEventStack extends cdk.Stack {
     );
 
     // Lambda 3: withdraw-user
+    // Uses Cognito JWT authorizer + xUserId ownership verification (Phase 2 security hardening)
     const withdrawUserLambda = new NodejsFunction(this, "WithdrawUserLambda", {
       functionName: "nasun-nft-withdraw-user",
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -270,7 +271,6 @@ export class NftEventStack extends cdk.Stack {
       logGroup: withdrawLogGroup,
       environment: {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
@@ -278,16 +278,42 @@ export class NftEventStack extends cdk.Stack {
 
     this.whitelistTable.grantReadWriteData(withdrawUserLambda);
 
-    // IAM 권한: Secrets Manager (wallet proof)
-    withdrawUserLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["secretsmanager:GetSecretValue"],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
-        ],
-      }),
-    );
+    // Lambda 3a: withdraw-user Token Authorizer (Cognito JWT verification)
+    const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
+    if (!cognitoIdentityPoolId) {
+      console.warn('[NftEventStack] VITE_COGNITO_IDENTITY_POOL_ID not set — withdraw authorizer will reject all tokens');
+    }
+
+    const withdrawAuthorizerLogGroup = new logs.LogGroup(this, "WithdrawAuthorizerLogGroup", {
+      logGroupName: "/aws/lambda/nasun-nft-withdraw-authorizer",
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const withdrawAuthorizerLambda = new NodejsFunction(this, "WithdrawAuthorizerLambda", {
+      functionName: "nasun-nft-withdraw-authorizer",
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(nftEventLambdaSrcPath, "withdraw-user", "src", "authorizer.ts"),
+      handler: "handler",
+      depsLockFilePath,
+      bundling: {
+        minify: true,
+        sourceMap: true,
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logGroup: withdrawAuthorizerLogGroup,
+      environment: {
+        COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId || '',
+        NODE_OPTIONS: "--enable-source-maps",
+      },
+    });
+
+    const withdrawTokenAuthorizer = new apigateway.TokenAuthorizer(this, "WithdrawTokenAuthorizer", {
+      handler: withdrawAuthorizerLambda,
+      resultsCacheTtl: cdk.Duration.seconds(60),
+      identitySource: "method.request.header.Authorization",
+    });
 
     // Lambda 4: export-csv (OpenSea Allowlist)
     const exportCsvLambda = new NodejsFunction(this, "ExportCsvLambda", {
@@ -381,13 +407,17 @@ export class NftEventStack extends cdk.Stack {
       })
     );
 
-    // POST /event/withdraw
+    // POST /event/withdraw (Cognito JWT required)
     const withdrawResource = eventResource.addResource("withdraw");
     withdrawResource.addMethod(
       "POST",
       new apigateway.LambdaIntegration(withdrawUserLambda, {
         proxy: true,
-      })
+      }),
+      {
+        authorizer: withdrawTokenAuthorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
+      }
     );
 
     // GET /event/status?walletAddress=0x...
