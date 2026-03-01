@@ -43,6 +43,30 @@
     <link rel="dns-prefetch" href="https://faucet.devnet.nasun.io" />
     <link rel="dns-prefetch" href="https://accounts.google.com" />
 
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Nasun Explorer",
+      "url": "https://explorer.nasun.io",
+      "description": "Explore transactions, addresses, validators, and on-chain activity on the Nasun Network.",
+      "applicationCategory": "BlockchainApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free blockchain explorer for Nasun Network"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Nasun",
+        "url": "https://nasun.io"
+      }
+    }
+    </script>
+
     <!-- CSP enforced via nginx HTTP header (/etc/nginx/snippets/explorer-security-headers.conf) -->
   </head>
   <body>

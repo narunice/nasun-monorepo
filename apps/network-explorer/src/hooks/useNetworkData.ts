@@ -13,8 +13,8 @@ export function useNetworkStatus() {
   return useQuery({
     queryKey: ['networkStatus'],
     queryFn: getNetworkStatus,
-    refetchInterval: 5000,
-    staleTime: 4000,
+    refetchInterval: 10_000,
+    staleTime: 8_000,
   });
 }
 
@@ -50,7 +50,7 @@ export function useRecentTransactions(limit: number = 10) {
   return useQuery({
     queryKey: ['recentTransactions', limit],
     queryFn: () => getRecentTransactions(limit),
-    refetchInterval: 8000,
-    staleTime: 6000,
+    refetchInterval: 15_000,
+    staleTime: 12_000,
   });
 }

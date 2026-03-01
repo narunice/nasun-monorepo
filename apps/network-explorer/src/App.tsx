@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { ErrorBoundary, Layout } from './components/layout';
 import Home from './pages/Home';
 import { Card } from './components/ui/Card';
@@ -34,6 +35,7 @@ function NotFound() {
 function App() {
   return (
     <ErrorBoundary>
+      <Toaster position="top-right" richColors closeButton duration={5000} />
       <Routes>
         {/* OAuth callback route (outside Layout for full-page display) */}
         <Route path="/callback" element={<AuthCallback />} />
