@@ -95,8 +95,9 @@ export class XApiClient {
       console.log(`[XApiClient] Checking like status for user ${userId} on tweet ${this.config.targetTweetId}`);
 
       // GET /2/users/:id/liked_tweets API 사용
+      // Pay-per-use: each tweet object costs $0.005, reduced from 100 to 50
       const likedTweets = await this.client.v2.userLikedTweets(userId, {
-        max_results: 100, // 최근 100개 좋아요 트윗 조회
+        max_results: 50,
       });
 
       // 좋아요 목록에서 타겟 트윗 ID 찾기
@@ -131,10 +132,11 @@ export class XApiClient {
 
       // GET /2/tweets/:id/retweeted_by API 사용
       // 타겟 트윗을 리트윗한 사용자 목록에서 해당 사용자 찾기
+      // Pay-per-use: each user object costs $0.010, reduced from 100 to 50
       const retweetedBy = await this.client.v2.tweetRetweetedBy(
         this.config.targetTweetId,
         {
-          max_results: 100, // 최대 100명 조회
+          max_results: 50,
         }
       );
 

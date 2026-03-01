@@ -36,12 +36,14 @@ export class WhitelistService {
   }
 
   /**
-   * 화이트리스트에서 사용자 제거 (Hard Delete)
+   * 화이트리스트에서 사용자 제거 (Soft Delete)
    *
    * @param walletAddress - 지갑 주소
+   * @param xUserId - X(Twitter) User ID — 레코드 소유권 검증용
    * @throws {NftEventError} USER_NOT_FOUND - 사용자가 등록되지 않음
+   * @throws {NftEventError} INVALID_SIGNATURE - xUserId 불일치 (소유권 검증 실패)
    */
-  async withdrawUser(walletAddress: string): Promise<void> {
+  async withdrawUser(walletAddress: string, xUserId: string): Promise<void> {
     try {
       const normalizedAddress = this.normalizeAddress(walletAddress);
       console.log(`[WhitelistService] Withdrawing user: ${normalizedAddress}`);
@@ -57,7 +59,27 @@ export class WhitelistService {
         );
       }
 
-      // 2. Soft Delete: status를 WITHDRAWN으로 업데이트
+      // 2. Already withdrawn check (idempotency)
+      if (user.status === 'WITHDRAWN') {
+        console.warn(`[WhitelistService] Already withdrawn: ${normalizedAddress}`);
+        throw new NftEventError(
+          'Already withdrawn from whitelist',
+          ErrorCode.ALREADY_WITHDRAWN,
+          409
+        );
+      }
+
+      // 3. xUserId 소유권 검증
+      if (user.xUserId !== xUserId) {
+        console.warn(`[WhitelistService] xUserId mismatch: expected=${user.xUserId}, got=${xUserId}`);
+        throw new NftEventError(
+          'Ownership verification failed',
+          ErrorCode.INVALID_SIGNATURE,
+          403
+        );
+      }
+
+      // 4. Soft Delete: status를 WITHDRAWN으로 업데이트
       const now = new Date().toISOString();
       await this.docClient.send(
         new UpdateCommand({

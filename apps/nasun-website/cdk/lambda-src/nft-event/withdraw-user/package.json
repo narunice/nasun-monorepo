@@ -15,7 +15,8 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.670.0",
     "@aws-sdk/lib-dynamodb": "^3.670.0",
-    "ethers": "^6.15.0"
+    "ethers": "^6.15.0",
+    "jose": "^5.10.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",

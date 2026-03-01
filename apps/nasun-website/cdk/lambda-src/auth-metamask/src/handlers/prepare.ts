@@ -23,9 +23,13 @@ export async function handlePrepare(
   // Generate random nonce (32 bytes hex)
   const nonce = randomBytes(32).toString('hex');
 
-  // Language detection (Accept-Language header)
+  // Language detection: prefer explicit lang from request body, fallback to Accept-Language
+  const body = JSON.parse(event.body || '{}');
+  const lang = body.lang;
   const acceptLanguage = event.headers['Accept-Language'] || event.headers['accept-language'] || '';
-  const isKorean = acceptLanguage.toLowerCase().startsWith('ko');
+  const isKorean = lang
+    ? lang.toLowerCase().startsWith('ko')
+    : acceptLanguage.toLowerCase().startsWith('ko');
 
   // Bilingual message (same format as challenge.ts)
   const message = isKorean
