@@ -40,6 +40,10 @@ coverage/
 # Temporary files
 _tmp/
 
+# Test scripts with hardcoded credentials
+auth-e2e-test.mjs
+nasun-basic-auth-code.js
+
 # Deploy credentials
 scripts/.credentials
 
