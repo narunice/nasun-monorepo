@@ -67,7 +67,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Nasun",
+      title: "NASUN",
       description: "A new Layer 1 blockchain with DEX, prediction markets, AI settlement, and more. All live on devnet.",
     },
   },

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
-const wave1VideoDesktop = "/videos/Home-Wave1-rf28.mp4";
+const wave1VideoDesktop = "/videos/Home-Wave1-rf24.mp4";
 const wave1VideoMobile = "/videos/Home-Wave1-mobile-rf28.mp4";
 const leaderboardVideoDesktop = "/videos/Leaderboard-Ui-rf28.mp4";
 const leaderboardVideoMobile = "/videos/Leaderboard-Ui-mobile-rf28.mp4";
@@ -91,13 +91,6 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
       ctaKey: "wave1.battalionNft.cta",
       to: "/wave1/battalion-nft",
     },
-    {
-      titleKey: "wave1.earlyContributor.title",
-      line1Key: "wave1.earlyContributor.line1",
-      line2Key: "wave1.earlyContributor.line2",
-      ctaKey: "wave1.earlyContributor.cta",
-      to: "/wave1/early-contributors",
-    },
   ] as const;
 
   return (
@@ -141,58 +134,63 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
 
       {/* Content */}
       <FadeInUp>
-        <div className="relative z-20 flex flex-col lg:flex-row lg:gap-10 justify-center items-center lg:items-stretch max-w-xl lg:max-w-6xl mx-auto px-4 lg:px-0 mt-8 sm:mt-12 md:mt-16 lg:mt-20 mb-6 md:mb-12 lg:mb-14">
-          {/* Left: intro + cards */}
-          <div className="flex flex-col w-full lg:w-[50%] order-2 lg:order-1 mt-6 lg:mt-0">
-            <p className="font-medium text-nasun-black/90 text-sm md:text-base mb-5 leading-relaxed">
-              {t("wave1.intro")}
-            </p>
+        <div className="relative z-20 flex flex-col items-center max-w-xl lg:max-w-6xl mx-auto px-4 lg:px-0 mt-8 sm:mt-12 md:mt-16 lg:mt-20 mb-6 md:mb-12 lg:mb-14">
+          {/* Title + Tagline (top center) */}
+          <h2 className="!font-eurostile text-3xl/tight md:text-4xl/tight lg:text-5xl/tight text-nasun-black/80 tracking-wide text-center">
+            {t("wave1.title")}
+          </h2>
+          <p className="font-normal text-lg md:text-xl text-nasun-black/70 mb-6 lg:mb-10 text-center">
+            {t("wave1.tagline")}
+          </p>
 
-            <div className="flex flex-col gap-4">
-              {cards.map((card) => (
-                <Link
-                  key={card.to}
-                  to={card.to}
-                  className="block w-full group transition-all duration-300 ease-out"
-                >
-                  <div className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
-                    <h6 className="mb-2 font-semibold text-nasun-black tracking-wide">
-                      {t(card.titleKey)}
-                    </h6>
-                    <p className="text-nasun-black/80 text-xs md:text-sm leading-relaxed">
-                      {t(card.line1Key)}
-                      <br />
-                      {t(card.line2Key)}
-                    </p>
-                    <div className="flex justify-end mt-3">
-                      <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                        {t(card.ctaKey)}
-                      </ButtonV3>
+          {/* Two-column layout: cards + video */}
+          <div className="flex flex-col lg:flex-row lg:gap-10 justify-center items-center lg:items-stretch w-full">
+            {/* Left: intro + cards */}
+            <div className="flex flex-col w-full lg:w-[50%] order-2 lg:order-1 mt-6 lg:mt-0">
+              <p className="font-medium text-nasun-black/90 text-sm md:text-base mb-5 leading-relaxed">
+                {t("wave1.intro")}
+              </p>
+
+              <div className="flex flex-col gap-6 lg:gap-8">
+                {cards.map((card) => (
+                  <Link
+                    key={card.to}
+                    to={card.to}
+                    className="block w-full group transition-all duration-300 ease-out"
+                  >
+                    <div className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
+                      <h6 className="mb-2 font-semibold text-nasun-black tracking-wide">
+                        {t(card.titleKey)}
+                      </h6>
+                      <p className="text-nasun-black/80 text-xs md:text-sm leading-relaxed">
+                        {t(card.line1Key)}
+                        <br />
+                        {t(card.line2Key)}
+                      </p>
+                      <div className="flex justify-end mt-3">
+                        <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
+                          {t(card.ctaKey)}
+                        </ButtonV3>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Right: title + video */}
-          <div className="flex flex-col items-center lg:items-start w-full lg:w-[50%] order-1 lg:order-2">
-            <h2 className="!font-eurostile text-3xl/tight md:text-4xl/tight lg:text-5xl/tight text-nasun-black/80 mb-1 lg:mb-2 tracking-wide w-full text-center">
-              {t("wave1.title")}
-            </h2>
-            <p className="font-normal text-lg md:text-xl text-nasun-black/70 mb-4 lg:mb-6 w-full text-center">
-              {t("wave1.tagline")}
-            </p>
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              poster="/images/posters/Leaderboard-Ui-rf28.webp"
-              className="w-full max-w-lg lg:max-w-none object-contain rounded-md shadow-lg"
-            >
-              <source src={leaderboardSrc} type="video/mp4" />
-            </video>
+            {/* Right: video (cropped on narrower viewports) */}
+            <div className="w-full lg:w-[50%] order-1 lg:order-2 overflow-hidden rounded-md shadow-lg lg:h-auto lg:self-stretch">
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                poster="/images/posters/Leaderboard-Ui-rf28.webp"
+                className="w-full lg:h-full lg:max-w-none object-cover xl:object-contain object-left-top rounded-md"
+              >
+                <source src={leaderboardSrc} type="video/mp4" />
+              </video>
+            </div>
           </div>
         </div>
       </FadeInUp>

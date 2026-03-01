@@ -89,7 +89,7 @@ function TheHeistSection() {
         />
 
         {/* Title overlay — center-left */}
-        <div className="absolute justify-items-center left-[9%] xl:left-[8%] min-[1660px]:left-[11%] top-1/2 -translate-y-1/2">
+        <div className="absolute justify-items-center left-[9%] xl:left-[8%] min-[1660px]:left-[11%] top-1/2 -translate-y-1/2 text-center">
           <FadeInUp>
             <h1 className="!font-changeling font-bold tracking-[0.1em] text-gray-900 uppercase xl:text-6xl min-[1440px]:text-7xl">
               The Heist
@@ -115,7 +115,7 @@ function TheHeistSection() {
       </section>
 
       <SectionLayout className="!max-w-6xl">
-        <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
+        <div className="flex flex-col gap-10 md:gap-12 lg:gap-14 pt-6 md:pt-8 lg:pt-10">
           {/* ========== THE STORY ========== */}
           <section>
             <FadeInUp>
@@ -166,12 +166,12 @@ function TheHeistSection() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <OuterBox color="sf-gold" padding="sm">
                       <h6 className="text-black font-bold mb-2 tracking-wide uppercase">Senae</h6>
-                      <p className="text-black/90">A disciplined warrior whose loyalty comes at a cost.</p>
+                      <p className="text-black/90">
+                        A disciplined warrior whose loyalty comes at a cost.
+                      </p>
                     </OuterBox>
                     <OuterBox color="sf-gold" padding="sm">
-                      <h6 className="text-black font-bold mb-2 tracking-wide uppercase">
-                        The Kid
-                      </h6>
+                      <h6 className="text-black font-bold mb-2 tracking-wide uppercase">The Kid</h6>
                       <p className="text-black/90">
                         The most notorious criminal in the Gen Sol Galaxy… and the only person who
                         claims he's broken into an imperial vault and lived to tell the story.
