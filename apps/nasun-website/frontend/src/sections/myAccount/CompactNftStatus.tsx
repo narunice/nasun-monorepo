@@ -35,15 +35,19 @@ interface NftStatusItemProps {
   title: string;
   isRegistered: boolean;
   isLoading: boolean;
+  registeredAddress?: string | null;
   onJoin?: () => void;
   onWithdraw?: () => void;
   renderJoinButton?: ReactNode;
 }
 
+const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
 const NftStatusItem: FC<NftStatusItemProps> = ({
   title,
   isRegistered,
   isLoading,
+  registeredAddress,
   onJoin,
   onWithdraw,
   renderJoinButton,
@@ -54,16 +58,27 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
       {isLoading ? (
         <Spinner size="sm" />
       ) : isRegistered ? (
-        <span className="text-green-400 text-sm">✓ Registered</span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-green-400 text-sm">✓ Registered</span>
+          {registeredAddress && (
+            <span className="text-nasun-white/50 text-xs font-mono">
+              {shortenAddress(registeredAddress)}
+            </span>
+          )}
+        </div>
       ) : (
         <span className="text-nasun-white/50 text-sm">Not Registered</span>
       )}
       {!isLoading &&
         (isRegistered
           ? onWithdraw && (
-              <Button onClick={onWithdraw} variant="filledOutlineScarlet" size="sm">
-                Withdraw
-              </Button>
+              <button
+                onClick={onWithdraw}
+                className="w-6 h-6 rounded-full border border-red-500 text-red-500 flex items-center justify-center hover:bg-red-500/20 transition-colors"
+                title="Withdraw"
+              >
+                <span className="text-base leading-none font-medium">−</span>
+              </button>
             )
           : renderJoinButton ||
             (onJoin && (
@@ -78,7 +93,7 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
 export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, className = "" }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { reset: resetBattalionStore } = useBattalionNftStore();
+  const { reset: resetBattalionStore, cognitoToken: battalionCognitoToken } = useBattalionNftStore();
   const [isBattalionWithdrawing, setIsBattalionWithdrawing] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
 
@@ -89,7 +104,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
   // Covers MetaMask-primary login where reverse link hasn't been established yet.
   // When registration completes, `registered` flips true → selector returns xUserId
   // → effectiveXUserId changes → useBattalionNftStatus refetches status via API.
-  const battalionXUserId = useBattalionNftStore((s) => s.registered ? s.xUserId : undefined);
+  const battalionXUserId = useBattalionNftStore((s) => (s.registered ? s.xUserId : undefined));
   const effectiveXUserId = twitterId ?? battalionXUserId;
   const {
     status: battalionStatus,
@@ -104,14 +119,26 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
    */
   const handleBattalionWithdraw = async () => {
     const registeredWallet = battalionStatus?.walletAddress;
-    if (!registeredWallet || !effectiveXUserId || !user?.cognitoToken || isBattalionWithdrawing) return;
+    if (isBattalionWithdrawing) return;
+
+    if (!registeredWallet || !effectiveXUserId) {
+      console.warn("[CompactNftStatus] Withdraw blocked — missing:", {
+        registeredWallet: !!registeredWallet,
+        effectiveXUserId: !!effectiveXUserId,
+      });
+      toast.error("Unable to withdraw. Please try again later.");
+      return;
+    }
 
     try {
       setIsBattalionWithdrawing(true);
-      await withdrawUserApi({
-        walletAddress: registeredWallet.toLowerCase(),
-        xUserId: effectiveXUserId,
-      }, user.cognitoToken);
+      await withdrawUserApi(
+        {
+          walletAddress: registeredWallet.toLowerCase(),
+          xUserId: effectiveXUserId,
+        },
+        user?.cognitoToken ?? battalionCognitoToken,
+      );
       resetBattalionStore();
       refetchBattalion();
       setShowWithdrawDialog(false);
@@ -142,6 +169,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
             title="Battalion NFT Allowlist"
             isRegistered={isBattalionRegistered}
             isLoading={isBattalionLoading || isBattalionWithdrawing}
+            registeredAddress={battalionStatus?.walletAddress}
             onJoin={() => navigate("/wave1/battalion-nft")}
             onWithdraw={() => setShowWithdrawDialog(true)}
           />
@@ -154,24 +182,26 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
           <DialogHeader>
             <DialogTitle className="text-nasun-white">Withdraw from Allowlist</DialogTitle>
             <DialogDescription className="text-nasun-white/70">
-              Are you sure you want to withdraw from the Battalion NFT Allowlist?
-              You can re-register later.
+              Are you sure you want to withdraw from the Battalion NFT Allowlist? You can
+              re-register later.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="grid grid-cols-2 gap-4 mt-2">
             <Button
               variant="filledOutlineC7"
-              size="sm"
+              size="default"
               onClick={() => setShowWithdrawDialog(false)}
               disabled={isBattalionWithdrawing}
+              className="w-full"
             >
               Cancel
             </Button>
             <Button
               variant="filledOutlineScarlet"
-              size="sm"
+              size="default"
               onClick={handleBattalionWithdraw}
               disabled={isBattalionWithdrawing}
+              className="w-full"
             >
               {isBattalionWithdrawing ? "Withdrawing..." : "Withdraw"}
             </Button>

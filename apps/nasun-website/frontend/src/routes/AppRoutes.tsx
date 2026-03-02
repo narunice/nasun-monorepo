@@ -20,6 +20,7 @@ const NftCollectionManagement = lazy(() => import("../features/admin/pages/NftCo
 
 // Dev/Showcase pages (lazy loaded)
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
+const WalletTestPage = lazy(() => import("../pages/dev/WalletTestPage"));
 
 // Admin route definitions
 const adminRoutes = [
@@ -123,8 +124,9 @@ const AppRoutes = () => {
         {/* Admin Routes */}
         {renderAdminRoutes(adminRoutes)}
 
-        {/* Dev/Showcase Route */}
+        {/* Dev/Showcase Routes */}
         <Route path="/showcase" element={<ComponentShowcasePage />} />
+        <Route path="/dev/wallet-test" element={<WalletTestPage />} />
 
         {/* Fallback Route */}
         <Route path="*" element={<Pages.NotFound />} />
