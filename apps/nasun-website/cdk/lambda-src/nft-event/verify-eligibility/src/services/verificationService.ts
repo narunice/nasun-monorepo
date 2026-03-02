@@ -1,15 +1,13 @@
 /**
  * Verification Service for NFT Event
  *
- * @description
- * 3-Tier Hybrid Verification for 100+ participants:
+ * 3-Tier Hybrid Verification:
  *   Tier 1: DynamoDB Task Cache — already-verified users (X API 0 calls)
- *   Tier 2: Engagement Cache — DynamoDB cache lookup (X API 0 calls)
- *   Tier 3: User Context OAuth Fallback — per-user rate limits (app rate limit 0 consumption)
+ *   Tier 2: Engagement Cache — DynamoDB polling cache (X API 0 calls)
+ *   Tier 3: X API — userTimeline + likedTweets (Post objects, cost-optimized)
  *
- * @author Claude Code
- * @created 2025-10-25
- * @updated 2026-01-31 - 3-tier hybrid verification for 100+ participants
+ * Cost optimization (2026-03): switched from User-object endpoints ($0.01)
+ * to Post-object endpoints ($0.005). Per-user cost: $0.75 → $0.15.
  */
 
 import { XApiClient, XApiConfig } from './xApiClient';
@@ -90,19 +88,14 @@ export class VerificationService {
           const apiPromises: Promise<boolean>[] = [];
           const apiLabels: string[] = [];
 
+          // Unified API: xAccessToken is passed directly (uses User Context
+          // when available, App-Only Bearer Token as fallback)
           if (stillNeedLike) {
-            // Prefer User Context (per-user rate limit) over App-Only
-            const likePromise = xAccessToken
-              ? this.xApiClient.checkLikedUserContext(xUserId, xAccessToken)
-              : this.xApiClient.checkLiked(xUserId);
-            apiPromises.push(likePromise);
+            apiPromises.push(this.xApiClient.checkLiked(xUserId, xAccessToken));
             apiLabels.push('LIKE');
           }
           if (stillNeedRetweet) {
-            const retweetPromise = xAccessToken
-              ? this.xApiClient.checkRetweetedUserContext(xUserId, xAccessToken)
-              : this.xApiClient.checkRetweeted(xUserId);
-            apiPromises.push(retweetPromise);
+            apiPromises.push(this.xApiClient.checkRetweeted(xUserId, xAccessToken));
             apiLabels.push('RETWEET');
           }
 
@@ -115,7 +108,14 @@ export class VerificationService {
               if (label === 'LIKE') hasLiked = result.value;
               if (label === 'RETWEET') hasRetweeted = result.value;
             } else {
-              errors.push(`${label}: ${result.reason?.message || 'Unknown error'}`);
+              const reason = result.reason?.message || 'Unknown error';
+              if (reason === 'PROTECTED_ACCOUNT') {
+                errors.push(`${label}: Protected account requires X re-authentication`);
+              } else if (reason === 'RATE_LIMIT_EXCEEDED') {
+                errors.push(`${label}: Temporarily unavailable, please retry in a few minutes`);
+              } else {
+                errors.push(`${label}: ${reason}`);
+              }
             }
           });
 
@@ -157,7 +157,7 @@ export class VerificationService {
             ? undefined
             : hasLiked === false
             ? '이벤트 트윗 좋아요가 필요합니다'
-            : 'Like 검증을 완료할 수 없습니다 (X API 오류)',
+            : 'Like verification failed. Please reconnect your X account and retry.',
         },
         {
           taskType: 'RETWEET',
@@ -166,7 +166,7 @@ export class VerificationService {
             ? undefined
             : hasRetweeted === false
             ? '이벤트 트윗 리트윗이 필요합니다'
-            : 'Retweet 검증을 완료할 수 없습니다 (X API 오류)',
+            : 'Retweet verification failed. Please reconnect your X account and retry.',
         },
       ];
 

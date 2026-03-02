@@ -286,7 +286,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     if (isNftEventFlow && NFT_EVENT_TASKS_TABLE && tokenResponse.access_token) {
       try {
         const docClient = DynamoDBDocumentClient.from(dynamoClient);
-        const ttl = Math.floor(Date.now() / 1000) + 3600; // 1 hour TTL
+        const ttl = Math.floor(Date.now() / 1000) + 6900; // ~1h55m (X OAuth2 2h - 5min safety margin)
         await docClient.send(new PutCommand({
           TableName: NFT_EVENT_TASKS_TABLE,
           Item: {
