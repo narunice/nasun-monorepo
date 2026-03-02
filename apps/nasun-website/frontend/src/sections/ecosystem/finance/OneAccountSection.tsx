@@ -12,8 +12,8 @@ export default function OneAccountSection() {
           </h3>
           <p className="text-pd4 text-base md:text-lg leading-relaxed">
             Pado is a high-performance, self-custodial financial platform that unifies trading,
-            lending, and contextual finance into a single onchain account. Built on Nasun — a
-            Move-based Layer 1 optimized for parallel execution — Pado replaces the fragmented
+            lending, and contextual finance into a single onchain account. Built on Nasun, a
+            Move-based Layer 1 optimized for parallel execution, Pado replaces the fragmented
             capital problem across protocols with one smart account governed by a unified risk
             engine. One balance that earns yield, backs trades, remains instantly usable across all
             products, and stays liquid.

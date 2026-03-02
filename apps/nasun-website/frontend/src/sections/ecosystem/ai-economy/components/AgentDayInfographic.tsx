@@ -248,7 +248,7 @@ const AgentDayInfographic: React.FC = () => {
             </p>
             <p className="text-nasun-white/80 leading-relaxed">
               Fund the agent's treasury <span className="text-nasun-c3 font-medium">once</span>. The
-              Nasun Settlement Layer handles everything else—
+              Nasun Settlement Layer handles everything else:
               <span className="text-nasun-c3 font-medium">
                 autonomously, transparently, and at machine speed.
               </span>

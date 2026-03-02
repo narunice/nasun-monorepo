@@ -22,7 +22,7 @@ function GenesisNftHeroSection() {
             {/* Subtitle with highlight */}
             <div className="mb-1 md:mb-2 lg:mb-3">
               <span className="!font-founders  text-nasun-white font-medium !text-xl/tight !md:text-2xl/tight !xl:text-3xl/tight tracking-wide">
-                You — the early contributors, creators, and visionaries —
+                You, the early contributors, creators, and visionaries,
               </span>{" "}
               <span className="!font-founders text-nasun-white/85 font-medium !text-xl/tight !md:text-2xl/tight !xl:text-3xl/tight tracking-wide">
                 form the heart of Nasun's community.
@@ -50,12 +50,12 @@ function GenesisNftHeroSection() {
                "
             >
               <p className="text-nasun-white/85 mb-4 ">
-                Each piece was inspired by the sci-fi world-building of our first IP—Gen Sol, and
+                Each piece was inspired by the sci-fi world-building of our first IP, Gen Sol, and
                 was crafted using tools like Blender, ZBrush, Substance Painter, and Photoshop.
               </p>
               <p className="text-nasun-white/85">
                 Owning one means joining us beyond the boundaries of art, finance, and
-                technology—where our imagination fuels our journey into a future without limits.
+                technology, where our imagination fuels our journey into a future without limits.
               </p>
             </DividerBox>
           </OuterBox>
