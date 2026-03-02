@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { MermaidDiagramDark } from "./MermaidDiagramDark";
-import executorLifecycleSvg from "../../baram/diagrams/svg/executor-lifecycle.svg?raw";
+import executorLifecycleSvg from "./svg/executor-lifecycle.svg?raw";
 import { OuterBox } from "@/components/ui/OuterBox";
 
 export function ExecutorDetailDark() {
