@@ -121,8 +121,7 @@ const SLIDES: SlideData[] = [
 ];
 
 function WhatWeBuildingSection() {
-  const { t, i18n } = useTranslation("home");
-  const isKorean = i18n.language === "ko";
+  const { t } = useTranslation("home");
   const containerRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<Slider>(null);
   const activeSlideRef = useRef(0);
@@ -341,17 +340,8 @@ function WhatWeBuildingSection() {
                   className="w-[200px] md:w-[240px]"
                 >
                   <Link to={SLIDES[activeSlideIndex].link}>
-                    {isKorean ? (
-                      <>
-                        <span className="font-semibold mr-1">{t(`whatWeBuilding.${SLIDES[activeSlideIndex].nameKey}`)}</span>
-                        {t("whatWeBuilding.prefix")}
-                      </>
-                    ) : (
-                      <>
-                        {t("whatWeBuilding.prefix")}
-                        <span className="font-semibold ml-1">{t(`whatWeBuilding.${SLIDES[activeSlideIndex].nameKey}`)}</span>
-                      </>
-                    )}
+                    {t("whatWeBuilding.prefix")}
+                    <span className="font-semibold ml-1">{t(`whatWeBuilding.${SLIDES[activeSlideIndex].nameKey}`)}</span>
                   </Link>
                 </ButtonV2>
 
@@ -360,7 +350,7 @@ function WhatWeBuildingSection() {
                     <button
                       key={slide.id}
                       onClick={() => sliderRef.current?.slickGoTo(i)}
-                      className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      className={`w-2 h-2 rounded-full transition-colors ${
                         i === activeSlideIndex
                           ? "bg-nasun-nw1"
                           : "bg-nasun-white/40 hover:bg-nasun-white/60"

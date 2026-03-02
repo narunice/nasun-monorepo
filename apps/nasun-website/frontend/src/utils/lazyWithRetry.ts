@@ -10,7 +10,7 @@
  */
 import { lazy, type ComponentType } from "react";
 
-export function lazyWithRetry<T extends ComponentType<unknown>>(
+export function lazyWithRetry<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
   retries = 3
 ): React.LazyExoticComponent<T> {

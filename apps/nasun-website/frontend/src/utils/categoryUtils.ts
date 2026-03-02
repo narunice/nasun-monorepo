@@ -1,14 +1,9 @@
 // src/utils/categoryUtils.ts
 
-import { CATEGORY_EMOJIS, KOREAN_TO_ENGLISH } from "../constants/pageContent/products";
+import { CATEGORY_EMOJIS } from "../constants/pageContent/products";
 
 export const normalizeCategoryName = (name: string) => {
-  return name.replace(/’/g, "'"); // 모든 유형의 따옴표를 표준화
-};
-
-export const getEnglishCategory = (localizedCategory: string, currentLanguage: string) => {
-  if (currentLanguage === "en") return localizedCategory;
-  return KOREAN_TO_ENGLISH[localizedCategory] || localizedCategory;
+  return name.replace(/\u2019/g, "’"); // Normalize curly quotes to straight quotes
 };
 
 export const getCategoryEmoji = (englishCategory: string) => {

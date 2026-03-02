@@ -164,12 +164,6 @@ function PrivacyPolicyPage() {
               {PRIVACY_CONTENT.lastUpdated}
             </p>
 
-            {/* Language Disclaimer */}
-            <div className="mt-6 p-3 bg-blue-900/10 border border-blue-500/20 rounded text-center">
-              <p className="text-sm text-blue-300/90">
-                {t("languageDisclaimer")}
-              </p>
-            </div>
           </SectionLayout>
 
           {/* Devnet Notice - Highlighted Box */}

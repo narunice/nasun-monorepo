@@ -50,48 +50,6 @@
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Pretendard Font Faces — Korean subset */
-@font-face {
-  font-family: "Pretendard";
-  font-style: normal;
-  font-weight: 300;
-  font-display: swap;
-  src: url("/fonts/pretendard/Pretendard-Light-korean.woff2") format("woff2");
-  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF;
-}
-@font-face {
-  font-family: "Pretendard";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/pretendard/Pretendard-Regular-korean.woff2") format("woff2");
-  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF;
-}
-@font-face {
-  font-family: "Pretendard";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("/fonts/pretendard/Pretendard-Medium-korean.woff2") format("woff2");
-  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF;
-}
-@font-face {
-  font-family: "Pretendard";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/pretendard/Pretendard-SemiBold-korean.woff2") format("woff2");
-  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF;
-}
-@font-face {
-  font-family: "Pretendard";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/fonts/pretendard/Pretendard-Bold-korean.woff2") format("woff2");
-  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7AF;
-}
-
 /* Rubik Font Faces */
 @font-face {
   font-family: "Rubik";
@@ -244,24 +202,10 @@
   }
 
   /* ========================================
-     언어별 폰트 정책 (한국어/영문)
+     Font Policy
      ======================================== */
 
-  /* 한국어 폰트 설정 - font-family만 정의 */
-  :lang(ko) h1,
-  :lang(ko) h2,
-  :lang(ko) h3,
-  :lang(ko) h4,
-  :lang(ko) h5,
-  :lang(ko) h6,
-  :lang(ko) p,
-  :lang(ko) a,
-  :lang(ko) span,
-  :lang(ko) button {
-    font-family: "Pretendard", sans-serif;
-  }
-
-  /* 영문 폰트 설정 - font-family만 정의 */
+  /* English font setting */
   :lang(en) h1,
   :lang(en) h2,
   :lang(en) h3,
@@ -405,6 +349,26 @@
   .slick-dots {
     position: relative !important;
     bottom: auto !important;
+  }
+
+  /* Shared carousel dots — consistent 8px circles */
+  .carousel-dots .slick-dots {
+    @apply !relative !bottom-auto !mt-6 !flex !justify-center !gap-6;
+  }
+  .carousel-dots .slick-dots li {
+    @apply !w-auto !h-auto !m-0;
+  }
+  .carousel-dots .slick-dots li button {
+    @apply !w-auto !h-auto !p-0;
+  }
+  .carousel-dots .slick-dots li button:before {
+    @apply !hidden;
+  }
+  .carousel-dots .slick-dots li .carousel-dot {
+    @apply w-2 h-2 rounded-full bg-nasun-white/40 hover:bg-nasun-white/60 transition-colors;
+  }
+  .carousel-dots .slick-dots li.slick-active .carousel-dot {
+    @apply !bg-nasun-nw1;
   }
 
   .timeline-item:nth-child(odd) {

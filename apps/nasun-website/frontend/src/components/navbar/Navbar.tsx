@@ -11,7 +11,7 @@ import MobileNav from "./MobileNav";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleUser } from "@fortawesome/free-solid-svg-icons";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { LanguageSwitcher } from "../ui/LanguageSwitcher";
+
 import { useAuth } from "@/features/auth";
 
 export default function Navbar() {
@@ -156,7 +156,6 @@ export default function Navbar() {
           )}
 
           <LoginButton />
-          <LanguageSwitcher />
         </div>
       </div>
     </nav>
