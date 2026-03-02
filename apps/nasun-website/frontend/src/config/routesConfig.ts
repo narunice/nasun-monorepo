@@ -43,7 +43,6 @@ export const Pages = {
   About: lazyWithRetry(() => import("../pages/AboutPage")),
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
-  PadoRevised: lazyWithRetry(() => import("../pages/ecosystem/PadoRevisedPage")),
   BaramDark: lazyWithRetry(() => import("../pages/ecosystem/BaramDarkPage")),
   BaramLight: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
   // Infra Pages
@@ -500,20 +499,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Post Detail - NASUN",
       description: "Award or Grant detail",
-    },
-  },
-
-  padoRevised: {
-    path: "/pado-revised",
-    component: Pages.PadoRevised,
-    navItem: {
-      name: "navigation.padoRevised",
-      path: "/pado-revised",
-      hidden: true,
-    },
-    meta: {
-      title: "Pado — Unified Onchain Finance",
-      description: "Trade on Pado — a decentralized exchange with prediction markets, lottery, and margin trading. Built on Nasun Network.",
     },
   },
 
