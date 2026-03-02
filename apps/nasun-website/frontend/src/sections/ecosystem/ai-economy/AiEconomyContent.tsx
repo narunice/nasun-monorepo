@@ -52,7 +52,7 @@ const AiEconomyContent: React.FC = () => {
             <p>
               By leveraging a Move-based object-centric architecture, Nasun eliminates the{" "}
               <strong className="text-nasun-white font-medium">sequential bottleneck</strong> that
-              limits legacy blockchains—allowing thousands of AI agents to transact, coordinate, and
+              limits legacy blockchains, allowing thousands of AI agents to transact, coordinate, and
               settle simultaneously.
             </p>
 
@@ -96,7 +96,7 @@ const AiEconomyContent: React.FC = () => {
             </div>
 
             <p className="pt-2">
-              Nasun is purpose-built for a world where machines transact with machines—continuously,
+              Nasun is purpose-built for a world where machines transact with machines, continuously,
               autonomously, and at scale.
             </p>
           </div>
@@ -107,8 +107,8 @@ const AiEconomyContent: React.FC = () => {
           <SectionTitle as="h4">The Core Architecture: Intelligence as an Object</SectionTitle>
           <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <p>
-              On Nasun, every component of the AI stack—from fine-tuned LLMs to specialized
-              datasets—is represented as a unique on-chain object.
+              On Nasun, every component of the AI stack (from fine-tuned LLMs to specialized
+              datasets) is represented as a unique on-chain object.
             </p>
             <p>This enables:</p>
             <ul className="space-y-4 list-disc pl-6 md:pl-8 marker:text-nasun-c1">
@@ -145,7 +145,7 @@ const AiEconomyContent: React.FC = () => {
           <SectionTitle as="h4">The Autonomous Agent Economy</SectionTitle>
           <div className="space-y-2 md:space-y-3 lg:space-y-4">
             <p>
-              Nasun agents are not passive tools—they are{" "}
+              Nasun agents are not passive tools. They are{" "}
               <strong className="text-nasun-white font-medium">economic actors</strong>. Equipped
               with self-managed on-chain treasuries, agents function as autonomous micro-businesses.
             </p>
@@ -196,7 +196,7 @@ const AiEconomyContent: React.FC = () => {
                 <p className="text-sm md:text-base">
                   Nasun provides the{" "}
                   <strong className="text-nasun-white font-medium">financial rail</strong>{" "}
-                  enterprises need to deploy AI at scale—allowing agents to manage budgets, enforce
+                  enterprises need to deploy AI at scale, allowing agents to manage budgets, enforce
                   spending rules, and settle transactions with real-world liquid value.
                 </p>
               </DividerBox>
@@ -219,7 +219,7 @@ const AiEconomyContent: React.FC = () => {
                 <br />
                 <span className="text-nasun-white/80">
                   As agents complete real-world tasks, a portion of each transaction fee triggers an
-                  automatic buy-back and burn of $NASUN—reducing supply as usage grows.
+                  automatic buy-back and burn of $NASUN, reducing supply as usage grows.
                 </span>
               </li>
               <li>
@@ -290,7 +290,7 @@ const AiEconomyContent: React.FC = () => {
               financial layer designed for autonomy.
             </p>
             <p className="text-lg font-light leading-relaxed text-nasun-white/90 italic">
-              Nasun is that layer—a network where intelligence is no longer just a service, but a{" "}
+              Nasun is that layer: a network where intelligence is no longer just a service, but a{" "}
               <strong className="text-nasun-white font-medium">sovereign economic force</strong>.
             </p>
           </div>

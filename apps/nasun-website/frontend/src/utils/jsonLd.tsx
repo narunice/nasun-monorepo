@@ -31,7 +31,7 @@ export const NASUN_ORG_SCHEMA = {
 export const BATTALION_NFT_EVENT_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Event",
-  name: "Battalion NFT Free Mint — Nasun Wave 1",
+  name: "Battalion NFT Free Mint: Nasun Wave 1",
   description:
     "Register for the Battalion NFT free mint allowlist. Connect your X account, complete tasks, and secure your spot in Nasun Wave 1.",
   url: "https://nasun.io/wave1/battalion-nft",

@@ -34,7 +34,7 @@ const TERMS_CONTENT = {
       "title": "2. The Nasun Devnet & No Monetary Value",
       "content": [
         "2.1 Experimental Environment: You acknowledge that the Nasun Network is currently a \"Devnet\" (Development Network) operated by a limited number of nodes. It is experimental, unstable, and subject to resets, rollbacks, or complete termination without notice.",
-        "2.2 Simulation Data Only: Unless explicitly stated otherwise (e.g., the Frontiers NFT collectible itself), all tokens, balances, yield rates (APY), and transaction records on the Nasun Devnet—including those within the Pado application—are SIMULATION DATA ONLY. They have ZERO real-world monetary value and cannot be exchanged for fiat currency or mainnet tokens.",
+        "2.2 Simulation Data Only: Unless explicitly stated otherwise (e.g., the Frontiers NFT collectible itself), all tokens, balances, yield rates (APY), and transaction records on the Nasun Devnet, including those within the Pado application, are SIMULATION DATA ONLY. They have ZERO real-world monetary value and cannot be exchanged for fiat currency or mainnet tokens.",
         "2.3 Data Resets: We reserve the right to reset the Devnet ledger at any time. This will erase all on-chain data, including your transaction history and balances. Nasun is not liable for any data loss associated with these resets."
       ]
     },
@@ -188,12 +188,6 @@ function TermsOfUsePage() {
             </PageTitle>
             <p className="text-center text-gray-400 text-sm mt-2">{TERMS_CONTENT.lastUpdated}</p>
 
-            {/* Language Disclaimer */}
-            <div className="mt-6 p-3 bg-blue-900/10 border border-blue-500/20 rounded text-center">
-              <p className="text-sm text-blue-300/90">
-                {t("languageDisclaimer")}
-              </p>
-            </div>
           </SectionLayout>
 
           {/* Investment Disclaimer - Highlighted Box */}

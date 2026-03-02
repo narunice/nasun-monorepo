@@ -127,17 +127,17 @@ function TheHeistSection() {
               <FadeInUp>
                 <div className="pl-5 border-l-2 border-sf-yellow/40">
                   <p className="block text-sf-yellow/80 tracking-[0.3em] uppercase font-bold mb-4">
-                    Act I — The Quiet Life
+                    Act I: The Quiet Life
                   </p>
                   <div className="space-y-3">
                     <p>
                       Josen is a farmer on the remote planet Edona, raising his nine-year-old
                       daughter Naro alone after his wife's death. Their quiet life is shaped by hard
-                      work—and an unspoken grief neither has confronted.
+                      work and an unspoken grief neither has confronted.
                     </p>
                     <p>
                       Josen has become overprotective, haunted by the fear of losing Naro too. To
-                      spare him worry, Naro begins hiding small truths—decisions that unknowingly
+                      spare him worry, Naro begins hiding small truths, decisions that unknowingly
                       set disaster in motion.
                     </p>
                     <p>
@@ -158,7 +158,7 @@ function TheHeistSection() {
               <FadeInUp delay="0.15s">
                 <div className="pl-5 border-l-2 border-sf-yellow/40">
                   <p className="block text-sf-yellow/80 tracking-[0.3em] uppercase font-bold mb-4">
-                    Act II — The Alliance
+                    Act II: The Alliance
                   </p>
                   <p className="text-nasun-white/70 mb-4">
                     To survive the heist, Josen is forced into an uneasy alliance with:
@@ -185,11 +185,11 @@ function TheHeistSection() {
               <FadeInUp delay="0.2s">
                 <div className="pl-5 border-l-2 border-sf-yellow/40">
                   <p className="block text-sf-yellow/80 tracking-[0.3em] uppercase font-bold mb-4">
-                    Act III — Buried Truths
+                    Act III: Buried Truths
                   </p>
                   <p className="text-nasun-white/70 ">
                     What begins as a rescue mission evolves into a battle of wills, loyalties, and
-                    buried truths—culminating in a finale where Josen must choose between saving his
+                    buried truths, culminating in a finale where Josen must choose between saving his
                     daughter and losing his humanity.
                   </p>
                 </div>
@@ -207,9 +207,9 @@ function TheHeistSection() {
                 <OuterBox color="sf-gold" padding="sm" className="h-full">
                   <h6 className="text-black font-bold mb-3 tracking-wide uppercase">Josen</h6>
                   <p className="text-black/90">
-                    A farmer scarred by loss. His wife's death left him paralyzed by fear—fear that
+                    A farmer scarred by loss. His wife's death left him paralyzed by fear, fear that
                     has quietly fractured his relationship with Naro. Thrust into a violent
-                    underworld, he must confront who he was—and what he's willing to become.
+                    underworld, he must confront who he was and what he's willing to become.
                   </p>
                 </OuterBox>
               </FadeInUp>
@@ -229,7 +229,7 @@ function TheHeistSection() {
                   <h6 className="text-black  font-bold mb-3 tracking-wide uppercase">Lashi</h6>
                   <p className="text-black/90">
                     Naro's loyal companion. Through Lashi, we see Naro's hopes, fears, and
-                    imagination—warmth and light amid the growing darkness.
+                    imagination, warmth and light amid the growing darkness.
                   </p>
                 </OuterBox>
               </FadeInUp>
@@ -253,7 +253,7 @@ function TheHeistSection() {
                   system preparing for the V Games.
                 </p>
                 <p className="max-w-3xl mx-auto text-sf-orange">
-                  The Heist introduces the Gen Sol universe—its factions, its dangers, and the power
+                  The Heist introduces the Gen Sol universe: its factions, its dangers, and the power
                   struggles that will shape future stories across films, games, and series.
                 </p>
               </div>
