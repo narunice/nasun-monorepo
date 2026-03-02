@@ -19,6 +19,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui";
 import { useIsMobile } from "@/hooks/useIsMobile";
+const gameplayVideo = "/videos/Gameplay-ArkstarGensol1-rf30.mp4";
 const progressVideoDesktop = "/videos/Progress-Video-Final-rf36.mp4";
 const progressVideoMobile = "/videos/Progress-Video-Final-mobile-rf28.mp4";
 
@@ -44,18 +45,23 @@ function SpectraSection() {
           {/* Gameplay Video */}
           <div className="mt-2 md:mt-4 lg:mt-6">
             <video
-              src={progressVideo}
+              src={gameplayVideo}
               autoPlay
               loop
               muted
               playsInline
               controls
-              poster="/images/posters/Progress-Video-Final-rf36.webp"
               className="w-full rounded-lg"
             />
 
             {/* Hero Description */}
             <p className="text-center text-nasun-white/60 py-2 md:py-4">{t("heroDescription")}</p>
+            <p className="text-center text-nasun-white/50 text-xs md:text-sm">
+              Weapons currently use marketplace assets to validate core mechanics including aiming,
+              reloading, damage, fire rate, and range, all built in C++. These placeholders will be
+              replaced with fully custom sci-fi weapons once the framework is complete, starting with
+              the Serhade Rifle, already in-game.
+            </p>
           </div>
         </div>
 
@@ -342,6 +348,20 @@ function SpectraSection() {
             <p className="text-nasun-white/90 font-semibold">
               Target: Q3-4 2026 — Public playtests on Escape from Kramok
             </p>
+
+            {/* Progress Video */}
+            <div className="mt-4">
+              <video
+                src={progressVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                poster="/images/posters/Progress-Video-Final-rf36.webp"
+                className="w-full rounded-lg"
+              />
+            </div>
           </div>
         </section>
 
