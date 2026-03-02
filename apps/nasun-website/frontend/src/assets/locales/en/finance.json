@@ -1,26 +1,26 @@
 {
   "problem": {
     "title": "Why Pado Exists",
-    "intro": "Modern DeFi is powerful — but fragmented.",
+    "intro": "Modern DeFi is powerful, but fragmented.",
     "points": [
       {
         "title": "Fragmented Capital",
-        "description": "Users manage multiple wallets and lock capital into isolated pools for trading, lending, or payments — reducing capital efficiency and increasing operational risk."
+        "description": "Users manage multiple wallets and lock capital into isolated pools for trading, lending, or payments, reducing capital efficiency and increasing operational risk."
       },
       {
         "title": "Protocol Sprawl",
-        "description": "Each DeFi vertical — DEXs, perpetuals, lending protocols, staking — operates in isolation, forcing users to bridge liquidity and accept inconsistent custody assumptions."
+        "description": "Each DeFi vertical (DEXs, perpetuals, lending protocols, staking) operates in isolation, forcing users to bridge liquidity and accept inconsistent custody assumptions."
       },
       {
         "title": "Context Switching",
-        "description": "Discussion and coordination happen off-platform — on X, Discord, and Telegram — far from execution. Insight rarely becomes action in time."
+        "description": "Discussion and coordination happen off-platform (on X, Discord, and Telegram), far from execution. Insight rarely becomes action in time."
       },
       {
         "title": "No Shared Financial Context",
         "description": "Existing platforms separate execution from information. Users constantly switch between trading interfaces and external channels to learn, coordinate, and compete."
       }
     ],
-    "closing": "Pado consolidates these functions into a single onchain financial system — one account with shared collateral, deterministic risk management, and embedded financial context."
+    "closing": "Pado consolidates these functions into a single onchain financial system: one account with shared collateral, deterministic risk management, and embedded financial context."
   },
   "coreInnovation": {
     "title": "The Core Innovation",
@@ -29,37 +29,37 @@
     "features": [
       {
         "title": "Portfolio-Level Risk",
-        "description": "All assets, positions, and liabilities are evaluated at the portfolio level — not per protocol, not per product. One unified view of your entire financial exposure."
+        "description": "All assets, positions, and liabilities are evaluated at the portfolio level, not per protocol, not per product. One unified view of your entire financial exposure."
       },
       {
         "title": "Deterministic Enforcement",
-        "description": "Risk is enforced deterministically onchain — no discretionary liquidations, no hidden rules. The same transparent rules apply to everyone."
+        "description": "Risk is enforced deterministically onchain: no discretionary liquidations, no hidden rules. The same transparent rules apply to everyone."
       },
       {
         "title": "Yield on Collateral",
-        "description": "Lending contracts are deployed on devnet, enabling collateral to earn yield while backing positions. As lending markets activate, capital efficiency will match centralized exchanges — without the custody trade-off."
+        "description": "Lending contracts are deployed on devnet, enabling collateral to earn yield while backing positions. As lending markets activate, capital efficiency will match centralized exchanges, without the custody trade-off."
       }
     ],
-    "closing": "This architecture delivers centralized-exchange capital efficiency — without custody, opaque controls, or fragmented workflows."
+    "closing": "This architecture delivers centralized-exchange capital efficiency without custody, opaque controls, or fragmented workflows."
   },
   "howItWorks": {
     "title": "How It Works",
     "features": [
       {
         "title": "Unified Margin",
-        "description": "Cross-collateral margin across spot, perpetuals, and prediction markets. Your entire portfolio backs all positions simultaneously — no capital locked in silos."
+        "description": "Cross-collateral margin across spot, perpetuals, and prediction markets. Your entire portfolio backs all positions simultaneously, no capital locked in silos."
       },
       {
         "title": "Protocol-Native Execution",
-        "description": "Sub-second finality and parallel execution on Nasun L1. Conditional orders (TP/SL, trailing stops) will be upgraded to validator-native execution — removing off-chain dependencies entirely."
+        "description": "Sub-second finality and parallel execution on Nasun L1. Conditional orders (TP/SL, trailing stops) will be upgraded to validator-native execution, removing off-chain dependencies entirely."
       },
       {
         "title": "AI-Integrated Intent Solvers",
-        "description": "AI agents that interpret user intent, optimize execution, and coordinate across markets — replacing manual workflows with protocol-native automation."
+        "description": "AI agents that interpret user intent, optimize execution, and coordinate across markets, replacing manual workflows with protocol-native automation."
       },
       {
         "title": "Embedded Social Layer",
-        "description": "Global chat with signature-based authentication, AI market narrator Wavi, leaderboards with trader profiles, PnL share cards, competitions, and a points system — all integrated into the trading interface."
+        "description": "Global chat with signature-based authentication, AI market narrator Wavi, leaderboards with trader profiles, PnL share cards, competitions, and a points system, all integrated into the trading interface."
       }
     ]
   },
@@ -79,7 +79,7 @@
       "status": "Alpha Deployed",
       "features": [
         "Up to 20x leverage with 8-hour funding rates",
-        "Same unified account — shared collateral across spot and perps",
+        "Same unified account, shared collateral across spot and perps",
         "LP liquidity activation pending"
       ]
     },
@@ -98,7 +98,7 @@
       "features": [
         "Verifiable onchain randomness for provably fair draws",
         "Multi-tier prizes with weekly rollover jackpots",
-        "Admin-resolved draws today — oracle-based automation on roadmap"
+        "Admin-resolved draws today, oracle-based automation on roadmap"
       ]
     },
     "lending": {
@@ -132,8 +132,8 @@
   "contextualFinance": {
     "title": "Contextual Finance",
     "subtitle": "The Social Layer for Serious Capital",
-    "intro": "Finance is inherently social — traders compare performance, share strategies, learn from peers, and compete. Today, these interactions happen outside the execution layer, across disconnected platforms with no shared context or verification.",
-    "inversion": "Pado inverts this model. Instead of injecting financial mechanics into social feeds, Pado embeds optional, high-signal social surfaces directly into the financial execution layer — eliminating context switching while preserving privacy and focus.",
+    "intro": "Finance is inherently social: traders compare performance, share strategies, learn from peers, and compete. Today, these interactions happen outside the execution layer, across disconnected platforms with no shared context or verification.",
+    "inversion": "Pado inverts this model. Instead of injecting financial mechanics into social feeds, Pado embeds optional, high-signal social surfaces directly into the financial execution layer, eliminating context switching while preserving privacy and focus.",
     "designPrinciple": "Social features must make users better traders, better allocators, or better learners. If they don't, they don't ship.",
     "features": [
       {
@@ -168,7 +168,7 @@
       },
       {
         "title": "AI Agents as Financial Tools",
-        "description": "AI agents that interpret user intent, optimize execution, and coordinate across markets — from risk alerts and strategy simulations to guided onboarding.",
+        "description": "AI agents that interpret user intent, optimize execution, and coordinate across markets, from risk alerts and strategy simulations to guided onboarding.",
         "status": "Roadmap"
       }
     ],
@@ -176,19 +176,19 @@
   },
   "koreaMarket": {
     "title": "Global Product, Korea Market Entry",
-    "intro": "Pado is a global unified onchain finance application. Our regional entry strategy begins with South Korea — one of the world's most concentrated and active crypto markets.",
+    "intro": "Pado is a global unified onchain finance application. Our regional entry strategy begins with South Korea, one of the world's most concentrated and active crypto markets.",
     "items": [
       {
         "label": "The strategy",
-        "description": "Establish a Korean legal entity and secure VASP registration aligned with mainnet launch. Enter with self-custodial spot trading as the compliant entry point — a service Korean traders need and regulators can approve."
+        "description": "Establish a Korean legal entity and secure VASP registration aligned with mainnet launch. Enter with self-custodial spot trading as the compliant entry point, a service Korean traders need and regulators can approve"
       },
       {
         "label": "The regulatory landscape",
-        "description": "South Korea ended a nine-year ban on corporate crypto trading in February 2026. An estimated $110B in Korean capital moved offshore — yet no self-custodial trading venue exists domestically. As regulations evolve, Pado's full feature suite is ready to unlock market by market."
+        "description": "South Korea ended a nine-year ban on corporate crypto trading in February 2026. An estimated $110B in Korean capital moved offshore, yet no self-custodial trading venue exists domestically. As regulations evolve, Pado's full feature suite is ready to unlock market by market."
       },
       {
         "label": "The long-term vision",
-        "description": "Korea is the first market, not the only market. The same compliance-first playbook — local entity, VASP registration, progressive feature rollout — scales to every jurisdiction where onchain finance is gaining regulatory clarity."
+        "description": "Korea is the first market, not the only market. The same compliance-first playbook, local entity, VASP registration, progressive feature rollout, scales to every jurisdiction where onchain finance is gaining regulatory clarity."
       }
     ]
   },
@@ -242,11 +242,11 @@
       },
       {
         "title": "Protocol-Level Conditional Orders",
-        "description": "Validator-level TP/SL execution — eliminating keeper bot dependency."
+        "description": "Validator-level TP/SL execution, eliminating keeper bot dependency."
       },
       {
         "title": "Advanced Social",
-        "description": "War rooms, copy trading, and secure messaging — context-rich coordination for serious capital."
+        "description": "War rooms, copy trading, and secure messaging, context-rich coordination for serious capital."
       }
     ]
   },
@@ -266,7 +266,7 @@
     "comingNext": [
       {
         "title": "Protocol-Level Conditional Orders",
-        "description": "Validator-level TP/SL execution — eliminating keeper bot dependency."
+        "description": "Validator-level TP/SL execution, eliminating keeper bot dependency."
       }
     ]
   },
@@ -278,9 +278,9 @@
   },
   "cta": {
     "title": "The Opportunity",
-    "body": "As DeFi matures, users are migrating toward platforms that offer fewer accounts, shared collateral, transparent risk, and integrated execution. Korean crypto participants — 16 million strong — have no credible onchain venue for self-custody and transparent price discovery. Pado is built for this transition.",
+    "body": "As DeFi matures, users are migrating toward platforms that offer fewer accounts, shared collateral, transparent risk, and integrated execution. Korean crypto participants, 16 million strong, have no credible onchain venue for self-custody and transparent price discovery. Pado is built for this transition.",
     "tagline": "One account. One margin system. One execution layer.",
-    "closing": "A financial platform designed for scale, safety, capital efficiency — and context.",
+    "closing": "A financial platform designed for scale, safety, capital efficiency, and context.",
     "motto": "Start simple. Grow sophisticated. Always in control.",
     "primary": "Try Pado Alpha",
     "secondary": "Read the Vision"

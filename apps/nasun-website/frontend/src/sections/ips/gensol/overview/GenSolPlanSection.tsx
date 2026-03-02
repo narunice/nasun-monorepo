@@ -30,7 +30,7 @@ function GenSolPlanSection() {
               </strong>
             </p>
             <p className="">
-              Every story—across animation, live-action, games, and films—takes place in the Gen Sol
+              Every story, across animation, live-action, games, and films, takes place in the Gen Sol
               Galaxy, where <span className="text-nasun-nw4 font-semibold">Spectra</span> fuels
               ships, weapons, and entire civilizations. Its power and scarcity turns desire into an
               obsession no one can escape.
@@ -70,7 +70,7 @@ function GenSolPlanSection() {
                 Feature film trilogy + Flagship game
               </small>
               <p>
-                The galaxy-defining competition for control of the Vertex Zone—the source of all
+                The galaxy-defining competition for control of the Vertex Zone, the source of all
                 Spectra.
               </p>
             </OuterBox>
@@ -93,7 +93,7 @@ function GenSolPlanSection() {
               </p>
               <p>
                 To survive the heist, he's forced into an alliance with{" "}
-                <span className="text-nasun-nw4 font-semibold">the Kid</span>—the galaxy's most
+                <span className="text-nasun-nw4 font-semibold">the Kid</span>, the galaxy's most
                 infamous criminal.
               </p>
               <p className="  italic">
@@ -117,13 +117,13 @@ function GenSolPlanSection() {
                 last competition.
               </p>
               <p>
-                Three siblings—two brothers and a sister—wage a ruthless war for succession. Each
+                Three siblings, two brothers and a sister, wage a ruthless war for succession. Each
                 believes they're destined not only to rule the empire, but to become the next
                 legendary driver in the V Games.
               </p>
               <p className="  italic">
                 The series exposes the political machinery, technology, and mysticism that govern
-                the Gen Sol Galaxy—and the brutal cost of maintaining power.
+                the Gen Sol Galaxy, and the brutal cost of maintaining power.
               </p>
             </div>
           </div>

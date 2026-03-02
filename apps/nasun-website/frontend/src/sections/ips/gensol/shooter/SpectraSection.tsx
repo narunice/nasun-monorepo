@@ -68,11 +68,11 @@ function SpectraSection() {
         <section>
           <SectionTitle as="h4">THE CORE LOOP</SectionTitle>
           <h5 className="font-normal text-nasun-white/80 mb-0 md:mb-1 lg:mb-2">
-            Crash. Compete. Escape—or perish.
+            Crash. Compete. Escape, or perish.
           </h5>
           <div className="space-y-3">
             <p>
-              Your team crash-lands on a hostile alien world. Spectra—the galaxy's fuel source—is
+              Your team crash-lands on a hostile alien world. Spectra, the galaxy's fuel source, is
               scattered across the wreckage. Both factions race to extract enough to power an escape
               ship.
             </p>
@@ -83,7 +83,7 @@ function SpectraSection() {
             </p>
             <p>
               Victory requires combat, timing, and risk management. Carrying extra Spectra increases
-              your rewards—but slows your escape as the world violently falls apart.
+              your rewards, but slows your escape as the world violently falls apart.
             </p>
           </div>
         </section>
@@ -103,7 +103,7 @@ function SpectraSection() {
               <h4 className="!font-rubik uppercase font-medium text-xl md:text-2xl lg:text-3xl">
                 ESCAPE FROM KRAMOK
                 <span className="text-base md:text-lg lg:text-xl text-nasun-white/50 font-normal ml-3">
-                  — Map 1
+                  / Map 1
                 </span>
               </h4>
             </div>
@@ -140,7 +140,7 @@ function SpectraSection() {
         <section>
           <SectionTitle as="h4">DEATH ISN'T THE END</SectionTitle>
           <p className="mb-4">
-            Die and you return as a <span className="font-semibold">Phantom</span>—an invisible
+            Die and you return as a <span className="font-semibold">Phantom</span>, an invisible
             ghost in first-person view.
           </p>
           <DividerBox
@@ -205,7 +205,7 @@ function SpectraSection() {
               ))}
             </ul>
             <p className="text-nasun-white/90 font-medium">
-              Carry only what you need to escape—or risk it all for maximum Spectra and higher
+              Carry only what you need to escape, or risk it all for maximum Spectra and higher
               rewards.
             </p>
           </div>
@@ -245,7 +245,7 @@ function SpectraSection() {
             </div>
             <p>
               Neutral worlds like Kramok become battlegrounds where both sides fight for
-              survival—and neither is guaranteed to escape.
+              survival, and neither is guaranteed to escape.
             </p>
           </div>
         </section>
@@ -343,7 +343,7 @@ function SpectraSection() {
 
             {/* Target */}
             <p className="text-nasun-white/90 font-semibold">
-              Target: Q3-4 2026 — Public playtests on Escape from Kramok
+              Target: Q3-4 2026: Public playtests on Escape from Kramok
             </p>
 
             {/* Progress Video */}

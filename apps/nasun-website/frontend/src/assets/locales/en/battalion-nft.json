@@ -72,7 +72,7 @@
     "authenticationPurpose": "X OAuth authentication is required to verify the following event tasks:",
     "verifyLikes": "Check if you liked the target tweet",
     "verifyRetweets": "Check if you retweeted the target tweet",
-    "notSignUp": "This is verification only — not signing up to our website",
+    "notSignUp": "This is verification only, not signing up to our website",
     "tokenAutoDelete": "🔒 This is a one-time authentication for event participation verification.",
     "infoTitle": "Why do we need X integration?",
     "infoDescription": "We need X account integration to verify event participation requirements (follow, like, retweet). We only use read permissions and will not post anything.",

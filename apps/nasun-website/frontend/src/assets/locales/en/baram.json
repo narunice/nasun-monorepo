@@ -105,9 +105,9 @@
     },
     "timeWindows": {
       "title": "Time-Window Spending Limits",
-      "daily": "Daily — Maximum NUSDC in any 24-hour window",
-      "weekly": "Weekly — Maximum in any 7-day window",
-      "monthly": "Monthly — Maximum in any 30-day window"
+      "daily": "Daily: Maximum NUSDC in any 24-hour window",
+      "weekly": "Weekly: Maximum in any 7-day window",
+      "monthly": "Monthly: Maximum in any 30-day window"
     },
     "killSwitch": {
       "title": "Kill Switch",
@@ -142,7 +142,7 @@
       },
       "stake": {
         "title": "Skin in the Game",
-        "description": "Executors stake NSN. Violations result in proportional slashing — from minor penalties to full stake forfeiture."
+        "description": "Executors stake NSN. Violations result in proportional slashing, from minor penalties to full stake forfeiture."
       },
       "compliance": {
         "title": "Immutable Audit Trail",
@@ -153,10 +153,10 @@
       "hardware": {
         "title": "Trust Boundary",
         "zones": [
-          "Browser (Trusted) — Generates AES key, encrypts prompt, decrypts response",
-          "Network (Untrusted) — Ciphertext only via HTTPS",
-          "Host (Untrusted) — HTTP server + vsock proxy, sees only ciphertext",
-          "Enclave (Trusted) — Decrypts prompt, runs LLM, encrypts response"
+          "Browser (Trusted): Generates AES key, encrypts prompt, decrypts response",
+          "Network (Untrusted): Ciphertext only via HTTPS",
+          "Host (Untrusted): HTTP server + vsock proxy, sees only ciphertext",
+          "Enclave (Trusted): Decrypts prompt, runs LLM, encrypts response"
         ],
         "note": "When TEE is enabled, E2E encryption ensures only the user's browser and the enclave ever see plaintext."
       },
@@ -166,7 +166,7 @@
           "pending": "NUSDC locked, awaiting executor assignment",
           "executing": "Executor processing, timeout enforced",
           "completed": "Proof verified, NUSDC released to executor",
-          "cancelled": "Refund — user cancel or auto-cancel on failure",
+          "cancelled": "Refund: user cancel or auto-cancel on failure",
           "timedOut": "Executor failed, full refund + slashing"
         }
       }
@@ -202,7 +202,7 @@
   },
   "security": {
     "sectionLabel": "Security Invariants",
-    "headline": "Guaranteed by smart contracts — not by policy.",
+    "headline": "Guaranteed by smart contracts, not by policy.",
     "invariants": {
       "aer": "AER is always created when settlement occurs.",
       "budget": "Every agent request goes through all seven checks.",
