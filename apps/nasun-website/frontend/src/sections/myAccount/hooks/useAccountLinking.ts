@@ -107,7 +107,8 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) throw new Error("Link Account API is not configured");
 
-      if (!user?.cognitoToken) {
+      const token = user?.cognitoToken ?? useBattalionNftStore.getState().cognitoToken;
+      if (!token) {
         throw new Error("Session expired. Please sign in again to link accounts.");
       }
 
@@ -117,7 +118,7 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${user.cognitoToken}`,
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
             primaryIdentityId: user.identityId,
@@ -160,13 +161,14 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
       if (!linkAccountApi) throw new Error("Link Account API is not configured");
 
-      if (!user?.cognitoToken) {
+      const token = user?.cognitoToken ?? useBattalionNftStore.getState().cognitoToken;
+      if (!token) {
         throw new Error("Session expired. Please sign in again to unlink accounts.");
       }
 
       const unlinkHeaders: Record<string, string> = {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${user.cognitoToken}`,
+        "Authorization": `Bearer ${token}`,
       };
 
       const response = await fetch(`${linkAccountApi}/unlink`, {
