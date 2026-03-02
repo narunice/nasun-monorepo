@@ -44,7 +44,7 @@ export const Pages = {
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
   BaramDark: lazyWithRetry(() => import("../pages/ecosystem/BaramDarkPage")),
-  BaramLight: lazyWithRetry(() => import("../pages/ecosystem/BaramPage")),
+
   // Infra Pages
   InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
   // About Pages (new)
@@ -516,19 +516,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  baramLight: {
-    path: "/baram-light",
-    component: Pages.BaramLight,
-    navItem: {
-      name: "navigation.baramLight",
-      path: "/baram-light",
-      hidden: true,
-    },
-    meta: {
-      title: "Baram (Light) — NASUN",
-      description: "Baram: AI Compliance Settlement Layer (light theme)",
-    },
-  },
 
   newsEventDetail: {
     path: "/news-events/:slug",

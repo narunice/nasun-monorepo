@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { FileCheck, Lock, Zap, Timer, Clock, Shield } from "lucide-react";
 import { MermaidDiagramDark } from "./MermaidDiagramDark";
-import escrowStateSvg from "../../baram/diagrams/svg/escrow-state.svg?raw";
-import teeSecuritySvg from "../../baram/diagrams/svg/tee-security.svg?raw";
+import escrowStateSvg from "./svg/escrow-state.svg?raw";
+import teeSecuritySvg from "./svg/tee-security.svg?raw";
 import { OuterBox } from "@/components/ui/OuterBox";
 
 const securityInvariants = [
