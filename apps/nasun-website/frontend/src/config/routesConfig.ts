@@ -163,11 +163,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       path: "/ecosystem",
       subMenu: [
         {
-          name: "navigation.baramAi",
-          path: "/ecosystem/baram",
-          element: Pages.BaramDark,
-        },
-        {
           name: "navigation.padoFinance",
           path: "/ecosystem/pado",
           element: Pages.FinancePado,
@@ -198,6 +193,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
               element: Pages.IPsGenSolOverview,
             },
           ],
+        },
+        {
+          name: "navigation.baramAi",
+          path: "/ecosystem/baram",
+          element: Pages.BaramDark,
         },
         // {
         //   name: "navigation.riderStudio",

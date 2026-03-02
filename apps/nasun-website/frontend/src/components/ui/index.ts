@@ -10,7 +10,6 @@ export * from "./OuterBox";
 export * from "./DividerBox";
 export * from "./StatCard";
 export * from "./Loading";
-export * from "./LanguageSwitcher";
 export * from "./KeyPointsBox";
 export * from "./GlassCard";
 export * from "./FadeInUp";

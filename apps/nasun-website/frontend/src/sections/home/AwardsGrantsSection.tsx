@@ -62,6 +62,7 @@ function AwardsGrantsSection() {
     arrows: true,
     prevArrow: <CustomArrow direction="left" />,
     nextArrow: <CustomArrow direction="right" />,
+    customPaging: () => <div className="carousel-dot" />,
     responsive: [
       {
         breakpoint: 1500,
@@ -125,7 +126,7 @@ function AwardsGrantsSection() {
               No awards posts available.
             </div>
           ) : (
-            <div className="w-full px-0 md:px-10 lg:px-12 [&_.slick-dots_li_button:before]:!text-nasun-white/60 [&_.slick-dots_li.slick-active_button:before]:!text-nasun-nw1">
+            <div className="w-full px-0 md:px-10 lg:px-12 carousel-dots">
               <Slider {...sliderSettings}>
                 {posts.map((post) => {
                   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";

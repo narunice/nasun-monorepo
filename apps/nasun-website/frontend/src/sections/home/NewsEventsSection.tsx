@@ -75,6 +75,7 @@ function NewsEventsSection() {
     arrows: true,
     prevArrow: <CustomArrow direction="left" />,
     nextArrow: <CustomArrow direction="right" />,
+    customPaging: () => <div className="carousel-dot" />,
   };
 
   return (
@@ -100,7 +101,7 @@ function NewsEventsSection() {
           ) : !Array.isArray(posts) || posts.length === 0 ? (
             <div className="w-full text-center py-12 text-gray-400">No news posts available.</div>
           ) : (
-            <div className="w-full [&_.slick-dots_li.slick-active_button:before]:!text-nasun-nw1 [&_.slick-dots_li_button:before]:!text-nasun-white/60 [&_.slick-dots]:!relative [&_.slick-dots]:!bottom-auto [&_.slick-dots]:!mt-4">
+            <div className="w-full carousel-dots">
               <Slider {...sliderSettings}>
                 {posts.map((post) => {
                   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";

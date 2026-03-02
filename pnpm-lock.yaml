@@ -529,9 +529,6 @@ importers:
       i18next:
         specifier: ^25.2.1
         version: 25.8.13(typescript@5.9.3)
-      i18next-browser-languagedetector:
-        specifier: ^8.2.0
-        version: 8.2.1
       i18next-http-backend:
         specifier: ^3.0.2
         version: 3.0.2
@@ -23906,7 +23903,7 @@ snapshots:
 
   tsx@4.21.0:
     dependencies:
-      esbuild: 0.27.2
+      esbuild: 0.27.3
       get-tsconfig: 4.13.0
     optionalDependencies:
       fsevents: 2.3.3
