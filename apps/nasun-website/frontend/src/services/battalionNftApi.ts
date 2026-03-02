@@ -212,16 +212,20 @@ export async function checkBattalionNftStatus(
  * @param cognitoToken - Cognito OIDC token (JWT) for authentication
  * @returns 취소 결과
  */
-export async function withdrawUserApi(request: WithdrawUserRequest, cognitoToken: string): Promise<WithdrawUserResponse> {
+export async function withdrawUserApi(request: WithdrawUserRequest, cognitoToken?: string): Promise<WithdrawUserResponse> {
   try {
     if (import.meta.env.DEV) console.log("[battalionNftApi] Withdrawing user:", request.walletAddress);
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (cognitoToken) {
+      headers["Authorization"] = `Bearer ${cognitoToken}`;
+    }
+
     const response = await fetchWithTimeout(`${API_BASE_URL}/event/withdraw`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${cognitoToken}`,
-      },
+      headers,
       body: JSON.stringify(request),
     }, DEFAULT_TIMEOUT_MS);
 

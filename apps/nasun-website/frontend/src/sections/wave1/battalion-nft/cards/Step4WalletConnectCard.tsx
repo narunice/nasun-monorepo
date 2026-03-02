@@ -2,32 +2,26 @@
  * Wallet Connect Card Component
  *
  * @description
- * MetaMask 지갑 연결 카드 컴포넌트
- * Hybrid flow: prepare → connect + sign → connect-verify
- * - Desktop: 2-step via window.ethereum (connectWallet + signMessage)
- * - Mobile: 2-trip via MetaMask SDK (connect → sign deep links)
+ * EVM wallet connection card (MetaMask, Rabby, Coinbase, WalletConnect).
+ * Uses wagmi hooks + RainbowKit for multi-wallet support.
+ * Flow: openConnectModal → connect → prepare → sign → connect-verify
  *
  * @author Claude Code
  * @date 2025-10-25
- * @updated 2026-03-01 - Desktop: SDK headless → window.ethereum direct for extension popup
+ * @updated 2026-03-02 - Migrated from MetaMask-only to wagmi + RainbowKit multi-wallet
  */
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useAccount, useSignMessage, useDisconnect } from "wagmi";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAuth } from "@/features/auth";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import { useBattalionNftStore } from "../../../../stores/useBattalionNftStore";
-import {
-  connectMetaMaskSDK,
-  signMessageViaSDK,
-  disconnectMetaMaskSDK,
-} from "../../../../lib/wallet/metamaskSdkProvider";
-import { connectWallet, signMessage, isMetaMaskInstalled } from "../../../../utils/metamaskUtils";
-import { isMobileBrowser } from "../../../../utils/mobileDetect";
 import { prepareChallenge, connectVerify } from "../../../../services/metamaskApi";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import logger from "../../../../lib/logger";
-import { InlineLoading, DividerBox, OuterBox, Spinner } from "@/components/ui";
+import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
 
 interface WalletConnectCardProps {
   onWalletConnected: (address: string) => void;
@@ -37,85 +31,76 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
   const { t } = useTranslation("battalion-nft");
   const { user } = useAuth();
   const { cognitoIdentityId, cognitoToken: storeCognitoToken, setWalletProof } = useBattalionNftStore();
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectStep, setConnectStep] = useState(0); // 0=idle, 1=mobile connect, 2=mobile sign, 3=verifying
+
+  const { address, isConnected, connector } = useAccount();
+  const { signMessageAsync } = useSignMessage();
+  const { disconnectAsync } = useDisconnect();
+
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mobileInstallHint, setMobileInstallHint] = useState(false);
-  const inFlightRef = useRef(false);
+  const [showWalletHint, setShowWalletHint] = useState(false);
 
-  // NOTE: No auto-restore from profile. The user must freshly connect MetaMask
-  // on each Step 4 visit to get a valid walletProof (in-memory only, lost on reload).
-  // Profile's linkedAccounts.metamask.walletAddress can be stale (different wallet
-  // from a previous session). connectedAddress is set only by handleConnect().
+  // Guards: pendingAuthRef = user clicked "Connect Wallet",
+  // authTriggeredRef = prevent double-firing in useEffect
+  const pendingAuthRef = useRef(false);
+  const authTriggeredRef = useRef(false);
+
+  // Disconnect stale wagmi session on mount so the wallet selection modal
+  // always appears. walletProof is memory-only — a fresh connect is required.
+  useEffect(() => {
+    if (isConnected) {
+      disconnectAsync().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount-only
 
   /**
-   * Connect handler:
-   * 1. /prepare → nonce + message (HTTP only)
-   * 2. connect + sign → signature (desktop: extension, mobile: SDK deep links)
-   * 3. /connect-verify → walletAddress + auth tokens (HTTP only)
+   * Authenticate after wallet is connected:
+   * 1. /prepare → nonce + message
+   * 2. signMessageAsync → signature (wagmi handles extension popup / WC relay)
+   * 3. /connect-verify → walletAddress + walletProof
+   * 4. Account linking (unchanged from original)
    */
-  const handleConnect = async () => {
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
+  const handleAuthenticate = useCallback(async () => {
+    if (!isConnected || !address) return;
 
-    const mobile = isMobileBrowser();
+    const isWC = connector?.type === "walletConnect";
+
+    setIsAuthenticating(true);
+    setError(null);
+    setShowWalletHint(false);
 
     try {
-      setIsConnecting(true);
-      setError(null);
-      setMobileInstallHint(false);
-
-      // Desktop: check MetaMask extension is installed
-      if (!mobile && !isMetaMaskInstalled()) {
-        throw new Error("MetaMask is not installed. Please install MetaMask browser extension.");
-      }
-
       // Step 1: Get server-generated nonce + message
       const { nonce, message } = await prepareChallenge();
       logger.log("[WalletConnectCard] Challenge prepared");
 
-      // Step 2: Connect + sign
-      // Desktop: 2-step via window.ethereum (extension popup)
-      // Mobile: 2-trip via MetaMask SDK (deep links to MetaMask app)
-      let signature: string;
-      if (mobile) {
-        logger.log("[WalletConnectCard] Mobile detected — using 2-trip flow");
-        setConnectStep(1);
-        const address = await connectMetaMaskSDK({
-          onAppNotDetected: () => setMobileInstallHint(true),
-        });
-        logger.log("[WalletConnectCard] Connected:", address);
-        setConnectStep(2);
-        signature = await signMessageViaSDK(message, address);
-      } else {
-        logger.log("[WalletConnectCard] Desktop detected — extension connect + sign");
-        const address = await connectWallet();
-        signature = await signMessage(message, address);
+      // Step 2: Sign message via wagmi
+      if (isWC) {
+        setShowWalletHint(true);
+        logger.log("[WalletConnectCard] Sending sign request via WalletConnect relay...");
       }
+
+      const signature = await signMessageAsync({ message });
+      setShowWalletHint(false);
       logger.log("[WalletConnectCard] Signature obtained");
 
       // Step 3: Server verifies signature, recovers address, issues Cognito identity
-      setConnectStep(3);
       const authResult = await connectVerify(signature, nonce);
       const walletAddress = authResult.walletAddress;
       logger.log("[WalletConnectCard] Verification successful:", walletAddress);
 
-      // Store wallet proof
+      // Store wallet proof (memory-only, not persisted to localStorage)
       if (authResult.walletProof && authResult.proofIssuedAt) {
         setWalletProof(authResult.walletProof, authResult.proofIssuedAt);
       }
 
-      // Link accounts if not linked, or re-link if the profile wallet differs from the actual wallet.
-      // Stale profile data can occur when a previous session linked a different wallet to this identity.
+      // Link accounts if not linked, or re-link if the profile wallet differs
       const linkedWallet = user?.linkedAccounts?.metamask?.walletAddress;
       const needsLink = !linkedWallet || linkedWallet.toLowerCase() !== walletAddress.toLowerCase();
 
       if (needsLink) {
-        // Use X identity (from Step 2) as primary so that the X account's profile
-        // gets the MetaMask wallet linked. This ensures test_handle's profile has
-        // linkedAccounts.metamask.walletAddress = wallet B, and wallet B's profile
-        // gets a reverse link with twitterId.
         const primaryIdentityId = cognitoIdentityId || user?.identityId;
         if (!primaryIdentityId) {
           throw new Error("Missing Cognito identity ID. Please restart the event from Step 1.");
@@ -131,8 +116,6 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           const linkHeaders: Record<string, string> = {
             "Content-Type": "application/json",
           };
-          // Use X identity's token to match primaryIdentityId
-          // (link-account Lambda verifies primaryIdentityId === authenticatedIdentityId)
           const cognitoToken = storeCognitoToken || user?.cognitoToken;
           if (cognitoToken) {
             linkHeaders["Authorization"] = `Bearer ${cognitoToken}`;
@@ -151,13 +134,12 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           if (!linkResponse.ok) {
             const errorBody = await linkResponse.text();
             console.error("[WalletConnectCard] Link API error:", linkResponse.status, errorBody);
-            throw new Error(`Failed to link MetaMask account: ${linkResponse.status} ${errorBody}`);
+            throw new Error(`Failed to link wallet account: ${linkResponse.status} ${errorBody}`);
           }
 
           logger.log("[WalletConnectCard] Account linked successfully");
         }
 
-        // Always refresh profile to sync the wallet address
         await refreshAndSaveUserProfile(user?.identityId || primaryIdentityId);
         logger.log("[WalletConnectCard] User profile refreshed and saved");
       }
@@ -165,24 +147,54 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       setConnectedAddress(walletAddress);
       onWalletConnected(walletAddress);
     } catch (err: unknown) {
-      console.error("[WalletConnectCard] Connection error:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : t("step4.errors.connectionFailed");
-      setError(errorMessage);
+      console.error("[WalletConnectCard] Auth error:", err);
+      setShowWalletHint(false);
 
-      // Reset SDK on timeout or unrecoverable errors
-      if (err instanceof Error && err.message.includes("timed out")) {
-        await disconnectMetaMaskSDK();
+      if (err instanceof Error && err.message.includes("already pending")) {
+        setError(
+          "A previous signing request is still pending. " +
+          "Please open your wallet app and approve/reject it, then try again."
+        );
+      } else {
+        const errorMessage =
+          err instanceof Error ? err.message : t("step4.errors.connectionFailed");
+        setError(errorMessage);
       }
-    } finally {
-      setIsConnecting(false);
-      setConnectStep(0);
-      inFlightRef.current = false;
-    }
-  };
 
-  const shortenAddress = (address: string): string => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+      // Disconnect on error for a clean retry
+      try {
+        await disconnectAsync();
+      } catch {
+        // ignore disconnect errors
+      }
+
+      pendingAuthRef.current = false;
+      authTriggeredRef.current = false;
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, [
+    isConnected, address, connector, signMessageAsync, disconnectAsync,
+    t, user, cognitoIdentityId, storeCognitoToken,
+    setWalletProof, onWalletConnected,
+  ]);
+
+  // Auto-trigger authentication after wallet connects via RainbowKit modal
+  useEffect(() => {
+    if (
+      isConnected &&
+      address &&
+      pendingAuthRef.current &&
+      !authTriggeredRef.current &&
+      !isAuthenticating
+    ) {
+      authTriggeredRef.current = true;
+      handleAuthenticate();
+    }
+  }, [isConnected, address, isAuthenticating, handleAuthenticate]);
+
+  const shortenAddress = (addr: string): string => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   return (
@@ -222,8 +234,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
           {/* Next Step Button */}
           <ButtonV3
-            onClick={handleConnect}
-            disabled={isConnecting}
+            onClick={() => onWalletConnected(connectedAddress)}
             variant="green"
             size="lg"
             className="flex mx-auto"
@@ -263,56 +274,42 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
             </div>
           )}
 
-          {/* Mobile install hint (shown during connection if MetaMask app not detected) */}
-          {isConnecting && mobileInstallHint && (
-            <div className="mb-6 p-4 bg-orange-900/30 rounded-lg border border-orange-600">
-              <p className="text-orange-200">
-                MetaMask app not detected on your device.{" "}
-                <a
-                  href="https://metamask.io/download/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-orange-100 hover:text-white font-medium"
-                >
-                  Install MetaMask
-                </a>
+          {/* WalletConnect signing hint (shown when sign request sent via relay) */}
+          {showWalletHint && (
+            <div className="mb-6 p-4 bg-yellow-900/30 rounded-lg border border-yellow-600">
+              <p className="text-yellow-200">
+                {t("step4.connectingStep2")}
               </p>
             </div>
           )}
 
           {/* Primary Connect Button */}
-          <ButtonV3
-            onClick={handleConnect}
-            disabled={isConnecting}
-            variant="nw1"
-            size="lg"
-            className={isConnecting && connectStep > 0 ? "w-full" : "flex mx-auto"}
-          >
-            {isConnecting ? (
-              connectStep === 1 || connectStep === 2 ? (
-                <div className="flex flex-col items-center gap-1 py-1">
-                  <div className="flex items-center gap-2">
-                    <Spinner size="sm" />
-                    <span className="text-white font-bold text-lg">{connectStep} / 2</span>
-                  </div>
-                  <span className="text-white/90 text-base">
-                    {connectStep === 1 ? t("step4.connectingStep1") : t("step4.connectingStep2")}
-                  </span>
-                </div>
-              ) : (
-                <InlineLoading
-                  message={connectStep === 3 ? t("step4.verifying") : t("step4.connecting")}
-                  size="md"
-                  className="text-white"
-                />
-              )
-            ) : (
-              <>
-                <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6 mr-2" />
-                <span>{t("step4.button")}</span>
-              </>
+          <ConnectButton.Custom>
+            {({ openConnectModal }) => (
+              <ButtonV3
+                onClick={() => {
+                  pendingAuthRef.current = true;
+                  authTriggeredRef.current = false;
+                  setError(null);
+                  openConnectModal();
+                }}
+                disabled={isAuthenticating}
+                variant="nw1"
+                size="lg"
+                className="flex mx-auto"
+              >
+                {isAuthenticating ? (
+                  <InlineLoading
+                    message={t("step4.connecting")}
+                    size="md"
+                    className="text-white"
+                  />
+                ) : (
+                  <span>{t("step4.button")}</span>
+                )}
+              </ButtonV3>
             )}
-          </ButtonV3>
+          </ConnectButton.Custom>
         </>
       )}
     </OuterBox>
