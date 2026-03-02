@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -43,6 +44,7 @@ interface DiagramSectionProps {
   title: string;
   headline: string;
   overview: ReactNode;
+  afterOverview?: ReactNode;
   detail: ReactNode;
   viewLabel: string;
   hideLabel: string;
@@ -52,6 +54,7 @@ function DiagramSection({
   title,
   headline,
   overview,
+  afterOverview,
   detail,
   viewLabel,
   hideLabel,
@@ -66,6 +69,8 @@ function DiagramSection({
       </div>
 
       {overview}
+
+      {afterOverview}
 
       <div className="mt-6">
         <button
@@ -103,6 +108,7 @@ function DiagramSection({
 
 export default function BaramDarkContent() {
   const { t } = useTranslation("baram");
+  const isMobile = useIsMobile();
 
   return (
     <div className="flex flex-col gap-2 md:gap-3 lg:gap-4">
@@ -204,6 +210,21 @@ export default function BaramDarkContent() {
             title={t("flow.sectionLabel")}
             headline={t("flow.headline")}
             overview={<ExecutionFlowDiagramDark />}
+            afterOverview={
+              <video
+                src={
+                  isMobile
+                    ? "/videos/Baram-Agency-mobile-rf28.mp4"
+                    : "/videos/Baram-Agency-rf28.mp4"
+                }
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="mt-8 w-full rounded-lg"
+              />
+            }
             detail={<ExecutionFlowDetailDark />}
             viewLabel={t("common.viewDetails")}
             hideLabel={t("common.hideDetails")}
