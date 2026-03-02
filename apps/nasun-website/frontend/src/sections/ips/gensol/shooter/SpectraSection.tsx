@@ -103,7 +103,7 @@ function SpectraSection() {
               <h4 className="!font-rubik uppercase font-medium text-xl md:text-2xl lg:text-3xl">
                 ESCAPE FROM KRAMOK
                 <span className="text-base md:text-lg lg:text-xl text-nasun-white/50 font-normal ml-3">
-                  / Map 1
+                  — Map 1
                 </span>
               </h4>
             </div>
