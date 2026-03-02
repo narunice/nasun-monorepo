@@ -2,7 +2,7 @@ import { Suspense, lazy, useState, useCallback, useEffect } from "react";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import { usePageLoading } from "../../contexts/PageLoadingContext";
-import PadoHeroSectionSkeleton from "../../sections/ecosystem/pado/PadoHeroSectionSkeleton";
+import PadoHeroSectionSkeleton from "../../sections/ecosystem/finance/PadoHeroSectionSkeleton";
 import { JsonLd, PADO_APP_SCHEMA } from "../../utils/jsonLd";
 
 const FinanceHeroSection = lazy(() => import("@/sections/ecosystem/finance/FinanceHeroSection"));

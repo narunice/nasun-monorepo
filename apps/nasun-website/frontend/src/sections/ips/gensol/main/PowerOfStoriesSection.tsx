@@ -36,7 +36,7 @@ function PowerOfStoriesSection() {
       <div className="absolute inset-0 z-0">
         <img src={bgImage} alt="Background" className="w-full h-full object-cover" />
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 -mt-[2px]"
           style={{
             background: `
               linear-gradient(to bottom, #191615 0%, transparent 50%),

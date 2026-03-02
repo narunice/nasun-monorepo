@@ -47,7 +47,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto flex items-center justify-center bg-[#080c16] overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
+  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto bg-[#080c16] overflow-hidden ${!isVideoPlaying ? "h-screen flex items-center justify-center" : "h-[80vh] landscape:h-screen md:!h-auto"}`;
 
   return (
     <div className={containerClassName}>
@@ -67,13 +67,8 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
         poster="/images/posters/Walden-Dex-Token-rf28.webp"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
-        className={`w-full h-full max-w-9xl ${!isVideoPlaying ? "opacity-0" : "opacity-100"} ${
-          isMobile ? "-mt-2 sm:-mt-24" : ""
-        } transition-opacity duration-500`}
-        style={{
-          objectFit: isMobile ? "cover" : "contain",
-          objectPosition: "center center",
-        }}
+        className={`block w-full ${isMobile ? "h-full" : ""} ${!isVideoPlaying ? "opacity-0" : "opacity-100"} transition-opacity duration-500`}
+        style={isMobile ? { objectFit: "cover" as const, objectPosition: "center center" } : undefined}
       >
         <source src={isMobile ? waldenVideoMobile : waldenVideoDesktop} type="video/mp4" />
       </video>
@@ -86,7 +81,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
       />
 
       {isVideoPlaying && (
-        <div className="absolute inset-0 max-w-9xl mx-auto pointer-events-none">
+        <div className="absolute inset-0 max-w-9xl mx-auto pointer-events-none z-20">
           <div
             className="absolute
             bottom-[15%] sm:bottom-[30%] left-0 right-0
@@ -97,7 +92,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
             pointer-events-auto"
           >
             <FadeInUp>
-              <div className="text-left pr-6 md:pr-8 lg:pr-10">
+              <div className="text-center lg:text-left pr-0 lg:pr-10">
                 <h2 className="!font-pirulen uppercase -mb-1 text-white ">PADO</h2>
                 <h3 className="font-medium text-nasun-white uppercase">Unified Onchain Finance</h3>
                 <h5 className="!text-nasun-white/60 ">
