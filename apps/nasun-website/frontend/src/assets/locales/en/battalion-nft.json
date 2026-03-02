@@ -136,20 +136,19 @@
   "step4": {
     "title": "Connect Wallet",
     "description": "Please connect your Ethereum wallet to mint the NFT.",
-    "infoTitle": "MetaMask Wallet Connection Guide",
-    "infoDescription": "Please connect your MetaMask wallet address to mint the NFT. Approve the connection when the MetaMask popup appears.",
+    "infoTitle": "Wallet Connection Guide",
+    "infoDescription": "Connect your Ethereum wallet to submit your address for the allowlist. Select your preferred wallet when prompted.",
     "signatureNote": "Signing only confirms wallet ownership to collect a valid address. No transactions or fund transfers occur.",
-    "mobileReturnHint": "On mobile, two MetaMask approvals are needed: (1) wallet connection and (2) signature. Return to this browser after each step.",
+    "mobileReturnHint": "On mobile, you may need to switch to your wallet app to approve the signature request.",
     "success": "Wallet connected successfully",
     "connecting": "Connecting...",
     "connectingStep1": "Connecting wallet...",
-    "connectingStep2": "Approve signature in MetaMask",
+    "connectingStep2": "Approve signature in your wallet",
     "verifying": "Verifying...",
-    "button": "Connect MetaMask",
+    "button": "Connect Wallet",
     "nextButton": "Next Step",
     "errors": {
       "connectionFailed": "Failed to connect wallet",
-      "noMetaMask": "MetaMask is not installed. Please install it and try again.",
       "accountsError": "Failed to get accounts",
       "switchNetworkError": "Failed to switch network"
     }

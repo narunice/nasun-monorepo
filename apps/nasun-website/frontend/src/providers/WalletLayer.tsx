@@ -1,10 +1,15 @@
-// Lazy-loaded wallet layer — keeps @nasun/wallet, @nasun/wallet-ui, and @mysten/dapp-kit
-// out of the initial bundle. Downloaded on-demand after the app shell renders.
+// Lazy-loaded wallet layer — keeps @nasun/wallet, @nasun/wallet-ui, @mysten/dapp-kit,
+// and wagmi/RainbowKit out of the initial bundle.
+// Downloaded on-demand after the app shell renders.
 
 import type { ReactNode } from "react";
 import { configureWallet, initZkLogin } from "@nasun/wallet";
 import { WalletProvider } from "@nasun/wallet-ui";
+import { WagmiProvider } from "wagmi";
+import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
+import { wagmiConfig } from "../config/wagmiConfig";
 import { NasunProvider } from "./NasunProvider";
+import "@rainbow-me/rainbowkit/styles.css";
 
 // Initialize wallet config (runs once when this chunk loads)
 configureWallet({
@@ -32,10 +37,21 @@ if (googleClientId && saltApiUrl) {
   });
 }
 
+// Nasun brand theme for RainbowKit (dark mode, brand accent)
+const nasunTheme = darkTheme({
+  accentColor: "#448BBB",
+  accentColorForeground: "#faf7f4",
+  borderRadius: "medium",
+});
+
 export default function WalletLayer({ children }: { children: ReactNode }) {
   return (
-    <WalletProvider>
-      <NasunProvider>{children}</NasunProvider>
-    </WalletProvider>
+    <WagmiProvider config={wagmiConfig}>
+      <RainbowKitProvider theme={nasunTheme}>
+        <WalletProvider>
+          <NasunProvider>{children}</NasunProvider>
+        </WalletProvider>
+      </RainbowKitProvider>
+    </WagmiProvider>
   );
 }
