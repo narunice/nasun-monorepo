@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm tsc:*)"
+      "Bash(pnpm tsc:*)",
+      "Bash(npm info @rainbow-me/rainbowkit dist-tags --json)",
+      "Bash(npm info wagmi@2 version)",
+      "Bash(ffprobe -v error -select_streams v:0 -show_entries stream=width,height,display_aspect_ratio -of csv=s=x:p=0 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/videos/Walden-Dex-Token-rf28.mp4)",
+      "Bash(ffprobe -v error -select_streams v:0 -show_entries stream=width,height,display_aspect_ratio -of csv=s=x:p=0 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/videos/Nsn-Network-Section-rf28.mp4)",
+      "WebFetch(domain:rainbowkit.com)",
+      "Bash(./scripts/deploy-nasun-website-staging.sh --dry-run)",
+      "Bash(cat apps/nasun-website/frontend/src/assets/locales/en/*.json)",
+      "Read(//home/naru/my_apps/nasun-monorepo/**)",
+      "Bash(/tmp/analyze_i18n.sh:*)"
     ]
   }
 }

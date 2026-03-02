@@ -7,7 +7,7 @@ import { SectionLoading } from "@/components/ui/SectionLoading";
 const OpportunitiesSection = lazy(() => import("../../sections/about/OpportunitiesSection"));
 
 export default function OpportunitiesPage() {
-  const { t } = useTranslation(["opportunities", "common"]);
+  const { t } = useTranslation(["common"]);
 
   return (
     <PageLayout className="relative">

@@ -89,7 +89,6 @@
     "backToHome": "Back to Home",
     "loginAgain": "Log In Again"
   },
-  "languageDisclaimer": "The English version of this website is the official and legally binding version. Translations are provided for informational purposes only.",
   "error": {
     "generic": "An error occurred. Please try again later.",
     "notAuthenticated": "User authentication information is missing. Please log in again.",

@@ -36,14 +36,13 @@ interface CustomTooltipProps {
 }
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
-  const { t, i18n } = useTranslation(['myAccount', 'common']);
+  const { t } = useTranslation(['myAccount', 'common']);
 
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
   const data = payload[0].payload as ChartDataPoint;
-  const isKorean = i18n.language === 'ko';
 
   return (
     <div className="bg-nasun-c6 border border-nasun-c4/30 rounded-lg shadow-lg p-3">
@@ -52,7 +51,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
         <p className="text-gray-300">
           <span className="font-medium">{t('rankHistory.chart.rank')}:</span>{' '}
           <span className="font-bold text-nasun-c7">
-            {isKorean ? `${data.rank}` : `#${data.rank}`}
+            {`#${data.rank}`}
           </span>
         </p>
         <p className="text-gray-300">
@@ -68,8 +67,7 @@ export const RankHistoryChartV3: React.FC<RankHistoryChartV3Props> = ({
   history,
   height = 200,
 }) => {
-  const { t, i18n } = useTranslation(['myAccount', 'common']);
-  const isKorean = i18n.language === 'ko';
+  const { t } = useTranslation(['myAccount', 'common']);
 
   // Prepare chart data
   const chartData: ChartDataPoint[] = React.useMemo(() => {
@@ -82,10 +80,10 @@ export const RankHistoryChartV3: React.FC<RankHistoryChartV3Props> = ({
         date: entry.date,
         rank: entry.rank,
         score: entry.userScore ?? 0,
-        displayDate: isKorean ? `${month}/${day}` : `${month}/${day}`,
+        displayDate: `${month}/${day}`,
       };
     });
-  }, [history, isKorean]);
+  }, [history]);
 
   // Calculate Y-axis range (ranks are reversed - lower is better)
   const ranks = chartData.map((d) => d.rank);
