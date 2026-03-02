@@ -2,7 +2,7 @@ import React from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { OuterBox } from "@/components/ui";
+import { OuterBox, FadeInUp } from "@/components/ui";
 
 /**
  * GenSolPlanSection - Gen Sol Universe Overview Page (new content)
@@ -16,69 +16,82 @@ function GenSolPlanSection() {
       <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
         {/* ========== HERO ========== */}
         <section>
-          <div className="flex flex-col items-center text-center">
-            <PageTitle>GEN SOL</PageTitle>
-            <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">
-              A Sci-Fi Universe Across Games, Animation, Film
-            </h5>
-          </div>
-          <div className="mt-6 md:mt-8  space-y-4">
-            <p className="">
-              Gen Sol is a transmedia science fiction universe built around one question: <br />{" "}
-              <strong>
-                What would you sacrifice to control the galaxy's most powerful resource?
-              </strong>
-            </p>
-            <p className="">
-              Every story, across animation, live-action, games, and films, takes place in the Gen Sol
-              Galaxy, where <span className="text-nasun-nw4 font-semibold">Spectra</span> fuels
-              ships, weapons, and entire civilizations. Its power and scarcity turns desire into an
-              obsession no one can escape.
-            </p>
-          </div>
+          <FadeInUp>
+            <div className="flex flex-col items-center text-center">
+              <PageTitle>GEN SOL</PageTitle>
+              <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">
+                A Sci-Fi Universe Across Games, Animation, Film
+              </h5>
+            </div>
+            <div className="mt-6 md:mt-8  space-y-4">
+              <p className="">
+                Gen Sol is a transmedia science fiction universe built around one question: <br />{" "}
+                <strong>
+                  What would you sacrifice to control the galaxy's most powerful resource?
+                </strong>
+              </p>
+              <p className="">
+                Every story, across animation, live-action, games, and films, takes place in the Gen Sol
+                Galaxy, where <span className="text-nasun-nw4 font-semibold">Spectra</span> fuels
+                ships, weapons, and entire civilizations. Its power and scarcity turns desire into an
+                obsession no one can escape.
+              </p>
+            </div>
+          </FadeInUp>
         </section>
 
         {/* ========== THE STRUCTURE ========== */}
         <section>
-          <SectionTitle as="h4">THE STRUCTURE</SectionTitle>
+          <FadeInUp>
+            <SectionTitle as="h4">THE STRUCTURE</SectionTitle>
+          </FadeInUp>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6">
-              <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
-                The Fringes
-              </h6>
-              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
-                Animation series + Multiplayer shooter
-              </small>
-              <p>
-                Outlaws, mercenaries, and anti-heroes fighting for survival on the galaxy's edge.
-              </p>
-            </OuterBox>
-            <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6">
-              <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
-                The Politics
-              </h6>
-              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
-                Live-action series + Tournament games
-              </small>
-              <p>Empires, heirs, and power brokers scheming for dominance.</p>
-            </OuterBox>
-            <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6">
-              <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
-                The V Games
-              </h6>
-              <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
-                Feature film trilogy + Flagship game
-              </small>
-              <p>
-                The galaxy-defining competition for control of the Vertex Zone, the source of all
-                Spectra.
-              </p>
-            </OuterBox>
+            <FadeInUp delay="0.1s">
+              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full">
+                <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
+                  The Fringes
+                </h6>
+                <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+                  Animation series + Multiplayer shooter
+                </small>
+                <p>
+                  Outlaws, mercenaries, and anti-heroes fighting for survival on the galaxy's edge.
+                </p>
+              </OuterBox>
+            </FadeInUp>
+            <FadeInUp delay="0.2s">
+              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full">
+                <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
+                  The Politics
+                </h6>
+                <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+                  Live-action series + Tournament games
+                </small>
+                <p>Empires, heirs, and power brokers scheming for dominance.</p>
+              </OuterBox>
+            </FadeInUp>
+            <FadeInUp delay="0.3s">
+              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full">
+                <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
+                  The V Games
+                </h6>
+                <small className="block text-nasun-nw4 tracking-widest uppercase mb-3">
+                  Feature film trilogy + Flagship game
+                </small>
+                <p>
+                  The galaxy-defining competition for control of the Vertex Zone, the source of all
+                  Spectra.
+                </p>
+              </OuterBox>
+            </FadeInUp>
           </div>
         </section>
         {/* ========== ANIMATION ========== */}
         <section>
-          <SectionTitle as="h4">ANIMATION</SectionTitle>
+          <FadeInUp>
+            <SectionTitle as="h4">ANIMATION</SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.1s">
           <div className="pl-5 border-l-2 border-nasun-nw3">
             <h5 className="font-bold text-nasun-white mb-1">The Heist</h5>
             <small className="block text-sm text-nasun-nw4 tracking-widest uppercase mb-4">
@@ -101,10 +114,14 @@ function GenSolPlanSection() {
               </p>
             </div>
           </div>
+          </FadeInUp>
         </section>
         {/* ========== LIVE-ACTION ========== */}
         <section>
-          <SectionTitle as="h4">LIVE-ACTION</SectionTitle>
+          <FadeInUp>
+            <SectionTitle as="h4">LIVE-ACTION</SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.1s">
           <div className="pl-5 border-l-2 border-nasun-nw3">
             <h5 className="font-bold text-nasun-white mb-1">The Heir Apparent</h5>
             <small className="block text-sm text-nasun-nw4 tracking-widest uppercase mb-4">
@@ -127,114 +144,132 @@ function GenSolPlanSection() {
               </p>
             </div>
           </div>
+          </FadeInUp>
         </section>
         {/* ========== FILM ========== */}
         <section>
-          <SectionTitle as="h4">FILM</SectionTitle>
-          <div className="pl-5 border-l-2 border-nasun-nw3">
-            <h5 className="font-bold text-nasun-white mb-1">The V Games Trilogy</h5>
-            <div className="mt-4 space-y-3">
-              <p>
-                Moonoak, a poor kid from the galaxy's forgotten regions, rises to become one of the
-                greatest mech drivers in V Games history.
-              </p>
-              <p className="">
-                Her rise ignites an obsession in the true heir of the Dorakken Empire, forging a
-                rivalry that reshapes the galaxy and culminates in the V Games themselves.
-              </p>
+          <FadeInUp>
+            <SectionTitle as="h4">FILM</SectionTitle>
+          </FadeInUp>
+          <FadeInUp delay="0.1s">
+            <div className="pl-5 border-l-2 border-nasun-nw3">
+              <h5 className="font-bold text-nasun-white mb-1">The V Games Trilogy</h5>
+              <div className="mt-4 space-y-3">
+                <p>
+                  Moonoak, a poor kid from the galaxy's forgotten regions, rises to become one of the
+                  greatest mech drivers in V Games history.
+                </p>
+                <p className="">
+                  Her rise ignites an obsession in the true heir of the Dorakken Empire, forging a
+                  rivalry that reshapes the galaxy and culminates in the V Games themselves.
+                </p>
+              </div>
             </div>
-          </div>
+          </FadeInUp>
         </section>
         {/* ========== GAMES ========== */}
         <section>
-          <SectionTitle as="h4">GAMES</SectionTitle>
+          <FadeInUp>
+            <SectionTitle as="h4">GAMES</SectionTitle>
+          </FadeInUp>
           <div className="space-y-10">
             {/* SPECTRA */}
-            <div>
-              <h5 className="font-bold text-nasun-white mb-1">SPECTRA</h5>
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <small className="text-sm text-nasun-nw4 tracking-widest uppercase">
-                  Multiplayer Sci-Fi Shooter
-                </small>
-                <span className="text-nasun-nw1 border border-nasun-nw1/50 px-2 py-px rounded-sm tracking-wider uppercase font-bold text-xs">
-                  Alpha Live
-                </span>
-              </div>
-              <p className="mb-4">
-                Teams crash-land on hostile alien worlds and race to extract Spectra before the
-                environment kills everyone. Built in Unreal Engine C++.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <OuterBox color="noborder" padding="sm" className="bg-nasun-nw3">
-                  <small className="block text-white tracking-widest uppercase mb-3">
-                    Current prototype includes:
+            <FadeInUp>
+              <div>
+                <h5 className="font-bold text-nasun-white mb-1">SPECTRA</h5>
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <small className="text-sm text-nasun-nw4 tracking-widest uppercase">
+                    Multiplayer Sci-Fi Shooter
                   </small>
-                  <ul className="space-y-2">
-                    {[
-                      "Live multiplayer with dedicated servers",
-                      "Multiple weapon classes and combat systems",
-                      "Lag compensation and server-rewind",
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-2  ">
-                        <span className="text-nasun-nw1 shrink-0 mt-0.5">✅</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </OuterBox>
-                <OuterBox color="noborder" padding="sm" className="bg-nasun-nw3">
-                  <small className="block text-white tracking-widest uppercase mb-3">
-                    In development:
-                  </small>
-                  <ul className="space-y-2">
-                    {[
-                      "Escape from Kramok map (8v8 objective mode)",
-                      "Dorakken Guards and Raider factions",
-                      "Team-based missions and ranked tournaments",
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-2  ">
-                        <span className="text-nasun-nw1 shrink-0 mt-0.5 text-xs">▶</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </OuterBox>
+                  <span className="text-nasun-nw1 border border-nasun-nw1/50 px-2 py-px rounded-sm tracking-wider uppercase font-bold text-xs">
+                    Alpha Live
+                  </span>
+                </div>
+                <p className="mb-4">
+                  Teams crash-land on hostile alien worlds and race to extract Spectra before the
+                  environment kills everyone. Built in Unreal Engine C++.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FadeInUp delay="0.1s">
+                    <OuterBox color="noborder" padding="sm" className="bg-nasun-nw3 h-full">
+                      <small className="block text-white tracking-widest uppercase mb-3">
+                        Current prototype includes:
+                      </small>
+                      <ul className="space-y-2">
+                        {[
+                          "Live multiplayer with dedicated servers",
+                          "Multiple weapon classes and combat systems",
+                          "Lag compensation and server-rewind",
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-start gap-2  ">
+                            <span className="text-nasun-nw1 shrink-0 mt-0.5">✅</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </OuterBox>
+                  </FadeInUp>
+                  <FadeInUp delay="0.2s">
+                    <OuterBox color="noborder" padding="sm" className="bg-nasun-nw3 h-full">
+                      <small className="block text-white tracking-widest uppercase mb-3">
+                        In development:
+                      </small>
+                      <ul className="space-y-2">
+                        {[
+                          "Escape from Kramok map (8v8 objective mode)",
+                          "Dorakken Guards and Raider factions",
+                          "Team-based missions and ranked tournaments",
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-start gap-2  ">
+                            <span className="text-nasun-nw1 shrink-0 mt-0.5 text-xs">▶</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </OuterBox>
+                  </FadeInUp>
+                </div>
               </div>
-            </div>
+            </FadeInUp>
 
             {/* The V Games */}
-            <div>
-              <h5 className="font-bold text-nasun-white mb-1">The V Games</h5>
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <small className="text-sm text-nasun-nw4 tracking-widest uppercase">
-                  Flagship Competitive Game
-                </small>
-                <span className="text-nasun-nw4/60 border border-nasun-nw4/30 px-2 py-px rounded-sm tracking-wider uppercase font-bold text-xs">
-                  In Development
-                </span>
+            <FadeInUp>
+              <div>
+                <h5 className="font-bold text-nasun-white mb-1">The V Games</h5>
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <small className="text-sm text-nasun-nw4 tracking-widest uppercase">
+                    Flagship Competitive Game
+                  </small>
+                  <span className="text-nasun-nw4/60 border border-nasun-nw4/30 px-2 py-px rounded-sm tracking-wider uppercase font-bold text-xs">
+                    In Development
+                  </span>
+                </div>
+                <p className="">
+                  Every three years, the V Games decide who controls the Vertex Zone. A galaxy-wide
+                  competition where elite drivers of giant mechs battle it out. Over time, narrative
+                  content and gameplay will converge toward the first feature film and a fully
+                  realized V Games tournament.
+                </p>
               </div>
-              <p className="">
-                Every three years, the V Games decide who controls the Vertex Zone. A galaxy-wide
-                competition where elite drivers of giant mechs battle it out. Over time, narrative
-                content and gameplay will converge toward the first feature film and a fully
-                realized V Games tournament.
-              </p>
-            </div>
+            </FadeInUp>
           </div>
         </section>
         {/* ========== PRODUCTION ========== */}
         <section>
-          <SectionTitle as="h4">PRODUCTION</SectionTitle>
-          <p className="">
-            Gen Sol is being developed in collaboration with South Korean filmmakers, actors,
-            writers, and gaming/animation studios.
-          </p>
-          <p className="">All content is primarily in English, designed for global audiences.</p>
+          <FadeInUp>
+            <SectionTitle as="h4">PRODUCTION</SectionTitle>
+            <p className="">
+              Gen Sol is being developed in collaboration with South Korean filmmakers, actors,
+              writers, and gaming/animation studios.
+            </p>
+            <p className="">All content is primarily in English, designed for global audiences.</p>
+          </FadeInUp>
         </section>
         {/* ========== STATUS ========== */}
         <section>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Currently in Production */}
+            <FadeInUp delay="0.1s">
             <div>
               <SectionTitle as="h4">CURRENTLY IN PRODUCTION</SectionTitle>
               <ul className="space-y-2">
@@ -252,8 +287,10 @@ function GenSolPlanSection() {
                 ))}
               </ul>
             </div>
+            </FadeInUp>
 
             {/* What's Next */}
+            <FadeInUp delay="0.2s">
             <div>
               <SectionTitle as="h4">WHAT'S NEXT</SectionTitle>
               <div className="space-y-4">
@@ -293,6 +330,7 @@ function GenSolPlanSection() {
                 </div>
               </div>
             </div>
+            </FadeInUp>
           </div>
         </section>
       </div>
