@@ -2,6 +2,7 @@
   "pageTitle": "SPECTRA",
   "tagline": "Sci-Fi Multiplayer PvP Built on Nasun",
   "heroDescription": "Gen Sol's multiplayer shooter. Built in Unreal Engine with dedicated servers.",
+  "weaponDisclaimer": "Weapons currently use marketplace assets to validate core mechanics including aiming, reloading, damage, fire rate, and range, all built in C++. These placeholders will be replaced with fully custom sci-fi weapons once the framework is complete, starting with the Serhade Rifle, already in-game.",
   "communityEngagement": {
     "title": "COMMUNITY ENGAGEMENT",
     "p1": "The details of the game and its current state is shared here to begin the process of involving the community in its development. After the Frontiers drop, the Discord server will open for collaborative discussions and voting to reach consensus on how to proceed with the game in production, marketing and distribution.",

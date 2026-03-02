@@ -127,7 +127,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
             body: JSON.stringify({
               primaryIdentityId,
               secondaryIdentityId: authResult.identityId,
-              secondaryProvider: "MetaMask",
+              secondaryProvider: connector?.name ?? "EVM Wallet",
             }),
           });
 

@@ -57,10 +57,7 @@ function SpectraSection() {
             {/* Hero Description */}
             <p className="text-center text-nasun-white/60 py-2 md:py-4">{t("heroDescription")}</p>
             <p className="text-center text-nasun-white/50 text-xs md:text-sm">
-              Weapons currently use marketplace assets to validate core mechanics including aiming,
-              reloading, damage, fire rate, and range, all built in C++. These placeholders will be
-              replaced with fully custom sci-fi weapons once the framework is complete, starting with
-              the Serhade Rifle, already in-game.
+              {t("weaponDisclaimer")}
             </p>
           </div>
         </div>
