@@ -20,8 +20,8 @@ const TERMS_CONTENT = {
       "(ii) No Profit Expectation: You acknowledge that you are not acquiring any digital asset with the expectation of profit, return, or appreciation in value derived from the managerial or entrepreneurial efforts of Nasun or any third party.",
       "(iii) No Common Enterprise: Your acquisition or use of any NFT or digital asset does not create any common enterprise between you and Nasun.",
       "(iv) No Equity: Your purchase or acquisition of NFTs, or participation in platform activities, does not create any equity interest, ownership stake, or profit-sharing right.",
-      "(v) No Reliance: You are not relying on any statements, representations, or communications by Nasun regarding potential future value, utility expansion, or ecosystem growth.",
-      "(vi) Purpose: The platform is designed for entertainment, community participation, technical testing, and creative expression purposes only."
+      "(v) No Reliance: You are not relying on any statements, representations, or communications by Nasun regarding potential future value, utility expansion, or ecosystem growth. You expressly acknowledge that no statement, roadmap, whitepaper, social media communication, or public announcement shall constitute a promise of economic return or future value.",
+      "(vi) Purpose: The Services are currently provided for experimental, community participation, and ecosystem development purposes."
     ]
   },
   sections: {
@@ -137,7 +137,7 @@ const TERMS_CONTENT = {
       "title": "12. Eligibility",
       "content": [
         "You must be at least 18 years of age to use the Services. By using the Services, you represent and warrant that you meet this age requirement.",
-        "You represent that you are not located in, incorporated in, or a citizen or resident of any jurisdiction subject to comprehensive sanctions, including but not limited to North Korea (DPRK), Iran, Cuba, Russia, Syria, the Crimea, Donetsk, and Luhansk regions of Ukraine, Belarus, and Myanmar. You further represent that you are not listed on any sanctions list maintained by the U.S. Office of Foreign Assets Control (OFAC), the United Nations Security Council, the European Union, or any other applicable governmental authority."
+        "You represent that you are not located in, incorporated in, or a citizen or resident of any jurisdiction subject to comprehensive sanctions, including but not limited to North Korea (DPRK), Iran, Cuba, and Syria, or any other jurisdiction subject to comprehensive sanctions imposed by the U.S. Office of Foreign Assets Control (OFAC), the United Nations Security Council, or the European Union. You further represent that you are not listed on any sanctions list maintained by OFAC, the United Nations Security Council, the European Union, or any other applicable governmental authority."
       ]
     },
     "13": {
@@ -158,7 +158,7 @@ const TERMS_CONTENT = {
       "title": "15. Governing Law and Dispute Resolution",
       "content": [
         "These Terms and any action related thereto will be governed by and construed in accordance with the laws of the British Virgin Islands, without regard to its conflict of laws provisions.",
-        "Any dispute arising out of or in connection with these Terms, including any question regarding its existence, validity, or termination, shall be referred to and finally resolved by arbitration. The seat of arbitration shall be the British Virgin Islands, and the arbitration shall be conducted in English in accordance with internationally recognized arbitration rules.",
+        "Any dispute arising out of or in connection with these Terms, including any question regarding its existence, validity, or termination, shall be referred to and finally resolved by arbitration. The seat of arbitration shall be the British Virgin Islands, and the arbitration shall be conducted in English in accordance with internationally recognized arbitration rules. Judgment upon the arbitration award may be entered in any court having jurisdiction thereof.",
         "To the fullest extent permitted by applicable law, you agree that any dispute resolution proceedings will be conducted on an individual basis only, and not as a class, consolidated, or representative action. You expressly waive any right to participate in a class action lawsuit or class-wide arbitration."
       ]
     },
