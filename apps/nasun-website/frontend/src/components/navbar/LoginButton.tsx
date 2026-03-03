@@ -1,15 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { EnterIcon, ExitIcon } from "@radix-ui/react-icons";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
+import { trackEvent, AnalyticsEvent } from "@/lib/analytics";
 import { SignUpModal } from "../auth/SignUpModal";
 import { isMobileBrowser } from "../../utils/mobileDetect";
 import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
-
-const MetaMaskLoginButton = lazy(() => import("@/features/auth/components/WalletLoginButton"));
 
 const LoginButton = () => {
   const { t } = useTranslation("common");
@@ -20,7 +20,6 @@ const LoginButton = () => {
     isAuthenticated,
     signInWithGoogle,
     signInWithTwitter,
-    signInWithMetaMask,
     logout,
   } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -65,27 +64,23 @@ const LoginButton = () => {
   // Check if Twitter Auth is available
   const isTwitterAuthAvailable = !!import.meta.env.VITE_TWITTER_AUTH_API;
 
-  // Check if MetaMask Auth is available
-  const isMetaMaskEnabled = import.meta.env.VITE_ENABLE_METAMASK_LOGIN === "true";
+  // Wallet auth hook at LoginButton level — survives DropdownMenu content unmount.
+  // Previously inside WalletLoginButton (inside dropdown), which unmounted on close,
+  // killing the useEffect that triggers authentication after wallet connects.
+  const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
 
-  const handleMetaMaskSuccess = async (
-    identityId: string,
-    token: string,
-    walletAddress: string
-  ) => {
-    try {
-      console.log("MetaMask login successful:", { identityId, walletAddress });
-      await signInWithMetaMask(identityId, token, walletAddress);
+  const { connect: connectWallet } = useWalletAuth({
+    mode: "login",
+    onSuccess: (walletAddress) => {
+      trackEvent(AnalyticsEvent.AUTH_WALLET_SUCCESS, {});
       const currentPath = window.location.pathname;
-      navigate(currentPath === '/' ? '/my-account' : currentPath);
-    } catch (error) {
-      console.error("Error saving MetaMask user data:", error);
-    }
-  };
-
-  const handleMetaMaskError = (error: Error) => {
-    console.error("MetaMask login error:", error);
-  };
+      navigate(currentPath === "/" ? "/my-account" : currentPath);
+    },
+    onError: (err) => {
+      trackEvent(AnalyticsEvent.AUTH_WALLET_ERROR, { reason: err.message });
+      console.error("Wallet login error:", err);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -167,23 +162,31 @@ const LoginButton = () => {
                 {t("auth.login")} with Google
               </button>
             </DropdownMenu.Item>
-            {isMetaMaskEnabled && (
-              <Suspense
-                fallback={
-                  <div className={`${loginMenuItemClass} pointer-events-none`}>
-                    <div className="w-6 h-6 rounded-full bg-nasun-black/10 animate-pulse flex-shrink-0" />
-                    <div className="h-4 w-32 rounded bg-nasun-black/10 animate-pulse" />
-                  </div>
-                }
-              >
-                <DropdownMenu.Item asChild>
-                  <MetaMaskLoginButton
-                    className={loginMenuItemClass}
-                    onSuccess={handleMetaMaskSuccess}
-                    onError={handleMetaMaskError}
-                  />
-                </DropdownMenu.Item>
-              </Suspense>
+            {isWalletLoginEnabled && (
+              <DropdownMenu.Item asChild>
+                <button
+                  onClick={() => {
+                    trackEvent(AnalyticsEvent.AUTH_WALLET_START, {});
+                    connectWallet();
+                  }}
+                  className={loginMenuItemClass}
+                >
+                  <svg
+                    className="w-4 h-4 flex-shrink-0"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1 0-6h.75A2.25 2.25 0 0 1 18 6v0a2.25 2.25 0 0 1-2.25 2.25H15m6 3.75v3a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25v6.75Z"
+                    />
+                  </svg>
+                  Continue with Wallet
+                </button>
+              </DropdownMenu.Item>
             )}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>

@@ -242,13 +242,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = `${import.meta.env.VITE_TWITTER_AUTH_API}/login?mode=redirect`;
   };
 
-  const signInWithMetaMask = async (identityId: string, cognitoToken: string | undefined, walletAddress: string) => {
+  const signInWithWallet = async (identityId: string, cognitoToken: string | undefined, walletAddress: string, connectorName?: string) => {
     clearError();
     setIsLoading(true);
-    localStorage.setItem("auth_provider_preference", "MetaMask");
+    const provider = connectorName || "Wallet";
+    localStorage.setItem("auth_provider_preference", provider);
 
     try {
-      logger.debug("MetaMask authentication successful", { identityId, walletAddress });
+      logger.debug("Wallet authentication successful", { identityId, walletAddress, provider });
 
       // Fetch user profile from backend
       const profileResponse = await fetch(
@@ -266,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username:
           profileData.username ||
           `${walletAddress.substring(0, 6)}...${walletAddress.substring(38)}`,
-        provider: "MetaMask",
+        provider,
         walletAddress: walletAddress.toLowerCase(),
         cognitoToken,
         profileImageUrl: profileData.profileImageUrl,
@@ -277,9 +278,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.setItem("nasun_user_profile", JSON.stringify(userData));
       setUser(userData);
 
-      logger.log("MetaMask sign-in successful:", { identityId, walletAddress });
+      logger.log("Wallet sign-in successful:", { identityId, walletAddress, provider });
     } catch (error) {
-      logger.error("MetaMask sign-in failed", error);
+      logger.error("Wallet sign-in failed", error);
       const formattedError = new Error(formatErrorMessage(error));
       setError(formattedError);
       throw formattedError;
@@ -323,7 +324,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     signInWithGoogle,
     signInWithTwitter,
-    signInWithMetaMask,
+    signInWithWallet,
     logout,
     clearError,
   };

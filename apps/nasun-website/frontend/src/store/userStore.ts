@@ -20,7 +20,7 @@ export interface LinkedAccount {
 // Simplified UserData interface for Identity Pool logins
 export interface UserData {
   identityId: string;
-  provider: 'Google' | 'Twitter' | 'MetaMask';
+  provider: string; // 'Google' | 'Twitter' | wallet connector name (e.g., 'MetaMask', 'Coinbase Wallet')
   username: string; // name from the social provider
   email?: string; // email from Google
   // Twitter-specific fields
