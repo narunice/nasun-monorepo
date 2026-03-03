@@ -10,7 +10,27 @@
       "Bash(./scripts/deploy-nasun-website-staging.sh --dry-run)",
       "Bash(cat apps/nasun-website/frontend/src/assets/locales/en/*.json)",
       "Read(//home/naru/my_apps/nasun-monorepo/**)",
-      "Bash(/tmp/analyze_i18n.sh:*)"
+      "Bash(/tmp/analyze_i18n.sh:*)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo diff HEAD)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo log --oneline -20)",
+      "Bash(AWS_PROFILE=nasun-prod aws logs tail /aws/lambda/nasun-follower-token-refresh --since 2h --format short --region ap-northeast-2)",
+      "Bash(AWS_PROFILE=nasun-prod aws cloudwatch describe-alarms --alarm-names \"nasun-follower-invalid-refresh-token\" --region ap-northeast-2 --query 'MetricAlarms[0].{State:StateValue,Reason:StateReason,Updated:StateUpdatedTimestamp}' --output json)",
+      "Bash(AWS_PROFILE=nasun-prod aws lambda invoke --function-name nasun-follower-token-refresh --payload 'eyJzb3VyY2UiOiJtYW51YWwudmVyaWZpY2F0aW9uIiwiZm9yY2VSZWZyZXNoIjpmYWxzZX0=' --region ap-northeast-2 /tmp/refresh-result.json)",
+      "Bash(AWS_PROFILE=nasun-prod aws cloudwatch set-alarm-state --alarm-name \"nasun-follower-invalid-refresh-token\" --state-value OK --state-reason \"Manual re-auth completed, token verified\" --region ap-northeast-2)",
+      "WebFetch(domain:www.wearefounders.uk)",
+      "WebFetch(domain:www.medianama.com)",
+      "WebFetch(domain:getlate.dev)",
+      "WebFetch(domain:gigazine.net)",
+      "WebFetch(domain:pricetimeline.com)",
+      "WebFetch(domain:jesusiniesta.es)",
+      "WebFetch(domain:elfsight.com)",
+      "WebFetch(domain:developer.x.com)",
+      "WebFetch(domain:superframeworks.com)",
+      "WebFetch(domain:evolutionaihub.com)",
+      "WebFetch(domain:techcrunch.com)",
+      "WebFetch(domain:www.zidooka.com)",
+      "WebFetch(domain:www.socialmediatoday.com)",
+      "WebFetch(domain:www.techbuzz.ai)"
     ]
   }
 }

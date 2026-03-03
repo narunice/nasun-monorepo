@@ -47,7 +47,7 @@ function GenSolPlanSection() {
           </FadeInUp>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FadeInUp delay="0.1s">
-              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full">
+              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]">
                 <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
                   The Fringes
                 </h6>
@@ -60,7 +60,7 @@ function GenSolPlanSection() {
               </OuterBox>
             </FadeInUp>
             <FadeInUp delay="0.2s">
-              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full">
+              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]">
                 <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
                   The Politics
                 </h6>
@@ -71,7 +71,7 @@ function GenSolPlanSection() {
               </OuterBox>
             </FadeInUp>
             <FadeInUp delay="0.3s">
-              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full">
+              <OuterBox color="noborder" padding="sm" className="!bg-nasun-c6 h-full hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]">
                 <h6 className="text-nasun-white font-bold mb-1 tracking-wide uppercase">
                   The V Games
                 </h6>

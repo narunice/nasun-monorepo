@@ -47,7 +47,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  const containerClassName = `relative !p-0 -mt-14 lg:mt-0 mx-auto bg-[#080c16] overflow-hidden ${!isVideoPlaying ? "h-screen flex items-center justify-center" : "h-[80vh] landscape:h-screen md:!h-auto"}`;
+  const containerClassName = `relative !p-0 -mt-14 md:mt-0 mx-auto bg-[#080c16] overflow-hidden ${!isVideoPlaying ? "h-screen flex items-center justify-center" : "min-h-[70vh] landscape:min-h-screen md:!min-h-0 md:!h-auto"}`;
 
   return (
     <div className={containerClassName}>
@@ -68,7 +68,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`block w-full ${isMobile ? "h-full" : ""} ${!isVideoPlaying ? "opacity-0" : "opacity-100"} transition-opacity duration-500`}
-        style={isMobile ? { objectFit: "cover" as const, objectPosition: "center center" } : undefined}
+        style={isMobile ? { objectFit: "cover" as const, objectPosition: "center 10%" } : undefined}
       >
         <source src={isMobile ? waldenVideoMobile : waldenVideoDesktop} type="video/mp4" />
       </video>
@@ -84,15 +84,15 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
         <div className="absolute inset-0 max-w-9xl mx-auto pointer-events-none z-20">
           <div
             className="absolute
-            bottom-[15%] sm:bottom-[30%] left-0 right-0
-            lg:bottom-[10%] xl:bottom-[25%] 2xl:bottom-[30%] lg:pl-[38%] xl:pl-[41%] lg:-translate-y-1/2
+            bottom-[15%] left-0 right-0
+            md:bottom-[10%] xl:bottom-[25%] 2xl:bottom-[30%] md:pl-[38%] xl:pl-[41%] md:-translate-y-1/2
             flex flex-col items-center
             text-center
             px-4
             pointer-events-auto"
           >
             <FadeInUp>
-              <div className="text-center lg:text-left pr-0 lg:pr-10">
+              <div className="text-center md:text-left pr-0 md:pr-10">
                 <h2 className="!font-pirulen uppercase -mb-1 text-white ">PADO</h2>
                 <h3 className="font-medium text-nasun-white uppercase">Unified Onchain Finance</h3>
                 <h5 className="!text-nasun-white/60 ">
