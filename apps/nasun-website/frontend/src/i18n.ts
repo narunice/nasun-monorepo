@@ -2,6 +2,8 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import Backend from "i18next-http-backend";
 
+declare const __BUILD_TIMESTAMP__: string;
+
 // Only bundle critical namespaces for instant rendering (common + home)
 // All other namespaces are loaded on-demand via HTTP backend from /locales/
 import enCommon from "./assets/locales/en/common.json";
@@ -49,7 +51,7 @@ i18n
     ],
     defaultNS: "home",
     backend: {
-      loadPath: "/locales/{{lng}}/{{ns}}.json",
+      loadPath: `/locales/{{lng}}/{{ns}}.json?v=${__BUILD_TIMESTAMP__}`,
     },
     interpolation: {
       escapeValue: false, // React handles XSS protection

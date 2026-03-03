@@ -178,6 +178,20 @@ export const FinanceContent = () => {
               );
             })}
           </div>
+          <FadeInUp delay="0.35s">
+            <div className="mt-6">
+              <video
+                src={padoUiVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                poster="/images/posters/Pado-Ui-Full-rf28.webp"
+                className="w-full rounded-lg"
+              />
+            </div>
+          </FadeInUp>
         </section>
 
         {/* ===== Section 4: A Unified Financial Experience ===== */}
@@ -302,20 +316,6 @@ export const FinanceContent = () => {
             <SectionTitle as="h4" color="pd" className={sectionTitleClass}>
               {t("launchStatus.title")}
             </SectionTitle>
-          </FadeInUp>
-          <FadeInUp delay="0.05s">
-            <div className="mt-2 md:mt-4 lg:mt-6 mb-6">
-              <video
-                src={padoUiVideo}
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls
-                poster="/images/posters/Pado-Ui-Full-rf28.webp"
-                className="w-full rounded-lg"
-              />
-            </div>
           </FadeInUp>
           <FadeInUp delay="0.1s">
             <p className="mb-8">{t("launchStatus.intro")}</p>
