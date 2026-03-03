@@ -1,44 +1,73 @@
-import { useState } from "react";
+/**
+ * useWhitelistRegistration Hook
+ *
+ * Manages the Frontiers NFT whitelist join/withdraw flow.
+ * Uses wagmi + RainbowKit for multi-wallet support (MetaMask, Coinbase, WalletConnect, etc.).
+ *
+ * Flow: openConnectModal → wallet connects → checkStatus → signMessage → join/withdraw API
+ * Auto-link: prepareChallenge → signMessage → connectVerify → link-account API
+ */
+
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  connectWallet,
-  signMessage,
-  isMetaMaskInstalled,
-  getMetaMaskErrorType,
-  switchNetwork,
-} from "../../utils/metamaskUtils";
+import { useAccount, useSignMessage, useDisconnect } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import {
   joinWhitelistWithSignature,
   withdrawWhitelistWithSignature,
   checkWhitelistStatus,
   WhitelistApiError,
 } from "../../services/whitelistApi";
-import { authenticateWithMetaMask } from "../../services/metamaskApi";
-import { connectMetaMaskSDK, signMessageViaSDK } from "../../lib/wallet/metamaskSdkProvider";
-import { isMobileBrowser } from "../../utils/mobileDetect";
+import { prepareChallenge, connectVerify } from "../../services/metamaskApi";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "../../store/userStore";
 import type { WhitelistModalData } from "../../types/whitelist";
 
-// Helper to shorten address for display
 const shortenAddress = (address: string): string => {
   if (address.length <= 12) return address;
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
+/** Detect user-rejected wallet actions from error messages */
+function isUserRejection(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes("rejected") ||
+    msg.includes("denied") ||
+    msg.includes("cancelled") ||
+    msg.includes("user refused")
+  );
+}
+
 export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => void) {
   const { t } = useTranslation(["myAccount", "common"]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalData, setModalData] = useState<WhitelistModalData>({
-    state: "idle",
-  });
+  const [modalData, setModalData] = useState<WhitelistModalData>({ state: "idle" });
 
   const { user } = useAuth();
   const { user: userProfile, updateUserProfile } = useUserStore();
 
+  // wagmi hooks
+  const { address, isConnected, connector } = useAccount();
+  const { signMessageAsync } = useSignMessage();
+  const { disconnectAsync } = useDisconnect();
+  const { openConnectModal } = useConnectModal();
+
+  // Ref for openConnectModal — undefined when already connected
+  const openConnectModalRef = useRef(openConnectModal);
+  useEffect(() => {
+    openConnectModalRef.current = openConnectModal;
+  }, [openConnectModal]);
+
+  // Pending action refs — set before opening RainbowKit modal,
+  // consumed in useEffect after wallet connects
+  const pendingJoinRef = useRef(false);
+  const pendingModalRef = useRef(false);
+
   const registeredEthAddress =
-    user?.provider === "MetaMask"
-      ? user.walletAddress
+    user?.provider === "MetaMask" || user?.walletAddress
+      ? user?.walletAddress
       : userProfile?.linkedAccounts?.metamask?.walletAddress;
 
   const openIntroModal = () => {
@@ -49,222 +78,214 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
   const handleModalOpenChange = (open: boolean) => {
     setModalOpen(open);
     if (!open) {
-      setTimeout(() => {
-        setModalData({ state: "idle" });
-      }, 200);
+      pendingJoinRef.current = false;
+      pendingModalRef.current = false;
+      setTimeout(() => setModalData({ state: "idle" }), 200);
     }
   };
 
-  const autoLinkWallet = async (walletAddress: string) => {
-    if (!user?.identityId) return;
+  // Auto-link wallet to the user's account (non-blocking, best-effort)
+  const autoLinkWallet = useCallback(
+    async (walletAddress: string) => {
+      if (!user?.identityId) return;
 
-    const mobile = isMobileBrowser();
+      try {
+        const { nonce, message } = await prepareChallenge();
+        const signature = await signMessageAsync({ message });
+        const authResult = await connectVerify(signature, nonce);
 
-    try {
-      // switchNetwork uses window.ethereum — skip on mobile (SDK handles connection)
-      if (!mobile) {
-        const expectedChainId = import.meta.env.VITE_ETHEREUM_CHAIN_ID;
-        if (expectedChainId) {
-          await switchNetwork(expectedChainId);
+        const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
+        if (!linkAccountApi) return;
+
+        const linkHeaders: Record<string, string> = { "Content-Type": "application/json" };
+        if (user.cognitoToken) {
+          linkHeaders["Authorization"] = `Bearer ${user.cognitoToken}`;
         }
-      }
 
-      const authResult = await authenticateWithMetaMask(walletAddress, async (message) => {
-        return mobile
-          ? await signMessageViaSDK(message, walletAddress)
-          : await signMessage(message, walletAddress);
-      });
+        const response = await fetch(linkAccountApi, {
+          method: "POST",
+          headers: linkHeaders,
+          body: JSON.stringify({
+            primaryIdentityId: user.identityId,
+            secondaryIdentityId: authResult.identityId,
+            secondaryProvider: connector?.name ?? "Wallet",
+          }),
+        });
 
-      const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
-      if (!linkAccountApi) return;
+        if (!response.ok) return;
 
-      const linkHeaders: Record<string, string> = { "Content-Type": "application/json" };
-      if (user.cognitoToken) {
-        linkHeaders["Authorization"] = `Bearer ${user.cognitoToken}`;
-      }
-
-      const response = await fetch(`${linkAccountApi}/link`, {
-        method: "POST",
-        headers: linkHeaders,
-        body: JSON.stringify({
-          primaryIdentityId: user.identityId,
-          secondaryIdentityId: authResult.identityId,
-          secondaryProvider: "MetaMask",
-          walletAddress: walletAddress.toLowerCase(),
-        }),
-      });
-
-      if (!response.ok) return;
-
-      const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
-      if (userProfileApi) {
-        const profileResponse = await fetch(`${userProfileApi}?identityId=${user.identityId}`);
-        if (profileResponse.ok) {
-          const updatedProfile = await profileResponse.json();
-          updateUserProfile(updatedProfile);
-          sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
+        const userProfileApi = import.meta.env.VITE_USER_PROFILE_API;
+        if (userProfileApi) {
+          const profileResponse = await fetch(`${userProfileApi}?identityId=${user.identityId}`);
+          if (profileResponse.ok) {
+            const updatedProfile = await profileResponse.json();
+            updateUserProfile(updatedProfile);
+            sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
+          }
         }
+      } catch (error) {
+        console.warn("[useWhitelistRegistration] Auto-link failed (non-blocking):", error);
       }
-    } catch (error) {
-      console.warn("[useWhitelistRegistration] Auto-link failed (non-blocking):", error);
-    }
-  };
+    },
+    [user, connector, signMessageAsync, updateUserProfile],
+  );
 
-  const handleProceed = async () => {
-    const mobile = isMobileBrowser();
-
-    // On mobile, MetaMask SDK handles connection via deep link — no window.ethereum needed
-    if (!mobile && !isMetaMaskInstalled()) {
-      setModalData({
-        state: "error",
-        error: t("common:wallet.metamask_not_installed"),
-        errorCode: "NO_METAMASK",
-      });
-      return;
-    }
-
-    try {
-      setModalData({ state: "connecting" });
-
-      const walletAddress = mobile
-        ? await connectMetaMaskSDK({
-            onAppNotDetected: () => {
-              setModalData({
-                state: "error",
-                error: "MetaMask app not detected on your device. Install it at metamask.io/download",
-                errorCode: "NO_METAMASK",
-              });
-            },
-          })
-        : await connectWallet();
-      let activeAddress = walletAddress.toLowerCase();
-
-      // Wallet mismatch check.
-      // personal_sign only works with the currently selected MetaMask account,
-      // so the active account must match the registered wallet.
-      if (registeredEthAddress && activeAddress !== registeredEthAddress.toLowerCase()) {
-        const isMetaMaskPrimary = user?.provider === "MetaMask";
-        setModalData({
-          state: "error",
-          walletAddress: activeAddress,
-          error: isMetaMaskPrimary
-            ? `Your MetaMask is set to a different account.\n\n` +
-              `Please switch to your login wallet in MetaMask:\n` +
-              `${registeredEthAddress}\n\n` +
-              `Open MetaMask → click the account icon → select the correct account, then try again.`
-            : `The connected wallet does not match the wallet linked to your profile.\n\n` +
+  // Core join flow — called after wallet is connected
+  const continueJoinFlow = useCallback(
+    async (activeAddress: string) => {
+      try {
+        // Wallet mismatch check
+        if (registeredEthAddress && activeAddress !== registeredEthAddress.toLowerCase()) {
+          setModalData({
+            state: "error",
+            walletAddress: activeAddress,
+            error:
+              `The connected wallet does not match the wallet linked to your profile.\n\n` +
               `Profile wallet: ${shortenAddress(registeredEthAddress)}\n` +
-              `Connected wallet: ${shortenAddress(walletAddress)}`,
-          errorCode: "WALLET_MISMATCH",
-        });
-        return;
-      }
+              `Connected wallet: ${shortenAddress(activeAddress)}`,
+            errorCode: "WALLET_MISMATCH",
+          });
+          return;
+        }
 
-      setModalData({ state: "connecting", walletAddress: activeAddress });
+        setModalData({ state: "connecting", walletAddress: activeAddress });
 
-      const statusResponse = await checkWhitelistStatus(activeAddress);
-      if (statusResponse.data.registered) {
-        setModalData({
-          state: "already_joined",
-          walletAddress: activeAddress,
-          joinedAt: statusResponse.data.joinedAt,
-        });
-        return;
-      }
-
-      setModalData({ state: "signing", walletAddress: activeAddress });
-
-      const response = await joinWhitelistWithSignature(activeAddress, (message) =>
-        mobile ? signMessageViaSDK(message, activeAddress) : signMessage(message, activeAddress),
-      );
-
-      if (!registeredEthAddress && user?.identityId) {
-        autoLinkWallet(activeAddress);
-      }
-
-      setModalData({
-        state: "success",
-        walletAddress: activeAddress,
-        joinedAt: response.data.joinedAt,
-      });
-
-      onSuccess?.(activeAddress);
-    } catch (error: unknown) {
-      console.error("Join whitelist error:", error);
-      const metamaskErrorType = getMetaMaskErrorType(error);
-
-      if (error instanceof WhitelistApiError) {
-        if (error.statusCode === 409) {
+        const statusResponse = await checkWhitelistStatus(activeAddress);
+        if (statusResponse.data.registered) {
           setModalData({
             state: "already_joined",
-            walletAddress: modalData.walletAddress,
+            walletAddress: activeAddress,
+            joinedAt: statusResponse.data.joinedAt,
+          });
+          return;
+        }
+
+        setModalData({ state: "signing", walletAddress: activeAddress });
+
+        const response = await joinWhitelistWithSignature(activeAddress, (message) =>
+          signMessageAsync({ message }),
+        );
+
+        // Auto-link wallet if not already linked
+        if (!registeredEthAddress && user?.identityId) {
+          autoLinkWallet(activeAddress);
+        }
+
+        setModalData({
+          state: "success",
+          walletAddress: activeAddress,
+          joinedAt: response.data.joinedAt,
+        });
+
+        onSuccess?.(activeAddress);
+      } catch (error: unknown) {
+        console.error("Join whitelist error:", error);
+
+        if (error instanceof WhitelistApiError) {
+          if (error.statusCode === 409) {
+            setModalData({
+              state: "already_joined",
+              walletAddress: activeAddress,
+              error: error.message,
+            });
+            return;
+          }
+          setModalData({
+            state: "error",
+            walletAddress: activeAddress,
             error: error.message,
+            errorCode: error.errorCode,
+          });
+          return;
+        }
+
+        if (isUserRejection(error)) {
+          setModalData({
+            state: "error",
+            walletAddress: activeAddress,
+            error: "You rejected the signature request.",
+            errorCode: "USER_REJECTED",
           });
           return;
         }
 
         setModalData({
           state: "error",
-          walletAddress: modalData.walletAddress,
-          error: error.message,
-          errorCode: error.errorCode,
+          walletAddress: activeAddress,
+          error: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+          errorCode: "UNKNOWN",
         });
-        return;
       }
+    },
+    [registeredEthAddress, user, signMessageAsync, autoLinkWallet, onSuccess],
+  );
 
-      if (metamaskErrorType === "USER_REJECTED") {
-        setModalData({
-          state: "error",
-          walletAddress: modalData.walletAddress,
-          error: "You rejected the signature request.",
-          errorCode: "USER_REJECTED",
-        });
-        return;
-      }
-
-      setModalData({
-        state: "error",
-        walletAddress: modalData.walletAddress,
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred. Please try again.",
-        errorCode: "UNKNOWN",
-      });
+  // After wallet connects via RainbowKit modal, continue the pending join flow
+  useEffect(() => {
+    if (isConnected && address && pendingJoinRef.current) {
+      pendingJoinRef.current = false;
+      continueJoinFlow(address.toLowerCase());
     }
-  };
+  }, [isConnected, address, continueJoinFlow]);
 
-  const handleWithdraw = async () => {
+  // Open the connect modal after disconnect completes
+  useEffect(() => {
+    if (pendingModalRef.current && !isConnected && openConnectModal) {
+      pendingModalRef.current = false;
+      openConnectModal();
+    }
+  }, [isConnected, openConnectModal]);
+
+  const handleProceed = useCallback(async () => {
+    if (isConnected && address) {
+      // Already connected — proceed directly
+      await continueJoinFlow(address.toLowerCase());
+    } else {
+      // Need to connect first
+      setModalData({ state: "connecting" });
+      pendingJoinRef.current = true;
+
+      if (isConnected) {
+        // Connected but no address (edge case) — disconnect first
+        pendingModalRef.current = true;
+        try {
+          await disconnectAsync();
+        } catch {
+          pendingModalRef.current = false;
+        }
+      } else {
+        openConnectModalRef.current?.();
+      }
+    }
+  }, [isConnected, address, continueJoinFlow, disconnectAsync]);
+
+  const handleWithdraw = useCallback(async () => {
     if (!modalData.walletAddress) return;
-
-    const mobile = isMobileBrowser();
+    const withdrawAddress = modalData.walletAddress;
 
     try {
       setModalData({ ...modalData, state: "signing" });
 
-      await withdrawWhitelistWithSignature(modalData.walletAddress, (message) => {
-        return mobile
-          ? signMessageViaSDK(message, modalData.walletAddress!)
-          : signMessage(message, modalData.walletAddress!);
-      });
+      await withdrawWhitelistWithSignature(withdrawAddress, (message) =>
+        signMessageAsync({ message }),
+      );
 
       setModalOpen(false);
       setModalData({ state: "idle" });
 
       alert(
-        `${t("myAccount:whitelist.modal.withdrawSuccess.message")}\n\n${t("myAccount:whitelist.modal.withdrawSuccess.wallet")}: ${modalData.walletAddress}`,
+        `${t("myAccount:whitelist.modal.withdrawSuccess.message")}\n\n${t("myAccount:whitelist.modal.withdrawSuccess.wallet")}: ${withdrawAddress}`,
       );
     } catch (error: unknown) {
       if (error instanceof WhitelistApiError && error.errorCode === "ALREADY_WITHDRAWN") {
         setModalData({
           state: "already_withdrawn",
-          walletAddress: modalData.walletAddress,
+          walletAddress: withdrawAddress,
         });
         return;
       }
 
-      const metamaskErrorType = getMetaMaskErrorType(error);
-      if (metamaskErrorType === "USER_REJECTED") {
+      if (isUserRejection(error)) {
         setModalData({
           ...modalData,
           state: modalData.state === "success" ? "success" : "already_joined",
@@ -274,7 +295,7 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
 
       setModalData({
         state: "error",
-        walletAddress: modalData.walletAddress,
+        walletAddress: withdrawAddress,
         error:
           error instanceof WhitelistApiError
             ? error.message
@@ -282,7 +303,7 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
         errorCode: error instanceof WhitelistApiError ? error.errorCode : "UNKNOWN",
       });
     }
-  };
+  }, [modalData, signMessageAsync, t]);
 
   return {
     modalOpen,

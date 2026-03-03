@@ -445,9 +445,6 @@ importers:
       '@fortawesome/react-fontawesome':
         specifier: ^0.2.2
         version: 0.2.6(@fortawesome/fontawesome-svg-core@6.7.2)(react@19.2.3)
-      '@metamask/sdk':
-        specifier: ^0.34.0
-        version: 0.34.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@mysten/dapp-kit':
         specifier: ^0.19.11
         version: 0.19.11(@tanstack/react-query@5.90.21(react@19.2.3))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(immer@11.1.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -3027,9 +3024,6 @@ packages:
 
   '@metamask/sdk@0.33.1':
     resolution: {integrity: sha512-1mcOQVGr9rSrVcbKPNVzbZ8eCl1K0FATsYH3WJ/MH4WcZDWGECWrXJPNMZoEAkLxWiMe8jOQBumg2pmcDa9zpQ==}
-
-  '@metamask/sdk@0.34.0':
-    resolution: {integrity: sha512-8dkJUShZ5zFqYjNmhJaqKgDzZVne+F2rNjMQJ3pxs89n3oOUNuJ8dsTo08Grf9vlQ6Ldpdt2RTwqbrxKWyyqlw==}
 
   '@metamask/superstruct@3.2.1':
     resolution: {integrity: sha512-fLgJnDOXFmuVlB38rUN5SmU7hAFQcCjrg3Vrxz67KTY7YHFnSNEKvX4avmEBdOI0yTCxZjwMCFEqsC8k2+Wd3g==}
@@ -14009,34 +14003,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@metamask/sdk@0.34.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
-    dependencies:
-      '@babel/runtime': 7.28.6
-      '@metamask/onboarding': 1.0.1
-      '@metamask/providers': 16.1.0
-      '@metamask/sdk-analytics': 0.0.5
-      '@metamask/sdk-communication-layer': 0.33.1(cross-fetch@4.0.0)(eciesjs@0.4.17)(eventemitter2@6.4.9)(readable-stream@3.6.2)(socket.io-client@4.8.3(bufferutil@4.1.0)(utf-8-validate@6.0.6))
-      '@metamask/sdk-install-modal-web': 0.32.1
-      '@paulmillr/qr': 0.2.1
-      bowser: 2.13.1
-      cross-fetch: 4.0.0
-      debug: 4.3.4
-      eciesjs: 0.4.17
-      eth-rpc-errors: 4.0.3
-      eventemitter2: 6.4.9
-      obj-multiplex: 1.0.0
-      pump: 3.0.3
-      readable-stream: 3.6.2
-      socket.io-client: 4.8.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      tslib: 2.8.1
-      util: 0.12.5
-      uuid: 8.3.2
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - supports-color
-      - utf-8-validate
-
   '@metamask/superstruct@3.2.1': {}
 
   '@metamask/utils@11.10.0':
@@ -17314,7 +17280,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@25.3.2)(@vitest/ui@3.2.4)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.13)(@vitest/ui@3.2.4)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(terser@5.46.0)(tsx@4.21.0)
 
   '@vitest/ui@4.0.18(vitest@4.0.18)':
     dependencies:
@@ -17325,7 +17291,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@types/node@22.19.13)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@25.3.2)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
     optional: true
 
   '@vitest/utils@2.1.9':
