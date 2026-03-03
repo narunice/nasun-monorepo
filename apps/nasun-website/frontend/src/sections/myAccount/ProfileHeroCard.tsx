@@ -6,30 +6,20 @@
  * managing both social logins and wallet connections.
  */
 
-import { FC, useState, useEffect, useCallback } from "react";
+import { FC, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { useMetaMaskConnection } from "@/features/wallet";
-import logger from "../../lib/logger";
-import {
-  getConnectedWallet,
-  connectWallet,
-  onAccountsChanged,
-  removeListener,
-} from "../../utils/metamaskUtils";
+import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 import { AccountItem } from "./components/AccountItem";
 import {
-  ActiveBadge,
   ChannelMemberBadge,
   ConnectedBadge,
-  DifferentWalletBadge,
-  InactiveBadge,
   LinkedBadge,
   LoggedInBadge,
 } from "./components/StatusBadges";
@@ -66,6 +56,7 @@ function getLoginIdentifier(
       return displayHandle ? { label: "X", value: `@${displayHandle}` } : null;
     }
     case "MetaMask":
+      // Legacy: existing users stored "MetaMask" as provider
       return user.walletAddress
         ? {
             label: "Wallet",
@@ -73,7 +64,13 @@ function getLoginIdentifier(
           }
         : null;
     default:
-      return null;
+      // New wallet logins store connector.name (e.g., "Coinbase Wallet", "Rainbow")
+      return user.walletAddress
+        ? {
+            label: "Wallet",
+            value: `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`,
+          }
+        : null;
   }
 }
 
@@ -82,7 +79,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [activeWalletAddress, setActiveWalletAddress] = useState<string | null>(null);
 
   // Custom Hooks
   const { isLinking, handleLinkGoogle, handleLinkTwitter, unlinkAccount } = useAccountLinking({
@@ -96,58 +92,17 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
   const nasunWalletAddress = account?.address;
 
-  // MetaMask Connection Logic
-  const { handleConnect: handleLinkMetaMask, isConnecting: isMetaMaskLinking, mobileInstallHint } =
-    useMetaMaskConnection({
+  // EVM Wallet Link via wagmi + RainbowKit
+  const { connect: handleLinkWallet, isAuthenticating: isWalletLinking, error: walletLinkError } =
+    useWalletAuth({
       mode: "link",
-      onSuccess: async (address) => {
-        logger.info("MetaMask wallet linked:", address);
-        toast.success(t("userInfo.linkMetaMaskSuccess") || "MetaMask wallet linked and activated!");
-        // Update active wallet state immediately
-        setActiveWalletAddress(address.toLowerCase());
+      onSuccess: () => {
+        toast.success(t("userInfo.linkMetaMaskSuccess") || "Wallet linked successfully!");
       },
       onError: (error) => {
-        logger.error("Failed to link MetaMask account:", error);
-        toast.error(error.message || "Failed to link MetaMask account");
+        toast.error(error.message || "Failed to link wallet");
       },
     });
-
-  // Monitor MetaMask State
-  useEffect(() => {
-    const checkWallet = async () => {
-      const address = await getConnectedWallet();
-      if (address) {
-        setActiveWalletAddress(address.toLowerCase());
-      }
-    };
-
-    checkWallet().catch(() => {
-      // MetaMask not installed — no active wallet to report
-    });
-
-    const handleAccountsChanged = (accounts: string[]) => {
-      if (accounts.length > 0) {
-        setActiveWalletAddress(accounts[0].toLowerCase());
-      } else {
-        setActiveWalletAddress(null);
-      }
-    };
-
-    onAccountsChanged(handleAccountsChanged);
-
-    return () => {
-      removeListener("accountsChanged", handleAccountsChanged as (...args: unknown[]) => void);
-    };
-  }, []);
-
-  const handleActivateMetaMask = async () => {
-    try {
-      const address = await connectWallet();
-      setActiveWalletAddress(address.toLowerCase());
-    } catch (error) {
-      console.error("Failed to activate MetaMask:", error);
-    }
-  };
 
   const handleImageError = useCallback(() => setImageError(true), []);
   const handleImageLoad = useCallback(() => setImageLoaded(true), []);
@@ -176,15 +131,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const googleData = isGooglePrimary ? user : user.linkedAccounts?.google;
   const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask;
 
-  // MetaMask Status Logic
-  // MetaMask primary users are always considered "active" — they authenticated
-  // with this wallet, so the session is valid regardless of MetaMask's UI state.
+  // Wallet Status: 3 states — Not Linked / Linked / Primary
   const isMetaMaskLinked = !!metamaskData;
   const linkedWalletAddress = metamaskData?.walletAddress?.toLowerCase();
-  const isMetaMaskActive = isMetaMaskLinked &&
-    (isMetaMaskPrimary || activeWalletAddress === linkedWalletAddress);
-  const isDifferentWalletActive =
-    isMetaMaskLinked && !isMetaMaskPrimary && activeWalletAddress && activeWalletAddress !== linkedWalletAddress;
 
   return (
     <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
@@ -295,9 +244,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 3. MetaMask */}
+            {/* 3. Wallet (EVM) */}
             <AccountItem
-              provider="metamask"
+              provider="wallet"
               identifier={
                 isMetaMaskLinked
                   ? `${linkedWalletAddress?.slice(0, 6)}...${linkedWalletAddress?.slice(-4)}`
@@ -306,69 +255,22 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               statusBadge={
                 isMetaMaskPrimary ? (
                   <LoggedInBadge />
-                ) : isMetaMaskActive ? (
-                  <ActiveBadge />
-                ) : isDifferentWalletActive ? (
-                  <DifferentWalletBadge />
                 ) : isMetaMaskLinked ? (
-                  <InactiveBadge />
+                  <LinkedBadge />
                 ) : undefined
               }
               actions={[
-                // Case 1: Not Linked -> Link Button with detected address hint
                 !isMetaMaskLinked ? (
                   <Button
                     key="link"
                     size="sm"
                     variant="filledOutlineC7"
-                    onClick={handleLinkMetaMask}
-                    disabled={isMetaMaskLinking || isLinking}
+                    onClick={handleLinkWallet}
+                    disabled={isWalletLinking || isLinking}
                   >
-                    {isMetaMaskLinking ? (
-                      "Linking..."
-                    ) : (
-                      <>
-                        <span className="sm:hidden">
-                          {activeWalletAddress
-                            ? `Link (${activeWalletAddress.slice(0, 6)}...)`
-                            : "Link"}
-                        </span>
-                        <span className="hidden sm:inline">
-                          {`Link Wallet${activeWalletAddress ? ` (${activeWalletAddress.slice(0, 6)}...)` : ""}`}
-                        </span>
-                      </>
-                    )}
+                    {isWalletLinking ? "Linking..." : "Link"}
                   </Button>
-                ) : // Case 2: Linked but Inactive or Different -> Activate/Switch Button
-                !isMetaMaskActive ? (
-                  <div key="actions" className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="filledOutlineC7"
-                      onClick={
-                        isDifferentWalletActive ? handleLinkMetaMask : handleActivateMetaMask
-                      }
-                      disabled={isDifferentWalletActive ? isMetaMaskLinking || isLinking : false}
-                    >
-                      {isDifferentWalletActive
-                        ? isMetaMaskLinking
-                          ? "Switching..."
-                          : "Switch"
-                        : "Activate"}
-                    </Button>
-                    {!isMetaMaskPrimary && (
-                      <Button
-                        size="sm"
-                        variant="filledOutlineScarlet"
-                        onClick={() => unlinkAccount("MetaMask")}
-                        disabled={isLinking}
-                      >
-                        Unlink
-                      </Button>
-                    )}
-                  </div>
-                ) : // Case 3: Active -> Unlink only (if not primary)
-                !isMetaMaskPrimary ? (
+                ) : !isMetaMaskPrimary ? (
                   <Button
                     key="unlink"
                     size="sm"
@@ -381,18 +283,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 ) : null,
               ]}
             >
-              {isMetaMaskLinking && mobileInstallHint && (
-                <div className="text-sm text-orange-400 px-2 py-1">
-                  MetaMask app not detected on your device.{" "}
-                  <a
-                    href="https://metamask.io/download/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-orange-300 hover:text-white font-medium"
-                  >
-                    Install MetaMask
-                  </a>
-                </div>
+              {walletLinkError && (
+                <div className="text-sm text-red-400 px-2 py-1">{walletLinkError}</div>
               )}
             </AccountItem>
 

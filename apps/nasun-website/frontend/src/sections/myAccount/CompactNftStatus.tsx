@@ -155,7 +155,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
     return (
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
-        <p className="text-nasun-white/50">Connect MetaMask above to view NFT status</p>
+        <p className="text-nasun-white/50">Connect a wallet above to view NFT status</p>
       </OuterBox>
     );
   }

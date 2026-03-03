@@ -22,6 +22,15 @@ export const AccountIcons: Record<string, React.ReactNode> = {
     </svg>
   ),
   metamask: <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-4 h-4" />,
+  wallet: (
+    <svg className="w-4 h-4 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1 0-6h.75A2.25 2.25 0 0 1 18 6v0a2.25 2.25 0 0 1-2.25 2.25H15m6 3.75v3a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25v6.75Z"
+      />
+    </svg>
+  ),
   nasun: <img src="/nasun_symbol_white.svg" alt="Nasun Wallet" className="w-4 h-4" />,
   telegram: (
     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
