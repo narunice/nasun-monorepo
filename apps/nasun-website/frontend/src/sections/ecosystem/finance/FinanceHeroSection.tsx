@@ -93,9 +93,9 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
           >
             <FadeInUp>
               <div className="text-center md:text-left pr-0 md:pr-10">
-                <h2 className="!font-pirulen uppercase -mb-1 text-white ">PADO</h2>
-                <h3 className="font-medium text-nasun-white uppercase">Unified Onchain Finance</h3>
-                <h5 className="!text-nasun-white/60 ">
+                <h2 className="!font-pirulen uppercase -mb-1 text-white lg:text-4xl xl:text-5xl">PADO</h2>
+                <h3 className="font-medium text-nasun-white uppercase lg:text-3xl xl:text-4xl">Unified Onchain Finance</h3>
+                <h5 className="!text-nasun-white/60 lg:text-xl xl:text-2xl">
                   Performance without custody
                   <br />
                   Control without compromise
