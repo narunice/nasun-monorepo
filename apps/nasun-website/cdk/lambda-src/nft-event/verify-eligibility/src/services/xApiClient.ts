@@ -6,7 +6,11 @@
  * - Uses userTimeline (Post objects) instead of tweetRetweetedBy (User objects)
  * - max_results tuned for cost vs false-negative balance
  *
- * Both checkLiked and checkRetweeted accept an optional overrideToken
+ * Verification logic (Mar 2026):
+ * - Like: any @Nasun_io post (author_id matching, not specific tweet ID)
+ * - Repost: any @Nasun_io post via retweet or quote tweet (expansion + author_id)
+ *
+ * Both checkLiked and checkReposted accept an optional overrideToken
  * for User Context OAuth (per-user rate limits, protected account access).
  * When omitted, App-Only Bearer Token is used.
  */
@@ -15,14 +19,13 @@ import { TwitterApi } from 'twitter-api-v2';
 
 export interface XApiConfig {
   bearerToken: string;
-  targetUserId: string;
-  targetTweetId: string;
+  targetUserId: string; // @Nasun_io's X User ID (for author_id matching)
 }
 
 export interface VerificationResult {
   success: boolean;
   hasLiked?: boolean;
-  hasRetweeted?: boolean;
+  hasReposted?: boolean;
   error?: string;
 }
 
@@ -37,9 +40,10 @@ export class XApiClient {
   }
 
   /**
-   * Check if user liked the target tweet.
+   * Check if user liked any @Nasun_io post (author_id matching).
    *
    * Uses GET /2/users/:id/liked_tweets (Post objects, $0.005 each).
+   * tweet.fields: ['author_id'] adds author info at no extra cost.
    * max_results=20: likes are frequent — 5~10 risks false negatives.
    *
    * @param userId X User ID
@@ -49,15 +53,16 @@ export class XApiClient {
     try {
       const client = overrideToken ? new TwitterApi(overrideToken) : this.client;
       const authMode = overrideToken ? 'User Context' : 'App-Only';
-      console.log(`[XApiClient] Checking like (${authMode}) for user ${userId} on tweet ${this.config.targetTweetId}`);
+      console.log(`[XApiClient] Checking like (${authMode}) for user ${userId} on any @Nasun_io post`);
 
       const likedTweets = await client.v2.userLikedTweets(userId, {
         max_results: 20,
+        'tweet.fields': ['author_id'],
       });
 
       const tweets = likedTweets.tweets || [];
       const hasLiked = tweets.some(
-        (tweet: any) => tweet.id === this.config.targetTweetId
+        (tweet: any) => tweet.author_id === this.config.targetUserId
       );
 
       console.log(`[XApiClient] Like check result: ${hasLiked} (${authMode}, ${tweets.length} tweets checked)`);
@@ -74,13 +79,16 @@ export class XApiClient {
   }
 
   /**
-   * Check if user retweeted the target tweet via their timeline.
+   * Check if user reposted (retweeted or quote-tweeted) any @Nasun_io post.
    *
-   * Uses GET /2/users/:id/tweets (Post objects, $0.005 each) instead of
-   * GET /2/tweets/:id/retweeted_by (User objects, $0.010 each).
-   * This saves 90% on retweet verification costs.
+   * Uses GET /2/users/:id/tweets (Post objects, $0.005 each) with
+   * expansions: ['referenced_tweets.id'] to get original tweet author_id.
+   * exclude: ['replies'] reduces expansion object count for cost savings.
    *
-   * CRITICAL: tweet.fields must include 'referenced_tweets' for retweet detection.
+   * Detection logic:
+   *   1. Get user's recent timeline tweets
+   *   2. From includes.tweets (expanded referenced tweets), find Nasun posts
+   *   3. Check if any tweet references (retweet or quote) a Nasun post
    *
    * Rate limits:
    *   App-Only: 10,000 req/15min (vs tweetRetweetedBy's 75 req/15min)
@@ -91,29 +99,40 @@ export class XApiClient {
    *   Required for protected accounts — App-Only Bearer Token cannot access
    *   protected users' timelines (403).
    */
-  async checkRetweeted(userId: string, overrideToken?: string): Promise<boolean> {
+  async checkReposted(userId: string, overrideToken?: string): Promise<boolean> {
     try {
       const client = overrideToken ? new TwitterApi(overrideToken) : this.client;
       const authMode = overrideToken ? 'User Context' : 'App-Only';
-      console.log(`[XApiClient] Checking retweet (${authMode}) for user ${userId} on tweet ${this.config.targetTweetId}`);
+      console.log(`[XApiClient] Checking repost (${authMode}) for user ${userId} on any @Nasun_io post`);
 
       const timeline = await client.v2.userTimeline(userId, {
         max_results: 10,
-        'tweet.fields': ['referenced_tweets'],
+        exclude: ['replies'],
+        'tweet.fields': ['referenced_tweets', 'author_id'],
+        expansions: ['referenced_tweets.id'],
       });
 
+      // Build set of Nasun tweet IDs from expanded referenced tweets
+      const nasunTweetIds = new Set(
+        (timeline.data.includes?.tweets || [])
+          .filter((t: any) => t.author_id === this.config.targetUserId)
+          .map((t: any) => t.id)
+      );
+
       const tweets = timeline.data?.data || [];
-      const hasRetweeted = tweets.some((tweet: any) => {
+      const hasReposted = tweets.some((tweet: any) => {
         const refs = tweet.referenced_tweets || [];
         return refs.some(
-          (ref: any) => ref.type === 'retweeted' && ref.id === this.config.targetTweetId
+          (ref: any) =>
+            (ref.type === 'retweeted' || ref.type === 'quoted') &&
+            nasunTweetIds.has(ref.id)
         );
       });
 
-      console.log(`[XApiClient] Retweet check result: ${hasRetweeted} (${authMode}, ${tweets.length} tweets checked)`);
-      return hasRetweeted;
+      console.log(`[XApiClient] Repost check result: ${hasReposted} (${authMode}, ${tweets.length} tweets, ${nasunTweetIds.size} Nasun refs found)`);
+      return hasReposted;
     } catch (error: any) {
-      console.error('[XApiClient] Error checking retweeted:', error);
+      console.error('[XApiClient] Error checking reposted:', error);
 
       // Protected account: App-Only Bearer Token cannot access their timeline
       if (error.code === 403 || error.data?.status === 403) {
@@ -130,7 +149,7 @@ export class XApiClient {
   }
 
   /**
-   * Verify both Like and Retweet in parallel.
+   * Verify both Like and Repost in parallel.
    *
    * @param userId X User ID
    * @param overrideToken User OAuth token (optional)
@@ -141,34 +160,34 @@ export class XApiClient {
 
       const results = await Promise.allSettled([
         this.checkLiked(userId, overrideToken),
-        this.checkRetweeted(userId, overrideToken),
+        this.checkReposted(userId, overrideToken),
       ]);
 
-      const [likedResult, retweetedResult] = results;
+      const [likedResult, repostedResult] = results;
 
       const hasLiked = likedResult.status === 'fulfilled' ? likedResult.value : undefined;
-      const hasRetweeted = retweetedResult.status === 'fulfilled' ? retweetedResult.value : undefined;
+      const hasReposted = repostedResult.status === 'fulfilled' ? repostedResult.value : undefined;
 
       const errors: string[] = [];
       if (likedResult.status === 'rejected') {
         errors.push(`Like check failed: ${likedResult.reason?.message || 'Unknown error'}`);
       }
-      if (retweetedResult.status === 'rejected') {
-        errors.push(`Retweet check failed: ${retweetedResult.reason?.message || 'Unknown error'}`);
+      if (repostedResult.status === 'rejected') {
+        errors.push(`Repost check failed: ${repostedResult.reason?.message || 'Unknown error'}`);
       }
 
       console.log('[XApiClient] Verification complete:', {
         hasLiked,
-        hasRetweeted,
+        hasReposted,
         errors: errors.length > 0 ? errors : undefined,
       });
 
-      const anySuccess = hasLiked !== undefined || hasRetweeted !== undefined;
+      const anySuccess = hasLiked !== undefined || hasReposted !== undefined;
 
       return {
         success: anySuccess,
         hasLiked,
-        hasRetweeted,
+        hasReposted,
         error: errors.length > 0 ? errors.join('; ') : undefined,
       };
     } catch (error: any) {

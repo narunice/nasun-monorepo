@@ -51,39 +51,39 @@ export class VerificationService {
       // === Tier 1: DynamoDB Task Cache ===
       const existingTasks = await this.taskTracker.getAllTasks(walletAddress);
       const cachedLike = existingTasks.find((t) => t.taskType === 'LIKE' && t.completed);
-      const cachedRetweet = existingTasks.find((t) => t.taskType === 'RETWEET' && t.completed);
+      const cachedRepost = existingTasks.find((t) => t.taskType === 'REPOST' && t.completed);
 
       let hasLiked: boolean | undefined = cachedLike ? true : undefined;
-      let hasRetweeted: boolean | undefined = cachedRetweet ? true : undefined;
+      let hasReposted: boolean | undefined = cachedRepost ? true : undefined;
 
-      if (cachedLike && cachedRetweet) {
+      if (cachedLike && cachedRepost) {
         console.log(`[VerificationService] Tier 1 HIT: All tasks cached, skipping API`);
       } else {
-        console.log(`[VerificationService] Tier 1: Like=${cachedLike ? 'cached' : 'miss'}, Retweet=${cachedRetweet ? 'cached' : 'miss'}`);
+        console.log(`[VerificationService] Tier 1: Like=${cachedLike ? 'cached' : 'miss'}, Repost=${cachedRepost ? 'cached' : 'miss'}`);
 
         // === Tier 2: Engagement Polling Cache ===
         const needLike = hasLiked === undefined;
-        const needRetweet = hasRetweeted === undefined;
+        const needRepost = hasReposted === undefined;
 
-        if (needLike || needRetweet) {
+        if (needLike || needRepost) {
           const cacheResult = await this.engagementCache.checkBoth(xUserId);
 
           if (needLike && cacheResult.likeFound) {
             hasLiked = true;
             console.log(`[VerificationService] Tier 2 HIT: Like found in engagement cache`);
           }
-          if (needRetweet && cacheResult.retweetFound) {
-            hasRetweeted = true;
-            console.log(`[VerificationService] Tier 2 HIT: Retweet found in engagement cache`);
+          if (needRepost && cacheResult.repostFound) {
+            hasReposted = true;
+            console.log(`[VerificationService] Tier 2 HIT: Repost found in engagement cache`);
           }
         }
 
         // === Tier 3: X API Fallback ===
         const stillNeedLike = hasLiked === undefined;
-        const stillNeedRetweet = hasRetweeted === undefined;
+        const stillNeedRepost = hasReposted === undefined;
 
-        if (stillNeedLike || stillNeedRetweet) {
-          console.log(`[VerificationService] Tier 3: Like=${stillNeedLike ? 'API' : 'resolved'}, Retweet=${stillNeedRetweet ? 'API' : 'resolved'}, hasUserToken=${Boolean(xAccessToken)}`);
+        if (stillNeedLike || stillNeedRepost) {
+          console.log(`[VerificationService] Tier 3: Like=${stillNeedLike ? 'API' : 'resolved'}, Repost=${stillNeedRepost ? 'API' : 'resolved'}, hasUserToken=${Boolean(xAccessToken)}`);
 
           const apiPromises: Promise<boolean>[] = [];
           const apiLabels: string[] = [];
@@ -94,9 +94,9 @@ export class VerificationService {
             apiPromises.push(this.xApiClient.checkLiked(xUserId, xAccessToken));
             apiLabels.push('LIKE');
           }
-          if (stillNeedRetweet) {
-            apiPromises.push(this.xApiClient.checkRetweeted(xUserId, xAccessToken));
-            apiLabels.push('RETWEET');
+          if (stillNeedRepost) {
+            apiPromises.push(this.xApiClient.checkReposted(xUserId, xAccessToken));
+            apiLabels.push('REPOST');
           }
 
           const results = await Promise.allSettled(apiPromises);
@@ -106,7 +106,7 @@ export class VerificationService {
             const label = apiLabels[i];
             if (result.status === 'fulfilled') {
               if (label === 'LIKE') hasLiked = result.value;
-              if (label === 'RETWEET') hasRetweeted = result.value;
+              if (label === 'REPOST') hasReposted = result.value;
             } else {
               const reason = result.reason?.message || 'Unknown error';
               if (reason === 'PROTECTED_ACCOUNT') {
@@ -137,9 +137,9 @@ export class VerificationService {
         );
       }
 
-      if (!cachedRetweet && hasRetweeted !== undefined) {
+      if (!cachedRepost && hasReposted !== undefined) {
         savePromises.push(
-          this.taskTracker.saveTaskStatus(walletAddress, xUserId, 'RETWEET', hasRetweeted, {
+          this.taskTracker.saveTaskStatus(walletAddress, xUserId, 'REPOST', hasReposted, {
             xUsername,
             verifiedAt: new Date().toISOString(),
           })
@@ -156,22 +156,22 @@ export class VerificationService {
           message: hasLiked === true
             ? undefined
             : hasLiked === false
-            ? '이벤트 트윗 좋아요가 필요합니다'
+            ? 'Like any @Nasun_io post to complete this task'
             : 'Like verification failed. Please reconnect your X account and retry.',
         },
         {
-          taskType: 'RETWEET',
-          completed: hasRetweeted === true,
-          message: hasRetweeted === true
+          taskType: 'REPOST',
+          completed: hasReposted === true,
+          message: hasReposted === true
             ? undefined
-            : hasRetweeted === false
-            ? '이벤트 트윗 리트윗이 필요합니다'
-            : 'Retweet verification failed. Please reconnect your X account and retry.',
+            : hasReposted === false
+            ? 'Repost (retweet or quote tweet) any @Nasun_io post to complete this task'
+            : 'Repost verification failed. Please reconnect your X account and retry.',
         },
       ];
 
-      const eligible = hasLiked === true && hasRetweeted === true;
-      const hasVerificationErrors = hasLiked === undefined || hasRetweeted === undefined;
+      const eligible = hasLiked === true && hasReposted === true;
+      const hasVerificationErrors = hasLiked === undefined || hasReposted === undefined;
 
       let message: string;
       if (eligible) {
@@ -215,18 +215,18 @@ export class VerificationService {
       const allTasks = await this.taskTracker.getAllTasks(walletAddress);
 
       const likeTask = allTasks.find((t) => t.taskType === 'LIKE');
-      const retweetTask = allTasks.find((t) => t.taskType === 'RETWEET');
+      const repostTask = allTasks.find((t) => t.taskType === 'REPOST');
 
       const tasks: TaskStatus[] = [
         {
           taskType: 'LIKE',
           completed: likeTask?.completed || false,
-          message: likeTask?.completed ? undefined : '이벤트 트윗 좋아요가 필요합니다',
+          message: likeTask?.completed ? undefined : 'Like any @Nasun_io post to complete this task',
         },
         {
-          taskType: 'RETWEET',
-          completed: retweetTask?.completed || false,
-          message: retweetTask?.completed ? undefined : '이벤트 트윗 리트윗이 필요합니다',
+          taskType: 'REPOST',
+          completed: repostTask?.completed || false,
+          message: repostTask?.completed ? undefined : 'Repost (retweet or quote tweet) any @Nasun_io post to complete this task',
         },
       ];
 

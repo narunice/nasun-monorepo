@@ -32,14 +32,14 @@ export interface NftWhitelist {
  */
 export interface EventTask {
   walletAddress: string; // PK
-  taskType: TaskType; // SK: 'FOLLOW' | 'LIKE' | 'RETWEET'
+  taskType: TaskType; // SK: 'FOLLOW' | 'LIKE' | 'REPOST'
   completed: boolean; // 완료 여부
   completedAt?: string; // 완료 시간 (ISO 8601)
   xUserId: string; // X User ID
   metadata?: TaskMetadata; // 추가 메타데이터
 }
 
-export type TaskType = 'FOLLOW' | 'LIKE' | 'RETWEET';
+export type TaskType = 'FOLLOW' | 'LIKE' | 'REPOST';
 
 export interface TaskMetadata {
   tweetId?: string; // 좋아요/리트윗 대상 트윗 ID
@@ -129,7 +129,7 @@ export interface ExportCsvResponse {
 export interface VerificationResult {
   following: boolean; // 팔로우 여부
   liked: boolean; // 좋아요 여부
-  retweeted: boolean; // 리트윗 여부
+  reposted: boolean; // 리포스트 여부 (리트윗 또는 인용트윗)
   allCompleted: boolean; // 모든 작업 완료 여부
   tasks: TaskStatus[];
 }
@@ -139,8 +139,7 @@ export interface VerificationResult {
  */
 export interface XApiConfig {
   bearerToken: string; // X API Bearer Token
-  targetUsername: string; // 팔로우 대상 계정 (예: "Nasun_io")
-  targetTweetId: string; // 좋아요/리트윗 대상 트윗 ID
+  targetUserId: string; // @Nasun_io의 X User ID (author_id 매칭용)
 }
 
 // ========== Rate Limiting Types ==========
@@ -176,9 +175,8 @@ export interface NftEventEnv {
   TASKS_TABLE_NAME: string;
 
   // X API Configuration
-  X_TARGET_USERNAME: string; // 팔로우 대상 username (예: "Nasun_io")
-  X_TARGET_USER_ID: string; // 팔로우 대상 User ID (예: "1725466995565752320")
-  X_TARGET_TWEET_ID: string; // 좋아요/리트윗 대상
+  X_TARGET_USERNAME: string; // 팔로우 대상 (예: "Nasun_io")
+  X_TARGET_USER_ID: string; // @Nasun_io의 X User ID (author_id 매칭용)
 
   // Feature Flags
   ENABLE_RATE_LIMIT_CACHE: string; // "true" | "false"
