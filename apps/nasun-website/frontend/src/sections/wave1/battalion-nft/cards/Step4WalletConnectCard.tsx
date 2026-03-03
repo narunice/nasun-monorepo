@@ -302,7 +302,15 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
                   pendingAuthRef.current = true;
                   authTriggeredRef.current = false;
                   setError(null);
-                  openConnectModal();
+
+                  // In MetaMask in-app browser, wallet may already be connected
+                  // via injected provider. openConnectModal is a no-op when connected,
+                  // so authenticate directly instead.
+                  if (isConnected && address) {
+                    handleAuthenticate();
+                  } else {
+                    openConnectModal();
+                  }
                 }}
                 disabled={isAuthenticating}
                 variant="nw1"
