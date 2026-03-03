@@ -1,6 +1,6 @@
 # Pado Frontend Reference
 
-> Last Updated: 2026-02-23
+> Last Updated: 2026-03-03
 
 ## Routes
 
@@ -182,6 +182,8 @@ Prediction + Lottery integrated admin panel. AdminCap-based access control.
 | `sounds.ts` | Trade success/fill sound effects |
 | `constants.ts` | Global constants |
 | `logger.ts` | Logging utility |
+| `pado-api.ts` | Pado backend API client (chat, leaderboard, competitions, predictions) |
 | `tx-helpers.ts` | Transaction helper utilities |
+| `https-browser-stub.ts` | HTTPS module browser stub for Node.js dependencies |
 | `indicators/` | Technical indicators: SMA, EMA, RSI, MACD, BB (Bollinger Bands), ATR, Stochastic |
 | `tradingview/` | TradingView Lightweight Charts wrapper + Datafeed adapter |

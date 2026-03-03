@@ -1,6 +1,6 @@
 # Pado Bots (Automation)
 
-> Last Updated: 2026-02-23
+> Last Updated: 2026-03-03
 
 ## Bot Overview
 
@@ -30,11 +30,14 @@ pnpm lp-bot:once                                      # Single run
 pnpm lp-bot:all                                       # All 3 markets simultaneously
 pnpm price-updater                                    # Oracle price update
 pnpm liquidation-keeper                               # Liquidation monitoring
+pnpm tpsl-keeper                                      # TP/SL conditional order execution
 ```
 
 ## Production Deployment (PM2)
 
 5 processes managed by PM2 `ecosystem.config.cjs`: `lp-bot-nbtc`, `lp-bot-neth`, `lp-bot-nsol`, `price-updater`, `tpsl-keeper`.
+
+> **Note**: `liquidation-keeper` is available as a local script but is **not** included in the PM2 config. Run it manually or add to PM2 when needed.
 
 **Environment Separation**: Staging and Production use **separate LP_PRIVATE_KEY** to prevent BalanceManager on-chain object contention.
 
