@@ -9,7 +9,7 @@ import { AlertTriangle } from "lucide-react";
 
 const TERMS_CONTENT = {
   title: "Terms of Use",
-  lastUpdated: "Last Updated: February 28, 2026",
+  lastUpdated: "Last Updated: March 3, 2026",
   disclaimer: {
     title: "IMPORTANT INVESTMENT DISCLAIMER",
     subtitle: "PLEASE READ THIS SECTION CAREFULLY. IT LIMITS THE SCOPE OF OUR RELATIONSHIP.",
@@ -17,9 +17,11 @@ const TERMS_CONTENT = {
     header: "You acknowledge and agree that:",
     items: [
       "(i) No Investment: You are not making an investment in Nasun, the entity or individuals operating under the name Nasun, or any of its affiliates.",
-      "(ii) No Profit Expectation: You have no expectation of profits from the efforts of Nasun or others.",
-      "(iii) No Equity: Your purchase or acquisition of NFTs, or participation in platform activities, does not create any equity interest, ownership stake, or profit-sharing right.",
-      "(iv) Purpose: The platform is designed for entertainment, community participation, technical testing, and creative expression purposes only."
+      "(ii) No Profit Expectation: You acknowledge that you are not acquiring any digital asset with the expectation of profit, return, or appreciation in value derived from the managerial or entrepreneurial efforts of Nasun or any third party.",
+      "(iii) No Common Enterprise: Your acquisition or use of any NFT or digital asset does not create any common enterprise between you and Nasun.",
+      "(iv) No Equity: Your purchase or acquisition of NFTs, or participation in platform activities, does not create any equity interest, ownership stake, or profit-sharing right.",
+      "(v) No Reliance: You are not relying on any statements, representations, or communications by Nasun regarding potential future value, utility expansion, or ecosystem growth.",
+      "(vi) Purpose: The platform is designed for entertainment, community participation, technical testing, and creative expression purposes only."
     ]
   },
   sections: {
@@ -57,8 +59,11 @@ const TERMS_CONTENT = {
       "title": "5. Frontiers NFT & Ownership",
       "content": [
         "5.1 Nature of Product: The Frontiers NFT is sold as a digital collectible that grants membership access to the Nasun community. As stated in the Disclaimer above, it is NOT an investment contract.",
-        "5.2 Future Airdrops (Non-Guaranteed): While Nasun may, at its sole discretion, distribute future benefits or tokens to NFT holders, such distributions are speculative, not guaranteed, and subject to future regulatory compliance.",
-        "5.3 License: You own the NFT token itself. Nasun retains all intellectual property rights to the underlying art, the \"GenSol\" universe, and lore. Subject to these Terms, Nasun grants you a limited, non-commercial license to display the NFT artwork."
+        "5.2 Ecosystem Participation: The Frontiers NFT functions solely as a digital membership credential within the Nasun ecosystem. It does not represent any ownership interest, equity, profit-sharing right, or entitlement to future tokens or distributions.",
+        "From time to time, Nasun may, at its sole discretion, introduce community initiatives or participation-based programs intended to encourage ecosystem engagement. Participation in any such initiative, if implemented, would be evaluated based on a range of factors determined by Nasun and shall not be based solely on NFT ownership.",
+        "No rewards, tokens, economic benefits, or other distributions are promised, implied, or guaranteed. Any future initiatives remain subject to applicable laws and regulations. Nasun reserves the right to modify, suspend, or discontinue any such initiatives at any time without notice.",
+        "5.3 License: You own the NFT token itself. Nasun retains all intellectual property rights to the underlying art, the \"GenSol\" universe, and lore. Subject to these Terms, Nasun grants you a limited, personal, non-exclusive, non-transferable, revocable, non-commercial license to display the associated artwork solely for personal use. Commercial use, merchandising, sublicensing, or derivative works are strictly prohibited unless separately authorized in writing by Nasun.",
+        "5.4 Refund Policy: All NFT purchases are final and non-refundable. Due to the nature of blockchain transactions, once an NFT purchase is confirmed on-chain, it cannot be reversed, cancelled, or refunded. By purchasing an NFT through the Services or any third-party marketplace in connection with Nasun, you expressly consent to the immediate performance and delivery of digital content upon on-chain confirmation. To the extent permitted by applicable law, where a statutory right of withdrawal applies, such right may not apply once digital content has been fully delivered with your prior express consent and acknowledgment."
       ]
     },
     "6": {
@@ -76,14 +81,15 @@ const TERMS_CONTENT = {
     "7": {
       "title": "7. No Professional Advice",
       "content": [
-        "Nothing in the Services constitutes investment, financial, legal, or tax advice. Nasun does not act as a fiduciary, broker, or advisor to any user. You are solely responsible for evaluating the risks and merits of using the Services and should consult qualified professionals before making any financial or legal decisions."
+        "Nothing in the Services constitutes investment, financial, legal, or tax advice. Nasun does not act as a fiduciary, broker, or advisor to any user. You are solely responsible for evaluating the risks and merits of using the Services and should consult qualified professionals before making any financial or legal decisions.",
+        "You are solely responsible for determining and fulfilling any tax obligations arising from your use of the Services, including but not limited to the purchase, sale, or transfer of NFTs. Nasun does not provide tax advice and makes no representations regarding the tax implications of any transaction."
       ]
     },
     "8": {
       "title": "8. Assumption of Risk",
       "intro": "You understand and agree that your access to and use of the Services involves certain risks, including but not limited to:",
       "items": [
-        "(i) Volatility: The price and liquidity of blockchain assets, including NFTs, are highly volatile and subject to significant fluctuations.",
+        "(i) Volatility: The market price and liquidity of blockchain-based digital assets, including NFTs acquired through third-party marketplaces, are highly volatile and may fluctuate significantly. Nasun does not control or guarantee any secondary market pricing.",
         "(ii) Irreversibility: Transactions involving NFTs or tokens may be irreversible, and losses resulting from fraudulent or accidental transactions may not be recoverable.",
         "(iii) Technology Risks: NFTs and the Devnet are subject to risks including fraud, counterfeiting, cyber-attacks, smart contract bugs, and other technological issues that may hinder access.",
         "(iv) Regulatory Uncertainty: Blockchain technology is subject to uncertain regulations which may adversely affect the Services.",
@@ -151,9 +157,27 @@ const TERMS_CONTENT = {
     "15": {
       "title": "15. Governing Law and Dispute Resolution",
       "content": [
-        "These Terms and any action related thereto will be governed by the laws of the British Virgin Islands without regard to its conflict of laws provisions.",
-        "Any dispute arising out of or in connection with this contract, including any question regarding its existence, validity or termination, shall be referred to and finally resolved by arbitration administered by the BVI International Arbitration Centre (\"BVIAC\") in accordance with the BVIAC Arbitration Rules for the time being in force.",
+        "These Terms and any action related thereto will be governed by and construed in accordance with the laws of the British Virgin Islands, without regard to its conflict of laws provisions.",
+        "Any dispute arising out of or in connection with these Terms, including any question regarding its existence, validity, or termination, shall be referred to and finally resolved by arbitration. The seat of arbitration shall be the British Virgin Islands, and the arbitration shall be conducted in English in accordance with internationally recognized arbitration rules.",
         "To the fullest extent permitted by applicable law, you agree that any dispute resolution proceedings will be conducted on an individual basis only, and not as a class, consolidated, or representative action. You expressly waive any right to participate in a class action lawsuit or class-wide arbitration."
+      ]
+    },
+    "16": {
+      "title": "16. Third-Party Services and Smart Contracts",
+      "content": [
+        "16.1 Third-Party Services: The Services may integrate with or rely on third-party services, including but not limited to wallet providers, authentication services, blockchain networks, and analytics tools. Nasun does not control, endorse, or assume responsibility for these third-party services. Your use of third-party services is subject to their respective terms and policies. Nasun shall not be liable for any loss or damage arising from third-party service outages, policy changes, or discontinuation.",
+        "16.2 Smart Contracts: The Services may involve interaction with smart contracts deployed on experimental blockchain networks. These smart contracts may not have undergone formal third-party security audits and may contain vulnerabilities, defects, or errors. You acknowledge that smart contract code is experimental and provided without any warranties. Smart contracts are immutable once deployed. You interact with smart contracts entirely at your own risk."
+      ]
+    },
+    "17": {
+      "title": "17. General Provisions",
+      "content": [
+        "17.1 Severability: If any provision of these Terms is found to be unlawful, void, or unenforceable, that provision shall be deemed severable and shall not affect the validity and enforceability of the remaining provisions.",
+        "17.2 Entire Agreement: These Terms constitute the entire agreement between you and Nasun regarding the Services and supersede all prior agreements, representations, and understandings, whether written, oral, or implied.",
+        "17.3 Waiver: The failure of Nasun to exercise or enforce any right or provision of these Terms shall not constitute a waiver of such right or provision.",
+        "17.4 Assignment: Nasun may assign or transfer these Terms, and any rights and obligations hereunder, in whole or in part, without your prior consent, including in connection with a corporate restructuring, incorporation, merger, or sale of assets.",
+        "17.5 Force Majeure: Nasun shall not be liable for any failure or delay in performing its obligations due to causes beyond its reasonable control, including but not limited to blockchain network failures, validator outages, cyberattacks, natural disasters, or changes in applicable law or regulation.",
+        "17.6 Contact: For questions regarding these Terms, contact us at admin@nasun.io."
       ]
     }
   }
