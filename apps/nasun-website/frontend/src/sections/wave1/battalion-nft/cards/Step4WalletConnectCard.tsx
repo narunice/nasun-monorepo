@@ -12,7 +12,6 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { useAccount, useSignMessage, useDisconnect } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAuth } from "@/features/auth";
@@ -28,7 +27,6 @@ interface WalletConnectCardProps {
 }
 
 export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletConnected }) => {
-  const { t } = useTranslation("battalion-nft");
   const { user } = useAuth();
   const {
     cognitoIdentityId,
@@ -81,6 +79,8 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       logger.log("[WalletConnectCard] Challenge prepared");
 
       // Step 2: Sign message via wagmi
+      // WC v2's built-in handleDeeplinkRedirect() opens the wallet app automatically.
+      // Do NOT add explicit deep-links — they conflict with WC's built-in mechanism.
       if (isWC) {
         setShowWalletHint(true);
         logger.log("[WalletConnectCard] Sending sign request via WalletConnect relay...");
@@ -161,7 +161,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         );
       } else {
         const errorMessage =
-          err instanceof Error ? err.message : t("step4.errors.connectionFailed");
+          err instanceof Error ? err.message : "Failed to connect wallet";
         setError(errorMessage);
       }
 
@@ -183,7 +183,6 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
     connector,
     signMessageAsync,
     disconnectAsync,
-    t,
     user,
     cognitoIdentityId,
     storeCognitoToken,
@@ -213,8 +212,8 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
     <OuterBox color="nw0" className=" max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center">
-        <h4 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">{t("step4.title")}</h4>
-        <p className="mb-6">{t("step4.description")}</p>
+        <h4 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">Connect Wallet</h4>
+        <p className="mb-6">Please select your preferred wallet when prompted.</p>
       </div>
 
       {/* Connected Wallet Display */}
@@ -223,7 +222,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           <DividerBox color="green" padding="sm" icon="✅" className="mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="mb-1">{t("step4.success")}</p>
+                <p className="mb-1">Wallet connected successfully</p>
                 <p>{shortenAddress(connectedAddress)}</p>
               </div>
               <div className="w-10 h-10 bg-green-950 rounded-full flex items-center justify-center">
@@ -251,7 +250,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
             size="lg"
             className="flex mx-auto"
           >
-            <span>{t("step4.nextButton")}</span>
+            <span>Next Step</span>
             <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -264,23 +263,28 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
         </>
       ) : (
         <>
-          {/* Info Box */}
-          <DividerBox color="nw4" padding="sm" className="mb-6 !bg-black/30">
-            <p className="">⚠️ {t("step4.signatureNote")}</p>
-            <p className="mt-2 text-yellow-300 text-sm md:hidden">📱 {t("step4.mobileHint")}</p>
-          </DividerBox>
+          {/* Info Box - hidden once signing phase begins */}
+          {!isAuthenticating && (
+            <DividerBox color="nw4" padding="sm" className="mb-6 !bg-black/30">
+              <p>{"⚠️ Signing only confirms wallet ownership to collect a valid address. No transactions or fund transfers occur."}</p>
+              <p className="mt-2 text-yellow-300 text-sm md:hidden">{"📱 On mobile, select WalletConnect first to open your preferred wallet app. You'll approve twice: once to connect, once to sign."}</p>
+              <p className="mt-1 text-yellow-300 text-sm md:hidden">{"If you experience issues completing registration on mobile, please try again on a desktop browser."}</p>
+            </DividerBox>
+          )}
+
+          {/* Signing guidance - shown when WC sign request is sent via relay */}
+          {showWalletHint && (
+            <DividerBox color="nw4" padding="sm" className="mb-6 !bg-black/30">
+              <p>Approve the signature in your wallet app.</p>
+              <p className="mt-1 text-sm md:hidden">If the app doesn't switch automatically, open your wallet app manually to sign, then come back.</p>
+              <p className="mt-1 text-sm md:hidden">If your wallet gets stuck loading, force-close the app and try Trust Wallet instead.</p>
+            </DividerBox>
+          )}
 
           {/* Error Message */}
           {error && (
             <div className="mb-6 p-4 bg-red-900/20 rounded-lg border border-red-700">
               <p className="text-red-200">{error}</p>
-            </div>
-          )}
-
-          {/* WalletConnect signing hint (shown when sign request sent via relay) */}
-          {showWalletHint && (
-            <div className="mb-6 p-4 bg-yellow-900/30 rounded-lg border border-yellow-600">
-              <p className="text-yellow-200">{t("step4.connectingStep2")}</p>
             </div>
           )}
 
@@ -300,9 +304,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
                 className="flex mx-auto"
               >
                 {isAuthenticating ? (
-                  <InlineLoading message={t("step4.connecting")} size="md" className="text-white" />
+                  <InlineLoading message="Connecting..." size="md" className="text-white" />
                 ) : (
-                  <span>{t("step4.button")}</span>
+                  <span>Connect Wallet</span>
                 )}
               </ButtonV3>
             )}

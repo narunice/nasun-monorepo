@@ -106,6 +106,8 @@ export function useWalletAuth(options: UseWalletAuthOptions): UseWalletAuthRetur
       const { nonce, message } = await prepareChallenge();
       logger.log("[useWalletAuth] Challenge prepared");
 
+      // WC v2's built-in handleDeeplinkRedirect() opens the wallet app automatically.
+      // Do NOT add explicit deep-links — they conflict with WC's built-in mechanism.
       const signature = await signMessageAsync({ message });
       logger.log("[useWalletAuth] Signature obtained");
 
