@@ -2,7 +2,6 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { Button } from "@/components/ui/button";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import {
   Wallet,
@@ -30,8 +29,6 @@ import {
   Package,
   Newspaper,
   Bot,
-  Download,
-  FileText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -271,7 +268,15 @@ export const FinanceContent = () => {
                 bullets?: string[];
               }>
             ).map((feat, i) => {
-              const contextIcons = [MessageCircle, Newspaper, Crosshair, Trophy, Copy, Mail, Sparkles];
+              const contextIcons = [
+                MessageCircle,
+                Newspaper,
+                Crosshair,
+                Trophy,
+                Copy,
+                Mail,
+                Sparkles,
+              ];
               const Icon = contextIcons[i];
               return (
                 <FadeInUp key={i} delay={`${0.25 + i * 0.05}s`}>
@@ -307,7 +312,6 @@ export const FinanceContent = () => {
               );
             })}
           </div>
-
         </section>
 
         {/* ===== Section 6: Launch Status ===== */}
@@ -323,7 +327,7 @@ export const FinanceContent = () => {
 
           {/* Live Now */}
           <FadeInUp delay="0.15s">
-            <h6 className="text-emerald-400 flex items-center gap-2 mb-4">
+            <h6 className="!text-pado-2  flex items-center gap-2 mb-4">
               <CheckCircle2 className="w-5 h-5" />
               Live Now
             </h6>
@@ -331,17 +335,21 @@ export const FinanceContent = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
             {liveItems.map((item, i) => (
               <FadeInUp key={i} delay={`${0.2 + i * 0.03}s`}>
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 h-full">
-                  <p className="text-pd5 font-medium">{item.title}</p>
+                <OuterBox
+                  color="pd1"
+                  padding="sm"
+                  className="rounded-lg !bg-gray-950 h-full !border-pado-2/40"
+                >
+                  <p className="!text-pado-2 font-medium">{item.title}</p>
                   <p className="mt-1">{item.description}</p>
-                </div>
+                </OuterBox>
               </FadeInUp>
             ))}
           </div>
 
           {/* Alpha Deployed */}
           <FadeInUp delay="0.35s">
-            <h6 className="text-blue-400 flex items-center gap-2 mb-4">
+            <h6 className="!text-pd3 flex items-center gap-2 mb-4">
               <Package className="w-5 h-5" />
               Alpha Deployed
             </h6>
@@ -349,17 +357,17 @@ export const FinanceContent = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
             {deployedItems.map((item, i) => (
               <FadeInUp key={i} delay={`${0.4 + i * 0.03}s`}>
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 h-full">
-                  <p className="text-pd5 font-medium">{item.title}</p>
+                <DividerBox color="pd2" hideDivider padding="sm" className="h-full !rounded-lg">
+                  <p className="!text-pd4 font-medium">{item.title}</p>
                   <p className="mt-1">{item.description}</p>
-                </div>
+                </DividerBox>
               </FadeInUp>
             ))}
           </div>
 
           {/* Coming Next */}
           <FadeInUp delay="0.5s">
-            <h6 className="text-amber-400 flex items-center gap-2 mb-4">
+            <h6 className="!text-nasun-white/70 flex items-center gap-2 mb-4">
               <Clock className="w-5 h-5" />
               Coming Next
             </h6>
@@ -367,10 +375,14 @@ export const FinanceContent = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {comingItems.map((item, i) => (
               <FadeInUp key={i} delay={`${0.55 + i * 0.03}s`}>
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 h-full">
-                  <p className="text-pd5 font-medium">{item.title}</p>
-                  <p className="mt-1">{item.description}</p>
-                </div>
+                <OuterBox
+                  color="pd1"
+                  padding="sm"
+                  className="rounded-lg !bg-gray-950 h-full !border-nasun-white/40"
+                >
+                  <p className="!text-nasun-white/80 font-medium">{item.title}</p>
+                  <p className="mt-1 !text-nasun-white/60">{item.description}</p>
+                </OuterBox>
               </FadeInUp>
             ))}
           </div>
@@ -419,37 +431,9 @@ export const FinanceContent = () => {
               <h5 className="text-pd5 font-medium mt-6">{t("cta.tagline")}</h5>
               <p className="text-pado-2 mt-2">{t("cta.closing")}</p>
               <p className="mt-1">{t("cta.motto")}</p>
-
-              <h5 className="!font-rubik uppercase font-medium text-xl md:text-2xl mt-10 mb-2 text-center">
-                {t("downloadCta.title")}
-              </h5>
-              <p className="text-pd3 text-center">{t("downloadCta.description")}</p>
-              <div className="flex flex-wrap gap-3 mt-4 justify-center">
-                <Button variant="outlinePado" size="lg" asChild>
-                  <a
-                    href="/downloads/PADO-pitchdeck.pdf"
-                    download="PADO-pitchdeck.pdf"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    {t("downloadCta.pitchdeck")}
-                    <Download className="w-4 h-4 ml-2" />
-                  </a>
-                </Button>
-                <Button variant="outlinePado" size="lg" asChild>
-                  <a
-                    href="/downloads/Nasun-Litepaper-2026.pdf"
-                    download="Nasun-Litepaper-2026.pdf"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    {t("downloadCta.litepaper")}
-                    <Download className="w-4 h-4 ml-2" />
-                  </a>
-                </Button>
-              </div>
             </OuterBox>
           </FadeInUp>
         </section>
-
       </div>
     </SectionLayout>
   );
