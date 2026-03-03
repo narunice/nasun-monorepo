@@ -118,7 +118,10 @@ export default defineConfig(({ mode }) => {
     },
 
     // 4) 명시적으로 VITE_* 변수만 process.env에 주입
-    define: defineEnv,
+    define: {
+      ...defineEnv,
+      __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
+    },
 
     server: {
       port: 5174,

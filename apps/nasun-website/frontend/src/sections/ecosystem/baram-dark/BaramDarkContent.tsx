@@ -171,6 +171,24 @@ export default function BaramDarkContent() {
         </div>
       </SectionLayout>
 
+      {/* ========== UI VIDEO ========== */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.65 }}
+        className="w-full max-w-5xl mx-auto px-8 md:px-12 lg:px-16 xl:px-20"
+      >
+        <video
+          src={isMobile ? "/videos/Baram-Agency-mobile-rf28.mp4" : "/videos/Baram-Agency-rf28.mp4"}
+          autoPlay
+          loop
+          muted
+          playsInline
+          controls
+          className="w-full rounded-lg"
+        />
+      </motion.div>
+
       <SectionDivider />
 
       {/* ========== THE PROBLEM ========== */}
@@ -210,21 +228,6 @@ export default function BaramDarkContent() {
             title={t("flow.sectionLabel")}
             headline={t("flow.headline")}
             overview={<ExecutionFlowDiagramDark />}
-            afterOverview={
-              <video
-                src={
-                  isMobile
-                    ? "/videos/Baram-Agency-mobile-rf28.mp4"
-                    : "/videos/Baram-Agency-rf28.mp4"
-                }
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls
-                className="mt-8 w-full rounded-lg"
-              />
-            }
             detail={<ExecutionFlowDetailDark />}
             viewLabel={t("common.viewDetails")}
             hideLabel={t("common.hideDetails")}
