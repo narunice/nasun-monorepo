@@ -61,9 +61,13 @@ const adminStack = new AdminStack(app, 'AdminStack', {
 // No dependencies - references existing tables by name
 
 // OAuth2 token refresh stack (collect-followers removed — X API cost optimization)
+// Dev schedule disabled: dev and prod share the same Twitter OAuth2 App + @Nasun_io account.
+// Concurrent refresh from both environments causes refresh token cross-invalidation.
+const isProduction = nodeEnv === 'production';
 const followerStack = new FollowerStack(app, 'FollowerStack', {
   env: cdkEnv,
   twitterTokensSecretName: process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens',
+  enableTokenRefreshSchedule: isProduction,
 });
 // No dependencies - standalone stack
 

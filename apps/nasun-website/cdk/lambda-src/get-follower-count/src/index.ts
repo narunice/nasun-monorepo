@@ -2,16 +2,20 @@
  * Get Follower Count Lambda
  *
  * Fetches the @Nasun_io follower count via Twitter API v2.
- * Automatically refreshes the OAuth 2.0 access token when it is about to
- * expire (proactive, within 60 min) or when the API returns 401
- * (reactive), then retries. New tokens are persisted back to Secrets Manager
- * so subsequent invocations use the fresh token.
+ * This Lambda is READ-ONLY — it never refreshes tokens.
+ *
+ * Token strategy:
+ * - Primary: Bearer Token (App-Only) — never expires, no refresh needed
+ * - Fallback: OAuth2 User Access Token — requires periodic refresh
+ *
+ * Bearer Token is preferred because the token refresh Lambda is disabled
+ * in dev to prevent cross-environment invalidation when dev and prod
+ * share the same Twitter OAuth2 App.
  */
 
 import {
   SecretsManagerClient,
   GetSecretValueCommand,
-  UpdateSecretCommand,
 } from "@aws-sdk/client-secrets-manager";
 import { TwitterApi } from "twitter-api-v2";
 
@@ -29,42 +33,11 @@ let cachedFollowerCount: number | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 
-// Proactively refresh when token expires within this window
-const REFRESH_THRESHOLD_MS = 60 * 60 * 1000; // 60 minutes
-
 // ---------------------------------------------------------------------------
-// Types
+// Secrets Manager (read-only)
 // ---------------------------------------------------------------------------
 
-interface RawOAuth2Secret {
-  clientId?: string;
-  clientSecret?: string;
-  userAccessToken: string;
-  refreshToken?: string;
-  expiresAt?: number;
-  [key: string]: unknown;
-}
-
-interface RawSecret {
-  oauth2: RawOAuth2Secret;
-  [key: string]: unknown;
-}
-
-interface TwitterSecrets {
-  accessToken: string;
-  refreshToken: string;
-  clientId: string;
-  clientSecret: string;
-  expiresAt: number | null;
-  /** Full secret object — used when writing back to Secrets Manager */
-  raw: RawSecret;
-}
-
-// ---------------------------------------------------------------------------
-// Secrets Manager helpers
-// ---------------------------------------------------------------------------
-
-async function loadSecrets(): Promise<TwitterSecrets> {
+async function loadAccessToken(): Promise<string> {
   console.log(`[GET_FOLLOWER_COUNT] Loading secrets from: ${TWITTER_TOKENS_SECRET_NAME}`);
 
   const response = await secretsClient.send(
@@ -73,119 +46,22 @@ async function loadSecrets(): Promise<TwitterSecrets> {
 
   if (!response.SecretString) throw new Error("Secret value is empty");
 
-  const raw = JSON.parse(response.SecretString) as RawSecret;
+  const raw = JSON.parse(response.SecretString);
 
-  if (!raw.oauth2?.userAccessToken) {
-    throw new Error("OAuth 2.0 User Access Token not found in secrets");
+  // Prefer Bearer Token (App-Only) — never expires, no refresh needed.
+  // GET /2/users/:id with public_metrics works with App-Only auth.
+  if (raw.bearerToken) {
+    console.log("[GET_FOLLOWER_COUNT] Using Bearer Token (App-Only)");
+    return raw.bearerToken;
   }
 
-  return {
-    accessToken: raw.oauth2.userAccessToken,
-    refreshToken: raw.oauth2.refreshToken || "",
-    clientId: raw.oauth2.clientId || "",
-    clientSecret: raw.oauth2.clientSecret || "",
-    expiresAt: raw.oauth2.expiresAt ?? null,
-    raw,
-  };
-}
-
-async function persistTokens(
-  secrets: TwitterSecrets,
-  newAccessToken: string,
-  newRefreshToken: string,
-  newExpiresAt: number,
-  scope: string
-): Promise<TwitterSecrets> {
-  const updatedRaw: RawSecret = {
-    ...secrets.raw,
-    oauth2: {
-      ...secrets.raw.oauth2,
-      userAccessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-      expiresAt: newExpiresAt,
-      lastRefreshed: new Date().toISOString(),
-      scope,
-    },
-  };
-
-  await secretsClient.send(
-    new UpdateSecretCommand({
-      SecretId: TWITTER_TOKENS_SECRET_NAME,
-      SecretString: JSON.stringify(updatedRaw, null, 2),
-    })
-  );
-
-  console.log(
-    `[GET_FOLLOWER_COUNT] Secrets Manager updated. New expiry: ${new Date(newExpiresAt).toISOString()}`
-  );
-
-  return {
-    ...secrets,
-    accessToken: newAccessToken,
-    refreshToken: newRefreshToken,
-    expiresAt: newExpiresAt,
-    raw: updatedRaw,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Token refresh
-// ---------------------------------------------------------------------------
-
-async function refreshAccessToken(secrets: TwitterSecrets): Promise<TwitterSecrets> {
-  if (!secrets.refreshToken) {
-    throw new Error("No refresh token stored — re-run setup-oauth2-auto.ts");
-  }
-  if (!secrets.clientId || !secrets.clientSecret) {
-    throw new Error("Client credentials missing from secrets — re-run setup-oauth2-auto.ts");
+  // Fallback to OAuth2 User Access Token
+  if (raw.oauth2?.userAccessToken) {
+    console.log("[GET_FOLLOWER_COUNT] Using OAuth2 User Access Token (fallback)");
+    return raw.oauth2.userAccessToken;
   }
 
-  console.log("[GET_FOLLOWER_COUNT] Refreshing OAuth 2.0 access token...");
-
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: secrets.refreshToken,
-    client_id: secrets.clientId,
-  });
-
-  const credentials = Buffer.from(`${secrets.clientId}:${secrets.clientSecret}`).toString(
-    "base64"
-  );
-
-  const response = await fetch("https://api.x.com/2/oauth2/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${credentials}`,
-    },
-    body: body.toString(),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Token refresh failed: ${response.status} ${errorText}`);
-  }
-
-  const tokenData = (await response.json()) as {
-    access_token: string;
-    refresh_token?: string; // Twitter rotates refresh tokens
-    expires_in: number;
-    scope: string;
-  };
-
-  const newExpiresAt = Date.now() + tokenData.expires_in * 1000;
-  // Use new refresh token if provided (rotation), otherwise keep existing
-  const newRefreshToken = tokenData.refresh_token || secrets.refreshToken;
-
-  console.log(`[GET_FOLLOWER_COUNT] Token refreshed. Expires in ${tokenData.expires_in}s`);
-
-  return persistTokens(
-    secrets,
-    tokenData.access_token,
-    newRefreshToken,
-    newExpiresAt,
-    tokenData.scope
-  );
+  throw new Error("No Bearer Token or OAuth2 User Access Token found in secrets");
 }
 
 // ---------------------------------------------------------------------------
@@ -210,12 +86,6 @@ async function fetchFollowerCount(accessToken: string): Promise<number> {
   );
 
   return followersCount;
-}
-
-function is401(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  const e = err as { code?: number };
-  return e.code === 401 || err.message.includes("401");
 }
 
 // ---------------------------------------------------------------------------
@@ -265,35 +135,13 @@ export const handler = async (event?: { headers?: Record<string, string> }) => {
       };
     }
 
-    // 2. Load secrets from Secrets Manager
-    let secrets = await loadSecrets();
+    // 2. Load access token from Secrets Manager (read-only, no refresh)
+    const accessToken = await loadAccessToken();
 
-    // 3. Proactive refresh: renew before token expires
-    if (secrets.expiresAt !== null && secrets.expiresAt - now < REFRESH_THRESHOLD_MS) {
-      console.log("[GET_FOLLOWER_COUNT] Token expires soon — proactive refresh");
-      try {
-        secrets = await refreshAccessToken(secrets);
-      } catch (refreshErr) {
-        // Non-fatal: log and attempt API call with existing token (may still work)
-        console.error("[GET_FOLLOWER_COUNT] Proactive refresh failed:", refreshErr);
-      }
-    }
+    // 3. Call Twitter API
+    const followerCount = await fetchFollowerCount(accessToken);
 
-    // 4. Call Twitter API; on 401 perform one reactive refresh + retry
-    let followerCount: number;
-    try {
-      followerCount = await fetchFollowerCount(secrets.accessToken);
-    } catch (apiErr) {
-      if (is401(apiErr) && secrets.refreshToken) {
-        console.log("[GET_FOLLOWER_COUNT] Got 401 — reactive refresh + retry");
-        secrets = await refreshAccessToken(secrets);
-        followerCount = await fetchFollowerCount(secrets.accessToken);
-      } else {
-        throw apiErr;
-      }
-    }
-
-    // 5. Update in-memory cache
+    // 4. Update in-memory cache
     cachedFollowerCount = followerCount;
     cacheTimestamp = now;
 
