@@ -13,7 +13,7 @@
 import { XApiClient, XApiConfig } from './xApiClient';
 import { TaskTracker } from './taskTracker';
 import { EngagementCache } from './engagementCache';
-import { TaskType, TaskStatus, VerifyEligibilityResponse } from '../types';
+import { EventTask, TaskType, TaskStatus, VerifyEligibilityResponse } from '../types';
 
 export interface VerificationServiceConfig {
   xApiConfig: XApiConfig;
@@ -48,10 +48,16 @@ export class VerificationService {
     try {
       console.log(`[VerificationService] Starting 3-tier verification for user ${xUserId}`);
 
-      // === Tier 1: DynamoDB Task Cache ===
+      // === Tier 1: DynamoDB Task Cache (with soft TTL) ===
+      const cacheMaxAgeMs = parseInt(process.env.CACHE_MAX_AGE_HOURS || '24', 10) * 3600 * 1000;
+      const isFresh = (task: EventTask): boolean => {
+        if (!task.completedAt) return false;
+        return Date.now() - new Date(task.completedAt).getTime() < cacheMaxAgeMs;
+      };
+
       const existingTasks = await this.taskTracker.getAllTasks(walletAddress);
-      const cachedLike = existingTasks.find((t) => t.taskType === 'LIKE' && t.completed);
-      const cachedRepost = existingTasks.find((t) => t.taskType === 'REPOST' && t.completed);
+      const cachedLike = existingTasks.find((t) => t.taskType === 'LIKE' && t.completed && isFresh(t));
+      const cachedRepost = existingTasks.find((t) => t.taskType === 'REPOST' && t.completed && isFresh(t));
 
       let hasLiked: boolean | undefined = cachedLike ? true : undefined;
       let hasReposted: boolean | undefined = cachedRepost ? true : undefined;
@@ -125,7 +131,8 @@ export class VerificationService {
         }
       }
 
-      // Save newly verified results to DynamoDB (Tier 1 cache for next time)
+      // Save results to DynamoDB (Tier 1 cache for next time)
+      // Save when: no cache exists, or cache was stale and re-verified via API
       const savePromises: Promise<any>[] = [];
 
       if (!cachedLike && hasLiked !== undefined) {

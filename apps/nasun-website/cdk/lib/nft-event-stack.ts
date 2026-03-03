@@ -197,6 +197,7 @@ export class NftEventStack extends cdk.Stack {
         X_TARGET_USER_ID,
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
+        CACHE_MAX_AGE_HOURS: "24",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
