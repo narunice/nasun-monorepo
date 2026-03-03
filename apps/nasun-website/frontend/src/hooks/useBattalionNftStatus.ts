@@ -9,9 +9,30 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { checkBattalionNftStatus } from '../services/battalionNftApi';
 import { NftWhitelist, ApiError } from '../types/battalion-nft';
+
+const ERROR_MESSAGES: Record<string, string> = {
+  ALREADY_REGISTERED: "This wallet address is already registered.",
+  X_ACCOUNT_ALREADY_REGISTERED: "This X account is already registered with a different wallet address.",
+  INVALID_WALLET_ADDRESS: "Invalid wallet address.",
+  INVALID_X_USER_ID: "Invalid X user ID.",
+  INVALID_X_USERNAME: "Invalid X username.",
+  MISSING_REQUIRED_FIELDS: "Missing required fields.",
+  NOT_ELIGIBLE: "You are not eligible for this event.",
+  TASKS_NOT_COMPLETED: "Please complete all required tasks first.",
+  X_API_ERROR: "X API error. Please try again later.",
+  X_API_RATE_LIMIT: "X API rate limit reached. Please try again later.",
+  RATE_LIMIT_EXCEEDED: "Too many requests. Please try again later.",
+  UNKNOWN_ERROR: "An unknown error occurred. Please try again.",
+  INVALID_SIGNATURE: "Invalid wallet signature. Please try again.",
+  SIGNATURE_EXPIRED: "Signature expired. Please try again.",
+  ALREADY_MINTED: "This X account has already minted an NFT. Wallet changes are no longer allowed.",
+  networkError: "A network error occurred. Please try again later.",
+  statusCheckError: "An error occurred while checking status.",
+};
+
+const FALLBACK_ERROR = "A network error occurred. Please try again later.";
 
 interface UseBattalionNftStatusReturn {
   status: NftWhitelist | null;
@@ -35,7 +56,6 @@ export function useBattalionNftStatus(
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { t } = useTranslation('battalion-nft');
 
   const fetchStatus = useCallback(async () => {
     // Neither walletAddress nor xUserId — nothing to query
@@ -67,15 +87,11 @@ export function useBattalionNftStatus(
     } catch (err: unknown) {
       console.error('[useBattalionNftStatus] Error:', err);
 
-      // Map error codes to i18n translations
       if ((err as ApiError).code) {
-        const apiError = err as ApiError;
-        const errorCode = apiError.code;
-        const i18nKey = `errors.${errorCode}`;
-        const translated = t(i18nKey) !== i18nKey ? t(i18nKey) : null;
-        setError(translated || t('errors.networkError'));
+        const errorCode = (err as ApiError).code;
+        setError(ERROR_MESSAGES[errorCode] ?? FALLBACK_ERROR);
       } else {
-        setError(t('errors.networkError'));
+        setError(FALLBACK_ERROR);
       }
 
       setIsRegistered(false);
@@ -83,7 +99,7 @@ export function useBattalionNftStatus(
     } finally {
       setIsLoading(false);
     }
-  }, [walletAddress, xUserId, t]);
+  }, [walletAddress, xUserId]);
 
   // 지갑 주소가 변경될 때마다 자동으로 상태 조회
   useEffect(() => {

@@ -10,7 +10,6 @@
  */
 
 import React from "react";
-import { useTranslation } from "react-i18next";
 import { ButtonV3 } from "@/components/ui/button-v3";
 
 interface WalletDisconnectedCardProps {
@@ -31,10 +30,8 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
   onReconnectClick,
   onResetClick,
 }) => {
-  const { t } = useTranslation("battalion-nft");
-
   const handleReset = () => {
-    const confirmed = window.confirm(t("step6.walletDisconnected.resetConfirm"));
+    const confirmed = window.confirm("Are you sure you want to reset your registration? This action cannot be undone.");
     if (confirmed) {
       onResetClick();
     }
@@ -62,18 +59,18 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
           </div>
         </div>
 
-        <h2 className="text-lg font-semibold text-nasun-white mb-2">{t("step6.walletDisconnected.title")}</h2>
-        <p className="text-sm text-gray-300">{t("step6.walletDisconnected.description")}</p>
-        <p className="text-sm text-gray-300 mt-1">{t("step6.walletDisconnected.instruction")}</p>
+        <h2 className="text-lg font-semibold text-nasun-white mb-2">Wallet Disconnected</h2>
+        <p className="text-sm text-gray-300">Your registration is saved, but your wallet is no longer connected.</p>
+        <p className="text-sm text-gray-300 mt-1">Please reconnect your wallet to view your registration details and participate in the NFT mint.</p>
       </div>
 
       {/* Information Box */}
       <div className="mb-5 p-4 bg-nasun-nw1/10 rounded-lg border border-nasun-nw1/30">
-        <p className="text-sm font-medium text-nasun-nw1 mb-2">{t("step6.info.dataPreserved")}</p>
+        <p className="text-sm font-medium text-nasun-nw1 mb-2">Your Registration is Saved</p>
         <ul className="space-y-1 text-sm text-nasun-nw1/80">
-          <li>{t("step6.info.registrationSaved")}</li>
-          <li>{t("step6.info.xAccountSaved")}</li>
-          <li className="text-yellow-400/80">{t("step6.info.walletNeeded")}</li>
+          <li>Your allowlist registration is saved in our backend</li>
+          <li>Your X account verification is preserved</li>
+          <li className="text-yellow-400/80">You need to reconnect your wallet to participate in the mint</li>
         </ul>
       </div>
 
@@ -89,7 +86,7 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
               d="M13 10V3L4 14h7v7l9-11h-7z"
             />
           </svg>
-          {t("step6.walletDisconnected.reconnectButton")}
+          Reconnect Wallet
         </ButtonV3>
 
         {/* Secondary Action: Reset */}
@@ -102,13 +99,13 @@ export const WalletDisconnectedCard: React.FC<WalletDisconnectedCardProps> = ({
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
             />
           </svg>
-          {t("step6.walletDisconnected.resetButton")}
+          Reset Registration
         </ButtonV3>
       </div>
 
       {/* Help Text */}
       <div className="mt-5 p-3 bg-gray-700/50 rounded-lg">
-        <p className="text-xs text-gray-400 text-center">{t("step6.walletDisconnected.helpText")}</p>
+        <p className="text-xs text-gray-400 text-center">If you reconnect the same wallet, your registration will be automatically restored from the backend.</p>
       </div>
     </div>
   );

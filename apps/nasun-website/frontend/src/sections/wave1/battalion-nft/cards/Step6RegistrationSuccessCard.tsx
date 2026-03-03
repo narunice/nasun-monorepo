@@ -9,7 +9,6 @@
  */
 
 import React from "react";
-import { useTranslation } from "react-i18next";
 import type { NftWhitelist } from "../../../../types/battalion-nft";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -37,7 +36,6 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
   whitelist,
   isWalletConnected = true,
 }) => {
-  const { t } = useTranslation("battalion-nft");
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
@@ -57,7 +55,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
   };
 
   const handleShareToTwitter = () => {
-    const shareText = t("step6.shareMessage");
+    const shareText = "I've registered for the Battalion NFT allowlist! \uD83C\uDF89 #NASUN #NFT";
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
     window.open(url, "_blank");
   };
@@ -67,21 +65,21 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
       <OuterBox color="nw0" className=" max-w-3xl mx-auto">
         {/* Success Header */}
         <div className="text-center mb-4">
-          <h4 className="!font-rubik font-medium mb-2">{t("step6.title")}</h4>
-          <p className="">{t("step6.description")}</p>
+          <h4 className="!font-rubik font-medium mb-2">{"\uD83C\uDF89 Allowlist Registration Complete!"}</h4>
+          <p className="">{"You're on the allowlist. We'll announce the minting schedule soon."}</p>
         </div>
 
         {/* Wallet Disconnected Warning */}
         {!isWalletConnected && (
           <DividerBox color="nw1" padding="sm" icon="⚠️" className="mb-6">
-            <p className="mb-3">{t("step6.walletDisconnectedWarning")}</p>
+            <p className="mb-3">Your wallet is disconnected. Please reconnect to ensure you can participate in the mint.</p>
             <ButtonV3
               onClick={() => navigate(isAuthenticated ? "/my-account" : "/")}
               variant="nw2"
               size="sm"
               className="w-full !bg-yellow-600 hover:bg-yellow-700"
             >
-              {isAuthenticated ? t("step6.goToMyAccount") : t("goToHome")}
+              {isAuthenticated ? "Go to My Account to Reconnect" : "Go to Home"}
             </ButtonV3>
           </DividerBox>
         )}
@@ -99,21 +97,21 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
               />
             </svg>
           }
-          title={t("step6.info.title")}
+          title="Registration Info"
           padding="sm"
           className="mb-8"
         >
           <div className="space-y-2 text-nasun-white/80">
             <p>
-              <span className="font-medium">{t("step6.info.wallet")}:</span>{" "}
+              <span className="font-medium">Wallet Address:</span>{" "}
               <span className="block md:inline">{shortenAddress(whitelist.walletAddress)}</span>
             </p>
             <p>
-              <span className="font-medium">{t("step5.labels.xAccount")}:</span>{" "}
+              <span className="font-medium">X Account:</span>{" "}
               <span className="block md:inline">@{whitelist.xUsername}</span>
             </p>
             <p>
-              <span className="font-medium">{t("step6.info.registeredAt")}:</span>{" "}
+              <span className="font-medium">Registered At:</span>{" "}
               <span className="block md:inline">{formatDate(whitelist.verifiedAt)}</span>
             </p>
           </div>
@@ -128,7 +126,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
             size="md"
             className="w-full"
           >
-            <span>{t("step6.shareEventOnX")}</span>
+            <span>Share this event on</span>
             <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 ml-1" />
           </ButtonV3>
           {isAuthenticated ? (
@@ -139,7 +137,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
               size="md"
               className="w-full"
             >
-              {t("goToMyAccount")}
+              Go to My Account Dashboard
             </ButtonV3>
           ) : (
             <ButtonV3
@@ -149,7 +147,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
               size="md"
               className="w-full"
             >
-              {t("goToHome")}
+              Go to Home
             </ButtonV3>
           )}
         </div>

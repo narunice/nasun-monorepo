@@ -16,7 +16,6 @@ import teamEN from "../assets/locales/en/team.json";
 import saleEN from "../assets/locales/en/sale.json";
 import myAccountEN from "../assets/locales/en/myAccount.json";
 import leaderboardEN from "../assets/locales/en/leaderboard.json";
-import battalionNftEN from "../assets/locales/en/battalion-nft.json";
 import earlyContributorsEN from "../assets/locales/en/early-contributors.json";
 import newsEN from "../assets/locales/en/news.json";
 import notFoundEN from "../assets/locales/en/notFound.json";
@@ -45,7 +44,6 @@ declare module "i18next" {
       sale: typeof saleEN;
       myAccount: typeof myAccountEN;
       leaderboard: typeof leaderboardEN;
-      "battalion-nft": typeof battalionNftEN;
       "early-contributors": typeof earlyContributorsEN;
       news: typeof newsEN;
       notFound: typeof notFoundEN;

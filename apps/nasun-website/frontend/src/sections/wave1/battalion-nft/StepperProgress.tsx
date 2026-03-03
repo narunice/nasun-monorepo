@@ -9,8 +9,16 @@
  */
 
 import React from "react";
-import { useTranslation } from "react-i18next";
 import type { EventStep } from "../../../types/battalion-nft";
+
+const STEP_LABELS: Record<EventStep, string> = {
+  1: "Introduction",
+  2: "Connect X",
+  3: "Verify Tasks",
+  4: "Connect Wallet",
+  5: "Register",
+  6: "Complete",
+};
 
 interface StepperProgressProps {
   currentStep: EventStep;
@@ -27,8 +35,6 @@ interface StepperProgressProps {
  * - 반응형 디자인 (모바일/데스크톱)
  */
 export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep }) => {
-  const { t } = useTranslation("battalion-nft");
-
   const steps: EventStep[] = [1, 2, 3, 4, 5, 6];
 
   const getStepStatus = (step: EventStep): "completed" | "current" | "upcoming" => {
@@ -106,7 +112,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
                         ${status === "upcoming" ? "text-gray-400" : ""}
                       `}
                     >
-                      {t(`stepper.step${step}`)}
+                      {STEP_LABELS[step]}
                     </p>
                   </div>
 
@@ -128,7 +134,7 @@ export const StepperProgress: React.FC<StepperProgressProps> = ({ currentStep })
         {/* Current step label */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-nasun-sf-blue font-medium">
-            {t(`stepper.step${currentStep}`)}
+            {STEP_LABELS[currentStep]}
           </p>
           <p className="text-gray-400">
             {currentStep} / {steps.length}

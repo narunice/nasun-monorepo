@@ -37,7 +37,6 @@ i18n
       "team",
       "sale",
       "myAccount",
-      "battalion-nft",
       "early-contributors",
       "leaderboard",
       "notFound",
