@@ -21,6 +21,7 @@ import { prepareChallenge, connectVerify } from "../../../../services/metamaskAp
 import { ButtonV3 } from "@/components/ui/button-v3";
 import logger from "../../../../lib/logger";
 import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
+import { isMetaMaskInAppBrowser } from "@/utils/mobileDetect";
 
 interface WalletConnectCardProps {
   onWalletConnected: (address: string) => void;
@@ -50,8 +51,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
 
   // Disconnect stale wagmi session on mount so the wallet selection modal
   // always appears. walletProof is memory-only — a fresh connect is required.
+  // Skip in MetaMask in-app browser — injected provider has no stale WC sessions.
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && !isMetaMaskInAppBrowser()) {
       disconnectAsync().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,8 +269,12 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           {!isAuthenticating && (
             <DividerBox color="nw4" padding="sm" className="mb-6 !bg-black/30">
               <p>{"⚠️ Signing only confirms wallet ownership to collect a valid address. No transactions or fund transfers occur."}</p>
-              <p className="mt-2 text-yellow-300 text-sm md:hidden">{"📱 On mobile, select WalletConnect first to open your preferred wallet app. You'll approve twice: once to connect, once to sign."}</p>
-              <p className="mt-1 text-yellow-300 text-sm md:hidden">{"If you experience issues completing registration on mobile, please try again on a desktop browser."}</p>
+              {!isMetaMaskInAppBrowser() && (
+                <>
+                  <p className="mt-2 text-yellow-300 text-sm md:hidden">{"📱 On mobile, select WalletConnect first to open your preferred wallet app. You'll approve twice: once to connect, once to sign."}</p>
+                  <p className="mt-1 text-yellow-300 text-sm md:hidden">{"If you experience issues completing registration on mobile, please try again on a desktop browser."}</p>
+                </>
+              )}
             </DividerBox>
           )}
 

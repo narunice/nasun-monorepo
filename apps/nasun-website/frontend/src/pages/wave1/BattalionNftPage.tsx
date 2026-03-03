@@ -25,7 +25,7 @@ const BattalionNftHeroSection = lazy(
 );
 
 const BattalionNftPage: React.FC = () => {
-  const { t } = useTranslation(["battalion-nft", "common"]);
+  const { t } = useTranslation("common");
   const [isVideoReady, setIsVideoReady] = useState(false);
   const { setIsPageReady } = usePageLoading();
   const { currentStep } = useBattalionNftStore();

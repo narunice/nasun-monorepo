@@ -1,88 +1,65 @@
 {
   "info": {
-    "pageTitle": "Leaderboard Guide",
-    "subtitle": "Contribute content, bring people in, and help create network effects. Climb the ranks to access the Launch Pool and earn Battalion NFTs.",
-    "howToJoin": {
-      "title": "How to Join",
-      "signUp": {
-        "pre": "Sign up to this website with your ",
-        "link": "X account",
-        "post": "",
-        "label": "(required)"
-      },
-      "linkAccount": {
-        "pre": "Link your X account on your ",
-        "link": "account page",
-        "post": "",
-        "label": "(required)"
-      },
-      "telegram": {
-        "pre": "Join our ",
-        "link": "Telegram Channel",
-        "post": "",
-        "label": "(optional)"
-      },
-      "eligible": "Your X account is connected. Welcome to Nasun!"
+    "pageTitle": "COMMUNITY LEADERBOARD",
+    "subtitle": "Help shape the Nasun ecosystem.",
+    "description": "The Community Leaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven.",
+    "howItWorks": {
+      "title": "How It Works",
+      "description": "Active contributors who create high-quality, original content about Nasun's ecosystem are recognized through:",
+      "items": [
+        "USDC marketing rewards",
+        "Battalion NFT recognition",
+        "Priority mint eligibility (up to 4 NFTs per wallet, subject to Terms)",
+        "Early access to organized testing phases"
+      ],
+      "note": "Rewards are based on contribution quality and ecosystem engagement — not on purchases or sales activity."
     },
     "rewards": {
-      "title": "Rewards",
+      "title": "Ranks & Recognition",
+      "description": "Top contributors will be placed into recognition tiers based on contribution quality and consistency.",
       "columns": {
-        "rank": "Rank",
         "tier": "Tier",
-        "poolShare": "Pool Share",
-        "battalionNft": "Battalion NFT",
-        "allowlist": "Allowlist x4",
-        "drawings": "Drawings"
+        "recognition": "Recognition"
       },
       "platinum": {
-        "rank": "1-20",
         "name": "Platinum",
-        "poolShare": "Top (TBA)",
-        "nft": "1 Free",
-        "allowlist": "GTD",
-        "drawings": "true"
+        "recognition": "USDC reward + 1 Battalion NFT + Priority mint eligibility"
       },
       "gold": {
-        "rank": "21-50",
         "name": "Gold",
-        "poolShare": "High (TBA)",
-        "nft": "1 Discount",
-        "allowlist": "GTD",
-        "drawings": "true"
+        "recognition": "USDC reward + Discounted Battalion NFT eligibility"
       },
       "silver": {
-        "rank": "51-200",
         "name": "Silver",
-        "poolShare": "Share (TBA)",
-        "nft": "-",
-        "allowlist": "GTD",
-        "drawings": "true"
+        "recognition": "Priority mint eligibility"
       },
       "bronze": {
-        "rank": "201+",
         "name": "Bronze",
-        "poolShare": "TBA soon",
-        "nft": "Community perks",
-        "allowlist": "-",
-        "drawings": "false"
-      }
-    },
-    "earnPoints": {
-      "title": "Earn Points",
-      "description": "Quality engagement @Nasun_io gets the biggest boosts:",
-      "items": [
-        "Thoughtful quotes & replies",
-        "Creative content (threads, videos, memes, analysis)",
-        "Organic shares with your audience"
+        "recognition": "Community recognition"
+      },
+      "notes": [
+        "Final USDC reward amounts will be confirmed prior to distribution. All rewards are funded from Nasun's marketing allocation.",
+        "Tier structure and eligibility criteria are fixed at leaderboard launch."
       ]
     },
-    "fairPlay": {
-      "title": "Fair Play",
+    "evaluation": {
+      "title": "How Contributions Are Evaluated",
+      "description": "Quality contributions include:",
       "items": [
-        "No bots, scripts, or fake accounts",
-        "No spam or coordinated manipulation",
-        "Violators will be banned",
-        "Follow each social media platform's policies and rules"
+        "Thoughtful analysis of Nasun's products and architecture",
+        "Educational threads or videos explaining ecosystem components",
+        "Creative media (design, memes, short-form video)",
+        "Constructive discussion and feedback"
+      ],
+      "qualityNote": "Engagement quality matters more than volume.",
+      "warning": "Automated engagement, spam, or inauthentic amplification will result in removal."
+    },
+    "compliance": {
+      "title": "Transparency & Compliance",
+      "paragraphs": [
+        "Rewards are provided as marketing compensation for content contributions. Participants receiving compensation must clearly disclose their relationship with Nasun in accordance with applicable advertising and disclosure laws, including #ad or #sponsored where required.",
+        "No participant may make financial return claims about the Battalion NFT or any Nasun product. The Battalion NFT is a digital membership product and not an investment.",
+        "Nasun reserves the right to remove participants who violate these standards."
       ]
     },
     "viewLeaderboard": "View Live Leaderboard"

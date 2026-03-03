@@ -6,18 +6,35 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ArrowUpRight } from "lucide-react";
 import { FiCheck } from "react-icons/fi";
 import { OuterBox, DividerBox } from "@/components/ui";
+import { isAndroidBrowser, isMetaMaskInAppBrowser } from "@/utils/mobileDetect";
 
 interface Step1WelcomeCardProps {
   onStartClick: () => void;
 }
 
+const LIVE_TODAY = [
+  "Nasun Wallet",
+  "Network Faucet",
+  "zkLogin onboarding",
+  "On-chain governance participation, active now",
+] as const;
+
+const UNLOCKS = [
+  "Early participation access to organized alpha testing for Pado, SPECTRA, and Baram",
+  "Eligibility for activity-based community programs earned through meaningful ecosystem participation. Not for passive holding.",
+] as const;
+
+const JOIN_STEPS = [
+  "Follow @Nasun_io",
+  "Like & Repost any @Nasun_io post",
+  "Submit your wallet address",
+] as const;
+
 export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick }) => {
-  const { t } = useTranslation("battalion-nft");
   const [checkPhase, setCheckPhase] = useState(0);
 
   // Sequential checkmark animation for Join the allowlist items
@@ -39,61 +56,117 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
     <OuterBox color="c6" className="max-w-3xl mx-auto ">
       <div className="pt-2 md:pt-3 lg:pt-4">
         {/* Title */}
-        <h4 className="!font-rubik font-medium mb-4 text-center">{t("step1.title")}</h4>
+        <h4 className="!font-rubik font-medium mb-4 text-center">Welcome to Nasun</h4>
 
         {/* Intro */}
         <div className="mb-6 md:mb-8">
-          <p className="mb-3">{t("step1.intro1")}</p>
-          <p>{t("step1.intro2")}</p>
+          <p>
+            Battalion is Nasun's launch-phase membership credential. Three live platforms. One
+            access key.
+          </p>
         </div>
 
-        {/* What you receive */}
+        {/* What You Hold */}
         <div className="mb-6 md:mb-8">
-          <h5 className="text-nasun-white font-medium mb-3">{t("step1.whatYouGet.title")}</h5>
+          <h5 className="text-nasun-white font-medium mb-3">What You Hold</h5>
+          <p className="mb-2">
+            The Battalion NFT is the Battalion Rifle, a unique in-game asset within the SPECTRA
+            universe, built in Unreal Engine 5.
+          </p>
+          <p className="mb-2">
+            Each Battalion Rifle exists as a unique object on the Nasun network. It is usable in a
+            live, playable game environment today.
+          </p>
+          <p>This is a functional digital asset inside an operating ecosystem.</p>
+        </div>
+
+        {/* What's Live Today */}
+        <div className="mb-6 md:mb-8">
+          <h5 className="text-nasun-white font-medium mb-3">What's Live Today</h5>
+          <p className="mb-3">
+            The following infrastructure is live and publicly accessible today:
+          </p>
           <ul className="space-y-2">
-            {(
-              [
-                { key: "step1.whatYouGet.item1", head: "Staking rewards" },
-                { key: "step1.whatYouGet.item2", head: "Early access" },
-                { key: "step1.whatYouGet.item3", head: "Preferential terms" },
-                { key: "step1.whatYouGet.item4", head: "Governance weight" },
-                { key: "step1.whatYouGet.item5", head: "On-chain founding member" },
-                { key: "step1.whatYouGet.item6", head: "Airdrop multipliers" },
-              ] as const
-            ).map(({ key, head }) => {
-              const text = t(key);
-              const rest = text.slice(head.length);
-              return (
-                <li key={key} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
-                  <span>
-                    <span className="font-semibold text-nasun-nw4">{head}</span>
-                    {rest}
-                  </span>
-                </li>
-              );
-            })}
+            {LIVE_TODAY.map((text, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* What It Unlocks */}
+        <div className="mb-6 md:mb-8">
+          <h5 className="text-nasun-white font-medium mb-3">
+            What It Unlocks As the Ecosystem Expands
+          </h5>
+          <p className="mb-3">
+            As new features and testing phases open across Nasun's products, Battalion holders may
+            receive:
+          </p>
+          <ul className="space-y-2">
+            {UNLOCKS.map((text, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
+                {text}
+              </li>
+            ))}
           </ul>
         </div>
 
         {/* Details */}
         <div className="mb-6 md:mb-8">
-          <h5 className="text-nasun-white font-medium mb-3">{t("step1.details.title")}</h5>
-          <ul className="space-y-2">
-            {(["step1.details.item1", "step1.details.item2", "step1.details.item3"] as const).map(
-              (key) => (
-                <li key={key} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
-                  {t(key)}
-                </li>
-              ),
-            )}
+          <h5 className="text-nasun-white font-medium mb-3">Details</h5>
+          <ul className="space-y-2 mb-3">
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
+              Maximum 4 NFTs per wallet at mint
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
+              Up to 7 NFTs per wallet counted toward access tiers
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-nasun-nw4 mt-2 flex-shrink-0" />
+              Holding multiple NFT types may increase access eligibility
+            </li>
           </ul>
+          <p className="font-normal text-sm text-nasun-nw4">
+            Allowlist spots are limited to the first 500 participants.
+          </p>
+        </div>
+
+        {/* What It Is */}
+        <div className="mb-6 md:mb-8">
+          <h5 className="text-nasun-white font-medium mb-3">What It Is</h5>
+          <p>
+            A functional in-game asset. A launch-phase ecosystem membership credential. A record of
+            early participation on-chain. Access to live software and testing environments.
+          </p>
+        </div>
+
+        {/* What It Is Not */}
+        <div className="mb-6 md:mb-8">
+          <h5 className="text-nasun-white font-medium mb-3">What It Is Not</h5>
+          <p className="mb-2">
+            The Battalion NFT is not an investment. It does not represent equity, ownership, or
+            revenue share. It does not grant or guarantee token allocations. It does not promise
+            profits or financial returns.
+          </p>
+          <p className="mb-2">
+            Participation in future ecosystem mechanics, if any, will be activity-based, subject to
+            change, and determined at Nasun's discretion.
+          </p>
+          <p className="text-nasun-nw4 text-xs">
+            Nothing on this page constitutes an offer of securities or a financial instrument in any
+            jurisdiction. Please review our Terms of Service before purchase.
+          </p>
         </div>
 
         {/* Join the allowlist */}
         <DividerBox
-          title={t("step1.joinAllowlist.title")}
+          title="Join the allowlist"
           hideDivider
           color="nw4"
           className="mb-6 md:mb-8 lg:mb-10 !bg-gray-900"
@@ -102,20 +175,14 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-3">
             <ul className="space-y-2">
-              {(
-                [
-                  "step1.joinAllowlist.item1",
-                  "step1.joinAllowlist.item2",
-                  "step1.joinAllowlist.item3",
-                ] as const
-              ).map((key, i) => (
-                <li key={key} className="flex items-start gap-2">
+              {JOIN_STEPS.map((text, i) => (
+                <li key={i} className="flex items-start gap-2">
                   <FiCheck
                     className={`mt-1 flex-shrink-0 transition-colors duration-300 ${
                       checkPhase >= i + 1 ? "text-green-300" : ""
                     }`}
                   />
-                  {t(key)}
+                  {text}
                 </li>
               ))}
             </ul>
@@ -127,7 +194,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
                   rel="noopener noreferrer"
                   className="gap-1.5 font-normal"
                 >
-                  {t("step1.links.followAccount")}
+                  Follow @Nasun_io
                   <ArrowUpRight size={13} />
                 </a>
               </ButtonV3>
@@ -138,7 +205,7 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
                   rel="noopener noreferrer"
                   className="gap-1.5 font-normal"
                 >
-                  {t("step1.links.announcementPost")}
+                  Featured Post
                   <ArrowUpRight size={13} />
                 </a>
               </ButtonV3>
@@ -149,9 +216,30 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
         {/* CTA */}
         <div className="text-center">
           <ButtonV3 onClick={onStartClick} variant="nw2" size="lg" className="flex mx-auto">
-            {t("step1.button")}
+            Get Started
           </ButtonV3>
         </div>
+
+        {/* Android MetaMask users: redirect to MetaMask in-app browser */}
+        {isAndroidBrowser() && !isMetaMaskInAppBrowser() && (
+          <DividerBox color="nw4" padding="sm" className="mt-6 !bg-black/30">
+            <p className="text-sm mb-2">
+              Android users with MetaMask: for a smoother wallet connection, complete the process in MetaMask's built-in browser.
+            </p>
+            <ButtonV3
+              variant="nw5"
+              outline
+              size="sm"
+              className="flex mx-auto"
+              onClick={() => {
+                const { host, pathname } = window.location;
+                window.open(`https://metamask.app.link/dapp/${host}${pathname}`, "_self");
+              }}
+            >
+              Open in MetaMask
+            </ButtonV3>
+          </DividerBox>
+        )}
       </div>
     </OuterBox>
   );

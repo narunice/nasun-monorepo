@@ -18,7 +18,6 @@ import {
   BattalionNftStatusResponse,
   ApiError,
 } from "../types/battalion-nft";
-import i18n from "../i18n";
 import { fetchWithTimeout } from "../utils/fetchWithTimeout";
 
 const API_BASE_URL = import.meta.env.VITE_BATTALION_NFT_API || "";
@@ -104,7 +103,7 @@ export async function verifyEligibilityApi(
       success: false,
       error: error instanceof Error ? error.message : String(error),
       code: "NETWORK_ERROR",
-      message: i18n.t("battalion-nft:errors.networkError"),
+      message: "A network error occurred. Please try again later.",
     } as ApiError;
   }
 }
@@ -142,7 +141,7 @@ export async function registerUserApi(request: RegisterUserRequest): Promise<Reg
       success: false,
       error: error instanceof Error ? error.message : String(error),
       code: "NETWORK_ERROR",
-      message: i18n.t("battalion-nft:errors.networkError"),
+      message: "A network error occurred. Please try again later.",
     } as ApiError;
   }
 }
@@ -200,7 +199,7 @@ export async function checkBattalionNftStatus(
       success: false,
       error: error instanceof Error ? error.message : String(error),
       code: "NETWORK_ERROR",
-      message: i18n.t("battalion-nft:errors.statusCheckError"),
+      message: "An error occurred while checking status.",
     } as ApiError;
   }
 }
@@ -244,7 +243,7 @@ export async function withdrawUserApi(request: WithdrawUserRequest, cognitoToken
       success: false,
       error: error instanceof Error ? error.message : String(error),
       code: "NETWORK_ERROR",
-      message: i18n.t("battalion-nft:errors.networkError"),
+      message: "A network error occurred. Please try again later.",
     } as ApiError;
   }
 }
