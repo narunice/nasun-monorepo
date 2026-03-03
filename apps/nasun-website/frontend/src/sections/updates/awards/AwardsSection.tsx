@@ -17,21 +17,21 @@ function AwardsSection() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
+            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6 hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]">
               <p className="block font-semibold text-nasun-nw4 tracking-widest uppercase mb-3">
                 Track Record
               </p>
               <p>{t("paragraph1")}</p>
             </OuterBox>
 
-            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
+            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6 hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]">
               <p className="block font-semibold text-nasun-nw4 tracking-widest uppercase mb-3">
                 Why It Matters
               </p>
               <p>{t("paragraph2")}</p>
             </OuterBox>
 
-            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
+            <OuterBox color="noborder" padding="sm" className="bg-nasun-c6 hover:-translate-y-1 !transition-all !duration-[600ms] !ease-[cubic-bezier(0.25,0.8,0.25,1)]">
               <p className="block font-semibold text-nasun-nw4 tracking-widest uppercase mb-3">
                 What's Next
               </p>

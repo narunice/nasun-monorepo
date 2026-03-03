@@ -92,7 +92,7 @@ export default function Navbar() {
       </Link>
 
       {/* 메인 navbar 박스 */}
-      <div className="flex-1 min-w-0 h-14 bg-nasun-white rounded-3xl shadow-lg transition-all flex pl-4 lg:pl-6 pr-4 lg:pr-6 gap-2 lg:gap-4 2xl:gap-8 justify-between items-center text-center text-base ">
+      <div className="flex-1 min-w-0 h-14 bg-nasun-white rounded-3xl shadow-lg transition-all flex pl-5 lg:pl-8 pr-5 lg:pr-8 gap-2 lg:gap-4 2xl:gap-8 justify-between items-center text-center text-base ">
         {/* 모바일: 햄버거 메뉴 + 워드마크 */}
         <div className="flex items-center gap-4 lg:hidden">
           <MobileNav
