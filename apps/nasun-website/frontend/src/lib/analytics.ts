@@ -14,9 +14,9 @@ declare global {
 
 export const AnalyticsEvent = {
   // Auth events
-  AUTH_METAMASK_START: "auth_metamask_start",
-  AUTH_METAMASK_SUCCESS: "auth_metamask_success",
-  AUTH_METAMASK_ERROR: "auth_metamask_error",
+  AUTH_WALLET_START: "auth_wallet_start",
+  AUTH_WALLET_SUCCESS: "auth_wallet_success",
+  AUTH_WALLET_ERROR: "auth_wallet_error",
   AUTH_GOOGLE_START: "auth_google_start",
   AUTH_GOOGLE_SUCCESS: "auth_google_success",
   AUTH_TWITTER_START: "auth_twitter_start",

@@ -44,8 +44,8 @@ const BaseEnvSchema = z.object({
   VITE_LINK_ACCOUNT_API: z.string().url().optional(),
   VITE_USER_PROFILE_API: z.string().url().optional(),
 
-  // 8. MetaMask / Ethereum
-  VITE_ENABLE_METAMASK_LOGIN: z.enum(["true", "false"]).default("false"),
+  // 8. EVM Wallet / Ethereum
+  VITE_ENABLE_WALLET_LOGIN: z.enum(["true", "false"]).default("false"),
   VITE_ETHEREUM_CHAIN_ID: z.string().default("1"),
 
   // 9. Battalion NFT Event

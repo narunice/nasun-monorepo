@@ -21,14 +21,6 @@ const TwitterIcon = () => (
   <span className="text-white text-xl font-bold">{"\u{1D54F}"}</span>
 );
 
-const MetaMaskIcon = () => (
-  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-    <path d="M21.5 12C21.5 17.2467 17.2467 21.5 12 21.5C6.75329 21.5 2.5 17.2467 2.5 12C2.5 6.75329 6.75329 2.5 12 2.5C17.2467 2.5 21.5 6.75329 21.5 12Z" fill="#F6851B" />
-    <path d="M12 18L9 15L12 13L15 15L12 18Z" fill="white" />
-    <path d="M12 6L15 9L12 11L9 9L12 6Z" fill="white" />
-  </svg>
-);
-
 interface LinkedAccountCardProps {
   name: string;
   icon: React.ReactNode;
@@ -100,24 +92,18 @@ export const AccountLinking: React.FC<AccountLinkingProps> = ({ onLinkSuccess })
   const {
     isLinking,
     error,
-    mobileInstallHint,
     handleLinkGoogle,
     handleLinkTwitter,
-    handleLinkMetaMask,
     unlinkAccount,
   } = useAccountLinking({ user });
 
   if (!user) return null;
 
-  const isMetaMaskEnabled = import.meta.env.VITE_ENABLE_METAMASK_LOGIN === "true";
-
   const hasGoogleLinked = !!user.linkedAccounts?.google;
   const hasTwitterLinked = !!user.linkedAccounts?.twitter;
-  const hasMetaMaskLinked = !!user.linkedAccounts?.metamask;
 
   const isGooglePrimary = user.provider === "Google" && !hasGoogleLinked;
   const isTwitterPrimary = user.provider === "Twitter" && !hasTwitterLinked;
-  const isMetaMaskPrimary = user.provider === "MetaMask" && !hasMetaMaskLinked;
 
   const getGoogleDetail = () => {
     if (isGooglePrimary && user.email) return user.email;
@@ -136,13 +122,6 @@ export const AccountLinking: React.FC<AccountLinkingProps> = ({ onLinkSuccess })
     return undefined;
   };
 
-  const getMetaMaskDetail = () => {
-    const addr = isMetaMaskPrimary
-      ? user.walletAddress
-      : user.linkedAccounts?.metamask?.walletAddress;
-    return addr ? `${addr.substring(0, 6)}...${addr.substring(38)}` : undefined;
-  };
-
   const handleUnlink = (provider: string) => {
     const confirmKey = `userInfo.confirmUnlink${provider}`;
     unlinkAccount(provider, t(confirmKey) || `Are you sure you want to unlink your ${provider} account?`);
@@ -155,20 +134,6 @@ export const AccountLinking: React.FC<AccountLinkingProps> = ({ onLinkSuccess })
 
       {error && (
         <div className="p-3 bg-red-900 text-red-200 rounded-lg">{error}</div>
-      )}
-
-      {isLinking && mobileInstallHint && (
-        <div className="p-3 bg-orange-900/50 text-orange-200 rounded-lg border border-orange-700">
-          MetaMask app not detected on your device.{" "}
-          <a
-            href="https://metamask.io/download/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline text-orange-100 hover:text-white font-medium"
-          >
-            Install MetaMask
-          </a>
-        </div>
       )}
 
       <div className="space-y-3">
@@ -196,28 +161,11 @@ export const AccountLinking: React.FC<AccountLinkingProps> = ({ onLinkSuccess })
           onUnlink={() => handleUnlink("Twitter")}
         />
 
-        {isMetaMaskEnabled && (
-          <LinkedAccountCard
-            name="MetaMask"
-            icon={<MetaMaskIcon />}
-            iconBgClass="bg-orange-500"
-            isPrimary={isMetaMaskPrimary}
-            isLinked={hasMetaMaskLinked}
-            detail={getMetaMaskDetail()}
-            isLinking={isLinking}
-            onLink={handleLinkMetaMask}
-            onUnlink={() => handleUnlink("MetaMask")}
-            linkButtonClass="bg-orange-500 text-white hover:bg-orange-600"
-            linkButtonLabel="Link Wallet"
-            detailClassName="text-sm text-gray-400 font-mono"
-          />
-        )}
+        {/* Wallet linking is handled by ProfileHeroCard via useWalletAuth */}
       </div>
 
       <p className="text-sm text-gray-400">
-        Link your social accounts{" "}
-        {isMetaMaskEnabled && "and crypto wallet "}
-        to access all features and sync your profile across platforms.
+        Link your social accounts to access all features and sync your profile across platforms.
       </p>
     </div>
   );

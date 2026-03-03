@@ -7,7 +7,7 @@ export interface AuthContextType {
   error: Error | null;
   signInWithGoogle: () => Promise<void>;
   signInWithTwitter: () => Promise<void>;
-  signInWithMetaMask: (identityId: string, cognitoToken: string | undefined, walletAddress: string) => Promise<void>;
+  signInWithWallet: (identityId: string, cognitoToken: string | undefined, walletAddress: string, connectorName?: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }

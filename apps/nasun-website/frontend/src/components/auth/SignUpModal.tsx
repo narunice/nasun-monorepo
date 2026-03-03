@@ -10,7 +10,7 @@ import {
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 
-const MetaMaskLoginButton = lazy(() => import("@/features/auth/components/WalletLoginButton"));
+const WalletLoginButton = lazy(() => import("@/features/auth/components/WalletLoginButton"));
 
 interface SignUpModalProps {
   isOpen: boolean;
@@ -20,11 +20,11 @@ interface SignUpModalProps {
 
 export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModalProps) {
   const navigate = useNavigate();
-  const { isAuthenticated, signInWithGoogle, signInWithTwitter, signInWithMetaMask } = useAuth();
+  const { isAuthenticated, signInWithGoogle, signInWithTwitter } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const isTwitterAuthAvailable = !!import.meta.env.VITE_TWITTER_AUTH_API;
-  const isMetaMaskEnabled = import.meta.env.VITE_ENABLE_METAMASK_LOGIN === "true";
+  const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
 
   const handleSignIn = async (provider: "google" | "twitter") => {
     try {
@@ -44,22 +44,13 @@ export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModa
     }
   };
 
-  const handleMetaMaskSuccess = async (
-    identityId: string,
-    token: string,
-    walletAddress: string,
-  ) => {
-    try {
-      await signInWithMetaMask(identityId, token, walletAddress);
-      onClose();
-      navigate("/my-account");
-    } catch (error) {
-      console.error("Error saving MetaMask user data:", error);
-    }
+  const handleWalletSuccess = (_walletAddress: string) => {
+    onClose();
+    navigate("/my-account");
   };
 
-  const handleMetaMaskError = (error: Error) => {
-    console.error("MetaMask login error:", error);
+  const handleWalletError = (error: Error) => {
+    console.error("Wallet login error:", error);
   };
 
   const providerBtnClass =
@@ -134,12 +125,12 @@ export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModa
                   {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
                 </button>
 
-                {isMetaMaskEnabled && (
+                {isWalletLoginEnabled && (
                   <Suspense fallback={null}>
-                    <MetaMaskLoginButton
+                    <WalletLoginButton
                       className={providerBtnClass}
-                      onSuccess={handleMetaMaskSuccess}
-                      onError={handleMetaMaskError}
+                      onSuccess={handleWalletSuccess}
+                      onError={handleWalletError}
                     />
                   </Suspense>
                 )}

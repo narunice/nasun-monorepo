@@ -2,7 +2,7 @@ import { FC } from "react";
 import { AccountIcons } from "./AccountIcons";
 
 interface AccountItemProps {
-  provider: "twitter" | "google" | "metamask" | "nasun" | "telegram";
+  provider: "twitter" | "google" | "metamask" | "wallet" | "nasun" | "telegram";
   identifier?: string;
   statusBadge?: React.ReactNode;
   actions: React.ReactNode[];
@@ -13,6 +13,7 @@ const LABELS: Record<string, string> = {
   twitter: "X (Twitter)",
   google: "Google",
   metamask: "MetaMask",
+  wallet: "Wallet",
   nasun: "Nasun Wallet",
   telegram: "Telegram",
 };
