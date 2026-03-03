@@ -41,10 +41,6 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  const openseaCollectionUrl =
-    import.meta.env.VITE_OPENSEA_COLLECTION_URL ||
-    "https://opensea.io/collection/wave1-battalion-nasun";
-
   const formatDate = (isoString: string): string => {
     const date = new Date(isoString);
     return date.toLocaleString("en-US", {
@@ -122,83 +118,6 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
             </p>
           </div>
         </DividerBox>
-
-        {/* Minting Guide */}
-        <DividerBox
-          color="nw4"
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
-          }
-          title={t("step6.mintingGuide.title")}
-          padding="sm"
-          className="mb-8"
-        >
-          <p className="text-nasun-nw4 flex items-center pb-3 gap-2">
-            <svg
-              className="w-6 h-6 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            <span>{t("step6.mintingGuide.note")}</span>
-          </p>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((step) => (
-              <div key={step} className="flex items-start space-x-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-nasun-nw1 text-white rounded-full flex items-center justify-center text-sm">
-                  {step}
-                </div>
-                <p className="flex-1">
-                  {/* @ts-expect-error - 동적 키 타입 에러를 무시합니다 */}
-                  {t(`step6.mintingGuide.step${step}`)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </DividerBox>
-
-        {/* OpenSea Button — hidden until collection is live
-        <div className="flex justify-center">
-          <ButtonV3
-            variant="nw1"
-            size="lg"
-            asChild
-            className="w-full sm:w-auto !text-sm sm:!text-lg !px-6 sm:!px-14"
-          >
-            <a
-              href={openseaCollectionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              <img src="/opensea-logomark-white.svg" alt="OpenSea" className="w-6 h-6" />
-              <span>{t("step6.mintingGuide.button")}</span>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                />
-              </svg>
-            </a>
-          </ButtonV3>
-        </div>
-        */}
 
         {/* Navigation Buttons */}
         <div className="mt-4 lg:mt-6 flex flex-col sm:flex-row gap-4">

@@ -30,7 +30,11 @@ interface WalletConnectCardProps {
 export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletConnected }) => {
   const { t } = useTranslation("battalion-nft");
   const { user } = useAuth();
-  const { cognitoIdentityId, cognitoToken: storeCognitoToken, setWalletProof } = useBattalionNftStore();
+  const {
+    cognitoIdentityId,
+    cognitoToken: storeCognitoToken,
+    setWalletProof,
+  } = useBattalionNftStore();
 
   const { address, isConnected, connector } = useAccount();
   const { signMessageAsync } = useSignMessage();
@@ -153,7 +157,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       if (err instanceof Error && err.message.includes("already pending")) {
         setError(
           "A previous signing request is still pending. " +
-          "Please open your wallet app and approve/reject it, then try again."
+            "Please open your wallet app and approve/reject it, then try again.",
         );
       } else {
         const errorMessage =
@@ -174,9 +178,17 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       setIsAuthenticating(false);
     }
   }, [
-    isConnected, address, connector, signMessageAsync, disconnectAsync,
-    t, user, cognitoIdentityId, storeCognitoToken,
-    setWalletProof, onWalletConnected,
+    isConnected,
+    address,
+    connector,
+    signMessageAsync,
+    disconnectAsync,
+    t,
+    user,
+    cognitoIdentityId,
+    storeCognitoToken,
+    setWalletProof,
+    onWalletConnected,
   ]);
 
   // Auto-trigger authentication after wallet connects via RainbowKit modal
@@ -253,18 +265,9 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       ) : (
         <>
           {/* Info Box */}
-          <DividerBox
-            color="nw3"
-            padding="sm"
-            icon="ℹ️"
-            title={t("step4.infoTitle")}
-            className="mb-6 !bg-black/60"
-            titleClassName="!text-nasun-nw4"
-            hideDivider={true}
-          >
-            <p className="pt-2">{t("step4.infoDescription")}</p>
-            <p className="mt-2 text-yellow-200"> {t("step4.signatureNote")}</p>
-            <p className="mt-2 text-nasun-nw4/60 text-sm">{t("step4.mobileReturnHint")}</p>
+          <DividerBox color="nw4" padding="sm" className="mb-6 !bg-black/30">
+            <p className="">⚠️ {t("step4.signatureNote")}</p>
+            <p className="mt-2 text-yellow-300 text-sm md:hidden">📱 {t("step4.mobileHint")}</p>
           </DividerBox>
 
           {/* Error Message */}
@@ -277,9 +280,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           {/* WalletConnect signing hint (shown when sign request sent via relay) */}
           {showWalletHint && (
             <div className="mb-6 p-4 bg-yellow-900/30 rounded-lg border border-yellow-600">
-              <p className="text-yellow-200">
-                {t("step4.connectingStep2")}
-              </p>
+              <p className="text-yellow-200">{t("step4.connectingStep2")}</p>
             </div>
           )}
 
@@ -299,11 +300,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
                 className="flex mx-auto"
               >
                 {isAuthenticating ? (
-                  <InlineLoading
-                    message={t("step4.connecting")}
-                    size="md"
-                    className="text-white"
-                  />
+                  <InlineLoading message={t("step4.connecting")} size="md" className="text-white" />
                 ) : (
                   <span>{t("step4.button")}</span>
                 )}
