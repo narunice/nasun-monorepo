@@ -14,6 +14,10 @@ import * as path from 'path';
 
 export interface FollowerStackProps extends cdk.StackProps {
   readonly twitterTokensSecretName: string;
+  /** When true, enables automatic token refresh via EventBridge.
+   *  Disabled in dev to prevent cross-environment token invalidation
+   *  when dev and prod share the same Twitter OAuth2 App + account. */
+  readonly enableTokenRefreshSchedule?: boolean;
 }
 
 export class FollowerStack extends cdk.Stack {
@@ -87,11 +91,13 @@ export class FollowerStack extends cdk.Stack {
       visibilityTimeout: cdk.Duration.minutes(5),
     });
 
+    const scheduleEnabled = props.enableTokenRefreshSchedule ?? true;
+
     const tokenRefreshRule = new events.Rule(this, 'TokenRefreshSchedule', {
       ruleName: 'nasun-follower-token-refresh-schedule',
       schedule: events.Schedule.rate(cdk.Duration.minutes(70)),
       description: 'OAuth 2.0 token refresh every 70 minutes',
-      enabled: true,
+      enabled: scheduleEnabled,
     });
 
     tokenRefreshRule.addTarget(
