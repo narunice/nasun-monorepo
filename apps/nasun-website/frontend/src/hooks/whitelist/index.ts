@@ -1,1 +1,1 @@
-export { useWhitelistJoinFlow } from "./useWhitelistJoinFlow";
+export { useWhitelistRegistration } from "./useWhitelistRegistration";
