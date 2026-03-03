@@ -76,13 +76,10 @@ export default defineConfig(({ mode }) => ({
           ) {
             return 'wallet-vendor'
           }
-          // Charts library — only needed by Analytics page (lazy loaded)
-          if (
-            id.includes('node_modules/recharts') ||
-            id.includes('node_modules/d3-')
-          ) {
-            return 'chart-vendor'
-          }
+          // Note: recharts/d3 are NOT manually chunked — doing so creates a
+          // circular dependency with react-vendor (Rollup places module-interop
+          // helpers in chart-vendor, which react-vendor then imports, causing
+          // forwardRef to be undefined at init time).
         },
       },
     },
