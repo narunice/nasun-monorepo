@@ -118,6 +118,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               objectFit: "cover",
               objectPosition: "center",
               filter: "sepia(0.15) saturate(0.7) brightness(1)",
+              transform: "scaleX(-1)",
             }}
           >
             <source src={videoSrc} type="video/mp4" />
