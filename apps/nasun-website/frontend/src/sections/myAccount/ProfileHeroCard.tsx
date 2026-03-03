@@ -93,8 +93,11 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const nasunWalletAddress = account?.address;
 
   // EVM Wallet Link via wagmi + RainbowKit
-  const { connect: handleLinkWallet, isAuthenticating: isWalletLinking, error: walletLinkError } =
-    useWalletAuth({
+  const {
+    connect: handleLinkWallet,
+    isAuthenticating: isWalletLinking,
+    error: walletLinkError,
+  } = useWalletAuth({
       mode: "link",
       onSuccess: () => {
         toast.success(t("userInfo.linkMetaMaskSuccess") || "Wallet linked successfully!");

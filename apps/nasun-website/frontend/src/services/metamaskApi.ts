@@ -46,6 +46,8 @@ export class MetaMaskApiError extends Error {
 
 export interface ConnectVerifyResponse extends VerifyResponse {
   walletAddress: string;
+  walletProof?: string;
+  proofIssuedAt?: string;
 }
 
 /**
