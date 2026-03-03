@@ -3,7 +3,7 @@
  *
  * @description
  * X 태스크 검증을 위한 카드 컴포넌트
- * - Like/Retweet 검증 (Follow는 X API Basic Plan 미지원으로 제거)
+ * - Like/Repost 검증 (any @Nasun_io post, author_id matching)
  * - Intent URL로 팔로우 유도 (선택적 권장)
  *
  * @author Claude Code
@@ -37,11 +37,11 @@ interface TaskVerificationCardProps {
  * Task Verification Card 컴포넌트
  *
  * @features
- * - 3가지 태스크 표시 (Follow, Like, Retweet)
+ * - 2가지 태스크 표시 (Like, Repost) + Follow 권장
  * - 태스크 검증 버튼
  * - 검증 중 로딩 스피너
  * - 각 태스크별 완료/미완료 상태 표시
- * - 타겟 트윗 링크
+ * - 추천 포스트 링크 (VITE_EVENT_TWEET_ID)
  * - 에러 메시지 표시
  */
 export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
@@ -163,10 +163,10 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
     );
   };
 
-  // Follow는 X API Basic Plan 미지원으로 제거
+  // Like + Repost (any @Nasun_io post). Follow is recommended, not required.
   const tasks: Array<{ type: TaskType; label: string }> = [
     { type: "LIKE", label: t("step3.tasks.like") },
-    { type: "RETWEET", label: t("step3.tasks.retweet") },
+    { type: "REPOST", label: t("step3.tasks.repost") },
   ];
 
   const targetAccount = import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io";
@@ -324,7 +324,7 @@ export const TaskVerificationCard: React.FC<TaskVerificationCardProps> = ({
             onVerificationSuccess({
               following: true,
               liked: true,
-              retweeted: true,
+              reposted: true,
               allCompleted: true,
               tasks: data.tasks,
             });

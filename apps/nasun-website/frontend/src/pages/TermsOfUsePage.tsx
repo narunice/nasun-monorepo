@@ -47,7 +47,7 @@ const TERMS_CONTENT = {
       ]
     },
     "4": {
-      "title": "4. Pado (Unified Onchain Finance) – Devnet Only",
+      "title": "4. Pado – Devnet Only",
       "content": [
         "4.1 Mock Trading: Pado features, including Spot/Perpetual trading, Lending, and Prediction Markets, are for testing purposes only. Profits or losses generated in Pado are simulated and strictly non-redeemable.",
         "4.2 Technical Limitations: You accept that mechanisms such as liquidation logic, oracles, and margin calculations may malfunction, be overridden, or differ significantly from a mainnet environment."
