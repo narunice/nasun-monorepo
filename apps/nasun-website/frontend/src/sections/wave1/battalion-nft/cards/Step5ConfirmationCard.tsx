@@ -34,9 +34,9 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
     <OuterBox color="nw0" className=" max-w-3xl mx-auto">
       {/* Header - 모바일: 세로, 데스크톱: 가로 배치 (중앙 정렬) */}
       <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 mb-6">
-        <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-green-900/20 rounded-full flex items-center justify-center">
+        <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 bg-nasun-nw2/20 rounded-full flex items-center justify-center">
           <svg
-            className="w-8 h-8 md:w-10 md:h-10 text-green-500"
+            className="w-8 h-8 md:w-10 md:h-10 text-nasun-nw4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -45,7 +45,7 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
             />
           </svg>
         </div>

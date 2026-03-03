@@ -25,7 +25,7 @@ export interface EventState {
 
 // ========== Task Types ==========
 
-export type TaskType = "FOLLOW" | "LIKE" | "RETWEET";
+export type TaskType = "FOLLOW" | "LIKE" | "REPOST";
 
 export interface TaskStatus {
   taskType: TaskType;
@@ -132,7 +132,7 @@ export interface NftWhitelist {
 export interface VerificationResult {
   following: boolean; // 팔로우 여부
   liked: boolean; // 좋아요 여부
-  retweeted: boolean; // 리트윗 여부
+  reposted: boolean; // 리포스트 여부 (리트윗 또는 인용트윗)
   allCompleted: boolean; // 모든 작업 완료 여부
   tasks: TaskStatus[];
 }
