@@ -105,12 +105,10 @@
   },
   "myAccount": "My Account",
   "wallet": {
-    "connect_metamask_wallet": "Connect MetaMask",
+    "connect_wallet": "Connect Wallet",
     "connecting": "Connecting...",
-    "metamask_not_installed": "MetaMask is not installed. Please install MetaMask extension.",
     "cannot_disconnect_only_method": "Cannot disconnect. This is your only login method. Use the Logout button in the navigation bar to sign out.",
-    "confirm_disconnect": "Are you sure you want to disconnect your MetaMask wallet?",
-    "disconnect_feature_coming_soon": "Wallet disconnect feature will be implemented soon. For now, please use the account unlinking feature in the Account Linking section.",
+    "confirm_disconnect": "Are you sure you want to disconnect your wallet?",
     "disconnect_error": "Failed to disconnect wallet. Please try again.",
     "signature_rejected": "Signature request was rejected. Unlink cancelled."
   },
@@ -125,8 +123,8 @@
         "title": "How to Join",
         "description": "Follow these steps to register for the whitelist.",
         "step1": {
-          "title": "Connect MetaMask Wallet",
-          "description": "MetaMask browser extension is required."
+          "title": "Connect Wallet",
+          "description": "A browser wallet extension is required."
         },
         "step2": {
           "title": "Approve Signature Request",
@@ -138,19 +136,19 @@
           "line2": "No tokens or NFTs will be transferred during this process.",
           "line3": "Never share your seed phrase with anyone, including Nasun."
         },
-        "noMetaMask": "Don't have MetaMask?",
-        "installLink": "Install MetaMask",
+        "noMetaMask": "Don't have a wallet?",
+        "installLink": "Get a Wallet",
         "cancel": "Cancel",
         "proceed": "Connect & Sign"
       },
       "connecting": {
-        "title": "Connecting MetaMask",
-        "description": "Please connect your MetaMask wallet to continue.",
+        "title": "Connecting Wallet",
+        "description": "Please connect your wallet to continue.",
         "checking": "Checking whitelist status..."
       },
       "signing": {
         "title": "Waiting for Signature",
-        "description": "Please sign the message in MetaMask."
+        "description": "Please sign the message in your wallet."
       },
       "submitting": {
         "title": "Submitting...",

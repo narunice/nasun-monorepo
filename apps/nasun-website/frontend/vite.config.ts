@@ -114,7 +114,7 @@ export default defineConfig(({ mode }) => {
     },
 
     optimizeDeps: {
-      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core", "zustand", "@nasun/wallet", "@nasun/wallet-ui", "@metamask/sdk"],
+      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core", "zustand", "@nasun/wallet", "@nasun/wallet-ui"],
     },
 
     // 4) 명시적으로 VITE_* 변수만 process.env에 주입
@@ -219,11 +219,6 @@ export default defineConfig(({ mode }) => {
             // into the critical path (index statically imports shared deps).
             // Letting Rollup place dapp-kit in lazy chunks naturally avoids this.
             "vendor-web3": ["ethers"],
-
-            // MetaMask SDK — NOT assigned to manual chunk.
-            // Let Rollup place it in the lazy chunk (WalletLoginButton).
-            // Assigning it causes __vitePreload to live in this chunk,
-            // forcing a static import from index.
 
             // AWS
             "vendor-aws": ["aws-amplify"],
