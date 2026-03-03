@@ -9,7 +9,6 @@
  */
 
 import React from "react";
-import { useTranslation } from "react-i18next";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { InlineLoading, DividerBox, OuterBox } from "@/components/ui";
 
@@ -28,8 +27,6 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
   onRegister,
   onCancel,
 }) => {
-  const { t } = useTranslation("battalion-nft");
-
   return (
     <OuterBox color="nw0" className=" max-w-3xl mx-auto">
       {/* Header - 모바일: 세로, 데스크톱: 가로 배치 (중앙 정렬) */}
@@ -50,30 +47,30 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           </svg>
         </div>
         <div className="text-center ">
-          <h4 className="!font-rubik font-medium mb-2">{t("step5.title")}</h4>
+          <h4 className="!font-rubik font-medium mb-2">Review & Submit</h4>
         </div>
       </div>
-      <p className="w-full mx-auto text-center mb-2">{t("step5.description")}</p>
+      <p className="w-full mx-auto text-center mb-2">Please review your information and confirm to register.</p>
       {/* Summary */}
       <DividerBox color="nw3" padding="sm" className="mb-8 text-left">
         {/* X Account & Wallet - 모바일: 세로, 데스크톱: 가로 */}
         <div className="flex flex-col md:flex-row md:gap-8 space-y-4 md:space-y-0 mb-4">
           <div className="flex-1">
-            <p className="mb-1 font-medium">{t("step5.labels.xAccount")}:</p>
+            <p className="mb-1 font-medium">X Account:</p>
             <p>@{xUsername}</p>
           </div>
           <div className="flex-1">
-            <p className="mb-1 font-medium">{t("step5.labels.walletAddress")}:</p>
+            <p className="mb-1 font-medium">Wallet Address:</p>
             <p>
               {walletAddress
                 ? `${walletAddress.slice(0, 10)}...${walletAddress.slice(-8)}`
-                : t("step5.walletNotConnected")}
+                : "Not connected"}
             </p>
           </div>
         </div>
         {/* All Tasks Completed */}
         <div className="flex items-center space-x-2">
-          <span className="text-green-500">{t("step5.allTasksCompleted")}</span>
+          <span className="text-green-500">{"\u2705 All tasks verified"}</span>
         </div>
       </DividerBox>
       <div className="flex flex-col-reverse sm:flex-row items-center justify-center gap-3">
@@ -85,7 +82,7 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           className="w-full sm:w-auto"
           size="lg"
         >
-          {t("step5.cancel")}
+          Cancel
         </ButtonV3>
         <ButtonV3
           onClick={onRegister}
@@ -95,9 +92,9 @@ export const Step5ConfirmationCard: React.FC<Step5ConfirmationCardProps> = ({
           size="lg"
         >
           {isRegistering ? (
-            <InlineLoading message={t("step5.registering")} size="md" />
+            <InlineLoading message="Registering..." size="md" />
           ) : (
-            <span>{t("step5.button")}</span>
+            <span>Register for Allowlist</span>
           )}
         </ButtonV3>
       </div>

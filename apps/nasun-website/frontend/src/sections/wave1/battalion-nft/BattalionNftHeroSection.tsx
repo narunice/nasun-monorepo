@@ -40,6 +40,26 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
     setIsVideoPlaying(true);
   };
 
+  // Cached video fallback: 컴포넌트 재마운트 시 캐시된 비디오의
+  // onCanPlay/onPlaying 이벤트가 발화되지 않는 모바일 브라우저 대응
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // readyState >= HAVE_FUTURE_DATA(3)이면 이미 재생 가능한 상태
+    if (video.readyState >= 3) {
+      setIsVideoLoaded(true);
+      onVideoReady?.();
+    }
+
+    // autoPlay 속성이 있어도 모바일에서 재마운트 시 재생 안 되는 경우 대응
+    video.play().then(() => {
+      setIsVideoPlaying(true);
+    }).catch(() => {
+      // Autoplay blocked — 5초 timeout fallback이 처리
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Title animation based on video time
   const updateTitleAnimation = useCallback(() => {
     const video = videoRef.current;

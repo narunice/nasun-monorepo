@@ -10,7 +10,6 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStore } from "../../../stores/useBattalionNftStore";
@@ -30,8 +29,30 @@ import { checkBattalionNftStatus, registerUserApi } from "../../../services/batt
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { trackEvent, AnalyticsEvent } from "@/lib/analytics";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  missingInfo: "Missing required information. Please complete all previous steps.",
+  registrationFailed: "Registration failed",
+  registerFailed: "Failed to register. Please try again.",
+  networkError: "A network error occurred. Please try again later.",
+  statusCheckError: "An error occurred while checking status.",
+  ALREADY_REGISTERED: "This wallet address is already registered.",
+  X_ACCOUNT_ALREADY_REGISTERED: "This X account is already registered with a different wallet address.",
+  INVALID_WALLET_ADDRESS: "Invalid wallet address.",
+  INVALID_X_USER_ID: "Invalid X user ID.",
+  INVALID_X_USERNAME: "Invalid X username.",
+  MISSING_REQUIRED_FIELDS: "Missing required fields.",
+  NOT_ELIGIBLE: "You are not eligible for this event.",
+  TASKS_NOT_COMPLETED: "Please complete all required tasks first.",
+  X_API_ERROR: "X API error. Please try again later.",
+  X_API_RATE_LIMIT: "X API rate limit reached. Please try again later.",
+  RATE_LIMIT_EXCEEDED: "Too many requests. Please try again later.",
+  UNKNOWN_ERROR: "An unknown error occurred. Please try again.",
+  INVALID_SIGNATURE: "Invalid wallet signature. Please try again.",
+  SIGNATURE_EXPIRED: "Signature expired. Please try again.",
+  ALREADY_MINTED: "This X account has already minted an NFT. Wallet changes are no longer allowed.",
+};
+
 export const BattalionNftPage: React.FC = () => {
-  const { t } = useTranslation("battalion-nft");
   const navigate = useNavigate();
   const { user } = useAuth();
   const {
@@ -190,7 +211,7 @@ export const BattalionNftPage: React.FC = () => {
 
   const handleRegister = async () => {
     if (!xUserId || !xUsername || !walletAddress || !walletProof || !proofIssuedAt) {
-      setError(t("errors.missingInfo"));
+      setError(ERROR_MESSAGES.missingInfo);
       return;
     }
     try {
@@ -222,18 +243,17 @@ export const BattalionNftPage: React.FC = () => {
           trackEvent(AnalyticsEvent.NFT_REGISTER_SUCCESS);
           setRegistered(statusResponse.data);
         } else {
-          throw new Error(result.message || t("errors.registrationFailed"));
+          throw new Error(result.message || ERROR_MESSAGES.registrationFailed);
         }
       } else {
-        throw new Error(result.message || t("errors.registrationFailed"));
+        throw new Error(result.message || ERROR_MESSAGES.registrationFailed);
       }
     } catch (err: unknown) {
       trackEvent(AnalyticsEvent.NFT_REGISTER_ERROR);
       const apiError = err as ApiError;
       const errorCode = apiError.code;
-      const i18nKey = errorCode ? `errors.${errorCode}` : null;
-      const translated = i18nKey && t(i18nKey) !== i18nKey ? t(i18nKey) : null;
-      setError(translated || t("errors.registerFailed"));
+      const translated = errorCode ? ERROR_MESSAGES[errorCode] : null;
+      setError(translated || ERROR_MESSAGES.registerFailed);
     } finally {
       setIsRegistering(false);
     }
@@ -267,7 +287,7 @@ export const BattalionNftPage: React.FC = () => {
       <>
         <SectionLayout>
           <div className="bg-yellow-900/20 rounded-lg p-6 border border-yellow-200">
-            <p className="text-yellow-300">{t("featureDisabled.description")}</p>
+            <p className="text-yellow-300">The NFT event feature is currently disabled. Please check back later.</p>
           </div>
         </SectionLayout>
       </>
@@ -279,7 +299,7 @@ export const BattalionNftPage: React.FC = () => {
       <SectionLayout>
         <FadeInUp>
           <PageTitle as="h2" align="center" className="mb-6">
-            {t("header.title").toUpperCase()}
+            {"BATTALION NFT"}
           </PageTitle>
           <StepperProgress currentStep={currentStep} />
         </FadeInUp>

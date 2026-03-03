@@ -1,8 +1,10 @@
 // wagmiConfig.ts — wagmi + RainbowKit configuration for Ethereum wallet integration
 // Used by WalletLayer provider for Battalion NFT wallet connection flow.
 //
-// Mobile: WalletConnect-only (deep-link connectors cause app-switching failures on Android)
-// Desktop: MetaMask + WalletConnect (EIP-6963 auto-detects Rabby, Brave, etc.)
+// 3-way connector selection:
+// - MetaMask in-app browser: metaMaskWallet only (injected provider, no WC needed)
+// - Other mobile browsers: walletConnectWallet only (deep-link connectors cause app-switching failures)
+// - Desktop: metaMaskWallet + walletConnectWallet (EIP-6963 auto-detects Rabby, Brave, etc.)
 
 import { connectorsForWallets } from "@rainbow-me/rainbowkit";
 import {
@@ -27,10 +29,18 @@ const isMobile =
   typeof window !== "undefined" &&
   /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+// MetaMask in-app dApp browser injects window.ethereum and includes "MetaMask" in UA
+const isMetaMaskInApp =
+  typeof window !== "undefined" &&
+  Boolean((window as { ethereum?: unknown }).ethereum) &&
+  /MetaMask/i.test(navigator.userAgent);
+
 const connectors = connectorsForWallets(
-  isMobile
-    ? [{ groupName: "Connect", wallets: [walletConnectWallet] }]
-    : [{ groupName: "Connect", wallets: [metaMaskWallet, walletConnectWallet] }],
+  isMetaMaskInApp
+    ? [{ groupName: "Connect", wallets: [metaMaskWallet] }]
+    : isMobile
+      ? [{ groupName: "Connect", wallets: [walletConnectWallet] }]
+      : [{ groupName: "Connect", wallets: [metaMaskWallet, walletConnectWallet] }],
   { appName: "Nasun", projectId: projectId || "" }
 );
 

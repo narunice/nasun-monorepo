@@ -9,7 +9,6 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { library } from "@fortawesome/fontawesome-svg-core";
@@ -34,7 +33,6 @@ interface XAuthCardProps {
  * - 에러 처리
  */
 export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
-  const { t } = useTranslation("battalion-nft");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasHandledRef = useRef(false);
@@ -174,12 +172,12 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
           <h4 className="!font-rubik font-medium">Connect</h4>
           <FontAwesomeIcon icon={["fab", "x-twitter"]} className="w-7 h-7 text-nasun-white" />
         </div>
-        <p>{t("step2.description")}</p>
+        <p>Please connect your X account to verify your event participation.</p>
       </div>
 
       {/* Simplified Info Box */}
       <DividerBox color="nw4" padding="sm" className="mb-6 md:mb-8 lg:mb-10 !bg-black/30">
-        <p className="text-nasun-white">{t("step2.infoSimplified")}</p>
+        <p className="text-nasun-white">We briefly connect to verify your event tasks. Only your handle and ID are read.</p>
       </DividerBox>
 
       {/* Error Message */}
@@ -198,7 +196,7 @@ export const XAuthCard: React.FC<XAuthCardProps> = ({ onAuthSuccess }) => {
         size="lg"
       >
         {isLoading ? (
-          <InlineLoading message={t("step2.connecting")} size="md" className="text-white" />
+          <InlineLoading message="Connecting..." size="md" className="text-white" />
         ) : (
           <>
             <span>Verify with </span>
