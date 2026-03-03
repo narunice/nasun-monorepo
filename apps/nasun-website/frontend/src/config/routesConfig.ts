@@ -51,6 +51,7 @@ export const Pages = {
   AboutOverview: lazyWithRetry(() => import("../pages/about/AboutOverviewPage")),
   Investors: lazyWithRetry(() => import("../pages/about/InvestorsPage")),
   Litepaper: lazyWithRetry(() => import("../pages/about/LitepaperPage")),
+  Partner: lazyWithRetry(() => import("../pages/about/PartnerPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -508,6 +509,21 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
+  partner: {
+    path: "/about/partner",
+    component: Pages.Partner,
+    navItem: {
+      name: "navigation.partner",
+      path: "/about/partner",
+      hidden: true,
+    },
+    meta: {
+      title: "Partner — NASUN",
+      description:
+        "Partner with Nasun — the infrastructure layer for finance, AI, and entertainment. Built for the Korean market, designed for global scale.",
+    },
+  },
+
   baram: {
     path: "/baram",
     component: Pages.AiEconomy,
@@ -633,5 +649,6 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.opportunities": "Opportunities",
     "navigation.strategy": "Strategy",
     "navigation.investors": "Investors",
+    "navigation.partner": "Partner",
   },
 };

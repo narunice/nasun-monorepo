@@ -1,0 +1,71 @@
+{
+  "hero": {
+    "title": "Partner With Nasun",
+    "subtitle": "Nasun is the infrastructure layer for finance, AI, and entertainment. Built for the Korean market, designed for global scale.",
+    "productsIntro": "Three live products on devnet:",
+    "cta": "We built first. Now Nasun is open to partners, builders, and institutions ready to scale."
+  },
+  "products": {
+    "pado": "full-featured DeFi platform",
+    "gensol": "cinematic sci-fi IP universe with on-chain asset ownership",
+    "baram": "AI-native governance and compliance infrastructure"
+  },
+  "highlights": {
+    "moveL1": { "title": "Move-based L1", "desc": "Built on the fastest emerging stack" },
+    "liveDevnet": { "title": "Live Devnet", "desc": "Wallet · zkLogin · Faucet · Governance" },
+    "korea": { "title": "Korea Market Entry", "desc": "Positioned for Asia's leading crypto market" },
+    "grants": { "title": "10 Government Grants", "desc": "Nationally competitive, Korea" }
+  },
+  "materials": {
+    "publicLabel": "PUBLIC MATERIALS",
+    "litepaper": {
+      "title": "Litepaper 2026",
+      "desc": "The Nasun thesis: market opportunity, product architecture, competitive positioning, regulatory approach, and live infrastructure. Available to all ecosystem participants.",
+      "meta": "Nasun Litepaper 2026 · PDF · 24 pages · March 2026"
+    },
+    "investment": {
+      "title": "Investment Materials",
+      "desc": "Pitch decks, token economics, and financial projections are available to accredited investors and qualified institutional participants following NDA execution.",
+      "ndaNote": "Available upon NDA execution:"
+    }
+  },
+  "investmentDocs": [
+    "Nasun Pitch Deck",
+    "Pado Pitch Deck",
+    "Gen Sol Pitch Deck",
+    "Baram Pitch Deck",
+    "Token Economics",
+    "Financial Projections"
+  ],
+  "form": {
+    "title": "Request Materials",
+    "fullName": "Full Name",
+    "organization": "Organization",
+    "email": "Email",
+    "participantType": "Participant Type",
+    "selectType": "Select type...",
+    "primaryInterest": "Primary Interest (optional)",
+    "accreditedConfirm": "I confirm I qualify as an accredited investor or institutional participant under the securities laws of my jurisdiction.",
+    "submit": "Request Materials",
+    "disclosure": "Submissions are reviewed by our team. You will receive an NDA within one business day, and materials are shared upon execution.",
+    "successTitle": "Request Submitted",
+    "successMessage": "Thank you. Our team will review your request and follow up within one business day.",
+    "required": "This field is required.",
+    "invalidEmail": "Please enter a valid email address.",
+    "mustConfirm": "You must confirm accredited investor status.",
+    "types": {
+      "accredited": "Accredited Investor",
+      "institutional": "Institutional Participant",
+      "fund": "Fund / Venture Capital",
+      "strategic": "Strategic Partner",
+      "builder": "Builder / Developer"
+    }
+  },
+  "founders": {
+    "title": "Founders"
+  },
+  "actions": {
+    "view": "View",
+    "download": "Download"
+  }
+}
