@@ -50,6 +50,7 @@ export const Pages = {
   // About Pages (new)
   AboutOverview: lazyWithRetry(() => import("../pages/about/AboutOverviewPage")),
   Investors: lazyWithRetry(() => import("../pages/about/InvestorsPage")),
+  Litepaper: lazyWithRetry(() => import("../pages/about/LitepaperPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -296,6 +297,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/about/founders",
           element: Pages.Founders,
         },
+        {
+          name: "navigation.litepaper",
+          path: "/about/litepaper",
+          element: Pages.Litepaper,
+        },
         // {
         //   name: "navigation.aboutTeam",
         //   path: "/about/team",
@@ -313,11 +319,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         //   path: "/about/strategy",
         //   element: Pages.VisionStrategy,
         // },
-        {
-          name: "navigation.investors",
-          path: "/about/investors",
-          element: Pages.Investors,
-        },
+        // {
+        //   name: "navigation.investors",
+        //   path: "/about/investors",
+        //   element: Pages.Investors,
+        // },
       ],
     },
     meta: {
@@ -622,6 +628,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
   about: {
     "navigation.aboutOverview": "Overview",
     "navigation.founders": "Founders",
+    "navigation.litepaper": "Litepaper",
     "navigation.aboutTeam": "Team",
     "navigation.opportunities": "Opportunities",
     "navigation.strategy": "Strategy",

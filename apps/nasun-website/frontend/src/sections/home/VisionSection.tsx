@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
-const visionVideoDesktop = "/videos/Home-Vision-rf30.mp4";
-const visionVideoMobile = "/videos/Home-Vision-mobile-rf28.mp4";
+const visionVideoDesktop = "/videos/Home-Wave1-rf24.mp4";
+const visionVideoMobile = "/videos/Home-Wave1-mobile-rf28.mp4";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import visionTriangle from "../../assets/images/home-vision-triangle.png";
@@ -93,7 +93,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
             playsInline
             webkit-playsinline="true"
             preload="none"
-            poster="/images/posters/Home-Vision-rf30.webp"
+            poster="/images/posters/Home-Wave1-rf28.webp"
             x-webkit-airplay="allow"
             onPlaying={handleVideoPlaying}
             className={`absolute top-0 left-0 w-full h-full object-cover object-center transition-opacity duration-500 ${
@@ -163,7 +163,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
                     asChild
                     className="lg:px-4 xl:px-12 xl:w-[280px]"
                   >
-                    <Link to="/about/investors">{t("vision.cta.signUp")}</Link>
+                    <Link to="/about/litepaper">{t("vision.cta.signUp")}</Link>
                   </ButtonV3>
                 </div>
               </FadeInUp>
