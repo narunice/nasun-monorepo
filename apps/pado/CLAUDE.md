@@ -1,6 +1,6 @@
 # CLAUDE.md (apps/pado)
 
-> Last Updated: 2026-02-24
+> Last Updated: 2026-03-03
 > Common rules (language, UI language rules): see root [CLAUDE.md](../../CLAUDE.md)
 
 ---
@@ -42,7 +42,7 @@
 │  ├── Prediction Markets (Binary YES/NO)                     │
 │  ├── Lottery (Weekly draw)                                  │
 │  ├── Lending/Borrowing [Partial - contracts deployed]       │
-│  ├── Staking [Planned]                                      │
+│  ├── Staking [Partial - UI stub]                             │
 │  └── Payments (QR code transfer)                            │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -61,7 +61,7 @@
 ```bash
 # From monorepo root
 pnpm dev:pado              # Dev server (port 5176)
-pnpm dev:pado:with-bot     # Dev server + LP Bot + Chat Server
+pnpm dev:pado:with-bot     # Dev server + LP Bot + Price Updater + TP/SL Keeper + Chat Server
 pnpm build:pado            # Production build
 
 # Move contracts
@@ -78,7 +78,7 @@ cd apps/pado/frontend && pnpm test:coverage
 
 ## Known Issues & Pending Work
 
-1. **Env var mismatch**: Some `.env.development` addresses may differ from `devnet-ids.json` (partial update after V7 reset)
+1. **Env var mismatch**: Some `.env.local` addresses may differ from `devnet-ids.json` (partial update after V7 reset)
 2. **Staging Chain ID difference**: Staging uses a separate chain, development uses `272218f1`
 3. **Lending UI activation pending**: Contract V7 deployed, pool creation + .env integration + pool UI needed
 4. **Market Narrator pool name hardcoding**: `formatAlert` hardcodes "NBTC", needs update when adding other pools
