@@ -25,6 +25,7 @@
 
 import * as crypto from 'crypto';
 import * as http from 'http';
+import * as readline from 'readline';
 import * as url from 'url';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -101,6 +102,20 @@ function loadConfig(env: 'development' | 'production'): OAuthConfig {
     awsRegion: envConfig.awsRegion,
     environment: env,
   };
+}
+
+// =============================================================================
+// CLI Helpers
+// =============================================================================
+
+function promptConfirmation(message: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(message, (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+    });
+  });
 }
 
 // =============================================================================
@@ -200,6 +215,25 @@ async function main() {
   console.log(`  Secret Name:    ${config.secretName}`);
   console.log(`  Callback:       http://localhost:${PORT}/callback`);
   console.log('='.repeat(60));
+
+  // Cross-environment invalidation warning
+  const otherEnv = environment === 'development' ? 'Production' : 'Development';
+  console.log('\n' + '!'.repeat(60));
+  console.log('  WARNING: CROSS-ENVIRONMENT TOKEN INVALIDATION');
+  console.log('!'.repeat(60));
+  console.log(`  Dev and Prod share the same OAuth2 App (Client ID).`);
+  console.log(`  Creating a new authorization here may invalidate`);
+  console.log(`  the ${otherEnv} environment's refresh token.`);
+  console.log('');
+  console.log(`  If ${otherEnv} token refresh is active, it will start`);
+  console.log(`  failing with "invalid_request" errors.`);
+  console.log('!'.repeat(60));
+
+  const confirmed = await promptConfirmation(`\n  Proceed with ${envLabel} OAuth2 setup? (y/N): `);
+  if (!confirmed) {
+    console.log('\n  Aborted.\n');
+    process.exit(0);
+  }
 
   console.log('\nOpen this URL in your browser:\n');
   console.log(authorizationUrl);

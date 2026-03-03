@@ -6,14 +6,26 @@ This document describes how OAuth 2.0 tokens are managed for the Nasun website b
 
 **Critical Requirement**: The OAuth 2.0 token MUST be authenticated as the **target account** (@Nasun_io) itself for user-context API calls.
 
+## IMPORTANT: Cross-Environment Token Invalidation
+
+Dev and Prod share the **same Twitter OAuth2 App** (same Client ID) and the **same user account** (@Nasun_io). This creates a critical constraint:
+
+- **Twitter OAuth 2.0 refresh tokens are single-use.** When a refresh token is used, it is immediately invalidated and a new one is issued.
+- **Running `setup-oauth2-auto.ts` for one environment may invalidate the other environment's refresh token.** Twitter may revoke previous authorization grants when a new one is created for the same App + User combination.
+
+**Current policy:**
+- **Production**: Automatic token refresh enabled (EventBridge every 70 min)
+- **Development**: Automatic token refresh **disabled**. Dev uses Bearer Token (App-Only) for follower count API, which never expires.
+- Dev OAuth2 tokens are only set up manually when needed for testing user-context APIs.
+
 ## Environment Configuration
 
 ### Token Storage
 
-| Environment | Secret Name | AWS Account | Target Account |
-|-------------|-------------|-------------|----------------|
-| Development | `nasun-twitter-tokens` | 135808943968 | @Nasun_io (1725466995565752320) |
-| Production | `nasun-twitter-tokens-prod` | 466841130170 | @Nasun_io (1725466995565752320) |
+| Environment | Secret Name | AWS Account | Target Account | Auto-Refresh |
+|-------------|-------------|-------------|----------------|--------------|
+| Development | `nasun-twitter-tokens` | 135808943968 | @Nasun_io (1725466995565752320) | **Disabled** |
+| Production | `nasun-twitter-tokens-prod` | 466841130170 | @Nasun_io (1725466995565752320) | Enabled (70 min) |
 
 ### Environment Files
 
@@ -206,26 +218,36 @@ NODE_ENV=production npx cdk deploy CdkStack --profile nasun-prod
 }
 ```
 
-### Token Refresh Flow
+### Token Refresh Flow (Production only)
 
-1. **EventBridge**: Triggers every 90 minutes
-2. **Lambda** (`nasun-refresh-oauth2-token`): Checks if token expires within 60 minutes
+> **Note:** Token refresh is disabled in development. See "Cross-Environment Token Invalidation" above.
+
+1. **EventBridge**: Triggers every 70 minutes (production only)
+2. **Lambda** (`nasun-follower-token-refresh`): Checks if token expires within 60 minutes
 3. **Twitter API**: Exchanges refresh token for new access token
-4. **Secrets Manager**: Updates stored tokens atomically
+4. **Secrets Manager**: Updates stored tokens atomically (5 retries with exponential backoff)
 
 ### Critical Warning: Refresh Token Rotation
 
-Twitter may issue a **new refresh token** with each access token refresh. The old refresh token becomes invalid immediately.
+Twitter issues a **new refresh token** with each access token refresh (single-use policy). The old refresh token becomes invalid immediately.
 
 If Secrets Manager update fails after receiving new tokens:
 - Old refresh token is already invalidated
 - New refresh token is lost
 - **Manual re-authentication required**
 
+### Get Follower Count Token Strategy
+
+The `get-follower-count` Lambda uses this priority order:
+1. **Bearer Token (App-Only)** — preferred, never expires
+2. **OAuth2 User Access Token** — fallback, requires active refresh
+
+This ensures follower count API works in both environments regardless of OAuth2 token refresh status.
+
 ### CloudWatch Monitoring
 
-**Lambda Function**: `nasun-refresh-oauth2-token`
-- Execution: EventBridge scheduler triggers every 90 minutes
+**Lambda Function**: `nasun-follower-token-refresh`
+- Execution: EventBridge scheduler triggers every 70 minutes (production only)
 - Refresh condition: Access Token expires within 60 minutes
 
 **Alarms**:
@@ -253,15 +275,19 @@ If Secrets Manager update fails after receiving new tokens:
 1. Run `verify-oauth-token.ts` to check current account
 2. Run `setup-oauth2-auto.ts` with correct X account logged in
 
-### "Token refresh failed: invalid_grant"
+### "Token refresh failed: invalid_grant" or "invalid_request"
 
-**Symptom**: Refresh Lambda fails with invalid_grant error.
+**Symptom**: Refresh Lambda fails with invalid_grant or "Value passed for the token was invalid" error.
 
-**Cause**: Refresh token was rotated but not saved, or manually revoked.
+**Cause**: Refresh token was invalidated. Common reasons:
+1. `setup-oauth2-auto.ts` was run for the other environment, revoking this environment's token
+2. Refresh token was rotated but Secrets Manager update failed
+3. User manually revoked app access in X settings
 
 **Solution**:
-1. Run `setup-oauth2-auto.ts` to get fresh tokens
-2. Verify tokens saved to correct Secret
+1. Run `setup-oauth2-auto.ts` to get fresh tokens for the affected environment
+2. **Warning**: This may invalidate the other environment's token (see "Cross-Environment Token Invalidation")
+3. Verify tokens saved to correct Secret
 
 ### "EADDRINUSE: port 5174"
 
