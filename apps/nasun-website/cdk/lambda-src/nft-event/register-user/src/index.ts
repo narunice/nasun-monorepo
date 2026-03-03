@@ -3,7 +3,7 @@
  *
  * @description
  * 검증이 완료된 사용자를 NFT 화이트리스트에 등록합니다:
- * 1. 모든 작업(팔로우/좋아요/리트윗) 완료 확인
+ * 1. 모든 작업(좋아요/리포스트) 완료 확인
  * 2. 중복 등록 방지 (xUserId GSI 조회)
  * 3. NftWhitelist 테이블에 등록
  * 4. engagementScore 초기화 (기본값: 0)
@@ -39,7 +39,7 @@ const env: NftEventEnv = {
   WHITELIST_TABLE_NAME: process.env.WHITELIST_TABLE_NAME!,
   TASKS_TABLE_NAME: process.env.TASKS_TABLE_NAME!,
   X_TARGET_USERNAME: process.env.X_TARGET_USERNAME || 'Nasun_io',
-  X_TARGET_TWEET_ID: process.env.X_TARGET_TWEET_ID!,
+  X_TARGET_USER_ID: process.env.X_TARGET_USER_ID || '1725466995565752320',
   ENABLE_RATE_LIMIT_CACHE: process.env.ENABLE_RATE_LIMIT_CACHE || 'true',
   CACHE_TTL_MINUTES: process.env.CACHE_TTL_MINUTES || '15',
   AWS_REGION: process.env.AWS_REGION || 'ap-northeast-2',
