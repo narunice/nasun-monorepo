@@ -102,7 +102,7 @@ const VisionNetworkPage = () => {
             <BuiltForCoordinationSection />
             <WhoBuildsHereSection />
             <NasunTokenSection />
-            <TokenDistributionSection />
+            {/* <TokenDistributionSection /> */}
             <TechnicalFoundationSection />
             <MoveTogetherSection />
             <ForBuildersSection />
