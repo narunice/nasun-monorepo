@@ -161,7 +161,6 @@ export class NftEventStack extends cdk.Stack {
     // 환경 변수 (cdk/.env에서 로드)
     const X_TARGET_USERNAME = process.env.X_TARGET_USERNAME || "Nasun_io";
     const X_TARGET_USER_ID = process.env.X_TARGET_USER_ID || "1725466995565752320";
-    const X_TARGET_TWEET_ID = process.env.X_TARGET_TWEET_ID || "";
 
     // Common NodejsFunction options
     const nftEventLambdaSrcPath = path.join(__dirname, "..", "lambda-src", "nft-event");
@@ -196,7 +195,6 @@ export class NftEventStack extends cdk.Stack {
         TWITTER_TOKENS_SECRET_NAME: twitterTokensSecretName,
         X_TARGET_USERNAME,
         X_TARGET_USER_ID,
-        X_TARGET_TWEET_ID,
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -235,7 +233,7 @@ export class NftEventStack extends cdk.Stack {
         TASKS_TABLE_NAME: this.tasksTable.tableName,
         WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         X_TARGET_USERNAME,
-        X_TARGET_TWEET_ID,
+        X_TARGET_USER_ID,
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -330,7 +328,7 @@ export class NftEventStack extends cdk.Stack {
         WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
         TASKS_TABLE_NAME: this.tasksTable.tableName,
         X_TARGET_USERNAME,
-        X_TARGET_TWEET_ID,
+        X_TARGET_USER_ID,
         ENABLE_RATE_LIMIT_CACHE: "true",
         CACHE_TTL_MINUTES: "15",
         EXPORT_BUCKET_NAME: exportBucket.bucketName,

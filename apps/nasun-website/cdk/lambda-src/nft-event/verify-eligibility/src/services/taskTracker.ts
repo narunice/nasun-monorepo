@@ -37,7 +37,7 @@ export class TaskTracker {
    *
    * @param walletAddress - 사용자 지갑 주소
    * @param xUserId - X User ID
-   * @param taskType - 태스크 타입 (FOLLOW, LIKE, RETWEET)
+   * @param taskType - 태스크 타입 (FOLLOW, LIKE, REPOST)
    * @param completed - 완료 여부
    * @param metadata - 추가 메타데이터
    */
@@ -151,8 +151,9 @@ export class TaskTracker {
     try {
       const tasks = await this.getAllTasks(walletAddress);
 
-      // 3가지 태스크 (FOLLOW, LIKE, RETWEET)가 모두 있고, 모두 completed = true인지 확인
-      const requiredTasks: TaskType[] = ['FOLLOW', 'LIKE', 'RETWEET'];
+      // 2가지 태스크 (LIKE, REPOST)가 모두 있고, 모두 completed = true인지 확인
+      // Follow는 X API 비용 비효율로 제외
+      const requiredTasks: TaskType[] = ['LIKE', 'REPOST'];
 
       for (const taskType of requiredTasks) {
         const task = tasks.find((t) => t.taskType === taskType);

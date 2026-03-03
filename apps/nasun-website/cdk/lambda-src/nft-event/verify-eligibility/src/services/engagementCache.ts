@@ -7,7 +7,7 @@
  *
  * Cache key convention:
  *   PK: __LIKE_CACHE__   SK: {xUserId}  → Like 확인됨
- *   PK: __RETWEET_CACHE__ SK: {xUserId} → Retweet 확인됨
+ *   PK: __REPOST_CACHE__  SK: {xUserId} → Repost 확인됨
  *
  * @author Claude Code
  * @created 2026-01-31
@@ -17,7 +17,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 
 const LIKE_CACHE_PK = '__LIKE_CACHE__';
-const RETWEET_CACHE_PK = '__RETWEET_CACHE__';
+const REPOST_CACHE_PK = '__REPOST_CACHE__';
 
 export class EngagementCache {
   private docClient: DynamoDBDocumentClient;
@@ -37,23 +37,23 @@ export class EngagementCache {
   }
 
   /**
-   * Check if a user's retweet is in the engagement cache
+   * Check if a user's repost is in the engagement cache
    */
-  async isUserInRetweetCache(xUserId: string): Promise<boolean> {
-    return this.checkCache(RETWEET_CACHE_PK, xUserId);
+  async isUserInRepostCache(xUserId: string): Promise<boolean> {
+    return this.checkCache(REPOST_CACHE_PK, xUserId);
   }
 
   /**
-   * Check both like and retweet caches in parallel
+   * Check both like and repost caches in parallel
    *
-   * @returns { likeFound, retweetFound }
+   * @returns { likeFound, repostFound }
    */
-  async checkBoth(xUserId: string): Promise<{ likeFound: boolean; retweetFound: boolean }> {
-    const [likeFound, retweetFound] = await Promise.all([
+  async checkBoth(xUserId: string): Promise<{ likeFound: boolean; repostFound: boolean }> {
+    const [likeFound, repostFound] = await Promise.all([
       this.isUserInLikeCache(xUserId),
-      this.isUserInRetweetCache(xUserId),
+      this.isUserInRepostCache(xUserId),
     ]);
-    return { likeFound, retweetFound };
+    return { likeFound, repostFound };
   }
 
   private async checkCache(pk: string, xUserId: string): Promise<boolean> {

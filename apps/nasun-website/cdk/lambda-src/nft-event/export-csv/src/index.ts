@@ -40,7 +40,7 @@ const env: NftEventEnv = {
   WHITELIST_TABLE_NAME: process.env.WHITELIST_TABLE_NAME!,
   TASKS_TABLE_NAME: process.env.TASKS_TABLE_NAME!,
   X_TARGET_USERNAME: process.env.X_TARGET_USERNAME || '',
-  X_TARGET_TWEET_ID: process.env.X_TARGET_TWEET_ID || '',
+  X_TARGET_USER_ID: process.env.X_TARGET_USER_ID || '',
   ENABLE_RATE_LIMIT_CACHE: process.env.ENABLE_RATE_LIMIT_CACHE || 'true',
   CACHE_TTL_MINUTES: process.env.CACHE_TTL_MINUTES || '15',
   EXPORT_BUCKET_NAME: process.env.EXPORT_BUCKET_NAME,

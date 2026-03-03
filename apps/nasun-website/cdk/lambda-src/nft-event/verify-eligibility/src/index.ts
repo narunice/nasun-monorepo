@@ -3,9 +3,8 @@
  *
  * @description
  * X API를 사용하여 사용자의 참여 자격을 검증합니다:
- * 1. @Nasun_io 팔로우 여부
- * 2. 특정 트윗 좋아요 여부
- * 3. 특정 트윗 리트윗 여부
+ * 1. @Nasun_io의 아무 포스트 좋아요 여부 (author_id 매칭)
+ * 2. @Nasun_io의 아무 포스트 리포스트 여부 (리트윗 또는 인용트윗)
  *
  * Rate Limit 최적화:
  * - lastCheckedAt가 15분 이내이고 completed: true인 경우 X API skip
@@ -44,7 +43,6 @@ const env: NftEventEnv = {
   TASKS_TABLE_NAME: process.env.TASKS_TABLE_NAME!,
   X_TARGET_USERNAME: process.env.X_TARGET_USERNAME || 'Nasun_io',
   X_TARGET_USER_ID: process.env.X_TARGET_USER_ID || '1725466995565752320',
-  X_TARGET_TWEET_ID: process.env.X_TARGET_TWEET_ID!,
   ENABLE_RATE_LIMIT_CACHE: process.env.ENABLE_RATE_LIMIT_CACHE || 'true',
   CACHE_TTL_MINUTES: process.env.CACHE_TTL_MINUTES || '15',
   AWS_REGION: process.env.AWS_REGION || 'ap-northeast-2',
@@ -107,7 +105,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       xApiConfig: {
         bearerToken,
         targetUserId: env.X_TARGET_USER_ID,
-        targetTweetId: env.X_TARGET_TWEET_ID,
       },
       tasksTableName: env.TASKS_TABLE_NAME,
     });
