@@ -1,7 +1,7 @@
 # Pado Social Layer: Strategic Analysis & Prototype Scope
 
-> Date: 2026-01-31
-> Status: Pre-prototype planning
+> Date: 2026-01-31 (updated: 2026-03-03)
+> Status: Post-development — all social layer features (Tiers 1-3) implemented
 > Context: Bootstrapped, zero external funding, preparing for public launch
 > Source: Multi-AI discussion + internal strategic evaluation
 
@@ -86,33 +86,34 @@ Steps 5-6 are where the social layer converts a one-time visitor into a returnin
 
 ## 5. Prototype Scope: What Must Work
 
-### Tier 1 -- Must Ship (Core Financial Proof)
+### Tier 1 -- Must Ship (Core Financial Proof) — ✅ Complete
 
-| Feature | Required State | Why |
-|---------|---------------|-----|
-| **Spot Trading** | Real order execution with faucet tokens | "It actually works" -- the single most important proof of execution |
-| **Wallet + Faucet** | One-click creation, instant tokens | Zero-friction onboarding; visitors must start trading in under 60 seconds |
-| **Orderbook + Chart** | Live, real-time | Visual proof that "a real exchange is running on our L1" |
+| Feature | Required State | Status |
+|---------|---------------|--------|
+| **Spot Trading** | Real order execution with faucet tokens | ✅ 4 pools live (NBTC, NETH, NSOL, NASUN/NUSDC) |
+| **Wallet + Faucet** | One-click creation, instant tokens | ✅ Embedded wallet + zkLogin + Passkey |
+| **Orderbook + Chart** | Live, real-time | ✅ DeepBook V3 CLOB + TradingView charts |
 
-### Tier 2 -- Must Ship (Community Foundation)
+### Tier 2 -- Must Ship (Community Foundation) — ✅ Complete
 
-| Feature | Required State | Why |
-|---------|---------------|-----|
-| **Global Chat (1 room)** | WebSocket-based, trading page sidebar | The community gathering place. Prevents Discord exodus. Product = community |
-| **Testnet Leaderboard** | Opt-in, ranked by volume/PnL | Competition drives repeat visits. "I'm #1 on Nasun" = organic X posts |
+| Feature | Required State | Status |
+|---------|---------------|--------|
+| **Global Chat (1 room)** | WebSocket-based, trading page sidebar | ✅ Phase 19 — chat, nicknames, market narrator |
+| **Testnet Leaderboard** | Opt-in, ranked by volume/PnL | ✅ Phase 19 — volume/PnL/points rankings, competitions |
 
-### Tier 3 -- Strongly Recommended (Vision Differentiation)
+### Tier 3 -- Strongly Recommended (Vision Differentiation) — ✅ Complete
 
-| Feature | Required State | Why |
-|---------|---------------|-----|
-| **Prediction Market** | 1-2 active markets | Without this, Pado looks like "another DEX." With it, the unified vision is tangible |
-| **Lottery** | 1 active round | Participatory, fun, community-building. Low implementation cost (already built) |
+| Feature | Required State | Status |
+|---------|---------------|--------|
+| **Prediction Market** | 1-2 active markets | ✅ Binary YES/NO markets with admin resolution |
+| **Lottery** | 1 active round | ✅ Weekly draw with Sui Random, multi-tier prizes |
 
-### Tier 4 -- Vision Document Only (Post-Funding Roadmap)
+### Tier 4 -- Post-Funding Roadmap
 
 | Feature | Status |
 |---------|--------|
-| Perpetuals, Unified Margin, Lending | Contracts exist, UI can wait |
+| Perpetuals, Unified Margin | ✅ Implemented (Phase 11, 20x leverage, 4-tier risk engine) |
+| Lending | ⚠️ Contract V7 deployed, UI stub only |
 | DMs (encrypted) | Post-launch when users request it |
 | Market Narrator v1 (rule-based + AI summaries) | ✅ Implemented (Phase 19) |
 | Risk Sentinel, Strategy Simulator | Post-launch when data indexing is stable |

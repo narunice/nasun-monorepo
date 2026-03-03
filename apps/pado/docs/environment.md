@@ -1,6 +1,6 @@
 # Pado Environment Variables
 
-> Last Updated: 2026-02-23
+> Last Updated: 2026-03-03
 
 ## Required (Network)
 
@@ -50,6 +50,41 @@
 | `VITE_POOL_NETH_NUSDC` | NETH/NUSDC pool |
 | `VITE_POOL_NSOL_NUSDC` | NSOL/NUSDC pool |
 
+## Optional (Lottery)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_LOTTERY_PACKAGE` | Lottery package |
+| `VITE_LOTTERY_REGISTRY` | LotteryRegistry object |
+| `VITE_LOTTERY_ADMIN_CAP` | Lottery AdminCap |
+
+## Optional (Margin)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_MARGIN_PACKAGE_ID` | Unified Margin package |
+| `VITE_MARGIN_REGISTRY_ID` | MarginRegistry object |
+
+## Optional (Perpetuals)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_PERP_PACKAGE_ID` | Perpetuals package |
+| `VITE_PERP_MARKET_BTC` | BTC-PERP market object |
+
+## Optional (Lending)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_LENDING_PACKAGE_ID` | Lending package |
+| `VITE_LENDING_POOL_ID` | NUSDC lending pool object |
+
+## Optional (Smart Account)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_NSA_PACKAGE_ID` | Nasun Smart Account package |
+
 ## Optional (Prediction Market)
 
 | Variable | Description |
@@ -81,6 +116,27 @@
 |----------|-------------|
 | `VITE_CHAT_WS_URL` | Chat WebSocket URL |
 | `VITE_CHAT_HTTP_URL` | Chat HTTP API URL |
+
+## Optional (TP/SL Keeper)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_TPSL_KEEPER_URL` | TP/SL Keeper HTTP API URL |
+| `VITE_TPSL_KEEPER_ADDRESS` | Keeper wallet address (for TradeCap delegation) |
+| `VITE_TPSL_API_KEY` | API key for TP/SL Keeper authentication |
+
+## Optional (News)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_NEWS_API_URL` | News feed API URL |
+
+## Server-Side (non-VITE)
+
+| Variable | Description |
+|----------|-------------|
+| `DEEPBOOK_PACKAGE` | DeepBook package (chat-server leaderboard indexer) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (Market Narrator AI summary, optional) |
 
 ## Feature Flags
 

@@ -334,13 +334,13 @@ nasun client call \
 
 ---
 
-## 8. Future Roadmap
+## 8. Future Enhancements
 
-> Multi-tier prizes (5-match, 4-match, 3-match) are already implemented in v2.
+> Multi-tier prizes (5-match, 4-match, 3-match) are implemented in v2 (current version).
 
 1. **NFT Tickets**: Tradeable NFT tickets on secondary market
-2. **Pado XP Integration**: Lottery participation earns XP
-3. **Automated Keeper**: Auto-execute draw/settlement
+2. **Points Integration**: Lottery participation earns points (points system is live)
+3. **Automated Keeper**: Auto-execute draw/settlement via permissionless crank
 4. **Unified Margin Integration**: Purchase directly from margin account
 
 ---

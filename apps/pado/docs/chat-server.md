@@ -1,6 +1,6 @@
 # Pado Chat Server
 
-> Last Updated: 2026-02-23
+> Last Updated: 2026-03-03
 > Location: `apps/pado/chat-server/`
 
 WebSocket + HTTP server. Global Chat, Leaderboard Indexer, Competition API, Market Narrator integrated.
@@ -11,6 +11,8 @@ WebSocket + HTTP server. Global Chat, Leaderboard Indexer, Competition API, Mark
 |---------|-------------|
 | Global Chat | WebSocket real-time chat, signature-based auth, nicknames, SQLite storage (90-day retention) |
 | Leaderboard Indexer | DeepBook OrderFilled event polling -> SQLite aggregation, P&L tracking |
+| Points System | Activity-based points: 10pt/trade, 5pt/1K volume, 25pt/unique pool, 100pt first-trade bonus |
+| Trade API | Paginated trade history, FIFO cost basis calculation, order event tracking |
 | Competition API | Admin CRUD, time-limited contests, Bearer token auth |
 | Market Narrator | Hybrid bot (rule-based instant alerts + optional AI 2h summary) |
 | Aggregator | Real-time market metrics (price tracking, volume calculation) |
@@ -55,12 +57,38 @@ chat-server/src/
 
 ## REST API
 
+### Chat
+
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/leaderboard?period=24h\|7d\|30d\|all&mode=volume\|pnl` | Period-based rankings |
+| `GET /api/messages?roomId=&limit=&before=` | Chat message history |
+| `GET /api/status` | Server status |
+
+### Leaderboard
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/leaderboard?period=24h\|7d\|30d\|all&mode=volume\|pnl&limit=` | Period-based rankings |
 | `GET /api/leaderboard/trader/:address` | Individual trader stats |
-| `GET /api/leaderboard/trader/:address/fills` | Trader fill history |
-| `GET /api/competitions` | Competition list |
+| `GET /api/leaderboard/trader/:address/fills?pool=&limit=&cursor=` | Trader fill history |
+| `GET /api/leaderboard/status` | Leaderboard indexer status |
+| `GET /api/leaderboard/points?period=&limit=` | Points-based leaderboard |
+| `GET /api/leaderboard/trader/:address/points` | Individual trader points |
+
+### Trade API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/trades/:address?pool=&limit=&cursor=` | Paginated trade history |
+| `GET /api/trades/:address/cost-basis?pool=&limit=&cursor=` | FIFO weighted average cost basis |
+| `GET /api/orders/:address` | Order events + fill history |
+
+### Competitions
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/competitions?status=&limit=` | Competition list |
 | `GET /api/competitions/:id` | Competition detail |
+| `GET /api/competitions/:id/results?limit=` | Competition results + leaderboard |
 | `POST /api/competitions` | Create competition (admin) |
-| `PUT /api/competitions/:id` | Update competition (admin) |
+| `PATCH /api/competitions/:id` | Update competition (admin) |
