@@ -8,10 +8,16 @@ export interface UserProfile {
   email?: string;
   provider?: string;
   twitterHandle?: string;
+  originalTwitterHandle?: string;
   twitterId?: string;
   profileImageUrl?: string;
   walletAddress?: string;
   role?: UserRole;
+  verified?: boolean;
+  isTelegramMember?: boolean;
+  telegramUserId?: string;
+  telegramUsername?: string;
+  status?: string;
   createdAt?: string;
   updatedAt?: string;
   linkedAccounts?: {
@@ -110,6 +116,21 @@ export interface UpdateNftCollectionRequest {
   enabled?: boolean;
   contractAddress?: string;
   chain?: NFTChain;
+}
+
+// User Management types
+export interface ListUsersResponse {
+  success: boolean;
+  users: UserProfile[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface UserDetailResponse {
+  success: boolean;
+  user: UserProfile;
 }
 
 // Blacklist types

@@ -2,6 +2,7 @@ import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import {
   DynamoDBClient,
   ScanCommand,
+  GetItemCommand,
   QueryCommand,
   PutItemCommand,
   DeleteItemCommand,
@@ -16,6 +17,7 @@ const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const GENESIS_TABLE = process.env.GENESIS_TABLE || "GenesisNftWhitelist";
 const BATTALION_TABLE = process.env.BATTALION_TABLE || "nasun-nft-whitelist";
 const HIDDEN_PROPOSALS_TABLE = process.env.HIDDEN_PROPOSALS_TABLE || "HiddenProposals";
+const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -40,6 +42,158 @@ interface HiddenProposal {
   proposalId: string;
   hiddenAt: number;
   hiddenBy: string;
+}
+
+// Whitelisted fields for user profile responses (security: never return raw DynamoDB items)
+const USER_LIST_FIELDS = [
+  "identityId", "username", "email", "provider", "twitterHandle",
+  "originalTwitterHandle", "twitterId", "profileImageUrl", "walletAddress",
+  "role", "verified", "isTelegramMember", "telegramUserId", "telegramUsername",
+  "createdAt", "updatedAt", "status",
+] as const;
+
+interface UserProfileItem {
+  identityId: string;
+  username?: string;
+  email?: string;
+  provider?: string;
+  twitterHandle?: string;
+  originalTwitterHandle?: string;
+  twitterId?: string;
+  profileImageUrl?: string;
+  walletAddress?: string;
+  role?: string;
+  verified?: boolean;
+  isTelegramMember?: boolean;
+  telegramUserId?: string;
+  telegramUsername?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  status?: string;
+  linkedAccounts?: Record<string, unknown>;
+}
+
+function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
+  return {
+    identityId: item.identityId?.S || "",
+    username: item.username?.S,
+    email: item.email?.S,
+    provider: item.provider?.S,
+    twitterHandle: item.twitterHandle?.S,
+    originalTwitterHandle: item.originalTwitterHandle?.S,
+    twitterId: item.twitterId?.S,
+    profileImageUrl: item.profileImageUrl?.S,
+    walletAddress: item.walletAddress?.S,
+    role: item.role?.S,
+    verified: item.verified?.BOOL,
+    isTelegramMember: item.isTelegramMember?.BOOL,
+    telegramUserId: item.telegramUserId?.S,
+    telegramUsername: item.telegramUsername?.S,
+    createdAt: item.createdAt?.S,
+    updatedAt: item.updatedAt?.S,
+    status: item.status?.S,
+  };
+}
+
+function parseUserProfileDetail(item: Record<string, any>): UserProfileItem {
+  const profile = parseUserProfileItem(item);
+  // Include linkedAccounts only for detail view
+  if (item.linkedAccounts?.M) {
+    const linked: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(item.linkedAccounts.M as Record<string, any>)) {
+      if (value?.M) {
+        const account: Record<string, string> = {};
+        for (const [field, val] of Object.entries(value.M as Record<string, any>)) {
+          if (val?.S) account[field] = val.S;
+        }
+        linked[key] = account;
+      }
+    }
+    profile.linkedAccounts = linked;
+  }
+  return profile;
+}
+
+// Strip linkedAccounts for list responses
+function toListItem(profile: UserProfileItem): Omit<UserProfileItem, "linkedAccounts"> {
+  const { linkedAccounts: _, ...rest } = profile;
+  return rest;
+}
+
+const MAX_SCAN_PAGES = 20;
+
+/**
+ * Scan all user profiles from DynamoDB into memory
+ */
+async function scanAllUserProfiles(): Promise<UserProfileItem[]> {
+  const items: UserProfileItem[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined;
+  let pageCount = 0;
+
+  do {
+    const command = new ScanCommand({
+      TableName: USER_PROFILES_TABLE,
+      ExclusiveStartKey: lastEvaluatedKey,
+    });
+
+    const result = await dynamoClient.send(command);
+    pageCount++;
+
+    if (result.Items) {
+      for (const item of result.Items) {
+        items.push(parseUserProfileItem(item));
+      }
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey && pageCount < MAX_SCAN_PAGES);
+
+  return items;
+}
+
+/**
+ * Filter and paginate user profiles in memory
+ */
+function filterAndPaginateUsers(
+  users: UserProfileItem[],
+  params: { search?: string; provider?: string; page: number; limit: number }
+): { users: Omit<UserProfileItem, "linkedAccounts">[]; total: number; page: number; limit: number; totalPages: number } {
+  let filtered = users;
+
+  // Filter by provider (case-insensitive)
+  if (params.provider) {
+    const providerLower = params.provider.toLowerCase();
+    filtered = filtered.filter((u) => u.provider?.toLowerCase() === providerLower);
+  }
+
+  // Filter by search term (case-insensitive, matches username/email/twitterHandle)
+  if (params.search) {
+    const searchLower = params.search.toLowerCase();
+    filtered = filtered.filter((u) =>
+      (u.username?.toLowerCase().includes(searchLower)) ||
+      (u.email?.toLowerCase().includes(searchLower)) ||
+      (u.twitterHandle?.toLowerCase().includes(searchLower)) ||
+      (u.originalTwitterHandle?.toLowerCase().includes(searchLower)) ||
+      (u.walletAddress?.toLowerCase().includes(searchLower))
+    );
+  }
+
+  // Sort by createdAt descending (newest first)
+  filtered.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / params.limit));
+  const page = Math.min(params.page, totalPages);
+  const offset = (page - 1) * params.limit;
+  const paged = filtered.slice(offset, offset + params.limit);
+
+  return {
+    users: paged.map(toListItem),
+    total,
+    page,
+    limit: params.limit,
+    totalPages,
+  };
 }
 
 /**
@@ -432,6 +586,40 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       console.log(`Unhiding proposal: ${proposalId}`);
       await unhideProposal(proposalId);
       return jsonResponse(200, { success: true, proposalId }, requestOrigin);
+    }
+
+    // GET /users/{identityId} - Get single user detail
+    if (path.match(/\/users\/[^/]+$/) && event.httpMethod === "GET" && event.pathParameters?.identityId) {
+      const targetIdentityId = decodeURIComponent(event.pathParameters.identityId);
+      console.log(`Fetching user detail: ${targetIdentityId}`);
+
+      const result = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: USER_PROFILES_TABLE,
+          Key: { identityId: { S: targetIdentityId } },
+        })
+      );
+
+      if (!result.Item) {
+        return errorResponse(404, "User not found", requestOrigin);
+      }
+
+      return jsonResponse(200, { success: true, user: parseUserProfileDetail(result.Item) }, requestOrigin);
+    }
+
+    // GET /users - List users with search, filter, pagination
+    if (path.endsWith("/users") && event.httpMethod === "GET") {
+      const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(queryParams.limit || "50", 10) || 50));
+      const search = queryParams.search?.trim();
+      const provider = queryParams.provider?.trim();
+
+      console.log(`Listing users (page: ${page}, limit: ${limit}, search: ${search || "none"}, provider: ${provider || "all"})`);
+
+      const allUsers = await scanAllUserProfiles();
+      const result = filterAndPaginateUsers(allUsers, { search, provider, page, limit });
+
+      return jsonResponse(200, { success: true, ...result }, requestOrigin);
     }
 
     return errorResponse(404, "Not found", requestOrigin);
