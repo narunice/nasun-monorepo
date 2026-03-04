@@ -18,7 +18,8 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/whitelist', label: 'Whitelist Export', icon: '📋' },
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
   { path: '/admin/leaderboard-v3', label: 'Leaderboard V3', icon: '🏆' },
-  { path: '/admin/users', label: 'Blacklist', icon: '🚫' },
+  { path: '/admin/users', label: 'Users', icon: '👥' },
+  { path: '/admin/blacklist', label: 'Blacklist', icon: '🚫' },
   { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
 ];
 
@@ -45,11 +46,18 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     linkText: 'Manage Leaderboard',
   },
   {
+    title: 'User Management',
+    description: 'Browse and search all registered user accounts, view details and linked providers.',
+    icon: '👥',
+    link: '/admin/users',
+    linkText: 'View Users',
+  },
+  {
     title: 'Blacklist Management',
     description: 'Manage user bans and restrictions for the leaderboard.',
     icon: '🚫',
-    link: '/admin/users',
-    linkText: 'Manage Users',
+    link: '/admin/blacklist',
+    linkText: 'Manage Blacklist',
   },
   {
     title: 'NFT Collections',
