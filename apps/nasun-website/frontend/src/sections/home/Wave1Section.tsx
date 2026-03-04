@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
@@ -17,7 +16,6 @@ interface Wave1SectionV3Props {
 }
 
 function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV3Props) {
-  const { t } = useTranslation("home");
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -78,17 +76,17 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
 
   const cards = [
     {
-      titleKey: "wave1.leaderboard.title",
-      line1Key: "wave1.leaderboard.line1",
-      line2Key: "wave1.leaderboard.line2",
-      ctaKey: "wave1.leaderboard.cta",
+      title: "Community Leaderboard",
+      line1: "Contribute content, bring people in, and help build the Nasun ecosystem.",
+      line2: "Climb the ranks to earn USDC rewards and Battalion NFTs.",
+      cta: "Join the Leaderboard",
       to: "/wave1/leaderboard-guide",
     },
     {
-      titleKey: "wave1.battalionNft.title",
-      line1Key: "wave1.battalionNft.line1",
-      line2Key: "wave1.battalionNft.line2",
-      ctaKey: "wave1.battalionNft.cta",
+      title: "Battalion NFT",
+      line1: "Be recognized on-chain as part of Nasun's first wave.",
+      line2: "Get early access to three live platforms and priority participation as the ecosystem expands.",
+      cta: "Join the Allowlist",
       to: "/wave1/battalion-nft",
     },
   ] as const;
@@ -138,10 +136,10 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
         <div className="relative z-20 flex flex-col items-center max-w-xl lg:max-w-6xl mx-auto px-4 lg:px-0 mt-8 sm:mt-12 md:mt-16 lg:mt-20 mb-6 md:mb-12 lg:mb-14">
           {/* Title + Tagline (top center) */}
           <h2 className="!font-eurostile text-3xl/tight md:text-4xl/tight lg:text-5xl/tight text-nasun-black/80 tracking-wide text-center">
-            {t("wave1.title")}
+            WAVE 1
           </h2>
           <p className="font-normal text-lg md:text-xl text-nasun-black/70 mb-6 lg:mb-10 text-center">
-            {t("wave1.tagline")}
+            Build With Us From Day 1
           </p>
 
           {/* Two-column layout: cards + video */}
@@ -149,7 +147,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             {/* Left: intro + cards */}
             <div className="flex flex-col w-full lg:w-[50%] order-2 lg:order-1 mt-6 lg:mt-0">
               <p className="font-medium text-nasun-black/90 text-sm md:text-base mb-5 leading-relaxed">
-                {t("wave1.intro")}
+                Nasun is opening its first cohort of contributors ahead of mainnet. There are two ways to participate:
               </p>
 
               <div className="flex flex-col gap-6 lg:gap-8">
@@ -161,16 +159,16 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                   >
                     <div className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
                       <h6 className="mb-2 font-semibold text-nasun-black tracking-wide">
-                        {t(card.titleKey)}
+                        {card.title}
                       </h6>
                       <p className="text-nasun-black/80 text-xs md:text-sm leading-relaxed">
-                        {t(card.line1Key)}
+                        {card.line1}
                         <br />
-                        {t(card.line2Key)}
+                        {card.line2}
                       </p>
                       <div className="flex justify-end mt-3">
                         <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
-                          {t(card.ctaKey)}
+                          {card.cta}
                         </ButtonV3>
                       </div>
                     </div>
