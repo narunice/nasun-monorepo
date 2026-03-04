@@ -13,3 +13,4 @@ export * from './lottery';
 export * from './governance';
 export * from './baram';
 export * from './nsa';
+export * from './contracts';
