@@ -214,11 +214,15 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolKey]);
 
-  // Cycle through group options on click
-  const cycleGroupSize = useCallback(() => {
+  // Step through group options with +/- buttons
+  const increaseGroupSize = useCallback(() => {
     const idx = groupOptions.indexOf(groupSize);
-    const next = groupOptions[(idx + 1) % groupOptions.length];
-    setGroupSize(next);
+    if (idx < groupOptions.length - 1) setGroupSize(groupOptions[idx + 1]);
+  }, [groupOptions, groupSize]);
+
+  const decreaseGroupSize = useCallback(() => {
+    const idx = groupOptions.indexOf(groupSize);
+    if (idx > 0) setGroupSize(groupOptions[idx - 1]);
   }, [groupOptions, groupSize]);
 
   // On-chain market tape — lifted to Orderbook level to persist across tab switches
@@ -371,15 +375,20 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
     return 3;
   }, [groupSize]);
 
-  // Track price direction for spread arrow
+  // Track price direction for spread arrow + flash effect
   const prevMidPriceRef = useRef<number | null>(null);
   const [priceDirection, setPriceDirection] = useState<'up' | 'down' | null>(null);
+  const [spreadFlash, setSpreadFlash] = useState<'up' | 'down' | null>(null);
 
   useEffect(() => {
     if (!spreadInfo) return;
     const prev = prevMidPriceRef.current;
     if (prev !== null && prev !== spreadInfo.midPrice) {
-      setPriceDirection(spreadInfo.midPrice > prev ? 'up' : 'down');
+      const dir = spreadInfo.midPrice > prev ? 'up' : 'down';
+      setPriceDirection(dir);
+      setSpreadFlash(dir);
+      const timer = setTimeout(() => setSpreadFlash(null), 1000);
+      return () => clearTimeout(timer);
     }
     prevMidPriceRef.current = spreadInfo.midPrice;
   }, [spreadInfo]);
@@ -454,14 +463,26 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
         rightContent={
           activeTab === 'book' ? (
             <div className="flex items-center gap-2">
-              {/* Group size (click to cycle) */}
-              <button
-                onClick={cycleGroupSize}
-                className="px-1.5 py-0.5 text-trading-xs xl:text-trading-sm rounded bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary transition-colors"
-                title={`Price grouping: ${formatGroupLabel(groupSize)}`}
-              >
-                {formatGroupLabel(groupSize)}
-              </button>
+              {/* Group size +/- stepper */}
+              <div className="flex items-center gap-0.5" title={`Price grouping: ${formatGroupLabel(groupSize)}`}>
+                <button
+                  onClick={decreaseGroupSize}
+                  disabled={groupOptions.indexOf(groupSize) === 0}
+                  className="px-1 py-0.5 text-trading-xs rounded bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary disabled:opacity-30 transition-colors"
+                >
+                  −
+                </button>
+                <span className="text-trading-xs xl:text-trading-sm font-mono min-w-[2.5rem] text-center text-theme-text-muted">
+                  {formatGroupLabel(groupSize)}
+                </span>
+                <button
+                  onClick={increaseGroupSize}
+                  disabled={groupOptions.indexOf(groupSize) === groupOptions.length - 1}
+                  className="px-1 py-0.5 text-trading-xs rounded bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary disabled:opacity-30 transition-colors"
+                >
+                  +
+                </button>
+              </div>
               {/* Depth level */}
               <div className="flex gap-0.5">
                 {([5, 10, 20] as DepthLevel[]).map((level) => (
@@ -553,7 +574,9 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
 
           {/* Spread / Mid Price */}
           {showSpread && spreadInfo && (
-            <div ref={spreadBarRef} className="flex items-center justify-between py-2 px-1 my-1 bg-theme-bg-tertiary rounded">
+            <div ref={spreadBarRef} className={`flex items-center justify-between py-2 px-1 my-1 bg-theme-bg-tertiary rounded ${
+              spreadFlash === 'up' ? 'animate-flash-buy' : spreadFlash === 'down' ? 'animate-flash-sell' : ''
+            }`}>
               <span className="text-trading-xl xl:text-trading-2xl font-bold font-mono flex items-center gap-1">
                 {priceDirection === 'up' && (
                   <svg width="12" height="12" viewBox="0 0 12 12" className="text-trading-bid"><path d="M6 2L10 8H2L6 2Z" fill="currentColor" /></svg>

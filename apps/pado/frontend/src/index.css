@@ -67,17 +67,19 @@
   --color-text-secondary: #243f5c;  /* pd1→pd2 midpoint (darker for readability) */
   --color-text-muted: #4d6e8c;      /* pd2→pd3 midpoint (darker for readability) */
   --color-border: #84a3ba;          /* pd3→pd4 midpoint (stronger for readability) */
-  --color-accent: #1f3a61;          /* pd1 */
+  --color-accent: #1a8cbc;           /* pado-1 (brand teal) */
+  --color-accent-hover: #3bb9d8;     /* pado-2 */
+  --color-accent-active: #5ee1e4;    /* pado-3 */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
 
-  /* Pado Brand Colors (legacy, kept for compatibility) */
-  --pado-1: #1a8cbc;
-  --pado-2: #3bb9d8;
-  --pado-3: #5ee1e4;
-  --pado-4: #86f3b7;
-  --pado-5: #d2f6a2;
+  /* Panel depth */
+  --color-panel-shadow: rgba(0, 0, 0, 0.06);
+  --color-panel-border: rgba(26, 140, 188, 0.12);  /* pado-1 tinted */
+
+  /* Glow (theme-aware) */
+  --shadow-glow: 0 0 12px rgba(26, 140, 188, 0.12);
 
   /* Toggle switch OFF background */
   --color-toggle-off: #aac9d5;     /* pd4 */
@@ -100,10 +102,19 @@
   --color-text-secondary: #d4e2ea;  /* pd4→pd5 midpoint (brighter for readability) */
   --color-text-muted: #a3bfd3;      /* pd3→pd4 midpoint (brighter for readability) */
   --color-border: #3a5f7e;          /* pd1→pd2 midpoint (more visible) */
-  --color-accent: #94b3ca;          /* pd3→pd4 midpoint (brighter for readability) */
+  --color-accent: #1a8cbc;           /* pado-1 (WCAG AA: 4.1:1 vs white) */
+  --color-accent-hover: #5ee1e4;     /* pado-3 */
+  --color-accent-active: #86f3b7;    /* pado-4 — dark mode only */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
+
+  /* Panel depth — border luminance for depth on dark backgrounds */
+  --color-panel-shadow: rgba(0, 0, 0, 0.4);
+  --color-panel-border: rgba(59, 185, 216, 0.14);  /* pado-2 tinted */
+
+  /* Glow (brighter for dark bg) */
+  --shadow-glow: 0 0 16px rgba(59, 185, 216, 0.18);
 
   /* Toggle switch OFF background */
   --color-toggle-off: #5b7e9c;     /* pd2→pd3 midpoint (more visible) */
@@ -203,6 +214,11 @@ body {
 
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* Monospace numeric data: tighter letter-spacing for readability */
+.font-mono {
+  letter-spacing: -0.02em;
 }
 
 /* Pado custom gradient utilities */
