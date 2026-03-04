@@ -25,3 +25,13 @@ export function isMetaMaskInAppBrowser(): boolean {
     /MetaMask/i.test(navigator.userAgent)
   );
 }
+
+/** Check if running in genuine Safari on iOS (not Chrome/Edge/Firefox wrapper) */
+export function isIOSSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  // CriOS=Chrome, FxiOS=Firefox, EdgiOS=Edge, OPiOS=Opera
+  const isRealSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
+  return isIOS && isRealSafari;
+}
