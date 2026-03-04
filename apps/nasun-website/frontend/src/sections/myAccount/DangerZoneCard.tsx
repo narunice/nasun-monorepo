@@ -40,7 +40,6 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
   const {
     status: battalionStatus,
     isRegistered: isBattalionRegistered,
-    refetch: refetchBattalion,
   } = useBattalionNftStatus(undefined, effectiveXUserId);
 
   const handleWithdraw = async () => {
@@ -68,7 +67,6 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
         token,
       );
       resetBattalionStore();
-      refetchBattalion();
       setShowWithdrawDialog(false);
       toast.success("Successfully withdrawn from Battalion NFT Allowlist.");
     } catch (err) {
