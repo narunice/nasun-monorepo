@@ -89,6 +89,17 @@ const LeaderboardInfoSection: React.FC = () => {
           </p>
         </header>
 
+        {/* --- How To Join --- */}
+        <section>
+          <div className="flex items-center gap-3 mb-5 md:mb-6">
+            <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-nasun-nw1" />
+            <h5 className="font-medium uppercase tracking-wider">{t("info.howToJoin.title")}</h5>
+            <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
+          </div>
+
+          <p>{t("info.howToJoin.description")}</p>
+        </section>
+
         {/* --- How It Works --- */}
         <section>
           <div className="flex items-center gap-3 mb-5 md:mb-6">

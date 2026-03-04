@@ -3,6 +3,10 @@
     "pageTitle": "COMMUNITY LEADERBOARD",
     "subtitle": "Help shape the Nasun ecosystem.",
     "description": "The Community Leaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven.",
+    "howToJoin": {
+      "title": "How To Join",
+      "description": "Connect your X account on this page to get started (required)"
+    },
     "howItWorks": {
       "title": "How It Works",
       "description": "Active contributors who create high-quality, original content about Nasun's ecosystem are recognized through:",
@@ -23,23 +27,24 @@
       },
       "platinum": {
         "name": "Platinum",
-        "recognition": "USDC reward + 1 Battalion NFT + Priority mint eligibility"
+        "recognition": "USDC Reward + 1 Battalion NFT + Priority Mint Eligibility"
       },
       "gold": {
         "name": "Gold",
-        "recognition": "USDC reward + Discounted Battalion NFT eligibility"
+        "recognition": "USDC Reward + Discounted Battalion NFT Eligibility"
       },
       "silver": {
         "name": "Silver",
-        "recognition": "Priority mint eligibility"
+        "recognition": "Priority Mint Eligibility"
       },
       "bronze": {
         "name": "Bronze",
-        "recognition": "Community recognition"
+        "recognition": "Community Recognition"
       },
       "notes": [
         "Final USDC reward amounts will be confirmed prior to distribution. All rewards are funded from Nasun's marketing allocation.",
-        "Tier structure and eligibility criteria are fixed at leaderboard launch."
+        "Tier structure and eligibility criteria are fixed at leaderboard launch.",
+        "Tier sizes are limited. Final rankings are determined at leaderboard close."
       ]
     },
     "evaluation": {
