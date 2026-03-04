@@ -3,6 +3,7 @@
  */
 
 import React from "react";
+import { useChain } from "@nasun/wallet";
 
 const QUICK_ACTIONS = [
   { key: "send", label: "Send", path: "M12 19l9 2-9-18-9 18 9-2zm0 0v-8" },
@@ -29,8 +30,16 @@ export function QuickActionsBar({
   onToggleMore: () => void;
   moreMenuContent: React.ReactNode;
 }) {
+  const { isNasun } = useChain();
+
   return (
-    <div className="px-2 py-1 flex gap-2 bg-gray-100 dark:bg-zinc-700/50">
+    <div className="relative px-2 py-1 flex gap-2 bg-gray-100 dark:bg-zinc-700/50">
+      {/* Free gas badge — visible on Nasun chains where gas is sponsored */}
+      {isNasun && (
+        <div className="absolute -top-2.5 right-3 px-1.5 py-0.5 bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 text-[9px] font-medium rounded-full border border-emerald-500/20 z-10">
+          Free gas
+        </div>
+      )}
       {QUICK_ACTIONS.map(({ key, label, path }) => (
         <button
           key={key}
