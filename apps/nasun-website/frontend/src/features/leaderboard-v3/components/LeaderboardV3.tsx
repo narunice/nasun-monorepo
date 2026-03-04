@@ -90,43 +90,45 @@ export function LeaderboardV3() {
       )}
 
       {/* 2-column grid: column widths shared across rows */}
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] lg:grid-cols-[1fr_380px] gap-x-8 gap-y-3">
-        {/* Row 1, Col 1: Snapshot Viewer */}
-        <div>
-          {selectedSeason && (
-            <SnapshotViewerV3
-              selectedDate={snapshotDate}
-              onDateChange={setSnapshotDate}
-              minDate={selectedSeason.startDate}
-              maxDate={selectedSeason.endDate}
-              lastUpdated={leaderboardData?.calculatedAt}
-              isEnded={isSeasonEnded}
+      {selectedSeasonId && (
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] lg:grid-cols-[1fr_380px] gap-x-8 gap-y-3">
+          {/* Row 1, Col 1: Snapshot Viewer */}
+          <div>
+            {selectedSeason && (
+              <SnapshotViewerV3
+                selectedDate={snapshotDate}
+                onDateChange={setSnapshotDate}
+                minDate={selectedSeason.startDate}
+                maxDate={selectedSeason.endDate}
+                lastUpdated={leaderboardData?.calculatedAt}
+                isEnded={isSeasonEnded}
+              />
+            )}
+          </div>
+
+          {/* Row 1, Col 2: Search */}
+          <div>
+            <UserSearchBoxV3
+              seasonId={selectedSeasonId}
+              onUserSelect={handleUserSelect}
+              placeholder={t("v3.searchPlaceholder")}
             />
-          )}
-        </div>
+          </div>
 
-        {/* Row 1, Col 2: Search */}
-        <div>
-          <UserSearchBoxV3
-            seasonId={selectedSeasonId}
-            onUserSelect={handleUserSelect}
-            placeholder={t("v3.searchPlaceholder")}
+          {/* Row 2, Col 1: Leaderboard Table */}
+          <LeaderboardMainContent
+            leaderboardData={leaderboardData}
+            highlightedUsername={highlightedUsername}
+            page={page}
+            pagination={pagination}
+            handlePageChange={handlePageChange}
+            ITEMS_PER_PAGE={ITEMS_PER_PAGE}
           />
+
+          {/* Row 2, Col 2: Sidebar (My Rank + Feed) */}
+          <LeaderboardSidebar seasonId={selectedSeasonId} />
         </div>
-
-        {/* Row 2, Col 1: Leaderboard Table */}
-        <LeaderboardMainContent
-          leaderboardData={leaderboardData}
-          highlightedUsername={highlightedUsername}
-          page={page}
-          pagination={pagination}
-          handlePageChange={handlePageChange}
-          ITEMS_PER_PAGE={ITEMS_PER_PAGE}
-        />
-
-        {/* Row 2, Col 2: Sidebar (My Rank + Feed) */}
-        <LeaderboardSidebar seasonId={selectedSeasonId} />
-      </div>
+      )}
     </SectionLayout>
   );
 }
