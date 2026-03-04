@@ -8,18 +8,19 @@
 
 import { FC, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "react-toastify";
+// import { toast } from "react-toastify"; // [DISABLED] Only used by wallet features
 import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
-import { useWallet, useZkLogin } from "@nasun/wallet";
-import { WalletConnect } from "@nasun/wallet-ui";
+// [DISABLED] Wallet features removed from profile — too buggy on mobile.
+// import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
+// import { useWallet, useZkLogin } from "@nasun/wallet";
+// import { WalletConnect } from "@nasun/wallet-ui";
 
 import { AccountItem } from "./components/AccountItem";
 import {
   ChannelMemberBadge,
-  ConnectedBadge,
+  // ConnectedBadge, // [DISABLED] Only used by Nasun Wallet
   LinkedBadge,
   LoggedInBadge,
 } from "./components/StatusBadges";
@@ -86,26 +87,27 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   });
   const telegram = useTelegramVerify({ user });
 
-  // Nasun Wallet Hooks
-  const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
-  const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
-  const nasunWalletAddress = account?.address;
-
-  // EVM Wallet Link via wagmi + RainbowKit
-  const {
-    connect: handleLinkWallet,
-    isAuthenticating: isWalletLinking,
-    error: walletLinkError,
-  } = useWalletAuth({
-      mode: "link",
-      onSuccess: () => {
-        toast.success(t("userInfo.linkMetaMaskSuccess") || "Wallet linked successfully!");
-      },
-      onError: (error) => {
-        toast.error(error.message || "Failed to link wallet");
-      },
-    });
+  // [DISABLED] Wallet features removed from profile — too buggy on mobile.
+  // // Nasun Wallet Hooks
+  // const { status, account } = useWallet();
+  // const { isConnected: isZkConnected } = useZkLogin();
+  // const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
+  // const nasunWalletAddress = account?.address;
+  //
+  // // EVM Wallet Link via wagmi + RainbowKit
+  // const {
+  //   connect: handleLinkWallet,
+  //   isAuthenticating: isWalletLinking,
+  //   error: walletLinkError,
+  // } = useWalletAuth({
+  //     mode: "link",
+  //     onSuccess: () => {
+  //       toast.success(t("userInfo.linkMetaMaskSuccess") || "Wallet linked successfully!");
+  //     },
+  //     onError: (error) => {
+  //       toast.error(error.message || "Failed to link wallet");
+  //     },
+  //   });
 
   const handleImageError = useCallback(() => setImageError(true), []);
   const handleImageLoad = useCallback(() => setImageLoaded(true), []);
@@ -127,16 +129,16 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   // Providers
   const isTwitterPrimary = user.provider === "Twitter";
   const isGooglePrimary = user.provider === "Google";
-  const isMetaMaskPrimary = user.provider === "MetaMask";
+  // const isMetaMaskPrimary = user.provider === "MetaMask"; // [DISABLED]
 
   // Linked Data
   const twitterData = isTwitterPrimary ? user : user.linkedAccounts?.twitter;
   const googleData = isGooglePrimary ? user : user.linkedAccounts?.google;
-  const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask;
-
-  // Wallet Status: 3 states — Not Linked / Linked / Primary
-  const isMetaMaskLinked = !!metamaskData;
-  const linkedWalletAddress = metamaskData?.walletAddress?.toLowerCase();
+  // const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask; // [DISABLED]
+  //
+  // // Wallet Status: 3 states — Not Linked / Linked / Primary
+  // const isMetaMaskLinked = !!metamaskData;
+  // const linkedWalletAddress = metamaskData?.walletAddress?.toLowerCase();
 
   return (
     <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
@@ -247,7 +249,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 3. Wallet (EVM) */}
+            {/* [DISABLED] 3. Wallet (EVM) — too buggy on mobile.
             <AccountItem
               provider="wallet"
               identifier={
@@ -290,6 +292,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 <div className="text-sm text-red-400 px-2 py-1">{walletLinkError}</div>
               )}
             </AccountItem>
+            */}
 
             {/* 4. Telegram */}
             <AccountItem
@@ -330,7 +333,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 5. Nasun Wallet */}
+            {/* [DISABLED] 5. Nasun Wallet — too buggy on mobile.
             <AccountItem
               provider="nasun"
               identifier={
@@ -354,6 +357,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 * This is a prototype on Devnet. Test purpose only.
               </p>
             </AccountItem>
+            */}
           </div>
         </div>
       </div>
