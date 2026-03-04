@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/dialog";
 
 interface CompactNftStatusProps {
-  walletAddress: string | null | undefined;
+  // [DISABLED] walletAddress removed — NFT status now looked up by X account only.
+  // walletAddress: string | null | undefined;
   className?: string;
 }
 
@@ -90,28 +91,25 @@ const NftStatusItem: FC<NftStatusItemProps> = ({
   </div>
 );
 
-export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, className = "" }) => {
+export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { reset: resetBattalionStore, cognitoToken: battalionCognitoToken } = useBattalionNftStore();
   const [isBattalionWithdrawing, setIsBattalionWithdrawing] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
 
-  // Battalion NFT Status — pass twitterId for xUserId fallback lookup
-  // Check both direct twitterId (Twitter login) and linkedAccounts (MetaMask login with linked Twitter)
+  // Battalion NFT Status — lookup by X account (twitterId)
   const twitterId = user?.twitterId ?? user?.linkedAccounts?.twitter?.twitterId;
-  // Final fallback: use Battalion NFT store's xUserId if registration completed.
-  // Covers MetaMask-primary login where reverse link hasn't been established yet.
-  // When registration completes, `registered` flips true → selector returns xUserId
-  // → effectiveXUserId changes → useBattalionNftStatus refetches status via API.
-  const battalionXUserId = useBattalionNftStore((s) => (s.registered ? s.xUserId : undefined));
-  const effectiveXUserId = twitterId ?? battalionXUserId;
+  // [DISABLED] MetaMask-primary login fallback — wallet login is disabled.
+  // const battalionXUserId = useBattalionNftStore((s) => (s.registered ? s.xUserId : undefined));
+  // const effectiveXUserId = twitterId ?? battalionXUserId;
+  const effectiveXUserId = twitterId;
   const {
     status: battalionStatus,
     isRegistered: isBattalionRegistered,
     isLoading: isBattalionLoading,
     refetch: refetchBattalion,
-  } = useBattalionNftStatus(walletAddress, effectiveXUserId);
+  } = useBattalionNftStatus(undefined, effectiveXUserId);
 
   /**
    * Battalion NFT Withdraw Handler
@@ -151,11 +149,11 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ walletAddress, cla
     }
   };
 
-  if (!walletAddress && !effectiveXUserId) {
+  if (!effectiveXUserId) {
     return (
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
-        <p className="text-nasun-white/50">Connect a wallet above to view NFT status</p>
+        <p className="text-nasun-white/50">Link your X account to view NFT status</p>
       </OuterBox>
     );
   }
