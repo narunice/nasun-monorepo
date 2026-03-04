@@ -3,7 +3,7 @@
  * Uses variant prop to handle the differences in header and session actions.
  */
 
-import { type NFTInfo, type ERC20Balance } from "@nasun/wallet";
+import { type NFTInfo, type ERC20Balance, usePortfolio } from "@nasun/wallet";
 import { CopyableAddress } from "../../address/CopyableAddress";
 import { WalletLabelEditor } from "../WalletLabelEditor";
 import { NFTDetail } from "../../nft/NFTDetail";
@@ -104,6 +104,35 @@ export interface ConnectedViewProps {
   onSignOut?: () => void;
   onLock?: () => void;
   onDelete?: () => void;
+}
+
+function PortfolioSummaryBar({ isTestNetwork }: { isTestNetwork: boolean }) {
+  const { data: portfolio, isLoading } = usePortfolio();
+
+  // Hide when loading, no data, or $0.00 (prevents meaningless display on devnet)
+  if (isLoading || !portfolio || portfolio.totalValueUsd === 0) return null;
+
+  const sign = portfolio.change24hPercent >= 0 ? "+" : "";
+  const changeColor =
+    portfolio.change24hPercent >= 0
+      ? "text-green-500"
+      : "text-red-500";
+
+  return (
+    <div className="px-3 py-1.5 flex items-center justify-between bg-gray-100 dark:bg-zinc-700/50 border-b border-gray-200 dark:border-zinc-600">
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-lg font-bold text-gray-900 dark:text-white">
+          ${portfolio.totalValueUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+        {isTestNetwork && (
+          <span className="text-[10px] text-gray-400 dark:text-zinc-500">simulated</span>
+        )}
+      </div>
+      <span className={`text-xs font-medium ${changeColor}`}>
+        {sign}{portfolio.change24hPercent.toFixed(2)}%
+      </span>
+    </div>
+  );
 }
 
 export function ConnectedView(props: ConnectedViewProps) {
@@ -250,6 +279,9 @@ export function ConnectedView(props: ConnectedViewProps) {
         </div>
 
       </div>
+
+      {/* Portfolio total value */}
+      <PortfolioSummaryBar isTestNetwork={networkType === "devnet" || networkType === "testnet"} />
 
       {/* Network selector modal */}
       {isNetworkModalOpen && (
