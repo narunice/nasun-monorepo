@@ -58,19 +58,21 @@ export default function Callback() {
       const isGoogleLinking = sessionStorage.getItem('google_link_session');
 
       if (isTwitterLinking || isGoogleLinking) {
-        // User cancelled during account linking - redirect back to My Account
-        logger.log("User cancelled account linking, redirecting to My Account");
-
-        // Mark as handled to prevent double execution
+        // User cancelled during account linking
         hasHandledRef.current = true;
 
         // Clean up session storage
         sessionStorage.removeItem('twitter_link_session');
         sessionStorage.removeItem('google_link_session');
 
-        // Redirect to My Account with cancellation message
+        // Redirect back to where the linking was initiated (or /my-account as fallback)
+        const returnPath = localStorage.getItem('auth_return_to');
+        localStorage.removeItem('auth_return_to');
         const provider = isTwitterLinking ? 'Twitter' : 'Google';
-        navigate(`/my-account?message=account_linking_cancelled&provider=${provider}`, { replace: true });
+        const fallback = `/my-account?message=account_linking_cancelled&provider=${provider}`;
+        const target = returnPath && isValidReturnUrl(returnPath) ? returnPath : fallback;
+        logger.log("User cancelled account linking, redirecting to", target);
+        navigate(target, { replace: true });
         return;
       }
 

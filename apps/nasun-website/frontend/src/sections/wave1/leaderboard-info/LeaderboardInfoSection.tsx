@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -19,6 +19,7 @@ import {
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { useAuth } from "@/features/auth";
+import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking";
 import {
   Dialog,
   DialogContent,
@@ -67,20 +68,34 @@ const TIER_CONFIG: Record<
 const LeaderboardInfoSection: React.FC = () => {
   const { t } = useTranslation("leaderboard");
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, signInWithTwitter } = useAuth();
+  const { handleLinkTwitter } = useAccountLinking({ user });
   const [showEligibleModal, setShowEligibleModal] = useState(false);
 
   const hasXConnected =
     user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
 
+  // Auto-show eligible modal after returning from X OAuth linking
+  useEffect(() => {
+    if (searchParams.get("x_linked") === "1" && hasXConnected) {
+      setShowEligibleModal(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, hasXConnected, setSearchParams]);
+
   const handleXAction = () => {
     if (hasXConnected) {
       setShowEligibleModal(true);
     } else if (isAuthenticated) {
-      // Logged in but no X connected — go to my-account to link
-      navigate("/my-account");
+      // Logged in but no X connected — start OAuth linking directly
+      localStorage.setItem("auth_return_to", "/wave1/leaderboard-guide?x_linked=1");
+      handleLinkTwitter();
     } else {
       signInWithTwitter();
+      // signInWithTwitter sets auth_return_to to pathname only;
+      // overwrite with x_linked param so the eligible modal auto-shows on return
+      localStorage.setItem("auth_return_to", "/wave1/leaderboard-guide?x_linked=1");
     }
   };
 
@@ -307,7 +322,7 @@ const LeaderboardInfoSection: React.FC = () => {
         <DialogContent className="max-w-md text-center">
           <DialogHeader className="items-center">
             <FontAwesomeIcon icon={faCircleCheck} className="w-10 h-10 text-green-400 mb-2" />
-            <DialogTitle>You're Already Eligible</DialogTitle>
+            <DialogTitle>You're Eligible!</DialogTitle>
             <DialogDescription className="text-nasun-white/70">
               Your X account{" "}
               {(user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle) && (

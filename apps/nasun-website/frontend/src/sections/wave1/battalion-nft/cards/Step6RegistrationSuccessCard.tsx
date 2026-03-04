@@ -55,7 +55,7 @@ export const RegistrationSuccessCard: React.FC<RegistrationSuccessCardProps> = (
   };
 
   const handleShareToTwitter = () => {
-    const shareText = "I've registered for the Battalion NFT allowlist! \uD83C\uDF89 #NASUN #NFT";
+    const shareText = "I've registered for the Battalion NFT allowlist! \uD83C\uDF89 @Nasun_io #NFT";
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
     window.open(url, "_blank");
   };
