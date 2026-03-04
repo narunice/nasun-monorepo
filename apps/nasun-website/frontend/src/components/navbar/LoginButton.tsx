@@ -5,8 +5,10 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { EnterIcon, ExitIcon } from "@radix-ui/react-icons";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
-import { trackEvent, AnalyticsEvent } from "@/lib/analytics";
+// [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
+// Wallet connection remains available in my-account profile.
+// import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
+// import { trackEvent, AnalyticsEvent } from "@/lib/analytics";
 import { SignUpModal } from "../auth/SignUpModal";
 import { isMobileBrowser } from "../../utils/mobileDetect";
 import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
@@ -64,23 +66,21 @@ const LoginButton = () => {
   // Check if Twitter Auth is available
   const isTwitterAuthAvailable = !!import.meta.env.VITE_TWITTER_AUTH_API;
 
-  // Wallet auth hook at LoginButton level — survives DropdownMenu content unmount.
-  // Previously inside WalletLoginButton (inside dropdown), which unmounted on close,
-  // killing the useEffect that triggers authentication after wallet connects.
-  const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
-
-  const { connect: connectWallet, isAuthenticating: isWalletAuthenticating, error: walletError } = useWalletAuth({
-    mode: "login",
-    onSuccess: (walletAddress) => {
-      trackEvent(AnalyticsEvent.AUTH_WALLET_SUCCESS, {});
-      const currentPath = window.location.pathname;
-      navigate(currentPath === "/" ? "/my-account" : currentPath);
-    },
-    onError: (err) => {
-      trackEvent(AnalyticsEvent.AUTH_WALLET_ERROR, { reason: err.message });
-      console.error("Wallet login error:", err);
-    },
-  });
+  // [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
+  // Wallet connection remains available in my-account profile.
+  // const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
+  // const { connect: connectWallet, isAuthenticating: isWalletAuthenticating, error: walletError } = useWalletAuth({
+  //   mode: "login",
+  //   onSuccess: (walletAddress) => {
+  //     trackEvent(AnalyticsEvent.AUTH_WALLET_SUCCESS, {});
+  //     const currentPath = window.location.pathname;
+  //     navigate(currentPath === "/" ? "/my-account" : currentPath);
+  //   },
+  //   onError: (err) => {
+  //     trackEvent(AnalyticsEvent.AUTH_WALLET_ERROR, { reason: err.message });
+  //     console.error("Wallet login error:", err);
+  //   },
+  // });
 
   if (isLoading) {
     return (
@@ -128,13 +128,14 @@ const LoginButton = () => {
           <SignUpModal
             isOpen={signUpModalOpen}
             onClose={() => setSignUpModalOpen(false)}
-            onWalletConnect={() => {
-              trackEvent(AnalyticsEvent.AUTH_WALLET_START, {});
-              setSignUpModalOpen(false);
-              connectWallet();
-            }}
-            isWalletAuthenticating={isWalletAuthenticating}
-            walletError={walletError}
+            // [DISABLED] Wallet login removed from nav menu
+            // onWalletConnect={() => {
+            //   trackEvent(AnalyticsEvent.AUTH_WALLET_START, {});
+            //   setSignUpModalOpen(false);
+            //   connectWallet();
+            // }}
+            // isWalletAuthenticating={isWalletAuthenticating}
+            // walletError={walletError}
           />
         </>
       ) : (
@@ -172,6 +173,8 @@ const LoginButton = () => {
                 {t("auth.login")} with Google
               </button>
             </DropdownMenu.Item>
+            {/* [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
+               Wallet connection remains available in my-account profile.
             {isWalletLoginEnabled && (
               <DropdownMenu.Item asChild>
                 <button
@@ -198,6 +201,7 @@ const LoginButton = () => {
                 </button>
               </DropdownMenu.Item>
             )}
+            */}
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

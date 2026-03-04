@@ -14,25 +14,29 @@ interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
   twitterOnly?: boolean;
-  onWalletConnect?: () => void;
-  isWalletAuthenticating?: boolean;
-  walletError?: string | null;
+  // [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
+  // Wallet connection remains available in my-account profile.
+  // onWalletConnect?: () => void;
+  // isWalletAuthenticating?: boolean;
+  // walletError?: string | null;
 }
 
 export function SignUpModal({
   isOpen,
   onClose,
   twitterOnly = false,
-  onWalletConnect,
-  isWalletAuthenticating = false,
-  walletError = null,
+  // [DISABLED] Wallet login props
+  // onWalletConnect,
+  // isWalletAuthenticating = false,
+  // walletError = null,
 }: SignUpModalProps) {
   const navigate = useNavigate();
   const { isAuthenticated, signInWithGoogle, signInWithTwitter } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const isTwitterAuthAvailable = !!import.meta.env.VITE_TWITTER_AUTH_API;
-  const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
+  // [DISABLED] Wallet login
+  // const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
 
   const handleSignIn = async (provider: "google" | "twitter") => {
     try {
@@ -124,6 +128,8 @@ export function SignUpModal({
                   {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
                 </button>
 
+                {/* [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
+                   Wallet connection remains available in my-account profile.
                 {isWalletLoginEnabled && onWalletConnect && (
                   <>
                     <button
@@ -157,6 +163,7 @@ export function SignUpModal({
                     )}
                   </>
                 )}
+                */}
               </>
             )}
           </div>

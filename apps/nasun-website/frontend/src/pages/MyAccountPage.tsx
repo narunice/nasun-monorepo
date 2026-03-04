@@ -125,7 +125,7 @@ const MyAccountPage = () => {
           {/* NFT Status - 1 column, right of Profile Hero (desktop) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <CompactNftStatus walletAddress={walletAddress} className="order-2 lg:order-none col-span-1" />
+              <CompactNftStatus className="order-2 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
