@@ -116,7 +116,7 @@ export function EnablePadoCard() {
   if (!isConnected || balanceManagerId) return null;
 
   return (
-    <div className="shrink-0 bg-theme-bg-secondary rounded-lg p-4">
+    <div className="shrink-0 bg-theme-bg-secondary rounded-lg p-4 border border-[var(--color-panel-border)] shadow-panel">
       <h3 className="text-sm xl:text-base font-semibold mb-3 text-theme-text-primary">Enable Pado</h3>
       <div className="text-xs xl:text-sm text-theme-text-muted mb-3">
         Enable Pado to start trading. Funds will be automatically deposited when needed.
@@ -443,7 +443,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   if (isSimple) {
     return (
       <div className="h-full">
-        <div className="bg-theme-bg-secondary rounded-lg p-4 h-full flex flex-col">
+        <div className="bg-theme-bg-secondary rounded-lg p-4 h-full flex flex-col border border-[var(--color-panel-border)] shadow-panel">
           {/* Header */}
           <div className="mb-4 shrink-0">
             <h3 className="text-base font-semibold text-theme-text-primary">Quick Trade</h3>
@@ -496,7 +496,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   return (
     <div className="h-full flex flex-col gap-4">
       {/* Order Form Card */}
-      <div className="bg-theme-bg-secondary rounded-lg p-3 flex-1 min-h-0 flex flex-col">
+      <div className="bg-theme-bg-secondary rounded-lg p-3 flex-1 min-h-0 flex flex-col border border-[var(--color-panel-border)] shadow-panel">
         {/* Connect wallet banner when not connected */}
         {!isConnected && (
           <div className="mb-4 p-3 rounded text-sm xl:text-base bg-pd5 dark:bg-pd0/30 text-pd1 dark:text-pd3 border border-pd4 dark:border-pd2 text-center">

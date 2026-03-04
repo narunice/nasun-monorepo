@@ -53,7 +53,7 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   ];
 
   return (
-    <div className={`bg-theme-bg-secondary rounded-lg flex flex-col ${className}`}>
+    <div className={`bg-theme-bg-secondary rounded-lg flex flex-col border border-[var(--color-panel-border)] shadow-panel ${className}`}>
       {/* Tab Headers */}
       <div className="shrink-0">
         <UnderlineTabs

@@ -76,6 +76,8 @@ module.exports = {
         'theme-text-muted': 'var(--color-text-muted)',
         'theme-border': 'var(--color-border)',
         'theme-accent': 'var(--color-accent)',
+        'theme-accent-hover': 'var(--color-accent-hover)',
+        'theme-accent-active': 'var(--color-accent-active)',
         'theme-success': 'var(--color-success)',
         'theme-error': 'var(--color-error)',
         'theme-warning': 'var(--color-warning)',
@@ -88,6 +90,11 @@ module.exports = {
         'trading-ask-bg': 'var(--color-ask-bg)',
         // Toggle switch
         'theme-toggle-off': 'var(--color-toggle-off)',
+      },
+      boxShadow: {
+        'panel': '0 1px 3px var(--color-panel-shadow)',
+        'panel-hover': '0 2px 8px var(--color-panel-shadow)',
+        'glow': 'var(--shadow-glow)',
       },
     },
   },
