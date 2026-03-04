@@ -8,9 +8,10 @@
  * eliminating context loss from tab switching.
  */
 
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { MobileMarketHeader } from './MobileMarketHeader';
 import { MiniOrderbook } from './MiniOrderbook';
+import { MobileBottomBar } from './MobileBottomBar';
 import type { PriceLevel } from '../../../lib/deepbook';
 
 interface MiniTickerData {
@@ -30,6 +31,9 @@ interface MobileTradeLayoutV2Props {
   onPriceClick?: (price: number) => void;
   bottomTabContent?: ReactNode;
   isSimple?: boolean;
+  onTradeClick?: (side: 'buy' | 'sell') => void;
+  onExpandChart?: () => void;
+  chartFullscreen?: boolean;
 }
 
 export function MobileTradeLayoutV2({
@@ -42,7 +46,17 @@ export function MobileTradeLayoutV2({
   onPriceClick,
   bottomTabContent,
   isSimple = false,
+  onTradeClick,
+  onExpandChart,
+  chartFullscreen = false,
 }: MobileTradeLayoutV2Props) {
+  const orderFormRef = useRef<HTMLDivElement>(null);
+
+  const handleTradeClick = (side: 'buy' | 'sell') => {
+    onTradeClick?.(side);
+    orderFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   return (
     <div className="lg:hidden">
       {/* Sticky Market Header — price always visible */}
@@ -51,17 +65,21 @@ export function MobileTradeLayoutV2({
           symbol={miniTicker.symbol}
           price={miniTicker.price}
           priceChange24h={miniTicker.priceChange24h}
+          onExpandChart={onExpandChart}
         />
       )}
 
-      {/* Scrollable content */}
-      <div className="space-y-3 p-3">
+      {/* Scrollable content — pb-28 accounts for BottomBar + BottomNav */}
+      <div className={`space-y-3 p-3 ${!isSimple ? 'pb-28' : ''}`}>
         {/* Chart — responsive height for mobile (40vh capped at 350px) */}
-        <div style={{ height: 'min(40vh, 350px)' }}>
+        <div
+          style={{ height: 'min(40vh, 350px)' }}
+          className={chartFullscreen ? 'invisible h-0 overflow-hidden' : ''}
+        >
           {chartContent}
         </div>
 
-        {/* Pro mode: Mini Orderbook (5 levels) */}
+        {/* Pro mode: Mini Orderbook (8 levels) */}
         {!isSimple && bids.length > 0 && (
           <MiniOrderbook
             bids={bids}
@@ -72,7 +90,7 @@ export function MobileTradeLayoutV2({
         )}
 
         {/* Order Form (SwapForm for Simple, full OrderForm for Pro) */}
-        <div>
+        <div ref={orderFormRef}>
           {tradeContent}
         </div>
 
@@ -81,6 +99,9 @@ export function MobileTradeLayoutV2({
           <div>{bottomTabContent}</div>
         )}
       </div>
+
+      {/* Sticky Buy/Sell bar — Pro mode only */}
+      {!isSimple && <MobileBottomBar onTradeClick={handleTradeClick} />}
     </div>
   );
 }

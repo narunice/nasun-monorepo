@@ -43,7 +43,7 @@ export function MiniOrderbook({ bids, asks, midPrice, onPriceClick }: MiniOrderb
           <button
             key={`ask-${i}`}
             onClick={() => handleClick(level.price)}
-            className="w-full flex justify-between items-center text-[11px] font-mono px-1 py-0.5 rounded hover:bg-theme-bg-tertiary transition-colors relative"
+            className="w-full flex justify-between items-center text-[11px] font-mono px-1 py-2.5 rounded hover:bg-theme-bg-tertiary transition-colors relative"
           >
             <div
               className="absolute right-0 top-0 bottom-0 bg-red-500/10 rounded"
@@ -68,7 +68,7 @@ export function MiniOrderbook({ bids, asks, midPrice, onPriceClick }: MiniOrderb
           <button
             key={`bid-${i}`}
             onClick={() => handleClick(level.price)}
-            className="w-full flex justify-between items-center text-[11px] font-mono px-1 py-0.5 rounded hover:bg-theme-bg-tertiary transition-colors relative"
+            className="w-full flex justify-between items-center text-[11px] font-mono px-1 py-2.5 rounded hover:bg-theme-bg-tertiary transition-colors relative"
           >
             <div
               className="absolute right-0 top-0 bottom-0 bg-green-500/10 rounded"

@@ -7,7 +7,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { configureWallet, initZkLogin, registerTokens } from '@nasun/wallet';
+import { configureWallet, initZkLogin, registerTokens, configureClearSigning, setFormatterConfig } from '@nasun/wallet';
+import { createContractRegistry } from '@nasun/devnet-config';
 import { WalletProvider } from '@nasun/wallet-ui';
 
 import { ThemeProvider } from './providers/theme';
@@ -46,6 +47,12 @@ configureWallet({
   faucetUrl: NETWORK_CONFIG.faucetUrl,
   sessionPersist: true, // Keep wallet unlocked during browser session
 });
+
+// Configure Clear Signing with known contract registry
+// Enables verified contract identification in transaction previews
+const contractRegistry = createContractRegistry();
+configureClearSigning({ contractRegistry });
+setFormatterConfig({ contractRegistry });
 
 // Note: NASUN faucet is auto-registered by @nasun/wallet package
 // NBTC/NUSDC faucet handlers are registered in App.tsx (requires wallet signing)

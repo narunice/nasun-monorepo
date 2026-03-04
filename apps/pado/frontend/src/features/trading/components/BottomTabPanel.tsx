@@ -245,7 +245,7 @@ function TPSLTab() {
               <div className="text-right">
                 <button
                   onClick={() => handleCancel(order.id)}
-                  className="px-1.5 py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                  className="px-2.5 py-2 md:px-1.5 md:py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
                 >
                   Cancel
                 </button>
