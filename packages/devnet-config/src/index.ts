@@ -20,6 +20,9 @@ export * from './types';
 // Re-export all IDs
 export * from './ids';
 
+// Contract registry
+export { createContractRegistry } from './registry';
+
 // Export raw config for scripts
 import config from '../devnet-ids.json';
 export { config as devnetConfig };
