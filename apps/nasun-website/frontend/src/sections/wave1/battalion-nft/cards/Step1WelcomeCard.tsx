@@ -216,7 +216,13 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
 
         {/* CTA */}
         <div className="text-center">
-          <ButtonV3 onClick={onStartClick} variant="nw2" size="lg" className="flex mx-auto">
+          <ButtonV3
+            onClick={onStartClick}
+            variant="nw2"
+            size="lg"
+            className="flex mx-auto"
+            disabled={isMobileBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser()}
+          >
             Get Started
           </ButtonV3>
         </div>
@@ -225,9 +231,10 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
         {isMobileBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser() && (
           <DividerBox color="nw4" padding="sm" className="mt-6 !bg-black/30">
             <p className="text-sm mb-2">
+              <span className="text-yellow-300">For mobile users:</span>
               {isAndroidBrowser()
-                ? "For a smoother wallet connection, complete the process in MetaMask's built-in browser."
-                : "Wallet connections work best in MetaMask's built-in browser or Safari."}
+                ? " for a smoother wallet connection, we recommend starting the process in MetaMask's built-in browser."
+                : " for a smoother wallet connection, we recommend using MetaMask's built-in browser or Safari."}
             </p>
             <div className="flex flex-col gap-4 items-center">
               <ButtonV3
@@ -256,6 +263,9 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
                 </ButtonV3>
               )}
             </div>
+            <p className="text-xs text-nasun-white/50 mt-3 text-center">
+              If you experience issues with wallet connection, please try again on desktop.
+            </p>
           </DividerBox>
         )}
       </div>
