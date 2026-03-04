@@ -17,10 +17,14 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
     setIsLinking(true);
     setError(null);
     try {
-      sessionStorage.setItem(
-        "google_link_session",
-        JSON.stringify({ primaryIdentityId: user?.identityId, isLinking: true })
-      );
+      const googleLinkData = JSON.stringify({
+        primaryIdentityId: user?.identityId,
+        isLinking: true,
+        cognitoToken: user?.cognitoToken,
+      });
+      sessionStorage.setItem("google_link_session", googleLinkData);
+      // Fallback: localStorage survives mobile app-switch that clears sessionStorage
+      localStorage.setItem("google_link_session", googleLinkData);
       localStorage.setItem("auth_provider_preference", "Google");
       window.location.href = buildGoogleAuthUrl();
     } catch (err) {
@@ -49,6 +53,7 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
         sessionId: data.sessionId,
         state: data.state,
         primaryIdentityId: user?.identityId,
+        cognitoToken: user?.cognitoToken,
       });
 
       // Primary: sessionStorage
