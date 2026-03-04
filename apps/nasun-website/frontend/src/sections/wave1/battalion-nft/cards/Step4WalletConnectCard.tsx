@@ -282,8 +282,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
           {showWalletHint && (
             <DividerBox color="nw4" padding="sm" className="mb-6 !bg-black/30">
               <p>Approve the signature in your wallet app.</p>
-              <p className="mt-1 text-sm md:hidden">If the app doesn't switch automatically, open your wallet app manually to sign, then come back.</p>
-              <p className="mt-1 text-sm md:hidden">If your wallet gets stuck loading, force-close the app and try Trust Wallet instead.</p>
+              <p className="mt-2 text-sm text-nasun-nw4 md:hidden">Having trouble on mobile? A desktop browser gives the most reliable experience.</p>
             </DividerBox>
           )}
 

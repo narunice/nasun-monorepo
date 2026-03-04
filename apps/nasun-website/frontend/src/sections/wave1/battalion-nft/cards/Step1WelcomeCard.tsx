@@ -10,7 +10,7 @@ import { ButtonV3 } from "@/components/ui/button-v3";
 import { ArrowUpRight } from "lucide-react";
 import { FiCheck } from "react-icons/fi";
 import { OuterBox, DividerBox } from "@/components/ui";
-import { isAndroidBrowser, isMetaMaskInAppBrowser } from "@/utils/mobileDetect";
+import { isMobileBrowser, isAndroidBrowser, isMetaMaskInAppBrowser, isIOSSafari } from "@/utils/mobileDetect";
 
 interface Step1WelcomeCardProps {
   onStartClick: () => void;
@@ -36,6 +36,7 @@ const JOIN_STEPS = [
 
 export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick }) => {
   const [checkPhase, setCheckPhase] = useState(0);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Sequential checkmark animation for Join the allowlist items
   useEffect(() => {
@@ -220,24 +221,41 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
           </ButtonV3>
         </div>
 
-        {/* Android MetaMask users: redirect to MetaMask in-app browser */}
-        {isAndroidBrowser() && !isMetaMaskInAppBrowser() && (
+        {/* Mobile non-Safari users: redirect to MetaMask in-app browser for reliable wallet connection */}
+        {isMobileBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser() && (
           <DividerBox color="nw4" padding="sm" className="mt-6 !bg-black/30">
             <p className="text-sm mb-2">
-              Android users with MetaMask: for a smoother wallet connection, complete the process in MetaMask's built-in browser.
+              {isAndroidBrowser()
+                ? "For a smoother wallet connection, complete the process in MetaMask's built-in browser."
+                : "Wallet connections work best in MetaMask's built-in browser or Safari."}
             </p>
-            <ButtonV3
-              variant="nw5"
-              outline
-              size="sm"
-              className="flex mx-auto"
-              onClick={() => {
-                const { host, pathname } = window.location;
-                window.open(`https://metamask.app.link/dapp/${host}${pathname}`, "_self");
-              }}
-            >
-              Open in MetaMask
-            </ButtonV3>
+            <div className="flex flex-col gap-4 items-center">
+              <ButtonV3
+                variant="nw5"
+                outline
+                size="sm"
+                onClick={() => {
+                  const { host, pathname } = window.location;
+                  window.open(`https://metamask.app.link/dapp/${host}${pathname}`, "_self");
+                }}
+              >
+                Open in MetaMask
+              </ButtonV3>
+              {!isAndroidBrowser() && (
+                <ButtonV3
+                  variant="nw5"
+                  outline
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }}
+                >
+                  {linkCopied ? "Copied! Paste in Safari" : "Copy Link for Safari"}
+                </ButtonV3>
+              )}
+            </div>
           </DividerBox>
         )}
       </div>
