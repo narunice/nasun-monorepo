@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -14,8 +14,18 @@ import {
   faLightbulb,
   faTriangleExclamation,
   faScaleBalanced,
+  faCircleCheck,
 } from "@fortawesome/free-solid-svg-icons";
+import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import { useAuth } from "@/features/auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const TIERS = ["platinum", "gold", "silver", "bronze"] as const;
 
@@ -56,6 +66,23 @@ const TIER_CONFIG: Record<
 
 const LeaderboardInfoSection: React.FC = () => {
   const { t } = useTranslation("leaderboard");
+  const navigate = useNavigate();
+  const { user, isAuthenticated, signInWithTwitter } = useAuth();
+  const [showEligibleModal, setShowEligibleModal] = useState(false);
+
+  const hasXConnected =
+    user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
+
+  const handleXAction = () => {
+    if (hasXConnected) {
+      setShowEligibleModal(true);
+    } else if (isAuthenticated) {
+      // Logged in but no X connected — go to my-account to link
+      navigate("/my-account");
+    } else {
+      signInWithTwitter();
+    }
+  };
 
   const howItWorksItems = t("info.howItWorks.items", {
     returnObjects: true,
@@ -97,7 +124,16 @@ const LeaderboardInfoSection: React.FC = () => {
             <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
           </div>
 
-          <p>{t("info.howToJoin.description")}</p>
+          <p>
+            Connect your{" "}
+            <button
+              onClick={handleXAction}
+              className="text-nasun-nw1 underline font-medium cursor-pointer"
+            >
+              X account
+            </button>
+            {" "}on this page to get started (required)
+          </p>
         </section>
 
         {/* --- How It Works --- */}
@@ -252,13 +288,46 @@ const LeaderboardInfoSection: React.FC = () => {
           </OuterBox>
         </div>
 
-        {/* --- CTA Button --- */}
-        <div className="flex justify-center">
+        {/* --- CTA Buttons --- */}
+        <div className="flex flex-col sm:flex-row justify-center gap-3">
           <ButtonV3 asChild variant="nw2" size="md">
             <Link to="/wave1/leaderboard">{t("info.viewLeaderboard")}</Link>
           </ButtonV3>
+          {!hasXConnected && (
+            <ButtonV3 variant="nw2" size="md" outline onClick={handleXAction}>
+              <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 mr-2" />
+              Sign Up with X to Join
+            </ButtonV3>
+          )}
         </div>
       </div>
+
+      {/* --- Already Eligible Modal --- */}
+      <Dialog open={showEligibleModal} onOpenChange={setShowEligibleModal}>
+        <DialogContent className="max-w-md text-center">
+          <DialogHeader className="items-center">
+            <FontAwesomeIcon icon={faCircleCheck} className="w-10 h-10 text-green-400 mb-2" />
+            <DialogTitle>You're Already Eligible</DialogTitle>
+            <DialogDescription className="text-nasun-white/70">
+              Your X account{" "}
+              {(user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle) && (
+                <span className="font-medium text-nasun-white">
+                  @{user?.originalTwitterHandle || user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle}
+                </span>
+              )}{" "}
+              is connected. You're all set to participate in the leaderboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+            <ButtonV3 asChild variant="nw2" size="sm">
+              <Link to="/wave1/leaderboard">View Leaderboard</Link>
+            </ButtonV3>
+            <ButtonV3 asChild variant="nw2" size="sm" outline>
+              <Link to="/my-account">Go to My Account</Link>
+            </ButtonV3>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SectionLayout>
   );
 };
