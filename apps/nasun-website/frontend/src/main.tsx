@@ -115,7 +115,7 @@ createRoot(container).render(
             <ToastContainer
               position="top-right"
               autoClose={4000}
-              theme="light"
+              theme="dark"
               pauseOnHover
               pauseOnFocusLoss
             />
