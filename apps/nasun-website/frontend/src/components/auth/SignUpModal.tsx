@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -10,15 +10,23 @@ import {
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 
-const WalletLoginButton = lazy(() => import("@/features/auth/components/WalletLoginButton"));
-
 interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
   twitterOnly?: boolean;
+  onWalletConnect?: () => void;
+  isWalletAuthenticating?: boolean;
+  walletError?: string | null;
 }
 
-export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModalProps) {
+export function SignUpModal({
+  isOpen,
+  onClose,
+  twitterOnly = false,
+  onWalletConnect,
+  isWalletAuthenticating = false,
+  walletError = null,
+}: SignUpModalProps) {
   const navigate = useNavigate();
   const { isAuthenticated, signInWithGoogle, signInWithTwitter } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -42,15 +50,6 @@ export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModa
     } finally {
       setIsSigningIn(false);
     }
-  };
-
-  const handleWalletSuccess = (_walletAddress: string) => {
-    onClose();
-    navigate("/my-account");
-  };
-
-  const handleWalletError = (error: Error) => {
-    console.error("Wallet login error:", error);
   };
 
   const providerBtnClass =
@@ -125,14 +124,38 @@ export function SignUpModal({ isOpen, onClose, twitterOnly = false }: SignUpModa
                   {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
                 </button>
 
-                {isWalletLoginEnabled && (
-                  <Suspense fallback={null}>
-                    <WalletLoginButton
+                {isWalletLoginEnabled && onWalletConnect && (
+                  <>
+                    <button
+                      onClick={onWalletConnect}
+                      disabled={isWalletAuthenticating}
                       className={providerBtnClass}
-                      onSuccess={handleWalletSuccess}
-                      onError={handleWalletError}
-                    />
-                  </Suspense>
+                    >
+                      <svg
+                        className="w-5 h-5 flex-shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1 0-6h.75A2.25 2.25 0 0 1 18 6v0a2.25 2.25 0 0 1-2.25 2.25H15m6 3.75v3a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25v6.75Z"
+                        />
+                      </svg>
+                      {isWalletAuthenticating ? (
+                        <InlineLoading size="sm" />
+                      ) : walletError ? (
+                        "Try Again"
+                      ) : (
+                        "Continue with Wallet"
+                      )}
+                    </button>
+                    {walletError && (
+                      <div className="text-sm text-red-400 px-2 py-1">{walletError}</div>
+                    )}
+                  </>
                 )}
               </>
             )}
