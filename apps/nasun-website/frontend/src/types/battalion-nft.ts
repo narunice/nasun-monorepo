@@ -225,6 +225,7 @@ export interface BattalionNftStore {
   verification?: VerificationResult;
   registered: boolean;
   whitelist?: NftWhitelist;
+  statusVersion: number;
 
   // Actions
   setStep: (step: EventStep) => void;
@@ -233,5 +234,6 @@ export interface BattalionNftStore {
   setWalletAddress: (address: string) => void;
   setWalletProof: (proof: string, issuedAt: string) => void;
   setRegistered: (whitelist: NftWhitelist) => void;
+  invalidateStatus: () => void;
   reset: () => void;
 }

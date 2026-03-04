@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { checkBattalionNftStatus } from '../services/battalionNftApi';
 import { NftWhitelist, ApiError } from '../types/battalion-nft';
+import { useBattalionNftStore } from '../stores/useBattalionNftStore';
 
 const ERROR_MESSAGES: Record<string, string> = {
   ALREADY_REGISTERED: "This wallet address is already registered.",
@@ -56,6 +57,7 @@ export function useBattalionNftStatus(
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const statusVersion = useBattalionNftStore((s) => s.statusVersion);
 
   const fetchStatus = useCallback(async () => {
     // Neither walletAddress nor xUserId — nothing to query
@@ -101,10 +103,10 @@ export function useBattalionNftStatus(
     }
   }, [walletAddress, xUserId]);
 
-  // 지갑 주소가 변경될 때마다 자동으로 상태 조회
+  // Refetch when params change or when statusVersion is bumped (e.g. after withdraw)
   useEffect(() => {
     fetchStatus();
-  }, [fetchStatus]);
+  }, [fetchStatus, statusVersion]);
 
   return {
     status,
