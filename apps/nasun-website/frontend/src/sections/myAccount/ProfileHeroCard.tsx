@@ -12,15 +12,15 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-// [DISABLED] Wallet features removed from profile — too buggy on mobile.
+// [DISABLED] EVM Wallet features removed from profile — too buggy on mobile.
 // import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
-// import { useWallet, useZkLogin } from "@nasun/wallet";
-// import { WalletConnect } from "@nasun/wallet-ui";
+import { useWallet, useZkLogin } from "@nasun/wallet";
+import { WalletConnect } from "@nasun/wallet-ui";
 
 import { AccountItem } from "./components/AccountItem";
 import {
   ChannelMemberBadge,
-  // ConnectedBadge, // [DISABLED] Only used by Nasun Wallet
+  ConnectedBadge,
   LinkedBadge,
   LoggedInBadge,
 } from "./components/StatusBadges";
@@ -87,12 +87,12 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   });
   const telegram = useTelegramVerify({ user });
 
-  // [DISABLED] Wallet features removed from profile — too buggy on mobile.
-  // // Nasun Wallet Hooks
-  // const { status, account } = useWallet();
-  // const { isConnected: isZkConnected } = useZkLogin();
-  // const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
-  // const nasunWalletAddress = account?.address;
+  // [DISABLED] EVM Wallet features removed from profile — too buggy on mobile.
+  // Nasun Wallet Hooks
+  const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
+  const nasunWalletAddress = account?.address;
   //
   // // EVM Wallet Link via wagmi + RainbowKit
   // const {
@@ -333,7 +333,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* [DISABLED] 5. Nasun Wallet — too buggy on mobile.
+            {/* 5. Nasun Wallet */}
             <AccountItem
               provider="nasun"
               identifier={
@@ -357,7 +357,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 * This is a prototype on Devnet. Test purpose only.
               </p>
             </AccountItem>
-            */}
           </div>
         </div>
       </div>
