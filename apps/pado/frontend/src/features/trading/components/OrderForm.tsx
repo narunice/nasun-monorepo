@@ -330,20 +330,20 @@ export function OrderForm({
       <div className="grid grid-cols-2">
         <button
           onClick={() => { onSideChange('buy'); setActiveField('amount'); setTotalInput(''); }}
-          className={`py-1.5 text-sm xl:text-base font-semibold transition-colors rounded-l ${
+          className={`py-1.5 text-trading-sm xl:text-trading-lg font-semibold transition-colors rounded-l ${
             isBuy
-              ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400'
-              : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
+              ? 'bg-green-600/15 text-green-700 dark:bg-green-500/15 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400'
+              : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary border-b-2 border-transparent'
           }`}
         >
           Buy
         </button>
         <button
           onClick={() => { onSideChange('sell'); setActiveField('amount'); setTotalInput(''); }}
-          className={`py-1.5 text-sm xl:text-base font-semibold transition-colors rounded-r ${
+          className={`py-1.5 text-trading-sm xl:text-trading-lg font-semibold transition-colors rounded-r ${
             !isBuy
-              ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400'
-              : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'
+              ? 'bg-red-600/15 text-red-700 dark:bg-red-500/15 dark:text-red-400 border-b-2 border-red-600 dark:border-red-400'
+              : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary border-b-2 border-transparent'
           }`}
         >
           Sell
@@ -405,7 +405,7 @@ export function OrderForm({
               <div className="flex items-center bg-theme-bg-tertiary rounded overflow-hidden">
                 <button
                   onClick={() => setTrailMode('percent')}
-                  className={`px-2 py-0.5 text-[10px] xl:text-xs font-medium transition-colors ${
+                  className={`px-2 py-0.5 text-trading-xs font-medium transition-colors ${
                     trailMode === 'percent'
                       ? 'bg-pd1/30 text-pd3'
                       : 'text-theme-text-muted hover:text-theme-text-secondary'
@@ -415,7 +415,7 @@ export function OrderForm({
                 </button>
                 <button
                   onClick={() => setTrailMode('amount')}
-                  className={`px-2 py-0.5 text-[10px] xl:text-xs font-medium transition-colors ${
+                  className={`px-2 py-0.5 text-trading-xs font-medium transition-colors ${
                     trailMode === 'amount'
                       ? 'bg-pd1/30 text-pd3'
                       : 'text-theme-text-muted hover:text-theme-text-secondary'
@@ -432,7 +432,7 @@ export function OrderForm({
               step={trailMode === 'percent' ? 0.1 : 1}
               className="px-3 py-2 text-sm xl:text-base"
             />
-            <p className="text-[10px] xl:text-xs text-theme-text-muted mt-0.5">
+            <p className="text-trading-xs text-theme-text-muted mt-0.5">
               {isBuy
                 ? `Triggers buy when price rises ${trailMode === 'percent' ? '%' : '$'} above lowest point`
                 : `Triggers sell when price drops ${trailMode === 'percent' ? '%' : '$'} from highest point`}
@@ -457,7 +457,7 @@ export function OrderForm({
               <button
                 onClick={() => { if (midPrice) setStopPrice(snapToTick(midPrice, currentPool).toString()); }}
                 disabled={!midPrice}
-                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-1.5 py-0.5 text-trading-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 Mid
               </button>
@@ -470,7 +470,7 @@ export function OrderForm({
               step={minPrice}
               className="px-3 py-2 text-sm xl:text-base"
             />
-            <p className="text-[10px] xl:text-xs text-theme-text-muted mt-0.5">
+            <p className="text-trading-xs text-theme-text-muted mt-0.5">
               {isBuy ? 'Triggers when price rises to this level' : 'Triggers when price falls to this level'}
             </p>
           </div>
@@ -482,21 +482,21 @@ export function OrderForm({
                 <button
                   onClick={() => handlePriceSelect(midPrice || 0)}
                   disabled={!midPrice}
-                  className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-1.5 py-0.5 text-trading-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Mid
                 </button>
                 <button
                   onClick={() => handlePriceSelect(bestBid)}
                   disabled={!bestBid}
-                  className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-bid font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-1.5 py-0.5 text-trading-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-bid font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Bid
                 </button>
                 <button
                   onClick={() => handlePriceSelect(bestAsk)}
                   disabled={!bestAsk}
-                  className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-ask font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-1.5 py-0.5 text-trading-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-ask font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Ask
                 </button>
@@ -527,7 +527,7 @@ export function OrderForm({
               <button
                 onClick={() => handlePriceSelect(midPrice || 0)}
                 disabled={!midPrice}
-                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-1.5 py-0.5 text-trading-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-theme-text-primary rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 title="Current mid price"
               >
                 Mid
@@ -535,7 +535,7 @@ export function OrderForm({
               <button
                 onClick={() => handlePriceSelect(bestBid)}
                 disabled={!bestBid}
-                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-bid font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-1.5 py-0.5 text-trading-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-bid font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 title="Best bid price"
               >
                 Bid
@@ -543,7 +543,7 @@ export function OrderForm({
               <button
                 onClick={() => handlePriceSelect(bestAsk)}
                 disabled={!bestAsk}
-                className="px-1.5 py-0.5 text-[10px] xl:text-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-ask font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="px-1.5 py-0.5 text-trading-xs bg-theme-bg-tertiary hover:bg-theme-bg-secondary text-trading-ask font-medium rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 title="Best ask price"
               >
                 Ask
@@ -747,7 +747,7 @@ export function OrderForm({
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-[10px] xl:text-xs text-theme-text-muted">
+          <p className="mt-1.5 text-trading-xs text-theme-text-muted">
             {EXECUTION_OPTIONS.find((o) => o.value === executionOption)?.description}
           </p>
         </div>
@@ -756,10 +756,10 @@ export function OrderForm({
       {/* H. Single Action Button */}
       <button
         onClick={handleSubmit}
-        className={`mt-auto w-full py-2 font-semibold rounded transition-colors text-white disabled:opacity-50 ${
+        className={`mt-auto w-full py-2.5 text-trading-sm xl:text-trading-lg font-semibold rounded-lg text-white shadow-sm hover:shadow-md transition-all duration-150 disabled:opacity-50 ${
           isBuy
-            ? 'bg-green-600 hover:bg-green-700'
-            : 'bg-red-600 hover:bg-red-700'
+            ? 'bg-gradient-to-b from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 active:from-green-700 active:to-green-800 dark:shadow-[inset_0_1px_0_rgba(134,243,183,0.2)]'
+            : 'bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 active:from-red-700 active:to-red-800 dark:shadow-[inset_0_1px_0_rgba(252,165,165,0.2)]'
         }`}
         disabled={isButtonDisabled || isInsufficient}
       >

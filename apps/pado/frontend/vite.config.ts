@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import fs from 'fs'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -70,10 +71,38 @@ export default defineConfig({
       https: path.resolve(__dirname, './src/lib/https-browser-stub.ts'),
     },
     preserveSymlinks: true,
-    dedupe: ['@nasun/wallet', '@nasun/wallet-ui', 'react', 'react-dom', 'zustand', '@tanstack/react-query'],
+    dedupe: ['@nasun/wallet', '@nasun/wallet-ui', 'react', 'react-dom', 'zustand', '@tanstack/react-query', '@noble/hashes', '@noble/curves'],
   },
   optimizeDeps: {
     include: ['@nasun/wallet', '@nasun/wallet-ui', '@scure/bip39', '@scure/bip39/wordlists/english.js'],
+    esbuildOptions: {
+      plugins: [
+        {
+          // Workaround: Vite's dep-pre-bundle resolver fails to resolve @noble/hashes
+          // subpath exports (e.g. @noble/hashes/hmac) after wagmi dependency reorganized
+          // the monorepo node_modules hoisting structure. This plugin resolves them
+          // directly from root node_modules using the package.json exports map.
+          name: 'resolve-noble',
+          setup(build) {
+            const rootNM = path.resolve(__dirname, '../../../node_modules')
+            build.onResolve({ filter: /^@noble\/(hashes|curves)/ }, (args) => {
+              const parts = args.path.split('/')
+              const pkgName = parts.slice(0, 2).join('/')
+              const subpath = '.' + (parts.length > 2 ? '/' + parts.slice(2).join('/') : '')
+              const pkgDir = path.join(rootNM, pkgName)
+              try {
+                const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'))
+                const entry = pkg.exports?.[subpath]
+                if (!entry) return undefined
+                const file = typeof entry === 'string' ? entry : entry.import ?? entry.default
+                if (file) return { path: path.resolve(pkgDir, file) }
+              } catch { /* fall through to Vite resolver */ }
+              return undefined
+            })
+          },
+        },
+      ],
+    },
   },
   // Strip console.log and console.debug in production builds (keep console.warn/error)
   esbuild: {
