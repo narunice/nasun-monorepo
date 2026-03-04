@@ -211,7 +211,8 @@ function TradePageContent() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount
   const { currentPool } = useMarket();
   const { data: orderbookData, isError: isOrderbookError } = useOrderbook();
-  const { setPrice, setStopPrice, focusedPriceField } = useOrderForm();
+  const { setPrice, setStopPrice, focusedPriceField, setSide } = useOrderForm();
+  const [chartFullscreen, setChartFullscreen] = useState(false);
   const { getPrice, getPriceInfo } = usePrices();
 
   const orderbook = orderbookData?.orderbook ?? { bids: [], asks: [], spread: 0, midPrice: 0 };
@@ -492,7 +493,7 @@ function TradePageContent() {
         )}
       </div>
 
-      {/* Mobile: scrollable single-page layout (below lg) */}
+      {/* Mobile: scrollable single-page layout (below md) */}
       <MobileTradeLayoutV2
         chartContent={
           <ChartArea
@@ -517,7 +518,41 @@ function TradePageContent() {
         bottomTabContent={!isSimple ? <BottomTabPanel /> : undefined}
         miniTicker={marketInfo}
         isSimple={isSimple}
+        onTradeClick={(side) => setSide(side)}
+        onExpandChart={() => setChartFullscreen(true)}
+        chartFullscreen={chartFullscreen}
       />
+
+      {/* Fullscreen chart overlay (mobile only) */}
+      {chartFullscreen && (
+        <div className="fixed inset-0 z-[60] bg-theme-bg-primary md:hidden flex flex-col animate-fullscreen-in">
+          <div className="flex items-center justify-between px-3 py-2 landscape:py-1 border-b border-theme-border">
+            <span className="text-sm landscape:text-xs font-semibold text-theme-text-primary">
+              {marketInfo.symbol}
+            </span>
+            <button
+              onClick={() => setChartFullscreen(false)}
+              className="p-2.5 text-theme-text-muted hover:text-theme-text-primary transition-colors"
+              aria-label="Close fullscreen chart"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="4" x2="4" y2="12" />
+                <line x1="4" y1="4" x2="12" y2="12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ChartArea
+              chartView={chartView}
+              onChartViewChange={setChartView}
+              currentPrice={displayPrice}
+              bids={orderbook.bids}
+              asks={orderbook.asks}
+              midPrice={midPrice}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Floating chat popup (xl+ only, when popped out) */}
       {chatFloating && (

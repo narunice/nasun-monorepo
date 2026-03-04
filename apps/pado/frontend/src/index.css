@@ -187,6 +187,21 @@ body {
   animation: slide-up 0.3s ease-out;
 }
 
+@keyframes fullscreen-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fullscreen-in {
+  animation: fullscreen-in 0.3s ease-out;
+}
+
 /* Custom scrollbar - thin, themed */
 * {
   scrollbar-width: thin;
