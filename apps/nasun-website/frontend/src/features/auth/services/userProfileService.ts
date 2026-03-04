@@ -10,7 +10,8 @@ import logger from "@/lib/logger";
  * cleared when the tab closes and is not accessible across tabs, reducing XSS exposure.
  */
 export async function refreshAndSaveUserProfile(
-  identityId: string
+  identityId: string,
+  cognitoToken?: string,
 ): Promise<void> {
   const updatedProfile = await fetchUserProfile(identityId);
 
@@ -20,15 +21,17 @@ export async function refreshAndSaveUserProfile(
 
   const { user, updateUserProfile, setUser } = useUserStore.getState();
 
-  // Preserve cognitoToken (not stored in DynamoDB): check store first, then sessionStorage.
-  // In OAuth redirect flow, checkAuthStatus is skipped so user may be null in store,
-  // but sessionStorage still has the pre-redirect profile with cognitoToken.
+  // Preserve cognitoToken (not stored in DynamoDB): check store first, then sessionStorage,
+  // then the explicit parameter (fallback for mobile redirect where both are cleared).
   let existingToken = user?.cognitoToken;
   if (!existingToken) {
     try {
       const cached = sessionStorage.getItem("nasun_user_profile");
       if (cached) existingToken = JSON.parse(cached).cognitoToken;
     } catch { /* ignore parse error */ }
+  }
+  if (!existingToken && cognitoToken) {
+    existingToken = cognitoToken;
   }
   if (existingToken && !updatedProfile.cognitoToken) {
     updatedProfile.cognitoToken = existingToken;

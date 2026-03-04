@@ -51,7 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Fallback: localStorage survives mobile app-switch that clears sessionStorage
     const twitterLinkSession = sessionStorage.getItem("twitter_link_session")
       || localStorage.getItem("twitter_link_session");
-    const googleLinkSession = sessionStorage.getItem("google_link_session");
+    const googleLinkSession = sessionStorage.getItem("google_link_session")
+      || localStorage.getItem("google_link_session");
     const isLinkingFlow = !!twitterLinkSession || !!googleLinkSession;
 
     // Skip Twitter OAuth if this is Battalion NFT flow
@@ -135,13 +136,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const linkSessionRaw = provider === "Twitter" ? twitterLinkSession : googleLinkSession;
 
         if (linkSessionRaw) {
-          const { primaryIdentityId } = JSON.parse(linkSessionRaw);
-          // Retrieve primary user's cognitoToken from sessionStorage (saved during initial login)
+          const parsed = JSON.parse(linkSessionRaw);
+          const { primaryIdentityId } = parsed;
+          // Primary: sessionStorage (secure, but may be cleared on Android Chrome redirect)
           const cachedProfile = sessionStorage.getItem("nasun_user_profile");
-          const primaryCognitoToken = cachedProfile ? JSON.parse(cachedProfile).cognitoToken : undefined;
+          // Fallback: cognitoToken stored in link session (survives mobile redirect via localStorage)
+          const primaryCognitoToken = cachedProfile
+            ? JSON.parse(cachedProfile).cognitoToken
+            : parsed.cognitoToken;
           await linkAccounts(primaryIdentityId, identityId, provider as "Google" | "Twitter", primaryCognitoToken);
           sessionStorage.removeItem(linkSessionKey);
-          await refreshAndSaveUserProfile(primaryIdentityId);
+          await refreshAndSaveUserProfile(primaryIdentityId, primaryCognitoToken);
           setUser(useUserStore.getState().user);
         } else {
           // Linking session mismatch - fall through to normal login
@@ -187,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("auth_flow_type");
       localStorage.removeItem("battalion_nft_session_id");
       localStorage.removeItem("twitter_link_session");
+      localStorage.removeItem("google_link_session");
       setIsLoading(false);
       oauthProcessingRef.current = false;
 
