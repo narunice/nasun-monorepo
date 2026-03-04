@@ -77,7 +77,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
   }, [shouldLoadVideo]);
 
   return (
-    <SectionLayout className="max-w-none relative min-h-[80vh] landscape:min-h-screen md:min-h-screen">
+    <SectionLayout className="max-w-none relative min-h-screen">
       {/* Background video container */}
       <div
         ref={containerRef}
@@ -106,7 +106,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
       </div>
 
       {/* Content */}
-      <div className="relative z-30 flex flex-col items-center justify-center min-h-[80vh] landscape:min-h-screen md:min-h-screen px-4 lg:px-8">
+      <div className="relative z-30 flex flex-col items-center justify-center min-h-screen px-4 lg:px-8">
         {/* Main row: Triangle + Text */}
         <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-20 xl:gap-28 w-full">
           {/* Left: Triangle Symbol */}
