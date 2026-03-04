@@ -3,7 +3,8 @@
 // Downloaded on-demand after the app shell renders.
 
 import type { ReactNode } from "react";
-import { configureWallet, initZkLogin } from "@nasun/wallet";
+import { configureWallet, initZkLogin, configureClearSigning, setFormatterConfig } from "@nasun/wallet";
+import { createContractRegistry } from "@nasun/devnet-config";
 import { WalletProvider } from "@nasun/wallet-ui";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
@@ -36,6 +37,11 @@ if (googleClientId && saltApiUrl) {
     },
   });
 }
+
+// Configure Clear Signing with known contract registry
+const contractRegistry = createContractRegistry();
+configureClearSigning({ contractRegistry });
+setFormatterConfig({ contractRegistry });
 
 // Nasun brand theme for RainbowKit (dark mode, brand accent)
 const nasunTheme = darkTheme({
