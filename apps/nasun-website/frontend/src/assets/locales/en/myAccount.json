@@ -150,6 +150,19 @@
       }
     }
   },
+  "accountManagement": {
+    "title": "ACCOUNT MANAGEMENT",
+    "withdraw": {
+      "title": "Withdraw Allowlist",
+      "description": "Remove your wallet from the Battalion NFT Allowlist. You can re-register later.",
+      "button": "Withdraw"
+    },
+    "deleteAccount": {
+      "title": "Delete Account",
+      "description": "Permanently delete your account and all associated data.",
+      "button": "Request Account Deletion"
+    }
+  },
   "accountDeletion": {
     "title": "DELETE ACCOUNT",
     "description": "This action cannot be undone. After deactivation, all related data will be permanently deleted after 7 days.",
