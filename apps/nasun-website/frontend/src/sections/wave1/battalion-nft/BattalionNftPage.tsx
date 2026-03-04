@@ -106,15 +106,10 @@ export const BattalionNftPage: React.FC = () => {
       return;
     }
 
-    // Case 1: Logged out -> Reset to Step 1 (except Step 6 completed)
+    // Case 1: Logged out -> Always reset to Step 1
+    // Stale localStorage data (e.g. Step 6 completed) must not be shown without auth,
+    // as the user may have withdrawn on another browser/device.
     if (!user) {
-      // If Step 6 is completed (registered), keep the data
-      if (registered && currentStep === 6) {
-        console.log("[BattalionNftPage] Logged out but Step 6 completed - keeping data");
-        return;
-      }
-
-      // Otherwise, reset to Step 1 if not already at Step 1
       if (currentStep !== 1) {
         console.warn(
           "[BattalionNftPage] Page reload: Logged out and not at Step 1 - resetting to Step 1",
