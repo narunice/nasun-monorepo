@@ -215,7 +215,11 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
       {/* Header */}
       <div className="text-center">
         <h4 className="!font-rubik font-medium mb-4 max-w-xl mx-auto">Connect Wallet</h4>
-        <p className="mb-6">Please select your preferred wallet when prompted.</p>
+        <p className="mb-6">
+          {isMetaMaskInAppBrowser()
+            ? "Approve the signature request to verify your wallet."
+            : "Please select your preferred wallet when prompted."}
+        </p>
       </div>
 
       {/* Connected Wallet Display */}
@@ -319,7 +323,7 @@ export const WalletConnectCard: React.FC<WalletConnectCardProps> = ({ onWalletCo
                 {isAuthenticating ? (
                   <InlineLoading message="Connecting..." size="md" className="text-white" />
                 ) : (
-                  <span>Connect Wallet</span>
+                  <span>{isConnected && address ? "Sign to Verify" : "Connect Wallet"}</span>
                 )}
               </ButtonV3>
             )}
