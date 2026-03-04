@@ -58,6 +58,7 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
       verification: undefined,
       registered: false,
       whitelist: undefined,
+      statusVersion: 0,
 
       // ========== Actions ==========
 
@@ -139,11 +140,16 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
       },
 
       /**
+       * Bump statusVersion so all useBattalionNftStatus hooks refetch
+       */
+      invalidateStatus: () => set((state) => ({ statusVersion: state.statusVersion + 1 })),
+
+      /**
        * 상태 초기화
        */
       reset: () => {
         console.log('[useBattalionNftStore] Resetting state');
-        set({
+        set((state) => ({
           currentStep: 1,
           xUserId: undefined,
           xUsername: undefined,
@@ -155,7 +161,8 @@ export const useBattalionNftStore = create<BattalionNftStore>()(
           verification: undefined,
           registered: false,
           whitelist: undefined,
-        });
+          statusVersion: state.statusVersion + 1,
+        }));
       },
     }),
     {
