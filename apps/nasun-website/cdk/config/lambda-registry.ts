@@ -40,15 +40,6 @@ export const lambdaRegistry: { [key: string]: LambdaConfig} = {
     timeout: cdk.Duration.seconds(30),
     memorySize: 256
   },
-  'get-all-supply-counts': {
-    constructId: 'GetAllSupplyCountsLambda',
-    functionName: 'GetAllSupplyCountsLambda',
-    handler: 'index.handler',
-    assetPath: 'lambda-src/getAllSupplyCounts',
-    runtime: lambda.Runtime.NODEJS_18_X,
-    timeout: cdk.Duration.seconds(30),
-    memorySize: 256
-  },
   'random-image-handler': {
     constructId: 'RandomImageHandlerLambda',
     functionName: 'RandomImageHandlerLambda',
