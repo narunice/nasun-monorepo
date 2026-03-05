@@ -25,7 +25,9 @@ interface ProposalFormData {
   title: string;
   description: string;
   proposalType: ProposalType;
+  durationType: "preset" | "custom";
   durationHours: number;
+  customEndDate: string;
 }
 
 export function CreateProposal() {
@@ -46,7 +48,9 @@ export function CreateProposal() {
     title: "",
     description: "",
     proposalType: "Governance",
+    durationType: "preset",
     durationHours: 72,
+    customEndDate: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +79,32 @@ export function CreateProposal() {
       return;
     }
 
+    if (formData.durationType === "custom") {
+      const endTime = new Date(formData.customEndDate).getTime();
+      const minTime = Date.now() + 60 * 60 * 1000;
+      const maxTime = Date.now() + 90 * 24 * 60 * 60 * 1000;
+      if (!formData.customEndDate || isNaN(endTime)) {
+        setError("Please select a valid end date");
+        return;
+      }
+      if (endTime <= minTime) {
+        setError("End date must be at least 1 hour from now");
+        return;
+      }
+      if (endTime > maxTime) {
+        setError("End date cannot exceed 90 days from now");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
       // Calculate expiration timestamp
-      const expiresAt = Date.now() + formData.durationHours * 60 * 60 * 1000;
+      const expiresAt = formData.durationType === "custom"
+        ? new Date(formData.customEndDate).getTime()
+        : Date.now() + formData.durationHours * 60 * 60 * 1000;
 
       // Build the transaction
       const tx = new Transaction();
@@ -128,6 +152,12 @@ export function CreateProposal() {
       });
 
       if (result.effects?.status?.status === "success") {
+        // Wait for RPC to index the transaction before invalidating cache
+        try {
+          await suiClient.waitForTransaction({ digest: result.digest });
+        } catch {
+          console.warn("waitForTransaction timed out, proposal likely created");
+        }
         invalidateProposals();
         toast.success("Proposal created successfully!");
         navigate("/admin/governance");
@@ -247,24 +277,76 @@ export function CreateProposal() {
                 </div>
               </div>
 
-              {/* Duration */}
-              <div className="mb-8">
+              {/* Duration Type Toggle */}
+              <div className="mb-4">
                 <label className="block text-sm text-nasun-white/70 mb-2">Voting Duration</label>
-                <select
-                  value={formData.durationHours}
-                  onChange={(e) =>
-                    setFormData({ ...formData, durationHours: Number(e.target.value) })
-                  }
-                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none [&>option]:bg-nasun-c6 [&>option]:text-nasun-white"
-                  disabled={isSubmitting}
-                >
-                  <option value={24}>24 hours</option>
-                  <option value={48}>48 hours</option>
-                  <option value={72}>72 hours (3 days)</option>
-                  <option value={168}>168 hours (7 days)</option>
-                  <option value={336}>336 hours (14 days)</option>
-                </select>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, durationType: "preset" })}
+                    className={`px-4 py-2 rounded-sm border text-sm transition-colors ${
+                      formData.durationType === "preset"
+                        ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
+                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    Preset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, durationType: "custom" })}
+                    className={`px-4 py-2 rounded-sm border text-sm transition-colors ${
+                      formData.durationType === "custom"
+                        ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
+                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    Custom Date
+                  </button>
+                </div>
               </div>
+
+              {/* Preset Duration Select */}
+              {formData.durationType === "preset" && (
+                <div className="mb-8">
+                  <select
+                    value={formData.durationHours}
+                    onChange={(e) =>
+                      setFormData({ ...formData, durationHours: Number(e.target.value) })
+                    }
+                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none [&>option]:bg-nasun-c6 [&>option]:text-nasun-white"
+                    disabled={isSubmitting}
+                  >
+                    <option value={24}>24 hours</option>
+                    <option value={48}>48 hours</option>
+                    <option value={72}>72 hours (3 days)</option>
+                    <option value={168}>168 hours (7 days)</option>
+                    <option value={336}>336 hours (14 days)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Custom End Date Picker */}
+              {formData.durationType === "custom" && (
+                <div className="mb-8">
+                  <label className="block text-sm text-nasun-white/70 mb-2">Voting End Date</label>
+                  <input
+                    type="datetime-local"
+                    value={formData.customEndDate}
+                    onChange={(e) => setFormData({ ...formData, customEndDate: e.target.value })}
+                    min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none"
+                    disabled={isSubmitting}
+                  />
+                  {formData.customEndDate && (
+                    <p className="text-nasun-white/40 text-xs mt-2">
+                      Expires: {new Date(formData.customEndDate).toLocaleString("en-US", { timeZone: "UTC" })} UTC
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Error */}
               {error && (

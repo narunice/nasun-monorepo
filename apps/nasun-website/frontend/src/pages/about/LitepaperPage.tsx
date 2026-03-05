@@ -45,9 +45,9 @@ export default function LitepaperPage() {
             </p>
 
             <p>
-              Nasun&apos;s Layer-1 exists to vertically integrate its platforms, aligning the full
-              economic stack for protocol-level execution, unified fee capture, and shared network
-              effects across all three verticals.
+              Nasun&apos;s Layer-1 vertically integrates its platforms, aligning the full economic
+              stack for protocol-level execution, unified fee capture, and shared network effects
+              across the ecosystem.
             </p>
 
             <p className="font-semibold text-nasun-white">

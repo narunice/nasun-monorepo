@@ -1,5 +1,5 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { FC, useState } from "react";
+import { FC, useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { EcText } from "@/components/ui/Shared";
 import { VoteNft } from "../types/voting";
@@ -15,6 +15,7 @@ import {
   getStatusBadge,
 } from "../utils/proposalHelpers";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import { ArrowRight } from "lucide-react";
 
 interface ProposalItemsProps {
   id: string;
@@ -32,6 +33,9 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
   const { t } = useTranslation("proposals");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const descRef = useRef<HTMLParagraphElement>(null);
+  const [isClamped, setIsClamped] = useState(false);
+
   const {
     data: dataResponse,
     refetch: refetchProposal,
@@ -46,6 +50,11 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
 
   // Get proposal type from registry
   const { proposalType, isLoading: isTypeLoading } = useProposalType(id);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) setIsClamped(el.scrollHeight > el.clientHeight);
+  }, [dataResponse]);
 
   if (isPending || isTypeLoading) return <EcText centered text="Loading..." />;
   if (error) return <EcText isError text={`Error: ${error.message}`} />;
@@ -123,10 +132,16 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
         {/* Description */}
         <div className="flex-1 mb-4">
           <p
+            ref={descRef}
             className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} line-clamp-6`}
           >
             {proposal.description}
           </p>
+          {isClamped && (
+            <span className="text-nasun-nw1 text-sm mt-1 flex items-center justify-end gap-1 hover:underline">
+              Read more <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
         </div>
 
         {/* Footer: Progress Bar + Time */}

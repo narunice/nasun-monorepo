@@ -170,6 +170,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.FinancePado,
         },
         {
+          name: "navigation.baramAi",
+          path: "/ecosystem/baram",
+          element: Pages.BaramDark,
+        },
+        {
           name: "navigation.genSol",
           path: "/ecosystem/gensol",
           element: Pages.IPsGenSol,
@@ -195,11 +200,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
               element: Pages.IPsGenSolOverview,
             },
           ],
-        },
-        {
-          name: "navigation.baramAi",
-          path: "/ecosystem/baram",
-          element: Pages.BaramDark,
         },
         // {
         //   name: "navigation.riderStudio",
