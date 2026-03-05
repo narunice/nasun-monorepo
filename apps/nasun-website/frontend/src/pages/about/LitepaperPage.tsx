@@ -15,10 +15,14 @@ export default function LitepaperPage() {
 
           <div className="flex flex-col gap-6 text-nasun-white/80 text-base md:text-lg leading-relaxed tracking-wide">
             <p>
-              Nasun is the infrastructure layer for finance, AI, and entertainment, a Move-based
-              Layer-1 powering three live platforms: Pado (full-featured DeFi), Gen Sol (a cinematic
-              sci-fi IP universe spanning games, animation, and film), and Baram (on-chain
-              governance and compliance infrastructure for AI agents).
+              Nasun is a Move-based Layer-1 blockchain built as infrastructure for finance, AI, and
+              entertainment.
+            </p>
+
+            <p>
+              Three live platforms power the ecosystem: Pado, a full-featured DeFi platform; Gen
+              Sol, a cinematic sci-fi universe spanning games, animation, and film; and Baram,
+              on-chain governance for AI agents.
             </p>
 
             <p>
@@ -32,8 +36,8 @@ export default function LitepaperPage() {
               Regulatory frameworks are actively opening: stablecoin legislation, RWA tokenization
               initiatives, a tripling of national AI investment, and mandatory compliance
               requirements under Korea&apos;s AI Basic Act, now in effect. Korea&apos;s cultural
-              export machine, spanning film, television, and gaming, gives the Gen Sol IP universe
-              direct access to global audiences from launch.
+              export machine, reaching across film, television, and gaming, also gives the Gen Sol
+              IP universe direct access to global audiences from launch.
             </p>
 
             <p className="font-semibold text-nasun-white">
@@ -41,9 +45,9 @@ export default function LitepaperPage() {
             </p>
 
             <p>
-              Nasun&apos;s Layer-1 exists to vertically align its platforms and align the full
-              economic stack, enabling protocol-level execution, aligned fee capture, and shared
-              network effects across all three verticals.
+              Nasun&apos;s Layer-1 exists to vertically integrate its platforms, aligning the full
+              economic stack for protocol-level execution, unified fee capture, and shared network
+              effects across all three verticals.
             </p>
 
             <p className="font-semibold text-nasun-white">
