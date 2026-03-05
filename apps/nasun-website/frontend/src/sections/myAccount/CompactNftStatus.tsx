@@ -37,7 +37,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
   if (!effectiveXUserId) {
     return (
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
+        <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
         <p className="text-nasun-white/50">Link your X account to view NFT status</p>
       </OuterBox>
     );
@@ -45,8 +45,19 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
 
   return (
     <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
-      <h5 className="font-medium uppercase text-nasun-white mb-4">NFT STATUS</h5>
+      <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
       <div className="flex flex-col gap-3">
+        {/* Leaderboard Event CTA */}
+        <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+          <h6 className="text-nasun-white">Leaderboard Event</h6>
+          <p className="text-nasun-white/70 text-sm">
+            You're in! Share content about Nasun and get recognized.
+          </p>
+          <Button onClick={() => navigate("/wave1/leaderboard-guide")} variant="filledOutlineC7" size="sm" className="self-end mt-1">
+            Learn More
+          </Button>
+        </div>
+
         <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
           <h6 className="text-nasun-white">Battalion NFT Allowlist</h6>
           <div className="flex items-center justify-between">

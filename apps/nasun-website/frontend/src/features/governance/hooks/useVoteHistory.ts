@@ -59,6 +59,7 @@ export function useVoteHistory(limit = 5) {
     },
     {
       enabled: !!ownerAddress && !!originalPackageId,
+      gcTime: 0,
     }
   );
 
