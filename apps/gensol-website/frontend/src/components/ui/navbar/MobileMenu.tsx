@@ -1,8 +1,8 @@
 import { Flex } from "@radix-ui/themes"
 
-import { SOCIAL_LINKS } from "@/constants/socialLinks"
+// import { SOCIAL_LINKS } from "@/constants/socialLinks"
 import NavItem from "./NavItem"
-import DropdownMenu from "./DropdownMenu"
+// import DropdownMenu from "./DropdownMenu"
 
 
 
@@ -13,15 +13,15 @@ const MobileMenu = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
     { path: "/games", label: "Games" },
     { path: "/news", label: "News" },
 
-    {
-      type: "dropdown",
-      label: "Socials",
-      items: SOCIAL_LINKS.map((link) => ({
-        name: link.name,
-        url: link.url,
-        isExternal: true,
-      })),
-    },
+    // {
+    //   type: "dropdown",
+    //   label: "Socials",
+    //   items: SOCIAL_LINKS.map((link) => ({
+    //     name: link.name,
+    //     url: link.url,
+    //     isExternal: true,
+    //   })),
+    // },
   ]
 
   return (
@@ -58,28 +58,15 @@ const MobileMenu = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 
           {/* Menu Items */}
           <ul className="flex flex-col space-y-5 font-pirulen tracking-wider">
-            {menuItems.map((item) => {
-              if (item.type === "dropdown") {
-                return (
-                  <DropdownMenu
-                    key={item.label}
-                    title={item.label}
-                    items={item.items}
-                    variant="mobile"
-                    onItemClick={onClose}
-                  />
-                )
-              }
-              return (
-                <NavItem
-                  key={item.path}
-                  path={item.path || ""}
-                  label={item.label}
-                  onClick={onClose}
-                  variant="mobile"
-                />
-              )
-            })}
+            {menuItems.map((item) => (
+              <NavItem
+                key={item.path}
+                path={item.path || ""}
+                label={item.label}
+                onClick={onClose}
+                variant="mobile"
+              />
+            ))}
           </ul>
         </Flex>
       </div>

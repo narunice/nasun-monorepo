@@ -2,21 +2,16 @@
 import { lazy } from "react"
 import { RouteConfigBuilder } from "../types/routes.d"
 
-// 컴포넌트 직접 참조용 객체
 export const Pages = {
   Home: lazy(() => import("@/pages/HomePage")),
   Films: lazy(() => import("@/pages/FilmsPage")),
   Games: lazy(() => import("@/pages/GamesPage")),
   News: lazy(() => import("@/pages/NewsPage")),
   PostDetail: lazy(() => import("@/pages/PostDetailPage")),
-  MyPage: lazy(() => import("@/pages/MyPage")),
-  Callback: lazy(() => import("@/features/auth/routes/Callback")),
-  Logout: lazy(() => import("@/components/ui/LogoutPage")),
   ComingSoon: lazy(() => import("@/components/common/ComingSoon")),
   NotFound: lazy(() => import("@/components/common/NotFoundPage")),
 }
 
-// 라우트 구성 객체
 export const routes: RouteConfigBuilder = {
   home: {
     path: "/",
@@ -56,35 +51,8 @@ export const routes: RouteConfigBuilder = {
     navItem: {
       name: "News Detail",
       path: "/news/:slug",
-      hidden: true, // 네비게이션에 표시하지 않음
+      hidden: true,
     },
-  },
-  callback: {
-    path: "/callback",
-    element: Pages.Callback,
-    navItem: {
-      name: "Callback",
-      path: "/callback",
-      hidden: true, // 네비게이션에 표시하지 않음
-    },
-  },
-  logout: {
-    path: "/logout",
-    element: Pages.Logout,
-    navItem: {
-      name: "Logout",
-      path: "/logout",
-      hidden: true, // 네비게이션에 표시하지 않음
-    },
-  },
-  myPage: {
-    path: "/my-page",
-    element: Pages.MyPage,
-    navItem: {
-      name: "My Page",
-      path: "/my-page",
-    },
-    isProtected: true, // 보호된 라우트
   },
   comingSoon: {
     path: "/coming-soon",
@@ -104,9 +72,7 @@ export const routes: RouteConfigBuilder = {
   },
 }
 
- 
-
-// 라우트 검증 함수
+// Route validation
 export const validateRoutePaths = () => {
   const pathMap = new Map<string, string>()
 
@@ -131,5 +97,4 @@ export const validateRoutePaths = () => {
   })
 }
 
-// 초기 검증 실행
 validateRoutePaths()
