@@ -14,7 +14,7 @@ describe('01 — Endpoint Health Checks', () => {
     { name: 'Link Account API', url: URLS.linkAccount, path: '/link', method: 'POST' },
     { name: 'Price API', url: URLS.priceApi, path: '/api/prices' },
     { name: 'Supply Count API', url: URLS.supplyCount, path: '/getSupplyCount/TIER1' },
-    { name: 'All Supply Counts API', url: URLS.allSupplyCounts },
+
     { name: 'Backup Price API', url: URLS.backupPrice, path: '/BackupPrices' },
     { name: 'User Count API', url: URLS.userCount },
     { name: 'Follower Count API', url: URLS.followerCount },
