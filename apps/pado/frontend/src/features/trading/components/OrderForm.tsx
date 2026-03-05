@@ -634,7 +634,7 @@ export function OrderForm({
             <button
               key={pct}
               onClick={() => handlePercentAmount(pct)}
-              className={`flex-1 py-2.5 md:py-1 text-trading-xs xl:text-trading-sm font-medium rounded transition-colors ${
+              className={`flex-1 min-h-[44px] md:min-h-0 md:py-1 text-trading-xs xl:text-trading-sm font-medium rounded transition-colors ${
                 currentPct === pct
                   ? 'bg-pd1/20 text-pd3'
                   : 'bg-theme-bg-tertiary text-theme-text-muted hover:text-theme-text-secondary'

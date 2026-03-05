@@ -137,7 +137,10 @@ async function generateResponse(
   // Lazy-load and cache Anthropic client
   if (!cachedClient) {
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    cachedClient = new Anthropic({ apiKey: config.anthropicApiKey });
+    cachedClient = new Anthropic({
+      apiKey: config.anthropicApiKey,
+      maxRetries: 4,  // Default 2 → 4 for resilience during API overload
+    });
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = cachedClient as any;
@@ -199,6 +202,11 @@ export async function onUserMessage(
   } catch (err) {
     // AI failure should never crash the server
     console.warn('[Chatbot] Response generation failed:', (err as Error).message);
+    // Inform user that bot is temporarily unavailable
+    config.broadcastToRoom(
+      '[wavi] Sorry, I\'m temporarily unavailable due to high traffic. Please try again later.',
+      roomId,
+    );
   }
 }
 

@@ -2,7 +2,8 @@
  * PriceChart types and constants
  */
 
-export type TimeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w';
+// NOTE: '1m' = 1 minute, '1M' = 1 month (case-sensitive). Never use toLowerCase() on intervals.
+export type TimeInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w' | '1M';
 
 export const INTERVAL_CONFIG: Record<TimeInterval, { label: string; ms: number; count: number }> = {
   '1m': { label: '1분', ms: 60 * 1000, count: 120 },
@@ -12,6 +13,7 @@ export const INTERVAL_CONFIG: Record<TimeInterval, { label: string; ms: number; 
   '4h': { label: '4시간', ms: 4 * 60 * 60 * 1000, count: 90 },
   '1d': { label: '1일', ms: 24 * 60 * 60 * 1000, count: 90 },
   '1w': { label: '1주', ms: 7 * 24 * 60 * 60 * 1000, count: 104 },
+  '1M': { label: '1M', ms: 30 * 24 * 60 * 60 * 1000, count: 60 },
 };
 
 export const CHART_HEIGHT = 280;
@@ -44,7 +46,7 @@ export const CHART_COLORS = {
   },
 } as const;
 
-export type IndicatorId = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'stoch' | 'atr';
+export type IndicatorId = 'sma' | 'ema' | 'bb' | 'vwap' | 'ichimoku' | 'rsi' | 'macd' | 'stoch' | 'atr';
 
 export interface IndicatorConfig {
   enabled: boolean;
@@ -54,13 +56,15 @@ export interface IndicatorConfig {
 export type IndicatorState = Record<IndicatorId, IndicatorConfig>;
 
 export const DEFAULT_INDICATORS: IndicatorState = {
-  sma:   { enabled: true,  params: { period1: 5, period2: 20 } },
-  ema:   { enabled: false, params: { period1: 9, period2: 21 } },
-  bb:    { enabled: false, params: { period: 20, stddev: 2 } },
-  rsi:   { enabled: false, params: { period: 14 } },
-  macd:  { enabled: false, params: { fast: 12, slow: 26, signal: 9 } },
-  stoch: { enabled: false, params: { kPeriod: 14, dPeriod: 3, smooth: 3 } },
-  atr:   { enabled: false, params: { period: 14 } },
+  sma:      { enabled: true,  params: { period1: 5, period2: 20 } },
+  ema:      { enabled: false, params: { period1: 9, period2: 21 } },
+  bb:       { enabled: false, params: { period: 20, stddev: 2 } },
+  vwap:     { enabled: false },
+  ichimoku: { enabled: false, params: { tenkan: 9, kijun: 26, senkou: 52 } },
+  rsi:      { enabled: false, params: { period: 14 } },
+  macd:     { enabled: false, params: { fast: 12, slow: 26, signal: 9 } },
+  stoch:    { enabled: false, params: { kPeriod: 14, dPeriod: 3, smooth: 3 } },
+  atr:      { enabled: false, params: { period: 14 } },
 };
 
 export interface OhlcvData {

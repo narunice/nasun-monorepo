@@ -3,11 +3,13 @@
  * Display user's token transfer history (send/receive) with Load More pagination
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTransferHistory, type TransferRecord } from '../hooks/useTransferHistory';
 
 const ITEMS_PER_PAGE = 10;
+
+type DirectionFilter = 'all' | 'sent' | 'received';
 
 interface TransferRowProps {
   transfer: TransferRecord;
@@ -72,14 +74,41 @@ export function TransferHistory() {
   const { transfers, isLoading, error, refetch } = useTransferHistory();
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
+  const [directionFilter, setDirectionFilter] = useState<DirectionFilter>('all');
+  const [tokenFilter, setTokenFilter] = useState<string>('all');
+
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const isConnected = status === 'unlocked' || isZkConnected || isPasskeyUnlocked;
-  const displayedTransfers = transfers.slice(0, displayCount);
-  const hasMore = displayCount < transfers.length;
-  const remaining = transfers.length - displayCount;
+
+  const uniqueTokens = useMemo(
+    () => [...new Set(transfers.map((t) => t.token))].sort(),
+    [transfers],
+  );
+
+  const filteredTransfers = useMemo(() => {
+    let result = transfers;
+    if (directionFilter !== 'all') {
+      result = result.filter((t) => t.type === directionFilter);
+    }
+    if (tokenFilter !== 'all') {
+      result = result.filter((t) => t.token === tokenFilter);
+    }
+    return result;
+  }, [transfers, directionFilter, tokenFilter]);
+
+  const hasActiveFilters = directionFilter !== 'all' || tokenFilter !== 'all';
+
+  const clearFilters = () => {
+    setDirectionFilter('all');
+    setTokenFilter('all');
+  };
+
+  const displayedTransfers = filteredTransfers.slice(0, displayCount);
+  const hasMore = displayCount < filteredTransfers.length;
+  const remaining = filteredTransfers.length - displayCount;
 
   const handleLoadMore = () => {
-    setDisplayCount((prev) => Math.min(prev + ITEMS_PER_PAGE, transfers.length));
+    setDisplayCount((prev) => Math.min(prev + ITEMS_PER_PAGE, filteredTransfers.length));
   };
 
   if (!isConnected) {
@@ -122,40 +151,99 @@ export function TransferHistory() {
 
   return (
     <>
-      <div className="px-4 py-2 text-xs text-theme-text-muted text-right">
-        {displayedTransfers.length} of {transfers.length} transfers
-      </div>
+      {/* Filter Bar */}
+      <div className="px-4 py-2 flex flex-wrap items-center gap-2">
+        {/* Direction Toggle */}
+        <div className="flex rounded-lg overflow-hidden border border-theme-border text-xs">
+          {(['all', 'sent', 'received'] as const).map((dir) => (
+            <button
+              key={dir}
+              onClick={() => { setDirectionFilter(dir); setDisplayCount(ITEMS_PER_PAGE); }}
+              className={`px-3 py-1.5 font-medium transition-colors ${
+                directionFilter === dir
+                  ? 'bg-pd1/20 text-pd3'
+                  : 'text-theme-text-muted hover:text-theme-text-secondary'
+              }`}
+            >
+              {dir === 'all' ? 'All' : dir === 'sent' ? 'Sent' : 'Received'}
+            </button>
+          ))}
+        </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-theme-text-secondary bg-theme-bg-tertiary/50">
-            <tr>
-              <th className="py-2 px-3 text-left font-medium">Type</th>
-              <th className="py-2 px-3 text-left font-medium">Token</th>
-              <th className="py-2 px-3 text-right font-medium">Amount</th>
-              <th className="py-2 px-3 text-left font-medium">Address</th>
-              <th className="py-2 px-3 text-right font-medium">Time</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-theme-border">
-            {displayedTransfers.map((transfer) => (
-              <TransferRow key={transfer.id} transfer={transfer} />
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {hasMore && (
-        <div className="p-4 border-t border-theme-border">
-          <button
-            onClick={handleLoadMore}
-            className="w-full py-2 px-4 text-sm font-medium text-pd1 dark:text-pd3
-                       bg-pd5 dark:bg-pd0/20 hover:bg-pd5 dark:hover:bg-pd0/30
-                       rounded-lg transition-colors"
+        {/* Token Dropdown */}
+        {uniqueTokens.length > 1 && (
+          <select
+            value={tokenFilter}
+            onChange={(e) => { setTokenFilter(e.target.value); setDisplayCount(ITEMS_PER_PAGE); }}
+            className="px-2 py-1.5 text-xs rounded-lg border border-theme-border bg-theme-bg-secondary text-theme-text-primary"
           >
-            Load More ({remaining} more)
+            <option value="all">All Tokens</option>
+            {uniqueTokens.map((token) => (
+              <option key={token} value={token}>{token}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Clear Filters */}
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+          >
+            Clear filters
+          </button>
+        )}
+
+        <span className="ml-auto text-xs text-theme-text-muted">
+          {filteredTransfers.length}{hasActiveFilters ? ` of ${transfers.length}` : ''} transfers
+        </span>
+      </div>
+
+      {/* Empty state after filtering */}
+      {filteredTransfers.length === 0 && hasActiveFilters ? (
+        <div className="p-8 text-center text-theme-text-muted">
+          <p className="text-sm">No transfers match the selected filters.</p>
+          <button
+            onClick={clearFilters}
+            className="mt-2 text-xs text-pd1 dark:text-pd3 hover:underline"
+          >
+            Clear filters
           </button>
         </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-theme-text-secondary bg-theme-bg-tertiary/50">
+                <tr>
+                  <th className="py-2 px-3 text-left font-medium">Type</th>
+                  <th className="py-2 px-3 text-left font-medium">Token</th>
+                  <th className="py-2 px-3 text-right font-medium">Amount</th>
+                  <th className="py-2 px-3 text-left font-medium">Address</th>
+                  <th className="py-2 px-3 text-right font-medium">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-theme-border">
+                {displayedTransfers.map((transfer) => (
+                  <TransferRow key={transfer.id} transfer={transfer} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {hasMore && (
+            <div className="p-4 border-t border-theme-border">
+              <button
+                onClick={handleLoadMore}
+                className="w-full py-2 px-4 text-sm font-medium text-pd1 dark:text-pd3
+                           bg-pd5 dark:bg-pd0/20 hover:bg-pd5 dark:hover:bg-pd0/30
+                           rounded-lg transition-colors"
+              >
+                Load More ({remaining} more)
+              </button>
+            </div>
+          )}
+        </>
       )}
     </>
   );

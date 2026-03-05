@@ -6,6 +6,8 @@
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useTotalValue, type TokenValue } from '../hooks';
 import { SkeletonMarketRow, TokenIcon } from '@/components/common';
+import { TokenSparkline } from './TokenSparkline';
+import { useTokenSparkline } from '../hooks/useTokenSparkline';
 
 interface TokenRowProps {
   token: TokenValue;
@@ -13,6 +15,8 @@ interface TokenRowProps {
 
 function TokenRow({ token }: TokenRowProps) {
   const isPredictions = token.symbol === 'Predictions';
+  const showSparkline = !isPredictions && token.symbol !== 'NUSDC';
+  const { data: prices } = useTokenSparkline(showSparkline ? token.symbol : '');
 
   // Format balance based on token - simplified for readability
   const formatBalance = (symbol: string, balance: string) => {
@@ -52,22 +56,27 @@ function TokenRow({ token }: TokenRowProps) {
           )}
         </div>
       </div>
-      <div className="text-right">
-        <div className={isPredictions ? '' : 'font-mono'}>
-          {isPredictions ? token.balance : `${formatBalance(token.symbol, token.balance)} ${token.symbol}`}
-        </div>
-        <div className="flex items-center justify-end gap-2">
-          <span className="text-sm xl:text-base text-theme-text-secondary">
-            ${token.value.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
-          {token.change24h !== 0 && (
-            <span className={`text-xs xl:text-sm ${changeColor}`}>
-              {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
+      <div className="flex items-center gap-3">
+        {showSparkline && (
+          <TokenSparkline prices={prices ?? []} />
+        )}
+        <div className="text-right">
+          <div className={isPredictions ? '' : 'font-mono'}>
+            {isPredictions ? token.balance : `${formatBalance(token.symbol, token.balance)} ${token.symbol}`}
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-sm xl:text-base text-theme-text-secondary">
+              ${token.value.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
-          )}
+            {token.change24h !== 0 && (
+              <span className={`text-xs xl:text-sm ${changeColor}`}>
+                {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

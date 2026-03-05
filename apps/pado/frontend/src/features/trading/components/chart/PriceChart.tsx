@@ -40,6 +40,8 @@ import { TrendLinePrimitive } from './drawings/TrendLineRenderer';
 import { FibonacciPrimitive } from './drawings/FibonacciRenderer';
 import { PriceAlertPopover } from '../PriceAlertPopover';
 import { NotificationSettings } from '../NotificationSettings';
+import { ChartContextMenu, isTouchDevice } from './ChartContextMenu';
+import { useOrderForm } from '../../context/OrderFormContext';
 
 // Re-export TimeInterval for backward compatibility
 export type { TimeInterval } from './types';
@@ -60,7 +62,7 @@ export function PriceChart(props: PriceChartProps) {
 // Lightweight Charts Implementation (original)
 // ========================================
 
-const INDICATOR_IDS: IndicatorId[] = ['sma', 'ema', 'bb', 'rsi', 'macd', 'stoch', 'atr'];
+const INDICATOR_IDS: IndicatorId[] = ['sma', 'ema', 'bb', 'vwap', 'ichimoku', 'rsi', 'macd', 'stoch', 'atr'];
 
 function loadIndicators(): IndicatorState {
   try {
@@ -108,7 +110,7 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
   // State (persisted to localStorage)
   const [interval, setInterval] = useState<TimeInterval>(() => {
     const stored = localStorage.getItem('pado:chart:interval');
-    return (stored && ['1m', '5m', '15m', '1h', '4h', '1d', '1w'].includes(stored)) ? stored as TimeInterval : '15m';
+    return (stored && ['1m', '5m', '15m', '1h', '4h', '1d', '1w', '1M'].includes(stored)) ? stored as TimeInterval : '15m';
   });
   const [indicators, setIndicators] = useState<IndicatorState>(loadIndicators);
   const [lastPrice, setLastPrice] = useState<{ value: number; change: number } | null>(null);
@@ -141,9 +143,97 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
   // Price alert monitor
   const priceAlertMonitor = usePriceAlertMonitor();
 
-  // Load drawings when pool changes
+  // Chart-to-Order context menu state
+  const orderForm = useOrderForm();
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; price: number } | null>(null);
+
+  // Mobile long-press for chart-to-order (700ms threshold)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const LONG_PRESS_MS = 700;
+    const MOVE_THRESHOLD = 10;
+
+    const clearLongPress = () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      touchStartRef.current = null;
+      // Restore default touch behavior
+      container.style.removeProperty('-webkit-touch-callout');
+      container.style.removeProperty('touch-action');
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (activeTool) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+
+      // Suppress iOS system menu during long-press detection
+      container.style.setProperty('-webkit-touch-callout', 'none');
+      container.style.setProperty('touch-action', 'none');
+
+      longPressTimerRef.current = setTimeout(() => {
+        longPressTimerRef.current = null;
+        const series = candleSeriesRef.current;
+        if (!series || !container) return;
+
+        const rect = container.getBoundingClientRect();
+        const chartRelativeY = touch.clientY - rect.top;
+        const price = series.coordinateToPrice(chartRelativeY);
+        if (price === null || price <= 0) return;
+
+        // Visual feedback: vibrate on Android (no-op on iOS)
+        try { navigator.vibrate?.(50); } catch { /* unsupported */ }
+
+        // Position popup 80px above finger to avoid occlusion, flip if near top
+        const popupY = touch.clientY - 80 > 40 ? touch.clientY - 80 : touch.clientY + 40;
+        setContextMenu({ x: touch.clientX, y: popupY, price: price as number });
+      }, LONG_PRESS_MS);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current || !longPressTimerRef.current) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - touchStartRef.current.x;
+      const dy = touch.clientY - touchStartRef.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
+        clearLongPress();
+      }
+    };
+
+    const handleTouchEnd = () => { clearLongPress(); };
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd);
+    container.addEventListener('touchcancel', handleTouchEnd);
+
+    return () => {
+      clearLongPress();
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+      container.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [activeTool]);
+
+  // Load drawings when pool changes, close context menu
   useEffect(() => {
     setDrawings(loadDrawings(poolId));
+    setContextMenu(null);
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   }, [poolId]);
 
   // ESC key to deselect tool
@@ -283,6 +373,7 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
     chartRef,
     indicators,
     candleData: effectiveCandleData,
+    intervalMs,
   });
 
   // === RSI sub-chart ===
@@ -633,7 +724,22 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
           onDeleteAll={handleDeleteAllDrawings}
           drawingCount={drawings.length}
         />
-        <div ref={chartContainerRef} className={`flex-1 ${activeTool ? 'cursor-crosshair' : ''}`} />
+        <div
+          ref={chartContainerRef}
+          className={`flex-1 ${activeTool ? 'cursor-crosshair' : ''}`}
+          onContextMenu={(e) => {
+            // Disable on touch devices to avoid conflict with pan/zoom
+            if (isTouchDevice() || activeTool) return;
+            e.preventDefault();
+            const series = candleSeriesRef.current;
+            if (!series || !chartContainerRef.current) return;
+            const rect = chartContainerRef.current.getBoundingClientRect();
+            const chartRelativeY = e.clientY - rect.top;
+            const price = series.coordinateToPrice(chartRelativeY);
+            if (price === null || price <= 0) return;
+            setContextMenu({ x: e.clientX, y: e.clientY, price: price as number });
+          }}
+        />
       </div>
 
       {/* RSI Chart */}
@@ -670,6 +776,26 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
 
       {/* Volume Chart */}
       <div ref={volumeContainerRef} className="w-full shrink-0 border-t border-theme-border" />
+
+      {/* Chart-to-Order Context Menu */}
+      {contextMenu && (
+        <ChartContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          price={contextMenu.price}
+          onBuyLimit={(price) => {
+            orderForm.setPrice(price.toFixed(2));
+            orderForm.setSide('buy');
+            orderForm.setOrderMode('limit');
+          }}
+          onSellLimit={(price) => {
+            orderForm.setPrice(price.toFixed(2));
+            orderForm.setSide('sell');
+            orderForm.setOrderMode('limit');
+          }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
