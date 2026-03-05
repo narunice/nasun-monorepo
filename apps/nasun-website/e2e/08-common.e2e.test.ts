@@ -38,14 +38,6 @@ describe('08 — Supply Count API', () => {
   });
 });
 
-describe('08 — All Supply Counts API', () => {
-  test('GET / returns all tier counts', async () => {
-    const res = await get(URLS.allSupplyCounts);
-    expect(res.status).toBe(200);
-    const body = res.body as Record<string, unknown>;
-    expect(typeof body === 'object' && body !== null).toBe(true);
-  });
-});
 
 describe('08 — User Count API', () => {
   test('GET / returns user count', async () => {

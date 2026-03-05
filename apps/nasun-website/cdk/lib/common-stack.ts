@@ -138,36 +138,7 @@ export class CommonStack extends cdk.Stack {
       },
     });
 
-    // 1-3. Get All Supply Counts
-    const getAllSupplyCountsLambda = new NodejsFunction(this, "GetAllSupplyCountsLambda", {
-      functionName: "nasun-common-get-all-supply-counts",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'getAllSupplyCounts', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        TABLE_NAME: supplyCountTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-      },
-      logGroup: new logs.LogGroup(this, "GetAllSupplyCountsLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-get-all-supply-counts",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    supplyCountTable.grantReadData(getAllSupplyCountsLambda);
-
-    const getAllSupplyCountsApi = new apigw.LambdaRestApi(this, "GetAllSupplyCountsApi", {
-      handler: getAllSupplyCountsLambda,
-      restApiName: "NASUN Get All Supply Counts API (Common)",
-      proxy: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: apigw.Cors.ALL_METHODS
-      },
-    });
-
-    // 1-4. Random Image Handler
+    // 1-3. Random Image Handler
     const randomImageHandlerLambda = new NodejsFunction(this, "RandomImageHandlerLambda", {
       functionName: "nasun-common-random-image-handler",
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -688,11 +659,6 @@ export class CommonStack extends cdk.Stack {
     new cdk.CfnOutput(this, "GetSupplyCountApiUrl", {
       value: getSupplyCountApi.url,
       description: "Get Supply Count API URL (CommonStack)",
-    });
-
-    new cdk.CfnOutput(this, "GetAllSupplyCountsApiUrl", {
-      value: getAllSupplyCountsApi.url,
-      description: "Get All Supply Counts API URL (CommonStack)",
     });
 
     new cdk.CfnOutput(this, "RandomImageApiUrl", {

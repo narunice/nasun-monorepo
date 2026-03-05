@@ -10,7 +10,6 @@ export { default as LeaderboardInfoSection } from "./components/leaderboard-info
 
 // Hooks
 export { useSuiNFTMintedEvents } from "./hooks/useSuiNFTMintedEvents";
-export { useAllTiersSupplyCounts } from "./hooks/useAllTiersSupplyCounts";
 export { usePayAndMintSuiNFT } from "./hooks/usePayAndMintSuiNFT";
 export { useTierSupplyCount } from "./hooks/useTierSupplyCount";
 export { useCoinPrice } from "./hooks/useCoinPrice";

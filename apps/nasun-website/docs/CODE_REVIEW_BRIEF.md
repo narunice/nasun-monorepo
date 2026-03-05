@@ -161,7 +161,6 @@ cdk/lambda-src/
 │   ├── services/priceFetcher.ts     -- External price fetching
 │   └── services/dynamoClient.ts     -- Price storage
 ├── get-backup-prices/src/index.ts   -- Backup price endpoint
-├── getAllSupplyCounts/index.ts       -- Token supply aggregation
 ├── getSupplyCount/src/index.ts      -- Individual supply count
 ├── admin-api/src/
 │   ├── handlers/export-whitelist.ts (435 lines) -- Admin whitelist CSV export
