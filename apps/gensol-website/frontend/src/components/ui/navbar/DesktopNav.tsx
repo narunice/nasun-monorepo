@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Flex } from "@radix-ui/themes"
 import NavItem from "./NavItem"
 import DropdownMenu from "./DropdownMenu"
-import { SOCIAL_LINKS } from "@/constants/socialLinks"
+// import { SOCIAL_LINKS } from "@/constants/socialLinks"
 
 const creativeLinks = [
   { name: "spotlight", url: "/coming-soon" },
@@ -19,15 +19,15 @@ const menuItems = [
     label: "Creative",
     items: creativeLinks,
   },
-  {
-    type: "dropdown",
-    label: "Socials",
-    items: SOCIAL_LINKS.map((link) => ({
-      name: link.name,
-      url: link.url,
-      isExternal: true,
-    })),
-  },
+  // {
+  //   type: "dropdown",
+  //   label: "Socials",
+  //   items: SOCIAL_LINKS.map((link) => ({
+  //     name: link.name,
+  //     url: link.url,
+  //     isExternal: true,
+  //   })),
+  // },
 ]
 
 const DesktopNav = () => {

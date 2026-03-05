@@ -25,7 +25,7 @@ export function ScrollSnapContainer({ children, className = "" }: ScrollSnapCont
 
   // 강제 스냅 로직: 스크롤 정지 후 애매한 위치에 멈춰있으면 가장 가까운 섹션으로 스냅
   useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout
+    let scrollTimeout: ReturnType<typeof setTimeout>
 
     // 데스크톱에서만 작동 (768px 이상)
     const isDesktop = () => window.innerWidth >= 768
