@@ -67,6 +67,110 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
           </p>
         </div>
 
+        {/* Join the allowlist */}
+        <DividerBox
+          title="Join the allowlist"
+          hideDivider
+          color="nw4"
+          className="mb-6 md:mb-8 lg:mb-10 !bg-gray-900"
+          titleClassName="!w-full !text-center"
+          disableHover
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-3">
+            <ul className="space-y-2">
+              {JOIN_STEPS.map((text, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <FiCheck
+                    className={`mt-1 flex-shrink-0 transition-colors duration-300 ${
+                      checkPhase >= i + 1 ? "text-green-300" : ""
+                    }`}
+                  />
+                  {text}
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              <ButtonV3 variant="nw5" outline size="sm" asChild>
+                <a
+                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gap-1.5 font-normal"
+                >
+                  Follow @Nasun_io
+                  <ArrowUpRight size={13} />
+                </a>
+              </ButtonV3>
+              <ButtonV3 variant="nw5" outline size="sm" asChild>
+                <a
+                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}/status/${import.meta.env.VITE_EVENT_TWEET_ID}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gap-1.5 font-normal"
+                >
+                  Featured Post
+                  <ArrowUpRight size={13} />
+                </a>
+              </ButtonV3>
+            </div>
+          </div>
+        </DividerBox>
+
+        {/* CTA */}
+        <div className="text-center mb-6 md:mb-8">
+          <ButtonV3
+            onClick={onStartClick}
+            variant="nw2"
+            size="lg"
+            className="flex mx-auto"
+            disabled={isMobileBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser()}
+          >
+            Get Started
+          </ButtonV3>
+        </div>
+
+        {/* Mobile non-Safari users: redirect to MetaMask in-app browser for reliable wallet connection */}
+        {isMobileBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser() && (
+          <DividerBox color="nw4" padding="sm" className="mb-6 md:mb-8 !bg-black/30">
+            <p className="text-sm mb-2">
+              <span className="text-yellow-300">For mobile users:</span>
+              {isAndroidBrowser()
+                ? " for a smoother wallet connection, we recommend starting the process in MetaMask's built-in browser."
+                : " for a smoother wallet connection, we recommend using MetaMask's built-in browser or Safari."}
+            </p>
+            <div className="flex flex-col gap-4 items-center">
+              <ButtonV3
+                variant="nw5"
+                outline
+                size="sm"
+                onClick={() => {
+                  const { host, pathname } = window.location;
+                  window.open(`https://metamask.app.link/dapp/${host}${pathname}`, "_self");
+                }}
+              >
+                Open in MetaMask
+              </ButtonV3>
+              {!isAndroidBrowser() && (
+                <ButtonV3
+                  variant="nw5"
+                  outline
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }}
+                >
+                  {linkCopied ? "Copied! Paste in Safari" : "Copy Link for Safari"}
+                </ButtonV3>
+              )}
+            </div>
+            <p className="text-xs text-nasun-white/50 mt-3 text-center">
+              If you experience issues with wallet connection, please try again on desktop.
+            </p>
+          </DividerBox>
+        )}
+
         {/* What You Hold */}
         <div className="mb-6 md:mb-8">
           <h5 className="text-nasun-white font-medium mb-3">What You Hold</h5>
@@ -165,109 +269,6 @@ export const Step1WelcomeCard: React.FC<Step1WelcomeCardProps> = ({ onStartClick
           </p>
         </div>
 
-        {/* Join the allowlist */}
-        <DividerBox
-          title="Join the allowlist"
-          hideDivider
-          color="nw4"
-          className="mb-6 md:mb-8 lg:mb-10 !bg-gray-900"
-          titleClassName="!w-full !text-center"
-          disableHover
-        >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-3">
-            <ul className="space-y-2">
-              {JOIN_STEPS.map((text, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <FiCheck
-                    className={`mt-1 flex-shrink-0 transition-colors duration-300 ${
-                      checkPhase >= i + 1 ? "text-green-300" : ""
-                    }`}
-                  />
-                  {text}
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-col gap-2 flex-shrink-0">
-              <ButtonV3 variant="nw5" outline size="sm" asChild>
-                <a
-                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="gap-1.5 font-normal"
-                >
-                  Follow @Nasun_io
-                  <ArrowUpRight size={13} />
-                </a>
-              </ButtonV3>
-              <ButtonV3 variant="nw5" outline size="sm" asChild>
-                <a
-                  href={`https://x.com/${import.meta.env.VITE_TARGET_TWEET_ACCOUNT || "Nasun_io"}/status/${import.meta.env.VITE_EVENT_TWEET_ID}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="gap-1.5 font-normal"
-                >
-                  Featured Post
-                  <ArrowUpRight size={13} />
-                </a>
-              </ButtonV3>
-            </div>
-          </div>
-        </DividerBox>
-
-        {/* CTA */}
-        <div className="text-center">
-          <ButtonV3
-            onClick={onStartClick}
-            variant="nw2"
-            size="lg"
-            className="flex mx-auto"
-            disabled={isMobileBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser()}
-          >
-            Get Started
-          </ButtonV3>
-        </div>
-
-        {/* Mobile non-Safari users: redirect to MetaMask in-app browser for reliable wallet connection */}
-        {isMobileBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser() && (
-          <DividerBox color="nw4" padding="sm" className="mt-6 !bg-black/30">
-            <p className="text-sm mb-2">
-              <span className="text-yellow-300">For mobile users:</span>
-              {isAndroidBrowser()
-                ? " for a smoother wallet connection, we recommend starting the process in MetaMask's built-in browser."
-                : " for a smoother wallet connection, we recommend using MetaMask's built-in browser or Safari."}
-            </p>
-            <div className="flex flex-col gap-4 items-center">
-              <ButtonV3
-                variant="nw5"
-                outline
-                size="sm"
-                onClick={() => {
-                  const { host, pathname } = window.location;
-                  window.open(`https://metamask.app.link/dapp/${host}${pathname}`, "_self");
-                }}
-              >
-                Open in MetaMask
-              </ButtonV3>
-              {!isAndroidBrowser() && (
-                <ButtonV3
-                  variant="nw5"
-                  outline
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
-                    setLinkCopied(true);
-                    setTimeout(() => setLinkCopied(false), 2000);
-                  }}
-                >
-                  {linkCopied ? "Copied! Paste in Safari" : "Copy Link for Safari"}
-                </ButtonV3>
-              )}
-            </div>
-            <p className="text-xs text-nasun-white/50 mt-3 text-center">
-              If you experience issues with wallet connection, please try again on desktop.
-            </p>
-          </DividerBox>
-        )}
       </div>
     </OuterBox>
   );
