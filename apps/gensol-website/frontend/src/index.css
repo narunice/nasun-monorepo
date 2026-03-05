@@ -171,3 +171,23 @@ span {
   font-family: "Rubik", sans-serif;
   font-weight: normal;
 }
+
+/* Carousel dots for react-slick */
+.carousel-dots .slick-dots {
+  @apply !relative !bottom-auto !mt-6 !flex !justify-center !gap-6;
+}
+.carousel-dots .slick-dots li {
+  @apply !w-auto !h-auto !m-0;
+}
+.carousel-dots .slick-dots li button {
+  @apply !w-auto !h-auto !p-0;
+}
+.carousel-dots .slick-dots li button:before {
+  @apply !hidden;
+}
+.carousel-dots .slick-dots li .carousel-dot {
+  @apply w-2 h-2 rounded-full bg-white/40 hover:bg-white/60 transition-colors;
+}
+.carousel-dots .slick-dots li.slick-active .carousel-dot {
+  @apply !bg-sf-blue;
+}
