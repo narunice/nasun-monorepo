@@ -33,7 +33,7 @@ export const PageLoadingProvider: React.FC<{ children: ReactNode }> = ({ childre
       location.pathname === "/home" ||
       location.pathname === "/network/nsn" ||
       location.pathname.startsWith("/ecosystem/pado") ||
-      location.pathname === "/wave1/battalion-nft" ||
+      location.pathname === "/dev/battalion-nft" ||
       location.pathname === "/pado-revised";
 
     if (isPageWithVideoHero) {
