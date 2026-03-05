@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -37,6 +36,8 @@ const TIER_CONFIG: Record<
     accentClass: string;
     iconColorClass: string;
     bgClass: string;
+    name: string;
+    recognition: string;
   }
 > = {
   platinum: {
@@ -44,37 +45,68 @@ const TIER_CONFIG: Record<
     accentClass: "text-nasun-white",
     iconColorClass: "text-amber-300",
     bgClass: "bg-nasun-white/[0.08]",
+    name: "Platinum",
+    recognition: "USDC Reward + 1 Battalion NFT + Priority Mint Eligibility",
   },
   gold: {
     icon: faGem,
     accentClass: "text-nasun-c1",
     iconColorClass: "text-nasun-c1",
     bgClass: "bg-nasun-c1/[0.08]",
+    name: "Gold",
+    recognition: "USDC Reward + Discounted Battalion NFT Eligibility",
   },
   silver: {
     icon: faBolt,
     accentClass: "text-nasun-nw4",
     iconColorClass: "text-nasun-nw4",
     bgClass: "bg-nasun-nw4/[0.08]",
+    name: "Silver",
+    recognition: "Priority Mint Eligibility",
   },
   bronze: {
     icon: null,
     accentClass: "text-nasun-white/50",
     iconColorClass: "",
     bgClass: "bg-nasun-white/[0.05]",
+    name: "Bronze",
+    recognition: "Community Recognition",
   },
 };
 
+const HOW_IT_WORKS_ITEMS = [
+  "USDC marketing rewards (up to $25,000 total)",
+  "Battalion NFT recognition",
+  "Priority mint eligibility (up to 4 NFTs per wallet, subject to Terms)",
+  "Early access to organized testing phases",
+];
+
+const EVALUATION_ITEMS = [
+  "Thoughtful analysis of Nasun's products and architecture",
+  "Educational threads or videos explaining ecosystem components",
+  "Creative media (design, memes, short-form video)",
+  "Constructive discussion and feedback",
+];
+
+const REWARD_NOTES = [
+  "Final USDC reward amounts will be confirmed prior to distribution. All rewards are funded from Nasun's marketing allocation.",
+  "Tier structure and eligibility criteria are fixed at leaderboard launch.",
+  "Tier sizes are limited. Final rankings are determined at leaderboard close.",
+];
+
+const COMPLIANCE_PARAGRAPHS = [
+  "Rewards are provided as marketing compensation for content contributions. Participants receiving compensation must clearly disclose their relationship with Nasun in accordance with applicable advertising and disclosure laws, including #ad or #sponsored where required.",
+  "No participant may make financial return claims about the Battalion NFT or any Nasun product. The Battalion NFT is a digital membership product and not an investment.",
+  "Nasun reserves the right to remove participants who violate these standards.",
+];
+
 const LeaderboardInfoSection: React.FC = () => {
-  const { t } = useTranslation("leaderboard");
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, signInWithTwitter } = useAuth();
   const { handleLinkTwitter } = useAccountLinking({ user });
   const [showEligibleModal, setShowEligibleModal] = useState(false);
 
-  const hasXConnected =
-    user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
+  const hasXConnected = user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
 
   // Auto-show eligible modal after returning from X OAuth linking
   useEffect(() => {
@@ -99,35 +131,21 @@ const LeaderboardInfoSection: React.FC = () => {
     }
   };
 
-  const howItWorksItems = t("info.howItWorks.items", {
-    returnObjects: true,
-  }) as string[];
-
-  const evaluationItems = t("info.evaluation.items", {
-    returnObjects: true,
-  }) as string[];
-
-  const rewardNotes = t("info.rewards.notes", {
-    returnObjects: true,
-  }) as string[];
-
-  const complianceParagraphs = t("info.compliance.paragraphs", {
-    returnObjects: true,
-  }) as string[];
-
   return (
     <SectionLayout className="!max-w-5xl">
       <div className="flex flex-col gap-10 md:gap-14 lg:gap-16">
         {/* --- Hero Header --- */}
         <header className="flex flex-col items-center text-center gap-4">
           <PageTitle as="h2" align="center">
-            {t("info.pageTitle")}
+            Community Leaderboard
           </PageTitle>
 
-          <p className="max-w-2xl text-lg font-medium">{t("info.subtitle")}</p>
+          <p className="max-w-2xl text-lg font-medium">Help shape the Nasun ecosystem.</p>
 
           <p className="max-w-2xl whitespace-pre-line text-nasun-white/70">
-            {t("info.description")}
+            {
+              "The Community Leaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven."
+            }
           </p>
         </header>
 
@@ -135,7 +153,7 @@ const LeaderboardInfoSection: React.FC = () => {
         <section>
           <div className="flex items-center gap-3 mb-5 md:mb-6">
             <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-nasun-nw1" />
-            <h5 className="font-medium uppercase tracking-wider">{t("info.howToJoin.title")}</h5>
+            <h5 className="font-medium uppercase tracking-wider">How To Join</h5>
             <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
           </div>
 
@@ -146,8 +164,8 @@ const LeaderboardInfoSection: React.FC = () => {
               className="text-nasun-nw1 underline font-medium cursor-pointer"
             >
               X account
-            </button>
-            {" "}on this page to get started (required)
+            </button>{" "}
+            to this website to get started (required)
           </p>
         </section>
 
@@ -155,14 +173,17 @@ const LeaderboardInfoSection: React.FC = () => {
         <section>
           <div className="flex items-center gap-3 mb-5 md:mb-6">
             <FontAwesomeIcon icon={faLightbulb} className="w-4 h-4 text-nasun-nw1" />
-            <h5 className="font-medium uppercase tracking-wider">{t("info.howItWorks.title")}</h5>
+            <h5 className="font-medium uppercase tracking-wider">How It Works</h5>
             <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
           </div>
 
-          <p className="mb-4">{t("info.howItWorks.description")}</p>
+          <p className="mb-4">
+            Active contributors who create high-quality, original content about Nasun's ecosystem
+            are recognized through:
+          </p>
 
           <ul className="space-y-2.5 mb-5">
-            {howItWorksItems.map((item, i) => (
+            {HOW_IT_WORKS_ITEMS.map((item, i) => (
               <li key={i} className="flex items-start gap-3">
                 <span className="mt-2 w-1.5 h-1.5 rounded-full bg-nasun-nw1 shrink-0" />
                 {item}
@@ -170,18 +191,25 @@ const LeaderboardInfoSection: React.FC = () => {
             ))}
           </ul>
 
-          <p className="text-nasun-white ">{t("info.howItWorks.note")}</p>
+          <p className="">
+            Rewards are based on contribution quality and ecosystem engagement, — not on purchases
+            or sales activity.
+          </p>
+          <p className="">Starting March 10 - April</p>
         </section>
 
         {/* --- Ranks & Recognition Table --- */}
         <section>
           <div className="flex items-center gap-3 mb-5 md:mb-6">
             <FontAwesomeIcon icon={faBullseye} className="w-4 h-4 text-nasun-nw1" />
-            <h5 className="font-medium uppercase tracking-wider">{t("info.rewards.title")}</h5>
+            <h5 className="font-medium uppercase tracking-wider">Ranks & Recognition</h5>
             <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
           </div>
 
-          <p className="mb-5">{t("info.rewards.description")}</p>
+          <p className="mb-5">
+            Top contributors will be placed into recognition tiers based on contribution quality and
+            consistency.
+          </p>
 
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto bg-nasun-nw3/10 border border-nasun-nw4/30 rounded-sm">
@@ -189,10 +217,10 @@ const LeaderboardInfoSection: React.FC = () => {
               <thead>
                 <tr className="bg-nasun-nw3/20 border-b border-nasun-nw4/30">
                   <th className="px-4 py-3 text-left uppercase tracking-wider text-nasun-nw4 font-medium w-40">
-                    {t("info.rewards.columns.tier")}
+                    Tier
                   </th>
                   <th className="px-4 py-3 text-left uppercase tracking-wider text-nasun-nw4 font-medium">
-                    {t("info.rewards.columns.recognition")}
+                    Recognition
                   </th>
                 </tr>
               </thead>
@@ -212,12 +240,10 @@ const LeaderboardInfoSection: React.FC = () => {
                               className={`w-4 h-4 ${config.iconColorClass}`}
                             />
                           )}
-                          {t(`info.rewards.${tier}.name`)}
+                          {config.name}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-nasun-white/80">
-                        {t(`info.rewards.${tier}.recognition`)}
-                      </td>
+                      <td className="px-4 py-4 text-nasun-white/80">{config.recognition}</td>
                     </tr>
                   );
                 })}
@@ -241,9 +267,9 @@ const LeaderboardInfoSection: React.FC = () => {
                         className={`w-4 h-4 ${config.iconColorClass}`}
                       />
                     )}
-                    {t(`info.rewards.${tier}.name`)}
+                    {config.name}
                   </h6>
-                  <p className="text-nasun-white/70">{t(`info.rewards.${tier}.recognition`)}</p>
+                  <p className="text-nasun-white/70">{config.recognition}</p>
                 </div>
               );
             })}
@@ -251,7 +277,7 @@ const LeaderboardInfoSection: React.FC = () => {
 
           {/* Notes */}
           <div className="mt-5 space-y-2">
-            {rewardNotes.map((note, i) => (
+            {REWARD_NOTES.map((note, i) => (
               <p key={i} className="text-sm text-nasun-white/50">
                 {note}
               </p>
@@ -265,11 +291,13 @@ const LeaderboardInfoSection: React.FC = () => {
           <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
             <div className="flex items-center gap-2.5 mb-4">
               <FontAwesomeIcon icon={faCircleDot} className="w-4 h-4 text-nasun-nw1" />
-              <h6 className="font-medium uppercase tracking-wider">{t("info.evaluation.title")}</h6>
+              <h6 className="font-medium uppercase tracking-wider">
+                How Contributions Are Evaluated
+              </h6>
             </div>
-            <p className="mb-4">{t("info.evaluation.description")}</p>
+            <p className="mb-4">Quality contributions include:</p>
             <ul className="space-y-2.5 mb-5">
-              {evaluationItems.map((item, i) => (
+              {EVALUATION_ITEMS.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="mt-2 w-1.5 h-1.5 rounded-full bg-nasun-nw1 shrink-0" />
                   {item}
@@ -277,26 +305,22 @@ const LeaderboardInfoSection: React.FC = () => {
               ))}
             </ul>
             <p className="text-nasun-white/70 font-medium mb-2">
-              {t("info.evaluation.qualityNote")}
+              Engagement quality matters more than volume.
             </p>
             <p className="flex items-start gap-2 text-red-400/80">
               <FontAwesomeIcon icon={faTriangleExclamation} className="w-3.5 h-3.5 mt-1 shrink-0" />
-              {t("info.evaluation.warning")}
+              Automated engagement, spam, or inauthentic amplification will result in removal.
             </p>
           </OuterBox>
 
           {/* Transparency & Compliance */}
-          <OuterBox
-            color="noborder"
-            padding="sm"
-            className="flex flex-col bg-nasun-c6"
-          >
+          <OuterBox color="noborder" padding="sm" className="flex flex-col bg-nasun-c6">
             <div className="flex items-center gap-2.5 mb-4">
               <FontAwesomeIcon icon={faScaleBalanced} className="w-4 h-4 text-nasun-nw1" />
-              <h6 className="font-medium uppercase tracking-wider">{t("info.compliance.title")}</h6>
+              <h6 className="font-medium uppercase tracking-wider">Transparency & Compliance</h6>
             </div>
             <div className="space-y-4 flex-1 text-nasun-white/70 text-sm">
-              {complianceParagraphs.map((paragraph, i) => (
+              {COMPLIANCE_PARAGRAPHS.map((paragraph, i) => (
                 <p key={i}>{paragraph}</p>
               ))}
             </div>
@@ -306,7 +330,7 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- CTA Buttons --- */}
         <div className="flex flex-col sm:flex-row justify-center gap-3">
           <ButtonV3 asChild variant="nw2" size="md">
-            <Link to="/wave1/leaderboard">{t("info.viewLeaderboard")}</Link>
+            <Link to="/wave1/leaderboard">View Live Leaderboard</Link>
           </ButtonV3>
           {!hasXConnected && (
             <ButtonV3 variant="nw2" size="md" outline onClick={handleXAction}>
@@ -327,7 +351,10 @@ const LeaderboardInfoSection: React.FC = () => {
               Your X account{" "}
               {(user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle) && (
                 <span className="font-medium text-nasun-white">
-                  @{user?.originalTwitterHandle || user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle}
+                  @
+                  {user?.originalTwitterHandle ||
+                    user?.twitterHandle ||
+                    user?.linkedAccounts?.twitter?.twitterHandle}
                 </span>
               )}{" "}
               is connected. You're all set to participate in the leaderboard.

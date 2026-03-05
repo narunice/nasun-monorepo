@@ -24,6 +24,7 @@ export const useVoteNfts = () => {
     },
     {
       enabled: !!ownerAddress,
+      gcTime: 0,
     }
   );
 };

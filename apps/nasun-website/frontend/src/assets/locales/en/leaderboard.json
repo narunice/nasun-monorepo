@@ -5,18 +5,19 @@
     "description": "The Community Leaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven.",
     "howToJoin": {
       "title": "How To Join",
-      "description": "Connect your X account on this page to get started (required)"
+      "description": "Connect your X account to this website to get started (required)"
     },
     "howItWorks": {
       "title": "How It Works",
       "description": "Active contributors who create high-quality, original content about Nasun's ecosystem are recognized through:",
       "items": [
-        "USDC marketing rewards",
+        "USDC marketing rewards (up to $25,000 total)",
         "Battalion NFT recognition",
         "Priority mint eligibility (up to 4 NFTs per wallet, subject to Terms)",
         "Early access to organized testing phases"
       ],
-      "note": "Rewards are based on contribution quality and ecosystem engagement — not on purchases or sales activity."
+      "note": "Rewards are based on contribution quality and ecosystem engagement, — not on purchases or sales activity.",
+      "period": "Starting March 10 - April"
     },
     "rewards": {
       "title": "Ranks & Recognition",
