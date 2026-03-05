@@ -7,6 +7,27 @@ import fs from 'fs'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    // Resolve @noble/* subpath exports for production Rollup builds.
+    // The esbuild plugin in optimizeDeps only covers dev pre-bundling;
+    // this Vite plugin covers the main build + vite-plugin-pwa secondary build.
+    {
+      name: 'resolve-noble',
+      enforce: 'pre' as const,
+      resolveId(source: string) {
+        const match = source.match(/^@noble\/(hashes|curves)\/(.+)$/)
+        if (!match) return null
+        const pkgDir = path.join(__dirname, '../../../node_modules/@noble', match[1])
+        try {
+          const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'))
+          const subpath = './' + match[2]
+          const entry = pkg.exports?.[subpath]
+          if (!entry) return null
+          const file = typeof entry === 'string' ? entry : entry.import ?? entry.default
+          if (file) return path.resolve(pkgDir, file)
+        } catch { /* fall through */ }
+        return null
+      },
+    },
     react(),
     VitePWA({
       registerType: 'autoUpdate',

@@ -131,7 +131,7 @@ export function OpenOrders({ orders, isLoading, onCancel, onCancelAll }: OpenOrd
                 <button
                   onClick={() => onCancel(order.orderId)}
                   disabled={isLoading}
-                  className="px-2.5 py-2 md:px-1.5 md:py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+                  className="px-3 min-h-[44px] md:min-h-0 md:px-1.5 md:py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
                 >
                   Cancel
                 </button>

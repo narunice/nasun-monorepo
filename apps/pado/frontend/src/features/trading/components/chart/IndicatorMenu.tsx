@@ -18,6 +18,8 @@ const OVERLAYS: IndicatorDef[] = [
   { id: 'sma', label: 'SMA', paramsLabel: '5, 20' },
   { id: 'ema', label: 'EMA', paramsLabel: '9, 21' },
   { id: 'bb', label: 'Bollinger', paramsLabel: '20, 2.0' },
+  { id: 'vwap', label: 'VWAP', paramsLabel: 'session' },
+  { id: 'ichimoku', label: 'Ichimoku', paramsLabel: '9, 26, 52' },
 ];
 
 const OSCILLATORS: IndicatorDef[] = [
