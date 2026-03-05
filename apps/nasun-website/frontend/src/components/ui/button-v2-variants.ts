@@ -15,7 +15,7 @@ export const buttonV2Variants = cva(
         "gensol-red": "from-[#d52933] to-[#e85a62] hover:from-[#c0242d] hover:to-[#d54a52]",
         "sf-orange": "from-[#f05340] to-[#f5826e] hover:from-[#d94433] hover:to-[#e57260]",
         baram: "from-[#5e9e5c] to-[#a2d4a0] hover:from-[#518c50] hover:to-[#90c68e]",
-        pado: "from-[#3a5f78] to-[#aac9d5] hover:from-[#30516a] hover:to-[#9abdc9]",
+        pado: "from-[#1a8cbc] to-[#5ee1e4] hover:from-[#167aa5] hover:to-[#4dcdd0]",
         "nasun-network": "from-[#496c9c] to-[#a2c5d8] hover:from-[#3d5e8a] hover:to-[#92b9ce]",
       },
       outline: {
@@ -69,7 +69,7 @@ export const buttonV2Variants = cva(
       {
         variant: "pado",
         outline: true,
-        class: "border-[#3a5f78] text-[#3a5f78] hover:bg-[#3a5f78]/10",
+        class: "border-[#1a8cbc] text-[#1a8cbc] hover:bg-[#1a8cbc]/10",
       },
       {
         variant: "nasun-network",
