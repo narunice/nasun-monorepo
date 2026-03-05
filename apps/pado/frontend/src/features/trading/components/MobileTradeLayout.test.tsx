@@ -36,22 +36,22 @@ describe('MiniOrderbook', () => {
   const defaultAsks = makeLevels(10, 101, 1);  // 101, 102, 103, ...
 
   describe('LEVELS constant', () => {
-    it('renders exactly 8 ask levels', () => {
+    it('renders exactly 6 ask levels', () => {
       const { container } = render(
         <MiniOrderbook bids={defaultBids} asks={defaultAsks} midPrice={100.5} />
       );
       // Ask prices are rendered in .text-red-400 spans
       const askPrices = container.querySelectorAll('.text-red-400');
-      expect(askPrices.length).toBe(8);
+      expect(askPrices.length).toBe(6);
     });
 
-    it('renders exactly 8 bid levels', () => {
+    it('renders exactly 6 bid levels', () => {
       const { container } = render(
         <MiniOrderbook bids={defaultBids} asks={defaultAsks} midPrice={100.5} />
       );
       // Bid prices are rendered in .text-green-400 spans
       const bidPrices = container.querySelectorAll('.text-green-400');
-      expect(bidPrices.length).toBe(8);
+      expect(bidPrices.length).toBe(6);
     });
 
     it('renders fewer levels when data has fewer than 8', () => {
@@ -237,14 +237,14 @@ describe('MiniOrderbook', () => {
       expect(screen.getByText(/Spread/)).toBeTruthy();
     });
 
-    it('handles exactly 8 levels (no slicing needed)', () => {
-      const bids = makeLevels(8, 100, -1);
-      const asks = makeLevels(8, 101, 1);
+    it('handles exactly 6 levels (no slicing needed)', () => {
+      const bids = makeLevels(6, 100, -1);
+      const asks = makeLevels(6, 101, 1);
       const { container } = render(
         <MiniOrderbook bids={bids} asks={asks} midPrice={100.5} />
       );
       const allButtons = container.querySelectorAll('button');
-      expect(allButtons.length).toBe(16); // 8 asks + 8 bids
+      expect(allButtons.length).toBe(12); // 6 asks + 6 bids
     });
 
     it('handles very large quantities without overflow', () => {

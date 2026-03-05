@@ -37,7 +37,7 @@ export function MobileMarketHeader({ symbol, price, priceChange24h, onExpandChar
         {onExpandChart && (
           <button
             onClick={onExpandChart}
-            className="p-2.5 -mr-1 text-theme-text-muted hover:text-theme-text-primary transition-colors"
+            className="p-3 -mr-1 text-theme-text-muted hover:text-theme-text-primary transition-colors"
             aria-label="Expand chart"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

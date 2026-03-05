@@ -245,7 +245,7 @@ function TPSLTab() {
               <div className="text-right">
                 <button
                   onClick={() => handleCancel(order.id)}
-                  className="px-2.5 py-2 md:px-1.5 md:py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                  className="px-3 min-h-[44px] md:min-h-0 md:px-1.5 md:py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
                 >
                   Cancel
                 </button>
@@ -446,6 +446,15 @@ function AssetsTab() {
       {lastAutoDepositError && (
         <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
           <p className="text-xs xl:text-sm text-red-400">Auto deposit failed: {lastAutoDepositError}</p>
+        </div>
+      )}
+
+      {/* Auto-deposit hint when trading balance is empty but wallet has tokens */}
+      {balanceManagerId && bmBalance.quote === 0 && bmBalance.base === 0 && (walletQuote > 0 || walletBase > 0) && (
+        <div className="mt-3 p-2.5 bg-pd1/5 border border-pd1/20 rounded-lg">
+          <p className="text-trading-xs xl:text-trading-sm text-theme-text-secondary">
+            Your wallet funds will be auto-deposited to your trading balance when you place an order.
+          </p>
         </div>
       )}
 
