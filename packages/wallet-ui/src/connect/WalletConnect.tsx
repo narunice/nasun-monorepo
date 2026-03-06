@@ -4,7 +4,7 @@
  * All forms are displayed as dropdowns to maintain consistent header height
  */
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useWalletConnectState } from "./hooks/useWalletConnectState";
 import { WALLET_STYLES } from "../shared/styles";
@@ -25,6 +25,12 @@ interface WalletConnectProps {
   variant?: "filledOutlineC7" | "default";
   /** Button size variant */
   size?: "default" | "sm";
+  /** Override button text when status is 'disconnected' */
+  triggerText?: string;
+  /** Called when wallet status transitions to 'unlocked' */
+  onWalletUnlocked?: () => void;
+  /** Additional CSS classes for the trigger button */
+  buttonClassName?: string;
 }
 
 export function WalletConnect({
@@ -36,8 +42,22 @@ export function WalletConnect({
   addressLength: _addressLength = 6,
   variant,
   size = "default",
+  triggerText,
+  onWalletUnlocked,
+  buttonClassName,
 }: WalletConnectProps) {
   const s = useWalletConnectState();
+
+  // Fire onWalletUnlocked once when any wallet type transitions to connected.
+  // Only fires on the false→true transition to avoid re-firing while connected.
+  const prevConnectedRef = useRef(false);
+  useEffect(() => {
+    const anyConnected = s.status === 'unlocked' || s.isZkLoggedIn || s.isPasskeyUnlocked || s.isLedgerConnected;
+    if (anyConnected && !prevConnectedRef.current) {
+      onWalletUnlocked?.();
+    }
+    prevConnectedRef.current = anyConnected;
+  }, [s.status, s.isZkLoggedIn, s.isPasskeyUnlocked, s.isLedgerConnected, onWalletUnlocked]);
 
   // Lock body scroll when mobile modal is open to prevent background page from scrolling.
   // iOS Safari propagates touch scroll events from position:fixed elements to document.body,
@@ -107,6 +127,16 @@ export function WalletConnect({
 
   const dropdownContent = renderViewContent(s, connectedViewSharedProps);
 
+  // True when any wallet type is actively connected — s.status alone is not enough
+  // because zkLogin/passkey leave s.status as 'disconnected' (no self-custody keystore)
+  const isAnyWalletConnected =
+    s.isZkLoggedIn || s.isPasskeyUnlocked || s.isLedgerConnected || s.status === 'unlocked';
+
+  const closeDropdown = () => {
+    if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;
+    s.setShowDropdown(false);
+  };
+
   return (
     <div ref={s.dropdownRef} className="relative">
       {/* Main button - consistent across all states */}
@@ -119,22 +149,25 @@ export function WalletConnect({
                   ? "text-xs lg:text-sm px-5 md:px-7 lg:px-9 py-1"
                   : "text-sm md:text-base px-3 py-2"
               }`
-            : `bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded ${
+            : `bg-white hover:bg-gray-50 border border-gray-300 rounded ${
                 size === "sm" ? "text-xs lg:text-sm px-4 py-1" : "text-sm md:text-base px-3 py-2"
               }`
-        }`}
+        } ${buttonClassName ?? ""}`}
       >
-        <span className={`text-xs leading-none ${s.getStatusColor()} flex-shrink-0`}>&#9660;</span>
+        {/* Status color indicator — only when a wallet is connected */}
+        {isAnyWalletConnected && (
+          <span className={`text-xs leading-none ${s.getStatusColor()} flex-shrink-0`}>&#9660;</span>
+        )}
         <span
           className={`font-mono truncate ${
-            variant === "filledOutlineC7" ? "" : "text-gray-900 dark:text-white"
+            variant === "filledOutlineC7" ? "" : "text-gray-900"
           }`}
         >
-          {s.getButtonText()}
+          {triggerText && !isAnyWalletConnected ? triggerText : s.getButtonText()}
         </span>
         <svg
           className={`w-4 h-4 flex-shrink-0 transition-transform ${s.showDropdown ? "rotate-180" : ""} ${
-            variant === "filledOutlineC7" ? "text-nasun-c7" : "text-gray-500 dark:text-zinc-400"
+            variant === "filledOutlineC7" ? "text-nasun-c7" : "text-gray-500"
           }`}
           fill="none"
           stroke="currentColor"
@@ -144,8 +177,8 @@ export function WalletConnect({
         </svg>
       </button>
 
-      {/* Dropdown - Desktop: relative to button, Mobile: portal to body for proper stacking */}
-      {s.showDropdown && !s.isMobile && (
+      {/* Connected on desktop: dropdown below button */}
+      {s.showDropdown && isAnyWalletConnected && !s.isMobile && (
         <div
           className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute ${s.status === "locked" ? WALLET_STYLES.dropdownCompact : WALLET_STYLES.dropdownDesktop} max-h-[85vh] overflow-y-auto overflow-x-hidden ${
             dropdownAlign === "left"
@@ -159,22 +192,14 @@ export function WalletConnect({
         </div>
       )}
 
-      {/* Mobile dropdown - rendered via portal to escape stacking context issues */}
-      {s.showDropdown &&
-        s.isMobile &&
+      {/* Disconnected (any device) or connected on mobile: centered modal via portal */}
+      {s.showDropdown && (!isAnyWalletConnected || s.isMobile) &&
         createPortal(
           <>
-            {/* Mobile overlay backdrop */}
-            <div
-              className="fixed inset-0 bg-black/50 z-[99998]"
-              onClick={() => {
-                if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;
-                s.setShowDropdown(false);
-              }}
-            />
+            <div className="fixed inset-0 bg-black/50 z-[99998]" onClick={closeDropdown} />
             <div
               ref={s.mobileDropdownRef}
-              className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${WALLET_STYLES.dropdownMobile} overflow-y-auto overflow-x-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]`}
+              className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${s.isMobile ? WALLET_STYLES.dropdownMobile : (s.status === "locked" ? WALLET_STYLES.dropdownCompact : WALLET_STYLES.dropdownDesktop)} overflow-y-auto overflow-x-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]`}
             >
               {dropdownContent}
             </div>

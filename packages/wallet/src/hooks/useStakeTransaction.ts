@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { useSigner } from './useSigner';
-import { useRefreshStaking } from './useStaking';
+import { useRefreshStaking, useRemoveStakeFromCache } from './useStaking';
 import { useRefreshBalance } from './useBalance';
 import { getSuiClient, parseAmount, isValidAddress } from '../sui/client';
 import { buildStakeTransaction, buildUnstakeTransaction } from '../sui/staking';
@@ -79,6 +79,7 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
   const { signer, address, isConnected } = useSigner();
   const refreshStaking = useRefreshStaking();
   const refreshBalance = useRefreshBalance();
+  const removeStakeFromCache = useRemoveStakeFromCache();
 
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +229,11 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
         setLastResult(txResult);
         setIsPending(false);
 
-        // Refresh data
+        // Optimistically remove the unstaked position from cache
+        // so the UI won't reference a deleted on-chain object
+        removeStakeFromCache(request.stakedSuiId);
+
+        // Refresh data from chain
         await Promise.all([refreshStaking(), refreshBalance()]);
 
         return txResult;
@@ -248,7 +253,7 @@ export function useStakeTransaction(): UseStakeTransactionReturn {
         throw err;
       }
     },
-    [signer, address, isConnected, refreshStaking, refreshBalance]
+    [signer, address, isConnected, refreshStaking, refreshBalance, removeStakeFromCache]
   );
 
   const clearError = useCallback(() => setError(null), []);

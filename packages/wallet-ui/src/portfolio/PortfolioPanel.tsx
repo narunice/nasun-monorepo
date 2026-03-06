@@ -66,29 +66,29 @@ function AssetRow({ asset }: { asset: TokenAsset }) {
   const changeColor = (asset.change24h ?? 0) >= 0 ? 'text-green-500' : 'text-red-500';
 
   return (
-    <div className="flex items-center justify-between py-2 px-1 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded transition-colors">
+    <div className="flex items-center justify-between py-1.5 px-1 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded transition-colors">
       <div className="flex items-center gap-2 min-w-0">
         <ChainIcon chainType={asset.chainType} size={14} />
         <div className="min-w-0">
-          <p className="font-medium text-gray-900 dark:text-white truncate">
+          <p className="text-sm xl:text-base font-medium text-gray-900 dark:text-white truncate">
             {asset.symbol}
           </p>
-          <small className="text-gray-500 dark:text-zinc-400 truncate block">
+          <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">
             {asset.chainName}
-          </small>
+          </p>
         </div>
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="font-medium text-gray-900 dark:text-white">
+        <p className="text-sm xl:text-base font-medium text-gray-900 dark:text-white">
           {formatUsd(asset.valueUsd)}
         </p>
-        <small className="text-gray-500 dark:text-zinc-400 block">
+        <p className="text-xs text-gray-500 dark:text-zinc-400">
           {asset.formattedBalance} {asset.symbol}
-        </small>
+        </p>
         {asset.change24h !== undefined && (
-          <small className={`${changeColor} block`}>
+          <p className={`text-xs ${changeColor}`}>
             {formatPercent(asset.change24h)}
-          </small>
+          </p>
         )}
       </div>
     </div>
@@ -102,21 +102,21 @@ function ChainBreakdown({ chains }: { chains: ChainPortfolio[] }) {
   if (chains.length === 0) return null;
 
   return (
-    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700">
-      <h4 className="font-medium text-gray-500 dark:text-zinc-400 mb-2">
+    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-zinc-700">
+      <p className="text-xs md:text-sm xl:text-base font-medium text-gray-500 dark:text-zinc-400 mb-1.5">
         By Chain
-      </h4>
+      </p>
       <div className="space-y-1">
         {chains.map((chain) => (
           <div
             key={chain.chainId}
-            className="flex items-center justify-between"
+            className="flex items-center justify-between text-sm xl:text-base"
           >
             <div className="flex items-center gap-2">
               <ChainIcon chainType={chain.chainType} size={12} />
               <span className="text-gray-700 dark:text-zinc-300">{chain.chainName}</span>
             </div>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="font-mono font-medium text-gray-900 dark:text-white">
               {formatUsd(chain.totalValueUsd)}
             </span>
           </div>
@@ -212,12 +212,12 @@ export function PortfolioPanel({
     return (
       <div className={`flex items-center justify-between ${className}`}>
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-white">
+          <p className="text-sm xl:text-base font-bold text-gray-900 dark:text-white">
             {formatUsd(portfolio.totalValueUsd)}
-          </h3>
-          <small className={changeColor}>
+          </p>
+          <p className={`text-xs ${changeColor}`}>
             {changeSign}{formatUsd(Math.abs(portfolio.change24hUsd))} ({formatPercent(portfolio.change24hPercent)})
-          </small>
+          </p>
         </div>
         <button
           onClick={() => refreshPortfolio()}
@@ -239,25 +239,25 @@ export function PortfolioPanel({
 
   // Full mode
   return (
-    <div className={`p-4 w-full ${className}`}>
+    <div className={`p-3 w-full ${className}`}>
       <PanelHeader title="Portfolio" onClose={onClose} />
       {/* Header */}
-      <div className="mb-4">
+      <div className="mb-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-gray-900 dark:text-white">
+            <p className="text-lg xl:text-xl font-bold text-gray-900 dark:text-white">
               {formatUsd(portfolio.totalValueUsd)}
-            </h2>
-            <p className={changeColor}>
+            </p>
+            <p className={`text-xs xl:text-sm ${changeColor}`}>
               {changeSign}{formatUsd(Math.abs(portfolio.change24hUsd))} ({formatPercent(portfolio.change24hPercent)}) 24h
             </p>
           </div>
           <button
             onClick={() => refreshPortfolio()}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
             title="Refresh portfolio"
           >
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -270,10 +270,10 @@ export function PortfolioPanel({
       </div>
 
       {/* Asset list */}
-      <div className="space-y-1">
-        <h4 className="font-medium text-gray-500 dark:text-zinc-400 mb-2">
+      <div className="space-y-0.5">
+        <p className="text-xs md:text-sm xl:text-base font-medium text-gray-500 dark:text-zinc-400 mb-1.5">
           Assets ({portfolio.assets.length})
-        </h4>
+        </p>
         {portfolio.assets
           .sort((a, b) => b.valueUsd - a.valueUsd)
           .map((asset, index) => (
@@ -285,9 +285,9 @@ export function PortfolioPanel({
       {showChainBreakdown && <ChainBreakdown chains={portfolio.byChain} />}
 
       {/* Last updated */}
-      <small className="text-gray-400 dark:text-zinc-500 mt-4 text-center block">
+      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-3 text-center">
         Last updated: {new Date(portfolio.lastUpdated).toLocaleString('en-US')}
-      </small>
+      </p>
     </div>
   );
 }

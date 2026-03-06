@@ -152,12 +152,14 @@ export function useWalletViewState() {
       const isInsideDesktopDropdown = dropdownRef.current?.contains(target);
       const isInsideMobileDropdown = mobileDropdownRef.current?.contains(target);
       const isInsideModal = (target as Element).closest?.('[data-network-modal="true"]');
+      const isInsideWalletPortal = (target as Element).closest?.('[data-wallet-portal="true"]');
 
       if (
         dropdownRef.current &&
         !isInsideDesktopDropdown &&
         !isInsideMobileDropdown &&
-        !isInsideModal
+        !isInsideModal &&
+        !isInsideWalletPortal
       ) {
         // Keep dropdown open during wallet creation/backup flow — user must complete before closing
         if (
