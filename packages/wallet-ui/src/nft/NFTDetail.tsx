@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   type NFTInfo,
   getNFTImageUrl,
@@ -32,15 +33,16 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
   const collection = getCollectionFromType(nft.type);
   const creator = nft.display.creator;
 
-  // Close on Escape key
+  // Close on Escape key (capture phase to prevent wallet dropdown from also closing)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.stopImmediatePropagation();
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [onClose]);
 
   // Handle backdrop click
@@ -56,33 +58,30 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
     onClose();
   };
 
-  // Transfer view
-  if (showTransfer) {
-    return (
-      <div
-        className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-        onClick={handleBackdropClick}
-      >
-        <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-          <NFTTransfer
-            nft={nft}
-            onClose={() => setShowTransfer(false)}
-            onSuccess={handleTransferSuccess}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Detail view
-  return (
+  // Render modal via Portal to escape wallet dropdown's overflow/transform constraints
+  const modalContent = showTransfer ? (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      data-wallet-portal="true"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100000] p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-lg w-full overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <NFTTransfer
+          nft={nft}
+          onClose={() => setShowTransfer(false)}
+          onSuccess={handleTransferSuccess}
+        />
+      </div>
+    </div>
+  ) : (
+    <div
+      data-wallet-portal="true"
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100000] p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800 sticky top-0 bg-white dark:bg-zinc-900 z-10">
           <h2 className="text-lg xl:text-xl font-medium text-gray-900 dark:text-white truncate">{name}</h2>
           <button
             onClick={onClose}
@@ -181,4 +180,6 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

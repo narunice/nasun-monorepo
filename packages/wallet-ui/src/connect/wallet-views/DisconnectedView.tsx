@@ -35,6 +35,17 @@ export function DisconnectedView({
   const [passkeyPassword, setPasskeyPassword] = useState("");
   const showPasskeySection = isPasskeySupported && isPasskeyPlatformAvailable;
 
+  // Show privacy notice only to first-time visitors
+  const [showPrivacy] = useState(() => {
+    try {
+      if (localStorage.getItem('nasun_wallet_privacy_seen')) return false;
+      localStorage.setItem('nasun_wallet_privacy_seen', '1');
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
   // Show passkey first only for returning users (existing wallet = 1-step biometric unlock)
   // New users see Google first (2-step OAuth, no mnemonic backup needed)
   const passkeyFirst = showPasskeySection && !!passkeyWallet;
@@ -99,7 +110,7 @@ export function DisconnectedView({
         </button>
       )}
       <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 text-center mt-1">
-        Fast — uses your device biometrics
+        Fast — uses your device biometrics or pin number
       </p>
     </div>
   );
@@ -132,6 +143,21 @@ export function DisconnectedView({
           {networkName}
         </span>
       </div>
+
+      {/* Privacy notice — visible only on first visit */}
+      {showPrivacy && (
+        <div className="mb-3 rounded-lg bg-gray-50 dark:bg-zinc-700/50 border border-gray-200 dark:border-zinc-600/50 px-3 py-2.5 space-y-1 text-left">
+          <p className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400 font-medium">
+            Your privacy is protected
+          </p>
+          <ul className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 space-y-0.5">
+            <li>· No personal data is collected at sign-up</li>
+            <li>· Your wallet address becomes your unique ID</li>
+            <li>· Google sign-in uses zkLogin — Nasun never stores your email</li>
+            <li>· Social account linking is optional — only needed for creator events</li>
+          </ul>
+        </div>
+      )}
 
       {/* Primary auth — order depends on device passkey support */}
       {passkeyFirst ? (

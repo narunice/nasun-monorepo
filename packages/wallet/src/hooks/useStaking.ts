@@ -94,13 +94,44 @@ export function useRefreshStaking() {
   const passkeyAddress = usePasskeyStore((s) => s.address);
   const queryClient = useQueryClient();
 
-  return () => {
+  return async () => {
     const address = account?.address || zkState?.address || passkeyAddress;
     if (address) {
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: [STAKING_QUERY_KEY, address],
       });
     }
+  };
+}
+
+/**
+ * Remove a specific staked position from cache (optimistic update)
+ * Used after successful unstake to prevent stale object references
+ */
+export function useRemoveStakeFromCache() {
+  const { account } = useWallet();
+  const { state: zkState } = useZkLogin();
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  const queryClient = useQueryClient();
+
+  return (stakedSuiId: string) => {
+    const address = account?.address || zkState?.address || passkeyAddress;
+    if (!address) return;
+
+    const queryKey = [STAKING_QUERY_KEY, address];
+    const current = queryClient.getQueryData<{ stakes: DelegatedStake[]; summary: StakingSummary }>(queryKey);
+    if (!current) return;
+
+    // Filter out the unstaked position
+    const updatedStakes = current.stakes
+      .map((delegated) => ({
+        ...delegated,
+        stakes: delegated.stakes.filter((s) => s.stakedSuiId !== stakedSuiId),
+      }))
+      .filter((delegated) => delegated.stakes.length > 0);
+
+    const updatedSummary = calculateStakingSummary(updatedStakes);
+    queryClient.setQueryData(queryKey, { stakes: updatedStakes, summary: updatedSummary });
   };
 }
 
