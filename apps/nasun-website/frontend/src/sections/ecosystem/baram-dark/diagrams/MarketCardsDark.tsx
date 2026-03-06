@@ -12,17 +12,17 @@ export function MarketCardsDark() {
       {regulations.map(({ key }) => (
         <StaggerItem key={key} className="h-full">
           <OuterBox
-            color="noborder"
+            color="br4"
             padding="sm"
-            className="h-full hover:-translate-y-1 transition-all duration-200 bg-br-4"
+            className="h-full hover:-translate-y-1 transition-all duration-200"
           >
-            <p className="text-br-4t font-normal text-sm uppercase tracking-wider mb-2">
+            <p className="text-br-4 font-normal text-sm uppercase tracking-wider mb-2">
               {t(`market.regulations.${key}Date`)}
             </p>
-            <h6 className="font-semibold text-nasun-black mb-2">
+            <h6 className="font-semibold text-nasun-white mb-2">
               {t(`market.regulations.${key}Title`)}
             </h6>
-            <p className="text-nasun-black/90">{t(`market.regulations.${key}Detail`)}</p>
+            <p className="text-nasun-white/80">{t(`market.regulations.${key}Detail`)}</p>
           </OuterBox>
         </StaggerItem>
       ))}

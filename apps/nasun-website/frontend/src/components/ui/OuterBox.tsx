@@ -55,7 +55,8 @@ type ColorVariant =
   | "sf-gold"
   | "br1"
   | "br2"
-  | "br3";
+  | "br3"
+  | "br4";
 
 type PaddingVariant = "lg" | "md" | "sm";
 
@@ -96,6 +97,7 @@ const variantStyles: Record<ColorVariant, string> = {
   br1: "border-br-1/40 bg-br-1", // Baram mint accent
   br2: "border-br-2/40 bg-br-2/30", // Baram blue accent
   br3: "border-br-3/40 bg-br-3/30", // Baram lavender accent
+  br4: "border-br-4/40 bg-br-4/10", // Baram light green accent
 };
 
 const paddingStyles: Record<PaddingVariant, string> = {
