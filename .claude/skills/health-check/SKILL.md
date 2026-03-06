@@ -152,12 +152,13 @@ curl -s -m 10 -o /dev/null -w "%{http_code}" https://faucet.devnet.nasun.io
 - HTTP 200 또는 405 = OK
 - timeout 또는 5xx = **WARNING**
 
-**zkLogin Prover 체크:**
+**zkLogin Prover 체크 (POST-only 엔드포인트):**
 ```bash
-curl -s -m 10 -o /dev/null -w "%{http_code}" https://rpc.devnet.nasun.io/zkprover/v1
+curl -s -m 10 -X POST -H "Content-Type: application/json" -d '{}' \
+  -o /dev/null -w "%{http_code}" https://rpc.devnet.nasun.io/zkprover/v1
 ```
-- 응답 있음 = OK
-- timeout = **WARNING**
+- HTTP 400/500 (빈 body 에러) = **OK** (prover 도달 가능, 응답 중)
+- timeout / connection refused / HTTP 0 = **CRITICAL** (prover 다운)
 
 > RPC/Faucet/zkLogin은 shared infrastructure입니다. 문제 발견 시 nasun-devnet의 `/health-check` 실행을 안내합니다.
 
@@ -260,7 +261,8 @@ ls -la /var/www/nasun/dist/index.html 2>/dev/null || echo "MISSING"
 ls /var/www/nasun/dist/assets/ 2>/dev/null | wc -l
 
 echo "-- explorer --"
-ls -la /var/www/nasun/explorer/index.html 2>/dev/null || echo "MISSING"
+ls -la /var/www/explorer.nasun.io/devnet/index.html 2>/dev/null || echo "MISSING"
+ls /var/www/explorer.nasun.io/devnet/assets/ 2>/dev/null | wc -l
 
 echo "=== DISK ==="
 df -h / | tail -1
@@ -290,7 +292,8 @@ HEALTH_EOF
 - `nginx -t` config 검증: fail = **WARNING** (reload 시 깨짐)
 - `/var/www/nasun/dist/index.html` 존재: missing = **CRITICAL** (배포 깨짐)
 - asset 파일 수: 0 = **CRITICAL** (빌드 아티팩트 누락)
-- explorer `index.html` 존재 확인
+- `/var/www/explorer.nasun.io/devnet/index.html` 존재: missing = **CRITICAL** (explorer 배포 깨짐)
+- explorer asset 파일 수: 0 = **CRITICAL**
 - 디스크/메모리/스왑: Threshold 표 참조
 - CPU load avg: > 2.0 (2 vCPU 기준) = **WARNING**
 - nginx 에러 로그: 최근 10분 에러 확인
@@ -591,7 +594,7 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | ID | 패턴 | 감지 조건 | 심각도 | 권장 조치 |
 |----|------|-----------|--------|-----------|
 | W1 | Prod EC2 nginx 다운 | `systemctl is-active` != active | CRITICAL | `ssh ec2-user@43.200.67.52 "sudo systemctl restart nginx"` |
-| W2 | 정적 파일 누락 | index.html 없음 or asset 0개 | CRITICAL | 재배포: `rsync -avz --delete apps/nasun-website/frontend/dist/ ec2-user@43.200.67.52:/var/www/nasun/dist/` |
+| W2 | 정적 파일 누락 | index.html 없음 or asset 0개 | CRITICAL | nasun-website: `rsync -avz --delete apps/nasun-website/frontend/dist/ ec2-user@43.200.67.52:/var/www/nasun/dist/` / explorer: `rsync -avz --delete apps/network-explorer/dist/ ec2-user@43.200.67.52:/var/www/explorer.nasun.io/devnet/` |
 | W3 | Prod 디스크 부족 | >80% (W), >90% (C) | W/C | `/var/log` 정리, 오래된 백업 삭제 |
 | W4 | CloudFront 오리진 에러 | `x-cache: Error from cloudfront` | CRITICAL | origin nginx 상태 확인 → 복구 후 CloudFront invalidation |
 | W5 | Lambda API 다수 장애 | 3개 이상 5xx 또는 timeout | CRITICAL | AWS Lambda 콘솔 확인. 리전 장애 또는 IAM 이슈 가능성 |
