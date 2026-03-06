@@ -59,17 +59,22 @@ export function parseVoterRecord(
 ): VoterRecord | null {
   if (!data || data.content?.dataType !== 'moveObject') return null;
 
+  // Dynamic field structure: fields.value.fields contains the VoteRecord
   const fields = data.content.fields as {
-    voted_yes?: boolean;
-    voting_power?: number;
+    value?: {
+      fields?: {
+        vote_yes?: boolean;
+        voting_power?: string | number;
+      };
+    };
   };
 
-  // The name value is the voter address
+  const voteRecord = fields.value?.fields;
   const voter = typeof name.value === 'string' ? name.value : String(name.value);
 
   return {
     voter,
-    votedYes: fields.voted_yes ?? false,
-    votingPower: Number(fields.voting_power) || 0,
+    votedYes: voteRecord?.vote_yes ?? false,
+    votingPower: Number(voteRecord?.voting_power) || 0,
   };
 }
