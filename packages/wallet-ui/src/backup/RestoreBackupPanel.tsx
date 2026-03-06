@@ -315,13 +315,13 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
             }
           }}
         >
-          <svg className="w-8 h-8 mx-auto mb-2 text-gray-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 mx-auto mb-2 text-gray-400 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
           <p className={`${WALLET_STYLES.textBody} text-gray-600 dark:text-zinc-300`}>
             Click or drag backup file here
           </p>
-          <p className={`${WALLET_STYLES.textCaption} text-gray-400 dark:text-zinc-500 mt-1`}>
+          <p className={`${WALLET_STYLES.textCaption} text-gray-400 dark:text-zinc-400 mt-1`}>
             Supports Wallet Backup and Smart Account Backup
           </p>
         </div>
@@ -382,7 +382,7 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
               </p>
             </>
           )}
-          <p className={`${WALLET_STYLES.textCaption} text-gray-400 dark:text-zinc-500 mt-1`}>
+          <p className={`${WALLET_STYLES.textCaption} text-gray-400 dark:text-zinc-400 mt-1`}>
             Created: {new Date((isWallet ? walletBackup : nsaBackup)?.createdAt ?? 0).toLocaleString("en-US")}
           </p>
         </div>
@@ -486,7 +486,7 @@ export function RestoreBackupPanel({ onClose, onImportKey }: RestoreBackupPanelP
                 </p>
               </div>
             )}
-            <p className={`${WALLET_STYLES.textCaption} text-gray-400 dark:text-zinc-500 text-center`}>
+            <p className={`${WALLET_STYLES.textCaption} text-gray-400 dark:text-zinc-400 text-center`}>
               If you had a Smart Account, reconnect it from the Account tab.
             </p>
             <button onClick={handleDone} className={`w-full py-2 ${WALLET_STYLES.secondaryButton}`}>

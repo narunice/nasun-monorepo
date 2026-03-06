@@ -51,7 +51,7 @@ export function StakingStatus({
       <div className="p-4 bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg">
         <div className="text-center">
           <svg
-            className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-500 mb-3"
+            className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-400 mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -64,7 +64,7 @@ export function StakingStatus({
             />
           </svg>
           <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">No active stakes</p>
-          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
+          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-1">
             Stake NSN to earn rewards
           </p>
         </div>

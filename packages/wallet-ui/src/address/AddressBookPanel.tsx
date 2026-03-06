@@ -240,7 +240,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
         {sortedEntries.length === 0 ? (
           <div className="text-center py-8">
             <svg
-              className="w-12 h-12 mx-auto text-gray-300 dark:text-zinc-600 mb-3"
+              className="w-12 h-12 mx-auto text-gray-300 dark:text-zinc-500 mb-3"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -255,7 +255,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
             <p className="text-gray-500 dark:text-zinc-400 text-sm xl:text-base">
               {searchQuery ? 'No addresses found' : 'No saved addresses yet'}
             </p>
-            <p className="text-gray-400 dark:text-zinc-500 text-xs xl:text-sm mt-1">
+            <p className="text-gray-400 dark:text-zinc-400 text-xs xl:text-sm mt-1">
               {searchQuery ? 'Try a different search' : 'Addresses are saved automatically after transactions'}
             </p>
           </div>
@@ -328,7 +328,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
 
               {/* Last Transaction */}
               {entry.lastTransactionAt && (
-                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mb-2">
+                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mb-2">
                   Last: {formatDate(entry.lastTransactionAt)}
                 </p>
               )}

@@ -172,7 +172,7 @@ export function NsaRestorePanel({ onClose, onImportKey }: NsaRestorePanelProps) 
           }}
         >
           <svg
-            className="w-8 h-8 mx-auto mb-2 text-gray-400 dark:text-zinc-500"
+            className="w-8 h-8 mx-auto mb-2 text-gray-400 dark:text-zinc-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -187,7 +187,7 @@ export function NsaRestorePanel({ onClose, onImportKey }: NsaRestorePanelProps) 
           <p className="text-sm text-gray-600 dark:text-zinc-300">
             Click or drag backup file here
           </p>
-          <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+          <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1">
             nasun-backup-*.json
           </p>
         </div>
@@ -239,7 +239,7 @@ export function NsaRestorePanel({ onClose, onImportKey }: NsaRestorePanelProps) 
             <p className="text-xs font-mono text-gray-700 dark:text-zinc-300 break-all">
               {backup.accountObjectId}
             </p>
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+            <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1">
               Created: {new Date(backup.createdAt).toLocaleString("en-US")}
             </p>
           </div>
@@ -256,7 +256,7 @@ export function NsaRestorePanel({ onClose, onImportKey }: NsaRestorePanelProps) 
               onChange={(e) => setPin(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && pin.length >= 6 && handleRestore()}
               placeholder="Enter your backup PIN"
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm xl:text-base"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm xl:text-base"
               autoFocus
             />
           </div>

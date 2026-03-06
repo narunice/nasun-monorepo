@@ -165,7 +165,7 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
               placeholder={address ? `Default: ${address.slice(0, 10)}...` : '0x...'}
               className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
             />
-            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-0.5">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-0.5">
               Recovery will restore access to this address only.
             </p>
           </div>
@@ -209,7 +209,7 @@ export function NsaGuardianSetup({ onClose }: NsaGuardianSetupProps) {
             </p>
             {validGuardians.map((g, i) => (
               <div key={i} className="flex items-center gap-2 text-xs xl:text-sm">
-                <span className="text-gray-400 dark:text-zinc-500">#{i + 1}</span>
+                <span className="text-gray-400 dark:text-zinc-400">#{i + 1}</span>
                 <span className="font-mono text-gray-900 dark:text-white">
                   {g.slice(0, 8)}...{g.slice(-6)}
                 </span>

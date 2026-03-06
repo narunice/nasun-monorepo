@@ -110,8 +110,8 @@ export function TokenFaucetButton({
             : cooldown
             ? 'bg-yellow-500/10 text-yellow-500/70'
             : needsNsnFirst
-            ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-500 opacity-50'
-            : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-500 disabled:opacity-50'
+            ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-400 opacity-50'
+            : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-400 disabled:opacity-50'
           }
           disabled:cursor-not-allowed
           ${className}`}
@@ -144,8 +144,8 @@ export function TokenFaucetButton({
             : cooldown
             ? 'bg-yellow-500/10 text-yellow-500/70'
             : needsNsnFirst
-            ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-500 opacity-50'
-            : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-500 disabled:opacity-50'
+            ? 'bg-zinc-500/10 text-gray-400 dark:text-zinc-400 opacity-50'
+            : 'bg-zinc-500/10 text-gray-600 dark:text-zinc-300 hover:bg-zinc-500/20 hover:text-gray-800 dark:hover:text-white disabled:text-gray-400 disabled:dark:text-zinc-400 disabled:opacity-50'
           }
           disabled:cursor-not-allowed
           flex items-center gap-1.5
@@ -179,7 +179,7 @@ export function TokenFaucetButton({
       )}
       </button>
       {needsNsnFirst && (
-        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-500 mt-1">
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mt-1">
           NSN required for gas fees
         </p>
       )}

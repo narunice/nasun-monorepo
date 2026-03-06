@@ -160,7 +160,7 @@ export function NsaGuardianConnect({ onClose, onConnected }: NsaGuardianConnectP
                 {info.accountState.objectId}
               </p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-400 dark:text-zinc-500">
+                <span className="text-xs text-gray-400 dark:text-zinc-400">
                   {info.accountState.signers.length} signer{info.accountState.signers.length !== 1 ? 's' : ''}
                 </span>
                 {info.activeRecoveryId && (
@@ -236,7 +236,7 @@ export function NsaGuardianConnect({ onClose, onConnected }: NsaGuardianConnectP
           onChange={(e) => setManualId(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && manualId.trim() && handleManualConnect()}
           placeholder="0x..."
-          className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base"
+          className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base"
         />
 
         {error && (

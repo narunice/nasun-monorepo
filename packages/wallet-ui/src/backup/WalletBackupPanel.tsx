@@ -100,7 +100,7 @@ export function WalletBackupPanel({ onClose }: WalletBackupPanelProps) {
         <p className={`${WALLET_STYLES.textLabel} text-gray-600 dark:text-zinc-400`}>
           - Smart Account settings (guardians, threshold)
         </p>
-        <p className={`${WALLET_STYLES.textCaption} text-gray-500 dark:text-zinc-500 mt-1`}>
+        <p className={`${WALLET_STYLES.textCaption} text-gray-500 dark:text-zinc-400 mt-1`}>
           Use "Full Backup" in the Smart Account menu for a complete backup.
         </p>
       </div>

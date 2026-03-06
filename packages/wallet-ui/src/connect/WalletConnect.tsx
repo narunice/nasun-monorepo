@@ -50,7 +50,10 @@ export function WalletConnect({
 
   // Fire onWalletUnlocked once when any wallet type transitions to connected.
   // Only fires on the false→true transition to avoid re-firing while connected.
-  const prevConnectedRef = useRef(false);
+  // Initialize to current state so a component mounting while already connected doesn't re-fire.
+  const isAnyWalletConnectedAtMount =
+    s.isZkLoggedIn || s.isPasskeyUnlocked || s.isLedgerConnected || s.status === 'unlocked';
+  const prevConnectedRef = useRef(isAnyWalletConnectedAtMount);
   useEffect(() => {
     const anyConnected = s.status === 'unlocked' || s.isZkLoggedIn || s.isPasskeyUnlocked || s.isLedgerConnected;
     if (anyConnected && !prevConnectedRef.current) {
@@ -131,6 +134,7 @@ export function WalletConnect({
   // because zkLogin/passkey leave s.status as 'disconnected' (no self-custody keystore)
   const isAnyWalletConnected =
     s.isZkLoggedIn || s.isPasskeyUnlocked || s.isLedgerConnected || s.status === 'unlocked';
+  // Note: isAnyWalletConnectedAtMount (above) is used only for prevConnectedRef initialization
 
   const closeDropdown = () => {
     if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;

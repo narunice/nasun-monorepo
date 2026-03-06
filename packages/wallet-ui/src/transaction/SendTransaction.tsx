@@ -255,7 +255,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
             <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400 mt-1">
               {successAmount} {successToken} sent successfully
             </p>
-            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-1">
               on {chain.name}
             </p>
           </div>
@@ -374,7 +374,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                   <span className="text-gray-500 dark:text-zinc-400">Loading...</span>
                 ) : gasEstimate ? (
                   <>≈ {gasEstimate.estimatedTransferFee} <span className="text-blue-400">{gasEstimate.symbol}</span>
-                    <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 ml-2">
+                    <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 ml-2">
                       ({gasEstimate.gasPriceGwei} gwei)
                     </span>
                   </>
@@ -386,7 +386,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
               )}
             </p>
             {selectedToken !== nativeSymbol && (
-              <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
+              <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-1">
                 Available for gas: {getNativeBalance().toFixed(4)} {nativeSymbol}
               </p>
             )}
