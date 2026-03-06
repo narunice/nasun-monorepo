@@ -154,7 +154,7 @@ export function SessionKeyPanel({
       {activeSessions.length === 0 ? (
         <div className="text-center py-4">
           <svg
-            className="w-8 h-8 text-gray-300 dark:text-zinc-600 mx-auto mb-2"
+            className="w-8 h-8 text-gray-300 dark:text-zinc-500 mx-auto mb-2"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -169,7 +169,7 @@ export function SessionKeyPanel({
           <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
             No active sessions
           </p>
-          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 mt-0.5">
             dApps will request authorization when needed
           </p>
         </div>
@@ -204,7 +204,7 @@ export function SessionKeyPanel({
                       <span className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
                         {session.permissions.length} permission{session.permissions.length !== 1 ? 's' : ''}
                       </span>
-                      <span className="text-gray-300 dark:text-zinc-600">|</span>
+                      <span className="text-gray-300 dark:text-zinc-500">|</span>
                       <span className={`text-[10px] xl:text-xs ${
                         isExpired
                           ? 'text-red-500 dark:text-red-400'
@@ -218,7 +218,7 @@ export function SessionKeyPanel({
                   {/* Revoke button */}
                   <button
                     onClick={() => handleRevoke(session.address)}
-                    className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+                    className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-400 dark:hover:text-red-400 transition-colors"
                     title="Revoke session"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

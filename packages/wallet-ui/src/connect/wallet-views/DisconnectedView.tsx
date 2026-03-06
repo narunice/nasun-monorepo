@@ -109,7 +109,7 @@ export function DisconnectedView({
           Use Passkey
         </button>
       )}
-      <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 text-center mt-1">
+      <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 text-center mt-1">
         Fast — uses your device biometrics or pin number
       </p>
     </div>
@@ -125,7 +125,7 @@ export function DisconnectedView({
         providers={["google"]}
         size="md"
       />
-      <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 text-center mt-1">
+      <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 text-center mt-1">
         Recommended — no seed phrase needed
       </p>
       {zkError && (
@@ -150,7 +150,7 @@ export function DisconnectedView({
           <p className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400 font-medium">
             Your privacy is protected
           </p>
-          <ul className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 space-y-0.5">
+          <ul className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 space-y-0.5">
             <li>· No personal data is collected at sign-up</li>
             <li>· Your wallet address becomes your unique ID</li>
             <li>· Google sign-in uses zkLogin — Nasun never stores your email</li>
@@ -163,7 +163,7 @@ export function DisconnectedView({
       {passkeyFirst ? (
         <div className="space-y-2">
           {passkeyButton}
-          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 text-center">or</p>
+          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 text-center">or</p>
           {googleButton}
         </div>
       ) : (
@@ -176,7 +176,7 @@ export function DisconnectedView({
       {/* Divider */}
       <div className="flex items-center gap-3 my-3">
         <div className="flex-1 border-t border-gray-200 dark:border-zinc-700" />
-        <span className="text-xs text-gray-400 dark:text-zinc-500 whitespace-nowrap">
+        <span className="text-xs text-gray-400 dark:text-zinc-400 whitespace-nowrap">
           Advanced options
         </span>
         <div className="flex-1 border-t border-gray-200 dark:border-zinc-700" />
@@ -192,7 +192,7 @@ export function DisconnectedView({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           <span className="text-sm font-medium">Create</span>
-          <span className="text-[12px] text-gray-400 dark:text-zinc-500 text-center leading-tight">
+          <span className="text-[12px] text-gray-400 dark:text-zinc-400 text-center leading-tight">
             New wallet
           </span>
         </button>
@@ -209,7 +209,7 @@ export function DisconnectedView({
             />
           </svg>
           <span className="text-sm font-medium">Import</span>
-          <span className="text-[12px] text-gray-400 dark:text-zinc-500 text-center leading-tight">
+          <span className="text-[12px] text-gray-400 dark:text-zinc-400 text-center leading-tight">
             Use seed phrase
           </span>
         </button>
@@ -226,7 +226,7 @@ export function DisconnectedView({
             />
           </svg>
           <span className="text-sm font-medium">Restore</span>
-          <span className="text-[12px] text-gray-400 dark:text-zinc-500 text-center leading-tight">
+          <span className="text-[12px] text-gray-400 dark:text-zinc-400 text-center leading-tight">
             From backup file
           </span>
         </button>

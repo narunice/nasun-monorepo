@@ -57,7 +57,7 @@ export function AdvancedToggle({
             className={`${textSize} font-medium select-none transition-colors duration-200 ${
               !isAdvancedMode
                 ? 'text-gray-800 dark:text-zinc-200'
-                : 'text-gray-300 dark:text-zinc-600'
+                : 'text-gray-300 dark:text-zinc-500'
             }`}
           >
             Simple
@@ -85,7 +85,7 @@ export function AdvancedToggle({
             className={`${textSize} font-medium select-none transition-colors duration-200 ${
               isAdvancedMode
                 ? 'text-gray-800 dark:text-zinc-200'
-                : 'text-gray-300 dark:text-zinc-600'
+                : 'text-gray-300 dark:text-zinc-500'
             }`}
           >
             Pro

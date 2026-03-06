@@ -187,7 +187,7 @@ export function PortfolioPanel({
     return (
       <div className={`text-center py-6 ${className}`}>
         <svg
-          className="w-10 h-10 text-gray-400 dark:text-zinc-600 mx-auto mb-2"
+          className="w-10 h-10 text-gray-400 dark:text-zinc-500 mx-auto mb-2"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -285,7 +285,7 @@ export function PortfolioPanel({
       {showChainBreakdown && <ChainBreakdown chains={portfolio.byChain} />}
 
       {/* Last updated */}
-      <p className="text-xs text-gray-400 dark:text-zinc-500 mt-3 text-center">
+      <p className="text-xs text-gray-400 dark:text-zinc-400 mt-3 text-center">
         Last updated: {new Date(portfolio.lastUpdated).toLocaleString('en-US')}
       </p>
     </div>

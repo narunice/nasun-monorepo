@@ -120,7 +120,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
             <span className="font-medium">
               {chain.name}
               {chain.disabled && (
-                <span className="ml-1 text-gray-400 dark:text-zinc-500 font-normal">
+                <span className="ml-1 text-gray-400 dark:text-zinc-400 font-normal">
                   (Soon)
                 </span>
               )}
@@ -131,7 +131,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
               </span>
             )}
             {chain.testnet && !chain.devnet && (
-              <span className="ml-2 text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
+              <span className="ml-2 text-xs xl:text-sm text-gray-400 dark:text-zinc-400">
                 Testnet
               </span>
             )}
@@ -146,7 +146,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
 
         {/* Badge for disabled sections (e.g. Pro Mode required) */}
         {!sectionEnabled && disabledReason && (
-          <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
+          <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-700 px-2 py-0.5 rounded">
             {disabledReason}
           </span>
         )}
@@ -254,7 +254,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
               placeholder="Search networks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-zinc-700 border-0 rounded-lg text-sm xl:text-base text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-zinc-700 border-0 rounded-lg text-sm xl:text-base text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -323,7 +323,7 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
             filteredExternalMoveChains.length === 0 &&
             evmMainnets.length === 0 &&
             evmTestnets.length === 0 && (
-              <div className="px-4 py-8 text-center text-gray-400 dark:text-zinc-500">
+              <div className="px-4 py-8 text-center text-gray-400 dark:text-zinc-400">
                 No networks found for "{search}"
               </div>
             )}

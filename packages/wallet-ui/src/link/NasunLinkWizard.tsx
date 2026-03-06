@@ -201,7 +201,7 @@ export function NasunLinkWizard({
     return (
       <div className={`text-center py-8 ${className}`}>
         <svg
-          className="w-12 h-12 text-gray-400 dark:text-zinc-600 mx-auto mb-3"
+          className="w-12 h-12 text-gray-400 dark:text-zinc-500 mx-auto mb-3"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -248,7 +248,7 @@ export function NasunLinkWizard({
         <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
           Link creation requires a local or passkey wallet.
         </p>
-        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-1">
           zkLogin wallets cannot create links yet.
         </p>
         {onCancel && (

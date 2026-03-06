@@ -188,7 +188,7 @@ export function WalletConnectPanel({ setViewMode }: WalletConnectPanelProps) {
       {/* Active sessions */}
       {sessions.length > 0 ? (
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-500 font-medium mb-1">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-400 font-medium mb-1">
             Active Sessions ({sessions.length})
           </p>
           {sessions.map((session) => {
@@ -219,7 +219,7 @@ export function WalletConnectPanel({ setViewMode }: WalletConnectPanelProps) {
                       ))}
                     </div>
                   </div>
-                  <svg className="w-4 h-4 text-gray-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-gray-400 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
@@ -233,7 +233,7 @@ export function WalletConnectPanel({ setViewMode }: WalletConnectPanelProps) {
             <p className="text-sm text-gray-500 dark:text-zinc-400">
               No dApps connected
             </p>
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">
+            <p className="text-xs text-gray-400 dark:text-zinc-400 mt-1">
               Tap &quot;+ Connect&quot; to pair with a dApp
             </p>
           </div>

@@ -199,7 +199,7 @@ export function GettingStartedChecklist({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-xs xl:text-sm font-medium ${
-                    done ? 'line-through text-gray-400 dark:text-zinc-500'
+                    done ? 'line-through text-gray-400 dark:text-zinc-400'
                     : isCooldownActive ? 'text-yellow-600 dark:text-yellow-400'
                     : 'text-gray-800 dark:text-zinc-200'
                   }`}>
@@ -332,12 +332,12 @@ export function AccountTabContent({
           <div className={WALLET_STYLES.divider} />
 
           <div className="flex items-center justify-between px-3 pt-1 pb-0.5">
-            <p className="text-xs text-gray-400 dark:text-zinc-500">
+            <p className="text-xs text-gray-400 dark:text-zinc-400">
               Backup & Recovery
             </p>
             <button
               onClick={() => setShowBackupGuide((v) => !v)}
-              className="p-0.5 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+              className="p-0.5 text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
               aria-label="Backup options guide"
               title="Compare backup options"
             >

@@ -72,11 +72,11 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
         <div className="grid grid-cols-3 gap-2 p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-700">
           {words.map((word, i) => (
             <div key={i} className="flex items-center gap-2 text-sm xl:text-base py-1">
-              <span className="text-gray-400 dark:text-zinc-500 w-5 text-right">{i + 1}.</span>
+              <span className="text-gray-400 dark:text-zinc-400 w-5 text-right">{i + 1}.</span>
               {showWords ? (
                 <span className="text-gray-900 dark:text-white font-mono">{word}</span>
               ) : (
-                <span className="text-gray-400 dark:text-zinc-500 font-mono">{'••••'}</span>
+                <span className="text-gray-400 dark:text-zinc-400 font-mono">{'••••'}</span>
               )}
             </div>
           ))}
