@@ -80,7 +80,7 @@ export function WCSessionDetail({ setViewMode, sessionTopic }: WCSessionDetailPr
             {meta.url}
           </p>
           {meta.description && (
-            <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-0.5 truncate">
+            <p className="text-[10px] text-gray-400 dark:text-zinc-400 mt-0.5 truncate">
               {meta.description}
             </p>
           )}
@@ -95,7 +95,7 @@ export function WCSessionDetail({ setViewMode, sessionTopic }: WCSessionDetailPr
       {/* Connected chains */}
       {allChains.length > 0 && (
         <div className="mb-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-500 font-medium mb-1">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-400 font-medium mb-1">
             Chains
           </p>
           <div className="flex gap-1 flex-wrap">
@@ -114,7 +114,7 @@ export function WCSessionDetail({ setViewMode, sessionTopic }: WCSessionDetailPr
       {/* Methods */}
       {allMethods.length > 0 && (
         <div className="mb-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-500 font-medium mb-1">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-400 font-medium mb-1">
             Permitted Methods
           </p>
           <div className="flex gap-1 flex-wrap">
@@ -133,7 +133,7 @@ export function WCSessionDetail({ setViewMode, sessionTopic }: WCSessionDetailPr
       {/* Accounts */}
       {allAccounts.length > 0 && (
         <div className="mb-4">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-500 font-medium mb-1">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-zinc-400 font-medium mb-1">
             Exposed Accounts
           </p>
           {allAccounts.map((account) => (

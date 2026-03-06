@@ -108,7 +108,7 @@ export function AssetsTabContent({
                 {onAddToken && (
                   <button
                     onClick={onAddToken}
-                    className="w-full mt-1 py-1 text-xs xl:text-sm text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+                    className="w-full mt-1 py-1 text-xs xl:text-sm text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
                   >
                     + Add Token
                   </button>
@@ -202,7 +202,7 @@ export function AssetsTabContent({
               ))}
             </div>
           ) : accumulatedNfts.length === 0 ? (
-            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 text-center py-4">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 text-center py-4">
               No NFTs found
             </p>
           ) : (

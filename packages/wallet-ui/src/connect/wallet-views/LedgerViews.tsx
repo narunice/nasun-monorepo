@@ -61,7 +61,7 @@ export function LedgerConnectView({
           <p className="text-sm md:text-base text-gray-600 dark:text-zinc-400 mb-1">
             Connect your Ledger device
           </p>
-          <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-500">
+          <p className="text-xs md:text-sm xl:text-base text-gray-500 dark:text-zinc-400">
             Make sure the Sui/Nasun app is open on your device
           </p>
         </div>

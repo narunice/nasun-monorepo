@@ -38,7 +38,7 @@ export function NFTCard({ nft, onClick, compact = false }: NFTCardProps) {
   const renderPlaceholder = () => (
     <div className="w-full h-full bg-gray-100 dark:bg-zinc-700 flex items-center justify-center">
       <svg
-        className={`text-gray-400 dark:text-zinc-500 ${compact ? 'w-6 h-6' : 'w-10 h-10'}`}
+        className={`text-gray-400 dark:text-zinc-400 ${compact ? 'w-6 h-6' : 'w-10 h-10'}`}
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"

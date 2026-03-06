@@ -126,7 +126,7 @@ export function NFTGallery({
         )}
         <div className="bg-gray-50 dark:bg-zinc-800 rounded-lg p-6 text-center">
           <svg
-            className="w-12 h-12 text-gray-400 dark:text-zinc-600 mx-auto mb-3"
+            className="w-12 h-12 text-gray-400 dark:text-zinc-500 mx-auto mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

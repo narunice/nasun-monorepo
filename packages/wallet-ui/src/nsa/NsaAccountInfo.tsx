@@ -37,7 +37,7 @@ function SignerBadge({ info }: { info: NsaSignerInfo }) {
           {info.label || 'Unnamed'}
         </span>
       </div>
-      <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 font-mono">
+      <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 font-mono">
         {info.address.slice(0, 6)}...{info.address.slice(-4)}
       </span>
     </div>
@@ -180,7 +180,7 @@ function RecoveryReadiness({ accountState }: { accountState: { signers: NsaSigne
           />
         ))}
       </div>
-      <div className="flex justify-between text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500">
+      <div className="flex justify-between text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400">
         <span>Multipath</span>
         <span>Backup</span>
         <span>Guardian</span>
@@ -286,7 +286,7 @@ export function NsaAccountInfo({ onClose, onNavigate, onAcceptProposal }: NsaAcc
               <span className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
                 Signers ({accountState?.signers?.length ?? 0}/5)
               </span>
-              <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
+              <span className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400">
                 Threshold: {accountState?.threshold ?? 1}
               </span>
             </div>
@@ -357,7 +357,7 @@ export function NsaAccountInfo({ onClose, onNavigate, onAcceptProposal }: NsaAcc
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               <span className="flex-1">Full Backup</span>
-              <span className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500">Includes guardians</span>
+              <span className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400">Includes guardians</span>
             </button>
 
             <button

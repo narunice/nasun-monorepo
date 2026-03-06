@@ -189,7 +189,7 @@ export function AssetsTab({
             ) : nfts.length === 0 ? (
               <div className="text-center py-4">
                 <svg
-                  className="w-8 h-8 text-gray-400 dark:text-zinc-600 mx-auto mb-1"
+                  className="w-8 h-8 text-gray-400 dark:text-zinc-500 mx-auto mb-1"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

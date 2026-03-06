@@ -438,7 +438,7 @@ function UnstakeTab({ compact }: UnstakeTabProps) {
       <div className="p-4">
         <div className="bg-gray-200/50 dark:bg-zinc-700/50 rounded-lg p-6 text-center">
           <svg
-            className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-500 mb-3"
+            className="w-12 h-12 mx-auto text-gray-400 dark:text-zinc-400 mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

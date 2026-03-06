@@ -78,7 +78,7 @@ export function BalanceCard({
           </div>
         )}
         {isEVM && (
-          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-500 mt-0.5">
+          <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mt-0.5">
             on {chain.name}
           </p>
         )}

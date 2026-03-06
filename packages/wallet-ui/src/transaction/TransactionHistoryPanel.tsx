@@ -207,7 +207,7 @@ function TransactionItem({
                     <span className="text-gray-700 dark:text-zinc-300 font-medium truncate max-w-[60px]">
                       {addressEntry.label}
                     </span>
-                    <span className="font-mono text-gray-400 dark:text-zinc-500">
+                    <span className="font-mono text-gray-400 dark:text-zinc-400">
                       ({shortenAddress(counterparty, 3)})
                     </span>
                   </>
@@ -223,7 +223,7 @@ function TransactionItem({
                       e.stopPropagation();
                       onAddressBook?.(counterparty);
                     }}
-                    className="p-0.5 text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+                    className="p-0.5 text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
                     title={addressEntry ? 'Edit in Address Book' : 'Add to Address Book'}
                   >
                     {addressEntry ? (
@@ -246,7 +246,7 @@ function TransactionItem({
                         e.stopPropagation();
                         onSend(counterparty);
                       }}
-                      className="p-0.5 text-gray-400 hover:text-blue-600 dark:text-zinc-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
+                      className="p-0.5 text-gray-400 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded transition-colors"
                       title="Send to this address"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,7 +270,7 @@ function TransactionItem({
                 </div>
               ))}
               {tx.transfers.length > 2 && (
-                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
+                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400">
                   +{tx.transfers.length - 2} more
                 </p>
               )}
@@ -281,13 +281,13 @@ function TransactionItem({
                 {tx.status === 'failure' ? 'Failed' : 'Contract Call'}
               </p>
               {tx.gasUsed && tx.status === 'success' && (
-                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
+                <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400">
                   Gas: {formatCompactAmount((Number(tx.gasUsed) / 1e9).toString())}
                 </p>
               )}
             </div>
           )}
-          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1">
+          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-1">
             {formatRelativeTime(tx.timestamp)}
           </p>
         </div>
@@ -344,7 +344,7 @@ export function TransactionHistoryPanel({
         )}
         <div className="p-6 text-center">
           <svg
-            className="w-12 h-12 text-gray-400 dark:text-zinc-600 mx-auto mb-3"
+            className="w-12 h-12 text-gray-400 dark:text-zinc-500 mx-auto mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -463,7 +463,7 @@ export function TransactionHistoryPanel({
         )}
         <div className="p-6 text-center">
           <svg
-            className="w-12 h-12 text-gray-400 dark:text-zinc-600 mx-auto mb-3"
+            className="w-12 h-12 text-gray-400 dark:text-zinc-500 mx-auto mb-3"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

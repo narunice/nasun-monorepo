@@ -75,7 +75,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
           <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1.5">
             Auto-lock Timeout
           </label>
-          <p className="text-sm xl:text-base text-gray-400 dark:text-zinc-500 mb-2">
+          <p className="text-sm xl:text-base text-gray-400 dark:text-zinc-400 mb-2">
             Automatically lock wallet after inactivity
           </p>
           <select
@@ -97,7 +97,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
             <label className="block text-sm xl:text-base text-gray-900 dark:text-white">
               Confirm Large Transactions
             </label>
-            <p className="text-sm xl:text-base text-gray-400 dark:text-zinc-500 mt-0.5">
+            <p className="text-sm xl:text-base text-gray-400 dark:text-zinc-400 mt-0.5">
               Require extra confirmation for large amounts
             </p>
           </div>
@@ -123,7 +123,7 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
             <label className="block text-sm xl:text-base text-gray-500 dark:text-zinc-400 mb-1.5">
               Large Transaction Threshold
             </label>
-            <p className="text-sm xl:text-base text-gray-400 dark:text-zinc-500 mb-2">
+            <p className="text-sm xl:text-base text-gray-400 dark:text-zinc-400 mb-2">
               Transactions above this amount require confirmation
             </p>
             <select

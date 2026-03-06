@@ -66,7 +66,7 @@ export function WalletLabelEditor({
           >
             <span className="font-medium">{label || "Set nickname"}</span>
             <svg
-              className="w-2.5 h-2.5 text-gray-400 dark:text-zinc-500"
+              className="w-2.5 h-2.5 text-gray-400 dark:text-zinc-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -82,7 +82,7 @@ export function WalletLabelEditor({
           {label && (
             <button
               onClick={() => removeLabel()}
-              className="inline-flex p-0.5 ml-1 text-gray-400 dark:text-zinc-500 hover:text-red-400 dark:hover:text-red-400 transition-colors"
+              className="inline-flex p-0.5 ml-1 text-gray-400 dark:text-zinc-400 hover:text-red-400 dark:hover:text-red-400 transition-colors"
               title="Remove nickname"
             >
               <svg

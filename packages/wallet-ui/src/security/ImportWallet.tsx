@@ -171,7 +171,7 @@ export function ImportWallet({
               onChange={(e) => setMnemonic(e.target.value)}
               placeholder="Enter your recovery phrase, separated by spaces..."
               rows={3}
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base resize-none"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base resize-none"
               disabled={isLoading}
             />
           </div>
@@ -185,7 +185,7 @@ export function ImportWallet({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={isLoading}
             />
           </div>
@@ -200,7 +200,7 @@ export function ImportWallet({
               onChange={(e) => setConfirmPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleImportMnemonic()}
               placeholder="Confirm password"
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               disabled={isLoading}
             />
           </div>
@@ -279,7 +279,7 @@ export function ImportWallet({
             value={privateKey}
             onChange={(e) => setPrivateKey(e.target.value)}
             placeholder="suiprivkey1..."
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm xl:text-base"
             disabled={isLoading}
           />
         </div>
@@ -293,7 +293,7 @@ export function ImportWallet({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password"
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
           />
         </div>
@@ -308,7 +308,7 @@ export function ImportWallet({
             onChange={(e) => setConfirmPassword(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleImportPrivateKey()}
             placeholder="Confirm password"
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
           />
         </div>

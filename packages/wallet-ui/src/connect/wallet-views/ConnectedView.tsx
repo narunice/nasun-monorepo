@@ -125,7 +125,7 @@ function PortfolioSummaryBar({ isTestNetwork }: { isTestNetwork: boolean }) {
           ${portfolio.totalValueUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
         {isTestNetwork && (
-          <span className="text-[10px] text-gray-400 dark:text-zinc-500">simulated</span>
+          <span className="text-[10px] text-gray-400 dark:text-zinc-400">simulated</span>
         )}
       </div>
       <span className={`text-xs font-medium ${changeColor}`}>

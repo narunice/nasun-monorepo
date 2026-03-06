@@ -236,7 +236,7 @@ export function NsaRecoveryPanel({ onClose, guardianContext }: NsaRecoveryPanelP
               disabled
               className="w-full px-3 py-2 bg-gray-200 dark:bg-zinc-600 border border-gray-300 dark:border-zinc-600 rounded text-xs xl:text-sm text-gray-700 dark:text-zinc-400 font-mono opacity-75 cursor-not-allowed"
             />
-            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+            <p className="text-xs text-gray-400 dark:text-zinc-400 mt-0.5">
               Pre-configured by the account owner during guardian setup.
             </p>
           </div>

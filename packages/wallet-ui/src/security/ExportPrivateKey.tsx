@@ -97,7 +97,7 @@ export function ExportPrivateKey({ onExport, onClose, authMode = "password" }: E
               {showKey ? (
                 <span className="text-gray-900 dark:text-white">{privateKey}</span>
               ) : (
-                <span className="text-gray-400 dark:text-zinc-500">{'•'.repeat(64)}</span>
+                <span className="text-gray-400 dark:text-zinc-400">{'•'.repeat(64)}</span>
               )}
             </div>
             <button
@@ -246,7 +246,7 @@ export function ExportPrivateKey({ onExport, onClose, authMode = "password" }: E
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Your wallet password"
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             disabled={isLoading}
             onKeyDown={(e) => e.key === 'Enter' && handleExport()}
           />

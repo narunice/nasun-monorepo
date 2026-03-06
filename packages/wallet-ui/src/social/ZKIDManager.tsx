@@ -185,7 +185,7 @@ export function ZKIDManager({
       {proofEntries.length === 0 ? (
         <div className="text-center py-4">
           <svg
-            className="w-8 h-8 text-gray-300 dark:text-zinc-600 mx-auto mb-2"
+            className="w-8 h-8 text-gray-300 dark:text-zinc-500 mx-auto mb-2"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -200,7 +200,7 @@ export function ZKIDManager({
           <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400">
             No proofs stored
           </p>
-          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-500 mt-0.5">
+          <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 mt-0.5">
             Proofs are generated when required by dApps
           </p>
         </div>
@@ -247,7 +247,7 @@ export function ZKIDManager({
                       <span className="text-[10px] xl:text-xs text-gray-500 dark:text-zinc-400">
                         Stored {formatStoredTime(entry.storedAt)}
                       </span>
-                      <span className="text-gray-300 dark:text-zinc-600">|</span>
+                      <span className="text-gray-300 dark:text-zinc-500">|</span>
                       <span className={`text-[10px] xl:text-xs ${
                         isExpired
                           ? 'text-red-500 dark:text-red-400'
@@ -261,7 +261,7 @@ export function ZKIDManager({
                   {/* Remove button */}
                   <button
                     onClick={() => handleRemove(type)}
-                    className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
+                    className="p-1 text-gray-400 hover:text-red-500 dark:text-zinc-400 dark:hover:text-red-400 transition-colors"
                     title="Remove proof"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

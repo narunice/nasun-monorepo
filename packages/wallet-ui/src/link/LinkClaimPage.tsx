@@ -202,7 +202,7 @@ export function LinkClaimPage({
             "{linkData.config.message}"
           </p>
         )}
-        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400">
           Transaction: {claimedTxDigest.slice(0, 8)}...{claimedTxDigest.slice(-6)}
         </p>
       </div>
@@ -236,7 +236,7 @@ export function LinkClaimPage({
 
         {/* Balance check */}
         {isLoadingBalance ? (
-          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-2">Checking funds...</p>
+          <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-2">Checking funds...</p>
         ) : hasFunds === false ? (
           <p className="text-xs xl:text-sm text-red-500 mt-2">This link has no funds</p>
         ) : null}
@@ -256,7 +256,7 @@ export function LinkClaimPage({
             size="lg"
           />
 
-          <p className="text-center text-xs xl:text-sm text-gray-400 dark:text-zinc-500">
+          <p className="text-center text-xs xl:text-sm text-gray-400 dark:text-zinc-400">
             Claim in 10 seconds with your Google account
           </p>
         </div>
@@ -306,7 +306,7 @@ export function LinkClaimPage({
 
           {/* Expiration info */}
           {linkData.config.expiresAt && (
-            <p className="text-xs xl:text-sm text-center text-gray-400 dark:text-zinc-500">
+            <p className="text-xs xl:text-sm text-center text-gray-400 dark:text-zinc-400">
               Expires: {new Date(linkData.config.expiresAt).toLocaleString('en-US')}
             </p>
           )}
@@ -315,7 +315,7 @@ export function LinkClaimPage({
 
       {/* Sender info */}
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-zinc-700">
-        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 text-center">
+        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 text-center">
           From: {linkData.creator.slice(0, 8)}...{linkData.creator.slice(-6)}
         </p>
       </div>

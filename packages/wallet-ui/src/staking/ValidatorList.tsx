@@ -172,7 +172,7 @@ function ValidatorCard({ validator, isSelected, onSelect, compact }: ValidatorCa
           </div>
 
           {validator.description && (
-            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-500 mt-1 truncate">
+            <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400 mt-1 truncate">
               {validator.description}
             </p>
           )}
