@@ -85,6 +85,8 @@ export interface PasskeyRegistrationResult {
   clientDataJSON: string;
   /** Whether the authenticator supports PRF extension */
   prfSupported: boolean;
+  /** PRF output from registration response, when eval.first is provided in extensions */
+  prfOutput?: ArrayBuffer;
 }
 
 /**

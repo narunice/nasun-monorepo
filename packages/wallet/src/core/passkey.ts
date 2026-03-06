@@ -148,7 +148,10 @@ export async function registerPasskey(
       excludeCredentials: excludeList,
       attestation: 'none', // No attestation needed for client-side wallet
       extensions: {
-        prf: {},
+        // Include PRF eval input at registration time so the browser returns PRF output
+        // directly in the create() response. This avoids a second credentials.get() call,
+        // which Safari iOS disallows (only one WebAuthn call per user gesture is permitted).
+        prf: { eval: { first: toArrayBuffer(PRF_EVAL_SALT) } },
       },
     },
   };
@@ -173,10 +176,13 @@ export async function registerPasskey(
     // Determine algorithm from COSE key
     const algorithm = response.getPublicKeyAlgorithm?.() ?? -7;
 
-    // Check PRF extension support from registration response
+    // Check PRF extension support and extract PRF output from registration response.
+    // When eval.first is provided during create(), the browser returns PRF output here,
+    // eliminating the need for a follow-up credentials.get() call.
     const clientExtensions = credential.getClientExtensionResults() as Record<string, unknown>;
-    const prfExtension = clientExtensions?.prf as { enabled?: boolean } | undefined;
+    const prfExtension = clientExtensions?.prf as { enabled?: boolean; results?: { first?: ArrayBuffer } } | undefined;
     const prfSupported = prfExtension?.enabled === true;
+    const prfOutput = prfExtension?.results?.first;
 
     // Build credential object (rawId omitted — use base64url `id` instead)
     const passkeyCredential: PasskeyCredential = {
@@ -195,6 +201,7 @@ export async function registerPasskey(
       attestationObject: base64urlEncode(response.attestationObject),
       clientDataJSON: base64urlEncode(response.clientDataJSON),
       prfSupported,
+      prfOutput,
     };
   } catch (error) {
     if (error instanceof PasskeyError) throw error;
