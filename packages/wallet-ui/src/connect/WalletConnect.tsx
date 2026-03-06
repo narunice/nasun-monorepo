@@ -39,6 +39,17 @@ export function WalletConnect({
 }: WalletConnectProps) {
   const s = useWalletConnectState();
 
+  // Lock body scroll when mobile modal is open to prevent background page from scrolling.
+  // iOS Safari propagates touch scroll events from position:fixed elements to document.body,
+  // so setting overflow:hidden on body is the most reliable cross-browser fix.
+  useEffect(() => {
+    if (s.showDropdown && s.isMobile) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [s.showDropdown, s.isMobile]);
+
   // Close dropdown on Escape key
   const handleEscapeKey = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape" && s.showDropdown) {
@@ -163,7 +174,7 @@ export function WalletConnect({
             />
             <div
               ref={s.mobileDropdownRef}
-              className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${WALLET_STYLES.dropdownMobile} overflow-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]`}
+              className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${WALLET_STYLES.dropdownMobile} overflow-y-auto overflow-x-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]`}
             >
               {dropdownContent}
             </div>

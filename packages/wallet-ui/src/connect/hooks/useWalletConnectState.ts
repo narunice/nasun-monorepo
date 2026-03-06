@@ -192,6 +192,9 @@ export function useWalletConnectState() {
     if (isLedgerConnected && ledgerAddress) {
       return shortenAddressResponsive(ledgerAddress, viewState.isMobile);
     }
+    // Passkey wallet exists but is locked — self-custody status remains "disconnected"
+    // (no keystore), so this check must come before the "disconnected" fallback.
+    if (passkeyWallet && !isPasskeyUnlocked) return "Locked";
     if (status === "disconnected") return "Get Started";
     if (status === "locked") return "Locked";
     if (status === "unlocked" && account) {
@@ -209,6 +212,7 @@ export function useWalletConnectState() {
     if (isLedgerConnected) return "text-amber-500";
     if (status === "unlocked") return "text-green-500";
     if (status === "locked") return "text-yellow-500";
+    if (passkeyWallet && !isPasskeyUnlocked) return "text-yellow-500";
     return "text-zinc-500";
   };
 
