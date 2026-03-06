@@ -153,17 +153,10 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
         userVerification: 'required',
       };
 
-      const { credential, prfSupported } = await registerPasskey(registrationOptions);
-
-      // If PRF is supported, authenticate to get PRF output for encryption
-      let prfOutput: ArrayBuffer | undefined;
-      if (prfSupported) {
-        const authResult = await authenticateWithPasskey({
-          allowCredentials: [credential.id],
-          userVerification: 'required',
-        });
-        prfOutput = authResult.prfOutput;
-      }
+      // PRF output is returned directly from create() when eval.first is provided,
+      // so no second credentials.get() call is needed (Safari iOS forbids two WebAuthn
+      // calls per user gesture; the second would throw NotAllowedError).
+      const { credential, prfOutput } = await registerPasskey(registrationOptions);
 
       // Determine key derivation method (same logic as createPasskeyWallet)
       const keyDerivationMethod = prfOutput ? 'prf' : (password ? 'credential-id-password' : 'credential-id');
