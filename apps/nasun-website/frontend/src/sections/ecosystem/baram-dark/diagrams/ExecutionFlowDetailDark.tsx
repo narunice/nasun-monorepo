@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Lock, Zap, Clock, Wallet, Tag, ListChecks, Timer } from "lucide-react";
-import { flowStepsDark } from "./ExecutionFlowDiagramDark";
+import { flowStepsDark } from "./flowSteps";
 import { OuterBox } from "@/components/ui/OuterBox";
 
 const budgetLayers = [
