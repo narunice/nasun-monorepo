@@ -195,7 +195,7 @@ const LeaderboardInfoSection: React.FC = () => {
             Rewards are based on contribution quality and ecosystem engagement, — not on purchases
             or sales activity.
           </p>
-          <p className="">Starting March 10 - April</p>
+          <p className="">Starting Date TBA</p>
         </section>
 
         {/* --- Ranks & Recognition Table --- */}
