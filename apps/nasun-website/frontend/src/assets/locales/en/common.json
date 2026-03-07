@@ -86,7 +86,7 @@
   },
   "logout": {
     "successMessage": "Logged out safely",
-    "description": "See you back on-chain, Pioneer.",
+    "description": "See you back on-chain, Frontier.",
     "backToHome": "Back to Home",
     "loginAgain": "Log In Again"
   },
