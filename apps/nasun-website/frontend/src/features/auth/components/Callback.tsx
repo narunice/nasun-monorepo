@@ -7,14 +7,16 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth"; // 내부 경로는 상대 경로 유지
 import logger from "@/lib/logger";
 import { ZkLoginCallback } from "@nasun/wallet-ui";
-import { getZkLoginReturnUrl, clearZkLoginReturnUrl } from "@nasun/wallet";
+import { getZkLoginReturnUrl, clearZkLoginReturnUrl, SignerManager, ZkLoginSigner } from "@nasun/wallet";
 import { isValidReturnUrl } from "../utils/urlValidation";
+import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
 
 export default function Callback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation("common");
   const { isAuthenticated, isLoading, user, error } = useAuth();
+  const { signFlow } = useNasunWalletAuth();
   const hasHandledRef = useRef(false);
 
   // Check if this is a zkLogin callback (Implicit Flow uses URL hash)
@@ -122,10 +124,22 @@ export default function Callback() {
       <div className="min-h-screen bg-nasun-black flex items-center justify-center">
         <div className="bg-zinc-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl border border-zinc-500/30">
           <ZkLoginCallback
-            onSuccess={() => {
+            onSuccess={async (state) => {
+              try {
+                // Register signer immediately — the useEffect in useSigner
+                // hasn't fired yet at this point, so SignerManager is empty.
+                if (state.proof) {
+                  SignerManager.register(new ZkLoginSigner(state));
+                }
+                await signFlow();
+              } catch (err) {
+                logger.error("zkLogin signFlow failed:", err);
+                navigate("/", { replace: true });
+                return;
+              }
               const returnUrl = getZkLoginReturnUrl();
               clearZkLoginReturnUrl();
-              const target = returnUrl && isValidReturnUrl(returnUrl) ? returnUrl : "/my-account";
+              const target = returnUrl && returnUrl !== "/" && isValidReturnUrl(returnUrl) ? returnUrl : "/my-account";
               navigate(target, { replace: true });
             }}
             onError={(err) => {

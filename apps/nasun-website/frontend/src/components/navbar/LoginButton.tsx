@@ -1,14 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { EnterIcon, ExitIcon } from "@radix-ui/react-icons";
+import { ExitIcon, EnterIcon } from "@radix-ui/react-icons";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useWallet, useZkLogin } from "@nasun/wallet";
-import { SignUpModal } from "../auth/SignUpModal";
-import { isMobileBrowser } from "../../utils/mobileDetect";
-import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
+import { WalletConnect } from "@nasun/wallet-ui";
+import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
 
 const LoginButton = () => {
   const { t } = useTranslation("common");
@@ -17,71 +16,81 @@ const LoginButton = () => {
     user,
     isLoading,
     isAuthenticated,
-    signInWithGoogle,
-    signInWithTwitter,
     logout,
   } = useAuth();
   const { lockWallet } = useWallet();
-  const { logout: zkLogout } = useZkLogin();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [signUpModalOpen, setSignUpModalOpen] = useState(false);
-  const mobile = isMobileBrowser();
+  const { logout: zkLogout, isConnected: isZkConnected } = useZkLogin();
+  const { status, signFlow } = useNasunWalletAuth();
 
-  // 로그인 메뉴 항목은 항상 inactive 스타일 사용 (active 상태 없음)
-  const loginMenuItemClass = `${DESKTOP_NAVIGATION_STYLES.subMenuItem.base} ${DESKTOP_NAVIGATION_STYLES.subMenuItem.inactive}`;
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const signFlowCalledRef = useRef(false);
+
+  const isAnyConnected = status === 'unlocked' || isZkConnected;
+
+  // Wallet unlock → auth flow (signFlow)
+  const handleWalletUnlocked = useCallback(async () => {
+    if (signFlowCalledRef.current) return;
+    signFlowCalledRef.current = true;
+    setSigningIn(true);
+    try {
+      await signFlow();
+      setLoginModalOpen(false);
+      navigate('/my-account');
+    } catch (err) {
+      signFlowCalledRef.current = false;
+      setSigningIn(false);
+      if (import.meta.env.DEV) console.error('[wallet auth]', err);
+    }
+  }, [signFlow, navigate]);
+
+  // Already-unlocked wallet: trigger signFlow immediately on modal open.
+  // WalletConnect's onWalletUnlocked doesn't fire if wallet is already connected at mount.
+  useEffect(() => {
+    if (loginModalOpen && isAnyConnected) handleWalletUnlocked();
+  }, [loginModalOpen]); // eslint-disable-line react-hooks/exhaustive-deps -- status transitions handled by onWalletUnlocked
+
+  // Reset guards when modal closes
+  useEffect(() => {
+    if (!loginModalOpen) {
+      signFlowCalledRef.current = false;
+      setSigningIn(false);
+    }
+  }, [loginModalOpen]);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!loginModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !signingIn) setLoginModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [loginModalOpen, signingIn]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (!loginModalOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [loginModalOpen]);
 
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true);
-      zkLogout(); // Disconnect zkLogin wallet session first so isZkLoggedIn=false before Cognito clears
-      lockWallet(); // Lock LocalSigner wallet (clears keypair + session password)
+      zkLogout();
+      lockWallet();
       await logout();
       navigate("/logout");
     } catch (err) {
       console.error("Error signing out:", err);
-      // 에러가 발생해도 로그아웃 페이지로 이동
       navigate("/logout");
     } finally {
       setIsSigningOut(false);
     }
   };
-
-  const handleSignIn = async (provider: "google" | "twitter") => {
-    try {
-      if (provider === "google") {
-        await signInWithGoogle();
-      } else if (provider === "twitter") {
-        if (!import.meta.env.VITE_TWITTER_AUTH_API) {
-          console.warn(
-            "Twitter Auth API is not configured. Please set VITE_TWITTER_AUTH_API in .env"
-          );
-          return;
-        }
-        await signInWithTwitter();
-      }
-    } catch (error) {
-      console.error(`${provider} sign-in failed:`, error);
-    }
-  };
-
-  // Check if Twitter Auth is available
-  const isTwitterAuthAvailable = !!import.meta.env.VITE_TWITTER_AUTH_API;
-
-  // [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
-  // Wallet connection remains available in my-account profile.
-  // const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
-  // const { connect: connectWallet, isAuthenticating: isWalletAuthenticating, error: walletError } = useWalletAuth({
-  //   mode: "login",
-  //   onSuccess: (walletAddress) => {
-  //     trackEvent(AnalyticsEvent.AUTH_WALLET_SUCCESS, {});
-  //     const currentPath = window.location.pathname;
-  //     navigate(currentPath === "/" ? "/my-account" : currentPath);
-  //   },
-  //   onError: (err) => {
-  //     trackEvent(AnalyticsEvent.AUTH_WALLET_ERROR, { reason: err.message });
-  //     console.error("Wallet login error:", err);
-  //   },
-  // });
 
   if (isLoading) {
     return (
@@ -115,97 +124,69 @@ const LoginButton = () => {
           >
             {user?.provider && `${user.provider} • `}
             {t("auth.logout")}
-            <Tooltip.Arrow className="fill-gray-300" />
           </Tooltip.Content>
         </Tooltip.Root>
-      ) : mobile ? (
-        <>
-          <button
-            onClick={() => setSignUpModalOpen(true)}
-            className="rounded-lg cursor-pointer p-1 text-nasun-black hover:opacity-70 transition-all"
-          >
-            <EnterIcon className="size-5 xl:size-6" />
-          </button>
-          <SignUpModal
-            isOpen={signUpModalOpen}
-            onClose={() => setSignUpModalOpen(false)}
-            // [DISABLED] Wallet login removed from nav menu
-            // onWalletConnect={() => {
-            //   trackEvent(AnalyticsEvent.AUTH_WALLET_START, {});
-            //   setSignUpModalOpen(false);
-            //   connectWallet();
-            // }}
-            // isWalletAuthenticating={isWalletAuthenticating}
-            // walletError={walletError}
-          />
-        </>
       ) : (
-        <DropdownMenu.Root modal={false}>
-          {/* layout shift 방지: 스크롤바 사라짐으로 인한 텍스트 이동 방지 */}
-          <DropdownMenu.Trigger asChild>
-            <button className="rounded-lg cursor-pointer p-1 text-nasun-black hover:opacity-70 transition-all">
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <button
+              onClick={() => setLoginModalOpen(true)}
+              className="rounded-lg cursor-pointer p-1 text-nasun-black hover:opacity-70 transition-all"
+            >
               <EnterIcon className="size-5 xl:size-6" />
             </button>
-          </DropdownMenu.Trigger>
+          </Tooltip.Trigger>
+          <Tooltip.Content
+            side="bottom"
+            align="center"
+            sideOffset={8}
+            className="max-w-[150px] px-2 py-1 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg"
+          >
+            Sign Up / Login
+          </Tooltip.Content>
+        </Tooltip.Root>
+      )}
 
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              align="end"
-              sideOffset={5}
-              className="min-w-56 bg-nasun-white rounded-lg shadow-lg border border-nasun-black/20 p-1 z-[70]"
+      {/* Login Modal — portalled to body to escape navbar overflow constraints */}
+      {loginModalOpen && !isAuthenticated && createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex flex-col overflow-y-auto p-4 bg-nasun-black/60 backdrop-blur-sm animate-in fade-in-0"
+            onClick={() => { if (!signingIn) setLoginModalOpen(false); }}
+          >
+            <div
+              className="relative m-auto bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-sm w-full shrink-0 animate-in fade-in-0 zoom-in-95 border border-gray-200 dark:border-zinc-700"
+              onClick={(e) => e.stopPropagation()}
             >
-            {isTwitterAuthAvailable && (
-              <DropdownMenu.Item asChild>
+              {/* Close button — hidden during signFlow */}
+              {!signingIn && (
                 <button
-                  onClick={() => handleSignIn("twitter")}
-                  className={loginMenuItemClass}
+                  className="absolute top-3 right-3 z-10 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors p-1"
+                  onClick={() => setLoginModalOpen(false)}
                 >
-                  <img src="/X_logo_2023.svg.png" alt="X" className="w-4 h-4" />
-                  {t("auth.login")} with X
-                </button>
-              </DropdownMenu.Item>
-            )}
-            <DropdownMenu.Item asChild>
-              <button
-                onClick={() => handleSignIn("google")}
-                className={loginMenuItemClass}
-              >
-                <img src="/Google__G__logo.svg" alt="Google" className="w-4 h-4" />
-                {t("auth.login")} with Google
-              </button>
-            </DropdownMenu.Item>
-            {/* [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
-               Wallet connection remains available in my-account profile.
-            {isWalletLoginEnabled && (
-              <DropdownMenu.Item asChild>
-                <button
-                  onClick={() => {
-                    trackEvent(AnalyticsEvent.AUTH_WALLET_START, {});
-                    connectWallet();
-                  }}
-                  className={loginMenuItemClass}
-                >
-                  <svg
-                    className="w-4 h-4 flex-shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1 0-6h.75A2.25 2.25 0 0 1 18 6v0a2.25 2.25 0 0 1-2.25 2.25H15m6 3.75v3a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25v6.75Z"
-                    />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  {t("auth.login")} with Wallet
                 </button>
-              </DropdownMenu.Item>
-            )}
-            */}
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+              )}
+
+              {/* Wallet Section or Signing In indicator */}
+              {signingIn ? (
+                <div className="px-5 py-8 text-center space-y-3">
+                  <div className="loading-spinner mx-auto" />
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">Signing in...</p>
+                </div>
+              ) : (
+                <WalletConnect
+                  embedded
+                  defaultOpen
+                  onWalletUnlocked={handleWalletUnlocked}
+                  showPrivacyNotice
+                  lockedTitle="Unlock Wallet to Login"
+                />
+              )}
+            </div>
+          </div>,
+          document.body,
       )}
     </div>
   );

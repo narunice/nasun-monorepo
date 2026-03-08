@@ -1,11 +1,12 @@
 // components/navbar/Navbar.tsx
 
 import { useTranslation } from "react-i18next";
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getNavItemsV2 } from "../../config/routesConfig";
 import { NavItem } from "../../types/routes";
 import LoginButton from "./LoginButton";
+import WalletButton from "./WalletButton";
 import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,29 +14,12 @@ import { faCircleUser } from "@fortawesome/free-solid-svg-icons";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
 import { useAuth } from "@/features/auth";
-import { WalletConnect } from "@nasun/wallet-ui";
-import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
-
-const isNasunWalletLoginEnabled = import.meta.env.VITE_ENABLE_NASUN_WALLET_LOGIN === 'true';
 
 export default function Navbar() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const { signFlow } = useNasunWalletAuth();
-
-  const handleWalletUnlocked = useCallback(async () => {
-    if (!isAuthenticated) {
-      try {
-        await signFlow();
-        navigate('/my-account');
-      } catch (err) {
-        // Log error in dev so we can debug auth failures; WalletConnect stays open for retry
-        if (import.meta.env.DEV) console.error('[handleWalletUnlocked] signFlow failed:', err);
-      }
-    }
-  }, [isAuthenticated, signFlow, navigate]);
   const [isMenuOpen, setIsMenuOpen] = useState<Record<string, boolean>>({});
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -51,7 +35,7 @@ export default function Navbar() {
         const hasActiveSubItem = item.subMenu.some(
           (subItem) =>
             location.pathname === subItem.path ||
-            (subItem.path !== "/" && location.pathname.startsWith(subItem.path))
+            (subItem.path !== "/" && location.pathname.startsWith(subItem.path)),
         );
 
         if (hasActiveSubItem) {
@@ -85,7 +69,10 @@ export default function Navbar() {
   // Authentication is now handled by AuthContext
 
   return (
-    <nav aria-label="Main navigation" className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-8xl px-0 lg:px-4 flex gap-6 items-stretch">
+    <nav
+      aria-label="Main navigation"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-8xl px-0 lg:px-4 flex gap-6 items-stretch"
+    >
       {/* 데스크탑: 심볼 박스 (가장 왼쪽, 독립적) */}
       <Link
         to="/"
@@ -154,7 +141,7 @@ export default function Navbar() {
                       navigate("/my-account");
                     }
                   }}
-                  className="rounded-3xl cursor-pointer text-nasun-black hover:opacity-70 transition-all flex items-center justify-center"
+                  className={`rounded-3xl cursor-pointer hover:opacity-70 transition-all flex items-center justify-center ${location.pathname === "/my-account" ? "text-nasun-nw2" : "text-nasun-black"}`}
                   aria-label="유저 프로필"
                 >
                   <FontAwesomeIcon icon={faCircleUser} className="text-xl lg:text-2xl" />
@@ -167,23 +154,11 @@ export default function Navbar() {
                 className="max-w-[150px] px-2 py-1 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg"
               >
                 {t("myAccount")}
-                <Tooltip.Arrow className="fill-gray-300" />
               </Tooltip.Content>
             </Tooltip.Root>
           )}
 
-          {/* [DISABLED] Nasun Wallet connect in navbar — moved to My Account page
-          {!isAuthenticated && isNasunWalletLoginEnabled && (
-            <WalletConnect
-              triggerText="Get Started"
-              onWalletUnlocked={handleWalletUnlocked}
-              dropdownAlign="right"
-              dropdownPosition="bottom"
-              buttonClassName="font-rubik font-normal"
-              showPrivacyNotice
-            />
-          )}
-          */}
+          {isAuthenticated && user && <WalletButton />}
           <LoginButton />
         </div>
       </div>
