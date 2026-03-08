@@ -14,29 +14,20 @@ interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
   twitterOnly?: boolean;
-  // [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
-  // Wallet connection remains available in my-account profile.
-  // onWalletConnect?: () => void;
-  // isWalletAuthenticating?: boolean;
-  // walletError?: string | null;
+  onWalletLogin?: () => void;
 }
 
 export function SignUpModal({
   isOpen,
   onClose,
   twitterOnly = false,
-  // [DISABLED] Wallet login props
-  // onWalletConnect,
-  // isWalletAuthenticating = false,
-  // walletError = null,
+  onWalletLogin,
 }: SignUpModalProps) {
   const navigate = useNavigate();
   const { isAuthenticated, signInWithGoogle, signInWithTwitter } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const isTwitterAuthAvailable = !!import.meta.env.VITE_TWITTER_AUTH_API;
-  // [DISABLED] Wallet login
-  // const isWalletLoginEnabled = import.meta.env.VITE_ENABLE_WALLET_LOGIN === "true";
 
   const handleSignIn = async (provider: "google" | "twitter") => {
     try {
@@ -106,6 +97,26 @@ export function SignUpModal({
           </div>
         ) : (
           <div className="flex flex-col gap-3 pt-2">
+            {/* Wallet Login Section */}
+            {!twitterOnly && onWalletLogin && (
+              <>
+                <p className="text-[11px] text-nasun-black/40 uppercase tracking-wider font-medium">
+                  Wallet Login for Privacy
+                </p>
+                <button
+                  onClick={onWalletLogin}
+                  className={providerBtnClass}
+                >
+                  <img src="/nasun_symbol_black.svg" alt="" className="w-5 h-5" />
+                  Login / Register with Nasun Wallet
+                </button>
+                <div className="border-t border-nasun-black/10 my-1" />
+                <p className="text-[11px] text-nasun-black/40 uppercase tracking-wider font-medium">
+                  Social Login for Ease
+                </p>
+              </>
+            )}
+
             {isTwitterAuthAvailable && (
               <button
                 onClick={() => handleSignIn("twitter")}
@@ -118,53 +129,14 @@ export function SignUpModal({
             )}
 
             {!twitterOnly && (
-              <>
-                <button
-                  onClick={() => handleSignIn("google")}
-                  disabled={isSigningIn}
-                  className={providerBtnClass}
-                >
-                  <img src="/Google__G__logo.svg" alt="Google" className="w-5 h-5" />
-                  {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
-                </button>
-
-                {/* [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
-                   Wallet connection remains available in my-account profile.
-                {isWalletLoginEnabled && onWalletConnect && (
-                  <>
-                    <button
-                      onClick={onWalletConnect}
-                      disabled={isWalletAuthenticating}
-                      className={providerBtnClass}
-                    >
-                      <svg
-                        className="w-5 h-5 flex-shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1 0-6h.75A2.25 2.25 0 0 1 18 6v0a2.25 2.25 0 0 1-2.25 2.25H15m6 3.75v3a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25A2.25 2.25 0 0 1 5.25 3h13.5A2.25 2.25 0 0 1 21 5.25v6.75Z"
-                        />
-                      </svg>
-                      {isWalletAuthenticating ? (
-                        <InlineLoading size="sm" />
-                      ) : walletError ? (
-                        "Try Again"
-                      ) : (
-                        "Continue with Wallet"
-                      )}
-                    </button>
-                    {walletError && (
-                      <div className="text-sm text-red-400 px-2 py-1">{walletError}</div>
-                    )}
-                  </>
-                )}
-                */}
-              </>
+              <button
+                onClick={() => handleSignIn("google")}
+                disabled={isSigningIn}
+                className={providerBtnClass}
+              >
+                <img src="/Google__G__logo.svg" alt="Google" className="w-5 h-5" />
+                {isSigningIn ? <InlineLoading size="sm" /> : "Continue with Google"}
+              </button>
             )}
           </div>
         )}
