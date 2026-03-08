@@ -11,6 +11,7 @@ export type CoreViewMode =
   | "delete-confirm"
   | "import"
   | "export"
+  | "export-mnemonic"
   | "send"
   | "receive";
 

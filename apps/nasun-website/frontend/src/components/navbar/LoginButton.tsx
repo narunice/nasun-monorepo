@@ -5,10 +5,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { EnterIcon, ExitIcon } from "@radix-ui/react-icons";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-// [DISABLED] Wallet login removed from nav menu — too buggy on mobile.
-// Wallet connection remains available in my-account profile.
-// import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
-// import { trackEvent, AnalyticsEvent } from "@/lib/analytics";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 import { SignUpModal } from "../auth/SignUpModal";
 import { isMobileBrowser } from "../../utils/mobileDetect";
 import { DESKTOP_NAVIGATION_STYLES } from "../../utils/navigationStyles";
@@ -24,6 +21,8 @@ const LoginButton = () => {
     signInWithTwitter,
     logout,
   } = useAuth();
+  const { lockWallet } = useWallet();
+  const { logout: zkLogout } = useZkLogin();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signUpModalOpen, setSignUpModalOpen] = useState(false);
   const mobile = isMobileBrowser();
@@ -34,6 +33,8 @@ const LoginButton = () => {
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true);
+      zkLogout(); // Disconnect zkLogin wallet session first so isZkLoggedIn=false before Cognito clears
+      lockWallet(); // Lock LocalSigner wallet (clears keypair + session password)
       await logout();
       navigate("/logout");
     } catch (err) {

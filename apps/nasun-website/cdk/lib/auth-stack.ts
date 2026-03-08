@@ -15,6 +15,7 @@ export interface AuthStackProps extends cdk.StackProps {
 
 export class AuthStack extends cdk.Stack {
   public readonly metamaskAuthApi: apigw.RestApi;
+  public readonly suiAuthApi: apigw.RestApi;
 
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
@@ -271,7 +272,7 @@ export class AuthStack extends cdk.Stack {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // 개발 환경용
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // RETAIN: cdk destroy 시 salt DB 삭제 방지 (사용자 Sui 주소 영구 소실 방어)
     });
 
     // 2. zkLogin Salt Lambda 함수
@@ -333,6 +334,110 @@ export class AuthStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ZkLoginTableName', {
       value: zkLoginTable.tableName,
       description: 'DynamoDB table for zkLogin users',
+    });
+
+    // ========================================
+    // Sui (Nasun Wallet) Authentication
+    // ========================================
+
+    // 1. Nonce 저장용 DynamoDB 테이블 (MetaMask 테이블과 완전 분리 — IAM 격리, CloudWatch 관측성)
+    const suiNonceTable = new dynamodb.Table(this, 'SuiAuthNoncesTable', {
+      tableName: 'SuiAuthNonces',
+      partitionKey: { name: 'walletAddress', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'expiresAt',
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // nonce는 TTL 임시 데이터이므로 삭제 허용
+    });
+
+    // 2. Sui Auth Lambda 함수
+    const suiAuthFunction = new NodejsFunction(this, 'SuiAuthFunction', {
+      functionName: 'nasun-auth-sui',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(lambdaSrcPath, 'auth-sui', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions, // @mysten/sui is bundled (only @aws-sdk/* is external)
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256, // extra memory for @mysten/sui bundle cold start (same as zkLogin Lambda)
+      environment: {
+        NONCE_TABLE_NAME: suiNonceTable.tableName,
+        USER_PROFILES_TABLE: props.userProfilesTable.tableName,
+        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
+        COGNITO_DEVELOPER_PROVIDER_NAME: process.env.COGNITO_DEVELOPER_PROVIDER_NAME || 'nasun.io',
+        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logGroup: new logs.LogGroup(this, 'SuiAuthLambdaLogGroup', {
+        logGroupName: '/aws/lambda/nasun-auth-sui',
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    // 3. DynamoDB 권한 부여
+    suiNonceTable.grantReadWriteData(suiAuthFunction);
+    props.userProfilesTable.grantReadWriteData(suiAuthFunction);
+
+    // 4. Cognito 권한 부여
+    suiAuthFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'cognito-identity:GetId',
+          'cognito-identity:GetCredentialsForIdentity',
+          'cognito-identity:GetOpenIdTokenForDeveloperIdentity',
+        ],
+        resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`],
+      })
+    );
+
+    // 5. Secrets Manager 권한 (wallet proof secret)
+    suiAuthFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
+        ],
+      }),
+    );
+
+    // 6. API Gateway for Sui Auth
+    this.suiAuthApi = new apigw.RestApi(this, 'SuiAuthApi', {
+      restApiName: 'Sui Auth Service',
+      description: 'API for Nasun Wallet (Sui Ed25519) authentication',
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ['POST', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      deployOptions: {
+        throttlingBurstLimit: 500,
+        throttlingRateLimit: 200,
+      },
+    });
+
+    const suiAuth = this.suiAuthApi.root.addResource('auth');
+    const sui = suiAuth.addResource('sui');
+
+    // POST /auth/sui/prepare
+    const suiPrepareResource = sui.addResource('prepare');
+    suiPrepareResource.addMethod('POST', new apigw.LambdaIntegration(suiAuthFunction));
+
+    // POST /auth/sui/connect-verify
+    const suiConnectVerifyResource = sui.addResource('connect-verify');
+    suiConnectVerifyResource.addMethod('POST', new apigw.LambdaIntegration(suiAuthFunction));
+
+    // 7. CloudFormation Outputs
+    new cdk.CfnOutput(this, 'SuiAuthApiUrl', {
+      value: this.suiAuthApi.url,
+      description: 'The URL of the Sui Auth API Gateway',
+      exportName: 'SuiAuthApiUrl',
+    });
+
+    new cdk.CfnOutput(this, 'SuiNonceTableName', {
+      value: suiNonceTable.tableName,
+      description: 'DynamoDB table for Sui wallet auth nonces',
     });
 
   }

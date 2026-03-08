@@ -9,6 +9,7 @@ import { linkAccounts, ensureUserProfile } from "../utils/authApi";
 import { isValidReturnUrl } from "../utils/urlValidation";
 import { buildGoogleAuthUrl } from "../utils/googleAuthUrl";
 import { refreshAndSaveUserProfile } from "../services/userProfileService";
+import { registerWallet } from "@/services/suiWalletApi";
 import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
 import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
 
@@ -248,7 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.location.href = `${import.meta.env.VITE_TWITTER_AUTH_API}/login?mode=redirect`;
   };
 
-  const signInWithWallet = async (identityId: string, cognitoToken: string | undefined, walletAddress: string, connectorName?: string) => {
+  const signInWithWallet = useCallback(async (identityId: string, cognitoToken: string | undefined, walletAddress: string, connectorName?: string, walletProof?: string, proofIssuedAt?: string) => {
     clearError();
     setIsLoading(true);
     const provider = connectorName || "Wallet";
@@ -272,7 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         identityId,
         username:
           profileData.username ||
-          `${walletAddress.substring(0, 6)}...${walletAddress.substring(38)}`,
+          `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`,
         provider,
         walletAddress: walletAddress.toLowerCase(),
         cognitoToken,
@@ -284,6 +285,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.setItem("nasun_user_profile", JSON.stringify(userData));
       setUser(userData);
 
+      // Auto-register first wallet (fire-and-forget; 409 = already registered = OK)
+      if (walletProof && proofIssuedAt && cognitoToken) {
+        registerWallet(walletAddress.toLowerCase(), walletProof, proofIssuedAt, cognitoToken)
+          .catch((e) => logger.warn("Auto-register wallet failed (non-blocking):", e));
+      }
+
       logger.log("Wallet sign-in successful:", { identityId, walletAddress, provider });
     } catch (error) {
       logger.error("Wallet sign-in failed", error);
@@ -293,7 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [setIsLoading, setUser]);
 
   const logout = async () => {
     setIsLoading(true);

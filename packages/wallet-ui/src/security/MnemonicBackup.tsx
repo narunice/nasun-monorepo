@@ -155,7 +155,7 @@ export function MnemonicBackup({ mnemonic, onConfirm, onCancel }: MnemonicBackup
           </li>
           <li className="flex items-start gap-2">
             <span className="text-red-600 dark:text-red-500 mt-0.5">!</span>
-            <span>This phrase will NOT be shown again</span>
+            <span>You can view this phrase later in settings, but we strongly recommend backing it up now</span>
           </li>
         </ul>
       </div>

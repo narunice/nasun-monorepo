@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { Check, Link2 } from "lucide-react";
+import { Check, Link2, Bookmark } from "lucide-react";
 
 export const LoggedInBadge: FC = () => (
   <span
@@ -28,6 +28,16 @@ export const ConnectedBadge: FC = () => (
   >
     <Check className="w-3 h-3 flex-shrink-0" />
     <span className="hidden sm:inline">Connected</span>
+  </span>
+);
+
+export const RegisteredBadge: FC = () => (
+  <span
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-medium border border-indigo-400/20"
+    aria-label="Wallet is registered"
+  >
+    <Bookmark className="w-3 h-3 flex-shrink-0" />
+    <span className="hidden sm:inline">Registered</span>
   </span>
 );
 

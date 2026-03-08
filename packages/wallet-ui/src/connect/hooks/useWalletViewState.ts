@@ -70,7 +70,7 @@ export function consumePendingRestoreKey(): string | null {
   return key;
 }
 
-export function useWalletViewState() {
+export function useWalletViewState(initialViewMode?: ViewMode, defaultOpen?: boolean, onDropdownClose?: () => void) {
   const { clearError } = useWallet();
 
   // Check for pending mnemonic backup on mount — uses initial state so the
@@ -85,12 +85,12 @@ export function useWalletViewState() {
   const [viewMode, setViewMode] = useState<ViewMode>(
     pendingBackup ? "create-backup"
     : pendingPasskey ? "passkey-backup"
-    : "main"
+    : initialViewMode ?? "main"
   );
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showDropdown, setShowDropdown] = useState(!!pendingBackup || !!pendingPasskey);
+  const [showDropdown, setShowDropdown] = useState(!!pendingBackup || !!pendingPasskey || !!defaultOpen);
   const [mnemonic, setMnemonic] = useState<string | null>(pendingBackup ?? pendingPasskey);
   // Personalize initial tab based on userPurpose (set during onboarding).
   // 'invest' → Account tab (Staking is there); everything else → Assets tab.
@@ -137,6 +137,17 @@ export function useWalletViewState() {
     if (showDropdown) setProposalBannerDismissed(false);
   }, [showDropdown]);
 
+  // Unified dropdown close: hides dropdown, notifies parent, and resets form state.
+  // All code paths that close the dropdown should call this instead of setShowDropdown(false).
+  const closeDropdown = useCallback(() => {
+    setShowDropdown(false);
+    onDropdownClose?.();
+    setViewMode("main");
+    setPassword("");
+    setConfirmPassword("");
+    clearError();
+  }, [onDropdownClose, clearError]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     if (!showDropdown) return;
@@ -168,17 +179,13 @@ export function useWalletViewState() {
           viewMode === "passkey-backup"
         ) return;
 
-        setShowDropdown(false);
-        setViewMode("main");
-        setPassword("");
-        setConfirmPassword("");
-        clearError();
+        closeDropdown();
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showDropdown, viewMode, clearError]);
+  }, [showDropdown, viewMode, closeDropdown]);
 
   const resetView = useCallback(() => {
     setViewMode("main");
@@ -217,6 +224,7 @@ export function useWalletViewState() {
     setShowMoreMenu,
     dropdownRef,
     mobileDropdownRef,
+    closeDropdown,
     resetView,
   };
 }

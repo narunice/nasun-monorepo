@@ -6,18 +6,15 @@
  * managing both social logins and wallet connections.
  */
 
-import { FC, useState, useCallback } from "react";
-import { useTranslation } from "react-i18next";
-// import { toast } from "react-toastify"; // [DISABLED] Only used by wallet features
+import { FC, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/features/auth";
 import { OuterBox } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-// [DISABLED] EVM Wallet features removed from profile — too buggy on mobile.
-// import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 import { AccountItem } from "./components/AccountItem";
+import { AddWalletModal } from "./components/AddWalletModal";
 import {
   ChannelMemberBadge,
   ConnectedBadge,
@@ -26,6 +23,37 @@ import {
 } from "./components/StatusBadges";
 import { useAccountLinking } from "./hooks/useAccountLinking";
 import { useTelegramVerify } from "./hooks/useTelegramVerify";
+import { useWalletRegistration } from "./hooks/useWalletRegistration";
+
+/** Generate a deterministic GitHub-style identicon SVG for a wallet address. */
+function generateWalletIdenticon(address: string): string {
+  const clean = address.replace('0x', '').toLowerCase().padEnd(62, '0');
+  const hue = parseInt(clean.slice(0, 6), 16) % 360;
+  const sat = 50 + (parseInt(clean.slice(6, 8), 16) % 30);
+  const light = 40 + (parseInt(clean.slice(8, 10), 16) % 20);
+  const fgColor = `hsl(${hue},${sat}%,${light}%)`;
+  const bgColor = `hsl(${hue},15%,12%)`;
+
+  // 3 unique columns → mirrored to 5 columns (symmetric identicon)
+  const cells: boolean[] = [];
+  for (let i = 0; i < 15; i++) {
+    cells.push(parseInt(clean.slice(10 + i * 2, 12 + i * 2), 16) % 2 === 0);
+  }
+
+  const CELL = 10;
+  let rects = '';
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      const idx = row * 3 + (col <= 2 ? col : 4 - col);
+      if (cells[idx]) {
+        rects += `<rect x="${col * CELL}" y="${row * CELL}" width="${CELL}" height="${CELL}" fill="${fgColor}"/>`;
+      }
+    }
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="64" height="64"><rect width="50" height="50" fill="${bgColor}"/>${rects}</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 
 interface ProfileHeroCardProps {
   className?: string;
@@ -76,23 +104,91 @@ function getLoginIdentifier(
 }
 
 export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) => {
-  const { t } = useTranslation(["myAccount", "common"]);
   const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [disclaimerExpanded, setDisclaimerExpanded] = useState(false);
+  const [addWalletModalOpen, setAddWalletModalOpen] = useState(false);
+  const [walletFlowActive, setWalletFlowActive] = useState(false);
 
   // Custom Hooks
   const { isLinking, handleLinkGoogle, handleLinkTwitter, unlinkAccount } = useAccountLinking({
     user,
   });
   const telegram = useTelegramVerify({ user });
+  const walletReg = useWalletRegistration();
 
   // [DISABLED] EVM Wallet features removed from profile — too buggy on mobile.
   // Nasun Wallet Hooks
   const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
-  const isNasunConnected = (status === "unlocked" && account) || isZkConnected;
-  const nasunWalletAddress = account?.address;
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const isNasunConnected = (status === "unlocked" && !!account) || isZkConnected;
+  // zkLogin users have no self-custody account — fall back to zkState.address
+  const nasunWalletAddress = account?.address ?? zkState?.address;
+  // DB-stored linked wallet address (visible even when wallet is not actively connected)
+  // Priority: explicit Nasun Wallet link > legacy walletAddress (Sui only, not EVM)
+  const nasunLinkedAddr = user?.linkedAccounts?.['nasun wallet']?.walletAddress;
+  const legacyAddr = user?.walletAddress;
+  // Sui/Nasun addresses are 66 chars (0x + 64 hex); EVM are 42 chars — filter out EVM
+  const linkedWalletAddress = nasunLinkedAddr
+    || (legacyAddr && legacyAddr.startsWith('0x') && legacyAddr.length === 66 ? legacyAddr : undefined);
+  // Only show linked wallet if it's still in the registered wallets list.
+  // After Remove or ownership transfer, the backend clears UserProfiles.walletAddress,
+  // but we also guard against stale cached data on the frontend.
+  const isLinkedWalletRegistered = !!linkedWalletAddress &&
+    walletReg.registeredWallets.some(w => w.walletAddress === linkedWalletAddress.toLowerCase());
+  // Legacy users (pre-multi-wallet) have walletAddress in UserProfiles but not in
+  // USER_WALLETS_TABLE. When the backend returns an empty list, trust the DB-linked address.
+  // Only hide if the backend has other wallets registered (explicit removal scenario).
+  const isExplicitlyUnregistered = !walletReg.isLoading
+    && walletReg.registeredWallets.length > 0
+    && !isLinkedWalletRegistered;
+  const hasLinkedWallet = !!linkedWalletAddress && !isNasunConnected && !isExplicitlyUnregistered;
+
+  // Connected wallet is "dismissed" if user explicitly Removed it this session
+  const isConnectedButDismissed = isNasunConnected && nasunWalletAddress &&
+    !walletReg.isCurrentWalletRegistered && !walletReg.isLoading &&
+    sessionStorage.getItem('nasun:dismissed-wallet') === nasunWalletAddress.toLowerCase();
+  // Effective connection: connected AND (registered OR not yet dismissed)
+  const showAsConnected = isNasunConnected && nasunWalletAddress && !isConnectedButDismissed;
+
+  // Primary registered wallet: shown in AccountItem when wallet is not actively connected
+  const primaryRegisteredWallet = walletReg.registeredWallets[0] ?? null;
+  const displayAddress = showAsConnected
+    ? nasunWalletAddress!.toLowerCase()
+    : hasLinkedWallet
+      ? linkedWalletAddress!.toLowerCase()
+      : primaryRegisteredWallet?.walletAddress ?? null;
+  const isPrimaryRegistered = !!displayAddress &&
+    walletReg.registeredWallets.some(w => w.walletAddress === displayAddress);
+  // Additional wallets: 2nd+ registered wallets shown in sub-section
+  const additionalWallets = displayAddress
+    ? walletReg.registeredWallets.filter(w => w.walletAddress !== displayAddress)
+    : walletReg.registeredWallets;
+
+  // Auto-register: when a new wallet is connected and not yet registered,
+  // silently attempt registration. Errors are suppressed (409 = another user owns it).
+  // Fallback "Register" button shown if auto-register didn't fire or failed.
+  // 4-layer defense: ref (dedup), isLoading (remount race), sessionStorage (explicit Remove)
+  const autoRegisterAttemptedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isNasunConnected || !nasunWalletAddress || !user?.cognitoToken) return;
+    if (walletReg.isCurrentWalletRegistered || walletReg.isRegistering) return;
+    if (autoRegisterAttemptedRef.current === nasunWalletAddress) return;
+    if (walletReg.isLoading) return;
+    if (!walletReg.hasSigner) return; // Wait for signer to be ready
+    // Prevent stale-signer registration: after importing a second wallet, the
+    // signer effect may not have run yet, leaving the OLD keypair active.
+    // Signing with the wrong keypair registers the wrong address and then the
+    // ref guard blocks any retry for the new address.
+    if (walletReg.signerAddress?.toLowerCase() !== nasunWalletAddress.toLowerCase()) return;
+    const dismissed = sessionStorage.getItem('nasun:dismissed-wallet');
+    if (dismissed === nasunWalletAddress.toLowerCase()) return;
+    autoRegisterAttemptedRef.current = nasunWalletAddress;
+    walletReg.registerCurrentWallet().catch(() => {});
+  }, [nasunWalletAddress, isNasunConnected, user?.cognitoToken,
+      walletReg.isCurrentWalletRegistered, walletReg.isRegistering,
+      walletReg.isLoading, walletReg.hasSigner, walletReg.signerAddress]);
   //
   // // EVM Wallet Link via wagmi + RainbowKit
   // const {
@@ -115,6 +211,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   // Display Name & Avatar
   const displayName = user?.username || user?.twitterHandle || user?.email?.split("@")[0] || "User";
   const profileImageUrl = user?.profileImageUrl;
+
+  // For Nasun Wallet users, generate a deterministic identicon from wallet address
+  const walletIdenticonUrl = useMemo(() => {
+    if (user?.provider === "Nasun Wallet" && user.walletAddress) {
+      return generateWalletIdenticon(user.walletAddress);
+    }
+    return null;
+  }, [user?.provider, user?.walletAddress]);
 
   // ------------------------------------------------------------------
   // Data Preparation
@@ -146,11 +250,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
         {/* Header */}
         <div className="flex items-center gap-4">
           <div className="relative">
-            {profileImageUrl && !imageError ? (
+            {(walletIdenticonUrl || (profileImageUrl && !imageError)) ? (
               <img
-                src={profileImageUrl}
+                src={walletIdenticonUrl ?? profileImageUrl!}
                 alt={displayName}
-                className={`w-16 h-16 rounded-2xl object-cover bg-gray-800 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+                className={`w-16 h-16 rounded-2xl object-cover bg-gray-800 ${
+                  walletIdenticonUrl || imageLoaded ? "opacity-100" : "opacity-0"
+                }`}
                 onError={handleImageError}
                 onLoad={handleImageLoad}
               />
@@ -181,7 +287,207 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             Connected Accounts
           </h6>
           <div className="space-y-3">
-            {/* 1. X (Twitter) */}
+            {/* 1. Nasun Wallet */}
+            <AccountItem
+              provider="nasun"
+              identifier={
+                displayAddress
+                  ? `${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`
+                  : walletReg.isLoading ? "Loading..." : "No wallet registered"
+              }
+              statusBadge={
+                showAsConnected
+                  ? <ConnectedBadge />
+                  : hasLinkedWallet
+                    ? <LinkedBadge />
+                    : undefined
+              }
+              actions={
+                !user.cognitoToken ? [
+                  <div key="connect" className="nasun-wallet-connect relative z-50">
+                    <WalletConnect
+                      variant="filledOutlineC7"
+                      size="sm"
+                      dropdownPosition="bottom"
+                      dropdownAlign="right"
+                    />
+                  </div>,
+                ] : (isPrimaryRegistered || hasLinkedWallet) ? [
+                  <button
+                    key="remove-primary"
+                    title="Remove"
+                    className="group relative w-6 h-6 rounded-full border border-red-500/40 text-red-400/60 hover:border-red-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 flex items-center justify-center disabled:opacity-30"
+                    onClick={async () => {
+                      await walletReg.removeWalletByAddress(displayAddress!);
+                      if (nasunWalletAddress?.toLowerCase() === displayAddress) {
+                        autoRegisterAttemptedRef.current = nasunWalletAddress;
+                        sessionStorage.setItem('nasun:dismissed-wallet', displayAddress!);
+                      }
+                    }}
+                    disabled={walletReg.isRemoving === displayAddress}
+                  >
+                    {walletReg.isRemoving === displayAddress ? (
+                      <span className="text-[10px]">...</span>
+                    ) : (
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14" />
+                      </svg>
+                    )}
+                  </button>,
+                ] : showAsConnected && !walletReg.isCurrentWalletRegistered && !walletReg.isLoading ? [
+                  walletReg.isRegistering ? (
+                    <span key="registering" className="text-xs text-nasun-white/40">Registering...</span>
+                  ) : (
+                    <Button
+                      key="register"
+                      size="sm"
+                      variant="filledOutlineC7"
+                      onClick={() => {
+                        sessionStorage.removeItem('nasun:dismissed-wallet');
+                        autoRegisterAttemptedRef.current = null;
+                        walletReg.registerCurrentWallet();
+                      }}
+                    >
+                      Register
+                    </Button>
+                  ),
+                ] : []
+              }
+            >
+              {/* State 1: No wallets registered — show Connect Wallet prompt */}
+              {/* Keep mounted while walletFlowActive to prevent unmount during backup/auto-lock steps */}
+              {user.cognitoToken && (!displayAddress || walletFlowActive) && !walletReg.isLoading && (
+                <div className="mb-3" onClick={() => {
+                  setWalletFlowActive(true);
+                  sessionStorage.removeItem('nasun:dismissed-wallet');
+                  autoRegisterAttemptedRef.current = null;
+                }}>
+                  <div className="nasun-wallet-connect relative z-50">
+                    <WalletConnect
+                      variant="filledOutlineC7"
+                      size="sm"
+                      triggerText="Connect Wallet"
+                      forceShowTriggerText
+                      dropdownPosition="bottom"
+                      dropdownAlign="right"
+                      onDropdownClose={() => setWalletFlowActive(false)}
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Collapsible devnet disclaimer */}
+              <div className="text-xs text-nasun-white/50">
+                <button
+                  className="flex items-center gap-1 hover:text-nasun-white/70 transition-colors"
+                  onClick={() => setDisclaimerExpanded((v) => !v)}
+                >
+                  <svg
+                    className={`w-3 h-3 flex-shrink-0 transition-transform ${disclaimerExpanded ? "rotate-90" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Devnet notice
+                </button>
+                {disclaimerExpanded && (
+                  <ul className="mt-1.5 space-y-1 pl-1 text-nasun-white/40 leading-relaxed">
+                    <li>· Assets on Devnet have no monetary value.</li>
+                    <li>· The network may be reset at any time.</li>
+                    <li>· After a reset, your existing seedphrase, private key, or backup file will restore the same address — your permanent identity on Nasun Website.</li>
+                    <li>· Back up your Nasun Wallet now. Even after a Devnet reset, your backup will restore the same address. zkLogin users do not need a separate backup.</li>
+                  </ul>
+                )}
+              </div>
+            </AccountItem>
+
+            {/* Additional Wallets sub-section */}
+            {user.cognitoToken && (displayAddress || walletReg.registeredWallets.length > 0) && (
+              <div className="pl-2 border-l-2 border-indigo-500/20 space-y-2">
+                <div className="text-xs text-nasun-white/40 uppercase">
+                  Additional Wallets
+                  {walletReg.isLoading && " (loading...)"}
+                </div>
+                {additionalWallets.map((w) => {
+                  const addr = w.walletAddress;
+                  const short = `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+                  const isCurrent = nasunWalletAddress?.toLowerCase() === addr;
+                  return (
+                    <div key={addr} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-nasun-white/80 font-mono truncate">{short}</span>
+                        {isCurrent && <ConnectedBadge />}
+                      </div>
+                      <button
+                        title="Remove"
+                        className="group relative w-6 h-6 rounded-full border border-red-500/40 text-red-400/60 hover:border-red-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 flex items-center justify-center disabled:opacity-30"
+                        onClick={async () => {
+                          await walletReg.removeWalletByAddress(addr);
+                          if (nasunWalletAddress?.toLowerCase() === addr) {
+                            autoRegisterAttemptedRef.current = nasunWalletAddress;
+                            sessionStorage.setItem('nasun:dismissed-wallet', addr);
+                          }
+                        }}
+                        disabled={walletReg.isRemoving === addr}
+                      >
+                        {walletReg.isRemoving === addr ? (
+                          <span className="text-[10px]">...</span>
+                        ) : (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+                {/* Connected but not registered — fallback Register button (only for addresses NOT already shown in main section) */}
+                {isNasunConnected && nasunWalletAddress && !walletReg.isCurrentWalletRegistered && !walletReg.isLoading &&
+                  nasunWalletAddress.toLowerCase() !== displayAddress &&
+                  sessionStorage.getItem('nasun:dismissed-wallet') !== nasunWalletAddress.toLowerCase() && (
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-nasun-white/80 font-mono truncate">
+                        {nasunWalletAddress.slice(0, 6)}...{nasunWalletAddress.slice(-4)}
+                      </span>
+                      <ConnectedBadge />
+                    </div>
+                    {walletReg.isRegistering ? (
+                      <span className="text-xs text-nasun-white/40">Registering...</span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="filledOutlineC7"
+                        onClick={() => {
+                          sessionStorage.removeItem('nasun:dismissed-wallet');
+                          autoRegisterAttemptedRef.current = null;
+                          walletReg.registerCurrentWallet();
+                        }}
+                      >
+                        Register
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {walletReg.error && (
+                  <p className="text-xs text-red-400">{walletReg.error}</p>
+                )}
+                <Button
+                  size="sm"
+                  variant="filledOutlineC7"
+                  onClick={() => {
+                    sessionStorage.removeItem('nasun:dismissed-wallet');
+                    autoRegisterAttemptedRef.current = null;
+                    setAddWalletModalOpen(true);
+                  }}
+                >
+                  Add
+                </Button>
+              </div>
+            )}
+
+            {/* 2. X (Twitter) */}
             <AccountItem
               provider="twitter"
               identifier={
@@ -217,7 +523,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 2. Google */}
+            {/* 3. Google */}
             <AccountItem
               provider="google"
               identifier={googleData?.email}
@@ -249,52 +555,11 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* [DISABLED] 3. Wallet (EVM) — too buggy on mobile.
-            <AccountItem
-              provider="wallet"
-              identifier={
-                isMetaMaskLinked
-                  ? `${linkedWalletAddress?.slice(0, 6)}...${linkedWalletAddress?.slice(-4)}`
-                  : "Not linked"
-              }
-              statusBadge={
-                isMetaMaskPrimary ? (
-                  <LoggedInBadge />
-                ) : isMetaMaskLinked ? (
-                  <LinkedBadge />
-                ) : undefined
-              }
-              actions={[
-                !isMetaMaskLinked ? (
-                  <Button
-                    key="link"
-                    size="sm"
-                    variant="filledOutlineC7"
-                    onClick={handleLinkWallet}
-                    disabled={isWalletLinking || isLinking}
-                  >
-                    {isWalletLinking ? "Linking..." : "Link"}
-                  </Button>
-                ) : !isMetaMaskPrimary ? (
-                  <Button
-                    key="unlink"
-                    size="sm"
-                    variant="filledOutlineScarlet"
-                    onClick={() => unlinkAccount("MetaMask")}
-                    disabled={isLinking}
-                  >
-                    Unlink
-                  </Button>
-                ) : null,
-              ]}
-            >
-              {walletLinkError && (
-                <div className="text-sm text-red-400 px-2 py-1">{walletLinkError}</div>
-              )}
-            </AccountItem>
+            {/* [DISABLED] 4. Wallet (EVM) — too buggy on mobile.
+            ...
             */}
 
-            {/* 4. Telegram */}
+            {/* 5. Telegram */}
             <AccountItem
               provider="telegram"
               identifier={
@@ -332,34 +597,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 ) : null,
               ]}
             />
-
-            {/* 5. Nasun Wallet */}
-            <AccountItem
-              provider="nasun"
-              identifier={
-                isNasunConnected && nasunWalletAddress
-                  ? `${nasunWalletAddress.slice(0, 6)}...${nasunWalletAddress.slice(-4)}`
-                  : "Not connected"
-              }
-              statusBadge={isNasunConnected ? <ConnectedBadge /> : undefined}
-              actions={[
-                <div key="connect" className="nasun-wallet-connect relative z-50">
-                  <WalletConnect
-                    variant="filledOutlineC7"
-                    size="sm"
-                    dropdownPosition="bottom"
-                    dropdownAlign="right"
-                  />
-                </div>,
-              ]}
-            >
-              <p className="text-xs text-nasun-white/60 leading-relaxed">
-                * This is a prototype on Devnet. Test purpose only.
-              </p>
-            </AccountItem>
           </div>
         </div>
       </div>
+      <AddWalletModal
+        isOpen={addWalletModalOpen}
+        onClose={() => setAddWalletModalOpen(false)}
+      />
     </OuterBox>
   );
 };

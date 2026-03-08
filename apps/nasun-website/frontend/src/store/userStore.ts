@@ -39,6 +39,7 @@ export interface UserData {
     google?: LinkedAccount;
     twitter?: LinkedAccount;
     metamask?: LinkedAccount;
+    'nasun wallet'?: LinkedAccount;
   };
 }
 
