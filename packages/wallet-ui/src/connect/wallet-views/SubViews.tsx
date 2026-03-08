@@ -7,6 +7,7 @@ import { MnemonicBackup } from "../../security/MnemonicBackup";
 import { AutoLockSetup } from "../../security/AutoLockSetup";
 import { ImportWallet } from "../../security/ImportWallet";
 import { ExportPrivateKey } from "../../security/ExportPrivateKey";
+import { ExportMnemonic } from "../../security/ExportMnemonic";
 import { SendTransaction } from "../../transaction/SendTransaction";
 import { StakingPanel } from "../../staking/StakingPanel";
 import { SecuritySettings } from "../../security/SecuritySettings";
@@ -77,6 +78,20 @@ export function ExportView({
   return (
     <div className="w-full">
       <ExportPrivateKey onExport={onExport} onClose={() => setViewMode("main")} authMode={authMode} />
+    </div>
+  );
+}
+
+export function ExportMnemonicView({
+  onExport,
+  setViewMode,
+}: {
+  onExport: (pwd: string) => Promise<string | null>;
+  setViewMode: (mode: ViewMode) => void;
+}) {
+  return (
+    <div className="w-full">
+      <ExportMnemonic onExport={onExport} onClose={() => setViewMode("main")} />
     </div>
   );
 }

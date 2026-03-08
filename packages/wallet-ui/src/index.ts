@@ -42,6 +42,7 @@ export { TransactionHistoryPanel } from './transaction/TransactionHistoryPanel';
 export { MnemonicBackup } from './security/MnemonicBackup';
 export { ImportWallet } from './security/ImportWallet';
 export { ExportPrivateKey } from './security/ExportPrivateKey';
+export { ExportMnemonic } from './security/ExportMnemonic';
 export { SecuritySettings } from './security/SecuritySettings';
 export { SecurityProgress } from './security/SecurityProgress';
 export type { SecurityProgressProps } from './security/SecurityProgress';

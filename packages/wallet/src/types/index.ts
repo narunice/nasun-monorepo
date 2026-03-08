@@ -17,6 +17,12 @@ export interface EncryptedKeystore {
   address: string;
   // Creation time
   createdAt: number;
+  // Encrypted mnemonic (optional — absent for private-key imports and legacy wallets)
+  encryptedMnemonic?: string;
+  // AES-GCM IV for mnemonic (separate from private key IV)
+  mnemonicIv?: string;
+  // PBKDF2 salt for mnemonic (separate from private key salt)
+  mnemonicSalt?: string;
 }
 
 // Wallet account
@@ -53,6 +59,8 @@ export interface WalletActions {
   importFromPrivateKey: (privateKey: string, password: string) => Promise<string>;
   // Export private key (requires password)
   exportPrivateKey: (password: string) => Promise<string>;
+  // Export mnemonic (requires password, null if not stored)
+  exportMnemonic: (password: string) => Promise<string | null>;
   // Clear error
   clearError: () => void;
 }

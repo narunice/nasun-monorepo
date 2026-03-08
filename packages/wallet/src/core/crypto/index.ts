@@ -152,6 +152,64 @@ export async function decryptPrivateKey(
 }
 
 /**
+ * Encrypt mnemonic phrase (separate salt/IV from private key)
+ * @param mnemonic BIP39 mnemonic phrase
+ */
+export async function encryptMnemonic(
+  mnemonic: string,
+  password: string
+): Promise<{ encrypted: string; iv: string; salt: string }> {
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const key = await deriveKeyPrimitive(password, salt, { iterations: KEYSTORE_PBKDF2_ITERATIONS });
+
+  const encoder = new TextEncoder();
+  const mnemonicBytes = encoder.encode(mnemonic);
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer },
+    key,
+    mnemonicBytes.buffer.slice(mnemonicBytes.byteOffset, mnemonicBytes.byteOffset + mnemonicBytes.byteLength) as ArrayBuffer
+  );
+
+  return {
+    encrypted: arrayBufferToBase64(encrypted),
+    iv: arrayBufferToBase64(iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer),
+    salt: arrayBufferToBase64(salt.buffer.slice(salt.byteOffset, salt.byteOffset + salt.byteLength) as ArrayBuffer),
+  };
+}
+
+/**
+ * Decrypt mnemonic phrase
+ * @returns Decrypted mnemonic string, or throws on invalid password
+ */
+export async function decryptMnemonic(
+  encryptedBase64: string,
+  ivBase64: string,
+  saltBase64: string,
+  password: string
+): Promise<string> {
+  const encrypted = base64ToArrayBuffer(encryptedBase64);
+  const iv = base64ToArrayBuffer(ivBase64);
+  const salt = base64ToArrayBuffer(saltBase64);
+
+  const key = await deriveKeyPrimitive(password, new Uint8Array(salt), { iterations: KEYSTORE_PBKDF2_ITERATIONS });
+
+  try {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: new Uint8Array(iv) },
+      key,
+      encrypted
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  } catch {
+    throw new Error('Failed to decrypt: invalid password or corrupted data');
+  }
+}
+
+/**
  * Restore keypair from Bech32 private key
  * @param secretKey Bech32 encoded private key string (suiprivkey1...)
  */

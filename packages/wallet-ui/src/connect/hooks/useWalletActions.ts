@@ -15,6 +15,7 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
     importFromMnemonic,
     importFromPrivateKey,
     exportPrivateKey,
+    exportMnemonic,
   } = useWallet();
 
   const resetSettings = useUISettingsStore((state) => state.resetSettings);
@@ -50,30 +51,26 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
   }, [viewState.setMnemonic, viewState.setViewMode]);
 
   const handleAutoLockComplete = useCallback(() => {
-    viewState.setViewMode("main");
-    viewState.setShowDropdown(false);
-  }, [viewState.setViewMode, viewState.setShowDropdown]);
+    viewState.closeDropdown();
+  }, [viewState.closeDropdown]);
 
   const handleUnlock = useCallback(async () => {
     try {
       await unlockWallet(viewState.password);
-      viewState.setPassword("");
-      viewState.setViewMode("main");
-      viewState.setShowDropdown(false);
+      viewState.closeDropdown();
     } catch {
       // Error is stored in state
     }
-  }, [viewState.password, unlockWallet, viewState.setPassword, viewState.setViewMode, viewState.setShowDropdown]);
+  }, [viewState.password, unlockWallet, viewState.closeDropdown]);
 
   const handleImportMnemonic = useCallback(
     async (mnemonicPhrase: string, pwd: string) => {
       await importFromMnemonic(mnemonicPhrase, pwd);
       resetSettings();
       useChainStore.getState().resetToDefault();
-      viewState.setViewMode("main");
-      viewState.setShowDropdown(false);
+      viewState.closeDropdown();
     },
-    [importFromMnemonic, resetSettings, viewState.setViewMode, viewState.setShowDropdown],
+    [importFromMnemonic, resetSettings, viewState.closeDropdown],
   );
 
   const handleImportPrivateKey = useCallback(
@@ -81,10 +78,9 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
       await importFromPrivateKey(privateKey, pwd);
       resetSettings();
       useChainStore.getState().resetToDefault();
-      viewState.setViewMode("main");
-      viewState.setShowDropdown(false);
+      viewState.closeDropdown();
     },
-    [importFromPrivateKey, resetSettings, viewState.setViewMode, viewState.setShowDropdown],
+    [importFromPrivateKey, resetSettings, viewState.closeDropdown],
   );
 
   const handleExportPrivateKey = useCallback(
@@ -92,6 +88,13 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
       return await exportPrivateKey(pwd);
     },
     [exportPrivateKey],
+  );
+
+  const handleExportMnemonic = useCallback(
+    async (pwd: string) => {
+      return await exportMnemonic(pwd);
+    },
+    [exportMnemonic],
   );
 
   const handleDelete = useCallback(() => {
@@ -102,9 +105,8 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
     deleteWallet();
     resetSettings();
     resetUnlockAttempts();
-    viewState.setViewMode("main");
-    viewState.setShowDropdown(false);
-  }, [deleteWallet, resetSettings, viewState.setViewMode, viewState.setShowDropdown]);
+    viewState.closeDropdown();
+  }, [deleteWallet, resetSettings, viewState.closeDropdown]);
 
   return {
     handleCreate,
@@ -114,6 +116,7 @@ export function useWalletActions(viewState: WalletViewStateReturn) {
     handleImportMnemonic,
     handleImportPrivateKey,
     handleExportPrivateKey,
+    handleExportMnemonic,
     handleDelete,
     confirmDelete,
   };

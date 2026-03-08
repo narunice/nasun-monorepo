@@ -26,6 +26,7 @@ import {
   BackupView,
   ImportView,
   ExportView,
+  ExportMnemonicView,
   SendView,
   StakingView,
   PortfolioView,
@@ -166,6 +167,13 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
     );
   },
 
+  "export-mnemonic": (s) => (
+    <ExportMnemonicView
+      onExport={s.handleExportMnemonic}
+      setViewMode={s.setViewMode}
+    />
+  ),
+
   "send": (s) => (
     <SendView
       setViewMode={s.setViewMode}
@@ -291,6 +299,7 @@ type SharedConnectedProps = Omit<ConnectedViewProps, "header" | "onSignOut" | "o
 function renderByWalletStatus(
   s: WalletConnectStateReturn,
   connectedViewSharedProps: SharedConnectedProps,
+  options?: { showPrivacyNotice?: boolean },
 ): ReactNode | null {
   // Ledger connected state (no software wallet)
   if (s.isLedgerConnected && s.ledgerAddress && s.status === "disconnected" && !s.isZkLoggedIn) {
@@ -319,6 +328,7 @@ function renderByWalletStatus(
         onPasskeyUnlock={s.passkeyUnlock}
         passkeyIsLoading={s.isPasskeyLoading}
         passkeyNeedsPassword={s.passkeyNeedsPassword}
+        showPrivacyNotice={options?.showPrivacyNotice}
       />
     );
   }
@@ -335,7 +345,7 @@ function renderByWalletStatus(
         {...connectedViewSharedProps}
         onSignOut={() => {
           s.zkLogout();
-          s.setShowDropdown(false);
+          s.closeDropdown();
         }}
       />
     );
@@ -366,7 +376,7 @@ function renderByWalletStatus(
         {...connectedViewSharedProps}
         onLock={() => {
           s.passkeyLock();
-          s.setShowDropdown(false);
+          s.closeDropdown();
         }}
         onDelete={s.passkeyDeleteWallet}
       />
@@ -412,7 +422,7 @@ function renderByWalletStatus(
         {...connectedViewSharedProps}
         onLock={() => {
           s.lockWallet();
-          s.setShowDropdown(false);
+          s.closeDropdown();
         }}
         onDelete={s.handleDelete}
       />
@@ -428,6 +438,7 @@ function renderByWalletStatus(
 export function renderViewContent(
   s: WalletConnectStateReturn,
   connectedViewSharedProps: SharedConnectedProps,
+  options?: { showPrivacyNotice?: boolean },
 ): ReactNode {
   // 1. Explicit ViewMode match
   const renderer = VIEW_RENDERERS[s.viewMode];
@@ -447,5 +458,5 @@ export function renderViewContent(
   }
 
   // 3. Wallet status fallback
-  return renderByWalletStatus(s, connectedViewSharedProps);
+  return renderByWalletStatus(s, connectedViewSharedProps, options);
 }

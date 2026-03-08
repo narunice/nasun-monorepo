@@ -17,6 +17,7 @@ import {
   unlockKeystore,
   deleteKeystore,
   getStoredAddress,
+  exportMnemonic as exportMnemonicFromKeystore,
 } from '../core/keystore';
 import { createEVMWalletFromMnemonic, deleteEVMWallet } from '../core/evm';
 import { clearAddressBook } from './useAddressBook';
@@ -315,6 +316,16 @@ export const useWallet = create<WalletStore>((set, get) => ({
       return getSecretKeyFromKeypair(keypair);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to export private key';
+      throw new Error(message);
+    }
+  },
+
+  // Export mnemonic (requires password verification, null if not stored)
+  exportMnemonic: async (password: string): Promise<string | null> => {
+    try {
+      return await exportMnemonicFromKeystore(password);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export mnemonic';
       throw new Error(message);
     }
   },

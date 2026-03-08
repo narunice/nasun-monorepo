@@ -13,6 +13,8 @@ import {
   getSecretKeyFromKeypair,
   encryptPrivateKey,
   decryptPrivateKey,
+  encryptMnemonic,
+  decryptMnemonic,
   keypairFromSecretKey,
   secureZeroString,
 } from './crypto';
@@ -191,17 +193,23 @@ export async function createWalletWithMnemonic(
     // 3. Encrypt and save private key
     const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
 
+    // 4. Encrypt mnemonic with separate salt/IV
+    const mnemonicEnc = await encryptMnemonic(mnemonic, password);
+
     const keystore: EncryptedKeystore = {
       encryptedPrivateKey: encrypted,
       iv,
       salt,
       address,
       createdAt: Date.now(),
+      encryptedMnemonic: mnemonicEnc.encrypted,
+      mnemonicIv: mnemonicEnc.iv,
+      mnemonicSalt: mnemonicEnc.salt,
     };
 
     saveKeystore(keystore);
 
-    // 4. Return mnemonic without storing (user must backup)
+    // 5. Return mnemonic for immediate backup display
     return { address, mnemonic };
   } finally {
     // Clear sensitive data from memory (best effort - JS strings are immutable)
@@ -236,12 +244,18 @@ export async function importWalletFromMnemonic(
     // 3. Encrypt and save private key
     const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
 
+    // 4. Encrypt mnemonic with separate salt/IV
+    const mnemonicEnc = await encryptMnemonic(mnemonic, password);
+
     const keystore: EncryptedKeystore = {
       encryptedPrivateKey: encrypted,
       iv,
       salt,
       address,
       createdAt: Date.now(),
+      encryptedMnemonic: mnemonicEnc.encrypted,
+      mnemonicIv: mnemonicEnc.iv,
+      mnemonicSalt: mnemonicEnc.salt,
     };
 
     saveKeystore(keystore);
@@ -278,7 +292,7 @@ export async function importWalletFromPrivateKey(
   try {
     secretKey = getSecretKeyFromKeypair(keypair);
 
-    // 2. Encrypt and save private key
+    // 2. Encrypt and save private key (no mnemonic for private-key imports)
     const { encrypted, iv, salt } = await encryptPrivateKey(secretKey, password);
 
     const keystore: EncryptedKeystore = {
@@ -295,5 +309,70 @@ export async function importWalletFromPrivateKey(
   } finally {
     // Clear sensitive data from memory (best effort - JS strings are immutable)
     if (secretKey) secureZeroString(secretKey);
+  }
+}
+
+/**
+ * Export mnemonic from keystore (requires password verification)
+ * Uses the same rate-limit counter as unlockKeystore.
+ * @returns Decrypted mnemonic, or null if not stored (legacy/private-key-import wallets)
+ */
+export async function exportMnemonic(password: string): Promise<string | null> {
+  // Check lockout before attempting (shares counter with unlockKeystore)
+  if (isLockedOut()) {
+    const remainingMs = getLockoutRemainingMs();
+    const remainingSec = Math.ceil(remainingMs / 1000);
+    throw new Error(`Too many failed attempts. Try again in ${remainingSec} seconds.`);
+  }
+
+  const keystore = loadKeystore();
+  if (!keystore) {
+    throw new Error('No wallet found');
+  }
+
+  // No mnemonic stored (legacy wallet or private-key import)
+  if (!keystore.encryptedMnemonic || !keystore.mnemonicIv || !keystore.mnemonicSalt) {
+    // Verify password is correct before returning null (prevent info leak)
+    try {
+      await decryptPrivateKey(keystore.encryptedPrivateKey, keystore.iv, keystore.salt, password);
+      resetUnlockAttempts();
+      return null;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('decrypt')) {
+        recordFailedAttempt();
+        if (isLockedOut()) {
+          const remainingMs = getLockoutRemainingMs();
+          const remainingSec = Math.ceil(remainingMs / 1000);
+          throw new Error(`Invalid password. Too many attempts. Locked for ${remainingSec} seconds.`);
+        }
+        throw new Error('Invalid password');
+      }
+      throw error;
+    }
+  }
+
+  try {
+    const mnemonic = await decryptMnemonic(
+      keystore.encryptedMnemonic,
+      keystore.mnemonicIv,
+      keystore.mnemonicSalt,
+      password
+    );
+
+    // Success - reset rate limiting counter
+    resetUnlockAttempts();
+
+    return mnemonic;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('decrypt')) {
+      recordFailedAttempt();
+      if (isLockedOut()) {
+        const remainingMs = getLockoutRemainingMs();
+        const remainingSec = Math.ceil(remainingMs / 1000);
+        throw new Error(`Invalid password. Too many attempts. Locked for ${remainingSec} seconds.`);
+      }
+      throw new Error('Invalid password');
+    }
+    throw error;
   }
 }

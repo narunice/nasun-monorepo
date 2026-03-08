@@ -97,7 +97,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                         );
 
                         // 선택적 필드만 병합 (identityId, provider, createdAt, updatedAt, linkedAccounts는 덮어쓰지 않음)
-                        const fieldsToMerge = ['email', 'twitterHandle', 'originalTwitterHandle', 'twitterId', 'profileImageUrl', 'username'];
+                        const fieldsToMerge = ['email', 'twitterHandle', 'originalTwitterHandle', 'twitterId', 'profileImageUrl', 'username', 'walletAddress'];
                         fieldsToMerge.forEach(field => {
                           if (linkedProfile[field] && !unifiedProfile[field]) {
                             unifiedProfile[field] = linkedProfile[field];

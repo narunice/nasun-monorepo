@@ -19,6 +19,7 @@ import {
 } from "@nasun/wallet";
 import { useAdvancedMode } from "../../stores";
 import { useWalletViewState } from "./useWalletViewState";
+import type { ViewMode } from "../types";
 import { useConnectedViewData } from "./useConnectedViewData";
 import { useWalletActions } from "./useWalletActions";
 
@@ -36,9 +37,9 @@ function truncateText(text: string, maxLength: number): string {
   return `${text.slice(0, maxLength)}...`;
 }
 
-export function useWalletConnectState() {
+export function useWalletConnectState(initialViewMode?: ViewMode, defaultOpen?: boolean, onDropdownClose?: () => void) {
   // Compose domain-specific hooks
-  const viewState = useWalletViewState();
+  const viewState = useWalletViewState(initialViewMode, defaultOpen, onDropdownClose);
   const data = useConnectedViewData();
   const actions = useWalletActions(viewState);
 
