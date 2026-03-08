@@ -299,7 +299,7 @@ type SharedConnectedProps = Omit<ConnectedViewProps, "header" | "onSignOut" | "o
 function renderByWalletStatus(
   s: WalletConnectStateReturn,
   connectedViewSharedProps: SharedConnectedProps,
-  options?: { showPrivacyNotice?: boolean },
+  options?: { showPrivacyNotice?: boolean; lockedTitle?: string },
 ): ReactNode | null {
   // Ledger connected state (no software wallet)
   if (s.isLedgerConnected && s.ledgerAddress && s.status === "disconnected" && !s.isZkLoggedIn) {
@@ -394,6 +394,7 @@ function renderByWalletStatus(
         handleUnlock={s.handleUnlock}
         handleDelete={s.handleDelete}
         setViewMode={s.setViewMode}
+        title={options?.lockedTitle}
       />
     );
   }
@@ -438,7 +439,7 @@ function renderByWalletStatus(
 export function renderViewContent(
   s: WalletConnectStateReturn,
   connectedViewSharedProps: SharedConnectedProps,
-  options?: { showPrivacyNotice?: boolean },
+  options?: { showPrivacyNotice?: boolean; lockedTitle?: string },
 ): ReactNode {
   // 1. Explicit ViewMode match
   const renderer = VIEW_RENDERERS[s.viewMode];

@@ -21,6 +21,7 @@ export function LockedStateUI({
   handleUnlock,
   handleDelete,
   setViewMode,
+  title = "Unlock Wallet",
 }: {
   password: string;
   setPassword: (v: string) => void;
@@ -29,6 +30,7 @@ export function LockedStateUI({
   handleUnlock: () => void;
   handleDelete: () => void;
   setViewMode: (mode: ViewMode) => void;
+  title?: string;
 }) {
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -68,7 +70,7 @@ export function LockedStateUI({
   return (
     <div className="p-4 w-full ">
       <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-3">
-        Unlock Wallet
+        {title}
       </h3>
 
       {isLocked && (

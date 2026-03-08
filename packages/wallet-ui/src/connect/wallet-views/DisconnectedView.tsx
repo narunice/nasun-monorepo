@@ -41,8 +41,8 @@ export function DisconnectedView({
   const [showPrivacy] = useState(() => {
     if (!showPrivacyNotice) return false;
     try {
-      if (localStorage.getItem('nasun_wallet_privacy_seen')) return false;
-      localStorage.setItem('nasun_wallet_privacy_seen', '1');
+      if (localStorage.getItem("nasun_wallet_privacy_seen")) return false;
+      localStorage.setItem("nasun_wallet_privacy_seen", "1");
       return true;
     } catch {
       return true;
@@ -66,9 +66,7 @@ export function DisconnectedView({
       {passkeyWallet ? (
         <div className="space-y-2">
           <button
-            onClick={() =>
-              onPasskeyUnlock?.(passkeyNeedsPassword ? passkeyPassword : undefined)
-            }
+            onClick={() => onPasskeyUnlock?.(passkeyNeedsPassword ? passkeyPassword : undefined)}
             disabled={passkeyIsLoading || (passkeyNeedsPassword && !passkeyPassword)}
             className={`flex items-center justify-center gap-3 w-full h-11 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-base xl:text-lg px-4 ${
               passkeyFirst
@@ -77,7 +75,12 @@ export function DisconnectedView({
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={fingerprintPath} />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={fingerprintPath}
+              />
             </svg>
             {passkeyIsLoading ? "Authenticating..." : "Unlock with Passkey"}
           </button>
@@ -107,7 +110,12 @@ export function DisconnectedView({
           className="flex items-center justify-center gap-3 w-full h-11 rounded-lg border border-gray-200 dark:border-zinc-700 transition-all duration-200 bg-white dark:bg-zinc-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-700 text-base xl:text-lg px-4"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={fingerprintPath} />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d={fingerprintPath}
+            />
           </svg>
           Use Passkey
         </button>
@@ -129,7 +137,7 @@ export function DisconnectedView({
         size="md"
       />
       <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 text-center mt-1">
-        Recommended — no seed phrase needed
+        Private and easy — no seed phrase needed
       </p>
       {zkError && (
         <p className="text-xs xl:text-sm text-red-400 mt-2 text-center">{zkError.message}</p>
@@ -140,7 +148,7 @@ export function DisconnectedView({
   return (
     <div className="py-3 px-4 w-full">
       {/* Network badge — alerts users this is a test network */}
-      <div className="flex justify-end mb-3">
+      <div className="flex justify-start mb-3">
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] xl:text-xs font-medium bg-ne4 text-ne1 dark:bg-ne0s/40 dark:text-ne3 border border-ne3 dark:border-ne1/50">
           <span className="w-1.5 h-1.5 rounded-full bg-ne1 dark:bg-ne2" />
           {networkName}
@@ -156,20 +164,22 @@ export function DisconnectedView({
           <ul className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 space-y-0.5">
             <li>· No personal data is collected at sign-up</li>
             <li>· Google sign-in uses zkLogin. Your email is never stored.</li>
-            <li>· Social account linking is optional — only needed for creator events or newsletters</li>
+            <li>
+              · Social account linking is optional — only needed for creator events or newsletters
+            </li>
           </ul>
         </div>
       )}
 
       {/* Primary auth — order depends on device passkey support */}
       {passkeyFirst ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {passkeyButton}
           <p className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 text-center">or</p>
           {googleButton}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {googleButton}
           {passkeyButton && <div className="mt-1">{passkeyButton}</div>}
         </div>
@@ -177,7 +187,7 @@ export function DisconnectedView({
 
       {/* Divider */}
       <div className="flex items-center gap-3 my-3">
-        <div className="flex-1 border-t border-gray-200 dark:border-zinc-700" />
+        <div className="flex-1 border-t border-gray-200 dark:border-zinc-700 mt-2" />
         <span className="text-xs text-gray-400 dark:text-zinc-400 whitespace-nowrap">
           Advanced options
         </span>
