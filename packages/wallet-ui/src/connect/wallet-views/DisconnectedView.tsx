@@ -19,6 +19,7 @@ export function DisconnectedView({
   onPasskeyUnlock,
   passkeyIsLoading,
   passkeyNeedsPassword,
+  showPrivacyNotice = false,
 }: {
   handleSocialLogin: (provider: ZkLoginProvider) => void;
   isZkLoading: boolean;
@@ -31,12 +32,14 @@ export function DisconnectedView({
   onPasskeyUnlock?: (password?: string) => Promise<void>;
   passkeyIsLoading?: boolean;
   passkeyNeedsPassword?: boolean;
+  showPrivacyNotice?: boolean;
 }) {
   const [passkeyPassword, setPasskeyPassword] = useState("");
   const showPasskeySection = isPasskeySupported && isPasskeyPlatformAvailable;
 
-  // Show privacy notice only to first-time visitors
+  // Show privacy notice only on first visit when the consumer opts in
   const [showPrivacy] = useState(() => {
+    if (!showPrivacyNotice) return false;
     try {
       if (localStorage.getItem('nasun_wallet_privacy_seen')) return false;
       localStorage.setItem('nasun_wallet_privacy_seen', '1');
@@ -152,9 +155,8 @@ export function DisconnectedView({
           </p>
           <ul className="text-[10px] xl:text-xs text-gray-400 dark:text-zinc-400 space-y-0.5">
             <li>· No personal data is collected at sign-up</li>
-            <li>· Your wallet address becomes your unique ID</li>
-            <li>· Google sign-in uses zkLogin — Nasun never stores your email</li>
-            <li>· Social account linking is optional — only needed for creator events</li>
+            <li>· Google sign-in uses zkLogin. Your email is never stored.</li>
+            <li>· Social account linking is optional — only needed for creator events or newsletters</li>
           </ul>
         </div>
       )}

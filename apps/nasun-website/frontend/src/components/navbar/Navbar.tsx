@@ -13,12 +13,29 @@ import { faCircleUser } from "@fortawesome/free-solid-svg-icons";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
 import { useAuth } from "@/features/auth";
+import { WalletConnect } from "@nasun/wallet-ui";
+import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
+
+const isNasunWalletLoginEnabled = import.meta.env.VITE_ENABLE_NASUN_WALLET_LOGIN === 'true';
 
 export default function Navbar() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const { signFlow } = useNasunWalletAuth();
+
+  const handleWalletUnlocked = useCallback(async () => {
+    if (!isAuthenticated) {
+      try {
+        await signFlow();
+        navigate('/my-account');
+      } catch (err) {
+        // Log error in dev so we can debug auth failures; WalletConnect stays open for retry
+        if (import.meta.env.DEV) console.error('[handleWalletUnlocked] signFlow failed:', err);
+      }
+    }
+  }, [isAuthenticated, signFlow, navigate]);
   const [isMenuOpen, setIsMenuOpen] = useState<Record<string, boolean>>({});
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -155,6 +172,18 @@ export default function Navbar() {
             </Tooltip.Root>
           )}
 
+          {/* [DISABLED] Nasun Wallet connect in navbar — moved to My Account page
+          {!isAuthenticated && isNasunWalletLoginEnabled && (
+            <WalletConnect
+              triggerText="Get Started"
+              onWalletUnlocked={handleWalletUnlocked}
+              dropdownAlign="right"
+              dropdownPosition="bottom"
+              buttonClassName="font-rubik font-normal"
+              showPrivacyNotice
+            />
+          )}
+          */}
           <LoginButton />
         </div>
       </div>

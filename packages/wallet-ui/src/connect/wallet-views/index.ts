@@ -13,6 +13,7 @@ export {
   AutoLockSetupView,
   ImportView,
   ExportView,
+  ExportMnemonicView,
   SendView,
   StakingView,
   PortfolioView,

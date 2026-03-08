@@ -58,6 +58,15 @@ export class CommonStack extends cdk.Stack {
       "CryptoPrices"
     );
 
+    // UserWallets table — multi-wallet registration (PK: identityId, SK: walletAddress)
+    const userWalletsTable = new dynamodb.Table(this, "UserWalletsTable", {
+      tableName: "UserWallets",
+      partitionKey: { name: "identityId", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "walletAddress", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     // ========================================
     // Common NodejsFunction options
     // ========================================
@@ -73,6 +82,7 @@ export class CommonStack extends cdk.Stack {
         '@aws-sdk/client-s3',
         '@aws-sdk/s3-request-presigner',
         '@aws-sdk/client-cognito-identity',
+        '@aws-sdk/client-secrets-manager',
       ],
     };
 
@@ -237,6 +247,7 @@ export class CommonStack extends cdk.Stack {
     });
 
     // 2-3. Wallet API
+    const walletProofSecretName = process.env.WALLET_PROOF_SECRET_NAME || 'nasun-wallet-proof';
     const walletApiLambda = new NodejsFunction(this, "WalletApiLambda", {
       functionName: "nasun-common-wallet-api",
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -246,6 +257,9 @@ export class CommonStack extends cdk.Stack {
       bundling: bundlingOptions,
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        USER_WALLETS_TABLE: userWalletsTable.tableName,
+        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
+        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
       logGroup: new logs.LogGroup(this, "WalletApiLambdaLogGroup", {
@@ -254,6 +268,16 @@ export class CommonStack extends cdk.Stack {
       }),
     });
     this.userProfilesTable.grantReadWriteData(walletApiLambda);
+    userWalletsTable.grantReadWriteData(walletApiLambda);
+    walletApiLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [
+          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
+        ],
+      }),
+    );
 
     const walletApi = new apigw.LambdaRestApi(this, "WalletApi", {
       handler: walletApiLambda,

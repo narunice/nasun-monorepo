@@ -20,8 +20,8 @@ export default function Callback() {
   // Check if this is a zkLogin callback (Implicit Flow uses URL hash)
   // Both Cognito auth and zkLogin use Google Implicit Flow with id_token in hash,
   // so we also check for the zkLogin session key to distinguish between them.
-  const isZkLogin = window.location.hash.includes("id_token=") &&
-    !!sessionStorage.getItem("nasun:zklogin:session");
+  const isZkLogin =
+    window.location.hash.includes("id_token=") && !!sessionStorage.getItem("nasun:zklogin:session");
 
   useEffect(() => {
     // Prevent double execution in React StrictMode
@@ -33,16 +33,16 @@ export default function Callback() {
     // The user may already be authenticated (e.g. MetaMask), so we must intercept
     // the battalion NFT flow before the "already authenticated" redirect fires
     // Primary: sessionStorage (secure), Fallback: localStorage flow type flag (non-sensitive)
-    const isBattalionNftSession = sessionStorage.getItem('battalion_nft_twitter_session')
-      || localStorage.getItem('auth_flow_type') === 'battalion_nft';
+    const isBattalionNftSession =
+      sessionStorage.getItem("battalion_nft_twitter_session") ||
+      localStorage.getItem("auth_flow_type") === "battalion_nft";
     if (isBattalionNftSession) {
       hasHandledRef.current = true;
-      const code = searchParams.get('code');
-      const state = searchParams.get('state');
-      const target = code && state
-        ? `/wave1/battalion-nft?code=${code}&state=${state}`
-        : '/wave1/battalion-nft';
-      localStorage.removeItem('auth_flow_type');
+      const code = searchParams.get("code");
+      const state = searchParams.get("state");
+      const target =
+        code && state ? `/wave1/battalion-nft?code=${code}&state=${state}` : "/wave1/battalion-nft";
+      localStorage.removeItem("auth_flow_type");
       logger.log("Battalion NFT OAuth callback detected, redirecting to", target);
       navigate(target, { replace: true });
       return;
@@ -54,21 +54,21 @@ export default function Callback() {
       logger.error("Authentication provider returned an error:", errorType);
 
       // Check if this is an account linking attempt (Twitter or Google)
-      const isTwitterLinking = sessionStorage.getItem('twitter_link_session');
-      const isGoogleLinking = sessionStorage.getItem('google_link_session');
+      const isTwitterLinking = sessionStorage.getItem("twitter_link_session");
+      const isGoogleLinking = sessionStorage.getItem("google_link_session");
 
       if (isTwitterLinking || isGoogleLinking) {
         // User cancelled during account linking
         hasHandledRef.current = true;
 
         // Clean up session storage
-        sessionStorage.removeItem('twitter_link_session');
-        sessionStorage.removeItem('google_link_session');
+        sessionStorage.removeItem("twitter_link_session");
+        sessionStorage.removeItem("google_link_session");
 
         // Redirect back to where the linking was initiated (or /my-account as fallback)
-        const returnPath = localStorage.getItem('auth_return_to');
-        localStorage.removeItem('auth_return_to');
-        const provider = isTwitterLinking ? 'Twitter' : 'Google';
+        const returnPath = localStorage.getItem("auth_return_to");
+        localStorage.removeItem("auth_return_to");
+        const provider = isTwitterLinking ? "Twitter" : "Google";
         const fallback = `/my-account?message=account_linking_cancelled&provider=${provider}`;
         const target = returnPath && isValidReturnUrl(returnPath) ? returnPath : fallback;
         logger.log("User cancelled account linking, redirecting to", target);
@@ -93,16 +93,16 @@ export default function Callback() {
     // Case 3: Processing is finished, and we are successfully authenticated
     if (!isLoading && isAuthenticated && user) {
       hasHandledRef.current = true;
-      const savedPath = localStorage.getItem('auth_return_to');
-      localStorage.removeItem('auth_return_to');
+      const savedPath = localStorage.getItem("auth_return_to");
+      localStorage.removeItem("auth_return_to");
 
-      if (savedPath && savedPath !== '/' && isValidReturnUrl(savedPath)) {
+      if (savedPath && savedPath !== "/" && isValidReturnUrl(savedPath)) {
         navigate(savedPath, { replace: true });
         return;
       }
 
       // Use role from user store (populated by ensureUserProfile during OAuth flow)
-      navigate(user.role === 'ADMIN' ? '/admin' : '/my-account', { replace: true });
+      navigate(user.role === "ADMIN" ? "/admin" : "/my-account", { replace: true });
     }
 
     // Case 4: isLoading finished but not authenticated and no error.
@@ -115,18 +115,17 @@ export default function Callback() {
     }
 
     // Otherwise, we are still loading, so the component will just keep showing the spinner.
-
   }, [navigate, searchParams, isAuthenticated, isLoading, user, error, isZkLogin]);
 
   if (isZkLogin) {
     return (
       <div className="min-h-screen bg-nasun-black flex items-center justify-center">
-        <div className="bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl border border-zinc-800">
+        <div className="bg-zinc-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl border border-zinc-500/30">
           <ZkLoginCallback
             onSuccess={() => {
               const returnUrl = getZkLoginReturnUrl();
               clearZkLoginReturnUrl();
-              const target = returnUrl && isValidReturnUrl(returnUrl) ? returnUrl : '/';
+              const target = returnUrl && isValidReturnUrl(returnUrl) ? returnUrl : "/my-account";
               navigate(target, { replace: true });
             }}
             onError={(err) => {

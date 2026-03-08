@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { useWalletConnectState } from "./hooks/useWalletConnectState";
 import { WALLET_STYLES } from "../shared/styles";
 import { renderViewContent } from "./viewModeRouter";
+import type { ViewMode } from "./types";
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
@@ -27,10 +28,20 @@ interface WalletConnectProps {
   size?: "default" | "sm";
   /** Override button text when status is 'disconnected' */
   triggerText?: string;
+  /** Always show triggerText regardless of connection state (e.g. for "Add" buttons) */
+  forceShowTriggerText?: boolean;
   /** Called when wallet status transitions to 'unlocked' */
   onWalletUnlocked?: () => void;
   /** Additional CSS classes for the trigger button */
   buttonClassName?: string;
+  /** Show privacy notice for first-time visitors (default: false, only relevant for apps with Cognito auth) */
+  showPrivacyNotice?: boolean;
+  /** Initial view mode when dropdown opens (e.g., "import" to skip locked/unlock screen). Bypasses status-based view resolution. */
+  initialViewMode?: ViewMode;
+  /** Open the dropdown immediately on mount (e.g., when embedded in a modal). */
+  defaultOpen?: boolean;
+  /** Called when the dropdown is closed (click-outside, Escape, or overlay click). */
+  onDropdownClose?: () => void;
 }
 
 export function WalletConnect({
@@ -43,10 +54,15 @@ export function WalletConnect({
   variant,
   size = "default",
   triggerText,
+  forceShowTriggerText,
   onWalletUnlocked,
   buttonClassName,
+  showPrivacyNotice,
+  initialViewMode,
+  defaultOpen,
+  onDropdownClose,
 }: WalletConnectProps) {
-  const s = useWalletConnectState();
+  const s = useWalletConnectState(initialViewMode, defaultOpen, onDropdownClose);
 
   // Fire onWalletUnlocked once when any wallet type transitions to connected.
   // Only fires on the false→true transition to avoid re-firing while connected.
@@ -77,9 +93,9 @@ export function WalletConnect({
   const handleEscapeKey = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape" && s.showDropdown) {
       if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;
-      s.setShowDropdown(false);
+      s.closeDropdown();
     }
-  }, [s.showDropdown, s.viewMode, s.setShowDropdown]);
+  }, [s.showDropdown, s.viewMode, s.closeDropdown]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleEscapeKey);
@@ -128,7 +144,7 @@ export function WalletConnect({
     setSelectedProposalId: s.setSelectedProposalId,
   } as const;
 
-  const dropdownContent = renderViewContent(s, connectedViewSharedProps);
+  const dropdownContent = renderViewContent(s, connectedViewSharedProps, { showPrivacyNotice });
 
   // True when any wallet type is actively connected — s.status alone is not enough
   // because zkLogin/passkey leave s.status as 'disconnected' (no self-custody keystore)
@@ -136,9 +152,9 @@ export function WalletConnect({
     s.isZkLoggedIn || s.isPasskeyUnlocked || s.isLedgerConnected || s.status === 'unlocked';
   // Note: isAnyWalletConnectedAtMount (above) is used only for prevConnectedRef initialization
 
-  const closeDropdown = () => {
+  const closeDropdownGuarded = () => {
     if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;
-    s.setShowDropdown(false);
+    s.closeDropdown();
   };
 
   return (
@@ -153,7 +169,7 @@ export function WalletConnect({
                   ? "text-xs lg:text-sm px-5 md:px-7 lg:px-9 py-1"
                   : "text-sm md:text-base px-3 py-2"
               }`
-            : `bg-white hover:bg-gray-50 border border-gray-300 rounded ${
+            : `bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded ${
                 size === "sm" ? "text-xs lg:text-sm px-4 py-1" : "text-sm md:text-base px-3 py-2"
               }`
         } ${buttonClassName ?? ""}`}
@@ -164,14 +180,14 @@ export function WalletConnect({
         )}
         <span
           className={`font-mono truncate ${
-            variant === "filledOutlineC7" ? "" : "text-gray-900"
+            variant === "filledOutlineC7" ? "" : "text-gray-900 dark:text-gray-100"
           }`}
         >
-          {triggerText && !isAnyWalletConnected ? triggerText : s.getButtonText()}
+          {triggerText && (forceShowTriggerText || !isAnyWalletConnected) ? triggerText : s.getButtonText()}
         </span>
         <svg
           className={`w-4 h-4 flex-shrink-0 transition-transform ${s.showDropdown ? "rotate-180" : ""} ${
-            variant === "filledOutlineC7" ? "text-nasun-c7" : "text-gray-500"
+            variant === "filledOutlineC7" ? "text-nasun-c7" : "text-gray-500 dark:text-gray-400"
           }`}
           fill="none"
           stroke="currentColor"
@@ -200,7 +216,7 @@ export function WalletConnect({
       {s.showDropdown && (!isAnyWalletConnected || s.isMobile) &&
         createPortal(
           <>
-            <div className="fixed inset-0 bg-black/50 z-[99998]" onClick={closeDropdown} />
+            <div className="fixed inset-0 bg-black/50 z-[99998]" onClick={closeDropdownGuarded} />
             <div
               ref={s.mobileDropdownRef}
               className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${s.isMobile ? WALLET_STYLES.dropdownMobile : (s.status === "locked" ? WALLET_STYLES.dropdownCompact : WALLET_STYLES.dropdownDesktop)} overflow-y-auto overflow-x-hidden bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[99999]`}

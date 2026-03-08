@@ -114,7 +114,9 @@ export default defineConfig(({ mode }) => {
     },
 
     optimizeDeps: {
-      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core", "zustand", "@nasun/wallet", "@nasun/wallet-ui"],
+      include: ["aws-amplify", "@aws-amplify/auth", "@aws-amplify/core", "zustand", "@nasun/wallet"],
+      // Exclude workspace packages from pre-bundling so source changes reflect immediately
+      exclude: ["@nasun/wallet-ui"],
     },
 
     // 4) 명시적으로 VITE_* 변수만 process.env에 주입
