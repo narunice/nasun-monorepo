@@ -18,6 +18,7 @@ import {
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { useAuth } from "@/features/auth";
+import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking";
 import {
   Dialog,
@@ -349,12 +350,12 @@ const LeaderboardInfoSection: React.FC = () => {
             <DialogTitle>You're Eligible!</DialogTitle>
             <DialogDescription className="text-nasun-white/70">
               Your X account{" "}
-              {(user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle) && (
+              {getTwitterHandle(user) && (
                 <span className="font-medium text-nasun-white">
                   @
                   {user?.originalTwitterHandle ||
-                    user?.twitterHandle ||
-                    user?.linkedAccounts?.twitter?.twitterHandle}
+                    user?.linkedAccounts?.twitter?.originalTwitterHandle ||
+                    getTwitterHandle(user)}
                 </span>
               )}{" "}
               is connected. You're all set to participate in the leaderboard.
