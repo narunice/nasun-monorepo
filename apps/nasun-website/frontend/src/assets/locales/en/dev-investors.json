@@ -1,0 +1,58 @@
+{
+  "hero": {
+    "subtitle": "A Layer-1 Built to Ship.",
+    "summary": "Nasun is a Move-based Layer-1 blockchain purpose-built for regulated economic coordination — spanning finance, AI compliance, and entertainment. South Korea has 16M+ crypto users, ~$70B in digital assets, and no Korean-native decentralized trading venue. The regulatory window is opening. We built first."
+  },
+  "products": {
+    "intro": "Three live platforms power the ecosystem",
+    "pado": "Full-featured DeFi — DEX, prediction markets, lottery, social trading. Live on devnet.",
+    "gensol": "Cinematic sci-fi IP universe — multiplayer shooter, animation, film.",
+    "baram": "On-chain AI compliance settlement layer with TEE-based execution and auditable economic records."
+  },
+  "highlights": {
+    "moveL1": {
+      "title": "Move L1",
+      "desc": "Sub-second finality, parallel execution"
+    },
+    "liveDevnet": {
+      "title": "Live Devnet",
+      "desc": "Full stack running — not a whitepaper"
+    },
+    "korea": {
+      "title": "Korea Market",
+      "desc": "16M users, $70B assets, zero native L1"
+    },
+    "regulation": {
+      "title": "Regulatory Tailwind",
+      "desc": "Stablecoin law, RWA tokenization, AI Basic Act"
+    }
+  },
+  "litepaper": {
+    "label": "Public Materials",
+    "title": "Litepaper",
+    "desc": "Protocol architecture, ecosystem products, and long-term vision.",
+    "meta": "Nasun Litepaper 2026 · PDF"
+  },
+  "form": {
+    "title": "For Investors",
+    "desc": "Request the full investor litepaper and pitch deck, including tokenomics and funding details.",
+    "email": "Email",
+    "emailPlaceholder": "you@firm.com",
+    "firm": "Firm / Website",
+    "firmPlaceholder": "e.g. Paradigm or paradigm.xyz",
+    "submit": "Request Materials",
+    "submitting": "Submitting...",
+    "required": "Required",
+    "invalidEmail": "Please enter a valid email address",
+    "successTitle": "Request Received",
+    "successMessage": "Thank you for your interest in Nasun. We'll review your request and be in touch within 48 hours.",
+    "errorMessage": "Something went wrong. Please try again or reach out directly."
+  },
+  "cta": {
+    "title": "Explore the Ecosystem"
+  },
+  "actions": {
+    "view": "View",
+    "download": "Download"
+  }
+}
