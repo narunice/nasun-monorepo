@@ -42,6 +42,10 @@ interface WalletConnectProps {
   defaultOpen?: boolean;
   /** Called when the dropdown is closed (click-outside, Escape, or overlay click). */
   onDropdownClose?: () => void;
+  /** Render without trigger button, portal, or overlay — just the content inline. Use with defaultOpen. */
+  embedded?: boolean;
+  /** Override the locked-state heading (default: "Unlock Wallet"). */
+  lockedTitle?: string;
 }
 
 export function WalletConnect({
@@ -61,6 +65,8 @@ export function WalletConnect({
   initialViewMode,
   defaultOpen,
   onDropdownClose,
+  embedded,
+  lockedTitle,
 }: WalletConnectProps) {
   const s = useWalletConnectState(initialViewMode, defaultOpen, onDropdownClose);
 
@@ -81,13 +87,15 @@ export function WalletConnect({
   // Lock body scroll when mobile modal is open to prevent background page from scrolling.
   // iOS Safari propagates touch scroll events from position:fixed elements to document.body,
   // so setting overflow:hidden on body is the most reliable cross-browser fix.
+  // Skip in embedded mode — parent modal handles scroll locking.
   useEffect(() => {
+    if (embedded) return;
     if (s.showDropdown && s.isMobile) {
       const prev = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => { document.body.style.overflow = prev; };
     }
-  }, [s.showDropdown, s.isMobile]);
+  }, [s.showDropdown, s.isMobile, embedded]);
 
   // Close dropdown on Escape key
   const handleEscapeKey = useCallback((e: KeyboardEvent) => {
@@ -144,7 +152,7 @@ export function WalletConnect({
     setSelectedProposalId: s.setSelectedProposalId,
   } as const;
 
-  const dropdownContent = renderViewContent(s, connectedViewSharedProps, { showPrivacyNotice });
+  const dropdownContent = renderViewContent(s, connectedViewSharedProps, { showPrivacyNotice, lockedTitle });
 
   // True when any wallet type is actively connected — s.status alone is not enough
   // because zkLogin/passkey leave s.status as 'disconnected' (no self-custody keystore)
@@ -156,6 +164,12 @@ export function WalletConnect({
     if (s.viewMode === "create-backup" || s.viewMode === "create-auto-lock") return;
     s.closeDropdown();
   };
+
+  // Embedded mode: render content inline without trigger button, portal, or overlay.
+  // Parent component is responsible for modal chrome (backdrop, close button, scroll lock).
+  if (embedded) {
+    return <div className="w-full">{dropdownContent}</div>;
+  }
 
   return (
     <div ref={s.dropdownRef} className="relative">

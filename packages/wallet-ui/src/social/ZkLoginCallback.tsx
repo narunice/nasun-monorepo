@@ -13,8 +13,8 @@ import {
 } from '@nasun/wallet';
 
 export interface ZkLoginCallbackProps {
-  /** Callback when login succeeds */
-  onSuccess?: (state: ZkLoginState) => void;
+  /** Callback when login succeeds (may be async to delay navigation) */
+  onSuccess?: (state: ZkLoginState) => void | Promise<void>;
   /** Callback when login fails */
   onError?: (error: Error) => void;
   /** URL to redirect after success (if onSuccess not provided) */
@@ -29,9 +29,9 @@ type Step = 'verifying' | 'fetching_salt' | 'generating_proof' | 'complete' | 'e
 
 const stepLabels: Record<Step, string> = {
   verifying: 'Verifying login...',
-  fetching_salt: 'Creating your address...',
-  generating_proof: 'Generating secure proof...',
-  complete: 'Success!',
+  fetching_salt: 'Creating address...',
+  generating_proof: 'Generating proof...',
+  complete: 'Welcome!',
   error: 'Something went wrong',
 };
 
@@ -79,7 +79,7 @@ export function ZkLoginCallback({
       await new Promise((r) => setTimeout(r, 1000)); // Show success briefly
 
       if (onSuccess) {
-        onSuccess(state);
+        await onSuccess(state);
       } else if (redirectUrl) {
         // Clear URL hash/params before redirect
         window.history.replaceState({}, '', window.location.pathname);
@@ -214,12 +214,9 @@ export function ZkLoginCallback({
       </div>
 
       {/* Status text */}
-      <h2 className="text-xl xl:text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-        {step === 'complete' ? 'Welcome!' : 'Setting up your wallet...'}
-      </h2>
-      <p className="text-gray-500 dark:text-gray-400 text-center">
+      <h2 className="text-xl xl:text-2xl font-semibold text-gray-900 dark:text-white mb-1">
         {stepLabels[step]}
-      </p>
+      </h2>
 
       {/* Step indicators */}
       <div className="flex flex-col items-center gap-2 mt-6 text-sm xl:text-base">
@@ -237,11 +234,17 @@ export function ZkLoginCallback({
         />
       </div>
 
-      {/* Time estimate */}
+      {/* Privacy note during proof generation */}
       {step === 'generating_proof' && (
-        <p className="text-xs xl:text-sm text-gray-400 dark:text-gray-500 mt-4">
-          This may take 15-30 seconds
-        </p>
+        <div className="mt-6 px-4 py-3 rounded-lg bg-zinc-100 dark:bg-zinc-700 max-w-xs text-center">
+          <p className="text-xs xl:text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed">
+            Your email stays private — this site never sees it.
+            <br />
+            <span className="text-zinc-500 dark:text-zinc-400">
+              A zero-knowledge proof verifies you without revealing personal info.
+            </span>
+          </p>
+        </div>
       )}
     </div>
   );
