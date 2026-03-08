@@ -8,7 +8,6 @@
 import { FC, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useWallet, useZkLogin } from "@nasun/wallet";
-import { WalletConnect } from "@nasun/wallet-ui";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "@/store/userStore";
@@ -85,10 +84,9 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
 
       {!isConnected ? (
         <div className="text-center py-6">
-          <p className="text-nasun-white/70 mb-4">
+          <p className="text-nasun-white/70">
             {t("votingPower.connectWallet")}
           </p>
-          <WalletConnect />
         </div>
       ) : isLoading ? (
         <div className="flex items-center justify-center py-8">
