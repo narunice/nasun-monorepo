@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth';
+import { getTwitterHandle } from '@/utils/getTwitterHandle';
 import { getRankHistory } from '../services/leaderboardV3Api';
 import type { RankHistoryData, DateRangeOptionV3 } from '../types';
 
@@ -26,36 +27,11 @@ interface UseRankHistoryResult {
   refetch: () => void;
 }
 
-/**
- * Get Twitter username from user data
- * Checks both direct Twitter login and linked accounts
- */
-function getTwitterUsername(user: {
-  twitterHandle?: string;
-  linkedAccounts?: {
-    twitter?: { twitterHandle?: string }
-  }
-} | null): string | null {
-  if (!user) return null;
-
-  // Direct Twitter login
-  if (user.twitterHandle) {
-    return user.twitterHandle;
-  }
-
-  // Linked Twitter account
-  if (user.linkedAccounts?.twitter?.twitterHandle) {
-    return user.linkedAccounts.twitter.twitterHandle;
-  }
-
-  return null;
-}
-
 export function useRankHistory(options: UseRankHistoryOptions = {}): UseRankHistoryResult {
   const { seasonId, days = 7, enabled = true } = options;
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  const twitterUsername = getTwitterUsername(user);
+  const twitterUsername = getTwitterHandle(user);
 
   const {
     data: response,

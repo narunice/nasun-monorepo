@@ -9,6 +9,7 @@ import { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth';
+import { getTwitterHandle } from '@/utils/getTwitterHandle';
 import { useRankHistory, useActiveSeason, useSeasons } from '@/features/leaderboard-v3/hooks';
 import { RankHistoryChartV3 } from '@/features/leaderboard-v3/components/RankHistoryChartV3';
 import { OuterBox, Spinner } from '@/components/ui';
@@ -41,9 +42,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   const selectedSeason = selectableSeasons.find((s) => s.seasonId === selectedSeasonId);
   const isSeasonEnded = selectedSeason?.status === 'ended';
 
-  // Get Twitter username
-  const twitterUsername =
-    user?.twitterHandle || user?.linkedAccounts?.twitter?.twitterHandle;
+  const twitterUsername = getTwitterHandle(user);
 
   const { data, isLoading, isError } = useRankHistory({
     seasonId: selectedSeasonId,

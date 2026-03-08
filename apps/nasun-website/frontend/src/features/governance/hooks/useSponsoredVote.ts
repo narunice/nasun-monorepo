@@ -19,6 +19,7 @@ import { fromBase64, toBase64 } from "@mysten/bcs";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "@/store/userStore";
 import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
+import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
 
@@ -58,7 +59,7 @@ export function useSponsoredVote() {
         body: JSON.stringify({
           voter: voterAddress,
           proposalId,
-          twitterHandle: user?.twitterHandle,
+          twitterHandle: getTwitterHandle(user),
           walletAddress: voterAddress,
           ethAddress: userProfile?.linkedAccounts?.metamask?.walletAddress,
         }),
