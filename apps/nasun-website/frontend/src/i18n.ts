@@ -48,6 +48,7 @@ i18n
       "infra",
       "investors",
       "partner",
+      "dev-investors",
     ],
     defaultNS: "home",
     backend: {
