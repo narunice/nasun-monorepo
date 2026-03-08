@@ -13,7 +13,7 @@ import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { useWallet, useZkLogin } from "@nasun/wallet";
-import { WalletConnect } from "@nasun/wallet-ui";
+import { useAuth } from "@/features/auth";
 import { VotingPowerSummary } from "./VotingPowerSummary";
 import { GovernanceStats } from "./GovernanceStats";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -30,6 +30,7 @@ const GovernanceSection = () => {
   const { t } = useTranslation(["proposals", "common"]);
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
+  const { isAuthenticated } = useAuth();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
@@ -54,7 +55,6 @@ const GovernanceSection = () => {
               <span>{t("proposals:section.myGovernanceInfo")}</span>
               {isInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </ButtonV3>
-            <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
           </div>
 
           {/* Collapsible Governance Info Panel */}
@@ -68,13 +68,12 @@ const GovernanceSection = () => {
           )}
         </div>
       ) : (
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex items-center justify-end">
           <p className="text-sm text-nasun-white/50">
-            {status === "locked"
+            {isAuthenticated && !isConnected
               ? t("proposals:wallet.locked")
               : t("proposals:section.connectToParticipate")}
           </p>
-          <WalletConnect dropdownPosition="bottom" dropdownAlign="right" />
         </div>
       )}
 
