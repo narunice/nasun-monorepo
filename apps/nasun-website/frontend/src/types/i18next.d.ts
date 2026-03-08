@@ -26,6 +26,7 @@ import aboutEN from "../assets/locales/en/about.json";
 import infraEN from "../assets/locales/en/infra.json";
 import investorsEN from "../assets/locales/en/investors.json";
 import partnerEN from "../assets/locales/en/partner.json";
+import devInvestorsEN from "../assets/locales/en/dev-investors.json";
 
 declare module "i18next" {
   interface CustomTypeOptions {
@@ -55,6 +56,7 @@ declare module "i18next" {
       infra: typeof infraEN;
       investors: typeof investorsEN;
       partner: typeof partnerEN;
+      "dev-investors": typeof devInvestorsEN;
     };
   }
 }
