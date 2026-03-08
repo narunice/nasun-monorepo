@@ -8,6 +8,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth';
 import { getMyRank } from '../services/leaderboardV3Api';
+import { getTwitterHandle } from '@/utils/getTwitterHandle';
 import type { MyRankResponse, MyRankData } from '../types';
 
 interface UseMyRankResult {
@@ -19,35 +20,10 @@ interface UseMyRankResult {
   isAuthenticated: boolean;
 }
 
-/**
- * Get Twitter username from user data
- * Checks both direct Twitter login and linked accounts
- */
-function getTwitterUsername(user: {
-  twitterHandle?: string;
-  linkedAccounts?: {
-    twitter?: { twitterHandle?: string }
-  }
-} | null): string | null {
-  if (!user) return null;
-
-  // Direct Twitter login
-  if (user.twitterHandle) {
-    return user.twitterHandle;
-  }
-
-  // Linked Twitter account
-  if (user.linkedAccounts?.twitter?.twitterHandle) {
-    return user.linkedAccounts.twitter.twitterHandle;
-  }
-
-  return null;
-}
-
 export function useMyRank(seasonId?: string): UseMyRankResult {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  const twitterUsername = getTwitterUsername(user);
+  const twitterUsername = getTwitterHandle(user);
 
   const {
     data: response,

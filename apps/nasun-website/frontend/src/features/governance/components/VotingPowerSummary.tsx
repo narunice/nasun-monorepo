@@ -14,6 +14,7 @@ import { useUserStore } from "@/store/userStore";
 import { OuterBox, DividerBox, Spinner } from "@/components/ui";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { InfoCircledIcon, ChevronDownIcon, CheckCircledIcon } from "@radix-ui/react-icons";
+import { getTwitterHandle } from "@/utils/getTwitterHandle";
 
 interface VotingPowerSummaryProps {
   className?: string;
@@ -53,16 +54,17 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
 
   const { user: userProfile } = useUserStore();
 
-  const hasLinkedX = isAuthenticated && user?.provider === "Twitter";
+  const twitterHandle = getTwitterHandle(user);
+  const hasLinkedX = isAuthenticated && !!twitterHandle;
   const walletAddress = isZkConnected ? zkState?.address : account?.address;
   const ethAddress = userProfile?.linkedAccounts?.metamask?.walletAddress;
 
   // Fetch voting power when connected
   useEffect(() => {
     if (isConnected && walletAddress) {
-      fetchVotingPower(user?.twitterHandle, walletAddress, ethAddress);
+      fetchVotingPower(twitterHandle ?? undefined, walletAddress, ethAddress);
     }
-  }, [isConnected, walletAddress, ethAddress, user?.twitterHandle, fetchVotingPower]);
+  }, [isConnected, walletAddress, ethAddress, twitterHandle, fetchVotingPower]);
 
   const totalPower = votingPower?.totalVotingPower || 1;
   const breakdown = votingPower?.breakdown;
@@ -159,8 +161,8 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
               </span>
             </div>
 
-            {/* Frontiers Whitelist Bonus */}
-            <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
+            {/* Frontiers Whitelist Bonus — hidden until publicly announced */}
+            {/* <div className="flex items-center justify-between py-2 border-b border-nasun-white/5">
               <div className="flex items-center gap-2">
                 <span className="text-nasun-white/80">{t("votingPower.frontiersWhitelist")}</span>
                 <InfoTooltip content={t("votingPower.frontiersTooltip")} />
@@ -168,7 +170,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
               <span className={`font-medium ${(breakdown?.genesisAllowlist ?? 0) > 0 ? "text-nasun-nw4" : "text-nasun-white/50"}`}>
                 {(breakdown?.genesisAllowlist ?? 0) > 0 ? `+${breakdown!.genesisAllowlist}` : "\u2014"}
               </span>
-            </div>
+            </div> */}
 
             {/* X Account Linked */}
             <div className="flex items-center justify-between py-2">
@@ -211,10 +213,11 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                     <span className="text-nasun-white font-medium">{t("votingPower.howOnChain")}</span>
                     <p className="mt-0.5 text-xs">{t("votingPower.howOnChainDesc")}</p>
                   </li>
-                  <li>
+                  {/* Frontiers Whitelist — hidden until publicly announced */}
+                  {/* <li>
                     <span className="text-nasun-white font-medium">{t("votingPower.howAllowlist")}</span>
                     <p className="mt-0.5 text-xs">{t("votingPower.howAllowlistDesc")}</p>
-                  </li>
+                  </li> */}
                   <li>
                     <span className="text-nasun-white font-medium">{t("votingPower.howX")}</span>
                     <p className="mt-0.5 text-xs">{t("votingPower.howXDesc")}</p>

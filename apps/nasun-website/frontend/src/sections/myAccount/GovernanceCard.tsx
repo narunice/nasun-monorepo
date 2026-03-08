@@ -12,6 +12,7 @@ import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
 import { useAuth } from "@/features/auth";
 import { OuterBox, Spinner } from "@/components/ui";
+import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { StatCard } from "@/components/ui/StatCard";
 
 interface GovernanceCardProps {
@@ -29,11 +30,13 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   const walletAddress = isZkConnected ? zkState?.address : account?.address;
 
+  const twitterHandle = getTwitterHandle(user);
+
   useEffect(() => {
     if (isConnected && walletAddress) {
-      fetchVotingPower(user?.twitterHandle, walletAddress);
+      fetchVotingPower(twitterHandle ?? undefined, walletAddress);
     }
-  }, [isConnected, walletAddress, user?.twitterHandle, fetchVotingPower]);
+  }, [isConnected, walletAddress, twitterHandle, fetchVotingPower]);
 
   const totalPower = votingPower?.totalVotingPower || 1;
 

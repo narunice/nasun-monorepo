@@ -16,7 +16,9 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SuiClient } from "@mysten/sui/client";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useAuth } from "@/features/auth";
+import { useUserStore } from "@/store/userStore";
 import { fetchWithTimeout } from "@/utils/fetchWithTimeout";
+import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { VoteCertificate, VoteResult } from "../types/voting";
 import { hexToBytes } from "../utils/proposalHelpers";
 
@@ -34,6 +36,7 @@ export function useDirectVote() {
   const { account, status, getKeypair } = useWallet();
   const { isConnected: isZkConnected, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const { user } = useAuth();
+  const { user: userProfile } = useUserStore();
 
   const vote = async (
     proposalId: string,
@@ -55,8 +58,9 @@ export function useDirectVote() {
         body: JSON.stringify({
           voter: voterAddress,
           proposalId,
-          twitterHandle: user?.twitterHandle,
+          twitterHandle: getTwitterHandle(user),
           walletAddress: voterAddress,
+          ethAddress: userProfile?.linkedAccounts?.metamask?.walletAddress,
         }),
       });
 
