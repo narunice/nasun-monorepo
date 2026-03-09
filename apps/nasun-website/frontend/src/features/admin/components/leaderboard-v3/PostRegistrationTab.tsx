@@ -10,7 +10,7 @@
  * Phase 11: Role selection removed, continuous RoleMultiplier based on follower count
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   useLeaderboardV3Account,
   usePostFormKeyboardShortcuts,
 } from "../../hooks/useLeaderboardV3";
+import { useAdminSeasons } from "../../hooks/useAdminSeasons";
 import {
   SIGNAL_LABELS,
   BONUS_SIGNALS,
@@ -28,7 +29,14 @@ import {
   calculateRoleMultiplier,
   type PostType,
   type AccountLanguage,
+  type SeasonStatus,
 } from "../../types/leaderboard-v3";
+
+const SEASON_STATUS_COLORS: Record<string, string> = {
+  active: "bg-green-500/20 text-green-400 border-green-500/30",
+  upcoming: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  ended: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+};
 
 // Extract username from URL for account lookup
 function extractUsernameFromUrl(url: string): string | null {
@@ -50,7 +58,33 @@ export function PostRegistrationTab() {
   const urlInputRef = useRef<HTMLInputElement>(null);
   const form = usePostSubmissionForm();
   const createPostMutation = useCreatePost();
+  const { seasons, isLoading: isLoadingSeasons } = useAdminSeasons();
 
+  // Sort seasons: active first, then upcoming, then ended
+  const sortedSeasons = useMemo(() => {
+    if (!seasons) return [];
+    const order: Record<SeasonStatus, number> = { active: 0, upcoming: 1, ended: 2, archived: 3 };
+    return [...seasons]
+      .filter((s) => s.status !== "archived")
+      .sort((a, b) => order[a.status] - order[b.status]);
+  }, [seasons]);
+
+  // Auto-default to active season on first load
+  useEffect(() => {
+    if (form.seasonId === undefined && sortedSeasons.length > 0) {
+      const activeSeason = sortedSeasons.find((s) => s.status === "active");
+      if (activeSeason) {
+        form.setSeasonId(activeSeason.seasonId);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on initial seasons load
+  }, [sortedSeasons]);
+
+  // Resolve selected season name for display
+  const selectedSeason = useMemo(
+    () => sortedSeasons.find((s) => s.seasonId === form.seasonId),
+    [sortedSeasons, form.seasonId],
+  );
 
   // Extract username from URL for account lookup
   const extractedUsername = extractUsernameFromUrl(form.postUrl);
@@ -151,6 +185,57 @@ export function PostRegistrationTab() {
         <h3 className="text-xl font-medium text-nasun-white mb-6">Register Post</h3>
 
         <div className="space-y-6">
+          {/* Target Season */}
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
+              Target Season
+            </label>
+            {isLoadingSeasons ? (
+              <div className="text-sm text-nasun-white/40">Loading seasons...</div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => form.setSeasonId(undefined)}
+                  className={`px-4 py-2.5 rounded-sm text-sm font-medium transition-all border ${
+                    !form.seasonId
+                      ? "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
+                      : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
+                  }`}
+                >
+                  Auto (Active Season)
+                </button>
+                {sortedSeasons.map((season) => {
+                  const isActive = form.seasonId === season.seasonId;
+                  return (
+                    <button
+                      key={season.seasonId}
+                      type="button"
+                      onClick={() => form.setSeasonId(season.seasonId)}
+                      className={`px-4 py-2.5 rounded-sm text-sm font-medium transition-all border ${
+                        isActive
+                          ? "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
+                          : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
+                      }`}
+                    >
+                      {season.name}
+                      <span
+                        className={`ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase ${SEASON_STATUS_COLORS[season.status] || ""}`}
+                      >
+                        {season.status}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {selectedSeason && (
+              <div className="mt-2 text-xs text-nasun-white/40">
+                {selectedSeason.startDate} - {selectedSeason.status === "ended" ? selectedSeason.endDate : "Ongoing"}
+              </div>
+            )}
+          </div>
+
           {/* Post Type */}
           <div>
             <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">

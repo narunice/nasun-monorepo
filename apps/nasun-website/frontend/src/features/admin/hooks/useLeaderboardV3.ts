@@ -93,6 +93,7 @@ export function usePostSubmissionForm() {
   const [accountRole, setAccountRole] = useState<AccountRole>('default'); // Legacy, kept for API compatibility
   const [contentSignals, setContentSignals] = useState<ContentSignal[]>([]);
   const [postType, setPostType] = useState<PostType>('original'); // Phase 9: Post type
+  const [seasonId, setSeasonId] = useState<string | undefined>(undefined); // Target season
 
   // Phase 10: Language and follower count for multiplier calculation
   const [language, setLanguage] = useState<AccountLanguage>('en');
@@ -136,6 +137,8 @@ export function usePostSubmissionForm() {
     toggleSignal,
     postType, // Phase 9
     setPostType, // Phase 9
+    seasonId, // Target season
+    setSeasonId,
 
     // Phase 10: Language and follower fields (now used for all users with follower data)
     language,
@@ -157,6 +160,7 @@ export function usePostSubmissionForm() {
       accountRole, // Legacy field, backend now uses followerCount for multiplier
       contentSignals,
       postType, // Phase 9
+      ...(seasonId ? { seasonId } : {}),
       // Include follower data for new users and existing users with data
       ...(followerCount !== undefined
         ? { language, followerCount }
