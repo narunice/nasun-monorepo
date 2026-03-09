@@ -21,7 +21,7 @@ export type SettingsViewMode = "settings" | "address-book";
 
 export type LedgerViewMode = "ledger-connect" | "ledger-select";
 
-export type PasskeyViewMode = "passkey-setup" | "passkey-backup";
+export type PasskeyViewMode = "passkey-setup";
 
 export type NsaViewMode =
   | "nsa-setup"

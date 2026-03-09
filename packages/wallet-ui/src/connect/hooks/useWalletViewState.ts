@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useWallet, getPendingBackupMnemonic, secureZeroString, usePasskeyStore } from "@nasun/wallet";
+import { useWallet, getPendingBackupMnemonic, secureZeroString } from "@nasun/wallet";
 import { useUISettingsStore } from "../../stores";
 import type { ViewMode } from "../types";
 import type { TabMode } from "../TabBar";
@@ -76,22 +76,18 @@ export function useWalletViewState(initialViewMode?: ViewMode, defaultOpen?: boo
   // Check for pending mnemonic backup on mount — uses initial state so the
   // backup view shows from the very first render (no effect delay).
   // This handles WalletConnect unmount/remount mid-backup (e.g., Pado homepage).
-  // Priority: Zustand store (set before setUnlocked) > module-level var > null
   const pendingBackup = getPendingBackupMnemonic();
-  const pendingPasskey = getPendingPasskeyMnemonic()
-    ?? usePasskeyStore.getState().pendingMnemonic;
 
   // View & form state
   const [viewMode, setViewMode] = useState<ViewMode>(
     pendingBackup ? "create-backup"
-    : pendingPasskey ? "passkey-backup"
     : initialViewMode ?? "main"
   );
   const [selectedProposalId, setSelectedProposalId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showDropdown, setShowDropdown] = useState(!!pendingBackup || !!pendingPasskey || !!defaultOpen);
-  const [mnemonic, setMnemonic] = useState<string | null>(pendingBackup ?? pendingPasskey);
+  const [showDropdown, setShowDropdown] = useState(!!pendingBackup || !!defaultOpen);
+  const [mnemonic, setMnemonic] = useState<string | null>(pendingBackup ?? null);
   // Personalize initial tab based on userPurpose (set during onboarding).
   // 'invest' → Account tab (Staking is there); everything else → Assets tab.
   const [activeTab, setActiveTab] = useState<TabMode>(() => {
@@ -123,7 +119,7 @@ export function useWalletViewState(initialViewMode?: ViewMode, defaultOpen?: boo
 
   // Save backup pending state to localStorage
   useEffect(() => {
-    if ((viewMode === "create-backup" || viewMode === "passkey-backup") && mnemonic) {
+    if (viewMode === "create-backup" && mnemonic) {
       try {
         localStorage.setItem("nasun_wallet_backup_pending", "true");
       } catch {
@@ -175,8 +171,7 @@ export function useWalletViewState(initialViewMode?: ViewMode, defaultOpen?: boo
         // Keep dropdown open during wallet creation/backup flow — user must complete before closing
         if (
           viewMode === "create-backup" ||
-          viewMode === "create-auto-lock" ||
-          viewMode === "passkey-backup"
+          viewMode === "create-auto-lock"
         ) return;
 
         closeDropdown();

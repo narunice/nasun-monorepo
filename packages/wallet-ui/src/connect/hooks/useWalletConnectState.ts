@@ -98,6 +98,7 @@ export function useWalletConnectState(initialViewMode?: ViewMode, defaultOpen?: 
     lock: passkeyLock,
     deleteWallet: passkeyDeleteWallet,
     exportPrivateKey: passkeyExportPrivateKey,
+    exportMnemonic: passkeyExportMnemonic,
   } = usePasskey({ autoCheck: true });
 
   // Passkey private key export handler (biometric re-auth gate)
@@ -106,6 +107,16 @@ export function useWalletConnectState(initialViewMode?: ViewMode, defaultOpen?: 
       return await passkeyExportPrivateKey();
     },
     [passkeyExportPrivateKey],
+  );
+
+  // Passkey mnemonic export handler — password passthrough for credential-id-password wallets;
+  // PRF wallets ignore it (biometric provides the key material via prfOutput)
+  const handleExportPasskeyMnemonic = useCallback(
+    async (pwd: string) => {
+      // Empty string from biometric mode becomes undefined; non-empty password is passed through
+      return await passkeyExportMnemonic(pwd.length > 0 ? pwd : undefined);
+    },
+    [passkeyExportMnemonic],
   );
 
   // UI Settings
@@ -277,6 +288,7 @@ export function useWalletConnectState(initialViewMode?: ViewMode, defaultOpen?: 
     passkeyLock,
     passkeyDeleteWallet,
     handleExportPasskeyPrivateKey,
+    handleExportPasskeyMnemonic,
 
     // WalletConnect
     wcSessionCount,
