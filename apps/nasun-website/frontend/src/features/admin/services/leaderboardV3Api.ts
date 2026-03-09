@@ -38,6 +38,7 @@ export async function createPost(
       accountRole: request.accountRole,
       contentSignals: request.contentSignals,
       postType: request.postType,
+      ...(request.seasonId ? { seasonId: request.seasonId } : {}),
       // Only include language/followerCount for new users
       ...(request.language && { language: request.language }),
       ...(request.followerCount !== undefined && { followerCount: request.followerCount }),

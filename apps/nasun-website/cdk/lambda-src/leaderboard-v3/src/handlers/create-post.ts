@@ -14,7 +14,7 @@ import {
   PostType,
 } from '../types';
 import { normalizeUrl } from '../utils/url-normalizer';
-import { createPost, getPostByUrl, getAccountByUsername } from '../services/dynamodb-client';
+import { createPost, getPostByUrl, getAccountByUsername, getSeasonById } from '../services/dynamodb-client';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { authenticateAdmin } from '../utils/admin-auth';
 
@@ -105,6 +105,18 @@ function validateRequest(body: unknown): {
     followerCount = req.followerCount;
   }
 
+  // Validate seasonId (optional, defaults to active season)
+  let seasonId: string | undefined;
+  if (req.seasonId !== undefined) {
+    if (typeof req.seasonId !== 'string' || !req.seasonId.trim()) {
+      return {
+        valid: false,
+        error: 'seasonId must be a non-empty string',
+      };
+    }
+    seasonId = req.seasonId.trim();
+  }
+
   return {
     valid: true,
     data: {
@@ -112,6 +124,7 @@ function validateRequest(body: unknown): {
       accountRole: req.accountRole as AccountRole,
       contentSignals: signals,
       postType,
+      seasonId,
       language,
       followerCount,
     },
@@ -164,7 +177,24 @@ export const handler = async (
       });
     }
 
-    const { postUrl, accountRole, contentSignals, postType, language, followerCount } = validation.data;
+    const { postUrl, accountRole, contentSignals, postType, seasonId, language, followerCount } = validation.data;
+
+    // Validate seasonId exists and is not archived
+    if (seasonId) {
+      const season = await getSeasonById(seasonId);
+      if (!season) {
+        return respond(400, {
+          success: false,
+          error: 'Season not found',
+        });
+      }
+      if (season.status === 'archived') {
+        return respond(400, {
+          success: false,
+          error: 'Cannot assign posts to archived season',
+        });
+      }
+    }
 
     // Normalize URL
     const normalized = normalizeUrl(postUrl);
@@ -211,6 +241,7 @@ export const handler = async (
       contentSignals,
       postType, // Phase 9: Post type differentiation
       createdBy: adminUsername,
+      seasonId, // Target season (falls back to active season if undefined)
       language, // For new users: CT market language
       followerCount, // For new users: X follower count
     });
