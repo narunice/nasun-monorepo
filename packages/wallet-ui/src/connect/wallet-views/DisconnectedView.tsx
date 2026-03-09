@@ -20,6 +20,7 @@ export function DisconnectedView({
   passkeyIsLoading,
   passkeyNeedsPassword,
   showPrivacyNotice = false,
+  onSignOut,
 }: {
   handleSocialLogin: (provider: ZkLoginProvider) => void;
   isZkLoading: boolean;
@@ -33,6 +34,7 @@ export function DisconnectedView({
   passkeyIsLoading?: boolean;
   passkeyNeedsPassword?: boolean;
   showPrivacyNotice?: boolean;
+  onSignOut?: () => void;
 }) {
   const [passkeyPassword, setPasskeyPassword] = useState("");
   const showPasskeySection = isPasskeySupported && isPasskeyPlatformAvailable;
@@ -243,6 +245,18 @@ export function DisconnectedView({
           </span>
         </button>
       </div>
+
+      {/* Sign out — only shown when caller provides the handler (e.g. app-level session) */}
+      {onSignOut && (
+        <div className="pt-3 text-center">
+          <button
+            onClick={onSignOut}
+            className="text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 underline transition-colors"
+          >
+            Sign out from the website
+          </button>
+        </div>
+      )}
     </div>
   );
 }
