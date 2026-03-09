@@ -23,6 +23,7 @@ const UserManagement = lazy(() => import("../features/admin/pages/UserManagement
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
 const WalletTestPage = lazy(() => import("../pages/dev/WalletTestPage"));
 const DevBattalionNftPage = lazy(() => import("../pages/dev/DevBattalionNftPage"));
+const DevGenesisNftPage = lazy(() => import("../pages/dev/DevGenesisNftPage"));
 const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 
 // Admin route definitions
@@ -132,6 +133,7 @@ const AppRoutes = () => {
         <Route path="/showcase" element={<ComponentShowcasePage />} />
         <Route path="/dev/wallet-test" element={<WalletTestPage />} />
         <Route path="/dev/battalion-nft" element={<DevBattalionNftPage />} />
+        <Route path="/dev/genesis-nft" element={<DevGenesisNftPage />} />
         <Route path="/dev/investors" element={<DevInvestorsPage />} />
 
         {/* Fallback Route */}
