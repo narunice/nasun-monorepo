@@ -127,6 +127,13 @@ export interface PasskeyWalletState {
   keyDerivationMethod: 'prf' | 'credential-id' | 'credential-id-password';
   /** Timestamp when created */
   createdAt: number;
+  /**
+   * Encrypted mnemonic phrase (AES-GCM, same key as private key encryption, separate IV).
+   * Not present for credential-id (legacy) wallets or wallets created before this feature.
+   */
+  encryptedMnemonic?: string;  // base64url
+  /** IV for mnemonic encryption — must differ from private key IV */
+  mnemonicIv?: string;  // base64url
 }
 
 /**

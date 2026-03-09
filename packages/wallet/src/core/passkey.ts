@@ -435,7 +435,8 @@ async function deriveKeyFromCredentialAndPassword(
 /**
  * Create a new wallet protected by passkey.
  * Generates a BIP39 mnemonic and derives the keypair from it.
- * The mnemonic is returned once for backup — it is NOT stored.
+ * The mnemonic is encrypted and stored alongside the private key (except for
+ * credential-id legacy wallets, where the credential ID is a public value).
  *
  * @param credential - The registered passkey credential
  * @param prfOutput - PRF extension output (if authenticator supports it)
@@ -485,6 +486,26 @@ export async function createPasskeyWallet(
     // Zero intermediate buffer immediately after encryption
     secureZero(privateKeyBytes);
 
+    // Encrypt mnemonic using the same encryptionKey with a separate IV.
+    // Skipped for credential-id (legacy) wallets: the credential ID is a
+    // public value stored in localStorage, so encrypting with it provides
+    // no real security — treat mnemonic as "Not Available" for those wallets.
+    let encryptedMnemonic: string | undefined;
+    let mnemonicIv: string | undefined;
+
+    if (keyDerivationMethod !== 'credential-id') {
+      const mnemonicIvBytes = crypto.getRandomValues(new Uint8Array(12));
+      const mnemonicBytes = new TextEncoder().encode(mnemonic);
+      const encryptedMnemonicData = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: toArrayBuffer(mnemonicIvBytes) },
+        encryptionKey,
+        toArrayBuffer(mnemonicBytes)
+      );
+      secureZero(mnemonicBytes);
+      encryptedMnemonic = base64urlEncode(encryptedMnemonicData);
+      mnemonicIv = base64urlEncode(mnemonicIvBytes);
+    }
+
     const walletState: PasskeyWalletState = {
       address,
       primaryCredentialId: credential.id,
@@ -494,6 +515,7 @@ export async function createPasskeyWallet(
       salt: base64urlEncode(salt),
       keyDerivationMethod,
       createdAt: Date.now(),
+      ...(encryptedMnemonic && mnemonicIv ? { encryptedMnemonic, mnemonicIv } : {}),
     };
 
     // Save to storage
@@ -597,6 +619,79 @@ export async function unlockPasskeyWallet(
     // Clear sensitive data from memory
     if (decryptedBuffer) secureZero(decryptedBuffer);
     if (secretKey) secureZeroString(secretKey);
+    if (prfOutput) secureZero(new Uint8Array(prfOutput));
+  }
+}
+
+/**
+ * Export the mnemonic phrase from a passkey wallet.
+ * Requires biometric re-authentication (caller must pass prfOutput from authenticateWithPasskey).
+ *
+ * Returns null if the mnemonic was not stored (legacy wallet or credential-id method).
+ *
+ * Security notes:
+ * - The returned JS string is immutable and cannot be zeroed. Caller should minimise its lifetime.
+ * - prfOutput is zeroed in place (via the shared ArrayBuffer) after use — do not reuse it.
+ * - The intermediate decrypted ArrayBuffer is zeroed in finally; the derived string is not.
+ *
+ * @param wallet - The stored wallet state
+ * @param prfOutput - PRF extension output from authentication (consumed and zeroed after use)
+ * @param password - User password (required for credential-id-password wallets)
+ */
+export async function exportPasskeyMnemonic(
+  wallet: PasskeyWalletState,
+  prfOutput?: ArrayBuffer,
+  password?: string
+): Promise<string | null> {
+  // Mnemonic not stored (legacy wallet, credential-id method, or pre-feature wallet)
+  if (!wallet.encryptedMnemonic || !wallet.mnemonicIv) {
+    return null;
+  }
+
+  let decryptedBuffer: Uint8Array | null = null;
+  try {
+    // Re-derive the same key used during wallet creation using the stored salt.
+    // The mnemonic was encrypted with the same key as the private key, just a different IV.
+    const salt = base64urlDecode(wallet.salt);
+
+    let decryptionKey: CryptoKey;
+    if (wallet.keyDerivationMethod === 'prf') {
+      if (!prfOutput) {
+        throw new PasskeyError(
+          'DECRYPTION_FAILED',
+          'PRF output required for this wallet but authenticator did not provide it'
+        );
+      }
+      decryptionKey = await deriveKeyFromPRF(prfOutput, salt);
+    } else if (wallet.keyDerivationMethod === 'credential-id-password') {
+      if (!password) {
+        throw new PasskeyError('DECRYPTION_FAILED', 'Password required for this wallet');
+      }
+      decryptionKey = await deriveKeyFromCredentialAndPassword(
+        wallet.primaryCredentialId, password, salt
+      );
+    } else {
+      // credential-id (legacy): encryptedMnemonic should not be set for these wallets,
+      // but return null defensively if we somehow reach here
+      return null;
+    }
+
+    const decryptedData = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: toArrayBuffer(base64urlDecode(wallet.mnemonicIv)) },
+      decryptionKey,
+      toArrayBuffer(base64urlDecode(wallet.encryptedMnemonic))
+    );
+
+    decryptedBuffer = new Uint8Array(decryptedData);
+    return new TextDecoder().decode(decryptedData);
+  } catch (error) {
+    if (error instanceof PasskeyError) throw error;
+    // Avoid leaking internal crypto error details (e.g. DOMException from AES-GCM auth tag failure)
+    throw new PasskeyError('DECRYPTION_FAILED', 'Failed to decrypt mnemonic');
+  } finally {
+    if (decryptedBuffer) secureZero(decryptedBuffer);
+    // Zero prfOutput in place — the Uint8Array view shares the underlying ArrayBuffer.
+    // Caller must not reuse prfOutput after this call.
     if (prfOutput) secureZero(new Uint8Array(prfOutput));
   }
 }
