@@ -60,12 +60,13 @@ export function SeasonSelector({
     return null;
   };
 
-  // Date range display
+  // Date range display — hide end date for active/upcoming seasons
   const DateRange = () => {
     if (!selectedSeason) return null;
+    const isOngoing = selectedSeason.status === 'active' || selectedSeason.status === 'upcoming';
     return (
       <span className="text-sm text-nasun-white/50">
-        {selectedSeason.startDate} - {selectedSeason.endDate}
+        {selectedSeason.startDate}{isOngoing ? ' - Ongoing' : ` - ${selectedSeason.endDate}`}
       </span>
     );
   };
