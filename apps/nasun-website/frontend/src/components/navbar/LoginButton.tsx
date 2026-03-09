@@ -8,6 +8,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
+import { getPendingBackupMnemonic } from "@nasun/wallet";
 
 const LoginButton = () => {
   const { t } = useTranslation("common");
@@ -33,11 +34,17 @@ const LoginButton = () => {
   const handleWalletUnlocked = useCallback(async () => {
     if (signFlowCalledRef.current) return;
     signFlowCalledRef.current = true;
+    // Capture before signFlow — pendingBackupMnemonic is set during createWalletWithBackup
+    const hasPendingBackup = !!getPendingBackupMnemonic();
     setSigningIn(true);
     try {
       await signFlow();
       setLoginModalOpen(false);
       navigate('/my-account');
+      // Signal WalletButton to auto-open for backup completion
+      if (hasPendingBackup) {
+        window.dispatchEvent(new CustomEvent('nasun:wallet-backup-pending'));
+      }
     } catch (err) {
       signFlowCalledRef.current = false;
       setSigningIn(false);

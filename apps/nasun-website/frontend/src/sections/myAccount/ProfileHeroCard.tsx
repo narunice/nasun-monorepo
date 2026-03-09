@@ -186,6 +186,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
     if (dismissed === nasunWalletAddress.toLowerCase()) return;
     autoRegisterAttemptedRef.current = nasunWalletAddress;
     walletReg.registerCurrentWallet().catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- individual properties listed to avoid re-runs from walletReg object reference change
   }, [nasunWalletAddress, isNasunConnected, user?.cognitoToken,
       walletReg.isCurrentWalletRegistered, walletReg.isRegistering,
       walletReg.isLoading, walletReg.hasSigner, walletReg.signerAddress]);
@@ -490,6 +491,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             {/* 2. X (Twitter) */}
             <AccountItem
               provider="twitter"
+              description="Required to join the Community Leaderboard"
               identifier={
                 twitterData?.twitterHandle
                   ? `@${twitterData.originalTwitterHandle || user.originalTwitterHandle || twitterData.twitterHandle}`
@@ -526,6 +528,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             {/* 3. Google */}
             <AccountItem
               provider="google"
+              description="Link to receive newsletters and updates"
               identifier={googleData?.email}
               statusBadge={
                 isGooglePrimary ? <LoggedInBadge /> : googleData ? <LinkedBadge /> : undefined
@@ -562,6 +565,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             {/* 5. Telegram */}
             <AccountItem
               provider="telegram"
+              description="Verify your Nasun channel membership"
               identifier={
                 telegram.isLoading
                   ? "Loading..."
