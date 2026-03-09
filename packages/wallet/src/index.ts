@@ -366,6 +366,7 @@ export {
   authenticateWithPasskey,
   createPasskeyWallet,
   unlockPasskeyWallet,
+  exportPasskeyMnemonic,
   getPasskeyWallet,
   savePasskeyWallet,
   clearPasskeyWallet,
