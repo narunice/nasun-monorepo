@@ -4,6 +4,7 @@ import { AccountIcons } from "./AccountIcons";
 interface AccountItemProps {
   provider: "twitter" | "google" | "metamask" | "wallet" | "nasun" | "telegram";
   identifier?: string;
+  description?: string;
   statusBadge?: React.ReactNode;
   actions: React.ReactNode[];
   children?: React.ReactNode;
@@ -21,6 +22,7 @@ const LABELS: Record<string, string> = {
 export const AccountItem: FC<AccountItemProps> = ({
   provider,
   identifier,
+  description,
   statusBadge,
   actions,
   children,
@@ -40,6 +42,9 @@ export const AccountItem: FC<AccountItemProps> = ({
             {statusBadge}
           </div>
           <div className="text-sm font-light text-nasun-white/50 truncate">{identifier || "Not linked"}</div>
+          {description && (
+            <div className="text-xs text-nasun-nw4 mt-0.5">{description}</div>
+          )}
         </div>
 
         {/* Actions */}

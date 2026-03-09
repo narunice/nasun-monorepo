@@ -2,19 +2,13 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useWallet, useZkLogin, usePasskey } from "@nasun/wallet";
+import { getPendingBackupMnemonic } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 export default function WalletButton() {
   const { logout } = useAuth();
-  const { status } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
-  const { address: passkeyAddress } = usePasskey();
 
   const [modalOpen, setModalOpen] = useState(false);
-
-  // True wallet disconnected = no keystore, no zkLogin, no passkey
-  const isWalletDisconnected = status === "disconnected" && !isZkConnected && !passkeyAddress;
 
   // Close modal on Escape key
   useEffect(() => {
@@ -34,10 +28,19 @@ export default function WalletButton() {
     return () => { document.body.style.overflow = prev; };
   }, [modalOpen]);
 
-  const handleSessionExpiredLogout = async () => {
+  // Auto-open modal when wallet backup is pending after login redirect
+  useEffect(() => {
+    if (getPendingBackupMnemonic()) setModalOpen(true);
+
+    const handler = () => setModalOpen(true);
+    window.addEventListener('nasun:wallet-backup-pending', handler);
+    return () => window.removeEventListener('nasun:wallet-backup-pending', handler);
+  }, []);
+
+  const handleSignOut = async () => {
     setModalOpen(false);
     try { await logout(); } catch { /* noop */ }
-    window.location.href = "/";
+    window.location.href = "/logout";
   };
 
   return (
@@ -89,25 +92,12 @@ export default function WalletButton() {
             </div>
 
             {/* Content */}
-            {isWalletDisconnected ? (
-              <div className="px-5 pb-5 text-center space-y-3">
-                <p className="text-sm text-gray-500 dark:text-zinc-400">
-                  Wallet not found. Please sign in again.
-                </p>
-                <button
-                  onClick={handleSessionExpiredLogout}
-                  className="w-full py-2 px-4 rounded-lg bg-gray-200 dark:bg-zinc-700 text-gray-700 dark:text-zinc-200 hover:bg-gray-300 dark:hover:bg-zinc-600 transition-colors text-sm"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <WalletConnect
-                embedded
-                defaultOpen
-                onDropdownClose={() => setModalOpen(false)}
-              />
-            )}
+            <WalletConnect
+              embedded
+              defaultOpen
+              onDropdownClose={() => setModalOpen(false)}
+              onSignOut={handleSignOut}
+            />
           </div>
         </div>,
         document.body,
