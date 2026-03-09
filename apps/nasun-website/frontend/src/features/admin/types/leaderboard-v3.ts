@@ -91,6 +91,7 @@ export interface CreatePostRequest {
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
   postType?: PostType; // Phase 9: defaults to 'original'
+  seasonId?: string; // Target season (defaults to active season if omitted)
   // For new users: language and follower count for role calculation
   language?: AccountLanguage;
   followerCount?: number;

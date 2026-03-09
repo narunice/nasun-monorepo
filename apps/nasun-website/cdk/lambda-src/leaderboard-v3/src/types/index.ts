@@ -215,6 +215,7 @@ export interface CreatePostRequest {
   accountRole: AccountRole;
   contentSignals: ContentSignal[];
   postType?: PostType; // Optional, defaults to 'original'
+  seasonId?: string; // Optional, defaults to active season
   // For new users: language and follower count for role calculation
   language?: AccountLanguage;
   followerCount?: number;
