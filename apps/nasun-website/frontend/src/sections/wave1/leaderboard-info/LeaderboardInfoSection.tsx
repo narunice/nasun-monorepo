@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -27,6 +28,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { WalletConnect } from "@nasun/wallet-ui";
+import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 
 const TIERS = ["platinum", "gold", "silver", "bronze"] as const;
 
@@ -103,11 +107,48 @@ const COMPLIANCE_PARAGRAPHS = [
 
 const LeaderboardInfoSection: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated, signInWithTwitter } = useAuth();
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
   const { handleLinkTwitter } = useAccountLinking({ user });
+  const { signFlow } = useNasunWalletAuth();
+  const { status } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
   const [showEligibleModal, setShowEligibleModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const signFlowCalledRef = useRef(false);
 
   const hasXConnected = user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
+  const isAnyConnected = status === "unlocked" || isZkConnected;
+
+  // Wallet unlock → signFlow → navigate to /my-account
+  const handleWalletUnlocked = useCallback(async () => {
+    if (signFlowCalledRef.current) return;
+    signFlowCalledRef.current = true;
+    setSigningIn(true);
+    try {
+      await signFlow();
+      setShowWalletModal(false);
+      navigate("/my-account");
+    } catch (err) {
+      signFlowCalledRef.current = false;
+      setSigningIn(false);
+      if (import.meta.env.DEV) console.error("[wallet auth]", err);
+    }
+  }, [signFlow, navigate]);
+
+  // Already-unlocked wallet: trigger signFlow immediately on modal open
+  useEffect(() => {
+    if (showWalletModal && isAnyConnected) handleWalletUnlocked();
+  }, [showWalletModal]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset guards when wallet modal closes
+  useEffect(() => {
+    if (!showWalletModal) {
+      signFlowCalledRef.current = false;
+      setSigningIn(false);
+    }
+  }, [showWalletModal]);
 
   // Auto-show eligible modal after returning from X OAuth linking
   useEffect(() => {
@@ -125,10 +166,8 @@ const LeaderboardInfoSection: React.FC = () => {
       localStorage.setItem("auth_return_to", "/wave1/leaderboard-guide?x_linked=1");
       handleLinkTwitter();
     } else {
-      signInWithTwitter();
-      // signInWithTwitter sets auth_return_to to pathname only;
-      // overwrite with x_linked param so the eligible modal auto-shows on return
-      localStorage.setItem("auth_return_to", "/wave1/leaderboard-guide?x_linked=1");
+      // Not logged in — show wallet login modal
+      setShowWalletModal(true);
     }
   };
 
@@ -159,14 +198,13 @@ const LeaderboardInfoSection: React.FC = () => {
           </div>
 
           <p>
-            Connect your{" "}
+            Sign up to this website and link your{" "}
             <button
               onClick={handleXAction}
               className="text-nasun-nw1 underline font-medium cursor-pointer"
             >
-              X account
-            </button>{" "}
-            to this website to get started (required)
+              X account{" "}
+            </button>
           </p>
         </section>
 
@@ -336,7 +374,7 @@ const LeaderboardInfoSection: React.FC = () => {
           {!hasXConnected && (
             <ButtonV3 variant="nw2" size="md" outline onClick={handleXAction}>
               <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 mr-2" />
-              Sign Up with X to Join
+              {isAuthenticated ? "Link X Account" : "Sign Up to Join"}
             </ButtonV3>
           )}
         </div>
@@ -371,6 +409,45 @@ const LeaderboardInfoSection: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* --- Wallet Login Modal --- */}
+      {showWalletModal && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex flex-col overflow-y-auto p-4 bg-nasun-black/60 backdrop-blur-sm animate-in fade-in-0"
+          onClick={() => { if (!signingIn) setShowWalletModal(false); }}
+        >
+          <div
+            className="relative m-auto bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-sm w-full shrink-0 animate-in fade-in-0 zoom-in-95 border border-gray-200 dark:border-zinc-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!signingIn && (
+              <button
+                className="absolute top-3 right-3 z-10 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors p-1"
+                onClick={() => setShowWalletModal(false)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+
+            {signingIn ? (
+              <div className="px-5 py-8 text-center space-y-3">
+                <div className="loading-spinner mx-auto" />
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Signing in...</p>
+              </div>
+            ) : (
+              <WalletConnect
+                embedded
+                defaultOpen
+                onWalletUnlocked={handleWalletUnlocked}
+                showPrivacyNotice
+                lockedTitle="Unlock Wallet to Login"
+              />
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
     </SectionLayout>
   );
 };

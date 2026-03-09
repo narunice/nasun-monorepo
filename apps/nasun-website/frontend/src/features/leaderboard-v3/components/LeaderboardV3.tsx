@@ -99,7 +99,7 @@ export function LeaderboardV3() {
                 selectedDate={snapshotDate}
                 onDateChange={setSnapshotDate}
                 minDate={selectedSeason.startDate}
-                maxDate={selectedSeason.endDate}
+                maxDate={isSeasonEnded ? selectedSeason.endDate : new Date().toISOString().split('T')[0]}
                 lastUpdated={leaderboardData?.calculatedAt}
                 isEnded={isSeasonEnded}
               />
