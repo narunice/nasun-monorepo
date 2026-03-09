@@ -85,13 +85,15 @@ export function ExportView({
 export function ExportMnemonicView({
   onExport,
   setViewMode,
+  authMode,
 }: {
   onExport: (pwd: string) => Promise<string | null>;
   setViewMode: (mode: ViewMode) => void;
+  authMode?: "password" | "biometric";
 }) {
   return (
     <div className="w-full">
-      <ExportMnemonic onExport={onExport} onClose={() => setViewMode("main")} />
+      <ExportMnemonic onExport={onExport} onClose={() => setViewMode("main")} authMode={authMode} />
     </div>
   );
 }
