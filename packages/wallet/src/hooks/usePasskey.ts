@@ -31,6 +31,7 @@ import {
   authenticateWithPasskey,
   createPasskeyWallet,
   unlockPasskeyWallet,
+  exportPasskeyMnemonic,
   getPasskeyWallet,
   clearPasskeyWallet,
   addCredentialToWallet,
@@ -94,6 +95,8 @@ export interface UsePasskeyResult {
   removeCredential: (credentialId: string) => Promise<void>;
   /** Export private key (requires biometric re-authentication) */
   exportPrivateKey: () => Promise<string>;
+  /** Export mnemonic phrase (requires biometric re-authentication; null if not stored) */
+  exportMnemonic: (password?: string) => Promise<string | null>;
   /** List all credentials */
   credentials: PasskeyCredential[];
   /** Refresh wallet state from storage */
@@ -401,6 +404,23 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     return getSecretKeyFromKeypair(currentKeypair);
   }, []);
 
+  // Export mnemonic — requires biometric re-authentication as security gate.
+  // Returns null if mnemonic was not stored (legacy wallet or credential-id method).
+  const exportMnemonic = useCallback(async (password?: string): Promise<string | null> => {
+    const currentWallet = usePasskeyStore.getState().wallet;
+    if (!currentWallet) {
+      throw new PasskeyError('INVALID_STATE', 'Wallet must be initialized to export mnemonic');
+    }
+
+    // Biometric re-authentication (also obtains PRF output for prf wallets)
+    const authResult = await authenticateWithPasskey({
+      allowCredentials: currentWallet.credentials.map((c) => c.id),
+      userVerification: 'required',
+    });
+
+    return exportPasskeyMnemonic(currentWallet, authResult.prfOutput, password);
+  }, []);
+
   // Check for existing wallet on mount
   useEffect(() => {
     if (autoCheck) {
@@ -427,6 +447,7 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     lock,
     deleteWallet,
     exportPrivateKey,
+    exportMnemonic,
     addCredential,
     removeCredential,
     credentials: wallet?.credentials ?? [],
