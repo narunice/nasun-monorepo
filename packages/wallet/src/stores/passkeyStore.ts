@@ -12,7 +12,7 @@
 
 import { create } from 'zustand';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import type { PasskeyWalletState } from '../types/passkey';
+import type { PasskeyCredential, PasskeyWalletState } from '../types/passkey';
 import { getPasskeyWallet } from '../core/passkey';
 
 interface PasskeyStoreState {
@@ -26,6 +26,11 @@ interface PasskeyStoreState {
   isUnlocked: boolean;
   /** Mnemonic pending backup — set BEFORE setUnlocked to survive component unmount */
   pendingMnemonic: string | null;
+  /**
+   * Credential registered but wallet not yet created (PRF unavailable, waiting for password).
+   * Stored in global state so it survives PasskeySetupView unmount/remount (e.g. dropdown close).
+   */
+  pendingCredential: PasskeyCredential | null;
   /** Timestamp of last passkey signing activity — used for auto-lock */
   lastActivityAt: number;
   /** Set wallet + keypair (after create or unlock) */
@@ -34,6 +39,8 @@ interface PasskeyStoreState {
   setWallet: (wallet: PasskeyWalletState | null) => void;
   /** Store mnemonic pending backup (called before setUnlocked) */
   setPendingMnemonic: (mnemonic: string | null) => void;
+  /** Store pending credential when PRF is unavailable and password has not been collected yet */
+  setPendingCredential: (credential: PasskeyCredential | null) => void;
   /** Update last activity timestamp (called on each signing operation) */
   updateActivity: () => void;
   /** Lock wallet — clear keypair, keep wallet metadata */
@@ -51,6 +58,7 @@ export const usePasskeyStore = create<PasskeyStoreState>()((set) => ({
   address: initialWallet?.address ?? null,
   isUnlocked: false,
   pendingMnemonic: null,
+  pendingCredential: null,
   lastActivityAt: Date.now(),
   setUnlocked: (wallet, keypair) => set({
     wallet,
@@ -64,11 +72,13 @@ export const usePasskeyStore = create<PasskeyStoreState>()((set) => ({
     address: wallet?.address ?? null,
   }),
   setPendingMnemonic: (mnemonic) => set({ pendingMnemonic: mnemonic }),
+  setPendingCredential: (credential) => set({ pendingCredential: credential }),
   updateActivity: () => set({ lastActivityAt: Date.now() }),
   lock: () => set({
     keypair: null,
     isUnlocked: false,
     pendingMnemonic: null,
+    pendingCredential: null,
   }),
   clear: () => set({
     wallet: null,
@@ -76,6 +86,7 @@ export const usePasskeyStore = create<PasskeyStoreState>()((set) => ({
     address: null,
     isUnlocked: false,
     pendingMnemonic: null,
+    pendingCredential: null,
     lastActivityAt: Date.now(),
   }),
 }));

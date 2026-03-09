@@ -97,6 +97,10 @@ export interface UsePasskeyResult {
   exportPrivateKey: () => Promise<string>;
   /** Export mnemonic phrase (requires biometric re-authentication; null if not stored) */
   exportMnemonic: (password?: string) => Promise<string | null>;
+  /** Whether a credential was registered but wallet not yet created (PRF unavailable, waiting for password) */
+  hasPendingRegistration: boolean;
+  /** Clear pending registration state (e.g., when user cancels the password step) */
+  clearPendingRegistration: () => void;
   /** List all credentials */
   credentials: PasskeyCredential[];
   /** Refresh wallet state from storage */
@@ -115,6 +119,8 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
   const keypair = usePasskeyStore((s) => s.keypair);
   const isUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const address = usePasskeyStore((s) => s.address);
+  // Reactive selector — re-renders when pendingCredential changes, survives component unmount
+  const pendingCredential = usePasskeyStore((s) => s.pendingCredential);
 
   // Component-local error state
   const [error, setError] = useState<PasskeyError | null>(null);
@@ -156,12 +162,38 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
         userVerification: 'required',
       };
 
-      // PRF output is returned directly from create() when eval.first is provided,
-      // so no second credentials.get() call is needed (Safari iOS forbids two WebAuthn
-      // calls per user gesture; the second would throw NotAllowedError).
-      const { credential, prfOutput } = await registerPasskey(registrationOptions);
+      // Resolve credential: reuse stashed credential (PRF unavailable, user now provided password)
+      // or register a new one via WebAuthn.
+      let credential: PasskeyCredential;
+      let prfOutput: ArrayBuffer | undefined;
 
-      // Determine key derivation method (same logic as createPasskeyWallet)
+      const storedPendingCredential = usePasskeyStore.getState().pendingCredential;
+      if (storedPendingCredential) {
+        // Reuse credential from previous registration — no second WebAuthn gesture needed
+        credential = storedPendingCredential;
+        prfOutput = undefined;
+        // Note: pendingCredential is cleared in onSuccess — if createPasskeyWallet fails,
+        // the stashed credential remains so the user can retry Phase 2 without a new WebAuthn gesture.
+      } else {
+        // PRF output is returned directly from create() when eval.first is provided,
+        // so no second credentials.get() call is needed (Safari iOS forbids two WebAuthn
+        // calls per user gesture; the second would throw NotAllowedError).
+        const registered = await registerPasskey(registrationOptions);
+        credential = registered.credential;
+        prfOutput = registered.prfOutput;
+
+        // PRF not available and no password provided: stash credential and ask for password.
+        // Do NOT fall through to credential-id (legacy) — mnemonic cannot be stored that way.
+        if (!prfOutput && !password) {
+          usePasskeyStore.getState().setPendingCredential(credential);
+          throw new PasskeyError(
+            'PASSWORD_REQUIRED',
+            'Your device does not support advanced biometric key storage. Set a recovery password to enable recovery phrase backup.'
+          );
+        }
+      }
+
+      // Determine key derivation method
       const keyDerivationMethod = prfOutput ? 'prf' : (password ? 'credential-id-password' : 'credential-id');
 
       // Derive EVM password BEFORE createPasskeyWallet zeros prfOutput in finally block
@@ -184,6 +216,8 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
       return { ...result, evmPassword };
     },
     onSuccess: ({ wallet: newWallet, keypair: newKeypair, mnemonic, evmPassword }) => {
+      // Wallet created successfully — clear any stashed pending credential
+      usePasskeyStore.getState().setPendingCredential(null);
       // Store mnemonic BEFORE unlocking — setUnlocked triggers re-renders that may
       // unmount the current WalletConnect (e.g., WelcomeBanner on homepage).
       // The new WalletConnect instance reads pendingMnemonic on mount.
@@ -404,6 +438,12 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     return getSecretKeyFromKeypair(currentKeypair);
   }, []);
 
+  // Clear pending registration (user cancelled the password step)
+  const clearPendingRegistration = useCallback(() => {
+    usePasskeyStore.getState().setPendingCredential(null);
+    setError(null);
+  }, []);
+
   // Export mnemonic — requires biometric re-authentication as security gate.
   // Returns null if mnemonic was not stored (legacy wallet or credential-id method).
   const exportMnemonic = useCallback(async (password?: string): Promise<string | null> => {
@@ -448,6 +488,8 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
     deleteWallet,
     exportPrivateKey,
     exportMnemonic,
+    hasPendingRegistration: pendingCredential !== null,
+    clearPendingRegistration,
     addCredential,
     removeCredential,
     credentials: wallet?.credentials ?? [],
