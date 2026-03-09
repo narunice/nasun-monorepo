@@ -2,18 +2,19 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useWallet, useZkLogin } from "@nasun/wallet";
+import { useWallet, useZkLogin, usePasskey } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 export default function WalletButton() {
   const { logout } = useAuth();
   const { status } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
+  const { address: passkeyAddress } = usePasskey();
 
   const [modalOpen, setModalOpen] = useState(false);
 
   // True wallet disconnected = no keystore, no zkLogin, no passkey
-  const isWalletDisconnected = status === "disconnected" && !isZkConnected;
+  const isWalletDisconnected = status === "disconnected" && !isZkConnected && !passkeyAddress;
 
   // Close modal on Escape key
   useEffect(() => {
