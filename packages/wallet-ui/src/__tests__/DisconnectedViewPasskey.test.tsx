@@ -244,7 +244,7 @@ describe('DisconnectedView - Passkey Integration', () => {
       expect(screen.getByText('Import')).toBeInTheDocument();
 
       // Divider
-      expect(screen.getByText('or use web3 native wallet')).toBeInTheDocument();
+      expect(screen.getByText('Advanced options')).toBeInTheDocument();
     });
   });
 });

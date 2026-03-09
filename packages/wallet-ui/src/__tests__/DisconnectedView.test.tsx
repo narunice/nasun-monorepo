@@ -47,7 +47,7 @@ describe('DisconnectedView', () => {
   it('should render contextual divider', () => {
     render(<DisconnectedView {...defaultProps} />);
 
-    expect(screen.getByText('or use web3 native wallet')).toBeInTheDocument();
+    expect(screen.getByText('Advanced options')).toBeInTheDocument();
   });
 
   it('should call setViewMode("create") when clicking Create', () => {
