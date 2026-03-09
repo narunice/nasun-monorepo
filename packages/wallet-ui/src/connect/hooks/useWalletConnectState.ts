@@ -99,6 +99,8 @@ export function useWalletConnectState(initialViewMode?: ViewMode, defaultOpen?: 
     deleteWallet: passkeyDeleteWallet,
     exportPrivateKey: passkeyExportPrivateKey,
     exportMnemonic: passkeyExportMnemonic,
+    hasPendingRegistration: passkeyHasPendingRegistration,
+    clearPendingRegistration,
   } = usePasskey({ autoCheck: true });
 
   // Passkey private key export handler (biometric re-auth gate)
@@ -289,6 +291,8 @@ export function useWalletConnectState(initialViewMode?: ViewMode, defaultOpen?: 
     passkeyDeleteWallet,
     handleExportPasskeyPrivateKey,
     handleExportPasskeyMnemonic,
+    passkeyHasPendingRegistration,
+    clearPendingRegistration,
 
     // WalletConnect
     wcSessionCount,

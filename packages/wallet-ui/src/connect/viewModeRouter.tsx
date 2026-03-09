@@ -83,6 +83,8 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
       createWallet={s.passkeyCreateWallet}
       isLoading={s.isPasskeyLoading}
       error={s.passkeyError}
+      hasPendingRegistration={s.passkeyHasPendingRegistration}
+      clearPendingRegistration={s.clearPendingRegistration}
     />
   ),
 

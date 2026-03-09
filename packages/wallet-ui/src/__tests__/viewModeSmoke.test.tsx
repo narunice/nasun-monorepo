@@ -130,6 +130,8 @@ function createMockState(overrides: Record<string, any> = {}): any {
     handleExportPasskeyPrivateKey: vi.fn(),
     handleExportMnemonic: vi.fn(),
     handleExportPasskeyMnemonic: vi.fn(),
+    passkeyHasPendingRegistration: false,
+    clearPendingRegistration: vi.fn(),
 
     // Send
     sendRecipient: null,
