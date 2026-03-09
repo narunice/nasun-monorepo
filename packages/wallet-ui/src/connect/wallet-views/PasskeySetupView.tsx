@@ -2,6 +2,10 @@
  * Passkey wallet setup view.
  * Registers a new passkey credential and creates a wallet.
  *
+ * Two-phase flow for devices that do not support PRF (e.g. Windows Hello on Chrome):
+ *   Phase 1: Enter display name → WebAuthn gesture
+ *   Phase 2 (PRF unavailable only): Enter recovery password → wallet created
+ *
  * Receives createWallet/isLoading/error from the parent's usePasskey() instance
  * to ensure keypair state is shared (fixes disconnected-after-creation bug).
  */
@@ -18,27 +22,122 @@ export function PasskeySetupView({
   createWallet,
   isLoading,
   error,
+  hasPendingRegistration,
+  clearPendingRegistration,
 }: {
   onBack: () => void;
-  onCreated: (mnemonic: string) => void;
+  onCreated: () => void;
   createWallet: (userName: string, password?: string) => Promise<{ address: string; mnemonic: string }>;
   isLoading: boolean;
   error: PasskeyError | null;
+  hasPendingRegistration: boolean;
+  clearPendingRegistration: () => void;
 }) {
   const [userName, setUserName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const canCreate = userName.trim().length > 0 && !isLoading;
 
   const handleCreate = async () => {
     if (!canCreate) return;
     try {
-      const { mnemonic } = await createWallet(userName.trim(), undefined);
-      onCreated(mnemonic);
+      await createWallet(userName.trim(), undefined);
+      onCreated();
     } catch {
-      // Error is stored in hook state
+      // PASSWORD_REQUIRED or other errors stored in hook state
     }
   };
 
+  const handleConfirmPassword = async () => {
+    if (password.length < 12) {
+      setPasswordError('Password must be at least 12 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    setPasswordError(null);
+    try {
+      await createWallet(userName, password);
+      onCreated();
+    } catch {
+      // Error shown via hook state
+    }
+  };
+
+  const handleBack = () => {
+    clearPendingRegistration();
+    setPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
+    onBack();
+  };
+
+  // Phase 2: PRF unavailable — collect recovery password before creating the wallet
+  if (hasPendingRegistration) {
+    return (
+      <div className="p-4 w-full">
+        <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-1">
+          Set a Recovery Password
+        </h3>
+        <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-3">
+          Your device doesn't support advanced biometric key storage. Set a
+          password to secure and back up your recovery phrase.
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <input
+            type="password"
+            placeholder="Password (min 12 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !isLoading && handleConfirmPassword()}
+            className={inputClass}
+            disabled={isLoading}
+            autoFocus
+          />
+          <input
+            type="password"
+            placeholder="Confirm password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !isLoading && handleConfirmPassword()}
+            className={inputClass}
+            disabled={isLoading}
+          />
+
+          {passwordError && (
+            <p className="text-xs xl:text-sm text-red-400">{passwordError}</p>
+          )}
+          {error && error.type !== 'PASSWORD_REQUIRED' && (
+            <p className="text-xs xl:text-sm text-red-400">{error.message}</p>
+          )}
+
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={handleBack}
+              className="flex-1 px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmPassword}
+              disabled={isLoading || !password || !confirmPassword}
+              className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-zinc-600 disabled:text-gray-500 dark:disabled:text-zinc-400 text-white font-medium rounded text-sm xl:text-base transition-colors"
+            >
+              {isLoading ? 'Creating...' : 'Create Wallet'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Phase 1: Enter display name and trigger WebAuthn gesture
   return (
     <div className="p-4 w-full">
       <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-1">

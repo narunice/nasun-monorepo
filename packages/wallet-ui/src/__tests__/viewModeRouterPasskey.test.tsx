@@ -57,7 +57,7 @@ vi.mock('../connect/wallet-views', () => ({
   PasskeySetupView: (props: any) => (
     <div data-testid="passkey-setup-view">
       <button data-testid="passkey-back" onClick={props.onBack}>Back</button>
-      <button data-testid="passkey-created" onClick={() => props.onCreated('test mnemonic words')}>Create</button>
+      <button data-testid="passkey-created" onClick={() => props.onCreated()}>Create</button>
     </div>
   ),
   BackupView: (props: any) => (
@@ -134,6 +134,8 @@ function createMockState(overrides: Record<string, any> = {}): any {
     handleExportMnemonic: vi.fn(),
     handleExportPasskeyMnemonic: vi.fn(),
     passkeyNeedsPassword: false,
+    passkeyHasPendingRegistration: false,
+    clearPendingRegistration: vi.fn(),
     resetView: vi.fn(),
     lockWallet: vi.fn(),
     isZkLoggedIn: false,
