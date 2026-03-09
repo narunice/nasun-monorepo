@@ -128,6 +128,8 @@ function createMockState(overrides: Record<string, any> = {}): any {
     handleImportPrivateKey: vi.fn(),
     handleExportPrivateKey: vi.fn(),
     handleExportPasskeyPrivateKey: vi.fn(),
+    handleExportMnemonic: vi.fn(),
+    handleExportPasskeyMnemonic: vi.fn(),
 
     // Send
     sendRecipient: null,
@@ -209,7 +211,6 @@ const EXPLICIT_VIEW_MODES: ViewMode[] = [
   'ledger-connect',
   'ledger-select',
   'passkey-setup',
-  'passkey-backup',
   'nsa-restore',
 ];
 
@@ -347,7 +348,7 @@ describe('ViewMode Smoke Tests', () => {
         // Ledger
         'ledger-connect', 'ledger-select',
         // Passkey
-        'passkey-setup', 'passkey-backup',
+        'passkey-setup',
         // NSA
         'nsa-setup', 'nsa-info', 'nsa-add-signer', 'nsa-accept-proposal', 'nsa-backup',
         'nsa-restore', 'nsa-guardians', 'nsa-recovery', 'nsa-guardian-connect',

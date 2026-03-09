@@ -39,8 +39,8 @@ import {
 } from "./wallet-views";
 import { NFTGallery } from "../nft/NFTGallery";
 import { WCViewRouter } from "../walletconnect";
-import { setPendingPasskeyMnemonic, getPendingPasskeyMnemonic, setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
-import { secureZeroString, usePasskeyStore, useChainStore } from "@nasun/wallet";
+import { setPendingRestoreKey, consumePendingRestoreKey } from "./hooks/useWalletViewState";
+import { usePasskeyStore, useChainStore } from "@nasun/wallet";
 import { useUISettingsStore } from "../stores";
 import { NsaRestorePanel } from "../nsa";
 import { WalletBackupPanel, RestoreBackupPanel } from "../backup";
@@ -72,56 +72,19 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   "passkey-setup": (s) => (
     <PasskeySetupView
       onBack={() => s.setViewMode("main")}
-      onCreated={(mnemonic) => {
+      onCreated={() => {
         // Reset UI settings for fresh onboarding (matches password-based handleCreate)
         useUISettingsStore.getState().resetSettings();
         useChainStore.getState().resetToDefault();
-        setPendingPasskeyMnemonic(mnemonic);
-        s.setMnemonic(mnemonic);
-        s.setViewMode("passkey-backup");
+        // Clear any pending mnemonic — backup screen is skipped (viewable later via Settings)
+        usePasskeyStore.getState().setPendingMnemonic(null);
+        s.setViewMode("main");
       }}
       createWallet={s.passkeyCreateWallet}
       isLoading={s.isPasskeyLoading}
       error={s.passkeyError}
     />
   ),
-
-  "passkey-backup": (s) => {
-    // Mnemonic resolution order (handles WalletConnect unmount/remount race):
-    // 1. React state (s.mnemonic) — set by onCreated if same component instance
-    // 2. Module-level var — set by onCreated, survives within same JS context
-    // 3. Zustand store — set BEFORE setUnlocked in mutation onSuccess, survives
-    //    across component unmount/remount (e.g., WelcomeBanner → Header transition)
-    const mnemonic = s.mnemonic
-      ?? getPendingPasskeyMnemonic()
-      ?? usePasskeyStore.getState().pendingMnemonic;
-
-    if (!mnemonic) {
-      // Mnemonic not yet available — return empty fragment (truthy) so renderViewContent
-      // does NOT fall through to renderByWalletStatus (which would show ConnectedView).
-      return <></>;
-    }
-
-    return (
-      <BackupView
-        mnemonic={mnemonic}
-        onConfirm={() => {
-          // Best-effort secure cleanup of mnemonic from memory
-          const toZero = s.mnemonic ?? mnemonic;
-          secureZeroString(toZero);
-          setPendingPasskeyMnemonic(null);
-          usePasskeyStore.getState().setPendingMnemonic(null);
-          s.setMnemonic(null);
-          try {
-            localStorage.removeItem("nasun_wallet_backup_pending");
-          } catch {
-            // Ignore localStorage errors
-          }
-          s.setViewMode("main");
-        }}
-      />
-    );
-  },
 
   "create-auto-lock": (s) => (
     <AutoLockSetupView onComplete={s.handleAutoLockComplete} />
@@ -167,12 +130,18 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
     );
   },
 
-  "export-mnemonic": (s) => (
-    <ExportMnemonicView
-      onExport={s.handleExportMnemonic}
-      setViewMode={s.setViewMode}
-    />
-  ),
+  "export-mnemonic": (s) => {
+    const isPasskey = s.isPasskeyUnlocked && s.passkeyAddress;
+    // credential-id-password wallets require a password to re-derive the key → keep password mode
+    const usePasswordMode = !isPasskey || s.passkeyNeedsPassword;
+    return (
+      <ExportMnemonicView
+        onExport={isPasskey ? s.handleExportPasskeyMnemonic : s.handleExportMnemonic}
+        setViewMode={s.setViewMode}
+        authMode={usePasswordMode ? "password" : "biometric"}
+      />
+    );
+  },
 
   "send": (s) => (
     <SendView
@@ -446,9 +415,9 @@ export function renderViewContent(
   if (renderer) {
     const result = renderer(s);
     if (result != null) return result;
-    // passkey-backup / create-backup: never fall through to ConnectedView.
+    // create-backup: never fall through to ConnectedView.
     // The renderer returns null only transiently (before mnemonic arrives).
-    if (s.viewMode === "passkey-backup" || s.viewMode === "create-backup") {
+    if (s.viewMode === "create-backup") {
       return null;
     }
   }

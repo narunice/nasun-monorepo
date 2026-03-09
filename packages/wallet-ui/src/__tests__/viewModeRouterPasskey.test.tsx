@@ -3,8 +3,6 @@
  *
  * Covers:
  * - "passkey-setup" route renders PasskeySetupView
- * - "passkey-backup" route renders BackupView with mnemonic
- * - "passkey-backup" returns null when mnemonic is missing
  * - Passkey connected state in renderByWalletStatus
  * - Auth priority: zkLogin > passkey > locked > unlocked
  * - Disconnected state includes passkey props
@@ -98,6 +96,11 @@ vi.mock('@nasun/wallet', () => ({
       pendingMnemonic: null,
     }),
   },
+  useChainStore: {
+    getState: () => ({
+      resetToDefault: vi.fn(),
+    }),
+  },
 }));
 
 // Helper: create mock state
@@ -127,6 +130,10 @@ function createMockState(overrides: Record<string, any> = {}): any {
     handleImportMnemonic: vi.fn(),
     handleImportPrivateKey: vi.fn(),
     handleExportPrivateKey: vi.fn(),
+    handleExportPasskeyPrivateKey: vi.fn(),
+    handleExportMnemonic: vi.fn(),
+    handleExportPasskeyMnemonic: vi.fn(),
+    passkeyNeedsPassword: false,
     resetView: vi.fn(),
     lockWallet: vi.fn(),
     isZkLoggedIn: false,
@@ -173,6 +180,7 @@ function createMockState(overrides: Record<string, any> = {}): any {
     chain: { id: 'nasun-devnet', name: 'Nasun Devnet', type: 'move', nativeCurrency: { symbol: 'NSN', name: 'Nasun', decimals: 9 }, rpcUrl: '' },
     storedEVMAddress: null,
     isExternalMove: false,
+    closeDropdown: vi.fn(),
     ...overrides,
   };
 }
@@ -187,9 +195,6 @@ describe('viewModeRouter - Passkey Routes', () => {
     // Dynamic import to ensure mocks are fully applied first
     const mod = await import('../connect/viewModeRouter');
     renderViewContent = mod.renderViewContent;
-    // Clear module-level pending mnemonic from previous tests
-    const { setPendingPasskeyMnemonic } = await import('../connect/hooks/useWalletViewState');
-    setPendingPasskeyMnemonic(null);
   });
 
   // ------------------------------------------
@@ -214,68 +219,16 @@ describe('viewModeRouter - Passkey Routes', () => {
       expect(setViewMode).toHaveBeenCalledWith('main');
     });
 
-    it('should transition to passkey-backup on creation', () => {
+    it('should transition to main on creation (backup skipped — viewable later via Settings)', () => {
       const setViewMode = vi.fn();
-      const setMnemonic = vi.fn();
       const state = createMockState({
         viewMode: 'passkey-setup',
         setViewMode,
-        setMnemonic,
       });
       const content = renderViewContent(state, sharedProps);
       render(<>{content}</>);
 
       screen.getByTestId('passkey-created').click();
-      expect(setViewMode).toHaveBeenCalledWith('passkey-backup');
-      expect(setMnemonic).toHaveBeenCalledWith('test mnemonic words');
-    });
-  });
-
-  // ------------------------------------------
-  // Explicit ViewMode: passkey-backup
-  // ------------------------------------------
-  describe('passkey-backup route', () => {
-    it('should render BackupView with mnemonic', () => {
-      const testMnemonic = 'abandon badge cabbage dad eagle fabric gadget habit ice jacket kangaroo lamp';
-      const state = createMockState({
-        viewMode: 'passkey-backup',
-        mnemonic: testMnemonic,
-      });
-      const content = renderViewContent(state, sharedProps);
-      render(<>{content}</>);
-
-      expect(screen.getByTestId('backup-view')).toBeInTheDocument();
-      expect(screen.getByTestId('backup-mnemonic').textContent).toBe(testMnemonic);
-    });
-
-    it('should render empty fragment (not fall through) when mnemonic is missing', () => {
-      const state = createMockState({
-        viewMode: 'passkey-backup',
-        mnemonic: null,
-      });
-      const content = renderViewContent(state, sharedProps);
-      render(<>{content}</>);
-
-      // When mnemonic is missing, returns empty fragment (not null)
-      // to prevent fallthrough to ConnectedView/DisconnectedView
-      expect(screen.queryByTestId('backup-view')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('disconnected-view')).not.toBeInTheDocument();
-    });
-
-    it('should clean up on backup confirm', () => {
-      const setViewMode = vi.fn();
-      const setMnemonic = vi.fn();
-      const state = createMockState({
-        viewMode: 'passkey-backup',
-        mnemonic: 'test words',
-        setViewMode,
-        setMnemonic,
-      });
-      const content = renderViewContent(state, sharedProps);
-      render(<>{content}</>);
-
-      screen.getByTestId('backup-confirm').click();
-      expect(setMnemonic).toHaveBeenCalledWith(null);
       expect(setViewMode).toHaveBeenCalledWith('main');
     });
   });
@@ -323,9 +276,9 @@ describe('viewModeRouter - Passkey Routes', () => {
       expect(screen.getByTestId('passkey-cred-name').textContent).toBe('Passkey Wallet');
     });
 
-    it('should call passkeyLock on Lock button click', () => {
+    it('should call passkeyLock and closeDropdown on Lock button click', () => {
       const passkeyLock = vi.fn();
-      const setShowDropdown = vi.fn();
+      const closeDropdown = vi.fn();
       const state = createMockState({
         viewMode: 'main',
         status: 'disconnected',
@@ -333,14 +286,14 @@ describe('viewModeRouter - Passkey Routes', () => {
         passkeyAddress: '0x' + 'b'.repeat(64),
         passkeyCredentials: [],
         passkeyLock,
-        setShowDropdown,
+        closeDropdown,
       });
       const content = renderViewContent(state, sharedProps);
       render(<>{content}</>);
 
       screen.getByTestId('lock-btn').click();
       expect(passkeyLock).toHaveBeenCalled();
-      expect(setShowDropdown).toHaveBeenCalledWith(false);
+      expect(closeDropdown).toHaveBeenCalled();
     });
 
     it('should pass onDelete for passkey connected state', () => {
