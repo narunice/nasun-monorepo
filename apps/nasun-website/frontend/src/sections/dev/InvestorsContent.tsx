@@ -1,5 +1,4 @@
 import { useState, FormEvent } from "react";
-import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -7,7 +6,6 @@ import { OuterBox } from "@/components/ui/OuterBox";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ButtonV3 } from "@/components/ui/button-v3";
-import { ButtonV2 } from "@/components/ui/button-v2";
 import { cn } from "@/utils/utils";
 import {
   Wallet,
@@ -72,34 +70,54 @@ const PRODUCTS = [
   {
     name: "Pado",
     Icon: Wallet,
-    descKey: "products.pado" as const,
-    boxColor: "pd0" as const,
-    iconColor: "text-pado-1",
+    desc: "Full-featured DeFi — DEX, prediction markets, lottery, social trading. Live on devnet.",
+    iconColor: "text-pado-2",
   },
   {
     name: "Gen Sol",
     Icon: Orbit,
-    descKey: "products.gensol" as const,
-    boxColor: "sf1" as const,
-    iconColor: "text-sf-orange",
+    desc: "Cinematic sci-fi IP universe — multiplayer shooter, animation, film.",
+    iconColor: "text-sf-yellow",
   },
   {
     name: "Baram",
     Icon: Wind,
-    descKey: "products.baram" as const,
-    boxColor: "br2" as const,
-    iconColor: "text-br-2",
+    desc: "On-chain AI compliance settlement layer with TEE-based execution and auditable economic records.",
+    iconColor: "text-br-1",
   },
 ];
 
 const HIGHLIGHTS = [
-  { Icon: Layers, titleKey: "highlights.moveL1.title", descKey: "highlights.moveL1.desc" },
-  { Icon: Server, titleKey: "highlights.liveDevnet.title", descKey: "highlights.liveDevnet.desc" },
-  { Icon: Globe, titleKey: "highlights.korea.title", descKey: "highlights.korea.desc" },
-  { Icon: Scale, titleKey: "highlights.regulation.title", descKey: "highlights.regulation.desc" },
-] as const;
+  {
+    Icon: Layers,
+    title: "Move L1",
+    desc: "Sub-second finality, parallel execution",
+  },
+  {
+    Icon: Server,
+    title: "Live Devnet",
+    desc: "Full stack running — not a whitepaper",
+  },
+  {
+    Icon: Globe,
+    title: "Korea Market",
+    desc: "16M users, $70B assets, zero native L1",
+  },
+  {
+    Icon: Scale,
+    title: "Regulatory Tailwind",
+    desc: "Stablecoin law, RWA tokenization, AI Basic Act",
+  },
+];
 
 const LITEPAPER_FILE = "Nasun-Litepaper-2026.pdf";
+
+const HERO_PARAGRAPHS = [
+  "Nasun is a Move-based Layer-1 blockchain built as infrastructure for finance, AI, and entertainment.",
+  "Three live platforms power the ecosystem: Pado, a full-featured DeFi platform; Gen Sol, a cinematic sci-fi universe spanning games, animation, and film; and Baram, on-chain governance for AI agents.",
+  "Nasun is a global network building from a strategic beachhead. South Korea offers more than 16 million crypto users, approximately $70 billion in held digital assets, and no Korean-native decentralized trading venue or compliant self-custody infrastructure, a gap that is large, specific, and unaddressed.",
+  "Regulatory frameworks are actively opening: stablecoin legislation, RWA tokenization initiatives, a tripling of national AI investment, and mandatory compliance requirements under Korea's AI Basic Act, now in effect. Korea's cultural export machine, reaching across film, television, and gaming, also gives the Gen Sol IP universe direct access to global audiences from launch.",
+];
 
 // ---------------------------------------------------------------------------
 // Form types
@@ -109,10 +127,7 @@ interface FormData {
   firm: string;
 }
 
-const INITIAL_FORM: FormData = {
-  email: "",
-  firm: "",
-};
+const INITIAL_FORM: FormData = { email: "", firm: "" };
 
 // ---------------------------------------------------------------------------
 // Input styling constants
@@ -126,8 +141,6 @@ const INPUT_ERROR = "border-red-400/60 focus:border-red-400";
 // Component
 // ---------------------------------------------------------------------------
 const InvestorsContent = () => {
-  const { t } = useTranslation("dev-investors");
-
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -141,11 +154,11 @@ const InvestorsContent = () => {
   const validate = (): boolean => {
     const next: Partial<Record<keyof FormData, string>> = {};
     if (!formData.email.trim()) {
-      next.email = t("form.required");
+      next.email = "Required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      next.email = t("form.invalidEmail");
+      next.email = "Please enter a valid email address";
     }
-    if (!formData.firm.trim()) next.firm = t("form.required");
+    if (!formData.firm.trim()) next.firm = "Required";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -156,7 +169,7 @@ const InvestorsContent = () => {
 
     const formId = import.meta.env.VITE_FORMSPREE_INVESTOR_FORM_ID;
     if (!formId) {
-      toast.error(t("form.errorMessage"));
+      toast.error("Something went wrong. Please try again or reach out directly.");
       console.error("[Investors] VITE_FORMSPREE_INVESTOR_FORM_ID is not configured");
       return;
     }
@@ -166,17 +179,14 @@ const InvestorsContent = () => {
       const res = await fetch(`https://formspree.io/f/${formId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          email: formData.email,
-          firm: formData.firm,
-        }),
+        body: JSON.stringify({ email: formData.email, firm: formData.firm }),
       });
 
       if (!res.ok) throw new Error(`Formspree error: ${res.status}`);
       setSubmitted(true);
     } catch (err) {
       console.error("[Investors] Form submission failed:", err);
-      toast.error(t("form.errorMessage"));
+      toast.error("Something went wrong. Please try again or reach out directly.");
     } finally {
       setSubmitting(false);
     }
@@ -191,34 +201,35 @@ const InvestorsContent = () => {
       {/* Hero                                                               */}
       {/* ----------------------------------------------------------------- */}
       <PageTitle as="h2" align="center">
-        NASUN
+        ABOUT NASUN
       </PageTitle>
 
-      <div className="text-center -mt-2 mb-6">
-        <p className="text-xl md:text-2xl font-medium text-nasun-white tracking-wide">
-          {t("hero.subtitle")}
+      <div className="max-w-3xl mx-auto mb-8 space-y-4 text-nasun-white/80 text-base md:text-lg leading-relaxed">
+        {HERO_PARAGRAPHS.map((para, i) => (
+          <p key={i}>{para}</p>
+        ))}
+        <p className="font-bold text-nasun-white">
+          The foundation is Korean. The ambition is global.
         </p>
       </div>
-
-      <p className="text-center text-nasun-white/80 text-base md:text-lg leading-relaxed max-w-3xl mx-auto mb-8">
-        {t("hero.summary")}
-      </p>
 
       {/* ----------------------------------------------------------------- */}
       {/* Sections                                                           */}
       {/* ----------------------------------------------------------------- */}
       <div className="flex flex-col gap-12 md:gap-16 lg:gap-20">
         {/* ----- Products ----- */}
-        <section>
+        <section className="mt-2 md:mt-4">
           <p className="uppercase tracking-widest text-nasun-nw4 text-center mb-4 text-sm">
-            {t("products.intro")}
+            Three platforms operational on Nasun Devnet and approaching public launch
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {PRODUCTS.map(({ name, Icon, descKey, boxColor, iconColor }) => (
-              <OuterBox key={name} color={boxColor} padding="sm" className="!border-none">
-                <Icon className={cn("w-6 h-6 mb-2", iconColor)} />
-                <h6 className="mb-1 font-bold text-nasun-white">{name}</h6>
-                <p className="text-nasun-white/70 text-sm">{t(descKey)}</p>
+            {PRODUCTS.map(({ name, Icon, desc, iconColor }) => (
+              <OuterBox key={name} color="nw0" padding="sm" className="!border-none !bg-nasun-nw3">
+                <div className="flex items-start justify-between mb-2">
+                  <h6 className="font-bold text-nasun-white">{name}</h6>
+                  <Icon className={cn("w-5 h-5 flex-shrink-0", iconColor)} />
+                </div>
+                <p className="text-nasun-white/70 text-sm">{desc}</p>
               </OuterBox>
             ))}
           </div>
@@ -227,11 +238,11 @@ const InvestorsContent = () => {
         {/* ----- Highlights ----- */}
         <section>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {HIGHLIGHTS.map(({ Icon, titleKey, descKey }) => (
-              <OuterBox key={titleKey} color="nw0" padding="sm" className="text-center">
+            {HIGHLIGHTS.map(({ Icon, title, desc }) => (
+              <OuterBox key={title} color="nw1" padding="sm" className="text-center">
                 <Icon className="w-6 h-6 text-nasun-nw1 mx-auto mb-2" />
-                <h6 className="font-bold text-nasun-white mb-1">{t(titleKey)}</h6>
-                <p className="text-xs md:text-sm text-nasun-white/60">{t(descKey)}</p>
+                <h6 className="font-bold text-nasun-white mb-1">{title}</h6>
+                <p className="text-xs md:text-sm text-nasun-white/60">{desc}</p>
               </OuterBox>
             ))}
           </div>
@@ -239,22 +250,22 @@ const InvestorsContent = () => {
 
         {/* ----- Public Litepaper ----- */}
         <section>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-nasun-nw4/60 mb-4">
-            {t("litepaper.label")}
+          <p className="text-sm uppercase tracking-[0.1em] text-nasun-nw4 mb-4">Public Materials</p>
+          <SectionTitle as="h4">Litepaper</SectionTitle>
+          <p className="text-nasun-white/80 mb-6">
+            Protocol architecture, ecosystem products, and long-term vision.
           </p>
-          <SectionTitle as="h4">{t("litepaper.title")}</SectionTitle>
-          <p className="text-nasun-white/80 mb-6">{t("litepaper.desc")}</p>
 
           <OuterBox color="nw1" padding="md">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <FileText className="w-8 h-8 text-nasun-nw4/50 flex-shrink-0" />
-                <p className="text-sm text-nasun-white/60">{t("litepaper.meta")}</p>
+                <p className="text-sm text-nasun-white/60">Nasun Litepaper 2026 · PDF</p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
                 <ButtonV3 variant="nw1" outline size="sm" onClick={() => viewPdf(LITEPAPER_FILE)}>
                   <Eye className="w-4 h-4 mr-1.5" />
-                  {t("actions.view")}
+                  View
                 </ButtonV3>
                 <ButtonV3
                   variant="nw1"
@@ -263,7 +274,7 @@ const InvestorsContent = () => {
                   onClick={() => downloadPdf(LITEPAPER_FILE)}
                 >
                   <Download className="w-4 h-4 mr-1.5" />
-                  {t("actions.download")}
+                  Download
                 </ButtonV3>
               </div>
             </div>
@@ -273,41 +284,52 @@ const InvestorsContent = () => {
         {/* ----- Investor Request Form ----- */}
         <section>
           <OuterBox color="nw0" padding="lg">
-            <SectionTitle as="h4">{t("form.title")}</SectionTitle>
-            <p className="text-nasun-white/70 mb-6">{t("form.desc")}</p>
+            <SectionTitle as="h4">For Investors</SectionTitle>
+            <p className="text-nasun-white/70 mb-6">
+              Request the full investor litepaper and pitch deck, including tokenomics and funding
+              details.
+            </p>
 
             {submitted ? (
               <div className="text-center py-10">
                 <div className="w-12 h-12 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center mx-auto mb-4">
                   <Check className="w-6 h-6 text-green-400" />
                 </div>
-                <h5 className="text-nasun-white font-medium mb-2">{t("form.successTitle")}</h5>
+                <h5 className="text-nasun-white font-medium mb-2">Request Received</h5>
                 <p className="text-nasun-white/60 text-sm max-w-md mx-auto">
-                  {t("form.successMessage")}
+                  Thank you for your interest in Nasun. We'll review your request and be in touch
+                  within 48 hours.
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-                {/* Row 1: Email + Firm */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-5 flex flex-col items-center"
+                noValidate
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                   <div>
                     <label
                       htmlFor="investor-email"
                       className="block text-sm text-nasun-white/70 mb-1.5"
                     >
-                      {t("form.email")} <span className="text-red-400/80">*</span>
+                      Email <span className="text-red-400/80">*</span>
                     </label>
                     <input
                       id="investor-email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => updateField("email", e.target.value)}
-                      placeholder={t("form.emailPlaceholder")}
+                      placeholder="you@firm.com"
                       className={inputClassName("email")}
                       autoComplete="email"
                     />
-                    {errors.email && (
+                    {errors.email ? (
                       <p className="text-xs text-red-400 mt-1">{errors.email}</p>
+                    ) : (
+                      <p className="text-xs text-nasun-white/40 mt-1">
+                        Please use your company email address.
+                      </p>
                     )}
                   </div>
                   <div>
@@ -315,24 +337,21 @@ const InvestorsContent = () => {
                       htmlFor="investor-firm"
                       className="block text-sm text-nasun-white/70 mb-1.5"
                     >
-                      {t("form.firm")} <span className="text-red-400/80">*</span>
+                      Firm / Website <span className="text-red-400/80">*</span>
                     </label>
                     <input
                       id="investor-firm"
                       type="text"
                       value={formData.firm}
                       onChange={(e) => updateField("firm", e.target.value)}
-                      placeholder={t("form.firmPlaceholder")}
+                      placeholder="e.g. Paradigm or paradigm.xyz"
                       className={inputClassName("firm")}
                       autoComplete="organization"
                     />
-                    {errors.firm && (
-                      <p className="text-xs text-red-400 mt-1">{errors.firm}</p>
-                    )}
+                    {errors.firm && <p className="text-xs text-red-400 mt-1">{errors.firm}</p>}
                   </div>
                 </div>
 
-                {/* Submit */}
                 <ButtonV3
                   type="submit"
                   variant="nw1"
@@ -343,11 +362,11 @@ const InvestorsContent = () => {
                   {submitting ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      {t("form.submitting")}
+                      Submitting...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      {t("form.submit")}
+                      Request Materials
                       <ArrowRight className="w-4 h-4" />
                     </span>
                   )}
@@ -359,48 +378,28 @@ const InvestorsContent = () => {
 
         {/* ----- Explore the Ecosystem CTA ----- */}
         <section className="text-center py-4 md:py-8">
-          <SectionTitle as="h4">{t("cta.title")}</SectionTitle>
+          <SectionTitle as="h4">Explore the Ecosystem</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
-            <ButtonV2
-              variant="nasun-network"
-              size="md"
-              asChild
-              className="w-full !from-[#496c9c80] !to-[#a2c5d880] hover:!from-[#496c9c] hover:!to-[#a2c5d8] hover:shadow-lg transition-all duration-300"
-            >
+            <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
               <Link to="/network/nsn">
                 Explore <span className="font-semibold ml-1">Network</span>
               </Link>
-            </ButtonV2>
-            <ButtonV2
-              variant="pado"
-              size="md"
-              asChild
-              className="w-full !from-[#1a8cbc80] !to-[#5ee1e480] hover:!from-[#1a8cbc] hover:!to-[#5ee1e4] hover:shadow-lg transition-all duration-300"
-            >
+            </ButtonV3>
+            <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
               <Link to="/ecosystem/pado">
                 Explore <span className="font-semibold ml-1">Pado</span>
               </Link>
-            </ButtonV2>
-            <ButtonV2
-              variant="baram"
-              size="md"
-              asChild
-              className="w-full !from-[#5e9e5c80] !to-[#a2d4a080] hover:!from-[#5e9e5c] hover:!to-[#a2d4a0] hover:shadow-lg transition-all duration-300"
-            >
+            </ButtonV3>
+            <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
               <Link to="/ecosystem/baram">
                 Explore <span className="font-semibold ml-1">Baram</span>
               </Link>
-            </ButtonV2>
-            <ButtonV2
-              variant="sf-orange"
-              size="md"
-              asChild
-              className="w-full !from-[#f0534080] !to-[#f5826e80] hover:!from-[#f05340] hover:!to-[#f5826e] hover:shadow-lg transition-all duration-300"
-            >
+            </ButtonV3>
+            <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
               <Link to="/ecosystem/gensol/main">
                 Explore <span className="font-semibold ml-1">Gen Sol</span>
               </Link>
-            </ButtonV2>
+            </ButtonV3>
           </div>
         </section>
       </div>
