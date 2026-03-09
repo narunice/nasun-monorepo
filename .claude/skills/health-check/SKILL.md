@@ -489,7 +489,7 @@ aws cloudfront get-distribution --id E31QOCW4WNY9FL --profile nasun-prod \
 시크릿의 **값은 절대 읽지 않습니다**. 메타데이터만 확인합니다:
 
 ```bash
-for secret in "nasun/twitter-api-tokens" "nasun/wallet-proof" "nasun/google-oauth"; do
+for secret in "nasun-twitter-tokens-prod" "nasun-wallet-proof-prod" "nasun/governance/oracle" "nasun/governance/sponsor" "nasun-telegram-bot-token"; do
   aws secretsmanager describe-secret --secret-id "$secret" --profile nasun-prod --region ap-northeast-2 \
     --query '{Name:Name,LastAccessed:LastAccessedDate}' --output json 2>/dev/null \
     || echo "MISSING: $secret"
