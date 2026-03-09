@@ -1,7 +1,7 @@
 {
   "hero": {
-    "subtitle": "A Layer-1 Built to Ship.",
-    "summary": "Nasun is a Move-based Layer-1 blockchain purpose-built for regulated economic coordination — spanning finance, AI compliance, and entertainment. South Korea has 16M+ crypto users, ~$70B in digital assets, and no Korean-native decentralized trading venue. The regulatory window is opening. We built first."
+    "intro": "Nasun is a Move-based Layer-1 blockchain built as infrastructure for finance, AI, and entertainment.\n\nThree live platforms power the ecosystem: Pado, a full-featured DeFi platform; Gen Sol, a cinematic sci-fi universe spanning games, animation, and film; and Baram, on-chain governance for AI agents.\n\nNasun is a global network building from a strategic beachhead. South Korea offers more than 16 million crypto users, approximately $70 billion in held digital assets, and no Korean-native decentralized trading venue or compliant self-custody infrastructure, a gap that is large, specific, and unaddressed.\n\nRegulatory frameworks are actively opening: stablecoin legislation, RWA tokenization initiatives, a tripling of national AI investment, and mandatory compliance requirements under Korea's AI Basic Act, now in effect. Korea's cultural export machine, reaching across film, television, and gaming, also gives the Gen Sol IP universe direct access to global audiences from launch.",
+    "closing": "The foundation is Korean. The ambition is global."
   },
   "products": {
     "intro": "Three live platforms power the ecosystem",
@@ -38,6 +38,7 @@
     "desc": "Request the full investor litepaper and pitch deck, including tokenomics and funding details.",
     "email": "Email",
     "emailPlaceholder": "you@firm.com",
+    "emailHint": "Please use your company email address.",
     "firm": "Firm / Website",
     "firmPlaceholder": "e.g. Paradigm or paradigm.xyz",
     "submit": "Request Materials",
