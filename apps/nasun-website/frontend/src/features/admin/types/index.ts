@@ -25,6 +25,8 @@ export interface UserProfile {
     twitter?: LinkedAccountInfo;
     metamask?: LinkedAccountInfo;
   };
+  googleEmail?: string;
+  linkedProviders?: string[];
 }
 
 export interface LinkedAccountInfo {

@@ -10,7 +10,13 @@ import { useUserList, useUserDetail } from "../hooks/useUserManagement";
 import { truncateAddress } from "@/utils/addressUtils";
 import type { UserProfile } from "../types";
 
-const PROVIDERS = ["All", "Google", "Twitter", "MetaMask"] as const;
+const FILTERS = [
+  { label: "All", value: "" },
+  { label: "X", value: "x_connected" },
+  { label: "Google", value: "google_connected" },
+  { label: "TG", value: "tg_connected" },
+  { label: "No Connections", value: "no_connections" },
+] as const;
 const PAGE_SIZE = 50;
 
 function ProviderBadge({ provider }: { provider?: string }) {
@@ -240,7 +246,7 @@ export function UserManagement() {
 
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState<string>("All");
+  const [selectedFilter, setSelectedFilter] = useState<string>("");
   const [page, setPage] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
@@ -253,18 +259,16 @@ export function UserManagement() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Reset page when provider changes
+  // Reset page when filter changes
   useEffect(() => {
     setPage(1);
-  }, [selectedProvider]);
-
-  const providerParam = selectedProvider === "All" ? undefined : selectedProvider;
+  }, [selectedFilter]);
 
   const { data, isPending, error } = useUserList(cognitoToken, {
     page,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
-    provider: providerParam,
+    provider: selectedFilter || undefined,
   });
 
   const { data: detailData } = useUserDetail(cognitoToken, selectedUserId);
@@ -305,19 +309,19 @@ export function UserManagement() {
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by username, email, twitter, or wallet..."
+                placeholder="Search by username, wallet, twitter, or email..."
                 aria-label="Search users"
                 className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4"
               />
               <div className="flex gap-1.5">
-                {PROVIDERS.map((p) => (
+                {FILTERS.map((f) => (
                   <Button
-                    key={p}
-                    variant={selectedProvider === p ? "c4" : "outlineC5"}
+                    key={f.value}
+                    variant={selectedFilter === f.value ? "c4" : "outlineC5"}
                     size="sm"
-                    onClick={() => setSelectedProvider(p)}
+                    onClick={() => setSelectedFilter(f.value)}
                   >
-                    {p}
+                    {f.label}
                   </Button>
                 ))}
               </div>
@@ -336,7 +340,7 @@ export function UserManagement() {
               </p>
             ) : users.length === 0 ? (
               <p className="text-nasun-white/40 text-center py-8">
-                {debouncedSearch || providerParam ? "No users found matching your search." : "No registered users."}
+                {debouncedSearch || selectedFilter ? "No users found matching your search." : "No registered users."}
               </p>
             ) : (
               <>
@@ -346,10 +350,9 @@ export function UserManagement() {
                       <tr className="border-b border-nasun-white/10 text-nasun-white/60">
                         <th className="text-left py-3 px-2 font-medium w-8"></th>
                         <th className="text-left py-3 px-2 font-medium">Username</th>
-                        <th className="text-left py-3 px-2 font-medium">Email</th>
-                        <th className="text-left py-3 px-2 font-medium">Provider</th>
-                        <th className="text-left py-3 px-2 font-medium">Twitter</th>
                         <th className="text-left py-3 px-2 font-medium">Wallet</th>
+                        <th className="text-left py-3 px-2 font-medium">X Account</th>
+                        <th className="text-left py-3 px-2 font-medium">Google</th>
                         <th className="text-left py-3 px-2 font-medium">TG</th>
                         <th className="text-left py-3 px-2 font-medium">Role</th>
                         <th className="text-left py-3 px-2 font-medium">Joined</th>
@@ -378,17 +381,6 @@ export function UserManagement() {
                           <td className="py-3 px-2 text-nasun-white font-medium">
                             {user.username || "-"}
                           </td>
-                          <td className="py-3 px-2 text-nasun-white/60 max-w-[180px] truncate">
-                            {user.email || "-"}
-                          </td>
-                          <td className="py-3 px-2">
-                            <ProviderBadge provider={user.provider} />
-                          </td>
-                          <td className="py-3 px-2 text-nasun-white/60">
-                            {user.originalTwitterHandle || user.twitterHandle
-                              ? `@${user.originalTwitterHandle || user.twitterHandle}`
-                              : "-"}
-                          </td>
                           <td className="py-3 px-2 text-nasun-white/40 font-mono text-xs">
                             {user.walletAddress ? (
                               <span className="inline-flex items-center gap-1">
@@ -396,6 +388,24 @@ export function UserManagement() {
                                 <CopyButton text={user.walletAddress} />
                               </span>
                             ) : "-"}
+                          </td>
+                          <td className="py-3 px-2 text-nasun-white/60">
+                            {user.originalTwitterHandle || user.twitterHandle ? (
+                              <a
+                                href={`https://x.com/${user.originalTwitterHandle || user.twitterHandle}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-blue-400 hover:underline"
+                              >
+                                @{user.originalTwitterHandle || user.twitterHandle}
+                              </a>
+                            ) : (
+                              <span className="text-nasun-white/20">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-2 text-nasun-white/60 max-w-[180px] truncate">
+                            {user.googleEmail || <span className="text-nasun-white/20">-</span>}
                           </td>
                           <td className="py-3 px-2">
                             {user.isTelegramMember ? (
