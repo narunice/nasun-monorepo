@@ -181,7 +181,15 @@ export function isWebAuthnSupported(): boolean {
 export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
   if (!isWebAuthnSupported()) return false;
   try {
-    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if (available) return true;
+    // Android browsers (e.g. Samsung Internet) may misreport platform authenticator
+    // availability. Allow passkey attempt; create() will fail gracefully if the
+    // device truly lacks a platform authenticator.
+    if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }

@@ -84,8 +84,7 @@ export function PasskeySetupView({
           Set a Recovery Password
         </h3>
         <p className="text-xs xl:text-sm text-gray-500 dark:text-zinc-400 mb-3">
-          Your device doesn't support advanced biometric key storage. Set a
-          password to secure and back up your recovery phrase.
+          Set a recovery password to protect your wallet backup.
         </p>
 
         <div className="flex flex-col gap-2">
