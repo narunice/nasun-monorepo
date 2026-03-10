@@ -13,7 +13,18 @@ import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/features/auth";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { SectionLoading, PageTitle } from "../components/ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
+import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking";
 
 // Dashboard Card Components
 import { ProfileHeroCard } from "../sections/myAccount/ProfileHeroCard";
@@ -31,6 +42,8 @@ const MyAccountPage = () => {
     message: string;
     type: "info" | "error";
   } | null>(null);
+  const [showLinkXGuidance, setShowLinkXGuidance] = useState(false);
+  const { handleLinkTwitter } = useAccountLinking({ user });
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -61,12 +74,20 @@ const MyAccountPage = () => {
     }
   }, [searchParams, setSearchParams, t]);
 
+  // Show X account linking guidance modal when arriving from leaderboard-guide
+  useEffect(() => {
+    if (searchParams.get("guidance") === "link-x") {
+      setShowLinkXGuidance(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   // Prefer linked MetaMask wallet (updated during Battalion NFT Step 4 linking)
   // over login wallet. When user re-registers with a different wallet,
   // the linked wallet reflects their most recent choice.
   const walletAddress =
     user?.linkedAccounts?.metamask?.walletAddress
-      || (user?.provider === "MetaMask" ? user.walletAddress : null);
+      || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
 
   return (
     <PageLayout>
@@ -157,6 +178,40 @@ const MyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
         </div>
+
+        {/* X Account Linking Guidance Modal */}
+        <Dialog modal={false} open={showLinkXGuidance} onOpenChange={setShowLinkXGuidance}>
+          <DialogContent className="max-w-md text-center" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+            <DialogHeader className="items-center">
+              <FontAwesomeIcon icon={faXTwitter} className="w-10 h-10 text-nasun-white mb-2" />
+              <DialogTitle>Connect Your X Account</DialogTitle>
+              <DialogDescription className="text-nasun-white/70">
+                To participate in the Nasun Leaderboard, connect your X account below.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+              <ButtonV3
+                variant="nw2"
+                size="sm"
+                onClick={() => {
+                  setShowLinkXGuidance(false);
+                  localStorage.setItem("auth_return_to", "/wave1/leaderboard-guide?x_linked=1");
+                  handleLinkTwitter();
+                }}
+              >
+                Connect X Account
+              </ButtonV3>
+              <ButtonV3
+                variant="nw2"
+                size="sm"
+                outline
+                onClick={() => setShowLinkXGuidance(false)}
+              >
+                Later
+              </ButtonV3>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SectionLayout>
     </PageLayout>
   );
