@@ -281,6 +281,100 @@ export function calculateFreshnessMultiplier(lastSeenAt: string): number {
 }
 
 /**
+ * Calculate all score components from aggregate fields
+ *
+ * This is the single source of truth for score calculation.
+ * Used by: calculateUserScore(), dynamodb-client calculateSeasonUserScore(),
+ * generate-snapshot recalculateUserScore().
+ *
+ * Formula:
+ *   RawScore = per-type decay (or legacy fallback) + adjustmentTotalScore
+ *   UserScore = Math.max(0, RawScore × ConsistencyBonus × FreshnessMultiplier)
+ */
+export function calculateScoreComponents(params: {
+  totalPostScore: number;
+  postCount: number;
+  uniqueActiveDays: number;
+  lastSeenAt: string;
+  // Per-type (optional, Phase 9)
+  originalPostCount?: number;
+  originalTotalScore?: number;
+  quotePostCount?: number;
+  quoteTotalScore?: number;
+  replyPostCount?: number;
+  replyTotalScore?: number;
+  // Manual adjustment (optional)
+  adjustmentTotalScore?: number;
+  // Optional reference date for snapshot backfilling
+  referenceDate?: Date;
+}): {
+  rawScore: number;
+  consistencyBonus: number;
+  freshnessMultiplier: number;
+  userScore: number;
+} {
+  const {
+    totalPostScore,
+    postCount,
+    uniqueActiveDays,
+    lastSeenAt,
+    originalPostCount,
+    originalTotalScore,
+    quotePostCount,
+    quoteTotalScore,
+    replyPostCount,
+    replyTotalScore,
+    adjustmentTotalScore,
+    referenceDate,
+  } = params;
+
+  // Phase 9: Use per-type calculation if available, otherwise fallback to legacy
+  let baseRawScore: number;
+  if (
+    originalPostCount !== undefined &&
+    quotePostCount !== undefined &&
+    replyPostCount !== undefined
+  ) {
+    baseRawScore = calculateTotalRawScoreByType(
+      originalPostCount,
+      originalTotalScore || 0,
+      quotePostCount,
+      quoteTotalScore || 0,
+      replyPostCount,
+      replyTotalScore || 0
+    );
+  } else {
+    baseRawScore = calculateRawScore(totalPostScore, postCount);
+  }
+
+  // Add manual adjustment score
+  const rawScore = baseRawScore + (adjustmentTotalScore || 0);
+
+  const consistencyBonus = calculateConsistencyBonus(uniqueActiveDays);
+
+  // Freshness: use referenceDate if provided, otherwise current time
+  let freshnessMultiplier: number;
+  if (referenceDate) {
+    const daysSinceLastPost = Math.max(
+      0,
+      Math.floor((referenceDate.getTime() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24))
+    );
+    freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
+  } else {
+    freshnessMultiplier = calculateFreshnessMultiplier(lastSeenAt);
+  }
+
+  const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier);
+
+  return {
+    rawScore: Math.round(rawScore * 1000) / 1000,
+    consistencyBonus: Math.round(consistencyBonus * 1000) / 1000,
+    freshnessMultiplier: Math.round(freshnessMultiplier * 1000) / 1000,
+    userScore: Math.round(userScore * 1000) / 1000,
+  };
+}
+
+/**
  * Calculate the complete user score from an Account record
  *
  * This is the main function used during leaderboard generation.
@@ -291,35 +385,22 @@ export function calculateFreshnessMultiplier(lastSeenAt: string): number {
  * Phase 9: If per-type fields are available, use type-specific calculations
  */
 export function calculateUserScore(account: Account): ComputedUserScore {
-  // Calculate each component
   const effectivePosts = calculateEffectivePosts(account.postCount);
 
-  // Phase 9: Use per-type calculation if available, otherwise fallback to legacy
-  let rawScore: number;
-  if (
-    account.originalPostCount !== undefined &&
-    account.quotePostCount !== undefined &&
-    account.replyPostCount !== undefined
-  ) {
-    // Per-type calculation with different decay rates
-    rawScore = calculateTotalRawScoreByType(
-      account.originalPostCount,
-      account.originalTotalScore || 0,
-      account.quotePostCount,
-      account.quoteTotalScore || 0,
-      account.replyPostCount,
-      account.replyTotalScore || 0
-    );
-  } else {
-    // Legacy: treat all posts as original (full decay)
-    rawScore = calculateRawScore(account.totalPostScore, account.postCount);
-  }
-
-  const consistencyBonus = calculateConsistencyBonus(account.uniqueActiveDays);
-  const freshnessMultiplier = calculateFreshnessMultiplier(account.lastSeenAt);
-
-  // Final UserScore
-  const userScore = rawScore * consistencyBonus * freshnessMultiplier;
+  const { rawScore, consistencyBonus, freshnessMultiplier, userScore } =
+    calculateScoreComponents({
+      totalPostScore: account.totalPostScore,
+      postCount: account.postCount,
+      uniqueActiveDays: account.uniqueActiveDays,
+      lastSeenAt: account.lastSeenAt,
+      originalPostCount: account.originalPostCount,
+      originalTotalScore: account.originalTotalScore,
+      quotePostCount: account.quotePostCount,
+      quoteTotalScore: account.quoteTotalScore,
+      replyPostCount: account.replyPostCount,
+      replyTotalScore: account.replyTotalScore,
+      adjustmentTotalScore: account.adjustmentTotalScore,
+    });
 
   return {
     accountId: account.accountId,

@@ -20,6 +20,7 @@ import {
   PostRegistrationTab,
   LeaderboardViewTab,
   SeasonManagementTab,
+  ScoreAdjustmentTab,
   type AdminTabId,
 } from "../components/leaderboard-v3";
 
@@ -60,6 +61,7 @@ export function LeaderboardV3Admin() {
           {activeTab === "post" && <PostRegistrationTab />}
           {activeTab === "leaderboard" && <LeaderboardViewTab />}
           {activeTab === "seasons" && <SeasonManagementTab />}
+          {activeTab === "adjust" && <ScoreAdjustmentTab />}
         </div>
       </SectionLayout>
     </AdminLayout>

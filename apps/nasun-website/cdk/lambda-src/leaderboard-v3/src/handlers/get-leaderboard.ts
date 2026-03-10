@@ -39,7 +39,6 @@ import {
   SeasonLeaderboardEntry,
   SeasonLeaderboardResponse,
   DYNAMO_KEYS,
-  SCORE_CONSTANTS,
 } from '../types';
 import {
   getAllAccounts,
@@ -174,34 +173,6 @@ async function getSnapshotData(
   const paginatedItems = items.slice(offset, offset + limit);
 
   return { entries: paginatedItems, totalCount };
-}
-
-/**
- * Recalculate user score with current timestamp
- */
-function recalculateSeasonScore(score: SeasonAccountScore): {
-  userScore: number;
-  rawScore: number;
-  consistencyBonus: number;
-  freshnessMultiplier: number;
-} {
-  const { totalPostScore, postCount, uniqueActiveDays, lastSeenAt } = score;
-
-  const effectivePosts = Math.log2(postCount + 1);
-  const rawScore = postCount > 0 ? (totalPostScore * effectivePosts) / postCount : 0;
-  const consistencyBonus = 1 + Math.log2(uniqueActiveDays + 1) * 0.1;
-  const daysSinceLastPost = Math.floor(
-    (Date.now() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
-  const userScore = rawScore * consistencyBonus * freshnessMultiplier;
-
-  return {
-    rawScore: Math.round(rawScore * 1000) / 1000,
-    consistencyBonus: Math.round(consistencyBonus * 1000) / 1000,
-    freshnessMultiplier: Math.round(freshnessMultiplier * 1000) / 1000,
-    userScore: Math.round(userScore * 1000) / 1000,
-  };
 }
 
 /**

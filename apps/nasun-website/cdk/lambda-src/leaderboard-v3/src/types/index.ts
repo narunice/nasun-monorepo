@@ -138,6 +138,9 @@ export interface Account {
   firstSeenAt: string; // ISO timestamp
   lastSeenAt: string; // ISO timestamp of last post
 
+  // Manual score adjustment (admin-only)
+  adjustmentTotalScore?: number; // Cumulative adjustment delta
+
   // Ban status (soft exclusion)
   isBanned?: boolean;
   banReason?: string;
@@ -425,6 +428,8 @@ export interface SeasonAccountScore {
   quoteTotalScore: number;
   replyPostCount: number;
   replyTotalScore: number;
+  // Manual score adjustment (admin-only)
+  adjustmentTotalScore?: number; // Cumulative adjustment delta
   // Computed scores (updated on post registration)
   userScore: number;
   rawScore: number;

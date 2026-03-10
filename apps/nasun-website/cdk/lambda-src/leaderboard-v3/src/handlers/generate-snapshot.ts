@@ -22,9 +22,9 @@ import {
   DailySnapshot,
   SeasonAccountScore,
   DYNAMO_KEYS,
-  SCORE_CONSTANTS,
 } from '../types';
 import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds } from '../services/dynamodb-client';
+import { calculateScoreComponents } from '../services/score-calculator';
 import { getTodayDateString, getYesterdayDateString } from '../utils/date';
 import { calculateRankChange } from '../utils/rank';
 
@@ -138,6 +138,7 @@ async function updateSeasonMetadata(
 
 /**
  * Recalculate user scores with current timestamp (for freshness multiplier)
+ * Delegates to centralized calculateScoreComponents() in score-calculator.ts
  */
 function recalculateUserScore(score: SeasonAccountScore, referenceDate?: Date): {
   userScore: number;
@@ -145,31 +146,20 @@ function recalculateUserScore(score: SeasonAccountScore, referenceDate?: Date): 
   consistencyBonus: number;
   freshnessMultiplier: number;
 } {
-  const { totalPostScore, postCount, uniqueActiveDays, lastSeenAt } = score;
-
-  // RawScore = totalPostScore × log₂(postCount + 1) / postCount
-  const effectivePosts = Math.log2(postCount + 1);
-  const rawScore = postCount > 0 ? (totalPostScore * effectivePosts) / postCount : 0;
-
-  // ConsistencyBonus = 1 + log₂(uniqueActiveDays + 1) × 0.1
-  const consistencyBonus = 1 + Math.log2(uniqueActiveDays + 1) * 0.1;
-
-  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / FRESHNESS_HALF_LIFE_DAYS)
-  const refTime = referenceDate ? referenceDate.getTime() : Date.now();
-  const daysSinceLastPost = Math.floor(
-    (refTime - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
-
-  // UserScore = rawScore × consistencyBonus × freshnessMultiplier
-  const userScore = rawScore * consistencyBonus * freshnessMultiplier;
-
-  return {
-    rawScore: Math.round(rawScore * 1000) / 1000,
-    consistencyBonus: Math.round(consistencyBonus * 1000) / 1000,
-    freshnessMultiplier: Math.round(freshnessMultiplier * 1000) / 1000,
-    userScore: Math.round(userScore * 1000) / 1000,
-  };
+  return calculateScoreComponents({
+    totalPostScore: score.totalPostScore,
+    postCount: score.postCount,
+    uniqueActiveDays: score.uniqueActiveDays,
+    lastSeenAt: score.lastSeenAt,
+    originalPostCount: score.originalPostCount,
+    originalTotalScore: score.originalTotalScore,
+    quotePostCount: score.quotePostCount,
+    quoteTotalScore: score.quoteTotalScore,
+    replyPostCount: score.replyPostCount,
+    replyTotalScore: score.replyTotalScore,
+    adjustmentTotalScore: score.adjustmentTotalScore,
+    referenceDate,
+  });
 }
 
 /**

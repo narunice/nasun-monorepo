@@ -10,12 +10,14 @@ import {
   createPost,
   getLeaderboard,
   getAccount,
+  adjustScore,
   calculatePostScorePreview,
   calculatePostScorePreviewWithFollowers,
 } from '../services/leaderboardV3Api';
 import { useAdminAuth } from './useAdminAuth';
 import type {
   CreatePostRequest,
+  AdjustScoreRequest,
   GetLeaderboardParams,
   AccountRole,
   ContentSignal,
@@ -77,6 +79,22 @@ export function useCreatePost() {
     }) => createPost(request, cognitoToken || ''),
     onSuccess: () => {
       // Invalidate all leaderboard queries to refresh rankings
+      queryClient.invalidateQueries({ queryKey: leaderboardV3Keys.all });
+    },
+  });
+}
+
+/**
+ * Hook for adjusting a user's score
+ */
+export function useAdjustScore() {
+  const queryClient = useQueryClient();
+  const { cognitoToken } = useAdminAuth();
+
+  return useMutation({
+    mutationFn: (request: AdjustScoreRequest) =>
+      adjustScore(request, cognitoToken || ''),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leaderboardV3Keys.all });
     },
   });
