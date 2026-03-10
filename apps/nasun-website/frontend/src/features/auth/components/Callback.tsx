@@ -125,6 +125,10 @@ export default function Callback() {
         <div className="bg-zinc-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl border border-zinc-500/30">
           <ZkLoginCallback
             onSuccess={async (state) => {
+              // Claim navigation ownership BEFORE signFlow to prevent race condition:
+              // handleCallback() clears nasun:zklogin:session → isZkLogin becomes false
+              // on re-render → useEffect Case 3/4 would fire and compete with this handler.
+              hasHandledRef.current = true;
               try {
                 // Register signer immediately — the useEffect in useSigner
                 // hasn't fired yet at this point, so SignerManager is empty.
@@ -134,7 +138,16 @@ export default function Callback() {
                 await signFlow();
               } catch (err) {
                 logger.error("zkLogin signFlow failed:", err);
+                hasHandledRef.current = false;
                 navigate("/", { replace: true });
+                return;
+              }
+              // Check auth_return_to first (e.g., leaderboard-guide X account flow)
+              const authReturnTo = localStorage.getItem("auth_return_to");
+              if (authReturnTo && authReturnTo !== "/" && isValidReturnUrl(authReturnTo)) {
+                localStorage.removeItem("auth_return_to");
+                clearZkLoginReturnUrl();
+                navigate(authReturnTo, { replace: true });
                 return;
               }
               const returnUrl = getZkLoginReturnUrl();
