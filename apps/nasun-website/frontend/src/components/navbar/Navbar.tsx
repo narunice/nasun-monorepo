@@ -7,6 +7,7 @@ import { getNavItemsV2 } from "../../config/routesConfig";
 import { NavItem } from "../../types/routes";
 import LoginButton from "./LoginButton";
 import WalletButton from "./WalletButton";
+import WalletDisconnectModal from "./WalletDisconnectModal";
 import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -160,6 +161,7 @@ export default function Navbar() {
 
           {isAuthenticated && user && <WalletButton />}
           <LoginButton />
+          {isAuthenticated && user && <WalletDisconnectModal />}
         </div>
       </div>
     </nav>
