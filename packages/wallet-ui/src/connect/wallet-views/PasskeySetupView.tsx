@@ -14,7 +14,7 @@ import { useState } from "react";
 import type { PasskeyError } from "@nasun/wallet";
 
 const inputClass =
-  "px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-sm xl:text-base focus:outline-none focus:ring-2 focus:ring-blue-500";
+  "px-3 py-2 bg-gray-100 dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-gray-900 dark:text-white text-base focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 export function PasskeySetupView({
   onBack,
