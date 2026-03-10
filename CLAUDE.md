@@ -32,7 +32,7 @@ Nasun is a **bootstrapped web3 project with zero external funding**. All product
 - **Fundraising sequence**: Vision + Prototype → Community → NFT Sales → VC Investment. Every development decision should be evaluated against whether it helps this sequence progress.
 - **Quality over scope**: Scope ruthlessly, but what ships must be production-grade. Fewer features, higher standards.
 - **Execution as proof**: A working L1 blockchain, DEX, prediction market, lottery, AI settlement layer, and shooter game -- all at production-grade quality -- is itself the strongest pitch. Code quality and working demos matter more than feature breadth.
-- **새 기능 구현 또는 버그 수정할 때, git push 하기 전에 항상 security-reviewer 에이전트와 code-reviewer 에이전트를 활용해서 보안 검사를 실시하세요.**
+- **새 기능 구현 또는 버그 수정할 때, git push 하기 전에 항상 `/code-review`를 실행해서 보안 및 코드 품질 검사를 실시하세요.**
 
 ---
 
