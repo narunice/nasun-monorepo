@@ -158,6 +158,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const primaryCognitoToken = cachedProfile
             ? JSON.parse(cachedProfile).cognitoToken
             : parsed.cognitoToken;
+
+          // Ensure the secondary identity has a UserProfiles entry before linking.
+          // Without this, link-account Lambda returns 404 ("Secondary user profile not found")
+          // because Google/Twitter OAuth only creates a Cognito identity, not a DynamoDB record.
+          const secondaryUserData: UserData = {
+            identityId,
+            provider: provider as "Google" | "Twitter",
+            username: userInfo.name,
+            email: userInfo.email,
+            ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
+            ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
+            ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
+            ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
+          };
+          const secondaryProfile = await ensureUserProfile(secondaryUserData);
+          if (!secondaryProfile) {
+            throw new Error("Failed to create secondary user profile. Please try again.");
+          }
+
           await linkAccounts(primaryIdentityId, identityId, provider as "Google" | "Twitter", primaryCognitoToken);
           sessionStorage.removeItem(linkSessionKey);
           await refreshAndSaveUserProfile(primaryIdentityId, primaryCognitoToken);
