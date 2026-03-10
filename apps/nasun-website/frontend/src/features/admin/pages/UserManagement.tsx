@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,46 @@ function ProviderBadge({ provider }: { provider?: string }) {
     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${styles[lower] || "bg-gray-500/20 text-gray-400"}`}>
       {provider}
     </span>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text).catch(() => {
+      // Clipboard API unavailable — silently fail
+    });
+    setCopied(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-nasun-white/10 text-nasun-white/30 hover:text-nasun-white/60 transition-colors"
+      title="Copy address"
+    >
+      {copied ? (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-green-400">
+          <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+        </svg>
+      ) : (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+          <path d="M5.5 3.5A1.5 1.5 0 0 1 7 2h2.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 1 .439 1.061V9.5A1.5 1.5 0 0 1 12 11V8.621a3 3 0 0 0-.879-2.121L9 4.379A3 3 0 0 0 6.879 3.5H5.5Z" />
+          <path d="M4 5a1.5 1.5 0 0 0-1.5 1.5v6A1.5 1.5 0 0 0 4 14h5a1.5 1.5 0 0 0 1.5-1.5V8.621a1.5 1.5 0 0 0-.44-1.06L7.94 5.439A1.5 1.5 0 0 0 6.878 5H4Z" />
+        </svg>
+      )}
+    </button>
   );
 }
 
@@ -121,7 +161,19 @@ function UserDetailModal({
           <Field label="Role" value={user.role || "USER"} />
           <Field label="Twitter Handle" value={user.originalTwitterHandle || user.twitterHandle ? `@${user.originalTwitterHandle || user.twitterHandle}` : undefined} />
           <Field label="Twitter ID" value={user.twitterId} />
-          <Field label="Wallet Address" value={user.walletAddress} />
+          <div>
+            <dt className="text-xs uppercase tracking-widest text-nasun-white/40 mb-1">Wallet Address</dt>
+            <dd className="text-sm text-nasun-white break-all">
+              {user.walletAddress ? (
+                <span className="inline-flex items-center gap-1">
+                  {user.walletAddress}
+                  <CopyButton text={user.walletAddress} />
+                </span>
+              ) : (
+                <span className="text-nasun-white/20">-</span>
+              )}
+            </dd>
+          </div>
           <Field label="Verified" value={user.verified} />
           <Field label="Telegram Connected" value={user.isTelegramMember} />
           <Field label="Telegram Username" value={user.telegramUsername} />
@@ -165,7 +217,10 @@ function UserDetailModal({
                       {account.walletAddress && (
                         <div>
                           <dt className="text-nasun-white/30">Wallet</dt>
-                          <dd className="text-nasun-white/70 font-mono">{truncateAddress(account.walletAddress)}</dd>
+                          <dd className="text-nasun-white/70 font-mono inline-flex items-center gap-1">
+                            {truncateAddress(account.walletAddress)}
+                            <CopyButton text={account.walletAddress} />
+                          </dd>
                         </div>
                       )}
                     </dl>
@@ -335,7 +390,12 @@ export function UserManagement() {
                               : "-"}
                           </td>
                           <td className="py-3 px-2 text-nasun-white/40 font-mono text-xs">
-                            {user.walletAddress ? truncateAddress(user.walletAddress) : "-"}
+                            {user.walletAddress ? (
+                              <span className="inline-flex items-center gap-1">
+                                {truncateAddress(user.walletAddress, 2, 4)}
+                                <CopyButton text={user.walletAddress} />
+                              </span>
+                            ) : "-"}
                           </td>
                           <td className="py-3 px-2">
                             {user.isTelegramMember ? (
@@ -353,6 +413,8 @@ export function UserManagement() {
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
                                 })
                               : "-"}
                           </td>
