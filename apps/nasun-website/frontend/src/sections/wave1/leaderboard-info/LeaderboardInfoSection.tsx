@@ -367,16 +367,10 @@ const LeaderboardInfoSection: React.FC = () => {
         </div>
 
         {/* --- CTA Buttons --- */}
-        <div className="flex flex-col sm:flex-row justify-center gap-3">
+        <div className="flex justify-center">
           <ButtonV3 asChild variant="nw2" size="md">
             <Link to="/wave1/leaderboard">View Live Leaderboard</Link>
           </ButtonV3>
-          {!hasXConnected && (
-            <ButtonV3 variant="nw2" size="md" outline onClick={handleXAction}>
-              <FontAwesomeIcon icon={faXTwitter} className="w-4 h-4 mr-2" />
-              {isAuthenticated ? "Link X Account" : "Sign Up to Join"}
-            </ButtonV3>
-          )}
         </div>
       </div>
 
