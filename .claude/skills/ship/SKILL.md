@@ -46,15 +46,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 - `add` = 완전히 새로운 기능, `update` = 기존 기능 개선, `fix` = 버그 수정
 - `.env`, `credentials.json` 등 비밀 정보가 포함된 파일은 절대 커밋하지 않음. 발견 시 경고
 
-### 4단계: 보안 + 코드 리뷰
+### 4단계: 코드 리뷰
 
-`$ARGUMENTS`에 `--no-review`가 없으면 리뷰를 실행합니다:
+`$ARGUMENTS`에 `--no-review`가 없으면 `/code-review`를 실행합니다.
 
-- **security-reviewer** 에이전트: 보안 취약점 검사
-- **code-reviewer** 에이전트: 코드 품질 검사
-
-두 에이전트를 **병렬로** 실행합니다.
-리뷰에서 critical/high 이슈가 발견되면 사용자에게 보고하고 push를 중단합니다.
+`/code-review`는 4개의 리뷰 에이전트가 병렬로 실행되며, confidence score 80 이상인 이슈만 보고합니다.
+critical/high 이슈가 발견되면 사용자에게 보고하고 push를 중단합니다.
 
 ### 5단계: 커밋 + 푸시
 
