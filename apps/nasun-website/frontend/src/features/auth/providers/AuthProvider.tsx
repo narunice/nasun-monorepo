@@ -29,7 +29,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Security: Using sessionStorage for sensitive user data to reduce XSS exposure
       const cachedUser = sessionStorage.getItem("nasun_user_profile");
       if (cachedUser) {
-        setUser(JSON.parse(cachedUser));
+        const parsed = JSON.parse(cachedUser);
+        setUser(parsed);
+
+        // Refresh from server in background to catch changes from other devices/tabs
+        if (parsed.identityId) {
+          const expectedId = parsed.identityId;
+          refreshAndSaveUserProfile(expectedId, parsed.cognitoToken)
+            .then(() => {
+              // Guard: only update if the same user is still logged in (prevents sign-out race)
+              const fresh = useUserStore.getState().user;
+              if (fresh?.identityId === expectedId) setUser(fresh);
+            })
+            .catch(() => logger.debug("Background profile refresh failed (non-blocking)"));
+        }
       }
     } catch {
       logger.debug("No active session found on startup.");

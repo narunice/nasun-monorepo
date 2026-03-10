@@ -103,6 +103,7 @@ export async function removeWallet(input: RemoveWalletInput): Promise<RemoveWall
 
   // Clean up linkedAccounts['nasun wallet'] if it references the removed wallet
   if (linkedNasunAddr && linkedNasunAddr.toLowerCase() === walletAddress) {
+    const secondaryIdentityId = profileResult.Item?.linkedAccounts?.['nasun wallet']?.identityId;
     try {
       await docClient.send(new UpdateCommand({
         TableName: userProfilesTable,
@@ -113,6 +114,24 @@ export async function removeWallet(input: RemoveWalletInput): Promise<RemoveWall
       cleanedUp = true;
     } catch (cleanupErr) {
       console.warn('Failed to clean up linkedAccounts nasun wallet (best-effort):', cleanupErr);
+    }
+
+    // Clear ownership marker on the secondary (linked wallet) profile
+    if (secondaryIdentityId) {
+      try {
+        await docClient.send(new UpdateCommand({
+          TableName: userProfilesTable,
+          Key: { identityId: secondaryIdentityId },
+          UpdateExpression: 'REMOVE linkedToPrimaryId SET updatedAt = :ua',
+          ConditionExpression: 'linkedToPrimaryId = :owner',
+          ExpressionAttributeValues: {
+            ':owner': identityId,
+            ':ua': new Date().toISOString(),
+          },
+        }));
+      } catch (cleanupErr) {
+        console.warn('Failed to clear linkedToPrimaryId on secondary (best-effort):', cleanupErr);
+      }
     }
   }
 
