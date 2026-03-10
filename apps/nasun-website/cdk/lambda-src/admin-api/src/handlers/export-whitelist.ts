@@ -49,8 +49,12 @@ const USER_LIST_FIELDS = [
   "identityId", "username", "email", "provider", "twitterHandle",
   "originalTwitterHandle", "twitterId", "profileImageUrl", "walletAddress",
   "role", "verified", "isTelegramMember", "telegramUserId", "telegramUsername",
-  "createdAt", "updatedAt", "status",
+  "createdAt", "updatedAt", "status", "linkedToPrimaryId", "linkedAccounts",
+  "googleEmail", "linkedProviders",
 ] as const;
+
+// Provider keys that represent social connections (not wallets)
+const SOCIAL_PROVIDER_KEYS = new Set(["twitter", "google"]);
 
 interface UserProfileItem {
   identityId: string;
@@ -71,16 +75,34 @@ interface UserProfileItem {
   updatedAt?: string;
   status?: string;
   linkedAccounts?: Record<string, unknown>;
+  linkedToPrimaryId?: string;
+  googleEmail?: string;
+  linkedProviders: string[];
 }
 
 function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
-  // Resolve walletAddress: prefer primary, fallback to linked Nasun Wallet / MetaMask
+  // Parse linkedAccounts in a single pass: walletAddress fallback + social providers + googleEmail
   let walletAddress = item.walletAddress?.S;
-  if (!walletAddress && item.linkedAccounts?.M) {
+  let googleEmail: string | undefined;
+  const linkedProviders: string[] = [];
+
+  if (item.linkedAccounts?.M) {
     const linked = item.linkedAccounts.M as Record<string, any>;
-    walletAddress =
-      linked["nasun wallet"]?.M?.walletAddress?.S ||
-      linked.metamask?.M?.walletAddress?.S;
+    // Wallet fallback from linked accounts
+    if (!walletAddress) {
+      walletAddress =
+        linked["nasun wallet"]?.M?.walletAddress?.S ||
+        linked.metamask?.M?.walletAddress?.S;
+    }
+    // Extract social connections and google email
+    for (const key of Object.keys(linked)) {
+      if (SOCIAL_PROVIDER_KEYS.has(key)) {
+        linkedProviders.push(key);
+        if (key === "google") {
+          googleEmail = linked.google?.M?.email?.S;
+        }
+      }
+    }
   }
 
   return {
@@ -101,6 +123,9 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
     createdAt: item.createdAt?.S,
     updatedAt: item.updatedAt?.S,
     status: item.status?.S,
+    linkedToPrimaryId: item.linkedToPrimaryId?.S,
+    googleEmail,
+    linkedProviders,
   };
 }
 
@@ -123,9 +148,9 @@ function parseUserProfileDetail(item: Record<string, any>): UserProfileItem {
   return profile;
 }
 
-// Strip linkedAccounts for list responses
-function toListItem(profile: UserProfileItem): Omit<UserProfileItem, "linkedAccounts"> {
-  const { linkedAccounts: _, ...rest } = profile;
+// Strip internal fields for list responses
+function toListItem(profile: UserProfileItem): Omit<UserProfileItem, "linkedAccounts" | "linkedToPrimaryId"> {
+  const { linkedAccounts: _, linkedToPrimaryId: __, ...rest } = profile;
   return rest;
 }
 
@@ -169,13 +194,26 @@ function filterAndPaginateUsers(
 ): { users: Omit<UserProfileItem, "linkedAccounts">[]; total: number; page: number; limit: number; totalPages: number } {
   let filtered = users;
 
-  // Filter by provider (case-insensitive)
+  // Filter by connection status
   if (params.provider) {
-    const providerLower = params.provider.toLowerCase();
-    filtered = filtered.filter((u) => u.provider?.toLowerCase() === providerLower);
+    switch (params.provider) {
+      case "x_connected":
+        filtered = filtered.filter((u) => !!u.twitterHandle);
+        break;
+      case "google_connected":
+        filtered = filtered.filter((u) => !!u.googleEmail);
+        break;
+      case "tg_connected":
+        filtered = filtered.filter((u) => u.isTelegramMember === true);
+        break;
+      case "no_connections":
+        filtered = filtered.filter((u) => u.linkedProviders.length === 0);
+        break;
+      // Ignore unrecognized values (safe fallback: show all)
+    }
   }
 
-  // Filter by search term (case-insensitive, matches username/email/twitterHandle)
+  // Filter by search term (case-insensitive)
   if (params.search) {
     const searchLower = params.search.toLowerCase();
     filtered = filtered.filter((u) =>
@@ -183,7 +221,8 @@ function filterAndPaginateUsers(
       (u.email?.toLowerCase().includes(searchLower)) ||
       (u.twitterHandle?.toLowerCase().includes(searchLower)) ||
       (u.originalTwitterHandle?.toLowerCase().includes(searchLower)) ||
-      (u.walletAddress?.toLowerCase().includes(searchLower))
+      (u.walletAddress?.toLowerCase().includes(searchLower)) ||
+      (u.googleEmail?.toLowerCase().includes(searchLower))
     );
   }
 
@@ -626,7 +665,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       console.log(`Listing users (page: ${page}, limit: ${limit}, search: ${search || "none"}, provider: ${provider || "all"})`);
 
       const allUsers = await scanAllUserProfiles();
-      const result = filterAndPaginateUsers(allUsers, { search, provider, page, limit });
+      // Filter out secondary profiles (linked to a primary)
+      const primaryUsers = allUsers.filter(u => !u.linkedToPrimaryId);
+      const result = filterAndPaginateUsers(primaryUsers, { search, provider, page, limit });
 
       return jsonResponse(200, { success: true, ...result }, requestOrigin);
     }
