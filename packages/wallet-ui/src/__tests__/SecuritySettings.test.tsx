@@ -83,36 +83,22 @@ describe('SecuritySettings', () => {
     });
   });
 
-  describe('Close Button', () => {
-    it('should call onClose when close button is clicked', () => {
+  describe('Back Navigation', () => {
+    it('should call onClose when back button is clicked', () => {
       const onClose = vi.fn();
       render(<SecuritySettings onClose={onClose} />);
 
-      // Find close button (X icon)
-      const buttons = screen.getAllByRole('button');
-      const closeButton = buttons.find((btn) =>
-        btn.querySelector('path[d="M6 18L18 6M6 6l12 12"]')
-      );
-
-      if (closeButton) {
-        fireEvent.click(closeButton);
-        expect(onClose).toHaveBeenCalled();
-      } else {
-        // If no close button found, just verify render succeeded
-        expect(screen.getByText('Security Settings')).toBeInTheDocument();
-      }
+      // Find back button (chevron icon with aria-label="Back")
+      const backButton = screen.getByLabelText('Back');
+      fireEvent.click(backButton);
+      expect(onClose).toHaveBeenCalled();
     });
 
-    it('should not render close button when onClose is not provided', () => {
+    it('should not render back button when onClose is not provided', () => {
       render(<SecuritySettings />);
 
-      // The close button should not be present
-      const buttons = screen.getAllByRole('button');
-      const closeButton = buttons.find((btn) =>
-        btn.querySelector('path[d="M6 18L18 6M6 6l12 12"]')
-      );
-
-      expect(closeButton).toBeFalsy();
+      // The back button should not be present
+      expect(screen.queryByLabelText('Back')).not.toBeInTheDocument();
     });
   });
 });

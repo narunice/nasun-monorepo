@@ -150,19 +150,13 @@ describe('StakingPanel Integration', () => {
     expect(container).toBeTruthy();
   });
 
-  it('should handle onClose callback', () => {
+  it('should handle onClose callback via back button', () => {
     const onClose = vi.fn();
     render(<StakingPanel onClose={onClose} />);
 
-    // Find close button (X button in header)
-    const closeButton = screen.queryByLabelText(/close/i) ||
-                       screen.queryByRole('button', { name: /×|close/i });
-    if (closeButton) {
-      fireEvent.click(closeButton);
-      expect(onClose).toHaveBeenCalled();
-    } else {
-      // If no close button is visible, just verify render succeeded
-      expect(screen.getByText('Validator 1')).toBeInTheDocument();
-    }
+    // Find back button (chevron icon with aria-label="Back")
+    const backButton = screen.getByLabelText('Back');
+    fireEvent.click(backButton);
+    expect(onClose).toHaveBeenCalled();
   });
 });
