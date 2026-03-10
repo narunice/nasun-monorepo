@@ -152,9 +152,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           removeExpression = 'REMOVE email';
         }
       } else if (providerKey === 'twitter') {
-        // If unlinking Twitter and primary is Google, remove Twitter-specific fields
-        if (primaryProfile.provider === 'Google') {
-          removeExpression = 'REMOVE twitterHandle, twitterId, profileImageUrl';
+        // Remove promoted Twitter fields from primary profile (any non-Twitter provider)
+        if (primaryProfile.provider !== 'Twitter') {
+          removeExpression = 'REMOVE twitterHandle, originalTwitterHandle, twitterId, profileImageUrl';
         }
       } else if (providerKey === 'metamask') {
         // MetaMask unlink signature verification REMOVED for better UX
@@ -381,15 +381,37 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const primaryLinkedAccounts = primaryProfile.linkedAccounts || {};
     primaryLinkedAccounts[providerKey] = linkedInfo;
 
-    // 5. Update the primary user's profile
+    // 5. Update the primary user's profile (promote Twitter fields to top-level for GSI/filter compatibility)
+    let linkUpdateExpression = 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt';
+    const linkExpressionValues: Record<string, any> = {
+      ':linkedAccounts': primaryLinkedAccounts,
+      ':updatedAt': new Date().toISOString(),
+    };
+
+    if (providerKey === 'twitter') {
+      if (secondaryProfile.twitterHandle) {
+        linkUpdateExpression += ', twitterHandle = :th';
+        linkExpressionValues[':th'] = secondaryProfile.twitterHandle;
+      }
+      if (secondaryProfile.originalTwitterHandle) {
+        linkUpdateExpression += ', originalTwitterHandle = :oth';
+        linkExpressionValues[':oth'] = secondaryProfile.originalTwitterHandle;
+      }
+      if (secondaryProfile.twitterId) {
+        linkUpdateExpression += ', twitterId = :tid';
+        linkExpressionValues[':tid'] = secondaryProfile.twitterId;
+      }
+      if (secondaryProfile.profileImageUrl) {
+        linkUpdateExpression += ', profileImageUrl = :img';
+        linkExpressionValues[':img'] = secondaryProfile.profileImageUrl;
+      }
+    }
+
     const updatePrimaryCommand = new UpdateCommand({
       TableName: tableName,
       Key: { identityId: primaryIdentityId },
-      UpdateExpression: 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':linkedAccounts': primaryLinkedAccounts,
-        ':updatedAt': new Date().toISOString(),
-      },
+      UpdateExpression: linkUpdateExpression,
+      ExpressionAttributeValues: linkExpressionValues,
     });
 
     console.log('Updating primary profile with linkedAccounts:', primaryLinkedAccounts);
