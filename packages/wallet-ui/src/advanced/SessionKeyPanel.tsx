@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useSessionKey } from '@nasun/wallet';
+import { useSessionKey, shortenAddress } from '@nasun/wallet';
 import type { Address } from 'viem';
 
 export interface SessionKeyPanelProps {
@@ -43,13 +43,6 @@ function formatTimeRemaining(validUntil: number): string {
     return `${minutes}m`;
   }
   return `${seconds}s`;
-}
-
-/**
- * Format address for display
- */
-function shortenAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 export function SessionKeyPanel({
@@ -196,7 +189,7 @@ export function SessionKeyPanel({
 
                     {/* Session address */}
                     <p className="text-[10px] xl:text-xs font-mono text-gray-500 dark:text-zinc-400">
-                      {shortenAddress(session.address)}
+                      {shortenAddress(session.address, 4, 4)}
                     </p>
 
                     {/* Permissions count */}
