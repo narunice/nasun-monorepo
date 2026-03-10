@@ -38,6 +38,7 @@ export default function WalletButton() {
   }, []);
 
   const handleSignOut = async () => {
+    window.dispatchEvent(new CustomEvent("nasun:signing-out"));
     setModalOpen(false);
     usePasskeyStore.getState().lock();
     clearSessionPassword();
