@@ -214,21 +214,15 @@ describe('AddressBookPanel', () => {
     });
   });
 
-  describe('Close', () => {
-    it('should call onClose when clicking close button', () => {
+  describe('Back Navigation', () => {
+    it('should call onClose when clicking back button', () => {
       const onClose = vi.fn();
       render(<AddressBookPanel onClose={onClose} />);
 
-      // Find close button (X icon)
-      const buttons = screen.getAllByRole('button');
-      const closeButton = buttons.find((btn) =>
-        btn.querySelector('path[d="M6 18L18 6M6 6l12 12"]')
-      );
-
-      if (closeButton) {
-        fireEvent.click(closeButton);
-        expect(onClose).toHaveBeenCalled();
-      }
+      // Find back button (chevron icon with aria-label="Back")
+      const backButton = screen.getByLabelText('Back');
+      fireEvent.click(backButton);
+      expect(onClose).toHaveBeenCalled();
     });
   });
 });

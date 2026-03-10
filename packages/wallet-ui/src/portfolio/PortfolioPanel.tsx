@@ -240,7 +240,7 @@ export function PortfolioPanel({
   // Full mode
   return (
     <div className={`p-3 w-full ${className}`}>
-      <PanelHeader title="Portfolio" onClose={onClose} />
+      <PanelHeader title="Portfolio" onBack={onClose} />
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-center justify-between">

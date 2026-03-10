@@ -147,7 +147,7 @@ export function AddressBookPanel({ onClose, onSelect, onSend, compact = false, i
     <div className={`${compact ? 'p-3' : 'p-4'} w-full`}>
       <PanelHeader
         title="Address Book"
-        onClose={onClose}
+        onBack={onClose}
         titleIcon={
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path

@@ -62,7 +62,7 @@ export function StakingPanel({
     <div className={compact ? 'w-full' : 'min-w-[360px]'}>
       {/* Header */}
       <div className="px-4 pt-4 border-b border-gray-300 dark:border-zinc-700">
-        <PanelHeader title="Staking" onClose={onClose} />
+        <PanelHeader title="Staking" onBack={onClose} />
       </div>
 
       {/* Tabs */}
