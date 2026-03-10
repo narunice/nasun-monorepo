@@ -215,9 +215,14 @@ export function LeaderboardViewTab() {
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-nasun-c5/30" />
                         )}
-                        <span className="text-nasun-white">
+                        <a
+                          href={`https://x.com/${entry.originalUsername || entry.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:underline"
+                        >
                           @{entry.originalUsername || entry.username}
-                        </span>
+                        </a>
                         {entry.isRegistered && <span className="text-nasun-c7 text-xs">✓</span>}
                       </div>
                     </td>
