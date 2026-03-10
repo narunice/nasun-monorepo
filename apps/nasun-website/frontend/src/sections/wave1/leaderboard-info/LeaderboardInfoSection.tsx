@@ -51,7 +51,8 @@ const TIER_CONFIG: Record<
     iconColorClass: "text-amber-300",
     bgClass: "bg-nasun-white/[0.08]",
     name: "Platinum",
-    recognition: "USDC Reward + 1 Battalion NFT + Priority Mint Eligibility",
+    recognition:
+      "USDC Reward + 1 Free Battalion NFT + GTD Whitelist for Battalion NFT",
   },
   gold: {
     icon: faGem,
@@ -59,7 +60,8 @@ const TIER_CONFIG: Record<
     iconColorClass: "text-nasun-c1",
     bgClass: "bg-nasun-c1/[0.08]",
     name: "Gold",
-    recognition: "USDC Reward + Discounted Battalion NFT Eligibility",
+    recognition:
+      "USDC Reward + 1 Discounted Battalion NFT + Whitelist for Battalion NFT",
   },
   silver: {
     icon: faBolt,
@@ -67,7 +69,7 @@ const TIER_CONFIG: Record<
     iconColorClass: "text-nasun-nw4",
     bgClass: "bg-nasun-nw4/[0.08]",
     name: "Silver",
-    recognition: "Priority Mint Eligibility",
+    recognition: "USDC Reward + Whitelist for Battalion NFT",
   },
   bronze: {
     icon: null,
@@ -75,15 +77,14 @@ const TIER_CONFIG: Record<
     iconColorClass: "",
     bgClass: "bg-nasun-white/[0.05]",
     name: "Bronze",
-    recognition: "Community Recognition",
+    recognition: "Whitelist for Battalion NFT + Community Recognition",
   },
 };
 
 const HOW_IT_WORKS_ITEMS = [
-  "USDC marketing rewards (up to $25,000 total)",
-  "Battalion NFT recognition",
-  "Priority mint eligibility (up to 4 NFTs per wallet, subject to Terms)",
-  "Early access to organized testing phases",
+  "Up to $25,000 USDC total",
+  "Free Genesis Pass NFT",
+  "Enter exclusive raffles",
 ];
 
 const EVALUATION_ITEMS = [
@@ -129,10 +130,11 @@ const LeaderboardInfoSection: React.FC = () => {
     try {
       await signFlow();
       setShowWalletModal(false);
-      navigate("/my-account");
+      navigate("/my-account?guidance=link-x");
     } catch (err) {
       signFlowCalledRef.current = false;
       setSigningIn(false);
+      localStorage.removeItem("auth_return_to");
       if (import.meta.env.DEV) console.error("[wallet auth]", err);
     }
   }, [signFlow, navigate]);
@@ -142,11 +144,12 @@ const LeaderboardInfoSection: React.FC = () => {
     if (showWalletModal && isAnyConnected) handleWalletUnlocked();
   }, [showWalletModal]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset guards when wallet modal closes
+  // Reset guards when wallet modal closes (without completing auth)
   useEffect(() => {
     if (!showWalletModal) {
       signFlowCalledRef.current = false;
       setSigningIn(false);
+      localStorage.removeItem("auth_return_to");
     }
   }, [showWalletModal]);
 
@@ -167,6 +170,7 @@ const LeaderboardInfoSection: React.FC = () => {
       handleLinkTwitter();
     } else {
       // Not logged in — show wallet login modal
+      localStorage.setItem("auth_return_to", "/my-account?guidance=link-x");
       setShowWalletModal(true);
     }
   };
@@ -234,7 +238,7 @@ const LeaderboardInfoSection: React.FC = () => {
             Rewards are based on contribution quality and ecosystem engagement, — not on purchases
             or sales activity.
           </p>
-          <p className="">Starting Date TBA</p>
+          <p className="">Starting Date March 11</p>
         </section>
 
         {/* --- Ranks & Recognition Table --- */}

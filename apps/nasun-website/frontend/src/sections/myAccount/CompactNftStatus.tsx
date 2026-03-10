@@ -38,7 +38,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
     return (
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
-        <p className="text-nasun-white/50">Link your X account to view NFT status</p>
+        <p className="text-nasun-white/50">Link your X account to join the leaderboard</p>
       </OuterBox>
     );
   }
