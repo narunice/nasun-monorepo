@@ -267,6 +267,63 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       };
     }
 
+    // 2.5. Auto-transfer: if secondary is already linked to a different primary, unlink first
+    const existingSecondaryLinks = secondaryProfile.linkedAccounts || {};
+    const conflictingLinks = Object.entries(existingSecondaryLinks)
+      .filter(([, info]: [string, any]) => info?.identityId && info.identityId !== primaryIdentityId);
+
+    for (const [reverseKey, linkInfo] of conflictingLinks) {
+      const oldPrimaryId = (linkInfo as any).identityId;
+
+      const oldPrimaryResult = await dynamoClient.send(new GetCommand({
+        TableName: tableName,
+        Key: { identityId: oldPrimaryId },
+      }));
+      const oldPrimary = oldPrimaryResult.Item;
+
+      if (oldPrimary) {
+        // Find the exact key that points to this secondary (dynamic lookup, not hardcoded)
+        const oldLinked = oldPrimary.linkedAccounts || {};
+        const matchingKey = Object.keys(oldLinked)
+          .find(k => oldLinked[k]?.identityId === secondaryIdentityId);
+
+        if (matchingKey) {
+          delete oldLinked[matchingKey];
+
+          // Remove provider-specific fields (mirrors /unlink logic lines 148-164)
+          let unlinkExpr = 'SET linkedAccounts = :la, updatedAt = :ua';
+          if (matchingKey === 'twitter' && oldPrimary.provider === 'Google') {
+            unlinkExpr += ' REMOVE twitterHandle, twitterId, profileImageUrl';
+          } else if (matchingKey === 'google' && oldPrimary.provider === 'Twitter') {
+            unlinkExpr += ' REMOVE email';
+          } else if (matchingKey === 'metamask') {
+            unlinkExpr += ' REMOVE walletAddress';
+          }
+
+          await dynamoClient.send(new UpdateCommand({
+            TableName: tableName,
+            Key: { identityId: oldPrimaryId },
+            UpdateExpression: unlinkExpr,
+            ExpressionAttributeValues: {
+              ':la': oldLinked,
+              ':ua': new Date().toISOString(),
+            },
+          }));
+
+          console.log(JSON.stringify({
+            event: 'AUTO_TRANSFER_UNLINK',
+            oldPrimaryId,
+            newPrimaryId: primaryIdentityId,
+            secondaryId: secondaryIdentityId,
+            provider: matchingKey,
+          }));
+        }
+      }
+
+      // Remove stale reverse link from secondary (mutates secondaryProfile.linkedAccounts)
+      delete existingSecondaryLinks[reverseKey];
+    }
+
     // 3. Build the linked account info
     const providerKey = secondaryProvider.toLowerCase(); // e.g., 'twitter' or 'google'
 
