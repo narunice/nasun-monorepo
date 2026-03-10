@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { ExitIcon, EnterIcon } from "@radix-ui/react-icons";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useWallet, useZkLogin } from "@nasun/wallet";
+import { useWallet, useZkLogin, usePasskeyStore, clearSessionPassword } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
 import { getPendingBackupMnemonic } from "@nasun/wallet";
@@ -89,6 +89,8 @@ const LoginButton = () => {
       setIsSigningOut(true);
       zkLogout();
       lockWallet();
+      usePasskeyStore.getState().lock();
+      clearSessionPassword();
       await logout();
       navigate("/logout");
     } catch (err) {

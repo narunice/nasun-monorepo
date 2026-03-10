@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { getPendingBackupMnemonic } from "@nasun/wallet";
+import { getPendingBackupMnemonic, usePasskeyStore, clearSessionPassword } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 export default function WalletButton() {
@@ -39,6 +39,8 @@ export default function WalletButton() {
 
   const handleSignOut = async () => {
     setModalOpen(false);
+    usePasskeyStore.getState().lock();
+    clearSessionPassword();
     try { await logout(); } catch { /* noop */ }
     window.location.href = "/logout";
   };
