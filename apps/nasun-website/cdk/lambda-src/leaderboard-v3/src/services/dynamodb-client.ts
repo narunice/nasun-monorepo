@@ -1156,44 +1156,80 @@ export async function adjustSeasonAdjustmentScore(
     })
   );
 
-  if (!result.Item) {
-    throw new Error(`SeasonAccountScore not found: ${pk}`);
-  }
+  // If no season record exists, create one with just the adjustment
+  const record = result.Item
+    ? (result.Item as SeasonAccountScore)
+    : null;
 
-  const record = result.Item as SeasonAccountScore;
-  const newAdjustment = Math.round(((record.adjustmentTotalScore || 0) + delta) * 1000) / 1000;
+  const newAdjustment = Math.round(((record?.adjustmentTotalScore || 0) + delta) * 1000) / 1000;
+  const now = new Date().toISOString();
 
   // Recalculate with new adjustment
   const { rawScore, consistencyBonus, freshnessMultiplier, userScore } =
     calculateSeasonUserScore({
-      totalPostScore: record.totalPostScore,
-      postCount: record.postCount,
-      uniqueActiveDays: record.uniqueActiveDays,
-      lastSeenAt: record.lastSeenAt,
-      originalPostCount: record.originalPostCount,
-      originalTotalScore: record.originalTotalScore,
-      quotePostCount: record.quotePostCount,
-      quoteTotalScore: record.quoteTotalScore,
-      replyPostCount: record.replyPostCount,
-      replyTotalScore: record.replyTotalScore,
+      totalPostScore: record?.totalPostScore || 0,
+      postCount: record?.postCount || 0,
+      uniqueActiveDays: record?.uniqueActiveDays || 0,
+      lastSeenAt: record?.lastSeenAt || now,
+      originalPostCount: record?.originalPostCount,
+      originalTotalScore: record?.originalTotalScore,
+      quotePostCount: record?.quotePostCount,
+      quoteTotalScore: record?.quoteTotalScore,
+      replyPostCount: record?.replyPostCount,
+      replyTotalScore: record?.replyTotalScore,
       adjustmentTotalScore: newAdjustment,
     });
 
-  await docClient.send(
-    new UpdateCommand({
-      TableName: SEASON_ACCOUNTS_TABLE,
-      Key: { pk, sk },
-      UpdateExpression:
-        'SET adjustmentTotalScore = :adj, userScore = :us, rawScore = :rs, consistencyBonus = :cb, freshnessMultiplier = :fm',
-      ExpressionAttributeValues: {
-        ':adj': newAdjustment,
-        ':us': userScore,
-        ':rs': rawScore,
-        ':cb': consistencyBonus,
-        ':fm': freshnessMultiplier,
-      },
-    })
-  );
+  if (record) {
+    // Update existing record
+    await docClient.send(
+      new UpdateCommand({
+        TableName: SEASON_ACCOUNTS_TABLE,
+        Key: { pk, sk },
+        UpdateExpression:
+          'SET adjustmentTotalScore = :adj, userScore = :us, rawScore = :rs, consistencyBonus = :cb, freshnessMultiplier = :fm',
+        ExpressionAttributeValues: {
+          ':adj': newAdjustment,
+          ':us': userScore,
+          ':rs': rawScore,
+          ':cb': consistencyBonus,
+          ':fm': freshnessMultiplier,
+        },
+      })
+    );
+  } else {
+    // Create new season record with only adjustment data
+    await docClient.send(
+      new PutCommand({
+        TableName: SEASON_ACCOUNTS_TABLE,
+        Item: {
+          pk,
+          sk,
+          seasonId,
+          accountId,
+          totalPostScore: 0,
+          postCount: 0,
+          uniqueActiveDays: 0,
+          activeDates: [],
+          signalCountTotal: 0,
+          originalPostCount: 0,
+          originalTotalScore: 0,
+          quotePostCount: 0,
+          quoteTotalScore: 0,
+          replyPostCount: 0,
+          replyTotalScore: 0,
+          firstSeenAt: now,
+          lastSeenAt: now,
+          adjustmentTotalScore: newAdjustment,
+          rawScore,
+          consistencyBonus,
+          freshnessMultiplier,
+          userScore,
+        },
+        ConditionExpression: 'attribute_not_exists(pk)',
+      })
+    );
+  }
 }
 
 /**
