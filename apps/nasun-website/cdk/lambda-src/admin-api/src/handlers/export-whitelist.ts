@@ -81,9 +81,12 @@ interface UserProfileItem {
 }
 
 function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
-  // Parse linkedAccounts in a single pass: walletAddress fallback + social providers + googleEmail
+  // Parse linkedAccounts in a single pass: walletAddress fallback + social providers + googleEmail + twitter fallback
   let walletAddress = item.walletAddress?.S;
   let googleEmail: string | undefined;
+  let twitterHandle = item.twitterHandle?.S;
+  let originalTwitterHandle = item.originalTwitterHandle?.S;
+  let twitterId = item.twitterId?.S;
   const linkedProviders: string[] = [];
 
   if (item.linkedAccounts?.M) {
@@ -94,12 +97,17 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
         linked["nasun wallet"]?.M?.walletAddress?.S ||
         linked.metamask?.M?.walletAddress?.S;
     }
-    // Extract social connections and google email
+    // Extract social connections, google email, and twitter fallback
     for (const key of Object.keys(linked)) {
       if (SOCIAL_PROVIDER_KEYS.has(key)) {
         linkedProviders.push(key);
         if (key === "google") {
           googleEmail = linked.google?.M?.email?.S;
+        }
+        if (key === "twitter" && !twitterHandle) {
+          twitterHandle = linked.twitter?.M?.twitterHandle?.S;
+          originalTwitterHandle = linked.twitter?.M?.originalTwitterHandle?.S;
+          twitterId = linked.twitter?.M?.twitterId?.S;
         }
       }
     }
@@ -110,9 +118,9 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
     username: item.username?.S,
     email: item.email?.S,
     provider: item.provider?.S,
-    twitterHandle: item.twitterHandle?.S,
-    originalTwitterHandle: item.originalTwitterHandle?.S,
-    twitterId: item.twitterId?.S,
+    twitterHandle,
+    originalTwitterHandle,
+    twitterId,
     profileImageUrl: item.profileImageUrl?.S,
     walletAddress,
     role: item.role?.S,
