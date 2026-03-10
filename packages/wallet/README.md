@@ -245,7 +245,7 @@ Default: Nasun Devnet
 | `nasun_wallet_keystore` | localStorage | Encrypted private key (AES-256-GCM) |
 | `nasun_wallet_unlock_attempts` | localStorage | Rate limiting state |
 | `nasun_address_book` | localStorage | Saved addresses |
-| `nasun_security_settings` | localStorage | Security configuration |
+| `nasun_wallet_security` | localStorage | Security configuration |
 | `nasun-wallet-chain` | localStorage | Selected chain (Zustand persist) |
 | `nasun-wallet-nsa` | localStorage | NSA account state (Zustand persist) |
 | `nasun:passkey:wallet` | localStorage | Passkey wallet metadata (encrypted key, credentials, derivation method) |
