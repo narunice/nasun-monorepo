@@ -217,19 +217,15 @@ describe('SendTransaction', () => {
     });
   });
 
-  describe('Close Button', () => {
-    it('should call onClose when close button is clicked', () => {
+  describe('Back Navigation', () => {
+    it('should call onClose when back button is clicked', () => {
       const onClose = vi.fn();
       render(<SendTransaction onClose={onClose} />);
 
-      // Find and click close button (X icon)
-      const closeButtons = screen.getAllByRole('button');
-      const closeButton = closeButtons.find(btn => btn.querySelector('svg'));
-
-      if (closeButton) {
-        fireEvent.click(closeButton);
-        expect(onClose).toHaveBeenCalled();
-      }
+      // Find back button (chevron icon with aria-label="Back")
+      const backButton = screen.getByLabelText('Back');
+      fireEvent.click(backButton);
+      expect(onClose).toHaveBeenCalled();
     });
   });
 });

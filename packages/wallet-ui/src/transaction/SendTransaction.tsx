@@ -546,7 +546,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
 
   return (
     <div className="p-4 w-full">
-      <PanelHeader title="Send Token" onClose={onClose} />
+      <PanelHeader title="Send Token" onBack={onClose} />
 
       <div className="space-y-4">
         {/* Token selector */}

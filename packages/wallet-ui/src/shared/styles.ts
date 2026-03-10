@@ -74,9 +74,9 @@ export const WALLET_STYLES = {
   // Close X icon size
   closeIcon: "w-5 h-5",
 
-  // Back button (top-left, sub-navigation)
-  backButton: "flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors",
+  // Back button (inline chevron, left of title)
+  backButton: "p-1 -ml-1 text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors flex-shrink-0",
 
   // Back icon size
-  backIcon: "w-4 h-4",
+  backIcon: "w-5 h-5",
 } as const;
