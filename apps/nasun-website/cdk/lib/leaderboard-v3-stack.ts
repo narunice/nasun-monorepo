@@ -428,6 +428,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Admin Adjust Score Lambda (manual score adjustment)
+    const adjustScoreLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3AdjustScoreFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-adjust-score`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'adjust-score.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Admin manual score adjustment',
+      }
+    );
+
     // Verify Telegram Lambda (Telegram channel membership verification)
     const verifyTelegramLambda = new NodejsFunction(
       this,
@@ -529,6 +544,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.accountsTable.grantReadWriteData(adminEditPostLambda);
     this.seasonAccountsTable.grantReadWriteData(adminEditPostLambda);
 
+    // Admin Adjust Score permissions
+    this.accountsTable.grantReadWriteData(adjustScoreLambda);
+    this.seasonsTable.grantReadData(adjustScoreLambda);
+    this.seasonAccountsTable.grantReadWriteData(adjustScoreLambda);
+
     // Featured Feed permissions (Phase 10)
     this.postsTable.grantReadData(getFeaturedFeedLambda);
     this.accountsTable.grantReadData(getFeaturedFeedLambda);
@@ -554,6 +574,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
       adminStatsLambda,
       adminBlacklistLambda,
       adminEditPostLambda,
+      adjustScoreLambda,
       getLeaderboardLambda,  // cumulative view requires admin auth
     ];
     for (const fn of adminAuthLambdas) {
@@ -741,6 +762,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // DELETE /v3/admin/blacklist/{accountId} - Unban account
     const adminBlacklistIdResource = adminBlacklistResource.addResource('{accountId}');
     adminBlacklistIdResource.addMethod('DELETE', adminBlacklistIntegration);
+
+    // POST /v3/admin/adjust-score - Manual score adjustment
+    const adminAdjustScoreResource = adminResource.addResource('adjust-score');
+    adminAdjustScoreResource.addMethod('POST', new apigw.LambdaIntegration(adjustScoreLambda));
 
     // PATCH /v3/admin/posts/{postId} - Edit post
     const adminPostsResource = adminResource.addResource('posts');

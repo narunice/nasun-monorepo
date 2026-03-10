@@ -12,6 +12,8 @@ import type {
   GetLeaderboardResponse,
   GetAccountResponse,
   DashboardStats,
+  AdjustScoreRequest,
+  AdjustScoreResponse,
 } from '../types/leaderboard-v3';
 
 import type { BannedAccountsResponse } from '../types';
@@ -259,6 +261,32 @@ export async function editPost(
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `Failed to edit post: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Adjust a user's score (Admin only)
+ */
+export async function adjustScore(
+  request: AdjustScoreRequest,
+  token: string,
+): Promise<AdjustScoreResponse> {
+  const url = `${LEADERBOARD_V3_API_URL}/v3/admin/adjust-score`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to adjust score: ${response.status}`);
   }
 
   return response.json();

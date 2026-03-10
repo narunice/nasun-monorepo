@@ -25,12 +25,12 @@ import {
   PostType,
   Season,
   SeasonAccountScore,
-  SCORE_CONSTANTS,
 } from '../types';
 import {
   addActiveDate,
   calculatePostScore,
   calculatePostScoreWithFollowers,
+  calculateScoreComponents,
   countBonusSignals,
 } from './score-calculator';
 import { getTodayDateString } from '../utils/date';
@@ -1093,89 +1093,107 @@ export async function updateSeasonAccountAggregates(params: {
 
 /**
  * Calculate user score for season leaderboard
- * Phase 9: Supports per-type calculation with different decay rates
+ * Delegates to centralized calculateScoreComponents() in score-calculator.ts
  */
 function calculateSeasonUserScore(params: {
   totalPostScore: number;
   postCount: number;
   uniqueActiveDays: number;
   lastSeenAt: string;
-  // Phase 9: Per-type fields (optional for backward compatibility)
   originalPostCount?: number;
   originalTotalScore?: number;
   quotePostCount?: number;
   quoteTotalScore?: number;
   replyPostCount?: number;
   replyTotalScore?: number;
+  adjustmentTotalScore?: number;
 }): {
   rawScore: number;
   consistencyBonus: number;
   freshnessMultiplier: number;
   userScore: number;
 } {
-  const {
-    totalPostScore,
-    postCount,
-    uniqueActiveDays,
-    lastSeenAt,
-    originalPostCount,
-    originalTotalScore,
-    quotePostCount,
-    quoteTotalScore,
-    replyPostCount,
-    replyTotalScore,
-  } = params;
+  return calculateScoreComponents(params);
+}
 
-  let rawScore: number;
+/**
+ * Adjust the cumulative adjustmentTotalScore on an Account record
+ * Uses DynamoDB ADD which treats missing attributes as 0
+ */
+export async function adjustAccountAdjustmentScore(
+  accountId: string,
+  delta: number
+): Promise<void> {
+  await docClient.send(
+    new UpdateCommand({
+      TableName: ACCOUNTS_TABLE,
+      Key: { accountId },
+      UpdateExpression: 'ADD adjustmentTotalScore :delta',
+      ExpressionAttributeValues: {
+        ':delta': Math.round(delta * 1000) / 1000,
+      },
+    })
+  );
+}
 
-  // Phase 9: Use per-type calculation if available
-  if (
-    originalPostCount !== undefined &&
-    quotePostCount !== undefined &&
-    replyPostCount !== undefined
-  ) {
-    // Per-type calculation with different decay rates
-    // Original/Quote: full log decay (exponent 1.0)
-    // Reply: weaker log decay (exponent 0.7)
-    const originalRaw =
-      originalPostCount > 0
-        ? ((originalTotalScore || 0) * Math.log2(originalPostCount + 1)) / originalPostCount
-        : 0;
-    const quoteRaw =
-      quotePostCount > 0
-        ? ((quoteTotalScore || 0) * Math.log2(quotePostCount + 1)) / quotePostCount
-        : 0;
-    const replyRaw =
-      replyPostCount > 0
-        ? ((replyTotalScore || 0) * Math.log2(replyPostCount + 1)) /
-          Math.pow(replyPostCount, SCORE_CONSTANTS.REPLY_DECAY_EXPONENT)
-        : 0;
+/**
+ * Adjust the adjustmentTotalScore on a SeasonAccountScore record
+ * and recalculate userScore for consistent ranking
+ */
+export async function adjustSeasonAdjustmentScore(
+  seasonId: string,
+  accountId: string,
+  delta: number
+): Promise<void> {
+  const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
+  const sk = 'SCORE';
 
-    rawScore = originalRaw + quoteRaw + replyRaw;
-  } else {
-    // Legacy: treat all posts as original (full decay)
-    const effectivePosts = Math.log2(postCount + 1);
-    rawScore = postCount > 0 ? (totalPostScore * effectivePosts) / postCount : 0;
+  // GET existing record to recalculate userScore
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: SEASON_ACCOUNTS_TABLE,
+      Key: { pk, sk },
+    })
+  );
+
+  if (!result.Item) {
+    throw new Error(`SeasonAccountScore not found: ${pk}`);
   }
 
-  // ConsistencyBonus = 1 + log₂(uniqueActiveDays + 1) × 0.1
-  const consistencyBonus = 1 + Math.log2(uniqueActiveDays + 1) * 0.1;
+  const record = result.Item as SeasonAccountScore;
+  const newAdjustment = Math.round(((record.adjustmentTotalScore || 0) + delta) * 1000) / 1000;
 
-  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / FRESHNESS_HALF_LIFE_DAYS)
-  const daysSinceLastPost = Math.floor(
-    (Date.now() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24)
+  // Recalculate with new adjustment
+  const { rawScore, consistencyBonus, freshnessMultiplier, userScore } =
+    calculateSeasonUserScore({
+      totalPostScore: record.totalPostScore,
+      postCount: record.postCount,
+      uniqueActiveDays: record.uniqueActiveDays,
+      lastSeenAt: record.lastSeenAt,
+      originalPostCount: record.originalPostCount,
+      originalTotalScore: record.originalTotalScore,
+      quotePostCount: record.quotePostCount,
+      quoteTotalScore: record.quoteTotalScore,
+      replyPostCount: record.replyPostCount,
+      replyTotalScore: record.replyTotalScore,
+      adjustmentTotalScore: newAdjustment,
+    });
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: SEASON_ACCOUNTS_TABLE,
+      Key: { pk, sk },
+      UpdateExpression:
+        'SET adjustmentTotalScore = :adj, userScore = :us, rawScore = :rs, consistencyBonus = :cb, freshnessMultiplier = :fm',
+      ExpressionAttributeValues: {
+        ':adj': newAdjustment,
+        ':us': userScore,
+        ':rs': rawScore,
+        ':cb': consistencyBonus,
+        ':fm': freshnessMultiplier,
+      },
+    })
   );
-  const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
-
-  // UserScore = rawScore × consistencyBonus × freshnessMultiplier
-  const userScore = rawScore * consistencyBonus * freshnessMultiplier;
-
-  return {
-    rawScore: Math.round(rawScore * 1000) / 1000,
-    consistencyBonus: Math.round(consistencyBonus * 1000) / 1000,
-    freshnessMultiplier: Math.round(freshnessMultiplier * 1000) / 1000,
-    userScore: Math.round(userScore * 1000) / 1000,
-  };
 }
 
 /**
