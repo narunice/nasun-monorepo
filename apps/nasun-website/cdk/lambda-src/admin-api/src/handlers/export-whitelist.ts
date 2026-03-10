@@ -74,6 +74,15 @@ interface UserProfileItem {
 }
 
 function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
+  // Resolve walletAddress: prefer primary, fallback to linked Nasun Wallet / MetaMask
+  let walletAddress = item.walletAddress?.S;
+  if (!walletAddress && item.linkedAccounts?.M) {
+    const linked = item.linkedAccounts.M as Record<string, any>;
+    walletAddress =
+      linked["nasun wallet"]?.M?.walletAddress?.S ||
+      linked.metamask?.M?.walletAddress?.S;
+  }
+
   return {
     identityId: item.identityId?.S || "",
     username: item.username?.S,
@@ -83,7 +92,7 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
     originalTwitterHandle: item.originalTwitterHandle?.S,
     twitterId: item.twitterId?.S,
     profileImageUrl: item.profileImageUrl?.S,
-    walletAddress: item.walletAddress?.S,
+    walletAddress,
     role: item.role?.S,
     verified: item.verified?.BOOL,
     isTelegramMember: item.isTelegramMember?.BOOL,
