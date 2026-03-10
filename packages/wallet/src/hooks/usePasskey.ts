@@ -175,12 +175,31 @@ export function usePasskey(options: UsePasskeyOptions = {}): UsePasskeyResult {
         // Note: pendingCredential is cleared in onSuccess — if createPasskeyWallet fails,
         // the stashed credential remains so the user can retry Phase 2 without a new WebAuthn gesture.
       } else {
-        // PRF output is returned directly from create() when eval.first is provided,
-        // so no second credentials.get() call is needed (Safari iOS forbids two WebAuthn
-        // calls per user gesture; the second would throw NotAllowedError).
+        // PRF output is returned directly from create() when eval.first is provided.
+        // Some browsers (e.g. Chrome on Windows) report PRF as supported but only
+        // return PRF output during get(), not create(). In that case, attempt a
+        // follow-up credentials.get() to retrieve the PRF output.
         const registered = await registerPasskey(registrationOptions);
         credential = registered.credential;
         prfOutput = registered.prfOutput;
+
+        // Chrome PRF fallback: PRF supported but no output from create()
+        if (registered.prfSupported && !prfOutput) {
+          try {
+            const authResult = await authenticateWithPasskey({
+              allowCredentials: [credential.id],
+              userVerification: 'required',
+            });
+            prfOutput = authResult.prfOutput;
+          } catch (e) {
+            // NotAllowedError = follow-up get() not supported (e.g. Safari iOS
+            // forbids two WebAuthn calls per gesture). Fall through to password
+            // fallback. Re-throw other errors (security, invalid state).
+            if (!(e instanceof DOMException && e.name === 'NotAllowedError')) {
+              throw e;
+            }
+          }
+        }
 
         // PRF not available and no password provided: stash credential and ask for password.
         // Do NOT fall through to credential-id (legacy) — mnemonic cannot be stored that way.
