@@ -177,7 +177,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
       await dynamoClient.send(updatePrimaryCommand);
 
-      // Remove reverse link from secondary profile
+      // Remove reverse link and ownership marker from secondary profile
       if (secondaryIdentityId) {
         const getSecondaryCommand = new GetCommand({
           TableName: tableName,
@@ -186,15 +186,22 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         const secondaryProfileResult = await dynamoClient.send(getSecondaryCommand);
         const secondaryProfile = secondaryProfileResult.Item;
 
-        if (secondaryProfile?.linkedAccounts) {
+        if (secondaryProfile) {
           const secondaryLinkedAccounts = secondaryProfile.linkedAccounts || {};
           const primaryProviderKey = primaryProfile.provider?.toLowerCase() || 'unknown';
           delete secondaryLinkedAccounts[primaryProviderKey];
 
+          // Only remove linkedToPrimaryId if it points to the primary doing the unlink.
+          // Otherwise, a stale unlink could wipe ownership set by the current legitimate owner.
+          const isCurrentOwner = secondaryProfile.linkedToPrimaryId === primaryIdentityId;
+          const unlinkUpdateExpr = isCurrentOwner
+            ? 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt REMOVE linkedToPrimaryId'
+            : 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt';
+
           const updateSecondaryCommand = new UpdateCommand({
             TableName: tableName,
             Key: { identityId: secondaryIdentityId },
-            UpdateExpression: 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt',
+            UpdateExpression: unlinkUpdateExpr,
             ExpressionAttributeValues: {
               ':linkedAccounts': secondaryLinkedAccounts,
               ':updatedAt': new Date().toISOString(),
@@ -267,14 +274,31 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       };
     }
 
-    // 2.5. Auto-transfer: if secondary is already linked to a different primary, unlink first
-    const existingSecondaryLinks = secondaryProfile.linkedAccounts || {};
-    const conflictingLinks = Object.entries(existingSecondaryLinks)
-      .filter(([, info]: [string, any]) => info?.identityId && info.identityId !== primaryIdentityId);
+    // 2.5. Auto-transfer: linkedToPrimaryId as primary source, reverse link as v1 fallback
+    const currentOwnerId = secondaryProfile.linkedToPrimaryId;
+    let oldPrimaryId: string | undefined;
 
-    for (const [reverseKey, linkInfo] of conflictingLinks) {
-      const oldPrimaryId = (linkInfo as any).identityId;
+    console.log(JSON.stringify({
+      event: 'AUTO_TRANSFER_CHECK',
+      currentOwnerId: currentOwnerId || null,
+      primaryIdentityId,
+      secondaryIdentityId,
+    }));
 
+    if (currentOwnerId && currentOwnerId !== primaryIdentityId) {
+      // V2: linkedToPrimaryId points to a different owner → transfer needed
+      oldPrimaryId = currentOwnerId;
+    } else if (!currentOwnerId) {
+      // V1 fallback: legacy data without linkedToPrimaryId → check reverse links
+      const existingSecondaryLinks = secondaryProfile.linkedAccounts || {};
+      const conflictingLink = Object.entries(existingSecondaryLinks)
+        .find(([, info]: [string, any]) => info?.identityId && info.identityId !== primaryIdentityId);
+      if (conflictingLink) {
+        oldPrimaryId = (conflictingLink[1] as any).identityId;
+      }
+    }
+
+    if (oldPrimaryId) {
       const oldPrimaryResult = await dynamoClient.send(new GetCommand({
         TableName: tableName,
         Key: { identityId: oldPrimaryId },
@@ -282,7 +306,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       const oldPrimary = oldPrimaryResult.Item;
 
       if (oldPrimary) {
-        // Find the exact key that points to this secondary (dynamic lookup, not hardcoded)
         const oldLinked = oldPrimary.linkedAccounts || {};
         const matchingKey = Object.keys(oldLinked)
           .find(k => oldLinked[k]?.identityId === secondaryIdentityId);
@@ -290,7 +313,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         if (matchingKey) {
           delete oldLinked[matchingKey];
 
-          // Remove provider-specific fields (mirrors /unlink logic lines 148-164)
           let unlinkExpr = 'SET linkedAccounts = :la, updatedAt = :ua';
           if (matchingKey === 'twitter' && oldPrimary.provider === 'Google') {
             unlinkExpr += ' REMOVE twitterHandle, twitterId, profileImageUrl';
@@ -319,9 +341,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           }));
         }
       }
-
-      // Remove stale reverse link from secondary (mutates secondaryProfile.linkedAccounts)
-      delete existingSecondaryLinks[reverseKey];
     }
 
     // 3. Build the linked account info
@@ -396,18 +415,42 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const secondaryLinkedAccounts = secondaryProfile.linkedAccounts || {};
     secondaryLinkedAccounts[primaryProviderKey] = reverseLinkInfo;
 
+    // Optimistic lock: only write if linkedToPrimaryId hasn't changed since we read it
+    const readOwner = secondaryProfile.linkedToPrimaryId;
+    const conditionExpr = readOwner
+      ? 'linkedToPrimaryId = :expectedOwner'
+      : 'attribute_not_exists(linkedToPrimaryId)';
+
+    const secondaryExprValues: Record<string, any> = {
+      ':linkedAccounts': secondaryLinkedAccounts,
+      ':owner': primaryIdentityId,
+      ':updatedAt': new Date().toISOString(),
+    };
+    if (readOwner) {
+      secondaryExprValues[':expectedOwner'] = readOwner;
+    }
+
     const updateSecondaryCommand = new UpdateCommand({
       TableName: tableName,
       Key: { identityId: secondaryIdentityId },
-      UpdateExpression: 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':linkedAccounts': secondaryLinkedAccounts,
-        ':updatedAt': new Date().toISOString(),
-      },
+      UpdateExpression: 'SET linkedAccounts = :linkedAccounts, linkedToPrimaryId = :owner, updatedAt = :updatedAt',
+      ConditionExpression: conditionExpr,
+      ExpressionAttributeValues: secondaryExprValues,
     });
 
     console.log('Updating secondary profile with linkedAccounts:', secondaryLinkedAccounts);
-    await dynamoClient.send(updateSecondaryCommand);
+    try {
+      await dynamoClient.send(updateSecondaryCommand);
+    } catch (err: any) {
+      if (err.name === 'ConditionalCheckFailedException') {
+        return {
+          statusCode: 409,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'This account was just linked by another user. Please try again.' }),
+        };
+      }
+      throw err;
+    }
     console.log('Bidirectional account linking successful');
 
     return {
