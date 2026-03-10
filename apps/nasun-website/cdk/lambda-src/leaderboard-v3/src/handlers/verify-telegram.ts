@@ -229,10 +229,10 @@ async function getUserProfileByIdentityId(identityId: string): Promise<UserProfi
   return (result.Item as UserProfile) || null;
 }
 
-async function checkTelegramDuplicateInUserProfiles(
+async function findExistingTelegramOwner(
   telegramUserId: string,
   excludeIdentityId: string
-): Promise<boolean> {
+): Promise<{ identityId: string; twitterHandle?: string } | null> {
   // Query GSI for matching telegramUserId (O(1) vs full table scan)
   const result = await docClient.send(
     new QueryCommand({
@@ -247,10 +247,70 @@ async function checkTelegramDuplicateInUserProfiles(
     })
   );
 
-  // Check if any result belongs to a different user
-  return (result.Items ?? []).some(
+  const existing = (result.Items ?? []).find(
     (item) => item.identityId !== excludeIdentityId
   );
+  if (!existing) return null;
+
+  // Fetch twitterHandle for leaderboard cleanup
+  const profile = await docClient.send(
+    new GetCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { identityId: existing.identityId },
+      ProjectionExpression: 'identityId, twitterHandle',
+    })
+  );
+  return profile.Item
+    ? { identityId: profile.Item.identityId as string, twitterHandle: profile.Item.twitterHandle as string | undefined }
+    : null;
+}
+
+async function clearUserProfileTelegram(identityId: string): Promise<void> {
+  await docClient.send(
+    new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { identityId },
+      UpdateExpression: 'SET isTelegramMember = :false REMOVE telegramUserId, telegramUsername',
+      ExpressionAttributeValues: { ':false': false },
+      ConditionExpression: 'attribute_exists(identityId)',
+    })
+  );
+}
+
+async function clearLeaderboardTelegram(twitterHandle: string): Promise<void> {
+  const account = await findAccountByUsername(twitterHandle);
+  if (!account) return;
+
+  try {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: ACCOUNTS_TABLE,
+        Key: { accountId: account.accountId },
+        UpdateExpression: 'SET isTelegramMember = :false REMOVE telegramUserId, telegramUsername',
+        ExpressionAttributeValues: { ':false': false },
+      })
+    );
+  } catch (err) {
+    console.warn('[verify-telegram] Failed to clear old owner leaderboard:', err);
+  }
+
+  const activeSeason = await getActiveSeason();
+  if (activeSeason) {
+    const pk = `SEASON#${activeSeason.seasonId}#ACCOUNT#${account.accountId}`;
+    try {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: SEASON_ACCOUNTS_TABLE,
+          Key: { pk, sk: 'SCORE' },
+          UpdateExpression: 'SET isTelegramMember = :false',
+          ConditionExpression: 'attribute_exists(pk)',
+          ExpressionAttributeValues: { ':false': false },
+        })
+      );
+    } catch {
+      // Season account may not exist
+    }
+  }
 }
 
 async function updateUserProfileTelegram(
@@ -457,14 +517,27 @@ export const handler = async (
       }, requestOrigin);
     }
 
-    // 7. Check telegramUserId uniqueness (in UserProfiles table)
+    // 7. Auto-transfer: if Telegram is linked to another user, disconnect from them first
     const telegramUserIdStr = String(telegramAuth.id);
-    const isDuplicate = await checkTelegramDuplicateInUserProfiles(telegramUserIdStr, identityId);
-    if (isDuplicate) {
-      return createResponse(409, {
-        error: 'Telegram account already linked',
-        message: 'This Telegram account is already linked to another user.',
-      }, requestOrigin);
+    const existingOwner = await findExistingTelegramOwner(telegramUserIdStr, identityId);
+    if (existingOwner) {
+      try {
+        await clearUserProfileTelegram(existingOwner.identityId);
+      } catch (err: unknown) {
+        // ConditionalCheckFailedException = old owner already disconnected (race condition OK)
+        if ((err as { name?: string }).name !== 'ConditionalCheckFailedException') throw err;
+      }
+
+      if (existingOwner.twitterHandle) {
+        await clearLeaderboardTelegram(existingOwner.twitterHandle);
+      }
+
+      console.log(JSON.stringify({
+        event: 'TELEGRAM_AUTO_TRANSFER',
+        oldOwnerId: existingOwner.identityId,
+        newOwnerId: identityId,
+        telegramUserId: telegramUserIdStr,
+      }));
     }
 
     // 8. Check channel membership (fail-closed)
