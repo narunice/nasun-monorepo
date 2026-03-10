@@ -4,7 +4,7 @@
 
 import { cn } from '../../../../utils/utils';
 
-export type AdminTabId = 'dashboard' | 'post' | 'leaderboard' | 'seasons';
+export type AdminTabId = 'dashboard' | 'post' | 'leaderboard' | 'adjust' | 'seasons';
 
 interface AdminTab {
   id: AdminTabId;
@@ -16,6 +16,7 @@ const ADMIN_TABS: AdminTab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'post', label: 'Post', icon: '📝' },
   { id: 'leaderboard', label: 'Leaderboard', icon: '🏆' },
+  { id: 'adjust', label: 'Adjust', icon: '⚖️' },
   { id: 'seasons', label: 'Seasons', icon: '📅' },
 ];
 

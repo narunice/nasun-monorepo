@@ -8,3 +8,4 @@ export { PostRegistrationTab } from './PostRegistrationTab';
 export { LeaderboardViewTab } from './LeaderboardViewTab';
 export { SeasonManagementTab } from './SeasonManagementTab';
 export { SeasonFormModal } from './SeasonFormModal';
+export { ScoreAdjustmentTab } from './ScoreAdjustmentTab';

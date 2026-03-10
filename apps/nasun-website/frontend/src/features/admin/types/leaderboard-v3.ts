@@ -248,6 +248,29 @@ export function calculateRoleMultiplier(followerCount: number, language: Account
 }
 
 // ============================================
+// Score Adjustment Types
+// ============================================
+
+export interface AdjustScoreRequest {
+  username: string;
+  score: number;
+  reason: string;
+  seasonId?: string;
+}
+
+export interface AdjustScoreResponse {
+  success: boolean;
+  data?: {
+    accountId: string;
+    username: string;
+    adjustedScore: number;
+    reason: string;
+    seasonId: string;
+  };
+  error?: string;
+}
+
+// ============================================
 // Season Types (Phase 5)
 // ============================================
 
