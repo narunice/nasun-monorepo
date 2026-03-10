@@ -87,6 +87,7 @@ const LoginButton = () => {
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true);
+      window.dispatchEvent(new CustomEvent("nasun:signing-out"));
       zkLogout();
       lockWallet();
       usePasskeyStore.getState().lock();
