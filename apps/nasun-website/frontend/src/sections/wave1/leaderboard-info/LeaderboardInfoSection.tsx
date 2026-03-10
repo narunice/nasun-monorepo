@@ -177,14 +177,14 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- Hero Header --- */}
         <header className="flex flex-col items-center text-center gap-4">
           <PageTitle as="h2" align="center">
-            Community Leaderboard
+            Nasun Leaderboard
           </PageTitle>
 
           <p className="max-w-2xl text-lg font-medium">Help shape the Nasun ecosystem.</p>
 
           <p className="max-w-2xl whitespace-pre-line text-nasun-white/70">
             {
-              "The Community Leaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven."
+              "The Nasun Leaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven."
             }
           </p>
         </header>

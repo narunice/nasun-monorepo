@@ -430,7 +430,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       hidden: true,
     },
     meta: {
-      title: "Community Leaderboard — NASUN Wave 1",
+      title: "Nasun Leaderboard — NASUN Wave 1",
       description: "Climb the Nasun community leaderboard. Track your participation, compete with other members, and earn ecosystem rewards.",
     },
   },

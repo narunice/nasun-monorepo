@@ -491,7 +491,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             {/* 2. X (Twitter) */}
             <AccountItem
               provider="twitter"
-              description="Required to join the Community Leaderboard"
+              description="Required to join the Leaderboard"
               identifier={
                 twitterData?.twitterHandle
                   ? `@${twitterData.originalTwitterHandle || user.originalTwitterHandle || twitterData.twitterHandle}`
