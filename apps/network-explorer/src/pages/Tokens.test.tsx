@@ -9,6 +9,10 @@ vi.mock('../lib/sui-client', () => ({
   getCoinTotalSupply: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock('../lib/explorer-api', () => ({
+  getTokenStats: vi.fn().mockResolvedValue([]),
+}));
+
 describe('Tokens page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -25,20 +29,13 @@ describe('Tokens page', () => {
     expect(link.closest('a')).toHaveAttribute('href', '/');
   });
 
-  it('should show loading state initially', () => {
+  it('should render table headers', () => {
     renderWithProviders(<Tokens />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-  });
-
-  it('should render table headers after loading', async () => {
-    renderWithProviders(<Tokens />);
-    await waitFor(() => {
-      expect(screen.getByText('Symbol')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Symbol')).toBeInTheDocument();
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Type')).toBeInTheDocument();
-    expect(screen.getByText('Decimals')).toBeInTheDocument();
-    expect(screen.getByText('Total Supply')).toBeInTheDocument();
+    expect(screen.getByText('Holders')).toBeInTheDocument();
+    expect(screen.getByText('Supply')).toBeInTheDocument();
   });
 
   it('should render all 5 known tokens after loading', async () => {
@@ -61,20 +58,6 @@ describe('Tokens page', () => {
     expect(screen.getByText('Nasun USD Coin')).toBeInTheDocument();
     expect(screen.getByText('Nasun Ethereum')).toBeInTheDocument();
     expect(screen.getByText('Nasun Solana')).toBeInTheDocument();
-  });
-
-  it('should render correct decimals for each token', async () => {
-    renderWithProviders(<Tokens />);
-    await waitFor(() => {
-      expect(screen.getByText('NSN')).toBeInTheDocument();
-    });
-    const cells = screen.getAllByRole('cell');
-    const decimalValues = cells
-      .map((c) => c.textContent)
-      .filter((t) => t && /^[0-9]$/.test(t));
-    expect(decimalValues).toContain('9');
-    expect(decimalValues).toContain('8');
-    expect(decimalValues).toContain('6');
   });
 
   it('should show dash for null total supply', async () => {

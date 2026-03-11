@@ -75,8 +75,8 @@ describe('Packages page', () => {
   it('should render correct number of rows', () => {
     renderWithRouter(<Packages />);
     const rows = screen.getAllByRole('row');
-    // 1 header + 23 packages = 24 total rows
-    expect(rows).toHaveLength(24);
+    // 1 header + 24 packages = 25 total rows
+    expect(rows).toHaveLength(25);
   });
 
   it('should render descriptions for each package', () => {
