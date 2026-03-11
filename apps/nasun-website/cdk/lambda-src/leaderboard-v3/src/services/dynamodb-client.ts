@@ -1347,3 +1347,35 @@ export async function getSeasonAccountScores(seasonId: string): Promise<SeasonAc
 
   return scores;
 }
+
+/**
+ * Get all posts for a season using the seasonId-createdAt-index GSI.
+ * Used by generate-snapshot for stateless batch decay calculation.
+ * Paginates automatically to retrieve all posts.
+ */
+export async function getPostsBySeasonId(seasonId: string): Promise<Post[]> {
+  const posts: Post[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: POSTS_TABLE,
+        IndexName: DYNAMO_KEYS.POSTS_SEASON_INDEX,
+        KeyConditionExpression: 'seasonId = :seasonId',
+        ExpressionAttributeValues: {
+          ':seasonId': seasonId,
+        },
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+    );
+
+    if (result.Items) {
+      posts.push(...(result.Items as Post[]));
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  return posts;
+}

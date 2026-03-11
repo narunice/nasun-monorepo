@@ -24,6 +24,7 @@ import {
   ContentSignal,
   FOLLOWER_THRESHOLDS,
   LANGUAGE_SCALE,
+  PostType,
   ROLE_MULTIPLIERS,
   SCORE_CONSTANTS,
   SIGNAL_BONUSES,
@@ -231,6 +232,42 @@ export function calculateTotalRawScoreByType(
   const replyRaw = calculateRawScoreWeakDecay(replyScore, replyCount);
 
   return originalRaw + quoteRaw + replyRaw;
+}
+
+/**
+ * Calculate decayed raw score from individual posts, grouping by date.
+ * Within each date group, apply per-type log decay to prevent daily spam.
+ * Across days, no decay (reward consistent multi-day activity).
+ *
+ * This is a pure function used by generate-snapshot for stateless batch decay.
+ * It replaces the cumulative season-wide decay with daily-scoped decay.
+ */
+export function calculateDecayedRawScoreFromPosts(
+  posts: Array<{ postScore: number; createdAt: string; postType: PostType }>
+): number {
+  if (posts.length === 0) return 0;
+
+  // Group posts by date (YYYY-MM-DD)
+  const byDate = new Map<string, { original: number[]; quote: number[]; reply: number[] }>();
+  for (const post of posts) {
+    const date = post.createdAt.split('T')[0];
+    if (!byDate.has(date)) byDate.set(date, { original: [], quote: [], reply: [] });
+    byDate.get(date)![post.postType].push(post.postScore);
+  }
+
+  // For each date, apply per-type decay within the day
+  let totalDecayed = 0;
+  for (const [, dayPosts] of byDate) {
+    const origScore = dayPosts.original.reduce((s, v) => s + v, 0);
+    const quoteScore = dayPosts.quote.reduce((s, v) => s + v, 0);
+    const replyScore = dayPosts.reply.reduce((s, v) => s + v, 0);
+
+    totalDecayed += calculateRawScore(origScore, dayPosts.original.length);
+    totalDecayed += calculateRawScore(quoteScore, dayPosts.quote.length);
+    totalDecayed += calculateRawScoreWeakDecay(replyScore, dayPosts.reply.length);
+  }
+
+  return totalDecayed;
 }
 
 /**

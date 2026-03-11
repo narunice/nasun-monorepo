@@ -20,11 +20,13 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import {
   DailySnapshot,
+  Post,
   SeasonAccountScore,
   DYNAMO_KEYS,
+  SCORE_CONSTANTS,
 } from '../types';
-import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds } from '../services/dynamodb-client';
-import { calculateScoreComponents } from '../services/score-calculator';
+import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds, getPostsBySeasonId } from '../services/dynamodb-client';
+import { calculateScoreComponents, calculateDecayedRawScoreFromPosts, calculateConsistencyBonus } from '../services/score-calculator';
 import { getTodayDateString, getYesterdayDateString } from '../utils/date';
 import { calculateRankChange } from '../utils/rank';
 
@@ -43,6 +45,9 @@ const SEASONS_TABLE =
 
 // TTL: 180 days in seconds (final snapshots are permanent)
 const SNAPSHOT_TTL_DAYS = 180;
+
+// Feature toggle: when true, uses post-based daily batch decay instead of cumulative decay
+const ENABLE_BATCH_DECAY = process.env.ENABLE_BATCH_DECAY === 'true';
 
 /**
  * Get previous day's snapshot for a season
@@ -217,13 +222,68 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
       ? new Date(customDate + 'T00:00:00+09:00')
       : undefined;
 
-    // Recalculate scores with reference timestamp and sort by userScore
-    const scoredAccounts = filteredScores
-      .map((score) => ({
-        ...score,
-        ...recalculateUserScore(score, referenceDate),
-      }))
-      .sort((a, b) => b.userScore - a.userScore);
+    // Recalculate scores and sort by userScore
+    let scoredAccounts: (SeasonAccountScore & {
+      userScore: number;
+      rawScore: number;
+      consistencyBonus: number;
+      freshnessMultiplier: number;
+    })[];
+
+    if (ENABLE_BATCH_DECAY) {
+      // Batch decay: query all posts, group by date, apply decay within each day only
+      console.log('Batch decay enabled: querying posts for daily-scoped decay');
+      const allPosts = await getPostsBySeasonId(activeSeason.seasonId);
+      console.log(`Fetched ${allPosts.length} posts for batch decay calculation`);
+
+      // Group posts by accountId
+      const postsByAccount = new Map<string, Post[]>();
+      for (const post of allPosts) {
+        const existing = postsByAccount.get(post.accountId);
+        if (existing) {
+          existing.push(post);
+        } else {
+          postsByAccount.set(post.accountId, [post]);
+        }
+      }
+
+      scoredAccounts = filteredScores
+        .map((score) => {
+          const accountPosts = postsByAccount.get(score.accountId) || [];
+          const decayedRawScore = calculateDecayedRawScoreFromPosts(accountPosts);
+          const rawScore = decayedRawScore + (score.adjustmentTotalScore || 0);
+          const consistencyBonus = calculateConsistencyBonus(score.uniqueActiveDays);
+
+          // Freshness: use referenceDate if provided, otherwise current time
+          let freshnessMultiplier: number;
+          const lastSeenDate = new Date(score.lastSeenAt);
+          const refDate = referenceDate || new Date();
+          const daysSinceLastPost = Math.max(
+            0,
+            Math.floor((refDate.getTime() - lastSeenDate.getTime()) / (1000 * 60 * 60 * 24))
+          );
+          freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
+
+          const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier);
+
+          return {
+            ...score,
+            rawScore: Math.round(rawScore * 1000) / 1000,
+            consistencyBonus: Math.round(consistencyBonus * 1000) / 1000,
+            freshnessMultiplier: Math.round(freshnessMultiplier * 1000) / 1000,
+            userScore: Math.round(userScore * 1000) / 1000,
+          };
+        })
+        .sort((a, b) => b.userScore - a.userScore);
+    } else {
+      // Legacy: cumulative season-wide decay from SeasonAccountScore aggregates
+      scoredAccounts = filteredScores
+        .map((score) => ({
+          ...score,
+          ...recalculateUserScore(score, referenceDate),
+        }))
+        .sort((a, b) => b.userScore - a.userScore);
+    }
 
     // Get previous day's ranks
     const todayDate = customDate || getTodayDateString();
