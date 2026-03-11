@@ -76,7 +76,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
 
   const cards = [
     {
-      title: "Community Leaderboard",
+      title: "Nasun Leaderboard",
       line1: "Contribute content, bring people in, and help build the Nasun ecosystem.",
       line2: "Climb the ranks to earn USDC rewards and Battalion NFTs.",
       cta: "Join the Leaderboard",
