@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth';
 import { getMyRank } from '../services/leaderboardV3Api';
-import { getTwitterHandle } from '@/utils/getTwitterHandle';
+import { getTwitterHandle, getOriginalTwitterHandle } from '@/utils/getTwitterHandle';
 import type { MyRankResponse, MyRankData } from '../types';
 
 interface UseMyRankResult {
@@ -24,6 +24,7 @@ export function useMyRank(seasonId?: string): UseMyRankResult {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const twitterUsername = getTwitterHandle(user);
+  const originalTwitterUsername = getOriginalTwitterHandle(user);
 
   const {
     data: response,
@@ -50,6 +51,11 @@ export function useMyRank(seasonId?: string): UseMyRankResult {
     data = { status: 'no_twitter' }; // Logged in but no Twitter connected
   } else if (response?.data) {
     data = response.data;
+    // API may return not_ranked without username (account not in Accounts table yet).
+    // Fall back to the local twitterUsername so NotRankedCard can display the handle.
+    if (data.status === 'not_ranked' && !data.username && twitterUsername) {
+      data = { ...data, username: twitterUsername, originalUsername: originalTwitterUsername || undefined };
+    }
   } else if (isError) {
     data = { status: 'error' };
   }

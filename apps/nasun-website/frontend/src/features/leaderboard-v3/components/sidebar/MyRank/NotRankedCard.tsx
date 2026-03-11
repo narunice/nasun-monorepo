@@ -21,9 +21,11 @@ export function NotRankedCard({ username, originalUsername }: NotRankedCardProps
           <h4 className="font-bold text-nasun-white text-sm uppercase tracking-tight">
             {t("v3.myRank.notRanked")}
           </h4>
-          <p className="text-xs text-nasun-white/50 mt-0.5">
-            @{originalUsername || username}
-          </p>
+          {(originalUsername || username) && (
+            <p className="text-xs text-nasun-white/50 mt-0.5">
+              @{originalUsername || username}
+            </p>
+          )}
         </div>
       </div>
       <p className="text-xs text-nasun-white/50 mb-3">{t("v3.myRank.notRankedDesc")}</p>
