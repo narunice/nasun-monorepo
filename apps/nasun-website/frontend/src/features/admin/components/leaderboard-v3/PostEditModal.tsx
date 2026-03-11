@@ -21,10 +21,12 @@ import {
   ROLE_LABELS,
   SIGNAL_LABELS,
   LANGUAGE_LABELS,
+  POST_TYPE_LABELS,
   type ContentSignal,
   type AccountRole,
   type AccountLanguage,
   type Platform,
+  type PostType,
 } from "../../types/leaderboard-v3";
 
 interface PostEditData {
@@ -34,6 +36,7 @@ interface PostEditData {
   originalUsername?: string;
   postUrl?: string;
   postScore?: number;
+  postType?: string;
   accountRole?: string;
   contentSignals?: string[];
 }
@@ -48,6 +51,7 @@ const PLATFORMS: Platform[] = ["twitter", "discord", "farcaster"];
 const ROLES: AccountRole[] = ["default", "proactive_ct", "kol"];
 const SIGNALS: ContentSignal[] = ["standard", "insight", "creative", "high_reach"];
 const LANGUAGES: AccountLanguage[] = ["en", "zh", "ja", "ko"];
+const POST_TYPES: PostType[] = ["original", "quote", "reply"];
 
 export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) {
   const editPost = useEditPost();
@@ -55,6 +59,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
   const [platform, setPlatform] = useState<string>("");
   const [username, setUsername] = useState("");
   const [postScore, setPostScore] = useState("");
+  const [postType, setPostType] = useState<PostType>("original");
   const [accountRole, setAccountRole] = useState<string>("default");
   const [contentSignals, setContentSignals] = useState<string[]>(["standard"]);
   const [scoreError, setScoreError] = useState("");
@@ -80,6 +85,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
       setPlatform(post.platform || "twitter");
       setUsername(post.username || "");
       setPostScore(post.postScore?.toString() || "0");
+      setPostType((post.postType as PostType) || "original");
       setAccountRole(post.accountRole || "default");
       setContentSignals(post.contentSignals || ["standard"]);
       // Reset account fields to defaults until fresh data loads
@@ -127,6 +133,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
     if (username !== post.username) updates.originalUsername = username;
     if (scoreNum !== post.postScore) updates.postScore = scoreNum;
     if (accountRole !== post.accountRole) updates.accountRole = accountRole;
+    if (postType !== (post.postType || "original")) updates.postType = postType;
     if (JSON.stringify(contentSignals.sort()) !== JSON.stringify((post.contentSignals || []).sort())) {
       updates.contentSignals = contentSignals;
     }
@@ -222,6 +229,27 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
           {/* Post Fields Section */}
           <div className="text-[10px] uppercase tracking-wider text-nasun-white/40 font-medium">
             Post
+          </div>
+
+          {/* Post Type */}
+          <div>
+            <label className="text-xs text-nasun-white/60 mb-1 block">Post Type</label>
+            <div className="flex gap-2">
+              {POST_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setPostType(type)}
+                  className={`flex-1 px-3 py-1.5 rounded-sm text-xs font-medium transition-all ${
+                    postType === type
+                      ? "bg-nasun-c4 text-nasun-white"
+                      : "bg-gray-700/50 text-nasun-white/50 hover:text-nasun-white"
+                  }`}
+                >
+                  {POST_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Platform */}

@@ -14,7 +14,7 @@
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { AccountLanguage, AccountRole, ContentSignal, Platform, Post } from '../types';
+import { AccountLanguage, AccountRole, ContentSignal, Platform, Post, PostType } from '../types';
 import { getAccountById, getPostById, updateAccountLanguageData, updatePostAndAdjustScores } from '../services/dynamodb-client';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { authenticateAdmin } from '../utils/admin-auth';
@@ -23,6 +23,7 @@ const VALID_PLATFORMS: Platform[] = ['twitter', 'discord', 'farcaster'];
 const VALID_ROLES: AccountRole[] = ['kol', 'proactive_ct', 'default'];
 const VALID_SIGNALS: ContentSignal[] = ['standard', 'insight', 'creative', 'high_reach'];
 const VALID_LANGUAGES: AccountLanguage[] = ['en', 'zh', 'ja', 'ko'];
+const VALID_POST_TYPES: PostType[] = ['original', 'quote', 'reply'];
 
 interface EditPostRequest {
   platform?: Platform;
@@ -31,6 +32,7 @@ interface EditPostRequest {
   postScore?: number;
   contentSignals?: ContentSignal[];
   accountRole?: AccountRole;
+  postType?: PostType;
   // Account-level fields (updates Account record, not Post)
   language?: AccountLanguage;
   followerCount?: number;
@@ -82,6 +84,10 @@ function validateEditRequest(body: unknown): { valid: boolean; data?: EditPostRe
     }
   }
 
+  if (req.postType !== undefined && !VALID_POST_TYPES.includes(req.postType as PostType)) {
+    return { valid: false, error: `Invalid postType. Must be one of: ${VALID_POST_TYPES.join(', ')}` };
+  }
+
   if (req.language !== undefined && !VALID_LANGUAGES.includes(req.language as AccountLanguage)) {
     return { valid: false, error: `Invalid language. Must be one of: ${VALID_LANGUAGES.join(', ')}` };
   }
@@ -101,6 +107,7 @@ function validateEditRequest(body: unknown): { valid: boolean; data?: EditPostRe
       postScore: req.postScore as number | undefined,
       contentSignals: req.contentSignals as ContentSignal[] | undefined,
       accountRole: req.accountRole as AccountRole | undefined,
+      postType: req.postType as PostType | undefined,
       language: req.language as AccountLanguage | undefined,
       followerCount: req.followerCount as number | undefined,
     },
