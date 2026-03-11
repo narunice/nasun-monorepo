@@ -216,6 +216,16 @@ describe('format utilities', () => {
     it('should return dash for undefined', () => {
       expect(formatObjectType(undefined)).toBe('-');
     });
+
+    it('should transform StakedSui to StakedNasun', () => {
+      const result = formatObjectType('0x3::staking_pool::StakedSui');
+      expect(result).toBe('0x3::staking_pool::StakedNasun');
+    });
+
+    it('should transform SuiSystem to NasunSystem', () => {
+      const result = formatObjectType('0x3::sui_system::SuiSystem');
+      expect(result).toContain('NasunSystem');
+    });
   });
 
   describe('formatPercentage', () => {

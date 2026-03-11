@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NBTC_TYPE, NUSDC_TYPE, NETH_TYPE, NSOL_TYPE, TOKENS, TOKENS_V2, NETH_PACKAGE_ID } from '@nasun/devnet-config';
 import { getCoinTotalSupply } from '../lib/sui-client';
 import { getTokenStats } from '../lib/explorer-api';
-import { formatTokenBalance, truncateType } from '../lib/format';
+import { formatTokenBalance, truncateType, formatObjectType } from '../lib/format';
 import { useDocumentTitle } from '../hooks';
 
 const KNOWN_TOKENS = [
@@ -14,9 +14,6 @@ const KNOWN_TOKENS = [
   { coinType: NSOL_TYPE, symbol: 'NSOL', name: 'Nasun Solana', decimals: 8, packageLink: TOKENS_V2.packageId },
 ];
 
-function brandedType(coinType: string): string {
-  return coinType.replace(/0x2::sui::SUI/g, '0x2::nasun::NSN');
-}
 
 export default function Tokens() {
   useDocumentTitle('Tokens');
@@ -91,7 +88,7 @@ export default function Tokens() {
           </thead>
           <tbody className="divide-y divide-border/20">
             {KNOWN_TOKENS.map((token) => {
-              const branded = brandedType(token.coinType);
+              const branded = formatObjectType(token.coinType);
               return (
                 <tr
                   key={token.coinType}

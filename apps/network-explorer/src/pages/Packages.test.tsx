@@ -26,8 +26,8 @@ describe('Packages page', () => {
   it('should render system packages', () => {
     renderWithRouter(<Packages />);
     expect(screen.getByText('Move Stdlib')).toBeInTheDocument();
-    expect(screen.getByText('Sui Framework')).toBeInTheDocument();
-    expect(screen.getByText('Sui System')).toBeInTheDocument();
+    expect(screen.getByText('Nasun Framework')).toBeInTheDocument();
+    expect(screen.getByText('Nasun System')).toBeInTheDocument();
   });
 
   it('should render protocol packages', () => {
