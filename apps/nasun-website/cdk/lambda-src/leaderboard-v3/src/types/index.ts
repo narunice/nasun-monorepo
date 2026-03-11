@@ -51,12 +51,11 @@ export const SCORE_CONSTANTS = {
 
 // Language scale factors for follower normalization
 // Normalizes followers to English-equivalent scale
-// Korean CT is ~1/5 the size of English CT, so Korean followers × 5 = normalized
 export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
   en: 1.0, // Base scale
-  zh: 1.67, // Chinese CT ~60% of English
-  ja: 2.5, // Japanese CT ~40% of English
-  ko: 5.0, // Korean CT ~20% of English
+  zh: 1.3, // Chinese CT ~77% of English
+  ja: 1.8, // Japanese CT ~56% of English
+  ko: 3.0, // Korean CT ~33% of English
 };
 
 // Legacy: Language-based follower thresholds (kept for backwards compatibility)
