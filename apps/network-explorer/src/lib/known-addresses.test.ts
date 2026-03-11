@@ -8,19 +8,19 @@ describe('known-addresses', () => {
       expect(KNOWN_ADDRESSES[addr]).toBe('Move Stdlib');
     });
 
-    it('should map Sui Framework (0x2)', () => {
+    it('should map Nasun Framework (0x2)', () => {
       const addr = '0x' + '0'.repeat(63) + '2';
-      expect(KNOWN_ADDRESSES[addr]).toBe('Sui Framework');
+      expect(KNOWN_ADDRESSES[addr]).toBe('Nasun Framework');
     });
 
-    it('should map Sui System (0x3)', () => {
+    it('should map Nasun System (0x3)', () => {
       const addr = '0x' + '0'.repeat(63) + '3';
-      expect(KNOWN_ADDRESSES[addr]).toBe('Sui System');
+      expect(KNOWN_ADDRESSES[addr]).toBe('Nasun System');
     });
 
-    it('should map SuiSystem shared object (0x5)', () => {
+    it('should map NasunSystem shared object (0x5)', () => {
       const addr = '0x' + '0'.repeat(63) + '5';
-      expect(KNOWN_ADDRESSES[addr]).toBe('SuiSystem');
+      expect(KNOWN_ADDRESSES[addr]).toBe('NasunSystem');
     });
 
     it('should map Clock (0x6)', () => {
