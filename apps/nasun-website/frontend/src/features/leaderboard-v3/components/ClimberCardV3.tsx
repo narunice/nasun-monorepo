@@ -32,12 +32,13 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
 
   return (
     <div className="relative bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl p-4 hover:shadow-lg hover:scale-[1.01] transition-all duration-200">
-      {/* Medal badge - V2 style absolute positioning */}
+      {/* Medal badge - temporarily hidden
       {position <= 3 && (
         <div className="absolute -top-3 -left-3 z-10 text-2xl xl:text-3xl">
           {position === 1 ? '🥇' : position === 2 ? '🥈' : '🥉'}
         </div>
       )}
+      */}
 
       {/* Header: Avatar + Name + External link */}
       <div className="flex items-start gap-3 mb-4 mt-2">
