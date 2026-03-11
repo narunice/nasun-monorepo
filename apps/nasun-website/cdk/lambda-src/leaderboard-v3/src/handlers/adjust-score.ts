@@ -145,7 +145,15 @@ export const handler = async (
 
     // Apply adjustments
     await adjustAccountAdjustmentScore(account.accountId, score);
-    await adjustSeasonAdjustmentScore(seasonId, account.accountId, score);
+    await adjustSeasonAdjustmentScore(seasonId, account.accountId, score, {
+      username: account.username,
+      platform: account.platform,
+      originalUsername: account.originalUsername,
+      displayName: account.displayName,
+      profileImageUrl: account.profileImageUrl,
+      isRegistered: account.isRegistered,
+      isTelegramMember: account.isTelegramMember,
+    });
 
     console.log(
       `Score adjusted: @${username} ${score > 0 ? '+' : ''}${score} by admin. Reason: ${reason}. Season: ${seasonId}`

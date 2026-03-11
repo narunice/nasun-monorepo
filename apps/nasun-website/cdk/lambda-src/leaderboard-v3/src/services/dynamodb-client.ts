@@ -1143,7 +1143,16 @@ export async function adjustAccountAdjustmentScore(
 export async function adjustSeasonAdjustmentScore(
   seasonId: string,
   accountId: string,
-  delta: number
+  delta: number,
+  accountInfo: {
+    username: string;
+    platform: Platform;
+    originalUsername?: string;
+    displayName?: string;
+    profileImageUrl?: string;
+    isRegistered?: boolean;
+    isTelegramMember?: boolean;
+  }
 ): Promise<void> {
   const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
   const sk = 'SCORE';
@@ -1198,7 +1207,7 @@ export async function adjustSeasonAdjustmentScore(
       })
     );
   } else {
-    // Create new season record with only adjustment data
+    // Create new season record with adjustment data and account identity
     await docClient.send(
       new PutCommand({
         TableName: SEASON_ACCOUNTS_TABLE,
@@ -1207,6 +1216,13 @@ export async function adjustSeasonAdjustmentScore(
           sk,
           seasonId,
           accountId,
+          username: accountInfo.username,
+          platform: accountInfo.platform,
+          originalUsername: accountInfo.originalUsername,
+          displayName: accountInfo.displayName,
+          profileImageUrl: accountInfo.profileImageUrl,
+          isRegistered: accountInfo.isRegistered,
+          isTelegramMember: accountInfo.isTelegramMember,
           totalPostScore: 0,
           postCount: 0,
           uniqueActiveDays: 0,
