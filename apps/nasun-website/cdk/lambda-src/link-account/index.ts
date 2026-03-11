@@ -1,7 +1,7 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -314,8 +314,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           delete oldLinked[matchingKey];
 
           let unlinkExpr = 'SET linkedAccounts = :la, updatedAt = :ua';
-          if (matchingKey === 'twitter' && oldPrimary.provider === 'Google') {
-            unlinkExpr += ' REMOVE twitterHandle, twitterId, profileImageUrl';
+          if (matchingKey === 'twitter' && oldPrimary.provider !== 'Twitter') {
+            unlinkExpr += ' REMOVE twitterHandle, originalTwitterHandle, twitterId, profileImageUrl';
           } else if (matchingKey === 'google' && oldPrimary.provider === 'Twitter') {
             unlinkExpr += ' REMOVE email';
           } else if (matchingKey === 'metamask') {
@@ -387,6 +387,49 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       ':linkedAccounts': primaryLinkedAccounts,
       ':updatedAt': new Date().toISOString(),
     };
+
+    // Dedup: Remove promoted Twitter fields from other profiles that have the same twitterId
+    if (providerKey === 'twitter' && secondaryProfile.twitterId) {
+      try {
+        const dedupResult = await dynamoClient.send(new QueryCommand({
+          TableName: tableName,
+          IndexName: 'twitterId-index',
+          KeyConditionExpression: 'twitterId = :tid',
+          ExpressionAttributeValues: { ':tid': secondaryProfile.twitterId },
+        }));
+
+        for (const item of dedupResult.Items || []) {
+          const dupId = item.identityId;
+          if (dupId === primaryIdentityId || dupId === secondaryIdentityId) continue;
+
+          try {
+            await dynamoClient.send(new UpdateCommand({
+              TableName: tableName,
+              Key: { identityId: dupId },
+              UpdateExpression: 'SET updatedAt = :ua REMOVE twitterHandle, originalTwitterHandle, twitterId, linkedAccounts.twitter',
+              ConditionExpression: 'twitterId = :expectedTid',
+              ExpressionAttributeValues: {
+                ':ua': new Date().toISOString(),
+                ':expectedTid': secondaryProfile.twitterId,
+              },
+            }));
+
+            console.log(JSON.stringify({
+              event: 'LINK_DEDUP_CLEANUP',
+              cleanedProfileId: dupId,
+              twitterId: secondaryProfile.twitterId,
+              newOwnerId: primaryIdentityId,
+            }));
+          } catch (condErr: any) {
+            if (condErr.name !== 'ConditionalCheckFailedException') {
+              console.warn('Dedup cleanup failed for', dupId, condErr);
+            }
+          }
+        }
+      } catch (dedupError) {
+        console.warn('Twitter dedup query failed (non-blocking):', dedupError);
+      }
+    }
 
     if (providerKey === 'twitter') {
       if (secondaryProfile.twitterHandle) {
