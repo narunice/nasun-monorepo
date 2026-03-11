@@ -273,6 +273,7 @@ export async function updatePostAndAdjustScores(params: {
     postScore?: number;
     contentSignals?: ContentSignal[];
     accountRole?: AccountRole;
+    postType?: PostType;
   };
 }): Promise<Post> {
   const { postId, updates } = params;
@@ -312,6 +313,10 @@ export async function updatePostAndAdjustScores(params: {
     updateParts.push('originalUsername = :originalUsername');
     expressionValues[':originalUsername'] = updates.originalUsername;
   }
+  if (updates.postType !== undefined) {
+    updateParts.push('postType = :postType');
+    expressionValues[':postType'] = updates.postType;
+  }
 
   updateParts.push('updatedAt = :updatedAt');
   expressionValues[':updatedAt'] = new Date().toISOString();
@@ -335,9 +340,74 @@ export async function updatePostAndAdjustScores(params: {
 
   const updatedPost = result.Attributes as Post;
 
-  // If postScore changed, adjust aggregates via delta
-  if (updates.postScore !== undefined && updates.postScore !== existingPost.postScore) {
-    const scoreDelta = updates.postScore - existingPost.postScore;
+  // Determine what changed for aggregate adjustment
+  const validPostTypes: PostType[] = ['original', 'quote', 'reply'];
+  const oldType = validPostTypes.includes(existingPost.postType as PostType) ? existingPost.postType : 'original';
+  const newType = updates.postType ?? oldType;
+  const typeChanged = updates.postType !== undefined && newType !== oldType;
+  const scoreChanged = updates.postScore !== undefined && updates.postScore !== existingPost.postScore;
+
+  if (typeChanged) {
+    // Post type changed (possibly with score change too)
+    // Move count and score from old type to new type
+    const oldScore = existingPost.postScore;
+    const newScore = updates.postScore ?? oldScore;
+    const totalScoreDelta = newScore - oldScore; // 0 if score unchanged
+
+    const oldCountField = `${oldType}PostCount`;
+    const oldScoreField = `${oldType}TotalScore`;
+    const newCountField = `${newType}PostCount`;
+    const newScoreField = `${newType}TotalScore`;
+
+    // Adjust season account aggregates
+    if (existingPost.seasonId) {
+      const pk = `SEASON#${existingPost.seasonId}#ACCOUNT#${existingPost.accountId}`;
+      const sk = 'SCORE';
+
+      await docClient.send(
+        new UpdateCommand({
+          TableName: SEASON_ACCOUNTS_TABLE,
+          Key: { pk, sk },
+          UpdateExpression: `SET
+            ${oldCountField} = if_not_exists(${oldCountField}, :zero) - :one,
+            ${oldScoreField} = if_not_exists(${oldScoreField}, :zero) - :oldScore,
+            ${newCountField} = if_not_exists(${newCountField}, :zero) + :one,
+            ${newScoreField} = if_not_exists(${newScoreField}, :zero) + :newScore,
+            totalPostScore = totalPostScore + :totalDelta`,
+          ExpressionAttributeValues: {
+            ':zero': 0,
+            ':one': 1,
+            ':oldScore': oldScore,
+            ':newScore': newScore,
+            ':totalDelta': totalScoreDelta,
+          },
+        })
+      );
+    }
+
+    // Adjust cumulative account aggregates
+    await docClient.send(
+      new UpdateCommand({
+        TableName: ACCOUNTS_TABLE,
+        Key: { accountId: existingPost.accountId },
+        UpdateExpression: `SET
+          ${oldCountField} = if_not_exists(${oldCountField}, :zero) - :one,
+          ${oldScoreField} = if_not_exists(${oldScoreField}, :zero) - :oldScore,
+          ${newCountField} = if_not_exists(${newCountField}, :zero) + :one,
+          ${newScoreField} = if_not_exists(${newScoreField}, :zero) + :newScore,
+          totalPostScore = totalPostScore + :totalDelta`,
+        ExpressionAttributeValues: {
+          ':zero': 0,
+          ':one': 1,
+          ':oldScore': oldScore,
+          ':newScore': newScore,
+          ':totalDelta': totalScoreDelta,
+        },
+      })
+    );
+  } else if (scoreChanged) {
+    // Score-only change (existing behavior preserved)
+    const scoreDelta = updates.postScore! - existingPost.postScore;
     const postType = existingPost.postType || 'original';
 
     // Adjust season account aggregates
