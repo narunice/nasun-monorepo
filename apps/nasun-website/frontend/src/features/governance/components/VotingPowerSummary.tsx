@@ -8,6 +8,7 @@
 import { FC, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useWallet, useZkLogin } from "@nasun/wallet";
+import { useNavigate } from "react-router-dom";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useAuth } from "@/features/auth";
 import { useUserStore } from "@/store/userStore";
@@ -48,7 +49,8 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
   const isConnected = (status === "unlocked" && account) || isZkConnected;
 
   const { votingPower, isLoading, fetchVotingPower } = useVotingPower();
-  const { user, isAuthenticated, signInWithTwitter } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const [showHowItWorks, setShowHowItWorks] = useState(false);
 
@@ -69,13 +71,8 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
   const totalPower = votingPower?.totalVotingPower || 1;
   const breakdown = votingPower?.breakdown;
 
-  const handleLinkX = async () => {
-    try {
-      localStorage.setItem("auth_return_url", window.location.pathname);
-      await signInWithTwitter();
-    } catch (error) {
-      console.error("X sign-in failed:", error);
-    }
+  const handleLinkX = () => {
+    navigate("/my-account");
   };
 
   return (
@@ -128,7 +125,7 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
                     onClick={handleLinkX}
                     className="text-xs text-nasun-nw1 hover:text-nasun-nw2 hover:underline transition-colors"
                   >
-                    {t("votingPower.verifyX")}
+                    Link in My Account
                   </button>
                 ) : (
                   <CheckCircledIcon className="w-4 h-4 text-green-400" />
