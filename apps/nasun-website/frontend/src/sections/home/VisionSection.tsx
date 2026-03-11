@@ -154,7 +154,7 @@ function VisionSectionV2({ shouldLoadVideo = false, onVideoReady }: VisionSectio
                     asChild
                     className="lg:px-4 xl:px-12 xl:w-[280px]"
                   >
-                    <Link to="/wave1/battalion-nft">{t("vision.cta.unifiedVision")}</Link>
+                    <Link to="/network/nsn">{t("vision.cta.unifiedVision")}</Link>
                   </ButtonV3>
                   <ButtonV3
                     variant="nw1"
