@@ -17,7 +17,7 @@ interface LeaderboardV3RowProps {
 
 // Default avatar for users without profile image
 function DefaultAvatar({ username }: { username: string }) {
-  const initial = username.charAt(0).toUpperCase();
+  const initial = (username || "?").charAt(0).toUpperCase();
   return (
     <div className="w-10 h-10 rounded-2xl bg-gray-700 flex items-center justify-center flex-shrink-0">
       <span className="text-gray-100 font-semibold">{initial}</span>

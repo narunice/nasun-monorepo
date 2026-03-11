@@ -18,7 +18,7 @@ interface ClimberCardV3Props {
 function DefaultAvatar({ username, originalUsername }: { username: string; originalUsername?: string }) {
   // Use originalUsername for initial if available (preserves intended casing)
   const displayName = originalUsername || username;
-  const initial = displayName.charAt(0).toUpperCase();
+  const initial = (displayName || "?").charAt(0).toUpperCase();
   return (
     <div className="w-12 h-12 rounded-2xl bg-gray-700 flex items-center justify-center text-nasun-white/60 font-semibold text-lg">
       {initial}
