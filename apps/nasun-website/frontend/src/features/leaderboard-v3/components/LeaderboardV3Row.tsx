@@ -44,9 +44,11 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
       {/* Rank */}
       <div className="col-span-2 flex items-center">
         <span className="w-6 text-gray-100 font-bold">{entry.rank}</span>
+        {/* Crown icon - temporarily hidden
         <span className="w-5 flex items-center">
           {isTopThree && <FaCrown className={`w-4 h-4 ${rankColors[entry.rank]}`} />}
         </span>
+        */}
       </div>
 
       {/* User with Avatar */}
