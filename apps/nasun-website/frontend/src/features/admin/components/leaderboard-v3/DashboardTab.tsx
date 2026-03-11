@@ -14,6 +14,7 @@ interface EditablePost {
   originalUsername?: string;
   postUrl?: string;
   postScore?: number;
+  postType?: string;
   accountRole?: string;
   contentSignals?: string[];
 }
@@ -94,6 +95,7 @@ export function DashboardTab() {
                           originalUsername: activity.originalUsername,
                           postUrl: activity.postUrl,
                           postScore: activity.postScore,
+                          postType: activity.postType,
                           accountRole: activity.accountRole,
                           contentSignals: activity.contentSignals,
                         });

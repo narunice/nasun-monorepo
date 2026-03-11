@@ -241,6 +241,7 @@ export async function editPost(
     username?: string;
     originalUsername?: string;
     postScore?: number;
+    postType?: string;
     contentSignals?: string[];
     accountRole?: string;
     language?: string;
@@ -340,9 +341,9 @@ export function calculatePostScorePreviewWithFollowers(
 ): { baseScore: number; roleMultiplier: number; signalBonus: number; totalScore: number } {
   const LANGUAGE_SCALE: Record<string, number> = {
     en: 1.0,
-    zh: 1.67,
-    ja: 2.5,
-    ko: 5.0,
+    zh: 1.3,
+    ja: 1.8,
+    ko: 3.0,
   };
 
   const SIGNAL_BONUSES: Record<string, number> = {

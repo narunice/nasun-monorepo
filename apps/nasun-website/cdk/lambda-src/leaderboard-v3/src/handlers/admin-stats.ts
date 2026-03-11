@@ -198,6 +198,7 @@ async function getRecentActivity(): Promise<
     originalUsername?: string;
     postUrl?: string;
     postScore?: number;
+    postType?: string;
     accountRole?: string;
     contentSignals?: string[];
   }>
@@ -227,6 +228,7 @@ async function getRecentActivity(): Promise<
     username: post.username,
     postUrl: post.postUrl,
     postScore: post.postScore,
+    postType: post.postType,
     accountRole: post.accountRole,
     contentSignals: post.contentSignals,
   }));
