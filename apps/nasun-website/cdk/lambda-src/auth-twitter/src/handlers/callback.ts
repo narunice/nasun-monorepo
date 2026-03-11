@@ -219,11 +219,12 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       await dynamoClient.send(new UpdateItemCommand({
         TableName: USER_PROFILES_TABLE,
         Key: { identityId: { S: cognitoIdentity.identityId } },
-        UpdateExpression: 'SET username = :username, twitterHandle = :handle, originalTwitterHandle = :originalHandle, profileImageUrl = :image, verified = :verified, updatedAt = :updatedAt',
+        UpdateExpression: 'SET username = :username, twitterHandle = :handle, originalTwitterHandle = :originalHandle, twitterId = :twitterId, profileImageUrl = :image, verified = :verified, updatedAt = :updatedAt',
         ExpressionAttributeValues: {
           ':username': { S: twitterUser.name },
           ':handle': { S: normalizedTwitterHandle },
           ':originalHandle': { S: originalTwitterHandle },
+          ':twitterId': { S: twitterUser.id },
           ':image': { S: twitterUser.profile_image_url || '' },
           ':verified': { BOOL: twitterUser.verified || false },
           ':updatedAt': { S: userProfile.updatedAt },
