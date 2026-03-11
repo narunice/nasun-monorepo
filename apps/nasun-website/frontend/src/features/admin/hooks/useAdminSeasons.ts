@@ -177,6 +177,8 @@ export function useAdminSeasons() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard-v3'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
     },
   });
 
@@ -186,6 +188,8 @@ export function useAdminSeasons() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard-v3'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
     },
   });
 

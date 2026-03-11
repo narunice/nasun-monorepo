@@ -9,7 +9,8 @@
  * - Seasons: Season CRUD management
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -27,6 +28,16 @@ import {
 export function LeaderboardV3Admin() {
   const [activeTab, setActiveTab] = useState<AdminTabId>("post");
   const { profile } = useAdminAuth();
+  const queryClient = useQueryClient();
+
+  const handleTabChange = useCallback((tab: AdminTabId) => {
+    setActiveTab(tab);
+    // Invalidate all admin queries so the new tab shows fresh data
+    queryClient.invalidateQueries({ queryKey: ['leaderboard-v3'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-cumulative-leaderboard'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
+  }, [queryClient]);
 
   // Admin identifier for display
   const adminIdentifier =
@@ -52,7 +63,7 @@ export function LeaderboardV3Admin() {
 
         {/* Tab Navigation */}
         <div className="w-full mb-6">
-          <AdminTabs activeTab={activeTab} onTabChange={setActiveTab} />
+          <AdminTabs activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
 
         {/* Tab Content */}
