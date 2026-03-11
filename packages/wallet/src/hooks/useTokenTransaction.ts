@@ -223,8 +223,8 @@ export function useTokenTransaction(): UseTokenTransactionReturn {
         setLastResult(txResult);
         setIsPending(false);
 
-        // Refresh balances (multi-balance for Nasun, single-balance for external)
-        await Promise.all([refreshMultiBalance(), refreshBalance()]);
+        // Refresh balances (best-effort, failure should not affect tx result)
+        Promise.all([refreshMultiBalance(), refreshBalance()]).catch(() => {});
 
         return txResult;
       } catch (err) {
