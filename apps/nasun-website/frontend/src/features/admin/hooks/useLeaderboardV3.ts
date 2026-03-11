@@ -78,8 +78,10 @@ export function useCreatePost() {
       request: CreatePostRequest;
     }) => createPost(request, cognitoToken || ''),
     onSuccess: () => {
-      // Invalidate all leaderboard queries to refresh rankings
+      // Invalidate all leaderboard and admin queries to refresh rankings
       queryClient.invalidateQueries({ queryKey: leaderboardV3Keys.all });
+      queryClient.invalidateQueries({ queryKey: ['admin-cumulative-leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
     },
   });
 }
@@ -96,6 +98,8 @@ export function useAdjustScore() {
       adjustScore(request, cognitoToken || ''),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: leaderboardV3Keys.all });
+      queryClient.invalidateQueries({ queryKey: ['admin-cumulative-leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
     },
   });
 }
