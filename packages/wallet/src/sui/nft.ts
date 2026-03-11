@@ -63,6 +63,20 @@ function parseContent(content: unknown): Record<string, unknown> | undefined {
 }
 
 /**
+ * Extract hasPublicTransfer from raw RPC content.
+ * This field is a sibling of `fields`, not inside it, so parseContent() cannot reach it.
+ * Defaults to true when unknown to avoid falsely blocking legitimate transfers.
+ */
+function extractHasPublicTransfer(content: unknown): boolean {
+  if (!content || typeof content !== 'object') return true;
+  const c = content as Record<string, unknown>;
+  if (c.dataType === 'moveObject' && typeof c.hasPublicTransfer === 'boolean') {
+    return c.hasPublicTransfer;
+  }
+  return true;
+}
+
+/**
  * Build display data from content fields (fallback for NFTs without Display<T> registered)
  * Many NFTs store name, url, description directly in object fields
  */
@@ -142,6 +156,7 @@ export async function getOwnedNFTs(
         type,
         display,
         content: parseContent(obj.data.content),
+        hasPublicTransfer: extractHasPublicTransfer(obj.data.content),
       });
     }
 
@@ -193,6 +208,7 @@ export async function getNFT(objectId: string): Promise<NFTInfo | null> {
       type,
       display,
       content,
+      hasPublicTransfer: extractHasPublicTransfer(response.data.content),
     };
   } catch (error) {
     console.error('Failed to get NFT:', error);

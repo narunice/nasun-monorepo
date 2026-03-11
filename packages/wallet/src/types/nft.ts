@@ -40,6 +40,8 @@ export interface NFTInfo {
   display: NFTDisplay;
   /** Raw object content for non-standard fields */
   content?: Record<string, unknown>;
+  /** Whether the object can be transferred via TransferObjects (has `store` ability). Defaults to true when unknown. */
+  hasPublicTransfer?: boolean;
 }
 
 /**

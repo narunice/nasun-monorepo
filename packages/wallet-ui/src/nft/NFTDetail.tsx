@@ -154,14 +154,38 @@ export function NFTDetail({ nft, onClose, onTransferSuccess }: NFTDetailProps) {
           />
         </div>
 
+        {/* Non-transferable notice */}
+        {nft.hasPublicTransfer === false && (
+          <div className="mx-4 mt-3 p-3 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700/50 rounded-lg flex gap-2.5">
+            <svg className="w-4 h-4 text-gray-400 dark:text-zinc-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-zinc-400">Non-transferable</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-500 mt-0.5 leading-relaxed">
+                This NFT is bound to your wallet by design. The creator has restricted transfers for this item.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
-        <div className="p-4 border-t border-gray-200 dark:border-zinc-700 flex gap-3">
+        <div className="p-4 border-t border-gray-200 dark:border-zinc-700 flex gap-3 mt-1">
           <button
             onClick={() => setShowTransfer(true)}
-            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            disabled={nft.hasPublicTransfer === false}
+            className={`flex-1 px-4 py-2.5 font-medium rounded-lg transition-colors flex items-center justify-center gap-2 ${
+              nft.hasPublicTransfer === false
+                ? 'bg-gray-200 dark:bg-zinc-700 text-gray-400 dark:text-zinc-500 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              {nft.hasPublicTransfer === false ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              )}
             </svg>
             Transfer
           </button>
