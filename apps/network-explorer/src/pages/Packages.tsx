@@ -7,8 +7,8 @@ import { truncateId } from '../lib/format';
 const KNOWN_PACKAGES = [
   // System (permanent)
   { id: '0x0000000000000000000000000000000000000000000000000000000000000001', name: 'Move Stdlib', description: 'Move standard library', category: 'system' as const },
-  { id: '0x0000000000000000000000000000000000000000000000000000000000000002', name: 'Sui Framework', description: 'Core framework: Coin, NFT, Transfer', category: 'system' as const },
-  { id: '0x0000000000000000000000000000000000000000000000000000000000000003', name: 'Sui System', description: 'Validator and staking logic', category: 'system' as const },
+  { id: '0x0000000000000000000000000000000000000000000000000000000000000002', name: 'Nasun Framework', description: 'Core framework: Coin, NFT, Transfer', category: 'system' as const },
+  { id: '0x0000000000000000000000000000000000000000000000000000000000000003', name: 'Nasun System', description: 'Validator and staking logic', category: 'system' as const },
   // Protocol — V7
   { id: '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731', name: 'devnet_tokens V1', description: 'NBTC, NUSDC token contracts', category: 'protocol' as const },
   { id: '0x7f8dba64318adb8042b266d52d372b4b876778aa7f27f7e37847cc15611f75b2', name: 'devnet_tokens V2', description: 'Upgraded token package', category: 'protocol' as const },
@@ -16,7 +16,7 @@ const KNOWN_PACKAGES = [
   { id: '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31', name: 'NETH Token', description: 'NETH token', category: 'protocol' as const },
   { id: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134', name: 'DeepBook V3', description: 'Central limit order book', category: 'protocol' as const },
   { id: '0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895', name: 'Prediction', description: 'Prediction markets', category: 'pado' as const },
-  { id: '0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900', name: 'Lottery', description: 'On-chain lottery (Sui Random)', category: 'pado' as const },
+  { id: '0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900', name: 'Lottery', description: 'On-chain lottery (Nasun Random)', category: 'pado' as const },
   { id: '0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3', name: 'Governance V1', description: 'On-chain governance', category: 'nasun' as const },
   { id: '0xe2fb0947f43473e21d1f8aef40e1d6799aa61b3d4fa80b6a1973d1e658de1256', name: 'Governance V2', description: 'Upgraded governance', category: 'nasun' as const },
   { id: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6', name: 'Baram V1', description: 'AI Settlement Layer (escrow)', category: 'baram' as const },
@@ -36,7 +36,7 @@ const KNOWN_PACKAGES = [
 type Category = 'system' | 'nasun' | 'protocol' | 'pado' | 'baram';
 
 const CATEGORY_VARIANT: Record<Category, 'immutable' | 'child' | 'info' | 'success' | 'shared'> = {
-  system: 'immutable',   // purple — Sui core
+  system: 'immutable',   // purple — Nasun core
   nasun: 'child',        // amber — Nasun network-level
   protocol: 'info',      // blue — shared infra/tokens
   pado: 'success',       // green — Pado DeFi app

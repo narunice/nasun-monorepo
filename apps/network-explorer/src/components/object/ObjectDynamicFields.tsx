@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDynamicFields } from '../../lib/sui-client';
-import { truncateId } from '../../lib/format';
+import { truncateId, formatObjectType } from '../../lib/format';
 
 interface ObjectDynamicFieldsProps {
   objectId: string;
@@ -62,10 +62,10 @@ export default function ObjectDynamicFields({ objectId }: ObjectDynamicFieldsPro
                   {formatFieldName(field.name)}
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground font-mono">
-                  {truncateId(field.name.type, 8, 4)}
+                  {truncateId(formatObjectType(field.name.type), 8, 4)}
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground font-mono">
-                  {truncateId(field.objectType, 8, 4)}
+                  {truncateId(formatObjectType(field.objectType), 8, 4)}
                 </td>
                 <td className="px-4 py-3">
                   <Link

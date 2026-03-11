@@ -38,7 +38,9 @@ export function formatObjectType(type: string | undefined): string {
   if (!type) return '-';
   return type
     .replace(/0x2::sui::SUI/g, '0x2::nasun::NSN')
-    .replace(/::sui::/g, '::nasun::');
+    .replace(/::sui::/g, '::nasun::')
+    .replace(/StakedSui/g, 'StakedNasun')
+    .replace(/SuiSystem/g, 'NasunSystem');
 }
 
 // SOE 단위 잔액 포맷 (SOE -> NSN 변환)
