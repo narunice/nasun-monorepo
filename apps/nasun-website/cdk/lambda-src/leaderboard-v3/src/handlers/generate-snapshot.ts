@@ -198,14 +198,18 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
       return;
     }
 
-    // Filter banned accounts from snapshot
+    // Filter banned accounts and records with missing username from snapshot
     const bannedIds = await getBannedAccountIds();
-    const filteredScores = scores.filter(
-      (score) => !bannedIds.has(score.accountId)
-    );
+    const filteredScores = scores.filter((score) => {
+      if (!score.username) {
+        console.warn(`Skipping score without username: accountId=${score.accountId}`);
+        return false;
+      }
+      return !bannedIds.has(score.accountId);
+    });
 
     console.log(
-      `Found ${scores.length} accounts, ${scores.length - filteredScores.length} banned, ${filteredScores.length} included in snapshot`
+      `Found ${scores.length} accounts, ${scores.length - filteredScores.length} filtered (banned or missing username), ${filteredScores.length} included in snapshot`
     );
 
     // For custom date backfills, use the target date for freshness calculation
