@@ -21,6 +21,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/users', label: 'Users', icon: '👥' },
   { path: '/admin/blacklist', label: 'Blacklist', icon: '🚫' },
   { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
+  { path: '/admin/devnet-metrics', label: 'Devnet Metrics', icon: '📈' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
@@ -67,11 +68,10 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     linkText: 'Manage NFTs',
   },
   {
-    title: 'Coming Soon',
-    description: 'More admin features including X Health Monitor and Pipeline Status will be available in future updates.',
-    icon: '🚀',
-    link: '/admin',
-    linkText: 'Stay tuned',
-    disabled: true,
+    title: 'Devnet Metrics',
+    description: 'Monitor daily active addresses, new addresses, transaction counts, and cumulative growth on Nasun Devnet.',
+    icon: '📈',
+    link: '/admin/devnet-metrics',
+    linkText: 'View Metrics',
   },
 ];
