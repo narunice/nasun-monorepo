@@ -81,7 +81,7 @@ export const useUserStore = create<UserState>((set) => ({
           ? updatedData as UserData  // Complete replacement
           : { ...state.user, ...updatedData };  // Partial update
 
-        sessionStorage.setItem('nasun_user_profile', JSON.stringify(updatedUser));
+        localStorage.setItem('nasun_user_profile', JSON.stringify(updatedUser));
         logger.log('Updating user profile:', updatedUser);
         return { user: updatedUser };
       }
