@@ -1,7 +1,7 @@
 /**
  * Genesis Pass Allowlist Registration Page
  *
- * /dev/genesis-pass (PrivateRoute - requires Nasun wallet login)
+ * /dev/genesis-pass (public page, auth checked in modal)
  *
  * Modal-based flow with useReducer state machine:
  * - checking: verify existing registration
@@ -13,7 +13,7 @@
  * - error: recoverable error
  */
 
-import { useReducer, useEffect, useCallback } from "react";
+import { useReducer, useEffect, useCallback, useRef } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
@@ -47,6 +47,7 @@ import logger from "@/lib/logger";
 
 type ModalState =
   | { step: "idle" }
+  | { step: "not_authenticated" }
   | { step: "checking" }
   | { step: "confirm"; walletAddress: string }
   | { step: "connect" }
@@ -57,6 +58,7 @@ type ModalState =
 
 type ModalAction =
   | { type: "OPEN" }
+  | { type: "OPEN_NOT_AUTHENTICATED" }
   | { type: "CHECKED_REGISTERED"; walletAddress: string; registeredAt: string }
   | { type: "CHECKED_NOT_REGISTERED"; walletAddress: string }
   | { type: "CHECKED_NO_WALLET" }
@@ -72,6 +74,8 @@ function modalReducer(_state: ModalState, action: ModalAction): ModalState {
   switch (action.type) {
     case "OPEN":
       return { step: "checking" };
+    case "OPEN_NOT_AUTHENTICATED":
+      return { step: "not_authenticated" };
     case "CHECKED_REGISTERED":
       return { step: "success", walletAddress: action.walletAddress, registeredAt: action.registeredAt };
     case "CHECKED_NOT_REGISTERED":
@@ -112,9 +116,10 @@ function truncateAddress(address: string): string {
 interface GenesisPassModalProps {
   state: ModalState;
   dispatch: React.Dispatch<ModalAction>;
+  onSignIn: () => void;
 }
 
-function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
+function GenesisPassModal({ state, dispatch, onSignIn }: GenesisPassModalProps) {
   const { user } = useAuth();
   const isOpen = state.step !== "idle";
 
@@ -217,7 +222,9 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
   }, [getCognitoToken, linkedWalletAddress, dispatch]);
 
   // Wallet link flow (Scenario B: no MetaMask linked)
-  const { connect, isAuthenticating, error: walletError } = useWalletAuth({
+  // Dialog is closed before RainbowKit opens to avoid focus-trap conflict.
+  // Callbacks reopen the dialog with the appropriate state.
+  const { connect } = useWalletAuth({
     mode: "link",
     onSuccess: (_walletAddress) => {
       logger.log("[GenesisPass] Wallet linked, registering...");
@@ -229,22 +236,9 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
     },
   });
 
-  // Sync isAuthenticating -> connecting step
-  useEffect(() => {
-    if (isAuthenticating && state.step === "connect") {
-      dispatch({ type: "CONNECTING" });
-    }
-  }, [isAuthenticating, state.step, dispatch]);
-
-  // Sync wallet error
-  useEffect(() => {
-    if (walletError && (state.step === "connecting" || state.step === "connect")) {
-      dispatch({ type: "ERROR", message: walletError });
-    }
-  }, [walletError, state.step, dispatch]);
-
   const handleConnectWallet = useCallback(async () => {
-    dispatch({ type: "CONNECTING" });
+    // Close dialog first to avoid Radix focus-trap blocking RainbowKit modal
+    dispatch({ type: "CLOSE" });
     await connect();
   }, [connect, dispatch]);
 
@@ -266,6 +260,34 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
     switch (state.step) {
       case "idle":
         return null;
+
+      case "not_authenticated":
+        return (
+          <div className="flex flex-col items-center gap-6 py-4">
+            <p className="text-nasun-white/60 text-sm text-center">
+              Please sign in first to register for the Genesis Pass allowlist.
+            </p>
+            <div className="flex flex-col gap-3 w-full">
+              <ButtonV3
+                variant="nw2"
+                size="lg"
+                className="w-full"
+                onClick={onSignIn}
+              >
+                Sign In
+              </ButtonV3>
+              <ButtonV3
+                variant="nw5"
+                outline
+                size="lg"
+                className="w-full"
+                onClick={() => dispatch({ type: "CLOSE" })}
+              >
+                Close
+              </ButtonV3>
+            </div>
+          </div>
+        );
 
       case "checking":
         return (
@@ -450,7 +472,27 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
 // ---------------------------------------------------------------------------
 
 const DevGenesisPassPage = () => {
+  const { isAuthenticated } = useAuth();
   const [state, dispatch] = useReducer(modalReducer, { step: "idle" });
+  const pendingLoginRef = useRef(false);
+
+  const handleOpen = useCallback(() => {
+    dispatch(isAuthenticated ? { type: "OPEN" } : { type: "OPEN_NOT_AUTHENTICATED" });
+  }, [isAuthenticated]);
+
+  const handleSignIn = useCallback(() => {
+    pendingLoginRef.current = true;
+    dispatch({ type: "CLOSE" });
+    window.dispatchEvent(new CustomEvent("nasun:open-login"));
+  }, []);
+
+  // Auto-reopen modal after login completes
+  useEffect(() => {
+    if (isAuthenticated && pendingLoginRef.current) {
+      pendingLoginRef.current = false;
+      dispatch({ type: "OPEN" });
+    }
+  }, [isAuthenticated]);
 
   return (
     <PageLayout>
@@ -468,14 +510,14 @@ const DevGenesisPassPage = () => {
           <ButtonV3
             variant="nw2"
             size="lg"
-            onClick={() => dispatch({ type: "OPEN" })}
+            onClick={handleOpen}
           >
             Register for Allowlist
           </ButtonV3>
         </div>
       </SectionLayout>
 
-      <GenesisPassModal state={state} dispatch={dispatch} />
+      <GenesisPassModal state={state} dispatch={dispatch} onSignIn={handleSignIn} />
     </PageLayout>
   );
 };
