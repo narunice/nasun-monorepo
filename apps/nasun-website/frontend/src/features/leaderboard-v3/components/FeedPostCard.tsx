@@ -87,8 +87,8 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         <Tweet id={tweetId} />
       </div>
 
-      {/* Badge Indicator - Next to X icon */}
-      <div className="absolute top-4 right-12 z-10">
+      {/* Badge Indicator - Left of X icon, after avatar (~46px) */}
+      <div className="absolute top-[14px] left-14 z-10">
         <div
           className={`
           flex items-center gap-1 px-2 py-0.5 rounded-full border
@@ -181,11 +181,6 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
           line-height: 1.4 !important;
         }
 
-        /* Reserve right space in tweet header for Nasun badge overlay (right-12 = 3rem) */
-        .nasun-tweet-container article > div:first-child {
-          padding-right: 3.5rem !important;
-          box-sizing: border-box;
-        }
       `}</style>
     </div>
   );
