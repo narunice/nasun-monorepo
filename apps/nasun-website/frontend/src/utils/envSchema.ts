@@ -50,6 +50,9 @@ const BaseEnvSchema = z.object({
   // 9. Battalion NFT Event
   VITE_EVENT_TWEET_ID: z.string().optional(),
   VITE_TARGET_TWEET_ACCOUNT: z.string().default("Nasun_io"),
+
+  // 10. Genesis Pass Allowlist
+  VITE_GENESIS_PASS_API: z.string().url().optional(),
 });
 
 // 3. 환경별 추가 검증 로직
