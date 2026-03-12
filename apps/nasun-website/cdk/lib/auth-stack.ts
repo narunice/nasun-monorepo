@@ -29,10 +29,6 @@ export class AuthStack extends cdk.Stack {
     const nftEventTasksTableName = cdk.Fn.importValue('NftEventTasksTableName');
     const nftEventTasksTable = dynamodb.Table.fromTableName(this, 'NftEventTasksTable', nftEventTasksTableName);
 
-    // Leaderboard V3 accounts table name (for profile sync)
-    // Import from LeaderboardV3Stack CloudFormation export
-    const leaderboardV3AccountsTableName = cdk.Fn.importValue('LeaderboardV3AccountsTableName');
-
     const twitterTokensSecretName = process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens';
 
     // Common NodejsFunction options
@@ -63,8 +59,6 @@ export class AuthStack extends cdk.Stack {
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
         COGNITO_DEVELOPER_PROVIDER_NAME: 'nasun.io',
         TWITTER_TOKENS_SECRET_NAME: twitterTokensSecretName,
-        // Leaderboard V3 profile sync (optional - fails gracefully if table doesn't exist)
-        LEADERBOARD_V3_ACCOUNTS_TABLE: leaderboardV3AccountsTableName,
         // NFT event tasks table for secure X access token storage (backend proxy)
         NFT_EVENT_TASKS_TABLE_NAME: nftEventTasksTableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -92,18 +86,6 @@ export class AuthStack extends cdk.Stack {
         ],
       }),
     );
-
-    // Grant permissions to leaderboard-v3-accounts table (for profile sync)
-    twitterLoginFunction.addToRolePolicy(new iam.PolicyStatement({
-      actions: [
-        'dynamodb:Query',
-        'dynamodb:UpdateItem',
-      ],
-      resources: [
-        `arn:aws:dynamodb:${this.region}:${this.account}:table/${leaderboardV3AccountsTableName}`,
-        `arn:aws:dynamodb:${this.region}:${this.account}:table/${leaderboardV3AccountsTableName}/index/*`,
-      ],
-    }));
 
     // Grant Cognito permissions
     twitterLoginFunction.addToRolePolicy(new iam.PolicyStatement({
