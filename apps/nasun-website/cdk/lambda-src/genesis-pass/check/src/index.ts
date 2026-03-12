@@ -13,7 +13,10 @@ import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-const ALLOWLIST_TABLE = process.env.ALLOWLIST_TABLE_NAME!;
+const ALLOWLIST_TABLE = process.env.ALLOWLIST_TABLE_NAME;
+if (!ALLOWLIST_TABLE) {
+  throw new Error("ALLOWLIST_TABLE_NAME environment variable is required");
+}
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://nasun.io").split(",").map((o) => o.trim());
 const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
