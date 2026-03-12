@@ -88,7 +88,7 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
       </div>
 
       {/* Badge Indicator - Right side, just left of X icon */}
-      <div className="absolute top-[14px] right-10 z-10">
+      <div className="absolute top-[14px] right-14 z-10">
         <div
           className={`
           flex items-center gap-1 px-2 py-0.5 rounded-full border
@@ -181,11 +181,11 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
           line-height: 1.4 !important;
         }
 
-        /* Constrain author name area to leave space for Nasun badge (right-10 = 2.5rem).
+        /* Constrain author name area to leave space for Nasun badge (right-14 = 3.5rem).
            Targets only the author info div (sole div child of header), so the X brand icon
            (absolute in the header, not the author div) is unaffected. */
         .nasun-tweet-container article > div:first-child > div {
-          padding-right: 4rem !important;
+          padding-right: 5.5rem !important;
           overflow: hidden !important;
           box-sizing: border-box;
         }
