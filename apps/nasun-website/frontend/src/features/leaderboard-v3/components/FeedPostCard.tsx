@@ -180,6 +180,12 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
           font-size: 14px !important;
           line-height: 1.4 !important;
         }
+
+        /* Reserve right space in tweet header for Nasun badge overlay (right-12 = 3rem) */
+        .nasun-tweet-container article > div:first-child {
+          padding-right: 3.5rem !important;
+          box-sizing: border-box;
+        }
       `}</style>
     </div>
   );
