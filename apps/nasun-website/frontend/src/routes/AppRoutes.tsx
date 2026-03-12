@@ -18,6 +18,7 @@ const LeaderboardV3Admin = lazy(() => import("../features/admin/pages/Leaderboar
 const BlacklistManagement = lazy(() => import("../features/admin/pages/BlacklistManagement").then(m => ({ default: m.BlacklistManagement })));
 const NftCollectionManagement = lazy(() => import("../features/admin/pages/NftCollectionManagement").then(m => ({ default: m.NftCollectionManagement })));
 const UserManagement = lazy(() => import("../features/admin/pages/UserManagement").then(m => ({ default: m.UserManagement })));
+const DevnetMetrics = lazy(() => import("../features/admin/pages/DevnetMetrics").then(m => ({ default: m.DevnetMetrics })));
 
 // Dev/Showcase pages (lazy loaded)
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
@@ -37,6 +38,7 @@ const adminRoutes = [
   { path: "/admin/users", title: "User Management", component: UserManagement },
   { path: "/admin/blacklist", title: "Blacklist Management", component: BlacklistManagement },
   { path: "/admin/nft-collections", title: "NFT Collections", component: NftCollectionManagement },
+  { path: "/admin/devnet-metrics", title: "Devnet Metrics", component: DevnetMetrics },
 ];
 
 const AppRoutes = () => {

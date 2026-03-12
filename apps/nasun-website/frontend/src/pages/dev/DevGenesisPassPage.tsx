@@ -3,15 +3,28 @@
  *
  * /dev/genesis-pass (PrivateRoute - requires Nasun wallet login)
  *
- * Two scenarios:
- * A) MetaMask already linked: Register directly (no signature, works on all devices)
- * B) MetaMask not linked: useWalletAuth link flow, with mobile environment handling
+ * Modal-based flow with useReducer state machine:
+ * - checking: verify existing registration
+ * - confirm: linked wallet found, confirm or change
+ * - connect: no wallet linked, mobile-aware connect flow
+ * - connecting: wallet connection in progress
+ * - submitting: API registration call
+ * - success: registered
+ * - error: recoverable error
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useReducer, useEffect, useCallback } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { InlineLoading } from "@/components/ui/InlineLoading";
 import { useAuth } from "@/features/auth";
 import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
@@ -28,116 +41,212 @@ import {
 } from "@/services/genesisPassApi";
 import logger from "@/lib/logger";
 
-type RegistrationStatus = "idle" | "checking" | "loading" | "registered" | "error";
+// ---------------------------------------------------------------------------
+// State machine
+// ---------------------------------------------------------------------------
+
+type ModalState =
+  | { step: "idle" }
+  | { step: "checking" }
+  | { step: "confirm"; walletAddress: string }
+  | { step: "connect" }
+  | { step: "connecting" }
+  | { step: "submitting" }
+  | { step: "success"; walletAddress: string; registeredAt: string }
+  | { step: "error"; message: string };
+
+type ModalAction =
+  | { type: "OPEN" }
+  | { type: "CHECKED_REGISTERED"; walletAddress: string; registeredAt: string }
+  | { type: "CHECKED_NOT_REGISTERED"; walletAddress: string }
+  | { type: "CHECKED_NO_WALLET" }
+  | { type: "START_CONNECT" }
+  | { type: "CONNECTING" }
+  | { type: "SUBMITTING" }
+  | { type: "REGISTERED"; walletAddress: string; registeredAt: string }
+  | { type: "ERROR"; message: string }
+  | { type: "RETRY" }
+  | { type: "CLOSE" };
+
+function modalReducer(_state: ModalState, action: ModalAction): ModalState {
+  switch (action.type) {
+    case "OPEN":
+      return { step: "checking" };
+    case "CHECKED_REGISTERED":
+      return { step: "success", walletAddress: action.walletAddress, registeredAt: action.registeredAt };
+    case "CHECKED_NOT_REGISTERED":
+      return { step: "confirm", walletAddress: action.walletAddress };
+    case "CHECKED_NO_WALLET":
+      return { step: "connect" };
+    case "START_CONNECT":
+      return { step: "connect" };
+    case "CONNECTING":
+      return { step: "connecting" };
+    case "SUBMITTING":
+      return { step: "submitting" };
+    case "REGISTERED":
+      return { step: "success", walletAddress: action.walletAddress, registeredAt: action.registeredAt };
+    case "ERROR":
+      return { step: "error", message: action.message };
+    case "RETRY":
+      return { step: "checking" };
+    case "CLOSE":
+      return { step: "idle" };
+    default:
+      return _state;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-const DevGenesisPassPage = () => {
+// ---------------------------------------------------------------------------
+// Registration Modal
+// ---------------------------------------------------------------------------
+
+interface GenesisPassModalProps {
+  state: ModalState;
+  dispatch: React.Dispatch<ModalAction>;
+}
+
+function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
   const { user } = useAuth();
-  const [status, setStatus] = useState<RegistrationStatus>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [registeredAt, setRegisteredAt] = useState<string | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const isOpen = state.step !== "idle";
 
-  const linkedWalletAddress = user?.linkedAccounts?.metamask?.walletAddress
-    || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
-  const hasLinkedMetaMask = !!linkedWalletAddress;
+  const linkedWalletAddress =
+    user?.linkedAccounts?.metamask?.walletAddress ||
+    (user?.provider === "MetaMask" ? user.walletAddress : undefined);
 
-  // Mobile environment detection (only relevant for Scenario B)
-  const needsWalletConnect = !hasLinkedMetaMask;
-  const isMobileBlocked =
-    needsWalletConnect &&
-    isMobileBrowser() &&
-    !isIOSSafari() &&
-    !isMetaMaskInAppBrowser();
+  // Prevent closing during async operations
+  const isBlocking = state.step === "connecting" || state.step === "submitting";
 
-  // Check existing registration on mount
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && !isBlocking) {
+        dispatch({ type: "CLOSE" });
+      }
+    },
+    [isBlocking, dispatch],
+  );
+
+  // Check registration status when modal opens (checking step)
   useEffect(() => {
-    if (!linkedWalletAddress) return;
+    if (state.step !== "checking") return;
 
-    const checkStatus = async () => {
-      setStatus("checking");
-      try {
-        const result = await checkGenesisPass(linkedWalletAddress);
-        if (result.data.registered) {
-          setStatus("registered");
-          setRegisteredAt(result.data.registeredAt || null);
-        } else {
-          setStatus("idle");
+    let cancelled = false;
+
+    const check = async () => {
+      if (linkedWalletAddress) {
+        try {
+          const result = await checkGenesisPass(linkedWalletAddress);
+          if (cancelled) return;
+
+          if (result.data.registered) {
+            dispatch({
+              type: "CHECKED_REGISTERED",
+              walletAddress: linkedWalletAddress,
+              registeredAt: result.data.registeredAt || new Date().toISOString(),
+            });
+          } else {
+            dispatch({ type: "CHECKED_NOT_REGISTERED", walletAddress: linkedWalletAddress });
+          }
+        } catch (err) {
+          if (cancelled) return;
+          logger.warn("[GenesisPass] Check failed:", err);
+          // Fallback: show confirm with linked address
+          dispatch({ type: "CHECKED_NOT_REGISTERED", walletAddress: linkedWalletAddress });
         }
-      } catch (err) {
-        logger.warn("[GenesisPass] Failed to check status:", err);
-        setStatus("idle");
+      } else {
+        dispatch({ type: "CHECKED_NO_WALLET" });
       }
     };
 
-    checkStatus();
-  }, [linkedWalletAddress]);
+    check();
+    return () => { cancelled = true; };
+  }, [state.step, linkedWalletAddress, dispatch]);
 
-  // Get cognitoToken with fallback pattern
+  // Get cognitoToken with fallback
   const getCognitoToken = useCallback((): string | null => {
     return user?.cognitoToken ?? useBattalionNftStore.getState().cognitoToken ?? null;
   }, [user?.cognitoToken]);
 
-  // Register allowlist (called after wallet is linked or directly for Scenario A)
-  const handleRegister = useCallback(async () => {
+  // Register API call
+  const handleSubmit = useCallback(async () => {
     const token = getCognitoToken();
     if (!token) {
-      setErrorMessage("Session expired. Please sign in again.");
-      setStatus("error");
+      dispatch({ type: "ERROR", message: "Session expired. Please sign in again." });
       return;
     }
 
-    setStatus("loading");
-    setErrorMessage(null);
+    dispatch({ type: "SUBMITTING" });
 
     try {
       const result = await registerGenesisPass(token);
       if (result.success && result.data) {
-        setStatus("registered");
-        setRegisteredAt(result.data.registeredAt);
+        dispatch({
+          type: "REGISTERED",
+          walletAddress: result.data.walletAddress,
+          registeredAt: result.data.registeredAt,
+        });
         logger.log("[GenesisPass] Registered:", result.data.walletAddress);
+      } else {
+        dispatch({ type: "ERROR", message: result.message || "Registration failed." });
       }
     } catch (err) {
       logger.error("[GenesisPass] Registration failed:", err);
       if (err instanceof GenesisPassApiError) {
         if (err.errorCode === "ALREADY_REGISTERED") {
-          setStatus("registered");
+          // Treat as success
+          dispatch({
+            type: "REGISTERED",
+            walletAddress: linkedWalletAddress || "unknown",
+            registeredAt: new Date().toISOString(),
+          });
           return;
         }
-        if (err.errorCode === "NO_EVM_WALLET") {
-          setErrorMessage("No EVM wallet linked. Please connect a MetaMask wallet first.");
-        } else {
-          setErrorMessage(err.message);
-        }
+        dispatch({ type: "ERROR", message: err.message });
       } else {
-        setErrorMessage("Registration failed. Please try again.");
+        dispatch({ type: "ERROR", message: "Registration failed. Please try again." });
       }
-      setStatus("error");
     }
-  }, [getCognitoToken]);
+  }, [getCognitoToken, linkedWalletAddress, dispatch]);
 
-  // Scenario B: useWalletAuth link flow
+  // Wallet link flow (Scenario B: no MetaMask linked)
   const { connect, isAuthenticating, error: walletError } = useWalletAuth({
     mode: "link",
     onSuccess: (_walletAddress) => {
       logger.log("[GenesisPass] Wallet linked, registering...");
-      handleRegister();
+      handleSubmit();
     },
     onError: (err) => {
       logger.error("[GenesisPass] Wallet link failed:", err);
-      setErrorMessage(err.message);
-      setStatus("error");
+      dispatch({ type: "ERROR", message: err.message });
     },
   });
 
-  const handleConnectAndRegister = useCallback(async () => {
-    setErrorMessage(null);
-    setStatus("loading");
+  // Sync isAuthenticating -> connecting step
+  useEffect(() => {
+    if (isAuthenticating && state.step === "connect") {
+      dispatch({ type: "CONNECTING" });
+    }
+  }, [isAuthenticating, state.step, dispatch]);
+
+  // Sync wallet error
+  useEffect(() => {
+    if (walletError && (state.step === "connecting" || state.step === "connect")) {
+      dispatch({ type: "ERROR", message: walletError });
+    }
+  }, [walletError, state.step, dispatch]);
+
+  const handleConnectWallet = useCallback(async () => {
+    dispatch({ type: "CONNECTING" });
     await connect();
-  }, [connect]);
+  }, [connect, dispatch]);
 
   const handleMetaMaskDeeplink = useCallback(() => {
     const { host, pathname } = window.location;
@@ -146,15 +255,202 @@ const DevGenesisPassPage = () => {
 
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
+      // Brief visual feedback could be added here
     }).catch(() => {
-      setErrorMessage("Failed to copy link. Please copy the URL manually.");
-      setStatus("error");
+      dispatch({ type: "ERROR", message: "Failed to copy link. Please copy the URL manually." });
     });
-  }, []);
+  }, [dispatch]);
 
-  const isLoading = status === "loading" || status === "checking" || isAuthenticating;
+  // Render modal content based on current step
+  const renderContent = () => {
+    switch (state.step) {
+      case "idle":
+        return null;
+
+      case "checking":
+        return (
+          <div className="flex flex-col items-center py-8">
+            <InlineLoading message="Checking registration status..." size="md" />
+          </div>
+        );
+
+      case "confirm":
+        return (
+          <div className="flex flex-col items-center gap-6 py-4">
+            <div className="text-center">
+              <p className="text-nasun-white/60 text-sm mb-2">You have a linked EVM wallet:</p>
+              <p className="text-nasun-white font-mono text-lg">{truncateAddress(state.walletAddress)}</p>
+            </div>
+            <div className="flex flex-col gap-3 w-full">
+              <ButtonV3
+                variant="nw2"
+                size="lg"
+                className="w-full"
+                onClick={handleSubmit}
+              >
+                Submit this address
+              </ButtonV3>
+              {!isMobileBrowser() && (
+                <ButtonV3
+                  variant="nw5"
+                  outline
+                  size="sm"
+                  className="w-full"
+                  onClick={handleConnectWallet}
+                >
+                  Use a different wallet
+                </ButtonV3>
+              )}
+            </div>
+          </div>
+        );
+
+      case "connect":
+        return (
+          <div className="flex flex-col items-center gap-6 py-4">
+            <p className="text-nasun-white/60 text-sm text-center">
+              No EVM wallet linked yet. Connect your MetaMask wallet to register.
+            </p>
+
+            {/* Desktop, MetaMask In-App, or iOS Safari: direct connect */}
+            {(!isMobileBrowser() || isMetaMaskInAppBrowser() || isIOSSafari()) && (
+              <ButtonV3
+                variant="nw2"
+                size="lg"
+                className="w-full"
+                onClick={handleConnectWallet}
+              >
+                Connect MetaMask
+              </ButtonV3>
+            )}
+
+            {/* Android: MetaMask deeplink */}
+            {isMobileBrowser() && isAndroidBrowser() && !isMetaMaskInAppBrowser() && (
+              <ButtonV3
+                variant="nw2"
+                size="lg"
+                className="w-full"
+                onClick={handleMetaMaskDeeplink}
+              >
+                Open in MetaMask
+              </ButtonV3>
+            )}
+
+            {/* iOS non-Safari (Chrome, Firefox, etc.): deeplink + copy */}
+            {isMobileBrowser() && !isAndroidBrowser() && !isIOSSafari() && !isMetaMaskInAppBrowser() && (
+              <div className="flex flex-col gap-3 w-full">
+                <ButtonV3
+                  variant="nw2"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleMetaMaskDeeplink}
+                >
+                  Open in MetaMask
+                </ButtonV3>
+                <ButtonV3
+                  variant="nw5"
+                  outline
+                  size="sm"
+                  className="w-full"
+                  onClick={handleCopyLink}
+                >
+                  Copy Link for Safari
+                </ButtonV3>
+              </div>
+            )}
+
+            <p className="text-nasun-white/40 text-xs text-center">
+              If you experience issues, please try again on desktop.
+            </p>
+          </div>
+        );
+
+      case "connecting":
+        return (
+          <div className="flex flex-col items-center gap-4 py-8">
+            <InlineLoading
+              message={
+                isMobileBrowser()
+                  ? "Approve the signature in your wallet app."
+                  : "Connecting wallet..."
+              }
+              size="md"
+            />
+          </div>
+        );
+
+      case "submitting":
+        return (
+          <div className="flex flex-col items-center py-8">
+            <InlineLoading message="Registering..." size="md" />
+          </div>
+        );
+
+      case "success":
+        return (
+          <div className="flex flex-col items-center gap-6 py-4">
+            <div className="text-center bg-green-500/10 border border-green-500/30 rounded-lg px-6 py-4 w-full">
+              <p className="text-green-400 font-medium mb-2">Successfully registered!</p>
+              <p className="text-nasun-white font-mono text-sm">{truncateAddress(state.walletAddress)}</p>
+              <p className="text-nasun-white/50 text-xs mt-1">
+                Registered at: {new Date(state.registeredAt).toLocaleString("en-US")}
+              </p>
+            </div>
+            <ButtonV3
+              variant="nw5"
+              outline
+              size="sm"
+              className="w-full"
+              onClick={() => dispatch({ type: "CLOSE" })}
+            >
+              Close
+            </ButtonV3>
+          </div>
+        );
+
+      case "error":
+        return (
+          <div className="flex flex-col items-center gap-6 py-4">
+            <div className="text-center bg-red-500/10 border border-red-500/30 rounded-lg px-6 py-4 w-full">
+              <p className="text-red-400 text-sm">{state.message}</p>
+            </div>
+            <ButtonV3
+              variant="nw2"
+              size="lg"
+              className="w-full"
+              onClick={() => dispatch({ type: "RETRY" })}
+            >
+              Try Again
+            </ButtonV3>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent
+        onInteractOutside={(e) => { if (isBlocking) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (isBlocking) e.preventDefault(); }}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-nasun-white">Genesis Pass Allowlist</DialogTitle>
+          <DialogDescription className="text-nasun-white/60">
+            Register your EVM wallet for the Genesis Pass NFT allowlist.
+          </DialogDescription>
+        </DialogHeader>
+        {renderContent()}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
+const DevGenesisPassPage = () => {
+  const [state, dispatch] = useReducer(modalReducer, { step: "idle" });
 
   return (
     <PageLayout>
@@ -169,140 +465,17 @@ const DevGenesisPassPage = () => {
             </p>
           </div>
 
-          {/* Linked wallet display */}
-          {hasLinkedMetaMask && linkedWalletAddress && (
-            <div className="text-center">
-              <p className="text-nasun-white/50 text-xs mb-1">Linked EVM Wallet</p>
-              <p className="text-nasun-white font-mono text-sm">
-                {truncateAddress(linkedWalletAddress)}
-              </p>
-            </div>
-          )}
-
-          {/* Registration status */}
-          {status === "registered" && (
-            <div className="text-center bg-green-500/10 border border-green-500/30 rounded-lg px-6 py-4">
-              <p className="text-green-400 font-medium">Successfully registered!</p>
-              {registeredAt && (
-                <p className="text-nasun-white/50 text-xs mt-1">
-                  Registered at: {new Date(registeredAt).toLocaleString("en-US")}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Error display */}
-          {(errorMessage || walletError) && status === "error" && (
-            <div className="text-center bg-red-500/10 border border-red-500/30 rounded-lg px-6 py-4 max-w-md">
-              <p className="text-red-400 text-sm">{errorMessage || walletError}</p>
-            </div>
-          )}
-
-          {/* Main action area */}
-          <div className="flex flex-col items-center gap-4 w-full max-w-sm">
-            {/* Scenario A: MetaMask linked, register directly */}
-            {hasLinkedMetaMask && status !== "registered" && (
-              <ButtonV3
-                variant="nw2"
-                size="lg"
-                className="w-full"
-                onClick={handleRegister}
-                disabled={isLoading}
-              >
-                {isLoading ? "Registering..." : "Register for Allowlist"}
-              </ButtonV3>
-            )}
-
-            {/* Scenario B: No MetaMask, safe environment */}
-            {needsWalletConnect && !isMobileBlocked && status !== "registered" && (
-              <>
-                <ButtonV3
-                  variant="nw2"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleConnectAndRegister}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Connecting..." : "Connect Wallet & Register"}
-                </ButtonV3>
-
-                {/* WC signing hint for mobile */}
-                {isMobileBrowser() && isAuthenticating && (
-                  <p className="text-yellow-300 text-xs text-center">
-                    Open your wallet app to approve the signature request.
-                  </p>
-                )}
-
-                {/* Mobile general hint */}
-                {isMobileBrowser() && !isMetaMaskInAppBrowser() && !isAuthenticating && (
-                  <p className="text-nasun-white/40 text-xs text-center">
-                    On mobile, you'll approve twice: once to connect, once to sign.
-                    If you experience issues, try again on desktop.
-                  </p>
-                )}
-              </>
-            )}
-
-            {/* Scenario B: Mobile blocked environment */}
-            {isMobileBlocked && status !== "registered" && (
-              <>
-                <ButtonV3
-                  variant="nw2"
-                  size="lg"
-                  className="w-full"
-                  disabled
-                >
-                  Connect Wallet & Register
-                </ButtonV3>
-
-                <div className="bg-black/30 border border-nasun-white/10 rounded-lg px-4 py-3 w-full">
-                  <p className="text-sm mb-3 text-center">
-                    <span className="text-yellow-300">For mobile users:</span>
-                    {isAndroidBrowser()
-                      ? " for a smoother wallet connection, we recommend starting the process in MetaMask's built-in browser."
-                      : " for a smoother wallet connection, we recommend using MetaMask's built-in browser or Safari."}
-                  </p>
-                  <div className="flex flex-col gap-3 items-center">
-                    <ButtonV3
-                      variant="nw5"
-                      outline
-                      size="sm"
-                      onClick={handleMetaMaskDeeplink}
-                    >
-                      Open in MetaMask
-                    </ButtonV3>
-                    {!isAndroidBrowser() && (
-                      <ButtonV3
-                        variant="nw5"
-                        outline
-                        size="sm"
-                        onClick={handleCopyLink}
-                      >
-                        {linkCopied ? "Copied! Paste in Safari" : "Copy Link for Safari"}
-                      </ButtonV3>
-                    )}
-                  </div>
-                  <p className="text-xs text-nasun-white/50 mt-3 text-center">
-                    If you experience issues with wallet connection, please try again on desktop.
-                  </p>
-                </div>
-              </>
-            )}
-
-            {/* Already registered */}
-            {status === "registered" && (
-              <ButtonV3
-                variant="nw2"
-                size="lg"
-                className="w-full"
-                disabled
-              >
-                Already Registered
-              </ButtonV3>
-            )}
-          </div>
+          <ButtonV3
+            variant="nw2"
+            size="lg"
+            onClick={() => dispatch({ type: "OPEN" })}
+          >
+            Register for Allowlist
+          </ButtonV3>
         </div>
       </SectionLayout>
+
+      <GenesisPassModal state={state} dispatch={dispatch} />
     </PageLayout>
   );
 };
