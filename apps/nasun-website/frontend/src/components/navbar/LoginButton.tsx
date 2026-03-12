@@ -27,6 +27,7 @@ const LoginButton = () => {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const signFlowCalledRef = useRef(false);
+  const externalTriggerRef = useRef(false);
 
   const isAnyConnected = status === 'unlocked' || isZkConnected;
 
@@ -40,7 +41,11 @@ const LoginButton = () => {
     try {
       await signFlow();
       setLoginModalOpen(false);
-      navigate('/my-account');
+      // Skip navigation when login was triggered externally (e.g., from Genesis Pass page)
+      if (!externalTriggerRef.current) {
+        navigate('/my-account');
+      }
+      externalTriggerRef.current = false;
       // Signal WalletButton to auto-open for backup completion
       if (hasPendingBackup) {
         window.dispatchEvent(new CustomEvent('nasun:wallet-backup-pending'));
@@ -62,6 +67,7 @@ const LoginButton = () => {
   useEffect(() => {
     if (!loginModalOpen) {
       signFlowCalledRef.current = false;
+      externalTriggerRef.current = false;
       setSigningIn(false);
     }
   }, [loginModalOpen]);
@@ -83,6 +89,18 @@ const LoginButton = () => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, [loginModalOpen]);
+
+  // Allow other components to trigger the login modal via custom event
+  useEffect(() => {
+    const handleOpenLogin = () => {
+      if (!isAuthenticated) {
+        externalTriggerRef.current = true;
+        setLoginModalOpen(true);
+      }
+    };
+    window.addEventListener("nasun:open-login", handleOpenLogin);
+    return () => window.removeEventListener("nasun:open-login", handleOpenLogin);
+  }, [isAuthenticated]);
 
   const handleSignOut = async () => {
     try {

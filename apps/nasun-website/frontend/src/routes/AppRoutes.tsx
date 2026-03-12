@@ -138,7 +138,7 @@ const AppRoutes = () => {
         <Route path="/dev/battalion-nft" element={<DevBattalionNftPage />} />
         <Route path="/dev/genesis-nft" element={<DevGenesisNftPage />} />
         <Route path="/dev/investors" element={<DevInvestorsPage />} />
-        <Route path="/dev/genesis-pass" element={<PrivateRoute><DevGenesisPassPage /></PrivateRoute>} />
+        <Route path="/dev/genesis-pass" element={<DevGenesisPassPage />} />
 
         {/* Fallback Route */}
         <Route path="*" element={<Pages.NotFound />} />
