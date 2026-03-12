@@ -229,13 +229,12 @@ export const handler = async (
       }
     }
 
-    console.log(`Comparing snapshots: ${previousDate} -> ${currentDate}`);
-
-    // Get snapshots
+    // Get current snapshot first; previousSnapshot fetch is deferred until after fallback
     const currentSnapshot = await getSnapshot(seasonId, currentDate);
-    const previousSnapshot = await getSnapshot(seasonId, previousDate);
 
-    // If current snapshot doesn't exist, try fallback (up to 7 days back)
+    // If current snapshot doesn't exist, try fallback (up to 7 days back).
+    // On fallback success, also recalculate previousDate relative to the fallback date
+    // to avoid comparing a snapshot against itself (same-date comparison bug).
     if (currentSnapshot.size === 0) {
       const MAX_FALLBACK_DAYS = 7;
       for (let daysBack = 1; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
@@ -253,10 +252,21 @@ export const handler = async (
           for (const [key, value] of fallbackSnapshot) {
             currentSnapshot.set(key, value);
           }
+          // Recalculate previousDate relative to fallback date
+          const d = new Date(fallbackDate);
+          switch (range) {
+            case 'today': d.setDate(d.getDate() - 1); break;
+            case '7d':    d.setDate(d.getDate() - 7); break;
+            case '4w':    d.setDate(d.getDate() - 28); break;
+            default:      d.setDate(d.getDate() - 7);
+          }
+          previousDate = d.toISOString().split('T')[0];
           break;
         }
       }
     }
+
+    console.log(`Comparing snapshots: ${previousDate} -> ${currentDate}`);
 
     if (currentSnapshot.size === 0) {
       return respond(200, {
@@ -267,6 +277,9 @@ export const handler = async (
         message: 'No snapshot data available yet',
       });
     }
+
+    // Fetch previousSnapshot after fallback resolution so previousDate is finalized
+    const previousSnapshot = await getSnapshot(seasonId, previousDate);
 
     // Calculate top climbers (filter banned accounts)
     const bannedIds = await getBannedAccountIds();
