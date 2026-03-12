@@ -166,10 +166,11 @@ export async function createPost(params: {
     ? (language || 'en')
     : (account.language || language || 'en');
 
-  const { baseScore, roleMultiplier, signalBonus, postScore } = calculatePostScoreWithFollowers(
+  const { baseScore, postTypeMultiplier, roleMultiplier, signalBonus, postScore } = calculatePostScoreWithFollowers(
     effectiveFollowerCount,
     effectiveLanguage,
-    contentSignals
+    contentSignals,
+    postType
   );
 
   const now = new Date().toISOString();
@@ -185,8 +186,9 @@ export async function createPost(params: {
     username,
     accountRole,
     contentSignals,
-    postType, // Phase 9: Post type
+    postType,
     baseScore,
+    postTypeMultiplier,
     roleMultiplier,
     signalBonus,
     postScore,
