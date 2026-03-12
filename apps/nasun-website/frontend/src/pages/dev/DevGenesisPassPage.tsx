@@ -145,9 +145,13 @@ const DevGenesisPassPage = () => {
   }, []);
 
   const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }).catch(() => {
+      setErrorMessage("Failed to copy link. Please copy the URL manually.");
+      setStatus("error");
+    });
   }, []);
 
   const isLoading = status === "loading" || status === "checking" || isAuthenticating;
