@@ -32,7 +32,7 @@ import {
   DYNAMO_KEYS,
   SCORE_CONSTANTS,
 } from '../types';
-import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds, getPostsBySeasonId } from '../services/dynamodb-client';
+import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds, getPostsBySeasonId, lookupUserProfile } from '../services/dynamodb-client';
 import { calculateScoreComponents, calculateDecayedRawScoreFromPosts, calculateConsistencyBonus } from '../services/score-calculator';
 import { getTodayDateString, getYesterdayDateString } from '../utils/date';
 import { calculateRankChange } from '../utils/rank';
@@ -234,6 +234,22 @@ async function runSnapshotCore(params: {
   console.log(
     `Found ${scores.length} accounts, ${scores.length - filteredScores.length} filtered (banned or missing username), ${filteredScores.length} included in snapshot`
   );
+
+  // Refresh displayName for registered users whose displayName is a wallet address
+  const staleProfiles = filteredScores.filter(
+    (s) => s.isRegistered && s.displayName && s.displayName.startsWith('0x')
+  );
+
+  if (staleProfiles.length > 0) {
+    console.log(`Refreshing ${staleProfiles.length} profiles with wallet-address displayName`);
+    for (const score of staleProfiles) {
+      const profile = await lookupUserProfile(score.username);
+      if (profile && profile.displayName && !profile.displayName.startsWith('0x')) {
+        score.displayName = profile.displayName;
+        score.profileImageUrl = profile.profileImageUrl || score.profileImageUrl;
+      }
+    }
+  }
 
   // For custom date backfills, use the target date for freshness calculation
   const referenceDate = customDate

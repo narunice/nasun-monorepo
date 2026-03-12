@@ -18,6 +18,7 @@ const GENESIS_TABLE = process.env.GENESIS_TABLE || "GenesisNftWhitelist";
 const BATTALION_TABLE = process.env.BATTALION_TABLE || "nasun-nft-whitelist";
 const HIDDEN_PROPOSALS_TABLE = process.env.HIDDEN_PROPOSALS_TABLE || "HiddenProposals";
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
+const DEVNET_METRICS_TABLE = process.env.DEVNET_METRICS_TABLE || "devnet-metrics";
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -678,6 +679,54 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       const result = filterAndPaginateUsers(primaryUsers, { search, provider, page, limit });
 
       return jsonResponse(200, { success: true, ...result }, requestOrigin);
+    }
+
+    // GET /devnet-metrics - Devnet daily metrics (admin only)
+    if (path.endsWith("/devnet-metrics") && event.httpMethod === "GET") {
+      console.log("Fetching devnet metrics");
+
+      const metrics: Array<{
+        date: string;
+        dau: number;
+        newAddresses: number;
+        cumulativeAddresses: number;
+        transactionCount?: number;
+        collectedAt: string;
+      }> = [];
+      let lastEvaluatedKey: Record<string, any> | undefined;
+
+      do {
+        const result = await dynamoClient.send(
+          new ScanCommand({
+            TableName: DEVNET_METRICS_TABLE,
+            FilterExpression: "begins_with(pk, :prefix)",
+            ExpressionAttributeValues: { ":prefix": { S: "METRICS#" } },
+            ProjectionExpression: "pk, dau, newAddresses, cumulativeAddresses, transactionCount, collectedAt",
+            ExclusiveStartKey: lastEvaluatedKey,
+          })
+        );
+
+        if (result.Items) {
+          for (const item of result.Items) {
+            const pk = item.pk?.S || "";
+            metrics.push({
+              date: pk.replace("METRICS#", ""),
+              dau: Number(item.dau?.N) || 0,
+              newAddresses: Number(item.newAddresses?.N) || 0,
+              cumulativeAddresses: Number(item.cumulativeAddresses?.N) || 0,
+              transactionCount: item.transactionCount?.N != null ? Number(item.transactionCount.N) : undefined,
+              collectedAt: item.collectedAt?.S || "",
+            });
+          }
+        }
+
+        lastEvaluatedKey = result.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+
+      // Sort by date ascending
+      metrics.sort((a, b) => a.date.localeCompare(b.date));
+
+      return jsonResponse(200, { metrics }, requestOrigin);
     }
 
     return errorResponse(404, "Not found", requestOrigin);
