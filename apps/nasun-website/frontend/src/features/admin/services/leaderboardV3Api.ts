@@ -293,6 +293,103 @@ export async function adjustScore(
   return response.json();
 }
 
+// --- Snapshot types ---
+
+export interface SnapshotPreviewEntry {
+  rank: number;
+  username: string;
+  displayName?: string;
+  profileImageUrl?: string;
+  userScore: number;
+  rawScore: number;
+  consistencyBonus: number;
+  freshnessMultiplier: number;
+  postCount: number;
+  uniqueActiveDays: number;
+  previousRank?: number;
+  rankChange?: number;
+}
+
+export interface SnapshotPreviewResponse {
+  success: true;
+  dryRun: true;
+  seasonId: string;
+  calculatedAt: string;
+  totalAccounts: number;
+  preview: SnapshotPreviewEntry[];
+}
+
+export interface SnapshotTriggerResponse {
+  success: true;
+  dryRun: false;
+  seasonId: string;
+  snapshotDate: string;
+  totalAccounts: number;
+  snapshotCount: number;
+}
+
+/**
+ * Preview snapshot calculation without writing to DynamoDB (Admin only).
+ * Returns top 50 accounts by projected rank.
+ */
+export async function previewSnapshot(
+  token: string,
+  seasonId?: string,
+): Promise<SnapshotPreviewResponse> {
+  const url = `${LEADERBOARD_V3_API_URL}/v3/admin/snapshot`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ dryRun: true, ...(seasonId ? { seasonId } : {}) }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to preview snapshot: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Trigger snapshot generation for today (Admin only).
+ * Returns 409 if snapshot already exists for today.
+ */
+export async function triggerSnapshot(
+  token: string,
+  options: { seasonId?: string; customDate?: string } = {},
+): Promise<SnapshotTriggerResponse> {
+  const url = `${LEADERBOARD_V3_API_URL}/v3/admin/snapshot`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      dryRun: false,
+      ...(options.seasonId ? { seasonId: options.seasonId } : {}),
+      ...(options.customDate ? { customDate: options.customDate } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    // Preserve snapshotDate in the error message for 409
+    if (response.status === 409 && error.snapshotDate) {
+      throw new Error(`Snapshot already exists for ${error.snapshotDate}`);
+    }
+    throw new Error(error.error || `Failed to trigger snapshot: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 /**
  * Calculate post score preview (client-side calculation) - Legacy discrete version
  * Kept for backwards compatibility

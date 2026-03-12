@@ -582,6 +582,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
       adminEditPostLambda,
       adjustScoreLambda,
       getLeaderboardLambda,  // cumulative view requires admin auth
+      generateSnapshotLambda, // API Gateway path requires admin auth via UserProfiles
     ];
     for (const fn of adminAuthLambdas) {
       userProfilesTable.grantReadData(fn);
@@ -768,6 +769,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // DELETE /v3/admin/blacklist/{accountId} - Unban account
     const adminBlacklistIdResource = adminBlacklistResource.addResource('{accountId}');
     adminBlacklistIdResource.addMethod('DELETE', adminBlacklistIntegration);
+
+    // POST /v3/admin/snapshot - Preview (dryRun=true) or generate (dryRun=false) snapshot
+    const adminSnapshotResource = adminResource.addResource('snapshot');
+    adminSnapshotResource.addMethod('POST', new apigw.LambdaIntegration(generateSnapshotLambda));
 
     // POST /v3/admin/adjust-score - Manual score adjustment
     const adminAdjustScoreResource = adminResource.addResource('adjust-score');

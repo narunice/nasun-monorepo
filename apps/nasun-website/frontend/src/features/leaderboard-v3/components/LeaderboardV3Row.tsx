@@ -77,8 +77,8 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
         {/* Name and Handle */}
         <div className="min-w-0 flex-1">
           {entry.displayName && (
-            <div className="truncate flex items-center gap-1.5">
-              <span className="text-gray-100 font-medium">{entry.displayName}</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-gray-100 font-medium truncate min-w-0">{entry.displayName}</span>
               {entry.isRegistered && (
                 <span
                   className="inline-flex items-center justify-center w-4 h-4 bg-nasun-c7/20 rounded-full flex-shrink-0"
