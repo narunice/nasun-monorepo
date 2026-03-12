@@ -120,7 +120,7 @@ export function useWhitelistRegistration(onSuccess?: (walletAddress: string) => 
           if (profileResponse.ok) {
             const updatedProfile = await profileResponse.json();
             updateUserProfile(updatedProfile);
-            sessionStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
+            localStorage.setItem("nasun_user_profile", JSON.stringify(updatedProfile));
           }
         }
       } catch (error) {
