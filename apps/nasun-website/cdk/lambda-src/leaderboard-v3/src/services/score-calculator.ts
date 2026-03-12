@@ -255,16 +255,21 @@ export function calculateDecayedRawScoreFromPosts(
     byDate.get(date)![post.postType].push(post.postScore);
   }
 
-  // For each date, apply per-type decay within the day
+  // For each date, apply per-type decay within the day (with hard caps)
   let totalDecayed = 0;
   for (const [, dayPosts] of byDate) {
-    const origScore = dayPosts.original.reduce((s, v) => s + v, 0);
-    const quoteScore = dayPosts.quote.reduce((s, v) => s + v, 0);
-    const replyScore = dayPosts.reply.reduce((s, v) => s + v, 0);
+    // Apply daily hard cap: keep highest-scoring posts up to the cap
+    const origCapped = dayPosts.original.sort((a, b) => b - a).slice(0, SCORE_CONSTANTS.DAILY_CAP_ORIGINAL);
+    const quoteCapped = dayPosts.quote.sort((a, b) => b - a).slice(0, SCORE_CONSTANTS.DAILY_CAP_QUOTE);
+    const replyCapped = dayPosts.reply.sort((a, b) => b - a).slice(0, SCORE_CONSTANTS.DAILY_CAP_REPLY);
 
-    totalDecayed += calculateRawScore(origScore, dayPosts.original.length);
-    totalDecayed += calculateRawScore(quoteScore, dayPosts.quote.length);
-    totalDecayed += calculateRawScoreWeakDecay(replyScore, dayPosts.reply.length);
+    const origScore = origCapped.reduce((s, v) => s + v, 0);
+    const quoteScore = quoteCapped.reduce((s, v) => s + v, 0);
+    const replyScore = replyCapped.reduce((s, v) => s + v, 0);
+
+    totalDecayed += calculateRawScore(origScore, origCapped.length);
+    totalDecayed += calculateRawScore(quoteScore, quoteCapped.length);
+    totalDecayed += calculateRawScoreWeakDecay(replyScore, replyCapped.length);
   }
 
   return totalDecayed;

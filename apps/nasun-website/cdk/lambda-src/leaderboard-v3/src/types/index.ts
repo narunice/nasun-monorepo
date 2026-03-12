@@ -47,6 +47,10 @@ export const SCORE_CONSTANTS = {
   ROLE_MULTIPLIER_BASE: 1.0,
   ROLE_MULTIPLIER_LOG_FACTOR: 0.2,
   ROLE_MULTIPLIER_MAX: 2.0,
+  // Daily hard caps per post type (posts beyond cap are excluded from scoring)
+  DAILY_CAP_ORIGINAL: 3,
+  DAILY_CAP_QUOTE: 4,
+  DAILY_CAP_REPLY: 10,
 };
 
 // Language scale factors for follower normalization
