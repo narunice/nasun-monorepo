@@ -72,9 +72,11 @@ export const RankHistoryChartV3: React.FC<RankHistoryChartV3Props> = ({
   // Prepare chart data
   const chartData: ChartDataPoint[] = React.useMemo(() => {
     return history.map((entry) => {
-      const date = new Date(entry.date);
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
+      // Parse YYYY-MM-DD directly to avoid timezone shift
+      // (new Date("YYYY-MM-DD") is UTC midnight, but getMonth/getDate use local TZ)
+      const [, monthStr, dayStr] = entry.date.split('-');
+      const month = parseInt(monthStr, 10);
+      const day = parseInt(dayStr, 10);
 
       return {
         date: entry.date,

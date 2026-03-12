@@ -130,6 +130,11 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
               ? t('rankHistory.noDataEnded')
               : t('rankHistory.noData')}
           </p>
+          {!isSeasonEnded && (
+            <p className="text-nasun-white/30 text-xs text-center">
+              {t('rankHistory.noDataDescription')}
+            </p>
+          )}
           <Link
             to="/wave1/leaderboard"
             className="text-nasun-c4 hover:text-nasun-white transition-colors text-sm"
