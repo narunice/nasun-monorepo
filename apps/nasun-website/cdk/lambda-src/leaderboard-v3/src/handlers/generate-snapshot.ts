@@ -176,7 +176,10 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
   // Support manual invocation with custom date for backfilling missed snapshots
   // EventBridge schedule: no customDate → uses today's KST date
   // Manual invoke: { "customDate": "2026-02-13" } → generates snapshot for that date
-  const rawCustomDate = (event as Record<string, unknown>).customDate as string | undefined;
+  // Dry run: { "dryRun": true } → calculates scores and logs results without writing to DynamoDB
+  const rawEvent = event as unknown as Record<string, unknown>;
+  const dryRun = rawEvent.dryRun === true;
+  const rawCustomDate = rawEvent.customDate as string | undefined;
   let customDate: string | undefined;
   if (rawCustomDate) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(rawCustomDate) || isNaN(new Date(rawCustomDate + 'T00:00:00Z').getTime())) {
@@ -184,6 +187,10 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
       return;
     }
     customDate = rawCustomDate;
+  }
+
+  if (dryRun) {
+    console.log('[DRY RUN] Scores will be calculated but NOT written to DynamoDB');
   }
 
   try {
@@ -351,6 +358,24 @@ export const handler = async (event: ScheduledEvent): Promise<void> => {
 
         return snapshot;
       });
+
+    if (dryRun) {
+      // Log top 50 results without writing to DynamoDB
+      const preview = snapshots.slice(0, 50).map((s) => ({
+        rank: s.rank,
+        username: s.username,
+        userScore: s.userScore,
+        rawScore: s.rawScore,
+        consistencyBonus: s.consistencyBonus,
+        freshnessMultiplier: s.freshnessMultiplier,
+        postCount: s.postCount,
+        uniqueActiveDays: s.uniqueActiveDays,
+      }));
+      console.log(`[DRY RUN] Top ${preview.length} of ${snapshots.length} accounts:`);
+      console.log(JSON.stringify(preview, null, 2));
+      console.log('[DRY RUN] No data was written to DynamoDB');
+      return;
+    }
 
     // Write snapshots in batches
     await batchWriteSnapshots(snapshots);

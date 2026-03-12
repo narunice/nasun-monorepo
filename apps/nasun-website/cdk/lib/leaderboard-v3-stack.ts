@@ -308,6 +308,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
         timeout: cdk.Duration.minutes(5), // Longer timeout for batch operations
         memorySize: 512,
         description: 'Leaderboard V3: Daily snapshot generation',
+        environment: {
+          ...lambdaEnvironment,
+          ENABLE_BATCH_DECAY: 'true',
+        },
       }
     );
 
@@ -315,6 +319,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
     const snapshotScheduleRule = new events.Rule(this, 'LeaderboardV3SnapshotSchedule', {
       ruleName: `${envPrefix}leaderboard-v3-snapshot-schedule`,
       description: 'Daily snapshot generation for Leaderboard V3 at 09:00 KST',
+      enabled: false,
       schedule: events.Schedule.cron({
         minute: '0',
         hour: '0', // 00:00 UTC = 09:00 KST
@@ -515,6 +520,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonsTable.grantReadData(getLeaderboardLambda); // Read season info
     this.seasonsTable.grantReadWriteData(adminSeasonsLambda); // Full CRUD for admin
     this.seasonsTable.grantReadWriteData(generateSnapshotLambda); // Read season, update metadata
+    this.postsTable.grantReadData(generateSnapshotLambda); // Read posts for batch decay calculation
     this.seasonAccountsTable.grantReadWriteData(createPostLambda); // Update season-specific aggregates
     this.seasonAccountsTable.grantReadData(getLeaderboardLambda); // Read season rankings
     this.seasonAccountsTable.grantReadData(generateSnapshotLambda); // Read scores for snapshot
