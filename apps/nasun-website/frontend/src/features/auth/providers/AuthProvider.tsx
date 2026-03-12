@@ -25,8 +25,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     clearError();
     try {
-      // Security: Using sessionStorage for sensitive user data to reduce XSS exposure
-      const cachedUser = sessionStorage.getItem("nasun_user_profile");
+      // Persisted in localStorage for cross-tab and cross-session availability
+      const cachedUser = localStorage.getItem("nasun_user_profile");
       if (cachedUser) {
         const parsed = JSON.parse(cachedUser);
         setUser(parsed);
@@ -151,8 +151,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (linkSessionRaw) {
           const parsed = JSON.parse(linkSessionRaw);
           const { primaryIdentityId } = parsed;
-          // Primary: sessionStorage (secure, but may be cleared on Android Chrome redirect)
-          const cachedProfile = sessionStorage.getItem("nasun_user_profile");
+          // Primary: localStorage (persists across tabs and sessions)
+          const cachedProfile = localStorage.getItem("nasun_user_profile");
           // Fallback: cognitoToken stored in link session (survives mobile redirect via localStorage)
           const primaryCognitoToken = cachedProfile
             ? JSON.parse(cachedProfile).cognitoToken
@@ -269,8 +269,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         linkedAccounts: profileData.linkedAccounts || {},
       };
 
-      // Save to sessionStorage and state (sessionStorage for security)
-      sessionStorage.setItem("nasun_user_profile", JSON.stringify(userData));
+      // Save to localStorage and state (persists across sessions)
+      localStorage.setItem("nasun_user_profile", JSON.stringify(userData));
       setUser(userData);
 
       // Auto-register first wallet (fire-and-forget; 409 = already registered = OK)
@@ -293,8 +293,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
-      // Clear sensitive data from sessionStorage
-      sessionStorage.removeItem("nasun_user_profile");
+      // Clear user profile from localStorage
+      localStorage.removeItem("nasun_user_profile");
       localStorage.removeItem("auth_provider_preference");
 
       // Reset Battalion NFT Store first

@@ -3,11 +3,10 @@ import { useUserStore } from "@/store/userStore";
 import logger from "@/lib/logger";
 
 /**
- * Refreshes user profile from server and updates both Zustand store and sessionStorage.
+ * Refreshes user profile from server and updates both Zustand store and localStorage.
  * Centralizes the profile refresh pattern previously duplicated in 5+ locations.
  *
- * Always uses sessionStorage (not localStorage) for security - sessionStorage is
- * cleared when the tab closes and is not accessible across tabs, reducing XSS exposure.
+ * Uses localStorage for persistent sessions across tabs and browser restarts.
  */
 export async function refreshAndSaveUserProfile(
   identityId: string,
@@ -26,7 +25,7 @@ export async function refreshAndSaveUserProfile(
   let existingToken = user?.cognitoToken;
   if (!existingToken) {
     try {
-      const cached = sessionStorage.getItem("nasun_user_profile");
+      const cached = localStorage.getItem("nasun_user_profile");
       if (cached) existingToken = JSON.parse(cached).cognitoToken;
     } catch { /* ignore parse error */ }
   }
@@ -45,7 +44,7 @@ export async function refreshAndSaveUserProfile(
     setUser(updatedProfile);
   }
 
-  sessionStorage.setItem(
+  localStorage.setItem(
     "nasun_user_profile",
     JSON.stringify(updatedProfile)
   );
