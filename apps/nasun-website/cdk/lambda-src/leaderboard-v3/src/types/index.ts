@@ -31,6 +31,13 @@ export const SIGNAL_BONUSES: Record<ContentSignal, number> = {
   high_reach: 1,
 };
 
+// Post type multipliers: original/quote get full credit, reply gets reduced credit
+export const POST_TYPE_MULTIPLIERS: Record<PostType, number> = {
+  original: 1.0,
+  quote: 1.0,
+  reply: 0.5,
+};
+
 // Score calculation constants
 export const SCORE_CONSTANTS = {
   BASE_SCORE: 1,
@@ -89,9 +96,10 @@ export interface Post {
   contentSignals: ContentSignal[];
   postType: PostType; // original, quote, or reply (Phase 9)
   baseScore: number; // Always 1.0
-  roleMultiplier: number; // 1.0 / 1.5 / 2.0
+  postTypeMultiplier: number; // original/quote: 1.0, reply: 0.5
+  roleMultiplier: number; // 1.0 ~ 2.0 (follower-based continuous)
   signalBonus: number; // 0 ~ 3
-  postScore: number; // baseScore × roleMultiplier + signalBonus
+  postScore: number; // baseScore × postTypeMultiplier × roleMultiplier + signalBonus
   createdAt: string; // ISO timestamp
   createdBy: string; // Admin username who added this post
   seasonId?: string; // Season this post belongs to (Phase 5)
