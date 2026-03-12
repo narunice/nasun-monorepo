@@ -14,6 +14,7 @@ interface AdminStackProps extends cdk.StackProps {
   battalionTableName?: string;
   hiddenProposalsTableName?: string;
   nftCollectionsTableName?: string;
+  devnetMetricsTableName?: string;
 }
 
 export class AdminStack extends cdk.Stack {
@@ -29,6 +30,7 @@ export class AdminStack extends cdk.Stack {
     const battalionTableName = props?.battalionTableName || "nasun-nft-whitelist";
     const hiddenProposalsTableName = props?.hiddenProposalsTableName || "HiddenProposals";
     const nftCollectionsTableName = props?.nftCollectionsTableName || "nasun-nft-collections";
+    const devnetMetricsTableName = props?.devnetMetricsTableName || "devnet-metrics";
 
     // Create NFT Collections DynamoDB table
     const nftCollectionsTable = new dynamodb.Table(this, "NftCollectionsTable", {
@@ -63,6 +65,13 @@ export class AdminStack extends cdk.Stack {
       battalionTableName
     );
 
+    // Reference devnet-metrics table (from DevnetMetricsStack)
+    const devnetMetricsTable = dynamodb.Table.fromTableName(
+      this,
+      "DevnetMetricsTable",
+      devnetMetricsTableName
+    );
+
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
     const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
     if (!cognitoIdentityPoolId) {
@@ -82,6 +91,7 @@ export class AdminStack extends cdk.Stack {
         GENESIS_TABLE: genesisTableName,
         BATTALION_TABLE: battalionTableName,
         HIDDEN_PROPOSALS_TABLE: hiddenProposalsTableName,
+        DEVNET_METRICS_TABLE: devnetMetricsTableName,
         ALLOWED_ORIGINS: allowedOrigins,
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
@@ -99,6 +109,7 @@ export class AdminStack extends cdk.Stack {
     genesisTable.grantReadData(this.exportFunction);
     battalionTable.grantReadData(this.exportFunction);
     hiddenProposalsTable.grantReadWriteData(this.exportFunction);
+    devnetMetricsTable.grantReadData(this.exportFunction);
 
     // Grant permission to query GSI (batch-index)
     this.exportFunction.addToRolePolicy(
@@ -246,6 +257,10 @@ export class AdminStack extends cdk.Stack {
     const userIdResource = usersResource.addResource("{identityId}");
     // GET /users/{identityId} - Admin: get user detail
     userIdResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
+
+    // Devnet Metrics API Route (admin only)
+    const devnetMetricsResource = this.api.root.addResource("devnet-metrics");
+    devnetMetricsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
     // NFT Collections API Routes
     const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);
