@@ -6,7 +6,10 @@ import { useState } from 'react';
 import { OuterBox } from '@/components/ui/OuterBox';
 import { Button } from '@/components/ui/button';
 import { useAdminSeasons } from '../../hooks/useAdminSeasons';
+import { useAdminAuth } from '../../hooks/useAdminAuth';
 import { SeasonFormModal } from './SeasonFormModal';
+import { previewSnapshot, triggerSnapshot } from '../../services/leaderboardV3Api';
+import type { SnapshotPreviewEntry, SnapshotPreviewResponse } from '../../services/leaderboardV3Api';
 import type { Season, CreateSeasonRequest } from '../../types/leaderboard-v3';
 
 type SeasonStatus = 'active' | 'upcoming' | 'ended' | 'archived';
@@ -18,9 +21,34 @@ const STATUS_STYLES: Record<SeasonStatus, { bg: string; text: string; label: str
   archived: { bg: 'bg-gray-900/30', text: 'text-gray-400', label: '⚫ Archived' },
 };
 
+function getRankChangeLabel(entry: SnapshotPreviewEntry): string {
+  if (entry.previousRank === undefined) return 'NEW';
+  const diff = entry.previousRank - entry.rank;
+  if (diff > 0) return `+${diff}`;
+  if (diff < 0) return `${diff}`;
+  return '-';
+}
+
+function getRankChangeColor(entry: SnapshotPreviewEntry): string {
+  if (entry.previousRank === undefined) return 'text-blue-400';
+  const diff = entry.previousRank - entry.rank;
+  if (diff > 0) return 'text-green-400';
+  if (diff < 0) return 'text-red-400';
+  return 'text-nasun-white/40';
+}
+
 export function SeasonManagementTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSeason, setEditingSeason] = useState<Season | null>(null);
+
+  // Snapshot state
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isTriggeringSnapshot, setIsTriggeringSnapshot] = useState(false);
+  const [previewResult, setPreviewResult] = useState<SnapshotPreviewResponse | null>(null);
+  const [snapshotMessage, setSnapshotMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  const { cognitoToken } = useAdminAuth();
 
   const {
     seasons,
@@ -75,6 +103,45 @@ export function SeasonManagementTab() {
     }
   };
 
+  const handlePreviewSnapshot = async () => {
+    if (!cognitoToken) return;
+    setIsPreviewing(true);
+    setSnapshotMessage(null);
+    try {
+      const result = await previewSnapshot(cognitoToken);
+      setPreviewResult(result);
+    } catch (err) {
+      setSnapshotMessage({ type: 'error', text: err instanceof Error ? err.message : 'Preview failed' });
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const handleGenerateSnapshot = () => {
+    if (!cognitoToken) return;
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmGenerate = async () => {
+    if (!cognitoToken) return;
+    setIsConfirmOpen(false);
+    setPreviewResult(null);
+    setIsTriggeringSnapshot(true);
+    setSnapshotMessage(null);
+    try {
+      const result = await triggerSnapshot(cognitoToken);
+      setSnapshotMessage({
+        type: 'success',
+        text: `Snapshot saved for ${result.snapshotDate} — ${result.snapshotCount} accounts`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Snapshot generation failed';
+      setSnapshotMessage({ type: 'error', text: msg });
+    } finally {
+      setIsTriggeringSnapshot(false);
+    }
+  };
+
   const formatDateRange = (startDate: string, endDate: string) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -94,6 +161,52 @@ export function SeasonManagementTab() {
           + New Season
         </Button>
       </div>
+
+      {/* Snapshot actions for active season */}
+      {seasons?.some((s) => s.status === 'active') && (
+        <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-nasun-white">Snapshot</div>
+                <div className="text-xs text-nasun-white/50 mt-0.5">
+                  Preview or generate today's leaderboard snapshot
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handlePreviewSnapshot}
+                  variant="outlineC5"
+                  size="sm"
+                  disabled={isPreviewing || isTriggeringSnapshot}
+                >
+                  {isPreviewing ? 'Previewing...' : 'Preview Snapshot'}
+                </Button>
+                <Button
+                  onClick={handleGenerateSnapshot}
+                  variant="c4"
+                  size="sm"
+                  disabled={isPreviewing || isTriggeringSnapshot}
+                >
+                  {isTriggeringSnapshot ? 'Generating...' : 'Generate Snapshot'}
+                </Button>
+              </div>
+            </div>
+
+            {snapshotMessage && (
+              <div
+                className={`text-sm px-3 py-2 rounded ${
+                  snapshotMessage.type === 'success'
+                    ? 'bg-green-900/30 text-green-400'
+                    : 'bg-red-900/30 text-red-400'
+                }`}
+              >
+                {snapshotMessage.text}
+              </div>
+            )}
+          </div>
+        </OuterBox>
+      )}
 
       {/* Seasons Table */}
       <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
@@ -202,6 +315,39 @@ export function SeasonManagementTab() {
         )}
       </OuterBox>
 
+      {/* Generate Snapshot Confirmation Modal */}
+      {isConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setIsConfirmOpen(false)}
+        >
+          <div
+            className="bg-gray-900 border border-nasun-c5/30 rounded-lg w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-nasun-c5/20">
+              <div className="text-sm font-medium text-nasun-white">Generate Snapshot</div>
+            </div>
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <p className="text-sm text-nasun-white/80">
+                This will save today's leaderboard snapshot and update the public rankings.
+              </p>
+              <div className="px-3 py-2 rounded bg-yellow-900/30 border border-yellow-600/30 text-yellow-400 text-xs">
+                If a snapshot already exists for today, this will return an error (no overwrite).
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-3 border-t border-nasun-c5/20">
+              <Button variant="outlineC5" size="sm" onClick={() => setIsConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="c4" size="sm" onClick={handleConfirmGenerate}>
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Season Form Modal */}
       <SeasonFormModal
         isOpen={isModalOpen}
@@ -213,6 +359,109 @@ export function SeasonManagementTab() {
         editingSeason={editingSeason}
         isSubmitting={isCreating || isUpdating}
       />
+
+      {/* Snapshot Preview Modal */}
+      {previewResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setPreviewResult(null)}
+        >
+          <div
+            className="bg-gray-900 border border-nasun-c5/30 rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-nasun-c5/20">
+              <div>
+                <div className="text-sm font-medium text-nasun-white">Snapshot Preview</div>
+                <div className="text-xs text-nasun-white/50 mt-0.5">
+                  Season: {previewResult.seasonId} — {previewResult.totalAccounts} accounts — {new Date(previewResult.calculatedAt).toLocaleString('en-US')}
+                </div>
+              </div>
+              <button
+                onClick={() => setPreviewResult(null)}
+                className="text-nasun-white/50 hover:text-nasun-white text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Simulation warning */}
+            <div className="mx-4 mt-3 px-3 py-2 rounded bg-yellow-900/30 border border-yellow-600/30 text-yellow-400 text-xs font-medium">
+              SIMULATION — This data is NOT saved. Click "Generate Snapshot" to apply.
+            </div>
+
+            {/* Preview table */}
+            <div className="overflow-y-auto flex-1 px-4 py-3">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-gray-900">
+                  <tr className="border-b border-nasun-c5/20">
+                    <th className="text-left py-2 pr-3 text-nasun-white/50 font-medium w-10">Rank</th>
+                    <th className="text-left py-2 pr-3 text-nasun-white/50 font-medium">User</th>
+                    <th className="text-right py-2 pr-3 text-nasun-white/50 font-medium">Score</th>
+                    <th className="text-right py-2 pr-3 text-nasun-white/50 font-medium">Raw</th>
+                    <th className="text-right py-2 pr-3 text-nasun-white/50 font-medium">Posts</th>
+                    <th className="text-right py-2 text-nasun-white/50 font-medium">Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewResult.preview.map((entry: SnapshotPreviewEntry) => (
+                    <tr key={entry.rank} className="border-b border-nasun-c5/10 hover:bg-gray-800/30">
+                      <td className="py-1.5 pr-3 text-nasun-white/60 font-mono">{entry.rank}</td>
+                      <td className="py-1.5 pr-3">
+                        <div className="flex items-center gap-2">
+                          {entry.profileImageUrl ? (
+                            <img
+                              src={entry.profileImageUrl}
+                              alt=""
+                              className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-gray-700 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-nasun-white font-medium truncate">
+                              {entry.displayName || entry.username}
+                            </div>
+                            {entry.displayName && entry.displayName !== entry.username && (
+                              <div className="text-nasun-white/40 text-[10px] truncate">@{entry.username}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-1.5 pr-3 text-right text-nasun-c7 font-mono">
+                        {entry.userScore.toFixed(3)}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right text-nasun-white/60 font-mono">
+                        {entry.rawScore.toFixed(3)}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right text-nasun-white/60">{entry.postCount}</td>
+                      <td className={`py-1.5 text-right font-mono font-medium ${getRankChangeColor(entry)}`}>
+                        {getRankChangeLabel(entry)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 px-4 py-3 border-t border-nasun-c5/20">
+              <Button variant="outlineC5" size="sm" onClick={() => setPreviewResult(null)}>
+                Close
+              </Button>
+              <Button
+                variant="c4"
+                size="sm"
+                onClick={handleGenerateSnapshot}
+                disabled={isTriggeringSnapshot}
+              >
+                Generate Snapshot
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
