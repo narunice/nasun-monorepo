@@ -125,9 +125,11 @@ function calculateTopClimbers(
 }
 
 /**
- * Get the latest post for a specific account
+ * Get the best recent post for a specific account.
+ * Fetches the latest 20 posts, excludes replies, and returns the highest-scoring one.
+ * Posts without a score are treated as 0 (older posts naturally rank below scored ones).
  */
-async function getLatestPost(accountId: string): Promise<Post | null> {
+async function getBestRecentPost(accountId: string): Promise<Post | null> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: POSTS_TABLE,
@@ -136,15 +138,22 @@ async function getLatestPost(accountId: string): Promise<Post | null> {
       ExpressionAttributeValues: {
         ':accountId': accountId,
       },
-      ScanIndexForward: false, // Descending order (latest first)
-      Limit: 1,
+      ScanIndexForward: false, // Latest first
+      Limit: 20,
     })
   );
 
-  if (result.Items && result.Items.length > 0) {
-    return result.Items[0] as Post;
-  }
-  return null;
+  if (!result.Items || result.Items.length === 0) return null;
+
+  const candidates = (result.Items as Post[]).filter(
+    (post) => post.postType !== 'reply'
+  );
+
+  if (candidates.length === 0) return null;
+
+  // Sort by postScore descending; treat missing postScore as 0
+  candidates.sort((a, b) => (b.postScore ?? 0) - (a.postScore ?? 0));
+  return candidates[0];
 }
 
 /**
@@ -188,7 +197,7 @@ export const handler = async (
       .sort((a, b) => b.userScore - a.userScore)
       .slice(0, 3);
 
-    // B. Top 3 Climbers
+    // B. Top 3 Climbers (excluding rankers to always fill 3 distinct climber slots)
     const todayDate = getTodayDateString();
     const sevenDaysAgo = getDateNDaysAgo(7);
     const currentSnapshot = await getSnapshot(seasonId, todayDate);
@@ -212,8 +221,11 @@ export const handler = async (
 
     console.log(`[FeaturedFeed] Snapshot dates: current=${todayDate}, previous=${previousDate}, currentSize=${currentSnapshot.size}, previousSize=${previousSnapshot.size}`);
 
-    const topClimbers = calculateTopClimbers(currentSnapshot, previousSnapshot, 3)
-      .filter((climber) => !bannedIds.has(climber.accountId));
+    // Fetch extra climbers (10) to account for overlap with rankers, then pick top 3 non-rankers
+    const rankerIds = new Set(topRankers.map((r) => r.accountId));
+    const topClimbers = calculateTopClimbers(currentSnapshot, previousSnapshot, 10)
+      .filter((climber) => !bannedIds.has(climber.accountId) && !rankerIds.has(climber.accountId))
+      .slice(0, 3);
     console.log(`[FeaturedFeed] Rankers: ${topRankers.length}, Climbers: ${topClimbers.length}`);
 
     // 3. Deduplicate and Map Badges
@@ -240,7 +252,7 @@ export const handler = async (
     const accountIds = Array.from(userMap.keys());
     
     const fetchPromises = accountIds.map(async (accountId) => {
-      const latestPost = await getLatestPost(accountId);
+      const latestPost = await getBestRecentPost(accountId);
       if (latestPost) {
         postsMap.set(accountId, latestPost);
       }
