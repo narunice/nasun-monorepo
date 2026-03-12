@@ -185,7 +185,7 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
            Targets only the author info div (sole div child of header), so the X brand icon
            (absolute in the header, not the author div) is unaffected. */
         .nasun-tweet-container article > div:first-child > div {
-          padding-right: 5.5rem !important;
+          padding-right: 7rem !important;
           overflow: hidden !important;
           box-sizing: border-box;
         }
