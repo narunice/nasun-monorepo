@@ -5,8 +5,6 @@ export interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: Error | null;
-  signInWithGoogle: () => Promise<void>;
-  signInWithTwitter: () => Promise<void>;
   signInWithWallet: (identityId: string, cognitoToken: string | undefined, walletAddress: string, connectorName?: string, walletProof?: string, proofIssuedAt?: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;

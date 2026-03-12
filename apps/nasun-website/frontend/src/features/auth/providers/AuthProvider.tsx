@@ -7,7 +7,6 @@ import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { AuthContextType } from "../types";
 import { linkAccounts, ensureUserProfile } from "../utils/authApi";
 import { isValidReturnUrl } from "../utils/urlValidation";
-import { buildGoogleAuthUrl } from "../utils/googleAuthUrl";
 import { refreshAndSaveUserProfile } from "../services/userProfileService";
 import { registerWallet } from "@/services/suiWalletApi";
 import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
@@ -182,36 +181,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await refreshAndSaveUserProfile(primaryIdentityId, primaryCognitoToken);
           setUser(useUserStore.getState().user);
         } else {
-          // Linking session mismatch - fall through to normal login
-          await performNormalLogin();
+          // Linking session expired or lost (e.g. mobile app-switch)
+          logger.warn(`Linking session not found for ${provider}, redirecting to my-account`);
+          window.location.href = "/my-account?error=linking_session_expired";
+          return true;
         }
       } else {
-        await performNormalLogin();
-      }
-
-      // Extracted normal login to avoid duplication between linking fallback and normal flow
-      async function performNormalLogin() {
-        const finalUserData: UserData = {
-          identityId,
-          provider: provider as "Google" | "Twitter",
-          username: userInfo.name,
-          email: userInfo.email,
-          cognitoToken,
-          ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
-          ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
-          ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
-          ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
-        };
-
-        logger.log("Ensuring user profile exists in DynamoDB...");
-        const dbProfile = await ensureUserProfile(finalUserData);
-        // Preserve cognitoToken from auth flow (not stored in DynamoDB)
-        const userDataToStore = dbProfile
-          ? { ...dbProfile, cognitoToken }
-          : finalUserData;
-
-        sessionStorage.setItem("nasun_user_profile", JSON.stringify(userDataToStore));
-        setUser(userDataToStore);
+        // Legacy OAuth login is disabled. Only account linking is supported.
+        logger.warn(`Blocked legacy ${provider} OAuth login attempt (non-linking flow)`);
+        window.location.href = "/";
+        return true;
       }
     } catch (e) {
       const err = e as Error;
@@ -257,29 +236,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
   }, [checkAuthStatus, handleOAuthRedirect]);
-
-  const signInWithGoogle = async () => {
-    clearError();
-    setIsLoading(true);
-    localStorage.setItem("auth_provider_preference", "Google");
-    localStorage.setItem("auth_return_to", window.location.pathname);
-    // Clear any stale zkLogin session so /callback won't misdetect this as zkLogin
-    sessionStorage.removeItem("nasun:zklogin:session");
-    window.location.href = buildGoogleAuthUrl();
-  };
-
-  const signInWithTwitter = async () => {
-    clearError();
-    setIsLoading(true);
-    localStorage.setItem("auth_provider_preference", "Twitter");
-    localStorage.setItem("auth_return_to", window.location.pathname);
-
-    // Navigate to backend redirect endpoint. Server-side 302 redirect is less likely
-    // to trigger Android App Links / iOS Universal Links, reducing X app interception.
-    // sessionId is encoded in the OAuth state parameter (composite state), eliminating
-    // browser storage dependency that breaks on mobile app-switch.
-    window.location.href = `${import.meta.env.VITE_TWITTER_AUTH_API}/login?mode=redirect`;
-  };
 
   const signInWithWallet = useCallback(async (identityId: string, cognitoToken: string | undefined, walletAddress: string, connectorName?: string, walletProof?: string, proofIssuedAt?: string) => {
     clearError();
@@ -367,8 +323,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     isAuthenticated: !!user,
     error,
-    signInWithGoogle,
-    signInWithTwitter,
     signInWithWallet,
     logout,
     clearError,
