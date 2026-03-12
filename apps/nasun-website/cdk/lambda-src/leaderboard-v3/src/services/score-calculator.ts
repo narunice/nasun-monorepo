@@ -3,7 +3,7 @@
  *
  * Implements the scoring formulas from LEADERBOARD_V3_SPEC.md
  *
- * PostScore = Base × RoleMultiplier + SignalBonus
+ * PostScore = Base × PostTypeMultiplier × RoleMultiplier + SignalBonus
  *
  * RawScore (per-type calculation, Phase 9):
  *   OriginalRawScore = Σ(OriginalPostScore) × log₂(OriginalCount + 1) / OriginalCount
@@ -25,6 +25,7 @@ import {
   FOLLOWER_THRESHOLDS,
   LANGUAGE_SCALE,
   PostType,
+  POST_TYPE_MULTIPLIERS,
   ROLE_MULTIPLIERS,
   SCORE_CONSTANTS,
   SIGNAL_BONUSES,
@@ -33,19 +34,22 @@ import {
 /**
  * Calculate the score for a single post
  *
- * Formula: PostScore = Base × RoleMultiplier + SignalBonus
- * Range: 1.0 (Default + Standard) to 5.0 (KOL + all signals)
+ * Formula: PostScore = Base × PostTypeMultiplier × RoleMultiplier + SignalBonus
+ * Range: 0.5 (reply + default + standard) to 5.0 (original/quote + KOL + all signals)
  */
 export function calculatePostScore(
   role: AccountRole,
-  signals: ContentSignal[]
+  signals: ContentSignal[],
+  postType: PostType = 'original'
 ): {
   baseScore: number;
+  postTypeMultiplier: number;
   roleMultiplier: number;
   signalBonus: number;
   postScore: number;
 } {
   const baseScore = SCORE_CONSTANTS.BASE_SCORE;
+  const postTypeMultiplier = POST_TYPE_MULTIPLIERS[postType];
   const roleMultiplier = ROLE_MULTIPLIERS[role];
 
   // Calculate signal bonus (sum of all non-standard signals)
@@ -53,11 +57,12 @@ export function calculatePostScore(
     return sum + SIGNAL_BONUSES[signal];
   }, 0);
 
-  // PostScore = Base × RoleMultiplier + SignalBonus
-  const postScore = baseScore * roleMultiplier + signalBonus;
+  // PostScore = Base × PostTypeMultiplier × RoleMultiplier + SignalBonus
+  const postScore = baseScore * postTypeMultiplier * roleMultiplier + signalBonus;
 
   return {
     baseScore,
+    postTypeMultiplier,
     roleMultiplier,
     signalBonus,
     postScore: Math.min(postScore, SCORE_CONSTANTS.POST_SCORE_MAX),
@@ -95,30 +100,35 @@ export function calculateRoleMultiplier(
 /**
  * Calculate post score using follower-based continuous multiplier
  *
- * Formula: PostScore = Base × RoleMultiplier + SignalBonus
- * Range: 1.0 (0 followers + Standard) to 5.0 (max multiplier + all signals)
+ * Formula: PostScore = Base × PostTypeMultiplier × RoleMultiplier + SignalBonus
+ * Range: 0.5 (reply + 0 followers + standard) to 5.0 (original/quote + max multiplier + all signals)
  */
 export function calculatePostScoreWithFollowers(
   followerCount: number,
   language: AccountLanguage,
-  signals: ContentSignal[]
+  signals: ContentSignal[],
+  postType: PostType = 'original'
 ): {
   baseScore: number;
+  postTypeMultiplier: number;
   roleMultiplier: number;
   signalBonus: number;
   postScore: number;
 } {
   const baseScore = SCORE_CONSTANTS.BASE_SCORE;
+  const postTypeMultiplier = POST_TYPE_MULTIPLIERS[postType];
   const roleMultiplier = calculateRoleMultiplier(followerCount, language);
 
   const signalBonus = signals.reduce((sum, signal) => {
     return sum + SIGNAL_BONUSES[signal];
   }, 0);
 
-  const postScore = baseScore * roleMultiplier + signalBonus;
+  // PostScore = Base × PostTypeMultiplier × RoleMultiplier + SignalBonus
+  const postScore = baseScore * postTypeMultiplier * roleMultiplier + signalBonus;
 
   return {
     baseScore,
+    postTypeMultiplier,
     roleMultiplier,
     signalBonus,
     postScore: Math.min(postScore, SCORE_CONSTANTS.POST_SCORE_MAX),
