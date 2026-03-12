@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { OuterBox } from '@/components/ui/OuterBox';
 import { Button } from '@/components/ui/button';
 import { useAdminSeasons } from '../../hooks/useAdminSeasons';
@@ -49,6 +50,7 @@ export function SeasonManagementTab() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const { cognitoToken } = useAdminAuth();
+  const queryClient = useQueryClient();
 
   const {
     seasons,
@@ -130,6 +132,8 @@ export function SeasonManagementTab() {
     setSnapshotMessage(null);
     try {
       const result = await triggerSnapshot(cognitoToken);
+      // Invalidate featured feed cache so leaderboard reflects the new snapshot
+      queryClient.invalidateQueries({ queryKey: ['leaderboard-v3', 'featured-feed'] });
       setSnapshotMessage({
         type: 'success',
         text: `Snapshot saved for ${result.snapshotDate} — ${result.snapshotCount} accounts`,

@@ -13,6 +13,8 @@ export function useFeaturedFeed(seasonId?: string) {
     queryKey: ['leaderboard-v3', 'featured-feed', seasonId],
     queryFn: () => getFeaturedFeed(seasonId),
     enabled: !!seasonId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
