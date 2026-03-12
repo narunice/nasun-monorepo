@@ -13,8 +13,11 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@a
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-const ALLOWLIST_TABLE = process.env.ALLOWLIST_TABLE_NAME!;
-const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE_NAME!;
+const ALLOWLIST_TABLE = process.env.ALLOWLIST_TABLE_NAME;
+const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE_NAME;
+if (!ALLOWLIST_TABLE || !USER_PROFILES_TABLE) {
+  throw new Error("ALLOWLIST_TABLE_NAME and USER_PROFILES_TABLE_NAME environment variables are required");
+}
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://nasun.io").split(",").map((o) => o.trim());
 const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
