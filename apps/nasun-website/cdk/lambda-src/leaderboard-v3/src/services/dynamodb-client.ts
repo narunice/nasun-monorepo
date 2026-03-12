@@ -645,19 +645,29 @@ export async function lookupUserProfile(twitterHandle: string): Promise<{
         ExpressionAttributeValues: {
           ':handle': twitterHandle.toLowerCase(),
         },
-        Limit: 1,
       })
     );
 
-    if (result.Items && result.Items.length > 0) {
-      const profile = result.Items[0] as UserProfileRecord;
-      return {
-        displayName: profile.username,
-        profileImageUrl: profile.profileImageUrl,
-        isRegistered: true,
-      };
+    if (!result.Items || result.Items.length === 0) {
+      return null;
     }
-    return null;
+
+    // When multiple profiles exist (e.g., wallet + Twitter linked),
+    // prefer the one with a non-wallet-address display name
+    let bestProfile = result.Items[0] as UserProfileRecord;
+    for (const item of result.Items) {
+      const profile = item as UserProfileRecord;
+      if (profile.username && !profile.username.startsWith('0x')) {
+        bestProfile = profile;
+        break;
+      }
+    }
+
+    return {
+      displayName: bestProfile.username,
+      profileImageUrl: bestProfile.profileImageUrl,
+      isRegistered: true,
+    };
   } catch (error) {
     console.warn('Failed to lookup user profile:', error);
     return null;
