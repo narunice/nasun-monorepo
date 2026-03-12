@@ -34,6 +34,8 @@ import { NftEventStack } from '../lib/nft-event-stack';
 import { AdminStack } from '../lib/admin-stack';
 import { FollowerStack } from '../lib/follower-stack';
 import { LeaderboardV3Stack } from '../lib/leaderboard-v3-stack';
+import { DevnetMetricsStack } from '../lib/devnet-metrics-stack';
+import { GenesisPassStack } from '../lib/genesis-pass-stack';
 
 const app = new cdk.App();
 
@@ -84,6 +86,18 @@ const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
   userProfilesTableName: 'UserProfiles',
 });
 // No dependencies - completely independent from V2
+
+// Genesis Pass Allowlist stack
+const genesisPassStack = new GenesisPassStack(app, 'GenesisPassStack', {
+  env: cdkEnv,
+  userProfilesTableName: 'UserProfiles',
+  cognitoIdentityPoolId,
+});
+// No dependencies - references UserProfiles table by name
+
+// Devnet metrics stack (daily DAU/address collection via RPC)
+const devnetMetricsStack = new DevnetMetricsStack(app, 'DevnetMetricsStack', { env: cdkEnv });
+// No dependencies - standalone stack
 
 // Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
