@@ -13,7 +13,8 @@
  *
  * ConsistencyBonus = 1 + log₂(UniqueActiveDays + 1) × 0.1 (max 1.5)
  * FreshnessMultiplier = 1 / (1 + DaysSinceLastPost / 7) (7-day half-life)
- * UserScore = RawScore × ConsistencyBonus × FreshnessMultiplier
+ * CompressedRaw = RawScore ^ RAW_SCORE_EXPONENT (0.8, reduces top-rank gaps)
+ * UserScore = CompressedRaw × ConsistencyBonus × FreshnessMultiplier
  */
 
 import {
@@ -340,7 +341,9 @@ export function calculateFreshnessMultiplier(lastSeenAt: string): number {
  * generate-snapshot recalculateUserScore().
  *
  * Formula:
- *   RawScore = per-type decay (or legacy fallback) + adjustmentTotalScore
+ *   BaseRawScore = per-type decay (or legacy fallback)
+ *   CompressedRaw = BaseRawScore ^ RAW_SCORE_EXPONENT (0.8)
+ *   RawScore = CompressedRaw + adjustmentTotalScore
  *   UserScore = Math.max(0, RawScore × ConsistencyBonus × FreshnessMultiplier)
  */
 export function calculateScoreComponents(params: {
@@ -399,8 +402,14 @@ export function calculateScoreComponents(params: {
     baseRawScore = calculateRawScore(totalPostScore, postCount);
   }
 
-  // Add manual adjustment score
-  const rawScore = baseRawScore + (adjustmentTotalScore || 0);
+  // Apply exponent compression to reduce score gaps between top ranks
+  // Math.pow(300, 0.8) ≈ 121 vs Math.pow(20, 0.8) ≈ 13 — compresses high scores more
+  const compressedRawScore = baseRawScore > 0
+    ? Math.pow(baseRawScore, SCORE_CONSTANTS.RAW_SCORE_EXPONENT)
+    : 0;
+
+  // Add manual adjustment score after compression to preserve its absolute meaning
+  const rawScore = compressedRawScore + (adjustmentTotalScore || 0);
 
   const consistencyBonus = calculateConsistencyBonus(uniqueActiveDays);
 
