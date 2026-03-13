@@ -37,7 +37,7 @@ export class CommonStack extends cdk.Stack {
       "CryptoBackupPricesTable",
       "CryptoBackupPrices"
     );
-    const supplyCountTable = dynamodb.Table.fromTableName(
+    const nftImagesTable = dynamodb.Table.fromTableName(
       this,
       "SupplyCountTable",
       "NftImages"
@@ -119,36 +119,7 @@ export class CommonStack extends cdk.Stack {
       },
     });
 
-    // 1-2. Get Supply Count
-    const getSupplyCountLambda = new NodejsFunction(this, "GetSupplyCountLambda", {
-      functionName: "nasun-common-get-supply-count",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'getSupplyCount', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        TABLE_NAME: supplyCountTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-      },
-      logGroup: new logs.LogGroup(this, "GetSupplyCountLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-get-supply-count",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    supplyCountTable.grantReadData(getSupplyCountLambda);
-
-    const getSupplyCountApi = new apigw.LambdaRestApi(this, "GetSupplyCountApi", {
-      handler: getSupplyCountLambda,
-      restApiName: "NASUN Get Supply Count API (Common)",
-      proxy: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: apigw.Cors.ALL_METHODS
-      },
-    });
-
-    // 1-3. Random Image Handler
+    // 1-2. Random Image Handler
     const randomImageHandlerLambda = new NodejsFunction(this, "RandomImageHandlerLambda", {
       functionName: "nasun-common-random-image-handler",
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -157,7 +128,7 @@ export class CommonStack extends cdk.Stack {
       depsLockFilePath,
       bundling: bundlingOptions,
       environment: {
-        TABLE_NAME: supplyCountTable.tableName,
+        TABLE_NAME: nftImagesTable.tableName,
         MAX_MINT_COUNTS: '{"TIER1":1,"TIER2":2,"TIER3":3,"TIER4":4,"TIER5":100}',
         NODE_OPTIONS: '--enable-source-maps',
       },
@@ -166,7 +137,7 @@ export class CommonStack extends cdk.Stack {
         removalPolicy: cdk.RemovalPolicy.DESTROY
       }),
     });
-    supplyCountTable.grantReadWriteData(randomImageHandlerLambda);
+    nftImagesTable.grantReadWriteData(randomImageHandlerLambda);
 
     const randomImageApi = new apigw.LambdaRestApi(this, "RandomImageApi", {
       handler: randomImageHandlerLambda,
@@ -678,11 +649,6 @@ export class CommonStack extends cdk.Stack {
     new cdk.CfnOutput(this, "GetBackupPricesApiUrl", {
       value: getBackupPricesApi.url,
       description: "Get Backup Prices API URL (CommonStack)",
-    });
-
-    new cdk.CfnOutput(this, "GetSupplyCountApiUrl", {
-      value: getSupplyCountApi.url,
-      description: "Get Supply Count API URL (CommonStack)",
     });
 
     new cdk.CfnOutput(this, "RandomImageApiUrl", {

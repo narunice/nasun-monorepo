@@ -18,27 +18,6 @@ describe('08 — Backup Price API', () => {
   });
 });
 
-describe('08 — Supply Count API', () => {
-  // KNOWN BACKEND ISSUE: Supply Count Lambda returns 502 Bad Gateway
-  test('GET /getSupplyCount/TIER1 returns count', async () => {
-    const res = await get(`${URLS.supplyCount}/getSupplyCount/TIER1`);
-    expect([200, 502].includes(res.status)).toBe(true);
-    if (res.status === 502) console.warn('BACKEND ISSUE: Supply Count TIER1 returns 502');
-  });
-
-  test('GET /getSupplyCount/TIER2 returns count', async () => {
-    const res = await get(`${URLS.supplyCount}/getSupplyCount/TIER2`);
-    expect([200, 502].includes(res.status)).toBe(true);
-    if (res.status === 502) console.warn('BACKEND ISSUE: Supply Count TIER2 returns 502');
-  });
-
-  test('GET /getSupplyCount/INVALID returns 400 or 0', async () => {
-    const res = await get(`${URLS.supplyCount}/getSupplyCount/INVALID`);
-    expect([200, 400, 404, 502].includes(res.status)).toBe(true);
-  });
-});
-
-
 describe('08 — User Count API', () => {
   test('GET / returns user count', async () => {
     const res = await get(URLS.userCount);
