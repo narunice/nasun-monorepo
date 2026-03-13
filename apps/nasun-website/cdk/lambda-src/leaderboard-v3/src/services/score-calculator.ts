@@ -310,14 +310,14 @@ export function calculateConsistencyBonus(uniqueActiveDays: number): number {
 /**
  * Calculate freshness multiplier based on days since last activity
  *
- * Formula: FreshnessMultiplier = 1 / (1 + DaysSinceLastPost / 7)
+ * Formula: FreshnessMultiplier = 1 / (1 + max(0, DaysSinceLastPost - GraceDays) / 7)
  *
- * This creates decay with 7-day half-life:
- * - Today: 1.00
- * - 3 days ago: 0.70
- * - 7 days ago: 0.50
- * - 14 days ago: 0.33
- * - 30 days ago: 0.19
+ * 3-day grace period, then 7-day half-life decay:
+ * - 0~3 days: 1.00 (grace period)
+ * - 4 days (eff 1): 0.875
+ * - 7 days (eff 4): 0.636
+ * - 10 days (eff 7): 0.500
+ * - 17 days (eff 14): 0.333
  */
 export function calculateFreshnessMultiplier(lastSeenAt: string): number {
   const lastSeenDate = new Date(lastSeenAt);
@@ -329,8 +329,8 @@ export function calculateFreshnessMultiplier(lastSeenAt: string): number {
     Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60 * 60 * 24))
   );
 
-  // FreshnessMultiplier = 1 / (1 + daysSinceLastPost / halfLife)
-  return 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
+  const effectiveDays = Math.max(0, daysSinceLastPost - SCORE_CONSTANTS.FRESHNESS_GRACE_DAYS);
+  return 1 / (1 + effectiveDays / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
 }
 
 /**
@@ -420,7 +420,8 @@ export function calculateScoreComponents(params: {
       0,
       Math.floor((referenceDate.getTime() - new Date(lastSeenAt).getTime()) / (1000 * 60 * 60 * 24))
     );
-    freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
+    const effectiveDays = Math.max(0, daysSinceLastPost - SCORE_CONSTANTS.FRESHNESS_GRACE_DAYS);
+    freshnessMultiplier = 1 / (1 + effectiveDays / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
   } else {
     freshnessMultiplier = calculateFreshnessMultiplier(lastSeenAt);
   }
