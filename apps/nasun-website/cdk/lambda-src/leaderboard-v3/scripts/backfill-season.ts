@@ -90,6 +90,9 @@ async function main() {
     console.log(`  @${account.username}: backfilling ${sortedPosts.length} posts...`);
 
     for (const post of sortedPosts) {
+      // Skip posts already assigned to a season (processed by createPost or backfill-orphaned-posts)
+      if (post.seasonId) continue;
+
       const postDate = post.createdAt.split('T')[0];
 
       await updateSeasonAccountAggregates({
