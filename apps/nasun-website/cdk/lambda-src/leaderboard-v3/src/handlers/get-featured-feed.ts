@@ -200,10 +200,13 @@ export const handler = async (
       console.log(`[FeaturedFeed] Today snapshot empty, using yesterday's (${yesterday}), size=${yesterdaySnapshot.size}`);
     }
 
-    const topRankers = Array.from(currentSnapshot.values())
+    const allRankedUsers = Array.from(currentSnapshot.values())
       .filter((s) => !bannedIds.has(s.accountId))
       .sort((a, b) => a.rank - b.rank)
-      .slice(0, 3);
+      .slice(0, 18);
+
+    const topRankers = allRankedUsers.slice(0, 3);
+    const remainingRankers = allRankedUsers.slice(3);
 
     // B. Top 3 Climbers (excluding rankers to always fill 3 distinct climber slots)
     const sevenDaysAgo = getDateNDaysAgo(7);
@@ -242,6 +245,13 @@ export const handler = async (
         userMap.get(climber.accountId)!.badges.push(badge);
       } else {
         userMap.set(climber.accountId, { account: climber, badges: [badge] });
+      }
+    });
+
+    // Add Remaining Rankers 4+ (generic 'ranker' badge, skip if already in map as climber)
+    remainingRankers.forEach((ranker) => {
+      if (!userMap.has(ranker.accountId)) {
+        userMap.set(ranker.accountId, { account: ranker, badges: ['ranker'] });
       }
     });
 
@@ -293,11 +303,19 @@ export const handler = async (
       }
     };
 
-    // Add Rankers first (1, 2, 3)
-    topRankers.forEach(ranker => addFeedItem(ranker.accountId));
+    const MAX_FEED_ITEMS = 15;
 
-    // Add Climbers next (1, 2, 3) - skips if already added
+    // Priority 1: Rankers 1-3
+    topRankers.forEach(ranker => addFeedItem(ranker.accountId));
+    // Priority 2: Climbers 1-3 (skips if already added as ranker)
     topClimbers.forEach(climber => addFeedItem(climber.accountId));
+    // Priority 3: Rankers 4+ (fill remaining space)
+    for (const ranker of remainingRankers) {
+      if (feedItems.length >= MAX_FEED_ITEMS) break;
+      addFeedItem(ranker.accountId);
+    }
+
+    console.log(`[FeaturedFeed] Feed items: ${feedItems.length} (max ${MAX_FEED_ITEMS})`);
 
     const response: FeaturedFeedResponse = {
       success: true,
