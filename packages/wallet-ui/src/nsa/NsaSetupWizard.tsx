@@ -88,16 +88,16 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
   if (step === 'checking') {
     return (
       <div className="p-4 w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Smart Account</h3>
+        <div className="flex items-center gap-2 mb-4">
           <button
             onClick={onClose}
-            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Smart Account</h3>
         </div>
         <div className="flex flex-col items-center justify-center py-8">
           <div className="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
@@ -112,16 +112,16 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
   if (step === 'found') {
     return (
       <div className="p-4 w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Smart Account</h3>
+        <div className="flex items-center gap-2 mb-4">
           <button
             onClick={onClose}
-            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Smart Account</h3>
         </div>
 
         <div className="flex flex-col items-center py-6">
@@ -158,16 +158,16 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
   if (step === 'intro') {
     return (
       <div className="p-4 w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Create Smart Account</h3>
+        <div className="flex items-center gap-2 mb-4">
           <button
             onClick={onClose}
-            className="text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-white transition-colors"
+            className="text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
+          <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white">Create Smart Account</h3>
         </div>
 
         <div className="space-y-3 mb-4">
@@ -208,30 +208,32 @@ export function NsaSetupWizard({ onClose, onSuccess, onRestoreFromBackup, onReco
           </div>
         </div>
 
-        <button
-          onClick={() => setStep('confirm')}
-          className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
-        >
-          Continue
-        </button>
-
-        {onRestoreFromBackup && (
+        <div className="space-y-3">
           <button
-            onClick={onRestoreFromBackup}
-            className="w-full px-3 py-2.5 text-sm xl:text-base text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            onClick={() => setStep('confirm')}
+            className="w-full px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm xl:text-base transition-colors"
           >
-            Restore from backup .json file
+            Continue
           </button>
-        )}
 
-        {onRecoverAsGuardian && (
-          <button
-            onClick={onRecoverAsGuardian}
-            className="w-full px-3 py-2.5 text-sm xl:text-base text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
-          >
-            Recover as Guardian
-          </button>
-        )}
+          {onRestoreFromBackup && (
+            <button
+              onClick={onRestoreFromBackup}
+              className="w-full px-3 py-2.5 text-sm xl:text-base text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            >
+              Restore from backup .json file
+            </button>
+          )}
+
+          {onRecoverAsGuardian && (
+            <button
+              onClick={onRecoverAsGuardian}
+              className="w-full px-3 py-2.5 text-sm xl:text-base text-gray-600 dark:text-zinc-300 border border-gray-300 dark:border-zinc-600 rounded hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            >
+              Recover as Guardian
+            </button>
+          )}
+        </div>
       </div>
     );
   }

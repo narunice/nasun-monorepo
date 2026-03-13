@@ -50,7 +50,7 @@ export const useZkLoginStore = create<ZkLoginStore>()(
     }),
     {
       name: 'nasun:zklogin',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       // Only persist essential state, not loading/error
       partialize: (state) => ({
         state: state.state,

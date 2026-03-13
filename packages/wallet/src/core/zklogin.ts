@@ -132,10 +132,12 @@ export function clearZkLoginSession(): void {
 }
 
 /**
- * Get saved zkLogin state from sessionStorage
+ * Get saved zkLogin state from localStorage
+ * Uses localStorage so state survives tab close (cleared on browser restart
+ * via session cookie guard in AuthProvider).
  */
 export function getZkLoginState(): ZkLoginState | null {
-  const stored = sessionStorage.getItem(ZKLOGIN_STATE_KEY);
+  const stored = localStorage.getItem(ZKLOGIN_STATE_KEY);
   if (!stored) return null;
 
   try {
@@ -146,17 +148,17 @@ export function getZkLoginState(): ZkLoginState | null {
 }
 
 /**
- * Save zkLogin state to sessionStorage
+ * Save zkLogin state to localStorage
  */
 export function saveZkLoginState(state: ZkLoginState): void {
-  sessionStorage.setItem(ZKLOGIN_STATE_KEY, JSON.stringify(state));
+  localStorage.setItem(ZKLOGIN_STATE_KEY, JSON.stringify(state));
 }
 
 /**
- * Clear zkLogin state from sessionStorage
+ * Clear zkLogin state from localStorage
  */
 export function clearZkLoginState(): void {
-  sessionStorage.removeItem(ZKLOGIN_STATE_KEY);
+  localStorage.removeItem(ZKLOGIN_STATE_KEY);
 }
 
 // ============================================
