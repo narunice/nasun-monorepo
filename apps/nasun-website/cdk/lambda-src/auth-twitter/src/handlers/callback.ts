@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { DynamoDBClient, GetItemCommand, PutItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { TwitterAPI } from '../utils/twitter-api';
 import { SessionManager } from '../utils/session-manager';
@@ -184,7 +184,10 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
         },
       }));
     } else {
-      // Create new user profile
+      // Do NOT create a new user profile here.
+      // Profile creation is handled by the frontend's ensureUserProfile()
+      // during account linking flow. This prevents orphan Twitter-only
+      // accounts from being created via direct API access.
       userProfile = {
         identityId: cognitoIdentity.identityId,
         provider: 'Twitter',
@@ -194,25 +197,7 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
         twitterId: twitterUser.id,
         profileImageUrl: twitterUser.profile_image_url,
         verified: twitterUser.verified,
-        createdAt: new Date().toISOString(),
       };
-
-      const putCommand = new PutItemCommand({
-        TableName: USER_PROFILES_TABLE,
-        Item: {
-          identityId: { S: userProfile.identityId },
-          provider: { S: userProfile.provider },
-          username: { S: userProfile.username },
-          twitterHandle: { S: userProfile.twitterHandle },
-          originalTwitterHandle: { S: userProfile.originalTwitterHandle },
-          twitterId: { S: userProfile.twitterId },
-          profileImageUrl: { S: userProfile.profileImageUrl || '' },
-          verified: { BOOL: userProfile.verified || false },
-          createdAt: { S: userProfile.createdAt },
-        },
-      });
-
-      await dynamoClient.send(putCommand);
     }
 
     // 6. Session already deleted atomically in step 1
