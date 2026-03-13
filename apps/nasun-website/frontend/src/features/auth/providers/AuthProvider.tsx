@@ -14,6 +14,22 @@ import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SESSION_COOKIE_NAME = "nasun_browser_session";
+
+function hasSessionCookie(): boolean {
+  return document.cookie.split("; ").some((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`));
+}
+
+function setSessionCookie(): void {
+  // Session cookie (no expires/max-age) is cleared when the browser is fully closed,
+  // but survives tab close and page reload.
+  document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; SameSite=Lax`;
+}
+
+function deleteSessionCookie(): void {
+  document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; max-age=0`;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading, setUser, clearUser, setIsLoading } = useUserStore();
   const [error, setError] = useState<Error | null>(null);
@@ -25,8 +41,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     clearError();
     try {
-      // Persisted in localStorage for cross-tab and cross-session availability
+      // Browser-restart detection: session cookie (no expires) is cleared when the
+      // browser is fully closed. If a cached user profile exists but the cookie is
+      // gone, the browser was restarted. Clear auth + wallet session data.
+      // Note: do NOT use zkLogin/wallet localStorage keys in the condition because
+      // Zustand persist writes default state on init, making them always non-null.
       const cachedUser = localStorage.getItem("nasun_user_profile");
+
+      if (cachedUser && !hasSessionCookie()) {
+        localStorage.removeItem("nasun_user_profile");
+        localStorage.removeItem("nasun_wallet_session");
+        localStorage.removeItem("nasun:zklogin");
+        localStorage.removeItem("nasun:zklogin:state");
+        sessionStorage.clear();
+        clearUser();
+        setIsLoading(false);
+        return;
+      }
+
       if (cachedUser) {
         const parsed = JSON.parse(cachedUser);
         setUser(parsed);
@@ -269,8 +301,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         linkedAccounts: profileData.linkedAccounts || {},
       };
 
-      // Save to localStorage and state (persists across sessions)
+      // Save to localStorage and state; session cookie gates browser-restart expiry
       localStorage.setItem("nasun_user_profile", JSON.stringify(userData));
+      setSessionCookie();
       setUser(userData);
 
       // Auto-register first wallet (fire-and-forget; 409 = already registered = OK)
@@ -293,9 +326,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
-      // Clear user profile from localStorage
+      // Clear user profile and session cookie
       localStorage.removeItem("nasun_user_profile");
       localStorage.removeItem("auth_provider_preference");
+      deleteSessionCookie();
 
       // Reset Battalion NFT Store first
       useBattalionNftStore.getState().reset();
@@ -306,6 +340,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("battalion_nft_session_id");
       localStorage.removeItem("twitter_link_session");
       sessionStorage.removeItem("battalion_nft_twitter_session");
+
+      // Clear wallet/zkLogin session data from localStorage
+      localStorage.removeItem("nasun_wallet_session");
+      localStorage.removeItem("nasun:zklogin");
+      localStorage.removeItem("nasun:zklogin:state");
 
       // Clear all remaining sessionStorage items
       sessionStorage.clear();
