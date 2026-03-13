@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
+import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
+import { isMobileBrowser } from "@/utils/mobileDetect";
 import { AccountItem } from "./components/AccountItem";
 import { AddWalletModal } from "./components/AddWalletModal";
 import {
@@ -53,6 +55,31 @@ function generateWalletIdenticon(address: string): string {
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="64" height="64"><rect width="50" height="50" fill="${bgColor}"/>${rects}</svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/** Isolated component to avoid wagmi hooks polluting ProfileHeroCard's render cycle. */
+function EvmWalletLinkButton() {
+  const {
+    connect: handleLinkWallet,
+    isAuthenticating: isWalletLinking,
+    error: walletLinkError,
+  } = useWalletAuth({
+    mode: "link",
+    onSuccess: () => { alert("Wallet linked successfully!"); },
+    onError: (error) => { alert(error.message || "Failed to link wallet"); },
+  });
+
+  return (
+    <>
+      <Button size="sm" variant="filledOutlineC7"
+        onClick={handleLinkWallet} disabled={isWalletLinking}>
+        {isWalletLinking ? "Linking..." : "Link"}
+      </Button>
+      {walletLinkError && (
+        <p className="text-xs text-red-400 mt-1">{walletLinkError}</p>
+      )}
+    </>
+  );
 }
 
 interface ProfileHeroCardProps {
@@ -190,21 +217,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   }, [nasunWalletAddress, isNasunConnected, user?.cognitoToken,
       walletReg.isCurrentWalletRegistered, walletReg.isRegistering,
       walletReg.isLoading, walletReg.hasSigner, walletReg.signerAddress]);
-  //
-  // // EVM Wallet Link via wagmi + RainbowKit
-  // const {
-  //   connect: handleLinkWallet,
-  //   isAuthenticating: isWalletLinking,
-  //   error: walletLinkError,
-  // } = useWalletAuth({
-  //     mode: "link",
-  //     onSuccess: () => {
-  //       toast.success(t("userInfo.linkMetaMaskSuccess") || "Wallet linked successfully!");
-  //     },
-  //     onError: (error) => {
-  //       toast.error(error.message || "Failed to link wallet");
-  //     },
-  //   });
 
   const handleImageError = useCallback(() => setImageError(true), []);
   const handleImageLoad = useCallback(() => setImageLoaded(true), []);
@@ -234,16 +246,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   // Providers
   const isTwitterPrimary = user.provider === "Twitter";
   const isGooglePrimary = user.provider === "Google";
-  // const isMetaMaskPrimary = user.provider === "MetaMask"; // [DISABLED]
+  const isMetaMaskPrimary = user.provider === "MetaMask";
 
   // Linked Data
   const twitterData = isTwitterPrimary ? user : user.linkedAccounts?.twitter;
   const googleData = isGooglePrimary ? user : user.linkedAccounts?.google;
-  // const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask; // [DISABLED]
-  //
-  // // Wallet Status: 3 states — Not Linked / Linked / Primary
-  // const isMetaMaskLinked = !!metamaskData;
-  // const linkedWalletAddress = metamaskData?.walletAddress?.toLowerCase();
+  const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask;
+  const isMetaMaskLinked = !!metamaskData;
+  const evmWalletAddress = metamaskData?.walletAddress?.toLowerCase();
 
   return (
     <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
@@ -558,11 +568,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* [DISABLED] 4. Wallet (EVM) — too buggy on mobile.
-            ...
-            */}
-
-            {/* 5. Telegram */}
+            {/* 4. Telegram */}
             <AccountItem
               provider="telegram"
               description="Verify your Nasun channel membership"
@@ -601,6 +607,39 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 ) : null,
               ]}
             />
+
+            {/* 5. EVM Wallet - hidden until mainnet launch
+            <AccountItem
+              provider="metamask"
+              description="Link your EVM wallet for NFT allowlists"
+              identifier={
+                evmWalletAddress
+                  ? `${evmWalletAddress.slice(0, 6)}...${evmWalletAddress.slice(-4)}`
+                  : "Not linked"
+              }
+              statusBadge={
+                isMetaMaskPrimary ? <LoggedInBadge />
+                  : isMetaMaskLinked ? <LinkedBadge />
+                  : undefined
+              }
+              actions={[
+                !isMetaMaskLinked && !isMobileBrowser() ? (
+                  <EvmWalletLinkButton key="link" />
+                ) : null,
+                isMetaMaskLinked && !isMetaMaskPrimary ? (
+                  <Button
+                    key="unlink"
+                    size="sm"
+                    variant="filledOutlineScarlet"
+                    onClick={() => unlinkAccount("metamask")}
+                    disabled={isLinking}
+                  >
+                    Unlink
+                  </Button>
+                ) : null,
+              ]}
+            />
+            */}
           </div>
         </div>
       </div>
