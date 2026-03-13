@@ -25,8 +25,6 @@ export const URLS = {
   deactivateUser: requireEnv('VITE_DEACTIVATE_USER_API_URL'),
   linkAccount: requireEnv('VITE_LINK_ACCOUNT_API'),
   priceApi: requireEnv('VITE_PRICE_API_ENDPOINT'),
-  supplyCount: requireEnv('VITE_SUPPLY_COUNT_API_ENDPOINT'),
-
   backupPrice: requireEnv('VITE_BACKUP_API_ENDPOINT'),
   userCount: requireEnv('VITE_USER_COUNT_API'),
   followerCount: requireEnv('VITE_FOLLOWER_COUNT_API'),

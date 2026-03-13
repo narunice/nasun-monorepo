@@ -194,7 +194,6 @@ curl -s -m 10 -o /dev/null -w "%{http_code}|%{time_total}" <URL>
 | Main API | `https://bumvhwfbj4.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | Price API | `https://06hg1n9i3h.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | Backup Price API | `https://7vtmrjor8i.execute-api.ap-northeast-2.amazonaws.com/prod/` |
-| Supply Count | `https://5jwfplm8qb.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | Random Image | `https://y6davo1om2.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | User Profile | `https://aanboqet5i.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | User Count | `https://mwhyuu1k51.execute-api.ap-northeast-2.amazonaws.com/prod/` |
@@ -682,15 +681,13 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | Faucet (faucet.devnet.nasun.io) | OK/WARN | HTTP 405 |
 | zkLogin Prover | OK/WARN | Responding |
 
-### 5. Lambda APIs (nasun-website) — 22 endpoints
+### 5. Lambda APIs (nasun-website) — 20 endpoints
 
 | API | Status | Latency | HTTP |
 |-----|--------|---------|------|
 | Main API | OK | 0.3s | 403 |
 | Price API | OK | 0.2s | 200 |
 | Backup Price API | OK | 0.1s | 403 |
-| Supply Count | OK | 0.2s | 200 |
-| All Supply Counts | OK | 0.2s | 403 |
 | Random Image | OK | 0.3s | 403 |
 | User Profile | OK | 0.2s | 403 |
 | User Count | OK | 0.1s | 200 |

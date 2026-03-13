@@ -38,7 +38,6 @@
     "lambda-src/PriceAPI/**",
     "lambda-src/auth-twitter/**",
     "lambda-src/get-aws-credentials/**",
-    "lambda-src/getSupplyCount/**",
     "lambda-src/update-backup-prices/**",
     "exchange-oauth-code.ts",
     "generate-oauth-url.ts",

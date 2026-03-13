@@ -187,7 +187,6 @@ const MAPPING = {
   'UserProfileApiUrl': 'VITE_USER_PROFILE_API',
   'RandomImageApiUrl': 'VITE_RANDOM_IMAGE_API_ENDPOINT',
   'PriceApiUrl': 'VITE_PRICE_API_ENDPOINT',
-  'GetSupplyCountApiUrl': 'VITE_SUPPLY_COUNT_API_ENDPOINT',
   'GetBackupPricesApiUrl': 'VITE_BACKUP_API_ENDPOINT',
   'LinkAccountApiUrl': 'VITE_LINK_ACCOUNT_API',
   'GetAwsCredentialsApiUrl': 'VITE_AWS_CREDENTIALS_API',
