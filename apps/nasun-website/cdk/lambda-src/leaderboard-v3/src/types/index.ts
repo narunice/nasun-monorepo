@@ -541,7 +541,7 @@ export interface TopClimberEntry {
 // Featured Feed Types (Phase 10)
 // ============================================
 
-export type BadgeType = 'rank-1' | 'rank-2' | 'rank-3' | 'climber-1' | 'climber-2' | 'climber-3';
+export type BadgeType = 'rank-1' | 'rank-2' | 'rank-3' | 'ranker' | 'climber-1' | 'climber-2' | 'climber-3';
 
 export interface FeaturedFeedItem {
   type: 'post';

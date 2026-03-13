@@ -37,6 +37,13 @@ const BADGE_CONFIG: Record<
     bgColor: "bg-orange-400/10",
     borderColor: "border-orange-400/20",
   },
+  ranker: {
+    icon: "🏅",
+    label: "ranker",
+    color: "text-nasun-white/60",
+    bgColor: "bg-nasun-white/5",
+    borderColor: "border-nasun-white/10",
+  },
   "climber-1": {
     icon: "🚀",
     label: "climber",
@@ -77,8 +84,11 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
   }
 
   // Determine primary badge (Rank takes precedence over Climber)
+  // Note: 'ranker' also matches startsWith("rank"), which is intentional
   const primaryBadgeType = author.badges.find((b) => b.startsWith("rank")) || author.badges[0];
-  const badgeConfig = BADGE_CONFIG[primaryBadgeType];
+  const badgeConfig = primaryBadgeType ? BADGE_CONFIG[primaryBadgeType] : undefined;
+
+  if (!badgeConfig) return null;
 
   return (
     <div className="relative">
