@@ -51,6 +51,10 @@ const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
 const SEASONS_TABLE =
   process.env.LEADERBOARD_V3_SEASONS_TABLE || DYNAMO_KEYS.SEASONS_TABLE;
+const ACCOUNTS_TABLE =
+  process.env.LEADERBOARD_V3_ACCOUNTS_TABLE || DYNAMO_KEYS.ACCOUNTS_TABLE;
+const SEASON_ACCOUNTS_TABLE =
+  process.env.LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE || DYNAMO_KEYS.SEASON_ACCOUNTS_TABLE;
 
 // TTL: 180 days in seconds (final snapshots are permanent)
 const SNAPSHOT_TTL_DAYS = 180;
@@ -199,13 +203,14 @@ async function snapshotExistsForDate(seasonId: string, date: string): Promise<bo
  */
 async function runSnapshotCore(params: {
   customDate: string | undefined;
+  dryRun?: boolean;
 }): Promise<{
   seasonId: string;
   todayDate: string;
   filteredCount: number;
   snapshots: DailySnapshot[];
 }> {
-  const { customDate } = params;
+  const { customDate, dryRun = false } = params;
 
   // Get active season
   const activeSeason = await getActiveSeason();
@@ -242,12 +247,53 @@ async function runSnapshotCore(params: {
 
   if (staleProfiles.length > 0) {
     console.log(`Refreshing ${staleProfiles.length} profiles with wallet-address displayName`);
+    let persistedCount = 0;
     for (const score of staleProfiles) {
       const profile = await lookupUserProfile(score.username);
       if (profile && profile.displayName && !profile.displayName.startsWith('0x')) {
         score.displayName = profile.displayName;
         score.profileImageUrl = profile.profileImageUrl || score.profileImageUrl;
+
+        // Persist corrected displayName back to source tables (skip in dryRun)
+        if (!dryRun) {
+          try {
+            await Promise.all([
+              docClient.send(
+                new UpdateCommand({
+                  TableName: ACCOUNTS_TABLE,
+                  Key: { accountId: score.accountId },
+                  UpdateExpression: 'SET displayName = :dn, profileImageUrl = :img',
+                  ExpressionAttributeValues: {
+                    ':dn': score.displayName,
+                    ':img': score.profileImageUrl,
+                  },
+                })
+              ),
+              docClient.send(
+                new UpdateCommand({
+                  TableName: SEASON_ACCOUNTS_TABLE,
+                  Key: {
+                    pk: `SEASON#${activeSeason.seasonId}#ACCOUNT#${score.accountId}`,
+                    sk: 'SCORE',
+                  },
+                  UpdateExpression: 'SET displayName = :dn, profileImageUrl = :img',
+                  ExpressionAttributeValues: {
+                    ':dn': score.displayName,
+                    ':img': score.profileImageUrl,
+                  },
+                  ConditionExpression: 'attribute_exists(pk)',
+                })
+              ).catch(() => { /* SeasonAccount record may not exist */ }),
+            ]);
+            persistedCount++;
+          } catch (err) {
+            console.warn(`Failed to persist displayName for ${score.username}:`, err);
+          }
+        }
       }
+    }
+    if (!dryRun && persistedCount > 0) {
+      console.log(`Persisted ${persistedCount}/${staleProfiles.length} corrected displayNames to DB`);
     }
   }
 
@@ -432,7 +478,7 @@ export const handler = async (
     console.log(`[Admin Snapshot] admin=${admin.identityId} dryRun=${dryRun} customDate=${rawCustomDate}`);
 
     try {
-      const result = await runSnapshotCore({ customDate: rawCustomDate });
+      const result = await runSnapshotCore({ customDate: rawCustomDate, dryRun });
 
       if (dryRun) {
         const preview = result.snapshots.slice(0, 50).map((s) => ({
@@ -512,7 +558,7 @@ export const handler = async (
   }
 
   try {
-    const result = await runSnapshotCore({ customDate });
+    const result = await runSnapshotCore({ customDate, dryRun });
 
     if (dryRun) {
       const preview = result.snapshots.slice(0, 50).map((s) => ({
