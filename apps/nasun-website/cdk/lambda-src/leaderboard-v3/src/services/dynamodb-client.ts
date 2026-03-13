@@ -59,6 +59,7 @@ interface UserProfileRecord {
   identityId: string;
   username: string; // Display name
   twitterHandle: string; // @handle
+  originalTwitterHandle?: string; // Original casing preserved
   profileImageUrl?: string;
 }
 
@@ -155,6 +156,26 @@ export async function createPost(params: {
       originalUsername,
       language || followerCount ? { language, followerCount } : undefined
     );
+  } else if (platform === 'twitter' && account.displayName?.startsWith('0x')) {
+    // Refresh stale wallet-address displayName for existing accounts
+    const freshProfile = await lookupUserProfile(username);
+    if (freshProfile?.displayName && !freshProfile.displayName.startsWith('0x')) {
+      account.displayName = freshProfile.displayName;
+      account.profileImageUrl = freshProfile.profileImageUrl || account.profileImageUrl;
+      account.isRegistered = true;
+      await docClient.send(
+        new UpdateCommand({
+          TableName: ACCOUNTS_TABLE,
+          Key: { accountId: account.accountId },
+          UpdateExpression: 'SET displayName = :dn, profileImageUrl = :img, isRegistered = :reg',
+          ExpressionAttributeValues: {
+            ':dn': account.displayName,
+            ':img': account.profileImageUrl,
+            ':reg': true,
+          },
+        })
+      );
+    }
   }
 
   // Calculate post score using continuous role multiplier
@@ -663,8 +684,15 @@ export async function lookupUserProfile(twitterHandle: string): Promise<{
       }
     }
 
+    // Fallback: if all profiles have 0x username (wallet-first auth),
+    // use originalTwitterHandle or the queried twitterHandle as displayName
+    let displayName = bestProfile.username;
+    if (displayName.startsWith('0x')) {
+      displayName = bestProfile.originalTwitterHandle || twitterHandle;
+    }
+
     return {
-      displayName: bestProfile.username,
+      displayName,
       profileImageUrl: bestProfile.profileImageUrl,
       isRegistered: true,
     };
@@ -1086,8 +1114,16 @@ export async function updateSeasonAccountAggregates(params: {
       expressionValues[':originalUsername'] = originalUsername;
     }
     if (displayName !== undefined) {
-      updateParts.push('displayName = :displayName');
-      expressionValues[':displayName'] = displayName;
+      // Guard: don't overwrite a good displayName with a wallet address
+      const existingDN = existingRecord.displayName;
+      const shouldUpdateDN =
+        !displayName.startsWith('0x') ||  // new value is not a wallet addr -> always update
+        !existingDN ||                     // no existing value -> update
+        existingDN.startsWith('0x');       // existing is also wallet addr -> update
+      if (shouldUpdateDN) {
+        updateParts.push('displayName = :displayName');
+        expressionValues[':displayName'] = displayName;
+      }
     }
     if (profileImageUrl !== undefined) {
       updateParts.push('profileImageUrl = :profileImageUrl');

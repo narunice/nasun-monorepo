@@ -257,7 +257,7 @@ async function syncProfileFromUserProfiles(
         ExpressionAttributeValues: {
           ':handle': account.username,
         },
-        Limit: 1,
+        Limit: 10,
       })
     );
 
@@ -265,13 +265,24 @@ async function syncProfileFromUserProfiles(
       return {};
     }
 
-    const profile = result.Items[0] as {
+    type ProfileRecord = {
       username?: string;
       profileImageUrl?: string;
       isTelegramMember?: boolean;
       telegramUserId?: string;
       telegramUsername?: string;
     };
+
+    // When multiple profiles exist (e.g., wallet + Twitter linked),
+    // prefer the one with a non-wallet-address display name
+    let profile = result.Items[0] as ProfileRecord;
+    for (const item of result.Items) {
+      const candidate = item as ProfileRecord;
+      if (candidate.username && !candidate.username.startsWith('0x')) {
+        profile = candidate;
+        break;
+      }
+    }
 
     const freshDisplayName = profile.username;
     const freshProfileImage = profile.profileImageUrl;
