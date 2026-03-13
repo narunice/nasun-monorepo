@@ -329,7 +329,11 @@ async function runSnapshotCore(params: {
       .map((score) => {
         const accountPosts = postsByAccount.get(score.accountId) || [];
         const decayedRawScore = calculateDecayedRawScoreFromPosts(accountPosts);
-        const rawScore = decayedRawScore + (score.adjustmentTotalScore || 0);
+        // Apply exponent compression (same as calculateScoreComponents) to reduce top-rank gaps
+        const compressedRawScore = decayedRawScore > 0
+          ? Math.pow(decayedRawScore, SCORE_CONSTANTS.RAW_SCORE_EXPONENT)
+          : 0;
+        const rawScore = compressedRawScore + (score.adjustmentTotalScore || 0);
         const consistencyBonus = calculateConsistencyBonus(score.uniqueActiveDays);
 
         const lastSeenDate = new Date(score.lastSeenAt);
@@ -481,7 +485,7 @@ export const handler = async (
       const result = await runSnapshotCore({ customDate: rawCustomDate, dryRun });
 
       if (dryRun) {
-        const preview = result.snapshots.slice(0, 50).map((s) => ({
+        const preview = result.snapshots.slice(0, 200).map((s) => ({
           rank: s.rank,
           username: s.username,
           displayName: s.displayName,
@@ -561,7 +565,7 @@ export const handler = async (
     const result = await runSnapshotCore({ customDate, dryRun });
 
     if (dryRun) {
-      const preview = result.snapshots.slice(0, 50).map((s) => ({
+      const preview = result.snapshots.slice(0, 200).map((s) => ({
         rank: s.rank,
         username: s.username,
         userScore: s.userScore,
