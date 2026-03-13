@@ -315,14 +315,14 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
-    // EventBridge rule: Run daily at 09:00 KST (00:00 UTC)
+    // EventBridge rule: Run daily at 10:00 KST (01:00 UTC)
     const snapshotScheduleRule = new events.Rule(this, 'LeaderboardV3SnapshotSchedule', {
       ruleName: `${envPrefix}leaderboard-v3-snapshot-schedule`,
-      description: 'Daily snapshot generation for Leaderboard V3 at 09:00 KST',
-      enabled: false,
+      description: 'Daily snapshot generation for Leaderboard V3 at 10:00 KST',
+      enabled: true,
       schedule: events.Schedule.cron({
         minute: '0',
-        hour: '0', // 00:00 UTC = 09:00 KST
+        hour: '1', // 01:00 UTC = 10:00 KST
       }),
     });
 
