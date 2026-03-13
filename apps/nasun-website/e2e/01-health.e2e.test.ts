@@ -13,8 +13,6 @@ describe('01 — Endpoint Health Checks', () => {
     { name: 'Deactivate User API', url: URLS.deactivateUser },
     { name: 'Link Account API', url: URLS.linkAccount, path: '/link', method: 'POST' },
     { name: 'Price API', url: URLS.priceApi, path: '/api/prices' },
-    { name: 'Supply Count API', url: URLS.supplyCount, path: '/getSupplyCount/TIER1' },
-
     { name: 'Backup Price API', url: URLS.backupPrice, path: '/BackupPrices' },
     { name: 'User Count API', url: URLS.userCount },
     { name: 'Follower Count API', url: URLS.followerCount },
@@ -36,7 +34,6 @@ describe('01 — Endpoint Health Checks', () => {
       }
 
       // Any response that isn't a server error or timeout means the endpoint is alive
-      // NOTE: Supply Count API returns 502 — known backend issue (Lambda crash)
       expect(res.status).toBeLessThanOrEqual(502);
     });
   }

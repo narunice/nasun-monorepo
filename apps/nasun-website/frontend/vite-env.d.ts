@@ -25,7 +25,6 @@ interface ImportMetaEnv {
   readonly VITE_PRICE_API_ENDPOINT: string;
   readonly VITE_BACKUP_API_ENDPOINT: string;
   readonly VITE_RANDOM_IMAGE_API_ENDPOINT: string;
-  readonly VITE_SUPPLY_COUNT_API_ENDPOINT: string;
   readonly VITE_WALLET_API_ENDPOINT: string;
   readonly VITE_GENSOL_URL: string;
 }

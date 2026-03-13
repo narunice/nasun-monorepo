@@ -18,7 +18,6 @@ const BaseEnvSchema = z.object({
 
   // API 엔드포인트
   VITE_RANDOM_IMAGE_API_ENDPOINT: z.string().url(),
-  VITE_SUPPLY_COUNT_API_ENDPOINT: z.string().url(),
   VITE_WALLET_API_ENDPOINT: z.string().url(),
   VITE_PRICE_API_ENDPOINT: z.string().url(),
   VITE_BACKUP_API_ENDPOINT: z.string().url(),
