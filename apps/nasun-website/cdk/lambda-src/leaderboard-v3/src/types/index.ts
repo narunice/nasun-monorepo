@@ -58,6 +58,9 @@ export const SCORE_CONSTANTS = {
   DAILY_CAP_ORIGINAL: 3,
   DAILY_CAP_QUOTE: 4,
   DAILY_CAP_REPLY: 10,
+  // Raw score compression exponent to reduce score gaps between top ranks
+  // RawScore^0.8 compresses high scores more than low scores (e.g., 300 -> 121, 20 -> 13)
+  RAW_SCORE_EXPONENT: 0.8,
 };
 
 // Language scale factors for follower normalization
@@ -184,7 +187,7 @@ export interface ComputedUserScore {
 
   // Computed values
   effectivePosts: number; // log₂(postCount + 1)
-  rawScore: number; // totalPostScore × effectivePosts / postCount
+  rawScore: number; // (totalPostScore × effectivePosts / postCount) ^ RAW_SCORE_EXPONENT
   consistencyBonus: number; // 1 + log₂(uniqueActiveDays + 1) × 0.1
   freshnessMultiplier: number; // 1 / (1 + daysSinceLastPost / FRESHNESS_HALF_LIFE_DAYS)
   userScore: number; // rawScore × consistencyBonus × freshnessMultiplier
