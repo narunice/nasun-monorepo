@@ -222,7 +222,26 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const handleImageLoad = useCallback(() => setImageLoaded(true), []);
 
   // Display Name & Avatar
-  const displayName = user?.username || user?.twitterHandle || user?.email?.split("@")[0] || "User";
+  const displayName = (() => {
+    if (!user) return "User";
+    // 1. X (Twitter) display name - primary or linked
+    const tw = user.linkedAccounts?.twitter;
+    const xDisplayName = user.provider === "Twitter"
+      ? user.username
+      : tw?.username;
+    if (xDisplayName) return xDisplayName;
+
+    // 2. Google email name - primary or linked
+    const gl = user.linkedAccounts?.google;
+    const email = user.provider === "Google" ? user.email : gl?.email;
+    if (email) return email.split("@")[0];
+
+    // 3. Wallet address fallback
+    if (user.walletAddress) {
+      return `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`;
+    }
+    return "User";
+  })();
   const profileImageUrl = user?.profileImageUrl;
 
   // For Nasun Wallet users, generate a deterministic identicon from wallet address
