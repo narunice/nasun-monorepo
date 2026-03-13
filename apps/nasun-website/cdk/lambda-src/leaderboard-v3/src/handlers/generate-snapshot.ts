@@ -342,7 +342,8 @@ async function runSnapshotCore(params: {
           0,
           Math.floor((refDate.getTime() - lastSeenDate.getTime()) / (1000 * 60 * 60 * 24))
         );
-        const freshnessMultiplier = 1 / (1 + daysSinceLastPost / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
+        const effectiveDays = Math.max(0, daysSinceLastPost - SCORE_CONSTANTS.FRESHNESS_GRACE_DAYS);
+        const freshnessMultiplier = 1 / (1 + effectiveDays / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
         const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier);
 
         return {

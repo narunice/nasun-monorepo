@@ -45,6 +45,7 @@ export const SCORE_CONSTANTS = {
   CONSISTENCY_BONUS_MULTIPLIER: 0.1,
   CONSISTENCY_BONUS_MAX: 1.5, // cap at 30 days
   FRESHNESS_HALF_LIFE_DAYS: 7, // Half-life reduced from 14 to 7 days for faster decay
+  FRESHNESS_GRACE_DAYS: 3, // No decay for the first 3 days after last post
   // Reply decay: use postCount^0.7 instead of postCount for weaker decay
   // Original/Quote: log₂(N+1)/N (full decay)
   // Reply: log₂(N+1)/N^0.7 (weaker decay, rewards engagement)
