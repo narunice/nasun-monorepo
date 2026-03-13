@@ -18,13 +18,11 @@ import {
   FeaturedFeedItem,
   BadgeType,
   Post,
-  SeasonAccountScore,
   DYNAMO_KEYS,
 } from '../types';
 import {
   getActiveSeason,
   getSeasonById,
-  getSeasonAccountScores,
   getBannedAccountIds,
 } from '../services/dynamodb-client';
 import { createResponse, getRequestOrigin } from '../utils/response';
@@ -189,17 +187,9 @@ export const handler = async (
 
     // 2. Identify Target Users (Rankers and Climbers)
     
-    // A. Top 3 Rankers
-    const allScores = await getSeasonAccountScores(seasonId);
+    // A. Top 3 Rankers (from latest snapshot, consistent with leaderboard page)
     const bannedIds = await getBannedAccountIds();
-    const topRankers = allScores
-      .filter((score) => !bannedIds.has(score.accountId))
-      .sort((a, b) => b.userScore - a.userScore)
-      .slice(0, 3);
-
-    // B. Top 3 Climbers (excluding rankers to always fill 3 distinct climber slots)
     const todayDate = getTodayDateString();
-    const sevenDaysAgo = getDateNDaysAgo(7);
     const currentSnapshot = await getSnapshot(seasonId, todayDate);
 
     // Fallback if today's snapshot not ready
@@ -209,6 +199,14 @@ export const handler = async (
       for (const [k, v] of yesterdaySnapshot) currentSnapshot.set(k, v);
       console.log(`[FeaturedFeed] Today snapshot empty, using yesterday's (${yesterday}), size=${yesterdaySnapshot.size}`);
     }
+
+    const topRankers = Array.from(currentSnapshot.values())
+      .filter((s) => !bannedIds.has(s.accountId))
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 3);
+
+    // B. Top 3 Climbers (excluding rankers to always fill 3 distinct climber slots)
+    const sevenDaysAgo = getDateNDaysAgo(7);
 
     // Smart Fallback for previous snapshot: 7d → 1d
     let previousDate = sevenDaysAgo;

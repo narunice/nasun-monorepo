@@ -523,8 +523,8 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.postsTable.grantReadData(generateSnapshotLambda); // Read posts for batch decay calculation
     this.seasonAccountsTable.grantReadWriteData(createPostLambda); // Update season-specific aggregates
     this.seasonAccountsTable.grantReadData(getLeaderboardLambda); // Read season rankings
-    this.seasonAccountsTable.grantReadData(generateSnapshotLambda); // Read scores for snapshot
-    this.accountsTable.grantReadData(generateSnapshotLambda); // Read banned accounts for filtering
+    this.seasonAccountsTable.grantReadWriteData(generateSnapshotLambda); // Read scores + persist corrected displayNames
+    this.accountsTable.grantReadWriteData(generateSnapshotLambda); // Read accounts + persist corrected displayNames
     this.snapshotsTable.grantReadData(getLeaderboardLambda); // Read past snapshots
     this.snapshotsTable.grantReadWriteData(generateSnapshotLambda); // Write snapshots, read previous
     this.snapshotsTable.grantReadData(getTopClimbersLambda); // Read snapshots for comparison
