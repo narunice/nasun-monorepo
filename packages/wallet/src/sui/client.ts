@@ -511,13 +511,13 @@ function decodePassword(encoded: string): string {
 }
 
 /**
- * Save password to session storage (for auto-unlock on page refresh)
+ * Save password to localStorage (for auto-unlock on page refresh and tab reopen)
  * Only works when sessionPersist is enabled.
  *
  * Security features:
  * - 30-minute expiry time
  * - Domain binding (prevents use on other domains)
- * - sessionStorage clears on tab close
+ * - Cleared on browser restart via session cookie guard in AuthProvider
  *
  * Note: This is a convenience feature with security trade-offs.
  * For maximum security, disable sessionPersist.
@@ -533,7 +533,7 @@ export function saveSessionPassword(password: string): void {
       d: window.location.origin,
       v: 1,
     };
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
   } catch (error) {
     console.warn('Failed to save session:', error);
   }
@@ -550,7 +550,7 @@ export function saveSessionPassword(password: string): void {
 export function getSessionPassword(): string | null {
   if (!isSessionPersistEnabled()) return null;
   try {
-    const stored = sessionStorage.getItem(SESSION_KEY);
+    const stored = localStorage.getItem(SESSION_KEY);
     if (!stored) return null;
 
     // Try to parse as new format
@@ -592,7 +592,7 @@ export function getSessionPassword(): string | null {
  */
 export function clearSessionPassword(): void {
   try {
-    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
   } catch (error) {
     console.warn('Failed to clear session:', error);
   }
