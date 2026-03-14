@@ -31,7 +31,7 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
   const rankImprovement = climber.rankChange.direction === 'up' ? climber.rankChange.amount : 0;
 
   return (
-    <div className="relative bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl p-4 hover:shadow-lg hover:scale-[1.01] transition-all duration-200">
+    <div className="relative h-full flex flex-col bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl p-4 hover:shadow-lg hover:scale-[1.01] transition-all duration-200">
       {/* Medal badge - temporarily hidden
       {position <= 3 && (
         <div className="absolute -top-3 -left-3 z-10 text-2xl xl:text-3xl">
@@ -88,9 +88,9 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
       </div>
 
       {/* Rank change section */}
-      <div className="space-y-3">
+      <div className="flex-1 space-y-3">
         {/* Rank Change label + transition */}
-        <div className="text-sm">
+        <div className="text-sm whitespace-nowrap">
           <span className="text-nasun-white/50">{t("v3.climbers.rankChange")} </span>
           <span className="text-nasun-white/40">#{climber.previousRank}</span>
           <span className="text-nasun-white/30 mx-1">→</span>
@@ -119,18 +119,18 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
       </div>
 
       {/* Stats section (V2 style) */}
-      <div className="border-t border-nasun-c4/50 pt-3 mt-3 space-y-1.5">
+      <div className="border-t border-nasun-c4/50 pt-3 mt-auto space-y-1.5">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">{t("v3.climbers.pointIncrease")}</span>
-          <span className="text-gray-200">{climber.scoreIncrease?.toFixed(2) || '0'}</span>
+          <span className="text-gray-200">{climber.scoreIncrease?.toFixed(3) || '0'}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">{t("v3.climbers.percentage")}</span>
-          <span className="text-gray-200">{climber.percentageIncrease?.toFixed(2) || '0.00'}%</span>
+          <span className="text-gray-200">{climber.percentageIncrease?.toFixed(3) || '0.000'}%</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">{t("v3.climbers.currentPoints")}</span>
-          <span className="text-gray-200">{climber.currentScore.toFixed(2)}</span>
+          <span className="text-gray-200">{climber.currentScore.toFixed(3)}</span>
         </div>
       </div>
     </div>
