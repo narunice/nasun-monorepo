@@ -231,7 +231,7 @@ export function LeaderboardViewTab() {
                       {entry.uniqueActiveDays}
                     </td>
                     <td className="py-3 px-2 text-right text-nasun-c3 font-medium">
-                      {entry.userScore.toFixed(2)}
+                      {entry.userScore.toFixed(3)}
                     </td>
                     {viewMode === "season" && (
                       <td className="py-3 px-2 text-right">
