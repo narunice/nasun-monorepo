@@ -26,7 +26,7 @@ import {
   getBannedAccountIds,
 } from '../services/dynamodb-client';
 import { createResponse, getRequestOrigin } from '../utils/response';
-import { getTodayDateString, getDateNDaysAgo } from '../utils/date';
+import { getTodayDateString, getDateNDaysAgo, getDayOfYearKST } from '../utils/date';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -144,14 +144,18 @@ async function getBestRecentPost(accountId: string): Promise<Post | null> {
   if (!result.Items || result.Items.length === 0) return null;
 
   const candidates = (result.Items as Post[]).filter(
-    (post) => post.postType !== 'reply'
+    (post) => post.postType === 'original' || post.postType === 'quote'
   );
 
   if (candidates.length === 0) return null;
 
   // Sort by postScore descending; treat missing postScore as 0
   candidates.sort((a, b) => (b.postScore ?? 0) - (a.postScore ?? 0));
-  return candidates[0];
+
+  // Rotate among top 3 posts daily for content variety while maintaining quality
+  const top = candidates.slice(0, 3);
+  const dayOfYear = getDayOfYearKST();
+  return top[dayOfYear % top.length];
 }
 
 /**
