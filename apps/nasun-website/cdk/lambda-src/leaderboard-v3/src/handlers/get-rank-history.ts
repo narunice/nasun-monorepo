@@ -26,6 +26,8 @@ import {
 } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { getDateNDaysAgo } from '../utils/date';
+import { countBannedAboveRank } from '../utils/snapshot-utils';
+import { getBannedAccountIds } from '../services/dynamodb-client';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -307,10 +309,24 @@ export const handler = async (
       startDate
     );
 
-    // Convert snapshots to history entries
-    const history: RankHistoryEntry[] = snapshots.map((snapshot) => ({
+    // Adjust ranks by filtering banned accounts (consistent with other endpoints)
+    const bannedIds = await getBannedAccountIds();
+
+    let adjustedRanks: number[];
+    if (bannedIds.size > 0) {
+      const bannedAboveCounts = await Promise.all(
+        snapshots.map((s) =>
+          countBannedAboveRank(seasonId!, s.snapshotDate, s.rank, bannedIds)
+        )
+      );
+      adjustedRanks = snapshots.map((s, i) => Math.max(1, s.rank - bannedAboveCounts[i]));
+    } else {
+      adjustedRanks = snapshots.map((s) => s.rank);
+    }
+
+    const history: RankHistoryEntry[] = snapshots.map((snapshot, index) => ({
       date: snapshot.snapshotDate,
-      rank: snapshot.rank,
+      rank: adjustedRanks[index],
       userScore: snapshot.userScore,
       postCount: snapshot.postCount,
       rankChange: snapshot.rankChange,
