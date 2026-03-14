@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { useWallet, useZkLogin, usePasskeyStore, clearSessionPassword } from "@nasun/wallet";
+import { useWallet, useZkLogin, useZkLoginStore, usePasskeyStore, clearSessionPassword } from "@nasun/wallet";
 
 /**
  * Detects when the wallet is disconnected while the user is still
@@ -27,10 +27,17 @@ export default function WalletDisconnectModal() {
   const [showModal, setShowModal] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const signingOutRef = useRef(false);
-  const prevHasWalletRef = useRef<boolean | null>(null);
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  const prevNonZkWalletRef = useRef<boolean | null>(null);
 
-  const hasWallet =
-    walletStatus !== "disconnected" || isZkConnected || passkeyAddress !== null;
+  // Keep ref in sync so Zustand subscribe callback never reads stale value
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
+  // Whether a non-zkLogin wallet exists (self-custody or passkey)
+  const hasNonZkWallet =
+    walletStatus !== "disconnected" || passkeyAddress !== null;
 
   // Listen for intentional sign-out events (dispatchEvent is synchronous per DOM spec)
   useEffect(() => {
@@ -41,27 +48,41 @@ export default function WalletDisconnectModal() {
     return () => window.removeEventListener("nasun:signing-out", handler);
   }, []);
 
-  // Detect wallet existence true → false transition
+  // Detect zkLogin disconnection via direct Zustand subscription.
+  // This fires synchronously on store change, outside React's render cycle,
+  // so it is immune to React 18 batching and concurrent unmount cascades.
   useEffect(() => {
-    // Skip initial render
-    if (prevHasWalletRef.current === null) {
-      prevHasWalletRef.current = hasWallet;
+    const unsub = useZkLoginStore.subscribe((state, prev) => {
+      // Only act on the actual disconnection transition
+      if (!prev.isConnected || state.isConnected) return;
+
+      if (isAuthenticatedRef.current && !signingOutRef.current) {
+        setShowModal(true);
+      }
+      // Reset flag only when a real transition is processed
+      signingOutRef.current = false;
+    });
+    return unsub;
+  }, []);
+
+  // Detect non-zkLogin wallet removal (self-custody delete / passkey clear)
+  useEffect(() => {
+    if (prevNonZkWalletRef.current === null) {
+      prevNonZkWalletRef.current = hasNonZkWallet;
       return;
     }
 
-    if (
-      prevHasWalletRef.current &&
-      !hasWallet &&
-      isAuthenticated &&
-      !signingOutRef.current
-    ) {
+    // Only act on the actual removal transition
+    const wasRemoved = prevNonZkWalletRef.current && !hasNonZkWallet;
+    prevNonZkWalletRef.current = hasNonZkWallet;
+
+    if (!wasRemoved) return;
+
+    if (!isZkConnected && isAuthenticated && !signingOutRef.current) {
       setShowModal(true);
     }
-
-    prevHasWalletRef.current = hasWallet;
-    // Reset flag after processing the transition
     signingOutRef.current = false;
-  }, [hasWallet, isAuthenticated]);
+  }, [hasNonZkWallet, isZkConnected, isAuthenticated]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
