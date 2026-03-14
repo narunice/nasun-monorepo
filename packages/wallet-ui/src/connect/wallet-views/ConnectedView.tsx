@@ -420,22 +420,24 @@ export function ConnectedView(props: ConnectedViewProps) {
       />
 
       {/* Session Actions - Always visible */}
-      <div className="px-2 pb-2 pt-1 bg-gray-100 dark:bg-zinc-700/50">
+      <div className="px-2 pb-2 pt-3 bg-gray-100 dark:bg-zinc-700/50">
         {variant === "zkLogin" && onSignOut ? (
-          <button
-            onClick={onSignOut}
-            className="w-full px-3 py-2 text-sm xl:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            Sign Out
-          </button>
+          <div className="flex justify-center">
+            <button
+              onClick={() => setViewMode("signout-confirm")}
+              className="px-6 py-1.5 text-sm xl:text-base text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-300 dark:hover:border-red-500/50 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              Sign Out
+            </button>
+          </div>
         ) : (
           <div className="flex gap-2">
             {onLock && (
