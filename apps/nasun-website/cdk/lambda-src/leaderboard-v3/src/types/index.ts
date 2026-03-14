@@ -68,9 +68,9 @@ export const SCORE_CONSTANTS = {
 // Normalizes followers to English-equivalent scale
 export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
   en: 1.0, // Base scale
-  zh: 1.3, // Chinese CT ~77% of English
-  ja: 1.8, // Japanese CT ~56% of English
-  ko: 3.0, // Korean CT ~33% of English
+  zh: 1.15, // Chinese CT
+  ja: 1.4, // Japanese CT
+  ko: 2.0, // Korean CT
 };
 
 // Legacy: Language-based follower thresholds (kept for backwards compatibility)
