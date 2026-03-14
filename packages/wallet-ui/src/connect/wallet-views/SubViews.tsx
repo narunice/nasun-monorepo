@@ -279,7 +279,7 @@ export function SignOutConfirmationView({
         </button>
         <button
           onClick={onConfirm}
-          className="flex-1 px-3 py-2 text-sm xl:text-base font-medium rounded transition-colors bg-red-600 hover:bg-red-700 text-white"
+          className="flex-1 px-3 py-2 text-sm xl:text-base font-medium rounded transition-colors bg-gray-700 hover:bg-gray-800 dark:bg-zinc-600 dark:hover:bg-zinc-500 text-white"
         >
           Sign Out
         </button>
