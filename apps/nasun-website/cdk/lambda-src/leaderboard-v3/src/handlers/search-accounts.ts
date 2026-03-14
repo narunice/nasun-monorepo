@@ -17,7 +17,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { Account, Platform, DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
-import { getBannedAccountIds } from '../services/dynamodb-client';
+import { getBannedAccountIds, getSeasonById } from '../services/dynamodb-client';
 import { getLatestSnapshot, computeDisplayRanks } from '../utils/snapshot-utils';
 
 // Initialize DynamoDB client
@@ -110,8 +110,14 @@ async function getSeasonRanks(
 ): Promise<Map<string, { userScore: number; rank: number }>> {
   const rankMap = new Map<string, { userScore: number; rank: number }>();
 
-  // Get latest snapshot (same source as leaderboard table)
-  const { entries } = await getLatestSnapshot(seasonId);
+  // Look up season to determine correct snapshot date (ended seasons use endDate)
+  const season = await getSeasonById(seasonId);
+  if (!season) {
+    return rankMap;
+  }
+
+  const isEndedSeason = season.status === 'ended' || season.status === 'archived';
+  const { entries } = await getLatestSnapshot(seasonId, isEndedSeason ? season.endDate : undefined);
   if (entries.length === 0) {
     return rankMap;
   }
