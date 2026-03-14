@@ -13,6 +13,7 @@ export interface GenesisPassCheckResponse {
     registered: boolean;
     walletAddress?: string;
     registeredAt?: string;
+    walletConflict?: boolean;
   };
 }
 
@@ -21,6 +22,7 @@ export interface GenesisPassRegisterResponse {
   data?: {
     walletAddress: string;
     registeredAt: string;
+    replaced?: boolean;
   };
   error?: string;
   message?: string;
