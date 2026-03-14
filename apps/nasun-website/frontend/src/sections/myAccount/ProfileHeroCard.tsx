@@ -634,7 +634,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 5. EVM Wallet - hidden until mainnet launch
+            {/* 5. EVM Wallet */}
             <AccountItem
               provider="metamask"
               description="Link your EVM wallet for NFT allowlists"
@@ -665,7 +665,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 ) : null,
               ]}
             />
-            */}
           </div>
         </div>
       </div>
