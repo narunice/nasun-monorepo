@@ -3,7 +3,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { NavItem, SubMenuItem } from "../../types/routes";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faBars, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faBars, faXmark, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import { ExternalLink } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useActiveState } from "../../hooks/useActiveState";
@@ -17,6 +17,7 @@ type Props = {
   closeAllMenus: () => void;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (state: boolean) => void;
+  isAdmin: boolean;
 };
 
 export default function MobileNav({
@@ -26,6 +27,7 @@ export default function MobileNav({
   closeAllMenus,
   mobileMenuOpen,
   setMobileMenuOpen,
+  isAdmin,
 }: Props) {
   const { getMobileStyles, isActive } = useActiveState();
   const mobileStyles = getMobileStyles();
@@ -242,6 +244,24 @@ export default function MobileNav({
                 )}
               </div>
           ))}
+
+          {isAdmin && (
+            <>
+              <div className="w-full border-t border-nasun-black/10 my-3" />
+              <div>
+                <Link
+                  to="/admin"
+                  onClick={(e) => handleLinkClick(e, "/admin")}
+                  className={`flex items-center gap-2 text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
+                    location.pathname.startsWith("/admin") ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faShieldHalved} className="text-sm" />
+                  Admin
+                </Link>
+              </div>
+            </>
+          )}
         </nav>
         </div>
       </Dialog.Content>
