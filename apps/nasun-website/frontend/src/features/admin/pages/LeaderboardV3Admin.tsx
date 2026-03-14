@@ -22,6 +22,7 @@ import {
   LeaderboardViewTab,
   SeasonManagementTab,
   ScoreAdjustmentTab,
+  FeaturedFeedTab,
   type AdminTabId,
 } from "../components/leaderboard-v3";
 
@@ -73,6 +74,7 @@ export function LeaderboardV3Admin() {
           {activeTab === "leaderboard" && <LeaderboardViewTab />}
           {activeTab === "seasons" && <SeasonManagementTab />}
           {activeTab === "adjust" && <ScoreAdjustmentTab />}
+          {activeTab === "featured" && <FeaturedFeedTab />}
         </div>
       </SectionLayout>
     </AdminLayout>

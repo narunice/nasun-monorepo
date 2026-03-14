@@ -9,3 +9,4 @@ export { LeaderboardViewTab } from './LeaderboardViewTab';
 export { SeasonManagementTab } from './SeasonManagementTab';
 export { SeasonFormModal } from './SeasonFormModal';
 export { ScoreAdjustmentTab } from './ScoreAdjustmentTab';
+export { FeaturedFeedTab } from './FeaturedFeedTab';

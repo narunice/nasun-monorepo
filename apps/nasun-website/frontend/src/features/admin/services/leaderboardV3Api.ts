@@ -390,6 +390,81 @@ export async function triggerSnapshot(
   return response.json();
 }
 
+// ============================================
+// Curated Featured Feed API
+// ============================================
+
+export interface CuratedFeedEntry {
+  postId: string;
+  badge: string;
+  order: number;
+}
+
+export interface EnrichedFeedItem {
+  type: 'post';
+  postId: string;
+  author: {
+    accountId: string;
+    username: string;
+    originalUsername?: string;
+    displayName?: string;
+    profileImageUrl?: string;
+    badges: string[];
+  };
+  content: {
+    platform: string;
+    postUrl: string;
+    postType: string;
+    signals: string[];
+    createdAt: string;
+  };
+}
+
+export interface CuratedFeedResponse {
+  success: boolean;
+  items: CuratedFeedEntry[];
+  enrichedItems: EnrichedFeedItem[];
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+/**
+ * Get the current curated featured feed (admin)
+ */
+export async function getCuratedFeed(token: string): Promise<CuratedFeedResponse> {
+  const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/featured-feed`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to fetch curated feed: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Replace the curated featured feed (admin)
+ */
+export async function setCuratedFeed(
+  token: string,
+  items: CuratedFeedEntry[],
+): Promise<void> {
+  const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/featured-feed`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ items }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to save curated feed: ${response.status}`);
+  }
+}
+
 /**
  * Calculate post score preview (client-side calculation) - Legacy discrete version
  * Kept for backwards compatibility

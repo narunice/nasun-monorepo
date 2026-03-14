@@ -65,6 +65,13 @@ const BADGE_CONFIG: Record<
     bgColor: "bg-nasun-c7/10",
     borderColor: "border-nasun-c7/20",
   },
+  featured: {
+    icon: "✦",
+    label: "featured",
+    color: "text-nasun-c1",
+    bgColor: "bg-nasun-c1/10",
+    borderColor: "border-nasun-c1/20",
+  },
 };
 
 export function FeedPostCard({ item }: FeedPostCardProps) {
@@ -107,7 +114,11 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
         >
           <span className="text-xs">{badgeConfig.icon}</span>
           <span className={`text-[10px] font-bold uppercase tracking-wider ${badgeConfig.color}`}>
-            {badgeConfig.label === "ranker" ? t("v3.feed.ranker") : t("v3.feed.climber")}
+            {badgeConfig.label === "featured"
+              ? "featured"
+              : badgeConfig.label === "ranker"
+                ? t("v3.feed.ranker")
+                : t("v3.feed.climber")}
           </span>
         </div>
       </div>
