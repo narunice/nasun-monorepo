@@ -245,6 +245,7 @@ export function PostRegistrationTab() {
               {(["original", "quote", "reply"] as PostType[]).map((type, index) => {
                 const shortcut = ["1", "2", "3"][index];
                 const isActive = form.postType === type;
+                const isReply = type === "reply";
                 return (
                   <button
                     key={type}
@@ -252,7 +253,9 @@ export function PostRegistrationTab() {
                     onClick={() => form.setPostType(type)}
                     className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
                       isActive
-                        ? "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
+                        ? isReply
+                          ? "bg-amber-700/40 border-amber-500/60 text-amber-300 shadow-lg"
+                          : "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
                         : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
                     }`}
                   >
@@ -262,6 +265,11 @@ export function PostRegistrationTab() {
                 );
               })}
             </div>
+            {form.postType === "reply" && (
+              <p className="mt-2 text-xs text-amber-400">
+                Replies are excluded from Featured Feed and scored at 0.5x multiplier.
+              </p>
+            )}
           </div>
 
           {/* URL Input */}
