@@ -93,6 +93,43 @@ async function getPreviousDaySnapshot(
 }
 
 /**
+ * Get previous day's full snapshot data for rawScore monotonicity floor.
+ * Returns Map<accountId, DailySnapshot> with pagination for large snapshots.
+ */
+async function getFullPreviousDaySnapshot(
+  seasonId: string,
+  yesterdayDate: string
+): Promise<Map<string, DailySnapshot>> {
+  const pk = `${seasonId}#${yesterdayDate}`;
+  const snapshotMap = new Map<string, DailySnapshot>();
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: SNAPSHOTS_TABLE,
+        KeyConditionExpression: 'pk = :pk',
+        ExpressionAttributeValues: {
+          ':pk': pk,
+        },
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+    );
+
+    if (result.Items) {
+      for (const item of result.Items) {
+        const snapshot = item as DailySnapshot;
+        snapshotMap.set(snapshot.accountId, snapshot);
+      }
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  return snapshotMap;
+}
+
+/**
  * Write snapshots in batches (DynamoDB limit: 25 items per batch)
  * Retries unprocessed items with exponential backoff.
  */
@@ -302,6 +339,12 @@ async function runSnapshotCore(params: {
     ? new Date(customDate + 'T00:00:00+09:00')
     : undefined;
 
+  // Fetch full previous snapshot for rawScore monotonicity floor
+  const todayDate = customDate || getTodayDateString();
+  const yesterdayDate = getYesterdayDateString(todayDate);
+  const prevFullSnapshot = await getFullPreviousDaySnapshot(activeSeason.seasonId, yesterdayDate);
+  console.log(`Previous snapshot has ${prevFullSnapshot.size} entries for rawScore floor`);
+
   // Recalculate scores and sort by userScore
   let scoredAccounts: (SeasonAccountScore & {
     userScore: number;
@@ -333,7 +376,10 @@ async function runSnapshotCore(params: {
         const compressedRawScore = decayedRawScore > 0
           ? Math.pow(decayedRawScore, SCORE_CONSTANTS.RAW_SCORE_EXPONENT)
           : 0;
-        const rawScore = compressedRawScore + (score.adjustmentTotalScore || 0);
+        const calculatedRawScore = compressedRawScore + (score.adjustmentTotalScore || 0);
+        // Monotonicity floor: rawScore must never decrease from previous snapshot
+        const prevEntry = prevFullSnapshot.get(score.accountId);
+        const rawScore = Math.max(calculatedRawScore, prevEntry?.rawScore || 0);
         const consistencyBonus = calculateConsistencyBonus(score.uniqueActiveDays);
 
         const lastSeenDate = new Date(score.lastSeenAt);
@@ -357,16 +403,23 @@ async function runSnapshotCore(params: {
       .sort((a, b) => b.userScore - a.userScore);
   } else {
     scoredAccounts = filteredScores
-      .map((score) => ({
-        ...score,
-        ...recalculateUserScore(score, referenceDate),
-      }))
+      .map((score) => {
+        const calculated = recalculateUserScore(score, referenceDate);
+        // Monotonicity floor: rawScore must never decrease from previous snapshot
+        const prevEntry = prevFullSnapshot.get(score.accountId);
+        const rawScore = Math.max(calculated.rawScore, prevEntry?.rawScore || 0);
+        const userScore = Math.max(0, rawScore * calculated.consistencyBonus * calculated.freshnessMultiplier);
+        return {
+          ...score,
+          ...calculated,
+          rawScore: Math.round(rawScore * 1000) / 1000,
+          userScore: Math.round(userScore * 1000) / 1000,
+        };
+      })
       .sort((a, b) => b.userScore - a.userScore);
   }
 
   // Get previous day's ranks for rank change calculation
-  const todayDate = customDate || getTodayDateString();
-  const yesterdayDate = getYesterdayDateString(todayDate);
   const previousRanks = await getPreviousDaySnapshot(activeSeason.seasonId, yesterdayDate);
 
   if (customDate) {
