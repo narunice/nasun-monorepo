@@ -634,8 +634,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 5. EVM Wallet — hidden until Genesis Pass flow is finalized */}
-            {/* <AccountItem
+            {/* 5. EVM Wallet */}
+            <AccountItem
               provider="metamask"
               description="Link your EVM wallet for NFT allowlists"
               identifier={
@@ -664,7 +664,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                   </Button>
                 ) : null,
               ]}
-            /> */}
+            />
           </div>
         </div>
       </div>
