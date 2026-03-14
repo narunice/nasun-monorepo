@@ -40,3 +40,14 @@ export function getDateNDaysAgo(days: number): string {
   kst.setDate(kst.getDate() - days);
   return kst.toISOString().split('T')[0];
 }
+
+/**
+ * Get the day-of-year number in KST (1-366).
+ * Used for deterministic daily rotation of featured content.
+ */
+export function getDayOfYearKST(): number {
+  const now = new Date();
+  const kst = new Date(now.getTime() + KST_OFFSET_MS);
+  const startOfYear = new Date(Date.UTC(kst.getUTCFullYear(), 0, 1));
+  return Math.floor((kst.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+}
