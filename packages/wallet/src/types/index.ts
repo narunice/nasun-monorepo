@@ -216,6 +216,8 @@ export interface AddressBookEntry {
   address: string;
   /** User-defined label/name */
   label?: string;
+  /** Timestamp when label was last changed (for sync merge) */
+  labelUpdatedAt: number;
   /** First transaction timestamp */
   firstTransactionAt: number;
   /** Last transaction timestamp */
@@ -224,6 +226,10 @@ export interface AddressBookEntry {
   transactionCount: number;
   /** Is this address trusted/verified by user */
   isTrusted: boolean;
+  /** Timestamp when isTrusted was last changed (for sync merge) */
+  trustedUpdatedAt: number;
+  /** Soft-delete timestamp. If set, entry is considered deleted. */
+  deletedAt?: number;
 }
 
 /** Address book storage */
