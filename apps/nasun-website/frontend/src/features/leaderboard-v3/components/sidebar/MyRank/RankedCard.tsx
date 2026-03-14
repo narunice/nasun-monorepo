@@ -84,7 +84,7 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
                 <span className="text-xs text-nasun-white/40">/ {data.totalUsers}</span>
               )}
             </div>
-            <div className="text-sm text-nasun-white/60">{data.userScore?.toFixed(2)} {t("v3.myRank.score")}</div>
+            <div className="text-sm text-nasun-white/60">{data.userScore?.toFixed(3)} {t("v3.myRank.score")}</div>
           </div>
         </div>
 
