@@ -23,6 +23,7 @@ export {
   ReceiveView,
   AddTokenView,
   DeleteConfirmationView,
+  SignOutConfirmationView,
 } from "./SubViews";
 export { NetworkSelector } from "./NetworkSelector";
 export { AssetsTabContent } from "./AssetsTabContent";
