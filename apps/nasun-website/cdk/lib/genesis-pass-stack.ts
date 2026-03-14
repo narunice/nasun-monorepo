@@ -194,7 +194,8 @@ export class GenesisPassStack extends cdk.Stack {
 
     const genesisPassResource = this.api.root.addResource("genesis-pass");
 
-    // POST /genesis-pass/register (JWT required) - Register
+    // GET    /genesis-pass/register (JWT required) - Check own status
+    // POST   /genesis-pass/register (JWT required) - Register (upsert)
     // DELETE /genesis-pass/register (JWT required) - Withdraw
     const registerResource = genesisPassResource.addResource("register");
     const registerIntegration = new apigateway.LambdaIntegration(registerLambda, { proxy: true });
@@ -202,6 +203,7 @@ export class GenesisPassStack extends cdk.Stack {
       authorizer: tokenAuthorizer,
       authorizationType: apigateway.AuthorizationType.CUSTOM,
     };
+    registerResource.addMethod("GET", registerIntegration, authOptions);
     registerResource.addMethod("POST", registerIntegration, authOptions);
     registerResource.addMethod("DELETE", registerIntegration, authOptions);
 

@@ -99,7 +99,37 @@ export async function withdrawGenesisPass(cognitoToken: string): Promise<{ succe
 }
 
 /**
- * Check if a wallet address is registered on the Genesis Pass allowlist.
+ * Check own Genesis Pass registration status via JWT identity.
+ * Used when wallet address is not available (e.g., MetaMask unlinked).
+ */
+export async function getMyGenesisPassStatus(cognitoToken: string): Promise<GenesisPassCheckResponse> {
+  if (!API_BASE) throw new GenesisPassApiError("Genesis Pass API is not configured");
+
+  const url = `${API_BASE}/genesis-pass/register`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cognitoToken}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new GenesisPassApiError(
+      data.message || "Failed to check registration status",
+      response.status,
+      data.error,
+    );
+  }
+
+  return data as GenesisPassCheckResponse;
+}
+
+/**
+ * Check if a wallet address is registered on the Genesis Pass allowlist (public).
  */
 export async function checkGenesisPass(walletAddress: string): Promise<GenesisPassCheckResponse> {
   if (!API_BASE) throw new GenesisPassApiError("Genesis Pass API is not configured");

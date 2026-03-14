@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
-import { useGenesisPassStatus } from "../../hooks/useGenesisPassStatus";
+import { useGenesisPassStatus, invalidateGenesisPassStatus } from "../../hooks/useGenesisPassStatus";
 import { withdrawUserApi } from "../../services/battalionNftApi";
 import { withdrawGenesisPass } from "../../services/genesisPassApi";
 import { useBattalionNftStore } from "../../stores/useBattalionNftStore";
@@ -46,15 +46,15 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
     isRegistered: isBattalionRegistered,
   } = useBattalionNftStatus(undefined, effectiveXUserId);
 
-  // Genesis Pass Status -- lookup by EVM wallet address
+  // Genesis Pass Status -- lookup by EVM wallet address, falls back to identity
+  const cognitoToken = user?.cognitoToken ?? battalionCognitoToken;
   const evmWalletAddress =
     user?.linkedAccounts?.metamask?.walletAddress
     || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
   const {
     isRegistered: isGenesisPassRegistered,
     isConfigured: isGenesisPassConfigured,
-    refetch: refetchGenesisPass,
-  } = useGenesisPassStatus(evmWalletAddress);
+  } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
   const handleWithdraw = async () => {
     const registeredWallet = battalionStatus?.walletAddress;
@@ -94,18 +94,17 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
   const handleGenesisPassWithdraw = async () => {
     if (isGenesisWithdrawing) return;
 
-    const token = user?.cognitoToken;
-    if (!token) {
+    if (!cognitoToken) {
       toast.error("Session expired. Please sign out and sign in again to withdraw.");
       return;
     }
 
     try {
       setIsGenesisWithdrawing(true);
-      await withdrawGenesisPass(token);
+      await withdrawGenesisPass(cognitoToken);
       setShowGenesisWithdrawDialog(false);
       toast.success("Successfully withdrawn from Genesis Pass Allowlist.");
-      refetchGenesisPass();
+      invalidateGenesisPassStatus();
     } catch (err) {
       console.error("[DangerZoneCard] Genesis Pass withdraw error:", err);
       toast.error("Failed to withdraw. Please try again.");

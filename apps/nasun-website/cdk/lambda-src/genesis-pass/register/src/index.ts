@@ -1,7 +1,8 @@
 /**
- * Genesis Pass Allowlist Register + Withdraw Lambda
+ * Genesis Pass Allowlist Register + Withdraw + Status Lambda
  *
- * POST   /genesis-pass/register (JWT required) - Register EVM wallet
+ * GET    /genesis-pass/register (JWT required) - Check own registration status
+ * POST   /genesis-pass/register (JWT required) - Register EVM wallet (upsert)
  * DELETE /genesis-pass/register (JWT required) - Withdraw registration
  *
  * Security: Reads EVM wallet address from UserProfiles table (server-side),
@@ -32,7 +33,7 @@ function corsHeaders(origin?: string): Record<string, string> {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": getCorsOrigin(origin),
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "POST,DELETE,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
   };
 }
 
@@ -44,9 +45,12 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>, origin?
   };
 }
 
-async function handleWithdraw(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
-  // 1. Find registration by identityId via GSI
-  const existing = await client.send(
+/**
+ * Query the identityId-index GSI to find an existing registration.
+ * Returns the item if found, or null.
+ */
+async function findRegistrationByIdentity(identityId: string) {
+  const result = await client.send(
     new QueryCommand({
       TableName: ALLOWLIST_TABLE,
       IndexName: "identityId-index",
@@ -55,39 +59,216 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
       Limit: 1,
     })
   );
+  return result.Items && result.Items.length > 0 ? result.Items[0] : null;
+}
 
-  if (!existing.Items || existing.Items.length === 0) {
-    return jsonResponse(404, { success: false, error: "NOT_FOUND", message: "No registration found for this account" }, origin);
+// ==================== GET: Check own registration status ====================
+
+async function handleGetStatus(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
+  const existing = await findRegistrationByIdentity(identityId);
+
+  if (!existing || existing.status !== "ACTIVE") {
+    return jsonResponse(200, {
+      success: true,
+      data: { registered: false },
+    }, origin);
   }
-
-  const record = existing.Items[0];
-  const walletAddress = record.walletAddress as string;
-
-  // 2. Delete with ownership + status guard
-  try {
-    await client.send(
-      new DeleteCommand({
-        TableName: ALLOWLIST_TABLE,
-        Key: { walletAddress },
-        ConditionExpression: "identityId = :id AND #s = :active",
-        ExpressionAttributeNames: { "#s": "status" },
-        ExpressionAttributeValues: { ":id": identityId, ":active": "ACTIVE" },
-      })
-    );
-  } catch (err: any) {
-    if (err.name === "ConditionalCheckFailedException") {
-      return jsonResponse(409, { success: false, error: "CANNOT_WITHDRAW", message: "Registration cannot be withdrawn in its current state" }, origin);
-    }
-    throw err;
-  }
-
-  console.log(`[genesis-pass-withdraw] Withdrawn: ${walletAddress} (identity: ${identityId})`);
 
   return jsonResponse(200, {
     success: true,
-    data: { walletAddress },
+    data: {
+      registered: true,
+      walletAddress: existing.walletAddress,
+      registeredAt: existing.registeredAt,
+    },
   }, origin);
 }
+
+// ==================== DELETE: Withdraw registration ====================
+
+async function handleWithdraw(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
+  console.log(`[genesis-pass-withdraw] Processing withdrawal for identity: ${identityId}`);
+
+  // 1. Try to find registration via linked MetaMask wallet
+  const profileResult = await client.send(
+    new GetCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { identityId },
+    })
+  );
+
+  if (!profileResult.Item) {
+    console.error(`[genesis-pass-withdraw] User profile not found: ${identityId}`);
+    return jsonResponse(404, { success: false, error: "PROFILE_NOT_FOUND", message: "User profile not found" }, origin);
+  }
+
+  const linkedAccounts = profileResult.Item.linkedAccounts;
+  const metamaskAccount = linkedAccounts?.metamask;
+  const walletAddress = metamaskAccount?.walletAddress
+    || (profileResult.Item.provider === "MetaMask" ? profileResult.Item.walletAddress : undefined);
+
+  let targetWallet: string | undefined;
+
+  if (walletAddress) {
+    // MetaMask is linked: look up by wallet PK
+    const normalizedAddress = walletAddress.toLowerCase();
+    const existing = await client.send(
+      new GetCommand({
+        TableName: ALLOWLIST_TABLE,
+        Key: { walletAddress: normalizedAddress },
+      })
+    );
+
+    if (existing.Item && existing.Item.identityId === identityId && existing.Item.status === "ACTIVE") {
+      targetWallet = normalizedAddress;
+    }
+  }
+
+  // 2. Fallback: find registration via identityId GSI (MetaMask unlinked or wallet mismatch)
+  if (!targetWallet) {
+    const gsiResult = await findRegistrationByIdentity(identityId);
+
+    if (!gsiResult) {
+      return jsonResponse(404, { success: false, error: "NOT_FOUND", message: "No registration found for this account" }, origin);
+    }
+
+    if (gsiResult.status !== "ACTIVE") {
+      return jsonResponse(409, { success: false, error: "CANNOT_WITHDRAW", message: "Registration cannot be withdrawn in its current state" }, origin);
+    }
+
+    targetWallet = gsiResult.walletAddress as string;
+  }
+
+  // 3. Delete the allowlist entry with ownership guard
+  await client.send(
+    new DeleteCommand({
+      TableName: ALLOWLIST_TABLE,
+      Key: { walletAddress: targetWallet },
+      ConditionExpression: "identityId = :id",
+      ExpressionAttributeValues: { ":id": identityId },
+    })
+  );
+
+  console.log(`[genesis-pass-withdraw] Withdrawn: ${targetWallet} (identity: ${identityId})`);
+
+  return jsonResponse(200, {
+    success: true,
+    data: { walletAddress: targetWallet },
+  }, origin);
+}
+
+// ==================== POST: Register (with upsert for wallet change) ====================
+
+async function handleRegister(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
+  console.log(`[genesis-pass-register] Processing registration for identity: ${identityId}`);
+
+  // 1. Check if this identity already registered (GSI query)
+  const existingByIdentity = await findRegistrationByIdentity(identityId);
+
+  // 2. Read user profile to get linked MetaMask address
+  const profileResult = await client.send(
+    new GetCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: { identityId },
+    })
+  );
+
+  if (!profileResult.Item) {
+    console.error(`[genesis-pass-register] User profile not found: ${identityId}`);
+    return jsonResponse(404, { success: false, error: "PROFILE_NOT_FOUND", message: "User profile not found" }, origin);
+  }
+
+  const linkedAccounts = profileResult.Item.linkedAccounts;
+  const metamaskAccount = linkedAccounts?.metamask;
+  const walletAddress = metamaskAccount?.walletAddress
+    || (profileResult.Item.provider === "MetaMask" ? profileResult.Item.walletAddress : undefined);
+
+  if (!walletAddress) {
+    return jsonResponse(400, {
+      success: false,
+      error: "NO_EVM_WALLET",
+      message: "No EVM wallet linked to your account. Please connect a MetaMask wallet first.",
+    }, origin);
+  }
+
+  // 3. Validate and normalize EVM address
+  if (!EVM_ADDRESS_REGEX.test(walletAddress)) {
+    console.error(`[genesis-pass-register] Invalid EVM address format: ${walletAddress}`);
+    return jsonResponse(400, { success: false, error: "INVALID_ADDRESS", message: "Invalid EVM wallet address format" }, origin);
+  }
+
+  const normalizedAddress = walletAddress.toLowerCase();
+
+  // 4. Check if the new wallet address is already registered by someone else
+  // (must happen BEFORE deleting old entry to prevent data loss on conflict)
+  const existingByAddress = await client.send(
+    new GetCommand({
+      TableName: ALLOWLIST_TABLE,
+      Key: { walletAddress: normalizedAddress },
+    })
+  );
+
+  if (existingByAddress.Item && existingByAddress.Item.identityId !== identityId) {
+    return jsonResponse(409, {
+      success: false,
+      error: "ADDRESS_ALREADY_REGISTERED",
+      message: "This wallet address is already registered by another account",
+    }, origin);
+  }
+
+  // 5. Handle existing registration (upsert logic)
+  if (existingByIdentity) {
+    const existingWallet = (existingByIdentity.walletAddress as string).toLowerCase();
+
+    // Same wallet: already registered, no change needed
+    if (existingWallet === normalizedAddress) {
+      return jsonResponse(409, {
+        success: false,
+        error: "ALREADY_REGISTERED",
+        message: "You have already registered for the Genesis Pass allowlist",
+        data: { walletAddress: existingWallet, registeredAt: existingByIdentity.registeredAt },
+      }, origin);
+    }
+
+    // Different wallet: upsert (delete old + create new)
+    console.log(`[genesis-pass-register] Wallet change: ${existingWallet} -> ${normalizedAddress} (identity: ${identityId})`);
+
+    // Delete old entry with ownership guard
+    await client.send(
+      new DeleteCommand({
+        TableName: ALLOWLIST_TABLE,
+        Key: { walletAddress: existingWallet },
+        ConditionExpression: "identityId = :id",
+        ExpressionAttributeValues: { ":id": identityId },
+      })
+    );
+  }
+
+  // 6. Register to allowlist
+  const now = new Date().toISOString();
+  await client.send(
+    new PutCommand({
+      TableName: ALLOWLIST_TABLE,
+      Item: {
+        walletAddress: normalizedAddress,
+        identityId,
+        registeredAt: now,
+        status: "ACTIVE",
+      },
+      ConditionExpression: "attribute_not_exists(walletAddress)",
+    })
+  );
+
+  const isUpdate = !!existingByIdentity;
+  console.log(`[genesis-pass-register] ${isUpdate ? "Updated" : "Registered"}: ${normalizedAddress} (identity: ${identityId})`);
+
+  return jsonResponse(200, {
+    success: true,
+    data: { walletAddress: normalizedAddress, registeredAt: now, updated: isUpdate },
+  }, origin);
+}
+
+// ==================== Main Handler ====================
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   const origin = event.headers?.origin || event.headers?.Origin;
@@ -97,128 +278,32 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   }
 
   try {
-    // 1. Extract identityId from authorizer context
+    // Extract identityId from authorizer context
     const identityId = event.requestContext.authorizer?.identityId;
     if (!identityId) {
       console.error("[genesis-pass] No identityId in authorizer context");
       return jsonResponse(401, { success: false, error: "UNAUTHORIZED", message: "Authentication required" }, origin);
     }
 
-    // Route: DELETE = withdraw, POST = register
-    if (event.httpMethod === "DELETE") {
+    if (event.httpMethod === "GET") {
+      return handleGetStatus(identityId, origin);
+    } else if (event.httpMethod === "DELETE") {
       return handleWithdraw(identityId, origin);
+    } else if (event.httpMethod === "POST") {
+      return handleRegister(identityId, origin);
     }
 
-    console.log(`[genesis-pass-register] Processing registration for identity: ${identityId}`);
-
-    // 2. Check if this identity already registered (GSI query)
-    // Note: This check is not atomic with the PutCommand below.
-    // In a race condition, one identity could theoretically register twice.
-    // The PK ConditionExpression prevents duplicate wallet addresses atomically.
-    // For production scale, consider TransactWriteItems for full atomicity.
-    const existingByIdentity = await client.send(
-      new QueryCommand({
-        TableName: ALLOWLIST_TABLE,
-        IndexName: "identityId-index",
-        KeyConditionExpression: "identityId = :id",
-        ExpressionAttributeValues: { ":id": identityId },
-        Limit: 1,
-      })
-    );
-
-    if (existingByIdentity.Items && existingByIdentity.Items.length > 0) {
-      const existing = existingByIdentity.Items[0];
-      return jsonResponse(409, {
-        success: false,
-        error: "ALREADY_REGISTERED",
-        message: "You have already registered for the Genesis Pass allowlist",
-        data: { walletAddress: existing.walletAddress, registeredAt: existing.registeredAt },
-      }, origin);
-    }
-
-    // 3. Read user profile to get linked MetaMask address
-    const profileResult = await client.send(
-      new GetCommand({
-        TableName: USER_PROFILES_TABLE,
-        Key: { identityId },
-      })
-    );
-
-    if (!profileResult.Item) {
-      console.error(`[genesis-pass-register] User profile not found: ${identityId}`);
-      return jsonResponse(404, { success: false, error: "PROFILE_NOT_FOUND", message: "User profile not found" }, origin);
-    }
-
-    // Extract MetaMask wallet address from linked accounts
-    const linkedAccounts = profileResult.Item.linkedAccounts;
-    const metamaskAccount = linkedAccounts?.metamask;
-    const walletAddress = metamaskAccount?.walletAddress
-      || (profileResult.Item.provider === "MetaMask" ? profileResult.Item.walletAddress : undefined);
-
-    if (!walletAddress) {
-      return jsonResponse(400, {
-        success: false,
-        error: "NO_EVM_WALLET",
-        message: "No EVM wallet linked to your account. Please connect a MetaMask wallet first.",
-      }, origin);
-    }
-
-    // 4. Validate and normalize EVM address
-    if (!EVM_ADDRESS_REGEX.test(walletAddress)) {
-      console.error(`[genesis-pass-register] Invalid EVM address format: ${walletAddress}`);
-      return jsonResponse(400, { success: false, error: "INVALID_ADDRESS", message: "Invalid EVM wallet address format" }, origin);
-    }
-
-    const normalizedAddress = walletAddress.toLowerCase();
-
-    // 5. Check if this wallet address is already registered by someone else
-    const existingByAddress = await client.send(
-      new GetCommand({
-        TableName: ALLOWLIST_TABLE,
-        Key: { walletAddress: normalizedAddress },
-      })
-    );
-
-    if (existingByAddress.Item) {
-      return jsonResponse(409, {
-        success: false,
-        error: "ADDRESS_ALREADY_REGISTERED",
-        message: "This wallet address is already registered",
-      }, origin);
-    }
-
-    // 6. Register to allowlist
-    const now = new Date().toISOString();
-    await client.send(
-      new PutCommand({
-        TableName: ALLOWLIST_TABLE,
-        Item: {
-          walletAddress: normalizedAddress,
-          identityId,
-          registeredAt: now,
-          status: "ACTIVE",
-        },
-        ConditionExpression: "attribute_not_exists(walletAddress)",
-      })
-    );
-
-    console.log(`[genesis-pass-register] Registered: ${normalizedAddress} (identity: ${identityId})`);
-
-    return jsonResponse(200, {
-      success: true,
-      data: { walletAddress: normalizedAddress, registeredAt: now },
-    }, origin);
+    return jsonResponse(405, { success: false, error: "METHOD_NOT_ALLOWED", message: "Method not allowed" }, origin);
   } catch (error: any) {
-    // ConditionalCheckFailedException = race condition on PK
     if (error.name === "ConditionalCheckFailedException") {
       return jsonResponse(409, {
         success: false,
-        error: "ADDRESS_ALREADY_REGISTERED",
-        message: "This wallet address is already registered",
+        error: "CONFLICT",
+        message: "Operation conflicted with another request. Please try again.",
       }, origin);
     }
 
-    console.error("[genesis-pass-register] Error:", error);
-    return jsonResponse(500, { success: false, error: "INTERNAL_ERROR", message: "Registration failed. Please try again." }, origin);
+    console.error("[genesis-pass] Error:", error);
+    return jsonResponse(500, { success: false, error: "INTERNAL_ERROR", message: "Operation failed. Please try again." }, origin);
   }
 }
