@@ -9,6 +9,17 @@ import AppRoutes from "./routes/AppRoutes";
 import { HomePageLoadingProvider, useHomePageLoading } from "./contexts/PageLoadingContext";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import { Button } from "./components/ui/button";
+import { configureAddressBookSync, useAddressBookSync } from "@nasun/wallet";
+import { useUserStore } from "./store/userStore";
+
+// Configure address book sync once at module load
+const WALLET_API_ENDPOINT = import.meta.env.VITE_WALLET_API_ENDPOINT as string;
+if (WALLET_API_ENDPOINT) {
+  configureAddressBookSync({
+    apiEndpoint: WALLET_API_ENDPOINT,
+    getToken: () => useUserStore.getState().user?.cognitoToken ?? null,
+  });
+}
 
 /**
  * Error fallback component with i18n support
@@ -38,6 +49,10 @@ function AppContent() {
   const { isPageReady } = useHomePageLoading();
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
+  const user = useUserStore((state) => state.user);
+
+  // Address book server sync (auto-load on login, auto-save on changes)
+  useAddressBookSync({ identityId: user?.identityId ?? null });
 
   // Disable browser's auto scroll restoration
   useEffect(() => {
