@@ -174,24 +174,32 @@ export const handler = async (
   }
 
   try {
-    // Check for admin-curated feed first (before season resolution)
-    const curatedRecord = await getCuratedFeedRecord();
-    if (curatedRecord && curatedRecord.items.length > 0) {
-      console.log(`[FeaturedFeed] Serving curated feed (${curatedRecord.items.length} items, updated: ${curatedRecord.updatedAt})`);
-      const enrichedItems = await enrichCuratedItems(curatedRecord.items);
+    const MAX_FEED_ITEMS = 15;
 
-      const curatedResponse: FeaturedFeedResponse = {
-        success: true,
-        seasonId: 'curated',
-        items: enrichedItems,
-        calculatedAt: curatedRecord.updatedAt,
-      };
-      return respond(200, curatedResponse);
+    // Check for admin-curated items first (before season resolution)
+    const curatedRecord = await getCuratedFeedRecord();
+    let curatedItems: FeaturedFeedItem[] = [];
+    const curatedAccountIds = new Set<string>();
+
+    if (curatedRecord && curatedRecord.items.length > 0) {
+      curatedItems = await enrichCuratedItems(curatedRecord.items);
+      for (const item of curatedItems) {
+        curatedAccountIds.add(item.author.accountId);
+      }
+      console.log(`[FeaturedFeed] Curated: ${curatedItems.length} items (updated: ${curatedRecord.updatedAt})`);
+
+      // If curated items already fill all slots, return immediately
+      if (curatedItems.length >= MAX_FEED_ITEMS) {
+        return respond(200, {
+          success: true,
+          seasonId: 'curated',
+          items: curatedItems.slice(0, MAX_FEED_ITEMS),
+          calculatedAt: curatedRecord.updatedAt,
+        } as FeaturedFeedResponse);
+      }
     }
 
-    // Fallback: algorithmic feed
-    console.log('[FeaturedFeed] No curated feed found, using algorithmic fallback');
-
+    // Fill remaining slots with algorithmic feed
     const queryParams = event.queryStringParameters || {};
     let seasonId = queryParams.seasonId;
 
@@ -291,19 +299,22 @@ export const handler = async (
 
     await Promise.all(fetchPromises);
 
-    // 5. Construct Ordered Feed
-    const feedItems: FeaturedFeedItem[] = [];
-    const addedAccountIds = new Set<string>();
+    // 5. Construct Ordered Feed (algorithmic portion)
+    const algorithmicItems: FeaturedFeedItem[] = [];
+    const addedAccountIds = new Set<string>(curatedAccountIds); // Exclude curated accounts
+
+    const remainingSlots = MAX_FEED_ITEMS - curatedItems.length;
 
     // Helper to add item
     const addFeedItem = (accountId: string) => {
+      if (algorithmicItems.length >= remainingSlots) return;
       if (addedAccountIds.has(accountId)) return;
-      
+
       const post = postsMap.get(accountId);
       const userInfo = userMap.get(accountId);
-      
+
       if (post && userInfo) {
-        feedItems.push({
+        algorithmicItems.push({
           type: 'post',
           postId: post.postId,
           author: {
@@ -326,24 +337,24 @@ export const handler = async (
       }
     };
 
-    const MAX_FEED_ITEMS = 15;
-
     // Priority 1: Rankers 1-3
     topRankers.forEach(ranker => addFeedItem(ranker.accountId));
     // Priority 2: Climbers 1-3 (skips if already added as ranker)
     topClimbers.forEach(climber => addFeedItem(climber.accountId));
     // Priority 3: Rankers 4+ (fill remaining space)
     for (const ranker of remainingRankers) {
-      if (feedItems.length >= MAX_FEED_ITEMS) break;
+      if (algorithmicItems.length >= remainingSlots) break;
       addFeedItem(ranker.accountId);
     }
 
-    console.log(`[FeaturedFeed] Feed items: ${feedItems.length} (max ${MAX_FEED_ITEMS})`);
+    // Combine: curated first, then algorithmic fill
+    const allItems = [...curatedItems, ...algorithmicItems];
+    console.log(`[FeaturedFeed] Curated: ${curatedItems.length}, Algorithmic: ${algorithmicItems.length}, Total: ${allItems.length}`);
 
     const response: FeaturedFeedResponse = {
       success: true,
-      seasonId,
-      items: feedItems,
+      seasonId: seasonId!,
+      items: allItems,
       calculatedAt: new Date().toISOString(),
     };
 

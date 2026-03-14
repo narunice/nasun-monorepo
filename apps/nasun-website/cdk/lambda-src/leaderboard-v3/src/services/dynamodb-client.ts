@@ -486,12 +486,14 @@ export async function getPostsByAccountId(
   limit = 10
 ): Promise<Post[]> {
   const result = await docClient.send(
-    new ScanCommand({
+    new QueryCommand({
       TableName: POSTS_TABLE,
-      FilterExpression: 'accountId = :accountId',
+      IndexName: 'createdAt-index',
+      KeyConditionExpression: 'accountId = :accountId',
       ExpressionAttributeValues: {
         ':accountId': accountId,
       },
+      ScanIndexForward: false,
       Limit: limit,
     })
   );
