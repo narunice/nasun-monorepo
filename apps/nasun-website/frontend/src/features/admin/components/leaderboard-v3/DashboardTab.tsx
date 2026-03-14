@@ -80,7 +80,7 @@ export function DashboardTab() {
                       {formatTimestamp(activity.timestamp)}
                       {activity.postScore !== undefined && (
                         <span className="ml-2 text-nasun-c3">
-                          Score: {activity.postScore.toFixed(2)}
+                          Score: {activity.postScore.toFixed(3)}
                         </span>
                       )}
                     </div>
@@ -136,7 +136,7 @@ export function DashboardTab() {
                           : `#${user.rank}`}
                   </span>
                   <span className="text-nasun-white flex-1 truncate">@{user.username}</span>
-                  <span className="text-nasun-c3 font-medium">{user.userScore.toFixed(2)}</span>
+                  <span className="text-nasun-c3 font-medium">{user.userScore.toFixed(3)}</span>
                 </div>
               ))}
             </div>

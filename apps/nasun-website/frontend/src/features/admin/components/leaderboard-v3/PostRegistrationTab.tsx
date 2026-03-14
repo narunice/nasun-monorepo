@@ -131,7 +131,7 @@ export function PostRegistrationTab() {
       } else if (result.success && result.post && result.account) {
         setSubmitMessage({
           type: "success",
-          text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(2)})`,
+          text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(3)})`,
         });
         form.reset();
         urlInputRef.current?.focus();
@@ -433,7 +433,7 @@ export function PostRegistrationTab() {
               <span className="ml-2 text-nasun-white/40">({POST_TYPE_LABELS[form.postType]})</span>
             </div>
             <div className="text-2xl font-bold text-nasun-c7">
-              {form.scorePreview.totalScore.toFixed(2)}
+              {form.scorePreview.totalScore.toFixed(3)}
             </div>
           </div>
 
