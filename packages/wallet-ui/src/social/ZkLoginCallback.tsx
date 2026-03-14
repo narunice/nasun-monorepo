@@ -237,8 +237,8 @@ export function ZkLoginCallback({
       {/* Privacy note during proof generation */}
       {step === 'generating_proof' && (
         <div className="mt-6 px-4 py-3 rounded-lg bg-zinc-100 dark:bg-zinc-700 max-w-xs text-center">
-          <p className="text-xs xl:text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed">
-            Your email stays private — this site never sees it.
+          <p className="text-xs xl:text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed text-pretty">
+            Your email stays private - this site never sees it.
             <br />
             <span className="text-zinc-500 dark:text-zinc-400">
               A zero-knowledge proof verifies you without revealing personal info.
