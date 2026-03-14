@@ -183,10 +183,10 @@ async function getTopFive(seasonId: string): Promise<
 }
 
 /**
- * Get recent activity (last 10 posts)
- * Includes postId and editable fields for admin post editing
+ * Get recent activity (last 10 posts) using seasonId-createdAt-index GSI.
+ * Falls back to full table scan if no seasonId is provided.
  */
-async function getRecentActivity(): Promise<
+async function getRecentActivity(seasonId?: string): Promise<
   Array<{
     type: 'post_created' | 'account_created' | 'snapshot_generated';
     description: string;
@@ -203,22 +203,42 @@ async function getRecentActivity(): Promise<
     contentSignals?: string[];
   }>
 > {
-  // Get recent posts
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: POSTS_TABLE,
-      Limit: 100, // Get more to sort
-    })
-  );
+  let posts: Post[];
 
-  const posts = (result.Items || []) as Post[];
+  if (seasonId) {
+    // Use GSI query: returns posts sorted by createdAt descending
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: POSTS_TABLE,
+        IndexName: 'seasonId-createdAt-index',
+        KeyConditionExpression: 'seasonId = :sid',
+        ExpressionAttributeValues: { ':sid': seasonId },
+        ScanIndexForward: false, // newest first
+        Limit: 10,
+      })
+    );
+    posts = (result.Items || []) as Post[];
+  } else {
+    // Fallback: full scan when no active season
+    let allPosts: Post[] = [];
+    let lastEvaluatedKey: Record<string, unknown> | undefined;
+    do {
+      const result = await docClient.send(
+        new ScanCommand({
+          TableName: POSTS_TABLE,
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+      allPosts = allPosts.concat((result.Items || []) as Post[]);
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
 
-  // Sort by createdAt descending and take top 10
-  const recentPosts = posts
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 10);
+    posts = allPosts
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 10);
+  }
 
-  return recentPosts.map((post) => ({
+  return posts.map((post) => ({
     type: 'post_created' as const,
     description: `@${post.username} - ${post.accountRole.toUpperCase()} post registered`,
     timestamp: post.createdAt,
@@ -255,22 +275,23 @@ export const handler = async (
   }
 
   try {
-    // Fetch all stats in parallel
+    // Fetch stats in parallel (activeSeason needed for recentActivity GSI query)
     const [
       totalPosts,
       totalAccounts,
       activeSeason,
       todayPostsCount,
       todayAccountsCount,
-      recentActivity,
     ] = await Promise.all([
       countTotalPosts(),
       countTotalAccounts(),
       getActiveSeason(),
       countTodayPosts(),
       countTodayAccounts(),
-      getRecentActivity(),
     ]);
+
+    // Query recent activity using seasonId GSI for accurate ordering
+    const recentActivity = await getRecentActivity(activeSeason?.seasonId);
 
     // Get top 5 if we have an active season
     let topFive: Array<{ rank: number; username: string; userScore: number }> = [];
