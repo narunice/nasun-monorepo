@@ -30,6 +30,8 @@ import {
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { getTodayDateString, getYesterdayDateString } from '../utils/date';
 import { calculateRankChange } from '../utils/rank';
+import { countBannedAboveRank, getDisplayedTotalUsers } from '../utils/snapshot-utils';
+import { getBannedAccountIds } from '../services/dynamodb-client';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -219,25 +221,6 @@ async function getUserSnapshot(
   return result.Items[0] as DailySnapshot;
 }
 
-/**
- * Get total users count from snapshot
- */
-async function getSnapshotTotalUsers(seasonId: string, dateStr: string): Promise<number> {
-  const pk = `${seasonId}#${dateStr}`;
-
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: SNAPSHOTS_TABLE,
-      KeyConditionExpression: 'pk = :pk',
-      Select: 'COUNT',
-      ExpressionAttributeValues: {
-        ':pk': pk,
-      },
-    })
-  );
-
-  return result.Count || 0;
-}
 
 /**
  * Sync profile data from UserProfiles table to Account + SeasonAccounts tables.
@@ -502,24 +485,39 @@ export const handler = async (
       return respond(200, notRankedResponse);
     }
 
-    // Get rank change
+    // Adjust rank by filtering out banned accounts above user's raw rank
+    const bannedIds = await getBannedAccountIds();
+    const bannedAbove = await countBannedAboveRank(
+      seasonId, usedSnapshotDate, userSnapshot.rank, bannedIds
+    );
+    const adjustedRank = userSnapshot.rank - bannedAbove;
+
+    // Get rank change using adjusted ranks for both today and yesterday
     let rankChange: RankChange;
     if (!isEndedSeason && usedSnapshotDate === todayDate) {
       // Active season with today's snapshot: compute rank change from yesterday
       const yesterdaySnapshot = await getUserSnapshot(seasonId, account.accountId, yesterdayDate);
-      rankChange = calculateRankChange(userSnapshot.rank, yesterdaySnapshot?.rank);
+      if (yesterdaySnapshot) {
+        const yesterdayBannedAbove = await countBannedAboveRank(
+          seasonId, yesterdayDate, yesterdaySnapshot.rank, bannedIds
+        );
+        const adjustedYesterdayRank = yesterdaySnapshot.rank - yesterdayBannedAbove;
+        rankChange = calculateRankChange(adjustedRank, adjustedYesterdayRank);
+      } else {
+        rankChange = calculateRankChange(adjustedRank, undefined);
+      }
     } else {
       // Ended season or using yesterday's snapshot: use stored rank change
       rankChange = userSnapshot.rankChange || { direction: 'same', amount: 0 };
     }
 
-    // Get total users from snapshot
-    const totalUsers = await getSnapshotTotalUsers(seasonId, usedSnapshotDate);
+    // Get total displayed users (excluding banned from snapshot)
+    const totalUsers = await getDisplayedTotalUsers(seasonId, usedSnapshotDate, bannedIds);
 
     // Build response (prefer fresh profile data from UserProfiles)
     const data: MyRankData = {
       status: 'ranked',
-      rank: userSnapshot.rank,
+      rank: adjustedRank,
       userScore: userSnapshot.userScore,
       postCount: userSnapshot.postCount,
       username: userSnapshot.username,
