@@ -103,7 +103,7 @@ export function FeaturedFeedTab() {
       const username = urlMatch[1];
 
       // Look up the account to find the post
-      const accountData = await getAccount(username);
+      const accountData = await getAccount(username, 'twitter', { includePosts: true });
       if (!accountData.found || !accountData.recentPosts) {
         setLookupStatus(`Account @${username} not found in leaderboard`);
         return;
