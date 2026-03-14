@@ -106,6 +106,12 @@ export { useWalletLabel, useWalletLabelStore, isValidWalletLabel, MAX_LABEL_LENG
 // Address Book (Security Phase 2)
 export { useAddressBook, useAddressStatus } from './hooks/useAddressBook';
 
+// Address Book Server Sync
+export { configureAddressBookSync, isAddressBookSyncEnabled } from './core/addressBookSync';
+export type { AddressBookSyncConfig } from './core/addressBookSync';
+export { useAddressBookSync } from './hooks/useAddressBookSync';
+export type { UseAddressBookSyncOptions, UseAddressBookSyncResult } from './hooks/useAddressBookSync';
+
 // Address Book Types
 export type { AddressBookEntry, AddressBook } from './types';
 

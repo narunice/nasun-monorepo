@@ -6,6 +6,7 @@ import { registerWallet } from './handlers/registerWallet';
 import { listWallets } from './handlers/listWallets';
 import { removeWallet } from './handlers/removeWallet';
 import { verifyToken } from './utils/auth';
+import { getAddressBook, saveAddressBook, ValidationError, PayloadTooLargeError } from './handlers/addressBook';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 function getCorsOrigin(origin?: string): string {
@@ -64,6 +65,12 @@ export const handler = async (
     }
     if (pathSegment === 'remove' && event.httpMethod === 'POST') {
       return await handleRemove(event);
+    }
+    if (pathSegment === 'address-book' && event.httpMethod === 'GET') {
+      return await handleGetAddressBook(event);
+    }
+    if (pathSegment === 'address-book' && event.httpMethod === 'POST') {
+      return await handleSaveAddressBook(event);
     }
 
     // Legacy single-wallet endpoints (existing auth via requestContext)
@@ -158,4 +165,59 @@ async function handleRemove(event: APIGatewayProxyEvent): Promise<APIGatewayProx
   });
 
   return jsonResponse(result.statusCode, result.body);
+}
+
+async function handleGetAddressBook(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+  const identityId = await verifyToken(event.headers?.Authorization || event.headers?.authorization);
+  if (!identityId) {
+    return jsonResponse(401, { error: 'Unauthorized' });
+  }
+
+  const { addressBook, version } = await getAddressBook(identityId);
+  return jsonResponse(200, {
+    addressBook: addressBook ?? { entries: {}, updatedAt: 0 },
+    version,
+  });
+}
+
+async function handleSaveAddressBook(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+  const identityId = await verifyToken(event.headers?.Authorization || event.headers?.authorization);
+  if (!identityId) {
+    return jsonResponse(401, { error: 'Unauthorized' });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch {
+    return jsonResponse(400, { error: 'Invalid JSON body' });
+  }
+
+  if (!body.addressBook || typeof body.addressBook !== 'object') {
+    return jsonResponse(400, { error: 'addressBook is required' });
+  }
+
+  const expectedVersion = typeof body.version === 'number' ? body.version : 0;
+
+  try {
+    const result = await saveAddressBook(
+      identityId,
+      body.addressBook as any,
+      expectedVersion,
+    );
+
+    if (result.conflict) {
+      return jsonResponse(409, { error: 'Version conflict', message: 'Address book was modified by another device' });
+    }
+
+    return jsonResponse(200, { success: true });
+  } catch (error: unknown) {
+    if (error instanceof ValidationError) {
+      return jsonResponse(400, { error: error.message });
+    }
+    if (error instanceof PayloadTooLargeError) {
+      return jsonResponse(413, { error: error.message });
+    }
+    throw error;
+  }
 }
