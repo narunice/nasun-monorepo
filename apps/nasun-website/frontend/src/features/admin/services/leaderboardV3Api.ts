@@ -149,9 +149,13 @@ export async function getLeaderboard(
  */
 export async function getAccount(
   username: string,
-  platform: string = 'twitter'
+  platform: string = 'twitter',
+  options?: { includePosts?: boolean }
 ): Promise<GetAccountResponse> {
   const searchParams = new URLSearchParams({ platform });
+  if (options?.includePosts) {
+    searchParams.set('includePosts', 'true');
+  }
   const url = `${LEADERBOARD_V3_API_URL}/v3/accounts/${encodeURIComponent(username)}?${searchParams}`;
 
   const response = await fetch(url, {
