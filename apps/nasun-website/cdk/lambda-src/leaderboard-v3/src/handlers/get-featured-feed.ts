@@ -1,8 +1,8 @@
 /**
  * GET /v3/feed/featured
  *
- * Returns a combined feed of recent posts from top rankers and top climbers.
- * Used for the vertical community feed on the Leaderboard V3 page.
+ * Returns featured posts for the leaderboard sidebar.
+ * Priority: admin-curated feed > algorithmic fallback.
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
@@ -25,6 +25,7 @@ import {
   getSeasonById,
   getBannedAccountIds,
 } from '../services/dynamodb-client';
+import { getCuratedFeedRecord, enrichCuratedItems } from '../services/curated-feed';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { getTodayDateString, getDateNDaysAgo, getDayOfYearKST } from '../utils/date';
 
@@ -173,6 +174,24 @@ export const handler = async (
   }
 
   try {
+    // Check for admin-curated feed first (before season resolution)
+    const curatedRecord = await getCuratedFeedRecord();
+    if (curatedRecord && curatedRecord.items.length > 0) {
+      console.log(`[FeaturedFeed] Serving curated feed (${curatedRecord.items.length} items, updated: ${curatedRecord.updatedAt})`);
+      const enrichedItems = await enrichCuratedItems(curatedRecord.items);
+
+      const curatedResponse: FeaturedFeedResponse = {
+        success: true,
+        seasonId: 'curated',
+        items: enrichedItems,
+        calculatedAt: curatedRecord.updatedAt,
+      };
+      return respond(200, curatedResponse);
+    }
+
+    // Fallback: algorithmic feed
+    console.log('[FeaturedFeed] No curated feed found, using algorithmic fallback');
+
     const queryParams = event.queryStringParameters || {};
     let seasonId = queryParams.seasonId;
 
