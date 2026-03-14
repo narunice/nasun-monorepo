@@ -36,6 +36,7 @@ import {
   ReceiveView,
   AddTokenView,
   DeleteConfirmationView,
+  SignOutConfirmationView,
 } from "./wallet-views";
 import { NFTGallery } from "../nft/NFTGallery";
 import { WCViewRouter } from "../walletconnect";
@@ -95,6 +96,16 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
   "delete-confirm": (s) => (
     <DeleteConfirmationView
       onConfirm={s.confirmDelete}
+      onCancel={() => s.setViewMode("main")}
+    />
+  ),
+
+  "signout-confirm": (s) => (
+    <SignOutConfirmationView
+      onConfirm={() => {
+        s.zkLogout();
+        s.closeDropdown();
+      }}
       onCancel={() => s.setViewMode("main")}
     />
   ),

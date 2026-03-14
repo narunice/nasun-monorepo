@@ -9,6 +9,7 @@ export type CoreViewMode =
   | "create-backup"
   | "create-auto-lock"
   | "delete-confirm"
+  | "signout-confirm"
   | "import"
   | "export"
   | "export-mnemonic"

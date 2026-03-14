@@ -252,3 +252,38 @@ export function DeleteConfirmationView({
     </div>
   );
 }
+
+export function SignOutConfirmationView({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="p-4 w-full">
+      <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-3">
+        Sign Out
+      </h3>
+
+      <p className="text-sm xl:text-base text-gray-600 dark:text-zinc-400 mb-4">
+        Are you sure you want to sign out? You can sign back in anytime.
+      </p>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 px-3 py-2 text-sm xl:text-base text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-zinc-600 rounded transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          className="flex-1 px-3 py-2 text-sm xl:text-base font-medium rounded transition-colors bg-red-600 hover:bg-red-700 text-white"
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}
