@@ -57,7 +57,7 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
   if (!suiAccount && !walletAddress) {
     return (
       <p className="text-nasun-white/70 mb-4">
-        {t("walletNotConnected")}
+        EVM Wallet not connected.
       </p>
     );
   }
