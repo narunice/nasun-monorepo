@@ -14,10 +14,11 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
   ScanCommand,
-  QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { Account, Platform, DYNAMO_KEYS, SeasonAccountScore } from '../types';
+import { Account, Platform, DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
+import { getBannedAccountIds } from '../services/dynamodb-client';
+import { getLatestSnapshot, computeDisplayRanks } from '../utils/snapshot-utils';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -29,8 +30,6 @@ const docClient = DynamoDBDocumentClient.from(client, {
 
 const ACCOUNTS_TABLE =
   process.env.LEADERBOARD_V3_ACCOUNTS_TABLE || DYNAMO_KEYS.ACCOUNTS_TABLE;
-const SEASON_ACCOUNTS_TABLE =
-  process.env.LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE || DYNAMO_KEYS.SEASON_ACCOUNTS_TABLE;
 
 interface SearchResult {
   accountId: string;
@@ -101,7 +100,9 @@ async function searchAccounts(
 }
 
 /**
- * Get season ranks for accounts
+ * Get season ranks for accounts using DailySnapshot data.
+ * Uses the same data source as the leaderboard table (snapshot + banned filter + re-rank)
+ * to ensure rank consistency between search results and displayed leaderboard.
  */
 async function getSeasonRanks(
   seasonId: string,
@@ -109,37 +110,26 @@ async function getSeasonRanks(
 ): Promise<Map<string, { userScore: number; rank: number }>> {
   const rankMap = new Map<string, { userScore: number; rank: number }>();
 
-  // Get all season account scores and calculate ranks
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: SEASON_ACCOUNTS_TABLE,
-      FilterExpression: 'seasonId = :seasonId AND sk = :sk',
-      ExpressionAttributeValues: {
-        ':seasonId': seasonId,
-        ':sk': 'SCORE',
-      },
-    })
-  );
-
-  if (!result.Items || result.Items.length === 0) {
+  // Get latest snapshot (same source as leaderboard table)
+  const { entries } = await getLatestSnapshot(seasonId);
+  if (entries.length === 0) {
     return rankMap;
   }
 
-  const scores = result.Items as SeasonAccountScore[];
+  // Filter banned and re-rank (same logic as get-leaderboard.ts)
+  const bannedIds = await getBannedAccountIds();
+  const reranked = computeDisplayRanks(entries, bannedIds);
 
-  // Sort by userScore descending
-  scores.sort((a, b) => (b.userScore || 0) - (a.userScore || 0));
-
-  // Assign ranks and build map for requested accountIds
+  // Build rank map for requested accountIds
   const accountIdSet = new Set(accountIds);
-  scores.forEach((score, index) => {
-    if (accountIdSet.has(score.accountId)) {
-      rankMap.set(score.accountId, {
-        userScore: score.userScore || 0,
-        rank: index + 1,
+  for (const entry of reranked) {
+    if (accountIdSet.has(entry.accountId)) {
+      rankMap.set(entry.accountId, {
+        userScore: entry.userScore || 0,
+        rank: entry.rank,
       });
     }
-  });
+  }
 
   return rankMap;
 }
