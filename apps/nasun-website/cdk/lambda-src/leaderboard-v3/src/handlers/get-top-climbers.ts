@@ -97,7 +97,7 @@ function calculateTopClimbers(
     }
 
     // Only include users who improved their rank (positive change)
-    if (direction === 'up' || direction === 'new') {
+    if ((direction === 'up' || direction === 'new') && current.rank <= 100) {
       const previousScore = previous?.userScore || 0;
       const scoreIncrease = current.userScore - previousScore;
       const percentageIncrease = previousScore > 0
