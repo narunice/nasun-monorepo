@@ -174,8 +174,8 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
             </div>
           )}
 
-          {/* Withdraw Genesis Pass Allowlist */}
-          {isGenesisPassConfigured && isGenesisPassRegistered && (
+          {/* Withdraw Genesis Pass Allowlist -- hidden until Genesis Pass flow is finalized */}
+          {/* {isGenesisPassConfigured && isGenesisPassRegistered && (
             <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
               <div>
                 <h6 className="font-medium text-nasun-white mb-1">Withdraw Genesis Pass</h6>
@@ -192,7 +192,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
                 Withdraw
               </Button>
             </div>
-          )}
+          )} */}
 
           {/* Delete Account */}
           <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
@@ -245,8 +245,8 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Genesis Pass Withdraw Confirmation Dialog */}
-      <Dialog open={showGenesisWithdrawDialog} onOpenChange={setShowGenesisWithdrawDialog}>
+      {/* Genesis Pass Withdraw Confirmation Dialog -- hidden until Genesis Pass flow is finalized */}
+      {/* <Dialog open={showGenesisWithdrawDialog} onOpenChange={setShowGenesisWithdrawDialog}>
         <DialogContent className="bg-gray-900 border-nasun-c5/30">
           <DialogHeader>
             <DialogTitle className="text-nasun-white">Withdraw from Genesis Pass</DialogTitle>
@@ -276,7 +276,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </>
   );
 };
