@@ -605,7 +605,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 !telegram.isVerified && !telegram.isLoading ? (
                   <Button key="join" size="sm" variant="filledOutlineC7" asChild>
                     <a href="https://t.me/nasun_official" target="_blank" rel="noopener noreferrer">
-                      Join Channel
+                      Join
                     </a>
                   </Button>
                 ) : null,
