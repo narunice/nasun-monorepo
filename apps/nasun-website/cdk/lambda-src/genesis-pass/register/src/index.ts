@@ -67,10 +67,31 @@ async function findRegistrationByIdentity(identityId: string) {
 async function handleGetStatus(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
   const existing = await findRegistrationByIdentity(identityId);
 
+  // Read linked wallet from UserProfiles to detect conflict
+  const profileResult = await client.send(
+    new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId } })
+  );
+  const linkedAccounts = profileResult.Item?.linkedAccounts;
+  const linkedWallet = (
+    linkedAccounts?.metamask?.walletAddress
+    || (profileResult.Item?.provider === "MetaMask" ? profileResult.Item?.walletAddress : undefined)
+  )?.toLowerCase();
+
+  // Check if linked wallet is registered by a different identity
+  let walletConflict = false;
+  if (linkedWallet) {
+    const addressEntry = await client.send(
+      new GetCommand({ TableName: ALLOWLIST_TABLE, Key: { walletAddress: linkedWallet } })
+    );
+    if (addressEntry.Item && addressEntry.Item.identityId !== identityId && addressEntry.Item.status === "ACTIVE") {
+      walletConflict = true;
+    }
+  }
+
   if (!existing || existing.status !== "ACTIVE") {
     return jsonResponse(200, {
       success: true,
-      data: { registered: false },
+      data: { registered: false, walletConflict },
     }, origin);
   }
 
@@ -80,6 +101,7 @@ async function handleGetStatus(identityId: string, origin?: string): Promise<API
       registered: true,
       walletAddress: existing.walletAddress,
       registeredAt: existing.registeredAt,
+      walletConflict,
     },
   }, origin);
 }
@@ -199,8 +221,7 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
 
   const normalizedAddress = walletAddress.toLowerCase();
 
-  // 4. Check if the new wallet address is already registered by someone else
-  // (must happen BEFORE deleting old entry to prevent data loss on conflict)
+  // 4. Check if the new wallet address is already registered
   const existingByAddress = await client.send(
     new GetCommand({
       TableName: ALLOWLIST_TABLE,
@@ -208,20 +229,17 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
     })
   );
 
-  if (existingByAddress.Item && existingByAddress.Item.identityId !== identityId) {
-    return jsonResponse(409, {
-      success: false,
-      error: "ADDRESS_ALREADY_REGISTERED",
-      message: "This wallet address is already registered by another account",
-    }, origin);
+  const isTakeover = !!(existingByAddress.Item && existingByAddress.Item.identityId !== identityId);
+  if (isTakeover) {
+    console.log(`[genesis-pass-register] Takeover: ${normalizedAddress} from ${existingByAddress.Item!.identityId} to ${identityId}`);
   }
 
-  // 5. Handle existing registration (upsert logic)
+  // 5. Handle existing registration by this identity (upsert: wallet change)
   if (existingByIdentity) {
     const existingWallet = (existingByIdentity.walletAddress as string).toLowerCase();
 
     // Same wallet: already registered, no change needed
-    if (existingWallet === normalizedAddress) {
+    if (existingWallet === normalizedAddress && !isTakeover) {
       return jsonResponse(409, {
         success: false,
         error: "ALREADY_REGISTERED",
@@ -230,21 +248,21 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
       }, origin);
     }
 
-    // Different wallet: upsert (delete old + create new)
-    console.log(`[genesis-pass-register] Wallet change: ${existingWallet} -> ${normalizedAddress} (identity: ${identityId})`);
-
-    // Delete old entry with ownership guard
-    await client.send(
-      new DeleteCommand({
-        TableName: ALLOWLIST_TABLE,
-        Key: { walletAddress: existingWallet },
-        ConditionExpression: "identityId = :id",
-        ExpressionAttributeValues: { ":id": identityId },
-      })
-    );
+    // Different wallet: delete old entry before creating new one
+    if (existingWallet !== normalizedAddress) {
+      console.log(`[genesis-pass-register] Wallet change: ${existingWallet} -> ${normalizedAddress} (identity: ${identityId})`);
+      await client.send(
+        new DeleteCommand({
+          TableName: ALLOWLIST_TABLE,
+          Key: { walletAddress: existingWallet },
+          ConditionExpression: "identityId = :id",
+          ExpressionAttributeValues: { ":id": identityId },
+        })
+      );
+    }
   }
 
-  // 6. Register to allowlist
+  // 6. Register to allowlist (unconditional put for takeover support)
   const now = new Date().toISOString();
   await client.send(
     new PutCommand({
@@ -255,16 +273,15 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
         registeredAt: now,
         status: "ACTIVE",
       },
-      ConditionExpression: "attribute_not_exists(walletAddress)",
     })
   );
 
   const isUpdate = !!existingByIdentity;
-  console.log(`[genesis-pass-register] ${isUpdate ? "Updated" : "Registered"}: ${normalizedAddress} (identity: ${identityId})`);
+  console.log(`[genesis-pass-register] ${isTakeover ? "Takeover" : isUpdate ? "Updated" : "Registered"}: ${normalizedAddress} (identity: ${identityId})`);
 
   return jsonResponse(200, {
     success: true,
-    data: { walletAddress: normalizedAddress, registeredAt: now, updated: isUpdate },
+    data: { walletAddress: normalizedAddress, registeredAt: now, updated: isUpdate, replaced: isTakeover },
   }, origin);
 }
 
