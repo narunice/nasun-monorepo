@@ -49,7 +49,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
     return (
       <div className="bg-nasun-c6 border border-nasun-c4/30 rounded-lg shadow-lg p-3">
         <p className="font-semibold text-white mb-2">{data.displayDate}</p>
-        <p className="text-gray-400">Unranked</p>
+        <p className="text-gray-400">Chart Out</p>
       </div>
     );
   }
@@ -66,7 +66,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
         </p>
         <p className="text-gray-300">
           <span className="font-medium">{t('rankHistory.chart.score')}:</span>{' '}
-          <span className="font-bold text-nasun-c7">{(data.score ?? 0).toFixed(2)}</span>
+          <span className="font-bold text-nasun-c7">{(data.score ?? 0).toFixed(3)}</span>
         </p>
       </div>
     </div>

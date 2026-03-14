@@ -191,7 +191,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
       <div className="grid grid-cols-4 gap-2 mb-4">
         <StatCard
           label={isSeasonEnded ? t('rankHistory.stats.final') : t('rankHistory.stats.current')}
-          value={isCurrentlyUnranked ? 'Unranked' : `#${stats.currentRank}`}
+          value={isCurrentlyUnranked ? 'Chart Out' : `#${stats.currentRank}`}
           className="!p-2"
         />
         <StatCard
