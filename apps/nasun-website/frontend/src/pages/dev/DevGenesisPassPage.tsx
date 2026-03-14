@@ -17,6 +17,7 @@ import { useReducer, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import {
   Dialog,
@@ -500,24 +501,75 @@ const DevGenesisPassPage = () => {
 
   return (
     <PageLayout>
+      {/* Hero Section */}
+      <div className="relative h-screen overflow-hidden bg-nasun-black">
+        {/* Video placeholder */}
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-900 via-nasun-black to-nasun-black">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-nasun-c5/30 via-transparent to-transparent" />
+          </div>
+          <svg className="w-16 h-16 text-nasun-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+          </svg>
+        </div>
+
+        {/* Gradient overlay */}
+        <div
+          className="absolute inset-0 -mb-[2px] pointer-events-none z-10"
+          style={{ background: "linear-gradient(to bottom, transparent 50%, rgb(25, 22, 21) 95%)" }}
+        />
+
+        {/* Title overlay */}
+        <div className="absolute inset-0 z-20 flex items-center justify-center">
+          <SectionTitle as="h1" color="white" className="uppercase text-center !text-5xl md:!text-7xl tracking-wider">
+            Genesis Pass
+          </SectionTitle>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center">
+          <svg
+            className="w-5 h-5 md:w-6 md:h-6 text-nasun-white/50 animate-bounce"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Description + CTA Section */}
       <SectionLayout maxWidth="5xl" titleAlign="center">
-        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-8">
-          <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-nasun-white mb-3">
-              Genesis Pass Allowlist
-            </h1>
-            <p className="text-nasun-white/60 text-sm md:text-base max-w-md mx-auto">
-              Register your EVM wallet address for the Genesis Pass NFT allowlist.
+        <div className="flex flex-col items-center gap-10 py-16 md:py-24">
+          <div className="text-center max-w-xl">
+            <p className="text-nasun-white/70 text-base md:text-lg leading-relaxed">
+              Genesis Pass is a proof of membership for those who have been with Nasun from Day 1.
+              By registering for the allowlist, you secure your place as a founding community member
+              and gain priority access to the Genesis Pass NFT mint.
             </p>
           </div>
 
-          <ButtonV3
-            variant="nw2"
-            size="lg"
-            onClick={handleOpen}
-          >
-            Register for Allowlist
-          </ButtonV3>
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <ButtonV3
+              variant="nw2"
+              size="lg"
+              className="sm:min-w-[200px]"
+              onClick={handleOpen}
+            >
+              Register for Allowlist
+            </ButtonV3>
+            <ButtonV3
+              variant="nw2"
+              outline
+              size="lg"
+              className="sm:min-w-[200px]"
+              onClick={() => window.open("https://opensea.io", "_blank", "noopener,noreferrer")}
+            >
+              View on OpenSea
+            </ButtonV3>
+          </div>
         </div>
       </SectionLayout>
 
