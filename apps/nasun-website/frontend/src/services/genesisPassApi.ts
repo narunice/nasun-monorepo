@@ -69,6 +69,36 @@ export async function registerGenesisPass(cognitoToken: string): Promise<Genesis
 }
 
 /**
+ * Withdraw from Genesis Pass allowlist.
+ * Server resolves the registered wallet via identityId from JWT.
+ */
+export async function withdrawGenesisPass(cognitoToken: string): Promise<{ success: boolean; data?: { walletAddress: string } }> {
+  if (!API_BASE) throw new GenesisPassApiError("Genesis Pass API is not configured");
+
+  const url = `${API_BASE}/genesis-pass/register`;
+
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cognitoToken}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new GenesisPassApiError(
+      data.message || "Failed to withdraw from allowlist",
+      response.status,
+      data.error,
+    );
+  }
+
+  return data;
+}
+
+/**
  * Check if a wallet address is registered on the Genesis Pass allowlist.
  */
 export async function checkGenesisPass(walletAddress: string): Promise<GenesisPassCheckResponse> {

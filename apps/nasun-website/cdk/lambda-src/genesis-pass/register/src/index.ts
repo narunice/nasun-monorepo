@@ -1,7 +1,8 @@
 /**
- * Genesis Pass Allowlist Register Lambda
+ * Genesis Pass Allowlist Register + Withdraw Lambda
  *
- * POST /genesis-pass/register (JWT required)
+ * POST   /genesis-pass/register (JWT required) - Register EVM wallet
+ * DELETE /genesis-pass/register (JWT required) - Withdraw registration
  *
  * Security: Reads EVM wallet address from UserProfiles table (server-side),
  * not from client request body. The authorizer injects identityId into context.
@@ -9,7 +10,7 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -31,7 +32,7 @@ function corsHeaders(origin?: string): Record<string, string> {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": getCorsOrigin(origin),
     "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Methods": "POST,DELETE,OPTIONS",
   };
 }
 
@@ -41,6 +42,51 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>, origin?
     headers: corsHeaders(origin),
     body: JSON.stringify(body),
   };
+}
+
+async function handleWithdraw(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
+  // 1. Find registration by identityId via GSI
+  const existing = await client.send(
+    new QueryCommand({
+      TableName: ALLOWLIST_TABLE,
+      IndexName: "identityId-index",
+      KeyConditionExpression: "identityId = :id",
+      ExpressionAttributeValues: { ":id": identityId },
+      Limit: 1,
+    })
+  );
+
+  if (!existing.Items || existing.Items.length === 0) {
+    return jsonResponse(404, { success: false, error: "NOT_FOUND", message: "No registration found for this account" }, origin);
+  }
+
+  const record = existing.Items[0];
+  const walletAddress = record.walletAddress as string;
+
+  // 2. Delete with ownership + status guard
+  try {
+    await client.send(
+      new DeleteCommand({
+        TableName: ALLOWLIST_TABLE,
+        Key: { walletAddress },
+        ConditionExpression: "identityId = :id AND #s = :active",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":id": identityId, ":active": "ACTIVE" },
+      })
+    );
+  } catch (err: any) {
+    if (err.name === "ConditionalCheckFailedException") {
+      return jsonResponse(409, { success: false, error: "CANNOT_WITHDRAW", message: "Registration cannot be withdrawn in its current state" }, origin);
+    }
+    throw err;
+  }
+
+  console.log(`[genesis-pass-withdraw] Withdrawn: ${walletAddress} (identity: ${identityId})`);
+
+  return jsonResponse(200, {
+    success: true,
+    data: { walletAddress },
+  }, origin);
 }
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -54,8 +100,13 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // 1. Extract identityId from authorizer context
     const identityId = event.requestContext.authorizer?.identityId;
     if (!identityId) {
-      console.error("[genesis-pass-register] No identityId in authorizer context");
+      console.error("[genesis-pass] No identityId in authorizer context");
       return jsonResponse(401, { success: false, error: "UNAUTHORIZED", message: "Authentication required" }, origin);
+    }
+
+    // Route: DELETE = withdraw, POST = register
+    if (event.httpMethod === "DELETE") {
+      return handleWithdraw(identityId, origin);
     }
 
     console.log(`[genesis-pass-register] Processing registration for identity: ${identityId}`);
