@@ -11,16 +11,18 @@ import WalletDisconnectModal from "./WalletDisconnectModal";
 import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleUser } from "@fortawesome/free-solid-svg-icons";
+import { faCircleUser, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
 import { useAuth } from "@/features/auth";
+import { useAdminAuth } from "@/features/admin/hooks/useAdminAuth";
 
 export default function Navbar() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const { isAdmin } = useAdminAuth();
   const [isMenuOpen, setIsMenuOpen] = useState<Record<string, boolean>>({});
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -107,6 +109,7 @@ export default function Navbar() {
             closeAllMenus={closeAllMenus}
             mobileMenuOpen={mobileMenuOpen}
             setMobileMenuOpen={setMobileMenuOpen}
+            isAdmin={isAdmin}
           />
           <Link
             to="/"
@@ -130,6 +133,28 @@ export default function Navbar() {
 
         {/* 공통 기능들 */}
         <div className="flex gap-6 lg:gap-7 min-w-36 items-center justify-end flex-shrink-0">
+          {isAdmin && (
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  onClick={() => navigate("/admin")}
+                  className={`rounded-3xl cursor-pointer hover:opacity-70 transition-all flex items-center justify-center ${location.pathname.startsWith("/admin") ? "text-nasun-nw2" : "text-nasun-black"}`}
+                  aria-label="Admin"
+                >
+                  <FontAwesomeIcon icon={faShieldHalved} className="text-xl lg:text-2xl" />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Content
+                side="bottom"
+                align="center"
+                sideOffset={5}
+                className="max-w-[150px] px-2 py-1 bg-gray-300 text-nasun-black/70 text-xs border border-gray-500 rounded-lg"
+              >
+                Admin
+              </Tooltip.Content>
+            </Tooltip.Root>
+          )}
+
           {isAuthenticated && user && (
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
