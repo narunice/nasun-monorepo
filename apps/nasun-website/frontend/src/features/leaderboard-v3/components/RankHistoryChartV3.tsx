@@ -3,6 +3,7 @@
  *
  * Displays the user's rank history as a line chart.
  * Uses recharts library for responsive chart rendering.
+ * Fills internal date gaps with null rank to indicate "unranked" periods.
  */
 
 import React from 'react';
@@ -25,7 +26,7 @@ export interface RankHistoryChartV3Props {
 
 interface ChartDataPoint {
   date: string;
-  rank: number;
+  rank: number | null;
   score: number;
   displayDate: string;
 }
@@ -43,6 +44,15 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   }
 
   const data = payload[0].payload as ChartDataPoint;
+
+  if (data.rank === null) {
+    return (
+      <div className="bg-nasun-c6 border border-nasun-c4/30 rounded-lg shadow-lg p-3">
+        <p className="font-semibold text-white mb-2">{data.displayDate}</p>
+        <p className="text-gray-400">Unranked</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-nasun-c6 border border-nasun-c4/30 rounded-lg shadow-lg p-3">
@@ -63,43 +73,80 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   );
 };
 
+/**
+ * Generate all YYYY-MM-DD strings between start and end (inclusive).
+ */
+function generateDateRange(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(start + 'T00:00:00Z');
+  const last = new Date(end + 'T00:00:00Z');
+  while (current <= last) {
+    dates.push(current.toISOString().split('T')[0]);
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+function formatDisplayDate(dateStr: string): string {
+  const [, monthStr, dayStr] = dateStr.split('-');
+  return `${parseInt(monthStr, 10)}/${parseInt(dayStr, 10)}`;
+}
+
 export const RankHistoryChartV3: React.FC<RankHistoryChartV3Props> = ({
   history,
   height = 200,
 }) => {
   const { t } = useTranslation(['myAccount', 'common']);
 
-  // Prepare chart data
+  // Prepare chart data with gap-filling for unranked periods
   const chartData: ChartDataPoint[] = React.useMemo(() => {
-    return history.map((entry) => {
-      // Parse YYYY-MM-DD directly to avoid timezone shift
-      // (new Date("YYYY-MM-DD") is UTC midnight, but getMonth/getDate use local TZ)
-      const [, monthStr, dayStr] = entry.date.split('-');
-      const month = parseInt(monthStr, 10);
-      const day = parseInt(dayStr, 10);
+    if (history.length === 0) return [];
 
+    // Build lookup of existing entries by date
+    const entryByDate = new Map<string, RankHistoryEntry>();
+    for (const entry of history) {
+      entryByDate.set(entry.date, entry);
+    }
+
+    // Generate full date range (internal gaps only: first entry to last entry)
+    const firstDate = history[0].date;
+    const lastDate = history[history.length - 1].date;
+    const allDates = generateDateRange(firstDate, lastDate);
+
+    // Also add trailing unranked entries up to yesterday (UTC)
+    // to show when a user has recently dropped off the leaderboard
+    const now = new Date();
+    const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (yesterdayStr > lastDate) {
+      const trailingDates = generateDateRange(
+        // Start from day after last ranked entry
+        (() => {
+          const d = new Date(lastDate + 'T00:00:00Z');
+          d.setUTCDate(d.getUTCDate() + 1);
+          return d.toISOString().split('T')[0];
+        })(),
+        yesterdayStr
+      );
+      allDates.push(...trailingDates);
+    }
+
+    return allDates.map((date) => {
+      const entry = entryByDate.get(date);
       return {
-        date: entry.date,
-        rank: entry.rank,
-        score: entry.userScore ?? 0,
-        displayDate: `${month}/${day}`,
+        date,
+        rank: entry ? entry.rank : null,
+        score: entry ? (entry.userScore ?? 0) : 0,
+        displayDate: formatDisplayDate(date),
       };
     });
   }, [history]);
 
-  // Calculate Y-axis range (ranks are reversed - lower is better)
-  const ranks = chartData.map((d) => d.rank);
-  const minRank = Math.min(...ranks);
-  const maxRank = Math.max(...ranks);
-  const rankPadding = Math.max(1, Math.ceil((maxRank - minRank) * 0.1));
+  // Filter ranked entries for Y-axis domain calculation
+  const rankedData = chartData.filter((d): d is ChartDataPoint & { rank: number } => d.rank !== null);
 
-  const yAxisDomain = [
-    Math.max(1, minRank - rankPadding),
-    maxRank + rankPadding,
-  ];
-
-  // No data case
-  if (chartData.length === 0) {
+  // No ranked data at all
+  if (chartData.length === 0 || rankedData.length === 0) {
     return (
       <div
         className="flex items-center justify-center bg-nasun-c6/50 rounded-lg border border-nasun-c4/20"
@@ -109,6 +156,17 @@ export const RankHistoryChartV3: React.FC<RankHistoryChartV3Props> = ({
       </div>
     );
   }
+
+  // Calculate Y-axis range from ranked entries only (ranks are reversed - lower is better)
+  const ranks = rankedData.map((d) => d.rank);
+  const minRank = Math.min(...ranks);
+  const maxRank = Math.max(...ranks);
+  const rankPadding = Math.max(1, Math.ceil((maxRank - minRank) * 0.1));
+
+  const yAxisDomain = [
+    Math.max(1, minRank - rankPadding),
+    maxRank + rankPadding,
+  ];
 
   return (
     <div className="w-full">
@@ -138,8 +196,9 @@ export const RankHistoryChartV3: React.FC<RankHistoryChartV3Props> = ({
           <Line
             type="monotone"
             dataKey="rank"
-            stroke="rgb(59, 130, 246)" // nasun-c4
+            stroke="rgb(59, 130, 246)"
             strokeWidth={2}
+            connectNulls={false}
             dot={{
               fill: 'rgb(59, 130, 246)',
               strokeWidth: 0,
