@@ -277,7 +277,7 @@ function GenesisPassModal({ state, dispatch, onSignIn }: GenesisPassModalProps) 
                 Sign In
               </ButtonV3>
               <ButtonV3
-                variant="nw5"
+                variant="nw2"
                 outline
                 size="lg"
                 className="w-full"
@@ -314,9 +314,9 @@ function GenesisPassModal({ state, dispatch, onSignIn }: GenesisPassModalProps) 
               </ButtonV3>
               {!isMobileBrowser() && (
                 <ButtonV3
-                  variant="nw5"
+                  variant="nw2"
                   outline
-                  size="sm"
+                  size="lg"
                   className="w-full"
                   onClick={handleConnectWallet}
                 >
@@ -370,9 +370,9 @@ function GenesisPassModal({ state, dispatch, onSignIn }: GenesisPassModalProps) 
                   Open in MetaMask
                 </ButtonV3>
                 <ButtonV3
-                  variant="nw5"
+                  variant="nw2"
                   outline
-                  size="sm"
+                  size="lg"
                   className="w-full"
                   onClick={handleCopyLink}
                 >
@@ -419,9 +419,9 @@ function GenesisPassModal({ state, dispatch, onSignIn }: GenesisPassModalProps) 
               </p>
             </div>
             <ButtonV3
-              variant="nw5"
+              variant="nw2"
               outline
-              size="sm"
+              size="lg"
               className="w-full"
               onClick={() => dispatch({ type: "CLOSE" })}
             >
