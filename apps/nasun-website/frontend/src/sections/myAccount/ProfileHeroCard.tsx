@@ -590,7 +590,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             {/* 4. Telegram */}
             <AccountItem
               provider="telegram"
-              description="Verify your Nasun channel membership"
+              description={telegram.isVerified ? "Nasun channel membership verified" : "Join our channel first, then verify"}
               identifier={
                 telegram.isLoading
                   ? "Loading..."
@@ -602,6 +602,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               }
               statusBadge={telegram.isVerified ? <ChannelMemberBadge /> : undefined}
               actions={[
+                !telegram.isVerified && !telegram.isLoading ? (
+                  <Button key="join" size="xs" variant="outlineC7" asChild>
+                    <a href="https://t.me/nasun_official" target="_blank" rel="noopener noreferrer">
+                      Join Channel
+                    </a>
+                  </Button>
+                ) : null,
                 !telegram.isVerified && !telegram.isLoading ? (
                   <Button
                     key="connect"
