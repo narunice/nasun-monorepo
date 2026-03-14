@@ -541,6 +541,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // Search Accounts permissions (Phase 8)
     this.accountsTable.grantReadData(searchAccountsLambda);
     this.seasonAccountsTable.grantReadData(searchAccountsLambda);
+    this.snapshotsTable.grantReadData(searchAccountsLambda);
 
     // Admin Blacklist permissions (Phase 11)
     this.accountsTable.grantReadWriteData(adminBlacklistLambda);

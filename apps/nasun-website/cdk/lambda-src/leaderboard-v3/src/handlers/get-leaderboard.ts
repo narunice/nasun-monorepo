@@ -52,6 +52,7 @@ import { createResponse, getRequestOrigin } from '../utils/response';
 import { authenticateAdmin } from '../utils/admin-auth';
 import { getTodayDateString, getYesterdayDateString } from '../utils/date';
 import { calculateRankChange } from '../utils/rank';
+import { getLatestSnapshot, querySnapshot, computeDisplayRanks } from '../utils/snapshot-utils';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -147,33 +148,7 @@ async function getTodaySnapshotRanks(seasonId: string): Promise<Map<string, numb
   return rankMap;
 }
 
-/**
- * Get snapshot data for a specific date
- */
-async function getSnapshotData(
-  seasonId: string,
-  snapshotDate: string,
-  limit: number,
-  offset: number
-): Promise<{ entries: DailySnapshot[]; totalCount: number }> {
-  const pk = `${seasonId}#${snapshotDate}`;
 
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: SNAPSHOTS_TABLE,
-      KeyConditionExpression: 'pk = :pk',
-      ExpressionAttributeValues: {
-        ':pk': pk,
-      },
-    })
-  );
-
-  const items = (result.Items || []) as DailySnapshot[];
-  const totalCount = items.length;
-  const paginatedItems = items.slice(offset, offset + limit);
-
-  return { entries: paginatedItems, totalCount };
-}
 
 /**
  * Convert season account score to leaderboard entry
@@ -368,29 +343,15 @@ export const handler = async (
 
     // Past snapshot view
     if (snapshotDate) {
-      // Fetch all entries to filter banned accounts and re-rank
-      const { entries: allSnapshots } = await getSnapshotData(
-        seasonId,
-        snapshotDate,
-        2000,
-        0
-      );
+      const allSnapshots = await querySnapshot(seasonId, snapshotDate);
 
       if (allSnapshots.length === 0) {
         return respond(404, { error: `No snapshot found for ${snapshotDate}` });
       }
 
-      // Filter banned accounts from past snapshots
+      // Filter banned accounts and re-rank
       const bannedIds = await getBannedAccountIds();
-      const filteredSnapshots = allSnapshots.filter(
-        (snapshot) => !bannedIds.has(snapshot.accountId)
-      );
-
-      // Re-rank after filtering
-      const rerankedSnapshots = filteredSnapshots.map((snapshot, index) => ({
-        ...snapshot,
-        rank: index + 1,
-      }));
+      const rerankedSnapshots = computeDisplayRanks(allSnapshots, bannedIds);
 
       const snapshotTotalCount = rerankedSnapshots.length;
       const paginatedSnapshots = rerankedSnapshots.slice(offset, offset + limit);
@@ -418,52 +379,11 @@ export const handler = async (
     const yesterdayDate = getYesterdayDateString();
     const isEndedSeason = season.status === 'ended' || season.status === 'archived';
 
-    let todaySnapshots: DailySnapshot[];
-    let totalCount: number;
-    let usedSnapshotDate: string;
-
-    if (isEndedSeason) {
-      // Ended seasons: try endDate first, then fall back up to 7 days before endDate
-      const MAX_FALLBACK_DAYS = 7;
-      todaySnapshots = [];
-      totalCount = 0;
-      usedSnapshotDate = season.endDate;
-
-      for (let daysBack = 0; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
-        const dateObj = new Date(season.endDate);
-        dateObj.setDate(dateObj.getDate() - daysBack);
-        const dateStr = dateObj.toISOString().split('T')[0];
-
-        const result = await getSnapshotData(seasonId, dateStr, 2000, 0);
-        if (result.entries.length > 0) {
-          todaySnapshots = result.entries;
-          totalCount = result.totalCount;
-          usedSnapshotDate = dateStr;
-          break;
-        }
-      }
-    } else {
-      // Active seasons: try recent snapshots (today, then up to 7 days back)
-      const MAX_FALLBACK_DAYS = 7;
-      todaySnapshots = [];
-      totalCount = 0;
-      usedSnapshotDate = todayDate;
-
-      for (let daysBack = 0; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
-        const date = new Date();
-        date.setTime(date.getTime() + 9 * 60 * 60 * 1000); // KST
-        date.setDate(date.getDate() - daysBack);
-        const dateStr = date.toISOString().split('T')[0];
-
-        const result = await getSnapshotData(seasonId, dateStr, 2000, 0);
-        if (result.entries.length > 0) {
-          todaySnapshots = result.entries;
-          totalCount = result.totalCount;
-          usedSnapshotDate = dateStr;
-          break;
-        }
-      }
-    }
+    // Get latest snapshot (ended seasons fall back from endDate, active from today KST)
+    const { entries: todaySnapshots, date: usedSnapshotDate } = await getLatestSnapshot(
+      seasonId,
+      isEndedSeason ? season.endDate : undefined
+    );
 
     if (todaySnapshots.length === 0) {
       const response: SeasonLeaderboardResponse = {
@@ -481,33 +401,21 @@ export const handler = async (
       return respond(200, response);
     }
 
-    // Filter banned accounts
+    // Filter banned accounts and re-rank
     const bannedIds = await getBannedAccountIds();
-    const filteredSnapshots = todaySnapshots.filter(
-      (snapshot) => !bannedIds.has(snapshot.accountId)
-    );
+    const rerankedSnapshots = computeDisplayRanks(todaySnapshots, bannedIds);
 
     // Get yesterday's snapshot for rank change comparison (active seasons using today's snapshot only)
     let yesterdayRankMap = new Map<string, number>();
     if (!isEndedSeason && usedSnapshotDate === todayDate) {
-      const { entries: yesterdaySnapshots } = await getSnapshotData(
-        seasonId,
-        yesterdayDate,
-        2000,
-        0
-      );
-      for (const snapshot of yesterdaySnapshots) {
+      const yesterdaySnapshots = await querySnapshot(seasonId, yesterdayDate);
+      const rerankedYesterday = computeDisplayRanks(yesterdaySnapshots, bannedIds);
+      for (const snapshot of rerankedYesterday) {
         yesterdayRankMap.set(snapshot.accountId, snapshot.rank);
       }
     }
 
-    // Re-rank after filtering banned accounts
-    const rerankedSnapshots = filteredSnapshots.map((snapshot, index) => ({
-      ...snapshot,
-      rank: index + 1, // Re-assign rank after filtering
-    }));
-
-    totalCount = rerankedSnapshots.length;
+    const totalCount = rerankedSnapshots.length;
     const paginatedSnapshots = rerankedSnapshots.slice(offset, offset + limit);
 
     const entries: SeasonLeaderboardEntry[] = paginatedSnapshots.map((snapshot) => {
