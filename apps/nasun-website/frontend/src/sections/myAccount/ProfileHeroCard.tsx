@@ -603,7 +603,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               statusBadge={telegram.isVerified ? <ChannelMemberBadge /> : undefined}
               actions={[
                 !telegram.isVerified && !telegram.isLoading ? (
-                  <Button key="join" size="xs" variant="outlineC7" asChild>
+                  <Button key="join" size="sm" variant="filledOutlineC7" asChild>
                     <a href="https://t.me/nasun_official" target="_blank" rel="noopener noreferrer">
                       Join Channel
                     </a>
@@ -617,7 +617,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                     onClick={telegram.connect}
                     disabled={telegram.isVerifying}
                   >
-                    {telegram.isVerifying ? "Verifying..." : "Connect"}
+                    {telegram.isVerifying ? "Verifying..." : "Verify"}
                   </Button>
                 ) : null,
                 telegram.isVerified ? (
