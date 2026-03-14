@@ -541,7 +541,7 @@ export interface TopClimberEntry {
 // Featured Feed Types (Phase 10)
 // ============================================
 
-export type BadgeType = 'rank-1' | 'rank-2' | 'rank-3' | 'ranker' | 'climber-1' | 'climber-2' | 'climber-3';
+export type BadgeType = 'rank-1' | 'rank-2' | 'rank-3' | 'ranker' | 'climber-1' | 'climber-2' | 'climber-3' | 'featured';
 
 export interface FeaturedFeedItem {
   type: 'post';
@@ -569,6 +569,26 @@ export interface FeaturedFeedResponse {
   items: FeaturedFeedItem[];
   calculatedAt: string;
 }
+
+// Curated Featured Feed (admin-managed)
+// Stored as a single DynamoDB item in the seasons table
+export interface CuratedFeedRecord {
+  seasonId: string;  // "__FEATURED_FEED__" (synthetic PK)
+  sk: string;        // "CURATED"
+  items: CuratedFeedEntry[];
+  updatedAt: string; // ISO timestamp
+  updatedBy: string; // Admin username
+}
+
+export interface CuratedFeedEntry {
+  postId: string;
+  badge: BadgeType;
+  order: number;
+}
+
+export const CURATED_FEED_PK = '__FEATURED_FEED__';
+export const CURATED_FEED_SK = 'CURATED';
+export const MAX_CURATED_ITEMS = 15;
 
 // ============================================
 // My Rank Types (Phase 10)

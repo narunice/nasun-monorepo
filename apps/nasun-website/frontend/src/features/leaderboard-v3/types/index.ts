@@ -133,7 +133,7 @@ export const TIME_RANGE_LABELS: Record<TimeRangeV3, string> = {
 };
 
 // Featured Feed Types (Phase 10)
-export type BadgeType = 'rank-1' | 'rank-2' | 'rank-3' | 'ranker' | 'climber-1' | 'climber-2' | 'climber-3';
+export type BadgeType = 'rank-1' | 'rank-2' | 'rank-3' | 'ranker' | 'climber-1' | 'climber-2' | 'climber-3' | 'featured';
 
 export type PostType = 'original' | 'quote' | 'reply';
 export type ContentSignal = 'standard' | 'insight' | 'creative' | 'high_reach';

@@ -433,6 +433,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Admin Featured Feed Lambda (curated feed management)
+    const adminFeaturedFeedLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3AdminFeaturedFeedFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-admin-featured-feed`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'admin-featured-feed.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        description: 'Leaderboard V3: Admin featured feed curation (GET/PUT)',
+      }
+    );
+
     // Admin Adjust Score Lambda (manual score adjustment)
     const adjustScoreLambda = new NodejsFunction(
       this,
@@ -557,6 +572,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonsTable.grantReadData(adjustScoreLambda);
     this.seasonAccountsTable.grantReadWriteData(adjustScoreLambda);
 
+    // Admin Featured Feed permissions (curated feed management)
+    this.seasonsTable.grantReadWriteData(adminFeaturedFeedLambda);
+    this.postsTable.grantReadData(adminFeaturedFeedLambda);
+    this.accountsTable.grantReadData(adminFeaturedFeedLambda);
+
     // Featured Feed permissions (Phase 10)
     this.postsTable.grantReadData(getFeaturedFeedLambda);
     this.accountsTable.grantReadData(getFeaturedFeedLambda);
@@ -582,6 +602,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
       adminStatsLambda,
       adminBlacklistLambda,
       adminEditPostLambda,
+      adminFeaturedFeedLambda,
       adjustScoreLambda,
       getLeaderboardLambda,  // cumulative view requires admin auth
       generateSnapshotLambda, // API Gateway path requires admin auth via UserProfiles
@@ -772,6 +793,14 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // DELETE /v3/admin/blacklist/{accountId} - Unban account
     const adminBlacklistIdResource = adminBlacklistResource.addResource('{accountId}');
     adminBlacklistIdResource.addMethod('DELETE', adminBlacklistIntegration);
+
+    // Admin Featured Feed routes
+    // GET /v3/admin/featured-feed - Get curated feed
+    // PUT /v3/admin/featured-feed - Replace curated feed
+    const adminFeaturedFeedResource = adminResource.addResource('featured-feed');
+    const adminFeaturedFeedIntegration = new apigw.LambdaIntegration(adminFeaturedFeedLambda);
+    adminFeaturedFeedResource.addMethod('GET', adminFeaturedFeedIntegration);
+    adminFeaturedFeedResource.addMethod('PUT', adminFeaturedFeedIntegration);
 
     // POST /v3/admin/snapshot - Preview (dryRun=true) or generate (dryRun=false) snapshot
     const adminSnapshotResource = adminResource.addResource('snapshot');
