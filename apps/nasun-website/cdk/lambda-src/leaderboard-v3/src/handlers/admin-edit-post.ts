@@ -16,6 +16,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { AccountLanguage, AccountRole, ContentSignal, Platform, Post, PostType } from '../types';
 import { getAccountById, getPostById, updateAccountLanguageData, updatePostAndAdjustScores } from '../services/dynamodb-client';
+import { calculatePostScoreWithFollowers } from '../services/score-calculator';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { authenticateAdmin } from '../utils/admin-auth';
 
@@ -156,6 +157,26 @@ export const handler = async (
     const { language, followerCount, ...postUpdates } = validation.data!;
     const hasPostUpdates = Object.keys(postUpdates).some(k => postUpdates[k as keyof typeof postUpdates] !== undefined);
     const hasAccountUpdates = language !== undefined || followerCount !== undefined;
+
+    // Auto-recalculate postScore when postType or contentSignals change
+    // (unless admin explicitly provided a manual postScore override)
+    if ((postUpdates.postType || postUpdates.contentSignals) && postUpdates.postScore === undefined) {
+      const existingPost = await getPostById(postId);
+      if (!existingPost) {
+        return respond(404, { error: `Post ${postId} not found` });
+      }
+
+      const account = await getAccountById(existingPost.accountId);
+      const effectiveFollowers = followerCount ?? account?.followerCount ?? 0;
+      const effectiveLang = language ?? account?.language ?? 'en';
+      const effectiveType = postUpdates.postType ?? existingPost.postType ?? 'original';
+      const effectiveSignals = postUpdates.contentSignals ?? existingPost.contentSignals ?? ['standard'];
+
+      const { postScore } = calculatePostScoreWithFollowers(
+        effectiveFollowers, effectiveLang, effectiveSignals, effectiveType
+      );
+      postUpdates.postScore = postScore;
+    }
 
     let updatedPost: Post;
     if (hasPostUpdates) {
