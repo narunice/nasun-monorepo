@@ -342,7 +342,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                       dropdownAlign="right"
                     />
                   </div>,
-                ] : (isPrimaryRegistered || hasLinkedWallet) ? [
+                ] : (isPrimaryRegistered && additionalWallets.length > 0) || hasLinkedWallet ? [
                   <button
                     key="remove-primary"
                     title="Remove"
