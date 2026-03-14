@@ -194,7 +194,7 @@ function toSeasonLeaderboardEntry(
     username: score.username,
     originalUsername: score.originalUsername,
     platform: score.platform,
-    userScore: Math.round(score.userScore * 100) / 100,
+    userScore: Math.round(score.userScore * 1000) / 1000,
     postCount: score.postCount,
     uniqueActiveDays: score.uniqueActiveDays,
     lastActivity: score.lastSeenAt,
@@ -207,9 +207,9 @@ function toSeasonLeaderboardEntry(
 
   if (includeBreakdown) {
     entry.breakdown = {
-      rawScore: Math.round(score.rawScore * 100) / 100,
-      consistencyBonus: Math.round(score.consistencyBonus * 100) / 100,
-      freshnessMultiplier: Math.round(score.freshnessMultiplier * 100) / 100,
+      rawScore: Math.round(score.rawScore * 1000) / 1000,
+      consistencyBonus: Math.round(score.consistencyBonus * 1000) / 1000,
+      freshnessMultiplier: Math.round(score.freshnessMultiplier * 1000) / 1000,
     };
   }
 
@@ -228,7 +228,7 @@ function snapshotToLeaderboardEntry(
     username: snapshot.username,
     originalUsername: snapshot.originalUsername,
     platform: snapshot.platform,
-    userScore: Math.round(snapshot.userScore * 100) / 100,
+    userScore: Math.round(snapshot.userScore * 1000) / 1000,
     postCount: snapshot.postCount,
     uniqueActiveDays: snapshot.uniqueActiveDays,
     lastActivity: snapshot.snapshotTime,
@@ -241,9 +241,9 @@ function snapshotToLeaderboardEntry(
 
   if (includeBreakdown) {
     entry.breakdown = {
-      rawScore: Math.round(snapshot.rawScore * 100) / 100,
-      consistencyBonus: Math.round(snapshot.consistencyBonus * 100) / 100,
-      freshnessMultiplier: Math.round(snapshot.freshnessMultiplier * 100) / 100,
+      rawScore: Math.round(snapshot.rawScore * 1000) / 1000,
+      consistencyBonus: Math.round(snapshot.consistencyBonus * 1000) / 1000,
+      freshnessMultiplier: Math.round(snapshot.freshnessMultiplier * 1000) / 1000,
     };
   }
 
@@ -263,7 +263,7 @@ function toLeaderboardEntry(
     username: score.username,
     originalUsername: score.originalUsername,
     platform: score.platform,
-    userScore: Math.round(score.userScore * 100) / 100,
+    userScore: Math.round(score.userScore * 1000) / 1000,
     postCount: score.postCount,
     uniqueActiveDays: score.uniqueActiveDays,
     lastActivity: score.lastSeenAt,
@@ -275,9 +275,9 @@ function toLeaderboardEntry(
 
   if (includeBreakdown) {
     entry.breakdown = {
-      rawScore: Math.round(score.rawScore * 100) / 100,
-      consistencyBonus: Math.round(score.consistencyBonus * 100) / 100,
-      freshnessMultiplier: Math.round(score.freshnessMultiplier * 100) / 100,
+      rawScore: Math.round(score.rawScore * 1000) / 1000,
+      consistencyBonus: Math.round(score.consistencyBonus * 1000) / 1000,
+      freshnessMultiplier: Math.round(score.freshnessMultiplier * 1000) / 1000,
     };
   }
 
