@@ -67,6 +67,16 @@ export class CommonStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // AddressBooks table — wallet-signature-based address book sync (PK: walletAddress, SK: recordType)
+    const addressBooksTable = new dynamodb.Table(this, "AddressBooksTable", {
+      tableName: "AddressBooks",
+      partitionKey: { name: "walletAddress", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "recordType", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      timeToLiveAttribute: "expiresAt",
+    });
+
     // ========================================
     // Common NodejsFunction options
     // ========================================
@@ -224,11 +234,13 @@ export class CommonStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(lambdaSrcPath, 'wallet-api', 'src', 'index.ts'),
       handler: 'handler',
+      memorySize: 256,
       depsLockFilePath,
       bundling: bundlingOptions,
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         USER_WALLETS_TABLE: userWalletsTable.tableName,
+        ADDRESS_BOOKS_TABLE: addressBooksTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -240,10 +252,11 @@ export class CommonStack extends cdk.Stack {
     });
     this.userProfilesTable.grantReadWriteData(walletApiLambda);
     userWalletsTable.grantReadWriteData(walletApiLambda);
+    addressBooksTable.grantReadWriteData(walletApiLambda);
     walletApiLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['secretsmanager:GetSecretValue'],
+        actions: ['secretsmanager:GetSecretValue', 'secretsmanager:PutSecretValue'],
         resources: [
           `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
         ],
