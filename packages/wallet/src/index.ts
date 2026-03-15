@@ -848,6 +848,9 @@ export type {
 
 export { serializeLinkConfig, deserializeLinkConfig } from './core/link/types';
 
+// Nasun Link Encoding (URL-embedded claim payload)
+export { encodeClaimPayload, decodeClaimPayload } from './core/link/encoding';
+
 // ============================================
 // Payment UX (P2)
 // ============================================

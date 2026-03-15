@@ -312,8 +312,11 @@ export function parseLinkUrl(url: string): { linkId: string; secret: string } {
 /**
  * Build link URL from components
  *
+ * @deprecated Use encodeClaimPayload() + fullUrl from createLink() instead.
+ * This function produces the legacy short-linkId URL format.
+ *
  * @param baseUrl - Base URL
- * @param linkId - Link ID
+ * @param linkId - Link ID or encoded claim payload
  * @param secret - Secret
  * @returns Full URL string
  */
