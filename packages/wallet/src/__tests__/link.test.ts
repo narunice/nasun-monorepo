@@ -1097,4 +1097,205 @@ describe('ClaimPayload Encoding', () => {
       }
     });
   });
+
+  describe('Edge cases', () => {
+    it('should handle empty message (not included in payload)', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1000000000n,
+          message: '',
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      // Empty message should not be preserved (omitted from payload)
+      expect(decoded.config.message).toBeUndefined();
+    });
+
+    it('should handle empty creator address', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData({ creator: '' });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.creator).toBe('');
+    });
+
+    it('should handle very large amounts', async () => {
+      const secret = generateSecret();
+      const largeAmount = 999_999_999_999_999_999n; // ~1 billion tokens at 9 decimals
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: largeAmount,
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.config.amount).toBe(largeAmount.toString());
+    });
+
+    it('should handle minimum amount (1 MIST)', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1n,
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.config.amount).toBe('1');
+    });
+
+    it('should handle long coin type addresses', async () => {
+      const secret = generateSecret();
+      const longCoinType = '0x' + 'a'.repeat(64) + '::very_long_module_name::VERY_LONG_TOKEN_NAME';
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: longCoinType,
+          amount: 1000000n,
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.config.coinType).toBe(longCoinType);
+    });
+
+    it('should handle message with special characters', async () => {
+      const secret = generateSecret();
+      const specialMessage = 'Hello "world" <test> & friends! 100% safe\'s';
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1000000000n,
+          message: specialMessage,
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.config.message).toBe(specialMessage);
+    });
+
+    it('should produce deterministic encoding for same input', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded1 = await encodeClaimPayload(linkData, secret);
+      const encoded2 = await encodeClaimPayload(linkData, secret);
+
+      expect(encoded1).toBe(encoded2);
+    });
+
+    it('should produce different encoding for different secrets', async () => {
+      const secret1 = generateSecret();
+      const secret2 = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded1 = await encodeClaimPayload(linkData, secret1);
+      const encoded2 = await encodeClaimPayload(linkData, secret2);
+
+      // Different secrets produce different HMACs, so different encodings
+      expect(encoded1).not.toBe(encoded2);
+    });
+
+    it('should reject payload with valid JSON but wrong structure', async () => {
+      const secret = generateSecret();
+      const wrongStructure = btoa(JSON.stringify({ foo: 'bar', baz: 123 }))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
+      await expect(decodeClaimPayload(wrongStructure, secret)).rejects.toThrow(
+        'missing required fields'
+      );
+    });
+
+    it('should reject payload with valid fields but forged HMAC', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+      const encoded = await encodeClaimPayload(linkData, secret);
+
+      // Decode, modify HMAC, re-encode
+      const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const json = JSON.parse(atob(padded));
+      json.h = 'AAAAAAAAAAAAAAAAAAAAAA'; // Forged HMAC (22 chars base64url)
+      const forged = btoa(JSON.stringify(json))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
+      await expect(decodeClaimPayload(forged, secret)).rejects.toThrow(
+        'Link integrity check failed'
+      );
+    });
+
+    it('should handle no expiresAt (undefined)', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1000000000n,
+          // no expiresAt
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.config.expiresAt).toBeUndefined();
+    });
+
+    it('should validate synthetic LinkData passes validateClaim', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      // Synthetic LinkData should pass validation (status=active, claimCount=0)
+      const validation = await validateClaim(decoded);
+      expect(validation.canClaim).toBe(true);
+    });
+
+    it('should validate expired synthetic LinkData fails validateClaim', async () => {
+      const secret = generateSecret();
+      const pastExpiry = Date.now() - 86400000; // 24h ago
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1000000000n,
+          expiresAt: pastExpiry,
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      const validation = await validateClaim(decoded);
+      expect(validation.canClaim).toBe(false);
+      expect(validation.reason).toContain('expired');
+    });
+  });
 });

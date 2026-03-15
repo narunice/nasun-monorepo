@@ -8,8 +8,8 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { decodeClaimPayload } from "@nasun/wallet";
+import { useParams, useNavigate } from "react-router-dom";
+import { decodeClaimPayload, getExplorerTxUrl } from "@nasun/wallet";
 import type { LinkData } from "@nasun/wallet";
 import { LinkClaimPage } from "@nasun/wallet-ui";
 
@@ -31,6 +31,7 @@ function resolveSecret(): string {
 
 const ClaimPage = () => {
   const { encodedData } = useParams<{ encodedData: string }>();
+  const navigate = useNavigate();
 
   // Resolve secret once on mount (hash fragment or sessionStorage after OAuth redirect)
   const secretRef = useRef(resolveSecret());
@@ -38,6 +39,10 @@ const ClaimPage = () => {
   const [linkData, setLinkData] = useState<LinkData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [claimSuccess, setClaimSuccess] = useState<{
+    txDigest: string;
+    amount: bigint;
+  } | null>(null);
 
   // Decode and verify HMAC on mount
   useEffect(() => {
@@ -75,6 +80,11 @@ const ClaimPage = () => {
     };
   }, [encodedData]);
 
+  // Capture successful claim for post-claim CTA
+  const handleSuccess = useCallback((txDigest: string, amount: bigint) => {
+    setClaimSuccess({ txDigest, amount });
+  }, []);
+
   // Persist secret before zkLogin OAuth redirect
   const handleBeforeZkLogin = useCallback(() => {
     if (secretRef.current) {
@@ -111,8 +121,32 @@ const ClaimPage = () => {
           linkData={linkData}
           isLoadingLinkData={isLoading}
           linkDataError={error}
+          onSuccess={handleSuccess}
         />
       </div>
+
+      {/* Post-claim CTA */}
+      {claimSuccess && (
+        <div className="w-full max-w-md mt-6 space-y-3">
+          <p className="text-sm text-zinc-500 text-center">What's next?</p>
+
+          <button
+            onClick={() => navigate("/")}
+            className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+          >
+            Go to Nasun
+          </button>
+
+          <a
+            href={getExplorerTxUrl(claimSuccess.txDigest)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            View transaction on Explorer ↗
+          </a>
+        </div>
+      )}
 
       {/* Footer branding */}
       <p className="mt-8 text-xs text-zinc-600">Powered by Nasun</p>
