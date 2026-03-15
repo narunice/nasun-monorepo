@@ -75,7 +75,11 @@ export function DashboardTab() {
                     {activity.type === "post_created" ? "📝" : "👤"}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-nasun-white truncate">{activity.description}</div>
+                    <div className="text-nasun-white truncate">
+                      {activity.originalUsername
+                        ? `@${activity.originalUsername} - ${activity.accountRole?.toUpperCase() || ""} post registered`
+                        : activity.description}
+                    </div>
                     <div className="text-nasun-white/40 text-xs">
                       {formatTimestamp(activity.timestamp)}
                       {activity.postScore !== undefined && (
@@ -112,9 +116,9 @@ export function DashboardTab() {
           )}
         </OuterBox>
 
-        {/* Top 5 Preview */}
+        {/* Top 10 Preview */}
         <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
-          <h3 className="text-lg font-medium text-nasun-white mb-4">Top 5 This Season</h3>
+          <h3 className="text-lg font-medium text-nasun-white mb-4">Top 10 This Season</h3>
           {!stats?.topFive?.length ? (
             <div className="text-nasun-white/50 text-sm">
               {stats?.activeSeason ? "No users yet." : "No active season."}
@@ -135,8 +139,15 @@ export function DashboardTab() {
                           ? "🥉"
                           : `#${user.rank}`}
                   </span>
-                  <span className="text-nasun-white flex-1 truncate">@{user.username}</span>
-                  <span className="text-nasun-c3 font-medium">{user.userScore.toFixed(3)}</span>
+                  <div className="flex-1 min-w-0">
+                    {user.displayName && (
+                      <div className="text-nasun-white text-sm truncate">{user.displayName}</div>
+                    )}
+                    <div className={`text-nasun-white/50 truncate ${user.displayName ? "text-xs" : "text-sm text-nasun-white"}`}>
+                      @{user.originalUsername || user.username}
+                    </div>
+                  </div>
+                  <span className="text-nasun-c3 font-medium shrink-0">{user.userScore.toFixed(3)}</span>
                 </div>
               ))}
             </div>

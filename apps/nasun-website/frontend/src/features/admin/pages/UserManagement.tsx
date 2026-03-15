@@ -7,6 +7,8 @@ import { OuterBox } from "@/components/ui/OuterBox";
 import { PageLoading } from "@/components/ui/PageLoading";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 import { useUserList, useUserDetail } from "../hooks/useUserManagement";
+import { useAdminDashboard } from "../hooks/useAdminDashboard";
+import { StatCard } from "../components/StatCard";
 import { truncateAddress } from "@/utils/addressUtils";
 import type { UserProfile } from "../types";
 
@@ -272,6 +274,7 @@ export function UserManagement() {
   });
 
   const { data: detailData } = useUserDetail(cognitoToken, selectedUserId);
+  const { data: dashboardStats } = useAdminDashboard();
 
   const handleCloseModal = useCallback(() => setSelectedUserId(null), []);
 
@@ -298,6 +301,26 @@ export function UserManagement() {
           <p className="text-nasun-white/60 max-w-2xl -mt-6">
             Browse and search all registered user accounts. Click on a user row to view detailed information.
           </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <StatCard
+            label="Registered Users"
+            value={data?.stats?.totalRegistered ?? "-"}
+          />
+          <StatCard
+            label="Leaderboard Accounts"
+            value={dashboardStats?.totalAccounts ?? "-"}
+          />
+          <StatCard
+            label="Telegram Members"
+            value={data?.stats?.telegramMembers ?? "-"}
+          />
+          <StatCard
+            label="X Connected"
+            value={data?.stats?.xConnected ?? "-"}
+          />
         </div>
 
         <div className="flex flex-col gap-8 w-full">
