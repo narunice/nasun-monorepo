@@ -298,22 +298,22 @@ describe('viewModeRouter - Passkey Routes', () => {
       expect(closeDropdown).toHaveBeenCalled();
     });
 
-    it('should pass onDelete for passkey connected state', () => {
-      const passkeyDeleteWallet = vi.fn();
+    it('should route passkey delete through delete-confirm view', () => {
+      const setViewMode = vi.fn();
       const state = createMockState({
         viewMode: 'main',
         status: 'disconnected',
         isPasskeyUnlocked: true,
         passkeyAddress: '0x' + 'b'.repeat(64),
         passkeyCredentials: [],
-        passkeyDeleteWallet,
+        setViewMode,
       });
       const content = renderViewContent(state, sharedProps);
       render(<>{content}</>);
 
       expect(screen.getByTestId('delete-btn')).toBeInTheDocument();
       screen.getByTestId('delete-btn').click();
-      expect(passkeyDeleteWallet).toHaveBeenCalled();
+      expect(setViewMode).toHaveBeenCalledWith('delete-confirm');
     });
 
     it('should NOT show Sign Out button for passkey (uses Lock instead)', () => {

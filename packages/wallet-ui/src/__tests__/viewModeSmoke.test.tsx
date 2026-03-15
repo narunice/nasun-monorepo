@@ -140,8 +140,10 @@ function createMockState(overrides: Record<string, any> = {}): any {
     // Delete
     handleDelete: vi.fn(),
     confirmDelete: vi.fn(),
+    passkeyDeleteWallet: vi.fn(),
     handleUnlock: vi.fn(),
     resetView: vi.fn(),
+    closeDropdown: vi.fn(),
 
     // UI
     isMobile: false,
