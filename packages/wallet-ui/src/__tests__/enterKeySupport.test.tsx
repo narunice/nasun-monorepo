@@ -591,7 +591,7 @@ describe('NasunLinkWizard Enter Key', () => {
       const messageInput = screen.getByPlaceholderText('Welcome gift!');
       pressEnter(messageInput);
 
-      expect(screen.getByText('Create Nasun Link')).toBeDefined();
+      expect(screen.getByText('Send Tokens via Link')).toBeDefined();
       expect(screen.queryByText('Link Conditions')).toBeNull();
     });
 

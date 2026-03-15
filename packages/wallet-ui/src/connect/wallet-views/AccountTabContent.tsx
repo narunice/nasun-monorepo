@@ -281,7 +281,7 @@ export function AccountTabContent({
 
       <button onClick={() => onNavigate("nasun-link")} className={MENU_ITEM_CLASS}>
         <MenuIcon d={ICON_PATHS.link} />
-        Create Link
+        Send via Link
       </button>
 
       <div className={WALLET_STYLES.divider} />
