@@ -331,6 +331,8 @@ export interface DashboardStats {
   topFive: Array<{
     rank: number;
     username: string;
+    originalUsername?: string;
+    displayName?: string;
     userScore: number;
   }>;
   recentActivity: Array<{

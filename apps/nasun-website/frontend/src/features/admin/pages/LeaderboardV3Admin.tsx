@@ -22,7 +22,7 @@ import {
   LeaderboardViewTab,
   SeasonManagementTab,
   ScoreAdjustmentTab,
-  FeaturedFeedTab,
+  BlacklistTab,
   type AdminTabId,
 } from "../components/leaderboard-v3";
 
@@ -69,12 +69,12 @@ export function LeaderboardV3Admin() {
 
         {/* Tab Content */}
         <div className="w-full">
-          {activeTab === "dashboard" && <DashboardTab />}
           {activeTab === "post" && <PostRegistrationTab />}
+          {activeTab === "adjust" && <ScoreAdjustmentTab />}
+          {activeTab === "overview" && <DashboardTab />}
           {activeTab === "leaderboard" && <LeaderboardViewTab />}
           {activeTab === "seasons" && <SeasonManagementTab />}
-          {activeTab === "adjust" && <ScoreAdjustmentTab />}
-          {activeTab === "featured" && <FeaturedFeedTab />}
+          {activeTab === "blacklist" && <BlacklistTab />}
         </div>
       </SectionLayout>
     </AdminLayout>

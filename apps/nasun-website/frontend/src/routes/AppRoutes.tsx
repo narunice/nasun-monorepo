@@ -15,10 +15,10 @@ const WhitelistManagement = lazy(() => import("../features/admin/pages/Whitelist
 const GovernanceManagement = lazy(() => import("../features/admin/pages/GovernanceManagement").then(m => ({ default: m.GovernanceManagement })));
 const CreateProposal = lazy(() => import("../features/admin/pages/CreateProposal").then(m => ({ default: m.CreateProposal })));
 const LeaderboardV3Admin = lazy(() => import("../features/admin/pages/LeaderboardV3Admin").then(m => ({ default: m.LeaderboardV3Admin })));
-const BlacklistManagement = lazy(() => import("../features/admin/pages/BlacklistManagement").then(m => ({ default: m.BlacklistManagement })));
 const NftCollectionManagement = lazy(() => import("../features/admin/pages/NftCollectionManagement").then(m => ({ default: m.NftCollectionManagement })));
 const UserManagement = lazy(() => import("../features/admin/pages/UserManagement").then(m => ({ default: m.UserManagement })));
 const DevnetMetrics = lazy(() => import("../features/admin/pages/DevnetMetrics").then(m => ({ default: m.DevnetMetrics })));
+const FeaturedFeedManagement = lazy(() => import("../features/admin/pages/FeaturedFeedManagement").then(m => ({ default: m.FeaturedFeedManagement })));
 
 // Dev/Showcase pages (lazy loaded)
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
@@ -36,9 +36,9 @@ const adminRoutes = [
   { path: "/admin/governance/create", title: "Create Proposal", component: CreateProposal },
   { path: "/admin/leaderboard-v3", title: "Leaderboard V3 Admin", component: LeaderboardV3Admin },
   { path: "/admin/users", title: "User Management", component: UserManagement },
-  { path: "/admin/blacklist", title: "Blacklist Management", component: BlacklistManagement },
   { path: "/admin/nft-collections", title: "NFT Collections", component: NftCollectionManagement },
   { path: "/admin/devnet-metrics", title: "Devnet Metrics", component: DevnetMetrics },
+  { path: "/admin/featured-feed", title: "Featured Feed", component: FeaturedFeedManagement },
 ];
 
 const AppRoutes = () => {
