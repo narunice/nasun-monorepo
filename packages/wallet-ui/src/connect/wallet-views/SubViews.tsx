@@ -118,6 +118,7 @@ export function SendView({
           setSendRecipient(undefined);
         }}
         initialRecipient={initialRecipient}
+        onAddressBook={() => setViewMode("address-book")}
       />
     </div>
   );
