@@ -678,7 +678,18 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       const primaryUsers = allUsers.filter(u => !u.linkedToPrimaryId);
       const result = filterAndPaginateUsers(primaryUsers, { search, provider, page, limit });
 
-      return jsonResponse(200, { success: true, ...result }, requestOrigin);
+      const telegramCount = primaryUsers.filter(u => u.isTelegramMember === true).length;
+      const xConnectedCount = primaryUsers.filter(u => !!u.twitterHandle).length;
+
+      return jsonResponse(200, {
+        success: true,
+        ...result,
+        stats: {
+          totalRegistered: primaryUsers.length,
+          telegramMembers: telegramCount,
+          xConnected: xConnectedCount,
+        },
+      }, requestOrigin);
     }
 
     // GET /devnet-metrics - Devnet daily metrics (admin only)

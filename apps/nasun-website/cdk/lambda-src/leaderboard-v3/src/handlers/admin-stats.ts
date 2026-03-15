@@ -150,12 +150,14 @@ async function countTodayAccounts(): Promise<number> {
 }
 
 /**
- * Get top 5 users for a season
+ * Get top 10 users for a season
  */
-async function getTopFive(seasonId: string): Promise<
+async function getTopTen(seasonId: string): Promise<
   Array<{
     rank: number;
     username: string;
+    originalUsername?: string;
+    displayName?: string;
     userScore: number;
   }>
 > {
@@ -173,11 +175,13 @@ async function getTopFive(seasonId: string): Promise<
       return { ...score, userScore };
     })
     .sort((a, b) => b.userScore - a.userScore)
-    .slice(0, 5);
+    .slice(0, 10);
 
   return sortedScores.map((score, index) => ({
     rank: index + 1,
     username: score.username,
+    originalUsername: score.originalUsername,
+    displayName: score.displayName,
     userScore: Math.round(score.userScore * 100) / 100,
   }));
 }
@@ -293,8 +297,8 @@ export const handler = async (
     // Query recent activity using seasonId GSI for accurate ordering
     const recentActivity = await getRecentActivity(activeSeason?.seasonId);
 
-    // Get top 5 if we have an active season
-    let topFive: Array<{ rank: number; username: string; userScore: number }> = [];
+    // Get top 10 if we have an active season
+    let topTen: Array<{ rank: number; username: string; originalUsername?: string; displayName?: string; userScore: number }> = [];
     let activeSeasonInfo: {
       seasonId: string;
       name: string;
@@ -306,7 +310,7 @@ export const handler = async (
 
     if (activeSeason) {
       const seasonScores = await getSeasonAccountScores(activeSeason.seasonId);
-      topFive = await getTopFive(activeSeason.seasonId);
+      topTen = await getTopTen(activeSeason.seasonId);
 
       activeSeasonInfo = {
         seasonId: activeSeason.seasonId,
@@ -326,7 +330,7 @@ export const handler = async (
         postsCreated: todayPostsCount,
         newAccounts: todayAccountsCount,
       },
-      topFive,
+      topFive: topTen,
       recentActivity,
       calculatedAt: new Date().toISOString(),
     };
