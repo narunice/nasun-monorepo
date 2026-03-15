@@ -8,3 +8,4 @@ export * from './types';
 export * from './crypto';
 export * from './generator';
 export * from './claim';
+export * from './encoding';
