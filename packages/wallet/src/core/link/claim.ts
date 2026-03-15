@@ -199,7 +199,13 @@ async function executeTransfer(
       : totalBalance - CLAIM_GAS_RESERVE;
 
     if (sendAmount <= 0n) {
-      throw new Error('Link balance too low to cover gas fees');
+      // Distinguish "already claimed" (dust remaining) from genuinely underfunded
+      const likelyClaimed = amount > 0n && totalBalance < amount;
+      throw new Error(
+        likelyClaimed
+          ? 'This link has already been claimed'
+          : 'Link balance too low to cover gas fees'
+      );
     }
 
     // Merge coins into tx.gas only when multiple coins exist.
