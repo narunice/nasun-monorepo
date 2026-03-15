@@ -10,3 +10,4 @@ export { SeasonManagementTab } from './SeasonManagementTab';
 export { SeasonFormModal } from './SeasonFormModal';
 export { ScoreAdjustmentTab } from './ScoreAdjustmentTab';
 export { FeaturedFeedTab } from './FeaturedFeedTab';
+export { BlacklistTab } from './BlacklistTab';

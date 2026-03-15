@@ -128,6 +128,11 @@ export interface ListUsersResponse {
   page: number;
   limit: number;
   totalPages: number;
+  stats?: {
+    totalRegistered: number;
+    telegramMembers: number;
+    xConnected: number;
+  };
 }
 
 export interface UserDetailResponse {

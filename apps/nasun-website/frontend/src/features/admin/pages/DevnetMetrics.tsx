@@ -13,10 +13,12 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import type { DevnetMetricEntry } from "../services/devnetMetricsApi";
+import { StatCard } from "../components/StatCard";
 
 type DateRange = "7d" | "30d" | "all";
 
@@ -38,16 +40,6 @@ function filterByRange(metrics: DevnetMetricEntry[], range: DateRange): DevnetMe
 function formatDate(date: string): string {
   const d = new Date(date + "T00:00:00Z");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="bg-nasun-dark-700/50 border border-nasun-dark-500/30 rounded-lg p-4">
-      <p className="text-nasun-white/50 text-xs uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-nasun-white text-2xl font-bold">{value}</p>
-      {sub && <p className="text-nasun-white/40 text-xs mt-1">{sub}</p>}
-    </div>
-  );
 }
 
 const CHART_COLORS = {
@@ -169,6 +161,17 @@ export function DevnetMetrics() {
 
   const latest = metrics?.[metrics.length - 1];
 
+  const repeatWallets = (latest?.dau ?? 0) - (latest?.newAddresses ?? 0);
+  const repeatRatio = latest?.dau ? Math.round((repeatWallets / latest.dau) * 100) : 0;
+
+  const chartDataWithRepeat = useMemo(() =>
+    filtered.map(m => ({
+      ...m,
+      repeatWallets: Math.max(0, m.dau - m.newAddresses),
+    })),
+    [filtered]
+  );
+
   return (
     <AdminLayout>
       <SectionLayout>
@@ -188,7 +191,7 @@ export function DevnetMetrics() {
               <StatCard
                 label="Daily Active"
                 value={latest?.dau ?? 0}
-                sub={latest?.date}
+                sub={`${repeatRatio}% repeat (${repeatWallets})`}
               />
               <StatCard
                 label="New Addresses"
@@ -252,6 +255,61 @@ export function DevnetMetrics() {
                 type="area"
               />
             </div>
+
+            {/* DAU Breakdown: New vs Repeat */}
+            {chartDataWithRepeat.length > 0 && (
+              <OuterBox className="p-4 mt-4">
+                <h3 className="text-nasun-white/70 text-sm font-medium mb-4">DAU Breakdown: New vs Repeat</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={chartDataWithRepeat}>
+                    <defs>
+                      <linearGradient id="grad-newAddr" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.newAddresses} stopOpacity={0.4} />
+                        <stop offset="95%" stopColor={CHART_COLORS.newAddresses} stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="grad-repeat" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.dau} stopOpacity={0.4} />
+                        <stop offset="95%" stopColor={CHART_COLORS.dau} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDate}
+                      stroke="rgba(255,255,255,0.2)"
+                      fontSize={11}
+                      tickLine={false}
+                    />
+                    <YAxis stroke="rgba(255,255,255,0.2)" fontSize={11} tickLine={false} />
+                    <Tooltip
+                      labelFormatter={formatDate}
+                      {...tooltipStyle}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: "11px", color: "rgba(255,255,255,0.6)" }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="newAddresses"
+                      name="New"
+                      stackId="1"
+                      stroke={CHART_COLORS.newAddresses}
+                      fill="url(#grad-newAddr)"
+                      strokeWidth={2}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="repeatWallets"
+                      name="Repeat"
+                      stackId="1"
+                      stroke={CHART_COLORS.dau}
+                      fill="url(#grad-repeat)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </OuterBox>
+            )}
           </>
         )}
       </SectionLayout>

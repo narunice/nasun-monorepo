@@ -154,32 +154,6 @@ export function PostRegistrationTab() {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      {/* Keyboard Shortcuts Reference */}
-      <OuterBox color="n3" padding="sm" className="w-full">
-        <h4 className="text-sm font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
-          <span className="w-1 h-4 bg-nasun-c7 rounded-full"></span>
-          Keyboard Shortcuts
-        </h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-nasun-white/60">
-          <div>
-            <span className="text-nasun-c7 font-mono">1 2 3</span>
-            <span className="ml-2">Type</span>
-          </div>
-          <div>
-            <span className="text-nasun-c7 font-mono">A S D</span>
-            <span className="ml-2">Signals</span>
-          </div>
-          <div>
-            <span className="text-nasun-c7 font-mono">/</span>
-            <span className="ml-2">Focus URL</span>
-          </div>
-          <div>
-            <span className="text-nasun-c7 font-mono">Ctrl+Enter</span>
-            <span className="ml-2">Submit</span>
-          </div>
-        </div>
-      </OuterBox>
-
       {/* Post Submission Form */}
       <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
         <h3 className="text-xl font-medium text-nasun-white mb-6">Register Post</h3>
@@ -473,6 +447,32 @@ export function PostRegistrationTab() {
             <Button onClick={form.reset} variant="outlineC5" size="lg">
               Clear
             </Button>
+          </div>
+        </div>
+      </OuterBox>
+
+      {/* Keyboard Shortcuts Reference */}
+      <OuterBox color="n3" padding="sm" className="w-full">
+        <h4 className="text-sm font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
+          <span className="w-1 h-4 bg-nasun-c7 rounded-full"></span>
+          Keyboard Shortcuts
+        </h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-nasun-white/60">
+          <div>
+            <span className="text-nasun-c7 font-mono">1 2 3</span>
+            <span className="ml-2">Type</span>
+          </div>
+          <div>
+            <span className="text-nasun-c7 font-mono">A S D</span>
+            <span className="ml-2">Signals</span>
+          </div>
+          <div>
+            <span className="text-nasun-c7 font-mono">/</span>
+            <span className="ml-2">Focus URL</span>
+          </div>
+          <div>
+            <span className="text-nasun-c7 font-mono">Ctrl+Enter</span>
+            <span className="ml-2">Submit</span>
           </div>
         </div>
       </OuterBox>
