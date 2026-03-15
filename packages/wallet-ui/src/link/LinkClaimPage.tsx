@@ -185,7 +185,7 @@ export function LinkClaimPage({
   // Successfully claimed
   if (claimed && claimedTxDigest) {
     return (
-      <div className={`text-center py-12 ${className}`}>
+      <div className={`text-center py-8 ${className}`}>
         <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -202,9 +202,6 @@ export function LinkClaimPage({
             "{linkData.config.message}"
           </p>
         )}
-        <p className="text-xs xl:text-sm text-gray-400 dark:text-zinc-400">
-          Transaction: {claimedTxDigest.slice(0, 8)}...{claimedTxDigest.slice(-6)}
-        </p>
       </div>
     );
   }

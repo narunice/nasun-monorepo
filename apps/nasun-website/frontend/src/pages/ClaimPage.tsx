@@ -8,10 +8,10 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { decodeClaimPayload, getExplorerTxUrl } from "@nasun/wallet";
 import type { LinkData } from "@nasun/wallet";
-import { LinkClaimPage } from "@nasun/wallet-ui";
+import { LinkClaimPage, WalletConnect } from "@nasun/wallet-ui";
 
 const CLAIM_SECRET_KEY = "nasun:claim:secret";
 const CLAIM_RETURN_URL_KEY = "nasun:claim:returnUrl";
@@ -31,7 +31,6 @@ function resolveSecret(): string {
 
 const ClaimPage = () => {
   const { encodedData } = useParams<{ encodedData: string }>();
-  const navigate = useNavigate();
 
   // Resolve secret once on mount (hash fragment or sessionStorage after OAuth redirect)
   const secretRef = useRef(resolveSecret());
@@ -125,31 +124,47 @@ const ClaimPage = () => {
         />
       </div>
 
-      {/* Post-claim CTA */}
+      {/* Post-claim actions */}
       {claimSuccess && (
         <div className="w-full max-w-md mt-6 space-y-3">
-          <p className="text-sm text-zinc-500 text-center">What's next?</p>
+          <p className="text-lg font-bold text-white text-center mb-4">
+            What's Next
+          </p>
 
-          <button
-            onClick={() => navigate("/")}
-            className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
-          >
-            Go to Nasun
-          </button>
+          {/* Open Wallet - outline, brightest */}
+          <WalletConnect
+            triggerText="Open Wallet"
+            forceShowTriggerText
+            buttonClassName="!w-full !justify-center !py-3 !bg-transparent !text-white !border !border-white !rounded-lg !font-medium hover:!bg-white/10"
+            dropdownPosition="top"
+            dropdownAlign="center"
+          />
 
+          {/* View transaction in explorer */}
           <a
             href={getExplorerTxUrl(claimSuccess.txDigest)}
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-center text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-zinc-400 hover:text-zinc-200 border border-zinc-700 rounded-lg transition-colors text-sm"
           >
-            View transaction on Explorer ↗
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            View Transaction in Explorer
+          </a>
+
+          {/* Go to website */}
+          <a
+            href="/"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-zinc-400 hover:text-zinc-200 border border-zinc-700 rounded-lg transition-colors text-sm"
+          >
+            Go to Nasun Website
           </a>
         </div>
       )}
 
       {/* Footer branding */}
-      <p className="mt-8 text-xs text-zinc-600">Powered by Nasun</p>
+      <p className="mt-8 text-xs text-zinc-500">Powered by Nasun</p>
     </div>
   );
 };
