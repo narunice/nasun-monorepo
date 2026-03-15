@@ -17,6 +17,9 @@ import { verifyAgainstCondition, type ZKIDConditionCheck } from '../zkid/verifie
 /** Native token type */
 const NATIVE_TOKEN_TYPE = '0x2::sui::SUI';
 
+/** Gas reserve for claim transactions (0.05 NSN / 50M MIST) */
+const CLAIM_GAS_RESERVE = 50_000_000n;
+
 /**
  * Claim tokens from a link
  *
@@ -171,7 +174,7 @@ async function executeTransfer(
   const normalizedType = normalizeCoinType(coinType);
 
   if (normalizedType === NATIVE_TOKEN_TYPE) {
-    // Get all gas coins
+    // Get all gas coins to calculate total balance
     const coins = await client.getCoins({
       owner: ephemeralAddress,
       coinType: NATIVE_TOKEN_TYPE,
@@ -181,7 +184,6 @@ async function executeTransfer(
       throw new Error('Link has no funds');
     }
 
-    // Calculate total balance
     const totalBalance = coins.data.reduce(
       (sum, c) => sum + BigInt(c.balance),
       0n
@@ -191,14 +193,23 @@ async function executeTransfer(
       throw new Error('Link has zero balance');
     }
 
-    // Merge all coins if multiple
-    const coinObjects = coins.data.map((c) => tx.object(c.coinObjectId));
-    if (coinObjects.length > 1) {
-      tx.mergeCoins(coinObjects[0], coinObjects.slice(1));
+    if (totalBalance <= CLAIM_GAS_RESERVE) {
+      throw new Error('Link balance too low to cover gas fees');
     }
 
-    // Transfer all merged coins
-    tx.transferObjects([coinObjects[0]], tx.pure.address(recipient));
+    const sendAmount = totalBalance - CLAIM_GAS_RESERVE;
+
+    // Merge all coins into tx.gas to avoid gas coin conflict.
+    // tx.gas is the SDK-managed gas coin; merging into it ensures
+    // the split + transfer does not consume the gas payment source.
+    const coinObjects = coins.data.map((c) => tx.object(c.coinObjectId));
+    if (coinObjects.length > 0) {
+      tx.mergeCoins(tx.gas, coinObjects);
+    }
+
+    // Split the send amount from gas coin and transfer to recipient
+    const [sendCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(sendAmount)]);
+    tx.transferObjects([sendCoin], tx.pure.address(recipient));
 
     const result = await client.signAndExecuteTransaction({
       signer: ephemeralKeypair,
@@ -214,7 +225,7 @@ async function executeTransfer(
 
     return {
       txDigest: result.digest,
-      amount: totalBalance,
+      amount: sendAmount,
       recipient,
       linkId,
     };

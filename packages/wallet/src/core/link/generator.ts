@@ -29,6 +29,9 @@ const DEFAULT_BASE_URL = 'https://nasun.io/claim';
 /** Native token type */
 const NATIVE_TOKEN_TYPE = '0x2::sui::SUI';
 
+/** Gas budget sent to ephemeral address for non-native token claims (0.05 NSN) */
+const GAS_BUDGET_FOR_CLAIM = 50_000_000n;
+
 /**
  * Create a new claimable link
  *
@@ -177,6 +180,10 @@ async function fundEphemeralAddress(
 
     const [splitCoin] = tx.splitCoins(primaryCoin, [tx.pure.u64(amount)]);
     tx.transferObjects([splitCoin], tx.pure.address(recipient));
+
+    // Also send native gas for the future claim transaction
+    const [gasCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(GAS_BUDGET_FOR_CLAIM)]);
+    tx.transferObjects([gasCoin], tx.pure.address(recipient));
   }
 
   const result = await client.signAndExecuteTransaction({
