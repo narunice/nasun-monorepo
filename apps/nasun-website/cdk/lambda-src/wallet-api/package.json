@@ -18,6 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.523.0",
     "@aws-sdk/lib-dynamodb": "^3.523.0",
+    "@mysten/sui": "^1.45.2",
     "jose": "^5.2.0"
   }
 }

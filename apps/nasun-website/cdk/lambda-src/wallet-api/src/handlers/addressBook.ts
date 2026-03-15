@@ -1,13 +1,25 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { randomBytes } from 'crypto';
 
 const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
+const docClient = DynamoDBDocumentClient.from(client, {
+  marshallOptions: { removeUndefinedValues: true },
+});
 
 const ADDRESS_KEY_REGEX = /^0x[a-f0-9]{1,64}$/;
+const WALLET_ADDRESS_REGEX = /^0x[a-f0-9]{64}$/;
 const MAX_ENTRIES = 200;
 const MAX_LABEL_LENGTH = 100;
 const MAX_PAYLOAD_BYTES = 50 * 1024; // 50KB
+const NONCE_TTL_SECONDS = 300; // 5 minutes
+const NONCE_PK_PREFIX = 'abNonce:';
+
+function getTableName(): string {
+  const tableName = process.env.ADDRESS_BOOKS_TABLE;
+  if (!tableName) throw new Error('ADDRESS_BOOKS_TABLE environment variable not set');
+  return tableName;
+}
 
 interface AddressBookEntry {
   address: string;
@@ -54,13 +66,12 @@ function sanitizeEntry(key: string, raw: Record<string, unknown>): AddressBookEn
   };
 }
 
-export async function getAddressBook(identityId: string): Promise<{ addressBook: AddressBookData | null; version: number }> {
-  const tableName = process.env.USER_PROFILES_TABLE;
-  if (!tableName) throw new Error('USER_PROFILES_TABLE environment variable not set');
+// ---- Address Book CRUD (AddressBooks table, PK: walletAddress, SK: "DATA") ----
 
+export async function getAddressBook(walletAddress: string): Promise<{ addressBook: AddressBookData | null; version: number }> {
   const result = await docClient.send(new GetCommand({
-    TableName: tableName,
-    Key: { identityId },
+    TableName: getTableName(),
+    Key: { walletAddress, recordType: 'DATA' },
     ProjectionExpression: 'addressBook, addressBookVersion',
   }));
 
@@ -71,13 +82,10 @@ export async function getAddressBook(identityId: string): Promise<{ addressBook:
 }
 
 export async function saveAddressBook(
-  identityId: string,
+  walletAddress: string,
   data: { entries: Record<string, any>; updatedAt?: number },
   expectedVersion: number,
 ): Promise<{ success: boolean; conflict: boolean }> {
-  const tableName = process.env.USER_PROFILES_TABLE;
-  if (!tableName) throw new Error('USER_PROFILES_TABLE environment variable not set');
-
   // Validate payload size
   const payloadStr = JSON.stringify(data);
   if (payloadStr.length > MAX_PAYLOAD_BYTES) {
@@ -111,8 +119,8 @@ export async function saveAddressBook(
 
   try {
     await docClient.send(new UpdateCommand({
-      TableName: tableName,
-      Key: { identityId },
+      TableName: getTableName(),
+      Key: { walletAddress, recordType: 'DATA' },
       UpdateExpression: 'SET addressBook = :ab, addressBookVersion = if_not_exists(addressBookVersion, :zero) + :one',
       ConditionExpression: 'attribute_not_exists(addressBookVersion) OR addressBookVersion = :expected',
       ExpressionAttributeValues: {
@@ -131,6 +139,94 @@ export async function saveAddressBook(
     throw error;
   }
 }
+
+// ---- Challenge/Verify (nonce stored in AddressBooks table, PK: "abNonce:{nonce}", SK: "NONCE") ----
+
+export interface ChallengeResult {
+  nonce: string;
+  message: string;
+}
+
+/**
+ * Create a challenge nonce for address book auth.
+ * Stores nonce + walletAddress binding in DynamoDB with TTL.
+ */
+export async function createChallenge(walletAddress: string): Promise<ChallengeResult> {
+  if (!WALLET_ADDRESS_REGEX.test(walletAddress)) {
+    throw new ValidationError('Invalid wallet address format');
+  }
+
+  const nonce = randomBytes(32).toString('hex');
+
+  const message = [
+    'Nasun Address Book Auth',
+    '',
+    'This signature proves wallet ownership for address book sync.',
+    'No funds will be transferred.',
+    '',
+    `Wallet: ${walletAddress}`,
+    `Nonce: ${nonce}`,
+  ].join('\n');
+
+  const expiresAt = Math.floor(Date.now() / 1000) + NONCE_TTL_SECONDS;
+
+  await docClient.send(new PutCommand({
+    TableName: getTableName(),
+    Item: {
+      walletAddress: `${NONCE_PK_PREFIX}${nonce}`,
+      recordType: 'NONCE',
+      nonce,
+      boundWalletAddress: walletAddress,
+      message,
+      expiresAt,
+    },
+  }));
+
+  return { nonce, message };
+}
+
+export interface NonceData {
+  nonce: string;
+  boundWalletAddress: string;
+  message: string;
+  expiresAt: number;
+}
+
+/**
+ * Atomically retrieve and delete a nonce (prevents replay).
+ * Returns null if nonce not found or already consumed.
+ */
+export async function consumeNonce(nonce: string): Promise<NonceData | null> {
+  const result = await docClient.send(new DeleteCommand({
+    TableName: getTableName(),
+    Key: {
+      walletAddress: `${NONCE_PK_PREFIX}${nonce}`,
+      recordType: 'NONCE',
+    },
+    ReturnValues: 'ALL_OLD',
+  }));
+
+  if (!result.Attributes) {
+    return null;
+  }
+
+  const data: NonceData = {
+    nonce: result.Attributes.nonce,
+    boundWalletAddress: result.Attributes.boundWalletAddress,
+    message: result.Attributes.message,
+    expiresAt: result.Attributes.expiresAt,
+  };
+
+  // Check expiration
+  if (data.expiresAt < Math.floor(Date.now() / 1000)) {
+    console.warn('[address-book] Nonce expired');
+    return null;
+  }
+
+  return data;
+}
+
+// ---- Error classes ----
 
 export class ValidationError extends Error {
   constructor(message: string) {

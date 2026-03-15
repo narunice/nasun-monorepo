@@ -1,7 +1,7 @@
 /**
  * Address Book Sync Hook
  * Automatically syncs address book with server when configured.
- * - Loads from server on login (identityId change)
+ * - Loads from server on login (userId/walletAddress change)
  * - Auto-saves on changes with 5s debounce
  * - Handles 409 conflicts with re-fetch + merge + retry
  * - Clears local data on logout
@@ -26,8 +26,8 @@ let _serverVersion = 0;
 const DEBOUNCE_MS = 5000;
 
 export interface UseAddressBookSyncOptions {
-  /** Current user's identity ID. null = logged out. */
-  identityId: string | null | undefined;
+  /** Current user identifier (walletAddress). null = logged out. */
+  userId: string | null | undefined;
 }
 
 export interface UseAddressBookSyncResult {
@@ -36,15 +36,15 @@ export interface UseAddressBookSyncResult {
   syncNow: () => Promise<void>;
 }
 
-export function useAddressBookSync({ identityId }: UseAddressBookSyncOptions): UseAddressBookSyncResult {
+export function useAddressBookSync({ userId }: UseAddressBookSyncOptions): UseAddressBookSyncResult {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPushRef = useRef(false);
-  const identityIdRef = useRef(identityId);
-  identityIdRef.current = identityId;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
 
   // Load from server and merge with local
   const loadFromServer = useCallback(async (signal?: AbortSignal) => {
@@ -147,7 +147,7 @@ export function useAddressBookSync({ identityId }: UseAddressBookSyncOptions): U
 
   // Subscribe to store changes for auto-push
   useEffect(() => {
-    if (!identityId || !isAddressBookSyncEnabled()) return;
+    if (!userId || !isAddressBookSyncEnabled()) return;
 
     const unsub = useAddressBook.subscribe(
       (state, prevState) => {
@@ -164,7 +164,7 @@ export function useAddressBookSync({ identityId }: UseAddressBookSyncOptions): U
         debounceRef.current = null;
       }
     };
-  }, [identityId, schedulePush]);
+  }, [userId, schedulePush]);
 
   // Load on login, clear on logout
   useEffect(() => {
@@ -173,7 +173,7 @@ export function useAddressBookSync({ identityId }: UseAddressBookSyncOptions): U
     // Cancel any in-flight request from previous identity
     abortRef.current?.abort();
 
-    if (identityId) {
+    if (userId) {
       const controller = new AbortController();
       abortRef.current = controller;
       _serverVersion = 0;
@@ -188,11 +188,11 @@ export function useAddressBookSync({ identityId }: UseAddressBookSyncOptions): U
     return () => {
       abortRef.current?.abort();
     };
-  }, [identityId, loadFromServer]);
+  }, [userId, loadFromServer]);
 
   // Flush on visibility change (tab hidden / app switch)
   useEffect(() => {
-    if (!identityId || !isAddressBookSyncEnabled()) return;
+    if (!userId || !isAddressBookSyncEnabled()) return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && pendingPushRef.current) {
@@ -211,7 +211,7 @@ export function useAddressBookSync({ identityId }: UseAddressBookSyncOptions): U
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [identityId]);
+  }, [userId]);
 
   return { isSyncing, lastSyncedAt, syncNow };
 }
