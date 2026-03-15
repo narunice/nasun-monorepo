@@ -9,17 +9,16 @@ import AppRoutes from "./routes/AppRoutes";
 import { HomePageLoadingProvider, useHomePageLoading } from "./contexts/PageLoadingContext";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import { Button } from "./components/ui/button";
-import { configureAddressBookSync, useAddressBookSync } from "@nasun/wallet";
-import { useUserStore } from "./store/userStore";
+import {
+  configureAddressBookSync,
+  resetAddressBookSyncConfig,
+  useAddressBookSync,
+  AddressBookSessionManager,
+  useSigner,
+} from "@nasun/wallet";
+import type { ZkLoginSigner } from "@nasun/wallet";
 
-// Configure address book sync once at module load
 const WALLET_API_ENDPOINT = import.meta.env.VITE_WALLET_API_ENDPOINT as string;
-if (WALLET_API_ENDPOINT) {
-  configureAddressBookSync({
-    apiEndpoint: WALLET_API_ENDPOINT,
-    getToken: () => useUserStore.getState().user?.cognitoToken ?? null,
-  });
-}
 
 /**
  * Error fallback component with i18n support
@@ -45,15 +44,59 @@ function ErrorFallback() {
   );
 }
 
+/**
+ * Sets up address book sync with wallet-signature-based session tokens.
+ * Reconfigures when signer changes (wallet connect/disconnect/switch).
+ */
+function AddressBookSyncSetup() {
+  const { signer, address: walletAddress, signerType } = useSigner();
+
+  useEffect(() => {
+    if (!signer || !walletAddress || !WALLET_API_ENDPOINT) {
+      resetAddressBookSyncConfig();
+      return;
+    }
+
+    const isZkLogin = signerType === 'zklogin';
+
+    const session = new AddressBookSessionManager({
+      apiEndpoint: WALLET_API_ENDPOINT,
+      getWalletAddress: () => walletAddress,
+      signMessage: async (msg: Uint8Array) => {
+        if (isZkLogin) {
+          const zkSigner = signer as unknown as ZkLoginSigner;
+          const result = await zkSigner.signWithEphemeralKey(msg);
+          return result.signature;
+        }
+        const result = await signer.signPersonal(msg);
+        return result.signature;
+      },
+      getEphemeralPublicKey: isZkLogin
+        ? () => (signer as unknown as ZkLoginSigner).getEphemeralPublicKey()
+        : undefined,
+    });
+
+    configureAddressBookSync({
+      apiEndpoint: WALLET_API_ENDPOINT,
+      getToken: () => session.getToken(),
+    });
+
+    return () => {
+      session.invalidate();
+      resetAddressBookSyncConfig();
+    };
+  }, [signer, walletAddress, signerType]);
+
+  useAddressBookSync({ userId: walletAddress ?? null });
+
+  return null;
+}
+
 function AppContent() {
   const { isPageReady } = useHomePageLoading();
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
   const isClaimPage = location.pathname === '/claim' || location.pathname.startsWith('/claim/');
-  const user = useUserStore((state) => state.user);
-
-  // Address book server sync (auto-load on login, auto-save on changes)
-  useAddressBookSync({ identityId: user?.identityId ?? null });
 
   // Disable browser's auto scroll restoration
   useEffect(() => {
@@ -65,6 +108,7 @@ function AppContent() {
   // Hide Footer on admin pages
   return (
     <>
+      <AddressBookSyncSetup />
       {!isClaimPage && (
         <a
           href="#main-content"
