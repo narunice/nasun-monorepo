@@ -805,3 +805,296 @@ describe('Link Integration', () => {
     expect(deserialized.conditions).toEqual(originalConfig.conditions);
   });
 });
+
+// ======================================
+// Claim Payload Encoding Tests
+// ======================================
+
+import { encodeClaimPayload, decodeClaimPayload } from '../core/link/encoding';
+
+describe('ClaimPayload Encoding', () => {
+  // Helper to create a realistic LinkData object
+  function createTestLinkData(overrides: Partial<LinkData> = {}): LinkData {
+    const keypair = generateEphemeralKeypair();
+    return {
+      id: generateLinkId(keypair.toSuiAddress()),
+      creator: '0xCreator1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+      ephemeralAddress: keypair.toSuiAddress(),
+      encryptedPayload: 'dGVzdC1lbmNyeXB0ZWQtcGF5bG9hZC1kYXRh',
+      config: serializeLinkConfig({
+        type: 'single',
+        coinType: 'NSN',
+        amount: 1000000000n,
+      }),
+      status: 'active',
+      claimCount: 0,
+      createdAt: Date.now(),
+      ...overrides,
+    };
+  }
+
+  describe('encodeClaimPayload / decodeClaimPayload roundtrip', () => {
+    it('should encode and decode a basic LinkData', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.ephemeralAddress).toBe(linkData.ephemeralAddress);
+      expect(decoded.encryptedPayload).toBe(linkData.encryptedPayload);
+      expect(decoded.config.coinType).toBe(linkData.config.coinType);
+      expect(decoded.config.amount).toBe(linkData.config.amount);
+      expect(decoded.config.type).toBe('single');
+      expect(decoded.status).toBe('active');
+      expect(decoded.claimCount).toBe(0);
+    });
+
+    it('should preserve optional message field', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 500000000n,
+          message: 'Welcome to Nasun!',
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.config.message).toBe('Welcome to Nasun!');
+    });
+
+    it('should preserve creator address', async () => {
+      const secret = generateSecret();
+      const creator = '0xABCD1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab';
+      const linkData = createTestLinkData({ creator });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.creator).toBe(creator);
+    });
+
+    it('should preserve expiresAt (converted to seconds)', async () => {
+      const secret = generateSecret();
+      const expiresAt = Date.now() + 86400000; // 24h from now
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1000000000n,
+          expiresAt,
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      // expiresAt is rounded to seconds then back to ms
+      const expectedMs = Math.floor(expiresAt / 1000) * 1000;
+      expect(decoded.config.expiresAt).toBe(expectedMs);
+    });
+
+    it('should handle Unicode message correctly', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1000000000n,
+          message: 'Welcome! Nasun Link test message.',
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.config.message).toBe('Welcome! Nasun Link test message.');
+    });
+
+    it('should derive id from ephemeralAddress', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+      const expectedId = generateLinkId(linkData.ephemeralAddress);
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const decoded = await decodeClaimPayload(encoded, secret);
+
+      expect(decoded.id).toBe(expectedId);
+    });
+  });
+
+  describe('HMAC integrity', () => {
+    it('should reject tampered encoded data', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+
+      // Tamper: flip a character in the middle
+      const mid = Math.floor(encoded.length / 2);
+      const tampered = encoded.slice(0, mid) +
+        (encoded[mid] === 'A' ? 'B' : 'A') +
+        encoded.slice(mid + 1);
+
+      await expect(decodeClaimPayload(tampered, secret)).rejects.toThrow();
+    });
+
+    it('should reject wrong secret', async () => {
+      const secret1 = generateSecret();
+      const secret2 = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded = await encodeClaimPayload(linkData, secret1);
+
+      await expect(decodeClaimPayload(encoded, secret2)).rejects.toThrow(
+        'Link integrity check failed'
+      );
+    });
+
+    it('should reject empty encoded string', async () => {
+      const secret = generateSecret();
+
+      await expect(decodeClaimPayload('', secret)).rejects.toThrow();
+    });
+
+    it('should reject non-base64url string', async () => {
+      const secret = generateSecret();
+
+      await expect(decodeClaimPayload('not-valid-json!!!', secret)).rejects.toThrow();
+    });
+
+    it('should reject payload with missing required fields', async () => {
+      const secret = generateSecret();
+      // Encode a partial object (missing 'p' and 'h')
+      const partial = btoa(JSON.stringify({ e: '0x123', c: 'NSN', a: '100' }))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
+      await expect(decodeClaimPayload(partial, secret)).rejects.toThrow(
+        'missing required fields'
+      );
+    });
+  });
+
+  describe('URL format', () => {
+    it('should produce a URL-safe encoded string', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+
+      // base64url: only A-Z, a-z, 0-9, -, _
+      expect(encoded).toMatch(/^[A-Za-z0-9_-]+$/);
+      // No padding characters
+      expect(encoded).not.toContain('=');
+      // No standard base64 characters
+      expect(encoded).not.toContain('+');
+      expect(encoded).not.toContain('/');
+    });
+
+    it('should produce URL under 2000 characters', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData({
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 1000000000n,
+          message: 'A'.repeat(500), // Max length message
+          expiresAt: Date.now() + 86400000,
+        }),
+      });
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const fullUrl = `https://nasun.io/claim/${encoded}#${secret}`;
+
+      expect(fullUrl.length).toBeLessThan(2000);
+    });
+
+    it('should work with parseLinkUrl for secret extraction', async () => {
+      const secret = generateSecret();
+      const linkData = createTestLinkData();
+
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const fullUrl = `https://nasun.io/claim/${encoded}#${secret}`;
+
+      // parseLinkUrl should still extract the secret correctly
+      const parsed = parseLinkUrl(fullUrl);
+      expect(parsed.secret).toBe(secret);
+      // linkId will be the encoded payload (backward-compat: callers only use .secret)
+      expect(parsed.linkId).toBe(encoded);
+    });
+  });
+
+  describe('E2E: create link and claim flow', () => {
+    it('should encode real encrypted payload and decode correctly', async () => {
+      // 1. Generate real ephemeral keypair and encrypt
+      const keypair = generateEphemeralKeypair();
+      const ephemeralAddress = keypair.toSuiAddress();
+      const secret = generateSecret();
+      const encrypted = await encryptPayload(keypair.getSecretKey(), secret);
+
+      // 2. Build LinkData as createLink() would
+      const linkData: LinkData = {
+        id: generateLinkId(ephemeralAddress),
+        creator: '0xSender1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        ephemeralAddress,
+        encryptedPayload: encrypted,
+        config: serializeLinkConfig({
+          type: 'single',
+          coinType: 'NSN',
+          amount: 2000000000n,
+          message: 'Test gift',
+        }),
+        status: 'active',
+        claimCount: 0,
+        createdAt: Date.now(),
+      };
+
+      // 3. Encode into URL
+      const encoded = await encodeClaimPayload(linkData, secret);
+      const fullUrl = `https://nasun.io/claim/${encoded}#${secret}`;
+
+      // 4. Simulate claim page: parse URL and decode
+      const urlObj = new URL(fullUrl);
+      const pathSegment = urlObj.pathname.split('/').filter(Boolean).pop()!;
+      const urlSecret = urlObj.hash.slice(1);
+
+      const decoded = await decodeClaimPayload(pathSegment, urlSecret);
+
+      // 5. Verify decoded data matches original
+      expect(decoded.ephemeralAddress).toBe(ephemeralAddress);
+      expect(decoded.encryptedPayload).toBe(encrypted);
+      expect(decoded.config.coinType).toBe('NSN');
+      expect(decoded.config.amount).toBe('2000000000');
+      expect(decoded.config.message).toBe('Test gift');
+
+      // 6. Verify we can recover the keypair from decoded data
+      const recovered = await recoverKeypair(decoded.encryptedPayload, urlSecret);
+      expect(recovered.toSuiAddress()).toBe(ephemeralAddress);
+    });
+
+    it('should handle different coin types', async () => {
+      const secret = generateSecret();
+
+      for (const coinType of ['NSN', 'NUSDC', 'NBTC', '0x2::sui::SUI']) {
+        const linkData = createTestLinkData({
+          config: serializeLinkConfig({
+            type: 'single',
+            coinType,
+            amount: 1000000n,
+          }),
+        });
+
+        const encoded = await encodeClaimPayload(linkData, secret);
+        const decoded = await decodeClaimPayload(encoded, secret);
+
+        expect(decoded.config.coinType).toBe(coinType);
+      }
+    });
+  });
+});
