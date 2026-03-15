@@ -20,6 +20,7 @@ import {
   generateSecret,
   generateLinkId,
 } from './crypto';
+import { encodeClaimPayload } from './encoding';
 import { getSuiClient } from '../../sui/client';
 
 /** Default base URL for claim links */
@@ -100,12 +101,13 @@ export async function createLink(
     fundingTxDigest,
   };
 
-  // Build URL
+  // Build URL with encoded claim payload
+  const encoded = await encodeClaimPayload(data, secret);
   const url: LinkURL = {
     baseUrl,
     linkId,
     secret,
-    fullUrl: `${baseUrl}/${linkId}#${secret}`,
+    fullUrl: `${baseUrl}/${encoded}#${secret}`,
   };
 
   return { url, data };
