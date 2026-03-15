@@ -47,9 +47,16 @@ PROD_PROFILE="nasun-prod"
 DEV_ENV_FILE="$CDK_DIR/.env.development"
 PROD_ENV_FILE="$CDK_DIR/.env.production"
 
+# EventBridge rule name (must match CDK follower-stack.ts)
+EVENTBRIDGE_RULE_NAME="nasun-follower-token-refresh-schedule"
+
 # State tracking
 ISSUES_FOUND=0
 SKIP_OAUTH_VERIFY=false
+
+# Per-environment schedule state (populated in Step 2)
+DEV_SCHEDULE_ENABLED="unknown"
+PROD_SCHEDULE_ENABLED="unknown"
 
 # --- Option Parsing ---
 CHECK_DEV=true
@@ -107,7 +114,7 @@ START_TIME=$(date +%s)
 # ==============================================================================
 # Step 1: Prerequisites
 # ==============================================================================
-log_step 1 5 "Prerequisites"
+log_step 1 6 "Prerequisites"
 
 # Check aws CLI
 if ! command -v aws &> /dev/null; then
@@ -139,6 +146,30 @@ fi
 # ==============================================================================
 # Check Functions
 # ==============================================================================
+
+# --- EventBridge Schedule Check ---
+# Returns "ENABLED", "DISABLED", or "NOT_FOUND"
+check_eventbridge_schedule() {
+  local profile=$1
+  local -a profile_args=()
+  [ "$profile" != "default" ] && profile_args=(--profile "$profile")
+
+  set +e
+  local rule_state
+  rule_state=$(aws events describe-rule \
+    --name "$EVENTBRIDGE_RULE_NAME" \
+    "${profile_args[@]}" \
+    --region ap-northeast-2 \
+    --query "State" --output text 2>/dev/null)
+  local exit_code=$?
+  set -e
+
+  if [ $exit_code -ne 0 ] || [ -z "$rule_state" ] || [ "$rule_state" = "None" ]; then
+    echo "NOT_FOUND"
+  else
+    echo "$rule_state"
+  fi
+}
 
 # --- OAuth 2.0 Token Check ---
 check_oauth2_token() {
@@ -352,13 +383,46 @@ check_cloudwatch_alarms() {
 }
 
 # ==============================================================================
-# Step 2: OAuth 2.0 Token Verification
+# Step 2: EventBridge Schedule Status
 # ==============================================================================
-log_step 2 5 "OAuth 2.0 Token Verification"
+log_step 2 6 "EventBridge Schedule Status"
+
+if [ "$CHECK_DEV" = true ]; then
+  DEV_SCHEDULE_ENABLED=$(check_eventbridge_schedule "$DEV_PROFILE")
+  if [ "$DEV_SCHEDULE_ENABLED" = "ENABLED" ]; then
+    log_success "[dev] Token refresh schedule is ENABLED"
+  elif [ "$DEV_SCHEDULE_ENABLED" = "DISABLED" ]; then
+    log_info "[dev] Token refresh schedule is DISABLED (by design: dev/prod share OAuth app)"
+  else
+    log_warning "[dev] EventBridge rule '$EVENTBRIDGE_RULE_NAME' not found"
+  fi
+fi
+
+if [ "$CHECK_PROD" = true ]; then
+  PROD_SCHEDULE_ENABLED=$(check_eventbridge_schedule "$PROD_PROFILE")
+  if [ "$PROD_SCHEDULE_ENABLED" = "ENABLED" ]; then
+    log_success "[prod] Token refresh schedule is ENABLED"
+  elif [ "$PROD_SCHEDULE_ENABLED" = "DISABLED" ]; then
+    log_warning "[prod] Token refresh schedule is DISABLED (unexpected for production!)"
+    ISSUES_FOUND=$((ISSUES_FOUND + 1))
+  else
+    log_warning "[prod] EventBridge rule '$EVENTBRIDGE_RULE_NAME' not found"
+    ISSUES_FOUND=$((ISSUES_FOUND + 1))
+  fi
+fi
+
+# ==============================================================================
+# Step 3: OAuth 2.0 Token Verification
+# ==============================================================================
+log_step 3 6 "OAuth 2.0 Token Verification"
 
 if [ "$CHECK_DEV" = true ]; then
   echo -e "\n${CYAN}-- Development --${NC}"
-  check_oauth2_token "dev" "$DEV_PROFILE"
+  if [ "$DEV_SCHEDULE_ENABLED" = "DISABLED" ]; then
+    log_info "[dev] OAuth 2.0 check skipped (schedule disabled, token managed by prod)"
+  else
+    check_oauth2_token "dev" "$DEV_PROFILE"
+  fi
 fi
 
 if [ "$CHECK_PROD" = true ]; then
@@ -367,9 +431,9 @@ if [ "$CHECK_PROD" = true ]; then
 fi
 
 # ==============================================================================
-# Step 3: Bearer Token Verification
+# Step 4: Bearer Token Verification
 # ==============================================================================
-log_step 3 5 "Bearer Token Verification"
+log_step 4 6 "Bearer Token Verification"
 
 if [ "$CHECK_DEV" = true ]; then
   check_bearer_token "dev" "$DEV_ENV_FILE"
@@ -380,13 +444,17 @@ if [ "$CHECK_PROD" = true ]; then
 fi
 
 # ==============================================================================
-# Step 4: Token Refresh Lambda Status
+# Step 5: Token Refresh Lambda Status
 # ==============================================================================
-log_step 4 5 "Token Refresh Lambda Status"
+log_step 5 6 "Token Refresh Lambda Status"
 
 if [ "$CHECK_DEV" = true ]; then
   echo -e "\n${CYAN}-- Development --${NC}"
-  check_refresh_lambda "dev" "$DEV_PROFILE"
+  if [ "$DEV_SCHEDULE_ENABLED" = "DISABLED" ]; then
+    log_info "[dev] Lambda invocation check skipped (schedule disabled)"
+  else
+    check_refresh_lambda "dev" "$DEV_PROFILE"
+  fi
 fi
 
 if [ "$CHECK_PROD" = true ]; then
@@ -395,12 +463,34 @@ if [ "$CHECK_PROD" = true ]; then
 fi
 
 # ==============================================================================
-# Step 5: CloudWatch Alarms
+# Step 6: CloudWatch Alarms
 # ==============================================================================
-log_step 5 5 "CloudWatch Alarms"
+log_step 6 6 "CloudWatch Alarms"
 
 if [ "$CHECK_DEV" = true ]; then
-  check_cloudwatch_alarms "dev" "$DEV_PROFILE" "${DEV_ALARM_NAMES[@]}"
+  if [ "$DEV_SCHEDULE_ENABLED" = "DISABLED" ]; then
+    # Filter out schedule-dependent alarms when schedule is intentionally disabled
+    DEV_ALARMS_FILTERED=()
+    DEV_ALARMS_SKIPPED=()
+    for alarm in "${DEV_ALARM_NAMES[@]}"; do
+      case "$alarm" in
+        *not-refreshed*|*token-refresh-error*|*token-refresh-dlq*|*invalid-refresh-token*|*secret-update-failure*)
+          DEV_ALARMS_SKIPPED+=("$alarm")
+          ;;
+        *)
+          DEV_ALARMS_FILTERED+=("$alarm")
+          ;;
+      esac
+    done
+    if [ ${#DEV_ALARMS_SKIPPED[@]} -gt 0 ]; then
+      log_info "[dev] Skipping ${#DEV_ALARMS_SKIPPED[@]} alarm(s) (schedule disabled)"
+    fi
+    if [ ${#DEV_ALARMS_FILTERED[@]} -gt 0 ]; then
+      check_cloudwatch_alarms "dev" "$DEV_PROFILE" "${DEV_ALARMS_FILTERED[@]}"
+    fi
+  else
+    check_cloudwatch_alarms "dev" "$DEV_PROFILE" "${DEV_ALARM_NAMES[@]}"
+  fi
 fi
 
 if [ "$CHECK_PROD" = true ]; then
