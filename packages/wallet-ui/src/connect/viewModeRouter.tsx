@@ -8,7 +8,7 @@
  * 3. Wallet status fallback (disconnected, locked, unlocked, zkLogin)
  */
 
-import { useState, type ReactNode } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import type { WalletConnectStateReturn } from "./hooks/useWalletConnectState";
 import type { ViewMode } from "./types";
 import { LockedStateUI } from "./LockedStateUI";
@@ -93,12 +93,7 @@ const VIEW_RENDERERS: Partial<Record<ViewMode, ViewRenderer>> = {
     <AutoLockSetupView onComplete={s.handleAutoLockComplete} />
   ),
 
-  "delete-confirm": (s) => (
-    <DeleteConfirmationView
-      onConfirm={s.confirmDelete}
-      onCancel={() => s.setViewMode("main")}
-    />
-  ),
+  "delete-confirm": (s) => <DeleteConfirmWithPasskey s={s} />,
 
   "signout-confirm": (s) => (
     <SignOutConfirmationView
@@ -277,6 +272,45 @@ const PREFIX_RENDERERS: [string, ViewRenderer][] = [
 
 type SharedConnectedProps = Omit<ConnectedViewProps, "header" | "onSignOut" | "onLock" | "onDelete">;
 
+// Passkey-aware delete confirmation wrapper.
+// Captures wallet type at mount to avoid race conditions with auto-lock,
+// and handles async biometric re-auth with error display.
+function DeleteConfirmWithPasskey({ s }: { s: WalletConnectStateReturn }) {
+  const [isPasskey] = useState(() => !!(s.isPasskeyUnlocked && s.passkeyAddress));
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const resetSettings = useUISettingsStore((state) => state.resetSettings);
+
+  const handleConfirm = useCallback(async () => {
+    if (isDeleting) return;
+    if (isPasskey) {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        await s.passkeyDeleteWallet();
+        resetSettings();
+        s.closeDropdown();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to delete wallet. Please try again.'
+        );
+        setIsDeleting(false);
+      }
+    } else {
+      s.confirmDelete();
+    }
+  }, [isPasskey, isDeleting, s, resetSettings]);
+
+  return (
+    <DeleteConfirmationView
+      onConfirm={handleConfirm}
+      onCancel={() => s.setViewMode("main")}
+      showPasskeyWarning={isPasskey}
+      error={error}
+    />
+  );
+}
+
 // Step 3: Wallet status fallback (viewMode === "main" or no explicit match)
 function renderByWalletStatus(
   s: WalletConnectStateReturn,
@@ -361,7 +395,7 @@ function renderByWalletStatus(
           s.passkeyLock();
           s.closeDropdown();
         }}
-        onDelete={s.passkeyDeleteWallet}
+        onDelete={() => s.setViewMode("delete-confirm")}
       />
     );
   }
