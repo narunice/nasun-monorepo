@@ -49,6 +49,7 @@ function AppContent() {
   const { isPageReady } = useHomePageLoading();
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
+  const isClaimPage = location.pathname === '/claim' || location.pathname.startsWith('/claim/');
   const user = useUserStore((state) => state.user);
 
   // Address book server sync (auto-load on login, auto-save on changes)
@@ -64,15 +65,17 @@ function AppContent() {
   // Hide Footer on admin pages
   return (
     <>
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-nasun-white focus:text-nasun-black focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
-      >
-        Skip to main content
-      </a>
-      <Navbar />
+      {!isClaimPage && (
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-nasun-white focus:text-nasun-black focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
+      )}
+      {!isClaimPage && <Navbar />}
       <AppRoutes />
-      {isPageReady && !isAdminPage && <Footer />}
+      {isPageReady && !isAdminPage && !isClaimPage && <Footer />}
     </>
   );
 }
