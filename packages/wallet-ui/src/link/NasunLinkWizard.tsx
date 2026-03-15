@@ -214,7 +214,7 @@ export function NasunLinkWizard({
           />
         </svg>
         <p className="text-sm xl:text-base text-gray-500 dark:text-zinc-400">
-          Connect wallet to create Nasun Links
+          Connect wallet to send tokens via link
         </p>
         {onCancel && (
           <button
@@ -268,7 +268,7 @@ export function NasunLinkWizard({
     return (
       <div className={className}>
         <h3 className="text-base md:text-lg xl:text-xl font-medium text-gray-900 dark:text-white mb-4">
-          Create Nasun Link
+          Send Tokens via Link
         </h3>
 
         {/* Token selector */}
@@ -495,7 +495,7 @@ export function NasunLinkWizard({
                 Creating...
               </>
             ) : (
-              'Create Link'
+              'Send'
             )}
           </button>
         </div>
