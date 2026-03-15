@@ -140,8 +140,10 @@ async function fundEphemeralAddress(
   const normalizedType = normalizeCoinType(coinType);
 
   if (normalizedType === NATIVE_TOKEN_TYPE) {
-    // Native token transfer - split from gas
-    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
+    // Send amount + gas budget so recipient gets exact amount
+    // and ephemeral has gas for the claim transaction
+    const totalToSend = amount + GAS_BUDGET_FOR_CLAIM;
+    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(totalToSend)]);
     tx.transferObjects([coin], tx.pure.address(recipient));
   } else {
     // Non-native token transfer
