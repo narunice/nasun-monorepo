@@ -20,6 +20,9 @@ const UserManagement = lazy(() => import("../features/admin/pages/UserManagement
 const DevnetMetrics = lazy(() => import("../features/admin/pages/DevnetMetrics").then(m => ({ default: m.DevnetMetrics })));
 const FeaturedFeedManagement = lazy(() => import("../features/admin/pages/FeaturedFeedManagement").then(m => ({ default: m.FeaturedFeedManagement })));
 
+// Claim page (lazy loaded, standalone layout)
+const ClaimPage = lazy(() => import("../pages/ClaimPage"));
+
 // Dev/Showcase pages (lazy loaded)
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
 const WalletTestPage = lazy(() => import("../pages/dev/WalletTestPage"));
@@ -131,6 +134,13 @@ const AppRoutes = () => {
 
         {/* Admin Routes */}
         {renderAdminRoutes(adminRoutes)}
+
+        {/* Claim Route (standalone landing page, no Navbar/Footer) */}
+        <Route path="/claim/:encodedData" element={
+          <Suspense fallback={<PageLoading />}>
+            <ClaimPage />
+          </Suspense>
+        } />
 
         {/* Dev/Showcase Routes */}
         <Route path="/showcase" element={<ComponentShowcasePage />} />
