@@ -94,7 +94,7 @@ export function ActivityTab({
       )}
 
       {/* Transaction History */}
-      <TransactionHistoryPanel hideHeader limit={10} />
+      <TransactionHistoryPanel hideHeader limit={50} />
     </div>
   );
 }

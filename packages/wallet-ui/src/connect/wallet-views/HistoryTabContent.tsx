@@ -16,7 +16,7 @@ export function HistoryTabContent({
     <div className="overflow-x-hidden mx-2 bg-white dark:bg-zinc-800 rounded-b-lg rounded-t-lg nasun-thin-scroll">
       <TransactionHistoryPanel
         hideHeader
-        limit={10}
+        limit={50}
         onSend={(address) => {
           setSendRecipient(address);
           onNavigate("send");
