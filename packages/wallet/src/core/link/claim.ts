@@ -163,7 +163,7 @@ async function executeTransfer(
     : never,
   recipient: string,
   coinType: string,
-  _amount: bigint,
+  amount: bigint,
   linkId: string
 ): Promise<ClaimResult> {
   const client = getSuiClient();
@@ -174,7 +174,6 @@ async function executeTransfer(
   const normalizedType = normalizeCoinType(coinType);
 
   if (normalizedType === NATIVE_TOKEN_TYPE) {
-    // Get all gas coins to calculate total balance
     const coins = await client.getCoins({
       owner: ephemeralAddress,
       coinType: NATIVE_TOKEN_TYPE,
@@ -193,21 +192,24 @@ async function executeTransfer(
       throw new Error('Link has zero balance');
     }
 
-    if (totalBalance <= CLAIM_GAS_RESERVE) {
+    // Use config amount if funded (new links include gas budget),
+    // otherwise fall back to totalBalance - gas reserve (old links)
+    const sendAmount = (amount > 0n && totalBalance >= amount + CLAIM_GAS_RESERVE)
+      ? amount
+      : totalBalance - CLAIM_GAS_RESERVE;
+
+    if (sendAmount <= 0n) {
       throw new Error('Link balance too low to cover gas fees');
     }
 
-    const sendAmount = totalBalance - CLAIM_GAS_RESERVE;
-
-    // Merge all coins into tx.gas to avoid gas coin conflict.
-    // tx.gas is the SDK-managed gas coin; merging into it ensures
-    // the split + transfer does not consume the gas payment source.
-    const coinObjects = coins.data.map((c) => tx.object(c.coinObjectId));
-    if (coinObjects.length > 0) {
+    // Merge coins into tx.gas only when multiple coins exist.
+    // With 1 coin, the SDK auto-selects it as tx.gas; merging it
+    // into itself causes a "duplicate object" error.
+    if (coins.data.length > 1) {
+      const coinObjects = coins.data.map((c) => tx.object(c.coinObjectId));
       tx.mergeCoins(tx.gas, coinObjects);
     }
 
-    // Split the send amount from gas coin and transfer to recipient
     const [sendCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(sendAmount)]);
     tx.transferObjects([sendCoin], tx.pure.address(recipient));
 
