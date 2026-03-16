@@ -104,7 +104,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
         <div className="flex flex-col gap-3">
-          {/* Genesis Pass Allowlist - Hidden until Genesis Pass campaign launches
+          {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Genesis Pass Allowlist</h6>
@@ -143,7 +143,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
               </div>
             </div>
           )}
-          */}
 
           {/* Leaderboard Event CTA (requires X account) */}
           {effectiveXUserId && (
