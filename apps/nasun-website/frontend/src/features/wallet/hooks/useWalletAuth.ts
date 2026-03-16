@@ -137,7 +137,7 @@ export function useWalletAuth(options: UseWalletAuthOptions): UseWalletAuthRetur
             body: JSON.stringify({
               primaryIdentityId: user.identityId,
               secondaryIdentityId: authResult.identityId,
-              secondaryProvider: connector?.name ?? "EVM Wallet",
+              secondaryProvider: "MetaMask",
             }),
           });
 
