@@ -65,12 +65,12 @@ export const SCORE_CONSTANTS = {
 };
 
 // Language scale factors for follower normalization
-// Normalizes followers to English-equivalent scale
+// All languages use equal weight (language-based differentiation removed)
 export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
-  en: 1.0, // Base scale
-  zh: 1.15, // Chinese CT
-  ja: 1.4, // Japanese CT
-  ko: 2.0, // Korean CT
+  en: 1.0,
+  zh: 1.0,
+  ja: 1.0,
+  ko: 1.0,
 };
 
 // Legacy: Language-based follower thresholds (kept for backwards compatibility)
