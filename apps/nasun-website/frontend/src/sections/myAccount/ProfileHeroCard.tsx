@@ -14,7 +14,6 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
-import { isMobileBrowser, isAndroidBrowser, isMetaMaskInAppBrowser, isIOSSafari } from "@/utils/mobileDetect";
 import { AccountItem } from "./components/AccountItem";
 import { AddWalletModal } from "./components/AddWalletModal";
 import {
@@ -82,46 +81,7 @@ function EvmWalletLinkButton() {
   );
 }
 
-/** Mobile guidance for EVM wallet linking on unsupported browsers. */
-function EvmMobileGuidance() {
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  return (
-    <div className="flex flex-col gap-2 text-sm">
-      <p className="text-nasun-white/50">
-        Wallet linking requires MetaMask's browser.
-        You'll need to sign in again after opening.
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="filledOutlineC7"
-          onClick={() => {
-            const { host, pathname } = window.location;
-            window.open(`https://metamask.app.link/dapp/${host}${pathname}`, "_self");
-          }}
-        >
-          Open in MetaMask
-        </Button>
-        {!isAndroidBrowser() && (
-          <Button
-            size="sm"
-            variant="filledOutlineC7"
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              setLinkCopied(true);
-              setTimeout(() => setLinkCopied(false), 2000);
-            }}
-          >
-            {linkCopied ? "Copied! Paste in Safari" : "Copy Link for Safari"}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** EVM wallet section with platform-specific mobile handling. */
+/** EVM wallet section - unified RainbowKit modal on all platforms. */
 function EvmWalletSection({
   evmWalletAddress,
   isMetaMaskPrimary,
@@ -135,9 +95,6 @@ function EvmWalletSection({
   unlinkAccount: (provider: string) => void;
   isLinking: boolean;
 }) {
-  const canDirectLink = !isMobileBrowser() || isMetaMaskInAppBrowser() || isIOSSafari();
-  const needsMetaMaskRedirect = !isMetaMaskLinked && !canDirectLink;
-
   return (
     <AccountItem
       provider="metamask"
@@ -153,7 +110,7 @@ function EvmWalletSection({
           : undefined
       }
       actions={[
-        !isMetaMaskLinked && canDirectLink ? (
+        !isMetaMaskLinked ? (
           <EvmWalletLinkButton key="link" />
         ) : null,
         isMetaMaskLinked && !isMetaMaskPrimary ? (
@@ -169,7 +126,11 @@ function EvmWalletSection({
         ) : null,
       ]}
     >
-      {needsMetaMaskRedirect && <EvmMobileGuidance />}
+      {!isMetaMaskLinked && (
+        <p className="text-nasun-white/40 text-xs">
+          If wallet linking fails on mobile, please try again on desktop.
+        </p>
+      )}
     </AccountItem>
   );
 }
