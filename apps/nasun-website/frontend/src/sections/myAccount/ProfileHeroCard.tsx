@@ -135,8 +135,8 @@ function EvmWalletSection({
   unlinkAccount: (provider: string) => void;
   isLinking: boolean;
 }) {
-  const canLinkEvmWallet = !isMobileBrowser() || isMetaMaskInAppBrowser() || isIOSSafari();
-  const needsMobileGuidance = !isMetaMaskLinked && !canLinkEvmWallet;
+  const canDirectLink = !isMobileBrowser() || isMetaMaskInAppBrowser() || isIOSSafari();
+  const needsMetaMaskRedirect = !isMetaMaskLinked && !canDirectLink;
 
   return (
     <AccountItem
@@ -153,7 +153,7 @@ function EvmWalletSection({
           : undefined
       }
       actions={[
-        !isMetaMaskLinked && canLinkEvmWallet ? (
+        !isMetaMaskLinked && canDirectLink ? (
           <EvmWalletLinkButton key="link" />
         ) : null,
         isMetaMaskLinked && !isMetaMaskPrimary ? (
@@ -169,7 +169,7 @@ function EvmWalletSection({
         ) : null,
       ]}
     >
-      {needsMobileGuidance && <EvmMobileGuidance />}
+      {needsMetaMaskRedirect && <EvmMobileGuidance />}
     </AccountItem>
   );
 }
@@ -237,7 +237,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
   const telegram = useTelegramVerify({ user });
   const walletReg = useWalletRegistration();
 
-  // [DISABLED] EVM Wallet features removed from profile — too buggy on mobile.
   // Nasun Wallet Hooks
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
@@ -726,7 +725,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               ]}
             />
 
-            {/* 5. EVM Wallet — hidden until mobile UX is stabilized
+            {/* 5. EVM Wallet */}
             <EvmWalletSection
               evmWalletAddress={evmWalletAddress}
               isMetaMaskPrimary={isMetaMaskPrimary}
@@ -734,7 +733,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
               unlinkAccount={unlinkAccount}
               isLinking={isLinking}
             />
-            */}
           </div>
         </div>
       </div>
