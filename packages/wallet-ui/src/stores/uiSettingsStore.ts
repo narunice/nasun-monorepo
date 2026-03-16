@@ -294,13 +294,13 @@ export function useUISettings(): UseUISettingsResult {
 /**
  * Hook to access Getting Started checklist state and actions
  */
-export function useGettingStarted() {
+export function useGettingStarted(variant?: 'zkLogin' | 'self-custody' | 'passkey') {
   const gettingStarted = useUISettingsStore((state) => state.gettingStarted);
   const markDone = useUISettingsStore((state) => state.markGettingStartedDone);
   const dismiss = useUISettingsStore((state) => state.dismissGettingStarted);
 
   const allDone =
-    gettingStarted.backupDone &&
+    (variant === 'zkLogin' || gettingStarted.backupDone) &&
     gettingStarted.faucetDone &&
     gettingStarted.stakingDone;
 
