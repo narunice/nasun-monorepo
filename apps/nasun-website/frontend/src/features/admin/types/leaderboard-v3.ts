@@ -215,12 +215,12 @@ export function getRoleByFollowers(followerCount: number, language: AccountLangu
 }
 
 // Language scale factors for follower normalization (matches backend)
-// Normalizes followers to English-equivalent scale
+// All languages use equal weight (language-based differentiation removed)
 export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
-  en: 1.0,   // Base scale
-  zh: 1.15,  // Chinese CT market normalization
-  ja: 1.4,   // Japanese CT market normalization
-  ko: 2.0,   // Korean CT market normalization
+  en: 1.0,
+  zh: 1.0,
+  ja: 1.0,
+  ko: 1.0,
 };
 
 // Continuous role multiplier constants
