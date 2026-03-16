@@ -128,7 +128,7 @@ function EvmWalletSection({
     >
       {!isMetaMaskLinked && (
         <p className="text-nasun-white/40 text-xs">
-          Approve the connection in your wallet, then return here to sign.
+          On mobile, your wallet app may ask for approval more than once. Return to this browser after each step.
         </p>
       )}
     </AccountItem>
