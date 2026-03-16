@@ -13,6 +13,7 @@ import {
   shortenAddress,
   getStoredEVMAddress,
   getExplorerAddressUrl,
+  getExplorerTxUrl,
   type TransactionHistoryItem,
   type TokenTransfer,
 } from '@nasun/wallet';
@@ -379,8 +380,7 @@ export function TransactionHistoryPanel({
 
   // Handle transaction click - open in explorer
   const handleTxClick = (digest: string) => {
-    const explorerUrl = chain.blockExplorer || 'https://explorer.nasun.io/devnet';
-    window.open(`${explorerUrl}/tx/${digest}`, '_blank');
+    window.open(getExplorerTxUrl(digest, chainId), '_blank');
   };
 
   // Loading state
