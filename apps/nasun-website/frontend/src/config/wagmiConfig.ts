@@ -3,7 +3,7 @@
 //
 // 3-way connector selection:
 // - MetaMask in-app browser: metaMaskWallet only (injected provider, no WC needed)
-// - Mobile browsers: walletConnectWallet only (metaMaskWallet opens in-app browser on Android)
+// - Mobile browsers: metaMaskWallet only (MetaMask SDK deep link protocol)
 // - Desktop: metaMaskWallet + rainbowWallet + trustWallet + walletConnectWallet
 
 import { connectorsForWallets } from "@rainbow-me/rainbowkit";
@@ -41,7 +41,7 @@ const connectors = connectorsForWallets(
   isMetaMaskInApp
     ? [{ groupName: "Connect", wallets: [metaMaskWallet] }]
     : isMobile
-      ? [{ groupName: "Connect", wallets: [walletConnectWallet] }]
+      ? [{ groupName: "Connect", wallets: [metaMaskWallet] }]
       : [{ groupName: "Connect", wallets: [metaMaskWallet, rainbowWallet, trustWallet, walletConnectWallet] }],
   { appName: "Nasun", projectId: projectId || "" }
 );

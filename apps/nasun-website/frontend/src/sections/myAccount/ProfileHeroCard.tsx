@@ -14,6 +14,10 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 
 import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
+import { prepareChallenge, connectVerify } from "@/services/metamaskApi";
+import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
+import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
+import { isMobileBrowser, isMetaMaskInAppBrowser } from "@/utils/mobileDetect";
 import { AccountItem } from "./components/AccountItem";
 import { AddWalletModal } from "./components/AddWalletModal";
 import {
@@ -56,7 +60,7 @@ function generateWalletIdenticon(address: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-/** Isolated component to avoid wagmi hooks polluting ProfileHeroCard's render cycle. */
+/** Desktop/in-app: RainbowKit modal link button. */
 function EvmWalletLinkButton() {
   const {
     connect: handleLinkWallet,
@@ -81,7 +85,104 @@ function EvmWalletLinkButton() {
   );
 }
 
-/** EVM wallet section - unified RainbowKit modal on all platforms. */
+/** Mobile: MetaMask SDK direct link button (bypasses WalletConnect). */
+function MobileMetaMaskLinkButton() {
+  const { user } = useAuth();
+  const [isLinking, setIsLinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleMobileLink = useCallback(async () => {
+    if (!user) {
+      setError("Please sign in first.");
+      return;
+    }
+
+    setIsLinking(true);
+    setError(null);
+
+    try {
+      // Dynamic import to avoid bundling SDK on desktop
+      const { default: MetaMaskSDK } = await import("@metamask/sdk");
+      const sdk = new MetaMaskSDK({
+        dappMetadata: { name: "Nasun", url: window.location.origin },
+        useDeeplink: true,
+        headless: true,
+      });
+      await sdk.init();
+
+      // Get challenge from server
+      const { nonce, message } = await prepareChallenge();
+
+      // 1-trip: connect + sign via MetaMask SDK deep link
+      // Add timeout to handle MetaMask app not installed
+      const signature = await Promise.race([
+        sdk.connectAndSign({ msg: message }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(
+            "Connection timed out. Make sure MetaMask is installed on this device."
+          )), 30_000)
+        ),
+      ]);
+      if (!signature || typeof signature !== "string") {
+        throw new Error("No signature received from MetaMask.");
+      }
+
+      // Verify signature on server
+      const authResult = await connectVerify(signature, nonce);
+
+      // Link account if different identity
+      if (user.identityId !== authResult.identityId) {
+        const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
+        if (!linkAccountApi) throw new Error("Link Account API is not configured");
+
+        const token = user.cognitoToken ?? useBattalionNftStore.getState().cognitoToken;
+        if (!token) throw new Error("Session expired. Please sign in again.");
+
+        const response = await fetch(linkAccountApi, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            primaryIdentityId: user.identityId,
+            secondaryIdentityId: authResult.identityId,
+            secondaryProvider: "MetaMask",
+          }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) throw new Error("Session expired. Please sign in again.");
+          const body = await response.text();
+          throw new Error(`Failed to link wallet: ${response.status} ${body}`);
+        }
+      }
+
+      await refreshAndSaveUserProfile(user.identityId);
+      alert("Wallet linked successfully!");
+    } catch (err) {
+      console.error("[MobileMetaMaskLink] Error:", err);
+      const msg = err instanceof Error ? err.message : "Wallet linking failed.";
+      setError(msg);
+    } finally {
+      setIsLinking(false);
+    }
+  }, [user]);
+
+  return (
+    <>
+      <Button size="sm" variant="filledOutlineC7"
+        onClick={handleMobileLink} disabled={isLinking}>
+        {isLinking ? "Linking..." : "Link with MetaMask"}
+      </Button>
+      {error && (
+        <p className="text-xs text-red-400 mt-1">{error}</p>
+      )}
+    </>
+  );
+}
+
+/** EVM wallet section with platform-aware link button. */
 function EvmWalletSection({
   evmWalletAddress,
   isMetaMaskPrimary,
@@ -95,6 +196,10 @@ function EvmWalletSection({
   unlinkAccount: (provider: string) => void;
   isLinking: boolean;
 }) {
+  // Desktop or MetaMask in-app: use RainbowKit modal
+  // Mobile (non-in-app): use MetaMask SDK directly
+  const useMobileSdk = isMobileBrowser() && !isMetaMaskInAppBrowser();
+
   return (
     <AccountItem
       provider="metamask"
@@ -111,7 +216,9 @@ function EvmWalletSection({
       }
       actions={[
         !isMetaMaskLinked ? (
-          <EvmWalletLinkButton key="link" />
+          useMobileSdk
+            ? <MobileMetaMaskLinkButton key="link" />
+            : <EvmWalletLinkButton key="link" />
         ) : null,
         isMetaMaskLinked && !isMetaMaskPrimary ? (
           <Button
@@ -126,10 +233,18 @@ function EvmWalletSection({
         ) : null,
       ]}
     >
-      {!isMetaMaskLinked && (
-        <p className="text-nasun-white/40 text-xs">
-          On mobile, your wallet app may ask for approval more than once. Return to this browser after each step.
-        </p>
+      {!isMetaMaskLinked && useMobileSdk && (
+        <div className="space-y-1">
+          <p className="text-nasun-white/40 text-xs">
+            Requires MetaMask app. You'll approve once to connect and sign.
+          </p>
+          <p className="text-yellow-400/70 text-xs">
+            On mobile, your wallet app may ask for approval more than once. Return to this browser after each step.
+          </p>
+          <p className="text-nasun-white/30 text-xs">
+            If you have trouble connecting on mobile, please try again from a desktop browser.
+          </p>
+        </div>
       )}
     </AccountItem>
   );
