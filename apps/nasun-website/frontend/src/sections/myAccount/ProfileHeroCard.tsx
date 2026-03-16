@@ -128,7 +128,7 @@ function EvmWalletSection({
     >
       {!isMetaMaskLinked && (
         <p className="text-nasun-white/40 text-xs">
-          If wallet linking fails on mobile, please try again on desktop.
+          Approve the connection in your wallet, then return here to sign.
         </p>
       )}
     </AccountItem>
