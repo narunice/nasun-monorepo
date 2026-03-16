@@ -221,6 +221,23 @@ export function useWalletAuth(options: UseWalletAuthOptions): UseWalletAuthRetur
     }
   }, [isConnected, address, isAuthenticating, handleAuthenticate]);
 
+  // Mobile: re-check connection when browser tab becomes visible again.
+  // On mobile, the browser is backgrounded while the user approves in the wallet app.
+  // The useEffect above may not fire until a re-render occurs, so this listener
+  // ensures immediate auth trigger when the user returns to the browser.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!pendingAuthRef.current || authTriggeredRef.current || isAuthenticating) return;
+      if (isConnected && address) {
+        authTriggeredRef.current = true;
+        handleAuthenticate();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isConnected, address, isAuthenticating, handleAuthenticate]);
+
   const connect = useCallback(async () => {
     pendingAuthRef.current = true;
     authTriggeredRef.current = false;
