@@ -12,8 +12,8 @@ module pado::faucet {
     const NBTC_FAUCET_AMOUNT: u64 = 100_000_000; // 1 NBTC (8 decimals)
     const NUSDC_FAUCET_AMOUNT: u64 = 100_000_000_000; // 100,000 NUSDC (6 decimals)
 
-    // Rate limiting
-    const COOLDOWN_MS: u64 = 86400000; // 24 hours in milliseconds
+    // Rate limiting: daily reset at 00:00 UTC (09:00 KST)
+    const RESET_INTERVAL_MS: u64 = 86_400_000; // 24 hours
 
     // Error codes
     const E_COOLDOWN_NOT_MET: u64 = 1;
@@ -113,6 +113,7 @@ module pado::faucet {
     }
 
     /// Check remaining cooldown time (returns 0 if can claim)
+    /// Resets daily at 00:00 UTC (09:00 KST)
     public fun get_remaining_cooldown(
         record: &ClaimRecord,
         user: address,
@@ -124,12 +125,13 @@ module pado::faucet {
 
         let last_claim = *table::borrow(&record.last_claims, user);
         let now = clock.timestamp_ms();
-        let elapsed = now - last_claim;
+        let current_epoch = now / RESET_INTERVAL_MS;
+        let last_epoch = last_claim / RESET_INTERVAL_MS;
 
-        if (elapsed >= COOLDOWN_MS) {
+        if (current_epoch > last_epoch) {
             0
         } else {
-            COOLDOWN_MS - elapsed
+            (current_epoch + 1) * RESET_INTERVAL_MS - now
         }
     }
 
@@ -138,14 +140,17 @@ module pado::faucet {
     // =========================================
 
     /// Check cooldown and update last claim time
+    /// Uses epoch-based daily reset at 00:00 UTC (09:00 KST)
     fun check_and_update_cooldown(
         record: &mut ClaimRecord,
         sender: address,
         now: u64
     ) {
+        let current_epoch = now / RESET_INTERVAL_MS;
         if (table::contains(&record.last_claims, sender)) {
             let last_claim = *table::borrow(&record.last_claims, sender);
-            assert!(now - last_claim >= COOLDOWN_MS, E_COOLDOWN_NOT_MET);
+            let last_epoch = last_claim / RESET_INTERVAL_MS;
+            assert!(current_epoch > last_epoch, E_COOLDOWN_NOT_MET);
             *table::borrow_mut(&mut record.last_claims, sender) = now;
         } else {
             table::add(&mut record.last_claims, sender, now);
