@@ -246,7 +246,7 @@ app.get('/active-addresses', async (c) => {
 
 // Network summary (parallel queries)
 app.get('/network-summary', async (c) => {
-  const getSummary = cached('network-summary', 30 * 1000, async () => {
+  const getSummary = cached('network-summary', 120 * 1000, async () => {
     const [
       [txCount],
       [cpCount],
@@ -275,7 +275,7 @@ app.get('/network-summary', async (c) => {
   });
 
   const data = await getSummary();
-  c.header('Cache-Control', 'public, max-age=30');
+  c.header('Cache-Control', 'public, max-age=120');
   return c.json({ data });
 });
 
