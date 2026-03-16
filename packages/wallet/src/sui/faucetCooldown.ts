@@ -1,12 +1,15 @@
 /**
  * Faucet Cooldown Utility
  *
- * localStorage-based 24h cooldown tracking for all token faucets.
- * For on-chain tokens (NBTC/NUSDC/NETH/NSOL), this is a UX cache — the contract
+ * localStorage-based cooldown tracking for all token faucets.
+ * Resets daily at 00:00 UTC (09:00 KST). One claim per reset period.
+ *
+ * For on-chain tokens (NBTC/NUSDC/NETH/NSOL), this is a UX cache -- the contract
  * enforces the real cooldown. For NSN (HTTP API), this is the primary enforcement.
  */
 
-const COOLDOWN_MS = 86_400_000; // 24 hours
+const RESET_INTERVAL_MS = 86_400_000; // 24 hours
+const RESET_HOUR_UTC = 0; // 00:00 UTC = 09:00 KST
 const KEY_PREFIX = 'faucet_cooldown_';
 
 function getCooldownKey(address: string, symbol: string): string {
@@ -14,8 +17,25 @@ function getCooldownKey(address: string, symbol: string): string {
 }
 
 /**
+ * Get the next reset boundary timestamp (ms).
+ * Reset occurs daily at 00:00 UTC (09:00 KST).
+ */
+function getNextResetTime(): number {
+  const now = new Date();
+  const todayReset = new Date(now);
+  todayReset.setUTCHours(RESET_HOUR_UTC, 0, 0, 0);
+
+  if (now.getTime() >= todayReset.getTime()) {
+    // Today's reset already passed, next is tomorrow
+    todayReset.setUTCDate(todayReset.getUTCDate() + 1);
+  }
+
+  return todayReset.getTime();
+}
+
+/**
  * Get remaining cooldown time in milliseconds.
- * Returns 0 if the token can be claimed.
+ * Returns 0 if the token can be claimed (no claim in current reset period).
  */
 export function getCooldownRemaining(address: string, symbol: string): number {
   try {
@@ -24,8 +44,15 @@ export function getCooldownRemaining(address: string, symbol: string): number {
     if (!stored) return 0;
     const lastClaim = parseInt(stored, 10);
     if (isNaN(lastClaim)) return 0;
-    const elapsed = Date.now() - lastClaim;
-    return elapsed >= COOLDOWN_MS ? 0 : COOLDOWN_MS - elapsed;
+
+    const nextReset = getNextResetTime();
+    const prevReset = nextReset - RESET_INTERVAL_MS;
+
+    // If last claim was before the most recent reset boundary, cooldown is over
+    if (lastClaim < prevReset) return 0;
+
+    // Claimed in current period, cooldown until next reset
+    return Math.max(0, nextReset - Date.now());
   } catch {
     // localStorage may be unavailable (SSR, private browsing)
     return 0;
