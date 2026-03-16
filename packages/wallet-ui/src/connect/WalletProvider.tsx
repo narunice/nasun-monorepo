@@ -5,15 +5,18 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { useWallet } from '@nasun/wallet';
+import { AddressBookSyncSetup } from '../sync/AddressBookSyncSetup';
 
 interface WalletProviderProps {
   children: ReactNode;
+  /** Wallet API endpoint for address book sync. When provided, sync is enabled automatically. */
+  addressBookApiEndpoint?: string;
 }
 
 /**
  * Internal component for wallet initialization
  */
-function WalletInitializer({ children }: { children: ReactNode }) {
+function WalletInitializer({ children, addressBookApiEndpoint }: { children: ReactNode; addressBookApiEndpoint?: string }) {
   const _initialize = useWallet((state) => state._initialize);
 
   useEffect(() => {
@@ -21,7 +24,12 @@ function WalletInitializer({ children }: { children: ReactNode }) {
     _initialize();
   }, [_initialize]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {addressBookApiEndpoint && <AddressBookSyncSetup apiEndpoint={addressBookApiEndpoint} />}
+      {children}
+    </>
+  );
 }
 
 /**
@@ -35,6 +43,6 @@ function WalletInitializer({ children }: { children: ReactNode }) {
  * </WalletProvider>
  * ```
  */
-export function WalletProvider({ children }: WalletProviderProps) {
-  return <WalletInitializer>{children}</WalletInitializer>;
+export function WalletProvider({ children, addressBookApiEndpoint }: WalletProviderProps) {
+  return <WalletInitializer addressBookApiEndpoint={addressBookApiEndpoint}>{children}</WalletInitializer>;
 }

@@ -93,7 +93,7 @@ createRoot(document.getElementById('root')!).render(
         <BrowserRouter>
           <QueryClientProvider client={queryClient}>
             <ToastProvider>
-              <WalletProvider>
+              <WalletProvider addressBookApiEndpoint={import.meta.env.VITE_WALLET_API_ENDPOINT}>
                 <MarketProvider>
                   <App />
                 </MarketProvider>

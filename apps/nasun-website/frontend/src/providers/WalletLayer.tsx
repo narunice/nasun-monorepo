@@ -54,7 +54,7 @@ export default function WalletLayer({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <RainbowKitProvider theme={nasunTheme}>
-        <WalletProvider>
+        <WalletProvider addressBookApiEndpoint={import.meta.env.VITE_WALLET_API_ENDPOINT}>
           <NasunProvider>{children}</NasunProvider>
         </WalletProvider>
       </RainbowKitProvider>
