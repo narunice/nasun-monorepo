@@ -86,7 +86,7 @@ function LoadingScreen() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <WalletProvider>
+      <WalletProvider addressBookApiEndpoint={import.meta.env.VITE_WALLET_API_ENDPOINT}>
         <ThemeProvider defaultTheme="light" storageKey="nasun-explorer-theme">
           <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Suspense fallback={<LoadingScreen />}>
