@@ -7,6 +7,7 @@ import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { AuthContextType } from "../types";
 import { linkAccounts, ensureUserProfile } from "../utils/authApi";
 import { isValidReturnUrl } from "../utils/urlValidation";
+import { isTokenExpired } from "../utils/tokenUtils";
 import { refreshAndSaveUserProfile } from "../services/userProfileService";
 import { registerWallet } from "@/services/suiWalletApi";
 import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
@@ -21,13 +22,32 @@ function hasSessionCookie(): boolean {
 }
 
 function setSessionCookie(): void {
-  // Session cookie (no expires/max-age) is cleared when the browser is fully closed,
-  // but survives tab close and page reload.
-  document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; SameSite=Lax`;
+  // Persistent cookie (24h) survives mobile browser background kills
+  // while still auto-expiring for shared device safety.
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; SameSite=Lax; max-age=86400${secure}`;
 }
 
 function deleteSessionCookie(): void {
   document.cookie = `${SESSION_COOKIE_NAME}=1; path=/; max-age=0`;
+}
+
+// Shared cleanup for all auth state (localStorage, sessionStorage, cookie, NFT store).
+// Used by both checkAuthStatus (session/token expiry) and logout (user-initiated).
+function clearAllAuthState(): void {
+  localStorage.removeItem("nasun_user_profile");
+  localStorage.removeItem("auth_provider_preference");
+  deleteSessionCookie();
+  useBattalionNftStore.getState().reset();
+  localStorage.removeItem("battalion-nft-state");
+  localStorage.removeItem("auth_flow_type");
+  localStorage.removeItem("battalion_nft_session_id");
+  localStorage.removeItem("twitter_link_session");
+  sessionStorage.removeItem("battalion_nft_twitter_session");
+  localStorage.removeItem("nasun_wallet_session");
+  localStorage.removeItem("nasun:zklogin");
+  localStorage.removeItem("nasun:zklogin:state");
+  sessionStorage.clear();
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -41,26 +61,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     clearError();
     try {
-      // Browser-restart detection: session cookie (no expires) is cleared when the
-      // browser is fully closed. If a cached user profile exists but the cookie is
-      // gone, the browser was restarted. Clear auth + wallet session data.
-      // Note: do NOT use zkLogin/wallet localStorage keys in the condition because
-      // Zustand persist writes default state on init, making them always non-null.
+      // Session expiry: persistent cookie (24h) gates session lifetime.
+      // If the cookie expired or was cleared, clean up all auth state.
       const cachedUser = localStorage.getItem("nasun_user_profile");
 
       if (cachedUser && !hasSessionCookie()) {
-        localStorage.removeItem("nasun_user_profile");
-        localStorage.removeItem("nasun_wallet_session");
-        localStorage.removeItem("nasun:zklogin");
-        localStorage.removeItem("nasun:zklogin:state");
-        sessionStorage.clear();
+        clearAllAuthState();
         clearUser();
-        setIsLoading(false);
         return;
       }
 
       if (cachedUser) {
         const parsed = JSON.parse(cachedUser);
+
+        // JWT expiry guard: if cognitoToken exists but is expired, force logout.
+        // cognitoToken is optional (undefined for some wallet logins), so only
+        // check when it's present. Server validates via JWKS independently.
+        if (parsed.cognitoToken && isTokenExpired(parsed.cognitoToken)) {
+          clearAllAuthState();
+          clearUser();
+          return;
+        }
+
         setUser(parsed);
 
         // Refresh from server in background to catch changes from other devices/tabs
@@ -326,28 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setIsLoading(true);
     try {
-      // Clear user profile and session cookie
-      localStorage.removeItem("nasun_user_profile");
-      localStorage.removeItem("auth_provider_preference");
-      deleteSessionCookie();
-
-      // Reset Battalion NFT Store first
-      useBattalionNftStore.getState().reset();
-
-      // Battalion NFT state
-      localStorage.removeItem("battalion-nft-state");
-      localStorage.removeItem("auth_flow_type");
-      localStorage.removeItem("battalion_nft_session_id");
-      localStorage.removeItem("twitter_link_session");
-      sessionStorage.removeItem("battalion_nft_twitter_session");
-
-      // Clear wallet/zkLogin session data from localStorage
-      localStorage.removeItem("nasun_wallet_session");
-      localStorage.removeItem("nasun:zklogin");
-      localStorage.removeItem("nasun:zklogin:state");
-
-      // Clear all remaining sessionStorage items
-      sessionStorage.clear();
+      clearAllAuthState();
       clearUser();
       logger.log("User logged out successfully");
     } catch (error) {

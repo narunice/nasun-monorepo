@@ -2,7 +2,7 @@ import { useMemo, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/features/auth';
 import { useUserProfile } from './useUserProfile';
-import { isTokenExpired } from '../utils/tokenUtils';
+import { isTokenExpired } from '@/features/auth/utils/tokenUtils';
 import type { AdminAuthState } from '../types';
 
 const TOKEN_CHECK_INTERVAL_MS = 60_000; // Check every 60 seconds
