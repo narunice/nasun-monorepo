@@ -29,6 +29,9 @@ export async function requestFaucet(address: string): Promise<FaucetResponse> {
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (response.status === 429) {
+        throw new Error(`Faucet cooldown active. ${errorText}`);
+      }
       throw new Error(`Faucet request failed: ${response.status} ${errorText}`);
     }
 
@@ -82,9 +85,10 @@ export const nativeFaucetHandler: TokenFaucetHandler = {
       await requestFaucet(address);
       return true;
     } catch (err) {
-      // Rollback cooldown on failure — user didn't receive tokens
-      clearCooldownTimestamp(address, 'NSN');
+      // If server says cooldown active (429), preserve localStorage and re-throw
       if (err instanceof Error && err.message.includes('cooldown')) throw err;
+      // Rollback cooldown on other failures — user didn't receive tokens
+      clearCooldownTimestamp(address, 'NSN');
       return false;
     }
   },
