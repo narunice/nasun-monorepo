@@ -56,6 +56,12 @@ export interface ChainConfig {
   rpcMethodPrefix?: string;
   /** Address derivation scheme for Move chains (default: 'sui' — IOTA omits flag byte for Ed25519) */
   addressScheme?: 'sui' | 'iota';
+  /** Explorer path overrides (defaults: tx=/tx, address=/address, object=/object) */
+  explorerPaths?: {
+    tx?: string;
+    address?: string;
+    object?: string;
+  };
 }
 
 /**
@@ -126,6 +132,10 @@ export const CHAINS: Record<string, ChainConfig> = {
     },
     nativeCoinType: '0x2::sui::SUI',
     blockExplorer: 'https://testnet.suivision.xyz',
+    explorerPaths: {
+      tx: '/txblock',
+      address: '/account',
+    },
     testnet: true,
   },
 
@@ -143,6 +153,9 @@ export const CHAINS: Record<string, ChainConfig> = {
     rpcMethodPrefix: 'iota',
     addressScheme: 'iota',
     blockExplorer: 'https://explorer.iota.org/iota-testnet',
+    explorerPaths: {
+      tx: '/txblock',
+    },
     testnet: true,
   },
 

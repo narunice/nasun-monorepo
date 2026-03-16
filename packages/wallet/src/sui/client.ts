@@ -605,16 +605,21 @@ export function clearSessionPassword(): void {
 import { getChain, isNasunChain } from '../config/chains';
 
 /**
- * Resolve the block explorer base URL for the given chain.
- * External chains (Sui, IOTA, EVM) use their own blockExplorer URL.
- * Nasun chains use the configured wallet explorer URL.
+ * Resolve the block explorer base URL and path overrides for the given chain.
+ * External chains (Sui, IOTA, EVM) use their own blockExplorer URL and paths.
+ * Nasun chains use the configured wallet explorer URL with default paths.
  */
-function resolveExplorerBase(chainId?: string): string {
+function resolveExplorerInfo(chainId?: string) {
   if (chainId && !isNasunChain(chainId)) {
     const chain = getChain(chainId);
-    if (chain?.blockExplorer) return chain.blockExplorer;
+    if (chain?.blockExplorer) {
+      return { baseUrl: chain.blockExplorer, paths: chain.explorerPaths };
+    }
   }
-  return walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet';
+  return {
+    baseUrl: walletConfig.explorerUrl || 'https://explorer.nasun.io/devnet',
+    paths: undefined,
+  };
 }
 
 /**
@@ -623,8 +628,8 @@ function resolveExplorerBase(chainId?: string): string {
  * @param chainId Optional chain ID (defaults to Nasun explorer)
  */
 export function getExplorerTxUrl(digest: string, chainId?: string): string {
-  const baseUrl = resolveExplorerBase(chainId);
-  return `${baseUrl}/tx/${digest}`;
+  const { baseUrl, paths } = resolveExplorerInfo(chainId);
+  return `${baseUrl}${paths?.tx ?? '/tx'}/${digest}`;
 }
 
 /**
@@ -633,8 +638,8 @@ export function getExplorerTxUrl(digest: string, chainId?: string): string {
  * @param chainId Optional chain ID (defaults to Nasun explorer)
  */
 export function getExplorerAddressUrl(address: string, chainId?: string): string {
-  const baseUrl = resolveExplorerBase(chainId);
-  return `${baseUrl}/address/${address}`;
+  const { baseUrl, paths } = resolveExplorerInfo(chainId);
+  return `${baseUrl}${paths?.address ?? '/address'}/${address}`;
 }
 
 /**
@@ -643,8 +648,8 @@ export function getExplorerAddressUrl(address: string, chainId?: string): string
  * @param chainId Optional chain ID (defaults to Nasun explorer)
  */
 export function getExplorerObjectUrl(objectId: string, chainId?: string): string {
-  const baseUrl = resolveExplorerBase(chainId);
-  return `${baseUrl}/object/${objectId}`;
+  const { baseUrl, paths } = resolveExplorerInfo(chainId);
+  return `${baseUrl}${paths?.object ?? '/object'}/${objectId}`;
 }
 
 // ============================================
