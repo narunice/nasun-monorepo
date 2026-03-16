@@ -268,6 +268,21 @@ export function NetworkSelectorModal({ onClose }: NetworkSelectorModalProps) {
             true
           )}
 
+          {/* Experimental notice for external chains (Pro Mode) */}
+          {isAdvancedMode && (filteredExternalMoveChains.length > 0 || evmTestnets.length > 0) && (
+            <>
+              <div className="border-t border-gray-100 dark:border-zinc-700 my-2" />
+              <div className="mx-4 my-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-lg">
+                <p className="text-xs xl:text-sm font-medium text-amber-700 dark:text-amber-400 mb-1">
+                  Experimental
+                </p>
+                <p className="text-[11px] xl:text-xs text-amber-600 dark:text-amber-400/80 leading-relaxed">
+                  External chains have limited support. Transaction history, NFTs, and zkLogin signing are not available on these networks.
+                </p>
+              </div>
+            </>
+          )}
+
           {/* External Move Testnets (Sui, IOTA) - Pro Mode only */}
           {filteredExternalMoveChains.length > 0 && (
             <>
