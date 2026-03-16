@@ -57,7 +57,7 @@ export function GettingStartedChecklist({
   variant: "zkLogin" | "self-custody" | "passkey";
   onNavigate: (mode: ViewMode) => void;
 }) {
-  const { gettingStarted, markDone, dismiss, isVisible } = useGettingStarted();
+  const { gettingStarted, markDone, dismiss, isVisible } = useGettingStarted(variant);
   const { requestFaucet, isLoading, isCooldown, getCooldownFormatted, canUseFaucet } = useTokenFaucet();
   const { data: balance } = useBalance();
   const { summary: stakingSummary } = useStaking();
