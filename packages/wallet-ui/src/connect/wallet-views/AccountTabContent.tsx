@@ -8,7 +8,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { ViewMode } from "../types";
 import { WALLET_STYLES } from "../../shared";
 import { useUISettingsStore, useGettingStarted } from "../../stores/uiSettingsStore";
-import { useTokenFaucet } from "@nasun/wallet";
+import { useTokenFaucet, useBalance, useStaking } from "@nasun/wallet";
 
 // SVG path constants for menu icons
 const ICON_PATHS = {
@@ -59,8 +59,26 @@ export function GettingStartedChecklist({
 }) {
   const { gettingStarted, markDone, dismiss, isVisible } = useGettingStarted();
   const { requestFaucet, isLoading, isCooldown, getCooldownFormatted, canUseFaucet } = useTokenFaucet();
+  const { data: balance } = useBalance();
+  const { summary: stakingSummary } = useStaking();
   const [faucetError, setFaucetError] = useState<string | null>(null);
   const [cooldownText, setCooldownText] = useState('');
+
+  // Auto-sync onboarding state with on-chain data
+  const hasBalance = !!balance && Number(balance.totalBalance) > 0;
+  const hasStaked = stakingSummary.totalStaked > 0n || stakingSummary.activeStakeCount > 0;
+
+  useEffect(() => {
+    if (hasBalance && !gettingStarted.faucetDone) {
+      markDone('faucetDone');
+    }
+  }, [hasBalance, gettingStarted.faucetDone, markDone]);
+
+  useEffect(() => {
+    if (hasStaked && !gettingStarted.stakingDone) {
+      markDone('stakingDone');
+    }
+  }, [hasStaked, gettingStarted.stakingDone, markDone]);
 
   const faucetLoading = isLoading('NSN');
   const faucetCooldown = isCooldown('NSN');
