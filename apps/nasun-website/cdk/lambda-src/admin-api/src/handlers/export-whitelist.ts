@@ -19,6 +19,7 @@ const BATTALION_TABLE = process.env.BATTALION_TABLE || "nasun-nft-whitelist";
 const HIDDEN_PROPOSALS_TABLE = process.env.HIDDEN_PROPOSALS_TABLE || "HiddenProposals";
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
 const DEVNET_METRICS_TABLE = process.env.DEVNET_METRICS_TABLE || "devnet-metrics";
+const GENESIS_PASS_TABLE = process.env.GENESIS_PASS_TABLE || "nasun-genesis-pass-allowlist";
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -350,6 +351,48 @@ async function scanGenesisWhitelist(status?: string): Promise<GenesisWhitelistIt
   return items;
 }
 
+interface GenesisPassItem {
+  walletAddress: string;
+  identityId: string;
+  registeredAt: string;
+  status: string;
+}
+
+/**
+ * Scan all items from Genesis Pass Allowlist table
+ */
+async function scanGenesisPassAllowlist(status?: string): Promise<GenesisPassItem[]> {
+  const items: GenesisPassItem[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined;
+
+  do {
+    const command = new ScanCommand({
+      TableName: GENESIS_PASS_TABLE,
+      ExclusiveStartKey: lastEvaluatedKey,
+      FilterExpression: status && status !== "ALL" ? "#status = :status" : undefined,
+      ExpressionAttributeNames: status && status !== "ALL" ? { "#status": "status" } : undefined,
+      ExpressionAttributeValues: status && status !== "ALL" ? { ":status": { S: status } } : undefined,
+    });
+
+    const result = await dynamoClient.send(command);
+
+    if (result.Items) {
+      for (const item of result.Items) {
+        items.push({
+          walletAddress: item.walletAddress?.S || "",
+          identityId: item.identityId?.S || "",
+          registeredAt: item.registeredAt?.S || "",
+          status: item.status?.S || "ACTIVE",
+        });
+      }
+    }
+
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey);
+
+  return items;
+}
+
 /**
  * Query Battalion NFT Whitelist with optional date filtering using batch-index GSI
  */
@@ -494,6 +537,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     console.log(`Admin verified: ${admin.email} (${admin.identityId})`);
     const queryParams = event.queryStringParameters || {};
+    const VALID_STATUSES = ["ACTIVE", "WITHDRAWN", "ALL"];
 
     // GET /export/genesis - Export Genesis NFT Whitelist
     if (path.endsWith("/genesis") && event.httpMethod === "GET") {
@@ -527,6 +571,44 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           { key: "withdrawnAt", header: "withdrawnAt" },
         ]);
         filename = generateFilename("frontiers-whitelist", status.toLowerCase());
+      }
+
+      console.log(`Generated CSV: ${items.length} items, filename: ${filename}`);
+      return csvResponse(csv, filename, requestOrigin);
+    }
+
+    // GET /export/genesis-pass - Export Genesis Pass Allowlist
+    if (path.endsWith("/genesis-pass") && event.httpMethod === "GET") {
+      const status = queryParams.status || "ACTIVE";
+      if (!VALID_STATUSES.includes(status)) {
+        return jsonResponse(400, { error: `Invalid status: ${status}. Must be one of: ${VALID_STATUSES.join(", ")}` }, requestOrigin);
+      }
+      const format = queryParams.format;
+
+      console.log(`Exporting Genesis Pass allowlist (status: ${status}, format: ${format || "default"})`);
+      const items = await scanGenesisPassAllowlist(status);
+
+      let csv: string;
+      let filename: string;
+
+      if (format === "opensea") {
+        csv = generateCSV(
+          items.map((item) => ({ walletAddress: item.walletAddress, mintLimit: "", price: "" })),
+          [
+            { key: "walletAddress", header: "Wallet address" },
+            { key: "mintLimit", header: "Custom mint limit (optional)" },
+            { key: "price", header: "Custom price in native token e.g. ETH (optional)" },
+          ]
+        );
+        filename = generateFilename("genesis-pass-opensea-allowlist", status.toLowerCase());
+      } else {
+        csv = generateCSV(items, [
+          { key: "walletAddress", header: "walletAddress" },
+          { key: "identityId", header: "identityId" },
+          { key: "registeredAt", header: "registeredAt" },
+          { key: "status", header: "status" },
+        ]);
+        filename = generateFilename("genesis-pass-allowlist", status.toLowerCase());
       }
 
       console.log(`Generated CSV: ${items.length} items, filename: ${filename}`);
@@ -578,12 +660,13 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     // GET /export/stats - Get whitelist statistics with status breakdown
     if (path.endsWith("/stats") && event.httpMethod === "GET") {
       // Scan all items to count by status
-      const [genesisItems, battalionItems] = await Promise.all([
+      const [genesisItems, battalionItems, genesisPassItems] = await Promise.all([
         scanGenesisWhitelist("ALL"),
-        queryBattalionWhitelist(), // No filters = all items
+        queryBattalionWhitelist(),
+        scanGenesisPassAllowlist("ALL"),
       ]);
 
-      // Count Genesis by status
+      // Count Genesis (legacy) by status
       const genesisActive = genesisItems.filter((item) => item.status === "ACTIVE").length;
       const genesisWithdrawn = genesisItems.filter((item) => item.status === "WITHDRAWN").length;
 
@@ -594,6 +677,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       const battalionWithdrawn = battalionItems.filter(
         (item) => item.status === "WITHDRAWN"
       ).length;
+
+      // Count Genesis Pass by status
+      const genesisPassActive = genesisPassItems.filter((item) => item.status === "ACTIVE").length;
+      const genesisPassWithdrawn = genesisPassItems.filter((item) => item.status === "WITHDRAWN").length;
 
       return jsonResponse(
         200,
@@ -607,6 +694,11 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             active: battalionActive,
             withdrawn: battalionWithdrawn,
             total: battalionItems.length,
+          },
+          genesisPass: {
+            active: genesisPassActive,
+            withdrawn: genesisPassWithdrawn,
+            total: genesisPassItems.length,
           },
         },
         requestOrigin

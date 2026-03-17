@@ -15,6 +15,7 @@ interface AdminStackProps extends cdk.StackProps {
   hiddenProposalsTableName?: string;
   nftCollectionsTableName?: string;
   devnetMetricsTableName?: string;
+  genesisPassTableName?: string;
 }
 
 export class AdminStack extends cdk.Stack {
@@ -31,6 +32,7 @@ export class AdminStack extends cdk.Stack {
     const hiddenProposalsTableName = props?.hiddenProposalsTableName || "HiddenProposals";
     const nftCollectionsTableName = props?.nftCollectionsTableName || "nasun-nft-collections";
     const devnetMetricsTableName = props?.devnetMetricsTableName || "devnet-metrics";
+    const genesisPassTableName = props?.genesisPassTableName || "nasun-genesis-pass-allowlist";
 
     // Create NFT Collections DynamoDB table
     const nftCollectionsTable = new dynamodb.Table(this, "NftCollectionsTable", {
@@ -71,6 +73,11 @@ export class AdminStack extends cdk.Stack {
       "DevnetMetricsTable",
       devnetMetricsTableName
     );
+    const genesisPassTable = dynamodb.Table.fromTableName(
+      this,
+      "GenesisPassTable",
+      genesisPassTableName
+    );
 
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
     const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
@@ -92,6 +99,7 @@ export class AdminStack extends cdk.Stack {
         BATTALION_TABLE: battalionTableName,
         HIDDEN_PROPOSALS_TABLE: hiddenProposalsTableName,
         DEVNET_METRICS_TABLE: devnetMetricsTableName,
+        GENESIS_PASS_TABLE: genesisPassTableName,
         ALLOWED_ORIGINS: allowedOrigins,
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
@@ -110,6 +118,7 @@ export class AdminStack extends cdk.Stack {
     battalionTable.grantReadData(this.exportFunction);
     hiddenProposalsTable.grantReadWriteData(this.exportFunction);
     devnetMetricsTable.grantReadData(this.exportFunction);
+    genesisPassTable.grantReadData(this.exportFunction);
 
     // Grant permission to query GSI (batch-index)
     this.exportFunction.addToRolePolicy(
@@ -230,6 +239,10 @@ export class AdminStack extends cdk.Stack {
     // GET /export/genesis (admin only)
     const genesisResource = exportResource.addResource("genesis");
     genesisResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
+
+    // GET /export/genesis-pass (admin only)
+    const genesisPassResource = exportResource.addResource("genesis-pass");
+    genesisPassResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
     // GET /export/battalion (admin only)
     const battalionResource = exportResource.addResource("battalion");
