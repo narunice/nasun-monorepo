@@ -15,9 +15,18 @@ import { WalletConnect } from "@nasun/wallet-ui";
 
 import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
 import { prepareChallenge, connectVerify } from "@/services/metamaskApi";
+import { connectMetaMaskSDK, signMessageViaSDK, disconnectMetaMaskSDK } from "@/lib/wallet/metamaskSdkProvider";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
-import { isMobileBrowser, isMetaMaskInAppBrowser } from "@/utils/mobileDetect";
+import { isMobileBrowser, isMetaMaskInAppBrowser, isAndroidBrowser, isIOSSafari } from "@/utils/mobileDetect";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui";
 import { AccountItem } from "./components/AccountItem";
 import { AddWalletModal } from "./components/AddWalletModal";
 import {
@@ -85,52 +94,51 @@ function EvmWalletLinkButton() {
   );
 }
 
-/** Mobile: MetaMask SDK direct link button (bypasses WalletConnect). */
+/** Mobile: MetaMask SDK direct link with modal (bypasses WalletConnect). */
 function MobileMetaMaskLinkButton() {
   const { user } = useAuth();
-  const [isLinking, setIsLinking] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [step, setStep] = useState<"choose" | "connecting" | "signing" | "error">("choose");
   const [error, setError] = useState<string | null>(null);
+  const stepRef = useRef(step);
+  stepRef.current = step;
 
-  const handleMobileLink = useCallback(async () => {
+  const handleOpenMetaMask = useCallback(async () => {
     if (!user) {
       setError("Please sign in first.");
+      setStep("error");
       return;
     }
 
-    setIsLinking(true);
+    setStep("connecting");
     setError(null);
 
     try {
-      // Dynamic import to avoid bundling SDK on desktop
-      const { default: MetaMaskSDK } = await import("@metamask/sdk");
-      const sdk = new MetaMaskSDK({
-        dappMetadata: { name: "Nasun", url: window.location.origin },
-        useDeeplink: true,
-        headless: true,
-      });
-      await sdk.init();
+      // 1. Connect via MetaMask SDK deep link
+      const address = await connectMetaMaskSDK();
 
-      // Get challenge from server
+      // 2. Get challenge from server
       const { nonce, message } = await prepareChallenge();
 
-      // 1-trip: connect + sign via MetaMask SDK deep link
-      // Add timeout to handle MetaMask app not installed
-      const signature = await Promise.race([
-        sdk.connectAndSign({ msg: message }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(
-            "Connection timed out. Make sure MetaMask is installed on this device."
-          )), 30_000)
-        ),
-      ]);
-      if (!signature || typeof signature !== "string") {
-        throw new Error("No signature received from MetaMask.");
+      // 3. Sign via MetaMask SDK (2nd trip to MetaMask app)
+      setStep("signing");
+      const signature = await signMessageViaSDK(message, address);
+
+      // 4. Verify signature on server (retry once for Android network reconnection)
+      let authResult;
+      try {
+        authResult = await connectVerify(signature, nonce);
+      } catch (fetchErr) {
+        // Only retry on network errors (TypeError from fetch), not HTTP 4xx/5xx
+        if (fetchErr instanceof TypeError) {
+          await new Promise(r => setTimeout(r, 1500));
+          authResult = await connectVerify(signature, nonce);
+        } else {
+          throw fetchErr;
+        }
       }
 
-      // Verify signature on server
-      const authResult = await connectVerify(signature, nonce);
-
-      // Link account if different identity
+      // 5. Link account if different identity
       if (user.identityId !== authResult.identityId) {
         const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
         if (!linkAccountApi) throw new Error("Link Account API is not configured");
@@ -159,25 +167,80 @@ function MobileMetaMaskLinkButton() {
       }
 
       await refreshAndSaveUserProfile(user.identityId);
+      setModalOpen(false);
+      setStep("choose");
       alert("Wallet linked successfully!");
     } catch (err) {
       console.error("[MobileMetaMaskLink] Error:", err);
-      const msg = err instanceof Error ? err.message : "Wallet linking failed.";
-      setError(msg);
-    } finally {
-      setIsLinking(false);
+      await disconnectMetaMaskSDK();
+      setError(err instanceof Error ? err.message : "Wallet linking failed.");
+      setStep("error");
     }
   }, [user]);
 
   return (
     <>
-      <Button size="sm" variant="filledOutlineC7"
-        onClick={handleMobileLink} disabled={isLinking}>
-        {isLinking ? "Linking..." : "Link with MetaMask"}
+      <Button size="sm" variant="filledOutlineC7" onClick={() => setModalOpen(true)}>
+        Link with MetaMask
       </Button>
-      {error && (
-        <p className="text-xs text-red-400 mt-1">{error}</p>
-      )}
+
+      <Dialog open={modalOpen} onOpenChange={(open) => {
+        if (!open) {
+          disconnectMetaMaskSDK().catch(() => {});
+          setModalOpen(false);
+          setStep("choose");
+          setError(null);
+        }
+      }}>
+        <DialogContent className="bg-gray-900 border-nasun-c5/30">
+          <DialogHeader>
+            <DialogTitle className="text-nasun-white">Link EVM Wallet</DialogTitle>
+            <DialogDescription className="text-nasun-white/60">
+              Connect your MetaMask wallet to register your EVM address.
+            </DialogDescription>
+          </DialogHeader>
+
+          {step === "choose" && (
+            <div className="flex flex-col gap-3 py-2">
+              <Button variant="filledOutlineC7" onClick={handleOpenMetaMask} className="w-full">
+                Open MetaMask
+              </Button>
+              <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" className="w-full">
+                <Button variant="filledOutlineC7" className="w-full opacity-60">
+                  Install MetaMask
+                </Button>
+              </a>
+              <p className="text-yellow-400/70 text-xs text-center leading-relaxed">
+                Return to this browser after each approval step.
+                If you have trouble, try from a desktop browser.
+              </p>
+            </div>
+          )}
+
+          {(step === "connecting" || step === "signing") && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <Spinner size="md" />
+              <p className="text-nasun-white/60 text-sm">
+                {step === "connecting" ? "Waiting for MetaMask..." : "Waiting for signature..."}
+              </p>
+              <p className="text-nasun-white/40 text-xs">
+                Complete the request in your MetaMask app, then return here.
+              </p>
+            </div>
+          )}
+
+          {step === "error" && (
+            <div className="flex flex-col gap-3 py-2">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-sm px-4 py-3">
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+              <Button variant="filledOutlineC7" onClick={() => setStep("choose")} className="w-full">
+                Try Again
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -197,8 +260,11 @@ function EvmWalletSection({
   isLinking: boolean;
 }) {
   // Desktop or MetaMask in-app: use RainbowKit modal
-  // Mobile (non-in-app): use MetaMask SDK directly
-  const useMobileSdk = isMobileBrowser() && !isMetaMaskInAppBrowser();
+  // iOS Safari: use MetaMask SDK directly (works reliably)
+  // Android: show desktop-only guidance (MetaMask SDK signing fails on Android)
+  const isMobile = isMobileBrowser() && !isMetaMaskInAppBrowser();
+  const useIOSMetaMaskSdk = isMobile && isIOSSafari();
+  const showAndroidGuidance = isMobile && isAndroidBrowser();
 
   return (
     <AccountItem
@@ -215,8 +281,8 @@ function EvmWalletSection({
           : undefined
       }
       actions={[
-        !isMetaMaskLinked ? (
-          useMobileSdk
+        !isMetaMaskLinked && !showAndroidGuidance ? (
+          useIOSMetaMaskSdk
             ? <MobileMetaMaskLinkButton key="link" />
             : <EvmWalletLinkButton key="link" />
         ) : null,
@@ -233,18 +299,16 @@ function EvmWalletSection({
         ) : null,
       ]}
     >
-      {!isMetaMaskLinked && useMobileSdk && (
-        <div className="space-y-1">
-          <p className="text-nasun-white/40 text-xs">
-            Requires MetaMask app. You'll approve once to connect and sign.
-          </p>
-          <p className="text-yellow-400/70 text-xs">
-            On mobile, your wallet app may ask for approval more than once. Return to this browser after each step.
-          </p>
-          <p className="text-nasun-white/30 text-xs">
-            If you have trouble connecting on mobile, please try again from a desktop browser.
-          </p>
-        </div>
+      {!isMetaMaskLinked && showAndroidGuidance && (
+        <p className="text-yellow-400/70 text-xs leading-relaxed">
+          EVM wallet linking is available on desktop or iPhone Safari.
+          Please try from a desktop browser.
+        </p>
+      )}
+      {!isMetaMaskLinked && useIOSMetaMaskSdk && (
+        <p className="text-yellow-400/70 text-xs leading-relaxed">
+          Requires MetaMask app. Return to this browser after each approval step.
+        </p>
       )}
     </AccountItem>
   );
