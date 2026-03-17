@@ -30,6 +30,29 @@ export async function exportGenesisWhitelist(options: ExportOptions): Promise<Bl
 }
 
 /**
+ * Export Genesis Pass Allowlist as CSV
+ */
+export async function exportGenesisPassAllowlist(options: ExportOptions): Promise<Blob> {
+  const { cognitoToken, status = 'ACTIVE', format } = options;
+
+  const params = new URLSearchParams({ status });
+  if (format) params.append('format', format);
+  const url = `${ADMIN_API_URL}/export/genesis-pass?${params}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: authHeaders(cognitoToken),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Export failed: ${response.status}`);
+  }
+
+  return response.blob();
+}
+
+/**
  * Export Battalion NFT Allowlist as CSV
  */
 export async function exportBattalionAllowlist(options: ExportOptions): Promise<Blob> {
