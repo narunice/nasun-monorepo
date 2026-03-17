@@ -14,7 +14,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
 import { useGenesisPassStatus, invalidateGenesisPassStatus } from "../../hooks/useGenesisPassStatus";
-import { registerGenesisPass } from "../../services/genesisPassApi";
+import { registerGenesisPass, GenesisPassApiError } from "../../services/genesisPassApi";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,6 +69,32 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
 
   const [showMismatchDialog, setShowMismatchDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+
+  const handleJoin = async () => {
+    if (isJoining || !cognitoToken) return;
+    try {
+      setIsJoining(true);
+      setJoinError(null);
+      await registerGenesisPass(cognitoToken);
+      toast.success("Successfully joined Genesis Pass Allowlist!");
+      invalidateGenesisPassStatus();
+    } catch (err: unknown) {
+      console.error("[CompactNftStatus] Join error:", err);
+      const isAlreadyRegistered = err instanceof GenesisPassApiError && err.statusCode === 409;
+      if (isAlreadyRegistered) {
+        toast.info("Already registered. Refreshing status...");
+        invalidateGenesisPassStatus();
+      } else {
+        const message = err instanceof Error ? err.message : "Failed to join. Please try again.";
+        setJoinError(message);
+        toast.error(message);
+      }
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   const handleUpdateWallet = async () => {
     if (isUpdating || !cognitoToken) return;
@@ -104,7 +130,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
         <div className="flex flex-col gap-3">
-          {/* Genesis Pass Allowlist */}
+          {/* Genesis Pass Allowlist - Hidden until Genesis Pass campaign launches
           {isGenesisPassConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Genesis Pass Allowlist</h6>
@@ -131,18 +157,28 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                 ) : (
                   <span className="text-nasun-white/50 text-sm">Not Registered</span>
                 )}
-                {!isGenesisPassLoading && !isGenesisPassRegistered && evmWalletAddress && (
+                {!isGenesisPassLoading && !isGenesisPassRegistered && evmWalletAddress && cognitoToken && (
                   <Button
                     variant="filledOutlineC7"
                     size="sm"
-                    disabled
+                    onClick={handleJoin}
+                    disabled={isJoining}
                   >
-                    Register
+                    {isJoining ? "Joining..." : "Join"}
                   </Button>
                 )}
               </div>
+              {!isGenesisPassLoading && !isGenesisPassRegistered && !evmWalletAddress && (
+                <p className="text-yellow-400/70 text-xs">
+                  Link your MetaMask wallet first to join the allowlist.
+                </p>
+              )}
+              {joinError && (
+                <p className="text-red-400 text-xs">{joinError}</p>
+              )}
             </div>
           )}
+          */}
 
           {/* Leaderboard Event CTA (requires X account) */}
           {effectiveXUserId && (
