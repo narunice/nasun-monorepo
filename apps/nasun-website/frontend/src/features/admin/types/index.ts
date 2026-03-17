@@ -74,6 +74,7 @@ export interface VoterRecord {
 export interface WhitelistStats {
   genesis: { active: number; withdrawn: number; total: number };
   battalion: { active: number; withdrawn: number; total: number };
+  genesisPass: { active: number; withdrawn: number; total: number };
 }
 
 export interface ExportOptions {
