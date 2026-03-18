@@ -1,6 +1,7 @@
 import { FC, useRef, useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { MultiChoiceProposal } from "../types/multiChoice";
+import { getChoiceLabel } from "../utils/proposalHelpers";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { toast } from "react-toastify";
@@ -18,6 +19,7 @@ interface MultiChoiceVoteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onVote: (selectedChoice: number) => void | Promise<void>;
+  initialChoice?: number;
 }
 
 export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
@@ -26,6 +28,7 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
   isOpen,
   onClose,
   onVote,
+  initialChoice,
 }) => {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
@@ -72,7 +75,11 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
     if (!isOpen) {
       setSelectedChoice(null);
       setConfirmStep(false);
+    } else {
+      setSelectedChoice(initialChoice ?? null);
     }
+    // Only react to isOpen changes, not initialChoice changes while open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -241,7 +248,7 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
                     <span>
                       Your choice:{" "}
                       <strong className="text-nasun-nw1">
-                        {proposal.choices[selectedChoice]}
+                        {getChoiceLabel(proposal.choices[selectedChoice])}
                       </strong>
                     </span>
                   </li>
