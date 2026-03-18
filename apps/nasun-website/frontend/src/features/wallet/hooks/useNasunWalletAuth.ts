@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useWallet, SignerManager, ZkLoginSigner } from '@nasun/wallet';
+import { useWallet, SignerManager, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
 import { useAuth } from '@/features/auth';
 import { suiPrepareChallenge, suiConnectVerify } from '@/services/suiWalletApi';
 import type { SignerAdapter } from '@nasun/wallet';
@@ -61,19 +61,26 @@ export function useNasunWalletAuth(): UseNasunWalletAuthResult {
     const { nonce, message } = await suiPrepareChallenge();
     const messageBytes = new TextEncoder().encode(message);
 
-    if (activeSigner instanceof ZkLoginSigner) {
+    // Unwrap NsaSigner to access the underlying signing implementation.
+    // When NSA is configured, SignerManager may return NsaSigner wrapping a ZkLoginSigner,
+    // which would fail the instanceof check and route to signPersonal() incorrectly.
+    const effectiveSigner = activeSigner instanceof NsaSigner
+      ? activeSigner.getUnderlyingSigner()
+      : activeSigner;
+
+    if (effectiveSigner instanceof ZkLoginSigner) {
       // zkLogin cannot sign personal messages (requires ZK proof). Instead, sign with the
       // ephemeral Ed25519 key and send the claimed zkLogin address + ephemeral public key
       // so the backend can verify liveness and use the zkLogin address as the identity.
-      const { signature } = await activeSigner.signWithEphemeralKey(messageBytes);
+      const { signature } = await effectiveSigner.signWithEphemeralKey(messageBytes);
       const zkLoginParams = {
-        zkAddress: activeSigner.address,
-        ephemeralPublicKey: activeSigner.getEphemeralPublicKey(),
+        zkAddress: effectiveSigner.address,
+        ephemeralPublicKey: effectiveSigner.getEphemeralPublicKey(),
       };
       const { identityId, token, walletAddress, walletProof, proofIssuedAt } = await suiConnectVerify(signature, nonce, zkLoginParams);
       await signInWithWallet(identityId, token, walletAddress, 'Nasun Wallet', walletProof, proofIssuedAt);
     } else {
-      const { signature } = await activeSigner.signPersonal(messageBytes);
+      const { signature } = await effectiveSigner.signPersonal(messageBytes);
       const { identityId, token, walletAddress, walletProof, proofIssuedAt } = await suiConnectVerify(signature, nonce);
       await signInWithWallet(identityId, token, walletAddress, 'Nasun Wallet', walletProof, proofIssuedAt);
     }
