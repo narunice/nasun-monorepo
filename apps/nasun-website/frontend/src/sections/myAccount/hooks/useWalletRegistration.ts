@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/features/auth';
-import { useWallet, useZkLogin, useSigner, ZkLoginSigner } from '@nasun/wallet';
+import { useWallet, useZkLogin, useSigner, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
 import {
   suiPrepareChallenge,
   suiConnectVerify,
@@ -76,16 +76,21 @@ export function useWalletRegistration(): UseWalletRegistrationResult {
       const messageBytes = new TextEncoder().encode(message);
 
       // Step 2: Sign + verify to get walletProof
+      // Unwrap NsaSigner to access the underlying signing implementation.
+      const effectiveSigner = activeSigner instanceof NsaSigner
+        ? activeSigner.getUnderlyingSigner()
+        : activeSigner;
+
       let verifyResult;
-      if (activeSigner instanceof ZkLoginSigner) {
-        const { signature } = await activeSigner.signWithEphemeralKey(messageBytes);
+      if (effectiveSigner instanceof ZkLoginSigner) {
+        const { signature } = await effectiveSigner.signWithEphemeralKey(messageBytes);
         const zkLoginParams = {
-          zkAddress: activeSigner.address,
-          ephemeralPublicKey: activeSigner.getEphemeralPublicKey(),
+          zkAddress: effectiveSigner.address,
+          ephemeralPublicKey: effectiveSigner.getEphemeralPublicKey(),
         };
         verifyResult = await suiConnectVerify(signature, nonce, zkLoginParams);
       } else {
-        const { signature } = await activeSigner.signPersonal(messageBytes);
+        const { signature } = await effectiveSigner.signPersonal(messageBytes);
         verifyResult = await suiConnectVerify(signature, nonce);
       }
 
