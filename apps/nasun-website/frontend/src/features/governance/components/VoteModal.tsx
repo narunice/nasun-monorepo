@@ -116,11 +116,12 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   const votingDisable = hasVoted || isPending || isSuccess;
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+    <Dialog.Root open={isOpen} onOpenChange={onClose} modal={false}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <div className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm z-50" onClick={onClose} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <Dialog.Content
-          className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-[calc(100%-2rem)] shadow-lg max-h-[90vh] flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]"
+          className="bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg max-h-[calc(100vh-2rem)] overflow-y-auto flex flex-col pointer-events-auto"
           aria-describedby={undefined}
         >
         {/* Header */}
@@ -323,6 +324,7 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           </Dialog.Close>
         </div>
         </Dialog.Content>
+        </div>
       </Dialog.Portal>
     </Dialog.Root>
   );

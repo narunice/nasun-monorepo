@@ -1,7 +1,9 @@
 import { FC, useRef, useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { MultiChoiceProposal } from "../types/multiChoice";
-import { getChoiceLabel } from "../utils/proposalHelpers";
+import { getChoiceLabel, extractTweetHandle, extractTweetId } from "../utils/proposalHelpers";
+import { useTwitterDisplayNames } from "../hooks/useTwitterDisplayNames";
+import { ExternalLink } from "lucide-react";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { toast } from "react-toastify";
@@ -37,6 +39,7 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
   const { user } = useAuth();
   const { user: userProfile } = useUserStore();
 
+  const { displayNames } = useTwitterDisplayNames(proposal.choices);
   const { vote: sponsoredVote, isPending: isSponsoredPending } = useMultiChoiceSponsoredVote();
   const { vote: directVote, isPending: isDirectPending } = useMultiChoiceDirectVote();
 
@@ -114,11 +117,12 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
   const votingDisable = hasVoted || isPending || isSuccess;
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+    <Dialog.Root open={isOpen} onOpenChange={onClose} modal={false}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <div className="fixed inset-0 bg-nasun-black/70 backdrop-blur-sm z-50" onClick={onClose} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <Dialog.Content
-          className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-[calc(100%-2rem)] shadow-lg max-h-[90vh] flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]"
+          className="bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg max-h-[calc(100vh-2rem)] overflow-y-auto flex flex-col pointer-events-auto"
           aria-describedby={undefined}
         >
           {/* Header */}
@@ -248,7 +252,7 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
                     <span>
                       Your choice:{" "}
                       <strong className="text-nasun-nw1">
-                        {getChoiceLabel(proposal.choices[selectedChoice])}
+                        {getChoiceLabel(proposal.choices[selectedChoice], displayNames)}
                       </strong>
                     </span>
                   </li>
@@ -286,26 +290,49 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
             {/* Choice Selection (Radio Buttons) */}
             {!confirmStep && (
               <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1 custom-scrollbar">
-                {proposal.choices.map((choice, idx) => (
-                  <label
-                    key={idx}
-                    className={`flex items-center gap-3 p-3 rounded-sm border cursor-pointer transition-all ${
-                      selectedChoice === idx
-                        ? "border-nasun-nw1/60 bg-nasun-nw1/10"
-                        : "border-nasun-white/10 bg-gray-800/50 hover:border-nasun-white/20"
-                    } ${votingDisable ? "opacity-50 pointer-events-none" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      name="multi-choice-vote"
-                      checked={selectedChoice === idx}
-                      onChange={() => setSelectedChoice(idx)}
-                      disabled={votingDisable}
-                      className="accent-nasun-nw1 w-4 h-4 flex-shrink-0"
-                    />
-                    <span className="text-sm text-nasun-white/90">{choice}</span>
-                  </label>
-                ))}
+                {proposal.choices.map((choice, idx) => {
+                  const handle = extractTweetHandle(choice);
+                  const tweetId = extractTweetId(choice);
+                  const label = getChoiceLabel(choice, displayNames);
+                  const isTweet = !!tweetId;
+
+                  return (
+                    <label
+                      key={idx}
+                      className={`flex items-center gap-3 p-3 rounded-sm border cursor-pointer transition-all ${
+                        selectedChoice === idx
+                          ? "border-nasun-nw1/60 bg-nasun-nw1/10"
+                          : "border-nasun-white/10 bg-gray-800/50 hover:border-nasun-white/20"
+                      } ${votingDisable ? "opacity-50 pointer-events-none" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="multi-choice-vote"
+                        checked={selectedChoice === idx}
+                        onChange={() => setSelectedChoice(idx)}
+                        disabled={votingDisable}
+                        className="accent-nasun-nw1 w-4 h-4 flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-nasun-white/90 block truncate">{label}</span>
+                        {isTweet && handle && label !== `@${handle}` && (
+                          <span className="text-xs text-nasun-white/40">@{handle}</span>
+                        )}
+                      </div>
+                      {isTweet && (
+                        <a
+                          href={choice}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-nasun-white/30 hover:text-nasun-nw1 flex-shrink-0"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             )}
 
@@ -337,6 +364,7 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
             </Dialog.Close>
           </div>
         </Dialog.Content>
+        </div>
       </Dialog.Portal>
     </Dialog.Root>
   );
