@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
 import { ProposalItem } from "./ProposalItem";
+import { MultiChoiceProposalItem } from "./MultiChoiceProposalItem";
 import { useVoteNfts } from "../hooks/useVoteNfts";
 import { VoteNft } from "../types/voting";
+import { isMultiChoiceProposal } from "../utils/proposalHelpers";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
-import { Suspense, useState } from "react";
+import { FC, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
@@ -176,7 +178,7 @@ const ProposalList = () => {
         {visibleProposalIds.map((id) => (
           <ErrorBoundary key={id} fallback={<div>{t("error.generic")}</div>}>
             <Suspense fallback={<InlineLoading size="sm" />}>
-              <ProposalItem
+              <SmartProposalItem
                 id={id}
                 filter={filter}
                 onVoteTxSuccess={async () => {
@@ -215,6 +217,48 @@ type VoteNftFields = {
   proposal_id: string;
   url: string;
   id: { id: string };
+};
+
+/**
+ * SmartProposalItem - Routes to the correct component based on on-chain object type.
+ * Uses React Query cache, so the subsequent fetch inside ProposalItem/MultiChoiceProposalItem is free.
+ */
+const SmartProposalItem: FC<{
+  id: string;
+  filter: ProposalFilter;
+  voteNft: VoteNft | undefined;
+  onVoteTxSuccess: () => void | Promise<void>;
+}> = ({ id, filter, voteNft, onVoteTxSuccess }) => {
+  const { data, isPending } = useSuiClientQuery("getObject", {
+    id,
+    options: { showContent: true },
+  });
+
+  if (isPending) return <InlineLoading size="sm" />;
+
+  const objectType = data?.data?.content?.dataType === "moveObject"
+    ? (data.data.content.type ?? "")
+    : "";
+
+  if (isMultiChoiceProposal(objectType)) {
+    return (
+      <MultiChoiceProposalItem
+        id={id}
+        filter={filter}
+        hasVoted={false}
+        onVoteTxSuccess={onVoteTxSuccess}
+      />
+    );
+  }
+
+  return (
+    <ProposalItem
+      id={id}
+      filter={filter}
+      voteNft={voteNft}
+      onVoteTxSuccess={onVoteTxSuccess}
+    />
+  );
 };
 
 function getVoteNft(nftData: SuiObjectData | undefined | null): VoteNft {

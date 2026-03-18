@@ -151,6 +151,7 @@ async function getSponsorKeypair(): Promise<Ed25519Keypair> {
 const ALLOWED_TARGETS = new Set([
   `${GOVERNANCE_PACKAGE_ID}::voting_power::mint_certificate`,
   `${GOVERNANCE_PACKAGE_ID}::proposal::vote_with_certificate`,
+  `${GOVERNANCE_PACKAGE_ID}::multi_choice_proposal::vote_with_certificate`,
 ]);
 
 function validateTxKind(tx: Transaction): { valid: boolean; error?: string } {

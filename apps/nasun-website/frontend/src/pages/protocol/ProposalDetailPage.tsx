@@ -17,10 +17,14 @@ import { useProposalType } from "@/features/governance/hooks/useProposalType";
 import { useVoteNfts } from "@/features/governance/hooks/useVoteNfts";
 import {
   parseProposal,
+  parseMultiChoiceProposal,
+  isMultiChoiceProposal,
+  getChoicePercentages,
   isUnixTimeExpired,
   formatTimeRemaining,
   getStatusBadge,
 } from "@/features/governance/utils/proposalHelpers";
+import { MultiChoiceVoteModal } from "@/features/governance/components/MultiChoiceVoteModal";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox, PageTitle, SectionLoading } from "@/components/ui";
@@ -100,6 +104,22 @@ const ProposalDetailPage: FC = () => {
           </ButtonV3>
         </div>
       </PageLayout>
+    );
+  }
+
+  // Type discriminator: check if this is a multi-choice proposal
+  const objectType = dataResponse.data?.content?.dataType === "moveObject"
+    ? (dataResponse.data.content.type ?? "")
+    : "";
+
+  if (isMultiChoiceProposal(objectType)) {
+    return (
+      <MultiChoiceProposalDetail
+        proposalId={proposalId!}
+        data={dataResponse.data}
+        proposalType={proposalType}
+        refetchProposal={refetchProposal}
+      />
     );
   }
 
@@ -388,3 +408,214 @@ const ProposalDetailPage: FC = () => {
 };
 
 export default ProposalDetailPage;
+
+// Multi-choice proposal detail view (separate from existing Yes/No view)
+import { SuiObjectData } from "@mysten/sui/client";
+import { ProposalType } from "@/features/governance/types/voting";
+
+const CHOICE_COLORS = [
+  "bg-nasun-nw1", "bg-nasun-nw4", "bg-green-500", "bg-blue-500",
+  "bg-purple-500", "bg-orange-500", "bg-pink-500", "bg-cyan-500",
+];
+
+const MultiChoiceProposalDetail: FC<{
+  proposalId: string;
+  data: SuiObjectData;
+  proposalType: ProposalType;
+  refetchProposal: () => Promise<unknown>;
+}> = ({ proposalId, data, proposalType, refetchProposal }) => {
+  const navigate = useNavigate();
+  const { t } = useTranslation("proposals");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { status, account } = useWallet();
+  const { isConnected: isZkConnected } = useZkLogin();
+  const isConnected = (status === "unlocked" && account) || isZkConnected;
+
+  const proposal = parseMultiChoiceProposal(data, proposalType);
+
+  if (!proposal) {
+    return (
+      <PageLayout className="!pt-0">
+        <div className="flex-1 flex items-center justify-center py-20">
+          <p className="text-red-400">{t("detail.parseFailed")}</p>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  const isDelisted = proposal.status.variant === "Delisted";
+  const isExpired = isUnixTimeExpired(proposal.expiration) || isDelisted;
+  const percentages = getChoicePercentages(proposal.choicePowers);
+  const totalPower = proposal.choicePowers.reduce((sum, p) => sum + p, 0);
+  const totalVoters = proposal.choiceCounts.reduce((sum, c) => sum + c, 0);
+  const maxPower = Math.max(...proposal.choicePowers);
+  const statusBadge = getStatusBadge(isDelisted, isExpired, maxPower > 0);
+
+  const explorerUrl = import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet";
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success(t("detail.urlCopied"));
+  };
+
+  return (
+    <PageLayout className="!pt-0">
+      <SectionLayout className="!max-w-6xl gap-4 !pt-24">
+        {/* Top Row */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate("/network/governance")}
+            className="inline-flex items-center text-nasun-nw1 hover:text-nasun-nw4 transition-colors text-xs md:text-sm lg:text-base uppercase font-medium"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            {t("detail.backToGovernance")}
+          </button>
+          <div className="flex items-center gap-2">
+            {proposal.proposalType === "Poll" ? (
+              <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
+                {t("detail.poll")}
+              </span>
+            ) : (
+              <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
+                {t("detail.governance")}
+              </span>
+            )}
+            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw2/20 text-nasun-nw2 border border-nasun-nw2/30">
+              Multi-Choice
+            </span>
+            <span className={`px-3 py-1 text-xs uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}>
+              {statusBadge.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Title */}
+        <PageTitle as="h2">{proposal.title}</PageTitle>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
+          {/* Left: Description */}
+          <OuterBox color="nw2" padding="md" className="flex flex-col min-h-[300px] lg:min-h-[500px] max-h-[55vh] !bg-gray-900">
+            <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+              <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
+                {proposal.description}
+              </p>
+            </div>
+          </OuterBox>
+
+          {/* Right: Sidebar */}
+          <div className="flex flex-col gap-4 lg:min-h-[300px]">
+            {/* Vote Results */}
+            <OuterBox color="nw1" padding="md">
+              <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
+                {t("detail.voteResults")}
+              </h3>
+              <div className="space-y-3">
+                {proposal.choices.map((choice, idx) => (
+                  <div key={idx}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-nasun-white/80">{choice}</span>
+                      <span className="text-nasun-white/50">
+                        {percentages[idx]}%{totalPower > 0 ? ` (${proposal.choicePowers[idx]})` : ""}
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full overflow-hidden bg-nasun-white/10">
+                      <div
+                        className={`h-full transition-all ${CHOICE_COLORS[idx % CHOICE_COLORS.length]}`}
+                        style={{ width: `${percentages[idx]}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 pt-3 border-t border-nasun-white/10 flex justify-between text-sm text-nasun-white/50">
+                <span>Total Voters: {totalVoters}</span>
+                <span>Total Power: {totalPower}</span>
+              </div>
+              {proposal.useEqualWeight && (
+                <p className="text-xs text-nasun-white/30 mt-2">Equal Weight: 1 vote per wallet</p>
+              )}
+            </OuterBox>
+
+            {/* Details */}
+            <OuterBox color="nw1" padding="md" className="flex-1">
+              <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
+                {t("detail.details")}
+              </h3>
+              <div className="space-y-2 text-base">
+                <div className="flex justify-between">
+                  <span className="text-nasun-white/70">{t("detail.proposalId")}</span>
+                  <a
+                    href={`${explorerUrl}/object/${proposalId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
+                  >
+                    {proposalId.slice(0, 6)}...{proposalId.slice(-4)}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-nasun-white/70">{t("detail.creator")}</span>
+                  <a
+                    href={`${explorerUrl}/address/${proposal.creator}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
+                  >
+                    {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-nasun-white/70">{t("detail.expiration")}</span>
+                  <span className="text-nasun-white/80 text-sm">
+                    {isDelisted
+                      ? t("detail.delisted")
+                      : isExpired
+                        ? `${t("detail.ended")} ${new Date(proposal.expiration).toLocaleString("en-US")}`
+                        : formatTimeRemaining(proposal.expiration)}
+                  </span>
+                </div>
+              </div>
+            </OuterBox>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2">
+              <ButtonV3 variant="nw2" outline onClick={handleCopyUrl} className="w-full flex items-center justify-center gap-2">
+                <Copy className="w-4 h-4" />
+                {t("detail.copyUrl")}
+              </ButtonV3>
+              {!isExpired &&
+                (isConnected ? (
+                  <ButtonV3
+                    variant="gradientDark"
+                    onClick={() => setIsModalOpen(true)}
+                    className="w-full"
+                  >
+                    Vote
+                  </ButtonV3>
+                ) : (
+                  <div className="w-full [&_>_div]:w-full [&_button]:w-full">
+                    <WalletConnect />
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+
+        <MultiChoiceVoteModal
+          proposal={proposal}
+          hasVoted={false}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onVote={async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            await refetchProposal();
+            setIsModalOpen(false);
+          }}
+        />
+      </SectionLayout>
+    </PageLayout>
+  );
+};
