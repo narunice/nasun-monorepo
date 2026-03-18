@@ -42,7 +42,7 @@ export function CreateProposal() {
   const status = useWalletStatus();
   const account = useWalletAccount();
   const packageId = useNetworkVariable("packageId") || NASUN_DEVNET_PACKAGE_ID;
-  const dashboardId = NASUN_DEVNET_DASHBOARD_ID;
+  const dashboardId = useNetworkVariable("dashboardId") || NASUN_DEVNET_DASHBOARD_ID;
   const adminCapId = NASUN_DEVNET_ADMIN_CAP;
 
   const { isConnected: isZkConnected } = useZkLogin();

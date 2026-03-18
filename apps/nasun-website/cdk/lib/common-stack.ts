@@ -305,7 +305,7 @@ export class CommonStack extends cdk.Stack {
         BARAM_PACKAGE_ID: "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f",
         // VotingPowerCertificate + Sponsored Transaction (V7 - 2026-02-04)
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
-        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0xe2fb0947f43473e21d1f8aef40e1d6799aa61b3d4fa80b6a1973d1e658de1256",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x9cbfb069a47733ec1a0ffe9e11fb696f645c00c517041405985c713794498f83",
         GOVERNANCE_ORIGINAL_PACKAGE_ID: process.env.GOVERNANCE_ORIGINAL_PACKAGE_ID || "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
         PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
