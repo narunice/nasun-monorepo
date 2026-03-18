@@ -175,22 +175,8 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                 ) : (
                   <span className="text-nasun-white/50 text-sm">Not Registered</span>
                 )}
-                {!isGenesisPassLoading && !isGenesisPassRegistered && evmWalletAddress && cognitoToken && (
-                  <Button
-                    variant="filledOutlineC7"
-                    size="sm"
-                    onClick={handleJoin}
-                    disabled={isJoining}
-                  >
-                    {isJoining ? "Joining..." : "Join"}
-                  </Button>
-                )}
+                {/* Join button disabled until Genesis Pass campaign opens */}
               </div>
-              {!isGenesisPassLoading && !isGenesisPassRegistered && !evmWalletAddress && (
-                <p className="text-yellow-400/70 text-xs">
-                  Link your MetaMask wallet first to join the allowlist.
-                </p>
-              )}
               {joinError && (
                 <p className="text-red-400 text-xs">{joinError}</p>
               )}
