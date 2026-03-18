@@ -117,11 +117,11 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
           return (
             <div
               key={idx}
-              className={`flex flex-col rounded-sm border transition-all cursor-pointer ${
+              className={`flex flex-col rounded-sm border-2 transition-all cursor-pointer ${
                 isSelected
-                  ? "border-nasun-nw1/60 bg-nasun-nw1/5"
-                  : "border-nasun-white/10 bg-gray-900/80 hover:border-nasun-white/20"
-              } ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+                  ? "border-nasun-nw1 bg-nasun-nw1/10 ring-2 ring-nasun-nw1/30 scale-[1.02]"
+                  : "border-nasun-white/10 bg-gray-900/80 hover:border-nasun-white/25 opacity-80 hover:opacity-100"
+              } ${disabled ? "!opacity-40 pointer-events-none" : ""}`}
               onClick={() => !disabled && onSelect(idx)}
             >
               {/* Tweet embed area with height limit */}
@@ -154,10 +154,10 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
 
               {/* Radio button */}
               <label
-                className={`flex items-center gap-2.5 px-3 py-2.5 border-t cursor-pointer ${
+                className={`flex items-center gap-2.5 px-3 py-3 border-t cursor-pointer transition-colors ${
                   isSelected
-                    ? "border-nasun-nw1/30 bg-nasun-nw1/10"
-                    : "border-nasun-white/5"
+                    ? "border-nasun-nw1/40 bg-nasun-nw1/15"
+                    : "border-nasun-white/5 hover:bg-nasun-white/5"
                 }`}
               >
                 <input
@@ -168,7 +168,7 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
                   disabled={disabled}
                   className="accent-nasun-nw1 w-4 h-4 flex-shrink-0"
                 />
-                <span className="text-sm text-nasun-white/70 truncate">
+                <span className={`text-sm truncate ${isSelected ? "text-nasun-nw1 font-medium" : "text-nasun-white/70"}`}>
                   {getChoiceLabel(choice, displayNames)}
                 </span>
               </label>
