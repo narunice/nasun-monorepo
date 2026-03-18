@@ -20,19 +20,25 @@ export function useAdminAuth(): AdminAuthState {
     return profile.role === 'ADMIN';
   }, [isAuthenticated, profile]);
 
-  // Re-evaluated on every tick and when token/auth changes
+  // Only treat as expired when token EXISTS and is expired.
+  // Token being absent (e.g. stripped after expiry) is not the same as expired.
   const tokenExpired = useMemo(
-    () => isAuthenticated && isTokenExpired(user?.cognitoToken),
+    () => isAuthenticated && !!user?.cognitoToken && isTokenExpired(user.cognitoToken),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isAuthenticated, user?.cognitoToken, tick]
   );
 
+  // Admin users need cognitoToken for API access.
+  // Treat absent token as requiring re-auth for admin users only.
+  // Non-admin users can browse with degraded (token-less) sessions.
+  const tokenMissing = isAuthenticated && isAdmin && !user?.cognitoToken;
+
   // Prevent duplicate logout calls
   const logoutCalledRef = useRef(false);
 
-  // Auto-logout when token expires
+  // Auto-logout when token expires or is missing for admin users
   useEffect(() => {
-    if (tokenExpired && !authLoading && !logoutCalledRef.current) {
+    if ((tokenExpired || tokenMissing) && !authLoading && !logoutCalledRef.current) {
       logoutCalledRef.current = true;
       toast.error('Session expired. Please log in again.', {
         autoClose: 6000,
@@ -44,7 +50,7 @@ export function useAdminAuth(): AdminAuthState {
     if (!isAuthenticated) {
       logoutCalledRef.current = false;
     }
-  }, [tokenExpired, authLoading, isAuthenticated, logout]);
+  }, [tokenExpired, tokenMissing, authLoading, isAuthenticated, logout]);
 
   // Periodic token expiry check for background detection
   useEffect(() => {

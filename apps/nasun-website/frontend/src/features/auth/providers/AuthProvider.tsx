@@ -61,26 +61,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     clearError();
     try {
-      // Session expiry: persistent cookie (24h) gates session lifetime.
-      // If the cookie expired or was cleared, clean up all auth state.
       const cachedUser = localStorage.getItem("nasun_user_profile");
 
       if (cachedUser && !hasSessionCookie()) {
-        clearAllAuthState();
-        clearUser();
-        return;
+        // Cookie missing but localStorage has session data.
+        // Use JWT validity as ground truth: if the token is still valid,
+        // the cookie was lost to browser settings/extension, so restore it.
+        // If the token is expired or absent, the session has genuinely expired.
+        const tempParsed = JSON.parse(cachedUser);
+        if (tempParsed.cognitoToken && !isTokenExpired(tempParsed.cognitoToken)) {
+          logger.debug("Session cookie missing but token valid, restoring cookie");
+          setSessionCookie();
+        } else {
+          logger.debug("Session expired (cookie missing, token expired or absent)");
+          clearAllAuthState();
+          clearUser();
+          return;
+        }
       }
 
       if (cachedUser) {
         const parsed = JSON.parse(cachedUser);
 
-        // JWT expiry guard: if cognitoToken exists but is expired, force logout.
-        // cognitoToken is optional (undefined for some wallet logins), so only
-        // check when it's present. Server validates via JWKS independently.
+        // JWT expiry guard: strip expired token but keep session alive.
+        // Server validates via JWKS independently; authenticated API calls
+        // will fail with 401 and individual features handle re-auth as needed.
         if (parsed.cognitoToken && isTokenExpired(parsed.cognitoToken)) {
-          clearAllAuthState();
-          clearUser();
-          return;
+          logger.debug("Cognito token expired, stripping from session");
+          delete parsed.cognitoToken;
+          localStorage.setItem("nasun_user_profile", JSON.stringify(parsed));
         }
 
         setUser(parsed);
