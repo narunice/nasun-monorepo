@@ -59,6 +59,18 @@ export class GenesisPassStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // Approvals table: pre-approved identityIds for automatic mintType on registration
+    const approvalsTable = new dynamodb.Table(this, "GenesisPassApprovalsTable", {
+      tableName: "nasun-genesis-pass-approvals",
+      partitionKey: {
+        name: "identityId",
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+    });
+
     // ========== 2. CloudWatch Log Groups ==========
 
     const registerLogGroup = new logs.LogGroup(this, "RegisterLogGroup", {
@@ -106,6 +118,7 @@ export class GenesisPassStack extends cdk.Stack {
       logGroup: registerLogGroup,
       environment: {
         ALLOWLIST_TABLE_NAME: this.allowlistTable.tableName,
+        APPROVALS_TABLE_NAME: approvalsTable.tableName,
         USER_PROFILES_TABLE_NAME: userProfilesTableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
@@ -113,6 +126,7 @@ export class GenesisPassStack extends cdk.Stack {
     });
 
     this.allowlistTable.grantReadWriteData(registerLambda);
+    approvalsTable.grantReadData(registerLambda);
 
     // Read access to UserProfiles table (cross-stack reference by name)
     registerLambda.addToRolePolicy(
