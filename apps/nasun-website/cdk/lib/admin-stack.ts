@@ -275,6 +275,10 @@ export class AdminStack extends cdk.Stack {
     const devnetMetricsResource = this.api.root.addResource("devnet-metrics");
     devnetMetricsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
+    // User Analytics API Route (admin only)
+    const userAnalyticsResource = this.api.root.addResource("user-analytics");
+    userAnalyticsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
+
     // NFT Collections API Routes
     const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);
     const nftCollectionsResource = this.api.root.addResource("nft-collections");

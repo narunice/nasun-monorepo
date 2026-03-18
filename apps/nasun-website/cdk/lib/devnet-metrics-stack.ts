@@ -1,15 +1,14 @@
 /**
  * Devnet Metrics Stack
  *
- * Standalone CDK stack for daily devnet metrics collection.
- * Collects DAU, new addresses, and cumulative address counts
- * from Nasun Devnet via RPC and stores them in DynamoDB.
+ * Standalone CDK stack for daily metrics collection.
  *
  * Resources:
- * - DynamoDB table: devnet-metrics
- * - Lambda: nasun-devnet-metrics-collector
- * - EventBridge rule: daily at 00:30 UTC
- * - CloudWatch alarm: Lambda error notification
+ * - DynamoDB table: devnet-metrics (shared with user analytics)
+ * - Lambda: nasun-devnet-metrics-collector (DAU, addresses via RPC)
+ * - Lambda: nasun-user-analytics-collector (user/leaderboard/telegram/X counts)
+ * - EventBridge rules: daily at 00:30 UTC (devnet) and 00:45 UTC (user analytics)
+ * - CloudWatch alarm: devnet collector error notification
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -108,5 +107,66 @@ export class DevnetMetricsStack extends cdk.Stack {
     });
 
     errorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+
+    // ========================================
+    // User Analytics Collector
+    // ========================================
+
+    const userProfilesTable = dynamodb.Table.fromTableName(
+      this,
+      'UserProfilesTable',
+      'UserProfiles',
+    );
+
+    const leaderboardAccountsTable = dynamodb.Table.fromTableName(
+      this,
+      'LeaderboardAccountsTable',
+      'leaderboard-v3-accounts',
+    );
+
+    const userAnalyticsSrcPath = path.join(__dirname, '..', 'lambda-src', 'user-analytics-collector', 'src');
+
+    const userAnalyticsCollector = new NodejsFunction(this, 'UserAnalyticsCollectorFunction', {
+      functionName: 'nasun-user-analytics-collector',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(userAnalyticsSrcPath, 'index.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(10),
+      memorySize: 512,
+      description: 'Daily user analytics collector (registered, leaderboard, telegram, X counts)',
+      environment: {
+        DEVNET_METRICS_TABLE: metricsTable.tableName,
+        USER_PROFILES_TABLE: 'UserProfiles',
+        LEADERBOARD_ACCOUNTS_TABLE: 'leaderboard-v3-accounts',
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logRetention: logs.RetentionDays.ONE_MONTH,
+      depsLockFilePath,
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        externalModules: [
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+        ],
+      },
+    });
+
+    metricsTable.grantReadWriteData(userAnalyticsCollector);
+    userProfilesTable.grantReadData(userAnalyticsCollector);
+    leaderboardAccountsTable.grantReadData(userAnalyticsCollector);
+
+    // EventBridge: daily at 00:45 UTC (after devnet metrics at 00:30)
+    const userAnalyticsRule = new events.Rule(this, 'UserAnalyticsDailyRule', {
+      ruleName: 'nasun-user-analytics-daily',
+      description: 'Daily user analytics collection at 00:45 UTC',
+      enabled: true,
+      schedule: events.Schedule.cron({
+        minute: '45',
+        hour: '0',
+      }),
+    });
+
+    userAnalyticsRule.addTarget(new targets.LambdaFunction(userAnalyticsCollector));
   }
 }
