@@ -190,6 +190,26 @@ export async function searchAccounts(params: {
 }
 
 /**
+ * Get account by username (exact match via GSI query)
+ */
+export async function getAccountByUsername(
+  username: string,
+  platform: Platform = "twitter"
+): Promise<{ found: boolean; account?: SearchAccountResult }> {
+  const url = `${LEADERBOARD_V3_API_URL}/v3/accounts/${encodeURIComponent(username.toLowerCase())}?platform=${platform}`;
+  try {
+    const response = await fetchWithTimeout(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!response.ok) return { found: false };
+    return response.json();
+  } catch {
+    return { found: false };
+  }
+}
+
+/**
  * Get my rank (public)
  * Returns rank info for a specific user
  */

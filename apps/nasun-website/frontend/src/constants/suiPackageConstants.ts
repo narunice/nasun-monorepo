@@ -6,7 +6,8 @@ import { GOVERNANCE } from '@nasun/devnet-config';
 // IDs imported from @nasun/devnet-config for centralized management
 export const NASUN_DEVNET_PACKAGE_ID = GOVERNANCE.packageId;
 export const NASUN_DEVNET_ORIGINAL_PACKAGE_ID = GOVERNANCE.originalPackageId || GOVERNANCE.packageId;
-export const NASUN_DEVNET_DASHBOARD_ID = GOVERNANCE.dashboard;
+export const NASUN_DEVNET_DASHBOARD_ID =
+  import.meta.env.VITE_GOVERNANCE_DASHBOARD_ID || GOVERNANCE.dashboard;
 export const NASUN_DEVNET_ADMIN_CAP = GOVERNANCE.adminCap;
 export const NASUN_DEVNET_UPGRADE_CAP = GOVERNANCE.upgradeCap || "";
 // Delegation Registry ID (TODO: Redeploy if needed)
