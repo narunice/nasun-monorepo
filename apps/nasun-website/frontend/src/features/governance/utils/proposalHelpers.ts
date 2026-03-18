@@ -83,6 +83,43 @@ export function getChoicePercentages(choicePowers: number[]): number[] {
   return choicePowers.map((p) => Math.round((p / total) * 100));
 }
 
+/**
+ * Extract tweet ID from a Twitter/X URL.
+ * Supports both twitter.com and x.com domains.
+ */
+export function extractTweetId(url: string): string | null {
+  const match = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Extract Twitter handle from a tweet URL (e.g., "pigrichh" from "https://x.com/pigrichh/status/123")
+ */
+export function extractTweetHandle(url: string): string | null {
+  const match = url.match(/(?:twitter\.com|x\.com)\/(\w+)\/status\/\d+/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Get a display label for a choice: @handle if it's a tweet URL, otherwise the raw text.
+ */
+export function getChoiceLabel(
+  choice: string,
+  displayNames?: Map<string, string>
+): string {
+  const handle = extractTweetHandle(choice);
+  if (!handle) return choice;
+  return displayNames?.get(handle.toLowerCase()) || `@${handle}`;
+}
+
+/**
+ * Check if ALL choices in a multi-choice proposal are Twitter URLs.
+ * All-or-nothing: returns true only if every choice has a valid tweet ID.
+ */
+export function isTwitterChoiceProposal(choices: string[]): boolean {
+  return choices.length > 0 && choices.every((c) => extractTweetId(c) !== null);
+}
+
 export function isUnixTimeExpired(unixTimeMs: number): boolean {
   return new Date(unixTimeMs) < new Date();
 }

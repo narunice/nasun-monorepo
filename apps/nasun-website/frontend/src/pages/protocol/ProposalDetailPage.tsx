@@ -19,12 +19,15 @@ import {
   parseProposal,
   parseMultiChoiceProposal,
   isMultiChoiceProposal,
+  isTwitterChoiceProposal,
+  getChoiceLabel,
   getChoicePercentages,
   isUnixTimeExpired,
   formatTimeRemaining,
   getStatusBadge,
 } from "@/features/governance/utils/proposalHelpers";
 import { MultiChoiceVoteModal } from "@/features/governance/components/MultiChoiceVoteModal";
+import { TweetChoiceGrid } from "@/features/governance/components/TweetChoiceGrid";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox, PageTitle, SectionLoading } from "@/components/ui";
@@ -412,6 +415,7 @@ export default ProposalDetailPage;
 // Multi-choice proposal detail view (separate from existing Yes/No view)
 import { SuiObjectData } from "@mysten/sui/client";
 import { ProposalType } from "@/features/governance/types/voting";
+import { useTwitterDisplayNames } from "@/features/governance/hooks/useTwitterDisplayNames";
 
 const CHOICE_COLORS = [
   "bg-nasun-nw1", "bg-nasun-nw4", "bg-green-500", "bg-blue-500",
@@ -427,6 +431,8 @@ const MultiChoiceProposalDetail: FC<{
   const navigate = useNavigate();
   const { t } = useTranslation("proposals");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
+  const [hasVoted, setHasVoted] = useState(false);
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
@@ -443,8 +449,11 @@ const MultiChoiceProposalDetail: FC<{
     );
   }
 
+  const { displayNames } = useTwitterDisplayNames(proposal.choices);
+
   const isDelisted = proposal.status.variant === "Delisted";
   const isExpired = isUnixTimeExpired(proposal.expiration) || isDelisted;
+  const isTweetMode = isTwitterChoiceProposal(proposal.choices);
   const percentages = getChoicePercentages(proposal.choicePowers);
   const totalPower = proposal.choicePowers.reduce((sum, p) => sum + p, 0);
   const totalVoters = proposal.choiceCounts.reduce((sum, c) => sum + c, 0);
@@ -480,9 +489,6 @@ const MultiChoiceProposalDetail: FC<{
                 {t("detail.governance")}
               </span>
             )}
-            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw2/20 text-nasun-nw2 border border-nasun-nw2/30">
-              Multi-Choice
-            </span>
             <span className={`px-3 py-1 text-xs uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}>
               {statusBadge.label}
             </span>
@@ -492,30 +498,39 @@ const MultiChoiceProposalDetail: FC<{
         {/* Title */}
         <PageTitle as="h2">{proposal.title}</PageTitle>
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
-          {/* Left: Description */}
-          <OuterBox color="nw2" padding="md" className="flex flex-col min-h-[300px] lg:min-h-[500px] max-h-[55vh] !bg-gray-900">
-            <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
-              <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
-                {proposal.description}
-              </p>
-            </div>
-          </OuterBox>
+        {/* Tweet Choice Grid (full width, above description) */}
+        {isTweetMode && (
+          <TweetChoiceGrid
+            choices={proposal.choices}
+            selectedChoice={selectedChoice}
+            onSelect={setSelectedChoice}
+            disabled={isExpired || hasVoted}
+            displayNames={displayNames}
+          />
+        )}
 
-          {/* Right: Sidebar */}
-          <div className="flex flex-col gap-4 lg:min-h-[300px]">
-            {/* Vote Results */}
-            <OuterBox color="nw1" padding="md">
-              <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
-                {t("detail.voteResults")}
-              </h3>
-              <div className="space-y-3">
-                {proposal.choices.map((choice, idx) => (
+        {/* Description */}
+        <OuterBox color="nw2" padding="md" className="!bg-gray-900">
+          <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
+            {proposal.description}
+          </p>
+        </OuterBox>
+
+        {/* Vote Results + Details (side by side on desktop) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Vote Results */}
+          <OuterBox color="nw1" padding="md">
+            <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
+              {t("detail.voteResults")}
+            </h3>
+            <div className="space-y-3">
+              {proposal.choices.map((choice, idx) => {
+                const choiceLabel = getChoiceLabel(choice, displayNames);
+                return (
                   <div key={idx}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-nasun-white/80">{choice}</span>
-                      <span className="text-nasun-white/50">
+                      <span className="text-nasun-white/80 truncate mr-2">{choiceLabel}</span>
+                      <span className="text-nasun-white/50 flex-shrink-0">
                         {percentages[idx]}%{totalPower > 0 ? ` (${proposal.choicePowers[idx]})` : ""}
                       </span>
                     </div>
@@ -526,67 +541,66 @@ const MultiChoiceProposalDetail: FC<{
                       />
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="mt-3 pt-3 border-t border-nasun-white/10 flex justify-between text-sm text-nasun-white/50">
-                <span>Total Voters: {totalVoters}</span>
-                <span>Total Power: {totalPower}</span>
-              </div>
-              {proposal.useEqualWeight && (
-                <p className="text-xs text-nasun-white/30 mt-2">Equal Weight: 1 vote per wallet</p>
-              )}
-            </OuterBox>
+                );
+              })}
+            </div>
+            <div className="mt-3 pt-3 border-t border-nasun-white/10 flex justify-between text-sm text-nasun-white/50">
+              <span>Total Voters: {totalVoters}</span>
+              <span>Total Power: {totalPower}</span>
+            </div>
+            {proposal.useEqualWeight && (
+              <p className="text-xs text-nasun-white/30 mt-2">Equal Weight: 1 vote per wallet</p>
+            )}
+          </OuterBox>
 
-            {/* Details */}
-            <OuterBox color="nw1" padding="md" className="flex-1">
-              <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
-                {t("detail.details")}
-              </h3>
-              <div className="space-y-2 text-base">
-                <div className="flex justify-between">
-                  <span className="text-nasun-white/70">{t("detail.proposalId")}</span>
-                  <a
-                    href={`${explorerUrl}/object/${proposalId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
-                  >
-                    {proposalId.slice(0, 6)}...{proposalId.slice(-4)}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-nasun-white/70">{t("detail.creator")}</span>
-                  <a
-                    href={`${explorerUrl}/address/${proposal.creator}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
-                  >
-                    {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-nasun-white/70">{t("detail.expiration")}</span>
-                  <span className="text-nasun-white/80 text-sm">
-                    {isDelisted
-                      ? t("detail.delisted")
-                      : isExpired
-                        ? `${t("detail.ended")} ${new Date(proposal.expiration).toLocaleString("en-US")}`
-                        : formatTimeRemaining(proposal.expiration)}
-                  </span>
-                </div>
+          {/* Details + Actions */}
+          <OuterBox color="nw1" padding="md">
+            <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
+              {t("detail.details")}
+            </h3>
+            <div className="space-y-2 text-base">
+              <div className="flex justify-between">
+                <span className="text-nasun-white/70">{t("detail.proposalId")}</span>
+                <a
+                  href={`${explorerUrl}/object/${proposalId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
+                >
+                  {proposalId.slice(0, 6)}...{proposalId.slice(-4)}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
-            </OuterBox>
-
+              <div className="flex justify-between">
+                <span className="text-nasun-white/70">{t("detail.creator")}</span>
+                <a
+                  href={`${explorerUrl}/address/${proposal.creator}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-nasun-nw1 hover:text-nasun-nw2 flex items-center gap-1 font-mono text-sm"
+                >
+                  {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-nasun-white/70">{t("detail.expiration")}</span>
+                <span className="text-nasun-white/80 text-sm">
+                  {isDelisted
+                    ? t("detail.delisted")
+                    : isExpired
+                      ? `${t("detail.ended")} ${new Date(proposal.expiration).toLocaleString("en-US")}`
+                      : formatTimeRemaining(proposal.expiration)}
+                </span>
+              </div>
+            </div>
             {/* Actions */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-nasun-white/10">
               <ButtonV3 variant="nw2" outline onClick={handleCopyUrl} className="w-full flex items-center justify-center gap-2">
                 <Copy className="w-4 h-4" />
                 {t("detail.copyUrl")}
               </ButtonV3>
-              {!isExpired &&
+              {!isExpired && !isTweetMode &&
                 (isConnected ? (
                   <ButtonV3
                     variant="gradientDark"
@@ -601,20 +615,50 @@ const MultiChoiceProposalDetail: FC<{
                   </div>
                 ))}
             </div>
-          </div>
+          </OuterBox>
         </div>
+
+        {/* Sticky bottom bar for tweet mode voting */}
+        {isTweetMode && selectedChoice !== null && !isExpired && !hasVoted && (
+          <div className="fixed bottom-0 left-0 right-0 z-30 bg-gray-900/95 backdrop-blur-sm border-t border-nasun-nw2/30">
+            <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
+              <span className="text-nasun-white/80 text-sm truncate mr-4">
+                Selected: {getChoiceLabel(proposal.choices[selectedChoice], displayNames)}
+              </span>
+              {isConnected ? (
+                <ButtonV3
+                  variant="gradientDark"
+                  size="sm"
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex-shrink-0"
+                >
+                  Vote
+                </ButtonV3>
+              ) : (
+                <WalletConnect dropdownPosition="top" />
+              )}
+            </div>
+          </div>
+        )}
 
         <MultiChoiceVoteModal
           proposal={proposal}
-          hasVoted={false}
+          hasVoted={hasVoted}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
+          initialChoice={selectedChoice ?? undefined}
           onVote={async () => {
             await new Promise((resolve) => setTimeout(resolve, 1500));
             await refetchProposal();
+            setHasVoted(true);
             setIsModalOpen(false);
           }}
         />
+
+        {/* Bottom padding for sticky bar */}
+        {isTweetMode && selectedChoice !== null && !isExpired && !hasVoted && (
+          <div className="h-16" />
+        )}
       </SectionLayout>
     </PageLayout>
   );
