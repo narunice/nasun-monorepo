@@ -6,6 +6,7 @@ import {
   QueryCommand,
   PutItemCommand,
   DeleteItemCommand,
+  UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { verifyAdminRole, extractIdentityIdFromAuthorizer, verifyTokenManually } from "../utils/auth.js";
 import { generateCSV, generateFilename } from "../utils/csv.js";
@@ -356,6 +357,9 @@ interface GenesisPassItem {
   identityId: string;
   registeredAt: string;
   status: string;
+  mintType?: string;
+  source?: string;
+  twitterHandle?: string;
 }
 
 /**
@@ -383,6 +387,9 @@ async function scanGenesisPassAllowlist(status?: string): Promise<GenesisPassIte
           identityId: item.identityId?.S || "",
           registeredAt: item.registeredAt?.S || "",
           status: item.status?.S || "ACTIVE",
+          mintType: item.mintType?.S,
+          source: item.source?.S,
+          twitterHandle: item.twitterHandle?.S,
         });
       }
     }
@@ -876,6 +883,148 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       metrics.sort((a, b) => a.date.localeCompare(b.date));
 
       return jsonResponse(200, { metrics }, requestOrigin);
+    }
+
+    // ==================== Genesis Pass Allowlist CRUD ====================
+
+    const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+
+    // GET /genesis-pass/entries - List all allowlist entries
+    if (path.endsWith("/genesis-pass/entries") && event.httpMethod === "GET") {
+      console.log("Fetching Genesis Pass allowlist entries");
+      const items = await scanGenesisPassAllowlist("ALL");
+      items.sort((a, b) => (b.registeredAt || "").localeCompare(a.registeredAt || ""));
+      return jsonResponse(200, { success: true, items }, requestOrigin);
+    }
+
+    // POST /genesis-pass/entries - Add a new entry
+    if (path.endsWith("/genesis-pass/entries") && event.httpMethod === "POST") {
+      let body: Record<string, unknown>;
+      try {
+        body = event.body ? JSON.parse(event.body) : {};
+      } catch {
+        return errorResponse(400, "Invalid JSON in request body", requestOrigin);
+      }
+
+      const { walletAddress, mintType, source } = body as {
+        walletAddress?: string;
+        mintType?: string;
+        source?: string;
+      };
+
+      if (!walletAddress || typeof walletAddress !== "string") {
+        return errorResponse(400, "Missing required field: walletAddress", requestOrigin);
+      }
+      if (!EVM_ADDRESS_REGEX.test(walletAddress)) {
+        return errorResponse(400, "Invalid EVM wallet address format", requestOrigin);
+      }
+
+      const normalizedAddress = walletAddress.toLowerCase();
+
+      // Check for duplicate
+      const existing = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: GENESIS_PASS_TABLE,
+          Key: { walletAddress: { S: normalizedAddress } },
+        })
+      );
+      if (existing.Item) {
+        return errorResponse(409, "Wallet address already registered", requestOrigin);
+      }
+
+      const item: Record<string, { S: string }> = {
+        walletAddress: { S: normalizedAddress },
+        registeredAt: { S: new Date().toISOString() },
+        status: { S: "ACTIVE" },
+      };
+      if (mintType && typeof mintType === "string") item.mintType = { S: mintType };
+      if (source && typeof source === "string") item.source = { S: source };
+
+      await dynamoClient.send(
+        new PutItemCommand({ TableName: GENESIS_PASS_TABLE, Item: item })
+      );
+
+      console.log(`[genesis-pass-crud] Added: ${normalizedAddress} (mintType: ${mintType || "none"})`);
+      return jsonResponse(201, { success: true, walletAddress: normalizedAddress }, requestOrigin);
+    }
+
+    // PUT /genesis-pass/entries/{walletAddress} - Update mintType/source
+    if (path.includes("/genesis-pass/entries/") && event.httpMethod === "PUT") {
+      const walletAddress = event.pathParameters?.walletAddress;
+      if (!walletAddress) {
+        return errorResponse(400, "Missing walletAddress in path", requestOrigin);
+      }
+
+      let body: Record<string, unknown>;
+      try {
+        body = event.body ? JSON.parse(event.body) : {};
+      } catch {
+        return errorResponse(400, "Invalid JSON in request body", requestOrigin);
+      }
+
+      const normalizedAddress = decodeURIComponent(walletAddress).toLowerCase();
+
+      // Verify entry exists
+      const existing = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: GENESIS_PASS_TABLE,
+          Key: { walletAddress: { S: normalizedAddress } },
+        })
+      );
+      if (!existing.Item) {
+        return errorResponse(404, "Entry not found", requestOrigin);
+      }
+
+      const updates: string[] = [];
+      const names: Record<string, string> = {};
+      const values: Record<string, { S: string }> = {};
+
+      if (body.mintType !== undefined) {
+        updates.push("mintType = :mt");
+        values[":mt"] = { S: String(body.mintType) };
+      }
+      if (body.source !== undefined) {
+        updates.push("#src = :src");
+        names["#src"] = "source";
+        values[":src"] = { S: String(body.source) };
+      }
+
+      if (updates.length === 0) {
+        return errorResponse(400, "No fields to update. Provide mintType or source.", requestOrigin);
+      }
+
+      await dynamoClient.send(
+        new UpdateItemCommand({
+          TableName: GENESIS_PASS_TABLE,
+          Key: { walletAddress: { S: normalizedAddress } },
+          UpdateExpression: `SET ${updates.join(", ")}`,
+          ...(Object.keys(names).length > 0 && { ExpressionAttributeNames: names }),
+          ExpressionAttributeValues: values,
+        })
+      );
+
+      console.log(`[genesis-pass-crud] Updated: ${normalizedAddress}`);
+      return jsonResponse(200, { success: true, walletAddress: normalizedAddress }, requestOrigin);
+    }
+
+    // DELETE /genesis-pass/entries/{walletAddress} - Remove an entry
+    if (path.includes("/genesis-pass/entries/") && event.httpMethod === "DELETE") {
+      const walletAddress = event.pathParameters?.walletAddress;
+      if (!walletAddress) {
+        return errorResponse(400, "Missing walletAddress in path", requestOrigin);
+      }
+
+      const normalizedAddress = decodeURIComponent(walletAddress).toLowerCase();
+
+      await dynamoClient.send(
+        new DeleteItemCommand({
+          TableName: GENESIS_PASS_TABLE,
+          Key: { walletAddress: { S: normalizedAddress } },
+        })
+      );
+
+      console.log(`[genesis-pass-crud] Deleted: ${normalizedAddress}`);
+      return jsonResponse(200, { success: true, walletAddress: normalizedAddress }, requestOrigin);
     }
 
     return errorResponse(404, "Not found", requestOrigin);
