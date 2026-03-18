@@ -11,10 +11,12 @@ import { MultiChoiceVoteModal } from "./MultiChoiceVoteModal";
 import {
   parseMultiChoiceProposal,
   getChoicePercentages,
+  getChoiceLabel,
   isUnixTimeExpired,
   formatTimeRemaining,
   getStatusBadge,
 } from "../utils/proposalHelpers";
+import { useTwitterDisplayNames } from "../hooks/useTwitterDisplayNames";
 
 // Colors for choice bars (up to 20 choices)
 const CHOICE_COLORS = [
@@ -85,6 +87,8 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
   if (!dataResponse.data) return null;
 
   const proposal = parseMultiChoiceProposal(dataResponse.data, proposalType);
+  const { displayNames } = useTwitterDisplayNames(proposal?.choices || []);
+
   if (!proposal) return <EcText text="No data found" />;
 
   const isDelisted = proposal.status.variant === "Delisted";
@@ -128,9 +132,6 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
                   Governance
                 </span>
               )}
-              <span className="px-2 py-0.5 text-xs uppercase font-bold rounded-full bg-nasun-nw2/20 text-nasun-nw2 border border-nasun-nw2/30">
-                Multi-Choice
-              </span>
               <span
                 className={`px-2 py-0.5 text-xs uppercase font-bold rounded-full border ${statusBadge.bg} ${statusBadge.text}`}
               >
@@ -152,7 +153,7 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
         <div className="flex-1 mb-4">
           <p
             ref={descRef}
-            className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} line-clamp-4`}
+            className={`${isExpired ? "text-nasun-white/50" : "text-nasun-white/80"} line-clamp-3`}
           >
             {proposal.description}
           </p>
@@ -168,8 +169,8 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
           {proposal.choices.map((choice, idx) => (
             <div key={idx}>
               <div className="flex justify-between text-xs mb-0.5">
-                <span className={isExpired ? "text-nasun-white/30" : "text-nasun-white/70"}>
-                  {choice}
+                <span className={`truncate mr-2 ${isExpired ? "text-nasun-white/30" : "text-nasun-white/70"}`}>
+                  {getChoiceLabel(choice, displayNames)}
                 </span>
                 <span className={isExpired ? "text-nasun-white/30" : "text-nasun-white/50"}>
                   {percentages[idx]}%{totalPower > 0 ? ` (${proposal.choicePowers[idx]})` : ""}

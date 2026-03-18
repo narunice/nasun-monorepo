@@ -14,6 +14,7 @@ use std::string::String;
 use sui::table::{Self, Table};
 use sui::clock::Clock;
 use sui::event;
+use sui::url::{Url, new_unsafe_from_bytes};
 use governance::dashboard::AdminCap;
 use governance::voting_power::{Self, VotingPowerCertificate};
 
@@ -62,6 +63,14 @@ public struct MultiChoiceProposal has key {
     status: MultiChoiceProposalStatus,
     /// Voter address -> MultiChoiceVoteRecord
     voters: Table<address, MultiChoiceVoteRecord>,
+}
+
+public struct MultiChoiceVoteProofNFT has key {
+    id: UID,
+    proposal_id: ID,
+    name: String,
+    description: String,
+    url: Url,
 }
 
 // === Events ===
@@ -117,6 +126,8 @@ public fun vote_with_certificate(
         selected_choice,
         voting_power: power,
     });
+
+    issue_vote_proof(self, ctx);
 }
 
 // === View Functions ===
@@ -217,6 +228,31 @@ public fun set_active_status(self: &mut MultiChoiceProposal, _admin_cap: &AdminC
 
 public fun set_delisted_status(self: &mut MultiChoiceProposal, _admin_cap: &AdminCap) {
     self.status = MultiChoiceProposalStatus::Delisted;
+}
+
+// === Internal Functions ===
+
+fun issue_vote_proof(proposal: &MultiChoiceProposal, ctx: &mut TxContext) {
+    let mut name = b"NFT ".to_string();
+    name.append(proposal.title);
+
+    let mut description = b"Proof of voting on ".to_string();
+    let proposal_address = object::id_address(proposal).to_string();
+    description.append(proposal_address);
+
+    let url = new_unsafe_from_bytes(
+        b"https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreidvwd65472yxlhr4vhoqxqugccpy6xgsat2mdb6vjznltodkxw4tu"
+    );
+
+    let proof = MultiChoiceVoteProofNFT {
+        id: object::new(ctx),
+        proposal_id: proposal.id.to_inner(),
+        name,
+        description,
+        url,
+    };
+
+    transfer::transfer(proof, ctx.sender());
 }
 
 // === Test Helpers ===
