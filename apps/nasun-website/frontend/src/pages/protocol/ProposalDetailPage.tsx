@@ -500,17 +500,19 @@ const MultiChoiceProposalDetail: FC<{
 
         {/* Tweet Choice Grid (full width, above description) */}
         {isTweetMode && (
-          <TweetChoiceGrid
-            choices={proposal.choices}
-            selectedChoice={selectedChoice}
-            onSelect={setSelectedChoice}
-            disabled={isExpired || hasVoted}
-            displayNames={displayNames}
-          />
+          <div className="mb-6">
+            <TweetChoiceGrid
+              choices={proposal.choices}
+              selectedChoice={selectedChoice}
+              onSelect={setSelectedChoice}
+              disabled={isExpired || hasVoted}
+              displayNames={displayNames}
+            />
+          </div>
         )}
 
         {/* Description */}
-        <OuterBox color="nw2" padding="md" className="!bg-gray-900">
+        <OuterBox color="nw2" padding="md" className="!bg-gray-900 mb-4">
           <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
             {proposal.description}
           </p>
@@ -619,11 +621,13 @@ const MultiChoiceProposalDetail: FC<{
         </div>
 
         {/* Sticky bottom bar for tweet mode voting */}
-        {isTweetMode && selectedChoice !== null && !isExpired && !hasVoted && (
+        {isTweetMode && !isExpired && !hasVoted && (
           <div className="fixed bottom-0 left-0 right-0 z-30 bg-gray-900/95 backdrop-blur-sm border-t border-nasun-nw2/30">
             <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
-              <span className="text-nasun-white/80 text-sm truncate mr-4">
-                Selected: {getChoiceLabel(proposal.choices[selectedChoice], displayNames)}
+              <span className={`text-sm truncate mr-4 ${selectedChoice !== null ? "text-nasun-white/80" : "text-nasun-white/40"}`}>
+                {selectedChoice !== null
+                  ? `Selected: ${getChoiceLabel(proposal.choices[selectedChoice], displayNames)}`
+                  : "Select a post to vote"}
               </span>
               {isConnected ? (
                 <ButtonV3
@@ -631,6 +635,7 @@ const MultiChoiceProposalDetail: FC<{
                   size="sm"
                   onClick={() => setIsModalOpen(true)}
                   className="flex-shrink-0"
+                  disabled={selectedChoice === null}
                 >
                   Vote
                 </ButtonV3>

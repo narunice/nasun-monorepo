@@ -229,12 +229,13 @@ const SmartProposalItem: FC<{
   voteNft: VoteNft | undefined;
   onVoteTxSuccess: () => void | Promise<void>;
 }> = ({ id, filter, voteNft, onVoteTxSuccess }) => {
-  const { data, isPending } = useSuiClientQuery("getObject", {
+  const { data, isPending, error } = useSuiClientQuery("getObject", {
     id,
     options: { showContent: true },
   });
 
   if (isPending) return <InlineLoading size="sm" />;
+  if (error) return <div className="text-red-400 text-sm p-4">Failed to load proposal</div>;
 
   const objectType = data?.data?.content?.dataType === "moveObject"
     ? (data.data.content.type ?? "")

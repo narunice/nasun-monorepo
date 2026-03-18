@@ -82,14 +82,15 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
     setLocalHasVoted(hasVotedProp);
   }, [hasVotedProp]);
 
-  if (isPending || isTypeLoading) return <EcText centered text="Loading..." />;
-  if (error) return <EcText isError text={`Error: ${error.message}`} />;
-  if (!dataResponse.data) return null;
+  const proposal = (!isPending && !isTypeLoading && dataResponse?.data)
+    ? parseMultiChoiceProposal(dataResponse.data, proposalType)
+    : null;
 
-  const proposal = parseMultiChoiceProposal(dataResponse.data, proposalType);
   const { displayNames } = useTwitterDisplayNames(proposal?.choices || []);
 
-  if (!proposal) return <EcText text="No data found" />;
+  if (isPending || isTypeLoading) return <EcText centered text="Loading..." />;
+  if (error) return <EcText isError text={`Error: ${error.message}`} />;
+  if (!dataResponse.data || !proposal) return <EcText text="No data found" />;
 
   const isDelisted = proposal.status.variant === "Delisted";
   const isExpired = isUnixTimeExpired(proposal.expiration) || isDelisted;
