@@ -64,6 +64,24 @@ export const SCORE_CONSTANTS = {
   RAW_SCORE_EXPONENT: 0.8,
 };
 
+// Daily base score tiers: rank-based catch-up mechanism
+// Lower ranks receive higher daily base scores to close the gap
+export const DAILY_BASE_SCORE_TIERS: Array<{ maxRank: number; score: number }> = [
+  { maxRank: 50, score: 0.112 },
+  { maxRank: 100, score: 0.134 },
+  { maxRank: 150, score: 0.178 },
+  { maxRank: 200, score: 0.211 },
+  { maxRank: 250, score: 0.245 },
+  { maxRank: 300, score: 0.343 },
+  { maxRank: 350, score: 0.456 },
+  { maxRank: 400, score: 0.511 },
+  { maxRank: 450, score: 0.603 },
+  { maxRank: 500, score: 0.711 },
+];
+
+// Fixed cap: dailyBaseScoreTotal cannot exceed this absolute value
+export const DAILY_BASE_SCORE_CAP = 10.0;
+
 // Language scale factors for follower normalization
 // All languages use equal weight (language-based differentiation removed)
 export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
@@ -218,6 +236,7 @@ export interface LeaderboardEntry {
     rawScore: number;
     consistencyBonus: number;
     freshnessMultiplier: number;
+    dailyBaseScoreTotal?: number;
   };
 }
 
@@ -405,6 +424,7 @@ export interface DailySnapshot {
   rawScore: number;
   consistencyBonus: number;
   freshnessMultiplier: number;
+  dailyBaseScoreTotal?: number; // Cumulative daily base score (catch-up mechanism)
   // Profile
   displayName?: string;
   profileImageUrl?: string;
