@@ -27,6 +27,7 @@ interface DisplayEntry {
   rank: number;
   username: string;
   originalUsername?: string; // Original casing for display
+  displayName?: string;
   platform: string;
   userScore: number;
   postCount: number;
@@ -85,10 +86,11 @@ export function LeaderboardViewTab() {
   const handleExportCsv = () => {
     if (!entries.length) return;
 
-    const headers = ["Rank", "Username", "Platform", "Score", "Posts", "Days", "Last Activity"];
+    const headers = ["Rank", "Username", "Display Name", "Platform", "Score", "Posts", "Days", "Last Activity"];
     const rows = entries.map((e) => [
       e.rank,
       e.username,
+      `"${(e.displayName || "").replace(/"/g, '""')}"`,
       e.platform,
       e.userScore,
       e.postCount,
@@ -215,15 +217,25 @@ export function LeaderboardViewTab() {
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-nasun-c5/30" />
                         )}
-                        <a
-                          href={`https://x.com/${entry.originalUsername || entry.username}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:underline"
-                        >
-                          @{entry.originalUsername || entry.username}
-                        </a>
-                        {entry.isRegistered && <span className="text-nasun-c7 text-xs">✓</span>}
+                        <div className="min-w-0">
+                          {entry.displayName && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-100 font-medium truncate">{entry.displayName}</span>
+                              {entry.isRegistered && <span className="text-nasun-c7 text-xs">✓</span>}
+                            </div>
+                          )}
+                          <a
+                            href={`https://x.com/${entry.originalUsername || entry.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`hover:underline truncate block ${
+                              entry.displayName ? "text-[11px] text-nasun-white/60" : "text-blue-400"
+                            }`}
+                          >
+                            @{entry.originalUsername || entry.username}
+                          </a>
+                          {!entry.displayName && entry.isRegistered && <span className="text-nasun-c7 text-xs">✓</span>}
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-2 text-right text-nasun-white/80">{entry.postCount}</td>

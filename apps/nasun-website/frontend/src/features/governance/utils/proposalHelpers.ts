@@ -7,6 +7,10 @@
 
 import { SuiObjectData } from "@mysten/sui/client";
 import { Proposal, ProposalFields, ProposalType } from "../types/voting";
+import {
+  MultiChoiceProposal,
+  MultiChoiceProposalFields,
+} from "../types/multiChoice";
 
 export function parseProposal(data: SuiObjectData, proposalType: ProposalType): Proposal | null {
   if (data.content?.dataType !== "moveObject") return null;
@@ -30,6 +34,90 @@ export function parseProposal(data: SuiObjectData, proposalType: ProposalType): 
     creator: fields.creator,
     voters: fields.voters?.fields?.id?.id || "",
   };
+}
+
+/**
+ * Check if an on-chain object is a MultiChoiceProposal by inspecting its type string.
+ * Type string format: "{packageId}::multi_choice_proposal::MultiChoiceProposal"
+ */
+export function isMultiChoiceProposal(objectType: string): boolean {
+  return objectType.includes("::multi_choice_proposal::MultiChoiceProposal");
+}
+
+export function parseMultiChoiceProposal(
+  data: SuiObjectData,
+  proposalType: ProposalType
+): MultiChoiceProposal | null {
+  if (data.content?.dataType !== "moveObject") return null;
+
+  const fields = data.content.fields as MultiChoiceProposalFields;
+
+  if (!fields.title || !fields.description || !fields.status || !fields.creator || !fields.voters) {
+    console.error("Missing required multi-choice proposal fields", fields);
+    return null;
+  }
+
+  return {
+    id: { id: data.objectId },
+    title: fields.title,
+    description: fields.description,
+    choices: fields.choices || [],
+    choicePowers: (fields.choice_powers || []).map(Number),
+    choiceCounts: (fields.choice_counts || []).map(Number),
+    useEqualWeight: fields.use_equal_weight ?? false,
+    expiration: Number(fields.expiration),
+    creator: fields.creator,
+    status: fields.status,
+    proposalType,
+    voters: fields.voters?.fields?.id?.id || "",
+  };
+}
+
+/**
+ * Calculate percentage for each choice in a multi-choice proposal.
+ * Returns array of percentages (0-100) in the same order as choices.
+ */
+export function getChoicePercentages(choicePowers: number[]): number[] {
+  const total = choicePowers.reduce((sum, p) => sum + p, 0);
+  if (total === 0) return choicePowers.map(() => 0);
+  return choicePowers.map((p) => Math.round((p / total) * 100));
+}
+
+/**
+ * Extract tweet ID from a Twitter/X URL.
+ * Supports both twitter.com and x.com domains.
+ */
+export function extractTweetId(url: string): string | null {
+  const match = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Extract Twitter handle from a tweet URL (e.g., "pigrichh" from "https://x.com/pigrichh/status/123")
+ */
+export function extractTweetHandle(url: string): string | null {
+  const match = url.match(/(?:twitter\.com|x\.com)\/(\w+)\/status\/\d+/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Get a display label for a choice: @handle if it's a tweet URL, otherwise the raw text.
+ */
+export function getChoiceLabel(
+  choice: string,
+  displayNames?: Map<string, string>
+): string {
+  const handle = extractTweetHandle(choice);
+  if (!handle) return choice;
+  return displayNames?.get(handle.toLowerCase()) || `@${handle}`;
+}
+
+/**
+ * Check if ALL choices in a multi-choice proposal are Twitter URLs.
+ * All-or-nothing: returns true only if every choice has a valid tweet ID.
+ */
+export function isTwitterChoiceProposal(choices: string[]): boolean {
+  return choices.length > 0 && choices.every((c) => extractTweetId(c) !== null);
 }
 
 export function isUnixTimeExpired(unixTimeMs: number): boolean {

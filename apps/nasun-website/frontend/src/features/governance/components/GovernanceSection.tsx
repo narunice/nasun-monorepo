@@ -3,11 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
 import { ProposalItem } from "./ProposalItem";
+import { MultiChoiceProposalItem } from "./MultiChoiceProposalItem";
 import { useVoteNfts } from "../hooks/useVoteNfts";
+import { useMultiChoiceVoteNfts } from "../hooks/useMultiChoiceVoteNfts";
 import { VoteNft } from "../types/voting";
+import { isMultiChoiceProposal } from "../utils/proposalHelpers";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
-import { Suspense, useState } from "react";
+import { FC, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
@@ -97,6 +100,7 @@ const ProposalList = () => {
   const dashboardId = useNetworkVariable("dashboardId");
   const { account } = useWallet();
   const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
+  const { data: mcVoteNftsRes, refetch: refetchMcNfts } = useMultiChoiceVoteNfts();
   const [filter, setFilter] = useState<ProposalFilter>("all");
 
   const { data: hiddenIdsArray = [], isPending: isHiddenPending } = useQuery({
@@ -135,6 +139,7 @@ const ProposalList = () => {
   }
 
   const voteNfts = extractVoteNfts(voteNftsRes);
+  const mcVoteNfts = extractVoteNfts(mcVoteNftsRes);
   const proposalIds = getDashboardFields(dataResponse.data)?.proposals_ids || [];
   const visibleProposalIds = proposalIds.filter((id) => !hiddenIds.has(id));
 
@@ -176,16 +181,18 @@ const ProposalList = () => {
         {visibleProposalIds.map((id) => (
           <ErrorBoundary key={id} fallback={<div>{t("error.generic")}</div>}>
             <Suspense fallback={<InlineLoading size="sm" />}>
-              <ProposalItem
+              <SmartProposalItem
                 id={id}
                 filter={filter}
                 onVoteTxSuccess={async () => {
                   for (let i = 0; i < 5; i++) {
                     await new Promise((resolve) => setTimeout(resolve, 2000));
                     await refetchNfts();
+                    await refetchMcNfts();
                   }
                 }}
                 voteNft={voteNfts.find((nft) => nft.proposalId === id)}
+                mcVoteNft={mcVoteNfts.find((nft) => nft.proposalId === id)}
               />
             </Suspense>
           </ErrorBoundary>
@@ -215,6 +222,51 @@ type VoteNftFields = {
   proposal_id: string;
   url: string;
   id: { id: string };
+};
+
+/**
+ * SmartProposalItem - Routes to the correct component based on on-chain object type.
+ * Uses React Query cache, so the subsequent fetch inside ProposalItem/MultiChoiceProposalItem is free.
+ */
+const SmartProposalItem: FC<{
+  id: string;
+  filter: ProposalFilter;
+  voteNft: VoteNft | undefined;
+  mcVoteNft: VoteNft | undefined;
+  onVoteTxSuccess: () => void | Promise<void>;
+}> = ({ id, filter, voteNft, mcVoteNft, onVoteTxSuccess }) => {
+  const { data, isPending, error } = useSuiClientQuery("getObject", {
+    id,
+    options: { showContent: true },
+  });
+
+  if (isPending) return <InlineLoading size="sm" />;
+  if (error) return <div className="text-red-400 text-sm p-4">Failed to load proposal</div>;
+
+  const objectType = data?.data?.content?.dataType === "moveObject"
+    ? (data.data.content.type ?? "")
+    : "";
+
+  if (isMultiChoiceProposal(objectType)) {
+    return (
+      <MultiChoiceProposalItem
+        id={id}
+        filter={filter}
+        hasVoted={!!mcVoteNft}
+        voteNftUrl={mcVoteNft?.url}
+        onVoteTxSuccess={onVoteTxSuccess}
+      />
+    );
+  }
+
+  return (
+    <ProposalItem
+      id={id}
+      filter={filter}
+      voteNft={voteNft}
+      onVoteTxSuccess={onVoteTxSuccess}
+    />
+  );
 };
 
 function getVoteNft(nftData: SuiObjectData | undefined | null): VoteNft {

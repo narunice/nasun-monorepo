@@ -8,9 +8,12 @@ const EDuplicateProposal: u64 = 0;
 const EInvalidOtw: u64 = 1;
 const EMigrationAlreadyComplete: u64 = 2;
 const EProposalNotFound: u64 = 3;
+const EDevDashboardAlreadyCreated: u64 = 4;
 
 /// Key for tracking v6 migration status via dynamic field
 const MIGRATION_V6_KEY: vector<u8> = b"migrated_v6";
+/// Key for tracking dev dashboard creation (one-time only)
+const DEV_DASHBOARD_KEY: vector<u8> = b"dev_dashboard_created";
 
 public struct Dashboard has key {
     id: UID,
@@ -87,6 +90,28 @@ public fun migrate_v6(self: &mut Dashboard, ctx: &mut TxContext) {
 /// Check if v6 migration has been completed
 public fun is_migrated_v6(self: &Dashboard): bool {
     dynamic_field::exists_(&self.id, MIGRATION_V6_KEY)
+}
+
+/// Create an additional Dashboard for dev/staging environment separation.
+/// One-time only: uses dynamic field guard on the existing Dashboard.
+public fun create_dev_dashboard(
+    self: &mut Dashboard,
+    _admin_cap: &AdminCap,
+    ctx: &mut TxContext
+): ID {
+    assert!(
+        !dynamic_field::exists_(&self.id, DEV_DASHBOARD_KEY),
+        EDevDashboardAlreadyCreated
+    );
+    dynamic_field::add(&mut self.id, DEV_DASHBOARD_KEY, true);
+
+    let dev_dashboard = Dashboard {
+        id: object::new(ctx),
+        proposals_ids: vector[]
+    };
+    let id = dev_dashboard.id.to_inner();
+    transfer::share_object(dev_dashboard);
+    id
 }
 
 #[test_only]
