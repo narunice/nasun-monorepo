@@ -20,11 +20,15 @@ import { PageTitle } from "@/components/ui/PageTitle";
 import { Button } from "@/components/ui/button";
 
 type ProposalType = "Governance" | "Poll";
+type VoteFormat = "yes-no" | "multi-choice";
 
 interface ProposalFormData {
   title: string;
   description: string;
   proposalType: ProposalType;
+  voteFormat: VoteFormat;
+  choices: string[];
+  useEqualWeight: boolean;
   durationType: "preset" | "custom";
   durationHours: number;
   customEndDate: string;
@@ -48,6 +52,9 @@ export function CreateProposal() {
     title: "",
     description: "",
     proposalType: "Governance",
+    voteFormat: "yes-no",
+    choices: ["", ""],
+    useEqualWeight: true,
     durationType: "preset",
     durationHours: 72,
     customEndDate: "",
@@ -77,6 +84,22 @@ export function CreateProposal() {
     if (!formData.title.trim() || !formData.description.trim()) {
       setError("Title and description are required");
       return;
+    }
+
+    if (formData.voteFormat === "multi-choice") {
+      const validChoices = formData.choices.filter((c) => c.trim());
+      if (validChoices.length < 2) {
+        setError("Multi-choice proposals require at least 2 choices");
+        return;
+      }
+      if (validChoices.length > 20) {
+        setError("Maximum 20 choices allowed");
+        return;
+      }
+      if (validChoices.some((c) => new TextEncoder().encode(c).length > 200)) {
+        setError("Each choice must be 200 bytes or less");
+        return;
+      }
     }
 
     if (formData.durationType === "custom") {
@@ -109,16 +132,34 @@ export function CreateProposal() {
       // Build the transaction
       const tx = new Transaction();
 
-      // Step 1: Create the proposal - returns the proposal ID
-      const [proposalId] = tx.moveCall({
-        target: `${packageId}::proposal::create`,
-        arguments: [
-          tx.object(adminCapId),
-          tx.pure.string(formData.title),
-          tx.pure.string(formData.description),
-          tx.pure.u64(expiresAt),
-        ],
-      });
+      let proposalId;
+
+      if (formData.voteFormat === "multi-choice") {
+        // Multi-choice proposal creation
+        const validChoices = formData.choices.filter((c) => c.trim());
+        [proposalId] = tx.moveCall({
+          target: `${packageId}::multi_choice_proposal::create`,
+          arguments: [
+            tx.object(adminCapId),
+            tx.pure.string(formData.title),
+            tx.pure.string(formData.description),
+            tx.pure.vector("string", validChoices),
+            tx.pure.bool(formData.useEqualWeight),
+            tx.pure.u64(expiresAt),
+          ],
+        });
+      } else {
+        // Yes/No proposal creation (existing flow)
+        [proposalId] = tx.moveCall({
+          target: `${packageId}::proposal::create`,
+          arguments: [
+            tx.object(adminCapId),
+            tx.pure.string(formData.title),
+            tx.pure.string(formData.description),
+            tx.pure.u64(expiresAt),
+          ],
+        });
+      }
 
       // Step 2: Register the proposal to the dashboard
       tx.moveCall({
@@ -276,6 +317,124 @@ export function CreateProposal() {
                   </button>
                 </div>
               </div>
+
+              {/* Vote Format */}
+              <div className="mb-6">
+                <label className="block text-sm text-nasun-white/70 mb-2">Vote Format</label>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, voteFormat: "yes-no" })}
+                    className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
+                      formData.voteFormat === "yes-no"
+                        ? "bg-green-500/10 border-green-500/50 text-green-400"
+                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    <div className="font-medium">Yes / No</div>
+                    <div className="text-xs mt-1 opacity-70">Binary choice</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, voteFormat: "multi-choice" })}
+                    className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
+                      formData.voteFormat === "multi-choice"
+                        ? "bg-purple-500/10 border-purple-500/50 text-purple-400"
+                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                    }`}
+                    disabled={isSubmitting}
+                  >
+                    <div className="font-medium">Multi-Choice</div>
+                    <div className="text-xs mt-1 opacity-70">Multiple options</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Multi-Choice Options */}
+              {formData.voteFormat === "multi-choice" && (
+                <>
+                  <div className="mb-6">
+                    <label className="block text-sm text-nasun-white/70 mb-2">
+                      Choices ({formData.choices.filter((c) => c.trim()).length}/20)
+                    </label>
+                    <div className="space-y-2">
+                      {formData.choices.map((choice, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={choice}
+                            onChange={(e) => {
+                              const updated = [...formData.choices];
+                              updated[idx] = e.target.value;
+                              setFormData({ ...formData, choices: updated });
+                            }}
+                            placeholder={`Choice ${idx + 1}`}
+                            className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder-nasun-white/30 focus:outline-none focus:border-nasun-c4/50"
+                            disabled={isSubmitting}
+                          />
+                          {formData.choices.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = formData.choices.filter((_, i) => i !== idx);
+                                setFormData({ ...formData, choices: updated });
+                              }}
+                              className="px-3 py-2 text-red-400 hover:text-red-300 border border-red-500/20 rounded-sm hover:border-red-500/40 transition-colors"
+                              disabled={isSubmitting}
+                            >
+                              X
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {formData.choices.length < 20 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, choices: [...formData.choices, ""] })}
+                        className="mt-2 text-sm text-nasun-nw1 hover:text-nasun-nw4 transition-colors"
+                        disabled={isSubmitting}
+                      >
+                        + Add Choice
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Equal Weight Toggle */}
+                  <div className="mb-6">
+                    <label className="block text-sm text-nasun-white/70 mb-2">Voting Weight</label>
+                    <div className="flex gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, useEqualWeight: true })}
+                        className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
+                          formData.useEqualWeight
+                            ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
+                            : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        }`}
+                        disabled={isSubmitting}
+                      >
+                        <div className="font-medium">Equal Weight</div>
+                        <div className="text-xs mt-1 opacity-70">1 vote per wallet</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, useEqualWeight: false })}
+                        className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
+                          !formData.useEqualWeight
+                            ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
+                            : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        }`}
+                        disabled={isSubmitting}
+                      >
+                        <div className="font-medium">Weighted</div>
+                        <div className="text-xs mt-1 opacity-70">Based on voting power</div>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Duration Type Toggle */}
               <div className="mb-4">
