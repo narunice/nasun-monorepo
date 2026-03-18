@@ -4,9 +4,11 @@
  *
  * Uses BackupWizard for shared PIN entry flow.
  * v2 backups include on-chain account state (signers, guardians, threshold).
+ *
+ * zkLogin users are blocked from backup because the ephemeral key changes
+ * on every Google re-authentication, making the backup file unusable.
  */
 
-import { useState } from 'react';
 import {
   useNsaBackup,
   useSigner,
@@ -17,6 +19,7 @@ import {
   secureZeroString,
   downloadBackupFile,
 } from '@nasun/wallet';
+import type { NsaSigner } from '@nasun/wallet';
 import { BackupWizard } from '../backup/BackupWizard';
 import { WALLET_STYLES } from '../shared';
 
@@ -31,10 +34,15 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
   const { getKeypair } = useWallet();
   const passkeyKeypair = usePasskeyStore((s) => s.keypair);
 
-  // zkLogin: show warning but allow proceeding
-  const [zkLoginConfirmed, setZkLoginConfirmed] = useState(false);
+  // Resolve the underlying signer type (NsaSigner wraps the real signer)
+  const underlyingType = signerType === 'nsa' && signer
+    ? (signer as NsaSigner).underlyingType
+    : signerType;
+  const isZkLoginBased = underlyingType === 'zklogin';
+  const isPasskeyBased = underlyingType === 'passkey';
 
-  if (signerType === 'zklogin' && !zkLoginConfirmed) {
+  // zkLogin: block backup (ephemeral key becomes orphaned on Google re-auth)
+  if (isZkLoginBased) {
     return (
       <div className={WALLET_STYLES.panelContainer}>
         <div className="flex items-center gap-2 mb-4">
@@ -51,39 +59,28 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
 
         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded mb-4">
           <p className={`${WALLET_STYLES.textBody} text-blue-800 dark:text-blue-300 font-medium mb-1`}>
-            Google account is your primary recovery method
+            Not available for zkLogin accounts
           </p>
           <p className={`${WALLET_STYLES.textLabel} text-blue-700 dark:text-blue-400`}>
-            You can restore access by signing in with Google again. For additional protection,
-            set up guardians in the Smart Account menu first.
+            Your wallet uses a temporary signing key that changes each time you
+            sign in with Google, so a backup file would not be usable for recovery.
           </p>
         </div>
 
-        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded mb-4">
-          <p className={`${WALLET_STYLES.textLabel} text-amber-800 dark:text-amber-300 font-medium mb-1`}>
-            Ephemeral key backup has limited usefulness
+        <div className="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded mb-4">
+          <p className={`${WALLET_STYLES.textLabel} text-gray-700 dark:text-zinc-300 font-medium mb-1`}>
+            How to protect your account
           </p>
-          <p className={`${WALLET_STYLES.textCaption} text-amber-700 dark:text-amber-400`}>
-            This backup contains your ephemeral signing key. After re-authenticating with Google,
-            a new key is generated, making the backed-up key orphaned. Use only as a last resort
-            if you lose both Google access and guardian recovery.
+          <p className={`${WALLET_STYLES.textCaption} text-gray-600 dark:text-zinc-400`}>
+            Add a passkey or local wallet as a backup signer via "Propose Signer".
+            Once added, you can create a full backup with that signer. You can also
+            set up guardians for emergency recovery.
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            className={`flex-1 py-2.5 ${WALLET_STYLES.secondaryButton}`}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => setZkLoginConfirmed(true)}
-            className={`flex-1 py-2.5 ${WALLET_STYLES.primaryButton}`}
-          >
-            Create Backup Anyway
-          </button>
-        </div>
+        <button onClick={onClose} className={`w-full py-2.5 ${WALLET_STYLES.primaryButton}`}>
+          Got it
+        </button>
       </div>
     );
   }
@@ -119,7 +116,7 @@ export function NsaBackupPanel({ onClose }: NsaBackupPanelProps) {
 
     let signerPrivateKey: string | null = null;
     try {
-      const keypair = signerType === 'passkey' ? passkeyKeypair : getKeypair();
+      const keypair = isPasskeyBased ? passkeyKeypair : getKeypair();
       if (!keypair) {
         throw new Error('Cannot access signer key. Please unlock your wallet first.');
       }
