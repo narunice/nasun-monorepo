@@ -17,6 +17,7 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const ALLOWLIST_TABLE = process.env.ALLOWLIST_TABLE_NAME;
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE_NAME;
+const APPROVALS_TABLE = process.env.APPROVALS_TABLE_NAME;
 if (!ALLOWLIST_TABLE || !USER_PROFILES_TABLE) {
   throw new Error("ALLOWLIST_TABLE_NAME and USER_PROFILES_TABLE_NAME environment variables are required");
 }
@@ -263,10 +264,22 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
     }
   }
 
-  // 6. Register to allowlist (unconditional put for takeover support)
-  // Preserve mintType/source from existing registration (e.g., FREE_MINT from raffle)
-  const preservedMintType = existingByIdentity?.mintType;
-  const preservedSource = existingByIdentity?.source;
+  // 6. Determine mintType/source: preserve from existing, or apply from approvals table
+  let mintType = existingByIdentity?.mintType as string | undefined;
+  let source = existingByIdentity?.source as string | undefined;
+
+  if (!mintType && APPROVALS_TABLE) {
+    const approval = await client.send(
+      new GetCommand({ TableName: APPROVALS_TABLE, Key: { identityId } })
+    );
+    if (approval.Item) {
+      mintType = approval.Item.mintType as string | undefined;
+      source = approval.Item.source as string | undefined;
+      console.log(`[genesis-pass-register] Auto-approval applied: mintType=${mintType}, source=${source}`);
+    }
+  }
+
+  // 7. Register to allowlist (unconditional put for takeover support)
   const now = new Date().toISOString();
   await client.send(
     new PutCommand({
@@ -276,8 +289,8 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
         identityId,
         registeredAt: now,
         status: "ACTIVE",
-        ...(preservedMintType && { mintType: preservedMintType }),
-        ...(preservedSource && { source: preservedSource }),
+        ...(mintType && { mintType }),
+        ...(source && { source }),
       },
     })
   );
