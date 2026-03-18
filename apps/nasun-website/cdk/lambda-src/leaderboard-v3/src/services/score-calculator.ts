@@ -23,6 +23,8 @@ import {
   AccountRole,
   ComputedUserScore,
   ContentSignal,
+  DAILY_BASE_SCORE_CAP,
+  DAILY_BASE_SCORE_TIERS,
   FOLLOWER_THRESHOLDS,
   LANGUAGE_SCALE,
   PostType,
@@ -553,4 +555,30 @@ export function addActiveDate(
     dates: [...existingDates, dateStr].sort(),
     isNewDay: true,
   };
+}
+
+/**
+ * Get daily base score increment for a given rank.
+ * Returns 0 for users not in the top 500 or with no previous rank.
+ */
+export function getDailyBaseScoreForRank(rank: number | undefined): number {
+  if (rank === undefined || rank <= 0 || rank > 500) return 0;
+  for (const tier of DAILY_BASE_SCORE_TIERS) {
+    if (rank <= tier.maxRank) return tier.score;
+  }
+  return 0;
+}
+
+/**
+ * Calculate daily base score with fixed cap applied.
+ * Accumulates from previous snapshot, capped at DAILY_BASE_SCORE_CAP (10.0).
+ */
+export function calculateDailyBaseScore(params: {
+  prevDailyBaseScoreTotal: number;
+  prevRank: number | undefined;
+}): number {
+  const { prevDailyBaseScoreTotal, prevRank } = params;
+  const increment = getDailyBaseScoreForRank(prevRank);
+  const uncapped = prevDailyBaseScoreTotal + increment;
+  return Math.round(Math.min(uncapped, DAILY_BASE_SCORE_CAP) * 1000) / 1000;
 }

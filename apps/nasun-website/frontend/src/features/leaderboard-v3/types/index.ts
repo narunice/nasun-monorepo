@@ -39,6 +39,7 @@ export interface ScoreBreakdown {
   rawScore: number;
   consistencyBonus: number;
   freshnessMultiplier: number;
+  dailyBaseScoreTotal?: number;
 }
 
 // Season leaderboard entry (includes rank change)

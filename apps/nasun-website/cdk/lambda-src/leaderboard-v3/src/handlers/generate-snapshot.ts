@@ -33,7 +33,7 @@ import {
   SCORE_CONSTANTS,
 } from '../types';
 import { getActiveSeason, getSeasonAccountScores, getBannedAccountIds, getPostsBySeasonId, lookupUserProfile } from '../services/dynamodb-client';
-import { calculateScoreComponents, calculateDecayedRawScoreFromPosts, calculateConsistencyBonus } from '../services/score-calculator';
+import { calculateScoreComponents, calculateDecayedRawScoreFromPosts, calculateConsistencyBonus, calculateDailyBaseScore } from '../services/score-calculator';
 import { getTodayDateString, getYesterdayDateString } from '../utils/date';
 import { calculateRankChange } from '../utils/rank';
 import { authenticateAdmin } from '../utils/admin-auth';
@@ -351,6 +351,7 @@ async function runSnapshotCore(params: {
     rawScore: number;
     consistencyBonus: number;
     freshnessMultiplier: number;
+    dailyBaseScoreTotal: number;
   })[];
 
   if (ENABLE_BATCH_DECAY) {
@@ -377,10 +378,16 @@ async function runSnapshotCore(params: {
           ? Math.pow(decayedRawScore, SCORE_CONSTANTS.RAW_SCORE_EXPONENT)
           : 0;
         const calculatedRawScore = compressedRawScore + (score.adjustmentTotalScore || 0);
-        // Monotonicity floor: rawScore must never decrease from previous snapshot
         const prevEntry = prevFullSnapshot.get(score.accountId);
+        // Monotonicity floor: rawScore must never decrease from previous snapshot
         const rawScore = Math.max(calculatedRawScore, prevEntry?.rawScore || 0);
         const consistencyBonus = calculateConsistencyBonus(score.uniqueActiveDays);
+
+        // Daily base score: accumulate from previous day, fixed cap at 10.0
+        const dailyBaseScoreTotal = calculateDailyBaseScore({
+          prevDailyBaseScoreTotal: prevEntry?.dailyBaseScoreTotal ?? 0,
+          prevRank: prevEntry?.rank,
+        });
 
         const lastSeenDate = new Date(score.lastSeenAt);
         const refDate = referenceDate || new Date();
@@ -390,7 +397,7 @@ async function runSnapshotCore(params: {
         );
         const effectiveDays = Math.max(0, daysSinceLastPost - SCORE_CONSTANTS.FRESHNESS_GRACE_DAYS);
         const freshnessMultiplier = 1 / (1 + effectiveDays / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
-        const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier);
+        const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier) + dailyBaseScoreTotal;
 
         return {
           ...score,
@@ -398,6 +405,7 @@ async function runSnapshotCore(params: {
           consistencyBonus: Math.round(consistencyBonus * 1000) / 1000,
           freshnessMultiplier: Math.round(freshnessMultiplier * 1000) / 1000,
           userScore: Math.round(userScore * 1000) / 1000,
+          dailyBaseScoreTotal,
         };
       })
       .sort((a, b) => b.userScore - a.userScore);
@@ -405,15 +413,23 @@ async function runSnapshotCore(params: {
     scoredAccounts = filteredScores
       .map((score) => {
         const calculated = recalculateUserScore(score, referenceDate);
-        // Monotonicity floor: rawScore must never decrease from previous snapshot
         const prevEntry = prevFullSnapshot.get(score.accountId);
+        // Monotonicity floor: rawScore must never decrease from previous snapshot
         const rawScore = Math.max(calculated.rawScore, prevEntry?.rawScore || 0);
-        const userScore = Math.max(0, rawScore * calculated.consistencyBonus * calculated.freshnessMultiplier);
+
+        // Daily base score: accumulate from previous day, fixed cap at 10.0
+        const dailyBaseScoreTotal = calculateDailyBaseScore({
+          prevDailyBaseScoreTotal: prevEntry?.dailyBaseScoreTotal ?? 0,
+          prevRank: prevEntry?.rank,
+        });
+
+        const userScore = Math.max(0, rawScore * calculated.consistencyBonus * calculated.freshnessMultiplier) + dailyBaseScoreTotal;
         return {
           ...score,
           ...calculated,
           rawScore: Math.round(rawScore * 1000) / 1000,
           userScore: Math.round(userScore * 1000) / 1000,
+          dailyBaseScoreTotal,
         };
       })
       .sort((a, b) => b.userScore - a.userScore);
@@ -466,6 +482,7 @@ async function runSnapshotCore(params: {
         rawScore: score.rawScore,
         consistencyBonus: score.consistencyBonus,
         freshnessMultiplier: score.freshnessMultiplier,
+        dailyBaseScoreTotal: score.dailyBaseScoreTotal,
         displayName: score.displayName,
         profileImageUrl: score.profileImageUrl,
         isRegistered: score.isRegistered,
@@ -548,6 +565,7 @@ export const handler = async (
           rawScore: s.rawScore,
           consistencyBonus: s.consistencyBonus,
           freshnessMultiplier: s.freshnessMultiplier,
+          dailyBaseScoreTotal: s.dailyBaseScoreTotal,
           postCount: s.postCount,
           uniqueActiveDays: s.uniqueActiveDays,
           previousRank: s.previousDayRank,

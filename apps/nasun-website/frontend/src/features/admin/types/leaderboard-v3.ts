@@ -66,6 +66,7 @@ export interface ScoreBreakdown {
   rawScore: number;
   consistencyBonus: number;
   freshnessMultiplier: number;
+  dailyBaseScoreTotal?: number;
 }
 
 // Leaderboard entry (matches backend LeaderboardEntry)
