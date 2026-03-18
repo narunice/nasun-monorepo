@@ -118,7 +118,7 @@ export class AdminStack extends cdk.Stack {
     battalionTable.grantReadData(this.exportFunction);
     hiddenProposalsTable.grantReadWriteData(this.exportFunction);
     devnetMetricsTable.grantReadData(this.exportFunction);
-    genesisPassTable.grantReadData(this.exportFunction);
+    genesisPassTable.grantReadWriteData(this.exportFunction);
 
     // Grant permission to query GSI (batch-index)
     this.exportFunction.addToRolePolicy(
@@ -278,6 +278,19 @@ export class AdminStack extends cdk.Stack {
     // User Analytics API Route (admin only)
     const userAnalyticsResource = this.api.root.addResource("user-analytics");
     userAnalyticsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
+
+    // Genesis Pass Allowlist CRUD API Routes (admin only)
+    const genesisPassCrudResource = this.api.root.addResource("genesis-pass");
+    const genesisPassEntriesResource = genesisPassCrudResource.addResource("entries");
+    // GET /genesis-pass/entries - Admin: list all entries
+    genesisPassEntriesResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
+    // POST /genesis-pass/entries - Admin: add entry
+    genesisPassEntriesResource.addMethod("POST", exportIntegration, authorizedMethodOptions);
+    const genesisPassEntryIdResource = genesisPassEntriesResource.addResource("{walletAddress}");
+    // PUT /genesis-pass/entries/{walletAddress} - Admin: update entry
+    genesisPassEntryIdResource.addMethod("PUT", exportIntegration, authorizedMethodOptions);
+    // DELETE /genesis-pass/entries/{walletAddress} - Admin: delete entry
+    genesisPassEntryIdResource.addMethod("DELETE", exportIntegration, authorizedMethodOptions);
 
     // NFT Collections API Routes
     const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);

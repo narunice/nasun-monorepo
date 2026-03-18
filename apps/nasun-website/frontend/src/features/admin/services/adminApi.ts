@@ -174,6 +174,73 @@ export async function unhideProposal(cognitoToken: string, proposalId: string): 
   }
 }
 
+// ============================================================================
+// Genesis Pass Allowlist CRUD API
+// ============================================================================
+
+export interface GenesisPassEntry {
+  walletAddress: string;
+  identityId: string;
+  registeredAt: string;
+  status: string;
+  mintType?: string;
+  source?: string;
+  twitterHandle?: string;
+}
+
+export async function getGenesisPassEntries(cognitoToken: string): Promise<GenesisPassEntry[]> {
+  const url = `${ADMIN_API_URL}/genesis-pass/entries`;
+  const response = await fetch(url, { method: 'GET', headers: authHeaders(cognitoToken) });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get entries: ${response.status}`);
+  }
+  const data = await response.json();
+  return data.items;
+}
+
+export async function addGenesisPassEntry(
+  cognitoToken: string,
+  entry: { walletAddress: string; mintType?: string; source?: string },
+): Promise<void> {
+  const url = `${ADMIN_API_URL}/genesis-pass/entries`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(cognitoToken) },
+    body: JSON.stringify(entry),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || error.message || `Failed to add entry: ${response.status}`);
+  }
+}
+
+export async function updateGenesisPassEntry(
+  cognitoToken: string,
+  walletAddress: string,
+  data: { mintType?: string; source?: string },
+): Promise<void> {
+  const url = `${ADMIN_API_URL}/genesis-pass/entries/${encodeURIComponent(walletAddress)}`;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders(cognitoToken) },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to update entry: ${response.status}`);
+  }
+}
+
+export async function deleteGenesisPassEntry(cognitoToken: string, walletAddress: string): Promise<void> {
+  const url = `${ADMIN_API_URL}/genesis-pass/entries/${encodeURIComponent(walletAddress)}`;
+  const response = await fetch(url, { method: 'DELETE', headers: authHeaders(cognitoToken) });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to delete entry: ${response.status}`);
+  }
+}
+
 /**
  * Get list of hidden proposal IDs (public - no auth required)
  * This uses a simple GET endpoint that doesn't require admin auth

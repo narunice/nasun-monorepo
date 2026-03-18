@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DashboardCard } from "@/components/ui/DashboardCard";
@@ -10,10 +10,286 @@ import {
   exportBattalionAllowlist,
   exportGenesisPassAllowlist,
   downloadBlob,
+  getGenesisPassEntries,
+  addGenesisPassEntry,
+  updateGenesisPassEntry,
+  deleteGenesisPassEntry,
 } from "../services/adminApi";
+import type { GenesisPassEntry } from "../services/adminApi";
 import { useWhitelistStats } from "../hooks/useWhitelistStats";
 
 type Tab = "battalion" | "genesis-pass";
+
+const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
+  const [entries, setEntries] = useState<GenesisPassEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Add form state
+  const [newAddress, setNewAddress] = useState("");
+  const [newMintType, setNewMintType] = useState<string>("");
+  const [newSource, setNewSource] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
+
+  // Edit state
+  const [editingAddress, setEditingAddress] = useState<string | null>(null);
+  const [editMintType, setEditMintType] = useState("");
+  const [editSource, setEditSource] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Delete state
+  const [deletingAddress, setDeletingAddress] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchEntries = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const items = await getGenesisPassEntries(cognitoToken);
+      setEntries(items);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load entries");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [cognitoToken]);
+
+  useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
+
+  const handleAdd = async () => {
+    if (!newAddress.trim()) return;
+    if (!EVM_ADDRESS_REGEX.test(newAddress.trim())) {
+      setError("Invalid EVM address format (0x + 40 hex chars)");
+      return;
+    }
+    setIsAdding(true);
+    setError(null);
+    try {
+      await addGenesisPassEntry(cognitoToken, {
+        walletAddress: newAddress.trim(),
+        ...(newMintType && { mintType: newMintType }),
+        ...(newSource && { source: newSource }),
+      });
+      setNewAddress("");
+      setNewMintType("");
+      setNewSource("");
+      await fetchEntries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add entry");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingAddress) return;
+    setIsUpdating(true);
+    setError(null);
+    try {
+      await updateGenesisPassEntry(cognitoToken, editingAddress, {
+        mintType: editMintType,
+        source: editSource,
+      });
+      setEditingAddress(null);
+      await fetchEntries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update entry");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingAddress) return;
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await deleteGenesisPassEntry(cognitoToken, deletingAddress);
+      setDeletingAddress(null);
+      await fetchEntries();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete entry");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const startEdit = (entry: GenesisPassEntry) => {
+    setEditingAddress(entry.walletAddress);
+    setEditMintType(entry.mintType || "");
+    setEditSource(entry.source || "");
+  };
+
+  return (
+    <OuterBox color="w5" padding="md" className="w-full mt-6">
+      <h3 className="text-xl font-medium text-nasun-white mb-2">
+        Manage Entries
+      </h3>
+      <p className="text-nasun-white/60 text-sm mb-6">
+        Add, edit, or remove Genesis Pass allowlist entries. Total: {entries.length}
+      </p>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Add Form */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-gray-800/50 rounded-sm">
+        <input
+          type="text"
+          placeholder="0x... (EVM address)"
+          value={newAddress}
+          onChange={(e) => setNewAddress(e.target.value)}
+          className="flex-1 px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4/50"
+        />
+        <select
+          value={newMintType}
+          onChange={(e) => setNewMintType(e.target.value)}
+          className="px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm focus:outline-none focus:border-nasun-c4/50"
+        >
+          <option value="">No mint type</option>
+          <option value="FREE_MINT">FREE_MINT</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Source (optional)"
+          value={newSource}
+          onChange={(e) => setNewSource(e.target.value)}
+          className="w-32 px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4/50"
+        />
+        <Button
+          variant="filledOutlineC7"
+          size="sm"
+          onClick={handleAdd}
+          disabled={isAdding || !newAddress.trim()}
+        >
+          {isAdding ? "Adding..." : "Add"}
+        </Button>
+      </div>
+
+      {/* Entries Table */}
+      {isLoading ? (
+        <div className="text-nasun-white/40 text-sm py-8 text-center">Loading entries...</div>
+      ) : entries.length === 0 ? (
+        <div className="text-nasun-white/40 text-sm py-8 text-center">No entries found</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-nasun-c5/20 text-nasun-white/50 text-left">
+                <th className="pb-2 pr-4 font-medium">Wallet</th>
+                <th className="pb-2 pr-4 font-medium">Mint Type</th>
+                <th className="pb-2 pr-4 font-medium">Source</th>
+                <th className="pb-2 pr-4 font-medium">X Handle</th>
+                <th className="pb-2 pr-4 font-medium">Registered</th>
+                <th className="pb-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.walletAddress} className="border-b border-nasun-c5/10 hover:bg-nasun-c5/5">
+                  <td className="py-2 pr-4 font-mono text-nasun-white/80">{shortenAddress(entry.walletAddress)}</td>
+                  <td className="py-2 pr-4">
+                    {entry.mintType === "FREE_MINT" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-medium border border-amber-400/20">
+                        FREE_MINT
+                      </span>
+                    ) : (
+                      <span className="text-nasun-white/30">-</span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-4 text-nasun-white/50">{entry.source || "-"}</td>
+                  <td className="py-2 pr-4 text-nasun-white/50">{entry.twitterHandle ? `@${entry.twitterHandle}` : "-"}</td>
+                  <td className="py-2 pr-4 text-nasun-white/40">{entry.registeredAt ? new Date(entry.registeredAt).toLocaleDateString("en-US") : "-"}</td>
+                  <td className="py-2 text-right">
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => startEdit(entry)}
+                        className="text-nasun-c4 hover:text-nasun-c4/80 text-xs"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setDeletingAddress(entry.walletAddress)}
+                        className="text-red-400 hover:text-red-300 text-xs"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingAddress && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setEditingAddress(null)}>
+          <div className="bg-gray-900 border border-nasun-c5/30 rounded-sm p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-nasun-white font-medium mb-4">Edit Entry</h4>
+            <p className="text-nasun-white/50 text-sm mb-4 font-mono">{shortenAddress(editingAddress)}</p>
+            <div className="flex flex-col gap-3 mb-4">
+              <div>
+                <label className="text-nasun-white/50 text-xs uppercase mb-1 block">Mint Type</label>
+                <select
+                  value={editMintType}
+                  onChange={(e) => setEditMintType(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm"
+                >
+                  <option value="">None</option>
+                  <option value="FREE_MINT">FREE_MINT</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-nasun-white/50 text-xs uppercase mb-1 block">Source</label>
+                <input
+                  type="text"
+                  value={editSource}
+                  onChange={(e) => setEditSource(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm"
+                  placeholder="e.g., RAFFLE"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outlineC5" size="sm" onClick={() => setEditingAddress(null)}>Cancel</Button>
+              <Button variant="filledOutlineC7" size="sm" onClick={handleUpdate} disabled={isUpdating}>
+                {isUpdating ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      {deletingAddress && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setDeletingAddress(null)}>
+          <div className="bg-gray-900 border border-nasun-c5/30 rounded-sm p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-nasun-white font-medium mb-2">Delete Entry?</h4>
+            <p className="text-nasun-white/50 text-sm mb-4">
+              Remove <span className="font-mono text-nasun-white/80">{shortenAddress(deletingAddress)}</span> from the allowlist?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outlineC5" size="sm" onClick={() => setDeletingAddress(null)}>Cancel</Button>
+              <Button variant="filledOutlineScarlet" size="sm" onClick={handleDelete} disabled={isDeleting}>
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </OuterBox>
+  );
+}
 
 export function WhitelistManagement() {
   const { user } = useAuth();
@@ -71,10 +347,10 @@ export function WhitelistManagement() {
       <SectionLayout className="!max-w-6xl !pt-0">
         <div className="w-full mb-10 text-left">
           <PageTitle as="h3" align="left" className="">
-            Allowlist Export
+            Allowlist Management
           </PageTitle>
           <p className="text-nasun-white/60 max-w-2xl -mt-6">
-            Download NFT allowlist data as CSV files for OpenSea or internal analysis.
+            Export, add, edit, and remove NFT allowlist entries.
           </p>
         </div>
 
@@ -198,41 +474,48 @@ export function WhitelistManagement() {
             )}
 
             {activeTab === "genesis-pass" && (
-              <OuterBox color="w5" padding="md" className="w-full">
-                <h3 className="text-xl font-medium text-nasun-white mb-2">
-                  Genesis Pass Allowlist
-                </h3>
-                <p className="text-nasun-white/60 text-base mb-8">
-                  Export all wallet addresses registered for the Genesis Pass allowlist.
-                </p>
+              <>
+                <OuterBox color="w5" padding="md" className="w-full">
+                  <h3 className="text-xl font-medium text-nasun-white mb-2">
+                    Genesis Pass Allowlist
+                  </h3>
+                  <p className="text-nasun-white/60 text-base mb-8">
+                    Export all wallet addresses registered for the Genesis Pass allowlist.
+                  </p>
 
-                {error && (
-                  <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-base flex items-center gap-3">
-                    {error}
+                  {error && (
+                    <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-base flex items-center gap-3">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                      onClick={() => handleExport("genesis-pass", "default")}
+                      disabled={isExporting}
+                      variant="outlineC5"
+                      size="lg"
+                      className="min-w-[180px]"
+                    >
+                      {isExporting ? "Exporting..." : "Download CSV"}
+                    </Button>
+                    <Button
+                      onClick={() => handleExport("genesis-pass", "opensea")}
+                      disabled={isExporting}
+                      variant="c4"
+                      size="lg"
+                      className="min-w-[180px]"
+                    >
+                      {isExporting ? "Exporting..." : "OpenSea Format"}
+                    </Button>
                   </div>
-                )}
+                </OuterBox>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button
-                    onClick={() => handleExport("genesis-pass", "default")}
-                    disabled={isExporting}
-                    variant="outlineC5"
-                    size="lg"
-                    className="min-w-[180px]"
-                  >
-                    {isExporting ? "Exporting..." : "Download CSV"}
-                  </Button>
-                  <Button
-                    onClick={() => handleExport("genesis-pass", "opensea")}
-                    disabled={isExporting}
-                    variant="c4"
-                    size="lg"
-                    className="min-w-[180px]"
-                  >
-                    {isExporting ? "Exporting..." : "OpenSea Format"}
-                  </Button>
-                </div>
-              </OuterBox>
+                {/* CRUD Management Section */}
+                {user?.cognitoToken && (
+                  <GenesisPassCrudSection cognitoToken={user.cognitoToken} />
+                )}
+              </>
             )}
           </div>
 
