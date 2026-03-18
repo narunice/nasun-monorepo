@@ -241,6 +241,21 @@ const ProposalDetailPage: FC = () => {
         {/* Title */}
         <PageTitle as="h2">{proposal.title}</PageTitle>
 
+        {/* Vote Proof NFT banner (Yes/No proposals) */}
+        {voteNft && (
+          <div className="flex items-center gap-4 p-4 bg-green-500/5 border border-green-500/20 rounded-sm">
+            <img
+              src={voteNft.url}
+              alt="Vote Proof NFT"
+              className="w-12 h-12 rounded-full border-2 border-green-500/40"
+            />
+            <div>
+              <p className="text-green-400 font-medium text-sm">You have voted on this proposal</p>
+              <p className="text-nasun-white/40 text-xs">Vote Proof NFT has been issued to your wallet</p>
+            </div>
+          </div>
+        )}
+
         {/* Two-column layout: Description (left) + Sidebar (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
         {/* Left: Description */}
@@ -416,6 +431,7 @@ export default ProposalDetailPage;
 import { SuiObjectData } from "@mysten/sui/client";
 import { ProposalType } from "@/features/governance/types/voting";
 import { useTwitterDisplayNames } from "@/features/governance/hooks/useTwitterDisplayNames";
+import { useMultiChoiceVoteNfts } from "@/features/governance/hooks/useMultiChoiceVoteNfts";
 
 const CHOICE_COLORS = [
   "bg-nasun-nw1", "bg-nasun-nw4", "bg-green-500", "bg-blue-500",
@@ -432,10 +448,21 @@ const MultiChoiceProposalDetail: FC<{
   const { t } = useTranslation("proposals");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [localVoted, setLocalVoted] = useState(false);
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
+
+  // Query MultiChoiceVoteProofNFT to detect if user already voted
+  const { data: mcNftsRes, refetch: refetchMcNfts } = useMultiChoiceVoteNfts();
+  const voteNft = mcNftsRes?.data
+    ?.map((obj) => {
+      if (obj.data?.content?.dataType !== "moveObject") return null;
+      const fields = obj.data.content.fields as { proposal_id: string; url: string };
+      return { proposalId: fields.proposal_id, url: fields.url };
+    })
+    .find((nft) => nft?.proposalId === proposalId);
+  const hasVoted = localVoted || !!voteNft;
 
   const proposal = parseMultiChoiceProposal(data, proposalType);
 
@@ -497,6 +524,21 @@ const MultiChoiceProposalDetail: FC<{
 
         {/* Title */}
         <PageTitle as="h2">{proposal.title}</PageTitle>
+
+        {/* Vote Proof NFT banner */}
+        {hasVoted && voteNft && (
+          <div className="flex items-center gap-4 p-4 mb-4 bg-green-500/5 border border-green-500/20 rounded-sm">
+            <img
+              src={voteNft.url}
+              alt="Vote Proof NFT"
+              className="w-12 h-12 rounded-full border-2 border-green-500/40"
+            />
+            <div>
+              <p className="text-green-400 font-medium text-sm">You have voted on this proposal</p>
+              <p className="text-nasun-white/40 text-xs">Vote Proof NFT has been issued to your wallet</p>
+            </div>
+          </div>
+        )}
 
         {/* Tweet Choice Grid (full width, above description) */}
         {isTweetMode && (
@@ -655,7 +697,12 @@ const MultiChoiceProposalDetail: FC<{
           onVote={async () => {
             await new Promise((resolve) => setTimeout(resolve, 1500));
             await refetchProposal();
-            setHasVoted(true);
+            setLocalVoted(true);
+            // Refetch NFTs to show vote proof
+            for (let i = 0; i < 5; i++) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              await refetchMcNfts();
+            }
             setIsModalOpen(false);
           }}
         />
