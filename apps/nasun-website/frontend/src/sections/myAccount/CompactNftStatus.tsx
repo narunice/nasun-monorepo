@@ -132,6 +132,19 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
         <div className="flex flex-col gap-3">
+          {/* Leaderboard Event CTA (requires X account) */}
+          {effectiveXUserId && (
+            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+              <h6 className="text-nasun-white">Leaderboard Event</h6>
+              <p className="text-nasun-white/70 text-sm">
+                You're in! Share content about Nasun and get recognized.
+              </p>
+              <Button onClick={() => navigate("/wave1/leaderboard-guide")} variant="filledOutlineC7" size="sm" className="self-end mt-1">
+                Learn More
+              </Button>
+            </div>
+          )}
+
           {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
@@ -181,19 +194,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
               {joinError && (
                 <p className="text-red-400 text-xs">{joinError}</p>
               )}
-            </div>
-          )}
-
-          {/* Leaderboard Event CTA (requires X account) */}
-          {effectiveXUserId && (
-            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-              <h6 className="text-nasun-white">Leaderboard Event</h6>
-              <p className="text-nasun-white/70 text-sm">
-                You're in! Share content about Nasun and get recognized.
-              </p>
-              <Button onClick={() => navigate("/wave1/leaderboard-guide")} variant="filledOutlineC7" size="sm" className="self-end mt-1">
-                Learn More
-              </Button>
             </div>
           )}
 
