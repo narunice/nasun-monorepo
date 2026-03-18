@@ -102,6 +102,7 @@ async function handleGetStatus(identityId: string, origin?: string): Promise<API
       walletAddress: existing.walletAddress,
       registeredAt: existing.registeredAt,
       walletConflict,
+      ...(existing.mintType && { mintType: existing.mintType }),
     },
   }, origin);
 }
@@ -263,6 +264,9 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
   }
 
   // 6. Register to allowlist (unconditional put for takeover support)
+  // Preserve mintType/source from existing registration (e.g., FREE_MINT from raffle)
+  const preservedMintType = existingByIdentity?.mintType;
+  const preservedSource = existingByIdentity?.source;
   const now = new Date().toISOString();
   await client.send(
     new PutCommand({
@@ -272,6 +276,8 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
         identityId,
         registeredAt: now,
         status: "ACTIVE",
+        ...(preservedMintType && { mintType: preservedMintType }),
+        ...(preservedSource && { source: preservedSource }),
       },
     })
   );

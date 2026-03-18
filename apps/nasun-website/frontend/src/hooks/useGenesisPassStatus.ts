@@ -17,6 +17,7 @@ interface UseGenesisPassStatusReturn {
   isRegistered: boolean;
   registeredWallet: string | null;
   registeredAt: string | null;
+  mintType: string | null;
   isLoading: boolean;
   error: string | null;
   isConfigured: boolean;
@@ -37,6 +38,7 @@ export function useGenesisPassStatus(
   const [isRegistered, setIsRegistered] = useState(false);
   const [registeredWallet, setRegisteredWallet] = useState<string | null>(null);
   const [registeredAt, setRegisteredAt] = useState<string | null>(null);
+  const [mintType, setMintType] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +48,7 @@ export function useGenesisPassStatus(
       setIsRegistered(false);
       setRegisteredWallet(null);
       setRegisteredAt(null);
+      setMintType(null);
       return;
     }
 
@@ -55,6 +58,7 @@ export function useGenesisPassStatus(
       setIsRegistered(false);
       setRegisteredWallet(null);
       setRegisteredAt(null);
+      setMintType(null);
       return;
     }
 
@@ -72,6 +76,8 @@ export function useGenesisPassStatus(
       setIsRegistered(res.data.registered);
       setRegisteredWallet(res.data.walletAddress ?? null);
       setRegisteredAt(res.data.registeredAt ?? null);
+      // mintType is only available via authenticated endpoint (cognitoToken path)
+      setMintType(res.data.mintType ?? null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to check Genesis Pass status";
       console.error("[useGenesisPassStatus]", message);
@@ -79,6 +85,7 @@ export function useGenesisPassStatus(
       setIsRegistered(false);
       setRegisteredWallet(null);
       setRegisteredAt(null);
+      setMintType(null);
     } finally {
       setIsLoading(false);
     }
@@ -99,6 +106,7 @@ export function useGenesisPassStatus(
     isRegistered,
     registeredWallet,
     registeredAt,
+    mintType,
     isLoading,
     error,
     isConfigured: API_CONFIGURED,
