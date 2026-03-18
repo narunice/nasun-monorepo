@@ -46,6 +46,7 @@ interface MultiChoiceProposalItemProps {
   id: string;
   filter?: "all" | "active" | "expired";
   hasVoted: boolean;
+  voteNftUrl?: string;
   onVoteTxSuccess: () => void | Promise<void>;
 }
 
@@ -53,6 +54,7 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
   id,
   filter = "all",
   hasVoted: hasVotedProp,
+  voteNftUrl,
   onVoteTxSuccess,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -140,9 +142,19 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
               </span>
             </div>
             {localHasVoted && (
-              <span className="text-xs px-2 py-0.5 font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
-                Voted
-              </span>
+              voteNftUrl ? (
+                <div title="You have voted">
+                  <img
+                    className="w-6 h-6 rounded-full border border-nasun-nw4/50"
+                    src={voteNftUrl}
+                    alt="Vote NFT"
+                  />
+                </div>
+              ) : (
+                <span className="text-xs px-2 py-0.5 font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
+                  Voted
+                </span>
+              )
             )}
           </div>
           <h6 className={`${isExpired ? "text-nasun-white/50" : "text-white font-semibold"}`}>
