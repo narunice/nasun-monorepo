@@ -1,5 +1,6 @@
 import { fetchUserProfile } from "@/features/auth/utils/authApi";
 import { useUserStore } from "@/store/userStore";
+import { isTokenExpired } from "@/features/auth/utils/tokenUtils";
 import logger from "@/lib/logger";
 
 /**
@@ -32,7 +33,9 @@ export async function refreshAndSaveUserProfile(
   if (!existingToken && cognitoToken) {
     existingToken = cognitoToken;
   }
-  if (existingToken && !updatedProfile.cognitoToken) {
+  // Only preserve token if it's still valid; expired tokens were already
+  // stripped by checkAuthStatus and should not be re-injected.
+  if (existingToken && !updatedProfile.cognitoToken && !isTokenExpired(existingToken)) {
     updatedProfile.cognitoToken = existingToken;
   }
 
