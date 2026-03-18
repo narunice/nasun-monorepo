@@ -159,6 +159,7 @@ function toSeasonLeaderboardEntry(
     rawScore: number;
     consistencyBonus: number;
     freshnessMultiplier: number;
+    dailyBaseScoreTotal?: number;
   },
   rank: number,
   rankChange?: RankChange,
@@ -219,6 +220,7 @@ function snapshotToLeaderboardEntry(
       rawScore: Math.round(snapshot.rawScore * 1000) / 1000,
       consistencyBonus: Math.round(snapshot.consistencyBonus * 1000) / 1000,
       freshnessMultiplier: Math.round(snapshot.freshnessMultiplier * 1000) / 1000,
+      dailyBaseScoreTotal: snapshot.dailyBaseScoreTotal,
     };
   }
 
