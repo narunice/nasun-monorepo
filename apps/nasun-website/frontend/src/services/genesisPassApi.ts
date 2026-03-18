@@ -14,6 +14,7 @@ export interface GenesisPassCheckResponse {
     walletAddress?: string;
     registeredAt?: string;
     walletConflict?: boolean;
+    mintType?: string;
   };
 }
 
