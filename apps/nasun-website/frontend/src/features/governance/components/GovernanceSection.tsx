@@ -5,6 +5,7 @@ import { PaginatedObjectsResponse, SuiObjectData } from "@mysten/sui/client";
 import { ProposalItem } from "./ProposalItem";
 import { MultiChoiceProposalItem } from "./MultiChoiceProposalItem";
 import { useVoteNfts } from "../hooks/useVoteNfts";
+import { useMultiChoiceVoteNfts } from "../hooks/useMultiChoiceVoteNfts";
 import { VoteNft } from "../types/voting";
 import { isMultiChoiceProposal } from "../utils/proposalHelpers";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -99,6 +100,7 @@ const ProposalList = () => {
   const dashboardId = useNetworkVariable("dashboardId");
   const { account } = useWallet();
   const { data: voteNftsRes, refetch: refetchNfts, error: nftsError } = useVoteNfts();
+  const { data: mcVoteNftsRes, refetch: refetchMcNfts } = useMultiChoiceVoteNfts();
   const [filter, setFilter] = useState<ProposalFilter>("all");
 
   const { data: hiddenIdsArray = [], isPending: isHiddenPending } = useQuery({
@@ -137,6 +139,7 @@ const ProposalList = () => {
   }
 
   const voteNfts = extractVoteNfts(voteNftsRes);
+  const mcVoteNfts = extractVoteNfts(mcVoteNftsRes);
   const proposalIds = getDashboardFields(dataResponse.data)?.proposals_ids || [];
   const visibleProposalIds = proposalIds.filter((id) => !hiddenIds.has(id));
 
@@ -185,9 +188,11 @@ const ProposalList = () => {
                   for (let i = 0; i < 5; i++) {
                     await new Promise((resolve) => setTimeout(resolve, 2000));
                     await refetchNfts();
+                    await refetchMcNfts();
                   }
                 }}
                 voteNft={voteNfts.find((nft) => nft.proposalId === id)}
+                mcVoteNft={mcVoteNfts.find((nft) => nft.proposalId === id)}
               />
             </Suspense>
           </ErrorBoundary>
@@ -227,8 +232,9 @@ const SmartProposalItem: FC<{
   id: string;
   filter: ProposalFilter;
   voteNft: VoteNft | undefined;
+  mcVoteNft: VoteNft | undefined;
   onVoteTxSuccess: () => void | Promise<void>;
-}> = ({ id, filter, voteNft, onVoteTxSuccess }) => {
+}> = ({ id, filter, voteNft, mcVoteNft, onVoteTxSuccess }) => {
   const { data, isPending, error } = useSuiClientQuery("getObject", {
     id,
     options: { showContent: true },
@@ -246,7 +252,8 @@ const SmartProposalItem: FC<{
       <MultiChoiceProposalItem
         id={id}
         filter={filter}
-        hasVoted={false}
+        hasVoted={!!mcVoteNft}
+        voteNftUrl={mcVoteNft?.url}
         onVoteTxSuccess={onVoteTxSuccess}
       />
     );
