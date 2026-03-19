@@ -41,7 +41,7 @@ export const POST_TYPE_MULTIPLIERS: Record<PostType, number> = {
 // Score calculation constants
 export const SCORE_CONSTANTS = {
   BASE_SCORE: 1,
-  POST_SCORE_MAX: 5.0, // max RoleMultiplier(2.0) + all signals(3) = 5.0
+  POST_SCORE_MAX: 6.0, // max RoleMultiplier(3.0) + all signals(3) = 6.0
   CONSISTENCY_BONUS_MULTIPLIER: 0.1,
   CONSISTENCY_BONUS_MAX: 1.5, // cap at 30 days
   FRESHNESS_HALF_LIFE_DAYS: 7, // Half-life reduced from 14 to 7 days for faster decay
@@ -52,9 +52,9 @@ export const SCORE_CONSTANTS = {
   REPLY_DECAY_EXPONENT: 0.7,
   // Continuous role multiplier constants
   // RoleMultiplier = BASE + log₁₀(normalizedFollowers + 1) × LOG_FACTOR
-  ROLE_MULTIPLIER_BASE: 1.0,
-  ROLE_MULTIPLIER_LOG_FACTOR: 0.2,
-  ROLE_MULTIPLIER_MAX: 2.0,
+  ROLE_MULTIPLIER_BASE: 0.3,
+  ROLE_MULTIPLIER_LOG_FACTOR: 0.54,
+  ROLE_MULTIPLIER_MAX: 3.0,
   // Daily hard caps per post type (posts beyond cap are excluded from scoring)
   DAILY_CAP_ORIGINAL: 3,
   DAILY_CAP_QUOTE: 4,
