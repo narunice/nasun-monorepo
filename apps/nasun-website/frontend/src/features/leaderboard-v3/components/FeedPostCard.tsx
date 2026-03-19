@@ -100,8 +100,10 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
   return (
     <div className="relative">
       {/* Tweet Embed */}
-      <div className="w-full nasun-tweet-container" data-theme="dark">
+      <div className="w-full nasun-tweet-container relative max-h-[500px] overflow-hidden" data-theme="dark">
         <Tweet id={tweetId} />
+        {/* Bottom gradient fade for long posts (e.g. quote tweets) */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[rgba(30,30,30,0.95)] to-transparent pointer-events-none" />
       </div>
 
       {/* Badge Indicator - Right side, just left of X icon */}
