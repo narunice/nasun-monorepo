@@ -258,7 +258,7 @@ export function PostRegistrationTab() {
               onChange={(e) => form.setPostUrl(e.target.value)}
               placeholder="https://x.com/username/status/..."
               autoFocus
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm"
+              className="w-full bg-gray-200 border-2 border-gray-400 rounded-sm px-4 py-3 text-black placeholder:text-gray-500 focus:outline-none focus:border-nasun-c7 transition-colors font-mono text-sm"
             />
             {/* Account lookup status */}
             {extractedUsername && (
