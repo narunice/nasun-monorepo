@@ -377,7 +377,7 @@ async function runSnapshotCore(params: {
         const compressedRawScore = decayedRawScore > 0
           ? Math.pow(decayedRawScore, SCORE_CONSTANTS.RAW_SCORE_EXPONENT)
           : 0;
-        const calculatedRawScore = compressedRawScore + (score.adjustmentTotalScore || 0);
+        const calculatedRawScore = compressedRawScore;
         const prevEntry = prevFullSnapshot.get(score.accountId);
         // Monotonicity floor: rawScore must never decrease from previous snapshot
         const rawScore = Math.max(calculatedRawScore, prevEntry?.rawScore || 0);
@@ -397,7 +397,7 @@ async function runSnapshotCore(params: {
         );
         const effectiveDays = Math.max(0, daysSinceLastPost - SCORE_CONSTANTS.FRESHNESS_GRACE_DAYS);
         const freshnessMultiplier = 1 / (1 + effectiveDays / SCORE_CONSTANTS.FRESHNESS_HALF_LIFE_DAYS);
-        const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier) + dailyBaseScoreTotal;
+        const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier) + dailyBaseScoreTotal + (score.adjustmentTotalScore || 0);
 
         return {
           ...score,
@@ -423,7 +423,7 @@ async function runSnapshotCore(params: {
           prevRank: prevEntry?.rank,
         });
 
-        const userScore = Math.max(0, rawScore * calculated.consistencyBonus * calculated.freshnessMultiplier) + dailyBaseScoreTotal;
+        const userScore = Math.max(0, rawScore * calculated.consistencyBonus * calculated.freshnessMultiplier) + dailyBaseScoreTotal + (score.adjustmentTotalScore || 0);
         return {
           ...score,
           ...calculated,

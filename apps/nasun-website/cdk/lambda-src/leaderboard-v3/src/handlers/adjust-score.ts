@@ -23,8 +23,6 @@ interface AdjustScoreRequest {
   seasonId?: string;
 }
 
-const SCORE_MIN = -5.0;
-const SCORE_MAX = 5.0;
 const REASON_MAX_LENGTH = 500;
 
 function validateRequest(body: unknown): {
@@ -53,9 +51,6 @@ function validateRequest(body: unknown): {
   // Validate score
   if (req.score === undefined || typeof req.score !== 'number' || isNaN(req.score)) {
     return { valid: false, error: 'score is required and must be a number' };
-  }
-  if (req.score < SCORE_MIN || req.score > SCORE_MAX) {
-    return { valid: false, error: `score must be between ${SCORE_MIN} and ${SCORE_MAX}` };
   }
   // Round to 1 decimal place to avoid floating point issues
   const score = Math.round(req.score * 10) / 10;

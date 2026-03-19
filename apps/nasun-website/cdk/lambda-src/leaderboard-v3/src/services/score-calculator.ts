@@ -345,8 +345,8 @@ export function calculateFreshnessMultiplier(lastSeenAt: string): number {
  * Formula:
  *   BaseRawScore = per-type decay (or legacy fallback)
  *   CompressedRaw = BaseRawScore ^ RAW_SCORE_EXPONENT (0.8)
- *   RawScore = CompressedRaw + adjustmentTotalScore
- *   UserScore = Math.max(0, RawScore × ConsistencyBonus × FreshnessMultiplier)
+ *   RawScore = CompressedRaw (adjustment NOT included in rawScore)
+ *   UserScore = Math.max(0, RawScore × ConsistencyBonus × FreshnessMultiplier + adjustmentTotalScore)
  */
 export function calculateScoreComponents(params: {
   totalPostScore: number;
@@ -410,8 +410,8 @@ export function calculateScoreComponents(params: {
     ? Math.pow(baseRawScore, SCORE_CONSTANTS.RAW_SCORE_EXPONENT)
     : 0;
 
-  // Add manual adjustment score after compression to preserve its absolute meaning
-  const rawScore = compressedRawScore + (adjustmentTotalScore || 0);
+  // RawScore is pure post-based score; adjustment applied to final UserScore
+  const rawScore = compressedRawScore;
 
   const consistencyBonus = calculateConsistencyBonus(uniqueActiveDays);
 
@@ -428,7 +428,8 @@ export function calculateScoreComponents(params: {
     freshnessMultiplier = calculateFreshnessMultiplier(lastSeenAt);
   }
 
-  const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier);
+  // Adjustment applied to final score (not multiplied by CB/FM)
+  const userScore = Math.max(0, rawScore * consistencyBonus * freshnessMultiplier + (adjustmentTotalScore || 0));
 
   return {
     rawScore: Math.round(rawScore * 1000) / 1000,
