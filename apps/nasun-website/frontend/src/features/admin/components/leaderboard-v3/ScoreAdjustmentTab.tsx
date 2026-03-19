@@ -142,28 +142,47 @@ export function ScoreAdjustmentTab() {
               Score ({form.score > 0 ? "+" : ""}
               {form.score.toFixed(1)})
             </label>
-            <input
-              type="range"
-              min="-5"
-              max="5"
-              step="0.1"
-              value={form.score}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  score: parseFloat(e.target.value),
-                }))
-              }
-              className="w-full accent-nasun-c1"
-            />
-            <div className="flex justify-between text-xs text-nasun-white/40">
-              <span>-5.0</span>
-              <span>0</span>
-              <span>+5.0</span>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="-20"
+                max="20"
+                step="0.1"
+                value={Math.max(-20, Math.min(20, form.score))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    score: parseFloat(e.target.value),
+                  }))
+                }
+                className="flex-1 accent-nasun-c1"
+              />
+              <input
+                type="number"
+                step="0.1"
+                value={form.score}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    score: parseFloat(e.target.value) || 0,
+                  }))
+                }
+                className="w-20 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-2 py-1 text-nasun-white text-sm text-center focus:outline-none focus:border-nasun-c7/50"
+              />
             </div>
+            <div className="flex justify-between text-xs text-nasun-white/40">
+              <span>-20</span>
+              <span>0</span>
+              <span>+20</span>
+            </div>
+            {Math.abs(form.score) > 20 && (
+              <p className="text-yellow-400/80 text-xs">
+                Value beyond slider range. Use the number input for precise control.
+              </p>
+            )}
             {/* Quick buttons */}
             <div className="flex gap-1 flex-wrap">
-              {[-2, -1, -0.5, 0.5, 1, 1.5, 2, 3].map((val) => (
+              {[-5, -2, -1, -0.5, 0.5, 1, 2, 5, 10].map((val) => (
                 <button
                   key={val}
                   onClick={() =>
