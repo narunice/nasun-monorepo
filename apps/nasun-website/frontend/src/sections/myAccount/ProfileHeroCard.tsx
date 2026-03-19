@@ -18,7 +18,7 @@ import { prepareChallenge, connectVerify } from "@/services/metamaskApi";
 import { connectMetaMaskSDK, signMessageViaSDK, disconnectMetaMaskSDK } from "@/lib/wallet/metamaskSdkProvider";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
-import { isMobileBrowser, isMetaMaskInAppBrowser, isAndroidBrowser, isIOSSafari } from "@/utils/mobileDetect";
+import { isMobileBrowser, isMetaMaskInAppBrowser, isIOSSafari } from "@/utils/mobileDetect";
 import {
   Dialog,
   DialogContent,
@@ -245,6 +245,103 @@ function MobileMetaMaskLinkButton() {
   );
 }
 
+/** Manual EVM address entry form for mobile users who cannot use MetaMask SDK. */
+function ManualEvmAddressForm() {
+  const { user } = useAuth();
+  const [address, setAddress] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const trimmed = address.trim();
+  const isValidEvmAddress = /^0x[a-fA-F0-9]{40}$/.test(trimmed);
+  const showValidation = trimmed.length > 0;
+
+  const handleSubmit = useCallback(async () => {
+    if (!user || !isValidEvmAddress) return;
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
+      if (!linkAccountApi) throw new Error("Link Account API is not configured");
+
+      const token = user.cognitoToken ?? useBattalionNftStore.getState().cognitoToken;
+      if (!token) throw new Error("Session expired. Please sign in again.");
+
+      const response = await fetch(`${linkAccountApi}/register-evm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          primaryIdentityId: user.identityId,
+          evmAddress: trimmed,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        if (response.status === 409) {
+          throw new Error(body.message || "EVM wallet already linked. Unlink first.");
+        }
+        if (response.status === 401) {
+          throw new Error("Session expired. Please sign in again.");
+        }
+        throw new Error(body.message || `Registration failed (${response.status})`);
+      }
+
+      await refreshAndSaveUserProfile(user.identityId);
+      setAddress("");
+      alert("EVM wallet address registered successfully!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to register address.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [user, isValidEvmAddress, trimmed]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-yellow-400/70 text-xs leading-relaxed">
+        Paste your EVM wallet address. This will be used for NFT allowlists.
+      </p>
+      <input
+        type="text"
+        value={address}
+        onChange={(e) => { setAddress(e.target.value); setError(null); }}
+        placeholder="0x..."
+        maxLength={42}
+        className={`w-full bg-gray-800 border rounded-sm px-3 py-2 text-sm font-mono text-nasun-white placeholder:text-white/30 outline-none ${
+          showValidation
+            ? isValidEvmAddress
+              ? "border-green-500/50"
+              : "border-red-500/50"
+            : "border-white/10"
+        }`}
+        disabled={isSubmitting}
+      />
+      {showValidation && !isValidEvmAddress && (
+        <p className="text-red-400/70 text-xs">
+          Invalid format. EVM address must start with 0x followed by 40 hex characters.
+        </p>
+      )}
+      {error && (
+        <p className="text-red-400 text-xs">{error}</p>
+      )}
+      <Button
+        size="sm"
+        variant="filledOutlineC7"
+        onClick={handleSubmit}
+        disabled={!isValidEvmAddress || isSubmitting}
+        className="w-full"
+      >
+        {isSubmitting ? "Registering..." : "Register"}
+      </Button>
+    </div>
+  );
+}
+
 /** EVM wallet section with platform-aware link button. */
 function EvmWalletSection({
   evmWalletAddress,
@@ -261,10 +358,10 @@ function EvmWalletSection({
 }) {
   // Desktop or MetaMask in-app: use RainbowKit modal
   // iOS Safari: use MetaMask SDK directly (works reliably)
-  // Android: show desktop-only guidance (MetaMask SDK signing fails on Android)
+  // Other mobile (Android, iOS Chrome/Firefox): show manual address entry form
   const isMobile = isMobileBrowser() && !isMetaMaskInAppBrowser();
   const useIOSMetaMaskSdk = isMobile && isIOSSafari();
-  const showAndroidGuidance = isMobile && isAndroidBrowser();
+  const showManualEntry = isMobile && !isIOSSafari();
 
   return (
     <AccountItem
@@ -281,7 +378,7 @@ function EvmWalletSection({
           : undefined
       }
       actions={[
-        !isMetaMaskLinked && !showAndroidGuidance ? (
+        !isMetaMaskLinked && !showManualEntry ? (
           useIOSMetaMaskSdk
             ? <MobileMetaMaskLinkButton key="link" />
             : <EvmWalletLinkButton key="link" />
@@ -299,11 +396,8 @@ function EvmWalletSection({
         ) : null,
       ]}
     >
-      {!isMetaMaskLinked && showAndroidGuidance && (
-        <p className="text-yellow-400/70 text-xs leading-relaxed">
-          EVM wallet linking is available on desktop or iPhone Safari.
-          Please try from a desktop browser.
-        </p>
+      {!isMetaMaskLinked && showManualEntry && (
+        <ManualEvmAddressForm />
       )}
       {!isMetaMaskLinked && useIOSMetaMaskSdk && (
         <p className="text-yellow-400/70 text-xs leading-relaxed">

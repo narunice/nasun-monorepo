@@ -3,7 +3,7 @@ import logger from '../lib/logger';
 
 // Linked account information
 export interface LinkedAccount {
-  identityId: string;
+  identityId?: string;
   username: string;
   linkedAt: string;
   profileImageUrl?: string;
@@ -15,6 +15,8 @@ export interface LinkedAccount {
   email?: string;
   // MetaMask-specific
   walletAddress?: string;
+  // Manual EVM address entry (no signature verification)
+  manualEntry?: boolean;
 }
 
 // Simplified UserData interface for Identity Pool logins
