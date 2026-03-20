@@ -14,6 +14,7 @@ import { create } from 'zustand';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import type { PasskeyCredential, PasskeyWalletState } from '../types/passkey';
 import { getPasskeyWallet } from '../core/passkey';
+import { DEFAULT_SECURITY_SETTINGS } from '../types';
 
 interface PasskeyStoreState {
   /** Current wallet metadata (loaded from localStorage on init) */
@@ -114,14 +115,14 @@ function setupPasskeyAutoLock(): void {
     const state = usePasskeyStore.getState();
     if (!state.isUnlocked) return;
 
-    let autoLockMinutes = 15;
+    let autoLockMinutes = DEFAULT_SECURITY_SETTINGS.autoLockMinutes;
     try {
       const stored = localStorage.getItem(SECURITY_SETTINGS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         autoLockMinutes = typeof parsed.autoLockMinutes === 'number'
           ? parsed.autoLockMinutes
-          : 15;
+          : DEFAULT_SECURITY_SETTINGS.autoLockMinutes;
       }
     } catch {
       // Ignore parse errors — use default

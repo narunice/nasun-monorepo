@@ -188,7 +188,7 @@ export interface MultiTokenBalanceInfo {
 
 /** Security configuration for wallet auto-lock and protection */
 export interface SecuritySettings {
-  /** Auto-lock timeout in minutes (0 = disabled, default: 15) */
+  /** Auto-lock timeout in minutes (0 = disabled, default: 60) */
   autoLockMinutes: number;
   /** Last user activity timestamp (Date.now()) */
   lastActivityAt: number;
@@ -200,7 +200,7 @@ export interface SecuritySettings {
 
 /** Default security settings */
 export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
-  autoLockMinutes: 15,
+  autoLockMinutes: 60,
   lastActivityAt: Date.now(),
   confirmLargeTransactions: true,
   largeTransactionThreshold: 100, // 100 NASUN

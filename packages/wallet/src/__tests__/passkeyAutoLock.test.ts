@@ -167,19 +167,19 @@ describe('passkeyStore auto-lock', () => {
       expect(usePasskeyStore.getState().wallet).toBe(wallet);
     });
 
-    it('should use default 15 minutes when no localStorage setting', () => {
+    it('should use default 60 minutes when no localStorage setting', () => {
       // No localStorage setting
       const wallet = { address: '0x' + 'b'.repeat(64), credentials: [] };
       vi.setSystemTime(new Date('2026-06-01T00:00:00Z'));
       usePasskeyStore.getState().setUnlocked(wallet as any, keypair);
 
-      // Advance 14 minutes — should still be unlocked
-      vi.setSystemTime(new Date('2026-06-01T00:14:00Z'));
+      // Advance 59 minutes — should still be unlocked
+      vi.setSystemTime(new Date('2026-06-01T00:59:00Z'));
       vi.advanceTimersByTime(30_000);
       expect(usePasskeyStore.getState().isUnlocked).toBe(true);
 
-      // Advance past 15 minutes
-      vi.setSystemTime(new Date('2026-06-01T00:16:00Z'));
+      // Advance past 60 minutes
+      vi.setSystemTime(new Date('2026-06-01T01:01:00Z'));
       vi.advanceTimersByTime(30_000);
       expect(usePasskeyStore.getState().isUnlocked).toBe(false);
     });
@@ -245,12 +245,12 @@ describe('passkeyStore auto-lock', () => {
       vi.setSystemTime(new Date('2026-06-01T00:00:00Z'));
       usePasskeyStore.getState().setUnlocked(wallet as any, keypair);
 
-      // Should use default 15 minutes, not crash
-      vi.setSystemTime(new Date('2026-06-01T00:14:00Z'));
+      // Should use default 60 minutes, not crash
+      vi.setSystemTime(new Date('2026-06-01T00:59:00Z'));
       vi.advanceTimersByTime(30_000);
       expect(usePasskeyStore.getState().isUnlocked).toBe(true);
 
-      vi.setSystemTime(new Date('2026-06-01T00:16:00Z'));
+      vi.setSystemTime(new Date('2026-06-01T01:01:00Z'));
       vi.advanceTimersByTime(30_000);
       expect(usePasskeyStore.getState().isUnlocked).toBe(false);
     });
@@ -262,8 +262,8 @@ describe('passkeyStore auto-lock', () => {
       vi.setSystemTime(new Date('2026-06-01T00:00:00Z'));
       usePasskeyStore.getState().setUnlocked(wallet as any, keypair);
 
-      // Should use default 15 minutes
-      vi.setSystemTime(new Date('2026-06-01T00:16:00Z'));
+      // Should use default 60 minutes
+      vi.setSystemTime(new Date('2026-06-01T01:01:00Z'));
       vi.advanceTimersByTime(30_000);
       expect(usePasskeyStore.getState().isUnlocked).toBe(false);
     });
