@@ -30,6 +30,8 @@ export function parseProposal(data: SuiObjectData, proposalType: ProposalType): 
     proposalType,
     yesVotes: (Number(fields.total_power_yes) || 0).toString(),
     noVotes: (Number(fields.total_power_no) || 0).toString(),
+    yesCount: Number(fields.vote_count_yes) || 0,
+    noCount: Number(fields.vote_count_no) || 0,
     expiration: Number(fields.expiration),
     creator: fields.creator,
     voters: fields.voters?.fields?.id?.id || "",

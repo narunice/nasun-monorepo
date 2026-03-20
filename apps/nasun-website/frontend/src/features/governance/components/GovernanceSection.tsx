@@ -14,12 +14,10 @@ import { FC, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
-import { ButtonV3 } from "@/components/ui/button-v3";
+
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useAuth } from "@/features/auth";
 import { VotingPowerSummary } from "./VotingPowerSummary";
-import { GovernanceStats } from "./GovernanceStats";
-import { ChevronDown, ChevronUp } from "lucide-react";
 
 type ProposalFilter = "all" | "active" | "expired";
 
@@ -35,7 +33,6 @@ const GovernanceSection = () => {
   const { isConnected: isZkConnected } = useZkLogin();
   const { isAuthenticated } = useAuth();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   return (
     <SectionLayout className="!max-w-6xl gap-6 md:gap-8 lg:gap-10">
@@ -43,39 +40,15 @@ const GovernanceSection = () => {
         {t("proposals:title")}
       </PageTitle>
 
-      {/* User Governance Info Section */}
+      {/* Voting Power (always visible when connected) */}
       {isConnected ? (
-        <div className="space-y-4">
-          {/* Header with Wallet and Toggle */}
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <ButtonV3
-              variant="nw1"
-              outline
-              size="lg"
-              onClick={() => setIsInfoOpen(!isInfoOpen)}
-              className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
-            >
-              <span>{t("proposals:section.myGovernanceInfo")}</span>
-              {isInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </ButtonV3>
-          </div>
-
-          {/* Collapsible Governance Info Panel */}
-          {isInfoOpen && (
-            <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                <VotingPowerSummary />
-                <GovernanceStats />
-              </div>
-            </div>
-          )}
-        </div>
+        <VotingPowerSummary />
       ) : (
         <div className="flex items-center justify-end">
           <p className="text-sm text-nasun-white/50">
             {isAuthenticated && !isConnected
-              ? t("proposals:wallet.locked")
-              : t("proposals:section.connectToParticipate")}
+              ? "Unlock your wallet to vote"
+              : "Login to view your voting power and participate"}
           </p>
         </div>
       )}

@@ -4,6 +4,7 @@ import { createNetworkConfig } from "@mysten/dapp-kit";
 import {
   NASUN_DEVNET_PACKAGE_ID,
   NASUN_DEVNET_ORIGINAL_PACKAGE_ID,
+  NASUN_DEVNET_MULTI_CHOICE_PACKAGE_ID,
   NASUN_DEVNET_DASHBOARD_ID,
   NASUN_DEVNET_DELEGATION_REGISTRY_ID,
 } from "../constants/suiPackageConstants";
@@ -14,6 +15,7 @@ const { networkConfig, useNetworkVariable, useNetworkVariables } = createNetwork
     variables: {
       packageId: NASUN_DEVNET_PACKAGE_ID,
       originalPackageId: NASUN_DEVNET_ORIGINAL_PACKAGE_ID,
+      multiChoicePackageId: NASUN_DEVNET_MULTI_CHOICE_PACKAGE_ID,
       dashboardId: NASUN_DEVNET_DASHBOARD_ID,
       delegationRegistryId: NASUN_DEVNET_DELEGATION_REGISTRY_ID,
     },

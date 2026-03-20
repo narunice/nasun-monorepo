@@ -34,6 +34,8 @@ export function useProposalType(proposalId: string): UseProposalTypeResult {
     options: { showContent: true },
   }, {
     enabled: isRegistryConfigured,
+    retry: false,
+    throwOnError: false,
   });
 
   // Extract types table ID from registry
@@ -44,6 +46,8 @@ export function useProposalType(proposalId: string): UseProposalTypeResult {
     : null;
 
   // Query dynamic field for proposal type
+  // retry: false - missing entries should not be retried (proposal may predate the registry)
+  // throwOnError: false - never crash the component for a missing type entry
   const {
     data: dynamicFieldData,
     isPending: isFieldPending,
@@ -53,6 +57,8 @@ export function useProposalType(proposalId: string): UseProposalTypeResult {
     name: { type: "0x2::object::ID", value: proposalId },
   }, {
     enabled: !!typesTableId && !!proposalId,
+    retry: false,
+    throwOnError: false,
   });
 
   // Determine proposal type from dynamic field

@@ -3,7 +3,6 @@ import { FC, useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { EcText } from "@/components/ui/Shared";
 import { VoteNft } from "../types/voting";
-import { VoteModal } from "./VoteModal";
 import { useProposalType } from "../hooks/useProposalType";
 import { OuterBox } from "@/components/ui";
 import { useNavigate } from "react-router-dom";
@@ -31,7 +30,6 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
   onVoteTxSuccess,
 }) => {
   const { t } = useTranslation("proposals");
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
   const descRef = useRef<HTMLParagraphElement>(null);
   const [isClamped, setIsClamped] = useState(false);
@@ -180,7 +178,7 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
             variant="gradientDark"
             onClick={(e) => {
               e.stopPropagation();
-              setIsModalOpen(true);
+              navigate(`/network/governance/proposal/${id}`);
             }}
             className="mt-3 w-full uppercase"
             disabled={!!voteNft}
@@ -189,19 +187,6 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
           </ButtonV3>
         )}
       </OuterBox>
-
-      <VoteModal
-        proposal={proposal}
-        hasVoted={!!voteNft}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onVote={async () => {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-          await refetchProposal();
-          await onVoteTxSuccess();
-          setIsModalOpen(false);
-        }}
-      />
     </>
   );
 };

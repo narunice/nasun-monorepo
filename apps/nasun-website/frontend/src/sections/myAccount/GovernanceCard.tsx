@@ -5,14 +5,12 @@
  * Shows voting power and recent votes.
  */
 
-import { FC, useEffect } from "react";
+import { FC } from "react";
 import { Link } from "react-router-dom";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVotingPower } from "@/features/governance/hooks/useVotingPower";
 import { useVoteHistory } from "@/features/governance/hooks/useVoteHistory";
-import { useAuth } from "@/features/auth";
 import { OuterBox, Spinner } from "@/components/ui";
-import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { StatCard } from "@/components/ui/StatCard";
 
 interface GovernanceCardProps {
@@ -21,24 +19,13 @@ interface GovernanceCardProps {
 
 export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   const { status, account } = useWallet();
-  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
-  const { user } = useAuth();
 
-  const { votingPower, fetchVotingPower } = useVotingPower();
-  const { history, stats, isLoading } = useVoteHistory(3);
+  const { votingPower } = useVotingPower();
+  const { history, isLoading } = useVoteHistory(3);
 
-  const walletAddress = isZkConnected ? zkState?.address : account?.address;
-
-  const twitterHandle = getTwitterHandle(user);
-
-  useEffect(() => {
-    if (isConnected && walletAddress) {
-      fetchVotingPower(twitterHandle ?? undefined, walletAddress);
-    }
-  }, [isConnected, walletAddress, twitterHandle, fetchVotingPower]);
-
-  const totalPower = votingPower?.totalVotingPower || 1;
+  const totalPower = votingPower?.totalVotingPower || 10;
 
   if (!isConnected) {
     return (
@@ -68,13 +55,8 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
     <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="mb-4">
         <StatCard label="Voting Power" value={totalPower.toLocaleString()} className="!p-3" />
-        <StatCard
-          label="Participation"
-          value={`${stats.participationRate.toFixed(0)}%`}
-          className="!p-3"
-        />
       </div>
 
       {/* Recent Votes */}

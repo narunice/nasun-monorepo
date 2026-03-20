@@ -128,11 +128,15 @@ export function PostRegistrationTab() {
 
       if (result.isDuplicate) {
         setSubmitMessage({ type: "error", text: "This post has already been registered" });
-      } else if (result.success && result.post && result.account) {
-        setSubmitMessage({
-          type: "success",
-          text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(3)})`,
-        });
+      } else if (result.success) {
+        if (result.post && result.account) {
+          setSubmitMessage({
+            type: "success",
+            text: `Post registered! @${result.account.originalUsername || result.account.username} now has ${result.account.postCount} posts (Score: ${result.post.postScore.toFixed(3)})`,
+          });
+        } else {
+          setSubmitMessage({ type: "success", text: "Post registered successfully!" });
+        }
         form.reset();
         urlInputRef.current?.focus();
       } else {
