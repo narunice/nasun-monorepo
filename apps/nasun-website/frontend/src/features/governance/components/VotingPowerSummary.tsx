@@ -48,28 +48,40 @@ const PowerChip: FC<{
 }> = ({ label, value, tooltip, rank, isBase }) => {
   const active = isBase || value > 0;
   return (
-    <div className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border ${
-      active
-        ? "border-nasun-white/15 bg-nasun-white/[0.07]"
-        : "border-nasun-white/[0.1] bg-transparent"
-    }`}>
-      <span className={`text-xs font-medium ${active ? "text-nasun-white/90" : "text-nasun-white/40"}`}>
+    <div
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border ${
+        active
+          ? "border-nasun-white/15 bg-nasun-white/[0.07]"
+          : "border-nasun-white/[0.1] bg-transparent"
+      }`}
+    >
+      <span
+        className={`text-sm font-medium ${active ? "text-nasun-white/90" : "text-nasun-white/40"}`}
+      >
         {label}
       </span>
       <InfoTooltip content={tooltip} />
       {rank != null && rank <= 500 && (
-        <span className="text-[10px] text-nasun-nw1 font-medium">#{rank}</span>
+        <span className="text-xs text-nasun-nw1 font-medium">#{rank}</span>
       )}
-      <span className={`text-sm font-bold ml-0.5 ${
-        isBase ? "text-nasun-white" : value > 0 ? "text-nasun-nw4" : "text-nasun-white/25"
-      }`}>
+      <span
+        className={`text-base font-bold ml-0.5 ${
+          isBase
+            ? "text-nasun-white"
+            : value > 0
+              ? "text-nasun-nw4"
+              : "text-nasun-white/25"
+        }`}
+      >
         {isBase ? value : value > 0 ? `+${value}` : "-"}
       </span>
     </div>
   );
 };
 
-export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = "" }) => {
+export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({
+  className = "",
+}) => {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
@@ -86,7 +98,9 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
 
   if (isLoading) {
     return (
-      <div className={`rounded-lg border border-nasun-white/10 bg-gradient-to-r from-[#0f1a2e] via-[#162038] to-[#0d1f35] p-4 ${className}`}>
+      <div
+        className={`rounded-lg border border-teal-400/30 bg-gradient-to-r from-[#0b1a24] via-[#0f2530] to-[#0b1e28] p-4 ${className}`}
+      >
         <div className="flex items-center justify-center py-3">
           <Spinner size="sm" />
         </div>
@@ -95,15 +109,23 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
   }
 
   return (
-    <div className={`rounded-lg border border-nasun-white/10 bg-gradient-to-r from-[#0f1a2e] via-[#162038] to-[#0d1f35] p-4 transition-opacity ${isRefetching ? "opacity-60" : ""} ${className}`}>
-      <h4 className="text-xs font-semibold text-nasun-white/80 uppercase tracking-wider mb-3">Your Voting Power</h4>
+    <div
+      className={`rounded-lg border border-teal-400/30 bg-gradient-to-r from-[#0b1a24] via-[#0f2530] to-[#0b1e28] p-4 transition-opacity ${isRefetching ? "opacity-60" : ""} ${className}`}
+    >
+      <h3 className="text-sm font-semibold text-nasun-white/80 uppercase tracking-wider mb-3">
+        Your Voting Power
+      </h3>
 
       {/* Main row: Total + Breakdown chips */}
       <div className="flex items-center gap-4 flex-wrap">
         {/* Total */}
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-nasun-nw4 tabular-nums">{totalPower}</span>
-          <span className="text-xs text-nasun-white/40 uppercase tracking-wider">VP</span>
+          <span className="text-2xl font-bold text-nasun-nw4 tabular-nums">
+            {totalPower}
+          </span>
+          <span className="text-sm text-nasun-white/40 uppercase tracking-wider">
+            VP
+          </span>
         </div>
 
         {/* Divider */}
@@ -153,20 +175,37 @@ export const VotingPowerSummary: FC<VotingPowerSummaryProps> = ({ className = ""
           <div className="mt-2 p-3 bg-nasun-black/30 rounded-sm text-xs text-nasun-white/60 animate-in slide-in-from-top-2 duration-200">
             <ul className="space-y-2">
               <li>
-                <span className="text-nasun-white font-medium">Base (10)</span>
-                <p className="mt-0.5">Every connected wallet receives base voting power.</p>
+                <span className="text-nasun-white font-medium text-sm">
+                  Base (10)
+                </span>
+                <p className="mt-0.5 text-sm">
+                  Every connected wallet receives base voting power.
+                </p>
               </li>
               <li>
-                <span className="text-nasun-white font-medium">X Account (+5)</span>
-                <p className="mt-0.5">Link your X account in My Account page.</p>
+                <span className="text-nasun-white font-medium text-sm">
+                  X Account (+5)
+                </span>
+                <p className="mt-0.5 text-sm">
+                  Link your X account in My Account page.
+                </p>
               </li>
               <li>
-                <span className="text-nasun-white font-medium">Telegram (+5)</span>
-                <p className="mt-0.5">Join the Nasun Telegram channel and verify membership.</p>
+                <span className="text-nasun-white font-medium text-sm">
+                  Telegram (+5)
+                </span>
+                <p className="mt-0.5 text-sm">
+                  Join the Nasun Telegram channel and verify membership.
+                </p>
               </li>
               <li>
-                <span className="text-nasun-white font-medium">Leaderboard Rank (+10 to +20)</span>
-                <p className="mt-0.5">Rank 1 gets +20, proportionally decreasing to +10 at Rank 100. Ranks 101-500 get +10. Unranked participants get no bonus.</p>
+                <span className="text-nasun-white font-medium text-sm">
+                  Leaderboard Rank (+10 to +20)
+                </span>
+                <p className="mt-0.5 text-sm">
+                  Rank 1 gets +20, proportionally decreasing to +10 at Rank 100.
+                  Ranks 101-500 get +10. Unranked participants get no bonus.
+                </p>
               </li>
             </ul>
           </div>
