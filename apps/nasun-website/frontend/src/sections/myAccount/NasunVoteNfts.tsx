@@ -38,8 +38,12 @@ function extractNfts(
     .filter((item): item is VoteNftItem => item !== null);
 }
 
+function isSuiAddress(addr: string): boolean {
+  return addr.startsWith("0x") && addr.length === 66;
+}
+
 /**
- * Collects all known Nasun wallet addresses from user profile and active wallet.
+ * Collects all known Nasun (Sui) wallet addresses from multiple sources.
  * Works even when the wallet is locked, since user profile stores the address.
  */
 function useNasunAddresses(): string[] {
@@ -49,12 +53,15 @@ function useNasunAddresses(): string[] {
 
   return useMemo(() => {
     const addrs = new Set<string>();
+    // Active wallet (available when unlocked)
     if (account?.address) addrs.add(account.address);
+    // zkLogin wallet
     if (zkLoginState?.address) addrs.add(zkLoginState.address);
+    // Linked Nasun wallet from user profile (always available after login)
     const linked = user?.linkedAccounts?.["nasun wallet"]?.walletAddress;
-    if (linked) addrs.add(linked);
-    // Primary login wallet address (stored in user profile)
-    if (user?.walletAddress) addrs.add(user.walletAddress);
+    if (linked && isSuiAddress(linked)) addrs.add(linked);
+    // Primary login wallet address (filter out EVM addresses)
+    if (user?.walletAddress && isSuiAddress(user.walletAddress)) addrs.add(user.walletAddress);
     return Array.from(addrs);
   }, [account?.address, zkLoginState?.address, user?.linkedAccounts, user?.walletAddress]);
 }
