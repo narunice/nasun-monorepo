@@ -166,3 +166,44 @@ export function hexToBytes(hex: string): number[] {
   if (!matches) return [];
   return Array.from(Uint8Array.from(matches, (b) => parseInt(b, 16)));
 }
+
+/**
+ * Splits "YES: ..." / "NO: ..." lines from the end of a proposal description
+ * into a separate choices array for highlighted rendering.
+ */
+export function splitVoteChoices(description: string): {
+  body: string;
+  choices: { label: string; text: string }[];
+} {
+  const lines = description.split("\n");
+  const choicePattern = /^(YES|NO)\s*:\s*(.+)/i;
+
+  let splitIdx = lines.length;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const trimmed = lines[i].trim();
+    if (choicePattern.test(trimmed)) {
+      splitIdx = i;
+    } else if (trimmed === "") {
+      continue;
+    } else {
+      break;
+    }
+  }
+
+  const bodyLines = lines.slice(0, splitIdx);
+  const choiceLines = lines.slice(splitIdx).filter((l) => l.trim());
+
+  const choices = choiceLines
+    .map((line) => {
+      const match = line.trim().match(choicePattern);
+      return match
+        ? { label: match[1].toUpperCase(), text: match[2].trim() }
+        : null;
+    })
+    .filter((c): c is { label: string; text: string } => c !== null);
+
+  return {
+    body: bodyLines.join("\n").trimEnd(),
+    choices,
+  };
+}
