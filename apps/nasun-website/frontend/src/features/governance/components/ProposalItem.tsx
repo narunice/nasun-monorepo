@@ -15,6 +15,7 @@ import {
 } from "../utils/proposalHelpers";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ArrowRight } from "lucide-react";
+import { NftImageModal } from "./NftImageModal";
 
 interface ProposalItemsProps {
   id: string;
@@ -114,10 +115,9 @@ export const ProposalItem: FC<ProposalItemsProps> = ({
             </div>
             {!!voteNft && (
               <div title="You have voted">
-                <img
-                  className="w-6 h-6 rounded-full border border-nasun-nw4/50"
-                  src={voteNft?.url}
-                  alt="Vote NFT"
+                <NftImageModal
+                  src={voteNft.url}
+                  thumbnailClassName="w-6 h-6 rounded-full border border-nasun-nw4/50"
                 />
               </div>
             )}

@@ -23,8 +23,10 @@ import {
   isUnixTimeExpired,
   formatTimeRemaining,
   getStatusBadge,
+  splitVoteChoices,
 } from "@/features/governance/utils/proposalHelpers";
 import { MultiChoiceVoteModal } from "@/features/governance/components/MultiChoiceVoteModal";
+import { NftImageModal } from "@/features/governance/components/NftImageModal";
 import { TweetChoiceGrid } from "@/features/governance/components/TweetChoiceGrid";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -132,6 +134,8 @@ const ProposalDetailPage: FC = () => {
     );
   }
 
+  const { body: descriptionBody, choices: voteChoices } = splitVoteChoices(proposal.description);
+
   const isDelisted = proposal.status.variant === "Delisted";
   const isExpired = isUnixTimeExpired(proposal.expiration) || isDelisted;
 
@@ -238,10 +242,9 @@ const ProposalDetailPage: FC = () => {
         {/* Vote Proof NFT banner (Yes/No proposals) */}
         {voteNft && (
           <div className="flex items-center gap-4 p-4 bg-green-500/5 border border-green-500/20 rounded-sm">
-            <img
+            <NftImageModal
               src={voteNft.url}
-              alt="Vote Proof NFT"
-              className="w-12 h-12 rounded-full border-2 border-green-500/40"
+              thumbnailClassName="w-12 h-12 rounded-full border-2 border-green-500/40"
             />
             <div>
               <p className="text-green-400 font-medium text-sm">You have voted on this proposal</p>
@@ -252,18 +255,44 @@ const ProposalDetailPage: FC = () => {
 
         {/* Two-column layout: Description (left) + Sidebar (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
-        {/* Left: Description */}
-        <OuterBox
-          color="nw2"
-          padding="md"
-          className="flex flex-col min-h-[300px] lg:min-h-[500px] max-h-[55vh] !bg-gray-900"
-        >
-          <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
-            <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
-              {proposal.description}
-            </p>
-          </div>
-        </OuterBox>
+        {/* Left: Description + Vote Choices */}
+        <div className="flex flex-col gap-4">
+          <OuterBox
+            color="nw2"
+            padding="md"
+            className="flex flex-col min-h-[300px] lg:min-h-[500px] max-h-[55vh] !bg-gray-900"
+          >
+            <div className="overflow-y-auto flex-1 pr-2 custom-scrollbar">
+              <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
+                {descriptionBody}
+              </p>
+            </div>
+          </OuterBox>
+
+          {voteChoices.length > 0 && (
+            <div className="space-y-2">
+              {voteChoices.map((choice, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 p-4 rounded-lg border border-nasun-white/10 bg-nasun-white/[0.04]"
+                >
+                  <span
+                    className={`px-2.5 py-1 text-xs font-bold rounded uppercase flex-shrink-0 ${
+                      choice.label === "YES"
+                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                        : "bg-red-500/20 text-red-400 border border-red-500/30"
+                    }`}
+                  >
+                    {choice.label}
+                  </span>
+                  <span className="text-nasun-white/90 text-sm leading-relaxed">
+                    {choice.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Right: Sidebar */}
         <div className="flex flex-col gap-4 lg:min-h-[300px]">
@@ -520,10 +549,9 @@ const MultiChoiceProposalDetail: FC<{
         {/* Vote Proof NFT banner */}
         {hasVoted && voteNft && (
           <div className="flex items-center gap-4 p-4 mb-4 bg-green-500/5 border border-green-500/20 rounded-sm">
-            <img
+            <NftImageModal
               src={voteNft.url}
-              alt="Vote Proof NFT"
-              className="w-12 h-12 rounded-full border-2 border-green-500/40"
+              thumbnailClassName="w-12 h-12 rounded-full border-2 border-green-500/40"
             />
             <div>
               <p className="text-green-400 font-medium text-sm">You have voted on this proposal</p>

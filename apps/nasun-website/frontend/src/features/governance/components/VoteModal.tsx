@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useSponsoredVote } from "../hooks/useSponsoredVote";
 import { useDirectVote } from "../hooks/useDirectVote";
+import { splitVoteChoices } from "../utils/proposalHelpers";
 
 interface VoteModalProps {
   proposal: Proposal;
@@ -99,27 +100,48 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           aria-describedby={undefined}
         >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
+        <div className="mb-4 flex-shrink-0">
+          <div className="flex items-center justify-end gap-2 mb-2">
+            {hasVoted || isSuccess ? (
+              <span className="text-xs px-2 py-0.5 font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
+                {t("vote.already_voted")}
+              </span>
+            ) : (
+              <span className="text-xs px-2 py-0.5 font-medium rounded-sm bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
+                {t("vote.not_voted_yet")}
+              </span>
+            )}
+          </div>
           <Dialog.Title className="text-nasun-white font-semibold text-lg">
             {proposal.title}
           </Dialog.Title>
-          {hasVoted || isSuccess ? (
-            <span className="flex-shrink-0 text-xs px-2 py-0.5 font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
-              {t("vote.already_voted")}
-            </span>
-          ) : (
-            <span className="flex-shrink-0 text-xs px-2 py-0.5 font-medium rounded-sm bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
-              {t("vote.not_voted_yet")}
-            </span>
-          )}
         </div>
 
-        {/* Description - Scrollable */}
-        {!confirmStep.show && (
-          <div className="mb-5 overflow-y-auto max-h-[30vh] pr-2 flex-shrink custom-scrollbar">
-            <p className="text-nasun-white/85">{proposal.description}</p>
-          </div>
-        )}
+        {/* Vote Choices (YES/NO only, no description body) */}
+        {!confirmStep.show && (() => {
+          const { choices } = splitVoteChoices(proposal.description);
+          return choices.length > 0 ? (
+            <div className="mb-5 space-y-2 flex-shrink-0">
+              {choices.map((choice, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 p-3 rounded-lg border border-nasun-white/10 bg-nasun-white/[0.04]"
+                >
+                  <span
+                    className={`px-2 py-0.5 text-xs font-bold rounded uppercase flex-shrink-0 ${
+                      choice.label === "YES"
+                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                        : "bg-red-500/20 text-red-400 border border-red-500/30"
+                    }`}
+                  >
+                    {choice.label}
+                  </span>
+                  <span className="text-nasun-white/80 text-sm">{choice.text}</span>
+                </div>
+              ))}
+            </div>
+          ) : null;
+        })()}
 
         <div className="flex flex-col gap-3 flex-shrink-0">
           {/* Current Vote Counts */}
@@ -131,25 +153,6 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
           {/* Voting Power Display */}
           {isConnected && !hasVoted && !isSuccess && !confirmStep.show && (
             <div className="bg-gray-800/80 rounded-sm p-4 border border-nasun-nw2/20">
-              {/* Gas Fee Badge */}
-              <div className="flex items-center justify-center gap-2 mb-3 pb-3 border-b border-nasun-nw2/10">
-                {isSponsored ? (
-                  <>
-                    <span className="px-2 py-0.5 text-xs font-medium rounded-sm bg-green-500/20 text-green-400 border border-green-500/40">
-                      Zero Gas Fee
-                    </span>
-                    <span className="text-xs text-nasun-white/40">Sponsored by Nasun</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="px-2 py-0.5 text-xs font-medium rounded-sm bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/40">
-                      Gas Required
-                    </span>
-                    <span className="text-xs text-nasun-white/40">You pay transaction fee</span>
-                  </>
-                )}
-              </div>
-
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-nasun-white/60">Your Voting Power</span>
                 <span className="text-lg font-semibold text-nasun-nw4">
