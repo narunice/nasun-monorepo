@@ -140,6 +140,7 @@ async function updatePrices(
     signer: keypair,
     transaction: tx,
     options: { showEffects: true },
+    requestType: 'WaitForLocalExecution',
   });
 
   if (result.effects?.status?.status !== 'success') {
