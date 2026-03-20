@@ -8,6 +8,7 @@
 import { FC } from "react";
 import { OuterBox } from "@/components/ui";
 import { OwnedObjects } from "./OwnedObjects";
+import { NasunVoteNfts } from "./NasunVoteNfts";
 
 interface AssetsCardProps {
   walletAddress?: string;
@@ -21,6 +22,7 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   return (
     <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">MY ASSETS</h5>
+      <NasunVoteNfts />
       <OwnedObjects walletAddress={walletAddress} />
     </OuterBox>
   );
