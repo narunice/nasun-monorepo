@@ -39,6 +39,11 @@ export async function refreshAndSaveUserProfile(
     updatedProfile.cognitoToken = existingToken;
   }
 
+  // Preserve walletAddress from login (not stored in DynamoDB, only set during signInWithWallet)
+  if (!updatedProfile.walletAddress && user?.walletAddress) {
+    updatedProfile.walletAddress = user.walletAddress;
+  }
+
   if (user) {
     updateUserProfile(updatedProfile);
   } else {
