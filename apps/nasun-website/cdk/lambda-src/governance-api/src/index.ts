@@ -13,7 +13,8 @@
 
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, QueryCommand, ScanCommand, UpdateCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
+import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import * as ed25519 from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha512";
@@ -254,6 +255,7 @@ async function getProposalType(proposalId: string): Promise<number> {
 interface UserProfile {
   twitterHandle?: string;
   isTelegramMember?: boolean;
+  identityId?: string;
 }
 
 async function resolveUserProfile(walletAddress: string): Promise<UserProfile> {
@@ -281,11 +283,12 @@ async function resolveUserProfile(walletAddress: string): Promise<UserProfile> {
       })
     );
 
-    if (!profileResult.Item) return {};
+    if (!profileResult.Item) return { identityId: ownerIdentityId };
 
     return {
       twitterHandle: profileResult.Item.twitterHandle as string | undefined,
       isTelegramMember: profileResult.Item.isTelegramMember === true,
+      identityId: ownerIdentityId,
     };
   } catch (error) {
     console.error("Error resolving user profile:", error instanceof Error ? error.message : String(error));
@@ -602,11 +605,38 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
+      // Resolve outside try so rollback can access identityId
+      const profile = await resolveUserProfile(voter as string);
+
       try {
-        // Server-side user resolution (ignore client-supplied twitterHandle)
-        const profile = await resolveUserProfile(voter as string);
         const hasLinkedX = !!profile.twitterHandle;
         const isTelegramMember = profile.isTelegramMember === true;
+
+        // Identity-based duplicate vote prevention (atomic conditional update)
+        if (profile.identityId) {
+          try {
+            await docClient.send(new UpdateCommand({
+              TableName: USER_PROFILES_TABLE,
+              Key: { identityId: profile.identityId },
+              UpdateExpression: "ADD governanceVotes :pidSet",
+              ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
+              ExpressionAttributeValues: {
+                ":pidSet": new Set([proposalId as string]),
+                ":pidStr": proposalId as string,
+              },
+            }));
+          } catch (err) {
+            if (err instanceof ConditionalCheckFailedException) {
+              console.warn(`Duplicate vote blocked: identity=${profile.identityId}, proposal=${proposalId}, wallet=${voter}`);
+              return {
+                statusCode: 409,
+                headers: corsHeaders(),
+                body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
+              };
+            }
+            throw err;
+          }
+        }
 
         const rank = await getUserRank(profile.twitterHandle);
         const power = calculateVotingPower(rank, hasLinkedX, isTelegramMember);
@@ -659,6 +689,22 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           body: JSON.stringify(certificate),
         };
       } catch (error: unknown) {
+        // Rollback governanceVotes record if certificate issuance failed
+        if (profile.identityId) {
+          try {
+            await docClient.send(new UpdateCommand({
+              TableName: USER_PROFILES_TABLE,
+              Key: { identityId: profile.identityId },
+              UpdateExpression: "DELETE governanceVotes :pidSet",
+              ExpressionAttributeValues: {
+                ":pidSet": new Set([proposalId as string]),
+              },
+            }));
+            console.log(`Rolled back governanceVotes for identity=${profile.identityId}, proposal=${proposalId}`);
+          } catch (rollbackErr) {
+            console.error("Failed to rollback governanceVotes:", rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr));
+          }
+        }
         console.error("Certificate issuance error:", maskSensitiveData({
           message: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
@@ -739,6 +785,33 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
               proposalId,
             }),
           };
+        }
+
+        // Identity-based duplicate vote prevention (defense-in-depth)
+        const senderProfile = await resolveUserProfile(sender as string);
+        if (senderProfile.identityId) {
+          try {
+            await docClient.send(new UpdateCommand({
+              TableName: USER_PROFILES_TABLE,
+              Key: { identityId: senderProfile.identityId },
+              UpdateExpression: "ADD governanceVotes :pidSet",
+              ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
+              ExpressionAttributeValues: {
+                ":pidSet": new Set([proposalId]),
+                ":pidStr": proposalId,
+              },
+            }));
+          } catch (err) {
+            if (err instanceof ConditionalCheckFailedException) {
+              console.warn(`Duplicate vote blocked (sponsor): identity=${senderProfile.identityId}, proposal=${proposalId}`);
+              return {
+                statusCode: 409,
+                headers: corsHeaders(),
+                body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
+              };
+            }
+            throw err;
+          }
         }
 
         console.log(`Sponsoring Poll proposal ${proposalId}`);
