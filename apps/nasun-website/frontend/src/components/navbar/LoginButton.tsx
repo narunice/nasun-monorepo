@@ -41,10 +41,6 @@ const LoginButton = () => {
     try {
       await signFlow();
       setLoginModalOpen(false);
-      // Skip navigation when login was triggered externally (e.g., from Genesis Pass page)
-      if (!externalTriggerRef.current) {
-        navigate('/my-account');
-      }
       externalTriggerRef.current = false;
       // Signal WalletButton to auto-open for backup completion
       if (hasPendingBackup) {

@@ -1,12 +1,14 @@
 /**
- * Governance API V2 - Voting Power Calculator
+ * Governance API V3 - Rank-Based Voting Power
  *
- * Calculates voting power from multiple sources:
- * - Leaderboard Score (X/Twitter engagement) — log2(1+x) compression
- * - On-Chain Activity Score (DEX, prediction, lottery, lending, AI) — log2(1+x) compression
- * - Battalion NFT Allowlist Bonus (nasun-nft-whitelist)
- * - Genesis NFT Whitelist Bonus (GenesisNftWhitelist)
- * - X Account Linkage Bonus
+ * Calculates voting power from:
+ * - Base power (10)
+ * - X Account Linkage (+5)
+ * - Telegram Channel Membership (+5)
+ * - Leaderboard Rank Bonus (+10 to +20, proportional to rank 1-500)
+ *
+ * Server-side user resolution via UserWallets 2-hop lookup (security fix).
+ * On-chain value = display value (integer, no scaling).
  */
 
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
@@ -62,34 +64,17 @@ function maskSensitiveData<T>(obj: T): T {
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-// Leaderboard V3 tables
+// Table names
 const LEADERBOARD_V3_ACCOUNTS_TABLE = process.env.LEADERBOARD_V3_ACCOUNTS_TABLE || "leaderboard-v3-accounts";
 const LEADERBOARD_V3_SEASONS_TABLE = process.env.LEADERBOARD_V3_SEASONS_TABLE || "leaderboard-v3-seasons";
-const LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE = process.env.LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE || "leaderboard-v3-season-accounts";
+const LEADERBOARD_V3_SNAPSHOTS_TABLE = process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || "leaderboard-v3-snapshots";
+const USER_WALLETS_TABLE = process.env.USER_WALLETS_TABLE || "UserWallets";
+const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
 
-// V3 Score formula constants (matches score-calculator.ts)
-const V3_FRESHNESS_HALF_LIFE_DAYS = 14;
-const V3_CONSISTENCY_BONUS_MULTIPLIER = 0.1;
-const V3_CONSISTENCY_BONUS_MAX = 1.5;
-const V3_REPLY_DECAY_EXPONENT = 0.7;
-
-// V2 Voting Power weights — log2(1+x) * WEIGHT
-const LEADERBOARD_WEIGHT = Number(process.env.LEADERBOARD_WEIGHT) || 8;
-const ONCHAIN_WEIGHT = Number(process.env.ONCHAIN_WEIGHT) || 8;
-const BATTALION_ALLOWLIST_BONUS = Number(process.env.BATTALION_ALLOWLIST_BONUS) || 20;
-const GENESIS_ALLOWLIST_BONUS = Number(process.env.GENESIS_ALLOWLIST_BONUS) || 20;
-const X_LINK_BONUS = Number(process.env.X_LINK_BONUS) || 10;
-
-// Allowlist tables
-const BATTALION_TABLE_NAME = process.env.BATTALION_TABLE_NAME || "nasun-nft-whitelist";
-const GENESIS_TABLE_NAME = process.env.GENESIS_TABLE_NAME || "GenesisNftWhitelist";
-
-// On-chain activity Package IDs
-const DEEPBOOK_PACKAGE_ID = process.env.DEEPBOOK_PACKAGE_ID || "";
-const PREDICTION_PACKAGE_ID = process.env.PREDICTION_PACKAGE_ID || "";
-const LOTTERY_PACKAGE_ID = process.env.LOTTERY_PACKAGE_ID || "";
-const LENDING_PACKAGE_ID = process.env.LENDING_PACKAGE_ID || "";
-const BARAM_PACKAGE_ID = process.env.BARAM_PACKAGE_ID || "";
+// V3 Voting Power constants
+const BASE_POWER = 10;
+const X_LINK_BONUS = 5;
+const TELEGRAM_BONUS = 5;
 
 // Oracle/Sponsor configuration
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
@@ -263,7 +248,53 @@ async function getProposalType(proposalId: string): Promise<number> {
 }
 
 // ============================================
-// Leaderboard V3 Types & Query Functions
+// V3: User Resolution (UserWallets 2-hop)
+// ============================================
+
+interface UserProfile {
+  twitterHandle?: string;
+  isTelegramMember?: boolean;
+}
+
+async function resolveUserProfile(walletAddress: string): Promise<UserProfile> {
+  if (!walletAddress) return {};
+
+  const normalizedAddr = walletAddress.toLowerCase();
+
+  try {
+    // Hop 1: UserWallets WALLET_OWNER sentinel -> identityId
+    const walletResult = await docClient.send(
+      new GetCommand({
+        TableName: USER_WALLETS_TABLE,
+        Key: { identityId: "WALLET_OWNER", walletAddress: normalizedAddr },
+      })
+    );
+
+    const ownerIdentityId = walletResult.Item?.ownerIdentityId as string | undefined;
+    if (!ownerIdentityId) return {};
+
+    // Hop 2: UserProfiles -> twitterHandle + isTelegramMember
+    const profileResult = await docClient.send(
+      new GetCommand({
+        TableName: USER_PROFILES_TABLE,
+        Key: { identityId: ownerIdentityId },
+      })
+    );
+
+    if (!profileResult.Item) return {};
+
+    return {
+      twitterHandle: profileResult.Item.twitterHandle as string | undefined,
+      isTelegramMember: profileResult.Item.isTelegramMember === true,
+    };
+  } catch (error) {
+    console.error("Error resolving user profile:", error instanceof Error ? error.message : String(error));
+    return {};
+  }
+}
+
+// ============================================
+// V3: Leaderboard Rank Lookup
 // ============================================
 
 interface V3Account {
@@ -277,23 +308,6 @@ interface V3Season {
   sk: string;
   status: string;
   endDate: string;
-}
-
-interface V3SeasonAccountScore {
-  pk: string;
-  sk: string;
-  accountId: string;
-  seasonId: string;
-  totalPostScore: number;
-  postCount: number;
-  uniqueActiveDays: number;
-  lastSeenAt: string;
-  originalPostCount?: number;
-  originalTotalScore?: number;
-  quotePostCount?: number;
-  quoteTotalScore?: number;
-  replyPostCount?: number;
-  replyTotalScore?: number;
 }
 
 async function getV3AccountByHandle(twitterHandle: string): Promise<V3Account | null> {
@@ -361,261 +375,112 @@ async function getV3MostRecentEndedSeason(): Promise<V3Season | null> {
   }
 }
 
-async function getV3SeasonAccountScore(
-  seasonId: string,
-  accountId: string
-): Promise<V3SeasonAccountScore | null> {
+async function getUserRankFromSnapshot(accountId: string, seasonId: string): Promise<number | null> {
   try {
-    const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
-    const result = await docClient.send(
-      new GetCommand({
-        TableName: LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE,
-        Key: { pk, sk: "SCORE" },
-      })
-    );
-    return (result.Item as V3SeasonAccountScore) || null;
+    const seasonPrefix = `${seasonId}#`;
+
+    // Query GSI: accountId-snapshotDate-index, descending by date
+    // No Limit because DynamoDB applies Limit before FilterExpression
+    let lastKey: Record<string, unknown> | undefined;
+
+    do {
+      const result = await docClient.send(
+        new QueryCommand({
+          TableName: LEADERBOARD_V3_SNAPSHOTS_TABLE,
+          IndexName: "accountId-snapshotDate-index",
+          KeyConditionExpression: "accountId = :accountId",
+          FilterExpression: "begins_with(pk, :seasonPrefix)",
+          ExpressionAttributeValues: {
+            ":accountId": accountId,
+            ":seasonPrefix": seasonPrefix,
+          },
+          ScanIndexForward: false,
+          ExclusiveStartKey: lastKey,
+        })
+      );
+
+      if (result.Items && result.Items.length > 0) {
+        return result.Items[0].rank as number;
+      }
+
+      lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastKey);
+
+    return null;
   } catch (error) {
-    console.error("Error getting season account score:", error instanceof Error ? error.message : String(error));
+    console.error("Error getting user rank from snapshot:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
 
-function recalculateV3UserScore(score: V3SeasonAccountScore): number {
-  let rawScore: number;
-
-  if (score.originalPostCount !== undefined &&
-      score.quotePostCount !== undefined &&
-      score.replyPostCount !== undefined) {
-    const originalRaw = score.originalPostCount > 0
-      ? ((score.originalTotalScore || 0) * Math.log2(score.originalPostCount + 1)) / score.originalPostCount
-      : 0;
-    const quoteRaw = (score.quotePostCount || 0) > 0
-      ? ((score.quoteTotalScore || 0) * Math.log2((score.quotePostCount || 0) + 1)) / (score.quotePostCount || 1)
-      : 0;
-    const replyRaw = (score.replyPostCount || 0) > 0
-      ? ((score.replyTotalScore || 0) * Math.log2((score.replyPostCount || 0) + 1)) /
-        Math.pow(score.replyPostCount || 1, V3_REPLY_DECAY_EXPONENT)
-      : 0;
-    rawScore = originalRaw + quoteRaw + replyRaw;
-  } else {
-    const effectivePosts = Math.log2(score.postCount + 1);
-    rawScore = score.postCount > 0 ? (score.totalPostScore * effectivePosts) / score.postCount : 0;
-  }
-
-  const consistencyBonus = Math.min(
-    1 + Math.log2(score.uniqueActiveDays + 1) * V3_CONSISTENCY_BONUS_MULTIPLIER,
-    V3_CONSISTENCY_BONUS_MAX
-  );
-
-  const daysSinceLast = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(score.lastSeenAt).getTime()) / (1000 * 60 * 60 * 24))
-  );
-  const freshnessMultiplier = 1 / (1 + daysSinceLast / V3_FRESHNESS_HALF_LIFE_DAYS);
-
-  return rawScore * consistencyBonus * freshnessMultiplier;
-}
-
-async function getV3LeaderboardScore(twitterHandle: string): Promise<number> {
-  if (!twitterHandle) return 0;
+async function getUserRank(twitterHandle?: string): Promise<number | null> {
+  if (!twitterHandle) return null;
 
   const account = await getV3AccountByHandle(twitterHandle);
-  if (!account) return 0;
+  if (!account) return null;
 
   const activeSeason = await getV3ActiveSeason();
   if (activeSeason) {
-    const seasonScore = await getV3SeasonAccountScore(activeSeason.seasonId, account.accountId);
-    if (seasonScore) {
-      return recalculateV3UserScore(seasonScore);
-    }
+    const rank = await getUserRankFromSnapshot(account.accountId, activeSeason.seasonId);
+    if (rank !== null) return rank;
   }
 
   const lastEnded = await getV3MostRecentEndedSeason();
   if (lastEnded) {
-    const seasonScore = await getV3SeasonAccountScore(lastEnded.seasonId, account.accountId);
-    if (seasonScore) {
-      return recalculateV3UserScore(seasonScore);
-    }
+    const rank = await getUserRankFromSnapshot(account.accountId, lastEnded.seasonId);
+    if (rank !== null) return rank;
   }
 
-  return 0;
-}
-
-async function getLeaderboardScore(twitterHandle?: string): Promise<number> {
-  if (!twitterHandle) return 0;
-  const v3Score = await getV3LeaderboardScore(twitterHandle);
-  return Math.floor(v3Score);
+  return null;
 }
 
 // ============================================
-// V2: On-Chain Activity Score
-// ============================================
-
-// In-memory cache for on-chain scores (survives warm Lambda invocations)
-const onChainCache = new Map<string, { score: number; timestamp: number }>();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-async function calculateOnChainScore(address: string): Promise<number> {
-  const suiClient = new SuiClient({ url: SUI_RPC_URL });
-
-  try {
-    const [txHistory, lotteryTickets, predictionPositions,
-           lendingPositions, baramReceipts, voteNfts] = await Promise.all([
-      suiClient.queryTransactionBlocks({ filter: { FromAddress: address }, limit: 50 }),
-      LOTTERY_PACKAGE_ID ? suiClient.getOwnedObjects({
-        owner: address,
-        filter: { StructType: `${LOTTERY_PACKAGE_ID}::lottery::Ticket` },
-      }) : Promise.resolve({ data: [] }),
-      PREDICTION_PACKAGE_ID ? suiClient.getOwnedObjects({
-        owner: address,
-        filter: { StructType: `${PREDICTION_PACKAGE_ID}::prediction_market::Position` },
-      }) : Promise.resolve({ data: [] }),
-      LENDING_PACKAGE_ID ? suiClient.getOwnedObjects({
-        owner: address,
-        filter: { StructType: `${LENDING_PACKAGE_ID}::lending_pool::DepositPosition` },
-      }) : Promise.resolve({ data: [] }),
-      BARAM_PACKAGE_ID ? suiClient.getOwnedObjects({
-        owner: address,
-        filter: { StructType: `${BARAM_PACKAGE_ID}::baram::RequestReceipt` },
-      }) : Promise.resolve({ data: [] }),
-      GOVERNANCE_ORIGINAL_PACKAGE_ID ? suiClient.getOwnedObjects({
-        owner: address,
-        filter: { StructType: `${GOVERNANCE_ORIGINAL_PACKAGE_ID}::proposal::VoteProofNFT` },
-      }) : Promise.resolve({ data: [] }),
-    ]);
-
-    // Raw composite score from individual activity types
-    const score =
-      Math.sqrt(txHistory.data.length) * 3           // TX frequency
-      + Math.sqrt(lotteryTickets.data.length) * 2    // Lottery participation
-      + Math.sqrt(predictionPositions.data.length) * 4  // Prediction market
-      + Math.sqrt(lendingPositions.data.length) * 3     // Lending
-      + Math.sqrt(baramReceipts.data.length) * 5        // AI service usage
-      + voteNfts.data.length * 8;                       // Prior voting (linear bonus)
-
-    return Math.floor(score);
-  } catch (error) {
-    console.error("Error calculating on-chain score:", error instanceof Error ? error.message : String(error));
-    return 0;
-  }
-}
-
-async function getOnChainScore(address: string): Promise<number> {
-  if (!address) return 0;
-
-  const cached = onChainCache.get(address);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.score;
-
-  const score = await calculateOnChainScore(address);
-  onChainCache.set(address, { score, timestamp: Date.now() });
-
-  // Evict oldest entry if cache exceeds 1000 entries
-  if (onChainCache.size > 1000) {
-    const oldest = [...onChainCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
-    onChainCache.delete(oldest[0][0]);
-  }
-  return score;
-}
-
-// ============================================
-// V2: Allowlist Check (Battalion + Genesis)
-// ============================================
-
-async function checkBattalionAllowlist(walletAddress: string): Promise<boolean> {
-  if (!walletAddress) return false;
-
-  try {
-    const result = await docClient.send(new GetCommand({
-      TableName: BATTALION_TABLE_NAME,
-      Key: { walletAddress },
-    }));
-    return result.Item?.status === "ACTIVE";
-  } catch (error) {
-    console.error("Error checking battalion allowlist:", error instanceof Error ? error.message : String(error));
-    return false;
-  }
-}
-
-async function checkGenesisWhitelist(walletAddress: string): Promise<boolean> {
-  if (!walletAddress) return false;
-
-  try {
-    const result = await docClient.send(new GetCommand({
-      TableName: GENESIS_TABLE_NAME,
-      Key: { walletAddress },
-    }));
-    return result.Item?.status === "ACTIVE";
-  } catch (error) {
-    console.error("Error checking genesis whitelist:", error);
-    return false;
-  }
-}
-
-// ============================================
-// V2: Voting Power Calculation
+// V3: Voting Power Calculation
 // ============================================
 
 interface VotingPowerBreakdown {
   base: number;
+  xLinked: number;
+  telegram: number;
+  rankBonus: number;
+  // Backward compatibility (old frontend reads these)
   leaderboard: number;
   onChain: number;
   battalionAllowlist: number;
   genesisAllowlist: number;
-  xLinked: number;
 }
 
-interface VotingPowerV2Response {
-  totalVotingPower: number;
-  breakdown: VotingPowerBreakdown;
-  rawScores: {
-    leaderboardScore: number;
-    onChainScore: number;
-  };
-  normalized: {
-    leaderboardNormalized: number;
-    onChainNormalized: number;
-  };
+function calculateRankBonus(rank: number | null): number {
+  if (rank === null || rank < 1 || rank > 500) return 0;
+  if (rank === 1) return 20;
+  if (rank <= 100) return Math.round(20 - (rank - 1) * 10 / 99);
+  return 10; // rank 101-500
 }
 
-/**
- * Log compression: floor(log2(1+x) * weight)
- * Compresses large gaps while preserving proportionality
- */
-function normalizeScore(rawScore: number, weight: number): number {
-  if (rawScore <= 0) return 0;
-  return Math.floor(Math.log2(1 + rawScore) * weight);
-}
-
-function calculateVotingPowerV2(
-  leaderboardScore: number,
-  onChainScore: number,
-  isOnBattalionAllowlist: boolean,
-  isOnGenesisWhitelist: boolean,
-  hasLinkedX: boolean
-): { total: number; breakdown: VotingPowerBreakdown; normalized: { leaderboardNormalized: number; onChainNormalized: number } } {
-  const base = 1;
-  const leaderboardNormalized = normalizeScore(leaderboardScore, LEADERBOARD_WEIGHT);
-  const onChainNormalized = normalizeScore(onChainScore, ONCHAIN_WEIGHT);
-  const battalionPower = isOnBattalionAllowlist ? BATTALION_ALLOWLIST_BONUS : 0;
-  const genesisPower = isOnGenesisWhitelist ? GENESIS_ALLOWLIST_BONUS : 0;
-  const xLinkedPower = hasLinkedX ? X_LINK_BONUS : 0;
-
-  const total = Math.max(1, Math.floor(base + leaderboardNormalized + onChainNormalized + battalionPower + genesisPower + xLinkedPower));
+function calculateVotingPower(
+  rank: number | null,
+  hasLinkedX: boolean,
+  isTelegramMember: boolean
+): { total: number; breakdown: VotingPowerBreakdown; rank: number | null } {
+  const rankBonus = calculateRankBonus(rank);
+  const xBonus = hasLinkedX ? X_LINK_BONUS : 0;
+  const tgBonus = isTelegramMember ? TELEGRAM_BONUS : 0;
+  const total = BASE_POWER + xBonus + tgBonus + rankBonus;
 
   return {
     total,
     breakdown: {
-      base,
-      leaderboard: leaderboardNormalized,
-      onChain: onChainNormalized,
-      battalionAllowlist: battalionPower,
-      genesisAllowlist: genesisPower,
-      xLinked: xLinkedPower,
+      base: BASE_POWER,
+      xLinked: xBonus,
+      telegram: tgBonus,
+      rankBonus,
+      // Backward compatibility for old frontend during deploy transition
+      leaderboard: rankBonus,
+      onChain: 0,
+      battalionAllowlist: 0,
+      genesisAllowlist: 0,
     },
-    normalized: {
-      leaderboardNormalized,
-      onChainNormalized,
-    },
+    rank,
   };
 }
 
@@ -646,7 +511,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     return { statusCode: 200, headers: corsHeaders(), body: "" };
   }
 
-  console.log("Governance API V2 called:", {
+  console.log("Governance API V3 called:", {
     httpMethod: event.httpMethod,
     path: event.path,
     queryParams: event.queryStringParameters,
@@ -655,73 +520,59 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
   try {
     const path = event.path;
 
-    // GET /voting-power?twitterHandle=xxx&walletAddress=0x...
+    // GET /voting-power?walletAddress=0x...
     if (path.endsWith("/voting-power") && event.httpMethod === "GET") {
-      const { twitterHandle: twitterHandleParam, walletAddress, ethAddress } = event.queryStringParameters || {};
+      const { walletAddress } = event.queryStringParameters || {};
 
-      const twitterHandle = twitterHandleParam?.toLowerCase().replace(/^@/, "");
-      const hasLinkedX = !!twitterHandle;
+      // Server-side user resolution (ignore client-supplied twitterHandle)
+      const profile = await resolveUserProfile(walletAddress || "");
+      const hasLinkedX = !!profile.twitterHandle;
+      const isTelegramMember = profile.isTelegramMember === true;
 
-      // Use ethAddress for allowlist/whitelist checks (Ethereum address),
-      // fall back to walletAddress (Sui address) for backward compatibility
-      const allowlistAddress = ethAddress || walletAddress || "";
-
-      // Parallel: leaderboard + on-chain + battalion allowlist + genesis whitelist
-      const [leaderboardScore, onChainScore, isOnBattalion, isOnGenesis] = await Promise.all([
-        getLeaderboardScore(twitterHandle),
-        getOnChainScore(walletAddress || ""),
-        checkBattalionAllowlist(allowlistAddress),
-        checkGenesisWhitelist(allowlistAddress),
-      ]);
-
-      const power = calculateVotingPowerV2(leaderboardScore, onChainScore, isOnBattalion, isOnGenesis, hasLinkedX);
-
-      const response: VotingPowerV2Response = {
-        totalVotingPower: power.total,
-        breakdown: power.breakdown,
-        rawScores: {
-          leaderboardScore,
-          onChainScore,
-        },
-        normalized: power.normalized,
-      };
+      const rank = await getUserRank(profile.twitterHandle);
+      const power = calculateVotingPower(rank, hasLinkedX, isTelegramMember);
 
       return {
         statusCode: 200,
         headers: corsHeaders(),
-        body: JSON.stringify(response),
+        body: JSON.stringify({
+          totalVotingPower: power.total,
+          rank: power.rank,
+          breakdown: power.breakdown,
+        }),
       };
     }
 
-    // GET /config - Get current voting power V2 configuration
+    // GET /config - Get current voting power V3 configuration
     if (path.endsWith("/config") && event.httpMethod === "GET") {
       return {
         statusCode: 200,
         headers: corsHeaders(),
         body: JSON.stringify({
-          version: 2,
-          leaderboardWeight: LEADERBOARD_WEIGHT,
-          onChainWeight: ONCHAIN_WEIGHT,
-          battalionAllowlistBonus: BATTALION_ALLOWLIST_BONUS,
-          genesisAllowlistBonus: GENESIS_ALLOWLIST_BONUS,
+          version: 3,
+          system: "rank-based",
+          basePower: BASE_POWER,
           xLinkBonus: X_LINK_BONUS,
-          normalization: "log2(1+x)",
+          telegramBonus: TELEGRAM_BONUS,
+          maxRankBonus: 20,
+          minRankBonus: 10,
+          maxPower: 40,
         }),
       };
     }
 
-    // POST /verify-nft - Deprecated (V2)
+    // POST /verify-nft - Deprecated
     if (path.endsWith("/verify-nft") && event.httpMethod === "POST") {
       return {
         statusCode: 410,
         headers: corsHeaders(),
         body: JSON.stringify({
-          error: "This endpoint has been deprecated in Governance V2. NFT verification is no longer required.",
+          error: "This endpoint has been deprecated. NFT verification is no longer required.",
         }),
       };
     }
 
-    // POST /certificate - Issue Oracle-signed voting power certificate (V2)
+    // POST /certificate - Issue Oracle-signed voting power certificate (V3)
     if (path.endsWith("/certificate") && event.httpMethod === "POST") {
       if (!event.body) {
         return {
@@ -741,7 +592,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           body: JSON.stringify({ error: "Invalid JSON in request body" }),
         };
       }
-      const { voter, proposalId, twitterHandle: rawTwitterHandle, walletAddress, ethAddress } = certBody;
+      const { voter, proposalId } = certBody;
 
       if (!voter || !proposalId) {
         return {
@@ -752,22 +603,13 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
 
       try {
-        const twitterHandle = rawTwitterHandle?.toLowerCase().replace(/^@/, "");
-        const hasLinkedX = !!twitterHandle;
+        // Server-side user resolution (ignore client-supplied twitterHandle)
+        const profile = await resolveUserProfile(voter as string);
+        const hasLinkedX = !!profile.twitterHandle;
+        const isTelegramMember = profile.isTelegramMember === true;
 
-        // Use ethAddress for allowlist/whitelist checks (Ethereum address),
-        // fall back to walletAddress/voter (Sui address) for backward compatibility
-        const allowlistAddress = ethAddress || walletAddress || voter;
-
-        // Parallel: leaderboard + on-chain + battalion allowlist + genesis whitelist
-        const [leaderboardScore, onChainScore, isOnBattalion, isOnGenesis] = await Promise.all([
-          getLeaderboardScore(twitterHandle),
-          getOnChainScore(walletAddress || voter),
-          checkBattalionAllowlist(allowlistAddress),
-          checkGenesisWhitelist(allowlistAddress),
-        ]);
-
-        const power = calculateVotingPowerV2(leaderboardScore, onChainScore, isOnBattalion, isOnGenesis, hasLinkedX);
+        const rank = await getUserRank(profile.twitterHandle);
+        const power = calculateVotingPower(rank, hasLinkedX, isTelegramMember);
         const votingPower = power.total;
 
         // Build message for signature (MUST match Move's build_certificate_message)
@@ -809,7 +651,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           breakdown: power.breakdown,
         };
 
-        console.log(`Certificate issued for ${voter} on proposal ${proposalId}: power=${votingPower}`);
+        console.log(`Certificate issued for ${voter} on proposal ${proposalId}: power=${votingPower}, rank=${rank}`);
 
         return {
           statusCode: 200,

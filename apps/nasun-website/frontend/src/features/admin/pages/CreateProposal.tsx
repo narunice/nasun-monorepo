@@ -13,7 +13,11 @@ import {
 } from "@/constants/suiPackageConstants";
 import { GOVERNANCE } from "@nasun/devnet-config";
 import { toast } from "react-toastify";
+import { useQueryClient } from "@tanstack/react-query";
 import { useInvalidateProposals } from "../hooks/useAdminProposals";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useAdminAuth } from "../hooks/useAdminAuth";
+import { hideProposal } from "../services/adminApi";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -46,6 +50,9 @@ export function CreateProposal() {
   const adminCapId = NASUN_DEVNET_ADMIN_CAP;
 
   const { isConnected: isZkConnected } = useZkLogin();
+  const { user } = useAuth();
+  const { cognitoToken: adminToken } = useAdminAuth();
+  const queryClient = useQueryClient();
   const invalidateProposals = useInvalidateProposals();
 
   const [formData, setFormData] = useState<ProposalFormData>({
@@ -189,6 +196,7 @@ export function CreateProposal() {
         options: {
           showEffects: true,
           showEvents: true,
+          showObjectChanges: true,
         },
       });
 
@@ -199,8 +207,36 @@ export function CreateProposal() {
         } catch {
           console.warn("waitForTransaction timed out, proposal likely created");
         }
+
+        // Auto-hide the proposal so it's not visible on the public page by default
+        let autoHideSuccess = false;
+        const createdProposal = result.objectChanges?.find(
+          (change) =>
+            change.type === "created" &&
+            (change.objectType.includes("::proposal::Proposal") ||
+              change.objectType.includes("::multi_choice_proposal::MultiChoiceProposal"))
+        );
+
+        const token = adminToken || user?.cognitoToken;
+        if (createdProposal?.type === "created" && token) {
+          try {
+            await hideProposal(token, createdProposal.objectId);
+            autoHideSuccess = true;
+            queryClient.invalidateQueries({ queryKey: ["hiddenProposals"] });
+            queryClient.invalidateQueries({ queryKey: ["hidden-proposals"] });
+          } catch (hideErr) {
+            console.error("Failed to auto-hide proposal:", hideErr);
+          }
+        } else if (!token) {
+          console.error("Auto-hide skipped: no auth token available");
+        }
+
         invalidateProposals();
-        toast.success("Proposal created successfully!");
+        if (autoHideSuccess) {
+          toast.success("Proposal created and hidden successfully!");
+        } else {
+          toast.warn("Proposal created but NOT hidden. Please hide it manually from the admin page.");
+        }
         navigate("/admin/governance");
       } else {
         throw new Error(result.effects?.status?.error || "Transaction failed");
@@ -495,13 +531,16 @@ export function CreateProposal() {
                     type="datetime-local"
                     value={formData.customEndDate}
                     onChange={(e) => setFormData({ ...formData, customEndDate: e.target.value })}
-                    min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                    min={(() => {
+                      const d = new Date(Date.now() + 60 * 60 * 1000);
+                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    })()}
                     className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none"
                     disabled={isSubmitting}
                   />
                   {formData.customEndDate && (
                     <p className="text-nasun-white/40 text-xs mt-2">
-                      Expires: {new Date(formData.customEndDate).toLocaleString("en-US", { timeZone: "UTC" })} UTC
+                      Expires: {new Date(formData.customEndDate).toLocaleString("en-US")} (local time)
                     </p>
                   )}
                 </div>
@@ -540,12 +579,155 @@ export function CreateProposal() {
           <div className="p-4 bg-nasun-c1/5 border border-nasun-c1/10 rounded-sm">
             <p className="text-nasun-c1/80 text-sm">
               <strong className="font-medium">Note:</strong> Creating proposals requires the
-              connected wallet to own the AdminCap object. The proposal will be created on-chain and
-              immediately visible to all users.
+              connected wallet to own the AdminCap object. The proposal will be created on-chain but
+              hidden by default. Use the governance admin page to make it visible.
             </p>
           </div>
+
+          {/* Live Preview */}
+          {formData.title.trim() && (
+            <ProposalPreview formData={formData} />
+          )}
         </div>
       </SectionLayout>
     </AdminLayout>
+  );
+}
+
+/** Live preview that mirrors ProposalDetailPage layout */
+function ProposalPreview({ formData }: { formData: ProposalFormData }) {
+  const isMultiChoice = formData.voteFormat === "multi-choice";
+  const validChoices = formData.choices.filter((c) => c.trim());
+
+  const expiresAt = formData.durationType === "custom" && formData.customEndDate
+    ? new Date(formData.customEndDate).getTime()
+    : Date.now() + formData.durationHours * 60 * 60 * 1000;
+
+  const remaining = expiresAt - Date.now();
+  const d = Math.floor(remaining / 86400000);
+  const h = Math.floor((remaining % 86400000) / 3600000);
+  const timeLabel = d > 0 ? `${d}d ${h}h left` : `${h}h left`;
+
+  return (
+    <OuterBox color="w5" padding="md">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-medium text-nasun-white">Detail Page Preview</h2>
+        <span className="text-xs text-nasun-white/30 uppercase">How voters will see it</span>
+      </div>
+
+      {/* Simulated detail page */}
+      <div className="border border-nasun-white/10 rounded-sm bg-[#191615] p-5 space-y-4">
+        {/* Badges */}
+        <div className="flex items-center gap-2">
+          {formData.proposalType === "Poll" ? (
+            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
+              Poll
+            </span>
+          ) : (
+            <span className="px-3 py-1 text-xs uppercase font-bold rounded-full bg-nasun-nw4/20 text-nasun-nw4 border border-nasun-nw4/30">
+              Governance
+            </span>
+          )}
+          <span className="px-3 py-1 text-xs uppercase font-bold rounded-full border bg-green-500/20 border-green-500/30 text-green-400">
+            Active
+          </span>
+        </div>
+
+        {/* Title */}
+        <h2 className="text-2xl md:text-3xl font-bold text-nasun-white leading-tight">
+          {formData.title}
+        </h2>
+
+        {/* Two-column layout */}
+        <div className={`grid grid-cols-1 ${isMultiChoice ? "lg:grid-cols-2" : "lg:grid-cols-[1fr_320px]"} gap-4 items-start`}>
+          {/* Description */}
+          <div className="border border-nasun-white/10 rounded-sm p-4 bg-gray-900 min-h-[200px]">
+            <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
+              {formData.description || <span className="text-nasun-white/20 italic">Description will appear here...</span>}
+            </p>
+          </div>
+
+          {/* Sidebar */}
+          <div className="flex flex-col gap-4">
+            {/* Vote Results */}
+            <div className="border border-nasun-white/10 rounded-sm p-4">
+              <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
+                Vote Results
+              </h3>
+              {isMultiChoice ? (
+                <div className="space-y-3">
+                  {validChoices.map((choice, idx) => (
+                    <div key={idx}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-nasun-white/80 truncate mr-2">{choice}</span>
+                        <span className="text-nasun-white/50">0%</span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full overflow-hidden bg-nasun-white/10">
+                        <div className="h-full bg-nasun-nw1" style={{ width: "0%" }} />
+                      </div>
+                    </div>
+                  ))}
+                  {formData.useEqualWeight && (
+                    <p className="text-xs text-nasun-white/30 mt-1">Equal Weight: 1 vote per wallet</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="w-full h-3 rounded-full overflow-hidden bg-red-500/30 mb-3">
+                    <div className="h-full bg-green-500" style={{ width: "50%" }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-sm p-3 text-center">
+                      <div className="text-2xl font-bold text-green-400">50.0%</div>
+                      <div className="text-sm text-nasun-white/70">Yes</div>
+                      <div className="text-base font-medium text-green-400 mt-1">0</div>
+                      <div className="text-xs text-nasun-white/30">voting power</div>
+                    </div>
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-sm p-3 text-center">
+                      <div className="text-2xl font-bold text-red-400">50.0%</div>
+                      <div className="text-sm text-nasun-white/70">No</div>
+                      <div className="text-base font-medium text-red-400 mt-1">0</div>
+                      <div className="text-xs text-nasun-white/30">voting power</div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Details */}
+            <div className="border border-nasun-white/10 rounded-sm p-4">
+              <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
+                Details
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-nasun-white/70">Proposal ID</span>
+                  <span className="text-nasun-nw1 font-mono">0x0000...0000</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-nasun-white/70">Expiration</span>
+                  <span className="text-nasun-white/80">{timeLabel}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-nasun-white/70">Type</span>
+                  <span className="text-nasun-white/80">
+                    {formData.proposalType === "Poll" ? "Poll (Zero Gas)" : "Governance (Gas Required)"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Vote Button */}
+            <button
+              type="button"
+              disabled
+              className="w-full py-3 rounded-sm text-sm font-medium uppercase bg-gradient-to-r from-nasun-nw1/30 to-nasun-nw4/30 text-nasun-white/60 border border-nasun-white/10 cursor-not-allowed"
+            >
+              Vote on this Proposal
+            </button>
+          </div>
+        </div>
+      </div>
+    </OuterBox>
   );
 }

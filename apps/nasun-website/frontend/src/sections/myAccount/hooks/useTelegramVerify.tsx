@@ -6,9 +6,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import logger from "@/lib/logger";
 import type { UserData } from "@/store/userStore";
+import { VOTING_POWER_QUERY_KEY } from "@/features/governance/hooks/useVotingPower";
 
 // Telegram Login Widget types
 interface TelegramAuthData {
@@ -97,6 +99,7 @@ export const useTelegramVerify = ({ user }: UseTelegramVerifyProps): UseTelegram
   const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(false);
+  const queryClient = useQueryClient();
 
   // Check initial verification status via JWT-based endpoint (no twitterHandle needed)
   useEffect(() => {
@@ -233,6 +236,7 @@ export const useTelegramVerify = ({ user }: UseTelegramVerifyProps): UseTelegram
           // Success
           setIsVerified(true);
           setTelegramUsername(result.telegramUsername || authData.username || null);
+          queryClient.invalidateQueries({ queryKey: [VOTING_POWER_QUERY_KEY] });
           toast.success("Telegram channel membership verified!");
         } catch (err) {
           logger.error("Telegram verification error:", err);
@@ -276,6 +280,7 @@ export const useTelegramVerify = ({ user }: UseTelegramVerifyProps): UseTelegram
 
       setIsVerified(false);
       setTelegramUsername(null);
+      queryClient.invalidateQueries({ queryKey: [VOTING_POWER_QUERY_KEY] });
       toast.success("Telegram account disconnected.");
     } catch (err) {
       logger.error("Telegram disconnect error:", err);

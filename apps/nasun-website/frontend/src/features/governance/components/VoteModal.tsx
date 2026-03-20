@@ -9,9 +9,6 @@ import { useTranslation } from "react-i18next";
 import { useVotingPower } from "../hooks/useVotingPower";
 import { useSponsoredVote } from "../hooks/useSponsoredVote";
 import { useDirectVote } from "../hooks/useDirectVote";
-import { useAuth } from "@/features/auth";
-import { useUserStore } from "@/store/userStore";
-import { getTwitterHandle } from "@/utils/getTwitterHandle";
 
 interface VoteModalProps {
   proposal: Proposal;
@@ -24,11 +21,9 @@ interface VoteModalProps {
 export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onClose, onVote }) => {
   const { t } = useTranslation("proposals");
   const { status, account } = useWallet();
-  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
   const toastId = useRef<number | string | null>(null);
-  const { user } = useAuth();
-  const { user: userProfile } = useUserStore();
 
   // Sponsored vote hook (gas-free voting for Poll proposals)
   const { vote: sponsoredVote, isPending: isSponsoredPending } = useSponsoredVote();
@@ -47,30 +42,9 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
   }>({ show: false, voteYes: null });
 
   // Voting Power state
-  const { votingPower, isLoading: isLoadingPower, fetchVotingPower } = useVotingPower();
+  const { votingPower, isLoading: isLoadingPower } = useVotingPower();
 
-  const ethAddress = userProfile?.linkedAccounts?.metamask?.walletAddress;
-
-  const twitterHandle = getTwitterHandle(user);
-
-  // Fetch voting power when modal opens
-  useEffect(() => {
-    if (isOpen && isConnected) {
-      const walletAddress = isZkConnected ? zkState?.address : account?.address;
-      fetchVotingPower(twitterHandle ?? undefined, walletAddress, ethAddress);
-    }
-  }, [
-    isOpen,
-    isConnected,
-    isZkConnected,
-    zkState?.address,
-    account?.address,
-    ethAddress,
-    twitterHandle,
-    fetchVotingPower,
-  ]);
-
-  const totalVotingPower = votingPower?.totalVotingPower || 1;
+  const totalVotingPower = votingPower?.totalVotingPower || 10;
 
   // Reset state when modal closes
   useEffect(() => {
@@ -183,41 +157,29 @@ export const VoteModal: FC<VoteModalProps> = ({ proposal, hasVoted, isOpen, onCl
                 </span>
               </div>
 
-              {/* V2 Voting Power Breakdown */}
+              {/* V3 Voting Power Breakdown */}
               {votingPower?.breakdown && (
                 <div className="text-xs text-nasun-white/40 space-y-1">
                   <div className="flex justify-between">
                     <span>Base</span>
                     <span>{votingPower.breakdown.base}</span>
                   </div>
-                  {votingPower.breakdown.leaderboard > 0 && (
+                  {(votingPower.breakdown.xLinked ?? 0) > 0 && (
                     <div className="flex justify-between">
-                      <span>Leaderboard</span>
-                      <span>+{votingPower.breakdown.leaderboard}</span>
-                    </div>
-                  )}
-                  {votingPower.breakdown.onChain > 0 && (
-                    <div className="flex justify-between">
-                      <span>On-Chain Activity</span>
-                      <span>+{votingPower.breakdown.onChain}</span>
-                    </div>
-                  )}
-                  {votingPower.breakdown.battalionAllowlist > 0 && (
-                    <div className="flex justify-between text-nasun-nw4">
-                      <span>Battalion Allowlist</span>
-                      <span>+{votingPower.breakdown.battalionAllowlist}</span>
-                    </div>
-                  )}
-                  {votingPower.breakdown.genesisAllowlist > 0 && (
-                    <div className="flex justify-between text-nasun-nw4">
-                      <span>Frontiers Whitelist</span>
-                      <span>+{votingPower.breakdown.genesisAllowlist}</span>
-                    </div>
-                  )}
-                  {votingPower.breakdown.xLinked > 0 && (
-                    <div className="flex justify-between">
-                      <span>X Account Linked</span>
+                      <span>X Account</span>
                       <span>+{votingPower.breakdown.xLinked}</span>
+                    </div>
+                  )}
+                  {(votingPower.breakdown.telegram ?? 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>Telegram</span>
+                      <span>+{votingPower.breakdown.telegram}</span>
+                    </div>
+                  )}
+                  {(votingPower.breakdown.rankBonus ?? 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span>Rank Bonus</span>
+                      <span>+{votingPower.breakdown.rankBonus}</span>
                     </div>
                   )}
                 </div>

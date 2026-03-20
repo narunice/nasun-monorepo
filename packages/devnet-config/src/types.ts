@@ -52,6 +52,7 @@ export interface LotteryConfig {
 export interface GovernanceConfig {
   packageId: ObjectId;
   originalPackageId?: ObjectId;
+  multiChoicePackageId?: ObjectId;
   upgradeCap?: ObjectId;
   dashboard: ObjectId;
   adminCap: ObjectId;

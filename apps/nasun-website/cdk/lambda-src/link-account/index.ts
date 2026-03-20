@@ -1,13 +1,14 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
 const dynamoClient = DynamoDBDocumentClient.from(client);
 const tableName = process.env.USER_PROFILES_TABLE || 'UserProfiles';
 const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
+const genesisPassAllowlistTable = process.env.GENESIS_PASS_ALLOWLIST_TABLE || '';
 
 // JWKS singleton for token verification
 let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -516,6 +517,80 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         }
       } catch (dedupError) {
         console.warn('Twitter dedup query failed (non-blocking):', dedupError);
+      }
+    }
+
+    // MetaMask dedup: revoke manual registrations of the same wallet address
+    if (providerKey === 'metamask' && secondaryProfile.walletAddress) {
+      const signedWalletAddress = secondaryProfile.walletAddress.toLowerCase();
+
+      try {
+        const scanResult = await dynamoClient.send(new ScanCommand({
+          TableName: tableName,
+          FilterExpression:
+            'linkedAccounts.metamask.walletAddress = :addr ' +
+            'AND linkedAccounts.metamask.manualEntry = :manual',
+          ExpressionAttributeValues: {
+            ':addr': signedWalletAddress,
+            ':manual': true,
+          },
+          ProjectionExpression: 'identityId, linkedAccounts',
+        }));
+
+        for (const item of scanResult.Items || []) {
+          const dupId = item.identityId as string;
+          if (dupId === primaryIdentityId || dupId === secondaryIdentityId) continue;
+
+          try {
+            // 1. Remove linkedAccounts.metamask from the imposter profile
+            const dupLinked = (item.linkedAccounts as Record<string, any>) || {};
+            delete dupLinked.metamask;
+
+            await dynamoClient.send(new UpdateCommand({
+              TableName: tableName,
+              Key: { identityId: dupId },
+              UpdateExpression: 'SET linkedAccounts = :la, updatedAt = :ua',
+              ExpressionAttributeValues: {
+                ':la': dupLinked,
+                ':ua': new Date().toISOString(),
+              },
+            }));
+
+            // 2. Clean up Genesis Pass allowlist entry owned by this identity
+            if (genesisPassAllowlistTable) {
+              const gsiResult = await dynamoClient.send(new QueryCommand({
+                TableName: genesisPassAllowlistTable,
+                IndexName: 'identityId-index',
+                KeyConditionExpression: 'identityId = :id',
+                ExpressionAttributeValues: { ':id': dupId },
+                Limit: 1,
+              }));
+
+              const allowlistEntry = gsiResult.Items?.[0];
+              if (allowlistEntry && allowlistEntry.status === 'ACTIVE') {
+                await dynamoClient.send(new DeleteCommand({
+                  TableName: genesisPassAllowlistTable,
+                  Key: { walletAddress: allowlistEntry.walletAddress as string },
+                  ConditionExpression: 'identityId = :id',
+                  ExpressionAttributeValues: { ':id': dupId },
+                }));
+              }
+            }
+
+            console.log(JSON.stringify({
+              event: 'METAMASK_DEDUP_CLEANUP',
+              cleanedProfileId: dupId,
+              walletAddress: signedWalletAddress,
+              newOwnerId: primaryIdentityId,
+            }));
+          } catch (condErr: any) {
+            if (condErr.name !== 'ConditionalCheckFailedException') {
+              console.warn('MetaMask dedup cleanup failed for', dupId, condErr);
+            }
+          }
+        }
+      } catch (dedupError) {
+        console.warn('MetaMask dedup scan failed (non-blocking):', dedupError);
       }
     }
 

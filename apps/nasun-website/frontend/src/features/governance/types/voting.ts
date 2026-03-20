@@ -38,6 +38,8 @@ export interface Proposal {
   proposalType: ProposalType;
   yesVotes: string;
   noVotes: string;
+  yesCount: number;
+  noCount: number;
   expiration: number;
   creator: string;
   voters: string; // Table ID
@@ -58,10 +60,9 @@ export interface VoteCertificate {
   signature: string;
   breakdown: {
     base: number;
-    leaderboard: number;
-    onChain: number;
-    allowlist: number;
     xLinked: number;
+    telegram: number;
+    rankBonus: number;
   };
 }
 

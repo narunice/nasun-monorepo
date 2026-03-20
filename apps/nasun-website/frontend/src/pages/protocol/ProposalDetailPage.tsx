@@ -9,8 +9,6 @@ import { FC, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { useWallet, useZkLogin } from "@nasun/wallet";
-import { WalletConnect } from "@nasun/wallet-ui";
 import { VoteNft } from "@/features/governance/types/voting";
 import { VoteModal } from "@/features/governance/components/VoteModal";
 import { useProposalType } from "@/features/governance/hooks/useProposalType";
@@ -42,10 +40,6 @@ const ProposalDetailPage: FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
-
-  const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
-  const isConnected = (status === "unlocked" && account) || isZkConnected;
 
   // Validate proposalId before making queries
   const isValidId = proposalId && /^0x[a-fA-F0-9]{64}$/.test(proposalId);
@@ -354,6 +348,12 @@ const ProposalDetailPage: FC = () => {
                     : t("detail.governanceType")}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-nasun-white/70">Total Voters</span>
+                <span className="text-nasun-white/80 text-sm">
+                  {proposal.yesCount + proposal.noCount}
+                </span>
+              </div>
             </div>
           </OuterBox>
 
@@ -385,21 +385,16 @@ const ProposalDetailPage: FC = () => {
             </ButtonV3>
 
             {/* Vote Button */}
-            {!isExpired &&
-              (isConnected ? (
-                <ButtonV3
-                  variant="gradientDark"
-                  onClick={() => setIsModalOpen(true)}
-                  disabled={!!voteNft}
-                  className="w-full"
-                >
-                  {voteNft ? t("detail.alreadyVoted") : t("detail.voteOnProposal")}
-                </ButtonV3>
-              ) : (
-                <div className="w-full [&_>_div]:w-full [&_button]:w-full">
-                  <WalletConnect />
-                </div>
-              ))}
+            {!isExpired && (
+              <ButtonV3
+                variant="gradientDark"
+                onClick={() => setIsModalOpen(true)}
+                disabled={!!voteNft}
+                className="w-full"
+              >
+                {voteNft ? t("detail.alreadyVoted") : t("detail.voteOnProposal")}
+              </ButtonV3>
+            )}
           </div>
         </div>
       </div>
@@ -449,9 +444,6 @@ const MultiChoiceProposalDetail: FC<{
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [localVoted, setLocalVoted] = useState(false);
-  const { status, account } = useWallet();
-  const { isConnected: isZkConnected } = useZkLogin();
-  const isConnected = (status === "unlocked" && account) || isZkConnected;
 
   // Query MultiChoiceVoteProofNFT to detect if user already voted
   const { data: mcNftsRes, refetch: refetchMcNfts } = useMultiChoiceVoteNfts();
@@ -637,6 +629,12 @@ const MultiChoiceProposalDetail: FC<{
                       : formatTimeRemaining(proposal.expiration)}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-nasun-white/70">Total Voters</span>
+                <span className="text-nasun-white/80 text-sm">
+                  {totalVoters}
+                </span>
+              </div>
             </div>
             {/* Actions */}
             <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-nasun-white/10">
@@ -644,20 +642,15 @@ const MultiChoiceProposalDetail: FC<{
                 <Copy className="w-4 h-4" />
                 {t("detail.copyUrl")}
               </ButtonV3>
-              {!isExpired && !isTweetMode &&
-                (isConnected ? (
-                  <ButtonV3
-                    variant="gradientDark"
-                    onClick={() => setIsModalOpen(true)}
-                    className="w-full"
-                  >
-                    Vote
-                  </ButtonV3>
-                ) : (
-                  <div className="w-full [&_>_div]:w-full [&_button]:w-full">
-                    <WalletConnect />
-                  </div>
-                ))}
+              {!isExpired && !isTweetMode && (
+                <ButtonV3
+                  variant="gradientDark"
+                  onClick={() => setIsModalOpen(true)}
+                  className="w-full"
+                >
+                  Vote
+                </ButtonV3>
+              )}
             </div>
           </OuterBox>
         </div>
@@ -671,19 +664,15 @@ const MultiChoiceProposalDetail: FC<{
                   ? `Selected: ${getChoiceLabel(proposal.choices[selectedChoice], displayNames)}`
                   : "Select a post to vote"}
               </span>
-              {isConnected ? (
-                <ButtonV3
-                  variant="gradientDark"
-                  size="sm"
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex-shrink-0"
-                  disabled={selectedChoice === null}
-                >
-                  Vote
-                </ButtonV3>
-              ) : (
-                <WalletConnect dropdownPosition="top" />
-              )}
+              <ButtonV3
+                variant="gradientDark"
+                size="sm"
+                onClick={() => setIsModalOpen(true)}
+                className="flex-shrink-0"
+                disabled={selectedChoice === null}
+              >
+                Vote
+              </ButtonV3>
             </div>
           </div>
         )}
