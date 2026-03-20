@@ -54,13 +54,13 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
     isPending: isNftPending,
   } = useMultiChainNFTs(walletAddress);
 
-  if (!suiAccount && !walletAddress) {
-    return (
-      <p className="text-nasun-white/70 mb-4">
-        EVM Wallet not connected.
-      </p>
-    );
-  }
+  // if (!suiAccount && !walletAddress) {
+  //   return (
+  //     <p className="text-nasun-white/70 mb-4">
+  //       EVM Wallet not connected.
+  //     </p>
+  //   );
+  // }
 
   // Pagination for Sui objects
   const totalPages = Math.ceil(suiObjects.length / itemsPerPage);
