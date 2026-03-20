@@ -327,10 +327,10 @@ export class CommonStack extends cdk.Stack {
       ],
     }));
 
-    // Grant user resolution table read access (UserWallets 2-hop -> UserProfiles)
+    // Grant user resolution table access (UserWallets read + UserProfiles read/write for vote dedup)
     const userWalletsTableRef = dynamodb.Table.fromTableName(this, "UserWalletsTableRef", "UserWallets");
     userWalletsTableRef.grantReadData(this.governanceApiLambda);
-    this.userProfilesTable.grantReadData(this.governanceApiLambda);
+    this.userProfilesTable.grantReadWriteData(this.governanceApiLambda);
 
     // Grant Secrets Manager access for Oracle/Sponsor keypairs
     this.governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
