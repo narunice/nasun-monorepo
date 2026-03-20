@@ -6,6 +6,7 @@ import { useProposalType } from "../hooks/useProposalType";
 import { EcText } from "@/components/ui/Shared";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ArrowRight } from "lucide-react";
+import { NftImageModal } from "./NftImageModal";
 import {
   parseMultiChoiceProposal,
   getChoicePercentages,
@@ -141,10 +142,9 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
             {localHasVoted && (
               voteNftUrl ? (
                 <div title="You have voted">
-                  <img
-                    className="w-6 h-6 rounded-full border border-nasun-nw4/50"
+                  <NftImageModal
                     src={voteNftUrl}
-                    alt="Vote NFT"
+                    thumbnailClassName="w-6 h-6 rounded-full border border-nasun-nw4/50"
                   />
                 </div>
               ) : (
