@@ -55,7 +55,7 @@
   },
   "section": {
     "myGovernanceInfo": "My Governance Info",
-    "connectToParticipate": "Connect your wallet to view your voting power and participate",
+    "connectToParticipate": "Login to view your voting power and participate",
     "filterAll": "All",
     "filterActive": "Active",
     "filterExpired": "Expired",

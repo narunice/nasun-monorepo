@@ -4,14 +4,14 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 
 /**
  * Query MultiChoiceVoteProofNFT objects owned by the current wallet.
- * Uses packageId (not originalPackageId) because the multi_choice_proposal module
- * and MultiChoiceVoteProofNFT struct were added in later upgrades, not in the original package.
- * The struct type references the package where it was first defined.
+ * Uses multiChoicePackageId (the package where multi_choice_proposal module was first introduced).
+ * In Sui, struct types always reference the package where they were first defined,
+ * regardless of subsequent upgrades.
  */
 export const useMultiChoiceVoteNfts = () => {
   const { account } = useWallet();
   const { state: zkLoginState } = useZkLogin();
-  const packageId = useNetworkVariable("packageId");
+  const multiChoicePackageId = useNetworkVariable("multiChoicePackageId");
 
   const ownerAddress = account?.address || zkLoginState?.address;
 
@@ -21,7 +21,7 @@ export const useMultiChoiceVoteNfts = () => {
       owner: ownerAddress as string,
       options: { showContent: true },
       filter: {
-        StructType: `${packageId}::multi_choice_proposal::MultiChoiceVoteProofNFT`,
+        StructType: `${multiChoicePackageId}::multi_choice_proposal::MultiChoiceVoteProofNFT`,
       },
     },
     {

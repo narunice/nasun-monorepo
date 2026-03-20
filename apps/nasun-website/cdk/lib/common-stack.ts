@@ -207,6 +207,7 @@ export class CommonStack extends cdk.Stack {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        GENESIS_PASS_ALLOWLIST_TABLE: "nasun-genesis-pass-allowlist",
       },
       timeout: cdk.Duration.seconds(10),
       logGroup: new logs.LogGroup(this, "LinkAccountLambdaLogGroup", {
@@ -215,6 +216,10 @@ export class CommonStack extends cdk.Stack {
       }),
     });
     this.userProfilesTable.grantReadWriteData(linkAccountLambda);
+    const genesisPassAllowlistForLink = dynamodb.Table.fromTableName(
+      this, "GenesisPassAllowlistForLink", "nasun-genesis-pass-allowlist"
+    );
+    genesisPassAllowlistForLink.grantReadWriteData(linkAccountLambda);
 
     const linkAccountApi = new apigw.LambdaRestApi(this, "LinkAccountApi", {
       handler: linkAccountLambda,
@@ -285,27 +290,16 @@ export class CommonStack extends cdk.Stack {
       memorySize: 512,
       timeout: cdk.Duration.seconds(60),
       environment: {
-        // Leaderboard V3 tables
+        // Leaderboard V3 tables (accounts + seasons for rank lookup)
         LEADERBOARD_V3_ACCOUNTS_TABLE: "leaderboard-v3-accounts",
         LEADERBOARD_V3_SEASONS_TABLE: "leaderboard-v3-seasons",
-        LEADERBOARD_V3_SEASON_ACCOUNTS_TABLE: "leaderboard-v3-season-accounts",
-        // V2 Voting Power weights
-        LEADERBOARD_WEIGHT: process.env.LEADERBOARD_WEIGHT || "8",
-        ONCHAIN_WEIGHT: process.env.ONCHAIN_WEIGHT || "8",
-        BATTALION_ALLOWLIST_BONUS: process.env.BATTALION_ALLOWLIST_BONUS || "20",
-        GENESIS_ALLOWLIST_BONUS: process.env.GENESIS_ALLOWLIST_BONUS || "20",
-        X_LINK_BONUS: process.env.X_LINK_BONUS || "10",
-        BATTALION_TABLE_NAME: "nasun-nft-whitelist",
-        GENESIS_TABLE_NAME: "GenesisNftWhitelist",
-        // On-chain activity Package IDs (V7)
-        DEEPBOOK_PACKAGE_ID: "0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134",
-        PREDICTION_PACKAGE_ID: "0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895",
-        LOTTERY_PACKAGE_ID: "0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900",
-        LENDING_PACKAGE_ID: "0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe",
-        BARAM_PACKAGE_ID: "0x970832625c09446677c25ede54821781efa337a548c3919b6cb10e3c0bc8f54f",
-        // VotingPowerCertificate + Sponsored Transaction (V7 - 2026-02-04)
+        LEADERBOARD_V3_SNAPSHOTS_TABLE: "leaderboard-v3-snapshots",
+        // User resolution tables (2-hop: UserWallets -> UserProfiles)
+        USER_WALLETS_TABLE: "UserWallets",
+        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
+        // VotingPowerCertificate + Sponsored Transaction
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
-        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x40a6c8b671ecea57cad48bc546b014c52e2753caa3f4d07aeb3c348b6c907353",
         GOVERNANCE_ORIGINAL_PACKAGE_ID: process.env.GOVERNANCE_ORIGINAL_PACKAGE_ID || "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
         PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -315,13 +309,13 @@ export class CommonStack extends cdk.Stack {
         removalPolicy: cdk.RemovalPolicy.DESTROY
       }),
     });
-    // Grant V3 leaderboard table read access
+    // Grant V3 leaderboard table read access (accounts + seasons for rank lookup)
     const v3AccountsTable = dynamodb.Table.fromTableName(this, "V3AccountsTableRef", "leaderboard-v3-accounts");
     const v3SeasonsTable = dynamodb.Table.fromTableName(this, "V3SeasonsTableRef", "leaderboard-v3-seasons");
-    const v3SeasonAccountsTable = dynamodb.Table.fromTableName(this, "V3SeasonAccountsTableRef", "leaderboard-v3-season-accounts");
+    const v3SnapshotsTable = dynamodb.Table.fromTableName(this, "V3SnapshotsTableRef", "leaderboard-v3-snapshots");
     v3AccountsTable.grantReadData(this.governanceApiLambda);
     v3SeasonsTable.grantReadData(this.governanceApiLambda);
-    v3SeasonAccountsTable.grantReadData(this.governanceApiLambda);
+    v3SnapshotsTable.grantReadData(this.governanceApiLambda);
 
     // Grant GSI query access (grantReadData only covers base table, not indexes)
     this.governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
@@ -329,14 +323,14 @@ export class CommonStack extends cdk.Stack {
       actions: ["dynamodb:Query"],
       resources: [
         `arn:aws:dynamodb:${this.region}:${this.account}:table/leaderboard-v3-accounts/index/*`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/leaderboard-v3-snapshots/index/*`,
       ],
     }));
 
-    // Grant allowlist table read access for V2 voting power (Battalion + Genesis)
-    const battalionTableRef = dynamodb.Table.fromTableName(this, "BattalionTableRef", "nasun-nft-whitelist");
-    battalionTableRef.grantReadData(this.governanceApiLambda);
-    const genesisTableRef = dynamodb.Table.fromTableName(this, "GenesisTableRef", "GenesisNftWhitelist");
-    genesisTableRef.grantReadData(this.governanceApiLambda);
+    // Grant user resolution table read access (UserWallets 2-hop -> UserProfiles)
+    const userWalletsTableRef = dynamodb.Table.fromTableName(this, "UserWalletsTableRef", "UserWallets");
+    userWalletsTableRef.grantReadData(this.governanceApiLambda);
+    this.userProfilesTable.grantReadData(this.governanceApiLambda);
 
     // Grant Secrets Manager access for Oracle/Sponsor keypairs
     this.governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({

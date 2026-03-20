@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import logger from "@/lib/logger";
 import { User } from "@/types/user";
 import { buildGoogleAuthUrl } from "@/features/auth/utils/googleAuthUrl";
 import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
+import { VOTING_POWER_QUERY_KEY } from "@/features/governance/hooks/useVotingPower";
 
 interface UseAccountLinkingProps {
   user: User | null;
@@ -12,6 +14,7 @@ interface UseAccountLinkingProps {
 export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
   const [isLinking, setIsLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const handleLinkGoogle = async () => {
     setIsLinking(true);
@@ -101,6 +104,7 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
       if (!response.ok) throw new Error(`Failed to unlink ${provider} account`);
 
       await refreshAndSaveUserProfile(user!.identityId);
+      queryClient.invalidateQueries({ queryKey: [VOTING_POWER_QUERY_KEY] });
 
       // Clear Battalion NFT state when unlinking MetaMask
       if (provider.toLowerCase() === "metamask") {

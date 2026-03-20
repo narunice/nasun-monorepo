@@ -1,79 +1,61 @@
 /**
- * useVotingPower Hook (V2)
+ * useVotingPower Hook (V3)
  *
- * Fetches user's voting power from backend V2 API.
- * Sources: Base + Leaderboard + On-Chain Activity + Allowlist + X Linked
+ * Fetches user's voting power from backend V3 API using React Query.
+ * Sources: Base + X Linked + Telegram + Leaderboard Rank Bonus
+ *
+ * Wallet address is resolved internally via useWallet/useZkLogin.
+ * All consumers share the same cache via query key.
  */
 
-import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useWallet, useZkLogin } from "@nasun/wallet";
 
 const GOVERNANCE_API_URL = import.meta.env.VITE_GOVERNANCE_API_URL || "/api/governance";
 
+export const VOTING_POWER_QUERY_KEY = "voting-power";
+
 export interface VotingPowerBreakdown {
   base: number;
-  leaderboard: number;
-  onChain: number;
-  battalionAllowlist: number;
-  genesisAllowlist: number;
   xLinked: number;
+  telegram: number;
+  rankBonus: number;
+  // Backward compatibility (old field names from V2)
+  leaderboard?: number;
+  onChain?: number;
+  battalionAllowlist?: number;
+  genesisAllowlist?: number;
 }
 
 export interface VotingPowerData {
   totalVotingPower: number;
+  rank: number | null;
   breakdown: VotingPowerBreakdown;
-  rawScores: {
-    leaderboardScore: number;
-    onChainScore: number;
-  };
-  normalized: {
-    leaderboardNormalized: number;
-    onChainNormalized: number;
-  };
 }
 
-interface UseVotingPowerReturn {
-  votingPower: VotingPowerData | null;
-  isLoading: boolean;
-  error: string | null;
-  fetchVotingPower: (twitterHandle?: string, walletAddress?: string, ethAddress?: string) => Promise<void>;
+async function fetchVotingPowerFn(walletAddress: string): Promise<VotingPowerData> {
+  const params = new URLSearchParams({ walletAddress });
+  const response = await fetch(`${GOVERNANCE_API_URL}/voting-power?${params}`);
+  if (!response.ok) throw new Error("Failed to fetch voting power");
+  return response.json();
 }
 
-export function useVotingPower(): UseVotingPowerReturn {
-  const [votingPower, setVotingPower] = useState<VotingPowerData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useVotingPower() {
+  const { account } = useWallet();
+  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const walletAddress = isZkConnected ? zkState?.address : account?.address;
 
-  const fetchVotingPower = useCallback(async (twitterHandle?: string, walletAddress?: string, ethAddress?: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const params = new URLSearchParams();
-      if (twitterHandle) params.set("twitterHandle", twitterHandle);
-      if (walletAddress) params.set("walletAddress", walletAddress);
-      if (ethAddress) params.set("ethAddress", ethAddress);
-
-      const response = await fetch(`${GOVERNANCE_API_URL}/voting-power?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch voting power");
-      }
-
-      const data: VotingPowerData = await response.json();
-      setVotingPower(data);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to fetch voting power";
-      console.error("Error fetching voting power:", err);
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const query = useQuery({
+    queryKey: [VOTING_POWER_QUERY_KEY, walletAddress],
+    queryFn: () => fetchVotingPowerFn(walletAddress!),
+    enabled: !!walletAddress,
+    staleTime: 30_000,
+  });
 
   return {
-    votingPower,
-    isLoading,
-    error,
-    fetchVotingPower,
+    votingPower: query.data ?? null,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error?.message ?? null,
   };
 }

@@ -6,8 +6,6 @@ import { useProposalType } from "../hooks/useProposalType";
 import { EcText } from "@/components/ui/Shared";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ArrowRight } from "lucide-react";
-import { MultiChoiceVoteModal } from "./MultiChoiceVoteModal";
-
 import {
   parseMultiChoiceProposal,
   getChoicePercentages,
@@ -57,7 +55,6 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
   voteNftUrl,
   onVoteTxSuccess,
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [localHasVoted, setLocalHasVoted] = useState(hasVotedProp);
   const navigate = useNavigate();
   const descRef = useRef<HTMLParagraphElement>(null);
@@ -219,7 +216,7 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
             variant="gradientDark"
             onClick={(e) => {
               e.stopPropagation();
-              setIsModalOpen(true);
+              navigate(`/network/governance/proposal/${id}`);
             }}
             className="mt-3 w-full uppercase"
             disabled={localHasVoted}
@@ -228,20 +225,6 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
           </ButtonV3>
         )}
       </OuterBox>
-
-      <MultiChoiceVoteModal
-        proposal={proposal}
-        hasVoted={localHasVoted}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onVote={async () => {
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-          await refetchProposal();
-          setLocalHasVoted(true);
-          await onVoteTxSuccess();
-          setIsModalOpen(false);
-        }}
-      />
     </>
   );
 };
