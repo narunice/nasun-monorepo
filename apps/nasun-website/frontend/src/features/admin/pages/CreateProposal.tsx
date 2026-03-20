@@ -18,6 +18,7 @@ import { useInvalidateProposals } from "../hooks/useAdminProposals";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 import { hideProposal } from "../services/adminApi";
+import { fetchHiddenProposalIds } from "@/features/governance/utils/hiddenProposals";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -221,7 +222,16 @@ export function CreateProposal() {
         if (createdProposal?.type === "created" && token) {
           try {
             await hideProposal(token, createdProposal.objectId);
-            autoHideSuccess = true;
+            // Verify the proposal was actually hidden
+            const hiddenList = await fetchHiddenProposalIds();
+            if (!hiddenList.includes(createdProposal.objectId)) {
+              console.warn("Auto-hide verification failed, retrying...");
+              await hideProposal(token, createdProposal.objectId);
+              const retryList = await fetchHiddenProposalIds();
+              autoHideSuccess = retryList.includes(createdProposal.objectId);
+            } else {
+              autoHideSuccess = true;
+            }
             queryClient.invalidateQueries({ queryKey: ["hiddenProposals"] });
             queryClient.invalidateQueries({ queryKey: ["hidden-proposals"] });
           } catch (hideErr) {
@@ -586,7 +596,12 @@ export function CreateProposal() {
 
           {/* Live Preview */}
           {formData.title.trim() && (
-            <ProposalPreview formData={formData} />
+            <div className="border-t border-nasun-white/10 pt-6">
+              <h3 className="text-sm font-semibold text-nasun-white/60 uppercase tracking-wider mb-4">
+                Preview
+              </h3>
+              <ProposalPreview formData={formData} />
+            </div>
           )}
         </div>
       </SectionLayout>
