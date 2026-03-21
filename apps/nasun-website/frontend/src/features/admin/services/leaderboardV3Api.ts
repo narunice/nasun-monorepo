@@ -334,7 +334,7 @@ export interface SnapshotTriggerResponse {
 
 /**
  * Preview snapshot calculation without writing to DynamoDB (Admin only).
- * Returns top 50 accounts by projected rank.
+ * Returns ranked accounts preview (up to MAX_SNAPSHOT_ENTRIES defined in backend).
  */
 export async function previewSnapshot(
   token: string,
