@@ -13,7 +13,7 @@
  * API Gateway invocation (admin UI):
  *   - Requires Cognito admin auth (Authorization: Bearer <token>)
  *   - Body: { dryRun?: boolean, customDate?: string }
- *   - dryRun=true (default): returns top 50 preview as JSON, no DynamoDB writes
+ *   - dryRun=true (default): returns preview as JSON (up to MAX_SNAPSHOT_ENTRIES), no DynamoDB writes
  *   - dryRun=false: checks idempotency, writes snapshot, returns result JSON
  */
 
@@ -556,7 +556,7 @@ export const handler = async (
       const result = await runSnapshotCore({ customDate: rawCustomDate, dryRun });
 
       if (dryRun) {
-        const preview = result.snapshots.slice(0, 200).map((s) => ({
+        const preview = result.snapshots.map((s) => ({
           rank: s.rank,
           username: s.username,
           displayName: s.displayName,
