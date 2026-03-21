@@ -289,6 +289,11 @@ async function resolveUserProfile(walletAddress: string): Promise<UserProfile> {
     let twitterHandle = item.twitterHandle as string | undefined;
     let isTelegramMember = item.isTelegramMember === true;
 
+    // Fallback: primary may have linkedAccounts.twitter without promoted top-level field
+    if (!twitterHandle) {
+      twitterHandle = (item.linkedAccounts as Record<string, any>)?.twitter?.twitterHandle;
+    }
+
     // Resolve to primary identity for linked accounts (conditional 3rd hop)
     // Secondary profiles lack promoted fields (twitterHandle, isTelegramMember)
     const linkedToPrimaryId = item.linkedToPrimaryId as string | undefined;
