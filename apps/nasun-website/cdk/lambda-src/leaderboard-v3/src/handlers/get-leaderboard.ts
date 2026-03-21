@@ -62,6 +62,8 @@ const docClient = DynamoDBDocumentClient.from(client, {
   },
 });
 
+const PUBLIC_LEADERBOARD_LIMIT = 500;
+
 const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
 const SEASONS_TABLE =
@@ -284,7 +286,15 @@ export const handler = async (
       return respond(200, { seasons });
     }
 
-    const limit = Math.min(parseInt(queryParams.limit || '100', 10), 500);
+    // Admin authentication for elevated limits
+    const parsedLimit = parseInt(queryParams.limit || '100', 10) || 100;
+    let maxLimit = 500;
+    let isAdmin = false;
+    if (event.headers?.Authorization || event.headers?.authorization) {
+      const admin = await authenticateAdmin(event);
+      if (admin) { maxLimit = 5000; isAdmin = true; }
+    }
+    const limit = Math.min(parsedLimit, maxLimit);
     const offset = Math.max(0, parseInt(queryParams.offset || '0', 10) || 0);
     const includeBreakdown = queryParams.breakdown === 'true';
     const isCumulative = queryParams.cumulative === 'true';
@@ -355,8 +365,10 @@ export const handler = async (
       const bannedIds = await getBannedAccountIds();
       const rerankedSnapshots = computeDisplayRanks(allSnapshots, bannedIds);
 
-      const snapshotTotalCount = rerankedSnapshots.length;
-      const paginatedSnapshots = rerankedSnapshots.slice(offset, offset + limit);
+      // Public users: cap visible entries at PUBLIC_LEADERBOARD_LIMIT
+      const visibleSnapshots = isAdmin ? rerankedSnapshots : rerankedSnapshots.slice(0, PUBLIC_LEADERBOARD_LIMIT);
+      const snapshotTotalCount = visibleSnapshots.length;
+      const paginatedSnapshots = visibleSnapshots.slice(offset, offset + limit);
       const entries = paginatedSnapshots.map((s) => snapshotToLeaderboardEntry(s, includeBreakdown));
 
       const response: SeasonLeaderboardResponse = {
@@ -417,8 +429,10 @@ export const handler = async (
       }
     }
 
-    const totalCount = rerankedSnapshots.length;
-    const paginatedSnapshots = rerankedSnapshots.slice(offset, offset + limit);
+    // Public users: cap visible entries at PUBLIC_LEADERBOARD_LIMIT
+    const visibleSnapshots = isAdmin ? rerankedSnapshots : rerankedSnapshots.slice(0, PUBLIC_LEADERBOARD_LIMIT);
+    const totalCount = visibleSnapshots.length;
+    const paginatedSnapshots = visibleSnapshots.slice(offset, offset + limit);
 
     const entries: SeasonLeaderboardEntry[] = paginatedSnapshots.map((snapshot) => {
       // Calculate rank change: compare with yesterday's snapshot

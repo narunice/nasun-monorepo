@@ -17,6 +17,7 @@ import type {
 } from '../types/leaderboard-v3';
 
 import type { BannedAccountsResponse } from '../types';
+import type { SeasonLeaderboardResponse } from '@/features/leaderboard-v3/types';
 
 const LEADERBOARD_V3_API_URL = import.meta.env.VITE_LEADERBOARD_V3_API_URL;
 
@@ -205,6 +206,39 @@ export async function getCumulativeLeaderboard(
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `Failed to get cumulative leaderboard: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get season leaderboard with elevated limit (Admin only)
+ * Returns full leaderboard data without the 500-entry public cap
+ */
+export async function getAdminSeasonLeaderboard(
+  token: string,
+  params: { seasonId?: string; snapshotDate?: string; limit?: number; offset?: number; breakdown?: boolean } = {}
+): Promise<SeasonLeaderboardResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.seasonId) searchParams.append('seasonId', params.seasonId);
+  if (params.snapshotDate) searchParams.append('snapshotDate', params.snapshotDate);
+  if (params.limit) searchParams.append('limit', params.limit.toString());
+  if (params.offset) searchParams.append('offset', params.offset.toString());
+  if (params.breakdown) searchParams.append('breakdown', 'true');
+
+  const url = `${LEADERBOARD_V3_API_URL}/v3/leaderboard?${searchParams}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to get admin season leaderboard: ${response.status}`);
   }
 
   return response.json();

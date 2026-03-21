@@ -12,7 +12,7 @@ import { useState, useMemo, useEffect } from "react";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { Button } from "@/components/ui/button";
 import { useSeasons } from "@/features/leaderboard-v3/hooks/useSeasons";
-import { useSeasonLeaderboard } from "@/features/leaderboard-v3/hooks/useSeasonLeaderboard";
+import { useAdminSeasonLeaderboard } from "../../hooks/useAdminSeasonLeaderboard";
 import { SeasonSelector } from "@/features/leaderboard-v3/components/SeasonSelector";
 import { RankChangeIndicatorV3 } from "@/features/leaderboard-v3/components/RankChangeIndicatorV3";
 import { useCumulativeLeaderboard } from "../../hooks/useCumulativeLeaderboard";
@@ -41,14 +41,16 @@ interface DisplayEntry {
 export function LeaderboardViewTab() {
   const [viewMode, setViewMode] = useState<ViewMode>("season");
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>();
+  const [selectedSnapshotDate, setSelectedSnapshotDate] = useState<string | undefined>();
 
   const { data: seasons = [] } = useSeasons();
 
-  // Season leaderboard (for season mode)
-  const { data: seasonLeaderboard, isLoading: isSeasonLoading } = useSeasonLeaderboard({
+  // Season leaderboard (for season mode) - admin endpoint with elevated limit
+  const { data: seasonLeaderboard, isLoading: isSeasonLoading } = useAdminSeasonLeaderboard({
     seasonId: selectedSeasonId,
-    limit: 500,
+    snapshotDate: selectedSnapshotDate,
     breakdown: true,
+    enabled: viewMode === "season",
   });
 
   // Cumulative leaderboard (for cumulative mode)
@@ -75,9 +77,11 @@ export function LeaderboardViewTab() {
   const calculatedAt =
     viewMode === "season" ? seasonLeaderboard?.calculatedAt : cumulativeLeaderboard?.calculatedAt;
 
+  const snapshotDate = viewMode === "season" ? seasonLeaderboard?.snapshotDate : undefined;
+
   // Client-side pagination
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [viewMode, selectedSeasonId]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [viewMode, selectedSeasonId, selectedSnapshotDate]);
   const visibleEntries = entries.slice(0, visibleCount);
   const hasMore = visibleCount < entries.length;
   const remaining = entries.length - visibleCount;
@@ -140,16 +144,38 @@ export function LeaderboardViewTab() {
         </div>
       </OuterBox>
 
-      {/* Season Selector (only for season mode) */}
+      {/* Season Selector + Snapshot Date (only for season mode) */}
       {viewMode === "season" && (
         <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-nasun-white/60">Season:</span>
-            <SeasonSelector
-              seasons={seasons}
-              selectedSeasonId={selectedSeasonId}
-              onSelect={setSelectedSeasonId}
-            />
+          <div className="flex items-center gap-6 flex-wrap">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-nasun-white/60">Season:</span>
+              <SeasonSelector
+                seasons={seasons}
+                selectedSeasonId={selectedSeasonId}
+                onSelect={(id) => {
+                  setSelectedSeasonId(id);
+                  setSelectedSnapshotDate(undefined);
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-nasun-white/60">Snapshot:</span>
+              <input
+                type="date"
+                value={selectedSnapshotDate || ""}
+                onChange={(e) => setSelectedSnapshotDate(e.target.value || undefined)}
+                className="bg-gray-700/50 text-nasun-white text-sm px-3 py-1.5 rounded-sm border border-nasun-c5/30 focus:border-nasun-c4 focus:outline-none"
+              />
+              {selectedSnapshotDate && (
+                <button
+                  onClick={() => setSelectedSnapshotDate(undefined)}
+                  className="text-xs text-nasun-white/50 hover:text-nasun-white px-2 py-1"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
         </OuterBox>
       )}
@@ -167,9 +193,16 @@ export function LeaderboardViewTab() {
       {/* Leaderboard Table */}
       <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-nasun-white">
-            {viewMode === "season" ? "Season Leaderboard" : "Cumulative Leaderboard"}
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-medium text-nasun-white">
+              {viewMode === "season" ? "Season Leaderboard" : "Cumulative Leaderboard"}
+            </h3>
+            {snapshotDate && (
+              <span className="text-sm text-nasun-white/50">
+                (Snapshot: {snapshotDate})
+              </span>
+            )}
+          </div>
           <Button
             onClick={handleExportCsv}
             variant="outlineC5"
