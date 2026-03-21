@@ -443,8 +443,8 @@ async function runSnapshotCore(params: {
   }
   console.log(`Previous day snapshot has ${previousRanks.size} entries`);
 
-  // Create snapshot entries (limit to top 500)
-  const MAX_SNAPSHOT_ENTRIES = 500;
+  // Create snapshot entries (limit to top 2000; public API caps at 500 via PUBLIC_LEADERBOARD_LIMIT)
+  const MAX_SNAPSHOT_ENTRIES = 2000;
   const snapshotTime = customDate
     ? new Date(customDate + 'T00:00:00+09:00').toISOString()
     : new Date().toISOString();
