@@ -1,6 +1,9 @@
+import { useState, useMemo, useEffect } from "react";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 import type { ProposalSummary } from "@/features/admin/types";
+
+const PAGE_SIZE = 10;
 
 interface ProposalsTableProps {
   proposals: ProposalSummary[];
@@ -19,12 +22,38 @@ export function ProposalsTable({
   onSelectProposal,
   isTogglingLoading,
 }: ProposalsTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const sortedProposals = useMemo(
+    () =>
+      [...proposals].sort((a, b) => {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt - a.createdAt;
+      }),
+    [proposals]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sortedProposals.length / PAGE_SIZE));
+  const paginatedProposals = sortedProposals.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [proposals]);
+
   return (
     <div className="w-full">
       <OuterBox color="w2" padding="sm" className="w-full overflow-hidden">
         <h5 className="uppercase text-nasun-white/80 text-base tracking-widest mb-6 px-2 flex items-center gap-2">
           <span className="w-1 h-4 bg-nasun-c4 rounded-full"></span>
           Proposals Table
+          <span className="text-nasun-white/30 text-xs font-normal normal-case tracking-normal ml-2">
+            ({sortedProposals.length} total)
+          </span>
         </h5>
 
         <div className="overflow-x-auto">
@@ -52,7 +81,7 @@ export function ProposalsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-nasun-c5/10">
-              {proposals.length === 0 ? (
+              {sortedProposals.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
@@ -62,7 +91,7 @@ export function ProposalsTable({
                   </td>
                 </tr>
               ) : (
-                proposals.map((proposal) => (
+                paginatedProposals.map((proposal) => (
                   <tr
                     key={proposal.id}
                     className={`hover:bg-nasun-white/5 transition-colors ${
@@ -208,6 +237,28 @@ export function ProposalsTable({
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 pt-4 mt-2 border-t border-nasun-c5/10">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/70 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/20 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-nasun-white/40">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/70 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/20 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </OuterBox>
     </div>
   );
