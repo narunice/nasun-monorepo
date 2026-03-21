@@ -31,14 +31,25 @@ export async function querySnapshot(
   snapshotDate: string
 ): Promise<DailySnapshot[]> {
   const pk = `${seasonId}#${snapshotDate}`;
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: SNAPSHOTS_TABLE,
-      KeyConditionExpression: 'pk = :pk',
-      ExpressionAttributeValues: { ':pk': pk },
-    })
-  );
-  return (result.Items || []) as DailySnapshot[];
+  const items: DailySnapshot[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: SNAPSHOTS_TABLE,
+        KeyConditionExpression: 'pk = :pk',
+        ExpressionAttributeValues: { ':pk': pk },
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+    );
+    if (result.Items) {
+      items.push(...(result.Items as DailySnapshot[]));
+    }
+    lastEvaluatedKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastEvaluatedKey);
+
+  return items;
 }
 
 /**
