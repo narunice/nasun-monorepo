@@ -63,28 +63,67 @@ async function findRegistrationByIdentity(identityId: string) {
   return result.Items && result.Items.length > 0 ? result.Items[0] : null;
 }
 
+/**
+ * Collect all identityIds associated with a user (self + primary + all linked accounts).
+ * This resolves the cross-identity issue where a user logs in with one identity
+ * but their allowlist entry was registered under a different linked identity.
+ */
+function collectLinkedIdentityIds(identityId: string, profile?: Record<string, any>): string[] {
+  const ids = new Set<string>([identityId]);
+  if (!profile) return [...ids];
+
+  if (profile.linkedToPrimaryId) {
+    ids.add(profile.linkedToPrimaryId);
+  }
+
+  if (profile.linkedAccounts) {
+    for (const account of Object.values(profile.linkedAccounts) as any[]) {
+      if (account?.identityId) ids.add(account.identityId);
+    }
+  }
+
+  return [...ids];
+}
+
+/**
+ * Find registration by trying all linked identityIds.
+ * Returns the first match or null.
+ */
+async function findRegistrationByAnyIdentity(identityIds: string[]) {
+  for (const id of identityIds) {
+    const result = await findRegistrationByIdentity(id);
+    if (result) return result;
+  }
+  return null;
+}
+
 // ==================== GET: Check own registration status ====================
 
 async function handleGetStatus(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
-  const existing = await findRegistrationByIdentity(identityId);
-
-  // Read linked wallet from UserProfiles to detect conflict
+  // Read user profile first (needed for linked identity resolution and wallet conflict detection)
   const profileResult = await client.send(
     new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId } })
   );
+
+  // Resolve all linked identityIds to handle cross-identity lookups
+  const allIdentityIds = collectLinkedIdentityIds(identityId, profileResult.Item);
+  const allIdentityIdSet = new Set(allIdentityIds);
+
+  const existing = await findRegistrationByAnyIdentity(allIdentityIds);
+
   const linkedAccounts = profileResult.Item?.linkedAccounts;
   const linkedWallet = (
     linkedAccounts?.metamask?.walletAddress
     || (profileResult.Item?.provider === "MetaMask" ? profileResult.Item?.walletAddress : undefined)
   )?.toLowerCase();
 
-  // Check if linked wallet is registered by a different identity
+  // Check if linked wallet is registered by a different user (not any of our linked identities)
   let walletConflict = false;
   if (linkedWallet) {
     const addressEntry = await client.send(
       new GetCommand({ TableName: ALLOWLIST_TABLE, Key: { walletAddress: linkedWallet } })
     );
-    if (addressEntry.Item && addressEntry.Item.identityId !== identityId && addressEntry.Item.status === "ACTIVE") {
+    if (addressEntry.Item && !allIdentityIdSet.has(addressEntry.Item.identityId) && addressEntry.Item.status === "ACTIVE") {
       walletConflict = true;
     }
   }
@@ -126,12 +165,17 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
     return jsonResponse(404, { success: false, error: "PROFILE_NOT_FOUND", message: "User profile not found" }, origin);
   }
 
+  // Resolve all linked identityIds for cross-identity lookup
+  const allIdentityIds = collectLinkedIdentityIds(identityId, profileResult.Item);
+  const allIdentityIdSet = new Set(allIdentityIds);
+
   const linkedAccounts = profileResult.Item.linkedAccounts;
   const metamaskAccount = linkedAccounts?.metamask;
   const walletAddress = metamaskAccount?.walletAddress
     || (profileResult.Item.provider === "MetaMask" ? profileResult.Item.walletAddress : undefined);
 
   let targetWallet: string | undefined;
+  let storedIdentityId: string | undefined;
 
   if (walletAddress) {
     // MetaMask is linked: look up by wallet PK
@@ -143,14 +187,15 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
       })
     );
 
-    if (existing.Item && existing.Item.identityId === identityId && existing.Item.status === "ACTIVE") {
+    if (existing.Item && allIdentityIdSet.has(existing.Item.identityId) && existing.Item.status === "ACTIVE") {
       targetWallet = normalizedAddress;
+      storedIdentityId = existing.Item.identityId as string;
     }
   }
 
   // 2. Fallback: find registration via identityId GSI (MetaMask unlinked or wallet mismatch)
   if (!targetWallet) {
-    const gsiResult = await findRegistrationByIdentity(identityId);
+    const gsiResult = await findRegistrationByAnyIdentity(allIdentityIds);
 
     if (!gsiResult) {
       return jsonResponse(404, { success: false, error: "NOT_FOUND", message: "No registration found for this account" }, origin);
@@ -161,15 +206,16 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
     }
 
     targetWallet = gsiResult.walletAddress as string;
+    storedIdentityId = gsiResult.identityId as string;
   }
 
-  // 3. Delete the allowlist entry with ownership guard
+  // 3. Delete the allowlist entry with ownership guard (use stored identityId for cross-identity support)
   await client.send(
     new DeleteCommand({
       TableName: ALLOWLIST_TABLE,
       Key: { walletAddress: targetWallet },
       ConditionExpression: "identityId = :id",
-      ExpressionAttributeValues: { ":id": identityId },
+      ExpressionAttributeValues: { ":id": storedIdentityId },
     })
   );
 
@@ -186,10 +232,7 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
 async function handleRegister(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
   console.log(`[genesis-pass-register] Processing registration for identity: ${identityId}`);
 
-  // 1. Check if this identity already registered (GSI query)
-  const existingByIdentity = await findRegistrationByIdentity(identityId);
-
-  // 2. Read user profile to get linked MetaMask address
+  // 1. Read user profile to get linked MetaMask address and resolve linked identities
   const profileResult = await client.send(
     new GetCommand({
       TableName: USER_PROFILES_TABLE,
@@ -201,6 +244,10 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
     console.error(`[genesis-pass-register] User profile not found: ${identityId}`);
     return jsonResponse(404, { success: false, error: "PROFILE_NOT_FOUND", message: "User profile not found" }, origin);
   }
+
+  // 2. Check if this identity (or any linked identity) already registered
+  const allIdentityIds = collectLinkedIdentityIds(identityId, profileResult.Item);
+  const existingByIdentity = await findRegistrationByAnyIdentity(allIdentityIds);
 
   const linkedAccounts = profileResult.Item.linkedAccounts;
   const metamaskAccount = linkedAccounts?.metamask;
@@ -231,7 +278,8 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
     })
   );
 
-  const isTakeover = !!(existingByAddress.Item && existingByAddress.Item.identityId !== identityId);
+  const allIdentityIdSet = new Set(allIdentityIds);
+  const isTakeover = !!(existingByAddress.Item && !allIdentityIdSet.has(existingByAddress.Item.identityId));
   if (isTakeover) {
     console.log(`[genesis-pass-register] Takeover: ${normalizedAddress} from ${existingByAddress.Item!.identityId} to ${identityId}`);
   }
@@ -239,6 +287,7 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
   // 5. Handle existing registration by this identity (upsert: wallet change)
   if (existingByIdentity) {
     const existingWallet = (existingByIdentity.walletAddress as string).toLowerCase();
+    const existingStoredId = existingByIdentity.identityId as string;
 
     // Same wallet: already registered, no change needed
     if (existingWallet === normalizedAddress && !isTakeover) {
@@ -250,7 +299,7 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
       }, origin);
     }
 
-    // Different wallet: delete old entry before creating new one
+    // Different wallet: delete old entry before creating new one (use stored identityId for condition)
     if (existingWallet !== normalizedAddress) {
       console.log(`[genesis-pass-register] Wallet change: ${existingWallet} -> ${normalizedAddress} (identity: ${identityId})`);
       await client.send(
@@ -258,7 +307,7 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
           TableName: ALLOWLIST_TABLE,
           Key: { walletAddress: existingWallet },
           ConditionExpression: "identityId = :id",
-          ExpressionAttributeValues: { ":id": identityId },
+          ExpressionAttributeValues: { ":id": existingStoredId },
         })
       );
     }
@@ -269,13 +318,16 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
   let source = existingByIdentity?.source as string | undefined;
 
   if (!mintType && APPROVALS_TABLE) {
-    const approval = await client.send(
-      new GetCommand({ TableName: APPROVALS_TABLE, Key: { identityId } })
-    );
-    if (approval.Item) {
-      mintType = approval.Item.mintType as string | undefined;
-      source = approval.Item.source as string | undefined;
-      console.log(`[genesis-pass-register] Auto-approval applied: mintType=${mintType}, source=${source}`);
+    for (const id of allIdentityIds) {
+      const approval = await client.send(
+        new GetCommand({ TableName: APPROVALS_TABLE, Key: { identityId: id } })
+      );
+      if (approval.Item) {
+        mintType = approval.Item.mintType as string | undefined;
+        source = approval.Item.source as string | undefined;
+        console.log(`[genesis-pass-register] Auto-approval applied: mintType=${mintType}, source=${source} (via identity: ${id})`);
+        break;
+      }
     }
   }
 
