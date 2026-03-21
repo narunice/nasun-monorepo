@@ -7,7 +7,7 @@
  * - Telegram Channel Membership (+5)
  * - Leaderboard Rank Bonus (+10 to +20, proportional to rank 1-500)
  *
- * Server-side user resolution via UserWallets 2-hop lookup (security fix).
+ * Server-side user resolution via UserWallets 2-hop lookup + conditional 3rd hop for linked accounts.
  * On-chain value = display value (integer, no scaling).
  */
 
@@ -249,7 +249,7 @@ async function getProposalType(proposalId: string): Promise<number> {
 }
 
 // ============================================
-// V3: User Resolution (UserWallets 2-hop)
+// V3: User Resolution (UserWallets 2-hop + conditional 3rd hop for linked accounts)
 // ============================================
 
 interface UserProfile {
@@ -285,10 +285,47 @@ async function resolveUserProfile(walletAddress: string): Promise<UserProfile> {
 
     if (!profileResult.Item) return { identityId: ownerIdentityId };
 
+    const item = profileResult.Item;
+    let twitterHandle = item.twitterHandle as string | undefined;
+    let isTelegramMember = item.isTelegramMember === true;
+
+    // Resolve to primary identity for linked accounts (conditional 3rd hop)
+    // Secondary profiles lack promoted fields (twitterHandle, isTelegramMember)
+    const linkedToPrimaryId = item.linkedToPrimaryId as string | undefined;
+    let canonicalIdentityId = ownerIdentityId;
+
+    if (linkedToPrimaryId) {
+      try {
+        const primaryResult = await docClient.send(
+          new GetCommand({
+            TableName: USER_PROFILES_TABLE,
+            Key: { identityId: linkedToPrimaryId },
+          })
+        );
+        if (primaryResult.Item) {
+          // Guard against circular links (data corruption)
+          if (primaryResult.Item.linkedToPrimaryId) {
+            console.warn(`Circular linkedToPrimaryId detected: ${ownerIdentityId} -> ${linkedToPrimaryId} -> ${primaryResult.Item.linkedToPrimaryId}`);
+          } else {
+            canonicalIdentityId = linkedToPrimaryId;
+            if (!twitterHandle) {
+              twitterHandle = primaryResult.Item.twitterHandle as string | undefined;
+            }
+            if (!isTelegramMember) {
+              isTelegramMember = primaryResult.Item.isTelegramMember === true;
+            }
+          }
+        }
+        // If primary profile doesn't exist, keep ownerIdentityId to avoid orphan records
+      } catch (error) {
+        console.error("Error fetching primary profile:", error instanceof Error ? error.message : String(error));
+      }
+    }
+
     return {
-      twitterHandle: profileResult.Item.twitterHandle as string | undefined,
-      isTelegramMember: profileResult.Item.isTelegramMember === true,
-      identityId: ownerIdentityId,
+      twitterHandle,
+      isTelegramMember,
+      identityId: canonicalIdentityId,
     };
   } catch (error) {
     console.error("Error resolving user profile:", error instanceof Error ? error.message : String(error));
