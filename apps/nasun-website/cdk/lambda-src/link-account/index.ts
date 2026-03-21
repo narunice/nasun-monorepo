@@ -71,6 +71,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const path = event.path || event.resource || '';
   const isUnlink = path.includes('/unlink');
   const isRegisterEvm = path.includes('/register-evm');
+  const isAdminLink = path.endsWith('/admin-link');
 
   // Authentication: Verify JWT token
   const authHeader = event.headers.Authorization || event.headers.authorization;
@@ -321,8 +322,32 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       };
     }
 
-    // Authorization: Ensure the authenticated user owns the primary account
-    if (primaryIdentityId !== authenticatedIdentityId) {
+    // Authorization: admin-link bypasses ownership check with admin role verification
+    if (isAdminLink) {
+      // Admin authorization: verify caller has ADMIN role in UserProfiles
+      // NOTE: DocumentClient auto-unmarshals, so .role is a plain string, NOT .role?.S
+      const callerProfile = await dynamoClient.send(new GetCommand({
+        TableName: tableName,
+        Key: { identityId: authenticatedIdentityId },
+      }));
+      if (!callerProfile.Item || callerProfile.Item.role !== 'ADMIN') {
+        console.warn(`Admin auth failed: ${authenticatedIdentityId} attempted admin-link`);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Forbidden. Admin access required.' }),
+        };
+      }
+      console.log(JSON.stringify({
+        event: 'ADMIN_MERGE_IDENTITIES',
+        adminId: authenticatedIdentityId,
+        primaryIdentityId,
+        secondaryIdentityId,
+        secondaryProvider,
+        timestamp: new Date().toISOString(),
+      }));
+    } else if (primaryIdentityId !== authenticatedIdentityId) {
+      // Regular user: ensure the authenticated user owns the primary account
       console.warn(`Authorization failed: ${authenticatedIdentityId} attempted to link to ${primaryIdentityId}`);
       return {
         statusCode: 403,
