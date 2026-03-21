@@ -86,6 +86,16 @@ export function ProposalsTable({
                           <p className="text-nasun-white/40 text-sm line-clamp-2 leading-relaxed">
                             {proposal.description}
                           </p>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-nasun-white/25 font-mono">
+                            <span title={proposal.id}>
+                              ID: {proposal.id.slice(0, 10)}...{proposal.id.slice(-6)}
+                            </span>
+                            {proposal.createdAt && (
+                              <span>
+                                Created: {new Date(proposal.createdAt).toLocaleString('en-US')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>

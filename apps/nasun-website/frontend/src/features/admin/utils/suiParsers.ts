@@ -47,6 +47,7 @@ export function parseProposalSummary(data: SuiObjectData | null | undefined): Pr
     proposalType: 'Governance', // Overridden by useAdminProposals with registry lookup
     votersTableId: fields.voters?.fields?.id?.id || '',
     creator: fields.creator,
+    createdAt: null,
   };
 }
 
