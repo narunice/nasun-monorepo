@@ -48,6 +48,9 @@ export function useAdminProposals() {
           summary.proposalType = await queryProposalType(id, typesTableId);
         }
 
+        // Fetch creation timestamp from the earliest transaction
+        summary.createdAt = await queryCreationTimestamp(id);
+
         return summary;
       });
 
@@ -75,6 +78,23 @@ export function useAdminProposals() {
       // Not found in registry = Governance (default)
     }
     return 'Governance';
+  }
+
+  async function queryCreationTimestamp(proposalId: string): Promise<number | null> {
+    try {
+      const txs = await suiClient.queryTransactionBlocks({
+        filter: { ChangedObject: proposalId },
+        order: 'ascending',
+        limit: 1,
+        options: { showInput: false, showEffects: false },
+      });
+      if (txs.data.length > 0 && txs.data[0].timestampMs) {
+        return Number(txs.data[0].timestampMs);
+      }
+    } catch {
+      // Ignore errors
+    }
+    return null;
   }
 
   return {

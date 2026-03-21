@@ -62,6 +62,7 @@ export interface ProposalSummary {
   proposalType: ProposalType;
   votersTableId: string;
   creator: string;
+  createdAt: number | null;
 }
 
 export interface VoterRecord {
