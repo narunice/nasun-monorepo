@@ -248,9 +248,6 @@ export function useTokenFaucet(): UseTokenFaucetResult {
       } catch (err) {
         console.error(`Faucet request failed for ${symbol}:`, err);
         const errorMsg = parseFaucetError(err);
-        if (errorMsg.includes('cooldown')) {
-          setCooldownTimestamp(address!, symbol);
-        }
         return { success: false, error: errorMsg };
       } finally {
         setGlobalLoading(symbol, false);
@@ -361,9 +358,6 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         console.error('Batch faucet request failed:', err);
         const errorMsg = parseBatchFaucetError(err);
         for (const s of onchainSymbols) {
-          if (errorMsg.includes('cooldown')) {
-            setCooldownTimestamp(address!, s);
-          }
           result.failed.push({ symbol: s, error: errorMsg });
         }
       } finally {
