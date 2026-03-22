@@ -41,7 +41,7 @@ export const POST_TYPE_MULTIPLIERS: Record<PostType, number> = {
 // Score calculation constants
 export const SCORE_CONSTANTS = {
   BASE_SCORE: 1,
-  POST_SCORE_MAX: 6.0, // max RoleMultiplier(3.0) + all signals(3) = 6.0
+  POST_SCORE_MAX: 7.0, // max RoleMultiplier(3.0) + all signals(3) = 6.0
   CONSISTENCY_BONUS_MULTIPLIER: 0.1,
   CONSISTENCY_BONUS_MAX: 1.5, // cap at 30 days
   FRESHNESS_HALF_LIFE_DAYS: 7, // Half-life reduced from 14 to 7 days for faster decay
@@ -53,8 +53,8 @@ export const SCORE_CONSTANTS = {
   // Continuous role multiplier constants
   // RoleMultiplier = BASE + log₁₀(normalizedFollowers + 1) × LOG_FACTOR
   ROLE_MULTIPLIER_BASE: 0.3,
-  ROLE_MULTIPLIER_LOG_FACTOR: 0.54,
-  ROLE_MULTIPLIER_MAX: 3.0,
+  ROLE_MULTIPLIER_LOG_FACTOR: 0.74,
+  ROLE_MULTIPLIER_MAX: 4.0,
   // Daily hard caps per post type (posts beyond cap are excluded from scoring)
   DAILY_CAP_ORIGINAL: 3,
   DAILY_CAP_QUOTE: 4,
@@ -81,6 +81,9 @@ export const DAILY_BASE_SCORE_TIERS: Array<{ maxRank: number; score: number }> =
 
 // Fixed cap: dailyBaseScoreTotal cannot exceed this absolute value
 export const DAILY_BASE_SCORE_CAP = 10.0;
+
+// Public leaderboard display limit: ranks beyond this are hidden from non-admin users
+export const PUBLIC_LEADERBOARD_LIMIT = 500;
 
 // Language scale factors for follower normalization
 // All languages use equal weight (language-based differentiation removed)
@@ -119,7 +122,7 @@ export interface Post {
   postType: PostType; // original, quote, or reply (Phase 9)
   baseScore: number; // Always 1.0
   postTypeMultiplier: number; // original/quote: 1.0, reply: 0.5
-  roleMultiplier: number; // 1.0 ~ 2.0 (follower-based continuous)
+  roleMultiplier: number; // 0.3 ~ 4.0 (follower-based continuous)
   signalBonus: number; // 0 ~ 3
   postScore: number; // baseScore × postTypeMultiplier × roleMultiplier + signalBonus
   createdAt: string; // ISO timestamp
@@ -549,7 +552,7 @@ export interface TopClimberEntry {
   displayName?: string;
   profileImageUrl?: string;
   currentRank: number;
-  previousRank: number;
+  previousRank: number | null;
   rankChange: RankChange;
   currentScore: number;
   previousScore?: number;
@@ -614,7 +617,7 @@ export const MAX_CURATED_ITEMS = 15;
 // My Rank Types (Phase 10)
 // ============================================
 
-export type MyRankStatus = 'no_twitter' | 'not_ranked' | 'ranked' | 'error';
+export type MyRankStatus = 'no_twitter' | 'not_ranked' | 'ranked' | 'outside_top' | 'error';
 
 export interface MyRankData {
   status: MyRankStatus;

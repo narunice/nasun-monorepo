@@ -525,7 +525,7 @@ function calculateVotingPower(
       battalionAllowlist: 0,
       genesisAllowlist: 0,
     },
-    rank,
+    rank: rank !== null && rank <= 500 ? rank : null,
   };
 }
 
