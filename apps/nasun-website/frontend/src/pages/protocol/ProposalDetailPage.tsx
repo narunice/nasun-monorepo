@@ -826,7 +826,6 @@ const MultiChoiceProposalDetail: FC<{
               await new Promise((resolve) => setTimeout(resolve, 2000));
               await refetchMcNfts();
             }
-            setIsModalOpen(false);
           }}
         />
       </SectionLayout>
