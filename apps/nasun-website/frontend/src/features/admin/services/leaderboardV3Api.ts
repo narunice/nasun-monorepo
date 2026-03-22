@@ -14,7 +14,10 @@ import type {
   DashboardStats,
   AdjustScoreRequest,
   AdjustScoreResponse,
+  PostType,
 } from '../types/leaderboard-v3';
+
+import { POST_TYPE_MULTIPLIERS } from '../types/leaderboard-v3';
 
 import type { BannedAccountsResponse } from '../types';
 import type { SeasonLeaderboardResponse } from '@/features/leaderboard-v3/types';
@@ -509,8 +512,9 @@ export async function setCuratedFeed(
  */
 export function calculatePostScorePreview(
   accountRole: string,
-  contentSignals: string[]
-): { baseScore: number; roleMultiplier: number; signalBonus: number; totalScore: number } {
+  contentSignals: string[],
+  postType: PostType = 'original'
+): { baseScore: number; postTypeMultiplier: number; roleMultiplier: number; signalBonus: number; totalScore: number } {
   const ROLE_MULTIPLIERS: Record<string, number> = {
     kol: 2.0,
     proactive_ct: 1.5,
@@ -525,15 +529,17 @@ export function calculatePostScorePreview(
   };
 
   const BASE_SCORE = 1.0;
+  const postTypeMultiplier = POST_TYPE_MULTIPLIERS[postType];
   const roleMultiplier = ROLE_MULTIPLIERS[accountRole] || 1.0;
   const signalBonus = contentSignals.reduce(
     (sum, signal) => sum + (SIGNAL_BONUSES[signal] || 0),
     0
   );
-  const totalScore = BASE_SCORE * roleMultiplier + signalBonus;
+  const totalScore = BASE_SCORE * postTypeMultiplier * roleMultiplier + signalBonus;
 
   return {
     baseScore: BASE_SCORE,
+    postTypeMultiplier,
     roleMultiplier,
     signalBonus,
     totalScore,
@@ -547,8 +553,9 @@ export function calculatePostScorePreview(
 export function calculatePostScorePreviewWithFollowers(
   followerCount: number,
   language: string,
-  contentSignals: string[]
-): { baseScore: number; roleMultiplier: number; signalBonus: number; totalScore: number } {
+  contentSignals: string[],
+  postType: PostType = 'original'
+): { baseScore: number; postTypeMultiplier: number; roleMultiplier: number; signalBonus: number; totalScore: number } {
   const LANGUAGE_SCALE: Record<string, number> = {
     en: 1.0,
     zh: 1.0,
@@ -568,6 +575,8 @@ export function calculatePostScorePreviewWithFollowers(
   const ROLE_MULTIPLIER_LOG_FACTOR = 0.74;
   const ROLE_MULTIPLIER_MAX = 4.0;
 
+  const postTypeMultiplier = POST_TYPE_MULTIPLIERS[postType];
+
   // Calculate continuous role multiplier
   let roleMultiplier = ROLE_MULTIPLIER_BASE;
   if (followerCount > 0) {
@@ -583,11 +592,12 @@ export function calculatePostScorePreviewWithFollowers(
     (sum, signal) => sum + (SIGNAL_BONUSES[signal] || 0),
     0
   );
-  const totalScore = BASE_SCORE * roleMultiplier + signalBonus;
+  const totalScore = BASE_SCORE * postTypeMultiplier * roleMultiplier + signalBonus;
 
   return {
     baseScore: BASE_SCORE,
-    roleMultiplier: Math.round(roleMultiplier * 1000) / 1000, // Round to 3 decimals
+    postTypeMultiplier,
+    roleMultiplier: Math.round(roleMultiplier * 1000) / 1000,
     signalBonus,
     totalScore: Math.round(totalScore * 1000) / 1000,
   };

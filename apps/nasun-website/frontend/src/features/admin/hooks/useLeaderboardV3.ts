@@ -125,8 +125,8 @@ export function usePostSubmissionForm() {
   // Phase 11: Use continuous RoleMultiplier when follower data is available
   // For existing users without follower data, fall back to discrete role
   const scorePreview = followerCount !== undefined
-    ? calculatePostScorePreviewWithFollowers(followerCount, language, contentSignals)
-    : calculatePostScorePreview(accountRole, contentSignals);
+    ? calculatePostScorePreviewWithFollowers(followerCount, language, contentSignals, postType)
+    : calculatePostScorePreview(accountRole, contentSignals, postType);
 
   const toggleSignal = useCallback((signal: ContentSignal) => {
     setContentSignals((prev) =>
