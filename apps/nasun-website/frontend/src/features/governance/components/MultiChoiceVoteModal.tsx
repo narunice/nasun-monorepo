@@ -108,6 +108,34 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
             className="bg-gray-900 border border-nasun-nw2/30 p-6 md:p-8 rounded-sm max-w-md w-full shadow-lg flex flex-col pointer-events-auto"
             aria-describedby={undefined}
           >
+            {/* Success State */}
+            {isSuccess ? (
+              <>
+                <Dialog.Title className="sr-only">Vote Submitted</Dialog.Title>
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h2 className="text-nasun-white font-semibold text-lg">Vote Submitted!</h2>
+                  <p className="text-nasun-white/60 text-sm text-center">
+                    You voted for <strong className="text-nasun-nw1">{choiceLabel}</strong>
+                  </p>
+                  <Dialog.Close asChild>
+                    <ButtonV3
+                      variant="nw2"
+                      outline
+                      size="sm"
+                      className="w-full font-normal mt-2"
+                    >
+                      Close
+                    </ButtonV3>
+                  </Dialog.Close>
+                </div>
+              </>
+            ) : (
+              <>
             {/* Header */}
             <Dialog.Title className="text-nasun-white font-semibold text-lg mb-5">
               {isConnected ? "Confirm Your Vote" : "Log In / Sign Up to Vote"}
@@ -228,6 +256,8 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
                 </>
               )}
             </div>
+              </>
+            )}
           </Dialog.Content>
         </div>
       </Dialog.Portal>
