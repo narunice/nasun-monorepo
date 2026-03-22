@@ -109,6 +109,10 @@ const TWEET_DARK_THEME_CSS = `
   .governance-tweet-card > div > article > div:first-child a:last-child {
     pointer-events: auto !important;
   }
+  /* Hide quoted tweets */
+  .governance-tweet-card article > div:has(article) {
+    display: none !important;
+  }
 `;
 
 export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
@@ -144,7 +148,7 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
               onClick={() => !disabled && onSelect(idx)}
             >
               {/* Tweet embed area with height limit */}
-              <div className="max-h-[500px] overflow-hidden relative">
+              <div className="max-h-[380px] overflow-hidden relative">
                 <div className="governance-tweet-card" data-theme="dark">
                   {tweetId && !hasError ? (
                     <Tweet
