@@ -543,7 +543,9 @@ const MultiChoiceProposalDetail: FC<{
   const hasVoted = localVoted || !!voteNft;
 
   const proposal = parseMultiChoiceProposal(data, proposalType);
-  const { displayNames } = useTwitterDisplayNames(proposal?.choices ?? []);
+  const { displayNames, profiles } = useTwitterDisplayNames(
+    proposal?.choices ?? [],
+  );
 
   if (!proposal) {
     return (
@@ -656,18 +658,38 @@ const MultiChoiceProposalDetail: FC<{
             <div className="space-y-3">
               {proposal.choices.map((choice, idx) => {
                 const handle = extractTweetHandle(choice);
-                const displayName = handle ? displayNames?.get(handle.toLowerCase()) : null;
+                const profile = handle
+                  ? profiles?.get(handle.toLowerCase())
+                  : null;
                 const choiceLabel = getChoiceLabel(choice, displayNames);
                 return (
                   <div key={idx}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-nasun-white/80 truncate mr-2">
-                        {displayName ? (
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="flex items-center gap-1.5 text-nasun-white/80 truncate mr-2">
+                        {profile?.profileImageUrl && (
+                          <img
+                            src={profile.profileImageUrl}
+                            alt={profile.displayName}
+                            className="w-5 h-5 rounded-full flex-shrink-0"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        )}
+                        {profile ? (
                           <>
-                            <span className="font-medium">{displayName}</span>
-                            <span className="text-nasun-white/40 ml-1.5">@{handle}</span>
+                            <span className="font-medium">
+                              {profile.displayName}
+                            </span>
+                            <span className="text-nasun-white/40">
+                              @{handle}
+                            </span>
                           </>
-                        ) : choiceLabel}
+                        ) : (
+                          choiceLabel
+                        )}
                       </span>
                       <span className="text-nasun-white/50 flex-shrink-0">
                         {percentages[idx]}%
