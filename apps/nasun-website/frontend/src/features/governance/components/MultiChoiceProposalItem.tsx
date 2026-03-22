@@ -11,6 +11,7 @@ import {
   parseMultiChoiceProposal,
   getChoicePercentages,
   getChoiceLabel,
+  extractTweetHandle,
   isUnixTimeExpired,
   formatTimeRemaining,
   getStatusBadge,
@@ -86,7 +87,7 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
     ? parseMultiChoiceProposal(dataResponse.data, proposalType)
     : null;
 
-  const { displayNames } = useTwitterDisplayNames(proposal?.choices || []);
+  const { displayNames, profiles } = useTwitterDisplayNames(proposal?.choices || []);
 
   if (isPending || isTypeLoading) return <EcText centered text="Loading..." />;
   if (error) return <EcText isError text={`Error: ${error.message}`} />;
@@ -176,10 +177,22 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
 
         {/* Footer: Choice Bars + Time */}
         <div className="mt-auto pt-3 border-t border-nasun-white/5 space-y-1.5">
-          {proposal.choices.map((choice, idx) => (
+          {proposal.choices.map((choice, idx) => {
+            const handle = extractTweetHandle(choice);
+            const profile = handle ? profiles?.get(handle.toLowerCase()) : null;
+            return (
             <div key={idx}>
-              <div className="flex justify-between text-xs mb-0.5">
-                <span className={`truncate mr-2 ${isExpired ? "text-nasun-white/30" : "text-nasun-white/70"}`}>
+              <div className="flex items-center justify-between text-xs mb-0.5">
+                <span className={`flex items-center gap-1 truncate mr-2 ${isExpired ? "text-nasun-white/30" : "text-nasun-white/70"}`}>
+                  {profile?.profileImageUrl && (
+                    <img
+                      src={profile.profileImageUrl}
+                      alt=""
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
+                  )}
                   {getChoiceLabel(choice, displayNames)}
                 </span>
                 <span className={isExpired ? "text-nasun-white/30" : "text-nasun-white/50"}>
@@ -195,7 +208,7 @@ export const MultiChoiceProposalItem: FC<MultiChoiceProposalItemProps> = ({
                 />
               </div>
             </div>
-          ))}
+          );})}
 
           {/* Equal weight indicator */}
           {proposal.useEqualWeight && (
