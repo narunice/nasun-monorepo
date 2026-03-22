@@ -1,7 +1,7 @@
 import { FC, useState } from "react";
 import { Tweet } from "react-tweet";
 import { extractTweetId, getChoiceLabel } from "../utils/proposalHelpers";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Check } from "lucide-react";
 
 interface TweetChoiceGridProps {
   choices: string[];
@@ -85,10 +85,29 @@ const TWEET_DARK_THEME_CSS = `
     border: none !important;
     background: transparent !important;
   }
-  .governance-tweet-card [data-testid="tweetText"],
-  .governance-tweet-card [data-testid="tweetText"] * {
+  .governance-tweet-card article > p,
+  .governance-tweet-card article > p * {
     font-size: 13px !important;
     line-height: 1.4 !important;
+  }
+  /* Truncate tweet text to ~3 lines with ellipsis */
+  .governance-tweet-card article > p {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  /* Prevent ALL links from navigating (card click = select) */
+  .governance-tweet-card a,
+  .governance-tweet-card article a,
+  .governance-tweet-card article article a {
+    pointer-events: none !important;
+    cursor: pointer !important;
+  }
+  /* Only allow the X icon (top-right brand link) to be clickable */
+  .governance-tweet-card > div > article > div:first-child a:last-child {
+    pointer-events: auto !important;
   }
 `;
 
@@ -125,7 +144,7 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
               onClick={() => !disabled && onSelect(idx)}
             >
               {/* Tweet embed area with height limit */}
-              <div className="max-h-[400px] overflow-hidden relative">
+              <div className="max-h-[500px] overflow-hidden relative">
                 <div className="governance-tweet-card" data-theme="dark">
                   {tweetId && !hasError ? (
                     <Tweet
@@ -141,37 +160,31 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
                 <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-900/90 to-transparent pointer-events-none" />
               </div>
 
-              {/* View on X link */}
-              <a
-                href={choice}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-nasun-white/30 hover:text-nasun-nw1 flex items-center gap-1 px-3 py-1.5 border-t border-nasun-white/5"
-                onClick={(e) => e.stopPropagation()}
-              >
-                View on X <ExternalLink className="w-3 h-3" />
-              </a>
-
-              {/* Radio button */}
-              <label
-                className={`flex items-center gap-2.5 px-3 py-3 border-t cursor-pointer transition-colors ${
+              {/* Selection indicator */}
+              <div
+                className={`flex items-center justify-center gap-3 px-4 py-3.5 border-t cursor-pointer transition-all ${
                   isSelected
-                    ? "border-nasun-nw1/40 bg-nasun-nw1/15"
-                    : "border-nasun-white/5 hover:bg-nasun-white/5"
+                    ? "bg-nasun-c7 border-nasun-c7"
+                    : "bg-nasun-nw5 border-nasun-nw5 hover:bg-nasun-c7/40"
                 }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!disabled) onSelect(idx);
+                }}
               >
-                <input
-                  type="radio"
-                  name="tweet-choice"
-                  checked={isSelected}
-                  onChange={() => onSelect(idx)}
-                  disabled={disabled}
-                  className="accent-nasun-nw1 w-4 h-4 flex-shrink-0"
-                />
-                <span className={`text-sm truncate ${isSelected ? "text-nasun-nw1 font-medium" : "text-nasun-white/70"}`}>
+                <div
+                  className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
+                    isSelected
+                      ? "bg-nasun-nw3 shadow-[0_0_6px_rgba(62,92,122,0.4)]"
+                      : "border-2 border-nasun-nw3/50"
+                  }`}
+                >
+                  {isSelected && <Check className="w-3.5 h-3.5 text-nasun-white stroke-[3]" />}
+                </div>
+                <span className={`text-sm truncate font-semibold text-nasun-black`}>
                   {getChoiceLabel(choice, displayNames)}
                 </span>
-              </label>
+              </div>
             </div>
           );
         })}
