@@ -139,7 +139,7 @@ export function useLeaderboardState() {
         return;
       }
       setPage(newPage);
-      pagination.handlePageInputChange(newPage.toString());
+      pagination.handlePageChange(newPage);
     },
     [page, pagination],
   );

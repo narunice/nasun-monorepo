@@ -225,14 +225,14 @@ export const LANGUAGE_SCALE: Record<AccountLanguage, number> = {
 };
 
 // Continuous role multiplier constants
-export const ROLE_MULTIPLIER_BASE = 1.0;
-export const ROLE_MULTIPLIER_LOG_FACTOR = 0.2;
-export const ROLE_MULTIPLIER_MAX = 2.0;
+export const ROLE_MULTIPLIER_BASE = 0.3;
+export const ROLE_MULTIPLIER_LOG_FACTOR = 0.74;
+export const ROLE_MULTIPLIER_MAX = 4.0;
 
 /**
  * Calculate continuous role multiplier based on follower count and language
- * Formula: RoleMultiplier = 1 + log₁₀(normalizedFollowers + 1) × 0.2
- * Range: 1.0 (0 followers) to 2.0 (100,000+ normalized followers)
+ * Formula: RoleMultiplier = ROLE_MULTIPLIER_BASE + log₁₀(normalizedFollowers + 1) × ROLE_MULTIPLIER_LOG_FACTOR
+ * Range: 0.3 (0 followers) to 4.0 (100,000+ normalized followers)
  */
 export function calculateRoleMultiplier(followerCount: number, language: AccountLanguage = 'en'): number {
   if (followerCount <= 0) {
