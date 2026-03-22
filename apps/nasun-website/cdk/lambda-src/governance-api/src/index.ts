@@ -102,6 +102,7 @@ function calculateCertificateTTL(proposalExpiration?: number): number {
 
 const GOVERNANCE_PACKAGE_ID = process.env.GOVERNANCE_PACKAGE_ID || "";
 const GOVERNANCE_ORIGINAL_PACKAGE_ID = process.env.GOVERNANCE_ORIGINAL_PACKAGE_ID || GOVERNANCE_PACKAGE_ID;
+const GOVERNANCE_MULTI_CHOICE_PACKAGE_ID = process.env.GOVERNANCE_MULTI_CHOICE_PACKAGE_ID || GOVERNANCE_PACKAGE_ID;
 const PROPOSAL_TYPE_REGISTRY_ID = process.env.PROPOSAL_TYPE_REGISTRY_ID || "";
 
 // Domain Separation (MUST match Move contract's DOMAIN_SEPARATOR)
@@ -245,6 +246,53 @@ async function getProposalType(proposalId: string): Promise<number> {
   } catch (error) {
     console.error("Failed to get proposal type:", error instanceof Error ? error.message : String(error));
     return 0;
+  }
+}
+
+/**
+ * Check if a voter has an on-chain VoteProofNFT for a given proposal.
+ * Used by the self-healing logic in /certificate to distinguish genuine
+ * duplicate votes from stale DynamoDB entries left by failed flows.
+ *
+ * Returns true (safe default) on RPC errors or when pagination is needed.
+ */
+async function checkOnChainVoteExists(
+  voterAddress: string,
+  proposalId: string,
+): Promise<boolean> {
+  try {
+    const suiClient = new SuiClient({ url: SUI_RPC_URL });
+
+    const nftTypes = [
+      `${GOVERNANCE_ORIGINAL_PACKAGE_ID}::proposal::VoteProofNFT`,
+      `${GOVERNANCE_MULTI_CHOICE_PACKAGE_ID}::multi_choice_proposal::MultiChoiceVoteProofNFT`,
+    ];
+
+    const results = await Promise.all(
+      nftTypes.map((structType) =>
+        suiClient.getOwnedObjects({
+          owner: voterAddress,
+          filter: { StructType: structType },
+          options: { showContent: true },
+        })
+      )
+    );
+
+    for (const result of results) {
+      // If there are more pages, assume vote exists (safe default)
+      if (result.hasNextPage) return true;
+
+      for (const obj of result.data) {
+        if (obj.data?.content?.dataType !== "moveObject") continue;
+        const fields = obj.data.content.fields as Record<string, unknown>;
+        if (fields.proposal_id === proposalId) return true;
+      }
+    }
+
+    return false;
+  } catch (error) {
+    console.error("On-chain vote check error:", error instanceof Error ? error.message : String(error));
+    return true; // Safe default: assume vote exists to prevent double-voting
   }
 }
 
@@ -546,6 +594,95 @@ function corsHeaders() {
 }
 
 /**
+ * Issue an Oracle-signed voting power certificate.
+ * Extracted so both the normal path and the self-healing path can call it.
+ * Rolls back the governanceVotes DynamoDB entry on failure.
+ */
+async function issueCertificate(
+  profile: UserProfile,
+  voter: string,
+  proposalId: string,
+): Promise<APIGatewayProxyResult> {
+  try {
+    const hasLinkedX = !!profile.twitterHandle;
+    const isTelegramMember = profile.isTelegramMember === true;
+
+    const rank = await getUserRank(profile.twitterHandle);
+    const power = calculateVotingPower(rank, hasLinkedX, isTelegramMember);
+    const votingPower = power.total;
+
+    // Build message for signature (MUST match Move's build_certificate_message)
+    // domain_separator (26B) || voter (32B BCS) || proposal_id (32B BCS) || voting_power (8B BE) || expires_at (8B BE)
+    const ttlMs = calculateCertificateTTL();
+    const expiresAt = Date.now() + ttlMs;
+
+    const domainBytes = Buffer.from(DOMAIN_SEPARATOR, "utf8");
+    const voterBytes = Buffer.from(bcs.Address.serialize(voter).toBytes());
+    const proposalIdBytes = Buffer.from(bcs.Address.serialize(proposalId).toBytes());
+
+    const votingPowerBytes = Buffer.alloc(8);
+    votingPowerBytes.writeBigUInt64BE(BigInt(votingPower));
+
+    const expiresAtBytes = Buffer.alloc(8);
+    expiresAtBytes.writeBigUInt64BE(BigInt(expiresAt));
+
+    const message = Buffer.concat([
+      domainBytes,
+      voterBytes,
+      proposalIdBytes,
+      votingPowerBytes,
+      expiresAtBytes,
+    ]);
+
+    const privateKey = await getOraclePrivateKey();
+    const signature = await ed25519.signAsync(message, privateKey);
+
+    const certificate = {
+      voter,
+      proposalId,
+      votingPower,
+      expiresAt,
+      signature: Buffer.from(signature).toString("hex"),
+      breakdown: power.breakdown,
+    };
+
+    console.log(`Certificate issued for ${voter} on proposal ${proposalId}: power=${votingPower}, rank=${rank}`);
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders(),
+      body: JSON.stringify(certificate),
+    };
+  } catch (error: unknown) {
+    // Rollback governanceVotes record if certificate issuance failed
+    if (profile.identityId) {
+      try {
+        await docClient.send(new UpdateCommand({
+          TableName: USER_PROFILES_TABLE,
+          Key: { identityId: profile.identityId },
+          UpdateExpression: "DELETE governanceVotes :pidSet",
+          ExpressionAttributeValues: {
+            ":pidSet": new Set([proposalId]),
+          },
+        }));
+        console.log(`Rolled back governanceVotes for identity=${profile.identityId}, proposal=${proposalId}`);
+      } catch (rollbackErr) {
+        console.error("Failed to rollback governanceVotes:", rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr));
+      }
+    }
+    console.error("Certificate issuance error:", maskSensitiveData({
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    }));
+    return {
+      statusCode: 500,
+      headers: corsHeaders(),
+      body: JSON.stringify({ error: "Failed to issue certificate" }),
+    };
+  }
+}
+
+/**
  * Main handler
  */
 export const handler: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
@@ -650,90 +787,35 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       // Resolve outside try so rollback can access identityId
       const profile = await resolveUserProfile(voter as string);
 
-      try {
-        const hasLinkedX = !!profile.twitterHandle;
-        const isTelegramMember = profile.isTelegramMember === true;
+      // Identity-based duplicate vote prevention (atomic conditional update)
+      if (profile.identityId) {
+        try {
+          await docClient.send(new UpdateCommand({
+            TableName: USER_PROFILES_TABLE,
+            Key: { identityId: profile.identityId },
+            UpdateExpression: "ADD governanceVotes :pidSet",
+            ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
+            ExpressionAttributeValues: {
+              ":pidSet": new Set([proposalId as string]),
+              ":pidStr": proposalId as string,
+            },
+          }));
+        } catch (err) {
+          if (err instanceof ConditionalCheckFailedException) {
+            // Self-healing: check on-chain whether the vote actually completed
+            const onChainVoted = await checkOnChainVoteExists(voter as string, proposalId as string);
 
-        // Identity-based duplicate vote prevention (atomic conditional update)
-        if (profile.identityId) {
-          try {
-            await docClient.send(new UpdateCommand({
-              TableName: USER_PROFILES_TABLE,
-              Key: { identityId: profile.identityId },
-              UpdateExpression: "ADD governanceVotes :pidSet",
-              ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
-              ExpressionAttributeValues: {
-                ":pidSet": new Set([proposalId as string]),
-                ":pidStr": proposalId as string,
-              },
-            }));
-          } catch (err) {
-            if (err instanceof ConditionalCheckFailedException) {
-              console.warn(`Duplicate vote blocked: identity=${profile.identityId}, proposal=${proposalId}, wallet=${voter}`);
+            if (onChainVoted) {
+              console.warn(`Duplicate vote blocked (confirmed on-chain): identity=${profile.identityId}, proposal=${proposalId}, wallet=${voter}`);
               return {
                 statusCode: 409,
                 headers: corsHeaders(),
                 body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
               };
             }
-            throw err;
-          }
-        }
 
-        const rank = await getUserRank(profile.twitterHandle);
-        const power = calculateVotingPower(rank, hasLinkedX, isTelegramMember);
-        const votingPower = power.total;
-
-        // Build message for signature (MUST match Move's build_certificate_message)
-        // Message format: domain_separator (26 bytes) || voter (32 bytes BCS) || proposal_id (32 bytes BCS)
-        //                 || voting_power (8 bytes BE) || expires_at (8 bytes BE)
-        // Total: 26 + 32 + 32 + 8 + 8 = 106 bytes
-        const ttlMs = calculateCertificateTTL();
-        const expiresAt = Date.now() + ttlMs;
-
-        const domainBytes = Buffer.from(DOMAIN_SEPARATOR, "utf8");
-        const voterBytes = Buffer.from(bcs.Address.serialize(voter).toBytes());
-        const proposalIdBytes = Buffer.from(bcs.Address.serialize(proposalId).toBytes());
-
-        const votingPowerBytes = Buffer.alloc(8);
-        votingPowerBytes.writeBigUInt64BE(BigInt(votingPower));
-
-        const expiresAtBytes = Buffer.alloc(8);
-        expiresAtBytes.writeBigUInt64BE(BigInt(expiresAt));
-
-        const message = Buffer.concat([
-          domainBytes,
-          voterBytes,
-          proposalIdBytes,
-          votingPowerBytes,
-          expiresAtBytes,
-        ]);
-
-        console.log("Certificate message length:", message.length, "bytes");
-
-        const privateKey = await getOraclePrivateKey();
-        const signature = await ed25519.signAsync(message, privateKey);
-
-        const certificate = {
-          voter,
-          proposalId,
-          votingPower,
-          expiresAt,
-          signature: Buffer.from(signature).toString("hex"),
-          breakdown: power.breakdown,
-        };
-
-        console.log(`Certificate issued for ${voter} on proposal ${proposalId}: power=${votingPower}, rank=${rank}`);
-
-        return {
-          statusCode: 200,
-          headers: corsHeaders(),
-          body: JSON.stringify(certificate),
-        };
-      } catch (error: unknown) {
-        // Rollback governanceVotes record if certificate issuance failed
-        if (profile.identityId) {
-          try {
+            // Stale DynamoDB entry from a previously failed vote flow. Clean up and re-issue.
+            console.warn(`Stale governanceVotes entry detected, cleaning up: identity=${profile.identityId}, proposal=${proposalId}`);
             await docClient.send(new UpdateCommand({
               TableName: USER_PROFILES_TABLE,
               Key: { identityId: profile.identityId },
@@ -742,21 +824,38 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
                 ":pidSet": new Set([proposalId as string]),
               },
             }));
-            console.log(`Rolled back governanceVotes for identity=${profile.identityId}, proposal=${proposalId}`);
-          } catch (rollbackErr) {
-            console.error("Failed to rollback governanceVotes:", rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr));
+
+            // Re-attempt conditional ADD after cleanup (prevents concurrent race)
+            try {
+              await docClient.send(new UpdateCommand({
+                TableName: USER_PROFILES_TABLE,
+                Key: { identityId: profile.identityId },
+                UpdateExpression: "ADD governanceVotes :pidSet",
+                ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
+                ExpressionAttributeValues: {
+                  ":pidSet": new Set([proposalId as string]),
+                  ":pidStr": proposalId as string,
+                },
+              }));
+            } catch (reAddErr) {
+              if (reAddErr instanceof ConditionalCheckFailedException) {
+                // Concurrent request won the race
+                return {
+                  statusCode: 409,
+                  headers: corsHeaders(),
+                  body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
+                };
+              }
+              throw reAddErr;
+            }
+          } else {
+            throw err;
           }
         }
-        console.error("Certificate issuance error:", maskSensitiveData({
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        }));
-        return {
-          statusCode: 500,
-          headers: corsHeaders(),
-          body: JSON.stringify({ error: "Failed to issue certificate" }),
-        };
       }
+
+      // Issue the certificate (with rollback on failure)
+      return await issueCertificate(profile, voter as string, proposalId as string);
     }
 
     // POST /sponsor - Sponsor a governance vote transaction
@@ -829,32 +928,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           };
         }
 
-        // Identity-based duplicate vote prevention (defense-in-depth)
-        const senderProfile = await resolveUserProfile(sender as string);
-        if (senderProfile.identityId) {
-          try {
-            await docClient.send(new UpdateCommand({
-              TableName: USER_PROFILES_TABLE,
-              Key: { identityId: senderProfile.identityId },
-              UpdateExpression: "ADD governanceVotes :pidSet",
-              ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
-              ExpressionAttributeValues: {
-                ":pidSet": new Set([proposalId]),
-                ":pidStr": proposalId,
-              },
-            }));
-          } catch (err) {
-            if (err instanceof ConditionalCheckFailedException) {
-              console.warn(`Duplicate vote blocked (sponsor): identity=${senderProfile.identityId}, proposal=${proposalId}`);
-              return {
-                statusCode: 409,
-                headers: corsHeaders(),
-                body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
-              };
-            }
-            throw err;
-          }
-        }
+        // Duplicate vote prevention is handled by /certificate endpoint (DynamoDB)
+        // and on-chain CertificateRegistry + voters table (Move contract).
+        // The MoveAbort error code 6 catch below provides on-chain defense-in-depth.
 
         console.log(`Sponsoring Poll proposal ${proposalId}`);
         const suiClient = new SuiClient({ url: SUI_RPC_URL });
