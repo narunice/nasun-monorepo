@@ -109,6 +109,14 @@ health_check() {
 # 모노레포 루트 경로
 MONOREPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# nvm 로드 (non-interactive shell에서도 올바른 Node 버전 사용)
+if [ -z "$NVM_DIR" ]; then
+  export NVM_DIR="$HOME/.nvm"
+fi
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  source "$NVM_DIR/nvm.sh"
+fi
+
 # Deploy credentials (.credentials 파일에서 로드)
 _CREDENTIALS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.credentials"
 if [ -f "$_CREDENTIALS_FILE" ]; then
