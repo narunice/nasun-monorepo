@@ -35,6 +35,18 @@ import {
 
 const _globalLoadingTokens = new Set<string>();
 const FAUCET_LOADING_EVENT = 'nasun:faucet-loading-change';
+const FAUCET_TX_TIMEOUT_MS = 45_000; // 45s (includes zkLogin proof time)
+const FAUCET_TX_TIMEOUT_MSG = 'Faucet request timed out. Check your balance before retrying.';
+
+function withTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(FAUCET_TX_TIMEOUT_MSG)), FAUCET_TX_TIMEOUT_MS);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
 
 function setGlobalLoading(symbol: string, loading: boolean): void {
   if (loading) {
@@ -232,7 +244,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         // Mode 2: Move contract faucet (NBTC/NUSDC/NETH/NSOL)
         else if (handler.buildTransaction) {
           const tx = handler.buildTransaction();
-          const txResult = await signAndExecute(tx);
+          const txResult = await withTimeout(signAndExecute(tx));
           result = txResult.success;
         }
 
@@ -340,7 +352,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
       setGlobalLoadingBatch(onchainSymbols, true);
 
       try {
-        const txResult = await signAndExecute(tx);
+        const txResult = await withTimeout(signAndExecute(tx));
 
         if (txResult.success) {
           for (const s of onchainSymbols) {
@@ -427,35 +439,57 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 // Error parsers
 // ============================================
 
+type FaucetErrorKind = 'timeout' | 'network' | 'cooldown' | 'move_abort' | 'gas' | 'unknown';
+
+function classifyFaucetError(msg: string): FaucetErrorKind {
+  if (/timed?\s*out|AbortError/i.test(msg)) return 'timeout';
+  if (/Failed to fetch|NetworkError|ECONNREFUSED|ENOTFOUND|ERR_NETWORK/i.test(msg)) return 'network';
+  if (msg.includes('MoveAbort')) {
+    const match = msg.match(/MoveAbort\(.+,\s*(\d+)\)/);
+    const code = match ? parseInt(match[1], 10) : null;
+    return code === 1 ? 'cooldown' : 'move_abort';
+  }
+  if (/InsufficientGas|insufficient gas|No valid gas/i.test(msg)) return 'gas';
+  return 'unknown';
+}
+
+const FAUCET_ERROR_MESSAGES: Record<FaucetErrorKind, string> = {
+  timeout: FAUCET_TX_TIMEOUT_MSG,
+  network: 'Network error. Please try again.',
+  cooldown: 'Faucet cooldown active (24h). Try again later.',
+  move_abort: 'Transaction failed. Please try again.',
+  gas: 'Not enough NSN for gas fees. Get NSN first.',
+  unknown: 'Faucet request failed. Try again later.',
+};
+
+const BATCH_FAUCET_ERROR_MESSAGES: Record<FaucetErrorKind, string> = {
+  timeout: 'Request timed out. Try individual Faucet buttons.',
+  network: 'Network error. Try individual Faucet buttons.',
+  cooldown: 'Some tokens have active cooldowns. Try individual Faucet buttons.',
+  move_abort: 'Transaction failed. Try individual Faucet buttons.',
+  gas: 'Not enough NSN for gas fees. Get NSN first.',
+  unknown: 'Batch faucet request failed. Try individual Faucet buttons.',
+};
+
 /**
  * Parse Move contract faucet errors into user-friendly messages.
- * E_COOLDOWN_NOT_MET (error code 1) = 24h cooldown still active.
+ * Distinguishes cooldown (abort code 1) from other MoveAbort errors,
+ * and detects timeout/network errors separately.
  */
 function parseFaucetError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
 
-  if (msg.includes('cooldown')) return msg;
-  if (msg.includes('MoveAbort') || msg.includes('moveAbort')) {
-    return 'Faucet cooldown active (24h). Try again later.';
-  }
-  if (msg.includes('InsufficientGas') || msg.includes('insufficient gas')) {
-    return 'Not enough NSN for gas fees. Get NSN first.';
-  }
-  return 'Faucet request failed. Try again later.';
+  const kind = classifyFaucetError(msg);
+  return FAUCET_ERROR_MESSAGES[kind];
 }
 
 /**
  * Parse batch faucet errors with fallback guidance.
- * Batch PTB is atomic — if one token aborts, all fail.
+ * Batch PTB is atomic -- if one token aborts, all fail.
  */
 function parseBatchFaucetError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
 
-  if (msg.includes('MoveAbort') || msg.includes('moveAbort')) {
-    return 'Some tokens may have active cooldowns. Try individual Faucet buttons.';
-  }
-  if (msg.includes('InsufficientGas') || msg.includes('insufficient gas')) {
-    return 'Not enough NSN for gas fees. Get NSN first.';
-  }
-  return 'Batch faucet request failed. Try individual Faucet buttons.';
+  const kind = classifyFaucetError(msg);
+  return BATCH_FAUCET_ERROR_MESSAGES[kind];
 }

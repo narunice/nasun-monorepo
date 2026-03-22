@@ -63,8 +63,7 @@ export function TokenFaucetButton({
         setMessage({ type: 'success', text: result.successMessage || 'Received!' });
         onSuccess?.();
       } else {
-        const shortText = result.error?.includes('cooldown') ? 'Cooldown' : 'Failed';
-        setMessage({ type: 'error', text: shortText, detail: result.error });
+        setMessage({ type: 'error', text: 'Failed', detail: result.error });
         onError?.(new Error(result.error || 'Faucet request failed'));
       }
     } catch (err) {
