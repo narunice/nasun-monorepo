@@ -191,6 +191,12 @@ export const POST_TYPE_SHORTCUTS: Record<string, PostType> = {
   'y': 'reply',
 };
 
+export const POST_TYPE_MULTIPLIERS: Record<PostType, number> = {
+  original: 1.0,
+  quote: 1.0,
+  reply: 0.5,
+};
+
 // Language labels for CT market size adjustment
 export const LANGUAGE_LABELS: Record<AccountLanguage, string> = {
   en: 'English',
