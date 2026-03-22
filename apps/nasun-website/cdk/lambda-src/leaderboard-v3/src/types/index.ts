@@ -67,16 +67,16 @@ export const SCORE_CONSTANTS = {
 // Daily base score tiers: rank-based catch-up mechanism
 // Lower ranks receive higher daily base scores to close the gap
 export const DAILY_BASE_SCORE_TIERS: Array<{ maxRank: number; score: number }> = [
-  { maxRank: 50, score: 0.112 },
-  { maxRank: 100, score: 0.134 },
-  { maxRank: 150, score: 0.178 },
-  { maxRank: 200, score: 0.211 },
-  { maxRank: 250, score: 0.245 },
-  { maxRank: 300, score: 0.343 },
-  { maxRank: 350, score: 0.456 },
-  { maxRank: 400, score: 0.511 },
-  { maxRank: 450, score: 0.603 },
-  { maxRank: 500, score: 0.711 },
+  { maxRank: 50, score: 0.067 },
+  { maxRank: 100, score: 0.080 },
+  { maxRank: 150, score: 0.107 },
+  { maxRank: 200, score: 0.127 },
+  { maxRank: 250, score: 0.147 },
+  { maxRank: 300, score: 0.206 },
+  { maxRank: 350, score: 0.274 },
+  { maxRank: 400, score: 0.307 },
+  { maxRank: 450, score: 0.362 },
+  { maxRank: 500, score: 0.427 },
 ];
 
 // Fixed cap: dailyBaseScoreTotal cannot exceed this absolute value
