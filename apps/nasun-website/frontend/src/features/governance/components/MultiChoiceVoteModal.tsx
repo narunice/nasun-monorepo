@@ -202,7 +202,7 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
               ) : (
                 <>
                   <p className="text-sm text-nasun-white/60 text-center py-2">
-                    You need to log in or create an account to vote on this proposal.
+                    You need to log in to vote on this proposal.
                   </p>
                   <ButtonV3
                     variant="nw1"
