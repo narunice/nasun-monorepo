@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 
 // Pagination configuration
 const PAGINATION_CONFIG = {
-  DELTA: 2,
+  DELTA: 1,
   FIRST_PAGE: 1,
   ELLIPSIS: '...',
 } as const;

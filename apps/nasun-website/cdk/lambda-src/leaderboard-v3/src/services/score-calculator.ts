@@ -75,12 +75,8 @@ export function calculatePostScore(
 /**
  * Calculate continuous role multiplier based on follower count and language
  *
- * Formula: RoleMultiplier = 1 + log₁₀(normalizedFollowers + 1) × 0.2
- * Range: 1.0 (0 followers) to 2.0 (100,000+ normalized followers)
- *
- * Language normalization scales followers to English-equivalent:
- * - Korean 10,000 followers × 5.0 = 50,000 normalized → 1.94 multiplier
- * - English 10,000 followers × 1.0 = 10,000 normalized → 1.80 multiplier
+ * Formula: RoleMultiplier = ROLE_MULTIPLIER_BASE + log₁₀(normalizedFollowers + 1) × ROLE_MULTIPLIER_LOG_FACTOR
+ * Range: 0.3 (0 followers) to 4.0 (100,000+ normalized followers)
  */
 export function calculateRoleMultiplier(
   followerCount: number,
@@ -104,7 +100,7 @@ export function calculateRoleMultiplier(
  * Calculate post score using follower-based continuous multiplier
  *
  * Formula: PostScore = Base × PostTypeMultiplier × RoleMultiplier + SignalBonus
- * Range: 0.5 (reply + 0 followers + standard) to 5.0 (original/quote + max multiplier + all signals)
+ * Range: 0.15 (reply + 0 followers + standard) to 7.0 (original/quote + max multiplier + all signals)
  */
 export function calculatePostScoreWithFollowers(
   followerCount: number,
