@@ -81,7 +81,8 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
     if (result.success) {
       setIsSuccess(true);
       dismissToast("Vote submitted successfully!");
-      await onVote(selectedChoice);
+      // Run refetch in background so the success UI shows immediately
+      onVote(selectedChoice).catch(() => {});
     } else {
       dismissToast(result.error || "Failed to submit vote");
     }
