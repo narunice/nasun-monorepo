@@ -543,6 +543,7 @@ const MultiChoiceProposalDetail: FC<{
   const hasVoted = localVoted || !!voteNft;
 
   const proposal = parseMultiChoiceProposal(data, proposalType);
+  const { displayNames } = useTwitterDisplayNames(proposal?.choices ?? []);
 
   if (!proposal) {
     return (
@@ -553,8 +554,6 @@ const MultiChoiceProposalDetail: FC<{
       </PageLayout>
     );
   }
-
-  const { displayNames } = useTwitterDisplayNames(proposal.choices);
 
   const isDelisted = proposal.status.variant === "Delisted";
   const isExpired = isUnixTimeExpired(proposal.expiration) || isDelisted;
