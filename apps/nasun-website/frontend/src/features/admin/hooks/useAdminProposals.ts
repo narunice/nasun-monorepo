@@ -38,8 +38,14 @@ export function useAdminProposals() {
     queryFn: async () => {
       if (proposalIds.length === 0) return [];
 
-      const proposalPromises = proposalIds.map(async (id) => {
-        const res = await suiClient.getObject({ id, options: { showContent: true } });
+      // Reverse IDs so newest proposals (appended last on-chain) come first
+      const newestFirst = [...proposalIds].reverse();
+
+      const proposalPromises = newestFirst.map(async (id) => {
+        const res = await suiClient.getObject({
+          id,
+          options: { showContent: true, showPreviousTransaction: true },
+        });
         const summary = parseProposalSummary(res.data);
         if (!summary) return null;
 
@@ -48,8 +54,11 @@ export function useAdminProposals() {
           summary.proposalType = await queryProposalType(id, typesTableId);
         }
 
-        // Fetch creation timestamp from the earliest transaction
-        summary.createdAt = await queryCreationTimestamp(id);
+        // Fetch creation timestamp
+        summary.createdAt = await queryCreationTimestamp(
+          id,
+          res.data?.previousTransaction
+        );
 
         return summary;
       });
@@ -80,7 +89,11 @@ export function useAdminProposals() {
     return 'Governance';
   }
 
-  async function queryCreationTimestamp(proposalId: string): Promise<number | null> {
+  async function queryCreationTimestamp(
+    proposalId: string,
+    previousTxDigest?: string | null
+  ): Promise<number | null> {
+    // Primary: query earliest transaction that changed this object
     try {
       const txs = await suiClient.queryTransactionBlocks({
         filter: { ChangedObject: proposalId },
@@ -92,8 +105,24 @@ export function useAdminProposals() {
         return Number(txs.data[0].timestampMs);
       }
     } catch {
-      // Ignore errors
+      // Devnet indexer may not support queryTransactionBlocks filters
     }
+
+    // Fallback: get timestamp from the object's previousTransaction digest
+    if (previousTxDigest) {
+      try {
+        const tx = await suiClient.getTransactionBlock({
+          digest: previousTxDigest,
+          options: {},
+        });
+        if (tx.timestampMs) {
+          return Number(tx.timestampMs);
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
     return null;
   }
 
