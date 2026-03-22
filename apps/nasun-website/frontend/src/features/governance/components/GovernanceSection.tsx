@@ -114,7 +114,7 @@ const ProposalList = () => {
   const voteNfts = extractVoteNfts(voteNftsRes);
   const mcVoteNfts = extractVoteNfts(mcVoteNftsRes);
   const proposalIds = getDashboardFields(dataResponse.data)?.proposals_ids || [];
-  const visibleProposalIds = proposalIds.filter((id) => !hiddenIds.has(id));
+  const visibleProposalIds = proposalIds.filter((id) => !hiddenIds.has(id)).reverse();
 
   if (visibleProposalIds.length === 0) {
     return (
