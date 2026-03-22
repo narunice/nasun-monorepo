@@ -87,7 +87,7 @@ export interface TopClimberEntry {
   displayName?: string;
   profileImageUrl?: string;
   currentRank: number;
-  previousRank: number;
+  previousRank: number | null;
   rankChange: RankChange;
   currentScore: number;
   previousScore?: number;
@@ -167,7 +167,7 @@ export interface FeaturedFeedResponse {
 }
 
 // My Rank Types (Phase 10)
-export type MyRankStatus = 'no_twitter' | 'not_ranked' | 'ranked' | 'error';
+export type MyRankStatus = 'no_twitter' | 'not_ranked' | 'ranked' | 'outside_top' | 'error';
 
 export interface MyRankData {
   status: MyRankStatus;
@@ -249,3 +249,6 @@ export const DATE_RANGE_LABELS: Record<DateRangeOptionV3, string> = {
   30: '4W',
   90: '3M',
 };
+
+// Public leaderboard display limit
+export const PUBLIC_LEADERBOARD_LIMIT = 500;

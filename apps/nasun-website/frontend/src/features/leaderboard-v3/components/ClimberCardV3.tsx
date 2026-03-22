@@ -92,7 +92,7 @@ const ClimberCardV3: React.FC<ClimberCardV3Props> = ({ climber, position }) => {
         {/* Rank Change label + transition */}
         <div className="text-sm whitespace-nowrap">
           <span className="text-nasun-white/50">{t("v3.climbers.rankChange")} </span>
-          <span className="text-nasun-white/40">#{climber.previousRank}</span>
+          <span className="text-nasun-white/40">{climber.previousRank === null ? 'Chart Out' : `#${climber.previousRank}`}</span>
           <span className="text-nasun-white/30 mx-1">→</span>
           <span className="text-nasun-white font-semibold">#{climber.currentRank}</span>
         </div>

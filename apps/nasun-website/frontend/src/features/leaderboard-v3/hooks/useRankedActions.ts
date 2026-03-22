@@ -31,6 +31,7 @@ export function useRankedActions(seasonId: string | undefined, data: MyRankData 
   // Share to X/Twitter
   const handleShareToX = () => {
     const rank = data?.rank;
+    if (!rank) return;
     const seasonName = seasonId || "current";
     const message = `I'm ranked #${rank} on @Nasun_io ${seasonName} Leaderboard!`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
