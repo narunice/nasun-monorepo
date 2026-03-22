@@ -52,6 +52,11 @@ const OAUTH_CSRF_STATE_KEY = 'nasun:zklogin:oauth_csrf_state';
 /** Session storage key for return URL after zkLogin */
 const ZKLOGIN_RETURN_URL_KEY = 'nasun:zklogin:return_url';
 
+// On-chain limit: zklogin_max_epoch_upper_bound_delta = 30 (protocol v43).
+// maxEpoch must not exceed currentEpoch + 30.
+// With 2h devnet epochs: 30 * 2h = 60h (~2.5 days).
+const ZKLOGIN_MAX_EPOCH_OFFSET = 30;
+
 /** zkLogin configuration (set via configureZkLogin) */
 let zkLoginConfig: ZkLoginConfig | null = null;
 
@@ -82,7 +87,7 @@ export async function createZkLoginSession(): Promise<ZkLoginSession> {
 
   // 1. Get current epoch
   const { epoch } = await client.getLatestSuiSystemState();
-  const maxEpoch = Number(epoch) + 10; // Valid for ~10 epochs (~1-2 days)
+  const maxEpoch = Number(epoch) + ZKLOGIN_MAX_EPOCH_OFFSET;
 
   // 2. Generate ephemeral keypair
   const ephemeralKeyPair = new Ed25519Keypair();
@@ -714,7 +719,7 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
       headerBase64: proofResult.proof.headerBase64,
     },
     addressSeed: finalAddressSeed, // Use prover's addressSeed if available, else local
-    expiresAt: session.maxEpoch * 24 * 60 * 60 * 1000, // Rough estimate
+    expiresAt: Date.now() + ZKLOGIN_MAX_EPOCH_OFFSET * 2 * 60 * 60 * 1000, // ~2.5 days at 2h/epoch
     email: payload.email || saltResponse.email,
     name: payload.name || saltResponse.name,
     picture: payload.picture || saltResponse.picture,
