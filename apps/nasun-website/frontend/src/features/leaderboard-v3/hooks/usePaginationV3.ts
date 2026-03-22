@@ -36,9 +36,7 @@ const getPaginationRange = (currentPage: number, totalPages: number): Pagination
 
   for (const page of range) {
     if (last) {
-      if (page - last === 2) {
-        rangeWithDots.push(last + 1);
-      } else if (page - last !== 1) {
+      if (page - last !== 1) {
         rangeWithDots.push(PAGINATION_CONFIG.ELLIPSIS);
       }
     }
