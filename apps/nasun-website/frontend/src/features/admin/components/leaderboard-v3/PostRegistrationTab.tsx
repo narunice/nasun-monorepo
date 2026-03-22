@@ -414,7 +414,12 @@ export function PostRegistrationTab() {
           <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-sm border border-nasun-c5/20">
             <div className="text-sm text-nasun-white/60">
               <span className="font-medium text-nasun-white">Score Preview:</span>{" "}
-              {form.scorePreview.baseScore} × {form.scorePreview.roleMultiplier} +{" "}
+              {form.scorePreview.baseScore} ×{" "}
+              {form.scorePreview.postTypeMultiplier !== 1.0 && (
+                <span className="text-amber-400">{form.scorePreview.postTypeMultiplier}</span>
+              )}
+              {form.scorePreview.postTypeMultiplier !== 1.0 && " × "}
+              {form.scorePreview.roleMultiplier} +{" "}
               {form.scorePreview.signalBonus}
               <span className="ml-2 text-nasun-white/40">({POST_TYPE_LABELS[form.postType]})</span>
             </div>
