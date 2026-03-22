@@ -1,6 +1,8 @@
 import { memo } from "react";
 import { useMyRank } from "../../../hooks/useMyRank";
+import { PUBLIC_LEADERBOARD_LIMIT } from "../../../types";
 import { RankedCard } from "./RankedCard";
+import { OutsideTopCard } from "./OutsideTopCard";
 import { ConnectTwitterCard } from "./ConnectTwitterCard";
 import { NotRankedCard } from "./NotRankedCard";
 import { ErrorCard } from "./ErrorCard";
@@ -48,8 +50,17 @@ function MyRankCardV3Component({ seasonId }: MyRankCardV3Props) {
     return <ErrorCard />;
   }
 
+  // Outside top 500
+  if (data?.status === "outside_top") {
+    return <OutsideTopCard data={data} />;
+  }
+
   // Ranked state
   if (data?.status === "ranked" && data.rank !== undefined) {
+    // Client-side guard: catch rank > 500 during deploy transition
+    if (data.rank > PUBLIC_LEADERBOARD_LIMIT) {
+      return <OutsideTopCard data={data} />;
+    }
     return <RankedCard data={data} seasonId={seasonId} />;
   }
 

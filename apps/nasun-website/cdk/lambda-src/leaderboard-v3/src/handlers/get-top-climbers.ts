@@ -20,6 +20,7 @@ import {
   TopClimbersResponse,
   TopClimberEntry,
   DYNAMO_KEYS,
+  PUBLIC_LEADERBOARD_LIMIT,
 } from '../types';
 import { getActiveSeason, getSeasonById, getBannedAccountIds } from '../services/dynamodb-client';
 import { createResponse, getRequestOrigin } from '../utils/response';
@@ -112,7 +113,7 @@ function calculateTopClimbers(
         displayName: current.displayName,
         profileImageUrl: current.profileImageUrl,
         currentRank: current.rank,
-        previousRank: previous?.rank || 0,
+        previousRank: previous ? (previous.rank > PUBLIC_LEADERBOARD_LIMIT ? null : previous.rank) : 0,
         rankChange: {
           direction,
           amount: Math.abs(rankChange),

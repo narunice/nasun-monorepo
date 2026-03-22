@@ -80,9 +80,6 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
           <div className="flex-1">
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-black text-nasun-c7">#{data.rank}</span>
-              {data.totalUsers && (
-                <span className="text-xs text-nasun-white/40">/ {data.totalUsers}</span>
-              )}
             </div>
             <div className="text-sm text-nasun-white/60">{data.userScore?.toFixed(3)} {t("v3.myRank.score")}</div>
           </div>

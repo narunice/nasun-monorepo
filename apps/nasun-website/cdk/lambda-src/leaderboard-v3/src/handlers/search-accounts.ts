@@ -15,7 +15,7 @@ import {
   DynamoDBDocumentClient,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { Account, Platform, DYNAMO_KEYS } from '../types';
+import { Account, Platform, DYNAMO_KEYS, PUBLIC_LEADERBOARD_LIMIT } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { getBannedAccountIds, getSeasonById } from '../services/dynamodb-client';
 import { getLatestSnapshot, computeDisplayRanks } from '../utils/snapshot-utils';
@@ -178,9 +178,10 @@ export const handler = async (
       rankMap = await getSeasonRanks(seasonId, accountIds);
     }
 
-    // Build response
+    // Build response (hide rank/score for users outside public leaderboard limit)
     const results: SearchResult[] = accounts.map((account) => {
       const rankInfo = rankMap?.get(account.accountId);
+      const isInPublicRange = rankInfo && rankInfo.rank <= PUBLIC_LEADERBOARD_LIMIT;
       return {
         accountId: account.accountId,
         username: account.username,
@@ -188,8 +189,8 @@ export const handler = async (
         platform: account.platform,
         displayName: account.displayName,
         profileImageUrl: account.profileImageUrl,
-        userScore: rankInfo?.userScore,
-        rank: rankInfo?.rank,
+        userScore: isInPublicRange ? rankInfo.userScore : undefined,
+        rank: isInPublicRange ? rankInfo.rank : undefined,
       };
     });
 

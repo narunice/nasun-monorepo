@@ -39,6 +39,7 @@ import {
   SeasonLeaderboardEntry,
   SeasonLeaderboardResponse,
   DYNAMO_KEYS,
+  PUBLIC_LEADERBOARD_LIMIT,
 } from '../types';
 import {
   getAllAccounts,
@@ -61,8 +62,6 @@ const docClient = DynamoDBDocumentClient.from(client, {
     removeUndefinedValues: true,
   },
 });
-
-const PUBLIC_LEADERBOARD_LIMIT = 500;
 
 const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;

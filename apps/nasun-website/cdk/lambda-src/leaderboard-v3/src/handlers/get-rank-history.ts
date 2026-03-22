@@ -23,6 +23,7 @@ import {
   DailySnapshot,
   RankChange,
   DYNAMO_KEYS,
+  PUBLIC_LEADERBOARD_LIMIT,
 } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { getDateNDaysAgo } from '../utils/date';
@@ -324,13 +325,17 @@ export const handler = async (
       adjustedRanks = snapshots.map((s) => s.rank);
     }
 
-    const history: RankHistoryEntry[] = snapshots.map((snapshot, index) => ({
-      date: snapshot.snapshotDate,
-      rank: adjustedRanks[index],
-      userScore: snapshot.userScore,
-      postCount: snapshot.postCount,
-      rankChange: snapshot.rankChange,
-    }));
+    // Filter out entries where rank exceeds public limit
+    // (chart gap-fill logic will show "Chart Out" for missing dates)
+    const history: RankHistoryEntry[] = snapshots
+      .map((snapshot, index) => ({
+        date: snapshot.snapshotDate,
+        rank: adjustedRanks[index],
+        userScore: snapshot.userScore,
+        postCount: snapshot.postCount,
+        rankChange: snapshot.rankChange,
+      }))
+      .filter((entry) => entry.rank <= PUBLIC_LEADERBOARD_LIMIT);
 
     // Calculate stats
     const stats = calculateStats(history);
