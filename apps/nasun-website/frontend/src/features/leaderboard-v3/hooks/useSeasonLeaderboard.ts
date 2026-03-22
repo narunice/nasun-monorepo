@@ -4,7 +4,7 @@
  * Fetches season-based leaderboard data with support for snapshots.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { getSeasonLeaderboard } from '../services/leaderboardV3Api';
 import type { GetSeasonLeaderboardParams } from '../types';
 
@@ -25,5 +25,6 @@ export function useSeasonLeaderboard(params: GetSeasonLeaderboardParams = {}) {
     staleTime: 5 * 60 * 1000, // 5 minutes (matches API cache)
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   });
 }

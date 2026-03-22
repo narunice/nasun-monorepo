@@ -551,9 +551,9 @@ export function calculatePostScorePreviewWithFollowers(
 ): { baseScore: number; roleMultiplier: number; signalBonus: number; totalScore: number } {
   const LANGUAGE_SCALE: Record<string, number> = {
     en: 1.0,
-    zh: 1.15,
-    ja: 1.4,
-    ko: 2.0,
+    zh: 1.0,
+    ja: 1.0,
+    ko: 1.0,
   };
 
   const SIGNAL_BONUSES: Record<string, number> = {
@@ -564,9 +564,9 @@ export function calculatePostScorePreviewWithFollowers(
   };
 
   const BASE_SCORE = 1.0;
-  const ROLE_MULTIPLIER_BASE = 1.0;
-  const ROLE_MULTIPLIER_LOG_FACTOR = 0.2;
-  const ROLE_MULTIPLIER_MAX = 2.0;
+  const ROLE_MULTIPLIER_BASE = 0.3;
+  const ROLE_MULTIPLIER_LOG_FACTOR = 0.74;
+  const ROLE_MULTIPLIER_MAX = 4.0;
 
   // Calculate continuous role multiplier
   let roleMultiplier = ROLE_MULTIPLIER_BASE;
