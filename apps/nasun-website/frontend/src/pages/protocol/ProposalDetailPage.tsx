@@ -626,9 +626,16 @@ const MultiChoiceProposalDetail: FC<{
           </div>
         )}
 
-        {/* Tweet Choice Grid (full width, above description) */}
+        {/* Description */}
+        <OuterBox color="nw2" padding="md" className="!bg-gray-900">
+          <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
+            {proposal.description}
+          </p>
+        </OuterBox>
+
+        {/* Tweet Choice Grid */}
         {isTweetMode && (
-          <div className="mb-6">
+          <div className="mt-4">
             <TweetChoiceGrid
               choices={proposal.choices}
               selectedChoice={selectedChoice}
@@ -641,15 +648,23 @@ const MultiChoiceProposalDetail: FC<{
           </div>
         )}
 
-        {/* Description */}
-        <OuterBox color="nw2" padding="md" className="!bg-gray-900 mb-4">
-          <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
-            {proposal.description}
-          </p>
-        </OuterBox>
+        {/* Vote Action (inline, below cards) */}
+        {isTweetMode && !isExpired && !hasVoted && (
+          <div className="flex justify-center py-10">
+            <ButtonV3
+              variant="gradientDark"
+              size="xl"
+              onClick={() => setIsModalOpen(true)}
+              disabled={selectedChoice === null}
+              className=" uppercase tracking-wider"
+            >
+              Vote
+            </ButtonV3>
+          </div>
+        )}
 
         {/* Vote Results + Details (side by side on desktop) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-8">
           {/* Vote Results */}
           <OuterBox color="nw1" padding="md">
             <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
@@ -796,28 +811,6 @@ const MultiChoiceProposalDetail: FC<{
           </OuterBox>
         </div>
 
-        {/* Sticky bottom bar for tweet mode voting */}
-        {isTweetMode && !isExpired && !hasVoted && (
-          <div className="fixed bottom-0 left-0 right-0 z-30 bg-nasun-c7 shadow-[0_-4px_24px_rgba(179,224,255,0.4)]">
-            <div className="max-w-6xl mx-auto flex items-center justify-center gap-6 px-4 py-4">
-              <span
-                className={`text-lg font-semibold truncate text-nasun-black`}
-              >
-                {selectedChoice !== null
-                  ? `Selected: ${getChoiceLabel(proposal.choices[selectedChoice], displayNames)}`
-                  : "Select a post to vote"}
-              </span>
-              <button
-                onClick={() => setIsModalOpen(true)}
-                disabled={selectedChoice === null}
-                className="flex-shrink-0 px-14 py-2 text-lg font-bold uppercase tracking-wider rounded-lg border border-nasun-nw3 bg-nasun-white text-nasun-black hover:bg-nasun-nw5 transition-all active:scale-[0.97] disabled:bg-nasun-white disabled:text-nasun-black/70 disabled:border-nasun-nw3/50 disabled:cursor-not-allowed"
-              >
-                Vote
-              </button>
-            </div>
-          </div>
-        )}
-
         <MultiChoiceVoteModal
           proposal={proposal}
           hasVoted={hasVoted}
@@ -836,11 +829,6 @@ const MultiChoiceProposalDetail: FC<{
             setIsModalOpen(false);
           }}
         />
-
-        {/* Bottom padding for sticky bar */}
-        {isTweetMode && selectedChoice !== null && !isExpired && !hasVoted && (
-          <div className="h-16" />
-        )}
       </SectionLayout>
     </PageLayout>
   );
