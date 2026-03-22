@@ -118,7 +118,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultSpreadBps: 30,
     defaultMaxArbQuantity: 5,
     defaultMaxOrderSize: 10.0,
-    faucetBaseAmount: 0.1,   // V2 faucet: 0.1 NETH per call
+    faucetBaseAmount: 2.5,   // V2 faucet: 2.5 NETH per call (NETH_FAUCET_AMOUNT = 250_000_000)
     startupDelayMs: 20000,
     faucetType: 'v2',
     faucetV2Package: NETH_FAUCET_PACKAGE,
@@ -196,6 +196,9 @@ export interface LPConfig {
   enableArbitrage: boolean;
   minArbitrageProfitBps: number;
   maxArbitrageQuantity: number;
+
+  // Faucet control
+  disableTokenFaucet: boolean;
 }
 
 export function loadConfig(): LPConfig {
@@ -223,6 +226,8 @@ export function loadConfig(): LPConfig {
     enableArbitrage: process.env.LP_ENABLE_ARBITRAGE !== 'false',
     minArbitrageProfitBps: parseInt(process.env.LP_MIN_ARB_PROFIT_BPS || '10', 10),
     maxArbitrageQuantity: parseFloat(process.env.LP_MAX_ARB_QUANTITY || String(MARKET.defaultMaxArbQuantity)),
+
+    disableTokenFaucet: process.env.LP_DISABLE_TOKEN_FAUCET === 'true',
   };
 
   // Validate configuration bounds

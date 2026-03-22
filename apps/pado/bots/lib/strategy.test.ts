@@ -33,6 +33,7 @@ function makeConfig(overrides: Partial<LPConfig> = {}): LPConfig {
     enableArbitrage: false,
     minArbitrageProfitBps: 10,
     maxArbitrageQuantity: 0.5,
+    disableTokenFaucet: false,
     ...overrides,
   };
 }
