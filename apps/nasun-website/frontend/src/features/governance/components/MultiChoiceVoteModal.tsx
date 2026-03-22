@@ -117,13 +117,6 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
             )}
           </div>
 
-          {/* Description */}
-          {!confirmStep && (
-            <div className="mb-5 overflow-y-auto max-h-[20vh] pr-2 flex-shrink custom-scrollbar">
-              <p className="text-nasun-white/85">{proposal.description}</p>
-            </div>
-          )}
-
           <div className="flex flex-col gap-3 flex-shrink-0">
             {/* Voting Power / Equal Weight Display */}
             {isConnected && !hasVoted && !isSuccess && !confirmStep && (
