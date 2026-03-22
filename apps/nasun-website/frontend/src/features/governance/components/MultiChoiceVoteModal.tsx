@@ -110,113 +110,122 @@ export const MultiChoiceVoteModal: FC<MultiChoiceVoteModalProps> = ({
           >
             {/* Header */}
             <Dialog.Title className="text-nasun-white font-semibold text-lg mb-5">
-              Confirm Your Vote
+              {isConnected ? "Confirm Your Vote" : "Log In / Sign Up to Vote"}
             </Dialog.Title>
 
             <div className="flex flex-col gap-4">
-              {/* Selected Candidate */}
-              <div className="flex items-center gap-3 p-4 rounded-sm border border-nasun-nw1/40 bg-nasun-nw1/10">
-                {profile?.profileImageUrl && (
-                  <img
-                    src={profile.profileImageUrl}
-                    alt={profile.displayName}
-                    className="w-12 h-12 rounded-full flex-shrink-0"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <span className="text-nasun-white font-medium block truncate">
-                    {choiceLabel}
-                  </span>
-                  {handle && choiceLabel !== `@${handle}` && (
-                    <span className="text-xs text-nasun-white/40">
-                      @{handle}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Vote Details */}
-              {isConnected && !votingDisable && (
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between text-nasun-white/60">
-                    <span>Voting Power</span>
-                    <span className="font-semibold text-nasun-nw4">
-                      {proposal.useEqualWeight
-                        ? "1 (Equal Weight)"
-                        : isLoadingPower
-                          ? "..."
-                          : effectivePower}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-nasun-white/60">
-                    <span>Gas Fee</span>
-                    {isSponsored ? (
-                      <span className="text-green-400 text-xs font-medium">
-                        Sponsored by Nasun
-                      </span>
-                    ) : (
-                      <span className="text-nasun-nw4 text-xs font-medium">
-                        Required
-                      </span>
+              {isConnected ? (
+                <>
+                  {/* Selected Candidate */}
+                  <div className="flex items-center gap-3 p-4 rounded-sm border border-nasun-nw1/40 bg-nasun-nw1/10">
+                    {profile?.profileImageUrl && (
+                      <img
+                        src={profile.profileImageUrl}
+                        alt={profile.displayName}
+                        className="w-12 h-12 rounded-full flex-shrink-0"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
                     )}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-nasun-white font-medium block truncate">
+                        {choiceLabel}
+                      </span>
+                      {handle && choiceLabel !== `@${handle}` && (
+                        <span className="text-xs text-nasun-white/40">
+                          @{handle}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-nasun-white/40 pt-1">
-                    This vote cannot be undone.
+
+                  {/* Vote Details */}
+                  {!votingDisable && (
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center justify-between text-nasun-white/60">
+                        <span>Voting Power</span>
+                        <span className="font-semibold text-nasun-nw4">
+                          {proposal.useEqualWeight
+                            ? "1 (Equal Weight)"
+                            : isLoadingPower
+                              ? "..."
+                              : effectivePower}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-nasun-white/60">
+                        <span>Gas Fee</span>
+                        {isSponsored ? (
+                          <span className="text-green-400 text-xs font-medium">
+                            Sponsored by Nasun
+                          </span>
+                        ) : (
+                          <span className="text-nasun-nw4 text-xs font-medium">
+                            Required
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-nasun-white/40 pt-1">
+                        This vote cannot be undone.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    <ButtonV3
+                      variant="nw2"
+                      outline
+                      size="sm"
+                      onClick={onClose}
+                      className="flex-1 font-normal"
+                      disabled={isPending}
+                    >
+                      Cancel
+                    </ButtonV3>
+                    <ButtonV3
+                      variant="nw1"
+                      size="sm"
+                      onClick={vote}
+                      className="flex-1 font-normal"
+                      disabled={votingDisable}
+                    >
+                      {isPending
+                        ? "Voting..."
+                        : hasVoted || isSuccess
+                          ? "Already Voted"
+                          : "Confirm Vote"}
+                    </ButtonV3>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-nasun-white/60 text-center py-2">
+                    You need to log in or create an account to vote on this proposal.
                   </p>
-                </div>
-              )}
-
-              {/* Not Connected */}
-              {!isConnected && (
-                <p className="text-sm text-nasun-white/60 text-center py-2">
-                  Please log in or sign up to vote on this proposal.
-                </p>
-              )}
-
-              {/* Actions */}
-              {isConnected && (
-                <div className="flex gap-3">
-                  <ButtonV3
-                    variant="nw2"
-                    outline
-                    size="sm"
-                    onClick={onClose}
-                    className="flex-1 font-normal"
-                    disabled={isPending}
-                  >
-                    Cancel
-                  </ButtonV3>
                   <ButtonV3
                     variant="nw1"
                     size="sm"
-                    onClick={vote}
-                    className="flex-1 font-normal"
-                    disabled={votingDisable}
-                  >
-                    {isPending
-                      ? "Voting..."
-                      : hasVoted || isSuccess
-                        ? "Already Voted"
-                        : "Confirm Vote"}
-                  </ButtonV3>
-                </div>
-              )}
-
-              {!isConnected && (
-                <Dialog.Close asChild>
-                  <ButtonV3
-                    variant="nw2"
-                    outline
-                    size="sm"
+                    onClick={() => {
+                      onClose();
+                      window.dispatchEvent(new CustomEvent("nasun:open-login"));
+                    }}
                     className="w-full font-normal"
                   >
-                    Close
+                    Log In / Sign Up
                   </ButtonV3>
-                </Dialog.Close>
+                  <Dialog.Close asChild>
+                    <ButtonV3
+                      variant="nw2"
+                      outline
+                      size="sm"
+                      className="w-full font-normal"
+                    >
+                      Close
+                    </ButtonV3>
+                  </Dialog.Close>
+                </>
               )}
             </div>
           </Dialog.Content>
