@@ -2,14 +2,25 @@ import { useState, useEffect, useMemo } from "react";
 import { extractTweetHandle } from "../utils/proposalHelpers";
 import { getAccountByUsername } from "@/features/leaderboard-v3/services/leaderboardV3Api";
 
+export interface TwitterProfile {
+  displayName: string;
+  profileImageUrl?: string;
+}
+
 /**
- * Resolves Twitter handles from choice URLs to display names via batch API lookup.
- * Uses Promise.allSettled for resilience (one failure won't break others).
- * Falls back to @handle if display name is not found.
+ * Resolves Twitter handles from choice URLs to profiles via batch API lookup.
+ * Returns both a profiles Map (with displayName + profileImageUrl) and
+ * a displayNames Map (string only) for backwards compatibility with getChoiceLabel.
  */
 export function useTwitterDisplayNames(choices: string[]) {
-  const [displayNames, setDisplayNames] = useState<Map<string, string>>(new Map());
+  const [profiles, setProfiles] = useState<Map<string, TwitterProfile>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
+
+  const displayNames = useMemo(() => {
+    const map = new Map<string, string>();
+    profiles.forEach((v, k) => map.set(k, v.displayName));
+    return map;
+  }, [profiles]);
 
   const handles = useMemo(() => {
     const result: { idx: number; handle: string }[] = [];
@@ -35,21 +46,28 @@ export function useTwitterDisplayNames(choices: string[]) {
             result.account.displayName ||
             result.account.originalUsername ||
             result.account.username;
-          return { handle, name };
+          return {
+            handle,
+            name,
+            profileImageUrl: result.account.profileImageUrl,
+          };
         }
-        return { handle, name: null };
+        return { handle, name: null, profileImageUrl: undefined };
       })
     ).then((results) => {
-      const map = new Map<string, string>();
+      const map = new Map<string, TwitterProfile>();
       for (const result of results) {
         if (result.status === "fulfilled" && result.value.name) {
-          map.set(result.value.handle, result.value.name);
+          map.set(result.value.handle, {
+            displayName: result.value.name,
+            profileImageUrl: result.value.profileImageUrl,
+          });
         }
       }
-      setDisplayNames(map);
+      setProfiles(map);
       setIsLoading(false);
     });
   }, [handles]);
 
-  return { displayNames, isLoading };
+  return { displayNames, profiles, isLoading };
 }
