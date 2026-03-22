@@ -8,7 +8,10 @@
  *   pm2 restart all
  *
  * Before starting, export secrets via .env file:
- *   LP_PRIVATE_KEY=<your-hex-key>         # Required by LP bots
+ *   LP_PRIVATE_KEY=<your-hex-key>         # Shared fallback for LP bots
+ *   LP_PRIVATE_KEY_NBTC=<key>             # Per-bot keys (recommended, avoids gas coin contention)
+ *   LP_PRIVATE_KEY_NETH=<key>
+ *   LP_PRIVATE_KEY_NSOL=<key>
  *   ORACLE_ADMIN_KEY=<admin-hex-key>      # Required by price-updater
  *   KEEPER_PRIVATE_KEY=<keeper-hex-key>   # Required by tpsl-keeper
  *   TPSL_API_KEY=<api-key>               # Required by tpsl-keeper
@@ -38,6 +41,7 @@ const COMMON_LP_OPTS = {
   max_restarts: 10,
   restart_delay: 5000,
   exp_backoff_restart_delay: 100,
+  kill_timeout: 10000, // 10s for graceful shutdown (cancel_all_orders)
   log_date_format: 'YYYY-MM-DD HH:mm:ss',
   merge_logs: true,
   max_memory_restart: '500M',
@@ -53,6 +57,7 @@ module.exports = {
       name: 'lp-bot-nbtc',
       env: {
         ...COMMON_LP_ENV,
+        LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NBTC || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NBTC',
         // Tight spread for main market (~$4,850/level)
         LP_SPREAD_BPS: '20',
@@ -74,6 +79,7 @@ module.exports = {
       name: 'lp-bot-neth',
       env: {
         ...COMMON_LP_ENV,
+        LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NETH || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NETH',
         // Standard spread (~$5,400/level)
         LP_SPREAD_BPS: '30',
@@ -95,6 +101,7 @@ module.exports = {
       name: 'lp-bot-nsol',
       env: {
         ...COMMON_LP_ENV,
+        LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NSOL || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NSOL',
         // Wide spread for volatile asset (~$5,100/level)
         LP_SPREAD_BPS: '40',

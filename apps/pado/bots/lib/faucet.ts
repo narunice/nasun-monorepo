@@ -17,6 +17,12 @@ import {
 } from './config.js';
 
 // ========================================
+// Token faucet disable flag
+// ========================================
+
+const TOKEN_FAUCET_DISABLED = process.env.LP_DISABLE_TOKEN_FAUCET === 'true';
+
+// ========================================
 // V1 Faucet (NBTC + NUSDC, no cooldown)
 // ========================================
 
@@ -104,6 +110,11 @@ export async function requestTokens(
   client: SuiClient,
   keypair: Ed25519Keypair,
 ): Promise<boolean> {
+  if (TOKEN_FAUCET_DISABLED) {
+    console.log(`[${timestamp()}] Token faucet disabled (pre-funded). Skipping.`);
+    return false;
+  }
+
   if (MARKET.faucetType === 'v1') {
     return executeRequestTokensV1(client, keypair);
   } else {
