@@ -38,6 +38,11 @@ const FAUCET_LOADING_EVENT = 'nasun:faucet-loading-change';
 const FAUCET_TX_TIMEOUT_MS = 45_000; // 45s (includes zkLogin proof time)
 const FAUCET_TX_TIMEOUT_MSG = 'Faucet request timed out. Check your balance before retrying.';
 
+// Post-success delay: wait for RPC object index to propagate new gas coin version
+// before allowing the next faucet claim. Prevents "not available for consumption" errors
+// when users click individual faucet buttons sequentially.
+const POST_SUCCESS_DELAY_MS = 2_000;
+
 function withTimeout<T>(promise: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   return Promise.race([
@@ -46,6 +51,21 @@ function withTimeout<T>(promise: Promise<T>): Promise<T> {
       timer = setTimeout(() => reject(new Error(FAUCET_TX_TIMEOUT_MSG)), FAUCET_TX_TIMEOUT_MS);
     }),
   ]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Detect stale gas coin errors from Sui validators.
+ * This occurs when the RPC returns an outdated object version after a previous
+ * transaction consumed the gas coin. Unlike the bot retry.ts NON_RETRIABLE
+ * classification (which retries the SAME tx bytes), faucet retry rebuilds
+ * a fresh Transaction that forces new gas coin resolution via getCoins RPC.
+ */
+function isStaleObjectError(msg: string): boolean {
+  return msg.includes('not available for consumption');
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function setGlobalLoading(symbol: string, loading: boolean): void {
@@ -251,6 +271,9 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         if (result) {
           await refreshBalance();
           setCooldownTimestamp(address!, symbol);
+          // Wait for RPC object index to propagate new gas coin version
+          // so the next sequential faucet claim gets fresh data
+          await delay(POST_SUCCESS_DELAY_MS);
         }
         return {
           success: result,
@@ -258,6 +281,33 @@ export function useTokenFaucet(): UseTokenFaucetResult {
           successMessage: result ? handler.successMessage : undefined,
         };
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+
+        // Stale gas coin: RPC returned outdated object version.
+        // Rebuild a FRESH Transaction (forces new gas coin resolution via getCoins RPC).
+        // This differs from bot retry.ts NON_RETRIABLE: bots retry the SAME tx bytes,
+        // while here we rebuild from scratch with handler.buildTransaction().
+        if (isStaleObjectError(msg) && handler.buildTransaction) {
+          try {
+            await delay(POST_SUCCESS_DELAY_MS);
+            const freshTx = handler.buildTransaction();
+            const retryResult = await withTimeout(signAndExecute(freshTx));
+            if (retryResult.success) {
+              await refreshBalance();
+              setCooldownTimestamp(address!, symbol);
+              return { success: true, successMessage: handler.successMessage };
+            }
+          } catch (retryErr) {
+            // Retry failed with cooldown = first tx actually succeeded
+            const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+            if (classifyFaucetError(retryMsg) === 'cooldown') {
+              await refreshBalance();
+              setCooldownTimestamp(address!, symbol);
+              return { success: true, successMessage: handler.successMessage };
+            }
+          }
+        }
+
         console.error(`Faucet request failed for ${symbol}:`, err);
         const errorMsg = parseFaucetError(err);
         return { success: false, error: errorMsg };
@@ -361,12 +411,36 @@ export function useTokenFaucet(): UseTokenFaucetResult {
           }
           await refreshBalance();
           result.success = true;
+          // Wait for RPC object index to propagate new gas coin version
+          await delay(POST_SUCCESS_DELAY_MS);
         } else {
           for (const s of onchainSymbols) {
             result.failed.push({ symbol: s, error: 'Transaction failed' });
           }
         }
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+
+        // Stale gas coin: rebuild fresh batch PTB and retry once
+        if (isStaleObjectError(msg)) {
+          try {
+            await delay(POST_SUCCESS_DELAY_MS);
+            const freshTx = buildBatchFaucetTx(onchainSymbols);
+            if (freshTx) {
+              const retryResult = await withTimeout(signAndExecute(freshTx));
+              if (retryResult.success) {
+                for (const s of onchainSymbols) {
+                  setCooldownTimestamp(address!, s);
+                  result.claimed.push(s);
+                }
+                await refreshBalance();
+                result.success = true;
+                return result;
+              }
+            }
+          } catch { /* retry failed, fall through */ }
+        }
+
         console.error('Batch faucet request failed:', err);
         const errorMsg = parseBatchFaucetError(err);
         for (const s of onchainSymbols) {
@@ -439,7 +513,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 // Error parsers
 // ============================================
 
-type FaucetErrorKind = 'timeout' | 'network' | 'cooldown' | 'move_abort' | 'gas' | 'unknown';
+type FaucetErrorKind = 'timeout' | 'network' | 'cooldown' | 'move_abort' | 'stale_object' | 'gas' | 'unknown';
 
 function classifyFaucetError(msg: string): FaucetErrorKind {
   if (/timed?\s*out|AbortError/i.test(msg)) return 'timeout';
@@ -449,6 +523,7 @@ function classifyFaucetError(msg: string): FaucetErrorKind {
     const code = match ? parseInt(match[1], 10) : null;
     return code === 1 ? 'cooldown' : 'move_abort';
   }
+  if (isStaleObjectError(msg)) return 'stale_object';
   if (/InsufficientGas|insufficient gas|No valid gas/i.test(msg)) return 'gas';
   return 'unknown';
 }
@@ -458,6 +533,7 @@ const FAUCET_ERROR_MESSAGES: Record<FaucetErrorKind, string> = {
   network: 'Network error. Please try again.',
   cooldown: 'Faucet cooldown active (24h). Try again later.',
   move_abort: 'Transaction failed. Please try again.',
+  stale_object: 'Transaction failed after automatic retry. Please try again.',
   gas: 'Not enough NSN for gas fees. Get NSN first.',
   unknown: 'Faucet request failed. Try again later.',
 };
@@ -467,6 +543,7 @@ const BATCH_FAUCET_ERROR_MESSAGES: Record<FaucetErrorKind, string> = {
   network: 'Network error. Try individual Faucet buttons.',
   cooldown: 'Some tokens have active cooldowns. Try individual Faucet buttons.',
   move_abort: 'Transaction failed. Try individual Faucet buttons.',
+  stale_object: 'Batch request failed after retry. Try individual Faucet buttons.',
   gas: 'Not enough NSN for gas fees. Get NSN first.',
   unknown: 'Batch faucet request failed. Try individual Faucet buttons.',
 };
