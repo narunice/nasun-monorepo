@@ -299,8 +299,9 @@ export class CommonStack extends cdk.Stack {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         // VotingPowerCertificate + Sponsored Transaction
         SUI_RPC_URL: process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io",
-        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0x40a6c8b671ecea57cad48bc546b014c52e2753caa3f4d07aeb3c348b6c907353",
+        GOVERNANCE_PACKAGE_ID: process.env.GOVERNANCE_PACKAGE_ID || "0xc561bf870182857c9b2c0ae7c0ad6366029efccafd31ef1e914260e4e24d5483",
         GOVERNANCE_ORIGINAL_PACKAGE_ID: process.env.GOVERNANCE_ORIGINAL_PACKAGE_ID || "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
+        GOVERNANCE_MULTI_CHOICE_PACKAGE_ID: process.env.GOVERNANCE_MULTI_CHOICE_PACKAGE_ID || "0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a",
         PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       },
