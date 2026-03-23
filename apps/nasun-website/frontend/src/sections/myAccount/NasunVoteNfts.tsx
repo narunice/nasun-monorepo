@@ -1,5 +1,6 @@
 import { FC, useMemo } from "react";
 import { useSuiClientQueries } from "@mysten/dapp-kit";
+import { ExternalLink } from "lucide-react";
 import { useNetworkVariable } from "@/config/suiNetworkConfig";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useUserStore } from "@/store/userStore";
@@ -128,6 +129,9 @@ export const NasunVoteNfts: FC = () => {
     }
   });
 
+  const explorerUrl =
+    import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet";
+
   if (nfts.length === 0) return null;
 
   return (
@@ -149,9 +153,24 @@ export const NasunVoteNfts: FC = () => {
               >
                 <div className="space-y-1 text-nasun-white/70">
                   <p><span className="text-nasun-white/40">Proposal:</span> {nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}</p>
-                  <p className="font-mono text-xs"><span className="text-nasun-white/40">Proposal ID:</span> {nft.proposalId}</p>
-                  <p className="font-mono text-xs"><span className="text-nasun-white/40">Object ID:</span> {nft.id}</p>
-                  <p className="font-mono text-xs"><span className="text-nasun-white/40">Wallet:</span> {nft.owner.slice(0, 10)}...{nft.owner.slice(-6)}</p>
+                  <p className="font-mono text-xs flex items-center gap-1">
+                    <span className="text-nasun-white/40">Proposal ID:</span> {nft.proposalId.slice(0, 10)}...{nft.proposalId.slice(-6)}
+                    <a href={`${explorerUrl}/object/${nft.proposalId}`} target="_blank" rel="noopener noreferrer" className="text-nasun-white/40 hover:text-nasun-nw1 transition-colors ml-auto flex-shrink-0">
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </p>
+                  <p className="font-mono text-xs flex items-center gap-1">
+                    <span className="text-nasun-white/40">Object ID:</span> {nft.id.slice(0, 10)}...{nft.id.slice(-6)}
+                    <a href={`${explorerUrl}/object/${nft.id}`} target="_blank" rel="noopener noreferrer" className="text-nasun-white/40 hover:text-nasun-nw1 transition-colors ml-auto flex-shrink-0">
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </p>
+                  <p className="font-mono text-xs flex items-center gap-1">
+                    <span className="text-nasun-white/40">Wallet:</span> {nft.owner.slice(0, 10)}...{nft.owner.slice(-6)}
+                    <a href={`${explorerUrl}/address/${nft.owner}`} target="_blank" rel="noopener noreferrer" className="text-nasun-white/40 hover:text-nasun-nw1 transition-colors ml-auto flex-shrink-0">
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </p>
                 </div>
               </NftImageModal>
             </div>
