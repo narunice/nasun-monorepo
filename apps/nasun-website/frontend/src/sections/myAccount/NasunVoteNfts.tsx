@@ -10,12 +10,15 @@ interface VoteNftItem {
   id: string;
   url: string;
   proposalId: string;
-  votingPower?: number;
+  name: string;
+  owner: string;
 }
+
+type ExtractedNft = Omit<VoteNftItem, "owner">;
 
 function extractNfts(
   data: { data?: { content?: { dataType: string; fields: Record<string, unknown> }; objectId?: string } }[] | undefined,
-): VoteNftItem[] {
+): ExtractedNft[] {
   if (!data) return [];
   return data
     .map((obj) => {
@@ -23,7 +26,7 @@ function extractNfts(
       const fields = obj.data.content.fields as {
         proposal_id?: string;
         url?: string;
-        voting_power?: string | number;
+        name?: string;
         id?: { id: string };
       };
       if (!fields.url || !fields.proposal_id || !obj.data.objectId) return null;
@@ -32,10 +35,10 @@ function extractNfts(
         id: obj.data.objectId,
         url: fields.url,
         proposalId: fields.proposal_id,
-        votingPower: fields.voting_power ? Number(fields.voting_power) : undefined,
+        name: (fields.name as string) || "",
       };
     })
-    .filter((item): item is VoteNftItem => item !== null);
+    .filter((item): item is ExtractedNft => item !== null);
 }
 
 function isSuiAddress(addr: string): boolean {
@@ -50,6 +53,7 @@ function useNasunAddresses(): string[] {
   const { account } = useWallet();
   const { state: zkLoginState } = useZkLogin();
   const user = useUserStore((s) => s.user);
+  const linkedWallet = user?.linkedAccounts?.["nasun wallet"]?.walletAddress;
 
   return useMemo(() => {
     const addrs = new Set<string>();
@@ -58,12 +62,11 @@ function useNasunAddresses(): string[] {
     // zkLogin wallet
     if (zkLoginState?.address) addrs.add(zkLoginState.address);
     // Linked Nasun wallet from user profile (always available after login)
-    const linked = user?.linkedAccounts?.["nasun wallet"]?.walletAddress;
-    if (linked && isSuiAddress(linked)) addrs.add(linked);
+    if (linkedWallet && isSuiAddress(linkedWallet)) addrs.add(linkedWallet);
     // Primary login wallet address (filter out EVM addresses)
     if (user?.walletAddress && isSuiAddress(user.walletAddress)) addrs.add(user.walletAddress);
     return Array.from(addrs);
-  }, [account?.address, zkLoginState?.address, user?.linkedAccounts, user?.walletAddress]);
+  }, [account?.address, zkLoginState?.address, linkedWallet, user?.walletAddress]);
 }
 
 export const NasunVoteNfts: FC = () => {
@@ -115,14 +118,15 @@ export const NasunVoteNfts: FC = () => {
   // Deduplicate NFTs by object ID (in case same wallet appears from multiple sources)
   const seen = new Set<string>();
   const nfts: VoteNftItem[] = [];
-  for (const result of results.data) {
+  results.data.forEach((result, idx) => {
+    const owner = addresses[Math.floor(idx / 2)];
     for (const nft of extractNfts(result?.data)) {
       if (!seen.has(nft.id)) {
         seen.add(nft.id);
-        nfts.push(nft);
+        nfts.push({ ...nft, owner });
       }
     }
-  }
+  });
 
   if (nfts.length === 0) return null;
 
@@ -142,18 +146,26 @@ export const NasunVoteNfts: FC = () => {
                 src={nft.url}
                 alt="Vote Proof NFT"
                 thumbnailClassName="w-full h-full object-cover"
-              />
+              >
+                <div className="space-y-1 text-nasun-white/70">
+                  <p><span className="text-nasun-white/40">Proposal:</span> {nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}</p>
+                  <p className="font-mono text-xs"><span className="text-nasun-white/40">Proposal ID:</span> {nft.proposalId}</p>
+                  <p className="font-mono text-xs"><span className="text-nasun-white/40">Object ID:</span> {nft.id}</p>
+                  <p className="font-mono text-xs"><span className="text-nasun-white/40">Wallet:</span> {nft.owner.slice(0, 10)}...{nft.owner.slice(-6)}</p>
+                </div>
+              </NftImageModal>
             </div>
             <div className="p-2">
               <p className="text-[10px] text-nasun-white/40 uppercase tracking-wider">
                 Vote Proof
               </p>
-              <p className="text-xs text-nasun-white/60 font-mono truncate" title={nft.proposalId}>
-                {nft.proposalId.slice(0, 6)}...{nft.proposalId.slice(-4)}
+              <p className="text-xs text-nasun-white/60 font-mono truncate" title={nft.id}>
+                {nft.id.slice(0, 6)}...{nft.id.slice(-4)}
               </p>
-              {nft.votingPower != null && (
-                <p className="text-[10px] text-nasun-nw4/70 mt-0.5">
-                  {nft.votingPower} VP
+              {nft.name && (
+                <p className="text-[10px] text-nasun-white/50 truncate mt-0.5"
+                   title={nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}>
+                  {nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}
                 </p>
               )}
             </div>
