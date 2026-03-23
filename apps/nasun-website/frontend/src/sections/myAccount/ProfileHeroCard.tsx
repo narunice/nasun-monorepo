@@ -304,7 +304,7 @@ function ManualEvmAddressForm() {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-yellow-400/70 text-xs leading-relaxed">
-        Paste your EVM wallet address. This will be used for NFT allowlists.
+        Put in your EVM wallet address. This will be used for NFT allowlists.
       </p>
       <input
         type="text"

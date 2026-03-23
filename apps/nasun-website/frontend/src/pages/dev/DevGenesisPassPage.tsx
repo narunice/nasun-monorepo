@@ -496,7 +496,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         return (
           <div className="flex flex-col items-center gap-6 py-4">
             <p className="text-nasun-white/60 text-base text-center">
-              To register for the allowlist, you need to connect an EVM address
+              To register for the allowlist, you need to put in your EVM address
               first.
             </p>
 
@@ -539,7 +539,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                     onClick={handleManualSubmit}
                     disabled={!isValidEvmAddress(manualAddress) || isSubmittingManual}
                   >
-                    {isSubmittingManual ? "Connecting..." : "Connect Address"}
+                    {isSubmittingManual ? "Linking..." : "Link Address"}
                   </ButtonV3>
                 </div>
               )}
