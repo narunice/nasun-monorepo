@@ -21,10 +21,11 @@ import { usePasskey } from './usePasskey';
 import { useRefreshMultiBalance } from './useMultiBalance';
 import { getTokenFaucet, hasTokenFaucet } from '../config/tokens';
 import { getSuiClient } from '../sui/client';
-import { buildBatchFaucetTx, ONCHAIN_FAUCET_SYMBOLS } from '../sui/tokenFaucet';
+import { buildBatchFaucetTx, ONCHAIN_FAUCET_SYMBOLS, queryAllCooldowns } from '../sui/tokenFaucet';
 import {
   getCooldownRemaining as getRawCooldownRemaining,
   setCooldownTimestamp,
+  clearCooldownTimestamp,
   formatCooldownRemaining,
   COOLDOWN_CHANGE_EVENT,
 } from '../sui/faucetCooldown';
@@ -37,6 +38,7 @@ const _globalLoadingTokens = new Set<string>();
 const FAUCET_LOADING_EVENT = 'nasun:faucet-loading-change';
 const FAUCET_TX_TIMEOUT_MS = 45_000; // 45s (includes zkLogin proof time)
 const FAUCET_TX_TIMEOUT_MSG = 'Faucet request timed out. Check your balance before retrying.';
+const COOLDOWN_SYNC_MIN_INTERVAL_MS = 30_000; // debounce on-chain queries
 
 // Post-success delay: wait for RPC object index to propagate new gas coin version
 // before allowing the next faucet claim. Prevents "not available for consumption" errors
@@ -171,6 +173,42 @@ export function useTokenFaucet(): UseTokenFaucetResult {
   const address = account?.address || zkState?.address || passkeyAddress;
   const canUseFaucet = (isDevnet || isTestnet) && !!address;
   const isAnyLoading = _globalLoadingTokens.size > 0;
+
+  // Sync localStorage cooldowns from on-chain state (corrects mismatches)
+  useEffect(() => {
+    if (!canUseFaucet || !address) return;
+
+    let lastSync = 0;
+
+    async function syncCooldowns() {
+      const now = Date.now();
+      if (now - lastSync < COOLDOWN_SYNC_MIN_INTERVAL_MS) return;
+      lastSync = now;
+
+      try {
+        const suiClient = getSuiClient();
+        const cooldowns = await queryAllCooldowns(suiClient, address!);
+        for (const [symbol, remaining] of Object.entries(cooldowns)) {
+          const localRemaining = getRawCooldownRemaining(address!, symbol);
+          if (remaining > 0 && localRemaining === 0) {
+            setCooldownTimestamp(address!, symbol);
+          } else if (remaining === 0 && localRemaining > 0) {
+            clearCooldownTimestamp(address!, symbol);
+          }
+        }
+      } catch {
+        // RPC failure: keep localStorage values as fallback
+      }
+    }
+
+    syncCooldowns();
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') syncCooldowns();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [canUseFaucet, address]);
 
   /**
    * Execute a transaction using the available signer (keypair > zkLogin > passkey).
@@ -310,6 +348,11 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
         console.error(`Faucet request failed for ${symbol}:`, err);
         const errorMsg = parseFaucetError(err);
+        // Sync localStorage cooldown when on-chain rejects with cooldown error.
+        // Prevents repeated attempts (each costs 10-15s for zkLogin users).
+        if (classifyFaucetError(msg) === 'cooldown') {
+          setCooldownTimestamp(address!, symbol);
+        }
         return { success: false, error: errorMsg };
       } finally {
         setGlobalLoading(symbol, false);
@@ -443,8 +486,14 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
         console.error('Batch faucet request failed:', err);
         const errorMsg = parseBatchFaucetError(err);
+        const errorKind = classifyFaucetError(
+          err instanceof Error ? err.message : String(err),
+        );
         for (const s of onchainSymbols) {
           result.failed.push({ symbol: s, error: errorMsg });
+          if (errorKind === 'cooldown') {
+            setCooldownTimestamp(address!, s);
+          }
         }
       } finally {
         setGlobalLoadingBatch(onchainSymbols, false);
