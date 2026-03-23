@@ -544,7 +544,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     console.log(`Admin verified: ${admin.email} (${admin.identityId})`);
     const queryParams = event.queryStringParameters || {};
-    const VALID_STATUSES = ["ACTIVE", "WITHDRAWN", "ALL"];
+    const VALID_STATUSES = ["ACTIVE", "APPLIED", "LEGACY", "WITHDRAWN", "ALL"];
 
     // GET /export/genesis - Export Genesis NFT Whitelist
     if (path.endsWith("/genesis") && event.httpMethod === "GET") {
@@ -948,7 +948,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       return jsonResponse(201, { success: true, walletAddress: normalizedAddress }, requestOrigin);
     }
 
-    // PUT /genesis-pass/entries/{walletAddress} - Update mintType/source
+    // PUT /genesis-pass/entries/{walletAddress} - Update status/mintType/source
     if (path.includes("/genesis-pass/entries/") && event.httpMethod === "PUT") {
       const walletAddress = event.pathParameters?.walletAddress;
       if (!walletAddress) {
@@ -975,10 +975,20 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         return errorResponse(404, "Entry not found", requestOrigin);
       }
 
+      const VALID_STATUS_VALUES = ["ACTIVE", "APPLIED", "LEGACY", "WITHDRAWN"];
       const updates: string[] = [];
       const names: Record<string, string> = {};
       const values: Record<string, { S: string }> = {};
 
+      if (body.status !== undefined) {
+        const newStatus = String(body.status);
+        if (!VALID_STATUS_VALUES.includes(newStatus)) {
+          return errorResponse(400, `Invalid status: ${newStatus}. Must be one of: ${VALID_STATUS_VALUES.join(", ")}`, requestOrigin);
+        }
+        updates.push("#s = :s");
+        names["#s"] = "status";
+        values[":s"] = { S: newStatus };
+      }
       if (body.mintType !== undefined) {
         updates.push("mintType = :mt");
         values[":mt"] = { S: String(body.mintType) };
@@ -990,8 +1000,13 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
 
       if (updates.length === 0) {
-        return errorResponse(400, "No fields to update. Provide mintType or source.", requestOrigin);
+        return errorResponse(400, "No fields to update. Provide status, mintType, or source.", requestOrigin);
       }
+
+      // Audit fields
+      updates.push("lastModifiedBy = :adminId", "lastModifiedAt = :modifiedAt");
+      values[":adminId"] = { S: admin.identityId };
+      values[":modifiedAt"] = { S: new Date().toISOString() };
 
       await dynamoClient.send(
         new UpdateItemCommand({
@@ -1003,7 +1018,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         })
       );
 
-      console.log(`[genesis-pass-crud] Updated: ${normalizedAddress}`);
+      console.log(`[genesis-pass-crud] Updated by ${admin.email}: ${normalizedAddress} (fields: ${Object.keys(body).join(", ")})`);
       return jsonResponse(200, { success: true, walletAddress: normalizedAddress }, requestOrigin);
     }
 

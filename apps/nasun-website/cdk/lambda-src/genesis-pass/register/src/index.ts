@@ -11,7 +11,7 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, DeleteCommand, GetCommand, PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -23,6 +23,10 @@ if (!ALLOWLIST_TABLE || !USER_PROFILES_TABLE) {
 }
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://nasun.io").split(",").map((o) => o.trim());
 const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+// Statuses that represent an active presence on the allowlist (for conflict detection, etc.)
+const ACTIVE_STATUSES = new Set(["ACTIVE", "APPLIED", "LEGACY"]);
+// Statuses that allow withdrawal (soft-delete)
+const WITHDRAWABLE_STATUSES = new Set(["ACTIVE", "APPLIED", "LEGACY"]);
 
 function getCorsOrigin(origin?: string): string {
   if (!origin) return ALLOWED_ORIGINS[0];
@@ -123,22 +127,24 @@ async function handleGetStatus(identityId: string, origin?: string): Promise<API
     const addressEntry = await client.send(
       new GetCommand({ TableName: ALLOWLIST_TABLE, Key: { walletAddress: linkedWallet } })
     );
-    if (addressEntry.Item && !allIdentityIdSet.has(addressEntry.Item.identityId) && addressEntry.Item.status === "ACTIVE") {
+    if (addressEntry.Item && !allIdentityIdSet.has(addressEntry.Item.identityId) && ACTIVE_STATUSES.has(addressEntry.Item.status)) {
       walletConflict = true;
     }
   }
 
-  if (!existing || existing.status !== "ACTIVE") {
+  if (!existing || existing.status === "WITHDRAWN") {
     return jsonResponse(200, {
       success: true,
-      data: { registered: false, walletConflict },
+      data: { registered: false, applied: false, status: null, walletConflict },
     }, origin);
   }
 
   return jsonResponse(200, {
     success: true,
     data: {
-      registered: true,
+      registered: existing.status === "ACTIVE",
+      applied: existing.status === "APPLIED",
+      status: existing.status,
       walletAddress: existing.walletAddress,
       registeredAt: existing.registeredAt,
       walletConflict,
@@ -187,7 +193,7 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
       })
     );
 
-    if (existing.Item && allIdentityIdSet.has(existing.Item.identityId) && existing.Item.status === "ACTIVE") {
+    if (existing.Item && allIdentityIdSet.has(existing.Item.identityId) && WITHDRAWABLE_STATUSES.has(existing.Item.status)) {
       targetWallet = normalizedAddress;
       storedIdentityId = existing.Item.identityId as string;
     }
@@ -201,7 +207,7 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
       return jsonResponse(404, { success: false, error: "NOT_FOUND", message: "No registration found for this account" }, origin);
     }
 
-    if (gsiResult.status !== "ACTIVE") {
+    if (!WITHDRAWABLE_STATUSES.has(gsiResult.status)) {
       return jsonResponse(409, { success: false, error: "CANNOT_WITHDRAW", message: "Registration cannot be withdrawn in its current state" }, origin);
     }
 
@@ -209,17 +215,23 @@ async function handleWithdraw(identityId: string, origin?: string): Promise<APIG
     storedIdentityId = gsiResult.identityId as string;
   }
 
-  // 3. Delete the allowlist entry with ownership guard (use stored identityId for cross-identity support)
+  // 3. Soft-delete: set status to WITHDRAWN (preserves data for audit trail)
   await client.send(
-    new DeleteCommand({
+    new UpdateCommand({
       TableName: ALLOWLIST_TABLE,
       Key: { walletAddress: targetWallet },
+      UpdateExpression: "SET #s = :withdrawn, withdrawnAt = :now",
+      ExpressionAttributeNames: { "#s": "status" },
+      ExpressionAttributeValues: {
+        ":withdrawn": "WITHDRAWN",
+        ":now": new Date().toISOString(),
+        ":id": storedIdentityId,
+      },
       ConditionExpression: "identityId = :id",
-      ExpressionAttributeValues: { ":id": storedIdentityId },
     })
   );
 
-  console.log(`[genesis-pass-withdraw] Withdrawn: ${targetWallet} (identity: ${identityId})`);
+  console.log(`[genesis-pass-withdraw] Withdrawn (soft): ${targetWallet} (identity: ${identityId})`);
 
   return jsonResponse(200, {
     success: true,
@@ -281,20 +293,59 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
   const allIdentityIdSet = new Set(allIdentityIds);
   const isTakeover = !!(existingByAddress.Item && !allIdentityIdSet.has(existingByAddress.Item.identityId));
   if (isTakeover) {
+    // Block takeover of entries with mintType (e.g., FREE_MINT raffle winners)
+    if (existingByAddress.Item!.mintType) {
+      return jsonResponse(409, {
+        success: false,
+        error: "ADDRESS_ALREADY_REGISTERED",
+        message: "This wallet address is already registered by another account and cannot be taken over.",
+      }, origin);
+    }
     console.log(`[genesis-pass-register] Takeover: ${normalizedAddress} from ${existingByAddress.Item!.identityId} to ${identityId}`);
   }
 
-  // 5. Handle existing registration by this identity (upsert: wallet change)
+  // 5. Handle existing registration by this identity
   if (existingByIdentity) {
     const existingWallet = (existingByIdentity.walletAddress as string).toLowerCase();
     const existingStoredId = existingByIdentity.identityId as string;
+    const existingStatus = existingByIdentity.status as string;
 
-    // Same wallet: already registered, no change needed
-    if (existingWallet === normalizedAddress && !isTakeover) {
+    // LEGACY or WITHDRAWN with same wallet: transition to APPLIED via UpdateCommand (preserves existing fields)
+    if ((existingStatus === "LEGACY" || existingStatus === "WITHDRAWN") && existingWallet === normalizedAddress && !isTakeover) {
+      const now = new Date().toISOString();
+      await client.send(
+        new UpdateCommand({
+          TableName: ALLOWLIST_TABLE,
+          Key: { walletAddress: existingWallet },
+          UpdateExpression: "SET #s = :applied, appliedAt = :now",
+          ExpressionAttributeNames: { "#s": "status" },
+          ExpressionAttributeValues: { ":applied": "APPLIED", ":now": now, ":id": existingStoredId },
+          ConditionExpression: "identityId = :id",
+        })
+      );
+      console.log(`[genesis-pass-register] Re-applied: ${existingWallet} (${existingStatus} -> APPLIED, identity: ${identityId})`);
+      return jsonResponse(200, {
+        success: true,
+        data: { walletAddress: existingWallet, registeredAt: now, updated: true, replaced: false },
+      }, origin);
+    }
+
+    // ACTIVE with same wallet: already registered, no change needed
+    if (existingStatus === "ACTIVE" && existingWallet === normalizedAddress && !isTakeover) {
       return jsonResponse(409, {
         success: false,
         error: "ALREADY_REGISTERED",
         message: "You have already registered for the Genesis Pass allowlist",
+        data: { walletAddress: existingWallet, registeredAt: existingByIdentity.registeredAt },
+      }, origin);
+    }
+
+    // APPLIED with same wallet: already applied, no change needed
+    if (existingStatus === "APPLIED" && existingWallet === normalizedAddress && !isTakeover) {
+      return jsonResponse(409, {
+        success: false,
+        error: "ALREADY_APPLIED",
+        message: "You have already applied for the Genesis Pass allowlist",
         data: { walletAddress: existingWallet, registeredAt: existingByIdentity.registeredAt },
       }, origin);
     }
@@ -332,6 +383,8 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
   }
 
   // 7. Register to allowlist (unconditional put for takeover support)
+  // Pre-approved users (free mint via approvals table) get ACTIVE; everyone else gets APPLIED.
+  const registrationStatus = mintType ? "ACTIVE" : "APPLIED";
   const now = new Date().toISOString();
   await client.send(
     new PutCommand({
@@ -340,7 +393,7 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
         walletAddress: normalizedAddress,
         identityId,
         registeredAt: now,
-        status: "ACTIVE",
+        status: registrationStatus,
         ...(mintType && { mintType }),
         ...(source && { source }),
       },
