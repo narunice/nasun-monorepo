@@ -446,10 +446,8 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               <p className="text-nasun-white font-mono text-lg mb-2">
                 {truncateAddress(state.walletAddress)}
               </p>
-              <p className="text-nasun-white/60 text-sm">
-                {state.justConnected
-                  ? "has been connected. Would you like to join the allowlist with this address?"
-                  : "Would you like to register for the allowlist with this address?"}
+              <p className="text-nasun-white/60 text-base">
+                Register this address for the allowlist?
               </p>
             </div>
             {state.conflicted && (
@@ -569,10 +567,6 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               <p className="text-nasun-white font-mono text-sm">
                 {truncateAddress(state.walletAddress)}
               </p>
-              <p className="text-nasun-white/50 text-xs mt-1">
-                Registered at:{" "}
-                {new Date(state.registeredAt).toLocaleString("en-US")}
-              </p>
               {state.replaced && (
                 <p className="text-yellow-400/80 text-xs mt-2">
                   This wallet was previously registered by another account. The
@@ -581,8 +575,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               )}
             </div>
             <p className="text-nasun-white/60 text-sm text-center">
-              You can check your allowlist registration status on the My Account
-              page.
+              Check your status on the My Account page.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <ButtonV3
@@ -642,7 +635,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
           if (isBlocking) e.preventDefault();
         }}
       >
-        {state.step !== "login-required" && state.step !== "connect" && (
+        {(state.step === "checking" || state.step === "submitting" || state.step === "error") && (
           <DialogHeader>
             <DialogTitle className="text-nasun-white">
               Genesis Pass Allowlist
