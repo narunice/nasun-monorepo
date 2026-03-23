@@ -33,10 +33,10 @@ export const NftImageModal: FC<NftImageModalProps> = ({
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-nasun-black/80 backdrop-blur-sm"
           onClick={() => setIsOpen(false)}
         >
-          <div className="relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-h-[90vh] pt-4 pr-4" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setIsOpen(false)}
-              className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center rounded-full bg-nasun-black/80 border border-nasun-white/20 text-nasun-white/70 hover:text-nasun-white hover:bg-nasun-black transition-colors z-10"
+              className="absolute top-0 right-0 w-8 h-8 flex items-center justify-center rounded-full bg-nasun-black/80 border border-nasun-white/20 text-nasun-white/70 hover:text-nasun-white hover:bg-nasun-black transition-colors z-10"
             >
               <X className="w-4 h-4" />
             </button>
