@@ -40,7 +40,8 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
     setMessage(null);
 
     const result = await requestBatchFaucet({
-      includeNative: nsnBalance === 0n,
+      includeNative: true,
+      nsnBalance,
     });
 
     if (result.success && result.claimed.length > 0) {

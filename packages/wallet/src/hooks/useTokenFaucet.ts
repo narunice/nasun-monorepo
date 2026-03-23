@@ -104,6 +104,8 @@ export interface BatchFaucetOptions {
   includeNative?: boolean;
   /** Specific tokens to request. If omitted, requests all claimable on-chain tokens. */
   symbols?: string[];
+  /** Current NSN balance. When NSN faucet fails but gas is available, Phase 2 continues. */
+  nsnBalance?: bigint;
 }
 
 export interface BatchFaucetResult {
@@ -408,21 +410,26 @@ export function useTokenFaucet(): UseTokenFaucetResult {
               result.claimed.push('NSN');
             } else {
               result.nsnResult = { success: false, error: 'NSN faucet request failed' };
-              // NSN failed and we needed it for gas — skip Phase 2
               result.failed.push({ symbol: 'NSN', error: 'NSN faucet request failed' });
-              for (const s of onchainSymbols) {
-                result.failed.push({ symbol: s, error: 'Skipped: no gas (NSN faucet failed)' });
+              // If user has gas, continue to Phase 2 despite NSN failure
+              if ((options?.nsnBalance ?? 0n) <= 0n) {
+                for (const s of onchainSymbols) {
+                  result.failed.push({ symbol: s, error: 'No gas available' });
+                }
+                return result;
               }
-              return result;
             }
           } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err);
             result.nsnResult = { success: false, error: errorMsg };
             result.failed.push({ symbol: 'NSN', error: errorMsg });
-            for (const s of onchainSymbols) {
-              result.failed.push({ symbol: s, error: 'Skipped: no gas (NSN faucet failed)' });
+            // If user has gas, continue to Phase 2 despite NSN failure
+            if ((options?.nsnBalance ?? 0n) <= 0n) {
+              for (const s of onchainSymbols) {
+                result.failed.push({ symbol: s, error: 'No gas available' });
+              }
+              return result;
             }
-            return result;
           } finally {
             setGlobalLoading('NSN', false);
           }
