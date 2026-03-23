@@ -7,10 +7,14 @@
 
 const API_BASE = import.meta.env.VITE_GENESIS_PASS_API;
 
+export type GenesisPassStatus = "ACTIVE" | "APPLIED" | "LEGACY" | "WITHDRAWN" | null;
+
 export interface GenesisPassCheckResponse {
   success: boolean;
   data: {
     registered: boolean;
+    applied?: boolean;
+    status?: GenesisPassStatus;
     walletAddress?: string;
     registeredAt?: string;
     walletConflict?: boolean;
