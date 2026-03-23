@@ -13,7 +13,7 @@
  * - error: recoverable error
  */
 
-import { useReducer, useEffect, useCallback } from "react";
+import { useReducer, useEffect, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -32,7 +32,6 @@ import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import {
   isMobileBrowser,
-  isAndroidBrowser,
   isMetaMaskInAppBrowser,
   isIOSSafari,
 } from "@/utils/mobileDetect";
@@ -41,6 +40,7 @@ import {
   getMyGenesisPassStatus,
   GenesisPassApiError,
 } from "@/services/genesisPassApi";
+import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import logger from "@/lib/logger";
 import { cn } from "@/utils/utils";
 
@@ -341,24 +341,55 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
     await connect();
   }, [connect, dispatch]);
 
-  const handleMetaMaskDeeplink = useCallback(() => {
-    const { host, pathname } = window.location;
-    window.open(`https://metamask.app.link/dapp/${host}${pathname}`, "_self");
-  }, []);
+  // Manual EVM address entry (mobile fallback)
+  const [manualAddress, setManualAddress] = useState("");
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+  const [manualError, setManualError] = useState("");
+  const isValidEvmAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
 
-  const handleCopyLink = useCallback(() => {
-    navigator.clipboard
-      .writeText(window.location.href)
-      .then(() => {
-        // Brief visual feedback could be added here
-      })
-      .catch(() => {
-        dispatch({
-          type: "ERROR",
-          message: "Failed to copy link. Please copy the URL manually.",
-        });
+  useEffect(() => {
+    if (state.step === "connect") { setManualAddress(""); setManualError(""); }
+  }, [state.step]);
+
+  const handleManualSubmit = useCallback(async () => {
+    const token = getCognitoToken();
+    const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
+    if (!token || !user?.identityId) {
+      dispatch({ type: "ERROR", message: "Session expired. Please sign in again." });
+      return;
+    }
+    if (!linkAccountApi) {
+      dispatch({ type: "ERROR", message: "Service unavailable." });
+      return;
+    }
+    const trimmed = manualAddress.trim();
+    setIsSubmittingManual(true);
+    setManualError("");
+    try {
+      const res = await fetch(`${linkAccountApi}/register-evm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ primaryIdentityId: user.identityId, evmAddress: trimmed }),
       });
-  }, [dispatch]);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          setManualError("EVM wallet already linked. Unlink first on My Account page.");
+        } else if (res.status === 401) {
+          dispatch({ type: "ERROR", message: "Session expired. Please sign in again." });
+        } else {
+          setManualError(data.message || "Failed to connect address.");
+        }
+        return;
+      }
+      await refreshAndSaveUserProfile(user.identityId);
+      dispatch({ type: "WALLET_LINKED", walletAddress: trimmed });
+    } catch {
+      dispatch({ type: "ERROR", message: "Failed to connect address. Please try again." });
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  }, [manualAddress, getCognitoToken, user?.identityId, dispatch]);
 
   // Render modal content based on current step
   const renderContent = () => {
@@ -466,7 +497,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
       case "connect":
         return (
           <div className="flex flex-col items-center gap-6 py-4">
-            <p className="text-nasun-white/60 text-sm text-center">
+            <p className="text-nasun-white/60 text-base text-center">
               To register for the allowlist, you need to connect an EVM address
               first.
             </p>
@@ -485,49 +516,35 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               </ButtonV3>
             )}
 
-            {/* Android: MetaMask deeplink */}
+            {/* Mobile (except iOS Safari and MetaMask in-app): manual address entry */}
             {isMobileBrowser() &&
-              isAndroidBrowser() &&
-              !isMetaMaskInAppBrowser() && (
-                <ButtonV3
-                  variant="nw2"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleMetaMaskDeeplink}
-                >
-                  Open in MetaMask
-                </ButtonV3>
-              )}
-
-            {/* iOS non-Safari (Chrome, Firefox, etc.): deeplink + copy */}
-            {isMobileBrowser() &&
-              !isAndroidBrowser() &&
               !isIOSSafari() &&
               !isMetaMaskInAppBrowser() && (
                 <div className="flex flex-col gap-3 w-full">
+                  <input
+                    type="text"
+                    placeholder="0x..."
+                    maxLength={42}
+                    value={manualAddress}
+                    onChange={(e) => { setManualAddress(e.target.value); setManualError(""); }}
+                    className="w-full px-4 py-3 bg-gray-800 border border-nasun-white/20 rounded-sm text-nasun-white font-mono text-sm placeholder:text-nasun-white/30 focus:border-nasun-nw2 focus:outline-none disabled:opacity-50"
+                    disabled={isSubmittingManual}
+                  />
+                  {manualAddress && !isValidEvmAddress(manualAddress) && (
+                    <p className="text-red-400 text-xs">Invalid EVM address format (0x + 40 hex characters)</p>
+                  )}
+                  {manualError && <p className="text-red-400 text-xs">{manualError}</p>}
                   <ButtonV3
                     variant="nw2"
                     size="lg"
                     className="w-full"
-                    onClick={handleMetaMaskDeeplink}
+                    onClick={handleManualSubmit}
+                    disabled={!isValidEvmAddress(manualAddress) || isSubmittingManual}
                   >
-                    Open in MetaMask
-                  </ButtonV3>
-                  <ButtonV3
-                    variant="nw2"
-                    outline
-                    size="lg"
-                    className="w-full"
-                    onClick={handleCopyLink}
-                  >
-                    Copy Link for Safari
+                    {isSubmittingManual ? "Connecting..." : "Connect Address"}
                   </ButtonV3>
                 </div>
               )}
-
-            <p className="text-nasun-white/40 text-xs text-center">
-              If you experience issues, please try again on desktop.
-            </p>
           </div>
         );
 
@@ -625,7 +642,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
           if (isBlocking) e.preventDefault();
         }}
       >
-        {state.step !== "login-required" && (
+        {state.step !== "login-required" && state.step !== "connect" && (
           <DialogHeader>
             <DialogTitle className="text-nasun-white">
               Genesis Pass Allowlist
