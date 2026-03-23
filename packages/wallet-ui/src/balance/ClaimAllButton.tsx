@@ -1,8 +1,8 @@
 /**
  * Claim All Faucet Button
  *
- * Requests all available on-chain tokens in a single PTB to avoid gas coin contention.
- * Optionally requests NSN first if the user has no gas.
+ * Requests all available tokens (NSN + on-chain) in a single flow.
+ * NSN is always included; if NSN fails but user has gas, on-chain claims proceed.
  * Shows on devnet/testnet when at least 2 on-chain tokens are claimable.
  */
 
@@ -19,7 +19,6 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
     requestBatchFaucet,
     isAnyLoading,
     getClaimableTokens,
-    isCooldown,
     canUseFaucet,
   } = useTokenFaucet();
   const { data: balances } = useMultiBalance({});
@@ -30,8 +29,6 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
 
   const claimable = getClaimableTokens();
   const nsnBalance = balances?.native?.balance ?? 0n;
-  const nsnClaimable = !isCooldown('NSN');
-  const totalClaimable = claimable.length + (nsnClaimable ? 1 : 0);
 
   // Only show on devnet/testnet, wallet connected, at least 2 on-chain tokens claimable
   if (!isDevnet && !isTestnet) return null;
@@ -100,7 +97,7 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
       ) : message ? (
         message.text
       ) : (
-        `Claim All (${totalClaimable} tokens)`
+        'Claim All Tokens'
       )}
     </button>
   );
