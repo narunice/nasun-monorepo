@@ -15,6 +15,7 @@ import {
   TOKENS_V2_PACKAGE_ID, TOKEN_FAUCET_V2, CLAIM_RECORD_V2,
 } from '@nasun/devnet-config';
 import { Transaction } from '@mysten/sui/transactions';
+import type { SuiClient } from '@mysten/sui/client';
 import type { TokenFaucetHandler } from '../types';
 import { getCooldownRemaining } from './faucetCooldown';
 
@@ -168,6 +169,62 @@ export function buildBatchFaucetTx(symbols: string[]): Transaction | null {
     FAUCET_MOVE_CALLS[symbol](tx);
   }
   return tx;
+}
+
+// ============================================
+// On-chain cooldown query (devInspect)
+// ============================================
+
+const COOLDOWN_QUERIES: Record<string, {
+  pkg: string; mod: string; fn: string; record: string;
+}> = {
+  NBTC: { pkg: TOKENS_PACKAGE_ID, mod: 'faucet', fn: 'get_nbtc_remaining_cooldown', record: PER_TOKEN_CLAIM_RECORD },
+  NUSDC: { pkg: TOKENS_PACKAGE_ID, mod: 'faucet', fn: 'get_nusdc_remaining_cooldown', record: PER_TOKEN_CLAIM_RECORD },
+  NETH: { pkg: NETH_PACKAGE_ID, mod: 'faucet_v2', fn: 'get_remaining_cooldown', record: NETH_CLAIM_RECORD_V2 },
+  NSOL: { pkg: TOKENS_V2_PACKAGE_ID, mod: 'faucet_v2', fn: 'get_remaining_cooldown', record: CLAIM_RECORD_V2 },
+};
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+function parseU64FromBytes(bytes: number[]): number {
+  let value = 0n;
+  for (let i = 0; i < 8 && i < bytes.length; i++) {
+    value += BigInt(bytes[i]) << BigInt(i * 8);
+  }
+  return Number(value);
+}
+
+/**
+ * Query all on-chain token cooldowns in a single devInspect RPC call.
+ * Returns remaining cooldown in ms per token (0 = claimable).
+ * No gas cost -- uses devInspectTransactionBlock (read-only).
+ */
+export async function queryAllCooldowns(
+  client: SuiClient,
+  address: string,
+): Promise<Record<string, number>> {
+  const tx = new Transaction();
+  const symbols = Object.keys(COOLDOWN_QUERIES);
+
+  for (const sym of symbols) {
+    const q = COOLDOWN_QUERIES[sym];
+    tx.moveCall({
+      target: `${q.pkg}::${q.mod}::${q.fn}`,
+      arguments: [tx.object(q.record), tx.pure.address(address), tx.object(CLOCK_ID)],
+    });
+  }
+
+  const result = await client.devInspectTransactionBlock({
+    transactionBlock: tx,
+    sender: ZERO_ADDRESS,
+  });
+
+  const cooldowns: Record<string, number> = {};
+  symbols.forEach((sym, i) => {
+    const bytes = result.results?.[i]?.returnValues?.[0]?.[0];
+    cooldowns[sym] = bytes && Array.isArray(bytes) ? parseU64FromBytes(bytes) : 0;
+  });
+  return cooldowns;
 }
 
 // ============================================
