@@ -441,7 +441,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
 
       case "confirm":
         return (
-          <div className="flex flex-col items-center gap-6 py-4">
+          <div className="flex flex-col items-center gap-6 pt-4 pb-1">
             <div className="text-center">
               <p className="text-nasun-white font-mono text-lg mb-2">
                 {truncateAddress(state.walletAddress)}
@@ -460,35 +460,35 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               </div>
             )}
             <div className="flex flex-col gap-3 w-full">
-              <ButtonV3
-                variant="nw2"
-                size="lg"
-                className="w-full"
-                onClick={handleSubmit}
-              >
-                {state.conflicted ? "Register anyway" : "Submit"}
-              </ButtonV3>
-              {!state.justConnected && !isMobileBrowser() && (
+              <div className="flex gap-3 w-full">
                 <ButtonV3
                   variant="nw2"
                   outline
                   size="lg"
-                  className="w-full"
-                  onClick={handleConnectWallet}
+                  className="flex-1"
+                  onClick={() => dispatch({ type: "CLOSE" })}
                 >
-                  Use a different wallet
+                  Cancel
                 </ButtonV3>
-              )}
-              <ButtonV3
-                variant="nw2"
-                outline
-                size="lg"
-                className="w-full"
-                onClick={() => dispatch({ type: "CLOSE" })}
-              >
-                Cancel
-              </ButtonV3>
+                <ButtonV3
+                  variant="nw2"
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleSubmit}
+                >
+                  {state.conflicted ? "Register anyway" : "Submit"}
+                </ButtonV3>
+              </div>
             </div>
+            {!state.justConnected && !isMobileBrowser() && (
+              <button
+                type="button"
+                className="self-start text-nasun-white/40 hover:text-nasun-white/70 text-sm underline transition-colors"
+                onClick={handleConnectWallet}
+              >
+                Use a different address
+              </button>
+            )}
           </div>
         );
 
@@ -577,7 +577,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
             <p className="text-nasun-white/60 text-sm text-center">
               Check your status on the My Account page.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <div className="flex flex-col-reverse sm:flex-row gap-6 sm:gap-3 w-full">
               <ButtonV3
                 variant="nw2"
                 outline
@@ -758,6 +758,7 @@ const DevGenesisPassPage = () => {
             >
               Register for Allowlist
             </ButtonV3>
+            {/* TODO: Uncomment when OpenSea collection page is ready
             <ButtonV3
               variant="nw2"
               outline
@@ -773,6 +774,7 @@ const DevGenesisPassPage = () => {
             >
               View on OpenSea
             </ButtonV3>
+            */}
           </div>
         </div>
       </SectionLayout>
