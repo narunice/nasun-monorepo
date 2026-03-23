@@ -66,13 +66,14 @@ type ModalState =
       walletAddress: string;
       registeredAt: string;
       replaced: boolean;
+      status: string;
     }
   | { step: "error"; message: string };
 
 type ModalAction =
   | { type: "OPEN" }
   | { type: "OPEN_UNAUTHENTICATED" }
-  | { type: "CHECKED_REGISTERED"; walletAddress: string; registeredAt: string }
+  | { type: "CHECKED_REGISTERED"; walletAddress: string; registeredAt: string; status: string }
   | {
       type: "CHECKED_NOT_REGISTERED";
       walletAddress: string;
@@ -88,6 +89,7 @@ type ModalAction =
       walletAddress: string;
       registeredAt: string;
       replaced: boolean;
+      status: string;
     }
   | { type: "ERROR"; message: string }
   | { type: "RETRY" }
@@ -105,6 +107,7 @@ function modalReducer(_state: ModalState, action: ModalAction): ModalState {
         walletAddress: action.walletAddress,
         registeredAt: action.registeredAt,
         replaced: false,
+        status: action.status,
       };
     case "CHECKED_NOT_REGISTERED":
       return {
@@ -134,6 +137,7 @@ function modalReducer(_state: ModalState, action: ModalAction): ModalState {
         walletAddress: action.walletAddress,
         registeredAt: action.registeredAt,
         replaced: action.replaced,
+        status: action.status,
       };
     case "ERROR":
       return { step: "error", message: action.message };
@@ -205,13 +209,14 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
           const result = await getMyGenesisPassStatus(token);
           if (cancelled) return;
 
-          if (result.data.registered) {
+          if (result.data.registered || result.data.applied || result.data.status === "LEGACY") {
             dispatch({
               type: "CHECKED_REGISTERED",
               walletAddress:
                 result.data.walletAddress || linkedWalletAddress || "unknown",
               registeredAt:
                 result.data.registeredAt || new Date().toISOString(),
+              status: result.data.status || "ACTIVE",
             });
           } else if (linkedWalletAddress) {
             dispatch({
@@ -274,6 +279,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
           walletAddress: result.data.walletAddress,
           registeredAt: result.data.registeredAt,
           replaced: result.data.replaced === true,
+          status: "APPLIED",
         });
         logger.log(
           "[GenesisPass] Registered:",
@@ -289,12 +295,13 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
     } catch (err) {
       logger.error("[GenesisPass] Registration failed:", err);
       if (err instanceof GenesisPassApiError) {
-        if (err.errorCode === "ALREADY_REGISTERED") {
+        if (err.errorCode === "ALREADY_REGISTERED" || err.errorCode === "ALREADY_APPLIED") {
           dispatch({
             type: "REGISTERED",
             walletAddress: linkedWalletAddress || "unknown",
             registeredAt: new Date().toISOString(),
             replaced: false,
+            status: err.errorCode === "ALREADY_REGISTERED" ? "ACTIVE" : "APPLIED",
           });
           return;
         }
@@ -401,7 +408,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         return (
           <div className="flex flex-col items-center gap-6 py-4">
             <p className="text-nasun-white/60 text-base text-center">
-              To register for the allowlist, you need to log in to the website.
+              To apply for the allowlist, you need to log in to the website.
             </p>
             <div className="flex flex-col gap-3 w-full">
               <ButtonV3
@@ -447,7 +454,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                 {truncateAddress(state.walletAddress)}
               </p>
               <p className="text-nasun-white/60 text-base">
-                Register this address for the allowlist?
+                Apply with this address?
               </p>
             </div>
             {state.conflicted && (
@@ -476,7 +483,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                   className="flex-1"
                   onClick={handleSubmit}
                 >
-                  {state.conflicted ? "Register anyway" : "Submit"}
+                  {state.conflicted ? "Apply anyway" : "Submit"}
                 </ButtonV3>
               </div>
             </div>
@@ -496,7 +503,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         return (
           <div className="flex flex-col items-center gap-6 py-4">
             <p className="text-nasun-white/60 text-base text-center">
-              To register for the allowlist, you need to put in your EVM address
+              To apply for the allowlist, you need to put in your EVM address
               first.
             </p>
 
@@ -553,16 +560,36 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
       case "submitting":
         return (
           <div className="flex flex-col items-center py-8">
-            <InlineLoading message="Registering..." size="md" />
+            <InlineLoading message="Submitting..." size="md" />
           </div>
         );
 
-      case "success":
+      case "success": {
+        const isActive = state.status === "ACTIVE";
+        const isLegacy = state.status === "LEGACY";
+        // APPLIED is the default for newly submitted applications
+        const boxColor = isActive
+          ? "bg-green-500/10 border-green-500/30"
+          : isLegacy
+            ? "bg-blue-500/10 border-blue-500/30"
+            : "bg-yellow-500/10 border-yellow-500/30";
+        const textColor = isActive ? "text-green-400" : isLegacy ? "text-blue-400" : "text-yellow-400";
+        const heading = isActive
+          ? "Registered!"
+          : isLegacy
+            ? "Pre-registered"
+            : "Application submitted!";
+        const subtitle = isActive
+          ? "You are on the allowlist."
+          : isLegacy
+            ? "You were pre-registered before the application process. You can re-apply if needed."
+            : "Your allowlist status will be updated on the My Account page.";
+
         return (
           <div className="flex flex-col items-center gap-6 py-4">
-            <div className="text-center bg-green-500/10 border border-green-500/30 rounded-sm px-6 py-4 w-full">
-              <p className="text-green-400 font-medium mb-2">
-                Successfully registered!
+            <div className={cn("text-center rounded-sm px-6 py-4 w-full border", boxColor)}>
+              <p className={cn("font-medium mb-2", textColor)}>
+                {heading}
               </p>
               <p className="text-nasun-white font-mono text-sm">
                 {truncateAddress(state.walletAddress)}
@@ -575,7 +602,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               )}
             </div>
             <p className="text-nasun-white/60 text-sm text-center">
-              Check your status on the My Account page.
+              {subtitle}
             </p>
             <div className="flex flex-col-reverse sm:flex-row gap-6 sm:gap-3 w-full">
               <ButtonV3
@@ -601,6 +628,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
             </div>
           </div>
         );
+      }
 
       case "error":
         return (
@@ -641,7 +669,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               Genesis Pass Allowlist
             </DialogTitle>
             <DialogDescription className="text-nasun-white/60">
-              Register your EVM wallet for the Genesis Pass NFT allowlist.
+              Apply for the Genesis Pass NFT allowlist with your EVM wallet.
             </DialogDescription>
           </DialogHeader>
         )}
@@ -743,7 +771,7 @@ const DevGenesisPassPage = () => {
           <div className="text-center max-w-xl">
             <p className="text-nasun-white/70 text-base md:text-lg leading-relaxed">
               Genesis Pass is a proof of membership for those who have been with
-              Nasun from Day 1. By registering for the allowlist, you secure
+              Nasun from Day 1. By applying for the allowlist, you secure
               your place as a founding community member and gain priority access
               to the Genesis Pass NFT mint.
             </p>
@@ -756,7 +784,7 @@ const DevGenesisPassPage = () => {
               className="sm:min-w-[200px]"
               onClick={handleOpen}
             >
-              Register for Allowlist
+              Apply for Allowlist
             </ButtonV3>
             {/* TODO: Uncomment when OpenSea collection page is ready
             <ButtonV3

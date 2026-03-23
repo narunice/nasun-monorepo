@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { checkGenesisPass, getMyGenesisPassStatus } from "@/services/genesisPassApi";
+import { checkGenesisPass, getMyGenesisPassStatus, type GenesisPassStatus } from "@/services/genesisPassApi";
 
 const REFETCH_EVENT = "genesis-pass-status-refetch";
 
@@ -15,6 +15,8 @@ const API_CONFIGURED = !!import.meta.env.VITE_GENESIS_PASS_API;
 
 interface UseGenesisPassStatusReturn {
   isRegistered: boolean;
+  isApplied: boolean;
+  status: GenesisPassStatus;
   registeredWallet: string | null;
   registeredAt: string | null;
   mintType: string | null;
@@ -36,6 +38,8 @@ export function useGenesisPassStatus(
   cognitoToken?: string | null,
 ): UseGenesisPassStatusReturn {
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isApplied, setIsApplied] = useState(false);
+  const [status, setStatus] = useState<GenesisPassStatus>(null);
   const [registeredWallet, setRegisteredWallet] = useState<string | null>(null);
   const [registeredAt, setRegisteredAt] = useState<string | null>(null);
   const [mintType, setMintType] = useState<string | null>(null);
@@ -43,22 +47,25 @@ export function useGenesisPassStatus(
   const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
-    if (!API_CONFIGURED) {
-      setIsLoading(false);
+    const resetState = () => {
       setIsRegistered(false);
+      setIsApplied(false);
+      setStatus(null);
       setRegisteredWallet(null);
       setRegisteredAt(null);
       setMintType(null);
+    };
+
+    if (!API_CONFIGURED) {
+      setIsLoading(false);
+      resetState();
       return;
     }
 
     // No wallet and no token: cannot check status
     if (!walletAddress && !cognitoToken) {
       setIsLoading(false);
-      setIsRegistered(false);
-      setRegisteredWallet(null);
-      setRegisteredAt(null);
-      setMintType(null);
+      resetState();
       return;
     }
 
@@ -74,6 +81,8 @@ export function useGenesisPassStatus(
         : await checkGenesisPass(walletAddress!);
 
       setIsRegistered(res.data.registered);
+      setIsApplied(res.data.applied ?? false);
+      setStatus(res.data.status ?? null);
       setRegisteredWallet(res.data.walletAddress ?? null);
       setRegisteredAt(res.data.registeredAt ?? null);
       // mintType is only available via authenticated endpoint (cognitoToken path)
@@ -82,10 +91,7 @@ export function useGenesisPassStatus(
       const message = err instanceof Error ? err.message : "Failed to check Genesis Pass status";
       console.error("[useGenesisPassStatus]", message);
       setError(message);
-      setIsRegistered(false);
-      setRegisteredWallet(null);
-      setRegisteredAt(null);
-      setMintType(null);
+      resetState();
     } finally {
       setIsLoading(false);
     }
@@ -104,6 +110,8 @@ export function useGenesisPassStatus(
 
   return {
     isRegistered,
+    isApplied,
+    status,
     registeredWallet,
     registeredAt,
     mintType,
