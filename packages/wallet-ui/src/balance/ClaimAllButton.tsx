@@ -19,6 +19,7 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
     requestBatchFaucet,
     isAnyLoading,
     getClaimableTokens,
+    isCooldown,
     canUseFaucet,
   } = useTokenFaucet();
   const { data: balances } = useMultiBalance({});
@@ -29,6 +30,8 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
 
   const claimable = getClaimableTokens();
   const nsnBalance = balances?.native?.balance ?? 0n;
+  const nsnClaimable = !isCooldown('NSN');
+  const totalClaimable = claimable.length + (nsnClaimable ? 1 : 0);
 
   // Only show on devnet/testnet, wallet connected, at least 2 on-chain tokens claimable
   if (!isDevnet && !isTestnet) return null;
@@ -97,7 +100,7 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
       ) : message ? (
         message.text
       ) : (
-        `Claim All (${claimable.length} tokens)`
+        `Claim All (${totalClaimable} tokens)`
       )}
     </button>
   );
