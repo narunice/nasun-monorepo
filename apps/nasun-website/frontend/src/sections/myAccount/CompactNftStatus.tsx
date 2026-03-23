@@ -57,6 +57,8 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
   // Genesis Pass Status (falls back to identity-based check when wallet is unavailable)
   const {
     isRegistered: isGenesisPassRegistered,
+    isApplied: isGenesisPassApplied,
+    status: genesisPassStatus,
     registeredWallet: genesisPassWallet,
     isLoading: isGenesisPassLoading,
     isConfigured: isGenesisPassConfigured,
@@ -172,8 +174,26 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                       </button>
                     )}
                   </div>
+                ) : isGenesisPassApplied ? (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-yellow-400 text-sm">&#9679; Applied</span>
+                    {genesisPassWallet && (
+                      <span className="text-nasun-white/50 text-xs font-mono">
+                        {shortenAddress(genesisPassWallet)}
+                      </span>
+                    )}
+                  </div>
+                ) : genesisPassStatus === "LEGACY" ? (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-blue-400 text-sm">&#9679; Pre-registered</span>
+                    {genesisPassWallet && (
+                      <span className="text-nasun-white/50 text-xs font-mono">
+                        {shortenAddress(genesisPassWallet)}
+                      </span>
+                    )}
+                  </div>
                 ) : (
-                  <span className="text-nasun-white/50 text-sm">Not Registered</span>
+                  <span className="text-nasun-white/50 text-sm">Not Applied</span>
                 )}
                 {/* Join button disabled until Genesis Pass campaign opens */}
               </div>
