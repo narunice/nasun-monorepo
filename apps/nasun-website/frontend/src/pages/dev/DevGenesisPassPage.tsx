@@ -209,7 +209,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
           const result = await getMyGenesisPassStatus(token);
           if (cancelled) return;
 
-          if (result.data.registered || result.data.applied || result.data.status === "LEGACY") {
+          if (result.data.registered || result.data.applied) {
             dispatch({
               type: "CHECKED_REGISTERED",
               walletAddress:
@@ -566,24 +566,14 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
 
       case "success": {
         const isActive = state.status === "ACTIVE";
-        const isLegacy = state.status === "LEGACY";
-        // APPLIED is the default for newly submitted applications
         const boxColor = isActive
           ? "bg-green-500/10 border-green-500/30"
-          : isLegacy
-            ? "bg-blue-500/10 border-blue-500/30"
-            : "bg-yellow-500/10 border-yellow-500/30";
-        const textColor = isActive ? "text-green-400" : isLegacy ? "text-blue-400" : "text-yellow-400";
-        const heading = isActive
-          ? "Registered!"
-          : isLegacy
-            ? "Pre-registered"
-            : "Application submitted!";
+          : "bg-yellow-500/10 border-yellow-500/30";
+        const textColor = isActive ? "text-green-400" : "text-yellow-400";
+        const heading = isActive ? "Registered!" : "Application submitted!";
         const subtitle = isActive
           ? "You are on the allowlist."
-          : isLegacy
-            ? "You were pre-registered before the application process. You can re-apply if needed."
-            : "Your allowlist status will be updated on the My Account page.";
+          : "Your allowlist status will be updated on the My Account page.";
 
         return (
           <div className="flex flex-col items-center gap-6 py-4">

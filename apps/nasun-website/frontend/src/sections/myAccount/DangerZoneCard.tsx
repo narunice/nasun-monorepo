@@ -53,6 +53,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
     || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
   const {
     isRegistered: isGenesisPassRegistered,
+    isApplied: isGenesisPassApplied,
     isConfigured: isGenesisPassConfigured,
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
@@ -175,12 +176,16 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
           )}
 
           {/* Withdraw Genesis Pass Allowlist */}
-          {isGenesisPassConfigured && isGenesisPassRegistered && (
+          {isGenesisPassConfigured && (isGenesisPassRegistered || isGenesisPassApplied) && (
             <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
               <div>
-                <h6 className="font-medium text-nasun-white mb-1">Withdraw Genesis Pass</h6>
+                <h6 className="font-medium text-nasun-white mb-1">
+                  {isGenesisPassApplied ? "Cancel Application" : "Withdraw Genesis Pass"}
+                </h6>
                 <p className="text-nasun-white/50 text-sm">
-                  Remove your EVM wallet from the Genesis Pass NFT allowlist. You can re-register later.
+                  {isGenesisPassApplied
+                    ? "Cancel your Genesis Pass allowlist application. You can re-apply later."
+                    : "Remove your EVM wallet from the Genesis Pass NFT allowlist. You can re-apply later."}
                 </p>
               </div>
               <Button
@@ -189,7 +194,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
                 size="sm"
                 className="text-red-600 self-start"
               >
-                Withdraw
+                {isGenesisPassApplied ? "Cancel" : "Withdraw"}
               </Button>
             </div>
           )}
@@ -249,10 +254,13 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
       <Dialog open={showGenesisWithdrawDialog} onOpenChange={setShowGenesisWithdrawDialog}>
         <DialogContent className="bg-gray-900 border-nasun-c5/30">
           <DialogHeader>
-            <DialogTitle className="text-nasun-white">Withdraw from Genesis Pass</DialogTitle>
+            <DialogTitle className="text-nasun-white">
+              {isGenesisPassApplied ? "Cancel Application" : "Withdraw from Genesis Pass"}
+            </DialogTitle>
             <DialogDescription className="text-nasun-white/70">
-              Are you sure you want to withdraw from the Genesis Pass Allowlist? You can
-              re-register later from the Genesis Pass page.
+              {isGenesisPassApplied
+                ? "Are you sure you want to cancel your Genesis Pass allowlist application? You can re-apply later."
+                : "Are you sure you want to withdraw from the Genesis Pass Allowlist? You can re-apply later."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="grid grid-cols-2 gap-4 mt-2">
@@ -263,7 +271,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
               disabled={isGenesisWithdrawing}
               className="w-full"
             >
-              Cancel
+              Keep
             </Button>
             <Button
               variant="filledOutlineScarlet"
@@ -272,7 +280,9 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
               disabled={isGenesisWithdrawing}
               className="w-full"
             >
-              {isGenesisWithdrawing ? "Withdrawing..." : "Withdraw"}
+              {isGenesisWithdrawing
+                ? (isGenesisPassApplied ? "Cancelling..." : "Withdrawing...")
+                : (isGenesisPassApplied ? "Cancel Application" : "Withdraw")}
             </Button>
           </DialogFooter>
         </DialogContent>
