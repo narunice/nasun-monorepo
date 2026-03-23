@@ -14,22 +14,19 @@ interface HiddenProposalsResponse {
 /**
  * Fetch hidden proposal IDs from the Admin API.
  * This is a public endpoint that doesn't require authentication.
- * Returns an empty array on error.
+ * Throws on error so callers (e.g. React Query) can handle failure explicitly.
  */
 export const fetchHiddenProposalIds = async (): Promise<string[]> => {
-  try {
-    const url = `${ADMIN_API_URL}/hidden-proposals`;
-    const response = await fetch(url, { method: "GET" });
+  const url = `${ADMIN_API_URL}/hidden-proposals`;
+  const response = await fetch(url, { method: "GET" });
 
-    if (!response.ok) {
-      console.warn("[fetchHiddenProposalIds] API returned error:", response.status);
-      return [];
-    }
-
-    const data: HiddenProposalsResponse = await response.json();
-    return data.proposalIds;
-  } catch (error) {
-    console.error("[fetchHiddenProposalIds] Failed to fetch:", error);
-    return [];
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(`Hidden proposals API error: ${response.status}`),
+      { status: response.status }
+    );
   }
+
+  const data: HiddenProposalsResponse = await response.json();
+  return data.proposalIds;
 };
