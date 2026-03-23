@@ -76,7 +76,12 @@ const ProposalList = () => {
   const { data: mcVoteNftsRes, refetch: refetchMcNfts } = useMultiChoiceVoteNfts();
   const [filter, setFilter] = useState<ProposalFilter>("all");
 
-  const { data: hiddenIdsArray = [], isPending: isHiddenPending } = useQuery({
+  const {
+    data: hiddenIdsArray = [],
+    isPending: isHiddenPending,
+    isError: isHiddenError,
+    refetch: refetchHidden,
+  } = useQuery({
     queryKey: ["hiddenProposals"],
     queryFn: fetchHiddenProposalIds,
     staleTime: 30 * 1000,
@@ -99,10 +104,25 @@ const ProposalList = () => {
   }
 
   if (dashboardError || (account && nftsError)) {
-    const error = dashboardError || nftsError;
     return (
       <div className="text-red-500">
         {t("error.generic")}
+      </div>
+    );
+  }
+
+  if (isHiddenError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <p className="text-nasun-white/50 mb-4">
+          Unable to verify proposal visibility. Please try again.
+        </p>
+        <button
+          onClick={() => refetchHidden()}
+          className="px-4 py-2 text-sm rounded-sm border border-nasun-white/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-white/40 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
