@@ -378,7 +378,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                 size="lg"
                 className="w-full"
                 onClick={() => {
-                  sessionStorage.setItem("genesis-pass-pending", "true");
+                  sessionStorage.setItem("nasun:genesis-pass:pending", "true");
                   dispatch({ type: "CLOSE" });
                   window.dispatchEvent(new CustomEvent("nasun:open-login"));
                 }}
@@ -649,7 +649,7 @@ const DevGenesisPassPage = () => {
   const { isAuthenticated } = useAuth();
   const [state, dispatch] = useReducer(modalReducer, { step: "idle" });
   const handleOpen = useCallback(() => {
-    sessionStorage.removeItem("genesis-pass-pending");
+    sessionStorage.removeItem("nasun:genesis-pass:pending");
     if (isAuthenticated) {
       dispatch({ type: "OPEN" });
     } else {
@@ -659,8 +659,8 @@ const DevGenesisPassPage = () => {
 
   // Auto-open registration modal after login completes
   useEffect(() => {
-    if (isAuthenticated && sessionStorage.getItem("genesis-pass-pending")) {
-      sessionStorage.removeItem("genesis-pass-pending");
+    if (isAuthenticated && sessionStorage.getItem("nasun:genesis-pass:pending")) {
+      sessionStorage.removeItem("nasun:genesis-pass:pending");
       dispatch({ type: "OPEN" });
     }
   }, [isAuthenticated]);
