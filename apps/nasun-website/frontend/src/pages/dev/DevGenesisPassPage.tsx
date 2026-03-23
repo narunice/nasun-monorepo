@@ -4,8 +4,9 @@
  * /dev/genesis-pass (public page, auth checked before modal)
  *
  * Modal-based flow with useReducer state machine:
+ * - login-required: unauthenticated user prompt
  * - checking: verify existing registration (identity-based)
- * - confirm: linked wallet found, confirm or change
+ * - confirm: wallet found (existing or just-connected), confirm before submit
  * - connect: no wallet linked, mobile-aware connect flow
  * - wallet-linking: wallet connection + signature in progress
  * - submitting: API registration call
@@ -50,8 +51,9 @@ import { cn } from "@/utils/utils";
 
 type ModalState =
   | { step: "idle" }
+  | { step: "login-required" }
   | { step: "checking" }
-  | { step: "confirm"; walletAddress: string; conflicted: boolean }
+  | { step: "confirm"; walletAddress: string; conflicted: boolean; justConnected: boolean }
   | { step: "connect" }
   | { step: "wallet-linking" }
   | { step: "submitting" }
@@ -60,11 +62,13 @@ type ModalState =
 
 type ModalAction =
   | { type: "OPEN" }
+  | { type: "OPEN_UNAUTHENTICATED" }
   | { type: "CHECKED_REGISTERED"; walletAddress: string; registeredAt: string }
   | { type: "CHECKED_NOT_REGISTERED"; walletAddress: string; conflicted: boolean }
   | { type: "CHECKED_NO_WALLET" }
   | { type: "START_CONNECT" }
   | { type: "WALLET_LINKING" }
+  | { type: "WALLET_LINKED"; walletAddress: string }
   | { type: "SUBMITTING" }
   | { type: "REGISTERED"; walletAddress: string; registeredAt: string; replaced: boolean }
   | { type: "ERROR"; message: string }
@@ -75,16 +79,20 @@ function modalReducer(_state: ModalState, action: ModalAction): ModalState {
   switch (action.type) {
     case "OPEN":
       return { step: "checking" };
+    case "OPEN_UNAUTHENTICATED":
+      return { step: "login-required" };
     case "CHECKED_REGISTERED":
       return { step: "success", walletAddress: action.walletAddress, registeredAt: action.registeredAt, replaced: false };
     case "CHECKED_NOT_REGISTERED":
-      return { step: "confirm", walletAddress: action.walletAddress, conflicted: action.conflicted };
+      return { step: "confirm", walletAddress: action.walletAddress, conflicted: action.conflicted, justConnected: false };
     case "CHECKED_NO_WALLET":
       return { step: "connect" };
     case "START_CONNECT":
       return { step: "connect" };
     case "WALLET_LINKING":
       return { step: "wallet-linking" };
+    case "WALLET_LINKED":
+      return { step: "confirm", walletAddress: action.walletAddress, conflicted: false, justConnected: true };
     case "SUBMITTING":
       return { step: "submitting" };
     case "REGISTERED":
@@ -245,9 +253,9 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
   // WALLET_LINKING state shows a page-level overlay instead of a dialog.
   const { connect } = useWalletAuth({
     mode: "link",
-    onSuccess: (_walletAddress) => {
-      logger.log("[GenesisPass] Wallet linked, registering...");
-      handleSubmit();
+    onSuccess: (walletAddress) => {
+      logger.log("[GenesisPass] Wallet linked:", walletAddress);
+      dispatch({ type: "WALLET_LINKED", walletAddress });
     },
     onError: (err) => {
       logger.error("[GenesisPass] Wallet link failed:", err);
@@ -280,6 +288,37 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
       case "idle":
         return null;
 
+      case "login-required":
+        return (
+          <div className="flex flex-col items-center gap-6 py-4">
+            <p className="text-nasun-white/60 text-sm text-center">
+              To register for the allowlist, you need to log in to the website.
+            </p>
+            <div className="flex flex-col gap-3 w-full">
+              <ButtonV3
+                variant="nw2"
+                size="lg"
+                className="w-full"
+                onClick={() => {
+                  dispatch({ type: "CLOSE" });
+                  window.dispatchEvent(new CustomEvent("nasun:open-login"));
+                }}
+              >
+                Log In / Sign Up
+              </ButtonV3>
+              <ButtonV3
+                variant="nw2"
+                outline
+                size="lg"
+                className="w-full"
+                onClick={() => dispatch({ type: "CLOSE" })}
+              >
+                Cancel
+              </ButtonV3>
+            </div>
+          </div>
+        );
+
       case "checking":
         return (
           <div className="flex flex-col items-center py-8">
@@ -291,8 +330,12 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         return (
           <div className="flex flex-col items-center gap-6 py-4">
             <div className="text-center">
-              <p className="text-nasun-white/60 text-sm mb-2">You have a linked EVM wallet:</p>
-              <p className="text-nasun-white font-mono text-lg">{truncateAddress(state.walletAddress)}</p>
+              <p className="text-nasun-white font-mono text-lg mb-2">{truncateAddress(state.walletAddress)}</p>
+              <p className="text-nasun-white/60 text-sm">
+                {state.justConnected
+                  ? "has been connected. Would you like to join the allowlist with this address?"
+                  : "Would you like to register for the allowlist with this address?"}
+              </p>
             </div>
             {state.conflicted && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-sm px-4 py-3 w-full">
@@ -309,9 +352,9 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                 className="w-full"
                 onClick={handleSubmit}
               >
-                {state.conflicted ? "Register anyway" : "Submit this address"}
+                {state.conflicted ? "Register anyway" : "Submit"}
               </ButtonV3>
-              {!isMobileBrowser() && (
+              {!state.justConnected && !isMobileBrowser() && (
                 <ButtonV3
                   variant="nw2"
                   outline
@@ -322,6 +365,15 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                   Use a different wallet
                 </ButtonV3>
               )}
+              <ButtonV3
+                variant="nw2"
+                outline
+                size="lg"
+                className="w-full"
+                onClick={() => dispatch({ type: "CLOSE" })}
+              >
+                Cancel
+              </ButtonV3>
             </div>
           </div>
         );
@@ -330,7 +382,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         return (
           <div className="flex flex-col items-center gap-6 py-4">
             <p className="text-nasun-white/60 text-sm text-center">
-              No EVM wallet linked yet. Connect your MetaMask wallet to register.
+              To register for the allowlist, you need to connect an EVM address first.
             </p>
 
             {/* Desktop, MetaMask In-App, or iOS Safari: direct connect */}
@@ -341,7 +393,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                 className="w-full"
                 onClick={handleConnectWallet}
               >
-                Connect MetaMask
+                Connect Wallet
               </ButtonV3>
             )}
 
@@ -412,23 +464,26 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                 </p>
               )}
             </div>
-            <div className="flex flex-col gap-3 w-full">
-              <ButtonV3
-                variant="nw2"
-                size="lg"
-                className="w-full"
-                onClick={() => { dispatch({ type: "CLOSE" }); navigate("/my-account"); }}
-              >
-                Go to My Account
-              </ButtonV3>
+            <p className="text-nasun-white/60 text-sm text-center">
+              You can check your allowlist registration status on the My Account page.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
               <ButtonV3
                 variant="nw2"
                 outline
                 size="lg"
-                className="w-full"
+                className="flex-1"
                 onClick={() => dispatch({ type: "CLOSE" })}
               >
                 Close
+              </ButtonV3>
+              <ButtonV3
+                variant="nw2"
+                size="lg"
+                className="flex-1"
+                onClick={() => { dispatch({ type: "CLOSE" }); navigate("/my-account"); }}
+              >
+                Go to My Account
               </ButtonV3>
             </div>
           </div>
@@ -482,14 +537,22 @@ const DevGenesisPassPage = () => {
   const pendingLoginRef = useRef(false);
 
   const handleOpen = useCallback(() => {
+    pendingLoginRef.current = false;
     if (isAuthenticated) {
       dispatch({ type: "OPEN" });
     } else {
-      // Skip intermediary modal, go straight to login
-      pendingLoginRef.current = true;
-      window.dispatchEvent(new CustomEvent("nasun:open-login"));
+      dispatch({ type: "OPEN_UNAUTHENTICATED" });
     }
   }, [isAuthenticated]);
+
+  // Detect login-required -> idle transition (user clicked "Log In / Sign Up")
+  const prevStepRef = useRef<string>("idle");
+  useEffect(() => {
+    if (prevStepRef.current === "login-required" && state.step === "idle") {
+      pendingLoginRef.current = true;
+    }
+    prevStepRef.current = state.step;
+  }, [state.step]);
 
   // Auto-open registration modal after login completes
   useEffect(() => {
@@ -560,6 +623,7 @@ const DevGenesisPassPage = () => {
             >
               Register for Allowlist
             </ButtonV3>
+            {/* TODO: Uncomment when OpenSea collection page is ready
             <ButtonV3
               variant="nw2"
               outline
@@ -569,6 +633,7 @@ const DevGenesisPassPage = () => {
             >
               View on OpenSea
             </ButtonV3>
+            */}
           </div>
         </div>
       </SectionLayout>
@@ -579,7 +644,7 @@ const DevGenesisPassPage = () => {
       {state.step === "wallet-linking" && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-nasun-black/60 backdrop-blur-sm pointer-events-none">
           <div className="flex flex-col items-center gap-3">
-            <InlineLoading message="Linking wallet and registering..." size="md" />
+            <InlineLoading message="Connecting wallet..." size="md" />
             <p className="text-nasun-white/40 text-xs">
               Please complete the signature request in your wallet.
             </p>
