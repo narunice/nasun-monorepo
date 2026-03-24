@@ -186,7 +186,11 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                 ) : (
                   <span className="text-nasun-white/50 text-sm">Not Applied</span>
                 )}
-                {/* Join button disabled until Genesis Pass campaign opens */}
+                {!isGenesisPassLoading && !isGenesisPassRegistered && !isGenesisPassApplied && (
+                  <Button onClick={() => navigate("/wave1/genesis-pass")} variant="filledOutlineC7" size="sm">
+                    Join
+                  </Button>
+                )}
               </div>
               {joinError && (
                 <p className="text-red-400 text-xs">{joinError}</p>
@@ -194,9 +198,8 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
             </div>
           )}
 
-          {/* Battalion NFT Allowlist (requires X account) */}
-          {effectiveXUserId && (
-            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+          {/* Battalion NFT Allowlist */}
+          <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Battalion NFT Allowlist</h6>
               <div className="flex items-center justify-between">
                 {isBattalionLoading ? (
@@ -213,14 +216,15 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                 ) : (
                   <span className="text-nasun-white/50 text-sm">Not Registered</span>
                 )}
+                {/* Join button hidden until Battalion NFT campaign reopens
                 {!isBattalionLoading && !isBattalionRegistered && (
                   <Button onClick={() => navigate("/wave1/battalion-nft")} variant="filledOutlineC7" size="sm">
                     Join
                   </Button>
                 )}
+                */}
               </div>
             </div>
-          )}
         </div>
       </OuterBox>
 
