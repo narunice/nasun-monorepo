@@ -26,7 +26,7 @@ api-server/
 | GET | `/api/v1/stats/top-accounts?limit=50` | 잔액 상위 주소 | 5분 |
 | GET | `/api/v1/stats/daily-transactions?range=7d` | 일별 TX 수 | 5분 |
 | GET | `/api/v1/stats/active-addresses?range=7d` | 일별 활성 주소 수 | 5분 |
-| GET | `/api/v1/stats/network-summary` | 총 TX/주소/패키지/이벤트 | 120초 |
+| GET | `/api/v1/stats/network-summary` | 총 TX/주소/패키지/이벤트 | 5분 (fast) / 10분 (addresses) |
 
 - `limit` 파라미터: whitelist `[25, 50, 100, 200]`으로 캐시 키 정규화
 - `range` 파라미터: `7d`, `14d`, `30d` 지원
