@@ -943,8 +943,8 @@ const DevGenesisPassPage = () => {
                 Apply for Allowlist
               </ButtonV3>
               <p className="text-nasun-white/60 text-base md:text-lg leading-relaxed mx-auto text-center mt-2">
-                The first 100 to register are placed on an allowlist. <br />
-                The total mint quantity and date will be revealed on OpenSea.
+                The first 100 to register will be placed on the Guaranteed Allowlist. <br />
+                The total mint supply and date will be revealed on OpenSea.
               </p>
             </div>
           </div>
