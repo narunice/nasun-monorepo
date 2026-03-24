@@ -855,6 +855,21 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
                 isTwitterPrimary ? <LoggedInBadge /> : twitterData ? <LinkedBadge /> : undefined
               }
               actions={[
+                twitterData && !isTwitterPrimary ? (
+                  <Button
+                    key="sync"
+                    size="sm"
+                    variant="filledOutlineC7"
+                    onClick={() => {
+                      if (confirm("Update your profile from X? You'll be briefly redirected to X.")) {
+                        handleLinkTwitter();
+                      }
+                    }}
+                    disabled={isLinking}
+                  >
+                    Sync
+                  </Button>
+                ) : null,
                 !twitterData ? (
                   <Button
                     key="link"
