@@ -336,7 +336,7 @@ function ManualEvmAddressForm() {
         disabled={!isValidEvmAddress || isSubmitting}
         className="w-full"
       >
-        {isSubmitting ? "Registering..." : "Register"}
+        {isSubmitting ? "Linking..." : "Link"}
       </Button>
     </div>
   );
