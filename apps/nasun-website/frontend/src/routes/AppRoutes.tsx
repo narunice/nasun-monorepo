@@ -34,7 +34,7 @@ const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"))
 // Admin route definitions
 const adminRoutes = [
   { path: "/admin", title: "Admin Dashboard", component: AdminDashboard },
-  { path: "/admin/whitelist", title: "Whitelist Export", component: WhitelistManagement },
+  { path: "/admin/whitelist", title: "Allowlist Export", component: WhitelistManagement },
   { path: "/admin/governance", title: "Governance Management", component: GovernanceManagement },
   { path: "/admin/governance/create", title: "Create Proposal", component: CreateProposal },
   { path: "/admin/leaderboard-v3", title: "Leaderboard V3 Admin", component: LeaderboardV3Admin },
