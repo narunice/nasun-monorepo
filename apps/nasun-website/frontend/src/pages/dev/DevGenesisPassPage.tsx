@@ -613,7 +613,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         const heading = isActive ? "Registered!" : "Application submitted!";
         const subtitle = isActive
           ? "You are on the allowlist."
-          : "Thank you for registering! Allowlist spots will be announced soon.\nYou can check your status anytime on your account page.";
+          : "Thank you for your submission! Allowlist spots will be announced soon.\nYou can check your status anytime on your account page.";
 
         return (
           <div className="flex flex-col items-center gap-6 py-4">
