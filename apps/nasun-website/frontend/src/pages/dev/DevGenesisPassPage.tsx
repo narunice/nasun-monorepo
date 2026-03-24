@@ -13,11 +13,10 @@
  * - error: recoverable error
  */
 
-import { useReducer, useEffect, useCallback, useState } from "react";
+import { useReducer, useEffect, useCallback, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import {
   Dialog,
@@ -73,7 +72,12 @@ type ModalState =
 type ModalAction =
   | { type: "OPEN" }
   | { type: "OPEN_UNAUTHENTICATED" }
-  | { type: "CHECKED_REGISTERED"; walletAddress: string; registeredAt: string; status: string }
+  | {
+      type: "CHECKED_REGISTERED";
+      walletAddress: string;
+      registeredAt: string;
+      status: string;
+    }
   | {
       type: "CHECKED_NOT_REGISTERED";
       walletAddress: string;
@@ -295,13 +299,17 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
     } catch (err) {
       logger.error("[GenesisPass] Registration failed:", err);
       if (err instanceof GenesisPassApiError) {
-        if (err.errorCode === "ALREADY_REGISTERED" || err.errorCode === "ALREADY_APPLIED") {
+        if (
+          err.errorCode === "ALREADY_REGISTERED" ||
+          err.errorCode === "ALREADY_APPLIED"
+        ) {
           dispatch({
             type: "REGISTERED",
             walletAddress: linkedWalletAddress || "unknown",
             registeredAt: new Date().toISOString(),
             replaced: false,
-            status: err.errorCode === "ALREADY_REGISTERED" ? "ACTIVE" : "APPLIED",
+            status:
+              err.errorCode === "ALREADY_REGISTERED" ? "ACTIVE" : "APPLIED",
           });
           return;
         }
@@ -355,14 +363,20 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
   const isValidEvmAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
 
   useEffect(() => {
-    if (state.step === "connect") { setManualAddress(""); setManualError(""); }
+    if (state.step === "connect") {
+      setManualAddress("");
+      setManualError("");
+    }
   }, [state.step]);
 
   const handleManualSubmit = useCallback(async () => {
     const token = getCognitoToken();
     const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
     if (!token || !user?.identityId) {
-      dispatch({ type: "ERROR", message: "Session expired. Please sign in again." });
+      dispatch({
+        type: "ERROR",
+        message: "Session expired. Please sign in again.",
+      });
       return;
     }
     if (!linkAccountApi) {
@@ -375,15 +389,26 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
     try {
       const res = await fetch(`${linkAccountApi}/register-evm`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ primaryIdentityId: user.identityId, evmAddress: trimmed }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          primaryIdentityId: user.identityId,
+          evmAddress: trimmed,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 409) {
-          setManualError("EVM wallet already linked. Unlink first on My Account page.");
+          setManualError(
+            "EVM wallet already linked. Unlink first on My Account page.",
+          );
         } else if (res.status === 401) {
-          dispatch({ type: "ERROR", message: "Session expired. Please sign in again." });
+          dispatch({
+            type: "ERROR",
+            message: "Session expired. Please sign in again.",
+          });
         } else {
           setManualError(data.message || "Failed to connect address.");
         }
@@ -392,7 +417,10 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
       await refreshAndSaveUserProfile(user.identityId);
       dispatch({ type: "WALLET_LINKED", walletAddress: trimmed });
     } catch {
-      dispatch({ type: "ERROR", message: "Failed to connect address. Please try again." });
+      dispatch({
+        type: "ERROR",
+        message: "Failed to connect address. Please try again.",
+      });
     } finally {
       setIsSubmittingManual(false);
     }
@@ -450,6 +478,9 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         return (
           <div className="flex flex-col items-center gap-6 pt-4 pb-1">
             <div className="text-center">
+              <p className="text-nasun-white/50 text-sm mb-2">
+                EVM address linked to your account:
+              </p>
               <p className="text-nasun-white font-mono text-lg mb-2">
                 {truncateAddress(state.walletAddress)}
               </p>
@@ -517,7 +548,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                 className="w-full"
                 onClick={handleConnectWallet}
               >
-                Connect Wallet
+                Link Wallet
               </ButtonV3>
             )}
 
@@ -531,20 +562,29 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                     placeholder="0x..."
                     maxLength={42}
                     value={manualAddress}
-                    onChange={(e) => { setManualAddress(e.target.value); setManualError(""); }}
+                    onChange={(e) => {
+                      setManualAddress(e.target.value);
+                      setManualError("");
+                    }}
                     className="w-full px-4 py-3 bg-gray-800 border border-nasun-white/20 rounded-sm text-nasun-white font-mono text-sm placeholder:text-nasun-white/30 focus:border-nasun-nw2 focus:outline-none disabled:opacity-50"
                     disabled={isSubmittingManual}
                   />
                   {manualAddress && !isValidEvmAddress(manualAddress) && (
-                    <p className="text-red-400 text-xs">Invalid EVM address format (0x + 40 hex characters)</p>
+                    <p className="text-red-400 text-xs">
+                      Invalid EVM address format (0x + 40 hex characters)
+                    </p>
                   )}
-                  {manualError && <p className="text-red-400 text-xs">{manualError}</p>}
+                  {manualError && (
+                    <p className="text-red-400 text-xs">{manualError}</p>
+                  )}
                   <ButtonV3
                     variant="nw2"
                     size="lg"
                     className="w-full"
                     onClick={handleManualSubmit}
-                    disabled={!isValidEvmAddress(manualAddress) || isSubmittingManual}
+                    disabled={
+                      !isValidEvmAddress(manualAddress) || isSubmittingManual
+                    }
                   >
                     {isSubmittingManual ? "Linking..." : "Link Address"}
                   </ButtonV3>
@@ -577,10 +617,13 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
 
         return (
           <div className="flex flex-col items-center gap-6 py-4">
-            <div className={cn("text-center rounded-sm px-6 py-4 w-full border", boxColor)}>
-              <p className={cn("font-medium mb-2", textColor)}>
-                {heading}
-              </p>
+            <div
+              className={cn(
+                "text-center rounded-sm px-6 py-4 w-full border",
+                boxColor,
+              )}
+            >
+              <p className={cn("font-medium mb-2", textColor)}>{heading}</p>
               <p className="text-nasun-white font-mono text-sm">
                 {truncateAddress(state.walletAddress)}
               </p>
@@ -653,7 +696,9 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
           if (isBlocking) e.preventDefault();
         }}
       >
-        {(state.step === "checking" || state.step === "submitting" || state.step === "error") && (
+        {(state.step === "checking" ||
+          state.step === "submitting" ||
+          state.step === "error") && (
           <DialogHeader>
             <DialogTitle className="text-nasun-white">
               Genesis Pass Allowlist
@@ -687,34 +732,97 @@ const DevGenesisPassPage = () => {
 
   // Auto-open registration modal after login completes
   useEffect(() => {
-    if (isAuthenticated && sessionStorage.getItem("nasun:genesis-pass:pending")) {
+    if (
+      isAuthenticated &&
+      sessionStorage.getItem("nasun:genesis-pass:pending")
+    ) {
       sessionStorage.removeItem("nasun:genesis-pass:pending");
       dispatch({ type: "OPEN" });
     }
   }, [isAuthenticated]);
 
+  // Hero video + title
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [skipVideo, setSkipVideo] = useState(false);
+
+  // Skip video on slow connections
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const conn = (navigator as any).connection;
+    if (
+      conn &&
+      (conn.saveData ||
+        conn.effectiveType === "2g" ||
+        conn.effectiveType === "slow-2g")
+    ) {
+      setSkipVideo(true);
+    }
+  }, []);
+
+  // Hero subtitles: NASUN, GENESIS, PASS with independent fade timing
+  const nasunRef = useRef<HTMLDivElement>(null);
+  const genesisRef = useRef<HTMLHeadingElement>(null);
+  const passRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const video = videoRef.current;
+    const nasun = nasunRef.current;
+    const genesis = genesisRef.current;
+    const pass = passRef.current;
+    if (!video || !nasun || !genesis || !pass) return;
+    let rafId: number;
+    const fade = (
+      t: number,
+      inStart: number,
+      inEnd: number,
+      outStart: number,
+      outEnd: number,
+    ) => {
+      if (t < inStart) return 0;
+      if (t < inEnd) return (t - inStart) / (inEnd - inStart);
+      if (t < outStart) return 1;
+      if (t < outEnd) return 1 - (t - outStart) / (outEnd - outStart);
+      return 0;
+    };
+    const clamp = (v: number) => String(Math.max(0, Math.min(1, v)));
+    const tick = () => {
+      const t = video.currentTime;
+      // NASUN: fade in 0s->2s, fade out 3s->6s
+      nasun.style.opacity = clamp(fade(t, 0, 2, 3, 6));
+      // GENESIS: fade in 14s->17s, fade out 20s->23s
+      genesis.style.opacity = clamp(fade(t, 14, 17, 20, 23));
+      // PASS: fade in 16s->19s, fade out 20s->23s
+      pass.style.opacity = clamp(fade(t, 16, 19, 20, 23));
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
   return (
-    <PageLayout>
-      {/* Hero Section */}
-      <div className="relative h-screen overflow-hidden bg-nasun-black">
-        {/* Video placeholder */}
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-gray-900 via-nasun-black to-nasun-black">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-nasun-c5/30 via-transparent to-transparent" />
-          </div>
-          <svg
-            className="w-16 h-16 text-nasun-white/20"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"
+    <>
+      {/* Hero Section - outside PageLayout to remove top padding */}
+      <div className="relative h-[75vh] md:h-screen overflow-hidden bg-nasun-black mb-8 md:mb-0">
+        {/* Background video (poster shown while loading; skipped on slow connections) */}
+        <div className="absolute inset-0 flex justify-center bg-nasun-black">
+          {skipVideo ? (
+            <img
+              src="/videos/genesis-pass-poster.webp"
+              alt=""
+              className="h-full max-w-[1920px] w-full object-cover object-[calc(50%+10px)] md:object-center"
             />
-          </svg>
+          ) : (
+            <video
+              ref={videoRef}
+              className="h-full max-w-[1920px] w-full object-cover object-[calc(50%+10px)] md:object-center"
+              src="/videos/Nasun_Triangle_ZoomIn-16x9_4K.mp4"
+              poster="/videos/genesis-pass-poster.webp"
+              preload="metadata"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          )}
         </div>
 
         {/* Gradient overlay */}
@@ -726,19 +834,41 @@ const DevGenesisPassPage = () => {
           }}
         />
 
-        {/* Title overlay */}
-        <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <SectionTitle
-            as="h1"
-            color="white"
-            className="uppercase text-center !text-5xl md:!text-7xl tracking-wider"
+        {/* NASUN title - fade in 0s, fades out at 3s */}
+        <div
+          ref={nasunRef}
+          className="absolute inset-0 z-20 flex flex-col items-center justify-end pb-[20%] md:pb-[15%] opacity-0"
+        >
+          <h1 className="!font-changeling font-bold uppercase text-nasun-white tracking-widest !text-[clamp(3rem,10vw,6rem)] leading-none">
+            NASUN
+          </h1>
+          {/* Invisible placeholder matching PASS height to align NASUN top with GENESIS top */}
+          <h1
+            className="!text-[clamp(3rem,10vw,6rem)] leading-none -mt-1 invisible"
+            aria-hidden="true"
           >
-            Genesis Pass
-          </SectionTitle>
+            &nbsp;
+          </h1>
+        </div>
+
+        {/* GENESIS + PASS titles - fade in at 14s/16s, fade out at 20s */}
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-end pb-[15%] md:pb-[11%]">
+          <h1
+            ref={genesisRef}
+            className="!font-changeling font-bold uppercase text-nasun-white tracking-widest opacity-0 !text-[clamp(3rem,10vw,6rem)] leading-none"
+          >
+            GENESIS
+          </h1>
+          <h1
+            ref={passRef}
+            className="!font-changeling font-medium uppercase text-nasun-white tracking-widest opacity-0 !text-[clamp(3rem,10vw,6rem)] leading-none -mt-3"
+          >
+            PASS
+          </h1>
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center">
+        <div className="absolute bottom-6 inset-x-0 z-30 hidden md:flex justify-center">
           <svg
             className="w-5 h-5 md:w-6 md:h-6 text-nasun-white/50 animate-bounce"
             fill="none"
@@ -755,62 +885,82 @@ const DevGenesisPassPage = () => {
         </div>
       </div>
 
-      {/* Description + CTA Section */}
-      <SectionLayout maxWidth="5xl" titleAlign="center">
-        <div className="flex flex-col items-center gap-10 py-16 md:py-24">
-          <div className="text-center max-w-xl">
-            <p className="text-nasun-white/70 text-base md:text-lg leading-relaxed">
-              Genesis Pass is a proof of membership for those who have been with
-              Nasun from Day 1. By applying for the allowlist, you secure
-              your place as a founding community member and gain priority access
-              to the Genesis Pass NFT mint.
-            </p>
-          </div>
+      <PageLayout>
+        {/* Description + CTA Section */}
+        <SectionLayout titleAlign="center">
+          <div className="flex flex-col items-center gap-14 py-16 md:py-24">
+            {/* Header */}
+            <div className="text-center max-w-2xl space-y-6  md:space-y-8 lg:space-y-10">
+              <div>
+                <p className="text-nasun-nw4 font-medium tracking-widest  mb-2">
+                  Discover Nasun
+                </p>
+                <h3 className="text-nasun-white font-semibold uppercase">
+                  Genesis Pass
+                </h3>
+              </div>
+              <p className="text-nasun-white/60 text-base md:text-lg leading-relaxed mx-auto">
+                Gain first access to the Nasun ecosystem. <br />
+                Test apps on devnet and testnet to earn and accumulate points.
+              </p>
+            </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <ButtonV3
-              variant="nw2"
-              size="lg"
-              className="sm:min-w-[200px]"
-              onClick={handleOpen}
-            >
-              Apply for Allowlist
-            </ButtonV3>
-            {/* TODO: Uncomment when OpenSea collection page is ready
-            <ButtonV3
-              variant="nw2"
-              outline
-              size="lg"
-              className="sm:min-w-[200px]"
-              onClick={() =>
-                window.open(
-                  "https://opensea.io",
-                  "_blank",
-                  "noopener,noreferrer",
-                )
-              }
-            >
-              View on OpenSea
-            </ButtonV3>
-            */}
-          </div>
-        </div>
-      </SectionLayout>
+            {/* Featured Apps - 3 cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 w-full max-w-4xl">
+              {[
+                { name: "Pado", desc: "DeFi platform with social layer" },
+                {
+                  name: "Baram",
+                  desc: "AI infra for governance and compliance",
+                },
+                {
+                  name: "SPECTRA",
+                  desc: "Sci-fi multiplayer shooter built in UE5",
+                },
+              ].map((app) => (
+                <div
+                  key={app.name}
+                  className="border border-nasun-c7/30 rounded-sm p-5 md:p-6 bg-nasun-c6/30 hover:bg-nasun-white/[0.04] hover:border-nasun-nw2/30 transition-all duration-300"
+                >
+                  <h6 className="text-nasun-white  mb-2">{app.name}</h6>
+                  <p className="text-nasun-white/70 ">{app.desc}</p>
+                </div>
+              ))}
+            </div>
 
-      <GenesisPassModal state={state} dispatch={dispatch} />
-
-      {/* Page-level overlay during wallet linking (Dialog is closed to avoid focus-trap conflict with RainbowKit) */}
-      {state.step === "wallet-linking" && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-nasun-black/60 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center gap-3">
-            <InlineLoading message="Connecting wallet..." size="md" />
-            <p className="text-nasun-white/40 text-xs">
-              Please complete the signature request in your wallet.
-            </p>
+            {/* CTA */}
+            <div className="flex flex-col items-center gap-10">
+              <ButtonV3
+                variant="nw2"
+                size="lg"
+                className="min-w-[220px]"
+                onClick={handleOpen}
+              >
+                Apply for Allowlist
+              </ButtonV3>
+              <p className="text-nasun-white/60 text-base md:text-lg leading-relaxed mx-auto text-center mt-2">
+                The first 100 to register are placed on an allowlist. <br />
+                The total mint quantity and date will be revealed on OpenSea.
+              </p>
+            </div>
           </div>
-        </div>
-      )}
-    </PageLayout>
+        </SectionLayout>
+
+        <GenesisPassModal state={state} dispatch={dispatch} />
+
+        {/* Page-level overlay during wallet linking (Dialog is closed to avoid focus-trap conflict with RainbowKit) */}
+        {state.step === "wallet-linking" && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-nasun-black/60 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-3">
+              <InlineLoading message="Connecting wallet..." size="md" />
+              <p className="text-nasun-white/40 text-xs">
+                Please complete the signature request in your wallet.
+              </p>
+            </div>
+          </div>
+        )}
+      </PageLayout>
+    </>
   );
 };
 
