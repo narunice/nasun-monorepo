@@ -10,9 +10,9 @@ describe('04 — Network Summary Endpoint', () => {
     expect(body.data).not.toBeNull();
   });
 
-  test('Network summary has Cache-Control header (max-age=30)', async () => {
+  test('Network summary has Cache-Control header (max-age=300)', async () => {
     const res = await get(`${API_BASE}/stats/network-summary`);
-    assertCacheControl(res.headers, 30);
+    assertCacheControl(res.headers, 300);
   });
 
   test('Summary contains all required fields', async () => {
