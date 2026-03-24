@@ -293,7 +293,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
 
 export function WhitelistManagement() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("battalion");
+  const [activeTab, setActiveTab] = useState<Tab>("genesis-pass");
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -369,22 +369,6 @@ export function WhitelistManagement() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
               <DashboardCard variant="default">
                 <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
-                  Battalion NFT Allowlist
-                </h5>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-nasun-c1">
-                    {stats.battalion.active.toLocaleString()}
-                  </span>
-                  <span className="text-nasun-white/40 text-base font-light">Active Users</span>
-                </div>
-                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
-                  Total: {stats.battalion.total.toLocaleString()} registered /{" "}
-                  {stats.battalion.withdrawn.toLocaleString()} withdrawn
-                </div>
-              </DashboardCard>
-
-              <DashboardCard variant="default">
-                <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
                   Genesis Pass Allowlist
                 </h5>
                 <div className="flex items-baseline gap-2">
@@ -396,6 +380,25 @@ export function WhitelistManagement() {
                 <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
                   Total: {(stats.genesisPass?.total ?? 0).toLocaleString()} registered /{" "}
                   {(stats.genesisPass?.withdrawn ?? 0).toLocaleString()} withdrawn
+                </div>
+                <div className="mt-2 text-nasun-c4 text-sm font-medium">
+                  Paid Applied: {(stats.genesisPass?.paidApplied ?? 0).toLocaleString()}
+                </div>
+              </DashboardCard>
+
+              <DashboardCard variant="default">
+                <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
+                  Battalion NFT Allowlist
+                </h5>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-nasun-c1">
+                    {stats.battalion.active.toLocaleString()}
+                  </span>
+                  <span className="text-nasun-white/40 text-base font-light">Active Users</span>
+                </div>
+                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
+                  Total: {stats.battalion.total.toLocaleString()} registered /{" "}
+                  {stats.battalion.withdrawn.toLocaleString()} withdrawn
                 </div>
               </DashboardCard>
 
@@ -427,51 +430,13 @@ export function WhitelistManagement() {
           {/* Tabs & Content */}
           <div className="w-full">
             <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-sm w-fit border border-nasun-c5/20">
-              <button className={tabClass("battalion")} onClick={() => { setActiveTab("battalion"); setError(null); }}>
-                Battalion NFT
-              </button>
               <button className={tabClass("genesis-pass")} onClick={() => { setActiveTab("genesis-pass"); setError(null); }}>
                 Genesis Pass
               </button>
+              <button className={tabClass("battalion")} onClick={() => { setActiveTab("battalion"); setError(null); }}>
+                Battalion NFT
+              </button>
             </div>
-
-            {activeTab === "battalion" && (
-              <OuterBox color="w5" padding="md" className="w-full">
-                <h3 className="text-xl font-medium text-nasun-white mb-2">
-                  Battalion NFT Allowlist
-                </h3>
-                <p className="text-nasun-white/60 text-base mb-8">
-                  Export all wallet addresses registered for the Battalion NFT allowlist.
-                </p>
-
-                {error && (
-                  <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-base flex items-center gap-3">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button
-                    onClick={() => handleExport("battalion", "default")}
-                    disabled={isExporting}
-                    variant="outlineC5"
-                    size="lg"
-                    className="min-w-[180px]"
-                  >
-                    {isExporting ? "Exporting..." : "Download CSV"}
-                  </Button>
-                  <Button
-                    onClick={() => handleExport("battalion", "opensea")}
-                    disabled={isExporting}
-                    variant="c4"
-                    size="lg"
-                    className="min-w-[180px]"
-                  >
-                    {isExporting ? "Exporting..." : "OpenSea Format"}
-                  </Button>
-                </div>
-              </OuterBox>
-            )}
 
             {activeTab === "genesis-pass" && (
               <>
@@ -516,6 +481,44 @@ export function WhitelistManagement() {
                   <GenesisPassCrudSection cognitoToken={user.cognitoToken} />
                 )}
               </>
+            )}
+
+            {activeTab === "battalion" && (
+              <OuterBox color="w5" padding="md" className="w-full">
+                <h3 className="text-xl font-medium text-nasun-white mb-2">
+                  Battalion NFT Allowlist
+                </h3>
+                <p className="text-nasun-white/60 text-base mb-8">
+                  Export all wallet addresses registered for the Battalion NFT allowlist.
+                </p>
+
+                {error && (
+                  <div className="mb-6 p-4 bg-red-950/30 border border-red-900/50 rounded-sm text-red-400 text-base flex items-center gap-3">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    onClick={() => handleExport("battalion", "default")}
+                    disabled={isExporting}
+                    variant="outlineC5"
+                    size="lg"
+                    className="min-w-[180px]"
+                  >
+                    {isExporting ? "Exporting..." : "Download CSV"}
+                  </Button>
+                  <Button
+                    onClick={() => handleExport("battalion", "opensea")}
+                    disabled={isExporting}
+                    variant="c4"
+                    size="lg"
+                    className="min-w-[180px]"
+                  >
+                    {isExporting ? "Exporting..." : "OpenSea Format"}
+                  </Button>
+                </div>
+              </OuterBox>
             )}
           </div>
 
