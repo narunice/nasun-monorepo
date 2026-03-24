@@ -20,7 +20,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/leaderboard-v3', label: 'Leaderboard V3', icon: '🏆' },
   { path: '/admin/featured-feed', label: 'Featured Feed', icon: '⭐' },
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
-  { path: '/admin/whitelist', label: 'Whitelist Export', icon: '📋' },
+  { path: '/admin/whitelist', label: 'Allowlist Export', icon: '📋' },
   { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
 ];
 
@@ -61,11 +61,11 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     linkText: 'Manage Governance',
   },
   {
-    title: 'Whitelist Export',
-    description: 'Download Frontiers Whitelist and Battalion NFT Allowlist as CSV files with date filtering capabilities.',
+    title: 'Allowlist Export',
+    description: 'Download Frontiers Allowlist and Battalion NFT Allowlist as CSV files with date filtering capabilities.',
     icon: '📋',
     link: '/admin/whitelist',
-    linkText: 'Manage Whitelist',
+    linkText: 'Manage Allowlist',
   },
   {
     title: 'NFT Collections',

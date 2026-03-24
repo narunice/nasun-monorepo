@@ -14,7 +14,7 @@ export function AdminDashboard() {
             Admin Dashboard
           </PageTitle>
           <p className="text-nasun-white/60 max-w-2xl -mt-6 ">
-            Manage whitelist exports, governance proposals, and monitor platform health through the
+            Manage allowlist exports, governance proposals, and monitor platform health through the
             centralized admin console.
           </p>
         </div>
@@ -33,7 +33,7 @@ export function AdminDashboard() {
               System Information
             </h2>
             <p className="text-nasun-white/60 text-base leading-relaxed">
-              This admin panel allows you to manage NFT whitelist exports and governance features
+              This admin panel allows you to manage NFT allowlist exports and governance features
               securely. All actions are logged. Please ensure you are connected with an authorized
               wallet address before proceeding with sensitive operations.
             </p>

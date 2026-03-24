@@ -688,6 +688,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       // Count Genesis Pass by status
       const genesisPassActive = genesisPassItems.filter((item) => item.status === "ACTIVE").length;
       const genesisPassWithdrawn = genesisPassItems.filter((item) => item.status === "WITHDRAWN").length;
+      // Paid applied: non-LEGACY, non-WITHDRAWN, no mintType (pure paid minting applicants)
+      const genesisPassPaidApplied = genesisPassItems.filter(
+        (item) => !["LEGACY", "WITHDRAWN"].includes(item.status) && !item.mintType
+      ).length;
 
       return jsonResponse(
         200,
@@ -706,6 +710,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             active: genesisPassActive,
             withdrawn: genesisPassWithdrawn,
             total: genesisPassItems.length,
+            paidApplied: genesisPassPaidApplied,
           },
         },
         requestOrigin
