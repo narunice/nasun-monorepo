@@ -244,39 +244,54 @@ app.get('/active-addresses', async (c) => {
   return c.json({ data, range: `${days}d` });
 });
 
-// Network summary (parallel queries)
-app.get('/network-summary', async (c) => {
-  const getSummary = cached('network-summary', 120 * 1000, async () => {
-    const [
-      [txCount],
-      [cpCount],
-      [addrCount],
-      [pkgCount],
-      [latestCp],
-      [eventCount],
-    ] = await Promise.all([
-      sql`SELECT COUNT(*) as count FROM transactions`,
-      sql`SELECT COUNT(*) as count FROM checkpoints`,
-      sql`SELECT COUNT(DISTINCT sender) as count FROM tx_affected_addresses`,
+// Network summary: split into fast (checkpoint-derived) and slow (unique addresses) cache groups
+const getFastStats = cached('network-summary-fast', 5 * 60 * 1000, async () => {
+  try {
+    const [[cpStats], [pkgCount], [eventCount]] = await Promise.all([
+      // Checkpoint-based aggregate: tx count + cp count + latest checkpoint in one scan
+      // Reuses SUM(max_tx - min_tx + 1) pattern from daily-transactions endpoint
+      sql`SELECT
+        COUNT(*) as cp_count,
+        SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::bigint as total_tx,
+        MAX(sequence_number) as latest_seq,
+        MAX(timestamp_ms) as latest_ts
+      FROM checkpoints`,
       sql`SELECT COUNT(*) as count FROM packages`,
-      sql`SELECT MAX(sequence_number) as seq, MAX(timestamp_ms) as ts FROM checkpoints`,
       sql`SELECT COUNT(*) as count FROM events`,
     ]);
+    return { cpStats, pkgCount, eventCount };
+  } catch (err) {
+    console.error('Network summary fast stats query failed:', err);
+    return { cpStats: null, pkgCount: null, eventCount: null };
+  }
+});
 
-    return {
-      totalTransactions: Number(txCount?.count ?? 0),
-      totalCheckpoints: Number(cpCount?.count ?? 0),
-      uniqueAddresses: Number(addrCount?.count ?? 0),
-      totalPackages: Number(pkgCount?.count ?? 0),
-      totalEvents: Number(eventCount?.count ?? 0),
-      latestCheckpoint: latestCp?.seq?.toString() ?? null,
-      latestTimestamp: latestCp?.ts?.toString() ?? null,
-    };
+const getSlowStats = cached('network-summary-slow', 10 * 60 * 1000, async () => {
+  try {
+    const [[addrCount]] = await Promise.all([
+      sql`SELECT COUNT(DISTINCT sender) as count FROM tx_affected_addresses`,
+    ]);
+    return { uniqueAddresses: Number(addrCount?.count ?? 0) };
+  } catch (err) {
+    console.error('Network summary slow stats query failed:', err);
+    return { uniqueAddresses: 0 };
+  }
+});
+
+app.get('/network-summary', async (c) => {
+  const [fast, slow] = await Promise.all([getFastStats(), getSlowStats()]);
+  c.header('Cache-Control', 'public, max-age=300');
+  return c.json({
+    data: {
+      totalTransactions: Number(fast.cpStats?.total_tx ?? 0),
+      totalCheckpoints: Number(fast.cpStats?.cp_count ?? 0),
+      uniqueAddresses: slow.uniqueAddresses,
+      totalPackages: Number(fast.pkgCount?.count ?? 0),
+      totalEvents: Number(fast.eventCount?.count ?? 0),
+      latestCheckpoint: fast.cpStats?.latest_seq?.toString() ?? null,
+      latestTimestamp: fast.cpStats?.latest_ts?.toString() ?? null,
+    },
   });
-
-  const data = await getSummary();
-  c.header('Cache-Control', 'public, max-age=120');
-  return c.json({ data });
 });
 
 // Daily transaction counts (derived from checkpoints — fast even on 60M+ tx)
