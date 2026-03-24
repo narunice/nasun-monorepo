@@ -816,11 +816,15 @@ const DevGenesisPassPage = () => {
               className="h-full max-w-[1920px] w-full object-cover object-[calc(50%+10px)] md:object-center"
               src="/videos/Nasun_Triangle_ZoomIn-16x9_4K.mp4"
               poster="/videos/genesis-pass-poster.webp"
-              preload="metadata"
               autoPlay
               muted
               loop
               playsInline
+              onCanPlay={(e) => {
+                // iOS Safari needs explicit play() call for autoplay
+                const v = e.currentTarget;
+                if (v.paused) v.play().catch(() => {});
+              }}
             />
           )}
         </div>
