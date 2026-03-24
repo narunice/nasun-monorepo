@@ -17,15 +17,14 @@ const getRpcChainId = cached('rpc-chain-id', 5 * 60 * 1000, async () => {
 
 app.get('/', async (c) => {
   try {
+    // Single checkpoints scan: cp stats + tx count (avoids full transactions table scan)
     const [cpRow] = await sql`
       SELECT
         COUNT(*) as total_cp,
         MAX(sequence_number) as latest_cp,
-        MIN(sequence_number) as earliest_cp
+        MIN(sequence_number) as earliest_cp,
+        SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::bigint as total_tx
       FROM checkpoints
-    `;
-    const [txRow] = await sql`
-      SELECT COUNT(*) as total_tx FROM transactions
     `;
 
     // Check chain ID from RPC (non-blocking — don't fail health check if RPC is down)
@@ -48,7 +47,7 @@ app.get('/', async (c) => {
       latestCheckpoint: cpRow?.latest_cp?.toString() ?? null,
       earliestCheckpoint: cpRow?.earliest_cp?.toString() ?? null,
       totalCheckpoints: Number(cpRow?.total_cp ?? 0),
-      totalTransactions: Number(txRow?.total_tx ?? 0),
+      totalTransactions: Number(cpRow?.total_tx ?? 0),
       timestamp: new Date().toISOString(),
     };
 
