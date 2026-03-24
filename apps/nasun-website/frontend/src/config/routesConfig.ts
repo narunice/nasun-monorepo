@@ -34,6 +34,7 @@ export const Pages = {
   LeaderboardV3: lazyWithRetry(() => import("../pages/LeaderboardV3Page")),
   AiEconomy: lazyWithRetry(() => import("../pages/ecosystem/AiEconomyPage")),
   // Wave 1 Campaign Pages
+  GenesisPass: lazyWithRetry(() => import("../pages/dev/DevGenesisPassPage")),
   BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
   EarlyContributors: lazyWithRetry(() => import("../pages/wave1/EarlyContributorsPage")),
   LeaderboardInfo: lazyWithRetry(() => import("../pages/wave1/LeaderboardInfoPage")),
@@ -367,6 +368,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       name: "navigation.wave1Campaign",
       path: "/wave1",
       subMenu: [
+        {
+          name: "navigation.genesisPass",
+          path: "/wave1/genesis-pass",
+          element: Pages.GenesisPass,
+        },
         {
           name: "navigation.battalionNft",
           path: "/wave1/battalion-nft",

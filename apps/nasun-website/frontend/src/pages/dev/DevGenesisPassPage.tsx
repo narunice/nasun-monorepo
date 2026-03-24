@@ -613,7 +613,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
         const heading = isActive ? "Registered!" : "Application submitted!";
         const subtitle = isActive
           ? "You are on the allowlist."
-          : "Your allowlist status will be updated on the My Account page.";
+          : "Thank you for registering! Allowlist spots will be announced soon.\nYou can check your status anytime on your account page.";
 
         return (
           <div className="flex flex-col items-center gap-6 py-4">
@@ -634,7 +634,7 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
                 </p>
               )}
             </div>
-            <p className="text-nasun-white/60 text-sm text-center">
+            <p className="text-nasun-white/60 text-sm text-center whitespace-pre-line">
               {subtitle}
             </p>
             <div className="flex flex-col-reverse sm:flex-row gap-6 sm:gap-3 w-full">
@@ -888,9 +888,9 @@ const DevGenesisPassPage = () => {
       <PageLayout>
         {/* Description + CTA Section */}
         <SectionLayout titleAlign="center">
-          <div className="flex flex-col items-center gap-14 py-16 md:py-24">
+          <div className="flex flex-col items-center gap-8 py-16 md:py-24">
             {/* Header */}
-            <div className="text-center max-w-2xl space-y-6  md:space-y-8 lg:space-y-10">
+            <div className="text-center max-w-2xl space-y-0  md:space-y-2 lg:space-y-4">
               <div>
                 <p className="text-nasun-nw4 font-medium tracking-widest  mb-2">
                   Discover Nasun
@@ -929,7 +929,7 @@ const DevGenesisPassPage = () => {
             </div>
 
             {/* CTA */}
-            <div className="flex flex-col items-center gap-10">
+            <div className="flex flex-col items-center gap-12 py-8">
               <ButtonV3
                 variant="nw2"
                 size="lg"
