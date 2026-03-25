@@ -22,7 +22,7 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   'pado-lending': { deposit: 10, withdraw: 5, borrow: 8, repay: 5 },
   'baram-ai': { 'create-request': 12, settle: 8, cancel: 1 },
   'baram-executor': { register: 30, stake: 50, unstake: 0, update: 5 },
-  governance: { vote: 15, 'create-proposal': 20, delegate: 5 },
+  governance: { vote: 15, delegate: 5 },
   'wallet-transfer': { transfer: 1, 'merge-coins': 0, 'split-coins': 0 },
   staking: { delegate: 10, unstake: 0 },
   faucet: { claim: 0 },
@@ -143,11 +143,11 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.baramExecutor, 'staking', 'StakeRemoved', { category: 'baram-executor', activityType: 'unstake' }],
   [PKG.baramExecutor, 'executor', 'ExecutorUpdated', { category: 'baram-executor', activityType: 'update' }],
 
-  // Governance
-  [PKG.governance, 'governance', 'VoteCast', { category: 'governance', activityType: 'vote' }],
-  [PKG.governance, 'governance', 'ProposalCreated', { category: 'governance', activityType: 'create-proposal' }],
-  [PKG.governance, 'governance', 'DelegationChanged', { category: 'governance', activityType: 'delegate' }],
-  [PKG.governanceMultiChoice, 'multi_choice', 'VoteCast', { category: 'governance', activityType: 'vote' }],
+  // Governance (module names must match Move sources, not the package-level namespace)
+  [PKG.governance, 'proposal', 'VoteRegistered', { category: 'governance', activityType: 'vote' }],
+  [PKG.governance, 'delegation', 'DelegationCreated', { category: 'governance', activityType: 'delegate' }],
+  [PKG.governance, 'delegation', 'DelegationRevoked', { category: 'governance', activityType: 'delegate' }],
+  [PKG.governanceMultiChoice, 'multi_choice_proposal', 'MultiChoiceVoteRegistered', { category: 'governance', activityType: 'vote' }],
 
   // Faucet: excluded from EVENT_MAP (0 points, never inserted).
   // Kept in BASE_POINTS for documentation only.
