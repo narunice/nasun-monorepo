@@ -15,9 +15,12 @@ function parseLimit(raw: string | undefined): number {
   );
 }
 
+const MAX_OFFSET = 10000;
+
 function parseOffset(raw: string | undefined): number {
   const n = Number(raw ?? 0);
-  return Number.isNaN(n) || n < 0 ? 0 : Math.floor(n);
+  if (Number.isNaN(n) || n < 0) return 0;
+  return Math.min(Math.floor(n), MAX_OFFSET);
 }
 
 // GET /api/v1/points/leaderboard?limit=50&offset=0
@@ -68,7 +71,7 @@ app.get('/user/:address', async (c) => {
   }
 
   const address = c.req.param('address');
-  if (!address || !/^0x[a-fA-F0-9]{1,64}$/.test(address)) {
+  if (!address || !/^0x[a-fA-F0-9]{64}$/.test(address)) {
     return c.json({ error: 'invalid_address' }, 400);
   }
 
