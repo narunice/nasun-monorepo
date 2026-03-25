@@ -3,7 +3,7 @@
  * Handles balances, NFTs, EVM state, network, and chain info.
  */
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import {
   useNFTs,
   useMultiBalance,
@@ -14,8 +14,6 @@ import {
   useERC20Balances,
   getStoredEVMAddress,
   getAllTokens,
-  type NFTInfo,
-  type NFTSortBy,
 } from "@nasun/wallet";
 
 const CUSTOM_SCROLLBAR_ID = "nasun-wallet-scrollbar";
@@ -54,39 +52,13 @@ export function useConnectedViewData() {
     injectScrollbarStyles();
   }, []);
 
-  // NFT state
-  const [nftSortBy, _setNftSortBy] = useState<NFTSortBy>("newest");
-  const [nftCursor, setNftCursor] = useState<string | undefined>(undefined);
-  const [accumulatedNfts, setAccumulatedNfts] = useState<NFTInfo[]>([]);
-
+  // NFTs (all pages fetched automatically)
   const {
-    data: nfts = [],
+    data: accumulatedNfts,
     isLoading: nftsLoading,
-    hasNextPage: _nftsHasNextPage,
   } = useNFTs({
-    limit: 50,
-    cursor: nftCursor,
-    refetchInterval: nftCursor ? undefined : 15000,
-    sortBy: nftSortBy,
+    refetchInterval: 15000,
   });
-
-  // Accumulate NFTs when loading more pages
-  useEffect(() => {
-    if (nftCursor === undefined) {
-      setAccumulatedNfts(nfts);
-    } else if (nfts.length > 0) {
-      setAccumulatedNfts((prev) => {
-        const existingIds = new Set(prev.map((n) => n.objectId));
-        const newNfts = nfts.filter((n) => !existingIds.has(n.objectId));
-        return [...prev, ...newNfts];
-      });
-    }
-  }, [nfts, nftCursor]);
-
-  // Reset cursor when sort changes
-  useEffect(() => {
-    setNftCursor(undefined);
-  }, [nftSortBy]);
 
   // Token balances
   const { data: balances, isLoading: balancesLoading } = useMultiBalance({

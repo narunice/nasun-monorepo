@@ -45,28 +45,6 @@ export interface NFTInfo {
 }
 
 /**
- * NFT query options
- */
-export interface NFTQueryOptions {
-  /** Maximum number of NFTs to fetch per page */
-  limit?: number;
-  /** Cursor for pagination */
-  cursor?: string;
-}
-
-/**
- * NFT query result with pagination
- */
-export interface NFTQueryResult {
-  /** List of NFTs */
-  data: NFTInfo[];
-  /** Whether there are more results */
-  hasNextPage: boolean;
-  /** Cursor for next page */
-  nextCursor?: string;
-}
-
-/**
  * NFT transfer request
  */
 export interface NFTTransferRequest {

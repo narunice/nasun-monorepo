@@ -9,13 +9,13 @@ import { useWallet } from './useWallet';
 import { useZkLogin } from './useZkLogin';
 import { usePasskeyStore } from '../stores/passkeyStore';
 import { getOwnedNFTs } from '../sui/nft';
-import type { NFTInfo, NFTQueryOptions, NFTSortBy } from '../types/nft';
+import type { NFTInfo, NFTSortBy } from '../types/nft';
 import { DEFAULT_NFT_SORT } from '../types/nft';
 
 // Query key prefix for NFT queries
 const NFT_QUERY_KEY = 'nasun-wallet-nfts';
 
-export interface UseNFTsOptions extends NFTQueryOptions {
+export interface UseNFTsOptions {
   /** Disable automatic fetching */
   enabled?: boolean;
   /** Refetch interval in milliseconds */
@@ -31,10 +31,6 @@ export interface UseNFTsResult {
   isLoading: boolean;
   /** Error message */
   error: string | null;
-  /** Whether there are more NFTs to load */
-  hasNextPage: boolean;
-  /** Cursor for next page */
-  nextCursor?: string;
   /** Refetch function */
   refetch: () => void;
 }
@@ -90,7 +86,7 @@ function sortNFTs(nfts: NFTInfo[], sortBy: NFTSortBy): NFTInfo[] {
 export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
   const { account, status } = useWallet();
   const { state: zkLoginState, isConnected: isZkConnected } = useZkLogin();
-  const { enabled = true, refetchInterval, limit, cursor, sortBy = DEFAULT_NFT_SORT } = options;
+  const { enabled = true, refetchInterval, sortBy = DEFAULT_NFT_SORT } = options;
 
   // Use wallet address, zkLogin address, or passkey address
   const passkeyAddress = usePasskeyStore((s) => s.address);
@@ -99,32 +95,30 @@ export function useNFTs(options: UseNFTsOptions = {}): UseNFTsResult {
   const isConnected = (status === 'unlocked' && account?.address) || isZkConnected || isPasskeyUnlocked;
 
   const query = useQuery({
-    queryKey: [NFT_QUERY_KEY, ownerAddress, limit, cursor],
+    queryKey: [NFT_QUERY_KEY, ownerAddress],
     queryFn: async () => {
       if (!ownerAddress) {
         throw new Error('Wallet not connected');
       }
-      return getOwnedNFTs(ownerAddress, { limit, cursor });
+      return getOwnedNFTs(ownerAddress);
     },
     enabled: enabled && !!isConnected && !!ownerAddress,
     refetchInterval,
-    refetchIntervalInBackground: true, // Continue refetching even when tab is not focused
-    refetchOnWindowFocus: true, // Refetch when user returns to the tab
-    staleTime: 10000, // 10 seconds (reduced from 30s for faster updates)
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
   });
 
   // Sort NFTs client-side (Sui API doesn't support sorting)
   const sortedData = useMemo(() => {
-    const rawData = query.data?.data || [];
+    const rawData = query.data || [];
     return sortNFTs(rawData, sortBy);
-  }, [query.data?.data, sortBy]);
+  }, [query.data, sortBy]);
 
   return {
     data: sortedData,
     isLoading: query.isLoading,
     error: query.error ? String(query.error) : null,
-    hasNextPage: query.data?.hasNextPage || false,
-    nextCursor: query.data?.nextCursor,
     refetch: query.refetch,
   };
 }
