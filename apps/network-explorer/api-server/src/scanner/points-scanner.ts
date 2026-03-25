@@ -114,13 +114,12 @@ async function detectChainReset(): Promise<void> {
         'New:',
         currentHash,
       );
-      console.warn('[Points] Resetting last_tx_sequence to 0');
-      // TODO: Decide whether to archive/purge old activity_points on chain reset.
-      // Currently old points are preserved (intentional for devnet), but users
-      // can accumulate duplicate points if they repeat activities on the new chain.
+      console.warn('[Points] Purging old activity_points and resetting scanner');
+      await pointsDb`TRUNCATE activity_points`;
       await pointsDb`
         UPDATE processing_state
-        SET last_tx_sequence = 0, chain_genesis_hash = ${currentHash}, processed_at = NOW()
+        SET last_tx_sequence = 0, chain_genesis_hash = ${currentHash},
+            processed_at = NOW(), tx_count = 0
         WHERE scanner_id = 'main'
       `;
     } else if (!state?.chain_genesis_hash) {
@@ -269,12 +268,12 @@ async function processBatch(batch: RawEvent[]): Promise<number> {
   if (inserts.length === 0) return 0;
 
   // Bulk insert with ON CONFLICT DO NOTHING (idempotent)
-  await pointsDb`
+  const result = await pointsDb`
     INSERT INTO activity_points ${pointsDb(inserts, 'wallet_address', 'identity_id', 'tx_digest', 'tx_sequence_number', 'category', 'activity_type', 'base_points', 'volume_tier', 'genesis_multiplier', 'final_points', 'tx_timestamp', 'event_seq')}
     ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
   `;
 
-  return inserts.length;
+  return result.count;
 }
 
 // --- Wallet cache ---
@@ -316,21 +315,20 @@ async function maybeRefreshWalletCache(): Promise<void> {
       return;
     }
 
-    const data = (await res.json()) as {
-      wallets?: Record<string, string>;
-      genesisPass?: string[];
-    };
+    const data = await res.json();
 
-    if (data.wallets) {
+    if (data.wallets && typeof data.wallets === 'object' && !Array.isArray(data.wallets)) {
       const newMap = new Map<string, string>();
       for (const [addr, id] of Object.entries(data.wallets)) {
-        newMap.set(addr.toLowerCase(), id);
+        if (typeof addr === 'string' && typeof id === 'string') {
+          newMap.set(addr.toLowerCase(), id);
+        }
       }
       registeredWallets = newMap;
     }
 
-    if (data.genesisPass) {
-      genesisPassHolders = new Set(data.genesisPass);
+    if (Array.isArray(data.genesisPass)) {
+      genesisPassHolders = new Set(data.genesisPass.filter((v: unknown) => typeof v === 'string'));
     }
 
     walletCacheLastRefresh = now;
