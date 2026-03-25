@@ -401,6 +401,39 @@ async function scanGenesisPassAllowlist(status?: string): Promise<GenesisPassIte
 }
 
 /**
+ * Scan UserProfiles for identityId -> twitterHandle mapping (lightweight)
+ */
+async function scanTwitterHandleMap(): Promise<Map<string, string>> {
+  const handleMap = new Map<string, string>();
+  let lastEvaluatedKey: Record<string, any> | undefined;
+  let pageCount = 0;
+
+  do {
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: USER_PROFILES_TABLE,
+      ProjectionExpression: "identityId, twitterHandle",
+      ExclusiveStartKey: lastEvaluatedKey,
+    }));
+    pageCount++;
+
+    if (result.Items) {
+      for (const item of result.Items) {
+        const id = item.identityId?.S;
+        const handle = item.twitterHandle?.S;
+        if (id && handle) handleMap.set(id, handle);
+      }
+    }
+    lastEvaluatedKey = result.LastEvaluatedKey;
+  } while (lastEvaluatedKey && pageCount < MAX_SCAN_PAGES);
+
+  if (lastEvaluatedKey) {
+    console.warn(`[scanTwitterHandleMap] Truncated at ${MAX_SCAN_PAGES} pages, some handles may be missing`);
+  }
+
+  return handleMap;
+}
+
+/**
  * Query Battalion NFT Whitelist with optional date filtering using batch-index GSI
  */
 async function queryBattalionWhitelist(
@@ -595,6 +628,18 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       console.log(`Exporting Genesis Pass allowlist (status: ${status}, format: ${format || "default"})`);
       const items = await scanGenesisPassAllowlist(status);
 
+      // Enrich twitterHandle from UserProfiles for entries missing it
+      try {
+        const handleMap = await scanTwitterHandleMap();
+        for (const item of items) {
+          if (!item.twitterHandle && item.identityId) {
+            item.twitterHandle = handleMap.get(item.identityId);
+          }
+        }
+      } catch (err) {
+        console.warn("[export] Failed to enrich twitterHandle:", err);
+      }
+
       let csv: string;
       let filename: string;
 
@@ -612,6 +657,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         csv = generateCSV(items, [
           { key: "walletAddress", header: "walletAddress" },
           { key: "identityId", header: "identityId" },
+          { key: "twitterHandle", header: "twitterHandle" },
+          { key: "mintType", header: "mintType" },
+          { key: "source", header: "source" },
           { key: "registeredAt", header: "registeredAt" },
           { key: "status", header: "status" },
         ]);
@@ -898,6 +946,19 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     if (path.endsWith("/genesis-pass/entries") && event.httpMethod === "GET") {
       console.log("Fetching Genesis Pass allowlist entries");
       const items = await scanGenesisPassAllowlist("ALL");
+
+      // Enrich twitterHandle from UserProfiles for entries missing it
+      try {
+        const handleMap = await scanTwitterHandleMap();
+        for (const item of items) {
+          if (!item.twitterHandle && item.identityId) {
+            item.twitterHandle = handleMap.get(item.identityId);
+          }
+        }
+      } catch (err) {
+        console.warn("[entries] Failed to enrich twitterHandle:", err);
+      }
+
       items.sort((a, b) => (b.registeredAt || "").localeCompare(a.registeredAt || ""));
       return jsonResponse(200, { success: true, items }, requestOrigin);
     }

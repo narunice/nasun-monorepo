@@ -265,6 +265,8 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
   const metamaskAccount = linkedAccounts?.metamask;
   const walletAddress = metamaskAccount?.walletAddress
     || (profileResult.Item.provider === "MetaMask" ? profileResult.Item.walletAddress : undefined);
+  const twitterHandle = profileResult.Item.twitterHandle
+    || linkedAccounts?.twitter?.twitterHandle;
 
   if (!walletAddress) {
     return jsonResponse(400, {
@@ -317,9 +319,9 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
         new UpdateCommand({
           TableName: ALLOWLIST_TABLE,
           Key: { walletAddress: existingWallet },
-          UpdateExpression: "SET #s = :applied, appliedAt = :now",
+          UpdateExpression: "SET #s = :applied, appliedAt = :now" + (twitterHandle ? ", twitterHandle = :th" : ""),
           ExpressionAttributeNames: { "#s": "status" },
-          ExpressionAttributeValues: { ":applied": "APPLIED", ":now": now, ":id": existingStoredId },
+          ExpressionAttributeValues: { ":applied": "APPLIED", ":now": now, ":id": existingStoredId, ...(twitterHandle && { ":th": twitterHandle }) },
           ConditionExpression: "identityId = :id",
         })
       );
@@ -396,6 +398,7 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
         status: registrationStatus,
         ...(mintType && { mintType }),
         ...(source && { source }),
+        ...(twitterHandle && { twitterHandle }),
       },
     })
   );
