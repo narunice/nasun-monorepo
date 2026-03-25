@@ -104,55 +104,6 @@ sudo systemctl start sui-indexer
 4. `packages/devnet-config/devnet-ids.json`의 coin type 주소 업데이트
 5. `stats.ts`의 `KNOWN_COIN_TYPES` 동기화 (devnet-ids.json 기준)
 6. `GENESIS_ADDRESSES` 환경변수 업데이트 (새 faucet 주소)
-7. `nasun_points`: 자동 처리됨 (scanner가 chain hash 변경 감지 후 TRUNCATE + 리셋)
-
----
-
-## On-Chain Activity Points (nasun_points DB)
-
-node-3에서 별도 PostgreSQL DB로 운영되는 온체인 활동 포인트 시스템입니다.
-`sui_indexer` DB와 독립적이며, 데브넷 리셋 시 scanner가 자동으로 데이터를 초기화합니다.
-
-### 구성
-
-| 항목 | 값 |
-|------|-----|
-| DB 이름 | `nasun_points` |
-| DB 유저 | `postgres` (node-3 로컬) |
-| 테이블 | `activity_points`, `processing_state` |
-| 스키마 | `apps/network-explorer/api-server/src/db/points-schema.sql` |
-| Scanner | explorer-api 프로세스 내 setInterval (1시간 간격) |
-| PM2 모드 | fork (cluster 아님) |
-
-### API 엔드포인트 (explorer.nasun.io/api/v1/points/)
-
-| 엔드포인트 | 설명 | 캐시 TTL |
-|-----------|------|---------|
-| `GET /leaderboard?limit=50&offset=0` | identity 기준 포인트 순위 | 5분 |
-| `GET /user/:walletAddress` | 지갑별 포인트 + 카테고리 분해 | 5분 |
-| `GET /health` | Scanner 상태 (last_tx_sequence, wallet cache 등) | 없음 |
-
-### 환경변수 (node-3 ~/explorer-api/.env)
-
-| 변수 | 설명 |
-|------|------|
-| `POINTS_DATABASE_URL` | `postgres://postgres@localhost:5432/nasun_points` |
-| `WALLET_MAPPINGS_URL` | nasun-website admin API 내부 엔드포인트 URL |
-| `WALLET_MAPPINGS_API_KEY` | 내부 API 인증 키 |
-
-### 백업
-
-```bash
-# 일일 백업 (cron, 03:00 KST)
-pg_dump -U postgres nasun_points | gzip > /backup/nasun_points-$(date +\%Y\%m\%d).sql.gz
-
-# 복원
-gunzip -c /backup/nasun_points-YYYYMMDD.sql.gz | psql -U postgres nasun_points
-```
-
-### 데브넷 리셋 시
-
-Scanner가 chain genesis hash 변경을 자동 감지하여 `activity_points` TRUNCATE + `processing_state` 리셋을 수행합니다. 수동 작업 불필요.
 
 ---
 
