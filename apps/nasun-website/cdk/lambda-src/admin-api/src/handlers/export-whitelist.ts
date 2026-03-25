@@ -1,4 +1,5 @@
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
+import { timingSafeEqual } from "crypto";
 import {
   DynamoDBClient,
   ScanCommand,
@@ -21,6 +22,8 @@ const HIDDEN_PROPOSALS_TABLE = process.env.HIDDEN_PROPOSALS_TABLE || "HiddenProp
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
 const DEVNET_METRICS_TABLE = process.env.DEVNET_METRICS_TABLE || "devnet-metrics";
 const GENESIS_PASS_TABLE = process.env.GENESIS_PASS_TABLE || "nasun-genesis-pass-allowlist";
+const USER_WALLETS_TABLE = process.env.USER_WALLETS_TABLE || "UserWallets";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -554,6 +557,70 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       console.log("Fetching hidden proposals (public)");
       const items = await scanHiddenProposals();
       return jsonResponse(200, { proposalIds: items.map((i) => i.proposalId) }, requestOrigin);
+    }
+
+    // Internal endpoint: GET /internal/wallet-mappings (API key auth, no Cognito)
+    // Returns all wallet->identity mappings + genesis pass holders for the points scanner
+    if (path.endsWith("/wallet-mappings") && event.httpMethod === "GET") {
+      const apiKey = event.headers?.["x-api-key"] || event.headers?.["X-Api-Key"];
+      const isValidKey =
+        INTERNAL_API_KEY &&
+        apiKey &&
+        apiKey.length === INTERNAL_API_KEY.length &&
+        timingSafeEqual(Buffer.from(apiKey), Buffer.from(INTERNAL_API_KEY));
+      if (!isValidKey) {
+        console.warn("[internal] Invalid or missing API key");
+        return errorResponse(401, "Unauthorized", requestOrigin);
+      }
+
+      console.log("[internal] Fetching wallet mappings for points scanner");
+
+      // Scan UserWallets for all registered wallets (exclude WALLET_OWNER sentinel rows)
+      const wallets: Record<string, string> = {};
+      let lastKey: Record<string, any> | undefined;
+      do {
+        const result = await dynamoClient.send(
+          new ScanCommand({
+            TableName: USER_WALLETS_TABLE,
+            FilterExpression: "identityId <> :sentinel",
+            ExpressionAttributeValues: { ":sentinel": { S: "WALLET_OWNER" } },
+            ProjectionExpression: "identityId, walletAddress",
+            ...(lastKey && { ExclusiveStartKey: lastKey }),
+          })
+        );
+        for (const item of result.Items || []) {
+          const addr = item.walletAddress?.S;
+          const id = item.identityId?.S;
+          if (addr && id) {
+            wallets[addr.toLowerCase()] = id;
+          }
+        }
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
+
+      // Scan Genesis Pass allowlist for active holders
+      const genesisPass: string[] = [];
+      let gpLastKey: Record<string, any> | undefined;
+      do {
+        const result = await dynamoClient.send(
+          new ScanCommand({
+            TableName: GENESIS_PASS_TABLE,
+            FilterExpression: "#s = :active",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":active": { S: "ACTIVE" } },
+            ProjectionExpression: "identityId",
+            ...(gpLastKey && { ExclusiveStartKey: gpLastKey }),
+          })
+        );
+        for (const item of result.Items || []) {
+          const id = item.identityId?.S;
+          if (id) genesisPass.push(id);
+        }
+        gpLastKey = result.LastEvaluatedKey;
+      } while (gpLastKey);
+
+      console.log(`[internal] Wallet mappings: ${Object.keys(wallets).length} wallets, ${genesisPass.length} genesis pass holders`);
+      return jsonResponse(200, { wallets, genesisPass }, requestOrigin);
     }
 
     // All other endpoints require admin authentication.
