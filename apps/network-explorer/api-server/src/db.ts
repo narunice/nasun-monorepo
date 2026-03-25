@@ -6,10 +6,23 @@ if (!DATABASE_URL) {
 }
 
 export const sql = postgres(DATABASE_URL, {
-  max: 75,
+  max: 10,
   idle_timeout: 60,
   connect_timeout: 10,
   connection: {
     statement_timeout: 30000,
   },
 });
+
+// Points DB (separate database, survives devnet resets)
+const POINTS_DATABASE_URL = process.env.POINTS_DATABASE_URL;
+export const pointsDb = POINTS_DATABASE_URL
+  ? postgres(POINTS_DATABASE_URL, {
+      max: 5,
+      idle_timeout: 60,
+      connect_timeout: 10,
+      connection: {
+        statement_timeout: 30000,
+      },
+    })
+  : null;
