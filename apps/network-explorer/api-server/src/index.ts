@@ -2,10 +2,12 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { sql } from './db.js';
+import { sql, pointsDb } from './db.js';
 import { rateLimiter } from './rate-limit.js';
 import healthRoutes from './routes/health.js';
 import statsRoutes from './routes/stats.js';
+import pointsRoutes from './routes/points.js';
+import { startPointsScanner, stopPointsScanner } from './scanner/points-scanner.js';
 
 const PORT = Number(process.env.PORT ?? 3200);
 
@@ -27,10 +29,12 @@ app.use(
 
 // Rate limiting: 120 requests per minute per IP
 app.use('/api/v1/stats/*', rateLimiter({ windowMs: 60_000, max: 120 }));
+app.use('/api/v1/points/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 
 // Routes
 app.route('/api/v1/health', healthRoutes);
 app.route('/api/v1/stats', statsRoutes);
+app.route('/api/v1/points', pointsRoutes);
 
 // Root
 app.get('/', (c) => c.json({ service: 'explorer-api', version: '0.1.0' }));
@@ -47,7 +51,11 @@ app.onError((err, c) => {
 // Graceful shutdown
 async function shutdown() {
   console.log('Shutting down Explorer API...');
-  await sql.end({ timeout: 5 });
+  stopPointsScanner();
+  await Promise.all([
+    sql.end({ timeout: 5 }),
+    pointsDb?.end({ timeout: 5 }),
+  ]);
   process.exit(0);
 }
 process.on('SIGTERM', shutdown);
@@ -55,3 +63,6 @@ process.on('SIGINT', shutdown);
 
 console.log(`Explorer API starting on port ${PORT}`);
 serve({ fetch: app.fetch, port: PORT });
+
+// Start points scanner (no-op if POINTS_DATABASE_URL not set)
+startPointsScanner();
