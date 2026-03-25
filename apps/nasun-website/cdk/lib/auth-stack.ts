@@ -254,6 +254,7 @@ export class AuthStack extends cdk.Stack {
       partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecovery: true, // salt loss = permanent wallet loss, PITR enables 35-day recovery
       removalPolicy: cdk.RemovalPolicy.RETAIN, // RETAIN: cdk destroy 시 salt DB 삭제 방지 (사용자 Sui 주소 영구 소실 방어)
     });
 

@@ -208,6 +208,7 @@ export class CommonStack extends cdk.Stack {
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         GENESIS_PASS_ALLOWLIST_TABLE: "nasun-genesis-pass-allowlist",
+        ZKLOGIN_TABLE_NAME: "ZkLoginUsers",
       },
       timeout: cdk.Duration.seconds(10),
       logGroup: new logs.LogGroup(this, "LinkAccountLambdaLogGroup", {
@@ -220,6 +221,11 @@ export class CommonStack extends cdk.Stack {
       this, "GenesisPassAllowlistForLink", "nasun-genesis-pass-allowlist"
     );
     genesisPassAllowlistForLink.grantReadWriteData(linkAccountLambda);
+    // Grant read access to ZkLoginUsers for Google link cross-reference
+    const zkLoginTableForLink = dynamodb.Table.fromTableName(
+      this, "ZkLoginUsersForLink", "ZkLoginUsers"
+    );
+    zkLoginTableForLink.grantReadData(linkAccountLambda);
 
     const linkAccountApi = new apigw.LambdaRestApi(this, "LinkAccountApi", {
       handler: linkAccountLambda,
