@@ -5,10 +5,12 @@
 
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from './client';
-import type { NFTInfo, NFTQueryOptions, NFTQueryResult, NFTDisplay } from '../types/nft';
+import type { NFTInfo, NFTDisplay } from '../types/nft';
 
-// Default query limit
-const DEFAULT_LIMIT = 50;
+// Per-page limit for getOwnedObjects calls
+const PAGE_LIMIT = 50;
+// Safety cap: max pages to fetch (50 * 10 = 500 objects)
+const MAX_OBJECT_PAGES = 10;
 
 /**
  * Parse Display data from Sui response
@@ -103,32 +105,41 @@ function isCoinType(type: string): boolean {
 }
 
 /**
- * Get all NFTs owned by an address
- * Excludes Coin objects (fungible tokens)
+ * Get all NFTs owned by an address.
+ * Fetches ALL owned objects (paginated) then filters to NFTs.
+ * Excludes Coin objects (fungible tokens).
  */
-export async function getOwnedNFTs(
-  address: string,
-  options: NFTQueryOptions = {}
-): Promise<NFTQueryResult> {
+export async function getOwnedNFTs(address: string): Promise<NFTInfo[]> {
   const client = getSuiClient();
-  const limit = options.limit || DEFAULT_LIMIT;
+  const objectOptions = { showType: true, showDisplay: true, showContent: true };
 
   try {
-    const response = await client.getOwnedObjects({
+    // Fetch first page
+    const firstPage = await client.getOwnedObjects({
       owner: address,
-      options: {
-        showType: true,
-        showDisplay: true,
-        showContent: true,
-      },
-      cursor: options.cursor,
-      limit,
+      options: objectOptions,
+      limit: PAGE_LIMIT,
     });
+
+    const allObjects = [...firstPage.data];
+
+    // Fetch remaining pages
+    let cursor = firstPage.hasNextPage ? (firstPage.nextCursor ?? undefined) : undefined;
+    for (let page = 1; page < MAX_OBJECT_PAGES && cursor; page++) {
+      const result = await client.getOwnedObjects({
+        owner: address,
+        options: objectOptions,
+        limit: PAGE_LIMIT,
+        cursor,
+      });
+      allObjects.push(...result.data);
+      cursor = result.hasNextPage ? (result.nextCursor ?? undefined) : undefined;
+    }
 
     // Filter out Coins and parse NFT data
     const nfts: NFTInfo[] = [];
 
-    for (const obj of response.data) {
+    for (const obj of allObjects) {
       if (!obj.data) continue;
 
       const type = obj.data.type || '';
@@ -140,7 +151,6 @@ export async function getOwnedNFTs(
       let display = parseDisplayData(obj.data.display);
 
       // Fallback to content.fields if Display standard data is not available
-      // (for NFTs that don't have Display<T> registered)
       const content = parseContent(obj.data.content);
       if (!display.name && !display.image_url) {
         display = buildDisplayFromContent(content);
@@ -160,17 +170,10 @@ export async function getOwnedNFTs(
       });
     }
 
-    return {
-      data: nfts,
-      hasNextPage: response.hasNextPage,
-      nextCursor: response.nextCursor || undefined,
-    };
+    return nfts;
   } catch (error) {
     console.error('Failed to get owned NFTs:', error);
-    return {
-      data: [],
-      hasNextPage: false,
-    };
+    return [];
   }
 }
 
