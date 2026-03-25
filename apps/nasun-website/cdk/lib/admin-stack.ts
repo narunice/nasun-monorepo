@@ -79,6 +79,13 @@ export class AdminStack extends cdk.Stack {
       genesisPassTableName
     );
 
+    // Reference UserWallets table (from CommonStack)
+    const userWalletsTable = dynamodb.Table.fromTableName(
+      this,
+      "UserWalletsTableRef",
+      "UserWallets"
+    );
+
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
     const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
     if (!cognitoIdentityPoolId) {
@@ -100,6 +107,8 @@ export class AdminStack extends cdk.Stack {
         HIDDEN_PROPOSALS_TABLE: hiddenProposalsTableName,
         DEVNET_METRICS_TABLE: devnetMetricsTableName,
         GENESIS_PASS_TABLE: genesisPassTableName,
+        USER_WALLETS_TABLE: "UserWallets",
+        INTERNAL_API_KEY: process.env.INTERNAL_API_KEY || "",
         ALLOWED_ORIGINS: allowedOrigins,
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
@@ -119,6 +128,7 @@ export class AdminStack extends cdk.Stack {
     hiddenProposalsTable.grantReadWriteData(this.exportFunction);
     devnetMetricsTable.grantReadData(this.exportFunction);
     genesisPassTable.grantReadWriteData(this.exportFunction);
+    userWalletsTable.grantReadData(this.exportFunction);
 
     // Grant permission to query GSI (batch-index)
     this.exportFunction.addToRolePolicy(
@@ -291,6 +301,12 @@ export class AdminStack extends cdk.Stack {
     genesisPassEntryIdResource.addMethod("PUT", exportIntegration, authorizedMethodOptions);
     // DELETE /genesis-pass/entries/{walletAddress} - Admin: delete entry
     genesisPassEntryIdResource.addMethod("DELETE", exportIntegration, authorizedMethodOptions);
+
+    // Internal API Routes (API key auth in Lambda, no Cognito authorizer)
+    const internalResource = this.api.root.addResource("internal");
+    const walletMappingsResource = internalResource.addResource("wallet-mappings");
+    // GET /internal/wallet-mappings - Points scanner wallet cache refresh
+    walletMappingsResource.addMethod("GET", exportIntegration);
 
     // NFT Collections API Routes
     const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);
