@@ -28,9 +28,6 @@ export default function Address() {
     otherObjects,
     isLoading,
     error,
-    isLoadingMore,
-    hasNextPage,
-    handleLoadMore,
   } = useAddressObjects(isValidAddr ? addr : undefined);
 
   // Separate query for transaction history (refetches when txLimit changes)
@@ -67,27 +64,16 @@ export default function Address() {
             address={addr || ''}
             totalBalance={addressInfo.balance?.totalBalance}
             objectCount={nftObjects.length + otherObjects.length}
-            hasNextPage={hasNextPage}
           />
 
           {/* Token Balances Section */}
           <AddressTokenBalances balances={addressInfo.allBalances} />
 
           {/* NFTs Section */}
-          <AddressNFTs
-            nftObjects={nftObjects}
-            hasNextPage={hasNextPage}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={handleLoadMore}
-          />
+          <AddressNFTs nftObjects={nftObjects} />
 
           {/* Other Objects Section */}
-          <AddressOtherObjects
-            otherObjects={otherObjects}
-            hasNextPage={hasNextPage}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={handleLoadMore}
-          />
+          <AddressOtherObjects otherObjects={otherObjects} />
 
           {/* Transaction History Section */}
           <AddressTransactionHistory
