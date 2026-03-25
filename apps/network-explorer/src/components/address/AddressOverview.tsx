@@ -6,14 +6,12 @@ interface AddressOverviewProps {
   address: string;
   totalBalance: string;
   objectCount: number;
-  hasNextPage: boolean;
 }
 
 export default function AddressOverview({
   address,
   totalBalance,
   objectCount,
-  hasNextPage,
 }: AddressOverviewProps) {
   return (
     <SectionBox title="Overview" color="c4">
@@ -22,7 +20,7 @@ export default function AddressOverview({
         <InfoRow label="Balance" value={`${formatBalance(totalBalance)} NSN`} />
         <InfoRow
           label="Owned Objects"
-          value={`${objectCount}${hasNextPage ? '+' : ''} objects`}
+          value={`${objectCount} objects`}
         />
       </div>
     </SectionBox>
