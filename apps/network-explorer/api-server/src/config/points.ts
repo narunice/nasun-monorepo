@@ -149,9 +149,8 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.governance, 'governance', 'DelegationChanged', { category: 'governance', activityType: 'delegate' }],
   [PKG.governanceMultiChoice, 'multi_choice', 'VoteCast', { category: 'governance', activityType: 'vote' }],
 
-  // Faucet (zero points, but track for completeness)
-  [PKG.tokens, 'token_faucet', 'ClaimEvent', { category: 'faucet', activityType: 'claim' }],
-  [PKG.tokensV2, 'token_faucet', 'ClaimEvent', { category: 'faucet', activityType: 'claim' }],
+  // Faucet: excluded from EVENT_MAP (0 points, never inserted).
+  // Kept in BASE_POINTS for documentation only.
 
   // Staking (Sui system package 0x3)
   [PKG.sui, 'validator', 'StakingRequestEvent', { category: 'staking', activityType: 'delegate' }],
@@ -178,7 +177,9 @@ export function getBasePoints(category: string, activityType: string): number {
   return BASE_POINTS[category]?.[activityType] ?? 0;
 }
 
-// Calculate volume tier (log scale, capped)
+// Phase 2: Calculate volume tier (log scale, capped).
+// Currently unused - scanner hardcodes volumeTier = 1.0.
+// Will be integrated when event amount parsing is implemented.
 export function calcVolumeTier(amount: bigint, baseThreshold: bigint): number {
   if (amount <= 0n || baseThreshold <= 0n) return 1.0;
   const ratio = Number(amount) / Number(baseThreshold);
