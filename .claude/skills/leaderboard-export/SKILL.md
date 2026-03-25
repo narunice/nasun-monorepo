@@ -215,16 +215,15 @@ def section_tag_html(section):
     labels = {'lb': 'LB', 'posts': 'Posts', 'reg': 'Reg'}
     return f'<span class="section-tag">[{labels.get(section, "?")}]</span>'
 
-def make_li(entry, use_value=False, show_tag=False):
+def make_li(entry, show_tag=False):
     username = entry['username']
     flag = entry.get('flag', '')
     section = entry.get('section', '')
     flag_attr = f' data-flag="{esc(flag)}"' if flag else ' data-flag=""'
     section_attr = f' data-section="{esc(section)}"'
-    value_attr = f' value="{entry["rank"]}"' if use_value and 'rank' in entry else ''
     tag = section_tag_html(section) if show_tag and section else ''
     return (
-        f'<li{value_attr}{flag_attr}{section_attr}>'
+        f'<li{flag_attr}{section_attr}>'
         f'<button class="fb fg green-btn" title="Green (KOL)">G</button>'
         f'<div class="row">'
         f'<input type="checkbox" class="chk">'
@@ -410,31 +409,36 @@ html = f'''<!DOCTYPE html>
 '''
 
 # S1: Top 500 (unflagged + green)
+n = 1
 html += f'<h2>S1. Leaderboard Top {total_lb} ({len(s1)})</h2>\n<ol>\n'
 for entry in s1:
-    html += make_li(entry, use_value=True) + '\n'
+    html += make_li(entry) + '\n'
 html += '</ol>\n'
+n += len(s1)
 
 # S2: 501+ with posts
-html += f'<hr class="divider">\n<h2>S2. Posts Collected ({len(s2)})</h2>\n<ol>\n'
+html += f'<hr class="divider">\n<h2>S2. Posts Collected ({len(s2)})</h2>\n<ol start="{n}">\n'
 for entry in s2:
     html += make_li(entry) + '\n'
 html += '</ol>\n'
+n += len(s2)
 
 # S3: No posts
-html += f'<hr class="divider">\n<h2>S3. Registered, No Posts ({len(s3)})</h2>\n<ol>\n'
+html += f'<hr class="divider">\n<h2>S3. Registered, No Posts ({len(s3)})</h2>\n<ol start="{n}">\n'
 for entry in s3:
     html += make_li(entry) + '\n'
 html += '</ol>\n'
+n += len(s3)
 
 # S4: Yellow
-html += f'<hr class="divider">\n<h2>S4. Yellow Flagged ({len(s4)})</h2>\n<ol>\n'
+html += f'<hr class="divider">\n<h2>S4. Yellow Flagged ({len(s4)})</h2>\n<ol start="{n}">\n'
 for entry in s4:
     html += make_li(entry, show_tag=True) + '\n'
 html += '</ol>\n'
+n += len(s4)
 
 # S5: Orange
-html += f'<hr class="divider">\n<h2>S5. Orange Flagged ({len(s5)})</h2>\n<ol>\n'
+html += f'<hr class="divider">\n<h2>S5. Orange Flagged ({len(s5)})</h2>\n<ol start="{n}">\n'
 for entry in s5:
     html += make_li(entry, show_tag=True) + '\n'
 html += '</ol>\n'
@@ -472,11 +476,11 @@ PYEOF
 
 | 섹션 | 내용 | 정렬 | 번호 |
 |------|------|------|------|
-| S1 | Top 500 (orange/yellow 제외) | 리더보드 순위 | `<li value="N">` (원래 순위) |
-| S2 | 501위 이하, postCount > 0 (orange/yellow 제외) | postCount 내림차순 | 연번 |
-| S3 | postCount == 0, orange/yellow 없음 | createdAt 오름차순 | 연번 |
-| S4 | Yellow 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | 연번 |
-| S5 | Orange 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | 연번 |
+| S1 | Top 500 (orange/yellow 제외) | 리더보드 순위 | 1부터 연속 |
+| S2 | 501위 이하, postCount > 0 (orange/yellow 제외) | postCount 내림차순 | S1 이어서 연속 |
+| S3 | postCount == 0, orange/yellow 없음 | createdAt 오름차순 | S2 이어서 연속 |
+| S4 | Yellow 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S3 이어서 연속 |
+| S5 | Orange 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S4 이어서 연속 |
 
 - Green 플래그 사용자는 원래 섹션(S1/S2/S3)에 유지 (organic KOL 표시용)
 - S4/S5에서 `[LB]`/`[Posts]`/`[Reg]` 태그로 원래 소속 표시
