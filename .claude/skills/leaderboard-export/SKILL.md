@@ -1,6 +1,6 @@
 ---
 name: leaderboard-export
-description: 리더보드 참여자 및 X 연결 가입자 전체 목록을 클릭 가능한 HTML로 내보냅니다. 프로필 방문 추적, 색상 플래그(주황/노랑), Export 기능을 포함합니다. "리더보드 내보내기", "X 프로필 리스트", "leaderboard export" 등의 요청에 사용합니다.
+description: 리더보드 참여자 및 X 연결 가입자 전체 목록을 클릭 가능한 HTML로 내보냅니다. 5개 섹션(Top 500, Posts, Registered, Yellow, Orange) 분류, 프로필 방문 추적, 색상 플래그(Green/Orange/Yellow), Export 기능을 포함합니다. "리더보드 내보내기", "X 프로필 리스트", "leaderboard export" 등의 요청에 사용합니다.
 argument-hint: "[YYYY-MM-DD]"
 ---
 
@@ -24,7 +24,7 @@ SNAPSHOT_DATE="$ARGUMENTS 에서 YYYY-MM-DD 추출, 없으면 빈 문자열"
 ```
 
 ```python
-import json, subprocess, os, sys
+import json, subprocess, os, sys, html as html_mod
 from datetime import datetime
 
 SNAPSHOT_DATE = os.environ.get('SNAPSHOT_DATE', '').strip()
@@ -83,13 +83,14 @@ snapshot_date = lb_json.get('snapshotDate') or datetime.now().strftime('%Y-%m-%d
 total_lb = lb_json.get('totalCount', len(entries))
 print(f'Leaderboard: {total_lb} entries, season={season_name}, date={snapshot_date}')
 
-# Build top 500 username set (lowercase for dedup)
-top500_usernames = set()
-top500_list = []
-for e in entries:
+# Build top 500 data: rank -> username
+top500_map = {}  # lowercase -> {username, rank}
+top500_ordered = []
+for i, e in enumerate(entries):
     username = e.get('originalUsername') or e.get('username', '')
-    top500_usernames.add(username.lower())
-    top500_list.append(username)
+    rank = i + 1
+    top500_map[username.lower()] = {'username': username, 'rank': rank}
+    top500_ordered.append({'username': username, 'rank': rank})
 
 # ── Step 2: Scan UserProfiles for X-linked registered users ──
 print('Scanning UserProfiles...')
@@ -106,7 +107,6 @@ account_items = aws_scan_all(
     'leaderboard-v3-accounts',
     'username, originalUsername, postCount, platform',
 )
-# Build username -> postCount map (lowercase key)
 post_count_map = {}
 original_name_map = {}
 for item in account_items:
@@ -118,26 +118,20 @@ for item in account_items:
             original_name_map[u.lower()] = orig
 print(f'Accounts: {len(post_count_map)} entries with postCount data')
 
-# ── Step 4: Build section 2 list (exclude top 500) ──
-section2 = []
+# ── Step 4: Build non-top500 user list ──
+non_top500 = []
 for item in user_items:
     handle = dynamo_str(item, 'twitterHandle')
-    if not handle or handle.lower() in top500_usernames:
+    if not handle or handle.lower() in top500_map:
         continue
     orig_handle = dynamo_str(item, 'originalTwitterHandle') or original_name_map.get(handle.lower()) or handle
     post_count = post_count_map.get(handle.lower(), 0)
     created_at = dynamo_str(item, 'createdAt')
-    section2.append({
+    non_top500.append({
         'username': orig_handle,
         'postCount': post_count,
         'createdAt': created_at,
     })
-
-# Sort: postCount > 0 first (desc), then postCount == 0 by createdAt (asc)
-has_posts = sorted([x for x in section2 if x['postCount'] > 0], key=lambda x: -x['postCount'])
-no_posts = sorted([x for x in section2 if x['postCount'] == 0], key=lambda x: x['createdAt'] or 'z')
-section2_sorted = has_posts + no_posts
-print(f'Section 2: {len(section2_sorted)} X-linked users (excl. top 500)')
 
 # ── Step 5: Load flag files ──
 def load_flags(path):
@@ -152,100 +146,154 @@ def load_flags(path):
 
 orange_flags = load_flags(f'{DOCS_DIR}/flagged-orange.txt')
 yellow_flags = load_flags(f'{DOCS_DIR}/flagged-yellow.txt')
-print(f'Flags: {len(orange_flags)} orange, {len(yellow_flags)} yellow')
+green_flags = load_flags(f'{DOCS_DIR}/flagged-green.txt')
+print(f'Flags: {len(orange_flags)} orange, {len(yellow_flags)} yellow, {len(green_flags)} green')
 
-# ── Step 6: Generate HTML ──
-def get_flag_class(username):
+def get_flag(username):
     u = username.lower()
     if u in orange_flags:
-        return 'flag-orange'
+        return 'orange'
     if u in yellow_flags:
-        return 'flag-yellow'
+        return 'yellow'
+    if u in green_flags:
+        return 'green'
     return ''
 
-def make_li(username, flag_class=''):
-    cls = f' class="{flag_class}"' if flag_class else ''
-    flag_attr = 'orange' if flag_class == 'flag-orange' else 'yellow' if flag_class == 'flag-yellow' else ''
-    df_attr = f' data-flag="{flag_attr}"' if flag_attr else ''
+def get_section_origin(username):
+    """Determine which section a user would belong to without flags."""
+    u = username.lower()
+    if u in top500_map:
+        return 'lb'
+    if post_count_map.get(u, 0) > 0:
+        return 'posts'
+    return 'reg'
+
+# ── Step 6: Classify users into 5 sections ──
+s1, s2, s3, s4, s5 = [], [], [], [], []
+
+# Top 500
+for item in top500_ordered:
+    flag = get_flag(item['username'])
+    entry = {**item, 'flag': flag, 'section': 'lb'}
+    if flag == 'orange':
+        s5.append(entry)
+    elif flag == 'yellow':
+        s4.append(entry)
+    else:
+        s1.append(entry)
+
+# Non-top500
+for item in non_top500:
+    flag = get_flag(item['username'])
+    entry = {**item, 'flag': flag, 'section': 'posts' if item['postCount'] > 0 else 'reg'}
+    if flag == 'orange':
+        s5.append(entry)
+    elif flag == 'yellow':
+        s4.append(entry)
+    elif item['postCount'] > 0:
+        s2.append(entry)
+    else:
+        s3.append(entry)
+
+# Sort sections
+# S1: already in leaderboard rank order
+s2.sort(key=lambda x: -x['postCount'])
+s3.sort(key=lambda x: x.get('createdAt') or 'z')
+# S4/S5: section origin first (lb=0, posts=1, reg=2), then alphabetical
+origin_order = {'lb': 0, 'posts': 1, 'reg': 2}
+s4.sort(key=lambda x: (origin_order.get(x['section'], 9), x['username'].lower()))
+s5.sort(key=lambda x: (origin_order.get(x['section'], 9), x['username'].lower()))
+
+total_users = len(s1) + len(s2) + len(s3) + len(s4) + len(s5)
+print(f'Sections: S1={len(s1)}, S2={len(s2)}, S3={len(s3)}, S4(yellow)={len(s4)}, S5(orange)={len(s5)}, total={total_users}')
+
+# ── Step 7: Generate HTML ──
+def esc(s):
+    return html_mod.escape(s)
+
+def section_tag_html(section):
+    labels = {'lb': 'LB', 'posts': 'Posts', 'reg': 'Reg'}
+    return f'<span class="section-tag">[{labels.get(section, "?")}]</span>'
+
+def make_li(entry, use_value=False, show_tag=False):
+    username = entry['username']
+    flag = entry.get('flag', '')
+    section = entry.get('section', '')
+    flag_attr = f' data-flag="{esc(flag)}"' if flag else ' data-flag=""'
+    section_attr = f' data-section="{esc(section)}"'
+    value_attr = f' value="{entry["rank"]}"' if use_value and 'rank' in entry else ''
+    tag = section_tag_html(section) if show_tag and section else ''
     return (
-        f'<li{cls}{df_attr}>'
-        f'<span class="flags"><button class="fb fo" title="Orange flag">O</button>'
-        f'<button class="fb fy" title="Yellow flag">Y</button></span>'
+        f'<li{value_attr}{flag_attr}{section_attr}>'
+        f'<button class="fb fg green-btn" title="Green (KOL)">G</button>'
+        f'<div class="row">'
         f'<input type="checkbox" class="chk">'
-        f'<a href="https://x.com/{username}" target="_blank" rel="noopener">@{username}</a>'
+        f'<a href="https://x.com/{esc(username)}" target="_blank" rel="noopener">@{esc(username)}</a>'
+        f'{tag}'
+        f'<span class="flag-btns">'
+        f'<button class="fb fo" title="Orange flag">O</button>'
+        f'<button class="fb fy" title="Yellow flag">Y</button>'
+        f'</span>'
+        f'</div>'
         f'</li>'
     )
 
-lines = []
-# Section 1
-for username in top500_list:
-    fc = get_flag_class(username)
-    lines.append(make_li(username, fc))
-
-# Section 2
-for item in section2_sorted:
-    fc = get_flag_class(item['username'])
-    lines.append(make_li(item['username'], fc))
-
-divider_after = len(top500_list)
-
-html = f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Nasun {season_name} Leaderboard - X Profiles ({snapshot_date})</title>
-<style>
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; background: #fafafa; color: #333; }}
-  h1 {{ font-size: 1.3rem; border-bottom: 2px solid #1da1f2; padding-bottom: 8px; }}
-  h2 {{ font-size: 1.1rem; color: #666; margin-top: 32px; }}
-  p.meta {{ color: #666; font-size: 0.85rem; margin-bottom: 24px; }}
-  .toolbar {{ margin-bottom: 16px; }}
-  .toolbar button {{ padding: 6px 14px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; font-size: 0.85rem; }}
-  .toolbar button:hover {{ background: #f0f0f0; }}
-  .divider {{ border: none; border-top: 2px dashed #ccc; margin: 32px 0; }}
-  ol {{ padding-left: 120px; line-height: 2.2; }}
-  li {{ padding: 2px 4px; border-radius: 3px; position: relative; }}
-  li.flag-orange {{ background-color: #fff3e0; border-left: 3px solid #ff9900; padding-left: 8px; }}
-  li.flag-yellow {{ background-color: #fffde7; border-left: 3px solid #fdd835; padding-left: 8px; }}
-  .chk {{ margin-right: 10px; vertical-align: middle; cursor: pointer; }}
-  .flags {{ position: absolute; right: calc(100% + 48px); top: 0; white-space: nowrap; }}
-  .fb {{ border: none; background: none; cursor: pointer; font-size: 0.75rem; font-weight: bold; width: 22px; height: 22px; border-radius: 3px; margin-left: 4px; vertical-align: middle; opacity: 0.35; }}
-  .fb:hover {{ opacity: 1; }}
-  .fo {{ color: #cc7a00; }}
-  .fy {{ color: #b8960f; }}
-  li.flag-orange .fo, li.flag-yellow .fy {{ opacity: 1; }}
-  a {{ color: #1da1f2; text-decoration: none; }}
-  a.clicked {{ color: #999; }}
-  a:hover {{ text-decoration: underline; }}
-</style>
-</head>
-<body>
-<h1>Nasun {season_name} - X Profiles</h1>
-<p class="meta">Snapshot: {snapshot_date} | Leaderboard: {total_lb} | X-linked registered: {len(section2_sorted)} | Total: {total_lb + len(section2_sorted)}</p>
-<div class="toolbar">
-  <button id="exportBtn">Export Progress</button>
-  <span id="stats" style="margin-left:12px;font-size:0.8rem;color:#999;"></span>
-</div>
-<h2>Leaderboard Top {total_lb}</h2>
-<ol>
+# Build HTML
+css = '''
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; background: #fafafa; color: #333; }
+  h1 { font-size: 1.3rem; border-bottom: 2px solid #1da1f2; padding-bottom: 8px; }
+  h2 { font-size: 1.1rem; color: #666; margin-top: 32px; }
+  p.meta { color: #666; font-size: 0.85rem; margin-bottom: 24px; }
+  .toolbar { margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
+  .toolbar button { padding: 6px 14px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; font-size: 0.85rem; }
+  .toolbar button:hover { background: #f0f0f0; }
+  .divider { border: none; border-top: 2px dashed #ccc; margin: 32px 0; }
+  ol { padding-left: 140px; line-height: 2.4; }
+  li { padding: 2px 4px; border-radius: 3px; position: relative; }
+  .row { display: flex; align-items: center; max-width: 250px; }
+  .chk { margin-right: 8px; cursor: pointer; flex-shrink: 0; }
+  .row a { color: #1da1f2; text-decoration: none; white-space: nowrap; }
+  .row a:hover { text-decoration: underline; }
+  .row a.clicked { color: #999; }
+  .flag-btns { margin-left: auto; display: flex; gap: 3px; flex-shrink: 0; }
+  .section-tag { font-size: 0.7rem; color: #999; margin-left: 6px; flex-shrink: 0; }
+  /* Flag buttons */
+  .fb { border: 2px solid; border-radius: 3px; background: transparent; cursor: pointer; font-size: 0.7rem; font-weight: bold; width: 22px; height: 22px; opacity: 0.5; display: flex; align-items: center; justify-content: center; }
+  .fb:hover { opacity: 1; }
+  .fg { border-color: #1b5e20; color: #1b5e20; }
+  .fo { border-color: #e65100; color: #e65100; }
+  .fy { border-color: #f9a825; color: #f9a825; }
+  .green-btn { position: absolute; left: -70px; top: 50%; transform: translateY(-50%); }
+  li[data-flag="green"] .fg { opacity: 1; background: #c8e6c9; }
+  li[data-flag="orange"] .fo { opacity: 1; background: #ffe0b2; }
+  li[data-flag="yellow"] .fy { opacity: 1; background: #fff9c4; }
+  li[data-flag="green"] { background-color: #e8f5e9; border-left: 3px solid #1b5e20; padding-left: 8px; }
+  li[data-flag="orange"] { background-color: #fff3e0; border-left: 3px solid #e65100; padding-left: 8px; }
+  li[data-flag="yellow"] { background-color: #fffde7; border-left: 3px solid #f9a825; padding-left: 8px; }
 '''
 
-for i, li in enumerate(lines):
-    html += li + '\n'
-    if i + 1 == divider_after:
-        html += f'</ol>\n<hr class="divider">\n<h2>X-Linked Registered Users ({len(section2_sorted)})</h2>\n<ol start="{divider_after + 1}">\n'
-
-html += '''</ol>
-<script>
-const CK = 'nasun-lb-clicked';
+js = f'''
+const CK = 'nasun-lb-clicked-{snapshot_date}';
 const FK = 'nasun-lb-flags';
 const clicked = new Set(JSON.parse(localStorage.getItem(CK) || '[]'));
 const flagOverrides = JSON.parse(localStorage.getItem(FK) || '{}');
 
 function applyFlag(li, flag) {
-  li.classList.remove('flag-orange', 'flag-yellow');
-  if (flag) li.classList.add('flag-' + flag);
   li.dataset.flag = flag || '';
+}
+
+function toggleFlag(li, flag) {
+  const username = li.querySelector('a')?.href.split('/').pop()?.toLowerCase();
+  if (!username) return;
+  const current = li.dataset.flag;
+  const next = current === flag ? '' : flag;
+  applyFlag(li, next);
+  if (next) {
+    flagOverrides[username] = next;
+  } else {
+    delete flagOverrides[username];
+  }
+  localStorage.setItem(FK, JSON.stringify(flagOverrides));
 }
 
 function updateStats() {
@@ -293,42 +341,29 @@ document.querySelectorAll('li').forEach(li => {
     updateStats();
   });
 
-  // Flag buttons
-  li.querySelector('.fo')?.addEventListener('click', () => {
-    const current = li.dataset.flag;
-    const next = current === 'orange' ? '' : 'orange';
-    applyFlag(li, next);
-    flagOverrides[username] = next;
-    localStorage.setItem(FK, JSON.stringify(flagOverrides));
-  });
-  li.querySelector('.fy')?.addEventListener('click', () => {
-    const current = li.dataset.flag;
-    const next = current === 'yellow' ? '' : 'yellow';
-    applyFlag(li, next);
-    flagOverrides[username] = next;
-    localStorage.setItem(FK, JSON.stringify(flagOverrides));
-  });
+  // Flag buttons (exclusive toggle)
+  li.querySelector('.fg')?.addEventListener('click', () => toggleFlag(li, 'green'));
+  li.querySelector('.fo')?.addEventListener('click', () => toggleFlag(li, 'orange'));
+  li.querySelector('.fy')?.addEventListener('click', () => toggleFlag(li, 'yellow'));
 });
 
 updateStats();
 
-// Export: download current state as new HTML
+// Export Progress: download current state as new HTML
 document.getElementById('exportBtn').addEventListener('click', () => {
   const clone = document.documentElement.cloneNode(true);
-  // Bake checkbox states
   clone.querySelectorAll('.chk').forEach((chk, i) => {
     const orig = document.querySelectorAll('.chk')[i];
     if (orig.checked) chk.setAttribute('checked', '');
     else chk.removeAttribute('checked');
   });
-  // Bake flag states
   clone.querySelectorAll('li').forEach((li, i) => {
     const origLi = document.querySelectorAll('li')[i];
     li.className = origLi.className;
     li.dataset.flag = origLi.dataset.flag || '';
+    li.dataset.section = origLi.dataset.section || '';
   });
-  // Bake clicked link states
-  clone.querySelectorAll('a').forEach((a, i) => {
+  clone.querySelectorAll('ol a').forEach((a, i) => {
     const origA = document.querySelectorAll('ol a')[i];
     if (origA?.classList.contains('clicked')) a.classList.add('clicked');
   });
@@ -340,9 +375,71 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   a.click();
   URL.revokeObjectURL(url);
 });
-</script>
-</body>
-</html>'''
+
+// Export Flags JSON: download flag overrides as JSON
+document.getElementById('exportJsonBtn').addEventListener('click', () => {
+  const data = {
+    flags: {...flagOverrides},
+    exportedAt: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'x-flags-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+'''
+
+html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nasun {season_name} Leaderboard - X Profiles ({snapshot_date})</title>
+<style>{css}</style>
+</head>
+<body>
+<h1>Nasun {season_name} - X Profiles</h1>
+<p class="meta">Snapshot: {snapshot_date} | S1(LB): {len(s1)} | S2(Posts): {len(s2)} | S3(Reg): {len(s3)} | S4(Yellow): {len(s4)} | S5(Orange): {len(s5)} | Total: {total_users}</p>
+<div class="toolbar">
+  <button id="exportBtn">Export Progress</button>
+  <button id="exportJsonBtn">Export Flags JSON</button>
+  <span id="stats" style="font-size:0.8rem;color:#999;"></span>
+</div>
+'''
+
+# S1: Top 500 (unflagged + green)
+html += f'<h2>S1. Leaderboard Top {total_lb} ({len(s1)})</h2>\n<ol>\n'
+for entry in s1:
+    html += make_li(entry, use_value=True) + '\n'
+html += '</ol>\n'
+
+# S2: 501+ with posts
+html += f'<hr class="divider">\n<h2>S2. Posts Collected ({len(s2)})</h2>\n<ol>\n'
+for entry in s2:
+    html += make_li(entry) + '\n'
+html += '</ol>\n'
+
+# S3: No posts
+html += f'<hr class="divider">\n<h2>S3. Registered, No Posts ({len(s3)})</h2>\n<ol>\n'
+for entry in s3:
+    html += make_li(entry) + '\n'
+html += '</ol>\n'
+
+# S4: Yellow
+html += f'<hr class="divider">\n<h2>S4. Yellow Flagged ({len(s4)})</h2>\n<ol>\n'
+for entry in s4:
+    html += make_li(entry, show_tag=True) + '\n'
+html += '</ol>\n'
+
+# S5: Orange
+html += f'<hr class="divider">\n<h2>S5. Orange Flagged ({len(s5)})</h2>\n<ol>\n'
+for entry in s5:
+    html += make_li(entry, show_tag=True) + '\n'
+html += '</ol>\n'
+
+html += f'<script>{js}</script>\n</body>\n</html>'
 
 out_file = f'{DOCS_DIR}/x-leaderboard-profiles-{snapshot_date}.html'
 with open(out_file, 'w') as f:
@@ -352,9 +449,13 @@ print(f'''
 Export complete:
   Season: {season_name}
   Snapshot: {snapshot_date}
-  Section 1 (Leaderboard): {total_lb}
-  Section 2 (X-linked registered): {len(section2_sorted)}
-  Flags: {len(orange_flags)} orange, {len(yellow_flags)} yellow
+  S1 (Leaderboard): {len(s1)}
+  S2 (Posts collected): {len(s2)}
+  S3 (Registered, no posts): {len(s3)}
+  S4 (Yellow flagged): {len(s4)}
+  S5 (Orange flagged): {len(s5)}
+  Total: {total_users}
+  Flags: {len(orange_flags)} orange, {len(yellow_flags)} yellow, {len(green_flags)} green
   File: {out_file}
 ''')
 ```
@@ -367,9 +468,25 @@ SNAPSHOT_DATE="..." python3 << 'PYEOF'
 PYEOF
 ```
 
+## 섹션 구조
+
+| 섹션 | 내용 | 정렬 | 번호 |
+|------|------|------|------|
+| S1 | Top 500 (orange/yellow 제외) | 리더보드 순위 | `<li value="N">` (원래 순위) |
+| S2 | 501위 이하, postCount > 0 (orange/yellow 제외) | postCount 내림차순 | 연번 |
+| S3 | postCount == 0, orange/yellow 없음 | createdAt 오름차순 | 연번 |
+| S4 | Yellow 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | 연번 |
+| S5 | Orange 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | 연번 |
+
+- Green 플래그 사용자는 원래 섹션(S1/S2/S3)에 유지 (organic KOL 표시용)
+- S4/S5에서 `[LB]`/`[Posts]`/`[Reg]` 태그로 원래 소속 표시
+- 런타임 플래그 토글은 시각적 표시만 변경 (섹션 이동은 다음 생성 시 반영)
+
 ## 주의사항
 
 - `--profile nasun-prod` 로 프로덕션 DynamoDB에 접근합니다 (read-only, 데이터 변경 없음)
 - UserProfiles 테이블은 ~5000건, accounts는 ~900건이므로 full scan이 안전합니다
-- `flagged-orange.txt`, `flagged-yellow.txt` 파일이 없으면 플래그 없이 정상 생성됩니다
+- `flagged-orange.txt`, `flagged-yellow.txt`, `flagged-green.txt` 파일이 없으면 플래그 없이 정상 생성됩니다
 - localStorage 키: `nasun-lb-clicked` (방문 추적), `nasun-lb-flags` (플래그 변경)
+- Green/Orange/Yellow 플래그는 배타적 (하나만 선택 가능)
+- Export Flags JSON으로 플래그 상태를 JSON 파일로 내보낼 수 있습니다 (향후 병합에 활용)
