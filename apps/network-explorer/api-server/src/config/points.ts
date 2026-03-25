@@ -28,14 +28,14 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   faucet: { claim: 0 },
 } as const;
 
-export const GENESIS_PASS_MULTIPLIER = 1.5;
+export const GENESIS_PASS_MULTIPLIER = 2.0; // Forward-only: existing 1.5x records remain immutable
 export const VOLUME_TIER_CAP = 3.0;
 
 // --- Scanner parameters ---
 
-export const SCAN_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+export const SCAN_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 export const BATCH_SIZE = 1000;
-export const WALLET_CACHE_REFRESH_MS = 30 * 60 * 1000; // 30 min
+export const WALLET_CACHE_REFRESH_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 // --- Event-to-Activity mapping ---
 // Key format: "${packageHexNoPrefix}::${module}::${eventTypeName}"
