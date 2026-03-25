@@ -19,7 +19,6 @@ const NftCollectionManagement = lazy(() => import("../features/admin/pages/NftCo
 const UserManagement = lazy(() => import("../features/admin/pages/UserManagement").then(m => ({ default: m.UserManagement })));
 const DevnetMetrics = lazy(() => import("../features/admin/pages/DevnetMetrics").then(m => ({ default: m.DevnetMetrics })));
 const FeaturedFeedManagement = lazy(() => import("../features/admin/pages/FeaturedFeedManagement").then(m => ({ default: m.FeaturedFeedManagement })));
-const ActivityPointsAdmin = lazy(() => import("../features/admin/pages/ActivityPointsAdmin").then(m => ({ default: m.ActivityPointsAdmin })));
 
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
@@ -43,7 +42,6 @@ const adminRoutes = [
   { path: "/admin/nft-collections", title: "NFT Collections", component: NftCollectionManagement },
   { path: "/admin/devnet-metrics", title: "Devnet Metrics", component: DevnetMetrics },
   { path: "/admin/featured-feed", title: "Featured Feed", component: FeaturedFeedManagement },
-  { path: "/admin/points", title: "Activity Points", component: ActivityPointsAdmin },
 ];
 
 const AppRoutes = () => {
