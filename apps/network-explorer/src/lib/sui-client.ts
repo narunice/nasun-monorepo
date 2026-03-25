@@ -113,8 +113,6 @@ export interface AddressInfo {
   balance: CoinBalance;
   allBalances: CoinBalance[];
   ownedObjects: SuiObjectResponse[];
-  hasNextPage: boolean;
-  nextCursor: string | null | undefined;
 }
 
 const EMPTY_BALANCE: CoinBalance = {
@@ -124,55 +122,42 @@ const EMPTY_BALANCE: CoinBalance = {
   lockedBalance: {},
 };
 
-export async function getAddressInfo(address: string, cursor?: string | null): Promise<AddressInfo | null> {
+const MAX_OBJECT_PAGES = 10; // max 500 objects per address
+
+export async function getAddressInfo(address: string): Promise<AddressInfo | null> {
   try {
-    const [allBalances, ownedObjects] = await Promise.all([
+    const objectOptions = { showContent: true, showType: true, showDisplay: true } as const;
+
+    // Fetch balances and first page of objects in parallel
+    const [allBalances, firstPage] = await Promise.all([
       suiClient.getAllBalances({ owner: address }),
-      suiClient.getOwnedObjects({
-        owner: address,
-        options: { showContent: true, showType: true, showDisplay: true },
-        limit: 50,
-        cursor: cursor || undefined,
-      }),
+      suiClient.getOwnedObjects({ owner: address, options: objectOptions, limit: 50 }),
     ]);
+
+    const allObjects: SuiObjectResponse[] = [...firstPage.data];
+
+    // Fetch remaining pages sequentially
+    let cursor = firstPage.hasNextPage ? (firstPage.nextCursor ?? undefined) : undefined;
+    for (let page = 1; page < MAX_OBJECT_PAGES && cursor; page++) {
+      const result = await suiClient.getOwnedObjects({
+        owner: address,
+        options: objectOptions,
+        limit: 50,
+        cursor,
+      });
+      allObjects.push(...result.data);
+      cursor = result.hasNextPage ? (result.nextCursor ?? undefined) : undefined;
+    }
 
     const nativeBalance = allBalances.find(b => b.coinType === '0x2::sui::SUI');
 
     return {
       balance: nativeBalance || EMPTY_BALANCE,
       allBalances,
-      ownedObjects: ownedObjects.data,
-      hasNextPage: ownedObjects.hasNextPage,
-      nextCursor: ownedObjects.nextCursor,
+      ownedObjects: allObjects,
     };
   } catch (error) {
     console.error('Failed to get address info:', error);
-    return null;
-  }
-}
-
-export interface LoadMoreResult {
-  ownedObjects: SuiObjectResponse[];
-  hasNextPage: boolean;
-  nextCursor: string | null | undefined;
-}
-
-export async function loadMoreObjects(address: string, cursor: string): Promise<LoadMoreResult | null> {
-  try {
-    const ownedObjects = await suiClient.getOwnedObjects({
-      owner: address,
-      options: { showContent: true, showType: true, showDisplay: true },
-      limit: 50,
-      cursor,
-    });
-
-    return {
-      ownedObjects: ownedObjects.data,
-      hasNextPage: ownedObjects.hasNextPage,
-      nextCursor: ownedObjects.nextCursor,
-    };
-  } catch (error) {
-    console.error('Failed to load more objects:', error);
     return null;
   }
 }
