@@ -168,17 +168,17 @@ def get_section_origin(username):
         return 'posts'
     return 'reg'
 
-# ── Step 6: Classify users into 5 sections ──
-s1, s2, s3, s4, s5 = [], [], [], [], []
+# ── Step 6: Classify users into 4 sections ──
+s1, s2, s3, s4 = [], [], [], []
 
 # Top 500
 for item in top500_ordered:
     flag = get_flag(item['username'])
     entry = {**item, 'flag': flag, 'section': 'lb'}
     if flag == 'orange':
-        s5.append(entry)
-    elif flag == 'yellow':
         s4.append(entry)
+    elif flag == 'yellow':
+        s3.append(entry)
     else:
         s1.append(entry)
 
@@ -187,25 +187,25 @@ for item in non_top500:
     flag = get_flag(item['username'])
     entry = {**item, 'flag': flag, 'section': 'posts' if item['postCount'] > 0 else 'reg'}
     if flag == 'orange':
-        s5.append(entry)
-    elif flag == 'yellow':
         s4.append(entry)
-    elif item['postCount'] > 0:
-        s2.append(entry)
-    else:
+    elif flag == 'yellow':
         s3.append(entry)
+    elif item['postCount'] > 0:
+        s1.append(entry)
+    else:
+        s2.append(entry)
 
 # Sort sections
-# S1: already in leaderboard rank order
-s2.sort(key=lambda x: -x['postCount'])
-s3.sort(key=lambda x: x.get('createdAt') or 'z')
-# S4/S5: section origin first (lb=0, posts=1, reg=2), then alphabetical
+# S1: top 500 in rank order, then non-top500 with posts by postCount desc
+# (top500 entries are already in order from top500_ordered, non-top500 appended after)
+s2.sort(key=lambda x: x.get('createdAt') or 'z')
+# S3/S4: section origin first (lb=0, posts=1, reg=2), then alphabetical
 origin_order = {'lb': 0, 'posts': 1, 'reg': 2}
+s3.sort(key=lambda x: (origin_order.get(x['section'], 9), x['username'].lower()))
 s4.sort(key=lambda x: (origin_order.get(x['section'], 9), x['username'].lower()))
-s5.sort(key=lambda x: (origin_order.get(x['section'], 9), x['username'].lower()))
 
-total_users = len(s1) + len(s2) + len(s3) + len(s4) + len(s5)
-print(f'Sections: S1={len(s1)}, S2={len(s2)}, S3={len(s3)}, S4(yellow)={len(s4)}, S5(orange)={len(s5)}, total={total_users}')
+total_users = len(s1) + len(s2) + len(s3) + len(s4)
+print(f'Sections: S1={len(s1)}, S2={len(s2)}, S3(yellow)={len(s3)}, S4(orange)={len(s4)}, total={total_users}')
 
 # ── Step 7: Generate HTML ──
 def esc(s):
@@ -400,7 +400,7 @@ html = f'''<!DOCTYPE html>
 </head>
 <body>
 <h1>Nasun {season_name} - X Profiles</h1>
-<p class="meta">Snapshot: {snapshot_date} | S1(LB): {len(s1)} | S2(Posts): {len(s2)} | S3(Reg): {len(s3)} | S4(Yellow): {len(s4)} | S5(Orange): {len(s5)} | Total: {total_users}</p>
+<p class="meta">Snapshot: {snapshot_date} | S1(LB): {len(s1)} | S2(Reg): {len(s2)} | S3(Yellow): {len(s3)} | S4(Orange): {len(s4)} | Total: {total_users}</p>
 <div class="toolbar">
   <button id="exportBtn">Export Progress</button>
   <button id="exportJsonBtn">Export Flags JSON</button>
@@ -408,38 +408,31 @@ html = f'''<!DOCTYPE html>
 </div>
 '''
 
-# S1: Top 500 (unflagged + green)
+# S1: Leaderboard Participants (top 500 + non-top500 with posts)
 n = 1
-html += f'<h2>S1. Leaderboard Top {total_lb} ({len(s1)})</h2>\n<ol>\n'
+html += f'<h2>S1. Leaderboard Participants ({len(s1)})</h2>\n<ol>\n'
 for entry in s1:
     html += make_li(entry) + '\n'
 html += '</ol>\n'
 n += len(s1)
 
-# S2: 501+ with posts
-html += f'<hr class="divider">\n<h2>S2. Posts Collected ({len(s2)})</h2>\n<ol start="{n}">\n'
+# S2: Registered, no posts
+html += f'<hr class="divider">\n<h2>S2. Registered, No Posts ({len(s2)})</h2>\n<ol start="{n}">\n'
 for entry in s2:
     html += make_li(entry) + '\n'
 html += '</ol>\n'
 n += len(s2)
 
-# S3: No posts
-html += f'<hr class="divider">\n<h2>S3. Registered, No Posts ({len(s3)})</h2>\n<ol start="{n}">\n'
+# S3: Yellow
+html += f'<hr class="divider">\n<h2>S3. Yellow Flagged ({len(s3)})</h2>\n<ol start="{n}">\n'
 for entry in s3:
-    html += make_li(entry) + '\n'
+    html += make_li(entry, show_tag=True) + '\n'
 html += '</ol>\n'
 n += len(s3)
 
-# S4: Yellow
-html += f'<hr class="divider">\n<h2>S4. Yellow Flagged ({len(s4)})</h2>\n<ol start="{n}">\n'
+# S4: Orange
+html += f'<hr class="divider">\n<h2>S4. Orange Flagged ({len(s4)})</h2>\n<ol start="{n}">\n'
 for entry in s4:
-    html += make_li(entry, show_tag=True) + '\n'
-html += '</ol>\n'
-n += len(s4)
-
-# S5: Orange
-html += f'<hr class="divider">\n<h2>S5. Orange Flagged ({len(s5)})</h2>\n<ol start="{n}">\n'
-for entry in s5:
     html += make_li(entry, show_tag=True) + '\n'
 html += '</ol>\n'
 
@@ -453,11 +446,10 @@ print(f'''
 Export complete:
   Season: {season_name}
   Snapshot: {snapshot_date}
-  S1 (Leaderboard): {len(s1)}
-  S2 (Posts collected): {len(s2)}
-  S3 (Registered, no posts): {len(s3)}
-  S4 (Yellow flagged): {len(s4)}
-  S5 (Orange flagged): {len(s5)}
+  S1 (Leaderboard Participants): {len(s1)}
+  S2 (Registered, no posts): {len(s2)}
+  S3 (Yellow flagged): {len(s3)}
+  S4 (Orange flagged): {len(s4)}
   Total: {total_users}
   Flags: {len(orange_flags)} orange, {len(yellow_flags)} yellow, {len(green_flags)} green
   File: {out_file}
@@ -476,11 +468,10 @@ PYEOF
 
 | 섹션 | 내용 | 정렬 | 번호 |
 |------|------|------|------|
-| S1 | Top 500 (orange/yellow 제외) | 리더보드 순위 | 1부터 연속 |
-| S2 | 501위 이하, postCount > 0 (orange/yellow 제외) | postCount 내림차순 | S1 이어서 연속 |
-| S3 | postCount == 0, orange/yellow 없음 | createdAt 오름차순 | S2 이어서 연속 |
-| S4 | Yellow 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S3 이어서 연속 |
-| S5 | Orange 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S4 이어서 연속 |
+| S1 | 리더보드 참가자 (Top 500 + postCount > 0, orange/yellow 제외) | Top 500 순위 -> postCount 내림차순 | 1부터 연속 |
+| S2 | postCount == 0, orange/yellow 없음 | createdAt 오름차순 | S1 이어서 연속 |
+| S3 | Yellow 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S2 이어서 연속 |
+| S4 | Orange 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S3 이어서 연속 |
 
 - Green 플래그 사용자는 원래 섹션(S1/S2/S3)에 유지 (organic KOL 표시용)
 - S4/S5에서 `[LB]`/`[Posts]`/`[Reg]` 태그로 원래 소속 표시
