@@ -1,22 +1,3 @@
-import type { SuiObjectResponse } from '@mysten/sui/client';
-
-export interface AddressInfo {
-  balance: {
-    totalBalance: string;
-    coinType: string;
-    coinObjectCount: number;
-  };
-  allBalances: {
-    coinType: string;
-    coinObjectCount: number;
-    totalBalance: string;
-    lockedBalance: Record<string, string>;
-  }[];
-  ownedObjects: SuiObjectResponse[];
-  hasNextPage: boolean;
-  nextCursor?: string | null;
-}
-
 export interface NetworkStatus {
   chainId: string | null;
   latestCheckpoint: string | null;
