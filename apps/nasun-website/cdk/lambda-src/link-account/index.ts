@@ -9,6 +9,7 @@ const dynamoClient = DynamoDBDocumentClient.from(client);
 const tableName = process.env.USER_PROFILES_TABLE || 'UserProfiles';
 const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
 const genesisPassAllowlistTable = process.env.GENESIS_PASS_ALLOWLIST_TABLE || '';
+const zkLoginTableName = process.env.ZKLOGIN_TABLE_NAME || '';
 
 // JWKS singleton for token verification
 let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -370,6 +371,38 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             headers: corsHeaders,
             body: JSON.stringify({ message: 'Secondary user profile not found.' }),
         };
+    }
+
+    // 1.5. Cross-reference: if linking Google, check if a zkLogin wallet already exists for this email
+    if (secondaryProvider.toLowerCase() === 'google' && secondaryProfile.email && zkLoginTableName) {
+      try {
+        const zkLoginScan = await dynamoClient.send(new ScanCommand({
+          TableName: zkLoginTableName,
+          FilterExpression: 'email = :email',
+          ExpressionAttributeValues: { ':email': secondaryProfile.email },
+          ProjectionExpression: 'address',
+        }));
+
+        if (zkLoginScan.Items && zkLoginScan.Items.length > 0) {
+          const zkLoginRecord = zkLoginScan.Items[0];
+          console.log(JSON.stringify({
+            event: 'GOOGLE_ZKLOGIN_CROSS_REF',
+            emailHash: secondaryProfile.email.replace(/(.{2}).*(@.*)/, '$1***$2'),
+            primaryIdentityId,
+          }));
+
+          return {
+            statusCode: 409,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              message: 'This Google account already has a zkLogin wallet. Use Google login to access your existing wallet, or contact support to merge accounts.',
+            }),
+          };
+        }
+      } catch (crossRefErr) {
+        // Non-blocking: log and continue if ZkLoginUsers check fails
+        console.warn('ZkLoginUsers cross-reference check failed (non-blocking):', crossRefErr);
+      }
     }
 
     // 2. Get the primary user's current profile

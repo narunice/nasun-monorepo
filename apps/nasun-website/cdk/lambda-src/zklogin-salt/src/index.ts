@@ -12,6 +12,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import * as jose from 'jose';
 import { randomBytes } from 'crypto';
@@ -169,19 +170,40 @@ async function handleGetSalt(jwt: string, origin?: string): Promise<APIGatewayPr
     let isNewUser = false;
 
     if (getResult.Item) {
-      // Existing user - update lastLoginAt
+      // Existing user - update only profile fields (never overwrite salt/address)
       user = getResult.Item as ZkLoginUser;
-      user.lastLoginAt = now;
 
-      // Update profile info if changed
+      const updateParts: string[] = ['lastLoginAt = :now'];
+      const exprValues: Record<string, any> = { ':now': now };
+      const exprNames: Record<string, string> = {};
+
+      if (email) {
+        updateParts.push('email = :email');
+        exprValues[':email'] = email;
+      }
+      if (name) {
+        updateParts.push('#n = :name');
+        exprValues[':name'] = name;
+        exprNames['#n'] = 'name';
+      }
+      if (picture) {
+        updateParts.push('picture = :pic');
+        exprValues[':pic'] = picture;
+      }
+
+      await docClient.send(new UpdateCommand({
+        TableName: ZKLOGIN_TABLE,
+        Key: { pk, sk },
+        UpdateExpression: `SET ${updateParts.join(', ')}`,
+        ...(Object.keys(exprNames).length > 0 && { ExpressionAttributeNames: exprNames }),
+        ExpressionAttributeValues: exprValues,
+      }));
+
+      // Reflect updates in the user object for the response
+      user.lastLoginAt = now;
       if (email) user.email = email;
       if (name) user.name = name;
       if (picture) user.picture = picture;
-
-      await docClient.send(new PutCommand({
-        TableName: ZKLOGIN_TABLE,
-        Item: user,
-      }));
     } else {
       // New user - generate salt
       isNewUser = true;
@@ -202,10 +224,29 @@ async function handleGetSalt(jwt: string, origin?: string): Promise<APIGatewayPr
         lastLoginAt: now,
       };
 
-      await docClient.send(new PutCommand({
-        TableName: ZKLOGIN_TABLE,
-        Item: user,
-      }));
+      try {
+        await docClient.send(new PutCommand({
+          TableName: ZKLOGIN_TABLE,
+          Item: user,
+          ConditionExpression: 'attribute_not_exists(pk)',
+        }));
+      } catch (putErr: any) {
+        if (putErr.name === 'ConditionalCheckFailedException') {
+          // Race condition: another request already created this user
+          const retryResult = await docClient.send(new GetCommand({
+            TableName: ZKLOGIN_TABLE,
+            Key: { pk, sk },
+            ConsistentRead: true,
+          }));
+          if (!retryResult.Item) {
+            throw new Error('Salt record disappeared after conditional check');
+          }
+          user = retryResult.Item as ZkLoginUser;
+          isNewUser = false;
+        } else {
+          throw putErr;
+        }
+      }
     }
 
     // 4. Return salt and address
