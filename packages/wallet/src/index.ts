@@ -227,8 +227,6 @@ export { useNFTTransfer } from './hooks/useNFTTransfer';
 export type {
   NFTDisplay,
   NFTInfo,
-  NFTQueryOptions,
-  NFTQueryResult,
   NFTTransferRequest,
   NFTSortBy,
 } from './types/nft';

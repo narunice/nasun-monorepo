@@ -50,7 +50,6 @@ export function NFTGallery({
 }: NFTGalleryProps) {
   const [sortBy, setSortBy] = useState<NFTSortBy>(defaultSortBy);
   const { data: nfts, isLoading, error, refetch } = useNFTs({
-    limit: limit || 50,
     refetchInterval,
     sortBy,
   });
