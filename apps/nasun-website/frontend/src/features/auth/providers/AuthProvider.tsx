@@ -9,6 +9,7 @@ import { linkAccounts, ensureUserProfile } from "../utils/authApi";
 import { isValidReturnUrl } from "../utils/urlValidation";
 import { isTokenExpired } from "../utils/tokenUtils";
 import { refreshAndSaveUserProfile } from "../services/userProfileService";
+import { getMyRank } from "@/features/leaderboard-v3/services/leaderboardV3Api";
 import { registerWallet } from "@/services/suiWalletApi";
 import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
 import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
@@ -243,6 +244,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sessionStorage.removeItem(linkSessionKey);
           await refreshAndSaveUserProfile(primaryIdentityId, primaryCognitoToken);
           setUser(useUserStore.getState().user);
+
+          // Propagate fresh X profile to leaderboard tables (fire-and-forget).
+          // getMyRank triggers syncProfileFromUserProfiles() on the backend,
+          // updating both accounts + season-accounts tables.
+          const freshUser = useUserStore.getState().user;
+          const syncHandle = freshUser?.twitterHandle
+            || freshUser?.linkedAccounts?.twitter?.twitterHandle;
+          if (syncHandle) {
+            getMyRank({ username: syncHandle }).catch(() => {});
+          }
         } else {
           // Linking session expired or lost (e.g. mobile app-switch)
           logger.warn(`Linking session not found for ${provider}, redirecting to my-account`);
