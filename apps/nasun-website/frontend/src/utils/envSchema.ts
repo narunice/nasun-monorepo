@@ -52,6 +52,9 @@ const BaseEnvSchema = z.object({
 
   // 10. Genesis Pass Allowlist
   VITE_GENESIS_PASS_API: z.string().url().optional(),
+
+  // 11. Explorer API (On-Chain Activity Points)
+  VITE_EXPLORER_API_URL: z.string().url().optional(),
 });
 
 // 3. 환경별 추가 검증 로직
