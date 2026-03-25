@@ -1,11 +1,12 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, TransactWriteCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, TransactWriteCommand, GetCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { verifyWalletProof } from '../utils/walletProof';
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 const SUI_ADDRESS_REGEX = /^0x[a-f0-9]{64}$/;
+const MAX_WALLETS_PER_ACCOUNT = 10;
 
 export interface RegisterWalletInput {
   identityId: string;
@@ -37,6 +38,17 @@ export async function registerWallet(input: RegisterWalletInput): Promise<Regist
   const proofResult = await verifyWalletProof(walletAddress, walletProof, proofIssuedAt);
   if (!proofResult.valid) {
     return { statusCode: 403, body: { error: 'Wallet proof verification failed', reason: proofResult.reason } };
+  }
+
+  // Enforce per-account wallet limit
+  const existingWallets = await docClient.send(new QueryCommand({
+    TableName: tableName,
+    KeyConditionExpression: 'identityId = :id',
+    ExpressionAttributeValues: { ':id': identityId },
+    Select: 'COUNT',
+  }));
+  if ((existingWallets.Count ?? 0) >= MAX_WALLETS_PER_ACCOUNT) {
+    return { statusCode: 429, body: { error: `Maximum ${MAX_WALLETS_PER_ACCOUNT} wallets per account` } };
   }
 
   const now = new Date().toISOString();
