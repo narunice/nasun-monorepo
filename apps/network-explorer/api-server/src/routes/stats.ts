@@ -208,7 +208,8 @@ app.get('/top-accounts', async (c) => {
 app.get('/active-addresses', async (c) => {
   const days = parseDays(c.req.query('range'));
 
-  const getActiveAddresses = cached(`active-addresses-${days}`, 5 * 60 * 1000, async () => {
+  // 15min TTL: DISTINCT sender JOIN is expensive on large tables
+  const getActiveAddresses = cached(`active-addresses-${days}`, 15 * 60 * 1000, async () => {
     try {
       const rows = await sql`
         WITH date_ranges AS (
@@ -266,7 +267,8 @@ const getFastStats = cached('network-summary-fast', 5 * 60 * 1000, async () => {
   }
 });
 
-const getSlowStats = cached('network-summary-slow', 10 * 60 * 1000, async () => {
+// 30min TTL: COUNT(DISTINCT sender) is expensive (~4s on cache miss)
+const getSlowStats = cached('network-summary-slow', 30 * 60 * 1000, async () => {
   try {
     const [[addrCount]] = await Promise.all([
       sql`SELECT COUNT(DISTINCT sender) as count FROM tx_affected_addresses`,
