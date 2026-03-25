@@ -21,7 +21,7 @@ const HEALTH_POLL_MS = 30_000;
 export const ActivityPointsAdmin = () => {
   return (
     <AdminLayout>
-      <h1 className="text-2xl font-bold text-nasun-white mb-6">Activity Points</h1>
+      <h1 className="text-2xl font-bold text-nasun-white mb-6 flex items-center gap-3">Activity Points <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Experimental</span></h1>
       <div className="space-y-6">
         <ScannerHealthSection />
         <LeaderboardSection />
