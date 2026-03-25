@@ -20,6 +20,9 @@ app.use(
   cors({
     origin: [
       'https://explorer.nasun.io',
+      'https://nasun.io',
+      'https://staging.nasun.io',
+      'http://localhost:5174',
       'http://localhost:5175',
       'http://localhost:4173',
     ],
