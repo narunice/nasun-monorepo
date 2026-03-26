@@ -43,9 +43,9 @@ const BaseEnvSchema = z.object({
 
   // 7. Authentication
   VITE_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-  VITE_TWITTER_AUTH_API: optionalUrl(),
-  VITE_LINK_ACCOUNT_API: optionalUrl(),
-  VITE_USER_PROFILE_API: optionalUrl(),
+  VITE_TWITTER_AUTH_API: z.string().url(),
+  VITE_LINK_ACCOUNT_API: z.string().url(),
+  VITE_USER_PROFILE_API: z.string().url(),
 
   // 8. EVM Wallet / Ethereum
   VITE_ENABLE_WALLET_LOGIN: z.enum(["true", "false"]).default("false"),
