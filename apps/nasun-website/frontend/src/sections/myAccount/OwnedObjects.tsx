@@ -1,20 +1,29 @@
 // OwnedObjects.tsx
 // Multi-chain NFT thumbnail gallery + Sui objects display
+// NFT data is received as props from AssetsCard (which handles featured/regular splitting).
 
-import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { useWalletAccount } from "@nasun/wallet";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
-import { useMultiChainNFTs } from "@/features/wallet";
+import type { EthereumNFT } from "@/types/ethereum";
 import { SuiObject } from "./SuiObjects";
 import { NftThumbnailGallery } from "./components/NftThumbnailGallery";
 
 interface OwnedObjectsProps {
+  nfts: EthereumNFT[] | undefined;
+  isNftPending: boolean;
+  nftError: Error | null;
+  hasFeaturedNfts: boolean;
   walletAddress?: string;
 }
 
-export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
-  const { t } = useTranslation("myAccount");
+export const OwnedObjects = ({
+  nfts,
+  isNftPending,
+  nftError,
+  hasFeaturedNfts,
+  walletAddress,
+}: OwnedObjectsProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -47,20 +56,9 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
         )
       : [];
 
-  // Multi-chain NFTs (Ethereum + Polygon)
-  const {
-    data: multiChainNfts,
-    error: nftError,
-    isPending: isNftPending,
-  } = useMultiChainNFTs(walletAddress);
-
-  // if (!suiAccount && !walletAddress) {
-  //   return (
-  //     <p className="text-nasun-white/70 mb-4">
-  //       EVM Wallet not connected.
-  //     </p>
-  //   );
-  // }
+  const nftCount = nfts?.length ?? 0;
+  const hasNoAssets =
+    suiObjects.length === 0 && nftCount === 0 && !hasFeaturedNfts && !isNftPending && !isSuiPending;
 
   // Pagination for Sui objects
   const totalPages = Math.ceil(suiObjects.length / itemsPerPage);
@@ -74,19 +72,16 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
     }
   };
 
-  const nftCount = multiChainNfts?.length ?? 0;
-  const hasNoAssets = suiObjects.length === 0 && nftCount === 0 && !isNftPending && !isSuiPending;
-
   return (
     <div className="flex flex-col space-y-6">
       {hasNoAssets && (
-        <p className="pt-4 text-gray-400">{t("myAssets.noObject")}</p>
+        <p className="pt-4 text-gray-400">No objects found.</p>
       )}
 
-      {/* Ethereum & Polygon NFTs */}
+      {/* Ethereum & Polygon NFTs (non-featured) */}
       {walletAddress && (
         <NftThumbnailGallery
-          nfts={multiChainNfts}
+          nfts={nfts}
           isLoading={isNftPending}
           error={nftError}
         />
@@ -96,10 +91,10 @@ export const OwnedObjects = ({ walletAddress }: OwnedObjectsProps) => {
       {suiAccount && (
         <div>
           {isSuiPending ? (
-            <p className="text-gray-400">{t("loading")}</p>
+            <p className="text-gray-400">Loading...</p>
           ) : suiError ? (
             <p className="text-nasun-latte">
-              {t("loadingSui")}: {suiError.message}
+              Error loading Sui objects: {suiError.message}
             </p>
           ) : paginatedSuiObjects.length > 0 ? (
             <>
