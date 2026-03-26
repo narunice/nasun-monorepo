@@ -34,6 +34,7 @@ import { AssetsCard } from "../sections/myAccount/AssetsCard";
 import { DangerZoneCard } from "../sections/myAccount/DangerZoneCard";
 import { RankHistoryCard } from "../sections/myAccount/RankHistoryCard";
 import { PointsCard } from "../sections/myAccount/PointsCard";
+import { ReferralCard } from "../sections/myAccount/ReferralCard";
 
 const MyAccountPage = () => {
   const { t } = useTranslation(["myAccount", "common"]);
@@ -165,24 +166,32 @@ const MyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
+          {/* Referral Card - hidden until launch
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <ReferralCard className="order-5 lg:order-none col-span-1" />
+            </Suspense>
+          </ErrorBoundary>
+          */}
+
           {/* Governance Card - 1 column */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <GovernanceCard className="order-5 lg:order-none col-span-1" />
+              <GovernanceCard className="order-6 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Assets Card - Full Width */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <AssetsCard walletAddress={walletAddress} className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Danger Zone - Full Width, Compact */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <DangerZoneCard className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>
