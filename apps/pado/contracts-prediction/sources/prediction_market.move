@@ -561,4 +561,69 @@ module prediction::prediction_market {
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx)
     }
+
+    // ===== Unit Tests =====
+
+    #[test]
+    fun test_pro_rata_refund_math() {
+        // Pool = 1000 NUSDC, total_shares = 200 (100 YES + 100 NO)
+        // User has 50 shares
+        let pool_balance: u128 = 1_000_000_000; // 1000 NUSDC
+        let total_shares: u128 = 200_000_000;    // 200 shares
+        let user_shares: u128 = 50_000_000;      // 50 shares
+
+        let refund = (user_shares * pool_balance / total_shares) as u64;
+        // 50/200 * 1000 = 250 NUSDC
+        assert!(refund == 250_000_000);
+    }
+
+    #[test]
+    fun test_pro_rata_refund_preserves_total() {
+        // Verify sequential claims preserve ratio (no over/under-payment)
+        let pool: u128 = 1_000_000;
+        let total: u128 = 300;
+
+        // User A: 100 shares
+        let refund_a = (100u128 * pool / total) as u64;
+        let pool_after_a = pool - (refund_a as u128);
+        let total_after_a = total - 100;
+
+        // User B: 100 shares (from remaining)
+        let refund_b = (100u128 * pool_after_a / total_after_a) as u64;
+        let pool_after_b = pool_after_a - (refund_b as u128);
+        let total_after_b = total_after_a - 100;
+
+        // User C: 100 shares (last)
+        let refund_c = (100u128 * pool_after_b / total_after_b) as u64;
+
+        // All should get equal amounts (within 1 unit rounding tolerance)
+        // Integer division may cause last claimer to get slightly different amount
+        let max_diff = 1u64;
+        let diff_ab = if (refund_a >= refund_b) { refund_a - refund_b } else { refund_b - refund_a };
+        let diff_bc = if (refund_b >= refund_c) { refund_b - refund_c } else { refund_c - refund_b };
+        assert!(diff_ab <= max_diff);
+        assert!(diff_bc <= max_diff);
+        // Total refunds should not exceed pool
+        assert!((refund_a as u128) + (refund_b as u128) + (refund_c as u128) <= pool);
+    }
+
+    #[test]
+    fun test_pro_rata_zero_shares() {
+        let pool_balance: u128 = 1_000_000;
+        let total_shares: u128 = 100;
+        let user_shares: u128 = 0;
+
+        let refund = if (total_shares > 0) {
+            (user_shares * pool_balance / total_shares) as u64
+        } else { 0 };
+        assert!(refund == 0);
+    }
+
+    #[test]
+    fun test_status_constants() {
+        assert!(STATUS_OPEN == 0);
+        assert!(STATUS_CLOSED == 1);
+        assert!(STATUS_RESOLVED == 2);
+        assert!(STATUS_CANCELLED == 3);
+    }
 }
