@@ -7,9 +7,9 @@ chain-id = "272218f1"
 
 [[published]]
 source = { local = "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/contracts/governance" }
-published-at = "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3"
+published-at = "0x17df8431dd61bcdfc0dae120c915150634edecb911bf7368d0af43e2bbd69c5a"
 original-id = "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3"
-version = 1
+version = 8
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0xc1c5b2401331b881d5716ab2cd91010e9916ff15932f6a8ad60c8cbfc9a13fee"

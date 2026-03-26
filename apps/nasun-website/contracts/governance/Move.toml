@@ -2,7 +2,7 @@
 name = "governance"
 edition = "2024.beta"
 version = "0.0.10"
-published-at = "0x40a6c8b671ecea57cad48bc546b014c52e2753caa3f4d07aeb3c348b6c907353"
+published-at = "0x17df8431dd61bcdfc0dae120c915150634edecb911bf7368d0af43e2bbd69c5a"
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 

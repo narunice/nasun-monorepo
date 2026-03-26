@@ -37,6 +37,7 @@ interface ProposalFormData {
   durationType: "preset" | "custom";
   durationHours: number;
   customEndDate: string;
+  voteProofImageUrl: string;
 }
 
 export function CreateProposal() {
@@ -66,6 +67,7 @@ export function CreateProposal() {
     durationType: "preset",
     durationHours: 72,
     customEndDate: "",
+    voteProofImageUrl: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -241,9 +243,42 @@ export function CreateProposal() {
           console.error("Auto-hide skipped: no auth token available");
         }
 
+        // Step 4: Set vote proof NFT image (2nd transaction, after shared object is indexed)
+        let imageSetSuccess = !formData.voteProofImageUrl.trim(); // true if no image to set
+        if (formData.voteProofImageUrl.trim() && createdProposal?.type === "created") {
+          try {
+            const imageTx = new Transaction();
+            const imageTarget = formData.voteFormat === "multi-choice"
+              ? `${packageId}::multi_choice_proposal::set_vote_proof_image`
+              : `${packageId}::proposal::set_vote_proof_image`;
+
+            imageTx.moveCall({
+              target: imageTarget,
+              arguments: [
+                imageTx.object(createdProposal.objectId),
+                imageTx.object(adminCapId),
+                imageTx.pure.vector("u8",
+                  Array.from(new TextEncoder().encode(formData.voteProofImageUrl.trim()))
+                ),
+              ],
+            });
+
+            await suiClient.signAndExecuteTransaction({
+              signer: keypair,
+              transaction: imageTx,
+              options: { showEffects: true },
+            });
+            imageSetSuccess = true;
+          } catch (imgErr) {
+            console.error("Failed to set vote proof image:", imgErr);
+          }
+        }
+
         invalidateProposals();
-        if (autoHideSuccess) {
-          toast.success("Proposal created and hidden successfully!");
+        if (autoHideSuccess && imageSetSuccess) {
+          toast.success("Proposal created successfully!");
+        } else if (autoHideSuccess && !imageSetSuccess) {
+          toast.warn("Proposal created but NFT image not set. Set it from the admin page.");
         } else {
           toast.warn("Proposal created but NOT hidden. Please hide it manually from the admin page.");
         }
@@ -329,6 +364,33 @@ export function CreateProposal() {
                   className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none resize-none"
                   disabled={isSubmitting}
                 />
+              </div>
+
+              {/* Vote Proof NFT Image URL */}
+              <div className="mb-6">
+                <label className="block text-sm text-nasun-white/70 mb-2">
+                  Vote Proof NFT Image URL
+                  <span className="text-nasun-white/40 ml-1">(optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={formData.voteProofImageUrl}
+                  onChange={(e) => setFormData({ ...formData, voteProofImageUrl: e.target.value })}
+                  placeholder="https://... (leave empty for default image)"
+                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none"
+                  disabled={isSubmitting}
+                />
+                {formData.voteProofImageUrl.trim() && (
+                  <div className="mt-2">
+                    <img
+                      src={formData.voteProofImageUrl.trim()}
+                      alt="NFT preview"
+                      className="w-20 h-20 rounded-sm object-cover border border-nasun-white/10"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Proposal Type */}
