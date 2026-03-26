@@ -66,7 +66,7 @@
 **Perpetuals DEX (pado_perp)** (V8 re-published):
 | Item | Value |
 |------|-------|
-| Package | `0xe0b972913d44d1c214d02ccf0aaf64d1c0d7ab075a7caaaf1fc457c486c808b1` |
+| Package | `0xcbe048383a7db0d775b23f71cd260312c75ac6df7ef924fa8460afac96386085` |
 
 **Lending (pado_lending)** (V8 re-published):
 | Item | Value |

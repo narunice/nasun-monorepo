@@ -35,6 +35,7 @@ module pado_perp::perpetual {
     const EOraclePriceOverflow: u64 = 111;
     const ENotionalOverflow: u64 = 112;
     const EFeeTooHigh: u64 = 113;
+    const EFundingNotDue: u64 = 114;
 
     // ===== Constants =====
 
@@ -249,6 +250,20 @@ module pado_perp::perpetual {
         amount: u64,
     }
 
+    public struct FundingSettled has copy, drop {
+        market_id: ID,
+        rate_value: u64,
+        rate_negative: bool,
+        cumulative_value: u64,
+        cumulative_negative: bool,
+        timestamp: u64,
+    }
+
+    public struct InsuranceFundSeeded has copy, drop {
+        market_id: ID,
+        amount: u64,
+    }
+
     // ===== Init =====
 
     fun init(ctx: &mut TxContext) {
@@ -369,6 +384,70 @@ module pado_perp::perpetual {
         });
 
         coin::from_balance(balance::split(&mut market.fee_pool, amount), ctx)
+    }
+
+    // ===== Funding Settlement =====
+
+    /// Settle funding rate for the market.
+    /// Permissionless: anyone can call (keeper bot pattern).
+    /// Uses Clock for timestamp (not caller-provided) to prevent time manipulation.
+    /// Devnet: mark == index (Oracle price), so funding rate will be 0.
+    /// Mainnet: mark should come from DEX TWAP, index from Oracle.
+    public fun settle_funding(
+        market: &mut PerpMarket,
+        oracle_registry: &OracleRegistry,
+        clock: &sui::clock::Clock,
+    ) {
+        let current_time = sui::clock::timestamp_ms(clock);
+        assert!(current_time >= market.last_funding_time + FUNDING_INTERVAL_MS, EFundingNotDue);
+
+        let oracle_price = read_oracle_price(market, oracle_registry, clock);
+
+        // Devnet: mark == index (single Oracle source), funding rate = 0
+        // TODO(mainnet): separate mark price (DEX TWAP) from index price (Oracle)
+        let mark_price = oracle_price;
+        let index_price = oracle_price;
+
+        let (rate_value, rate_negative) = pado_perp::funding::calculate_funding_rate(
+            mark_price, index_price
+        );
+
+        // Update inline funding fields via public(package) add_signed
+        let (new_cumulative, new_cumulative_neg) = pado_perp::funding::add_signed(
+            market.cumulative_funding_value, market.cumulative_funding_negative,
+            rate_value, rate_negative
+        );
+
+        market.funding_rate_value = rate_value;
+        market.funding_rate_negative = rate_negative;
+        market.cumulative_funding_value = new_cumulative;
+        market.cumulative_funding_negative = new_cumulative_neg;
+        market.last_funding_time = current_time;
+
+        event::emit(FundingSettled {
+            market_id: object::id(market),
+            rate_value,
+            rate_negative,
+            cumulative_value: new_cumulative,
+            cumulative_negative: new_cumulative_neg,
+            timestamp: current_time,
+        });
+    }
+
+    /// Seed insurance fund with NUSDC (admin only).
+    /// Required before mainnet launch to ensure profitable positions can be paid.
+    public fun seed_insurance_fund(
+        _admin: &AdminCap,
+        market: &mut PerpMarket,
+        funds: Coin<NUSDC>,
+    ) {
+        let amount = coin::value(&funds);
+        balance::join(&mut market.insurance_fund, coin::into_balance(funds));
+
+        event::emit(InsuranceFundSeeded {
+            market_id: object::id(market),
+            amount,
+        });
     }
 
     // ===== Trading Functions =====
