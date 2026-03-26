@@ -58,13 +58,13 @@ No Winners in a Tier:
 
 ## 3. Smart Contract
 
-### 3.1 Deployed Addresses (Nasun Devnet V7)
+### 3.1 Deployed Addresses (Nasun Devnet V8)
 | Item | Address |
 |------|---------|
-| Package | `0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900` |
-| LotteryRegistry | `0xe08f1d01bb02b4d2832fb5583adf9a84298cd1b541781635c07b0231d2795305` |
-| AdminCap | `0x458103338d5ec829dadc9df48ae359f8499639db7df56b648f9dcc75466fb339` |
-| UpgradeCap | `0x96e881562f99afeefb41e3ce2b403e5f84e5639875ebc1e326488b5085c27ee0` |
+| Package | `0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c` |
+| LotteryRegistry | `0x8a0d95d3bfb3d9771d333673e3d1943dfe2c31b7c8dc3ef6c1310fe0f3317ae5` |
+| AdminCap | `0x20e79c01aa862fbf0273dfb2b769feb0f87ac07f3788478115efb6f2d3a33c71` |
+| UpgradeCap | `0x88e1515cad3cac5a5c4ff1f128d69635dc6a49c9669c606c2179f3d50652b09a` |
 
 ### 3.2 Module Structure
 ```

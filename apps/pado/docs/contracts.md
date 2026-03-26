@@ -23,18 +23,18 @@
 
 ---
 
-## Deployed Contracts (V7, 2026-02-04 Reset)
+## Deployed Contracts (V8, 2026-03-27 Security Hardening)
 
 > Full contract addresses: `packages/devnet-config/devnet-ids.json`
 
-**DeepBook V3**:
+**DeepBook V3** (unchanged from V7):
 | Item | Value |
 |------|-------|
 | Package | `0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134` |
 | Registry | `0x0a6ba6378a30598f1487e193865bfa387f177f82660400a5eace887cfe5a6b7b` |
 | AdminCap | `0xe0b017bb62d572415c447e37008cea68bc8bb5bd4e47f12e672924b05ba651eb` |
 
-**Unified Tokens (devnet_tokens)**:
+**Unified Tokens (devnet_tokens)** (unchanged from V7):
 | Item | Value |
 |------|-------|
 | Original Package (types) | `0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731` |
@@ -43,37 +43,37 @@
 | NBTC Type | `{OriginalPackage}::nbtc::NBTC` |
 | NUSDC Type | `{OriginalPackage}::nusdc::NUSDC` |
 
-**Prediction Market**:
+**Prediction Market** (V8 re-published):
 | Item | Value |
 |------|-------|
-| Package | `0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895` |
+| Package | `0x6bae9d95f5f2c8c124b5400203f5e1151627e1080e3ef5aef88988f33b239ac7` |
 
-**Lottery**:
+**Lottery** (V8 re-published):
 | Item | Value |
 |------|-------|
-| Package | `0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900` |
+| Package | `0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c` |
 
-**DevOracle (pado_oracle)**:
+**DevOracle (pado_oracle)** (unchanged from V7):
 | Item | Value |
 |------|-------|
 | Package | `0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c` |
 
-**Unified Margin (unified_margin)**:
+**Unified Margin (unified_margin)** (V8 re-published):
 | Item | Value |
 |------|-------|
-| Package | `0x5bdbf3aaa5999674bea412f2dd7dce417a188343f7213cb7105d9c1eaacce31d` |
+| Package | `0x1a1a6e86712a866e8bf7b2d6320b364282b5b257f8f9419db652914cf2d7a472` |
 
-**Perpetuals DEX (pado_perp)**:
+**Perpetuals DEX (pado_perp)** (V8 re-published):
 | Item | Value |
 |------|-------|
-| Package | `0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658` |
+| Package | `0xe0b972913d44d1c214d02ccf0aaf64d1c0d7ab075a7caaaf1fc457c486c808b1` |
 
-**Lending (pado_lending)**:
+**Lending (pado_lending)** (V8 re-published):
 | Item | Value |
 |------|-------|
-| Package | `0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe` |
+| Package | `0x1f547fdb2c56e2d43a2808fed8eb80f00e18f2200db7d982192f516183a102fe` |
 
-**Nasun Smart Account (nasun_smart_account)**:
+**Nasun Smart Account (nasun_smart_account)** (unchanged from V7):
 | Item | Value |
 |------|-------|
 | Original Package (types) | `0x097e96d5e0c09915b6ba2ed744fe2d4ee0bd21df1d453e6528d4d82c96c1c44b` |

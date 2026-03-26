@@ -2,7 +2,7 @@
 name = "unified_margin"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x5bdbf3aaa5999674bea412f2dd7dce417a188343f7213cb7105d9c1eaacce31d"
+published-at = "0x1a1a6e86712a866e8bf7b2d6320b364282b5b257f8f9419db652914cf2d7a472"
 
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
@@ -10,7 +10,7 @@ devnet_tokens = { local = "../../../packages/devnet-tokens" }
 pado_oracle = { local = "../contracts-oracle" }
 
 [addresses]
-unified_margin = "0x0"
+unified_margin = "0x1a1a6e86712a866e8bf7b2d6320b364282b5b257f8f9419db652914cf2d7a472"
 
 [environments]
 devnet = "272218f1"

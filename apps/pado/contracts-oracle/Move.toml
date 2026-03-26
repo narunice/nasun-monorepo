@@ -7,7 +7,7 @@ published-at = "0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
 
 [addresses]
-pado_oracle = "0x0"
+pado_oracle = "0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c"
 
 [environments]
 devnet = "272218f1"
