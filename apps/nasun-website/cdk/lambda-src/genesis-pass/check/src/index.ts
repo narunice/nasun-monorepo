@@ -77,20 +77,21 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       })
     );
 
-    if (result.Item && result.Item.status === "ACTIVE") {
+    if (result.Item) {
+      const { status } = result.Item;
       return jsonResponse(200, {
         success: true,
         data: {
-          registered: true,
+          registered: status === "ACTIVE",
+          applied: status === "APPLIED",
           walletAddress: normalizedAddress,
-          registeredAt: result.Item.registeredAt,
         },
       }, origin);
     }
 
     return jsonResponse(200, {
       success: true,
-      data: { registered: false },
+      data: { registered: false, applied: false },
     }, origin);
   } catch (error: any) {
     console.error("[genesis-pass-check] Error:", error);

@@ -33,10 +33,11 @@ export async function exportGenesisWhitelist(options: ExportOptions): Promise<Bl
  * Export Genesis Pass Allowlist as CSV
  */
 export async function exportGenesisPassAllowlist(options: ExportOptions): Promise<Blob> {
-  const { cognitoToken, status = 'ACTIVE', format } = options;
+  const { cognitoToken, status = 'ACTIVE', format, mintType } = options;
 
   const params = new URLSearchParams({ status });
   if (format) params.append('format', format);
+  if (mintType) params.append('mintType', mintType);
   const url = `${ADMIN_API_URL}/export/genesis-pass?${params}`;
 
   const response = await fetch(url, {

@@ -17,7 +17,7 @@ import { useGenesisPassStatus, invalidateGenesisPassStatus } from "../../hooks/u
 import { registerGenesisPass, GenesisPassApiError } from "../../services/genesisPassApi";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { FreeMintBadge, GuaranteedBadge } from "./components/StatusBadges";
+import { FcfsBadge, FreeMintBadge, GuaranteedBadge } from "./components/StatusBadges";
 import {
   Dialog,
   DialogContent,
@@ -160,6 +160,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                       <span className="text-green-400 text-sm">&#10003; Registered</span>
                       {genesisPassMintType === "FREE_MINT" && <FreeMintBadge />}
                       {genesisPassMintType === "GUARANTEED" && <GuaranteedBadge />}
+                      {genesisPassMintType !== "FREE_MINT" && genesisPassMintType !== "GUARANTEED" && <FcfsBadge />}
                     </div>
                     {genesisPassWallet && (
                       <span className="text-nasun-white/50 text-xs font-mono">
