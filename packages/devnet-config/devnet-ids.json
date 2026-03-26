@@ -119,6 +119,7 @@
   "perp": {
     "packageId": "0xe0b972913d44d1c214d02ccf0aaf64d1c0d7ab075a7caaaf1fc457c486c808b1",
     "adminCap": "0x367b6657aedefbd16326bb0763d8bac4a3968438da8887188e0920f7a509018b",
+    "btcMarket": "0xe335baaae0d0c0a9cf9bb91edcd09fcc2856bf59b9ccf0a4f53bc2631a33471f",
     "upgradeCap": "0x994b37b224372c47653aa8c45b1214134568dba96fc2332be1b9c48bfe3020c4"
   },
   "nsa": {
