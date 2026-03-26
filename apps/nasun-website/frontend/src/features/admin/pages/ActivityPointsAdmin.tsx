@@ -155,9 +155,8 @@ function LeaderboardSection() {
               <tr><td colSpan={5} className="py-8 text-center text-nasun-white/50">No data</td></tr>
             ) : entries.map((entry) => {
               const profile = profileMap.get(entry.identityId);
-              const displayName = profile?.twitterHandle
-                ? `@${profile.twitterHandle}`
-                : profile?.username || null;
+              const xHandle = profile?.originalTwitterHandle || profile?.twitterHandle;
+              const displayName = profile?.username || null;
               return (
                 <tr key={entry.identityId} className="hover:bg-nasun-white/5 transition-colors">
                   <td className="py-2 pr-3 text-nasun-white/60">{entry.rank}</td>
@@ -173,7 +172,14 @@ function LeaderboardSection() {
                         <div className="w-6 h-6 rounded-full shrink-0 bg-nasun-dark-500" />
                       )}
                       <div className="min-w-0">
-                        {displayName ? (
+                        {xHandle ? (
+                          <>
+                            {displayName && (
+                              <span className="text-nasun-white text-sm truncate block">{displayName}</span>
+                            )}
+                            <span className="text-nasun-white/50 text-xs truncate block">@{xHandle}</span>
+                          </>
+                        ) : displayName ? (
                           <>
                             <span className="text-nasun-white text-sm truncate block">{displayName}</span>
                             <span className="text-nasun-white/30 font-mono text-[10px] truncate block max-w-[180px]">{entry.identityId.split(':').pop()}</span>
