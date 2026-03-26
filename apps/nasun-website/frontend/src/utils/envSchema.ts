@@ -4,8 +4,13 @@ import { z } from "zod";
 // 1. 네트워크 타입 정의
 const NetworkType = z.enum(["testnet", "devnet", "mainnet", "localnet", "nasundevnet"]);
 export type NetworkType = z.infer<typeof NetworkType>;
-// 이후 currentNetwork: NetworkType 으로 선언
-export const currentNetwork = process.env.VITE_NETWORK as NetworkType;
+
+/** Vite bundles `KEY=` as "", but Zod .optional() only accepts undefined. */
+const optionalUrl = () =>
+  z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().url().optional(),
+  );
 
 // 2. 기본 환경 변수 스키마
 const BaseEnvSchema = z.object({
@@ -38,9 +43,9 @@ const BaseEnvSchema = z.object({
 
   // 7. Authentication
   VITE_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-  VITE_TWITTER_AUTH_API: z.string().url().optional(),
-  VITE_LINK_ACCOUNT_API: z.string().url().optional(),
-  VITE_USER_PROFILE_API: z.string().url().optional(),
+  VITE_TWITTER_AUTH_API: optionalUrl(),
+  VITE_LINK_ACCOUNT_API: optionalUrl(),
+  VITE_USER_PROFILE_API: optionalUrl(),
 
   // 8. EVM Wallet / Ethereum
   VITE_ENABLE_WALLET_LOGIN: z.enum(["true", "false"]).default("false"),
@@ -51,10 +56,13 @@ const BaseEnvSchema = z.object({
   VITE_TARGET_TWEET_ACCOUNT: z.string().default("Nasun_io"),
 
   // 10. Genesis Pass Allowlist
-  VITE_GENESIS_PASS_API: z.string().url().optional(),
+  VITE_GENESIS_PASS_API: optionalUrl(),
 
   // 11. Explorer API (On-Chain Activity Points)
-  VITE_EXPLORER_API_URL: z.string().url().optional(),
+  VITE_EXPLORER_API_URL: optionalUrl(),
+
+  // 12. Referral System
+  VITE_REFERRAL_API: optionalUrl(),
 });
 
 // 3. 환경별 추가 검증 로직

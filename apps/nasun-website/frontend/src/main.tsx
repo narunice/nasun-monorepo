@@ -76,7 +76,7 @@ function initializeApp() {
     // 개발 환경 로깅
     if (import.meta.env.DEV) {
       console.log("✅ 애플리케이션 초기화 완료");
-      console.log("네트워크 모드:", process.env.VITE_NETWORK);
+      console.log("네트워크 모드:", import.meta.env.VITE_NETWORK);
     }
   } catch (error) {
     console.error("❌ 애플리케이션 초기화 실패:", error);
