@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { Check, Link2, Bookmark, Gift } from "lucide-react";
+import { Check, Link2, Bookmark, Gift, ShieldCheck } from "lucide-react";
 
 export const LoggedInBadge: FC = () => (
   <span
@@ -48,6 +48,16 @@ export const ChannelMemberBadge: FC = () => (
   >
     <Check className="w-3 h-3 flex-shrink-0" />
     <span className="hidden sm:inline">Channel Member</span>
+  </span>
+);
+
+export const GuaranteedBadge: FC = () => (
+  <span
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-400/20"
+    aria-label="Guaranteed allowlist spot"
+  >
+    <ShieldCheck className="w-3 h-3 flex-shrink-0" />
+    <span className="hidden sm:inline">GTD</span>
   </span>
 );
 
