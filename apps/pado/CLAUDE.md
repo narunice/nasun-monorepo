@@ -1,6 +1,6 @@
 # CLAUDE.md (apps/pado)
 
-> Last Updated: 2026-03-03
+> Last Updated: 2026-03-26
 > Common rules (language, UI language rules): see root [CLAUDE.md](../../CLAUDE.md)
 
 ---
@@ -82,6 +82,8 @@ cd apps/pado/frontend && pnpm test:coverage
 2. **Staging Chain ID difference**: Staging uses a separate chain, development uses `272218f1`
 3. **Lending UI activation pending**: Contract V7 deployed, pool creation + .env integration + pool UI needed
 4. **Market Narrator pool name hardcoding**: `formatAlert` hardcodes "NBTC", needs update when adding other pools
+5. **Sui SDK version split**: Frontend uses @mysten/sui 1.45.2, bots use 1.21.1 (intentional for bot stability)
+6. **Single-instance constraint**: price-updater and tpsl-keeper must run as single instances (LockConflict on shared AdminCap/TradeCap)
 
 ---
 
@@ -101,5 +103,6 @@ cd apps/pado/frontend && pnpm test:coverage
 | [docs/SOCIAL_LAYER_DISCUSSION.md](docs/SOCIAL_LAYER_DISCUSSION.md) | Social layer strategy (finance-first social thesis) |
 | [docs/LOTTERY.md](docs/LOTTERY.md) | Lottery system design and mechanisms |
 | [docs/MANUAL_E2E_CHECKLIST.md](docs/MANUAL_E2E_CHECKLIST.md) | Manual E2E test checklist |
+| [docs/SPOT_TRADING_UX_BENCHMARK.md](docs/SPOT_TRADING_UX_BENCHMARK.md) | Spot Trading & Account UX competitive benchmark analysis |
 | [bots/README.md](bots/README.md) | Bot documentation (LP Bot, Price Updater, Liquidation Keeper, TP/SL Keeper) |
 | [contracts-prediction/README.md](contracts-prediction/README.md) | Prediction Market contract overview |
