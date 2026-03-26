@@ -23,6 +23,10 @@ module prediction::prediction_market {
     const ENotOrderOwner: u64 = 9;
     const EMarketExpired: u64 = 10;
     const ESelfTrade: u64 = 11;
+    const EResolveDeadlinePassed: u64 = 12;
+    const EMarketNotExpired: u64 = 13;
+    const EMarketNotCancelled: u64 = 14;
+    const EMarketAlreadyCancelled: u64 = 15;
 
     // ===== Constants =====
     const DECIMALS: u64 = 6; // NUSDC decimals
@@ -33,6 +37,7 @@ module prediction::prediction_market {
     const STATUS_OPEN: u8 = 0;
     const STATUS_CLOSED: u8 = 1;
     const STATUS_RESOLVED: u8 = 2;
+    const STATUS_CANCELLED: u8 = 3;
 
     // ===== Structs =====
 
@@ -158,6 +163,18 @@ module prediction::prediction_market {
         payout: u64,
     }
 
+    public struct MarketCancelled has copy, drop {
+        market_id: ID,
+        timestamp: u64,
+    }
+
+    public struct CancelledRefundClaimed has copy, drop {
+        market_id: ID,
+        user: address,
+        shares: u64,
+        refund: u64,
+    }
+
     // ===== Init =====
 
     fun init(ctx: &mut TxContext) {
@@ -229,8 +246,10 @@ module prediction::prediction_market {
         ctx: &mut TxContext
     ) {
         assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
+        assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
         assert!(tx_context::sender(ctx) == market.resolver, ENotResolver);
         assert!(clock::timestamp_ms(clock) >= market.close_time, EMarketNotClosed);
+        assert!(clock::timestamp_ms(clock) <= market.resolve_deadline, EResolveDeadlinePassed);
 
         market.status = STATUS_RESOLVED;
         market.outcome = option::some(outcome);
@@ -421,6 +440,75 @@ module prediction::prediction_market {
         });
 
         transfer::public_transfer(payout_coin, sender);
+    }
+
+    // ===== Market Cancellation (resolve_deadline expired) =====
+
+    /// Cancel a market that passed its resolve_deadline without resolution.
+    /// Permissionless: anyone can call after deadline expires.
+    /// After cancellation, position holders can claim pro-rata refunds.
+    public entry fun cancel_expired_market(
+        market: &mut Market,
+        clock: &Clock,
+    ) {
+        assert!(clock::timestamp_ms(clock) > market.resolve_deadline, EMarketNotExpired);
+        assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
+        assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
+
+        market.status = STATUS_CANCELLED;
+
+        event::emit(MarketCancelled {
+            market_id: object::id(market),
+            timestamp: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Claim pro-rata refund from a cancelled market.
+    /// Refund is proportional to shares held relative to total outstanding supply.
+    /// Uses shares-based pro-rata (not cost_basis) to prevent pool insolvency
+    /// when positions have been traded on the secondary orderbook.
+    public entry fun claim_cancelled_refund(
+        market: &mut Market,
+        position: Position,
+        ctx: &mut TxContext
+    ) {
+        assert!(market.status == STATUS_CANCELLED, EMarketNotCancelled);
+        assert!(position.market_id == object::id(market), EWrongOutcome);
+
+        let pool_balance = balance::value(&market.collateral_pool);
+        let total_shares = market.yes_supply + market.no_supply;
+
+        let refund_amount = if (total_shares > 0) {
+            ((position.shares as u128) * (pool_balance as u128) / (total_shares as u128)) as u64
+        } else {
+            0
+        };
+
+        // Decrement supply tracking
+        if (position.is_yes) {
+            market.yes_supply = market.yes_supply - position.shares;
+        } else {
+            market.no_supply = market.no_supply - position.shares;
+        };
+
+        // Destroy position
+        let Position { id, market_id: _, is_yes: _, shares, cost_basis: _ } = position;
+        object::delete(id);
+
+        if (refund_amount > 0) {
+            let refund_balance = balance::split(&mut market.collateral_pool, refund_amount);
+            let refund_coin = coin::from_balance(refund_balance, ctx);
+            let sender = tx_context::sender(ctx);
+
+            event::emit(CancelledRefundClaimed {
+                market_id: object::id(market),
+                user: sender,
+                shares,
+                refund: refund_amount,
+            });
+
+            transfer::public_transfer(refund_coin, sender);
+        };
     }
 
     /// Burn losing positions (optional, for cleanup)

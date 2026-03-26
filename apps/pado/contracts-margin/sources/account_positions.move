@@ -402,6 +402,11 @@ module unified_margin::account_positions {
         PriceInfo { pool_id, price }
     }
 
+    /// Get price from PriceInfo
+    public fun get_price_info_price(info: &PriceInfo): u64 {
+        info.price
+    }
+
     /// Create signed value helper
     public fun create_signed_value(value: u64, is_negative: bool): SignedValue {
         SignedValue { value, is_negative }
@@ -436,8 +441,13 @@ module unified_margin::account_positions {
             };
             i = i + 1;
         };
-        0 // Default to 0 if not found (position will have 0 notional)
+        // Abort if price not found: prevents attack where omitting a pool's price
+        // zeros its notional, making the account appear over-collateralized
+        abort EMissingPoolPrice
     }
+
+    /// Error: caller-provided prices vector is missing a required pool price
+    const EMissingPoolPrice: u64 = 203;
 
     // ===== Test Functions =====
 
