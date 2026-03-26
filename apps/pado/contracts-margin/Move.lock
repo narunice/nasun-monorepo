@@ -33,3 +33,33 @@ source = { root = true }
 use_environment = "devnet"
 manifest_digest = "9E42A41E3AFB94BC47434089C29ABE544EF51FBB1D4B89C567611C2853F3E978"
 deps = { Sui = "Sui", devnet_tokens = "devnet_tokens", pado_oracle = "pado_oracle" }
+
+[pinned.testnet.MoveStdlib]
+source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/move-stdlib" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.Sui]
+source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.testnet.devnet_tokens]
+source = { local = "../../../packages/devnet-tokens" }
+use_environment = "testnet"
+manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
+deps = { Sui = "Sui" }
+
+[pinned.testnet.pado_oracle]
+source = { local = "../contracts-oracle" }
+use_environment = "testnet"
+manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
+deps = { Sui = "Sui" }
+
+[pinned.testnet.unified_margin]
+source = { root = true }
+use_environment = "testnet"
+manifest_digest = "3BF10E10D41862B731BE5D46AD78F21A22E00207CE68C361D050A618987C5861"
+deps = { Sui = "Sui", devnet_tokens = "devnet_tokens", pado_oracle = "pado_oracle" }
