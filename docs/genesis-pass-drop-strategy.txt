@@ -1,0 +1,293 @@
+Nasun Genesis Pass NFT Drop Strategy
+=====================================
+Date: 2026-03-26 (Updated)
+
+Current Situation
+-----------------
+- Free Mint Allowlist: ~100 people
+- Paid Allowlist: ~530 people
+- Next drop (Battalion NFT): 4 weeks after Genesis
+- Goal: Maximize onboarding before Battalion drop
+- Funding: Bootstrapped, zero external funding
+- Chain: Ethereum (via OpenSea)
+  - Nasun Devnet can be reset at any time, so NFTs cannot persist there
+  - Ethereum until Nasun mainnet launches
+- Pricing: Set in ETH at drop time, pegged to USD target ($10/$15)
+  - Convert at market rate just before minting opens to minimize volatility
+
+
+========================================================================
+RESEARCH SUMMARY: LESSONS FROM OTHER PROJECTS
+========================================================================
+
+FAILURE PATTERNS
+----------------
+
+1. The 2024 NFT Massacre: 98% Failure Rate
+   - 98% of 2024 NFT drops failed to sustain even 10 trades in their first week
+   - NFT supply surged to 1.34 billion while total sales dropped 37%
+   - Lesson: Oversupply kills. Per-wallet limits and time-gating are essential.
+
+2. The Open Edition Trap
+   - Time-limited unlimited minting was trendy, but most became "Ghost NFTs"
+     by 2025: high supply, zero active buyers
+   - Root cause: unlimited per-wallet minting + speculation-driven demand
+   - Lesson: Open editions fail when whales can mint hundreds. Per-wallet
+     limits fundamentally change the dynamic.
+
+3. Trust Erosion
+   - Rug pulls drained $3.4B from investors
+   - Unfulfilled roadmaps were the #1 trust destroyer
+   - Lesson: Promise small, deliver big. No overpromising.
+
+SUCCESS PATTERNS
+----------------
+
+1. Pudgy Penguins: Low Price + Scarcity = Explosive Growth
+   - 0.03 ETH (~$60 at the time), 8,888 units, sold out in 20 minutes
+   - Inverted the typical strategy: mainstream adoption first, then exclusive community
+   - Lesson: Low entry barrier + genuine scarcity creates organic viral growth.
+
+2. Heroic Story: Genesis Pass as a Funnel
+   - 1,049 free mints, followed by stealth airdrop to holders
+   - Holders organically shared on Twitter because their self-interest aligned
+     with promotion
+   - Lesson: Make the Genesis Pass a gateway to future value.
+     Holders become evangelists.
+
+3. PSG (Paris Saint-Germain): 2-Phase Mint Pass
+   - Phase 1: Silver Card Pledge mint
+   - Phase 2: Only Phase 1 holders get access to limited edition
+   - Lesson: Layered drops that reward existing holders while expanding reach.
+
+4. Time-Gated Open Editions (2024-2025 trend)
+   - 24-hour mints create high urgency and usually result in lower supply
+     and higher secondary floor prices
+   - Shorter windows = stronger "founding member" identity
+   - Lesson: Time-based scarcity works when combined with per-wallet limits.
+
+
+========================================================================
+STRATEGY: TIME-GATED 3-PHASE DROP
+========================================================================
+
+Core Concept: No supply cap. Scarcity comes from TIME, not quantity.
+Once the mint window closes, no new Genesis Passes can ever be minted.
+Combined with 1-per-wallet enforcement, the final supply organically
+reflects the true size of Nasun's early community.
+
+Narrative: "This NFT is only for founding members. If you weren't here
+in the first 5 days, you can never get one."
+
+
+Phase 0: Free Mint (Apr 7, 00:00-12:00 KST, 12 hours)
+-------------------------------------------------------
+- Eligible:         Free Mint Allowlist wallets
+- Price:            Free (0.00 ETH)
+- Per-wallet limit: 1
+- Duration:         12 hours
+- Purpose:          Reward top-tier core contributors
+
+Phase 1: Guaranteed Mint (Apr 7, 12:00 - Apr 8, 00:00 KST, 12 hours)
+----------------------------------------------------------------------
+- Eligible:         Guaranteed Mint Allowlist wallets
+- Price:            Free (0.00 ETH)
+- Per-wallet limit: 1
+- Duration:         12 hours
+- Purpose:          Reward secondary-tier contributors
+
+Phase 2: Allowlist Mint (Apr 8, 00:00 - Apr 9, 00:00 KST, 24 hours)
+---------------------------------------------------------------------
+- Eligible:         ~530 Allowlist wallets
+- Price:            ~$10 worth of ETH (set at drop time)
+- Per-wallet limit: 1
+- Duration:         24 hours
+- Purpose:          Onboard the loyal early community at a discounted price
+- Expected:         50-70% conversion (~260-370 mints)
+
+Phase 3: Public Mint (Apr 9, 00:00 - Apr 12, 00:00 KST, 72 hours)
+-------------------------------------------------------------------
+- Eligible:         Anyone with an Ethereum wallet
+- Price:            ~$15 worth of ETH (set at drop time)
+- Per-wallet limit: 1
+- Duration:         72 hours (3 days)
+- Purpose:          Open the door to anyone who discovers Nasun
+- Note:             This is where community expansion happens
+
+MINTING PERMANENTLY CLOSES on April 12, 00:00 KST.
+No exceptions. No extensions. No re-opens.
+
+Genesis Holder Benefit (at Battalion Drop, ~Week 4)
+----------------------------------------------------
+- Genesis Pass holders receive Guaranteed Allowlist for Battalion NFT
+- Potential discount on Battalion mint price
+- This is the core utility that drives Genesis Pass demand
+
+
+========================================================================
+WHY THIS STRUCTURE WORKS
+========================================================================
+
+1. Time-Based Scarcity (vs. Supply-Based)
+   - No supply cap means no one gets locked out during the mint window
+   - But the hard deadline creates genuine urgency: "now or never"
+   - Final supply = organic community size, not an arbitrary number
+   - After close, the only way to get one is secondary market
+
+2. Open Edition Failure Modes Are Neutralized
+   - Classic open edition failures: whales mint 100+, flip, community collapses
+   - Here: 1 per wallet, on-chain enforced. No whale accumulation possible.
+   - Each NFT represents one real person, not speculative inventory
+   - This is a membership pass, not a tradeable art piece
+
+3. "Founding Member" Identity
+   - "I was there in the first 5 days" is a powerful community identity
+   - Unlike supply-capped drops, no one who wanted one was shut out
+   - The narrative is inclusive during the window, exclusive after it closes
+   - Holders have pride of ownership tied to timing, not luck or speed
+
+4. Battalion Funnel (Heroic Story / PSG Model)
+   - Genesis Pass is not a standalone product. It's the entry ticket to
+     the Battalion NFT ecosystem.
+   - "Buy Genesis now, get Battalion benefits later" drives Genesis demand
+   - Genesis holders become natural promoters: their self-interest aligns
+     with project growth
+   - Narrative arc: Genesis (founding) -> Battalion (expansion)
+
+5. Price Escalation Creates Urgency
+   - Free -> $10 -> $15 -> Battalion (higher price)
+   - Earlier participation = lower cost, always
+   - The $5 gap between Allowlist and Public is small enough to not exclude
+     anyone, but large enough to make Allowlist membership feel rewarded
+
+6. Revenue Projection (Bootstrapped-Friendly)
+
+   Optimistic:    (100 x $0) + (370 x $10) + (500 x $15) = $11,200
+   Realistic:     (100 x $0) + (300 x $10) + (200 x $15) = $6,000
+   Conservative:  (100 x $0) + (200 x $10) + (80 x $15)  = $3,200
+
+   Revenue is a secondary goal.
+   The primary goal is onboarding and community growth before Battalion.
+
+
+========================================================================
+4-WEEK ONBOARDING TIMELINE
+========================================================================
+
+Day 1:    Phase 0 - Free Mint (Allowlist 100)
+          -> Core community gets their pass first
+
+Day 2:    Phase 1 - Allowlist Mint ($10)
+          -> Early supporters lock in at the best price
+
+Day 3-5:  Phase 2 - Public Mint ($15)
+          -> Social media blitz, anyone can join
+          -> "Last chance" messaging on Day 5
+
+Day 6:    MINTING CLOSES PERMANENTLY
+          -> Announce final mint count publicly
+          -> "X founding members secured their Genesis Pass"
+
+Week 2-3: Genesis holder-exclusive events/reveals
+          -> Holder engagement, FOMO for non-holders on secondary market
+
+Week 3:   Battalion NFT preview + Genesis holder benefits announced
+          -> Maximize Battalion anticipation
+
+Week 4:   Battalion NFT drop
+          -> Genesis holders get priority access
+
+Social Amplification Strategy:
+- Encourage Genesis holders to share their NFT on X/Twitter
+  (aligns with existing leaderboard system)
+- Post-close announcement: "X people are founding members of Nasun"
+  becomes a viral moment
+- Genesis holder count = social proof for Battalion drop
+- Each holder is a potential Battalion buyer and community evangelist
+
+
+========================================================================
+WHY NOT SUPPLY-CAPPED?
+========================================================================
+
+Supply-capped (e.g. 1,000 units) was considered but rejected because:
+
+1. It creates frustration: "I wanted one but it sold out"
+   - Bad first impression for potential community members
+   - Especially risky during Public Mint when new users discover Nasun
+
+2. It's an arbitrary number: why 1,000? Why not 800 or 1,200?
+   - Time-based closing is cleaner: "you had 5 days"
+   - The final number is organic and honest
+
+3. It doesn't match the goal:
+   - Goal is maximum onboarding before Battalion
+   - A supply cap limits onboarding by definition
+   - Time cap allows maximum onboarding within a defined window
+
+4. 1-per-wallet already prevents the real problem:
+   - The danger of uncapped supply is whale accumulation
+   - With 1-per-wallet, uncapped supply just means "more real members"
+
+
+========================================================================
+KEY RISKS AND MITIGATIONS
+========================================================================
+
+Risk: Very low mint count (looks like low demand)
+  -> Mitigate: Don't announce expected numbers beforehand.
+     Frame any count as "our founding community."
+     Even 300 founding members is a strong start for a bootstrapped L1.
+
+Risk: Sybil attacks (one person, many wallets)
+  -> Mitigate: At $10-15 per mint + gas, the economic cost of sybil
+     is self-limiting. Each fake wallet costs real money.
+     Optional: require leaderboard registration or X account link.
+
+Risk: Genesis holders don't engage after minting
+  -> Mitigate: Holder-exclusive events in Week 2-3.
+     Battalion benefits announcement keeps them invested.
+
+Risk: Secondary market price crashes
+  -> Mitigate: 1-per-wallet means low circulating supply relative
+     to holders. Most people hold membership passes, not flip them.
+     The Battalion utility gives ongoing reason to hold.
+
+Risk: Public Mint attracts zero interest
+  -> Mitigate: Coordinate social push during Day 3-5.
+     Existing holders sharing their NFT creates organic reach.
+
+
+========================================================================
+OPEN QUESTIONS
+========================================================================
+
+1. Battalion holder benefits: Guaranteed Allowlist only, or also a discount?
+2. Allowlist Mint / Public Mint exact ETH prices: to be set on Apr 6-7
+   based on ETH/USD market rate at that time
+
+
+========================================================================
+SOURCES
+========================================================================
+
+- Rarible: 6 NFT Drop Strategies That Drive Real Growth
+  https://rarible.ghost.io/6-nft-drop-formats-that-drive-growth/
+- OpenSea: NFT Allowlists Explained
+  https://opensea.io/learn/nft/what-is-an-allowlist
+- NFTnow: NFT Drops - Navigating Complex Launch Mechanics
+  https://nftnow.com/guides/nft-drops-and-flops-a-definitive-guide-to-diverse-mechanics/
+- CoinDesk: Pudgy Penguins - A New Blueprint
+  https://www.coindesk.com/research/pudgy-penguins-a-new-blueprint-for-tokenized-culture/
+- CoinGecko: Open Edition vs Limited Edition NFT
+  https://www.coingecko.com/learn/open-edition-nft-vs-limited-edition-nft
+- Block3 Finance: Limited vs Open Edition NFT Economics
+  https://www.block3finance.com/limited-vs-open-edition-nft-economics
+- DeFi Planet: Why 98% of 2024 NFT Drops Are Dead
+  https://defi-planet.com/2024/12/why-98-of-2024-nft-drops-are-dead/
+- a16z: NFT Sales - Clearing the Market
+  https://a16zcrypto.com/posts/article/nft-sales-market-clearing-gas-wars-auction-mechanism-design-for-builders/
+- Thirdweb: Heroic Story Case Study
+  https://blog.thirdweb.com/case-studies/heroic-story-uses-dynamic-nfts-to-build-a-web3-free-to-own-mmorpg-fantasy-game/
+- Artnet: Open Editions Reigniting the NFT Market
+  https://news.artnet.com/market/open-editions-nft-2261349
