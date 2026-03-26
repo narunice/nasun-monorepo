@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Star } from "lucide-react";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ export function NftCollectionManagement() {
   const [contractAddress, setContractAddress] = useState("");
   const [chain, setChain] = useState<NFTChain>("polygon");
   const [collectionName, setCollectionName] = useState("");
+  const [featured, setFeatured] = useState(false);
   const [formError, setFormError] = useState("");
 
   // Delete confirmation state
@@ -83,9 +85,11 @@ export function NftCollectionManagement() {
         contractAddress: contractAddress.trim(),
         chain,
         collectionName: collectionName.trim(),
+        featured,
       });
       setContractAddress("");
       setCollectionName("");
+      setFeatured(false);
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Failed to create collection");
     }
@@ -93,12 +97,24 @@ export function NftCollectionManagement() {
 
   const handleToggleEnabled = async (collection: NftCollection) => {
     try {
+      const newEnabled = !collection.enabled;
       await updateMutation.mutateAsync({
         collectionId: collection.collectionId,
-        updates: { enabled: !collection.enabled },
+        updates: newEnabled ? { enabled: true } : { enabled: false, featured: false },
       });
     } catch (err) {
       console.error("Toggle failed:", err);
+    }
+  };
+
+  const handleToggleFeatured = async (collection: NftCollection) => {
+    try {
+      await updateMutation.mutateAsync({
+        collectionId: collection.collectionId,
+        updates: { featured: !collection.featured },
+      });
+    } catch (err) {
+      console.error("Toggle featured failed:", err);
     }
   };
 
@@ -162,7 +178,7 @@ export function NftCollectionManagement() {
                   ))}
                 </select>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <input
                   type="text"
                   value={collectionName}
@@ -171,6 +187,15 @@ export function NftCollectionManagement() {
                   placeholder="Collection name (e.g., Founders NFT)"
                   className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4"
                 />
+                <label className="flex items-center gap-1.5 text-nasun-white/70 text-sm cursor-pointer whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={featured}
+                    onChange={(e) => setFeatured(e.target.checked)}
+                    className="accent-amber-500"
+                  />
+                  Featured
+                </label>
                 <Button
                   variant="c4"
                   onClick={handleAdd}
@@ -206,6 +231,7 @@ export function NftCollectionManagement() {
                       <th className="text-left py-3 px-2 font-medium">Contract</th>
                       <th className="text-left py-3 px-2 font-medium">Chain</th>
                       <th className="text-left py-3 px-2 font-medium">Status</th>
+                      <th className="text-center py-3 px-2 font-medium">Featured</th>
                       <th className="text-left py-3 px-2 font-medium">Created</th>
                       <th className="text-right py-3 px-2 font-medium">Actions</th>
                     </tr>
@@ -238,6 +264,22 @@ export function NftCollectionManagement() {
                         </td>
                         <td className="py-3 px-2">
                           <EnabledBadge enabled={collection.enabled} />
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <button
+                            onClick={() => handleToggleFeatured(collection)}
+                            disabled={!collection.enabled || updateMutation.isPending}
+                            className="disabled:opacity-30"
+                            title={collection.featured ? "Unset featured" : "Set featured"}
+                          >
+                            <Star
+                              className={`w-4 h-4 transition-colors ${
+                                collection.featured
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-gray-500 hover:text-amber-400/50"
+                              }`}
+                            />
+                          </button>
                         </td>
                         <td className="py-3 px-2 text-nasun-white/40">
                           {new Date(collection.createdAt).toLocaleString("en-US")}
