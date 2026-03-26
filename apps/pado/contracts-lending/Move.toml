@@ -2,7 +2,7 @@
 name = "pado_lending"
 edition = "2024"
 version = "0.0.1"
-published-at = "0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe"
+published-at = "0x1f547fdb2c56e2d43a2808fed8eb80f00e18f2200db7d982192f516183a102fe"
 
 [dependencies]
 devnet_tokens = { local = "../../../packages/devnet-tokens" }
