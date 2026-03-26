@@ -10,7 +10,7 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '@nasun/wallet';
 
-// Contract addresses (TODO: Redeploy for V6)
+// Contract addresses (V7 deployed, env-configured)
 export const UNIFIED_MARGIN_PACKAGE =
   import.meta.env.VITE_MARGIN_PACKAGE_ID || '';
 export const MARGIN_REGISTRY_ID =
