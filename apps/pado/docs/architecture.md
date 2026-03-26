@@ -1,6 +1,6 @@
 # Pado Architecture
 
-> Last Updated: 2026-02-23
+> Last Updated: 2026-03-26
 
 ## Project Structure
 
@@ -72,5 +72,9 @@ apps/pado/
 - Lazy loading (route-based code splitting + Suspense)
 - PWA support (Workbox runtime caching, offline operation)
 - Tailwind CSS custom theme variables (CSS custom properties for dark/light switching)
-- Custom animations (flash-buy, flash-sell, pulse-up, pulse-down)
+- Custom animations (flash-buy, flash-sell, pulse-up, pulse-down, fullscreen-in)
 - Browser notifications + sound effects (on fill)
+- Clear Signing: Contract-aware transaction preview
+- Fullscreen chart overlay (mobile expand/close)
+- Sticky Buy/Sell bottom bar with gradient styling (mobile)
+- Chart context menu: right-click (desktop) / long-press (mobile) for chart-to-order

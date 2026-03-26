@@ -1,6 +1,6 @@
 # Pado Product Roadmap
 
-> Last Updated: 2026-02-23
+> Last Updated: 2026-03-26
 
 ## Completed Phases
 
@@ -25,6 +25,10 @@
 | Phase 19 | Done | Social Layer | Global Chat, Leaderboard, Trader Profiles, Competitions, PnL Share, Badges, Market Narrator |
 | Phase 20 | Done | LP Bot | Grid Market Making, Arbitrage, Auto-faucet Refill |
 | Phase 21 | Done | V7 Contract Redeployment | All contracts redeployed on V7 (2026-02-04) |
+| Phase 22 | Done | Testnet Polish | Points system, enhanced share cards, mobile UX, loading skeletons, actionable errors |
+| Phase 23 | Done | Chart & Portfolio | VWAP/Ichimoku indicators, chart context menu, portfolio sparklines, transfer filters |
+| Phase 24 | Done | Mobile Trading | Fullscreen chart overlay, clear signing, sticky Buy/Sell bar, enlarged touch targets |
+| Phase 25 | Done | Bot Hardening | Per-market keypairs, non-retriable error detection, prefund script, graceful shutdown |
 
 ## In Progress & Planned
 
@@ -36,7 +40,7 @@
 
 ---
 
-## Feature Completeness (2026-02-23)
+## Feature Completeness (2026-03-26)
 
 | Feature | Status | Completeness | Notes |
 |---------|--------|--------------|-------|
@@ -44,9 +48,9 @@
 | Perpetuals | Done | 100% | 20x leverage, funding rate, liquidation |
 | Prediction Markets | Done | 100% | YES/NO binary, orderbook, admin resolution |
 | Lottery | Done | 100% | Weekly draw, 3-tier prizes, Sui Random |
-| Portfolio | Done | 100% | P&L chart, risk metrics, CSV export |
+| Portfolio | Done | 100% | P&L chart, risk metrics, CSV export, token sparklines |
 | Leaderboard | Done | 100% | Volume/PnL rankings, trader profiles |
-| Social/Chat | Done | 100% | Real-time chat, PnL sharing, Market Narrator |
+| Social/Chat | Done | 100% | Real-time chat, PnL sharing, Market Narrator, AI chatbot (Wavi) |
 | Competitions | Done | 100% | Time-limited contests, dedicated leaderboard |
 | Points System | Done | 100% | Trade/volume/diversity-based points + leaderboard tab |
 | Passkey Auth | Done | 100% | Device credential auth (biometrics) |
@@ -54,8 +58,12 @@
 | Admin Panel | Done | 100% | Prediction + Lottery integrated management |
 | Payments | Done | 100% | QR code transfer |
 | Theme | Done | 100% | Dark/light toggle |
-| Responsive | Done | 100% | Mobile-first design |
+| Responsive | Done | 100% | Mobile-first (fullscreen chart, sticky trade bar, 48px touch targets) |
 | PWA | Done | 100% | Offline support, installable (vite-plugin-pwa) |
 | zkLogin | Done | 100% | Google OAuth seedless onboarding |
+| Chart Indicators | Done | 100% | SMA/EMA/RSI/MACD/BB/ATR/Stochastic/VWAP/Ichimoku |
+| Clear Signing | Done | 100% | Contract-aware transaction preview |
+| Batch Faucet | Done | 100% | Claim all tokens in one transaction |
+| Bot Hardening | Done | 100% | Per-market keypairs, non-retriable error detection, prefund script |
 | Lending | Partial | 40% | Contract V7 deployed, UI stub exists |
 | Staking | Partial | 10% | UI stub only |
