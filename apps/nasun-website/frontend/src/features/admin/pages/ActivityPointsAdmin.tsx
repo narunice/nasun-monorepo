@@ -13,6 +13,9 @@ import {
   getPointsLeaderboard,
   getPointsUser,
 } from "@/services/activityPointsApi";
+import { listUsers } from "../services/userManagementApi";
+import { useAdminAuth } from "../hooks/useAdminAuth";
+import type { UserProfile } from "../types";
 import type { ScannerHealth, LeaderboardEntry, UserPoints } from "@/types/points";
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -97,10 +100,29 @@ function ScannerHealthSection() {
 // --- Leaderboard ---
 
 function LeaderboardSection() {
+  const { cognitoToken } = useAdminAuth();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [profileMap, setProfileMap] = useState<Map<string, UserProfile>>(new Map());
   const [page, setPage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const limit = 50;
+
+  // Load user profiles once for identity -> display name mapping
+  useEffect(() => {
+    if (!cognitoToken) return;
+    let cancelled = false;
+    listUsers(cognitoToken, { limit: 500 })
+      .then((res) => {
+        if (cancelled) return;
+        const map = new Map<string, UserProfile>();
+        for (const u of res.users) {
+          map.set(u.identityId, u);
+        }
+        setProfileMap(map);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [cognitoToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +142,7 @@ function LeaderboardSection() {
           <thead>
             <tr className="border-b border-nasun-white/10 text-nasun-white/60 text-left">
               <th className="pb-2 pr-3 w-12">#</th>
-              <th className="pb-2 pr-3">Identity</th>
+              <th className="pb-2 pr-3">User</th>
               <th className="pb-2 pr-3 text-right">Points</th>
               <th className="pb-2 pr-3 text-right">Activities</th>
               <th className="pb-2 text-right">Categories</th>
@@ -131,19 +153,47 @@ function LeaderboardSection() {
               <tr><td colSpan={5} className="py-8 text-center text-nasun-white/50">Loading...</td></tr>
             ) : entries.length === 0 ? (
               <tr><td colSpan={5} className="py-8 text-center text-nasun-white/50">No data</td></tr>
-            ) : entries.map((entry) => (
-              <tr key={entry.identityId} className="hover:bg-nasun-white/5 transition-colors">
-                <td className="py-2 pr-3 text-nasun-white/60">{entry.rank}</td>
-                <td className="py-2 pr-3 text-nasun-white font-mono text-xs truncate max-w-[200px]">
-                  {entry.identityId}
-                </td>
-                <td className="py-2 pr-3 text-right text-nasun-white font-medium">
-                  {Number(entry.totalPoints).toLocaleString("en-US")}
-                </td>
-                <td className="py-2 pr-3 text-right text-nasun-white/70">{entry.activityCount}</td>
-                <td className="py-2 text-right text-nasun-white/70">{entry.activeCategories}</td>
-              </tr>
-            ))}
+            ) : entries.map((entry) => {
+              const profile = profileMap.get(entry.identityId);
+              const displayName = profile?.twitterHandle
+                ? `@${profile.twitterHandle}`
+                : profile?.username || null;
+              return (
+                <tr key={entry.identityId} className="hover:bg-nasun-white/5 transition-colors">
+                  <td className="py-2 pr-3 text-nasun-white/60">{entry.rank}</td>
+                  <td className="py-2 pr-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {profile?.profileImageUrl ? (
+                        <img
+                          src={profile.profileImageUrl}
+                          alt=""
+                          className="w-6 h-6 rounded-full shrink-0 bg-nasun-dark-500"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full shrink-0 bg-nasun-dark-500" />
+                      )}
+                      <div className="min-w-0">
+                        {displayName ? (
+                          <>
+                            <span className="text-nasun-white text-sm truncate block">{displayName}</span>
+                            <span className="text-nasun-white/30 font-mono text-[10px] truncate block max-w-[180px]">{entry.identityId.split(':').pop()}</span>
+                          </>
+                        ) : (
+                          <span className="text-nasun-white/60 font-mono text-xs truncate block max-w-[200px]">
+                            {entry.identityId}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-2 pr-3 text-right text-nasun-white font-medium">
+                    {Number(entry.totalPoints).toLocaleString("en-US")}
+                  </td>
+                  <td className="py-2 pr-3 text-right text-nasun-white/70">{entry.activityCount}</td>
+                  <td className="py-2 text-right text-nasun-white/70">{entry.activeCategories}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
