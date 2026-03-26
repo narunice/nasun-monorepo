@@ -469,4 +469,39 @@ module unified_margin::account_positions {
             last_updated: now,
         }
     }
+
+    // ===== Unit Tests =====
+
+    #[test]
+    fun test_find_price_found() {
+        let pool_id = object::id_from_address(@0x1);
+        let prices = vector[PriceInfo { pool_id, price: 5000 }];
+        let price = find_price_for_pool(&prices, pool_id);
+        assert!(price == 5000);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = EMissingPoolPrice)]
+    fun test_find_price_missing_aborts() {
+        let pool_id = object::id_from_address(@0x1);
+        let missing_id = object::id_from_address(@0x2);
+        let prices = vector[PriceInfo { pool_id, price: 5000 }];
+        // Looking for a pool that doesn't have a price -> should abort
+        find_price_for_pool(&prices, missing_id);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = EMissingPoolPrice)]
+    fun test_find_price_empty_vector_aborts() {
+        let pool_id = object::id_from_address(@0x1);
+        let prices = vector[];
+        find_price_for_pool(&prices, pool_id);
+    }
+
+    #[test]
+    fun test_get_price_info_price() {
+        let pool_id = object::id_from_address(@0x1);
+        let info = PriceInfo { pool_id, price: 9999 };
+        assert!(get_price_info_price(&info) == 9999);
+    }
 }

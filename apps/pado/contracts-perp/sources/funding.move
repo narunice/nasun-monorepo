@@ -286,4 +286,103 @@ module pado_perp::funding {
     ): (u64, bool) {
         add_signed(a_value, a_negative, b_value, b_negative)
     }
+
+    // ===== Unit Tests =====
+
+    #[test]
+    fun test_add_signed_same_sign_normal() {
+        let (v, neg) = add_signed(100, false, 200, false);
+        assert!(v == 300 && !neg);
+    }
+
+    #[test]
+    fun test_add_signed_same_sign_negative() {
+        let (v, neg) = add_signed(100, true, 200, true);
+        assert!(v == 300 && neg);
+    }
+
+    #[test]
+    fun test_add_signed_different_signs() {
+        // 300 - 100 = 200 (positive)
+        let (v, neg) = add_signed(300, false, 100, true);
+        assert!(v == 200 && !neg);
+
+        // 100 - 300 = -200 (negative)
+        let (v2, neg2) = add_signed(100, false, 300, true);
+        assert!(v2 == 200 && neg2);
+    }
+
+    #[test]
+    fun test_add_signed_zero_result() {
+        let (v, _neg) = add_signed(500, false, 500, true);
+        assert!(v == 0);
+    }
+
+    #[test]
+    fun test_add_signed_at_max_cumulative() {
+        // Just at the cap: should succeed
+        let (v, neg) = add_signed(MAX_CUMULATIVE_FUNDING - 1, false, 1, false);
+        assert!(v == MAX_CUMULATIVE_FUNDING && !neg);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = EFundingCumulativeOverflow)]
+    fun test_add_signed_overflow_aborts() {
+        // Exceeds MAX_CUMULATIVE_FUNDING: should abort
+        add_signed(MAX_CUMULATIVE_FUNDING, false, 1, false);
+    }
+
+    #[test]
+    fun test_calculate_position_funding_u128() {
+        // Large position: 10^15 base units * 125 bps delta
+        // Without u128: 10^15 * 125 = 1.25 * 10^17 (fits u64)
+        let (payment, _pays) = calculate_position_funding(
+            1_000_000_000_000_000, // 10^15 position size
+            false,
+            0, false,
+            125, false,  // 125 bps cumulative delta
+        );
+        // payment = 10^15 * 125 / 10000 = 12_500_000_000_000
+        assert!(payment == 12_500_000_000_000);
+    }
+
+    #[test]
+    fun test_calculate_position_funding_very_large() {
+        // Edge case: position near u64 max range
+        // size = 10^16, delta = 1000 bps
+        // Without u128: 10^16 * 1000 = 10^19 > u64::MAX (overflow!)
+        // With u128: works correctly
+        let (payment, _pays) = calculate_position_funding(
+            10_000_000_000_000_000, // 10^16
+            false,
+            0, false,
+            1000, false,  // 1000 bps
+        );
+        // payment = 10^16 * 1000 / 10000 = 10^15
+        assert!(payment == 1_000_000_000_000_000);
+    }
+
+    #[test]
+    fun test_funding_rate_calculation() {
+        // mark > index: longs pay shorts (positive rate)
+        let (rate, neg) = calculate_funding_rate(10500, 10000);
+        assert!(!neg); // Positive (longs pay)
+        assert!(rate > 0);
+
+        // mark < index: shorts pay longs (negative rate)
+        let (rate2, neg2) = calculate_funding_rate(9500, 10000);
+        assert!(neg2); // Negative (shorts pay)
+        assert!(rate2 > 0);
+
+        // mark == index: rate = 0
+        let (rate3, _neg3) = calculate_funding_rate(10000, 10000);
+        assert!(rate3 == 0);
+    }
+
+    #[test]
+    fun test_funding_rate_capped_at_max() {
+        // Extreme price deviation: should cap at MAX_FUNDING_RATE_BPS
+        let (rate, _neg) = calculate_funding_rate(20000, 10000); // 100% premium
+        assert!(rate == MAX_FUNDING_RATE_BPS);
+    }
 }
