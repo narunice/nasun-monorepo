@@ -135,6 +135,40 @@ app.get('/user/:address', async (c) => {
   return c.json({ data });
 });
 
+// GET /api/v1/points/referral-stats?referrer=:identityId
+// Public read-only endpoint for Lambda my-stats to fetch bonus totals
+app.get('/referral-stats', async (c) => {
+  if (!pointsDb) {
+    return c.json({ error: 'points_not_configured' }, 503);
+  }
+
+  const referrer = c.req.query('referrer');
+  if (!referrer || referrer.length < 10) {
+    return c.json({ error: 'invalid_referrer' }, 400);
+  }
+
+  const getReferralStats = cached(
+    `points-referral-stats-${referrer}`,
+    5 * 60 * 1000,
+    async () => {
+      const [row] = await pointsDb!`
+        SELECT COALESCE(SUM(final_points), 0)::text as total_bonus_points
+        FROM activity_points
+        WHERE identity_id = ${referrer}
+          AND category = 'referral-bonus'
+          AND NOT flagged
+      `;
+      return {
+        totalBonusPoints: Number(row?.total_bonus_points ?? 0),
+      };
+    },
+  );
+
+  const data = await getReferralStats();
+  c.header('Cache-Control', 'public, max-age=300');
+  return c.json(data);
+});
+
 // GET /api/v1/points/health
 app.get('/health', async (c) => {
   const health = await getScannerHealth();

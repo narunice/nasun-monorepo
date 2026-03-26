@@ -7,6 +7,14 @@ import {
   getEventMapping,
   getBasePoints,
 } from '../config/points.js';
+import {
+  maybeRefreshReferralCache,
+  updateIdentityToWalletMap,
+  warmUpDailyBonusAccumulator,
+  calculateReferralBonuses,
+  type PointsInsert,
+} from './referral-bonus.js';
+import { rpcCall } from '../rpc.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
 let registeredWallets = new Map<string, string>();
@@ -27,6 +35,7 @@ export function startPointsScanner(): void {
   console.log('[Points] Scanner starting...');
   // Initial scan after 5s delay (let API server warm up)
   scanTimerId = setTimeout(async () => {
+    await warmUpDailyBonusAccumulator();
     await scanLoop();
     scheduleNext();
   }, 5000);
@@ -57,6 +66,9 @@ async function scanLoop(): Promise<void> {
   try {
     await detectChainReset();
     await maybeRefreshWalletCache();
+    // Referral: refresh cache and build reverse wallet map
+    await maybeRefreshReferralCache();
+    updateIdentityToWalletMap(registeredWallets);
 
     let lastSeq = await getLastProcessedSequence();
 
@@ -64,8 +76,16 @@ async function scanLoop(): Promise<void> {
       const batch = await fetchEventBatch(lastSeq, BATCH_SIZE);
       if (batch.length === 0) break;
 
-      const inserted = await processBatch(batch);
+      const { count: inserted, inserts: batchInserts } = await processBatch(batch);
       totalProcessed += inserted;
+
+      // Referral bonus: isolated try-catch to prevent main loop disruption
+      try {
+        const bonusCount = await calculateReferralBonuses(batchInserts);
+        totalProcessed += bonusCount;
+      } catch (err) {
+        console.error('[Referral] Bonus calculation error (non-fatal):', err);
+      }
 
       lastSeq = batch[batch.length - 1].tx_sequence_number;
       await updateProcessingState(lastSeq, inserted);
@@ -93,21 +113,23 @@ async function detectChainReset(): Promise<void> {
   if (!pointsDb) return;
 
   try {
-    // Use earliest checkpoint as chain identity (genesis cp may not exist)
-    const [earliest] = await sql`
-      SELECT encode(checkpoint_digest, 'hex') as digest_hex
-      FROM checkpoints
-      ORDER BY sequence_number ASC
-      LIMIT 1
-    `;
-    if (!earliest) return;
+    // Fetch genesis checkpoint (seq 0) via RPC for stable chain identity.
+    // The indexer's earliest checkpoint changes on DB rebuild, but the RPC
+    // always returns the true genesis, making this resistant to false positives.
+    const genesisCheckpoint = await rpcCall<{ digest: string }>(
+      'sui_getCheckpoint',
+      ['0'],
+    );
+    if (!genesisCheckpoint?.digest) return;
 
-    const currentHash = earliest.digest_hex as string;
+    const currentHash = genesisCheckpoint.digest;
     const [state] = await pointsDb`
-      SELECT chain_genesis_hash FROM processing_state WHERE scanner_id = 'main'
+      SELECT chain_genesis_hash, last_tx_sequence
+      FROM processing_state WHERE scanner_id = 'main'
     `;
 
     if (state?.chain_genesis_hash && state.chain_genesis_hash !== currentHash) {
+      // Actual chain reset: genesis digest changed
       console.warn(
         '[Points] Chain reset detected! Old:',
         state.chain_genesis_hash,
@@ -128,10 +150,37 @@ async function detectChainReset(): Promise<void> {
         SET chain_genesis_hash = ${currentHash}
         WHERE scanner_id = 'main'
       `;
+    } else {
+      // Same chain, but check if the indexer was rebuilt (last_tx_sequence gap)
+      await detectIndexerRebuild(Number(state.last_tx_sequence));
     }
   } catch (err) {
     console.error('[Points] Chain reset detection error:', err);
   }
+}
+
+// When the indexer DB is rebuilt, old tx sequences disappear.
+// Fast-forward the scanner to the indexer's earliest available sequence
+// without purging valid points data.
+async function detectIndexerRebuild(lastSeq: number): Promise<void> {
+  if (!pointsDb || lastSeq === 0) return;
+
+  const [earliest] = await sql`
+    SELECT MIN(tx_sequence_number)::bigint as min_seq
+    FROM event_struct_name
+  `;
+  const minSeq = Number(earliest?.min_seq ?? 0);
+  if (minSeq === 0 || lastSeq >= minSeq) return;
+
+  // Scanner's position is behind the indexer's earliest data
+  console.warn(
+    `[Points] Indexer rebuild detected. Scanner at seq ${lastSeq}, indexer starts at ${minSeq}. Fast-forwarding.`,
+  );
+  await pointsDb`
+    UPDATE processing_state
+    SET last_tx_sequence = ${minSeq - 1}, processed_at = NOW()
+    WHERE scanner_id = 'main'
+  `;
 }
 
 // --- Processing state ---
@@ -201,23 +250,12 @@ async function fetchEventBatch(
 
 // --- Batch processing ---
 
-async function processBatch(batch: RawEvent[]): Promise<number> {
-  if (!pointsDb) return 0;
+async function processBatch(
+  batch: RawEvent[],
+): Promise<{ count: number; inserts: PointsInsert[] }> {
+  if (!pointsDb) return { count: 0, inserts: [] };
 
-  const inserts: {
-    wallet_address: string;
-    identity_id: string | null;
-    tx_digest: string;
-    tx_sequence_number: number;
-    category: string;
-    activity_type: string;
-    base_points: number;
-    volume_tier: number;
-    genesis_multiplier: number;
-    final_points: string; // NUMERIC as string for precision
-    tx_timestamp: Date;
-    event_seq: number;
-  }[] = [];
+  const inserts: PointsInsert[] = [];
 
   for (const event of batch) {
     const mapping = getEventMapping(
@@ -265,7 +303,7 @@ async function processBatch(batch: RawEvent[]): Promise<number> {
     });
   }
 
-  if (inserts.length === 0) return 0;
+  if (inserts.length === 0) return { count: 0, inserts: [] };
 
   // Bulk insert with ON CONFLICT DO NOTHING (idempotent)
   const result = await pointsDb`
@@ -273,7 +311,7 @@ async function processBatch(batch: RawEvent[]): Promise<number> {
     ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
   `;
 
-  return result.count;
+  return { count: result.count, inserts };
 }
 
 // --- Wallet cache ---
