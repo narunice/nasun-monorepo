@@ -157,6 +157,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
           <option value="">No mint type</option>
           <option value="FREE_MINT">FREE_MINT</option>
           <option value="GUARANTEED">GUARANTEED</option>
+          <option value="FCFS">FCFS</option>
         </select>
         <input
           type="text"
@@ -206,6 +207,10 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-400/20">
                         GUARANTEED
                       </span>
+                    ) : entry.mintType === "FCFS" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[10px] font-medium border border-violet-400/20">
+                        FCFS
+                      </span>
                     ) : (
                       <span className="text-nasun-white/30">-</span>
                     )}
@@ -253,6 +258,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
                   <option value="">None</option>
                   <option value="FREE_MINT">FREE_MINT</option>
                   <option value="GUARANTEED">GUARANTEED</option>
+                  <option value="FCFS">FCFS</option>
                 </select>
               </div>
               <div>
@@ -301,11 +307,12 @@ export function WhitelistManagement() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("genesis-pass");
   const [isExporting, setIsExporting] = useState(false);
+  const [openSeaMintType, setOpenSeaMintType] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const { data: stats, isLoading: isLoadingStats, error: statsError } = useWhitelistStats();
 
-  const handleExport = async (tab: Tab, format: "default" | "opensea" = "default") => {
+  const handleExport = async (tab: Tab, format: "default" | "opensea" = "default", mintType?: string) => {
     if (!user?.cognitoToken) {
       setError("User not authenticated");
       return;
@@ -322,8 +329,10 @@ export function WhitelistManagement() {
         blob = await exportGenesisPassAllowlist({
           cognitoToken: user.cognitoToken,
           format,
+          ...(mintType && { mintType }),
         });
-        prefix = format === "opensea" ? "genesis-pass-opensea-allowlist" : "genesis-pass-allowlist";
+        const mintSuffix = mintType ? `-${mintType.toLowerCase().replace("_", "-")}` : "";
+        prefix = format === "opensea" ? `genesis-pass-opensea${mintSuffix}-allowlist` : "genesis-pass-allowlist";
       } else {
         blob = await exportBattalionAllowlist({
           cognitoToken: user.cognitoToken,
@@ -460,25 +469,40 @@ export function WhitelistManagement() {
                     </div>
                   )}
 
-                  <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex flex-col gap-4">
                     <Button
                       onClick={() => handleExport("genesis-pass", "default")}
                       disabled={isExporting}
                       variant="outlineC5"
                       size="lg"
-                      className="min-w-[180px]"
+                      className="min-w-[180px] w-fit"
                     >
-                      {isExporting ? "Exporting..." : "Download CSV"}
+                      {isExporting ? "Exporting..." : "Download CSV (All)"}
                     </Button>
-                    <Button
-                      onClick={() => handleExport("genesis-pass", "opensea")}
-                      disabled={isExporting}
-                      variant="c4"
-                      size="lg"
-                      className="min-w-[180px]"
-                    >
-                      {isExporting ? "Exporting..." : "OpenSea Format"}
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                      <span className="text-nasun-white/50 text-sm uppercase tracking-wider">OpenSea</span>
+                      <select
+                        value={openSeaMintType}
+                        onChange={(e) => setOpenSeaMintType(e.target.value)}
+                        disabled={isExporting}
+                        className="px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm focus:outline-none focus:border-nasun-c4/50"
+                      >
+                        <option value="">All Tiers</option>
+                        <option value="FREE_MINT">Free Mint</option>
+                        <option value="GUARANTEED">Guaranteed</option>
+                        <option value="FCFS">FCFS</option>
+                        <option value="STANDARD">Standard</option>
+                      </select>
+                      <Button
+                        onClick={() => handleExport("genesis-pass", "opensea", openSeaMintType || undefined)}
+                        disabled={isExporting}
+                        variant="c4"
+                        size="lg"
+                        className="min-w-[180px]"
+                      >
+                        {isExporting ? "Exporting..." : "Export OpenSea"}
+                      </Button>
+                    </div>
                   </div>
                 </OuterBox>
 
