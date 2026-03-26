@@ -744,8 +744,23 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
       const format = queryParams.format;
 
-      console.log(`Exporting Genesis Pass allowlist (status: ${status}, format: ${format || "default"})`);
-      const items = await scanGenesisPassAllowlist(status);
+      const mintType = queryParams.mintType;
+      const VALID_MINT_TYPES = ["FREE_MINT", "GUARANTEED", "STANDARD"];
+      if (mintType && !VALID_MINT_TYPES.includes(mintType)) {
+        return jsonResponse(400, { error: `Invalid mintType: ${mintType}. Must be one of: ${VALID_MINT_TYPES.join(", ")}` }, requestOrigin);
+      }
+
+      console.log(`Exporting Genesis Pass allowlist (status: ${status}, format: ${format || "default"}, mintType: ${mintType || "ALL"})`);
+      let items = await scanGenesisPassAllowlist(status);
+
+      // Filter by mintType if specified (STANDARD = entries without mintType)
+      if (mintType) {
+        if (mintType === "STANDARD") {
+          items = items.filter(item => !item.mintType);
+        } else {
+          items = items.filter(item => item.mintType === mintType);
+        }
+      }
 
       // Enrich twitterHandle from UserProfiles for entries missing it
       try {
@@ -771,7 +786,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             { key: "price", header: "Custom price in native token e.g. ETH (optional)" },
           ]
         );
-        filename = generateFilename("genesis-pass-opensea-allowlist", status.toLowerCase());
+        const mintSuffix = mintType ? `-${mintType.toLowerCase().replace("_", "-")}` : "";
+        filename = generateFilename(`genesis-pass-opensea${mintSuffix}-allowlist`, status.toLowerCase());
       } else {
         csv = generateCSV(items, [
           { key: "walletAddress", header: "walletAddress" },
