@@ -3,7 +3,7 @@
  * Type definitions for NUSDC lending pool
  */
 
-// Deployed contract addresses (TODO: Redeploy for V6)
+// Deployed contract addresses (V7 deployed, env-configured)
 export const LENDING_PACKAGE_ID = import.meta.env.VITE_LENDING_PACKAGE_ID || '';
 export const LENDING_POOL_ID = import.meta.env.VITE_LENDING_POOL_ID || '';
 

@@ -47,6 +47,11 @@ const ORACLE_PACKAGE_ID = process.env.ORACLE_PACKAGE_ID || '';
 const DEEPBOOK_PACKAGE = process.env.DEEPBOOK_PACKAGE || '';
 const ALLOWED_ORIGIN = process.env.TPSL_ALLOWED_ORIGIN || 'https://pado.finance';
 const API_KEY = process.env.TPSL_API_KEY || '';
+// Auth bypass in dev/staging is intentional:
+// - Dev/staging use isolated devnet with no real assets
+// - TradeCap on-chain ownership is the actual security boundary
+// - API key validation still applies when TPSL_API_KEY is set
+// - Production (NODE_ENV=production) always requires API key + origin check
 const REQUIRE_AUTH = process.env.NODE_ENV === 'production';
 const MAX_BODY_SIZE = 10_000; // 10KB max request body
 const MAX_ORDERS_PER_USER = 50;
