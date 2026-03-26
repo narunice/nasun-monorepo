@@ -38,6 +38,15 @@ module unified_margin::risk_engine {
     /// Legacy: Buffer percentage for v0 compatibility
     const BUFFER_PERCENTAGE: u64 = 110;
 
+    /// Maximum deviation between caller-provided price and Oracle price (5%)
+    /// Prevents price manipulation attacks where attacker supplies inflated/deflated prices
+    const MAX_PRICE_DEVIATION_BPS: u64 = 500;
+
+    // ===== Error Codes =====
+
+    /// Caller-provided price deviates too much from Oracle price
+    const EPriceDeviationTooLarge: u64 = 100;
+
     // ===== Risk Levels =====
 
     const RISK_LEVEL_HEALTHY: u8 = 0;
@@ -75,7 +84,7 @@ module unified_margin::risk_engine {
     /// @param registry - The margin registry for haircut config
     /// @param positions - The account's positions
     /// @param current_prices - Current market prices for each pool
-    /// @param nbtc_price - Current NBTC price in USD (8 decimals)
+    /// @param nbtc_price - Current NBTC price in USD (8 decimals, from Oracle)
     public fun calculate_risk_metrics(
         account: &MarginAccount,
         registry: &MarginRegistry,
@@ -83,6 +92,9 @@ module unified_margin::risk_engine {
         current_prices: vector<PriceInfo>,
         nbtc_price: u64,
     ): RiskMetrics {
+        // Validate caller-provided prices against Oracle price (deviation bound)
+        validate_prices_against_oracle(&current_prices, nbtc_price);
+
         // Get collateral value (with haircuts applied)
         let collateral_value = unified_margin::calculate_collateral_value_usd(
             account,
@@ -91,6 +103,7 @@ module unified_margin::risk_engine {
         );
 
         // Get position value and unrealized PnL
+        // Note: find_price_for_pool now aborts if any active pool's price is missing
         let (position_value, pnl_value, pnl_negative) = account_positions::get_total_position_value(
             positions,
             current_prices,
@@ -194,6 +207,38 @@ module unified_margin::risk_engine {
             current_prices,
             nbtc_price,
         )
+    }
+
+    // ===== Price Validation =====
+
+    /// Validate caller-provided prices against Oracle reference price.
+    /// Currently BTC-only: each PriceInfo.price is compared against nbtc_price.
+    /// Aborts if any price deviates more than MAX_PRICE_DEVIATION_BPS (5%).
+    fun validate_prices_against_oracle(
+        current_prices: &vector<PriceInfo>,
+        oracle_nbtc_price: u64,
+    ) {
+        if (oracle_nbtc_price == 0) return; // Skip validation if Oracle unavailable
+
+        let len = vector::length(current_prices);
+        let mut i = 0;
+        while (i < len) {
+            let info = vector::borrow(current_prices, i);
+            let caller_price = account_positions::get_price_info_price(info);
+            if (caller_price > 0) {
+                // Check deviation: |caller - oracle| / oracle <= MAX_PRICE_DEVIATION_BPS / BPS
+                let (higher, lower) = if (caller_price >= oracle_nbtc_price) {
+                    (caller_price, oracle_nbtc_price)
+                } else {
+                    (oracle_nbtc_price, caller_price)
+                };
+                let diff = higher - lower;
+                // diff * BPS / oracle_price > MAX_PRICE_DEVIATION_BPS means too much deviation
+                let deviation_bps = ((diff as u128) * (BASIS_POINTS as u128) / (oracle_nbtc_price as u128)) as u64;
+                assert!(deviation_bps <= MAX_PRICE_DEVIATION_BPS, EPriceDeviationTooLarge);
+            };
+            i = i + 1;
+        };
     }
 
     // ===== Legacy v0 Functions (for backward compatibility) =====

@@ -18,6 +18,7 @@ module pado_perp::funding {
     const EOracleTooStale: u64 = 200;
     const EFundingNotDue: u64 = 201;
     const EInvalidFundingRate: u64 = 202;
+    const EFundingCumulativeOverflow: u64 = 203;
 
     // ===== Constants =====
 
@@ -36,6 +37,10 @@ module pado_perp::funding {
 
     /// Basis points
     const BPS: u64 = 10000;
+
+    /// Maximum cumulative funding value (safety cap for overflow defense)
+    /// At max funding rate 125 bps per 8h, reaching this requires ~10^9 settlements
+    const MAX_CUMULATIVE_FUNDING: u64 = 1_000_000_000_000;
 
     // ===== Structs =====
 
@@ -184,8 +189,8 @@ module pado_perp::funding {
             entry_funding_negative,
         );
 
-        // Funding payment = size * delta / BPS
-        let payment = (position_size * delta_value) / BPS;
+        // Funding payment = size * delta / BPS (u128 to prevent overflow for large positions)
+        let payment = ((position_size as u128) * (delta_value as u128) / (BPS as u128)) as u64;
 
         // Long pays if delta is positive (funding rate was positive)
         // Short pays if delta is negative (funding rate was negative)
@@ -201,17 +206,20 @@ module pado_perp::funding {
     // ===== Signed Arithmetic Helpers =====
 
     /// Add two signed values: (a_value, a_neg) + (b_value, b_neg)
-    fun add_signed(
+    /// public(package) to allow perpetual.move to call for settle_funding
+    public(package) fun add_signed(
         a_value: u64,
         a_negative: bool,
         b_value: u64,
         b_negative: bool,
     ): (u64, bool) {
         if (a_negative == b_negative) {
-            // Same sign: add values, keep sign
-            (a_value + b_value, a_negative)
+            // Same sign: u128 intermediate to prevent overflow, cap at MAX_CUMULATIVE_FUNDING
+            let sum = (a_value as u128) + (b_value as u128);
+            assert!(sum <= (MAX_CUMULATIVE_FUNDING as u128), EFundingCumulativeOverflow);
+            ((sum as u64), a_negative)
         } else {
-            // Different signs: subtract smaller from larger
+            // Different signs: subtract smaller from larger (no overflow possible)
             if (a_value >= b_value) {
                 (a_value - b_value, a_negative)
             } else {
