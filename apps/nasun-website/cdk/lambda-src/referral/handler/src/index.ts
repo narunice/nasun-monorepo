@@ -30,6 +30,7 @@ const REFERRAL_CODES_TABLE = process.env.REFERRAL_CODES_TABLE_NAME;
 const REFERRALS_TABLE = process.env.REFERRALS_TABLE_NAME;
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE_NAME;
 const REFERRAL_STATS_API_URL = process.env.REFERRAL_STATS_API_URL || "";
+const REFERRAL_STATS_API_KEY = process.env.REFERRAL_STATS_API_KEY || "";
 
 if (!REFERRAL_CODES_TABLE || !REFERRALS_TABLE || !USER_PROFILES_TABLE) {
   throw new Error(
@@ -99,12 +100,16 @@ function collectLinkedIdentityIds(
 }
 
 /**
- * Generate a cryptographic random 6-character alphanumeric code.
- * Uses crypto.randomBytes for security, not Math.random.
+ * Generate a cryptographic random 8-character alphanumeric code (A-Z, 0-9).
+ * Uses base-36 encoding for ~41 bits of entropy (36^8 = 2.8 trillion possibilities).
  */
 function generateReferralCode(): string {
-  // 4 random bytes = 32 bits of entropy, base36 gives ~6 chars
-  return randomBytes(4).toString("hex").slice(0, 6).toUpperCase();
+  return randomBytes(5)
+    .readUIntBE(0, 5)
+    .toString(36)
+    .toUpperCase()
+    .padStart(8, "0")
+    .slice(0, 8);
 }
 
 // ==================== GET /referral/my-code ====================
@@ -185,8 +190,8 @@ async function handleApply(
     return jsonResponse(400, { error: "INVALID_BODY", message: "Invalid request body" }, origin);
   }
 
-  if (!referralCode || referralCode.length !== 6) {
-    return jsonResponse(400, { error: "INVALID_CODE", message: "Referral code must be 6 characters" }, origin);
+  if (!referralCode || (referralCode.length !== 6 && referralCode.length !== 8)) {
+    return jsonResponse(400, { error: "INVALID_CODE", message: "Invalid referral code format" }, origin);
   }
 
   // 2. Look up referral code -> referrerIdentityId
@@ -258,7 +263,7 @@ async function handleApply(
   }
 
   console.log(`[referral] ${identityId} applied code ${referralCode} (referrer: ${referrerIdentityId})`);
-  return jsonResponse(200, { success: true, referrerIdentityId }, origin);
+  return jsonResponse(200, { success: true }, origin);
 }
 
 // ==================== GET /referral/my-stats ====================
@@ -278,9 +283,8 @@ async function handleMyStats(
 
   const referralCode = profile.Item?.referralCode || null;
 
-  // 2. Get my referrals (people I invited)
+  // 2. Get my referrals (people I invited) - no identityIds exposed
   let referrals: Array<{
-    referredIdentityId: string;
     status: string;
     appliedAt: string;
     activatedAt: string | null;
@@ -297,14 +301,13 @@ async function handleMyStats(
     );
 
     referrals = (result.Items || []).map((item) => ({
-      referredIdentityId: item.referredIdentityId,
       status: item.status,
       appliedAt: item.appliedAt,
       activatedAt: item.activatedAt || null,
     }));
   }
 
-  // 3. Check if I was referred by someone
+  // 3. Check if I was referred by someone - no referrer identityId exposed
   const myReferral = await client.send(
     new GetCommand({
       TableName: REFERRALS_TABLE,
@@ -314,7 +317,7 @@ async function handleMyStats(
 
   const referredBy = myReferral.Item
     ? {
-        referrerIdentityId: myReferral.Item.referrerIdentityId,
+        referralCode: myReferral.Item.referralCode,
         appliedAt: myReferral.Item.appliedAt,
         status: myReferral.Item.status,
       }
@@ -324,9 +327,11 @@ async function handleMyStats(
   let bonusStats: { totalBonusPoints: number } | null = null;
   if (REFERRAL_STATS_API_URL && referralCode) {
     try {
+      const headers: Record<string, string> = {};
+      if (REFERRAL_STATS_API_KEY) headers["x-api-key"] = REFERRAL_STATS_API_KEY;
       const res = await fetch(
         `${REFERRAL_STATS_API_URL}?referrer=${encodeURIComponent(identityId)}`,
-        { signal: AbortSignal.timeout(5_000) }
+        { headers, signal: AbortSignal.timeout(5_000) }
       );
       if (res.ok) {
         bonusStats = await res.json();
