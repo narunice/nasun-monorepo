@@ -31,13 +31,12 @@ export interface ReferralStats {
   activatedCount: number;
   pendingCount: number;
   referrals: Array<{
-    referredIdentityId: string;
     status: string;
     appliedAt: string;
     activatedAt: string | null;
   }>;
   referredBy: {
-    referrerIdentityId: string;
+    referralCode: string;
     appliedAt: string;
     status: string;
   } | null;
@@ -76,7 +75,7 @@ export async function getMyReferralCode(
 export async function applyReferralCode(
   token: string,
   referralCode: string,
-): Promise<{ success: boolean; referrerIdentityId: string }> {
+): Promise<{ success: boolean }> {
   if (!API_BASE) throw new ReferralApiError("Referral API not configured");
 
   const res = await fetch(`${API_BASE}/referral/apply`, {

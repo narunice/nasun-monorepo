@@ -124,6 +124,7 @@ export class ReferralStack extends cdk.Stack {
         REFERRALS_TABLE_NAME: this.referralsTable.tableName,
         USER_PROFILES_TABLE_NAME: userProfilesTableName,
         REFERRAL_STATS_API_URL: process.env.REFERRAL_STATS_API_URL || "",
+        REFERRAL_STATS_API_KEY: process.env.INTERNAL_API_KEY || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },

@@ -48,7 +48,7 @@ export function useReferralCapture(): void {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const refCode = params.get("ref");
-    if (refCode && refCode.length === 6) {
+    if (refCode && (refCode.length === 6 || refCode.length === 8)) {
       storeReferral(refCode.toUpperCase());
       // Clean URL without triggering navigation
       params.delete("ref");

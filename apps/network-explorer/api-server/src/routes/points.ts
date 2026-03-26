@@ -136,14 +136,23 @@ app.get('/user/:address', async (c) => {
 });
 
 // GET /api/v1/points/referral-stats?referrer=:identityId
-// Public read-only endpoint for Lambda my-stats to fetch bonus totals
+// Internal endpoint for Lambda my-stats to fetch bonus totals (API key required)
 app.get('/referral-stats', async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points_not_configured' }, 503);
   }
 
+  // Require API key (same as wallet-mappings pattern)
+  const INTERNAL_API_KEY = process.env.REFERRAL_MAPPINGS_API_KEY;
+  const requestKey = c.req.header('x-api-key');
+  if (!INTERNAL_API_KEY || !requestKey || requestKey !== INTERNAL_API_KEY) {
+    return c.json({ error: 'unauthorized' }, 401);
+  }
+
   const referrer = c.req.query('referrer');
-  if (!referrer || referrer.length < 10) {
+  // Validate Cognito identityId format: region:uuid
+  const IDENTITY_ID_PATTERN = /^[\w-]+:[\w-]{36}$/;
+  if (!referrer || !IDENTITY_ID_PATTERN.test(referrer)) {
     return c.json({ error: 'invalid_referrer' }, 400);
   }
 
