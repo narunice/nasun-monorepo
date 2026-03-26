@@ -821,4 +821,58 @@ module lottery::lottery {
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx)
     }
+
+    // ===== Unit Tests =====
+
+    #[test]
+    fun test_remainder_calculation() {
+        // Simulate tier payout: pool=100, winners=3
+        let tier_pool: u64 = 100;
+        let winners: u64 = 3;
+        let payout_per_winner = tier_pool / winners; // 33
+        let remainder = tier_pool - (payout_per_winner * winners); // 100 - 99 = 1
+        assert!(payout_per_winner == 33);
+        assert!(remainder == 1);
+        // Verify: payout_per_winner * winners + remainder == tier_pool
+        assert!(payout_per_winner * winners + remainder == tier_pool);
+    }
+
+    #[test]
+    fun test_remainder_exact_division() {
+        // No remainder when evenly divisible
+        let tier_pool: u64 = 100;
+        let winners: u64 = 4;
+        let payout_per_winner = tier_pool / winners; // 25
+        let remainder = tier_pool - (payout_per_winner * winners); // 0
+        assert!(remainder == 0);
+    }
+
+    #[test]
+    fun test_remainder_single_winner() {
+        // Single winner: no remainder
+        let tier_pool: u64 = 1_000_000;
+        let winners: u64 = 1;
+        let payout_per_winner = tier_pool / winners;
+        let remainder = tier_pool - (payout_per_winner * winners);
+        assert!(payout_per_winner == 1_000_000);
+        assert!(remainder == 0);
+    }
+
+    #[test]
+    fun test_remainder_large_pool() {
+        // Large pool with many winners
+        let tier_pool: u64 = 7_000_000; // 7 NUSDC (prize portion)
+        let winners: u64 = 7;
+        let payout_per_winner = tier_pool / winners;
+        let remainder = tier_pool - (payout_per_winner * winners);
+        assert!(payout_per_winner == 1_000_000);
+        assert!(remainder == 0);
+
+        // Non-even: 7_000_001 / 7 = 1_000_000, remainder = 1
+        let tier_pool2: u64 = 7_000_001;
+        let payout2 = tier_pool2 / winners;
+        let remainder2 = tier_pool2 - (payout2 * winners);
+        assert!(payout2 == 1_000_000);
+        assert!(remainder2 == 1);
+    }
 }

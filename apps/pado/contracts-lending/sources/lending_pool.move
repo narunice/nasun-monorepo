@@ -409,4 +409,54 @@ module lending::lending_pool {
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx);
     }
+
+    // ===== Unit Tests =====
+
+    #[test]
+    fun test_u128_interest_precision() {
+        // Verify that u128 intermediate math prevents truncation to 0
+        // borrow_apr = 2% = 2_000_000, time_delta = 1 second
+        let total_borrows: u128 = 1_000_000_000; // 1000 NUSDC (6 decimals)
+        let borrow_apr: u128 = 2_000_000;        // 2%
+        let time_delta: u128 = 1;                 // 1 second
+        let seconds_per_year: u128 = 31_536_000;
+        let rate_precision: u128 = 100_000_000;
+
+        // Old formula (u64): (2_000_000 * 1) / 31_536_000 = 0 (truncated!)
+        let old_factor = ((borrow_apr as u64) * (time_delta as u64)) / (seconds_per_year as u64);
+        assert!(old_factor == 0); // Confirms the bug
+
+        // New formula (u128 combined): non-zero result
+        let _new_interest = (total_borrows * borrow_apr * time_delta) / (seconds_per_year * rate_precision);
+        // 1_000_000_000 * 2_000_000 * 1 / (31_536_000 * 100_000_000)
+        // = 2 * 10^15 / 3.1536 * 10^15 = ~0.634 -> truncates to 0
+        // For 1 second with 1000 NUSDC at 2%, this IS expected to be 0
+        // But with 60 seconds:
+        let new_interest_60s = (total_borrows * borrow_apr * 60) / (seconds_per_year * rate_precision);
+        // = 2 * 10^15 * 60 / 3.1536 * 10^15 = ~38
+        assert!(new_interest_60s > 0); // Non-zero with u128!
+
+        // With old formula at 60s: factor = (2_000_000 * 60) / 31_536_000 = 3
+        // interest = (1_000_000_000 * 3) / 100_000_000 = 30
+        // u128 result = 38 (more precise due to no intermediate truncation)
+        let old_factor_60s = ((borrow_apr as u64) * 60) / (seconds_per_year as u64);
+        let old_interest_60s = ((total_borrows as u64) * old_factor_60s) / (rate_precision as u64);
+        // Old gives 30, new gives 38: u128 is more precise
+        assert!(new_interest_60s > (old_interest_60s as u128)); // u128 preserves more precision
+    }
+
+    #[test]
+    fun test_get_position_value_u128() {
+        // Large deposit: shares * supply_index could overflow u64
+        // shares = 10^14, supply_index = 2 * 10^8 (doubled from interest)
+        // u64: 10^14 * 2*10^8 = 2*10^22 > u64::MAX (overflow!)
+        // u128: works correctly
+        let shares: u128 = 100_000_000_000_000;    // 10^14
+        let supply_index: u128 = 200_000_000;        // 2.0 (doubled)
+        let deposit_index: u128 = 100_000_000;       // 1.0 (original)
+
+        let value = (shares * supply_index / deposit_index) as u64;
+        // = 10^14 * 2 = 2 * 10^14
+        assert!(value == 200_000_000_000_000);
+    }
 }

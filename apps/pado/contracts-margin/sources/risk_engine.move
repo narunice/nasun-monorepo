@@ -362,4 +362,90 @@ module unified_margin::risk_engine {
     public fun test_get_risk_level(margin_ratio: u64): u8 {
         get_risk_level(margin_ratio)
     }
+
+    // ===== Unit Tests =====
+
+    #[test]
+    fun test_deviation_within_bound() {
+        // Oracle price: 10000, caller price: 10400 (4% deviation, within 5%)
+        let prices = vector[account_positions::create_price_info(
+            object::id_from_address(@0x1), 10400
+        )];
+        validate_prices_against_oracle(&prices, 10000);
+        // Should not abort
+    }
+
+    #[test]
+    #[expected_failure(abort_code = EPriceDeviationTooLarge)]
+    fun test_deviation_exceeds_bound() {
+        // Oracle price: 10000, caller price: 10600 (6% deviation, exceeds 5%)
+        let prices = vector[account_positions::create_price_info(
+            object::id_from_address(@0x1), 10600
+        )];
+        validate_prices_against_oracle(&prices, 10000);
+    }
+
+    #[test]
+    fun test_deviation_oracle_zero_skipped() {
+        // Oracle price = 0: skip validation (no reference price)
+        let prices = vector[account_positions::create_price_info(
+            object::id_from_address(@0x1), 99999
+        )];
+        validate_prices_against_oracle(&prices, 0);
+        // Should not abort
+    }
+
+    #[test]
+    fun test_deviation_caller_zero_skipped() {
+        // Caller price = 0: skip this entry (no trade on this pool)
+        let prices = vector[account_positions::create_price_info(
+            object::id_from_address(@0x1), 0
+        )];
+        validate_prices_against_oracle(&prices, 10000);
+        // Should not abort
+    }
+
+    #[test]
+    fun test_deviation_exact_boundary() {
+        // Exactly 5% deviation (500 bps): should pass
+        let prices = vector[account_positions::create_price_info(
+            object::id_from_address(@0x1), 10500
+        )];
+        validate_prices_against_oracle(&prices, 10000);
+        // 500/10000 * 10000 = 500 bps = MAX, should pass
+    }
+
+    #[test]
+    #[expected_failure(abort_code = EPriceDeviationTooLarge)]
+    fun test_deviation_just_over_boundary() {
+        // 5.01% deviation: should fail
+        let prices = vector[account_positions::create_price_info(
+            object::id_from_address(@0x1), 10501
+        )];
+        validate_prices_against_oracle(&prices, 10000);
+    }
+
+    #[test]
+    fun test_risk_level_healthy() {
+        assert!(get_risk_level(1000) == 0); // 10% = IM, healthy
+        assert!(get_risk_level(2000) == 0); // 20% = above IM
+    }
+
+    #[test]
+    fun test_risk_level_warning() {
+        assert!(get_risk_level(799) == 1); // Below 8%, warning
+        assert!(get_risk_level(500) == 1); // At 5%, warning (not yet liquidatable)
+    }
+
+    #[test]
+    fun test_risk_level_liquidatable() {
+        assert!(get_risk_level(499) == 2); // Below 5%, liquidatable
+        assert!(get_risk_level(300) == 2); // At 3%
+    }
+
+    #[test]
+    fun test_risk_level_critical() {
+        assert!(get_risk_level(299) == 3); // Below 3%, critical
+        assert!(get_risk_level(0) == 3);   // 0% = critical
+    }
 }
