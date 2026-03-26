@@ -22,6 +22,7 @@ interface NftCollectionItem {
   chain: NFTChain;
   collectionName: string;
   enabled: boolean;
+  featured: boolean;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -65,6 +66,7 @@ async function scanCollections(enabledOnly: boolean): Promise<NftCollectionItem[
           chain: (item.chain?.S as NFTChain) || "ethereum",
           collectionName: item.collectionName?.S || "",
           enabled: item.enabled?.BOOL ?? true,
+          featured: item.featured?.BOOL ?? false,
           createdAt: item.createdAt?.S || "",
           updatedAt: item.updatedAt?.S || "",
           createdBy: item.createdBy?.S || "",
@@ -87,7 +89,8 @@ async function createCollection(
   contractAddress: string,
   chain: NFTChain,
   collectionName: string,
-  createdBy: string
+  createdBy: string,
+  featured = false
 ): Promise<NftCollectionItem> {
   const now = new Date().toISOString();
   const item: NftCollectionItem = {
@@ -96,6 +99,7 @@ async function createCollection(
     chain,
     collectionName,
     enabled: true,
+    featured,
     createdAt: now,
     updatedAt: now,
     createdBy,
@@ -110,6 +114,7 @@ async function createCollection(
         chain: { S: item.chain },
         collectionName: { S: item.collectionName },
         enabled: { BOOL: item.enabled },
+        featured: { BOOL: item.featured },
         createdAt: { S: item.createdAt },
         updatedAt: { S: item.updatedAt },
         createdBy: { S: item.createdBy },
@@ -125,7 +130,7 @@ async function createCollection(
  */
 async function updateCollection(
   collectionId: string,
-  updates: Partial<Pick<NftCollectionItem, "collectionName" | "enabled" | "contractAddress" | "chain">>
+  updates: Partial<Pick<NftCollectionItem, "collectionName" | "enabled" | "featured" | "contractAddress" | "chain">>
 ): Promise<NftCollectionItem | null> {
   // Verify the item exists
   const existing = await dynamoClient.send(
@@ -136,6 +141,11 @@ async function updateCollection(
   );
 
   if (!existing.Item) return null;
+
+  // Business rule: disabling a collection also clears featured
+  if (updates.enabled === false) {
+    updates.featured = false;
+  }
 
   const now = new Date().toISOString();
   const expressions: string[] = ["#updatedAt = :updatedAt"];
@@ -156,6 +166,11 @@ async function updateCollection(
     expressions.push("#contractAddress = :contractAddress");
     names["#contractAddress"] = "contractAddress";
     values[":contractAddress"] = { S: updates.contractAddress.toLowerCase() };
+  }
+  if (updates.featured !== undefined) {
+    expressions.push("#featured = :featured");
+    names["#featured"] = "featured";
+    values[":featured"] = { BOOL: updates.featured };
   }
   if (updates.chain !== undefined) {
     expressions.push("#chain = :chain");
@@ -183,6 +198,7 @@ async function updateCollection(
     chain: (attr.chain?.S as NFTChain) || "ethereum",
     collectionName: attr.collectionName?.S || "",
     enabled: attr.enabled?.BOOL ?? true,
+    featured: attr.featured?.BOOL ?? false,
     createdAt: attr.createdAt?.S || "",
     updatedAt: attr.updatedAt?.S || "",
     createdBy: attr.createdBy?.S || "",
@@ -283,7 +299,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       } catch {
         return errorResponse(400, "Invalid JSON in request body", requestOrigin);
       }
-      const { contractAddress, chain, collectionName } = body;
+      const { contractAddress, chain, collectionName, featured } = body;
 
       if (!contractAddress || !chain || !collectionName) {
         return errorResponse(400, "Missing required fields: contractAddress, chain, collectionName", requestOrigin);
@@ -301,8 +317,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         return errorResponse(400, "Collection name must be 100 characters or less", requestOrigin);
       }
 
+      if (featured !== undefined && typeof featured !== "boolean") {
+        return errorResponse(400, "featured must be a boolean", requestOrigin);
+      }
+
       console.log(`Creating NFT collection: ${collectionName} (${chain}: ${contractAddress})`);
-      const collection = await createCollection(contractAddress, chain, collectionName, admin.identityId);
+      const collection = await createCollection(contractAddress, chain, collectionName, admin.identityId, featured ?? false);
       return jsonResponse(201, { collection }, requestOrigin);
     }
 
@@ -318,9 +338,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       } catch {
         return errorResponse(400, "Invalid JSON in request body", requestOrigin);
       }
-      const { collectionName, enabled, contractAddress, chain } = body;
+      const { collectionName, enabled, featured, contractAddress, chain } = body;
 
       // Validate optional fields if provided
+      if (featured !== undefined && typeof featured !== "boolean") {
+        return errorResponse(400, "featured must be a boolean", requestOrigin);
+      }
       if (contractAddress !== undefined && !isValidEthAddress(contractAddress)) {
         return errorResponse(400, "Invalid contract address format", requestOrigin);
       }
@@ -332,7 +355,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
 
       console.log(`Updating NFT collection: ${collectionId}`);
-      const updated = await updateCollection(collectionId, { collectionName, enabled, contractAddress, chain });
+      const updated = await updateCollection(collectionId, { collectionName, enabled, featured, contractAddress, chain });
 
       if (!updated) {
         return errorResponse(404, "Collection not found", requestOrigin);
