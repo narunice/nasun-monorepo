@@ -32,6 +32,7 @@ import { AddWalletModal } from "./components/AddWalletModal";
 import {
   ChannelMemberBadge,
   ConnectedBadge,
+  GenesisPassBadge,
   LinkedBadge,
   LoggedInBadge,
 } from "./components/StatusBadges";
@@ -622,7 +623,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "" }) =>
             )}
           </div>
           <div>
-            <h6 className="font-semibold">{displayName}</h6>
+            <div className="flex items-center gap-2">
+              <h6 className="font-semibold">{displayName}</h6>
+              <GenesisPassBadge />
+            </div>
             {(() => {
               const loginId = getLoginIdentifier(user);
               return loginId ? (

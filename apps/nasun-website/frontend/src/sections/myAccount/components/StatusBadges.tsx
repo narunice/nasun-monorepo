@@ -1,5 +1,8 @@
-import { FC } from "react";
-import { Check, Link2, Bookmark, Gift, ShieldCheck } from "lucide-react";
+import { FC, useMemo } from "react";
+import { Check, Link2, Bookmark, Gift, ShieldCheck, Users, Crown } from "lucide-react";
+import { useAuth } from "@/features/auth";
+import { useMultiChainNFTs } from "@/features/wallet";
+import { useEnabledNftCollections } from "@/features/admin/hooks/useNftCollections";
 
 export const LoggedInBadge: FC = () => (
   <span
@@ -57,7 +60,17 @@ export const GuaranteedBadge: FC = () => (
     aria-label="Guaranteed allowlist spot"
   >
     <ShieldCheck className="w-3 h-3 flex-shrink-0" />
-    <span className="hidden sm:inline">GTD</span>
+    <span>GTD</span>
+  </span>
+);
+
+export const FcfsBadge: FC = () => (
+  <span
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[10px] font-medium border border-violet-400/20"
+    aria-label="First come first serve allowlist"
+  >
+    <Users className="w-3 h-3 flex-shrink-0" />
+    <span>FCFS</span>
   </span>
 );
 
@@ -67,6 +80,51 @@ export const FreeMintBadge: FC = () => (
     aria-label="Free mint raffle winner"
   >
     <Gift className="w-3 h-3 flex-shrink-0" />
-    <span className="hidden sm:inline">Free Mint</span>
+    <span>Free Mint</span>
   </span>
 );
+
+/**
+ * GenesisPassBadge - Self-contained badge that fetches NFT ownership internally.
+ * Unlike other badges in this file (stateless, zero-prop), this component calls hooks
+ * to check if the user holds a featured NFT collection. This isolates the data dependency
+ * from ProfileHeroCard (996+ lines), preventing unnecessary re-renders.
+ * React Query cache deduplicates with AssetsCard's identical useMultiChainNFTs call.
+ */
+export const GenesisPassBadge: FC = () => {
+  const { user } = useAuth();
+  const walletAddress =
+    user?.linkedAccounts?.metamask?.walletAddress
+    || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
+
+  const { data: nfts } = useMultiChainNFTs(walletAddress);
+  const { data: collections } = useEnabledNftCollections();
+
+  const isHolder = useMemo(() => {
+    if (!walletAddress || !nfts || !collections) return false;
+    const featuredContracts = new Set(
+      collections.filter((c) => c.featured).map((c) => `${c.contractAddress}:${c.chain}`)
+    );
+    return nfts.some((nft) => {
+      const chain = nft.chain ?? "ethereum";
+      return featuredContracts.has(`${nft.contractAddress.toLowerCase()}:${chain}`);
+    });
+  }, [walletAddress, nfts, collections]);
+
+  if (!isHolder) return null;
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full
+                 bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15
+                 text-amber-300 text-[10px] font-semibold tracking-wide
+                 border border-amber-400/25
+                 shadow-[0_0_6px_rgba(249,168,36,0.12)]"
+      aria-label="Genesis Pass NFT holder"
+    >
+      <Crown className="w-3 h-3 flex-shrink-0" />
+      <span className="hidden sm:inline">Genesis Pass</span>
+      <span className="sm:hidden">Genesis</span>
+    </span>
+  );
+};
