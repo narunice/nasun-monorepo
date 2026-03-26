@@ -332,7 +332,9 @@ module lottery::lottery {
         // Tier 1 (Jackpot)
         if (tier1_winners_count > 0) {
             round.tier1_payout_per_winner = tier1_pool / tier1_winners_count;
-            round.tier1_rollover_out = 0;
+            // Capture integer division remainder for next round
+            let tier1_remainder = tier1_pool - (round.tier1_payout_per_winner * tier1_winners_count);
+            round.tier1_rollover_out = tier1_remainder;
         } else {
             round.tier1_payout_per_winner = 0;
             round.tier1_rollover_out = tier1_pool;  // Roll over unclaimed tier1 prizes
@@ -341,7 +343,8 @@ module lottery::lottery {
         // Tier 2 (4 match)
         if (tier2_winners_count > 0) {
             round.tier2_payout_per_winner = tier2_pool / tier2_winners_count;
-            round.tier2_rollover_out = 0;
+            let tier2_remainder = tier2_pool - (round.tier2_payout_per_winner * tier2_winners_count);
+            round.tier2_rollover_out = tier2_remainder;
         } else {
             round.tier2_payout_per_winner = 0;
             round.tier2_rollover_out = tier2_pool;
@@ -350,7 +353,8 @@ module lottery::lottery {
         // Tier 3 (3 match)
         if (tier3_winners_count > 0) {
             round.tier3_payout_per_winner = tier3_pool / tier3_winners_count;
-            round.tier3_rollover_out = 0;
+            let tier3_remainder = tier3_pool - (round.tier3_payout_per_winner * tier3_winners_count);
+            round.tier3_rollover_out = tier3_remainder;
         } else {
             round.tier3_payout_per_winner = 0;
             round.tier3_rollover_out = tier3_pool;

@@ -196,8 +196,8 @@ module lending::lending_pool {
 
     /// Get position value including accrued interest
     public fun get_position_value(pool: &LendingPool, position: &DepositPosition): u64 {
-        // shares * current_index / deposit_index
-        (position.shares * pool.supply_index) / position.deposit_index
+        // shares * current_index / deposit_index (u128 to prevent overflow for large deposits)
+        ((position.shares as u128) * (pool.supply_index as u128) / (position.deposit_index as u128)) as u64
     }
 
     // ============================================================================
@@ -347,22 +347,32 @@ module lending::lending_pool {
             return
         };
 
-        // Calculate interest accrued
+        // Calculate interest accrued using u128 intermediate math to prevent
+        // precision loss on short intervals (previously: 1-second accrual gave 0
+        // due to integer division truncation in u64)
         let borrow_apr = get_borrow_apr(pool);
-        let interest_factor = (borrow_apr * time_delta) / SECONDS_PER_YEAR;
 
-        // Update borrow index
-        let borrow_interest = (pool.total_borrows * interest_factor) / RATE_PRECISION;
-        pool.borrow_index = pool.borrow_index + (pool.borrow_index * interest_factor) / RATE_PRECISION;
+        // Borrow interest: combine numerators before dividing to preserve precision
+        let borrow_interest = ((pool.total_borrows as u128) * (borrow_apr as u128) * (time_delta as u128)
+            / ((SECONDS_PER_YEAR as u128) * (RATE_PRECISION as u128))) as u64;
 
-        // Update supply index (depositors earn interest)
+        // Update borrow index (same u128 pattern)
+        let borrow_index_delta = ((pool.borrow_index as u128) * (borrow_apr as u128) * (time_delta as u128)
+            / ((SECONDS_PER_YEAR as u128) * (RATE_PRECISION as u128))) as u64;
+        pool.borrow_index = pool.borrow_index + borrow_index_delta;
+
+        // Update supply index (depositors earn interest, same u128 pattern)
         let supply_apy = get_supply_apy(pool);
-        let supply_factor = (supply_apy * time_delta) / SECONDS_PER_YEAR;
-        pool.supply_index = pool.supply_index + (pool.supply_index * supply_factor) / RATE_PRECISION;
+        let supply_index_delta = ((pool.supply_index as u128) * (supply_apy as u128) * (time_delta as u128)
+            / ((SECONDS_PER_YEAR as u128) * (RATE_PRECISION as u128))) as u64;
+        pool.supply_index = pool.supply_index + supply_index_delta;
 
         // Add to reserves
         let reserve_share = (borrow_interest * RESERVE_FACTOR) / RATE_PRECISION;
         pool.total_reserves = pool.total_reserves + reserve_share;
+
+        // Update total_borrows with compounded interest (was missing in original code)
+        pool.total_borrows = pool.total_borrows + borrow_interest;
 
         pool.last_update_time = current_time;
     }
