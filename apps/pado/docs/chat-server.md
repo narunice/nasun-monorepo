@@ -1,6 +1,6 @@
 # Pado Chat Server
 
-> Last Updated: 2026-03-03
+> Last Updated: 2026-03-26
 > Location: `apps/pado/chat-server/`
 
 WebSocket + HTTP server. Global Chat, Leaderboard Indexer, Competition API, Market Narrator integrated.
@@ -36,6 +36,8 @@ OrderFilled events (5s poll)
 | `momentum` | 5+ consecutive same-direction | 3 min |
 
 AI summary: When `ANTHROPIC_API_KEY` is set, 2h periodic Claude Haiku summary (~$0.04/day)
+
+AI chatbot ("Wavi"): Mention-based trigger (`@pado` or `@wavi`), 30 responses/hour per user, 30s cooldown. Anthropic SDK with retry (max 4 attempts).
 
 ## Source Structure
 

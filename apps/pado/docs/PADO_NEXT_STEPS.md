@@ -8,7 +8,7 @@
 
 ## Current State Summary
 
-Pado has **22 completed development phases** covering spot trading (4 pools), perpetuals, prediction markets, lottery, payments, unified margin, zkLogin, passkey auth, social layer (chat + leaderboard + competitions + PnL share + badges + market narrator + points system), LP bot, TP/SL keeper, and testnet launch polish. All contracts deployed on V7. The core financial engine and community infrastructure are functional and polished.
+Pado has **25 completed development phases** covering spot trading (4 pools), perpetuals, prediction markets, lottery, payments, unified margin, zkLogin, passkey auth, social layer (chat + leaderboard + competitions + PnL share + badges + market narrator + points system), LP bot, TP/SL keeper, and testnet launch polish. All contracts deployed on V7. The core financial engine and community infrastructure are functional and polished.
 
 ### Devnet V7 Deployment Status (2026-02-04)
 
@@ -34,6 +34,9 @@ Pado has **22 completed development phases** covering spot trading (4 pools), pe
 - **Phase 20 (LP Bot)**: ✅ -- Grid market making (NBTC/NETH/NSOL), Binance price feed, auto-faucet
 - **Phase 21 (V7 Redeployment)**: ✅ -- All contracts redeployed on V7
 - **Phase 22 (Testnet Polish)**: ✅ -- Bug fixes, points system, enhanced share cards, mobile UX, loading skeletons, actionable errors
+- **Phase 23 (Chart & Portfolio)**: ✅ -- VWAP/Ichimoku indicators, chart context menu, portfolio sparklines, transfer filters
+- **Phase 24 (Mobile Trading)**: ✅ -- Fullscreen chart overlay, clear signing, sticky Buy/Sell bar, enlarged touch targets
+- **Phase 25 (Bot Hardening)**: ✅ -- Per-market keypairs, non-retriable error detection, prefund script, graceful shutdown
 
 ---
 
@@ -169,6 +172,7 @@ No new AWS resources required for prototype launch.
 
 | Date | Change |
 |------|--------|
+| 2026-03-26 | Sync with codebase: 25 phases complete (added Phase 23-25: chart indicators, mobile trading, bot hardening) |
 | 2026-03-03 | Sync with codebase: all 22 phases complete, doc remains as launch activation & post-launch planning reference |
 | 2026-02-23 | Doc cleanup: consolidated Tier 3 items from IMPROVEMENT_ROADMAP.md, removed completed phases detail, updated infrastructure table |
 | 2026-02-15 | Phase 22 (Testnet Launch Polish) complete: T1+T2 done, TP/SL Keeper modal wired |

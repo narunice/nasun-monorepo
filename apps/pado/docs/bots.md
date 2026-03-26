@@ -1,6 +1,6 @@
 # Pado Bots (Automation)
 
-> Last Updated: 2026-03-03
+> Last Updated: 2026-03-26
 
 ## Bot Overview
 
@@ -17,9 +17,16 @@
 - `balance-manager.ts` - Gas, Base/Quote token balance tracking
 - `order-manager.ts` - Order create/cancel (atomic)
 - `strategy.ts` - Quote calculation (with inventory skew)
-- `faucet.ts` - Auto faucet refill (V1 + V2)
+- `faucet.ts` - Auto faucet refill (V1 + V2), disable via `LP_DISABLE_TOKEN_FAUCET`
+- `retry.ts` - Transaction retry with non-retriable error detection (LockConflict, equivocation)
 - `tpsl-store.ts` - TP/SL state storage
 - `tpsl-executor.ts` - TP/SL execution logic
+
+## Scripts (`bots/scripts/`)
+
+| Script | Description |
+|--------|-------------|
+| `prefund-bot.ts` | Batch faucet calls in PTB (up to 200 rounds per transaction) for pre-funding bot wallets |
 
 ## Local Execution
 
@@ -46,9 +53,31 @@ pnpm tpsl-keeper                                      # TP/SL conditional order 
 | Staging | `ec2-15-165-19-180...` (ubuntu) | `0x69377697...432952cd` | `musing-euclase` |
 | Production | `43.200.67.52` (ec2-user) | `0xe1c4c90b...6dfb3d90` | `hopeful-malachite` |
 
-**Required `.env` (server)**: `LP_PRIVATE_KEY`, `ORACLE_ADMIN_KEY`, `KEEPER_PRIVATE_KEY`, `TPSL_API_KEY`
+### Per-Market Keypairs (Recommended)
+
+To avoid gas coin contention between LP bot instances, each market can use a separate private key:
+
+| Variable | Description | Fallback |
+|----------|-------------|----------|
+| `LP_PRIVATE_KEY_NBTC` | NBTC market LP key | `LP_PRIVATE_KEY` |
+| `LP_PRIVATE_KEY_NETH` | NETH market LP key | `LP_PRIVATE_KEY` |
+| `LP_PRIVATE_KEY_NSOL` | NSOL market LP key | `LP_PRIVATE_KEY` |
+
+If per-market keys are not set, all markets fall back to the shared `LP_PRIVATE_KEY`.
+
+**Required `.env` (server)**: `LP_PRIVATE_KEY` (or per-market keys), `ORACLE_ADMIN_KEY`, `KEEPER_PRIVATE_KEY`, `TPSL_API_KEY`
+
+**Optional `.env`**: `LP_DISABLE_TOKEN_FAUCET=true` (skip auto faucet refill for pre-funded deployments)
 
 **PM2 + .env Mechanism**: PM2 does NOT auto-read `.env`. Secrets are stored in `.env`, and the deploy script (`deploy-pado-bots.sh`) runs `set -a && source .env` before starting PM2 to inject as shell env vars. Non-secret config (contract addresses, RPC URL) is specified in `ecosystem.config.cjs` `env:` blocks.
+
+### Non-Retriable Error Detection
+
+The retry logic (`lib/retry.ts`) detects and fails fast on errors that should not be retried:
+- `LockConflict` / `already locked by a different transaction`
+- `equivocation` / `not available for consumption`
+
+This prevents cascading fullnode memory exhaustion caused by retrying inherently failing transactions (e.g., dual price-updater instances using the same AdminCap).
 
 ```bash
 # Deploy (from monorepo root)
@@ -66,6 +95,9 @@ pnpm deploy:pado:bots:prod        # Production deploy
 
 ## Scripts
 
+### Additional Scripts
+
 | Script | Description |
 |--------|-------------|
 | `scripts/create-perp-market.ts` | BTC-PERP perpetual futures market creation (PTB pattern, Sui CLI integration) |
+| `bots/scripts/prefund-bot.ts` | Batch faucet calls for pre-funding bot wallets (up to 200 rounds/tx) |

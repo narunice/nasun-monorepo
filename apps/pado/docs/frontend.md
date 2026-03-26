@@ -1,6 +1,6 @@
 # Pado Frontend Reference
 
-> Last Updated: 2026-03-03
+> Last Updated: 2026-03-26
 
 ## Routes
 
@@ -35,7 +35,7 @@
 
 Orderbook-based spot trading. 4 pools (NBTC, NETH, NSOL, NASUN / NUSDC). Simple/Pro mode.
 
-**Components**: MarketSelector, PriceChart (SMA/EMA/RSI/MACD/BB/ATR), Orderbook, OrderForm, SimpleOrderForm, SwapOrderForm, ScaleOrderForm, MarketInfoBar, BalanceManagerCard, OpenOrders, TradeHistory, TradingBalanceBar, PoolInfo, PriceSuggestions, SlippageSettings, QuickAmountButtons, TPSLInputs, InsufficientBalancePrompt, OrderConfirmModal, BottomTabPanel, DrawingToolbar (Trend/Fibonacci/Horizontal lines), NotificationSettings, KeyboardShortcutsPanel, OnboardingTour, MobileTradeLayoutV2, FavoriteStrip, DepthChart
+**Components**: MarketSelector, PriceChart (SMA/EMA/RSI/MACD/BB/ATR/Stochastic/VWAP/Ichimoku), Orderbook, OrderForm, SimpleOrderForm, SwapOrderForm, ScaleOrderForm, MarketInfoBar, BalanceManagerCard, OpenOrders, TradeHistory, TradingBalanceBar, PoolInfo, PriceSuggestions, SlippageSettings, QuickAmountButtons, TPSLInputs, InsufficientBalancePrompt, OrderConfirmModal, BottomTabPanel, DrawingToolbar (Trend/Fibonacci/Horizontal lines), NotificationSettings, KeyboardShortcutsPanel, OnboardingTour, MobileTradeLayoutV2, FavoriteStrip, DepthChart, ChartContextMenu (right-click/long-press chart-to-order)
 
 **Containers**: TradingPanel, MarketPanel, BalancePanel
 
@@ -82,11 +82,11 @@ Pick 5 numbers (1-32), Sui Random based drawing, multi-tier prizes.
 
 ### portfolio/ - Asset Overview & History
 
-Net worth dashboard, P&L time series, risk metrics, CSV export.
+Net worth dashboard, P&L time series, risk metrics, CSV export, token sparklines.
 
-**Components**: AssetOverview, TokenBalanceList, PnlChart (realized/unrealized P&L split), AllocationDonut (token allocation pie), ActivityTabs, RecentTrades, TransferHistory, TradeStats (Sharpe Ratio, Profit Factor, Max Drawdown, Sortino Ratio, Win Rate)
+**Components**: AssetOverview, TokenBalanceList, TokenSparkline (24h mini-chart via Binance klines), PnlChart (realized/unrealized P&L split), AllocationDonut (token allocation pie), ActivityTabs, RecentTrades, TransferHistory (direction/token filters), TradeStats (Sharpe Ratio, Profit Factor, Max Drawdown, Sortino Ratio, Win Rate)
 
-**Hooks**: useTotalValue, useTradeHistory, useTransferHistory, usePnlTimeSeries, useCostBasis
+**Hooks**: useTotalValue, useTradeHistory, useTransferHistory, usePnlTimeSeries, useCostBasis, useTokenSparkline
 
 ### dashboard/ - Homepage Components
 
@@ -185,5 +185,5 @@ Prediction + Lottery integrated admin panel. AdminCap-based access control.
 | `pado-api.ts` | Pado backend API client (chat, leaderboard, competitions, predictions) |
 | `tx-helpers.ts` | Transaction helper utilities |
 | `https-browser-stub.ts` | HTTPS module browser stub for Node.js dependencies |
-| `indicators/` | Technical indicators: SMA, EMA, RSI, MACD, BB (Bollinger Bands), ATR, Stochastic |
+| `indicators/` | Technical indicators: SMA, EMA, RSI, MACD, BB (Bollinger Bands), ATR, Stochastic, VWAP, Ichimoku Cloud |
 | `tradingview/` | TradingView Lightweight Charts wrapper + Datafeed adapter |

@@ -1,6 +1,6 @@
 # Pado Smart Contracts & Technical Specs
 
-> Last Updated: 2026-02-23
+> Last Updated: 2026-03-26
 
 ## Network Configuration
 

@@ -1,6 +1,6 @@
 # Pado Environment Variables
 
-> Last Updated: 2026-03-03
+> Last Updated: 2026-03-26
 
 ## Required (Network)
 
@@ -136,7 +136,20 @@
 | Variable | Description |
 |----------|-------------|
 | `DEEPBOOK_PACKAGE` | DeepBook package (chat-server leaderboard indexer) |
-| `ANTHROPIC_API_KEY` | Anthropic API key (Market Narrator AI summary, optional) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (Market Narrator AI summary + Wavi chatbot, optional) |
+
+## Bot-Side (non-VITE)
+
+| Variable | Description |
+|----------|-------------|
+| `LP_PRIVATE_KEY` | Shared LP bot private key (fallback for all markets) |
+| `LP_PRIVATE_KEY_NBTC` | Per-market LP key for NBTC (optional, falls back to LP_PRIVATE_KEY) |
+| `LP_PRIVATE_KEY_NETH` | Per-market LP key for NETH (optional, falls back to LP_PRIVATE_KEY) |
+| `LP_PRIVATE_KEY_NSOL` | Per-market LP key for NSOL (optional, falls back to LP_PRIVATE_KEY) |
+| `ORACLE_ADMIN_KEY` | Oracle admin private key (price-updater) |
+| `KEEPER_PRIVATE_KEY` | TP/SL keeper private key |
+| `TPSL_API_KEY` | API key for TP/SL keeper authentication |
+| `LP_DISABLE_TOKEN_FAUCET` | Skip auto faucet refill (`true`/`false`, for pre-funded deployments) |
 
 ## Feature Flags
 
