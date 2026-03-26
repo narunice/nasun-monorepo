@@ -81,6 +81,7 @@ export interface WhitelistStats {
 export interface ExportOptions {
   cognitoToken: string;
   status?: string;
+  mintType?: string;
   startDate?: string;
   endDate?: string;
   batchId?: string;
@@ -100,6 +101,7 @@ export interface NftCollection {
   chain: NFTChain;
   collectionName: string;
   enabled: boolean;
+  featured?: boolean;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -113,11 +115,13 @@ export interface CreateNftCollectionRequest {
   contractAddress: string;
   chain: NFTChain;
   collectionName: string;
+  featured?: boolean;
 }
 
 export interface UpdateNftCollectionRequest {
   collectionName?: string;
   enabled?: boolean;
+  featured?: boolean;
   contractAddress?: string;
   chain?: NFTChain;
 }
