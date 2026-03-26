@@ -16,6 +16,8 @@ interface AdminStackProps extends cdk.StackProps {
   nftCollectionsTableName?: string;
   devnetMetricsTableName?: string;
   genesisPassTableName?: string;
+  referralCodesTableName?: string;
+  referralsTableName?: string;
 }
 
 export class AdminStack extends cdk.Stack {
@@ -33,6 +35,8 @@ export class AdminStack extends cdk.Stack {
     const nftCollectionsTableName = props?.nftCollectionsTableName || "nasun-nft-collections";
     const devnetMetricsTableName = props?.devnetMetricsTableName || "devnet-metrics";
     const genesisPassTableName = props?.genesisPassTableName || "nasun-genesis-pass-allowlist";
+    const referralCodesTableName = props?.referralCodesTableName || "nasun-referral-codes";
+    const referralsTableName = props?.referralsTableName || "nasun-referrals";
 
     // Create NFT Collections DynamoDB table
     const nftCollectionsTable = new dynamodb.Table(this, "NftCollectionsTable", {
@@ -86,6 +90,18 @@ export class AdminStack extends cdk.Stack {
       "UserWallets"
     );
 
+    // Reference Referral tables (from ReferralStack)
+    const referralCodesTable = dynamodb.Table.fromTableName(
+      this,
+      "ReferralCodesTableRef",
+      referralCodesTableName
+    );
+    const referralsTable = dynamodb.Table.fromTableName(
+      this,
+      "ReferralsTableRef",
+      referralsTableName
+    );
+
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
     const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
     if (!cognitoIdentityPoolId) {
@@ -109,6 +125,8 @@ export class AdminStack extends cdk.Stack {
         GENESIS_PASS_TABLE: genesisPassTableName,
         USER_WALLETS_TABLE: "UserWallets",
         INTERNAL_API_KEY: process.env.INTERNAL_API_KEY || "",
+        REFERRAL_CODES_TABLE: referralCodesTableName,
+        REFERRALS_TABLE: referralsTableName,
         ALLOWED_ORIGINS: allowedOrigins,
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
@@ -129,13 +147,16 @@ export class AdminStack extends cdk.Stack {
     devnetMetricsTable.grantReadData(this.exportFunction);
     genesisPassTable.grantReadWriteData(this.exportFunction);
     userWalletsTable.grantReadData(this.exportFunction);
+    referralCodesTable.grantReadData(this.exportFunction);
+    referralsTable.grantReadData(this.exportFunction);
 
-    // Grant permission to query GSI (batch-index)
+    // Grant permission to query GSI (batch-index + referrerIdentityId-index)
     this.exportFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["dynamodb:Query"],
         resources: [
           `arn:aws:dynamodb:${this.region}:${this.account}:table/${battalionTableName}/index/*`,
+          `arn:aws:dynamodb:${this.region}:${this.account}:table/${referralsTableName}/index/*`,
         ],
       })
     );
@@ -307,6 +328,9 @@ export class AdminStack extends cdk.Stack {
     const walletMappingsResource = internalResource.addResource("wallet-mappings");
     // GET /internal/wallet-mappings - Points scanner wallet cache refresh
     walletMappingsResource.addMethod("GET", exportIntegration);
+    // GET /internal/referral-mappings - Points scanner referral relationship cache
+    const referralMappingsResource = internalResource.addResource("referral-mappings");
+    referralMappingsResource.addMethod("GET", exportIntegration);
 
     // NFT Collections API Routes
     const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);

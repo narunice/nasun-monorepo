@@ -9,6 +9,7 @@ import AppRoutes from "./routes/AppRoutes";
 import { HomePageLoadingProvider, useHomePageLoading } from "./contexts/PageLoadingContext";
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import { Button } from "./components/ui/button";
+import { useReferralCapture } from "./hooks/useReferralCapture";
 
 /**
  * Error fallback component with i18n support
@@ -37,6 +38,7 @@ function ErrorFallback() {
 function AppContent() {
   const { isPageReady } = useHomePageLoading();
   const location = useLocation();
+  useReferralCapture();
   const isAdminPage = location.pathname.startsWith('/admin');
   const isClaimPage = location.pathname === '/claim' || location.pathname.startsWith('/claim/');
 
