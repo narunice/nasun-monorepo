@@ -2,7 +2,7 @@
 name = "pado_perp"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658"
+published-at = "0xe0b972913d44d1c214d02ccf0aaf64d1c0d7ab075a7caaaf1fc457c486c808b1"
 
 [dependencies]
 Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
