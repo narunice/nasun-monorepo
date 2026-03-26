@@ -15,6 +15,7 @@ use sui::table::{Self, Table};
 use sui::clock::Clock;
 use sui::event;
 use sui::url::{Url, new_unsafe_from_bytes};
+use sui::dynamic_field;
 use governance::dashboard::AdminCap;
 use governance::voting_power::{Self, VotingPowerCertificate};
 
@@ -26,11 +27,17 @@ const EInvalidChoiceIndex: u64 = 3;
 const ETooFewChoices: u64 = 4;
 const ETooManyChoices: u64 = 5;
 const EChoiceTooLong: u64 = 6;
+const EInvalidImageUrl: u64 = 7;
 
 // === Constants ===
 const MIN_CHOICES: u64 = 2;
 const MAX_CHOICES: u64 = 20;
 const MAX_CHOICE_BYTES: u64 = 200;
+
+// Keep in sync with proposal::set_vote_proof_image
+const VOTE_PROOF_IMAGE_KEY: vector<u8> = b"vote_proof_image";
+const DEFAULT_VOTE_PROOF_IMAGE: vector<u8> = b"https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreidvwd65472yxlhr4vhoqxqugccpy6xgsat2mdb6vjznltodkxw4tu";
+const MAX_URL_BYTES: u64 = 2048;
 
 // === Enums ===
 
@@ -205,7 +212,7 @@ public fun create(
 /// Remove a multi-choice proposal (only works if voters table is empty)
 public fun remove(self: MultiChoiceProposal, _admin_cap: &AdminCap) {
     let MultiChoiceProposal {
-        id,
+        mut id,
         title: _,
         description: _,
         choices: _,
@@ -217,6 +224,11 @@ public fun remove(self: MultiChoiceProposal, _admin_cap: &AdminCap) {
         voters,
         creator: _,
     } = self;
+
+    // Clean up dynamic field before UID deletion
+    if (dynamic_field::exists_(&id, VOTE_PROOF_IMAGE_KEY)) {
+        let _: Url = dynamic_field::remove(&mut id, VOTE_PROOF_IMAGE_KEY);
+    };
 
     table::drop(voters);
     object::delete(id);
@@ -230,6 +242,30 @@ public fun set_delisted_status(self: &mut MultiChoiceProposal, _admin_cap: &Admi
     self.status = MultiChoiceProposalStatus::Delisted;
 }
 
+/// Set custom vote proof NFT image URL for this proposal (admin only)
+/// Keep in sync with proposal::set_vote_proof_image
+public fun set_vote_proof_image(
+    self: &mut MultiChoiceProposal,
+    _admin_cap: &AdminCap,
+    url_bytes: vector<u8>,
+) {
+    assert!(url_bytes.length() >= 8, EInvalidImageUrl);
+    assert!(url_bytes.length() <= MAX_URL_BYTES, EInvalidImageUrl);
+    let prefix = vector[104, 116, 116, 112, 115, 58, 47, 47]; // "https://"
+    let mut i = 0;
+    while (i < 8) {
+        assert!(url_bytes[i] == prefix[i], EInvalidImageUrl);
+        i = i + 1;
+    };
+
+    let url = new_unsafe_from_bytes(url_bytes);
+    if (dynamic_field::exists_(&self.id, VOTE_PROOF_IMAGE_KEY)) {
+        *dynamic_field::borrow_mut(&mut self.id, VOTE_PROOF_IMAGE_KEY) = url;
+    } else {
+        dynamic_field::add(&mut self.id, VOTE_PROOF_IMAGE_KEY, url);
+    };
+}
+
 // === Internal Functions ===
 
 fun issue_vote_proof(proposal: &MultiChoiceProposal, ctx: &mut TxContext) {
@@ -240,9 +276,12 @@ fun issue_vote_proof(proposal: &MultiChoiceProposal, ctx: &mut TxContext) {
     let proposal_address = object::id_address(proposal).to_string();
     description.append(proposal_address);
 
-    let url = new_unsafe_from_bytes(
-        b"https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreidvwd65472yxlhr4vhoqxqugccpy6xgsat2mdb6vjznltodkxw4tu"
-    );
+    // Use per-proposal image if set, otherwise fallback to default
+    let url = if (dynamic_field::exists_(&proposal.id, VOTE_PROOF_IMAGE_KEY)) {
+        *dynamic_field::borrow(&proposal.id, VOTE_PROOF_IMAGE_KEY)
+    } else {
+        new_unsafe_from_bytes(DEFAULT_VOTE_PROOF_IMAGE)
+    };
 
     let proof = MultiChoiceVoteProofNFT {
         id: object::new(ctx),
