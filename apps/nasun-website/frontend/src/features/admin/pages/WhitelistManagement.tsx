@@ -156,6 +156,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
         >
           <option value="">No mint type</option>
           <option value="FREE_MINT">FREE_MINT</option>
+          <option value="GUARANTEED">GUARANTEED</option>
         </select>
         <input
           type="text"
@@ -200,6 +201,10 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
                     {entry.mintType === "FREE_MINT" ? (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-medium border border-amber-400/20">
                         FREE_MINT
+                      </span>
+                    ) : entry.mintType === "GUARANTEED" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-400/20">
+                        GUARANTEED
                       </span>
                     ) : (
                       <span className="text-nasun-white/30">-</span>
@@ -247,6 +252,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
                 >
                   <option value="">None</option>
                   <option value="FREE_MINT">FREE_MINT</option>
+                  <option value="GUARANTEED">GUARANTEED</option>
                 </select>
               </div>
               <div>

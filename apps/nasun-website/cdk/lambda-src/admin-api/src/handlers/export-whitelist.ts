@@ -24,6 +24,8 @@ const DEVNET_METRICS_TABLE = process.env.DEVNET_METRICS_TABLE || "devnet-metrics
 const GENESIS_PASS_TABLE = process.env.GENESIS_PASS_TABLE || "nasun-genesis-pass-allowlist";
 const USER_WALLETS_TABLE = process.env.USER_WALLETS_TABLE || "UserWallets";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
+const REFERRAL_CODES_TABLE = process.env.REFERRAL_CODES_TABLE || "nasun-referral-codes";
+const REFERRALS_TABLE = process.env.REFERRALS_TABLE || "nasun-referrals";
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -623,6 +625,56 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       return jsonResponse(200, { wallets, genesisPass }, requestOrigin);
     }
 
+    // Internal endpoint: GET /internal/referral-mappings (API key auth, no Cognito)
+    // Returns all active referral relationships for the points scanner bonus calculation
+    if (path.endsWith("/referral-mappings") && event.httpMethod === "GET") {
+      const apiKey = event.headers?.["x-api-key"] || event.headers?.["X-Api-Key"];
+      const isValidKey =
+        INTERNAL_API_KEY &&
+        apiKey &&
+        apiKey.length === INTERNAL_API_KEY.length &&
+        timingSafeEqual(Buffer.from(apiKey), Buffer.from(INTERNAL_API_KEY));
+      if (!isValidKey) {
+        console.warn("[internal] Invalid or missing API key for referral-mappings");
+        return errorResponse(401, "Unauthorized", requestOrigin);
+      }
+
+      console.log("[internal] Fetching referral mappings for points scanner");
+
+      // Scan nasun-referrals table for all relationships
+      const referrals: Record<string, string> = {};
+      let totalRelationships = 0;
+      let totalActivated = 0;
+      let refLastKey: Record<string, any> | undefined;
+      do {
+        const result = await dynamoClient.send(
+          new ScanCommand({
+            TableName: REFERRALS_TABLE,
+            ProjectionExpression: "referredIdentityId, referrerIdentityId, #s",
+            ExpressionAttributeNames: { "#s": "status" },
+            ...(refLastKey && { ExclusiveStartKey: refLastKey }),
+          })
+        );
+        for (const item of result.Items || []) {
+          const referredId = item.referredIdentityId?.S;
+          const referrerId = item.referrerIdentityId?.S;
+          const status = item.status?.S;
+          if (referredId && referrerId) {
+            referrals[referredId] = referrerId;
+            totalRelationships++;
+            if (status === "ACTIVATED") totalActivated++;
+          }
+        }
+        refLastKey = result.LastEvaluatedKey;
+      } while (refLastKey);
+
+      console.log(`[internal] Referral mappings: ${totalRelationships} relationships, ${totalActivated} activated`);
+      return jsonResponse(200, {
+        referrals,
+        stats: { totalRelationships, totalActivated },
+      }, requestOrigin);
+    }
+
     // All other endpoints require admin authentication.
     // Try Token Authorizer context first, fall back to manual token verification.
     let identityId = extractIdentityIdFromAuthorizer(event.requestContext);
@@ -803,9 +855,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       // Count Genesis Pass by status
       const genesisPassActive = genesisPassItems.filter((item) => item.status === "ACTIVE").length;
       const genesisPassWithdrawn = genesisPassItems.filter((item) => item.status === "WITHDRAWN").length;
-      // Paid applied: non-LEGACY, non-WITHDRAWN, no mintType (pure paid minting applicants)
+      // Paid mint: non-LEGACY, non-WITHDRAWN, not FREE_MINT (includes GUARANTEED and standard)
       const genesisPassPaidApplied = genesisPassItems.filter(
-        (item) => !["LEGACY", "WITHDRAWN"].includes(item.status) && !item.mintType
+        (item) => !["LEGACY", "WITHDRAWN"].includes(item.status) && item.mintType !== "FREE_MINT"
       ).length;
 
       return jsonResponse(
