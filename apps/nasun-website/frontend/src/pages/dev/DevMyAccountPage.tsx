@@ -170,13 +170,12 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
-          {/* Referral Card - hidden until launch
+          {/* Referral Card */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <ReferralCard className="order-5 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
-          */}
 
           {/* Governance Card - 1 column */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
