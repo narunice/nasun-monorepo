@@ -31,6 +31,7 @@ const DevBattalionNftPage = lazy(() => import("../pages/dev/DevBattalionNftPage"
 const DevGenesisNftPage = lazy(() => import("../pages/dev/DevGenesisNftPage"));
 const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
+const DevMyAccountPage = lazy(() => import("../pages/dev/DevMyAccountPage"));
 
 // Admin route definitions
 const adminRoutes = [
@@ -151,6 +152,7 @@ const AppRoutes = () => {
         <Route path="/dev/genesis-nft" element={<DevGenesisNftPage />} />
         <Route path="/dev/investors" element={<DevInvestorsPage />} />
         <Route path="/dev/genesis-pass" element={<DevGenesisPassPage />} />
+        <Route path="/dev/my-account" element={<PrivateRoute><DevMyAccountPage /></PrivateRoute>} />
 
         {/* Fallback Route */}
         <Route path="*" element={<Pages.NotFound />} />
