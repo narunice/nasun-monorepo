@@ -28,6 +28,7 @@ export interface ScratchResult {
   multiplier: number;
   prizeAmount: bigint;
   isWinner: boolean;
+  timestampMs?: number;
 }
 
 /** Format NUSDC amount (6 decimals) for display */

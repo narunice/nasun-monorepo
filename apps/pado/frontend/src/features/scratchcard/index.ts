@@ -54,5 +54,6 @@ export {
 export {
   fetchScratchCardPool,
   fetchUserScratchCards,
+  fetchPurchaseHistory,
   parseScratchCardEvent,
 } from './lib/scratchcard-client';
