@@ -145,7 +145,10 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
 
       return scratchResult;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to buy card';
+      const raw = err instanceof Error ? err.message : 'Failed to buy card';
+      const msg = /InsufficientGas|No valid gas/i.test(raw)
+        ? 'Not enough NASUN for gas. Request NASUN from the faucet first.'
+        : raw;
       console.error('Error buying scratch card:', err);
       setError(msg);
       return null;
