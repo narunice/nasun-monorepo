@@ -2,7 +2,7 @@
 name = "devnet_tokens"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731"
+published-at = "0x1c93579be99e89ab05a33ac04af2fd7b1a604f9c98fe74d1b6cae6913c8362e7"
 
 [dependencies]
 Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }

@@ -189,7 +189,7 @@ export function useFaucet(): UseFaucetResult {
       if (result.success) {
         setCooldownTimestamp(address, 'NBTC');
         if (result.digest) await waitAndRefresh(result.digest);
-        showToast("0.1 NBTC received!", "success");
+        showToast("0.01 NBTC received!", "success");
       } else {
         const formatted = formatFaucetError(result.error, "NBTC");
         if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NBTC');
@@ -221,7 +221,7 @@ export function useFaucet(): UseFaucetResult {
       if (result.success) {
         setCooldownTimestamp(address, 'NUSDC');
         if (result.digest) await waitAndRefresh(result.digest);
-        showToast("10,000 NUSDC received!", "success");
+        showToast("2,000 NUSDC received!", "success");
       } else {
         const formatted = formatFaucetError(result.error, "NUSDC");
         if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NUSDC');
@@ -253,7 +253,7 @@ export function useFaucet(): UseFaucetResult {
       if (result.success) {
         setCooldownTimestamp(address, 'NETH');
         if (result.digest) await waitAndRefresh(result.digest);
-        showToast("2.5 NETH received!", "success");
+        showToast("0.5 NETH received!", "success");
       } else {
         const formatted = formatFaucetError(result.error, "NETH");
         if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NETH');
@@ -285,7 +285,7 @@ export function useFaucet(): UseFaucetResult {
       if (result.success) {
         setCooldownTimestamp(address, 'NSOL');
         if (result.digest) await waitAndRefresh(result.digest);
-        showToast("50 NSOL received!", "success");
+        showToast("10 NSOL received!", "success");
       } else {
         const formatted = formatFaucetError(result.error, "NSOL");
         if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NSOL');

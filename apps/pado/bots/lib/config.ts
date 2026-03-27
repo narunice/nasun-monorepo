@@ -30,12 +30,12 @@ export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c6
 
 // Tokens V2 - NSOL (original package, 9 decimals)
 export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
-export const TOKENS_V2_FAUCET_PACKAGE = '0xc2d09b5e026b1d8378e8f70333e8e74ed3b5798715caa284bcb82d22cb60b78e';
+export const TOKENS_V2_FAUCET_PACKAGE = '0xd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f';
 export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 
 // Tokens V2 - NETH (re-published, 8 decimals — matches Sui mainnet WETH convention)
 export const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31';
-export const NETH_FAUCET_PACKAGE = NETH_PACKAGE;
+export const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
 export const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
 
 // Token Types
@@ -96,7 +96,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultSpreadBps: 20,
     defaultMaxArbQuantity: 0.1,
     defaultMaxOrderSize: 1.0,
-    faucetBaseAmount: 1.0,   // V1 faucet: 1 NBTC per call
+    faucetBaseAmount: 0.01,  // V1 faucet: 0.01 NBTC per call
     startupDelayMs: 0,
     faucetType: 'v1',
   },
@@ -118,7 +118,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultSpreadBps: 30,
     defaultMaxArbQuantity: 5,
     defaultMaxOrderSize: 10.0,
-    faucetBaseAmount: 2.5,   // V2 faucet: 2.5 NETH per call (NETH_FAUCET_AMOUNT = 250_000_000)
+    faucetBaseAmount: 0.5,   // V2 faucet: 0.5 NETH per call (NETH_FAUCET_AMOUNT = 50_000_000)
     startupDelayMs: 20000,
     faucetType: 'v2',
     faucetV2Package: NETH_FAUCET_PACKAGE,
@@ -142,7 +142,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultSpreadBps: 40,
     defaultMaxArbQuantity: 100,
     defaultMaxOrderSize: 1000,
-    faucetBaseAmount: 50,    // V2 faucet: 50 NSOL per call (request_nsol)
+    faucetBaseAmount: 10,    // V2 faucet: 10 NSOL per call (request_nsol)
     startupDelayMs: 40000,
     faucetType: 'v2',
     faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
