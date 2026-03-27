@@ -24,9 +24,12 @@ const TRADE_ITEMS: DropdownItem[] = [
   { label: 'Perpetuals', path: '/markets/perp', enabled: true },
 ];
 
+const LEISURE_ITEMS: DropdownItem[] = [
+  { label: 'Lottery', path: '/leisure/lottery', enabled: true },
+  { label: 'Scratch Cards', path: '/leisure/scratch', enabled: true },
+];
+
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Lottery', path: '/lottery', enabled: true },
-  { label: 'Scratch', path: '/scratch', enabled: true },
   { label: 'Predict', path: '/predict', enabled: true },
   { label: 'Earn', path: '/earn', enabled: true },
 ];
@@ -40,9 +43,11 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isTradeOpen, setIsTradeOpen] = useState(false);
+  const [isLeisureOpen, setIsLeisureOpen] = useState(false);
   const [isSocialOpen, setIsSocialOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const tradeRef = useRef<HTMLDivElement>(null);
+  const leisureRef = useRef<HTMLDivElement>(null);
   const socialRef = useRef<HTMLDivElement>(null);
 
   // Detect mobile viewport for address shortening
@@ -75,6 +80,7 @@ export function Header() {
   // Close dropdowns on route change
   useEffect(() => {
     setIsTradeOpen(false);
+    setIsLeisureOpen(false);
     setIsSocialOpen(false);
   }, [location.pathname]);
 
@@ -84,19 +90,22 @@ export function Header() {
       if (tradeRef.current && !tradeRef.current.contains(event.target as Node)) {
         setIsTradeOpen(false);
       }
+      if (leisureRef.current && !leisureRef.current.contains(event.target as Node)) {
+        setIsLeisureOpen(false);
+      }
       if (socialRef.current && !socialRef.current.contains(event.target as Node)) {
         setIsSocialOpen(false);
       }
     };
 
-    if (isTradeOpen || isSocialOpen) {
+    if (isTradeOpen || isLeisureOpen || isSocialOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isTradeOpen, isSocialOpen]);
+  }, [isTradeOpen, isLeisureOpen, isSocialOpen]);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -107,6 +116,9 @@ export function Header() {
     }
     if (path === '/markets') {
       return location.pathname.startsWith('/markets') || location.pathname === '/trade';
+    }
+    if (path === '/leisure') {
+      return location.pathname.startsWith('/leisure');
     }
     if (path === '/social') {
       return location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/competitions');
@@ -126,12 +138,20 @@ export function Header() {
 
   const toggleTrade = () => {
     setIsTradeOpen((prev) => !prev);
+    setIsLeisureOpen(false);
+    setIsSocialOpen(false);
+  };
+
+  const toggleLeisure = () => {
+    setIsLeisureOpen((prev) => !prev);
+    setIsTradeOpen(false);
     setIsSocialOpen(false);
   };
 
   const toggleSocial = () => {
     setIsSocialOpen((prev) => !prev);
     setIsTradeOpen(false);
+    setIsLeisureOpen(false);
   };
 
   return (
@@ -204,7 +224,51 @@ export function Header() {
             )}
           </div>
 
-          {/* Direct Nav Items: Predict, Lottery, Earn */}
+          {/* Leisure Dropdown (Lottery + Scratch Cards) */}
+          <div className="relative" ref={leisureRef}>
+            <button
+              onClick={toggleLeisure}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
+                isActive('/leisure')
+                  ? 'text-pd3 bg-pd3/10'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+              }`}
+            >
+              Leisure
+              <svg
+                className={`w-3 h-3 transition-transform ${isLeisureOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isLeisureOpen && (
+              <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
+                {LEISURE_ITEMS.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={(e) => {
+                      handleNavClick(e, item.path);
+                      setIsLeisureOpen(false);
+                    }}
+                    className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isActive(item.path)
+                        ? 'text-pd3 bg-pd3/10'
+                        : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Direct Nav Items: Predict, Earn */}
           {NAV_ITEMS.map((item) =>
             item.enabled ? (
               <Link

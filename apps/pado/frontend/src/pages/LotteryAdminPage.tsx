@@ -34,7 +34,7 @@ export function LotteryAdminPage() {
             Please connect your wallet to access the admin panel.
           </p>
           <Link
-            to="/lottery"
+            to="/leisure/lottery"
             className="inline-block px-4 py-2 bg-pd1 hover:bg-pd1/80 text-white font-medium rounded-lg transition-colors"
           >
             Back to Lottery
@@ -57,7 +57,7 @@ export function LotteryAdminPage() {
             AdminCap can access this page.
           </p>
           <Link
-            to="/lottery"
+            to="/leisure/lottery"
             className="inline-block px-4 py-2 bg-pd1 hover:bg-pd1/80 text-white font-medium rounded-lg transition-colors"
           >
             Back to Lottery
@@ -71,7 +71,7 @@ export function LotteryAdminPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Back Button */}
       <Link
-        to="/lottery"
+        to="/leisure/lottery"
         className="inline-flex items-center gap-2 text-sm text-theme-text-secondary hover:text-theme-text-primary transition-colors"
       >
         <svg
