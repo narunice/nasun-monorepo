@@ -14,13 +14,12 @@ export function CardResultDisplay({ result, revealed = false }: CardResultDispla
   const colorClass = getTierColorClass(multiplier);
   const [animate, setAnimate] = useState(false);
 
-  // Trigger animation after canvas fade-out (0.4s) completes
+  // Trigger animation after canvas fade-out completes
   useEffect(() => {
     if (!revealed) {
       setAnimate(false);
       return;
     }
-    // Canvas fade-out takes 0.4s, start animation after it finishes
     const timer = setTimeout(() => setAnimate(true), 450);
     return () => clearTimeout(timer);
   }, [revealed]);
@@ -29,24 +28,12 @@ export function CardResultDisplay({ result, revealed = false }: CardResultDispla
     return (
       <div
         className="text-center py-6"
-        style={animate ? {
-          animation: 'scratch-shake 0.5s ease-out',
-        } : undefined}
+        style={animate ? { animation: 'scratch-shake 0.5s ease-out' } : undefined}
       >
-        <p
-          className="text-2xl font-bold text-theme-text-muted"
-          style={animate ? {
-            animation: 'scratch-fade-in 0.5s ease-out 0.2s both',
-          } : { opacity: 0 }}
-        >
+        <p className="text-2xl font-bold text-theme-text-muted">
           No Prize
         </p>
-        <p
-          className="text-sm text-theme-text-muted mt-1"
-          style={animate ? {
-            animation: 'scratch-fade-in 0.5s ease-out 0.5s both',
-          } : { opacity: 0 }}
-        >
+        <p className="text-sm text-theme-text-muted mt-1">
           Better luck next time!
         </p>
       </div>
@@ -56,32 +43,15 @@ export function CardResultDisplay({ result, revealed = false }: CardResultDispla
   return (
     <div
       className="text-center py-6"
-      style={animate ? {
-        animation: 'scratch-pop 0.5s ease-out',
-      } : undefined}
+      style={animate ? { animation: 'scratch-pop 0.5s ease-out' } : undefined}
     >
-      <p
-        className={`text-3xl font-bold ${colorClass}`}
-        style={animate ? {
-          animation: 'scratch-fade-in 0.3s ease-out 0.1s both',
-        } : { opacity: 0 }}
-      >
+      <p className={`text-3xl font-bold ${colorClass}`}>
         {multiplier}x
       </p>
-      <p
-        className={`text-xl font-semibold ${colorClass} mt-1`}
-        style={animate ? {
-          animation: 'scratch-fade-in 0.3s ease-out 0.3s both',
-        } : { opacity: 0 }}
-      >
+      <p className={`text-xl font-semibold ${colorClass} mt-1`}>
         {label}!
       </p>
-      <p
-        className="text-lg text-theme-text-primary mt-2"
-        style={animate ? {
-          animation: 'scratch-fade-in 0.3s ease-out 0.5s both',
-        } : { opacity: 0 }}
-      >
+      <p className="text-lg text-theme-text-primary mt-2">
         +{formatNusdc(prizeAmount)} NUSDC
       </p>
     </div>
