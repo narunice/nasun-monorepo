@@ -43,6 +43,28 @@ export function formatObjectType(type: string | undefined): string {
     .replace(/SuiSystem/g, 'NasunSystem');
 }
 
+// Recursively replace all Sui references in a JSON-serializable object for display
+export function sanitizeJsonForDisplay(obj: unknown): unknown {
+  if (typeof obj === 'string') {
+    return obj
+      .replace(/0x2::sui::SUI/g, '0x2::nasun::NSN')
+      .replace(/::sui::/g, '::nasun::')
+      .replace(/StakedSui/g, 'StakedNasun')
+      .replace(/SuiSystem/g, 'NasunSystem');
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeJsonForDisplay);
+  }
+  if (typeof obj === 'object' && obj !== null) {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = sanitizeJsonForDisplay(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
 // SOE 단위 잔액 포맷 (SOE -> NSN 변환)
 export function formatBalance(balance: string | undefined): string {
   if (!balance) return '0';

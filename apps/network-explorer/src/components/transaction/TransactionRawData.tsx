@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { SectionBox } from '../ui/SectionBox';
 import { useCopyToClipboard } from '../../hooks';
+import { sanitizeJsonForDisplay } from '../../lib/format';
 
 interface TransactionRawDataProps {
   data: unknown;
@@ -8,7 +9,7 @@ interface TransactionRawDataProps {
 
 export default function TransactionRawData({ data }: TransactionRawDataProps) {
   const { copied, handleCopy } = useCopyToClipboard();
-  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
+  const jsonString = useMemo(() => JSON.stringify(sanitizeJsonForDisplay(data), null, 2), [data]);
 
   return (
     <SectionBox title="Raw Transaction Data" color="c6">
