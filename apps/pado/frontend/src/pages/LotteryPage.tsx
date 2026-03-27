@@ -3,12 +3,12 @@
  * Weekly lottery listing and ticket purchase
  */
 
-import { Link } from 'react-router-dom';
 import {
   useLotteries,
   useLotteryKeeper,
   LotteryRoundCard,
   TicketPurchaseForm,
+  MyTicketList,
 } from '../features/lottery';
 import { Spinner } from '../components/common';
 
@@ -97,6 +97,13 @@ export function LotteryPage() {
         </div>
       )}
 
+      {/* My Tickets */}
+      {currentRound && (
+        <div className="bg-theme-bg-secondary rounded-xl p-6">
+          <MyTicketList roundId={currentRound.id} round={currentRound} />
+        </div>
+      )}
+
       {/* How it works */}
       <div className="bg-theme-bg-secondary rounded-xl p-6">
         <h2 className="text-lg font-semibold text-theme-text-primary mb-4">
@@ -138,7 +145,7 @@ export function LotteryPage() {
           </div>
           <div className="text-center p-4">
             <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <span className="text-xl font-bold text-green-400">4</span>
+              <span className="text-xl font-bold text-green-700 dark:text-green-400">4</span>
             </div>
             <h3 className="font-medium text-theme-text-primary mb-1">
               Claim Prize
@@ -184,15 +191,15 @@ export function LotteryPage() {
             </h3>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-yellow-400">Jackpot (5 match)</span>
+                <span className="text-yellow-700 dark:text-yellow-400">Jackpot (5 match)</span>
                 <span className="text-theme-text-primary font-medium">60%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-pd3">2nd Prize (4 match)</span>
+                <span className="text-pd1 dark:text-pd3">2nd Prize (4 match)</span>
                 <span className="text-theme-text-primary font-medium">25%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-green-400">3rd Prize (3 match)</span>
+                <span className="text-green-700 dark:text-green-400">3rd Prize (3 match)</span>
                 <span className="text-theme-text-primary font-medium">15%</span>
               </div>
             </div>
@@ -203,17 +210,6 @@ export function LotteryPage() {
         </p>
       </div>
 
-      {/* View Tickets Link */}
-      {currentRound && (
-        <div className="text-center">
-          <Link
-            to={`/lottery/${currentRound.id}`}
-            className="text-pd3 hover:text-pd3 font-medium"
-          >
-            View My Tickets &rarr;
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
