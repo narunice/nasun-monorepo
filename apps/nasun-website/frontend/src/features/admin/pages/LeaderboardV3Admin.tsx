@@ -53,11 +53,11 @@ export function LeaderboardV3Admin() {
             <PageTitle as="h3" align="left" className="">
               Leaderboard V3 Admin
             </PageTitle>
-            <p className="text-nasun-white/60 -mt-6">
+            <p className="text-nasun-white/80 -mt-6">
               Manage seasons, posts, and view leaderboard data.
             </p>
           </div>
-          <div className="text-sm text-nasun-white/40 mb-1">
+          <div className="text-sm text-nasun-white/60 mb-1">
             Logged in as <span className="text-nasun-c1 font-medium">@{adminIdentifier}</span>
           </div>
         </div>

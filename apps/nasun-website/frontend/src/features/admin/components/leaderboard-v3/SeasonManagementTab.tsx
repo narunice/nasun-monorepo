@@ -35,7 +35,7 @@ function getRankChangeColor(entry: SnapshotPreviewEntry): string {
   const diff = entry.previousRank - entry.rank;
   if (diff > 0) return 'text-green-400';
   if (diff < 0) return 'text-red-400';
-  return 'text-nasun-white/40';
+  return 'text-nasun-white/60';
 }
 
 export function SeasonManagementTab() {
@@ -168,12 +168,12 @@ export function SeasonManagementTab() {
 
       {/* Snapshot actions for active season */}
       {seasons?.some((s) => s.status === 'active') && (
-        <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+        <OuterBox color="c6" className="w-full !border-nasun-c5/45 !bg-gray-800/50">
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-nasun-white">Snapshot</div>
-                <div className="text-xs text-nasun-white/50 mt-0.5">
+                <div className="text-xs text-nasun-white/70 mt-0.5">
                   Preview or generate today's leaderboard snapshot
                 </div>
               </div>
@@ -213,23 +213,23 @@ export function SeasonManagementTab() {
       )}
 
       {/* Seasons Table */}
-      <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+      <OuterBox color="c6" className="w-full !border-nasun-c5/45 !bg-gray-800/50">
         {isLoading ? (
-          <div className="text-nasun-white/50 text-sm py-8 text-center">Loading seasons...</div>
+          <div className="text-nasun-white/70 text-sm py-8 text-center">Loading seasons...</div>
         ) : !seasons?.length ? (
-          <div className="text-nasun-white/50 text-sm py-8 text-center">
+          <div className="text-nasun-white/70 text-sm py-8 text-center">
             No seasons created yet. Click "New Season" to create one.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-nasun-c5/20">
-                  <th className="text-left py-3 px-2 text-nasun-white/50 font-medium">Season ID</th>
-                  <th className="text-left py-3 px-2 text-nasun-white/50 font-medium">Name</th>
-                  <th className="text-left py-3 px-2 text-nasun-white/50 font-medium">Period</th>
-                  <th className="text-left py-3 px-2 text-nasun-white/50 font-medium">Status</th>
-                  <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Actions</th>
+                <tr className="border-b border-nasun-c5/35">
+                  <th className="text-left py-3 px-2 text-nasun-white/70 font-medium">Season ID</th>
+                  <th className="text-left py-3 px-2 text-nasun-white/70 font-medium">Name</th>
+                  <th className="text-left py-3 px-2 text-nasun-white/70 font-medium">Period</th>
+                  <th className="text-left py-3 px-2 text-nasun-white/70 font-medium">Status</th>
+                  <th className="text-right py-3 px-2 text-nasun-white/70 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,7 +240,7 @@ export function SeasonManagementTab() {
                   return (
                     <tr
                       key={season.seasonId}
-                      className="border-b border-nasun-c5/10 hover:bg-gray-700/30 transition-colors"
+                      className="border-b border-nasun-c5/20 hover:bg-gray-700/30 transition-colors"
                     >
                       <td className="py-3 px-2">
                         <div className="font-mono text-nasun-white">{season.seasonId}</div>
@@ -248,12 +248,12 @@ export function SeasonManagementTab() {
                       <td className="py-3 px-2">
                         <div className="text-nasun-white">{season.name}</div>
                         {season.description && (
-                          <div className="text-xs text-nasun-white/50">"{season.description}"</div>
+                          <div className="text-xs text-nasun-white/70">"{season.description}"</div>
                         )}
                       </td>
                       <td className="py-3 px-2">
-                        <div className="text-nasun-white/80">{range}</div>
-                        <div className="text-xs text-nasun-white/50">{days}</div>
+                        <div className="text-nasun-white/90">{range}</div>
+                        <div className="text-xs text-nasun-white/70">{days}</div>
                       </td>
                       <td className="py-3 px-2">
                         <span
@@ -326,21 +326,21 @@ export function SeasonManagementTab() {
           onClick={() => setIsConfirmOpen(false)}
         >
           <div
-            className="bg-gray-900 border border-nasun-c5/30 rounded-lg w-full max-w-sm"
+            className="bg-gray-900 border border-nasun-c5/45 rounded-lg w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-5 py-4 border-b border-nasun-c5/20">
+            <div className="px-5 py-4 border-b border-nasun-c5/35">
               <div className="text-sm font-medium text-nasun-white">Generate Snapshot</div>
             </div>
             <div className="px-5 py-4 flex flex-col gap-3">
-              <p className="text-sm text-nasun-white/80">
+              <p className="text-sm text-nasun-white/90">
                 This will save today's leaderboard snapshot and update the public rankings.
               </p>
               <div className="px-3 py-2 rounded bg-yellow-900/30 border border-yellow-600/30 text-yellow-400 text-xs">
                 If a snapshot already exists for today, this will return an error (no overwrite).
               </div>
             </div>
-            <div className="flex justify-end gap-2 px-5 py-3 border-t border-nasun-c5/20">
+            <div className="flex justify-end gap-2 px-5 py-3 border-t border-nasun-c5/35">
               <Button variant="outlineC5" size="sm" onClick={() => setIsConfirmOpen(false)}>
                 Cancel
               </Button>
@@ -371,20 +371,20 @@ export function SeasonManagementTab() {
           onClick={() => setPreviewResult(null)}
         >
           <div
-            className="bg-gray-900 border border-nasun-c5/30 rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col"
+            className="bg-gray-900 border border-nasun-c5/45 rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-nasun-c5/20">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-nasun-c5/35">
               <div>
                 <div className="text-sm font-medium text-nasun-white">Snapshot Preview</div>
-                <div className="text-xs text-nasun-white/50 mt-0.5">
+                <div className="text-xs text-nasun-white/70 mt-0.5">
                   Season: {previewResult.seasonId} — {previewResult.totalAccounts} accounts — {new Date(previewResult.calculatedAt).toLocaleString('en-US')}
                 </div>
               </div>
               <button
                 onClick={() => setPreviewResult(null)}
-                className="text-nasun-white/50 hover:text-nasun-white text-lg leading-none"
+                className="text-nasun-white/70 hover:text-nasun-white text-lg leading-none"
               >
                 ×
               </button>
@@ -399,19 +399,19 @@ export function SeasonManagementTab() {
             <div className="overflow-y-auto flex-1 px-4 py-3">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-gray-900">
-                  <tr className="border-b border-nasun-c5/20">
-                    <th className="text-left py-2 pr-3 text-nasun-white/50 font-medium w-10">Rank</th>
-                    <th className="text-left py-2 pr-3 text-nasun-white/50 font-medium">User</th>
-                    <th className="text-right py-2 pr-3 text-nasun-white/50 font-medium">Score</th>
-                    <th className="text-right py-2 pr-3 text-nasun-white/50 font-medium">Raw</th>
-                    <th className="text-right py-2 pr-3 text-nasun-white/50 font-medium">Posts</th>
-                    <th className="text-right py-2 text-nasun-white/50 font-medium">Change</th>
+                  <tr className="border-b border-nasun-c5/35">
+                    <th className="text-left py-2 pr-3 text-nasun-white/70 font-medium w-10">Rank</th>
+                    <th className="text-left py-2 pr-3 text-nasun-white/70 font-medium">User</th>
+                    <th className="text-right py-2 pr-3 text-nasun-white/70 font-medium">Score</th>
+                    <th className="text-right py-2 pr-3 text-nasun-white/70 font-medium">Raw</th>
+                    <th className="text-right py-2 pr-3 text-nasun-white/70 font-medium">Posts</th>
+                    <th className="text-right py-2 text-nasun-white/70 font-medium">Change</th>
                   </tr>
                 </thead>
                 <tbody>
                   {previewResult.preview.map((entry: SnapshotPreviewEntry) => (
-                    <tr key={entry.rank} className="border-b border-nasun-c5/10 hover:bg-gray-800/30">
-                      <td className="py-1.5 pr-3 text-nasun-white/60 font-mono">{entry.rank}</td>
+                    <tr key={entry.rank} className="border-b border-nasun-c5/20 hover:bg-gray-800/30">
+                      <td className="py-1.5 pr-3 text-nasun-white/80 font-mono">{entry.rank}</td>
                       <td className="py-1.5 pr-3">
                         <div className="flex items-center gap-2">
                           {entry.profileImageUrl ? (
@@ -428,7 +428,7 @@ export function SeasonManagementTab() {
                               {entry.displayName || entry.username}
                             </div>
                             {entry.displayName && entry.displayName !== entry.username && (
-                              <div className="text-nasun-white/40 text-[10px] truncate">@{entry.username}</div>
+                              <div className="text-nasun-white/60 text-[10px] truncate">@{entry.username}</div>
                             )}
                           </div>
                         </div>
@@ -436,10 +436,10 @@ export function SeasonManagementTab() {
                       <td className="py-1.5 pr-3 text-right text-nasun-c7 font-mono">
                         {entry.userScore.toFixed(3)}
                       </td>
-                      <td className="py-1.5 pr-3 text-right text-nasun-white/60 font-mono">
+                      <td className="py-1.5 pr-3 text-right text-nasun-white/80 font-mono">
                         {entry.rawScore.toFixed(3)}
                       </td>
-                      <td className="py-1.5 pr-3 text-right text-nasun-white/60">{entry.postCount}</td>
+                      <td className="py-1.5 pr-3 text-right text-nasun-white/80">{entry.postCount}</td>
                       <td className={`py-1.5 text-right font-mono font-medium ${getRankChangeColor(entry)}`}>
                         {getRankChangeLabel(entry)}
                       </td>
@@ -450,7 +450,7 @@ export function SeasonManagementTab() {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-2 px-4 py-3 border-t border-nasun-c5/20">
+            <div className="flex justify-end gap-2 px-4 py-3 border-t border-nasun-c5/35">
               <Button variant="outlineC5" size="sm" onClick={() => setPreviewResult(null)}>
                 Close
               </Button>

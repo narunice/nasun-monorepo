@@ -159,17 +159,17 @@ export function PostRegistrationTab() {
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Post Submission Form */}
-      <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+      <OuterBox color="c6" className="w-full !border-nasun-c5/45 !bg-gray-800/50">
         <h3 className="text-xl font-medium text-nasun-white mb-6">Register Post</h3>
 
         <div className="space-y-6">
           {/* Target Season */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-3">
               Target Season
             </label>
             {isLoadingSeasons ? (
-              <div className="text-sm text-nasun-white/40">Loading seasons...</div>
+              <div className="text-sm text-nasun-white/60">Loading seasons...</div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 <button
@@ -178,7 +178,7 @@ export function PostRegistrationTab() {
                   className={`px-4 py-2.5 rounded-sm text-sm font-medium transition-all border ${
                     !form.seasonId
                       ? "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
-                      : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
+                      : "bg-gray-800/70 border-nasun-c5/45 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c5/50"
                   }`}
                 >
                   Auto (Active Season)
@@ -193,7 +193,7 @@ export function PostRegistrationTab() {
                       className={`px-4 py-2.5 rounded-sm text-sm font-medium transition-all border ${
                         isActive
                           ? "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
-                          : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
+                          : "bg-gray-800/70 border-nasun-c5/45 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c5/50"
                       }`}
                     >
                       {season.name}
@@ -208,7 +208,7 @@ export function PostRegistrationTab() {
               </div>
             )}
             {selectedSeason && (
-              <div className="mt-2 text-xs text-nasun-white/40">
+              <div className="mt-2 text-xs text-nasun-white/60">
                 {selectedSeason.startDate} - {selectedSeason.status === "ended" ? selectedSeason.endDate : "Ongoing"}
               </div>
             )}
@@ -216,7 +216,7 @@ export function PostRegistrationTab() {
 
           {/* Post Type */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-3">
               Post Type <span className="text-nasun-c7 font-mono ml-2">1 2 3</span>
             </label>
             <div className="flex gap-3">
@@ -234,7 +234,7 @@ export function PostRegistrationTab() {
                         ? isReply
                           ? "bg-amber-700/40 border-amber-500/60 text-amber-300 shadow-lg"
                           : "bg-nasun-c4 border-nasun-c4 text-nasun-white shadow-lg"
-                        : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
+                        : "bg-gray-800/70 border-nasun-c5/45 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c5/50"
                     }`}
                   >
                     <span className="text-nasun-c7 font-mono mr-2">{shortcut}</span>
@@ -252,7 +252,7 @@ export function PostRegistrationTab() {
 
           {/* URL Input */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
               Post URL <span className="text-nasun-c7 font-mono ml-2">/</span>
             </label>
             <input
@@ -266,14 +266,14 @@ export function PostRegistrationTab() {
             />
             {/* Account lookup status */}
             {extractedUsername && (
-              <div className="mt-2 text-xs text-nasun-white/50">
+              <div className="mt-2 text-xs text-nasun-white/70">
                 {isLoadingAccount ? (
                   <span>Looking up @{extractedUsername}...</span>
                 ) : accountData?.found ? (
                   <span className="text-nasun-c7">
                     Found: @{accountData.account?.username} - {accountData.account?.postCount} posts
                     {form.followerCount !== undefined && (
-                      <span className="ml-2 text-nasun-white/60">
+                      <span className="ml-2 text-nasun-white/80">
                         (Multiplier: {form.scorePreview.roleMultiplier.toFixed(3)})
                       </span>
                     )}
@@ -293,7 +293,7 @@ export function PostRegistrationTab() {
               className={`p-4 rounded-sm space-y-4 ${
                 form.isNewUser
                   ? "bg-yellow-950/20 border border-yellow-900/30"
-                  : "bg-nasun-c5/10 border border-nasun-c5/30"
+                  : "bg-nasun-c5/10 border border-nasun-c5/45"
               }`}
             >
               <div
@@ -307,7 +307,7 @@ export function PostRegistrationTab() {
               <div className="grid grid-cols-2 gap-4">
                 {/* Follower Count */}
                 <div>
-                  <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+                  <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
                     X Follower Count
                   </label>
                   <input
@@ -320,13 +320,13 @@ export function PostRegistrationTab() {
                     }
                     placeholder="e.g., 5000"
                     min="0"
-                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm"
+                    className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm"
                   />
                 </div>
 
                 {/* Language Selection */}
                 <div>
-                  <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+                  <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
                     Primary Language
                   </label>
                   <div className="flex gap-2">
@@ -338,7 +338,7 @@ export function PostRegistrationTab() {
                         className={`flex-1 px-3 py-2 rounded-sm text-sm font-medium transition-all border ${
                           form.language === lang
                             ? "bg-nasun-c4 border-nasun-c4 text-nasun-white"
-                            : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
+                            : "bg-gray-800/70 border-nasun-c5/45 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c5/50"
                         }`}
                       >
                         {LANGUAGE_LABELS[lang]}
@@ -349,8 +349,8 @@ export function PostRegistrationTab() {
               </div>
 
               {/* Language Scale Reference */}
-              <div className="text-xs text-nasun-white/40 mt-2">
-                <span className="font-medium text-nasun-white/60">
+              <div className="text-xs text-nasun-white/60 mt-2">
+                <span className="font-medium text-nasun-white/80">
                   {LANGUAGE_LABELS[form.language]} scale:
                 </span>{" "}
                 ×{LANGUAGE_SCALE[form.language]} (normalized to EN equivalent)
@@ -360,19 +360,19 @@ export function PostRegistrationTab() {
               {form.followerCount !== undefined && (
                 <div className="text-sm flex items-center gap-4">
                   <div>
-                    <span className="text-nasun-white/60">Followers:</span>{" "}
+                    <span className="text-nasun-white/80">Followers:</span>{" "}
                     <span className="text-nasun-white font-mono">
                       {form.followerCount.toLocaleString()}
                     </span>
                   </div>
                   <div>
-                    <span className="text-nasun-white/60">Normalized:</span>{" "}
+                    <span className="text-nasun-white/80">Normalized:</span>{" "}
                     <span className="text-nasun-white font-mono">
                       {(form.followerCount * LANGUAGE_SCALE[form.language]).toLocaleString()}
                     </span>
                   </div>
                   <div>
-                    <span className="text-nasun-white/60">Multiplier:</span>{" "}
+                    <span className="text-nasun-white/80">Multiplier:</span>{" "}
                     <span className="text-nasun-c7 font-bold font-mono">
                       {calculateRoleMultiplier(form.followerCount, form.language).toFixed(3)}
                     </span>
@@ -384,7 +384,7 @@ export function PostRegistrationTab() {
 
           {/* Content Signals */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-3">
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-3">
               Content Signals <span className="text-nasun-c7 font-mono ml-2">A S D</span>
             </label>
             <div className="flex gap-3">
@@ -399,7 +399,7 @@ export function PostRegistrationTab() {
                     className={`flex-1 px-4 py-3 rounded-sm font-medium transition-all border ${
                       isActive
                         ? "bg-nasun-c7/20 border-nasun-c7/50 text-nasun-c7 shadow-lg"
-                        : "bg-gray-800/50 border-nasun-c5/30 text-nasun-white/50 hover:text-nasun-white hover:border-nasun-c5/50"
+                        : "bg-gray-800/70 border-nasun-c5/45 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c5/50"
                     }`}
                   >
                     <span className="text-nasun-c7 font-mono mr-2">{shortcut}</span>
@@ -411,8 +411,8 @@ export function PostRegistrationTab() {
           </div>
 
           {/* Score Preview */}
-          <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-sm border border-nasun-c5/20">
-            <div className="text-sm text-nasun-white/60">
+          <div className="flex items-center justify-between p-4 bg-gray-800/70 rounded-sm border border-nasun-c5/35">
+            <div className="text-sm text-nasun-white/80">
               <span className="font-medium text-nasun-white">Score Preview:</span>{" "}
               {form.scorePreview.baseScore} ×{" "}
               {form.scorePreview.postTypeMultiplier !== 1.0 && (
@@ -421,7 +421,7 @@ export function PostRegistrationTab() {
               {form.scorePreview.postTypeMultiplier !== 1.0 && " × "}
               {form.scorePreview.roleMultiplier} +{" "}
               {form.scorePreview.signalBonus}
-              <span className="ml-2 text-nasun-white/40">({POST_TYPE_LABELS[form.postType]})</span>
+              <span className="ml-2 text-nasun-white/60">({POST_TYPE_LABELS[form.postType]})</span>
             </div>
             <div className="text-2xl font-bold text-nasun-c7">
               {form.scorePreview.totalScore.toFixed(3)}
@@ -462,11 +462,11 @@ export function PostRegistrationTab() {
 
       {/* Keyboard Shortcuts Reference */}
       <OuterBox color="n3" padding="sm" className="w-full">
-        <h4 className="text-sm font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
+        <h4 className="text-sm font-semibold text-nasun-white/90 mb-3 uppercase tracking-wider flex items-center gap-2">
           <span className="w-1 h-4 bg-nasun-c7 rounded-full"></span>
           Keyboard Shortcuts
         </h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-nasun-white/60">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-nasun-white/80">
           <div>
             <span className="text-nasun-c7 font-mono">1 2 3</span>
             <span className="ml-2">Type</span>

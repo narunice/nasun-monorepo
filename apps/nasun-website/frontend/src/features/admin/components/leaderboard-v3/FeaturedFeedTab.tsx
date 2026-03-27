@@ -192,7 +192,7 @@ export function FeaturedFeedTab() {
   if (isLoading) {
     return (
       <OuterBox className="p-6">
-        <p className="text-nasun-white/60">Loading curated feed...</p>
+        <p className="text-nasun-white/80">Loading curated feed...</p>
       </OuterBox>
     );
   }
@@ -206,7 +206,7 @@ export function FeaturedFeedTab() {
             Curated Feed ({items.length}/15)
           </h3>
           {feedData?.updatedAt && (
-            <span className="text-xs text-nasun-white/40">
+            <span className="text-xs text-nasun-white/60">
               Last saved: {new Date(feedData.updatedAt).toLocaleString("en-US")} by{" "}
               {feedData.updatedBy}
             </span>
@@ -214,7 +214,7 @@ export function FeaturedFeedTab() {
         </div>
 
         {items.length === 0 ? (
-          <p className="text-nasun-white/40 text-sm">
+          <p className="text-nasun-white/60 text-sm">
             No curated posts yet. Add posts below to start curating the feed.
             The algorithmic feed will be used as fallback.
           </p>
@@ -223,10 +223,10 @@ export function FeaturedFeedTab() {
             {items.map((item, index) => (
               <div
                 key={item.postId}
-                className="flex items-center gap-3 p-3 bg-gray-800/50 rounded border border-nasun-c5/20"
+                className="flex items-center gap-3 p-3 bg-gray-800/70 rounded border border-nasun-c5/35"
               >
                 {/* Order number */}
-                <span className="text-nasun-white/40 text-sm font-mono w-6 text-center">
+                <span className="text-nasun-white/60 text-sm font-mono w-6 text-center">
                   {index + 1}
                 </span>
 
@@ -247,7 +247,7 @@ export function FeaturedFeedTab() {
                       </a>
                     )}
                   </div>
-                  <span className="text-nasun-white/30 text-xs font-mono">
+                  <span className="text-nasun-white/50 text-xs font-mono">
                     {item.postId.slice(0, 8)}...
                   </span>
                 </div>
@@ -256,7 +256,7 @@ export function FeaturedFeedTab() {
                 <select
                   value={item.badge}
                   onChange={(e) => updateBadge(index, e.target.value)}
-                  className="bg-gray-700 text-nasun-white text-xs rounded px-2 py-1 border border-nasun-c5/20"
+                  className="bg-gray-700 text-nasun-white text-xs rounded px-2 py-1 border border-nasun-c5/35"
                 >
                   {BADGE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -270,14 +270,14 @@ export function FeaturedFeedTab() {
                   <button
                     onClick={() => moveItem(index, "up")}
                     disabled={index === 0}
-                    className="text-nasun-white/40 hover:text-nasun-white disabled:opacity-20 text-xs px-1"
+                    className="text-nasun-white/60 hover:text-nasun-white disabled:opacity-20 text-xs px-1"
                   >
                     ▲
                   </button>
                   <button
                     onClick={() => moveItem(index, "down")}
                     disabled={index === items.length - 1}
-                    className="text-nasun-white/40 hover:text-nasun-white disabled:opacity-20 text-xs px-1"
+                    className="text-nasun-white/60 hover:text-nasun-white disabled:opacity-20 text-xs px-1"
                   >
                     ▼
                   </button>
@@ -335,14 +335,14 @@ export function FeaturedFeedTab() {
                 setLookupStatus(null);
               }}
               placeholder="Paste X post URL (e.g., https://x.com/user/status/123)"
-              className="flex-1 bg-gray-800 text-nasun-white rounded px-3 py-2 text-sm border border-nasun-c5/20 placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4"
+              className="flex-1 bg-gray-800 text-nasun-white rounded px-3 py-2 text-sm border border-nasun-c5/35 placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4"
               onKeyDown={(e) => e.key === "Enter" && handleAddPost()}
             />
 
             <select
               value={selectedBadge}
               onChange={(e) => setSelectedBadge(e.target.value)}
-              className="bg-gray-800 text-nasun-white text-sm rounded px-3 py-2 border border-nasun-c5/20"
+              className="bg-gray-800 text-nasun-white text-sm rounded px-3 py-2 border border-nasun-c5/35"
             >
               {BADGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -361,12 +361,12 @@ export function FeaturedFeedTab() {
           </div>
 
           {lookupStatus && (
-            <p className={`text-sm ${lookupStatus.includes("not found") || lookupStatus.includes("Invalid") || lookupStatus.includes("already") ? "text-yellow-400" : "text-nasun-white/60"}`}>
+            <p className={`text-sm ${lookupStatus.includes("not found") || lookupStatus.includes("Invalid") || lookupStatus.includes("already") ? "text-yellow-400" : "text-nasun-white/80"}`}>
               {lookupStatus}
             </p>
           )}
 
-          <p className="text-nasun-white/30 text-xs">
+          <p className="text-nasun-white/50 text-xs">
             The post must already be registered in the Post tab. Paste the full X
             post URL to look it up.
           </p>
@@ -376,11 +376,11 @@ export function FeaturedFeedTab() {
       {/* Confirmation Dialog */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 border border-nasun-c5/30 rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-gray-900 border border-nasun-c5/45 rounded-lg p-6 max-w-md w-full mx-4">
             <h4 className="text-lg font-semibold text-nasun-white mb-3">
               Save Curated Feed?
             </h4>
-            <p className="text-nasun-white/60 text-sm mb-6">
+            <p className="text-nasun-white/80 text-sm mb-6">
               This will replace the current featured feed with {items.length}{" "}
               curated post{items.length !== 1 ? "s" : ""}. The change takes
               effect immediately on the public leaderboard page.
@@ -389,7 +389,7 @@ export function FeaturedFeedTab() {
               <Button
                 variant="outline"
                 onClick={() => setShowConfirm(false)}
-                className="border-nasun-c5/30 text-nasun-white/60"
+                className="border-nasun-c5/45 text-nasun-white/80"
               >
                 Cancel
               </Button>
