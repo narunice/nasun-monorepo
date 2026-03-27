@@ -67,6 +67,15 @@ export class CommonStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    // Alliance Mint table — one NFT mint per account (PK: identityId)
+    const allianceMintTable = new dynamodb.Table(this, "AllianceMintTable", {
+      tableName: "nasun-alliance-mint",
+      partitionKey: { name: "identityId", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
+    });
+
     // AddressBooks table — wallet-signature-based address book sync (PK: walletAddress, SK: recordType)
     const addressBooksTable = new dynamodb.Table(this, "AddressBooksTable", {
       tableName: "AddressBooks",
@@ -315,6 +324,12 @@ export class CommonStack extends cdk.Stack {
         GOVERNANCE_MULTI_CHOICE_PACKAGE_ID: process.env.GOVERNANCE_MULTI_CHOICE_PACKAGE_ID || "0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a",
         PROPOSAL_TYPE_REGISTRY_ID: process.env.PROPOSAL_TYPE_REGISTRY_ID || "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        // Alliance NFT minting
+        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
+        ALLIANCE_MINT_TABLE: "nasun-alliance-mint",
+        ALLIANCE_PACKAGE_ID: "0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b",
+        ALLIANCE_REGISTRY_ID: "0xed64e2d9661dde6f6f6fb303680c4ab7c95f9070c41e967b746299610ca7b00f",
+        ALLIANCE_ADMIN_ID: "0x6d95e0abd50784e01b106f86bfe5474a3a895059fb67d4c4a5147f03e694791c",
       },
       logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-governance-api",
@@ -344,6 +359,9 @@ export class CommonStack extends cdk.Stack {
     userWalletsTableRef.grantReadData(this.governanceApiLambda);
     this.userProfilesTable.grantReadWriteData(this.governanceApiLambda);
 
+    // Grant Alliance mint table access
+    allianceMintTable.grantReadWriteData(this.governanceApiLambda);
+
     // Grant Secrets Manager access for Oracle/Sponsor keypairs
     this.governanceApiLambda.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
@@ -361,6 +379,10 @@ export class CommonStack extends cdk.Stack {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
+      },
+      deployOptions: {
+        throttlingBurstLimit: 10,
+        throttlingRateLimit: 5,
       },
     });
 

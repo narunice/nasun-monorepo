@@ -124,7 +124,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
             No activity points yet
           </p>
           <p className="text-nasun-white/30 text-center text-xs">
-            Use Pado, stake, or vote to earn points
+            Use Nasun ecosystem to earn points
           </p>
         </div>
       </OuterBox>

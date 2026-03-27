@@ -41,7 +41,7 @@
     "upgradeCap": "0x9d3d2a442e0300a936a1297e71c8c3eaa97cc8a493e946c0da735a5b4000a925"
   },
   "governance": {
-    "packageId": "0x17df8431dd61bcdfc0dae120c915150634edecb911bf7368d0af43e2bbd69c5a",
+    "packageId": "0xad7e5138001d316c4ffb22a07b35e24ff46309ddb077ab9c19c3cb38ba106de1",
     "originalPackageId": "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
     "multiChoicePackageId": "0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a",
     "upgradeCap": "0xc1c5b2401331b881d5716ab2cd91010e9916ff15932f6a8ad60c8cbfc9a13fee",
@@ -52,11 +52,11 @@
     "proposalTypeRegistry": "0xf69db2507deac2437e93e2ab4f895a856f672d1c3dca1de19b6d90f5f5dceb0b"
   },
   "baram": {
-    "packageId": "0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9",
+    "packageId": "0xd3c73f768e2a089f9ebab92367cee472ddc02489f7feeb9496d824ceb4744070",
     "originalPackageId": "0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6",
     "registry": "0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833",
     "upgradeCap": "0x5f6406efe648ba842e88c512ccb7704e5fb3e71ab5a961ee53ed101262546291",
-    "budgetPackageId": "0x949af600b619785b66fe7959afb7f814ce8952dad301377de80343b90a8722f9",
+    "budgetPackageId": "0xd3c73f768e2a089f9ebab92367cee472ddc02489f7feeb9496d824ceb4744070",
     "budgetTypeOrigin": "0xb0dc22daa1a002eeea5e33a7862ba3ab9f0b0625e7fcc269a21aa714180c9aa7",
     "budgetV2TypeOrigin": "0x6e61bf5e77da096616071308e9b53f96b34431135e9dbea7dd42465690266a8e",
     "executorPackageId": "0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd",
@@ -133,5 +133,12 @@
     "originalPackageId": "0x097e96d5e0c09915b6ba2ed744fe2d4ee0bd21df1d453e6528d4d82c96c1c44b",
     "upgradeCap": "0x1e1ada14579344853b58a2f68241fd93861b91fcaef5ec16ef657ea4c5b03c8c",
     "registry": "0x00bdb8c97ea5670c5e5708daeadcb46291e54e178d126954a6f1c06fab90386a"
+  },
+  "alliance": {
+    "packageId": "0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b",
+    "originalPackageId": "0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b",
+    "adminCap": "0x6d95e0abd50784e01b106f86bfe5474a3a895059fb67d4c4a5147f03e694791c",
+    "registry": "0xed64e2d9661dde6f6f6fb303680c4ab7c95f9070c41e967b746299610ca7b00f",
+    "upgradeCap": "0x103f43fdbf88eed03aca3b1e775436a6960a0b707d30b870d0eab01b568160ec"
   }
 }
