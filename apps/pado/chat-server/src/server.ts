@@ -126,7 +126,19 @@ function getClientIp(ws: WebSocket, req: { socket: { remoteAddress?: string }; h
 
 function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: ClientMessage & { type: 'send_message' }): void {
   const roomId = msg.roomId ?? 0;
-  const content = msg.content?.trim();
+
+  // 1. Type guard: ensure content is a string
+  if (typeof msg.content !== 'string') {
+    send(ws, { type: 'error', code: 'INVALID_CONTENT', message: 'Content must be a string' });
+    return;
+  }
+
+  // 2. Strip dangerous characters, then trim
+  // C0/C1 control chars (except \n), zero-width, bidi overrides, line/paragraph separators
+  const content = msg.content
+    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    .replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u2069\uFEFF]/g, '')
+    .trim();
 
   // Validate room
   if (!roomExists(roomId)) {
@@ -134,7 +146,7 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
     return;
   }
 
-  // Validate content
+  // 3. Validate content (empty + length)
   if (!content || content.length === 0) {
     send(ws, { type: 'error', code: 'EMPTY_MESSAGE', message: 'Message cannot be empty' });
     return;
@@ -145,7 +157,7 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
     return;
   }
 
-  // Block reserved prefixes (case-insensitive — only system can send structured messages)
+  // Block reserved prefixes (case-insensitive)
   const upperContent = content.toUpperCase();
   if (upperContent.startsWith('[TRADE]') || upperContent.startsWith('[SYSTEM]') || upperContent.startsWith('[BOT]')) {
     send(ws, { type: 'error', code: 'RESERVED_PREFIX', message: 'This message prefix is reserved' });
@@ -1274,10 +1286,17 @@ function start(): void {
   // Create HTTP server (for REST API + WebSocket upgrade)
   const httpServer = createServer(handleHttpRequest);
 
-  // Create WebSocket server with message size limit
+  // Create WebSocket server with message size limit and origin validation
   const wss = new WebSocketServer({
     server: httpServer,
     maxPayload: CONFIG.maxWsMessageBytes,
+    verifyClient: (info: { origin: string; secure: boolean; req: import('http').IncomingMessage }) => {
+      const origin = info.origin || info.req.headers.origin as string | undefined;
+      // Allow non-browser clients (bots, CLI, health checks) with no Origin header
+      if (!origin) return true;
+      // Block browser connections from unauthorized origins (CSWSH prevention)
+      return CONFIG.allowedOrigins.includes(origin);
+    },
   });
   wss.on('connection', handleConnection);
 
