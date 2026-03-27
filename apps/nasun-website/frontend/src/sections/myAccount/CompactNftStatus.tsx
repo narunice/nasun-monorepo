@@ -160,7 +160,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
             </div>
           )}
 
-          {/* Alliance NFT */}
+          {/* Alliance NFT - hidden until launch
           {isAllianceConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Alliance</h6>
@@ -195,6 +195,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
               </div>
             </div>
           )}
+          */}
 
           {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
