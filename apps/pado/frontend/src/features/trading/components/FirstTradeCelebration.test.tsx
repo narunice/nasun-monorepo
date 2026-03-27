@@ -21,13 +21,14 @@ describe('FirstTradeCelebration', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  it('tweet text mentions @PadoFinance and pado.finance', () => {
+  it('tweet text mentions #Pado and @Nasun_io without external URL', () => {
     render(<FirstTradeCelebration onDismiss={() => {}} />);
     const link = screen.getByText('Share on X').closest('a');
     const href = link?.getAttribute('href') ?? '';
     const decodedHref = decodeURIComponent(href);
-    expect(decodedHref).toContain('@PadoFinance');
-    expect(decodedHref).toContain('pado.finance');
+    expect(decodedHref).toContain('#Pado');
+    expect(decodedHref).toContain('@Nasun_io');
+    expect(decodedHref).not.toContain('pado.finance');
   });
 
   it('calls onDismiss when "Continue Trading" is clicked', () => {
