@@ -78,13 +78,14 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     );
 
     if (result.Item) {
-      const { status } = result.Item;
+      const { status, mintType } = result.Item;
       return jsonResponse(200, {
         success: true,
         data: {
           registered: status === "ACTIVE",
           applied: status === "APPLIED",
           walletAddress: normalizedAddress,
+          ...(mintType && { mintType }),
         },
       }, origin);
     }
