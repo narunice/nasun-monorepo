@@ -10,6 +10,7 @@ export * from './tokens';
 export * from './deepbook';
 export * from './prediction';
 export * from './lottery';
+export * from './scratchcard';
 export * from './governance';
 export * from './baram';
 export * from './nsa';

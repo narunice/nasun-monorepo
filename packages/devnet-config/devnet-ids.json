@@ -34,6 +34,12 @@
     "adminCap": "0x20e79c01aa862fbf0273dfb2b769feb0f87ac07f3788478115efb6f2d3a33c71",
     "upgradeCap": "0x88e1515cad3cac5a5c4ff1f128d69635dc6a49c9669c606c2179f3d50652b09a"
   },
+  "scratchcard": {
+    "packageId": "0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff",
+    "pool": "0xc06e25a62fc6975861bf3f420100b593c1d25603d83083ae3dffee266aee2483",
+    "adminCap": "0xf120b27be3b2d17b141f7f83fad81c580891d69d35bfa49f215ba5f7bd3b18eb",
+    "upgradeCap": "0x9d3d2a442e0300a936a1297e71c8c3eaa97cc8a493e946c0da735a5b4000a925"
+  },
   "governance": {
     "packageId": "0x17df8431dd61bcdfc0dae120c915150634edecb911bf7368d0af43e2bbd69c5a",
     "originalPackageId": "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
