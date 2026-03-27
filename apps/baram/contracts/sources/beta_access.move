@@ -203,6 +203,42 @@ module baram::beta_access {
         });
     }
 
+    // ========== Restore Functions (admin only, post-devnet-reset) ==========
+
+    /// Restore a BetaAccessNFT with original field values from off-chain snapshot.
+    /// Unlike batch_mint, this preserves the original issued_at and remaining_uses.
+    public fun admin_restore_beta_access(
+        _admin: &BetaAccessAdmin,
+        registry: &mut BetaAccessRegistry,
+        recipient: address,
+        issued_at: u64,
+        expires_at: u64,
+        remaining_uses: u64,
+        original_uses: u64,
+        ctx: &mut TxContext
+    ) {
+        let nft = BetaAccessNFT {
+            id: object::new(ctx),
+            issued_at,
+            expires_at,
+            remaining_uses,
+            original_uses,
+            recipient,
+        };
+
+        let nft_id = object::uid_to_address(&nft.id);
+        registry.total_minted = registry.total_minted + 1;
+
+        event::emit(BetaAccessMinted {
+            nft_id,
+            recipient,
+            expires_at,
+            remaining_uses,
+        });
+
+        transfer::transfer(nft, recipient);
+    }
+
     // ========== View Functions ==========
 
     /// Check if NFT is currently valid (not expired, has uses remaining)

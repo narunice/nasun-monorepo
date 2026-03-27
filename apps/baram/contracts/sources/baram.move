@@ -712,6 +712,37 @@ module baram::baram {
         transfer::transfer(receipt, requester);
     }
 
+    // ========== Restore Functions (admin only, post-devnet-reset) ==========
+
+    /// Restore a RequestReceipt from off-chain snapshot data.
+    /// Gated by UpgradeCap since baram module has no AdminCap.
+    public fun admin_restore_receipt(
+        _cap: &sui::package::UpgradeCap,
+        request_id: u64,
+        requester: address,
+        executor: address,
+        price: u64,
+        prompt_hash: vector<u8>,
+        model: String,
+        created_at: u64,
+        timeout_at: u64,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        let receipt = RequestReceipt {
+            id: object::new(ctx),
+            request_id,
+            requester,
+            executor,
+            price,
+            prompt_hash,
+            model,
+            created_at,
+            timeout_at,
+        };
+        transfer::public_transfer(receipt, recipient);
+    }
+
     // ========== Test Functions ==========
 
     #[test_only]
