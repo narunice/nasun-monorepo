@@ -31,9 +31,9 @@ import { AssetOverview, TokenBalanceList, ActivityTabs } from "../features/portf
 function MarketsGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <LotteryHighlight />
       <HotMarketsCard />
       <PredictionHighlight />
-      <LotteryHighlight />
     </div>
   );
 }
@@ -74,7 +74,7 @@ export function HomePage() {
           {/* Desktop: Quick Actions grid */}
           <div className="hidden md:block mb-6">
             <h2 className="text-lg font-bold text-theme-text-primary mb-4">
-              What would you like to do?
+              Start here
             </h2>
             <QuickActions />
           </div>
@@ -101,7 +101,7 @@ export function HomePage() {
           {/* Quick Actions */}
           <div className="mb-8">
             <h2 className="text-lg font-bold text-theme-text-primary mb-4">
-              What would you like to do?
+              Start here
             </h2>
             <QuickActions />
           </div>
@@ -114,7 +114,7 @@ export function HomePage() {
           {/* Footer Tagline */}
           <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4 text-center">
             <p className="text-sm xl:text-base text-theme-text-muted">
-              Trade, predict, and earn — all in one place.
+              Start with the lottery. More is coming.
             </p>
           </div>
         </>
