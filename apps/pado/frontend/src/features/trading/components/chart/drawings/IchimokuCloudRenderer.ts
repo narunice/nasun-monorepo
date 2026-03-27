@@ -17,12 +17,6 @@ import type {
 import type { CanvasRenderingTarget2D } from 'fancy-canvas';
 import type { PrimitivePaneViewZOrder } from 'lightweight-charts';
 
-interface CloudPoint {
-  time: Time;
-  spanA: number;
-  spanB: number;
-}
-
 class IchimokuCloudPaneRenderer implements IPrimitivePaneRenderer {
   private _points: { x: number; yA: number; yB: number }[];
 
