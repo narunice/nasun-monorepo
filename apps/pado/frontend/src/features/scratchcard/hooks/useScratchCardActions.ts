@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { buildBuyScratchCard } from '../transactions';
 import { getSuiClient } from '../../../lib/sui-client';
 import { parseScratchCardEvent } from '../lib/scratchcard-client';
-import { NUSDC_TYPE, CARD_PRICE, TX_SYNC_DELAY_MS } from '../constants';
+import { NUSDC_TYPE, CARD_PRICE } from '../constants';
 import type { ScratchResult } from '../types';
 
 export interface UseScratchCardActionsResult {
@@ -130,8 +130,9 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
       }>;
       const scratchResult = parseScratchCardEvent(events);
 
-      // Wait for RPC indexing then refetch
-      await new Promise((resolve) => setTimeout(resolve, TX_SYNC_DELAY_MS));
+      // Wait for RPC to index the transaction before refetching
+      const client = getSuiClient();
+      await client.waitForTransaction({ digest: result.digest, timeout: 10_000 }).catch(() => {});
       await Promise.all([
         queryClient.refetchQueries({
           queryKey: ['scratchcard-pool'],
@@ -146,8 +147,8 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
       return scratchResult;
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Failed to buy card';
-      const msg = /InsufficientGas|No valid gas/i.test(raw)
-        ? 'Not enough NASUN for gas. Request NASUN from the faucet first.'
+      const msg = /InsufficientGas|No valid gas|ObjectVersionUnavailableForConsumption/i.test(raw)
+        ? 'Transaction still processing. Please wait a moment and try again.'
         : raw;
       console.error('Error buying scratch card:', err);
       setError(msg);
