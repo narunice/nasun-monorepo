@@ -1,0 +1,15 @@
+[package]
+name = "alliance_nft"
+edition = "2024"
+version = "0.0.1"
+published-at = "0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b"
+
+[dependencies]
+Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
+
+[addresses]
+alliance_nft = "0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b"
+
+[environments]
+devnet = "272218f1"
+nasun-devnet = "272218f1"

@@ -23,6 +23,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64, toBase64 } from "@mysten/bcs";
 import { bcs } from "@mysten/sui/bcs";
+import { handleAllianceRoute } from "./alliance-handler";
 
 // Configure ed25519 to use sha512
 ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
@@ -999,6 +1000,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
     }
+
+    // Alliance NFT routes (delegated to separate handler)
+    const allianceResult = await handleAllianceRoute(event, docClient, corsHeaders, maskSensitiveData);
+    if (allianceResult) return allianceResult;
 
     return {
       statusCode: 404,
