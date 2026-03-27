@@ -63,6 +63,36 @@ export async function fetchUserScratchCards(
     .sort((a, b) => b.cardId - a.cardId); // Newest first
 }
 
+/** Fetch purchase history from events (includes both wins and losses) */
+export async function fetchPurchaseHistory(
+  userAddress: string,
+  limit = 50,
+): Promise<ScratchResult[]> {
+  const client = getSuiClient();
+  const eventType = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
+
+  const response = await client.queryEvents({
+    query: { MoveEventType: eventType },
+    limit,
+    order: 'descending',
+  });
+
+  return response.data
+    .map((event) => {
+      const data = event.parsedJson as Record<string, string>;
+      const multiplier = Number(data.multiplier);
+      return {
+        cardId: Number(data.card_id),
+        buyer: data.buyer,
+        multiplier,
+        prizeAmount: BigInt(data.prize_amount),
+        isWinner: multiplier > 0,
+        timestampMs: Number(event.timestampMs ?? 0),
+      };
+    })
+    .filter((r) => r.buyer === userAddress);
+}
+
 /** Parse ScratchCardPurchased event from transaction result */
 export function parseScratchCardEvent(
   events: Array<{ type: string; parsedJson: unknown }>,

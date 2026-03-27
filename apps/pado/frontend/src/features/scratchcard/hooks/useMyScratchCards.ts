@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
-import { fetchUserScratchCards } from '../lib/scratchcard-client';
+import { fetchPurchaseHistory } from '../lib/scratchcard-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
-import type { ScratchCard } from '../types';
+import type { ScratchResult } from '../types';
 
 export interface UseMyScratchCardsResult {
-  cards: ScratchCard[];
+  purchases: ScratchResult[];
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
@@ -29,14 +29,14 @@ export function useMyScratchCards(): UseMyScratchCardsResult {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['my-scratchcards', address],
-    queryFn: () => (address ? fetchUserScratchCards(address) : []),
+    queryFn: () => (address ? fetchPurchaseHistory(address) : []),
     enabled: !!address,
     staleTime: 10_000,
     refetchInterval: adaptiveInterval,
   });
 
   return {
-    cards: data ?? [],
+    purchases: data ?? [],
     isLoading,
     error: error as Error | null,
     refetch,
