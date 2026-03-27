@@ -30,6 +30,7 @@ const LeaderboardPage = lazy(() => import('../pages/LeaderboardPage').then(m => 
 const TraderProfilePage = lazy(() => import('../pages/TraderProfilePage').then(m => ({ default: m.TraderProfilePage })));
 const CompetitionsPage = lazy(() => import('../pages/CompetitionsPage').then(m => ({ default: m.CompetitionsPage })));
 const CompetitionDetailPage = lazy(() => import('../pages/CompetitionDetailPage').then(m => ({ default: m.CompetitionDetailPage })));
+const ScratchCardPage = lazy(() => import('../pages/ScratchCardPage').then(m => ({ default: m.ScratchCardPage })));
 const EarnPage = lazy(() => import('../pages/EarnPage').then(m => ({ default: m.EarnPage })));
 const PortfolioPage = lazy(() => import('../pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 
@@ -55,6 +56,9 @@ export function AppRoutes() {
         {/* Lottery */}
         <Route path="/lottery" element={<LotteryPage />} />
         <Route path="/lottery/:roundId" element={<LotteryRoundPage />} />
+
+        {/* Scratch Cards */}
+        <Route path="/scratch" element={<ScratchCardPage />} />
 
         {/* Admin (Unified Dashboard) */}
         <Route path="/admin" element={<AdminPage />} />
