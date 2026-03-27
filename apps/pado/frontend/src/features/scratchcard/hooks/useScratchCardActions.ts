@@ -98,6 +98,14 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
     return coin?.coinObjectId ?? null;
   }, [walletAddress]);
 
+  const checkGasBalance = useCallback(async (): Promise<boolean> => {
+    if (!walletAddress) return false;
+    const client = getSuiClient();
+    const balance = await client.getBalance({ owner: walletAddress });
+    // Need at least 0.05 NASUN for gas (~50M MIST)
+    return BigInt(balance.totalBalance) >= 50_000_000n;
+  }, [walletAddress]);
+
   const buyCard = useCallback(async (): Promise<ScratchResult | null> => {
     if (!isWalletConnected) {
       setError('Wallet not connected');
@@ -114,6 +122,12 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
     setError(null);
 
     try {
+      const hasGas = await checkGasBalance();
+      if (!hasGas) {
+        setError('Not enough NASUN for gas. Request from the faucet first.');
+        return null;
+      }
+
       const nusdcCoinId = await findNusdcCoin();
       if (!nusdcCoinId) {
         setError('Insufficient NUSDC balance');
@@ -130,26 +144,26 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
       }>;
       const scratchResult = parseScratchCardEvent(events);
 
-      // Wait for RPC to index the transaction before refetching
+      // Wait for RPC to index the transaction, then refetch pool only.
+      // Purchase history (my-scratchcards) is NOT refetched here to avoid
+      // spoiling the result before the user scratches the card.
+      // ScratchCardArea calls refetchHistory() after reveal.
       const client = getSuiClient();
       await client.waitForTransaction({ digest: result.digest, timeout: 10_000 }).catch(() => {});
-      await Promise.all([
-        queryClient.refetchQueries({
-          queryKey: ['scratchcard-pool'],
-          type: 'active',
-        }),
-        queryClient.refetchQueries({
-          queryKey: ['my-scratchcards'],
-          type: 'active',
-        }),
-      ]);
+      await queryClient.refetchQueries({
+        queryKey: ['scratchcard-pool'],
+        type: 'active',
+      });
 
       return scratchResult;
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Failed to buy card';
-      const msg = /InsufficientGas|No valid gas|ObjectVersionUnavailableForConsumption/i.test(raw)
-        ? 'Transaction still processing. Please wait a moment and try again.'
-        : raw;
+      let msg = raw;
+      if (/ObjectVersionUnavailableForConsumption/i.test(raw)) {
+        msg = 'Transaction still processing. Please wait a moment and try again.';
+      } else if (/InsufficientGas|No valid gas/i.test(raw)) {
+        msg = 'Not enough NASUN for gas. Request from the faucet first.';
+      }
       console.error('Error buying scratch card:', err);
       setError(msg);
       return null;

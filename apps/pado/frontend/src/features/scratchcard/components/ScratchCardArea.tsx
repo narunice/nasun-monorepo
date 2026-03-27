@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useScratchCardActions } from '../hooks';
+import { useScratchCardActions, useMyScratchCards } from '../hooks';
 import { useScratchCardPool } from '../hooks';
 import { useToast } from '../../../components/common';
 import { BuyCardButton } from './BuyCardButton';
@@ -15,6 +15,7 @@ type Phase = 'idle' | 'buying' | 'scratching' | 'revealed';
 export function ScratchCardArea() {
   const { buyCard, isBuying, error } = useScratchCardActions();
   const { pool } = useScratchCardPool();
+  const { refetch: refetchHistory } = useMyScratchCards();
   const { showToast } = useToast();
 
   const [phase, setPhase] = useState<Phase>('idle');
@@ -55,13 +56,16 @@ export function ScratchCardArea() {
       );
     }
 
+    // Refetch purchase history now that result is visible (not before scratch)
+    refetchHistory();
+
     // Show "Buy Another" after linger delay
     if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
     lingerTimerRef.current = setTimeout(() => {
       setShowBuyAnother(true);
       lingerTimerRef.current = null;
     }, RESULT_LINGER_MS);
-  }, [result, showToast]);
+  }, [result, showToast, refetchHistory]);
 
   const handleRevealAll = useCallback(() => {
     handleReveal();
