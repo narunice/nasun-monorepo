@@ -37,7 +37,7 @@ export function PrizeTableDisplay() {
         ))}
       </div>
       <p className="text-xs text-theme-text-muted mt-3">
-        RTP 76.5% -- Each card costs {CARD_PRICE_DISPLAY} NUSDC
+        RTP 82% -- Each card costs {CARD_PRICE_DISPLAY} NUSDC
       </p>
     </div>
   );
