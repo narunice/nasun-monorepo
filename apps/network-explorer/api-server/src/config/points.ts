@@ -26,6 +26,12 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   'wallet-transfer': { transfer: 1, 'merge-coins': 0, 'split-coins': 0 },
   staking: { delegate: 10, unstake: 0 },
   faucet: { claim: 0 },
+  'daily-mission': {
+    'dex-first': 10,
+    'lottery-first': 10,
+    'governance-first': 20,
+    'all-clear': 20,
+  },
 } as const;
 
 export const GENESIS_PASS_MULTIPLIER = 2.0; // Forward-only: existing 1.5x records remain immutable

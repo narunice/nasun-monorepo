@@ -14,6 +14,7 @@ import {
   calculateReferralBonuses,
   type PointsInsert,
 } from './referral-bonus.js';
+import { calculateDailyMissions } from './daily-mission.js';
 import { rpcCall } from '../rpc.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
@@ -96,6 +97,17 @@ async function scanLoop(): Promise<void> {
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     if (totalProcessed > 0) {
+      // Daily mission bonus: runs once per scanLoop, not per batch
+      try {
+        const missionCount = await calculateDailyMissions();
+        if (missionCount > 0) {
+          totalProcessed += missionCount;
+          console.log(`[DailyMission] Awarded ${missionCount} mission points`);
+        }
+      } catch (err) {
+        console.error('[DailyMission] Error (non-fatal):', (err as Error).message);
+      }
+
       console.log(
         `[Points] Scan complete: ${totalProcessed} points recorded in ${elapsed}s`,
       );
