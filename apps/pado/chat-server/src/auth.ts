@@ -5,27 +5,51 @@ import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 // Active challenges: challenge string -> { address (claimed), expiresAt }
 const pendingChallenges = new Map<string, { expiresAt: number }>();
 
-// Ephemeral key bindings: ephemeralPubKey (base64) -> zkLogin address
+// Ephemeral key bindings: ephemeralPubKey (base64) -> { address, createdAt }
 // Prevents address spoofing: once an ephemeral key is bound to an address,
 // it cannot be used to claim a different address.
 // In-memory storage is acceptable: server restart clears bindings,
 // requiring re-authentication (UX impact only, no security risk on devnet).
-// TODO(mainnet): migrate to persistent store (SQLite/Redis), remove unbound-key fallback
-const ephemeralBindings = new Map<string, string>();
+// TTL-based eviction (24h) matches zkLogin ephemeral key lifetime.
+// TODO(mainnet): migrate to persistent store (SQLite/Redis)
+const ephemeralBindings = new Map<string, { address: string; createdAt: number }>();
+const MAX_BINDINGS = 10_000;
+const BINDING_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 /**
  * Register a binding between an ephemeral public key and a zkLogin address.
  * Called after successful ephemeral auth to prevent future spoofing.
  */
 export function registerEphemeralBinding(ephemeralPubKey: string, walletAddress: string): void {
-  ephemeralBindings.set(ephemeralPubKey, walletAddress);
+  // TTL-based eviction when at capacity: remove expired entries first
+  if (ephemeralBindings.size >= MAX_BINDINGS) {
+    const now = Date.now();
+    for (const [key, val] of ephemeralBindings) {
+      if (now - val.createdAt > BINDING_TTL_MS) {
+        ephemeralBindings.delete(key);
+      }
+    }
+  }
+  // Fallback: evict oldest entry if still at capacity after TTL cleanup
+  if (ephemeralBindings.size >= MAX_BINDINGS) {
+    const firstKey = ephemeralBindings.keys().next().value;
+    if (firstKey) ephemeralBindings.delete(firstKey);
+  }
+  ephemeralBindings.set(ephemeralPubKey, { address: walletAddress, createdAt: Date.now() });
 }
 
 /**
  * Get the address bound to an ephemeral public key, if any.
+ * Returns undefined if the binding has expired (24h TTL).
  */
 export function getEphemeralBinding(ephemeralPubKey: string): string | undefined {
-  return ephemeralBindings.get(ephemeralPubKey);
+  const entry = ephemeralBindings.get(ephemeralPubKey);
+  if (!entry) return undefined;
+  if (Date.now() - entry.createdAt > BINDING_TTL_MS) {
+    ephemeralBindings.delete(ephemeralPubKey);
+    return undefined;
+  }
+  return entry.address;
 }
 
 // Cleanup stale challenges every 60 seconds
@@ -131,7 +155,7 @@ async function verifyEphemeralSignature(
   if (keyBytes.length !== 32) return null;
 
   // Binding check: if this ephemeral key is already bound to a different address, reject
-  const boundAddress = ephemeralBindings.get(ephemeralPubKey);
+  const boundAddress = getEphemeralBinding(ephemeralPubKey);
   if (boundAddress && normalizeAddress(boundAddress) !== normalizeAddress(claimedAddress)) {
     return null;
   }
@@ -147,9 +171,9 @@ async function verifyEphemeralSignature(
       return null;
     }
 
-    // Self-register binding on first successful auth
+    // Self-register binding on first successful auth (TOFU model)
     if (!boundAddress) {
-      ephemeralBindings.set(ephemeralPubKey, claimedAddress);
+      registerEphemeralBinding(ephemeralPubKey, claimedAddress);
     }
 
     return claimedAddress;
