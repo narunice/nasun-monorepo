@@ -8,10 +8,9 @@ import { CardResultDisplay } from './CardResultDisplay';
 import { getTierLabel, formatNusdc } from '../types';
 import type { ScratchResult } from '../types';
 
-const RESULT_LINGER_MS = 3000;
-const COOLDOWN_SECONDS = 3;
+const RESULT_LINGER_MS = 3500;
 
-type Phase = 'idle' | 'buying' | 'scratching' | 'revealed' | 'cooldown';
+type Phase = 'idle' | 'buying' | 'scratching' | 'revealed';
 
 export function ScratchCardArea() {
   const { buyCard, isBuying, error } = useScratchCardActions();
@@ -22,17 +21,12 @@ export function ScratchCardArea() {
   const [result, setResult] = useState<ScratchResult | null>(null);
   const [canvasRevealed, setCanvasRevealed] = useState(false);
   const [showBuyAnother, setShowBuyAnother] = useState(false);
-  const [countdown, setCountdown] = useState(0);
 
-  // Timer refs for cleanup on unmount
   const lingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cleanup all timers on unmount
   useEffect(() => {
     return () => {
       if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
-      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
     };
   }, []);
 
@@ -74,34 +68,14 @@ export function ScratchCardArea() {
   }, [handleReveal]);
 
   const handleReset = useCallback(() => {
-    // Clear linger timer if still pending
     if (lingerTimerRef.current) {
       clearTimeout(lingerTimerRef.current);
       lingerTimerRef.current = null;
     }
-
     setResult(null);
     setCanvasRevealed(false);
     setShowBuyAnother(false);
-
-    // Start cooldown
-    setCountdown(COOLDOWN_SECONDS);
-    setPhase('cooldown');
-
-    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
-    cooldownTimerRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          if (cooldownTimerRef.current) {
-            clearInterval(cooldownTimerRef.current);
-            cooldownTimerRef.current = null;
-          }
-          setPhase('idle');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    setPhase('idle');
   }, []);
 
   const isPaused = pool?.isPaused ?? true;
@@ -146,17 +120,16 @@ export function ScratchCardArea() {
         </div>
       )}
 
-      {/* Buy button (idle, buying, cooldown) */}
-      {(phase === 'idle' || phase === 'buying' || phase === 'cooldown') && (
+      {/* Buy button */}
+      {(phase === 'idle' || phase === 'buying') && (
         <BuyCardButton
           onClick={handleBuy}
           isBuying={isBuying || phase === 'buying'}
           disabled={!canBuy}
-          countdown={phase === 'cooldown' ? countdown : undefined}
         />
       )}
 
-      {/* Error display (clear on next phase transition) */}
+      {/* Error display */}
       {error && phase === 'idle' && (
         <p className="text-sm text-red-500 dark:text-red-400 text-center">
           {error}
