@@ -155,14 +155,14 @@ export function LotteryRoundCard({
         <div className="mt-3 pt-3 border-t border-theme-border space-y-2">
           {/* Tier 1 - Jackpot */}
           <div className="text-sm flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-900/30 text-yellow-400">
+            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">
               Jackpot
             </span>
             <span className="text-theme-text-secondary">
               {round.tier1Winners} winner{round.tier1Winners !== 1 ? 's' : ''}
             </span>
             {round.tier1Winners > 0 && (
-              <span className="text-yellow-400 font-medium">
+              <span className="text-yellow-700 dark:text-yellow-400 font-medium">
                 ({formatNusdc(round.tier1PayoutPerWinner)} each)
               </span>
             )}
@@ -170,14 +170,14 @@ export function LotteryRoundCard({
 
           {/* Tier 2 - 4 Matches */}
           <div className="text-sm flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-pd0/30 text-pd3">
+            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-pd4/30 dark:bg-pd0/30 text-pd1 dark:text-pd3">
               2nd Prize
             </span>
             <span className="text-theme-text-secondary">
               {round.tier2Winners} winner{round.tier2Winners !== 1 ? 's' : ''}
             </span>
             {round.tier2Winners > 0 && (
-              <span className="text-pd3 font-medium">
+              <span className="text-pd1 dark:text-pd3 font-medium">
                 ({formatNusdc(round.tier2PayoutPerWinner)} each)
               </span>
             )}
@@ -185,14 +185,14 @@ export function LotteryRoundCard({
 
           {/* Tier 3 - 3 Matches */}
           <div className="text-sm flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-green-900/30 text-green-400">
+            <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400">
               3rd Prize
             </span>
             <span className="text-theme-text-secondary">
               {round.tier3Winners} winner{round.tier3Winners !== 1 ? 's' : ''}
             </span>
             {round.tier3Winners > 0 && (
-              <span className="text-green-400 font-medium">
+              <span className="text-green-700 dark:text-green-400 font-medium">
                 ({formatNusdc(round.tier3PayoutPerWinner)} each)
               </span>
             )}

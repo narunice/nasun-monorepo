@@ -8,7 +8,6 @@ import {
   useLotteryRound,
   useLotteryKeeper,
   LotteryRoundCard,
-  TicketPurchaseForm,
   MyTicketList,
   ROUND_STATUS,
   formatNusdc,
@@ -105,15 +104,6 @@ export function LotteryRoundPage() {
             isKeeperLoading={isKeeperLoading}
           />
 
-          {isOpen && (
-            <div className="bg-theme-bg-secondary rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-theme-text-primary mb-4">
-                Buy Ticket
-              </h2>
-              <TicketPurchaseForm round={round} onPurchaseSuccess={refetch} />
-            </div>
-          )}
-
           {(isDrawn || isSettled) && round.drawnNumbers && (
             <div className="bg-theme-bg-secondary rounded-xl p-6">
               <h2 className="text-lg font-semibold text-theme-text-primary mb-4">
@@ -134,17 +124,17 @@ export function LotteryRoundPage() {
               {isSettled && (
                 <div className="mt-4 space-y-2 text-center">
                   {round.tier1Winners > 0 && (
-                    <p className="text-yellow-400 font-medium">
+                    <p className="text-yellow-700 dark:text-yellow-400 font-medium">
                       {Number(round.tier1Winners)} Jackpot winner{round.tier1Winners !== 1 ? 's' : ''}!
                     </p>
                   )}
                   {round.tier2Winners > 0 && (
-                    <p className="text-pd3">
+                    <p className="text-pd1 dark:text-pd3">
                       {Number(round.tier2Winners)} 2nd prize winner{round.tier2Winners !== 1 ? 's' : ''}
                     </p>
                   )}
                   {round.tier3Winners > 0 && (
-                    <p className="text-green-400">
+                    <p className="text-green-700 dark:text-green-400">
                       {Number(round.tier3Winners)} 3rd prize winner{round.tier3Winners !== 1 ? 's' : ''}
                     </p>
                   )}
@@ -214,15 +204,15 @@ export function LotteryRoundPage() {
           </h3>
           <div className="space-y-3">
             {/* Tier 1 - Jackpot */}
-            <div className="flex items-center justify-between p-3 bg-yellow-900/10 rounded-lg border border-yellow-900/20">
+            <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-200 dark:border-yellow-900/20">
               <div className="flex items-center gap-3">
-                <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-900/30 text-yellow-400">
+                <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">
                   Jackpot
                 </span>
                 <span className="text-theme-text-secondary">5 matches</span>
               </div>
               <div className="text-right">
-                <div className="text-yellow-400 font-medium">
+                <div className="text-yellow-700 dark:text-yellow-400 font-medium">
                   {Number(round.tier1Winners)} winner{round.tier1Winners !== 1 ? 's' : ''}
                 </div>
                 {round.tier1Winners > 0 && (
@@ -234,15 +224,15 @@ export function LotteryRoundPage() {
             </div>
 
             {/* Tier 2 - 2nd Prize */}
-            <div className="flex items-center justify-between p-3 bg-pd0/10 rounded-lg border border-pd0/20">
+            <div className="flex items-center justify-between p-3 bg-pd4/10 dark:bg-pd0/10 rounded-lg border border-pd4/30 dark:border-pd0/20">
               <div className="flex items-center gap-3">
-                <span className="px-2 py-1 rounded text-xs font-medium bg-pd0/30 text-pd3">
+                <span className="px-2 py-1 rounded text-xs font-medium bg-pd4/30 dark:bg-pd0/30 text-pd1 dark:text-pd3">
                   2nd Prize
                 </span>
                 <span className="text-theme-text-secondary">4 matches</span>
               </div>
               <div className="text-right">
-                <div className="text-pd3 font-medium">
+                <div className="text-pd1 dark:text-pd3 font-medium">
                   {Number(round.tier2Winners)} winner{round.tier2Winners !== 1 ? 's' : ''}
                 </div>
                 {round.tier2Winners > 0 && (
@@ -254,15 +244,15 @@ export function LotteryRoundPage() {
             </div>
 
             {/* Tier 3 - 3rd Prize */}
-            <div className="flex items-center justify-between p-3 bg-green-900/10 rounded-lg border border-green-900/20">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-900/20">
               <div className="flex items-center gap-3">
-                <span className="px-2 py-1 rounded text-xs font-medium bg-green-900/30 text-green-400">
+                <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
                   3rd Prize
                 </span>
                 <span className="text-theme-text-secondary">3 matches</span>
               </div>
               <div className="text-right">
-                <div className="text-green-400 font-medium">
+                <div className="text-green-700 dark:text-green-400 font-medium">
                   {Number(round.tier3Winners)} winner{round.tier3Winners !== 1 ? 's' : ''}
                 </div>
                 {round.tier3Winners > 0 && (
