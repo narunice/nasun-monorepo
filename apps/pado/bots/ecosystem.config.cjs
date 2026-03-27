@@ -142,6 +142,30 @@ module.exports = {
     },
 
     // ==============================
+    // Balance Watchdog (auto-refills bot wallets via batched legacy faucet)
+    // ==============================
+    {
+      name: 'balance-watchdog',
+      script: './node_modules/.bin/tsx',
+      args: 'scripts/balance-watchdog.ts',
+      cwd: __dirname,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        WATCHDOG_INTERVAL_MS: '600000',   // 10 minutes
+        WATCHDOG_REFILL_ROUNDS: '50',     // 50 rounds per refill TX
+      },
+      max_restarts: 10,
+      restart_delay: 30000,  // 30s between restarts (not urgent)
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: './logs/balance-watchdog-error.log',
+      out_file: './logs/balance-watchdog-out.log',
+      merge_logs: true,
+      max_memory_restart: '200M',
+    },
+
+    // ==============================
     // TP/SL Keeper Bot
     // ==============================
     {
