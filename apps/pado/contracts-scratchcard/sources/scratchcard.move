@@ -32,9 +32,9 @@ module scratchcard::scratchcard {
     const THRESHOLD_10X: u16 = 9750;    // 9750-9899 = 150 slots = 1.50%
     const THRESHOLD_5X: u16 = 9450;     // 9450-9749 = 300 slots = 3.00%
     const THRESHOLD_2X: u16 = 9050;     // 9050-9449 = 400 slots = 4.00%
-    const THRESHOLD_1X: u16 = 8050;     // 8050-9049 = 1000 slots = 10.00%
-    // 0-8049 = 8050 slots = 80.50% (lose)
-    // RTP = 0.10 + 0.08 + 0.15 + 0.15 + 0.16 + 0.075 + 0.05 = 0.765 (76.5%)
+    const THRESHOLD_1X: u16 = 7500;     // 7500-9049 = 1550 slots = 15.50%
+    // 0-7499 = 7500 slots = 75.00% (lose)
+    // RTP = 0.155 + 0.08 + 0.15 + 0.15 + 0.16 + 0.075 + 0.05 = 0.82 (82%)
 
     // PoolLow warning threshold (3x of POOL_MIN_BALANCE)
     const POOL_LOW_THRESHOLD: u64 = 1_500_000_000; // 1500 NUSDC
@@ -306,7 +306,7 @@ module scratchcard::scratchcard {
 
     /// Returns the full prize table for on-chain auditing.
     /// Each pair (threshold, multiplier) means: roll >= threshold yields that multiplier.
-    /// Roll values below the lowest threshold (8050) yield 0x (lose).
+    /// Roll values below the lowest threshold (7500) yield 0x (lose).
     public fun get_prize_table(): (vector<u16>, vector<u64>) {
         let thresholds = vector[
             THRESHOLD_1X, THRESHOLD_2X, THRESHOLD_5X, THRESHOLD_10X,
@@ -332,16 +332,16 @@ module scratchcard::scratchcard {
     #[test]
     fun test_prize_table_ev() {
         // EV = SUM(range_size / 10000 * multiplier)
-        // 1x: 1000/10000 * 1 = 0.10
+        // 1x: 1550/10000 * 1 = 0.155
         // 2x: 400/10000 * 2 = 0.08
         // 5x: 300/10000 * 5 = 0.15
         // 10x: 150/10000 * 10 = 0.15
         // 20x: 80/10000 * 20 = 0.16
         // 50x: 15/10000 * 50 = 0.075
         // 100x: 5/10000 * 100 = 0.05
-        // Total = 0.765 (RTP 76.5%, house edge 23.5%)
-        let ev_bps: u64 = 0 + 1000 + 800 + 1500 + 1500 + 1600 + 750 + 500;
-        assert!(ev_bps == 7650); // Exact EV = 76.50%
+        // Total = 0.82 (RTP 82%, house edge 18%)
+        let ev_bps: u64 = 0 + 1550 + 800 + 1500 + 1500 + 1600 + 750 + 500;
+        assert!(ev_bps == 8200); // Exact EV = 82.00%
         assert!(ev_bps < 10000); // House always wins on average
     }
 
@@ -349,8 +349,8 @@ module scratchcard::scratchcard {
     fun test_threshold_coverage() {
         // Verify all 10000 outcomes are mapped correctly with no gaps
         assert!(get_multiplier(0) == 0);         // First lose
-        assert!(get_multiplier(8049) == 0);       // Last lose
-        assert!(get_multiplier(8050) == 1);       // First 1x
+        assert!(get_multiplier(7499) == 0);       // Last lose
+        assert!(get_multiplier(7500) == 1);       // First 1x
         assert!(get_multiplier(9049) == 1);       // Last 1x
         assert!(get_multiplier(9050) == 2);       // First 2x
         assert!(get_multiplier(9449) == 2);       // Last 2x
