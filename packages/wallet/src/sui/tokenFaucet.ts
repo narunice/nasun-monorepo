@@ -232,21 +232,21 @@ export async function queryAllCooldowns(
 // ============================================
 export const nbtcFaucetHandler: TokenFaucetHandler = {
   buildTransaction: buildNbtcFaucetTx,
-  successMessage: '0.1 NBTC received!',
+  successMessage: '0.01 NBTC received!',
   getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NBTC'),
 };
 export const nusdcFaucetHandler: TokenFaucetHandler = {
   buildTransaction: buildNusdcFaucetTx,
-  successMessage: '10,000 NUSDC received!',
+  successMessage: '2,000 NUSDC received!',
   getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NUSDC'),
 };
 export const nethFaucetHandler: TokenFaucetHandler = {
   buildTransaction: buildNethFaucetTx,
-  successMessage: '2.5 NETH received!',
+  successMessage: '0.5 NETH received!',
   getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NETH'),
 };
 export const nsolFaucetHandler: TokenFaucetHandler = {
   buildTransaction: buildNsolFaucetTx,
-  successMessage: '50 NSOL received!',
+  successMessage: '10 NSOL received!',
   getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NSOL'),
 };

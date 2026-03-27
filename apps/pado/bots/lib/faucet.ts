@@ -145,7 +145,7 @@ async function executeRequestTokensV1(
       return false;
     }
 
-    console.log(`[${timestamp()}] Received tokens from V1 faucet (1 NBTC + 100k NUSDC)`);
+    console.log(`[${timestamp()}] Received tokens from V1 faucet (0.01 NBTC + 2k NUSDC)`);
     await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return true;
@@ -201,7 +201,7 @@ async function executeRequestNusdc(
       return false;
     }
 
-    console.log(`[${timestamp()}] Received 100k NUSDC from V1 faucet`);
+    console.log(`[${timestamp()}] Received 2k NUSDC from V1 faucet`);
     await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return true;
