@@ -1,12 +1,13 @@
 ---
 name: leaderboard-export
-description: 리더보드 참여자 및 X 연결 가입자 전체 목록을 클릭 가능한 HTML로 내보냅니다. 5개 섹션(Top 500, Posts, Registered, Yellow, Orange) 분류, 프로필 방문 추적, 색상 플래그(Green/Orange/Yellow), Export 기능을 포함합니다. "리더보드 내보내기", "X 프로필 리스트", "leaderboard export" 등의 요청에 사용합니다.
+description: 리더보드 참여자 및 X 연결 가입자 전체 목록을 클릭 가능한 HTML로 내보냅니다. 5개 섹션(Top 500, Posts, Registered, Yellow, Orange) 분류, 프로필 방문 추적, 색상 플래그(Green/Orange/Yellow), Export 기능을 포함합니다. _tmp/ 디렉토리의 *-done.html 파일들을 자동 탐색하여 체크/플래그 상태를 병합합니다. "리더보드 내보내기", "X 프로필 리스트", "leaderboard export" 등의 요청에 사용합니다.
 argument-hint: "[YYYY-MM-DD]"
 ---
 
 # Leaderboard Export: X 프로필 HTML 생성
 
 리더보드 참여자 및 나선 웹사이트 X 연결 가입자의 프로필을 클릭 가능한 HTML로 내보냅니다.
+`_tmp/` 디렉토리의 `*-done.html` 파일들을 자동 탐색하여 체크/플래그 상태를 병합(union)한 후, 신규 가입자를 추가합니다.
 
 ## $ARGUMENTS 처리
 
@@ -24,14 +25,87 @@ SNAPSHOT_DATE="$ARGUMENTS 에서 YYYY-MM-DD 추출, 없으면 빈 문자열"
 ```
 
 ```python
-import json, subprocess, os, sys, html as html_mod
+import json, subprocess, os, sys, re, glob
+import html as html_mod
 from datetime import datetime
 
 SNAPSHOT_DATE = os.environ.get('SNAPSHOT_DATE', '').strip()
-DOCS_DIR = '/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs'
+MONOREPO = '/home/naru/my_apps/nasun-monorepo'
+DOCS_DIR = f'{MONOREPO}/apps/nasun-website/docs'
+TMP_DIR = f'{MONOREPO}/_tmp'
 API_URL = 'https://auzo707xql.execute-api.ap-northeast-2.amazonaws.com/prod/v3/leaderboard'
 AWS_PROFILE = 'nasun-prod'
 AWS_REGION = 'ap-northeast-2'
+
+# ══════════════════════════════════════════════════
+# Phase A: Merge previous *-done.html files
+# ══════════════════════════════════════════════════
+
+username_re = re.compile(r'href="https://x\.com/([^"]+)"')
+
+def parse_done_html(filepath):
+    """Extract per-username {checked, flag} from an exported HTML file."""
+    with open(filepath) as f:
+        html = f.read()
+    states = {}
+    for m in re.finditer(r'<li\s[^>]*data-flag="([^"]*)"[^>]*>(.*?)</li>', html, re.DOTALL):
+        inner = m.group(2)
+        um = username_re.search(inner)
+        if not um:
+            continue
+        states[um.group(1).lower()] = {
+            'checked': 'checked=""' in inner,
+            'flag': m.group(1),
+        }
+    return states
+
+# Find all *-done.html files in _tmp/
+done_files = sorted(glob.glob(f'{TMP_DIR}/*-done.html'))
+merged_states = {}  # username_lower -> {checked, flag}
+
+if done_files:
+    print(f'Found {len(done_files)} done file(s) to merge:')
+    all_parsed = []
+    for f in done_files:
+        states = parse_done_html(f)
+        checked_count = sum(1 for v in states.values() if v['checked'])
+        flag_counts = {}
+        for v in states.values():
+            if v['flag']:
+                flag_counts[v['flag']] = flag_counts.get(v['flag'], 0) + 1
+        print(f'  {os.path.basename(f)}: {len(states)} profiles, {checked_count} checked, flags={flag_counts}')
+        all_parsed.append(states)
+
+    # Union merge: first file wins on flag conflicts
+    all_users = set()
+    for states in all_parsed:
+        all_users |= set(states.keys())
+
+    for u in all_users:
+        checked = any(s.get(u, {}).get('checked', False) for s in all_parsed)
+        # First file with a non-empty flag wins
+        flag = ''
+        for s in all_parsed:
+            f = s.get(u, {}).get('flag', '')
+            if f:
+                flag = f
+                break
+        merged_states[u] = {'checked': checked, 'flag': flag}
+
+    merged_checked = sum(1 for v in merged_states.values() if v['checked'])
+    merged_flags = {}
+    for v in merged_states.values():
+        if v['flag']:
+            merged_flags[v['flag']] = merged_flags.get(v['flag'], 0) + 1
+    print(f'  Merged: {len(merged_states)} users, {merged_checked} checked, flags={merged_flags}')
+else:
+    print('No *-done.html files found in _tmp/ - generating fresh without merge')
+
+old_users = set(merged_states.keys())
+
+# ══════════════════════════════════════════════════
+# Phase B: Fetch fresh data from API + DynamoDB
+# ══════════════════════════════════════════════════
 
 def aws_scan_all(table, projection, filter_expr=None, expr_names=None):
     """Paginated DynamoDB scan via AWS CLI."""
@@ -67,8 +141,8 @@ def dynamo_num(item, key):
     except:
         return 0
 
-# ── Step 1: Fetch leaderboard top 500 ──
-params = f'limit=500'
+# Fetch leaderboard top 500
+params = 'limit=500'
 if SNAPSHOT_DATE:
     params += f'&snapshotDate={SNAPSHOT_DATE}'
 lb_json = json.loads(subprocess.check_output(['curl', '-s', f'{API_URL}?{params}']))
@@ -83,8 +157,7 @@ snapshot_date = lb_json.get('snapshotDate') or datetime.now().strftime('%Y-%m-%d
 total_lb = lb_json.get('totalCount', len(entries))
 print(f'Leaderboard: {total_lb} entries, season={season_name}, date={snapshot_date}')
 
-# Build top 500 data: rank -> username
-top500_map = {}  # lowercase -> {username, rank}
+top500_map = {}
 top500_ordered = []
 for i, e in enumerate(entries):
     username = e.get('originalUsername') or e.get('username', '')
@@ -92,7 +165,6 @@ for i, e in enumerate(entries):
     top500_map[username.lower()] = {'username': username, 'rank': rank}
     top500_ordered.append({'username': username, 'rank': rank})
 
-# ── Step 2: Scan UserProfiles for X-linked registered users ──
 print('Scanning UserProfiles...')
 user_items = aws_scan_all(
     'UserProfiles',
@@ -101,7 +173,6 @@ user_items = aws_scan_all(
 )
 print(f'UserProfiles: {len(user_items)} X-linked primary accounts')
 
-# ── Step 3: Scan leaderboard accounts for postCount ──
 print('Scanning leaderboard accounts...')
 account_items = aws_scan_all(
     'leaderboard-v3-accounts',
@@ -118,7 +189,6 @@ for item in account_items:
             original_name_map[u.lower()] = orig
 print(f'Accounts: {len(post_count_map)} entries with postCount data')
 
-# ── Step 4: Build non-top500 user list ──
 non_top500 = []
 for item in user_items:
     handle = dynamo_str(item, 'twitterHandle')
@@ -133,7 +203,7 @@ for item in user_items:
         'createdAt': created_at,
     })
 
-# ── Step 5: Load flag files ──
+# Load flag files (server-side baseline flags)
 def load_flags(path):
     flags = set()
     if os.path.exists(path):
@@ -147,88 +217,115 @@ def load_flags(path):
 orange_flags = load_flags(f'{DOCS_DIR}/flagged-orange.txt')
 yellow_flags = load_flags(f'{DOCS_DIR}/flagged-yellow.txt')
 green_flags = load_flags(f'{DOCS_DIR}/flagged-green.txt')
-print(f'Flags: {len(orange_flags)} orange, {len(yellow_flags)} yellow, {len(green_flags)} green')
+print(f'Flags (file): {len(orange_flags)} orange, {len(yellow_flags)} yellow, {len(green_flags)} green')
 
-def get_flag(username):
+def get_baseline_flag(username):
     u = username.lower()
-    if u in orange_flags:
-        return 'orange'
-    if u in yellow_flags:
-        return 'yellow'
-    if u in green_flags:
-        return 'green'
+    if u in orange_flags: return 'orange'
+    if u in yellow_flags: return 'yellow'
+    if u in green_flags: return 'green'
     return ''
 
-def get_section_origin(username):
-    """Determine which section a user would belong to without flags."""
-    u = username.lower()
-    if u in top500_map:
-        return 'lb'
-    if post_count_map.get(u, 0) > 0:
-        return 'posts'
-    return 'reg'
+# ══════════════════════════════════════════════════
+# Phase C: Classify with merged flags applied
+# ══════════════════════════════════════════════════
 
-# ── Step 6: Classify users into 4 sections ──
-s1, s2, s3, s4 = [], [], [], []
+# Build all profiles with effective flags
+all_profiles = []
 
-# Top 500
 for item in top500_ordered:
-    flag = get_flag(item['username'])
-    entry = {**item, 'flag': flag, 'section': 'lb'}
-    if flag == 'orange':
-        s4.append(entry)
-    elif flag == 'yellow':
-        s3.append(entry)
-    else:
-        s1.append(entry)
+    all_profiles.append({
+        'username': item['username'],
+        'username_lower': item['username'].lower(),
+        'orig_section': 'lb',
+        'postCount': post_count_map.get(item['username'].lower(), 0),
+        'createdAt': '',
+    })
 
-# Non-top500
 for item in non_top500:
-    flag = get_flag(item['username'])
-    entry = {**item, 'flag': flag, 'section': 'posts' if item['postCount'] > 0 else 'reg'}
-    if flag == 'orange':
+    all_profiles.append({
+        'username': item['username'],
+        'username_lower': item['username'].lower(),
+        'orig_section': 'posts' if item['postCount'] > 0 else 'reg',
+        'postCount': item['postCount'],
+        'createdAt': item.get('createdAt', ''),
+    })
+
+# Classify into sections
+s1, s2_existing, s2_new, s3, s4 = [], [], [], [], []
+
+for p in all_profiles:
+    u = p['username_lower']
+    is_new = bool(old_users) and u not in old_users
+    m = merged_states.get(u)
+
+    # Effective flag: merged flag > baseline flag
+    if m and m['flag']:
+        eff_flag = m['flag']
+    else:
+        eff_flag = get_baseline_flag(p['username'])
+
+    entry = {
+        'username': p['username'],
+        'username_lower': u,
+        'flag': eff_flag,
+        'orig_section': p['orig_section'],
+        'checked': m['checked'] if m else False,
+        'is_new': is_new,
+    }
+
+    # Route to section based on effective flag
+    if eff_flag == 'orange':
         s4.append(entry)
-    elif flag == 'yellow':
+    elif eff_flag == 'yellow':
         s3.append(entry)
-    elif item['postCount'] > 0:
+    elif is_new:
+        s2_new.append(entry)
+    elif p['orig_section'] in ('lb', 'posts'):
         s1.append(entry)
     else:
-        s2.append(entry)
+        s2_existing.append(entry)
 
-# Sort sections
-# S1: top 500 in rank order, then non-top500 with posts by postCount desc
-# (top500 entries are already in order from top500_ordered, non-top500 appended after)
-s2.sort(key=lambda x: x.get('createdAt') or 'z')
-# S3/S4: section origin first (lb=0, posts=1, reg=2), then alphabetical
+# Sort
+s2_existing.sort(key=lambda x: x.get('createdAt', '') or 'z')
+s2_new.sort(key=lambda x: x['username_lower'])
+s2_combined = s2_existing + s2_new
+
 origin_order = {'lb': 0, 'posts': 1, 'reg': 2}
-s3.sort(key=lambda x: (origin_order.get(x['section'], 9), x['username'].lower()))
-s4.sort(key=lambda x: (origin_order.get(x['section'], 9), x['username'].lower()))
+s3.sort(key=lambda x: (origin_order.get(x['orig_section'], 9), x['username_lower']))
+s4.sort(key=lambda x: (origin_order.get(x['orig_section'], 9), x['username_lower']))
 
-total_users = len(s1) + len(s2) + len(s3) + len(s4)
-print(f'Sections: S1={len(s1)}, S2={len(s2)}, S3(yellow)={len(s3)}, S4(orange)={len(s4)}, total={total_users}')
+total_users = len(s1) + len(s2_combined) + len(s3) + len(s4)
+new_count = len(s2_new)
+print(f'Sections: S1={len(s1)}, S2={len(s2_combined)} (existing={len(s2_existing)}, new={new_count}), S3(yellow)={len(s3)}, S4(orange)={len(s4)}, total={total_users}')
 
-# ── Step 7: Generate HTML ──
+# ══════════════════════════════════════════════════
+# Phase D: Generate HTML
+# ══════════════════════════════════════════════════
+
 def esc(s):
     return html_mod.escape(s)
 
+SECTION_LABELS = {'lb': 'LB', 'posts': 'Posts', 'reg': 'Reg'}
+
 def section_tag_html(section):
-    labels = {'lb': 'LB', 'posts': 'Posts', 'reg': 'Reg'}
-    return f'<span class="section-tag">[{labels.get(section, "?")}]</span>'
+    return f'<span class="section-tag">[{SECTION_LABELS.get(section, "?")}]</span>'
 
 def make_li(entry, show_tag=False):
     username = entry['username']
     flag = entry.get('flag', '')
-    section = entry.get('section', '')
+    section = entry.get('orig_section', '')
     flag_attr = f' data-flag="{esc(flag)}"' if flag else ' data-flag=""'
     section_attr = f' data-section="{esc(section)}"'
     tag = section_tag_html(section) if show_tag and section else ''
+    new_marker = '<span class="section-tag" style="color:#e65100;font-weight:bold;">[NEW]</span>' if entry.get('is_new') else ''
     return (
         f'<li{flag_attr}{section_attr}>'
         f'<button class="fb fg green-btn" title="Green (KOL)">G</button>'
         f'<div class="row">'
         f'<input type="checkbox" class="chk">'
         f'<a href="https://x.com/{esc(username)}" target="_blank" rel="noopener">@{esc(username)}</a>'
-        f'{tag}'
+        f'{tag}{new_marker}'
         f'<span class="flag-btns">'
         f'<button class="fb fo" title="Orange flag">O</button>'
         f'<button class="fb fy" title="Yellow flag">Y</button>'
@@ -237,7 +334,6 @@ def make_li(entry, show_tag=False):
         f'</li>'
     )
 
-# Build HTML
 css = '''
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; background: #fafafa; color: #333; }
   h1 { font-size: 1.3rem; border-bottom: 2px solid #1da1f2; padding-bottom: 8px; }
@@ -256,7 +352,6 @@ css = '''
   .row a.clicked { color: #999; }
   .flag-btns { margin-left: auto; display: flex; gap: 3px; flex-shrink: 0; }
   .section-tag { font-size: 0.7rem; color: #999; margin-left: 6px; flex-shrink: 0; }
-  /* Flag buttons */
   .fb { border: 2px solid; border-radius: 3px; background: transparent; cursor: pointer; font-size: 0.7rem; font-weight: bold; width: 22px; height: 22px; opacity: 0.5; display: flex; align-items: center; justify-content: center; }
   .fb:hover { opacity: 1; }
   .fg { border-color: #1b5e20; color: #1b5e20; }
@@ -275,183 +370,176 @@ js = f'''
 const CK = 'nasun-lb-clicked-{snapshot_date}';
 const FK = 'nasun-lb-flags';
 const clicked = new Set(JSON.parse(localStorage.getItem(CK) || '[]'));
-const flagOverrides = JSON.parse(localStorage.getItem(FK) || '{}');
+const flagOverrides = JSON.parse(localStorage.getItem(FK) || '{{}}');
 
-function applyFlag(li, flag) {
+function applyFlag(li, flag) {{
   li.dataset.flag = flag || '';
-}
+}}
 
-function toggleFlag(li, flag) {
+function toggleFlag(li, flag) {{
   const username = li.querySelector('a')?.href.split('/').pop()?.toLowerCase();
   if (!username) return;
   const current = li.dataset.flag;
   const next = current === flag ? '' : flag;
   applyFlag(li, next);
-  if (next) {
+  if (next) {{
     flagOverrides[username] = next;
-  } else {
+  }} else {{
     delete flagOverrides[username];
-  }
+  }}
   localStorage.setItem(FK, JSON.stringify(flagOverrides));
-}
+}}
 
-function updateStats() {
+function updateStats() {{
   const all = document.querySelectorAll('li');
   const checked = document.querySelectorAll('.chk:checked').length;
-  document.getElementById('stats').textContent = `Checked: ${checked}/${all.length}`;
-}
+  document.getElementById('stats').textContent = `Checked: ${{checked}}/${{all.length}}`;
+}}
 
-document.querySelectorAll('li').forEach(li => {
+document.querySelectorAll('li').forEach(li => {{
   const chk = li.querySelector('.chk');
   const link = li.querySelector('a');
   const href = link?.href || '';
   const username = href.split('/').pop()?.toLowerCase();
 
-  // Restore flags from localStorage overrides
-  if (username && flagOverrides[username] !== undefined) {
+  if (username && flagOverrides[username] !== undefined) {{
     applyFlag(li, flagOverrides[username]);
-  }
+  }}
 
-  // Restore clicked state
-  if (clicked.has(href)) {
+  if (clicked.has(href)) {{
     link.classList.add('clicked');
     chk.checked = true;
-  }
+  }}
 
-  // Link click
-  link?.addEventListener('click', () => {
+  link?.addEventListener('click', () => {{
     link.classList.add('clicked');
     chk.checked = true;
     clicked.add(href);
     localStorage.setItem(CK, JSON.stringify([...clicked]));
     updateStats();
-  });
+  }});
 
-  // Checkbox toggle
-  chk?.addEventListener('change', () => {
-    if (chk.checked) {
+  chk?.addEventListener('change', () => {{
+    if (chk.checked) {{
       clicked.add(href);
       link.classList.add('clicked');
-    } else {
+    }} else {{
       clicked.delete(href);
       link.classList.remove('clicked');
-    }
+    }}
     localStorage.setItem(CK, JSON.stringify([...clicked]));
     updateStats();
-  });
+  }});
 
-  // Flag buttons (exclusive toggle)
   li.querySelector('.fg')?.addEventListener('click', () => toggleFlag(li, 'green'));
   li.querySelector('.fo')?.addEventListener('click', () => toggleFlag(li, 'orange'));
   li.querySelector('.fy')?.addEventListener('click', () => toggleFlag(li, 'yellow'));
-});
+}});
 
 updateStats();
 
-// Export Progress: download current state as new HTML
-document.getElementById('exportBtn').addEventListener('click', () => {
+document.getElementById('exportBtn').addEventListener('click', () => {{
   const clone = document.documentElement.cloneNode(true);
-  clone.querySelectorAll('.chk').forEach((chk, i) => {
+  clone.querySelectorAll('.chk').forEach((chk, i) => {{
     const orig = document.querySelectorAll('.chk')[i];
     if (orig.checked) chk.setAttribute('checked', '');
     else chk.removeAttribute('checked');
-  });
-  clone.querySelectorAll('li').forEach((li, i) => {
+  }});
+  clone.querySelectorAll('li').forEach((li, i) => {{
     const origLi = document.querySelectorAll('li')[i];
     li.className = origLi.className;
     li.dataset.flag = origLi.dataset.flag || '';
     li.dataset.section = origLi.dataset.section || '';
-  });
-  clone.querySelectorAll('ol a').forEach((a, i) => {
+  }});
+  clone.querySelectorAll('ol a').forEach((a, i) => {{
     const origA = document.querySelectorAll('ol a')[i];
     if (origA?.classList.contains('clicked')) a.classList.add('clicked');
-  });
-  const blob = new Blob(['<!DOCTYPE html>\\n' + clone.outerHTML], {type: 'text/html'});
+  }});
+  const blob = new Blob(['<!DOCTYPE html>\\n' + clone.outerHTML], {{type: 'text/html'}});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = 'x-profiles-exported-' + new Date().toISOString().slice(0,10) + '.html';
   a.click();
   URL.revokeObjectURL(url);
-});
+}});
 
-// Export Flags JSON: download flag overrides as JSON
-document.getElementById('exportJsonBtn').addEventListener('click', () => {
-  const data = {
-    flags: {...flagOverrides},
+document.getElementById('exportJsonBtn').addEventListener('click', () => {{
+  const data = {{
+    flags: {{...flagOverrides}},
     exportedAt: new Date().toISOString(),
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  }};
+  const blob = new Blob([JSON.stringify(data, null, 2)], {{type: 'application/json'}});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = 'x-flags-' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
-});
+}});
 '''
 
-html = f'''<!DOCTYPE html>
-<html lang="en">
-<head>
+s2_header = f'S2. Registered, No Posts ({len(s2_combined)})'
+if new_count > 0:
+    s2_header += f' - includes {new_count} new'
+
+html_out = f'''<!DOCTYPE html>
+<html lang="en"><head>
 <meta charset="UTF-8">
 <title>Nasun {season_name} Leaderboard - X Profiles ({snapshot_date})</title>
 <style>{css}</style>
 </head>
 <body>
 <h1>Nasun {season_name} - X Profiles</h1>
-<p class="meta">Snapshot: {snapshot_date} | S1(LB): {len(s1)} | S2(Reg): {len(s2)} | S3(Yellow): {len(s3)} | S4(Orange): {len(s4)} | Total: {total_users}</p>
+<p class="meta">Snapshot: {snapshot_date} | S1(LB): {len(s1)} | S2(Reg): {len(s2_combined)}{f" (+{new_count} new)" if new_count else ""} | S3(Yellow): {len(s3)} | S4(Orange): {len(s4)} | Total: {total_users}</p>
 <div class="toolbar">
   <button id="exportBtn">Export Progress</button>
   <button id="exportJsonBtn">Export Flags JSON</button>
-  <span id="stats" style="font-size:0.8rem;color:#999;"></span>
+  <span id="stats" style="font-size:0.8rem;color:#999;">Checked: 0/{total_users}</span>
 </div>
 '''
 
-# S1: Leaderboard Participants (top 500 + non-top500 with posts)
 n = 1
-html += f'<h2>S1. Leaderboard Participants ({len(s1)})</h2>\n<ol>\n'
+html_out += f'<h2>S1. Leaderboard Participants ({len(s1)})</h2>\n<ol>\n'
 for entry in s1:
-    html += make_li(entry) + '\n'
-html += '</ol>\n'
+    html_out += make_li(entry) + '\n'
+html_out += '</ol>\n'
 n += len(s1)
 
-# S2: Registered, no posts
-html += f'<hr class="divider">\n<h2>S2. Registered, No Posts ({len(s2)})</h2>\n<ol start="{n}">\n'
-for entry in s2:
-    html += make_li(entry) + '\n'
-html += '</ol>\n'
-n += len(s2)
+html_out += f'<hr class="divider">\n<h2>{s2_header}</h2>\n<ol start="{n}">\n'
+for entry in s2_combined:
+    html_out += make_li(entry) + '\n'
+html_out += '</ol>\n'
+n += len(s2_combined)
 
-# S3: Yellow
-html += f'<hr class="divider">\n<h2>S3. Yellow Flagged ({len(s3)})</h2>\n<ol start="{n}">\n'
+html_out += f'<hr class="divider">\n<h2>S3. Yellow Flagged ({len(s3)})</h2>\n<ol start="{n}">\n'
 for entry in s3:
-    html += make_li(entry, show_tag=True) + '\n'
-html += '</ol>\n'
+    html_out += make_li(entry, show_tag=True) + '\n'
+html_out += '</ol>\n'
 n += len(s3)
 
-# S4: Orange
-html += f'<hr class="divider">\n<h2>S4. Orange Flagged ({len(s4)})</h2>\n<ol start="{n}">\n'
+html_out += f'<hr class="divider">\n<h2>S4. Orange Flagged ({len(s4)})</h2>\n<ol start="{n}">\n'
 for entry in s4:
-    html += make_li(entry, show_tag=True) + '\n'
-html += '</ol>\n'
+    html_out += make_li(entry, show_tag=True) + '\n'
+html_out += '</ol>\n'
 
-html += f'<script>{js}</script>\n</body>\n</html>'
+html_out += f'<script>{js}</script>\n</body>\n</html>'
 
-out_file = f'{DOCS_DIR}/x-leaderboard-profiles-{snapshot_date}.html'
+out_file = f'{TMP_DIR}/x-profiles-exported-{snapshot_date}.html'
 with open(out_file, 'w') as f:
-    f.write(html)
+    f.write(html_out)
 
 print(f'''
 Export complete:
   Season: {season_name}
   Snapshot: {snapshot_date}
   S1 (Leaderboard Participants): {len(s1)}
-  S2 (Registered, no posts): {len(s2)}
+  S2 (Registered, no posts): {len(s2_combined)} (existing={len(s2_existing)}, new={new_count})
   S3 (Yellow flagged): {len(s3)}
   S4 (Orange flagged): {len(s4)}
   Total: {total_users}
-  Flags: {len(orange_flags)} orange, {len(yellow_flags)} yellow, {len(green_flags)} green
+  Merged from: {len(done_files)} done file(s)
+  Flags (file): {len(orange_flags)} orange, {len(yellow_flags)} yellow, {len(green_flags)} green
   File: {out_file}
 ''')
 ```
@@ -464,17 +552,34 @@ SNAPSHOT_DATE="..." python3 << 'PYEOF'
 PYEOF
 ```
 
+## 병합 동작
+
+스킬 실행 시 `_tmp/` 디렉토리에서 `*-done.html` 파일을 자동 탐색합니다.
+
+| 상황 | 동작 |
+|------|------|
+| `*-done.html` 파일 없음 | 병합 없이 fresh HTML만 생성 |
+| 1개 이상 발견 | 모든 파일의 체크/플래그 상태를 union 병합 후 적용 |
+
+**병합 규칙:**
+- **checked**: 어느 파일에서든 체크되어 있으면 체크 처리
+- **flag**: 첫 번째 파일(알파벳순)의 플래그를 우선 적용 (충돌 시)
+- **신규 가입자**: 이전 done 파일에 없던 사용자는 S2 하단에 `[NEW]` 태그와 함께 배치
+- **플래그 섹션 이동**: 병합된 orange/yellow 플래그에 따라 S3/S4로 자동 이동
+
+**출력 파일:** `_tmp/x-profiles-exported-{snapshot_date}.html` (체크마크 초기화 상태)
+
 ## 섹션 구조
 
 | 섹션 | 내용 | 정렬 | 번호 |
 |------|------|------|------|
 | S1 | 리더보드 참가자 (Top 500 + postCount > 0, orange/yellow 제외) | Top 500 순위 -> postCount 내림차순 | 1부터 연속 |
-| S2 | postCount == 0, orange/yellow 없음 | createdAt 오름차순 | S1 이어서 연속 |
+| S2 | postCount == 0, orange/yellow 없음 + 신규 가입자 (하단) | createdAt 오름차순, 신규는 알파벳순 | S1 이어서 연속 |
 | S3 | Yellow 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S2 이어서 연속 |
 | S4 | Orange 플래그 | 원래 섹션(LB/Posts/Reg) 1차, 알파벳 2차 | S3 이어서 연속 |
 
-- Green 플래그 사용자는 원래 섹션(S1/S2/S3)에 유지 (organic KOL 표시용)
-- S4/S5에서 `[LB]`/`[Posts]`/`[Reg]` 태그로 원래 소속 표시
+- Green 플래그 사용자는 원래 섹션(S1/S2)에 유지 (organic KOL 표시용)
+- S3/S4에서 `[LB]`/`[Posts]`/`[Reg]` 태그로 원래 소속 표시
 - 런타임 플래그 토글은 시각적 표시만 변경 (섹션 이동은 다음 생성 시 반영)
 
 ## 주의사항
