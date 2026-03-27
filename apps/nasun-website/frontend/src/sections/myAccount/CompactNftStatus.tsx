@@ -147,10 +147,22 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
             </div>
           )}
 
+          {/* Alliance - hidden
+          <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+            <h6 className="text-nasun-white">Alliance</h6>
+            <p className="text-nasun-white/70 text-sm">
+              Details coming soon.
+            </p>
+            <Button variant="filledOutlineC7" size="sm" className="self-end mt-1" disabled>
+              Coming Soon
+            </Button>
+          </div>
+          */}
+
           {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-              <h6 className="text-nasun-white">Genesis Pass Allowlist</h6>
+              <h6 className="text-nasun-white">Genesis Pass</h6>
               <div className="flex items-center justify-between">
                 {isGenesisPassLoading ? (
                   <Spinner size="sm" />
@@ -160,7 +172,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                       <span className="text-green-400 text-sm">&#10003; Registered</span>
                       {genesisPassMintType === "FREE_MINT" && <FreeMintBadge />}
                       {genesisPassMintType === "GUARANTEED" && <GuaranteedBadge />}
-                      {genesisPassMintType !== "FREE_MINT" && genesisPassMintType !== "GUARANTEED" && <FcfsBadge />}
+                      {genesisPassMintType && genesisPassMintType !== "FREE_MINT" && genesisPassMintType !== "GUARANTEED" && <FcfsBadge />}
                     </div>
                     {genesisPassWallet && (
                       <span className="text-nasun-white/50 text-xs font-mono">
@@ -190,19 +202,30 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                 )}
                 {!isGenesisPassLoading && !isGenesisPassRegistered && !isGenesisPassApplied && (
                   <Button onClick={() => navigate("/wave1/genesis-pass")} variant="filledOutlineC7" size="sm">
-                    Join
+                    Join Allowlist
                   </Button>
                 )}
               </div>
               {joinError && (
                 <p className="text-red-400 text-xs">{joinError}</p>
               )}
+              <a
+                href="https://opensea.io/collection/nasun-genesis-pass/overview"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-nasun-white/70 hover:text-nasun-white text-sm self-end mt-1 transition-colors underline underline-offset-2"
+              >
+                Go to OpenSea
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+              </a>
             </div>
           )}
 
-          {/* Battalion NFT Allowlist */}
+          {/* Battalion NFT Allowlist - hidden
           <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-              <h6 className="text-nasun-white">Battalion NFT Allowlist</h6>
+              <h6 className="text-nasun-white">Battalion</h6>
               <div className="flex items-center justify-between">
                 {isBattalionLoading ? (
                   <Spinner size="sm" />
@@ -218,15 +241,26 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                 ) : (
                   <span className="text-nasun-white/50 text-sm">Not Registered</span>
                 )}
-                {/* Join button hidden until Battalion NFT campaign reopens
                 {!isBattalionLoading && !isBattalionRegistered && (
                   <Button onClick={() => navigate("/wave1/battalion-nft")} variant="filledOutlineC7" size="sm">
-                    Join
+                    Join Allowlist
                   </Button>
                 )}
-                */}
               </div>
             </div>
+          */}
+
+          {/* Frontiers - hidden until launch
+          <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+            <h6 className="text-nasun-white">Frontiers</h6>
+            <p className="text-nasun-white/70 text-sm">
+              Details coming soon.
+            </p>
+            <Button variant="filledOutlineC7" size="sm" className="self-end mt-1" disabled>
+              Coming Soon
+            </Button>
+          </div>
+          */}
         </div>
       </OuterBox>
 
