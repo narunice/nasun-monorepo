@@ -23,9 +23,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-nasun-black flex pt-14">
       {/* Sidebar */}
-      <aside className="w-64 bg-nasun-c6/40 border-r border-nasun-white/10 flex flex-col fixed top-20 left-0 bottom-0 z-10">
+      <aside className="w-64 bg-nasun-c6/40 border-r border-nasun-white/20 flex flex-col fixed top-20 left-0 bottom-0 z-10">
         {/* Logo */}
-        <div className="p-6 border-b border-nasun-white/10">
+        <div className="p-6 border-b border-nasun-white/20">
           <Link to="/" className="text-xl font-bold text-nasun-white">
             NASUN Admin
           </Link>
@@ -41,7 +41,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   className={`flex items-center gap-3 px-4 py-3 rounded-sm transition-colors ${
                     isActive(item.path)
                       ? "bg-nasun-c4/50 text-nasun-white"
-                      : "text-nasun-white/70 hover:bg-nasun-white/5 hover:text-nasun-white"
+                      : "text-nasun-white/80 hover:bg-nasun-white/5 hover:text-nasun-white"
                   }`}
                 >
                   <span>{item.icon}</span>
@@ -53,21 +53,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
 
         {/* User info */}
-        <div className="p-4 border-t border-nasun-white/10">
+        <div className="p-4 border-t border-nasun-white/20">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-nasun-c4 flex items-center justify-center text-nasun-white font-medium">
               {user?.username?.[0]?.toUpperCase() || "?"}
             </div>
             <div className="flex-1 min-w-0">
               <p className=" font-normal text-nasun-white truncate">{user?.username || "Admin"}</p>
-              <p className="text-base text-nasun-white/50 truncate">
+              <p className="text-base text-nasun-white/70 truncate">
                 {profile?.email || user?.email || profile?.role}
               </p>
             </div>
           </div>
           <button
             onClick={() => logout()}
-            className="w-full px-4 py-2 text-base text-nasun-white/70 hover:text-nasun-white hover:bg-nasun-white/10 rounded-sm transition-colors"
+            className="w-full px-4 py-2 text-base text-nasun-white/80 hover:text-nasun-white hover:bg-nasun-white/10 rounded-sm transition-colors"
           >
             Logout
           </button>

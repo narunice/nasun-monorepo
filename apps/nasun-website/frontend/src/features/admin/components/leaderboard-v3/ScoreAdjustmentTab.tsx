@@ -83,7 +83,7 @@ export function ScoreAdjustmentTab() {
         <h3 className="text-lg font-semibold text-nasun-white">
           Score Adjustment
         </h3>
-        <p className="text-sm text-nasun-white/50">
+        <p className="text-sm text-nasun-white/70">
           Manually adjust a user's score for contributions not captured by post
           registration.
         </p>
@@ -104,7 +104,7 @@ export function ScoreAdjustmentTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Username */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-nasun-white/70">
+            <label className="text-sm font-medium text-nasun-white/85">
               X Handle
             </label>
             <input
@@ -114,7 +114,7 @@ export function ScoreAdjustmentTab() {
                 setForm((prev) => ({ ...prev, username: e.target.value }))
               }
               placeholder="@username"
-              className="w-full px-3 py-2 bg-gray-800/50 border border-nasun-c5/20 rounded-sm text-nasun-white placeholder-nasun-white/30 focus:outline-none focus:border-nasun-c1/50"
+              className="w-full px-3 py-2 bg-gray-800/70 border border-nasun-c5/35 rounded-sm text-nasun-white placeholder-nasun-white/50 focus:outline-none focus:border-nasun-c1/50"
             />
             {/* Account lookup result */}
             {debouncedUsername.length >= 2 && (
@@ -138,7 +138,7 @@ export function ScoreAdjustmentTab() {
 
           {/* Score */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-nasun-white/70">
+            <label className="text-sm font-medium text-nasun-white/85">
               Score ({form.score > 0 ? "+" : ""}
               {form.score.toFixed(1)})
             </label>
@@ -167,10 +167,10 @@ export function ScoreAdjustmentTab() {
                     score: parseFloat(e.target.value) || 0,
                   }))
                 }
-                className="w-20 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-2 py-1 text-nasun-white text-sm text-center focus:outline-none focus:border-nasun-c7/50"
+                className="w-20 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-2 py-1 text-nasun-white text-sm text-center focus:outline-none focus:border-nasun-c7/50"
               />
             </div>
-            <div className="flex justify-between text-xs text-nasun-white/40">
+            <div className="flex justify-between text-xs text-nasun-white/60">
               <span>-20</span>
               <span>0</span>
               <span>+20</span>
@@ -191,7 +191,7 @@ export function ScoreAdjustmentTab() {
                   className={`px-2 py-0.5 text-xs rounded-sm border transition-colors ${
                     form.score === val
                       ? "border-nasun-c1 bg-nasun-c1/20 text-nasun-c1"
-                      : "border-nasun-c5/20 text-nasun-white/50 hover:border-nasun-c5/40"
+                      : "border-nasun-c5/35 text-nasun-white/70 hover:border-nasun-c5/40"
                   }`}
                 >
                   {val > 0 ? "+" : ""}
@@ -203,7 +203,7 @@ export function ScoreAdjustmentTab() {
 
           {/* Reason */}
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium text-nasun-white/70">
+            <label className="text-sm font-medium text-nasun-white/85">
               Reason
             </label>
             <textarea
@@ -214,16 +214,16 @@ export function ScoreAdjustmentTab() {
               placeholder="Why is this adjustment being made? (required)"
               rows={2}
               maxLength={500}
-              className="w-full px-3 py-2 bg-gray-800/50 border border-nasun-c5/20 rounded-sm text-nasun-white placeholder-nasun-white/30 focus:outline-none focus:border-nasun-c1/50 resize-none"
+              className="w-full px-3 py-2 bg-gray-800/70 border border-nasun-c5/35 rounded-sm text-nasun-white placeholder-nasun-white/50 focus:outline-none focus:border-nasun-c1/50 resize-none"
             />
-            <div className="text-xs text-nasun-white/30 text-right">
+            <div className="text-xs text-nasun-white/50 text-right">
               {form.reason.length}/500
             </div>
           </div>
 
           {/* Season */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-nasun-white/70">
+            <label className="text-sm font-medium text-nasun-white/85">
               Season
             </label>
             <select
@@ -231,7 +231,7 @@ export function ScoreAdjustmentTab() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, seasonId: e.target.value }))
               }
-              className="w-full px-3 py-2 bg-gray-800/50 border border-nasun-c5/20 rounded-sm text-nasun-white focus:outline-none focus:border-nasun-c1/50"
+              className="w-full px-3 py-2 bg-gray-800/70 border border-nasun-c5/35 rounded-sm text-nasun-white focus:outline-none focus:border-nasun-c1/50"
               disabled={isLoadingSeasons}
             >
               <option value="">Active Season (auto)</option>
@@ -255,7 +255,7 @@ export function ScoreAdjustmentTab() {
           </Button>
 
           {form.score !== 0 && form.username && (
-            <span className="text-sm text-nasun-white/50">
+            <span className="text-sm text-nasun-white/70">
               {form.score > 0 ? "+" : ""}
               {form.score.toFixed(1)} to @
               {form.username.replace(/^@/, "")}
@@ -266,11 +266,11 @@ export function ScoreAdjustmentTab() {
         {/* Confirmation dialog */}
         {showConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-gray-900 border border-nasun-c5/30 rounded-sm p-6 max-w-md w-full mx-4 space-y-4">
+            <div className="bg-gray-900 border border-nasun-c5/45 rounded-sm p-6 max-w-md w-full mx-4 space-y-4">
               <h4 className="text-lg font-semibold text-nasun-white">
                 Confirm Adjustment
               </h4>
-              <div className="space-y-2 text-sm text-nasun-white/70">
+              <div className="space-y-2 text-sm text-nasun-white/85">
                 <p>
                   User:{" "}
                   <span className="text-nasun-white">
@@ -303,7 +303,7 @@ export function ScoreAdjustmentTab() {
                 <Button
                   variant="outline"
                   onClick={() => setShowConfirm(false)}
-                  className="border-nasun-c5/30 text-nasun-white/70"
+                  className="border-nasun-c5/45 text-nasun-white/85"
                 >
                   Cancel
                 </Button>

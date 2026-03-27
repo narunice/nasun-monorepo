@@ -168,32 +168,32 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!bg-gray-900 !border-nasun-c5/30 max-w-md">
+      <DialogContent className="!bg-gray-900 !border-nasun-c5/45 max-w-md">
         <DialogHeader>
           <DialogTitle className="text-nasun-white">Edit Post</DialogTitle>
-          <DialogDescription className="text-nasun-white/50 text-xs truncate">
+          <DialogDescription className="text-nasun-white/70 text-xs truncate">
             {post.postUrl}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           {/* Account Fields Section */}
-          <div className="text-[10px] uppercase tracking-wider text-nasun-white/40 font-medium">
+          <div className="text-[10px] uppercase tracking-wider text-nasun-white/60 font-medium">
             Account
           </div>
 
           {/* Language */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Language</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Language</label>
             {accountLoading ? (
-              <div className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white/30">
+              <div className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white/50">
                 Loading...
               </div>
             ) : (
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as AccountLanguage)}
-                className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+                className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
               >
                 {LANGUAGES.map((l) => (
                   <option key={l} value={l}>
@@ -206,9 +206,9 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
 
           {/* Follower Count */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Follower Count</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Follower Count</label>
             {accountLoading ? (
-              <div className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white/30">
+              <div className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white/50">
                 Loading...
               </div>
             ) : (
@@ -218,22 +218,22 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
                 step="1"
                 value={followerCount}
                 onChange={(e) => setFollowerCount(e.target.value)}
-                className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+                className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
               />
             )}
           </div>
 
           {/* Separator */}
-          <div className="border-t border-nasun-c5/20" />
+          <div className="border-t border-nasun-c5/35" />
 
           {/* Post Fields Section */}
-          <div className="text-[10px] uppercase tracking-wider text-nasun-white/40 font-medium">
+          <div className="text-[10px] uppercase tracking-wider text-nasun-white/60 font-medium">
             Post
           </div>
 
           {/* Post Type */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Post Type</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Post Type</label>
             <div className="flex gap-2">
               {POST_TYPES.map((type) => (
                 <button
@@ -243,7 +243,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
                   className={`flex-1 px-3 py-1.5 rounded-sm text-xs font-medium transition-all ${
                     postType === type
                       ? "bg-nasun-c4 text-nasun-white"
-                      : "bg-gray-700/50 text-nasun-white/50 hover:text-nasun-white"
+                      : "bg-gray-700/70 text-nasun-white/70 hover:text-nasun-white"
                   }`}
                 >
                   {POST_TYPE_LABELS[type]}
@@ -254,11 +254,11 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
 
           {/* Platform */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Platform</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Platform</label>
             <select
               value={platform}
               onChange={(e) => setPlatform(e.target.value)}
-              className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+              className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
             >
               {PLATFORMS.map((p) => (
                 <option key={p} value={p}>
@@ -270,18 +270,18 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
 
           {/* Username */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Username</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+              className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
             />
           </div>
 
           {/* Post Score */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Post Score (0-10)</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Post Score (0-10)</label>
             <input
               type="number"
               min="0"
@@ -292,7 +292,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
                 setPostScore(e.target.value);
                 setScoreError("");
               }}
-              className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+              className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
             />
             {scoreError && (
               <span className="text-red-400 text-xs mt-1">{scoreError}</span>
@@ -301,11 +301,11 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
 
           {/* Account Role */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Account Role</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Account Role</label>
             <select
               value={accountRole}
               onChange={(e) => setAccountRole(e.target.value)}
-              className="w-full bg-gray-800 border border-nasun-c5/30 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
+              className="w-full bg-gray-800 border border-nasun-c5/45 rounded-sm px-3 py-2 text-sm text-nasun-white focus:outline-none focus:border-nasun-c4"
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>
@@ -317,7 +317,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
 
           {/* Content Signals */}
           <div>
-            <label className="text-xs text-nasun-white/60 mb-1 block">Content Signals</label>
+            <label className="text-xs text-nasun-white/80 mb-1 block">Content Signals</label>
             <div className="flex flex-wrap gap-2">
               {SIGNALS.map((signal) => (
                 <button
@@ -328,7 +328,7 @@ export function PostEditModal({ open, onOpenChange, post }: PostEditModalProps) 
                   className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all ${
                     contentSignals.includes(signal)
                       ? "bg-nasun-c4 text-nasun-white"
-                      : "bg-gray-700/50 text-nasun-white/50 hover:text-nasun-white"
+                      : "bg-gray-700/70 text-nasun-white/70 hover:text-nasun-white"
                   } ${signal === "standard" ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {SIGNAL_LABELS[signal]}

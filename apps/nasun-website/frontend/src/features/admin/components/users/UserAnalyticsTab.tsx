@@ -36,7 +36,7 @@ export function UserAnalyticsTab() {
 
   if (!metrics || metrics.length === 0) {
     return (
-      <div className="text-nasun-white/40 text-center py-12">
+      <div className="text-nasun-white/60 text-center py-12">
         No analytics data available yet. Data will be collected daily.
       </div>
     );
@@ -44,7 +44,7 @@ export function UserAnalyticsTab() {
 
   return (
     <div>
-      <p className="text-nasun-white/40 text-xs mb-4">
+      <p className="text-nasun-white/60 text-xs mb-4">
         Historical data before daily collection started is approximate (based on account creation date).
       </p>
 
@@ -57,7 +57,7 @@ export function UserAnalyticsTab() {
             className={`px-3 py-1 text-xs rounded-md transition-colors ${
               range === opt.value
                 ? "bg-nasun-brand text-white"
-                : "bg-nasun-dark-700/50 text-nasun-white/50 hover:text-nasun-white/80"
+                : "bg-nasun-dark-700/50 text-nasun-white/70 hover:text-nasun-white/90"
             }`}
           >
             {opt.label}

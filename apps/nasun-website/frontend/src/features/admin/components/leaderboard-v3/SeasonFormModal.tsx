@@ -95,12 +95,12 @@ export function SeasonFormModal({
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-gray-900 border border-nasun-c5/30 rounded-sm w-full max-w-md p-6 shadow-2xl">
+      <div className="relative bg-gray-900 border border-nasun-c5/45 rounded-sm w-full max-w-md p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-medium text-nasun-white">
             {editingSeason ? "Edit Season" : "Create New Season"}
           </h3>
-          <button onClick={onClose} className="text-nasun-white/50 hover:text-nasun-white text-xl">
+          <button onClick={onClose} className="text-nasun-white/70 hover:text-nasun-white text-xl">
             ×
           </button>
         </div>
@@ -108,7 +108,7 @@ export function SeasonFormModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Season ID */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
               Season ID *
             </label>
             <input
@@ -117,10 +117,10 @@ export function SeasonFormModal({
               onChange={(e) => setFormData({ ...formData, seasonId: e.target.value.toUpperCase() })}
               placeholder="SEASON1"
               disabled={!!editingSeason}
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm disabled:opacity-50"
+              className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c7/50 transition-colors font-mono text-sm disabled:opacity-50"
             />
             {!editingSeason && (
-              <p className="mt-1 text-xs text-nasun-white/40">
+              <p className="mt-1 text-xs text-nasun-white/60">
                 Alphanumeric only. Cannot be changed after creation.
               </p>
             )}
@@ -128,7 +128,7 @@ export function SeasonFormModal({
 
           {/* Name */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
               Name *
             </label>
             <input
@@ -136,13 +136,13 @@ export function SeasonFormModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Season 1"
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+            <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
               Description
             </label>
             <input
@@ -150,32 +150,32 @@ export function SeasonFormModal({
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="New Year Event"
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
+              className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
             />
           </div>
 
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+              <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
                 Start Date *
               </label>
               <input
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
+                className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs uppercase tracking-widest text-nasun-white/50 font-medium mb-2">
+              <label className="block text-xs uppercase tracking-widest text-nasun-white/70 font-medium mb-2">
                 End Date *
               </label>
               <input
                 type="date"
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
+                className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 text-nasun-white focus:outline-none focus:border-nasun-c7/50 transition-colors text-sm"
               />
             </div>
           </div>
