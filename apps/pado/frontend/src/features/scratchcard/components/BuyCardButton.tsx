@@ -5,16 +5,13 @@ interface BuyCardButtonProps {
   onClick: () => void;
   isBuying: boolean;
   disabled?: boolean;
-  countdown?: number;
 }
 
-export function BuyCardButton({ onClick, isBuying, disabled, countdown }: BuyCardButtonProps) {
-  const isCooldown = countdown !== undefined && countdown > 0;
-
+export function BuyCardButton({ onClick, isBuying, disabled }: BuyCardButtonProps) {
   return (
     <button
       onClick={onClick}
-      disabled={disabled || isBuying || isCooldown}
+      disabled={disabled || isBuying}
       className="w-full px-6 py-3 rounded-lg bg-theme-accent hover:bg-theme-accent-hover
         text-white font-semibold text-lg transition-colors
         disabled:opacity-50 disabled:cursor-not-allowed"
@@ -23,10 +20,6 @@ export function BuyCardButton({ onClick, isBuying, disabled, countdown }: BuyCar
         <span className="flex items-center justify-center gap-2">
           <Spinner size="sm" />
           Purchasing...
-        </span>
-      ) : isCooldown ? (
-        <span className="text-white/70">
-          Ready in {countdown}...
         </span>
       ) : (
         `Buy Card - ${CARD_PRICE_DISPLAY} NUSDC`
