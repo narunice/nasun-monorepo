@@ -96,7 +96,7 @@ export function ScratchCardArea() {
             onReveal={handleReveal}
             revealed={canvasRevealed}
           >
-            <CardResultDisplay result={result} />
+            <CardResultDisplay result={result} revealed={canvasRevealed} />
           </ScratchCardCanvas>
 
           {phase === 'scratching' && (
