@@ -1,0 +1,15 @@
+[package]
+name = "pado_scratchcard"
+edition = "2024"
+version = "0.0.1"
+published-at = "0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff"
+
+[dependencies]
+devnet_tokens = { local = "../../../packages/devnet-tokens" }
+
+[addresses]
+scratchcard = "0x0"
+
+[environments]
+devnet = "272218f1"
+nasun-devnet = "272218f1"
