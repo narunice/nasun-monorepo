@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useScratchCardActions } from '../hooks';
 import { useScratchCardPool } from '../hooks';
 import { useToast } from '../../../components/common';
@@ -8,7 +8,10 @@ import { CardResultDisplay } from './CardResultDisplay';
 import { getTierLabel, formatNusdc } from '../types';
 import type { ScratchResult } from '../types';
 
-type Phase = 'idle' | 'buying' | 'scratching' | 'revealed';
+const RESULT_LINGER_MS = 3000;
+const COOLDOWN_SECONDS = 3;
+
+type Phase = 'idle' | 'buying' | 'scratching' | 'revealed' | 'cooldown';
 
 export function ScratchCardArea() {
   const { buyCard, isBuying, error } = useScratchCardActions();
@@ -18,6 +21,20 @@ export function ScratchCardArea() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<ScratchResult | null>(null);
   const [canvasRevealed, setCanvasRevealed] = useState(false);
+  const [showBuyAnother, setShowBuyAnother] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  // Timer refs for cleanup on unmount
+  const lingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup all timers on unmount
+  useEffect(() => {
+    return () => {
+      if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
+      if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    };
+  }, []);
 
   const handleBuy = useCallback(async () => {
     setPhase('buying');
@@ -26,6 +43,7 @@ export function ScratchCardArea() {
     if (scratchResult) {
       setResult(scratchResult);
       setCanvasRevealed(false);
+      setShowBuyAnother(false);
       setPhase('scratching');
     } else {
       setPhase('idle');
@@ -42,6 +60,13 @@ export function ScratchCardArea() {
         'success',
       );
     }
+
+    // Show "Buy Another" after linger delay
+    if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
+    lingerTimerRef.current = setTimeout(() => {
+      setShowBuyAnother(true);
+      lingerTimerRef.current = null;
+    }, RESULT_LINGER_MS);
   }, [result, showToast]);
 
   const handleRevealAll = useCallback(() => {
@@ -49,9 +74,34 @@ export function ScratchCardArea() {
   }, [handleReveal]);
 
   const handleReset = useCallback(() => {
-    setPhase('idle');
+    // Clear linger timer if still pending
+    if (lingerTimerRef.current) {
+      clearTimeout(lingerTimerRef.current);
+      lingerTimerRef.current = null;
+    }
+
     setResult(null);
     setCanvasRevealed(false);
+    setShowBuyAnother(false);
+
+    // Start cooldown
+    setCountdown(COOLDOWN_SECONDS);
+    setPhase('cooldown');
+
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current);
+    cooldownTimerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (cooldownTimerRef.current) {
+            clearInterval(cooldownTimerRef.current);
+            cooldownTimerRef.current = null;
+          }
+          setPhase('idle');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   }, []);
 
   const isPaused = pool?.isPaused ?? true;
@@ -84,11 +134,11 @@ export function ScratchCardArea() {
             </button>
           )}
 
-          {phase === 'revealed' && (
+          {phase === 'revealed' && showBuyAnother && (
             <button
               onClick={handleReset}
               className="px-4 py-2 rounded-lg bg-theme-accent hover:bg-theme-accent-hover
-                text-white font-medium text-sm transition-colors"
+                text-white font-medium text-sm transition-colors animate-fade-in"
             >
               Buy Another
             </button>
@@ -96,17 +146,18 @@ export function ScratchCardArea() {
         </div>
       )}
 
-      {/* Buy button (shown in idle and buying phases) */}
-      {(phase === 'idle' || phase === 'buying') && (
+      {/* Buy button (idle, buying, cooldown) */}
+      {(phase === 'idle' || phase === 'buying' || phase === 'cooldown') && (
         <BuyCardButton
           onClick={handleBuy}
           isBuying={isBuying || phase === 'buying'}
           disabled={!canBuy}
+          countdown={phase === 'cooldown' ? countdown : undefined}
         />
       )}
 
-      {/* Error display */}
-      {error && (
+      {/* Error display (clear on next phase transition) */}
+      {error && phase === 'idle' && (
         <p className="text-sm text-red-500 dark:text-red-400 text-center">
           {error}
         </p>
