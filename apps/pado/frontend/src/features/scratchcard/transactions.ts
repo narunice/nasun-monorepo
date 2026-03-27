@@ -24,6 +24,9 @@ import {
  */
 export function buildBuyScratchCard(nusdcCoinId: string): Transaction {
   const tx = new Transaction();
+  // Random-based transactions need higher gas; explicit budget prevents
+  // InsufficientGas when SDK selects a small gas coin.
+  tx.setGasBudget(50_000_000);
 
   const [paymentCoin] = tx.splitCoins(tx.object(nusdcCoinId), [
     tx.pure.u64(CARD_PRICE),
