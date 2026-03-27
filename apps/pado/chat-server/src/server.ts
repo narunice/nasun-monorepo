@@ -17,7 +17,7 @@ import type {
 } from './types.js';
 import { DEFAULT_CONFIG as CONFIG } from './types.js';
 import {
-  initLeaderboardStore, closeLeaderboardStore,
+  initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents,
   getLeaderboard, getLeaderboardPnl, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount,
   getIndexerState,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
@@ -1227,6 +1227,12 @@ function start(): void {
   });
   console.log(`[Leaderboard] Store initialized at ${CONFIG.leaderboardDbPath}`);
 
+  // Purge old order events on startup
+  const orderEventsPurged = purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
+  if (orderEventsPurged > 0) {
+    console.log(`[Leaderboard] Startup: purged ${orderEventsPurged} expired order events (>${CONFIG.orderEventRetentionDays}d)`);
+  }
+
   // Start indexer + aggregator if DeepBook package is configured
   const leaderboardEnabled = !!CONFIG.deepbookPackage;
   if (leaderboardEnabled) {
@@ -1345,11 +1351,15 @@ function start(): void {
     }
   }, 5 * 60_000);
 
-  // Periodic message retention cleanup
+  // Periodic retention cleanup (messages + order events)
   const retentionTimer = setInterval(() => {
-    const purged = purgeOldMessages(CONFIG.messageRetentionDays);
-    if (purged > 0) {
-      console.log(`[Chat] Purged ${purged} expired messages`);
+    const msgPurged = purgeOldMessages(CONFIG.messageRetentionDays);
+    if (msgPurged > 0) {
+      console.log(`[Chat] Purged ${msgPurged} expired messages`);
+    }
+    const ordersPurged = purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
+    if (ordersPurged > 0) {
+      console.log(`[Leaderboard] Purged ${ordersPurged} expired order events`);
     }
   }, CONFIG.retentionCleanupIntervalMs);
 
