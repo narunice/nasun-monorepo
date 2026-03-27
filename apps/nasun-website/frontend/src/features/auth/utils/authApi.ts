@@ -55,13 +55,21 @@ export const linkAccounts = async (
 
 // User Profile Management
 export const createUserProfile = async (userData: UserData): Promise<void> => {
+  if (!userData.cognitoToken) {
+    throw new Error("Session expired. Please sign in again.");
+  }
+
   try {
-    const payload = JSON.stringify(userData);
-    logger.log("Creating user profile with payload:", payload);
+    const { cognitoToken, ...profileData } = userData;
+    const payload = JSON.stringify(profileData);
+    logger.log("Creating user profile for:", userData.identityId);
 
     const response = await fetch(`${import.meta.env.VITE_USER_PROFILE_API}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${cognitoToken}`,
+      },
       body: payload,
     });
 

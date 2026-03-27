@@ -230,6 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             provider: provider as "Google" | "Twitter",
             username: userInfo.name,
             email: userInfo.email,
+            cognitoToken,
             ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
             ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
             ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),

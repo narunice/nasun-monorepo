@@ -1,9 +1,47 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
+const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
+
+// JWKS singleton for Cognito JWT verification
+let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
+function getJWKS() {
+  if (!jwksInstance) {
+    jwksInstance = createRemoteJWKSet(
+      new URL('https://cognito-identity.amazonaws.com/.well-known/jwks_uri')
+    );
+  }
+  return jwksInstance;
+}
+
+/**
+ * Verify a Bearer token and extract identityId from Cognito JWT.
+ * Returns undefined if verification fails.
+ */
+async function verifyToken(authHeader: string | undefined): Promise<string | undefined> {
+  if (!authHeader?.startsWith('Bearer ')) return undefined;
+  const token = authHeader.slice(7);
+
+  if (!COGNITO_IDENTITY_POOL_ID) {
+    console.error('COGNITO_IDENTITY_POOL_ID is not set');
+    return undefined;
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, getJWKS(), {
+      issuer: 'https://cognito-identity.amazonaws.com',
+      audience: COGNITO_IDENTITY_POOL_ID,
+    });
+    return payload.sub;
+  } catch (error) {
+    console.error('JWT verification failed:', error);
+    return undefined;
+  }
+}
 
 function getCorsOrigin(origin?: string): string {
   if (!origin) return ALLOWED_ORIGINS[0];
@@ -124,27 +162,37 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       }
 
     } else if (event.httpMethod === 'POST') {
-      // Create or update user profile
+      // Authenticate: require valid Cognito JWT for profile creation
+      const authHeader = event.headers.Authorization || event.headers.authorization;
+      const authenticatedIdentityId = await verifyToken(authHeader);
+
+      if (!authenticatedIdentityId) {
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Authentication required' }),
+        };
+      }
+
+      // Create user profile
       let postData;
 
-      // Handle both JSON and form-urlencoded data
       if (event.body) {
         try {
           postData = JSON.parse(event.body);
-        } catch (e) {
-          // If JSON parsing fails, assume it's form-urlencoded
-          const urlParams = new URLSearchParams(event.body);
-          postData = {
-            identityId: urlParams.get('identityId'),
-            provider: urlParams.get('provider'),
-            username: urlParams.get('username'),
-            email: urlParams.get('email'),
-            xHandle: urlParams.get('xHandle')
+        } catch {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'Invalid JSON body' }),
           };
         }
       } else {
-        const queryParams = event.queryStringParameters || {};
-        postData = queryParams;
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Request body is required' }),
+        };
       }
 
       // Validate required fields for POST
@@ -154,6 +202,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ message: 'identityId is required' }),
+        };
+      }
+
+      // Authorize: identityId in body must match the authenticated identity
+      if (postData.identityId !== authenticatedIdentityId) {
+        console.warn(`Authorization failed: token identity ${authenticatedIdentityId} does not match body identity ${postData.identityId}`);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Forbidden. Identity mismatch.' }),
         };
       }
 
