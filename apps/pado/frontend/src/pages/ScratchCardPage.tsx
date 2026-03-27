@@ -7,7 +7,8 @@ import {
   ScratchCardArea,
   PrizeTableDisplay,
   PoolStatusBar,
-  MyScratchCardList,
+  MyWinningCards,
+  MyPurchaseHistory,
 } from '../features/scratchcard';
 
 export function ScratchCardPage() {
@@ -39,9 +40,20 @@ export function ScratchCardPage() {
         </div>
       </div>
 
-      {/* My Winning Cards */}
+      {/* Winning Cards */}
       <div className="bg-theme-bg-secondary rounded-xl p-6">
-        <MyScratchCardList />
+        <h2 className="text-lg font-semibold text-theme-text-primary mb-3">
+          My Winning Cards
+        </h2>
+        <MyWinningCards />
+      </div>
+
+      {/* Purchase History (all, compact) */}
+      <div className="bg-theme-bg-secondary rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-theme-text-primary mb-3">
+          Purchase History
+        </h2>
+        <MyPurchaseHistory />
       </div>
     </div>
   );
