@@ -8,6 +8,7 @@ import {
 
 // Contract IDs
 export const SCRATCHCARD_PACKAGE_ID = SCRATCHCARD.packageId;
+export const SCRATCHCARD_ORIGINAL_PACKAGE_ID = SCRATCHCARD.originalPackageId ?? SCRATCHCARD.packageId;
 export const SCRATCHCARD_POOL_ID = SCRATCHCARD.pool;
 export const SCRATCHCARD_ADMIN_CAP_ID = SCRATCHCARD.adminCap;
 
