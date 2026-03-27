@@ -37,6 +37,7 @@ import { LeaderboardV3Stack } from '../lib/leaderboard-v3-stack';
 import { DevnetMetricsStack } from '../lib/devnet-metrics-stack';
 import { GenesisPassStack } from '../lib/genesis-pass-stack';
 import { ReferralStack } from '../lib/referral-stack';
+import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
 
 const app = new cdk.App();
 
@@ -106,6 +107,10 @@ const referralStack = new ReferralStack(app, 'ReferralStack', {
 
 // Devnet metrics stack (daily DAU/address collection via RPC)
 const devnetMetricsStack = new DevnetMetricsStack(app, 'DevnetMetricsStack', { env: cdkEnv });
+// No dependencies - standalone stack
+
+// NFT snapshot stack (ETH daily ownership + Devnet on-demand backup)
+const nftSnapshotStack = new NftSnapshotStack(app, 'NftSnapshotStack', { env: cdkEnv });
 // No dependencies - standalone stack
 
 // Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks

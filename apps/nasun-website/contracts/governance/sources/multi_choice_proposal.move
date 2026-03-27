@@ -266,6 +266,59 @@ public fun set_vote_proof_image(
     };
 }
 
+// === Restore Functions (admin only, post-devnet-reset) ===
+
+/// Restore a MultiChoiceVoteProofNFT from off-chain snapshot data.
+public fun admin_restore_vote_proof(
+    _admin_cap: &AdminCap,
+    proposal_id_bytes: address,
+    name: String,
+    description: String,
+    url_bytes: vector<u8>,
+    recipient: address,
+    ctx: &mut TxContext
+) {
+    let proof = MultiChoiceVoteProofNFT {
+        id: object::new(ctx),
+        proposal_id: object::id_from_address(proposal_id_bytes),
+        name,
+        description,
+        url: new_unsafe_from_bytes(url_bytes),
+    };
+    transfer::transfer(proof, recipient);
+}
+
+/// Batch restore MultiChoiceVoteProofNFTs (max 50 per call)
+public fun batch_restore_vote_proofs(
+    _admin_cap: &AdminCap,
+    proposal_ids: vector<address>,
+    names: vector<String>,
+    descriptions: vector<String>,
+    urls: vector<vector<u8>>,
+    recipients: vector<address>,
+    ctx: &mut TxContext
+) {
+    let len = proposal_ids.length();
+    assert!(len <= 50, 100);
+    assert!(len == names.length(), 101);
+    assert!(len == descriptions.length(), 101);
+    assert!(len == urls.length(), 101);
+    assert!(len == recipients.length(), 101);
+
+    let mut i = 0;
+    while (i < len) {
+        let proof = MultiChoiceVoteProofNFT {
+            id: object::new(ctx),
+            proposal_id: object::id_from_address(proposal_ids[i]),
+            name: names[i],
+            description: descriptions[i],
+            url: new_unsafe_from_bytes(urls[i]),
+        };
+        transfer::transfer(proof, recipients[i]);
+        i = i + 1;
+    };
+}
+
 // === Internal Functions ===
 
 fun issue_vote_proof(proposal: &MultiChoiceProposal, ctx: &mut TxContext) {
