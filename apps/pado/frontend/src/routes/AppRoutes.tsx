@@ -53,12 +53,13 @@ export function AppRoutes() {
         <Route path="/predict" element={<PredictPage />} />
         <Route path="/predict/:marketId" element={<PredictMarketPage />} />
 
-        {/* Lottery */}
-        <Route path="/lottery" element={<LotteryPage />} />
-        <Route path="/lottery/:roundId" element={<LotteryRoundPage />} />
-
-        {/* Scratch Cards */}
-        <Route path="/scratch" element={<ScratchCardPage />} />
+        {/* Leisure (Lottery + Scratch Cards) */}
+        <Route path="/leisure/lottery" element={<LotteryPage />} />
+        <Route path="/leisure/lottery/:roundId" element={<LotteryRoundPage />} />
+        <Route path="/leisure/scratch" element={<ScratchCardPage />} />
+        {/* Redirect old paths */}
+        <Route path="/lottery" element={<Navigate to="/leisure/lottery" replace />} />
+        <Route path="/scratch" element={<Navigate to="/leisure/scratch" replace />} />
 
         {/* Admin (Unified Dashboard) */}
         <Route path="/admin" element={<AdminPage />} />

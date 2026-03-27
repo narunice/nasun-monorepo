@@ -39,7 +39,7 @@ export function LotteryHighlight() {
       <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
         <h2 className="font-bold text-theme-text-primary mb-1">Pado Lottery</h2>
         <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Pick 5 numbers and win prizes every week</p>
-        <Link to="/lottery" className="text-sm xl:text-base text-pd3 hover:text-pd4 font-medium">
+        <Link to="/leisure/lottery" className="text-sm xl:text-base text-pd3 hover:text-pd4 font-medium">
           View Lottery &rarr;
         </Link>
       </div>
@@ -53,14 +53,14 @@ export function LotteryHighlight() {
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-bold text-theme-text-primary">Pado Lottery</h2>
-        <Link to="/lottery" className="text-xs xl:text-sm text-pd3 hover:text-pd4">
+        <Link to="/leisure/lottery" className="text-xs xl:text-sm text-pd3 hover:text-pd4">
           View All &rarr;
         </Link>
       </div>
       <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Pick 5 numbers from 1-32 for a chance to win</p>
 
       <Link
-        to="/lottery"
+        to="/leisure/lottery"
         className="block p-3 -mx-1 rounded-lg hover:bg-theme-bg-tertiary transition-colors"
       >
         {/* Round info */}
