@@ -128,16 +128,18 @@ async function runBot(
   }
 
   if (inventory.base < config.refillThresholdBase || inventory.quote < config.refillThresholdQuote) {
-    console.log(`[${timestamp()}] Low inventory, requesting tokens from faucet...`);
+    console.log(`[${timestamp()}] Low inventory, attempting refill...`);
 
-    const faucetSuccess = await requestTokens(client, keypair);
-    if (faucetSuccess) {
-      await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
+    // Try faucet (skips if LP_DISABLE_TOKEN_FAUCET=true)
+    await requestTokens(client, keypair);
 
-      const newInventory = await getBalanceManagerBalances(client, state.balanceManagerId);
-      console.log(`[${timestamp()}] New inventory: ${newInventory.base.toFixed(4)} ${MARKET.name}, ${newInventory.quote.toLocaleString()} NUSDC`);
-      Object.assign(inventory, newInventory);
-    }
+    // Always try depositing wallet tokens to BalanceManager
+    // (tokens may come from faucet above OR from external watchdog/prefund script)
+    await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
+
+    const newInventory = await getBalanceManagerBalances(client, state.balanceManagerId);
+    console.log(`[${timestamp()}] New inventory: ${newInventory.base.toFixed(4)} ${MARKET.name}, ${newInventory.quote.toLocaleString()} NUSDC`);
+    Object.assign(inventory, newInventory);
   }
 
   // Step 5: Query orderbook
