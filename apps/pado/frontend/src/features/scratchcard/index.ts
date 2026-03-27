@@ -15,6 +15,8 @@ export {
   PrizeTableDisplay,
   PoolStatusBar,
   MyScratchCardList,
+  MyWinningCards,
+  MyPurchaseHistory,
   ScratchCardAdminPanel,
 } from './components';
 

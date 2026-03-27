@@ -4,5 +4,5 @@ export { BuyCardButton } from './BuyCardButton';
 export { CardResultDisplay } from './CardResultDisplay';
 export { PrizeTableDisplay } from './PrizeTableDisplay';
 export { PoolStatusBar } from './PoolStatusBar';
-export { MyScratchCardList } from './MyScratchCardList';
+export { MyScratchCardList, MyWinningCards, MyPurchaseHistory } from './MyScratchCardList';
 export { ScratchCardAdminPanel } from './ScratchCardAdminPanel';
