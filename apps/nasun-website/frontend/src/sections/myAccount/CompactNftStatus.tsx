@@ -26,6 +26,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useAllianceMintStatus } from "../../hooks/useAllianceMintStatus";
+import { AllianceMintDialog } from "./components/AllianceMintDialog";
 
 interface CompactNftStatusProps {
   className?: string;
@@ -70,6 +72,17 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
     && evmWalletAddress
     && genesisPassWallet
     && genesisPassWallet.toLowerCase() !== evmWalletAddress.toLowerCase();
+
+  // Alliance NFT Status
+  const {
+    isMinted: isAllianceMinted,
+    isLoading: isAllianceLoading,
+    data: allianceData,
+    wallets: allianceWallets,
+    isConfigured: isAllianceConfigured,
+  } = useAllianceMintStatus(cognitoToken);
+
+  const [showAllianceMintDialog, setShowAllianceMintDialog] = useState(false);
 
   const [showMismatchDialog, setShowMismatchDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -147,17 +160,41 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
             </div>
           )}
 
-          {/* Alliance - hidden
-          <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-            <h6 className="text-nasun-white">Alliance</h6>
-            <p className="text-nasun-white/70 text-sm">
-              Details coming soon.
-            </p>
-            <Button variant="filledOutlineC7" size="sm" className="self-end mt-1" disabled>
-              Coming Soon
-            </Button>
-          </div>
-          */}
+          {/* Alliance NFT */}
+          {isAllianceConfigured && (
+            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+              <h6 className="text-nasun-white">Alliance</h6>
+              <div className="flex items-center justify-between">
+                {isAllianceLoading ? (
+                  <Spinner size="sm" />
+                ) : isAllianceMinted ? (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-green-400 text-sm">&#10003; Minted</span>
+                    {allianceData?.walletAddress && (
+                      <span className="text-nasun-white/50 text-xs font-mono">
+                        {shortenAddress(allianceData.walletAddress)}
+                      </span>
+                    )}
+                  </div>
+                ) : allianceWallets.length === 0 ? (
+                  <span className="text-nasun-white/50 text-sm">Register a wallet first</span>
+                ) : (
+                  <p className="text-nasun-white/70 text-sm">
+                    Use Nasun ecosystem to earn points
+                  </p>
+                )}
+                {!isAllianceLoading && !isAllianceMinted && allianceWallets.length > 0 && (
+                  <Button
+                    onClick={() => setShowAllianceMintDialog(true)}
+                    variant="filledOutlineC7"
+                    size="sm"
+                  >
+                    Mint
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
@@ -263,6 +300,16 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
           */}
         </div>
       </OuterBox>
+
+      {/* Alliance Mint Dialog */}
+      {cognitoToken && (
+        <AllianceMintDialog
+          open={showAllianceMintDialog}
+          onOpenChange={setShowAllianceMintDialog}
+          wallets={allianceWallets}
+          cognitoToken={cognitoToken}
+        />
+      )}
 
       {/* Wallet Mismatch Update Dialog */}
       <Dialog open={showMismatchDialog} onOpenChange={setShowMismatchDialog}>
