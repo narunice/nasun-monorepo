@@ -749,11 +749,13 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       }
       const format = queryParams.format;
 
-      const mintType = queryParams.mintType;
-      const VALID_MINT_TYPES = ["FREE_MINT", "GUARANTEED", "STANDARD"];
+      let mintType = queryParams.mintType;
+      const VALID_MINT_TYPES = ["FREE_MINT", "GUARANTEED", "STANDARD", "FCFS"];
       if (mintType && !VALID_MINT_TYPES.includes(mintType)) {
         return jsonResponse(400, { error: `Invalid mintType: ${mintType}. Must be one of: ${VALID_MINT_TYPES.join(", ")}` }, requestOrigin);
       }
+      // FCFS is an alias for STANDARD (entries without mintType)
+      if (mintType === "FCFS") mintType = "STANDARD";
 
       console.log(`Exporting Genesis Pass allowlist (status: ${status}, format: ${format || "default"}, mintType: ${mintType || "ALL"})`);
       let items = await scanGenesisPassAllowlist(status);

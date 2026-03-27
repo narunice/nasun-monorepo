@@ -26,7 +26,7 @@ const ALLIANCE_IMAGES = [
   "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreihrqym443lbluchdpir6l7isg5difwsc63ut4yqyqznt7iymmr4vm",
 ];
 
-const EXPLORER_TX_URL = "https://explorer.nasun.io/devnet/txblock";
+const EXPLORER_TX_URL = "https://explorer.nasun.io/devnet/tx";
 
 interface AllianceMintDialogProps {
   open: boolean;
