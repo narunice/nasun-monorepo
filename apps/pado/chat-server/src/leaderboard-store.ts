@@ -168,6 +168,8 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
       ON order_events(owner_address, pool_id, timestamp_ms DESC);
     CREATE INDEX IF NOT EXISTS idx_order_events_owner_ts
       ON order_events(owner_address, timestamp_ms DESC);
+    CREATE INDEX IF NOT EXISTS idx_order_events_ts
+      ON order_events(timestamp_ms);
   `);
 
   // Migration: add maker_order_id and taker_order_id to trade_fills (nullable for existing rows)
@@ -191,6 +193,20 @@ export function closeLeaderboardStore(): void {
     db.close();
     db = null;
   }
+}
+
+/**
+ * Purge order events older than retention period.
+ * Only order_events is safe to purge (not used by aggregation, PnL, or cost basis).
+ * trade_fills must NOT be purged: "all" period leaderboard, points system,
+ * and computeCostBasis() depend on complete fill history.
+ */
+export function purgeOldOrderEvents(retentionDays: number): number {
+  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  const result = getLeaderboardDb()
+    .prepare('DELETE FROM order_events WHERE timestamp_ms < ?')
+    .run(cutoff);
+  return result.changes;
 }
 
 // ===== Indexer State =====
