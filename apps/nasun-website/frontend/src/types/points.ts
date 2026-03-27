@@ -15,6 +15,7 @@ export interface UserPoints {
   firstActivity: string | null;
   lastActivity: string | null;
   categories: { category: string; points: string; count: number }[];
+  todayCategories?: string[];
 }
 
 export interface ScannerHealth {

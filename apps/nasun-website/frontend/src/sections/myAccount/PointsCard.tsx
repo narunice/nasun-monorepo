@@ -28,6 +28,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "baram-ai": "bg-indigo-500",
   "baram-executor": "bg-violet-500",
   "wallet-transfer": "bg-gray-500",
+  "referral-bonus": "bg-amber-500",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -41,6 +42,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "baram-ai": "Baram AI",
   "baram-executor": "Executor",
   "wallet-transfer": "Transfer",
+  "referral-bonus": "Referral",
 };
 
 export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
