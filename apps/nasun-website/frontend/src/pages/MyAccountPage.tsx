@@ -136,33 +136,33 @@ const MyAccountPage = () => {
         <PageTitle>MY ACCOUNT</PageTitle>
 
         {/* Bento Grid Dashboard Layout */}
-        {/* Mobile order: ProfileHero → NFT → RankHistory → Points → Governance → Assets → DangerZone */}
+        {/* Mobile order: ProfileHero → Points → NFT → RankHistory → Governance → Assets → DangerZone */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* Profile Hero Card - 2 columns (z-20 ensures dropdown appears above sibling cards) */}
+          {/* Profile Hero Card - 2 columns, 2 rows on desktop (z-20 ensures dropdown appears above sibling cards) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ProfileHeroCard className="order-1 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
+              <ProfileHeroCard className="order-1 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 lg:row-span-2 relative z-20" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* NFT Status - 1 column, right of Profile Hero (desktop) */}
+          {/* Points Card - 1 column, top-right of Profile Hero (desktop) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <CompactNftStatus className="order-2 lg:order-none col-span-1" />
+              <PointsCard className="order-2 lg:order-none col-span-1" />
+            </Suspense>
+          </ErrorBoundary>
+
+          {/* NFT Status - 1 column, bottom-right of Profile Hero (desktop) */}
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <CompactNftStatus className="order-3 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Rank History Card - 2 columns, below Profile Hero */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <RankHistoryCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
-            </Suspense>
-          </ErrorBoundary>
-
-          {/* Points Card - 1 column, right of Rank History */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-            <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <PointsCard className="order-4 lg:order-none col-span-1" />
+              <RankHistoryCard className="order-4 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
@@ -177,21 +177,21 @@ const MyAccountPage = () => {
           {/* Governance Card - 1 column */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <GovernanceCard className="order-6 lg:order-none col-span-1" />
+              <GovernanceCard className="order-5 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Assets Card - Full Width */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <AssetsCard walletAddress={walletAddress} className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Danger Zone - Full Width, Compact */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <DangerZoneCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>
