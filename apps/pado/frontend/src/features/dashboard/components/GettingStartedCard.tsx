@@ -64,11 +64,11 @@ export function GettingStartedCard() {
     },
     {
       id: 'trade',
-      label: 'Make Your First Trade',
-      description: 'Enable Pado and place an order on the orderbook',
+      label: 'Buy a Lottery Ticket',
+      description: 'Pick 5 numbers and try your luck',
       completed: hasTraded,
       action: isWalletConnected && hasBalance
-        ? { label: 'Go to Trade', to: '/markets/spot' }
+        ? { label: 'Go to Lottery', to: '/lottery' }
         : undefined,
     },
   ], [isWalletConnected, hasBalance, hasTraded]);

@@ -15,9 +15,24 @@ interface ActionItem {
   color: string;
   enabled: boolean;
   tooltip?: string;
+  badge?: string;
 }
 
 const ACTIONS: ActionItem[] = [
+  {
+    id: 'lottery',
+    label: 'Lottery',
+    description: 'Try your luck and win big',
+    path: '/lottery',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+      </svg>
+    ),
+    color: 'yellow',
+    enabled: true,
+    badge: 'LIVE',
+  },
   {
     id: 'spot',
     label: 'Spot',
@@ -29,19 +44,6 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'blue',
-    enabled: true,
-  },
-  {
-    id: 'perp',
-    label: 'Perp',
-    description: 'Trade with up to 20x leverage',
-    path: '/markets/perp',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-      </svg>
-    ),
-    color: 'purple',
     enabled: true,
   },
   {
@@ -58,16 +60,16 @@ const ACTIONS: ActionItem[] = [
     enabled: true,
   },
   {
-    id: 'lottery',
-    label: 'Lottery',
-    description: 'Try your luck and win big',
-    path: '/lottery',
+    id: 'perp',
+    label: 'Perp',
+    description: 'Trade with up to 20x leverage',
+    path: '/markets/perp',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
       </svg>
     ),
-    color: 'yellow',
+    color: 'purple',
     enabled: true,
   },
   {
@@ -175,8 +177,15 @@ export function QuickActions() {
           <Link
             key={action.id}
             to={action.path}
-            className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4 hover:bg-theme-bg-tertiary transition-colors group"
+            className="relative bg-theme-bg-secondary border border-theme-border rounded-xl p-4 hover:bg-theme-bg-tertiary transition-colors group"
           >
+            {action.badge && (
+              <div className="absolute top-2 right-2">
+                <span className="px-1.5 py-0.5 text-[10px] xl:text-xs font-medium bg-green-500/20 text-green-400 rounded-full">
+                  {action.badge}
+                </span>
+              </div>
+            )}
             <div className={`w-10 h-10 ${colors.bg} rounded-lg flex items-center justify-center mb-3 ${colors.hover} transition-colors`}>
               <span className={colors.icon}>{action.icon}</span>
             </div>
