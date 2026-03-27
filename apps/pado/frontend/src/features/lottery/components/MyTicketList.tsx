@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMyTickets } from '../hooks';
 import { WinningNumbers } from './WinningNumbers';
 import { useLotteryActions } from '../hooks';
@@ -24,21 +25,21 @@ function getTierColorClasses(tier: PrizeTier): {
   switch (tier) {
     case PRIZE_TIER.JACKPOT:
       return {
-        border: 'border-yellow-500',
-        bg: 'bg-yellow-900/20',
-        text: 'text-yellow-400',
+        border: 'border-yellow-600 dark:border-yellow-500',
+        bg: 'bg-yellow-50 dark:bg-yellow-900/20',
+        text: 'text-yellow-700 dark:text-yellow-400',
       };
     case PRIZE_TIER.SECOND:
       return {
         border: 'border-pd2',
-        bg: 'bg-pd0/20',
-        text: 'text-pd3',
+        bg: 'bg-pd4/30 dark:bg-pd0/20',
+        text: 'text-pd1 dark:text-pd3',
       };
     case PRIZE_TIER.THIRD:
       return {
-        border: 'border-green-500',
-        bg: 'bg-green-900/20',
-        text: 'text-green-400',
+        border: 'border-green-600 dark:border-green-500',
+        bg: 'bg-green-50 dark:bg-green-900/20',
+        text: 'text-green-700 dark:text-green-400',
       };
     default:
       return {
@@ -86,43 +87,41 @@ function TicketCard({
   return (
     <div
       className={`
-      p-4 rounded-lg border
+      p-3 rounded-lg border
       ${ticket.isClaimed ? 'border-pd2 bg-pd0/30' : ''}
       ${isWinner && !ticket.isClaimed ? `${tierColors.border} ${tierColors.bg}` : ''}
       ${!isWinner && isDrawn ? 'border-pd2 bg-theme-bg-secondary' : ''}
       ${!isDrawn ? 'border-theme-border bg-theme-bg-secondary' : ''}
     `}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <div className="text-sm text-theme-text-secondary">
-            Ticket #{ticket.ticketId}
-          </div>
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-theme-text-primary">
+            #{ticket.ticketId}
+          </span>
           {ticket.isClaimed && (
-            <span className="text-xs text-theme-text-muted">Claimed</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-pd2/40 text-theme-text-muted">Claimed</span>
           )}
           {isWinner && !ticket.isClaimed && (
-            <span className={`text-xs font-medium ${tierColors.text}`}>
-              {getTierLabel(tier)} Winner!
-              {prizeAmount > 0n && (
-                <span className="ml-1">({formatNusdc(prizeAmount)} NUSDC)</span>
-              )}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${tierColors.bg} ${tierColors.text}`}>
+              {getTierLabel(tier)}
+              {prizeAmount > 0n && ` ${formatNusdc(prizeAmount)}`}
             </span>
           )}
         </div>
-        <div className="text-xs text-theme-text-secondary">
-          {new Date(ticket.purchaseTime).toLocaleDateString()}
-        </div>
+        <span className="text-[11px] text-theme-text-muted tabular-nums">
+          {new Date(ticket.purchaseTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
       </div>
 
-      <div className="flex gap-2 mb-3">
+      <div className="flex items-center gap-1.5 mb-2">
         {ticket.numbers.map((num, i) => {
           const isMatch = drawnNumbers?.includes(num);
           return (
             <div
               key={i}
               className={`
-                w-8 h-8 rounded-full flex items-center justify-center font-medium
+                w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium
                 ${
                   isMatch
                     ? 'bg-green-500 text-white'
@@ -134,19 +133,18 @@ function TicketCard({
             </div>
           );
         })}
+        {isDrawn && (
+          <span className="ml-auto text-xs text-theme-text-muted whitespace-nowrap">
+            {matchCount}/5
+          </span>
+        )}
       </div>
-
-      {isDrawn && (
-        <div className="text-sm text-theme-text-secondary mb-3">
-          {matchCount} of 5 numbers matched
-        </div>
-      )}
 
       {canClaim && (
         <button
           onClick={handleClaim}
           disabled={isClaiming}
-          className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50"
+          className="w-full py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium disabled:opacity-50"
         >
           {isClaiming ? 'Claiming...' : 'Claim Prize'}
         </button>
@@ -156,7 +154,7 @@ function TicketCard({
         <button
           onClick={handleBurn}
           disabled={isClaiming}
-          className="w-full py-2 bg-pd2 hover:bg-pd1 text-white rounded-lg text-sm disabled:opacity-50"
+          className="w-full py-1.5 bg-pd2 hover:bg-pd1 text-white rounded-md text-xs disabled:opacity-50"
         >
           {isClaiming ? 'Processing...' : 'Burn Ticket'}
         </button>
@@ -165,8 +163,12 @@ function TicketCard({
   );
 }
 
+const INITIAL_COUNT = 3;
+const PAGE_SIZE = 5;
+
 export function MyTicketList({ roundId, round }: MyTicketListProps) {
   const { tickets, isLoading, error } = useMyTickets(roundId);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
 
   if (isLoading) {
     return (
@@ -192,6 +194,9 @@ export function MyTicketList({ roundId, round }: MyTicketListProps) {
     );
   }
 
+  const hasMore = tickets.length > visibleCount;
+  const visibleTickets = tickets.slice(0, visibleCount);
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-theme-text-primary">
@@ -207,11 +212,20 @@ export function MyTicketList({ roundId, round }: MyTicketListProps) {
         </div>
       )}
 
-      <div className="grid gap-3">
-        {tickets.map((ticket) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        {visibleTickets.map((ticket) => (
           <TicketCard key={ticket.id} ticket={ticket} round={round} />
         ))}
       </div>
+
+      {hasMore && (
+        <button
+          onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+          className="w-full py-2 text-sm font-medium text-pd3 hover:text-pd4 transition-colors"
+        >
+          Show More ({tickets.length - visibleCount} remaining)
+        </button>
+      )}
     </div>
   );
 }
