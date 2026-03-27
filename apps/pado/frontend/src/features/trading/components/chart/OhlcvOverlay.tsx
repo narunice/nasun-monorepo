@@ -18,13 +18,15 @@ interface LegendEntry {
 }
 
 const INDICATOR_LEGENDS: Record<IndicatorId, LegendEntry[]> = {
-  sma:   [{ label: 'SMA5', color: '#fbbf24' }, { label: 'SMA20', color: '#3b82f6' }],
-  ema:   [{ label: 'EMA9', color: '#f97316' }, { label: 'EMA21', color: '#8b5cf6' }],
-  bb:    [{ label: 'BB', color: '#6366f1' }],
-  rsi:   [{ label: 'RSI(14)', color: '#a855f7' }],
-  macd:  [{ label: 'MACD', color: '#22d3ee' }, { label: 'Signal', color: '#fb923c' }],
-  stoch: [{ label: '%K', color: '#22d3ee' }, { label: '%D', color: '#f97316' }],
-  atr:   [{ label: 'ATR(14)', color: '#f59e0b' }],
+  sma:      [{ label: 'SMA5', color: '#fbbf24' }, { label: 'SMA20', color: '#3b82f6' }],
+  ema:      [{ label: 'EMA9', color: '#f97316' }, { label: 'EMA21', color: '#8b5cf6' }],
+  bb:       [{ label: 'BB', color: '#6366f1' }],
+  vwap:     [{ label: 'VWAP', color: '#a855f7' }],
+  ichimoku: [{ label: 'Tenkan', color: '#2563eb' }, { label: 'Kijun', color: '#dc2626' }, { label: 'SenkouA', color: '#22c55e' }, { label: 'SenkouB', color: '#ef4444' }, { label: 'Chikou', color: '#9ca3af' }],
+  rsi:      [{ label: 'RSI(14)', color: '#a855f7' }],
+  macd:     [{ label: 'MACD', color: '#22d3ee' }, { label: 'Signal', color: '#fb923c' }],
+  stoch:    [{ label: '%K', color: '#22d3ee' }, { label: '%D', color: '#f97316' }],
+  atr:      [{ label: 'ATR(14)', color: '#f59e0b' }],
 };
 
 function fmt(n: number): string {
