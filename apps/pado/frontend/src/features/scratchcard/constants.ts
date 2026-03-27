@@ -28,10 +28,10 @@ export const POOL_MIN_BALANCE = 500_000_000n; // 500 NUSDC
 export const MAX_DAILY_CARDS = 1000;
 export const PER_ADDRESS_SOFT_LIMIT = 10; // Frontend-only soft limit
 
-// On-chain type strings
-export const SCRATCHCARD_POOL_TYPE = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::ScratchCardPool`;
-export const SCRATCHCARD_TYPE = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::ScratchCard`;
-export const ADMIN_CAP_TYPE = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::AdminCap`;
+// On-chain type strings (use original package ID - Sui types are immutable across upgrades)
+export const SCRATCHCARD_POOL_TYPE = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::ScratchCardPool`;
+export const SCRATCHCARD_TYPE = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::ScratchCard`;
+export const ADMIN_CAP_TYPE = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::AdminCap`;
 
 // Prize table (matches Move contract thresholds)
 export const PRIZE_TIERS = [
