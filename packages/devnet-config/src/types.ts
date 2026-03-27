@@ -49,6 +49,13 @@ export interface LotteryConfig {
   upgradeCap: ObjectId;
 }
 
+export interface ScratchcardConfig {
+  packageId: ObjectId;
+  pool: ObjectId;
+  adminCap: ObjectId;
+  upgradeCap: ObjectId;
+}
+
 export interface GovernanceConfig {
   packageId: ObjectId;
   originalPackageId?: ObjectId;
@@ -147,6 +154,7 @@ export interface DevnetConfig {
   deepbook: DeepBookConfig;
   prediction: PredictionConfig;
   lottery: LotteryConfig;
+  scratchcard: ScratchcardConfig;
   governance: GovernanceConfig;
   baram: Omit<BaramConfig, 'nusdcType'>;
   tokensV2: Omit<TokensV2Config, 'nethType' | 'nsolType'>;
