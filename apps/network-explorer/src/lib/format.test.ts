@@ -14,6 +14,7 @@ import {
   formatLastUpdated,
   truncateDigest,
   getTxTypeInfo,
+  sanitizeJsonForDisplay,
 } from './format';
 import type { SuiTransactionBlockResponse } from '@mysten/sui/client';
 
@@ -353,6 +354,44 @@ describe('format utilities', () => {
       const tx = { digest: 'test' } as SuiTransactionBlockResponse;
       const result = getTxTypeInfo(tx);
       expect(result.variant).toBe('default');
+    });
+  });
+
+  describe('sanitizeJsonForDisplay', () => {
+    it('should replace 0x2::sui::SUI in strings', () => {
+      expect(sanitizeJsonForDisplay('0x2::sui::SUI')).toBe('0x2::nasun::NSN');
+    });
+
+    it('should replace ::sui:: module references', () => {
+      expect(sanitizeJsonForDisplay('0x2::sui::something')).toBe('0x2::nasun::something');
+    });
+
+    it('should replace StakedSui and SuiSystem', () => {
+      expect(sanitizeJsonForDisplay('StakedSui')).toBe('StakedNasun');
+      expect(sanitizeJsonForDisplay('SuiSystem')).toBe('NasunSystem');
+    });
+
+    it('should recursively process nested objects', () => {
+      const input = {
+        coinType: '0x2::sui::SUI',
+        nested: { type: '0x2::coin::Coin<0x2::sui::SUI>' },
+      };
+      const result = sanitizeJsonForDisplay(input) as Record<string, unknown>;
+      expect(result.coinType).toBe('0x2::nasun::NSN');
+      expect((result.nested as Record<string, unknown>).type).toBe('0x2::coin::Coin<0x2::nasun::NSN>');
+    });
+
+    it('should process arrays', () => {
+      const input = ['0x2::sui::SUI', '0x2::coin::Coin<0x2::sui::SUI>'];
+      const result = sanitizeJsonForDisplay(input) as string[];
+      expect(result[0]).toBe('0x2::nasun::NSN');
+      expect(result[1]).toBe('0x2::coin::Coin<0x2::nasun::NSN>');
+    });
+
+    it('should preserve non-string values', () => {
+      const input = { num: 42, bool: true, nil: null };
+      const result = sanitizeJsonForDisplay(input);
+      expect(result).toEqual({ num: 42, bool: true, nil: null });
     });
   });
 });

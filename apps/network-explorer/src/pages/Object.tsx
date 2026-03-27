@@ -1,7 +1,7 @@
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getObject } from '../lib/sui-client';
-import { formatObjectType, formatSoe } from '../lib/format';
+import { formatObjectType, formatSoe, sanitizeJsonForDisplay } from '../lib/format';
 import { useDocumentTitle } from '../hooks';
 import { getDisplayMediaUrl, isNFTObject } from '../lib/media';
 import { parseContent, isCoinType, extractPackageId, getOwnerDisplay, getOwnerLink } from '../lib/object-utils';
@@ -92,7 +92,7 @@ export default function ObjectPage() {
           <div className="text-muted-foreground mb-4">Object not found</div>
           {obj?.error && (
             <pre className="text-xs text-muted-foreground bg-muted/30 border border-border p-3 rounded-lg mb-4">
-              {JSON.stringify(obj.error, null, 2)}
+              {JSON.stringify(sanitizeJsonForDisplay(obj.error), null, 2)}
             </pre>
           )}
           {id && (

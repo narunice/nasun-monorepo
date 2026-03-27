@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SectionBox } from '../ui/SectionBox';
 import { Badge } from '../ui/Badge';
-import { formatObjectType } from '../../lib/format';
+import { formatObjectType, sanitizeJsonForDisplay } from '../../lib/format';
 import { decodeEvent } from '../../lib/event-decoder';
 import type { DecodedEvent, DecodedField } from '../../lib/event-decoder';
 import { useCopyToClipboard } from '../../hooks';
@@ -92,7 +92,7 @@ function DecodedFieldRow({ field }: { field: DecodedField }) {
 // Raw event card (for unknown events — unchanged from original)
 function RawEventCard({ type, data }: { type: string; data: unknown }) {
   const { copied, handleCopy } = useCopyToClipboard();
-  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
+  const jsonString = useMemo(() => JSON.stringify(sanitizeJsonForDisplay(data), null, 2), [data]);
 
   return (
     <div className="bg-muted/30 border border-border rounded-lg p-3">
@@ -136,7 +136,7 @@ function RawEventCard({ type, data }: { type: string; data: unknown }) {
 function CollapsibleRawJson({ data }: { data: unknown }) {
   const [isOpen, setIsOpen] = useState(false);
   const { copied, handleCopy } = useCopyToClipboard();
-  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
+  const jsonString = useMemo(() => JSON.stringify(sanitizeJsonForDisplay(data), null, 2), [data]);
 
   return (
     <div className="mt-2 pt-2 border-t border-border/30">
