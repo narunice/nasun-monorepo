@@ -11,7 +11,7 @@ export function FeaturedFeedManagement() {
           <PageTitle as="h3" align="left" className="">
             Featured Feed
           </PageTitle>
-          <p className="text-nasun-white/60 -mt-6">
+          <p className="text-nasun-white/80 -mt-6">
             Curate the featured posts that appear on the leaderboard sidebar.
           </p>
         </div>

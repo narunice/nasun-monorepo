@@ -301,7 +301,7 @@ export function CreateProposal() {
           <PageTitle as="h3" align="left" className="">
             Create Proposal
           </PageTitle>
-          <p className="text-nasun-white/60 -mt-6">
+          <p className="text-nasun-white/80 -mt-6">
             Create a new governance proposal or poll. Requires AdminCap access.
           </p>
         </div>
@@ -312,7 +312,7 @@ export function CreateProposal() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-medium text-nasun-white mb-1">Wallet Connection</h2>
-                <p className="text-nasun-white/60 text-sm">
+                <p className="text-nasun-white/80 text-sm">
                   {isLocalWalletConnected
                     ? `Connected: ${account?.address?.slice(0, 10)}...${account?.address?.slice(-8)}`
                     : isZkConnected
@@ -326,7 +326,7 @@ export function CreateProposal() {
                   </p>
                 )}
                 {!isLocalWalletConnected && !isZkConnected && (
-                  <p className="text-nasun-white/40 text-xs mt-1">
+                  <p className="text-nasun-white/60 text-xs mt-1">
                     Use &quot;Import Wallet&quot; with the admin private key.
                   </p>
                 )}
@@ -342,42 +342,42 @@ export function CreateProposal() {
 
               {/* Title */}
               <div className="mb-6">
-                <label className="block text-sm text-nasun-white/70 mb-2">Title</label>
+                <label className="block text-sm text-nasun-white/85 mb-2">Title</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Enter proposal title"
-                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none"
+                  className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/50 focus:outline-none"
                   disabled={isSubmitting}
                 />
               </div>
 
               {/* Description */}
               <div className="mb-6">
-                <label className="block text-sm text-nasun-white/70 mb-2">Description</label>
+                <label className="block text-sm text-nasun-white/85 mb-2">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Enter proposal description"
                   rows={4}
-                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none resize-none"
+                  className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/50 focus:outline-none resize-none"
                   disabled={isSubmitting}
                 />
               </div>
 
               {/* Vote Proof NFT Image URL */}
               <div className="mb-6">
-                <label className="block text-sm text-nasun-white/70 mb-2">
+                <label className="block text-sm text-nasun-white/85 mb-2">
                   Vote Proof NFT Image URL
-                  <span className="text-nasun-white/40 ml-1">(optional)</span>
+                  <span className="text-nasun-white/60 ml-1">(optional)</span>
                 </label>
                 <input
                   type="url"
                   value={formData.voteProofImageUrl}
                   onChange={(e) => setFormData({ ...formData, voteProofImageUrl: e.target.value })}
                   placeholder="https://... (leave empty for default image)"
-                  className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/30 focus:outline-none"
+                  className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white placeholder-nasun-white/50 focus:outline-none"
                   disabled={isSubmitting}
                 />
                 {formData.voteProofImageUrl.trim() && (
@@ -385,7 +385,7 @@ export function CreateProposal() {
                     <img
                       src={formData.voteProofImageUrl.trim()}
                       alt="NFT preview"
-                      className="w-20 h-20 rounded-sm object-cover border border-nasun-white/10"
+                      className="w-20 h-20 rounded-sm object-cover border border-nasun-white/20"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block'; }}
                     />
@@ -395,7 +395,7 @@ export function CreateProposal() {
 
               {/* Proposal Type */}
               <div className="mb-6">
-                <label className="block text-sm text-nasun-white/70 mb-2">Proposal Type</label>
+                <label className="block text-sm text-nasun-white/85 mb-2">Proposal Type</label>
                 <div className="flex gap-4">
                   <button
                     type="button"
@@ -403,7 +403,7 @@ export function CreateProposal() {
                     className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
                       formData.proposalType === "Governance"
                         ? "bg-amber-500/10 border-amber-500/50 text-amber-400"
-                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                     }`}
                     disabled={isSubmitting}
                   >
@@ -416,7 +416,7 @@ export function CreateProposal() {
                     className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
                       formData.proposalType === "Poll"
                         ? "bg-blue-500/10 border-blue-500/50 text-blue-400"
-                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                     }`}
                     disabled={isSubmitting}
                   >
@@ -428,7 +428,7 @@ export function CreateProposal() {
 
               {/* Vote Format */}
               <div className="mb-6">
-                <label className="block text-sm text-nasun-white/70 mb-2">Vote Format</label>
+                <label className="block text-sm text-nasun-white/85 mb-2">Vote Format</label>
                 <div className="flex gap-4">
                   <button
                     type="button"
@@ -436,7 +436,7 @@ export function CreateProposal() {
                     className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
                       formData.voteFormat === "yes-no"
                         ? "bg-green-500/10 border-green-500/50 text-green-400"
-                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                     }`}
                     disabled={isSubmitting}
                   >
@@ -449,7 +449,7 @@ export function CreateProposal() {
                     className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
                       formData.voteFormat === "multi-choice"
                         ? "bg-purple-500/10 border-purple-500/50 text-purple-400"
-                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                     }`}
                     disabled={isSubmitting}
                   >
@@ -463,7 +463,7 @@ export function CreateProposal() {
               {formData.voteFormat === "multi-choice" && (
                 <>
                   <div className="mb-6">
-                    <label className="block text-sm text-nasun-white/70 mb-2">
+                    <label className="block text-sm text-nasun-white/85 mb-2">
                       Choices ({formData.choices.filter((c) => c.trim()).length}/20)
                     </label>
                     <div className="space-y-2">
@@ -478,7 +478,7 @@ export function CreateProposal() {
                               setFormData({ ...formData, choices: updated });
                             }}
                             placeholder={`Choice ${idx + 1}`}
-                            className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2 text-nasun-white placeholder-nasun-white/30 focus:outline-none focus:border-nasun-c4/50"
+                            className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2 text-nasun-white placeholder-nasun-white/50 focus:outline-none focus:border-nasun-c4/50"
                             disabled={isSubmitting}
                           />
                           {formData.choices.length > 2 && (
@@ -511,7 +511,7 @@ export function CreateProposal() {
 
                   {/* Equal Weight Toggle */}
                   <div className="mb-6">
-                    <label className="block text-sm text-nasun-white/70 mb-2">Voting Weight</label>
+                    <label className="block text-sm text-nasun-white/85 mb-2">Voting Weight</label>
                     <div className="flex gap-4">
                       <button
                         type="button"
@@ -519,7 +519,7 @@ export function CreateProposal() {
                         className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
                           formData.useEqualWeight
                             ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
-                            : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                            : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                         }`}
                         disabled={isSubmitting}
                       >
@@ -532,7 +532,7 @@ export function CreateProposal() {
                         className={`flex-1 px-4 py-3 rounded-sm border transition-colors ${
                           !formData.useEqualWeight
                             ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
-                            : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                            : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                         }`}
                         disabled={isSubmitting}
                       >
@@ -546,7 +546,7 @@ export function CreateProposal() {
 
               {/* Duration Type Toggle */}
               <div className="mb-4">
-                <label className="block text-sm text-nasun-white/70 mb-2">Voting Duration</label>
+                <label className="block text-sm text-nasun-white/85 mb-2">Voting Duration</label>
                 <div className="flex gap-4">
                   <button
                     type="button"
@@ -554,7 +554,7 @@ export function CreateProposal() {
                     className={`px-4 py-2 rounded-sm border text-sm transition-colors ${
                       formData.durationType === "preset"
                         ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
-                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                     }`}
                     disabled={isSubmitting}
                   >
@@ -566,7 +566,7 @@ export function CreateProposal() {
                     className={`px-4 py-2 rounded-sm border text-sm transition-colors ${
                       formData.durationType === "custom"
                         ? "bg-nasun-c4/10 border-nasun-c4/50 text-nasun-c4"
-                        : "bg-nasun-white/5 border-nasun-white/10 text-nasun-white/60 hover:border-nasun-white/30"
+                        : "bg-nasun-white/5 border-nasun-white/20 text-nasun-white/80 hover:border-nasun-white/30"
                     }`}
                     disabled={isSubmitting}
                   >
@@ -583,7 +583,7 @@ export function CreateProposal() {
                     onChange={(e) =>
                       setFormData({ ...formData, durationHours: Number(e.target.value) })
                     }
-                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none [&>option]:bg-nasun-c6 [&>option]:text-nasun-white"
+                    className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none [&>option]:bg-nasun-c6 [&>option]:text-nasun-white"
                     disabled={isSubmitting}
                   >
                     <option value={24}>24 hours</option>
@@ -598,7 +598,7 @@ export function CreateProposal() {
               {/* Custom End Date Picker */}
               {formData.durationType === "custom" && (
                 <div className="mb-8">
-                  <label className="block text-sm text-nasun-white/70 mb-2">Voting End Date</label>
+                  <label className="block text-sm text-nasun-white/85 mb-2">Voting End Date</label>
                   <input
                     type="datetime-local"
                     value={formData.customEndDate}
@@ -607,11 +607,11 @@ export function CreateProposal() {
                       const d = new Date(Date.now() + 60 * 60 * 1000);
                       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                     })()}
-                    className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none"
+                    className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-3 focus:border-nasun-c4/50 text-nasun-white focus:outline-none"
                     disabled={isSubmitting}
                   />
                   {formData.customEndDate && (
-                    <p className="text-nasun-white/40 text-xs mt-2">
+                    <p className="text-nasun-white/60 text-xs mt-2">
                       Expires: {new Date(formData.customEndDate).toLocaleString("en-US")} (local time)
                     </p>
                   )}
@@ -658,8 +658,8 @@ export function CreateProposal() {
 
           {/* Live Preview */}
           {formData.title.trim() && (
-            <div className="border-t border-nasun-white/10 pt-6">
-              <h3 className="text-sm font-semibold text-nasun-white/60 uppercase tracking-wider mb-4">
+            <div className="border-t border-nasun-white/20 pt-6">
+              <h3 className="text-sm font-semibold text-nasun-white/80 uppercase tracking-wider mb-4">
                 Preview
               </h3>
               <ProposalPreview formData={formData} />
@@ -689,11 +689,11 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
     <OuterBox color="w5" padding="md">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-medium text-nasun-white">Detail Page Preview</h2>
-        <span className="text-xs text-nasun-white/30 uppercase">How voters will see it</span>
+        <span className="text-xs text-nasun-white/50 uppercase">How voters will see it</span>
       </div>
 
       {/* Simulated detail page */}
-      <div className="border border-nasun-white/10 rounded-sm bg-[#191615] p-5 space-y-4">
+      <div className="border border-nasun-white/20 rounded-sm bg-[#191615] p-5 space-y-4">
         {/* Badges */}
         <div className="flex items-center gap-2">
           {formData.proposalType === "Poll" ? (
@@ -718,7 +718,7 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
         {/* Two-column layout */}
         <div className={`grid grid-cols-1 ${isMultiChoice ? "lg:grid-cols-2" : "lg:grid-cols-[1fr_320px]"} gap-4 items-start`}>
           {/* Description */}
-          <div className="border border-nasun-white/10 rounded-sm p-4 bg-gray-900 min-h-[200px]">
+          <div className="border border-nasun-white/20 rounded-sm p-4 bg-gray-900 min-h-[200px]">
             <p className="text-nasun-white/90 whitespace-pre-wrap leading-relaxed">
               {formData.description || <span className="text-nasun-white/20 italic">Description will appear here...</span>}
             </p>
@@ -727,7 +727,7 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
           {/* Sidebar */}
           <div className="flex flex-col gap-4">
             {/* Vote Results */}
-            <div className="border border-nasun-white/10 rounded-sm p-4">
+            <div className="border border-nasun-white/20 rounded-sm p-4">
               <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
                 Vote Results
               </h3>
@@ -736,8 +736,8 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
                   {validChoices.map((choice, idx) => (
                     <div key={idx}>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-nasun-white/80 truncate mr-2">{choice}</span>
-                        <span className="text-nasun-white/50">0%</span>
+                        <span className="text-nasun-white/90 truncate mr-2">{choice}</span>
+                        <span className="text-nasun-white/70">0%</span>
                       </div>
                       <div className="w-full h-2.5 rounded-full overflow-hidden bg-nasun-white/10">
                         <div className="h-full bg-nasun-nw1" style={{ width: "0%" }} />
@@ -745,7 +745,7 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
                     </div>
                   ))}
                   {formData.useEqualWeight && (
-                    <p className="text-xs text-nasun-white/30 mt-1">Equal Weight: 1 vote per wallet</p>
+                    <p className="text-xs text-nasun-white/50 mt-1">Equal Weight: 1 vote per wallet</p>
                   )}
                 </div>
               ) : (
@@ -756,15 +756,15 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-green-500/10 border border-green-500/20 rounded-sm p-3 text-center">
                       <div className="text-2xl font-bold text-green-400">50.0%</div>
-                      <div className="text-sm text-nasun-white/70">Yes</div>
+                      <div className="text-sm text-nasun-white/85">Yes</div>
                       <div className="text-base font-medium text-green-400 mt-1">0</div>
-                      <div className="text-xs text-nasun-white/30">voting power</div>
+                      <div className="text-xs text-nasun-white/50">voting power</div>
                     </div>
                     <div className="bg-red-500/10 border border-red-500/20 rounded-sm p-3 text-center">
                       <div className="text-2xl font-bold text-red-400">50.0%</div>
-                      <div className="text-sm text-nasun-white/70">No</div>
+                      <div className="text-sm text-nasun-white/85">No</div>
                       <div className="text-base font-medium text-red-400 mt-1">0</div>
-                      <div className="text-xs text-nasun-white/30">voting power</div>
+                      <div className="text-xs text-nasun-white/50">voting power</div>
                     </div>
                   </div>
                 </>
@@ -772,22 +772,22 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
             </div>
 
             {/* Details */}
-            <div className="border border-nasun-white/10 rounded-sm p-4">
+            <div className="border border-nasun-white/20 rounded-sm p-4">
               <h3 className="text-base font-medium text-nasun-white/90 uppercase tracking-wider mb-3">
                 Details
               </h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-nasun-white/70">Proposal ID</span>
+                  <span className="text-nasun-white/85">Proposal ID</span>
                   <span className="text-nasun-nw1 font-mono">0x0000...0000</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-nasun-white/70">Expiration</span>
-                  <span className="text-nasun-white/80">{timeLabel}</span>
+                  <span className="text-nasun-white/85">Expiration</span>
+                  <span className="text-nasun-white/90">{timeLabel}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-nasun-white/70">Type</span>
-                  <span className="text-nasun-white/80">
+                  <span className="text-nasun-white/85">Type</span>
+                  <span className="text-nasun-white/90">
                     {formData.proposalType === "Poll" ? "Poll (Zero Gas)" : "Governance (Gas Required)"}
                   </span>
                 </div>
@@ -798,7 +798,7 @@ function ProposalPreview({ formData }: { formData: ProposalFormData }) {
             <button
               type="button"
               disabled
-              className="w-full py-3 rounded-sm text-sm font-medium uppercase bg-gradient-to-r from-nasun-nw1/30 to-nasun-nw4/30 text-nasun-white/60 border border-nasun-white/10 cursor-not-allowed"
+              className="w-full py-3 rounded-sm text-sm font-medium uppercase bg-gradient-to-r from-nasun-nw1/30 to-nasun-nw4/30 text-nasun-white/80 border border-nasun-white/20 cursor-not-allowed"
             >
               Vote on this Proposal
             </button>

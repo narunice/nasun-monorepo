@@ -101,7 +101,7 @@ export function DevnetMetrics() {
                   className={`px-3 py-1 text-xs rounded-md transition-colors ${
                     range === opt.value
                       ? "bg-nasun-brand text-white"
-                      : "bg-nasun-dark-700/50 text-nasun-white/50 hover:text-nasun-white/80"
+                      : "bg-nasun-dark-700/50 text-nasun-white/70 hover:text-nasun-white/80"
                   }`}
                 >
                   {opt.label}
@@ -141,7 +141,7 @@ export function DevnetMetrics() {
             {/* DAU Breakdown: New vs Repeat */}
             {chartDataWithRepeat.length > 0 && (
               <OuterBox className="p-4 mt-4">
-                <h3 className="text-nasun-white/70 text-sm font-medium mb-4">DAU Breakdown: New vs Repeat</h3>
+                <h3 className="text-nasun-white/85 text-sm font-medium mb-4">DAU Breakdown: New vs Repeat</h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={chartDataWithRepeat}>
                     <defs>

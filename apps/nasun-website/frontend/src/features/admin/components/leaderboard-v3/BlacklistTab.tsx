@@ -93,7 +93,7 @@ export function BlacklistTab() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Enter username to search..."
-              className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4"
+              className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4"
             />
             <Button
               variant="c4"
@@ -124,7 +124,7 @@ export function BlacklistTab() {
                         @{result.originalUsername || result.username}
                       </span>
                       {result.displayName && (
-                        <span className="text-nasun-white/40 text-sm ml-2">
+                        <span className="text-nasun-white/60 text-sm ml-2">
                           {result.displayName}
                         </span>
                       )}
@@ -149,12 +149,12 @@ export function BlacklistTab() {
           <h3 className="text-nasun-white font-medium text-lg mb-4">Banned Accounts ({total})</h3>
 
           {bannedAccounts.length === 0 ? (
-            <p className="text-nasun-white/40 text-center py-8">No banned accounts</p>
+            <p className="text-nasun-white/60 text-center py-8">No banned accounts</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-base border-collapse">
                 <thead>
-                  <tr className="border-b border-nasun-white/10 text-nasun-white/60">
+                  <tr className="border-b border-nasun-white/20 text-nasun-white/80">
                     <th className="text-left py-3 px-2 font-medium">Username</th>
                     <th className="text-left py-3 px-2 font-medium">Reason</th>
                     <th className="text-left py-3 px-2 font-medium">Banned At</th>
@@ -179,15 +179,15 @@ export function BlacklistTab() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-2 text-nasun-white/60 max-w-[200px] truncate">
+                      <td className="py-3 px-2 text-nasun-white/80 max-w-[200px] truncate">
                         {account.banReason || "-"}
                       </td>
-                      <td className="py-3 px-2 text-nasun-white/40">
+                      <td className="py-3 px-2 text-nasun-white/60">
                         {account.bannedAt
                           ? new Date(account.bannedAt).toLocaleString("en-US")
                           : "-"}
                       </td>
-                      <td className="py-3 px-2 text-nasun-white/40">{account.bannedBy || "-"}</td>
+                      <td className="py-3 px-2 text-nasun-white/60">{account.bannedBy || "-"}</td>
                       <td className="py-3 px-2 text-right">
                         <Button
                           variant="outlineC5"
@@ -212,7 +212,7 @@ export function BlacklistTab() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
           <OuterBox color="w5" padding="md" className="max-w-md w-full mx-4 shadow-2xl">
             <h3 className="text-nasun-white font-medium text-lg mb-4">Confirm Ban</h3>
-            <p className="text-nasun-white/70 mb-4">
+            <p className="text-nasun-white/85 mb-4">
               Ban{" "}
               <strong className="text-nasun-white">
                 @{banTarget.originalUsername || banTarget.username}
@@ -223,7 +223,7 @@ export function BlacklistTab() {
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
               placeholder="Reason for ban (optional)"
-              className="w-full bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4 mb-6 h-24 resize-none"
+              className="w-full bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4 mb-6 h-24 resize-none"
             />
             <div className="flex justify-end gap-3">
               <Button
@@ -253,7 +253,7 @@ export function BlacklistTab() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
           <OuterBox color="w5" padding="md" className="max-w-md w-full mx-4 shadow-2xl">
             <h3 className="text-nasun-white font-medium text-lg mb-4">Confirm Unban</h3>
-            <p className="text-nasun-white/70 mb-6">
+            <p className="text-nasun-white/85 mb-6">
               Unban{" "}
               <strong className="text-nasun-white">
                 @{unbanTarget.originalUsername || unbanTarget.username}

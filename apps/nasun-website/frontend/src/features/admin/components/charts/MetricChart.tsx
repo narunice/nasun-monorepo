@@ -73,8 +73,8 @@ export function MetricChart({
   if (chartData.length === 0) {
     return (
       <OuterBox className="p-4">
-        <h3 className="text-nasun-white/70 text-sm font-medium mb-4">{title}</h3>
-        <div className="h-48 flex items-center justify-center text-nasun-white/30 text-sm">
+        <h3 className="text-nasun-white/85 text-sm font-medium mb-4">{title}</h3>
+        <div className="h-48 flex items-center justify-center text-nasun-white/50 text-sm">
           No data available
         </div>
       </OuterBox>
@@ -83,7 +83,7 @@ export function MetricChart({
 
   return (
     <OuterBox className="p-4">
-      <h3 className="text-nasun-white/70 text-sm font-medium mb-4">{title}</h3>
+      <h3 className="text-nasun-white/85 text-sm font-medium mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={200}>
         {type === "area" ? (
           <AreaChart data={chartData}>

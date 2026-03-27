@@ -114,9 +114,9 @@ export function LeaderboardViewTab() {
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* View Mode Toggle */}
-      <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+      <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/45 !bg-gray-800/50">
         <div className="flex items-center gap-4">
-          <span className="text-sm text-nasun-white/60">View Mode:</span>
+          <span className="text-sm text-nasun-white/80">View Mode:</span>
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode("season")}
@@ -124,7 +124,7 @@ export function LeaderboardViewTab() {
                 "px-4 py-2 rounded-sm text-sm font-medium transition-all",
                 viewMode === "season"
                   ? "bg-nasun-c4 text-nasun-white"
-                  : "bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white",
+                  : "bg-gray-700/70 text-nasun-white/80 hover:text-nasun-white",
               )}
             >
               Season Leaderboard
@@ -135,7 +135,7 @@ export function LeaderboardViewTab() {
                 "px-4 py-2 rounded-sm text-sm font-medium transition-all",
                 viewMode === "cumulative"
                   ? "bg-nasun-c4 text-nasun-white"
-                  : "bg-gray-700/50 text-nasun-white/60 hover:text-nasun-white",
+                  : "bg-gray-700/70 text-nasun-white/80 hover:text-nasun-white",
               )}
             >
               Cumulative (All-time)
@@ -146,10 +146,10 @@ export function LeaderboardViewTab() {
 
       {/* Season Selector + Snapshot Date (only for season mode) */}
       {viewMode === "season" && (
-        <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+        <OuterBox color="c6" padding="sm" className="w-full !border-nasun-c5/45 !bg-gray-800/50">
           <div className="flex items-center gap-6 flex-wrap">
             <div className="flex items-center gap-4">
-              <span className="text-sm text-nasun-white/60">Season:</span>
+              <span className="text-sm text-nasun-white/80">Season:</span>
               <SeasonSelector
                 seasons={seasons}
                 selectedSeasonId={selectedSeasonId}
@@ -160,17 +160,17 @@ export function LeaderboardViewTab() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-nasun-white/60">Snapshot:</span>
+              <span className="text-sm text-nasun-white/80">Snapshot:</span>
               <input
                 type="date"
                 value={selectedSnapshotDate || ""}
                 onChange={(e) => setSelectedSnapshotDate(e.target.value || undefined)}
-                className="bg-gray-700/50 text-nasun-white text-sm px-3 py-1.5 rounded-sm border border-nasun-c5/30 focus:border-nasun-c4 focus:outline-none"
+                className="bg-gray-700/70 text-nasun-white text-sm px-3 py-1.5 rounded-sm border border-nasun-c5/45 focus:border-nasun-c4 focus:outline-none"
               />
               {selectedSnapshotDate && (
                 <button
                   onClick={() => setSelectedSnapshotDate(undefined)}
-                  className="text-xs text-nasun-white/50 hover:text-nasun-white px-2 py-1"
+                  className="text-xs text-nasun-white/70 hover:text-nasun-white px-2 py-1"
                 >
                   Reset
                 </button>
@@ -183,7 +183,7 @@ export function LeaderboardViewTab() {
       {/* Cumulative Mode Notice */}
       {viewMode === "cumulative" && (
         <OuterBox color="n3" padding="sm" className="w-full">
-          <div className="text-sm text-nasun-white/80">
+          <div className="text-sm text-nasun-white/90">
             <strong>Cumulative View:</strong> Shows all-time rankings across all seasons. This view
             is admin-only and requires authentication.
           </div>
@@ -191,14 +191,14 @@ export function LeaderboardViewTab() {
       )}
 
       {/* Leaderboard Table */}
-      <OuterBox color="c6" className="w-full !border-nasun-c5/30 !bg-gray-800/30">
+      <OuterBox color="c6" className="w-full !border-nasun-c5/45 !bg-gray-800/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h3 className="text-lg font-medium text-nasun-white">
               {viewMode === "season" ? "Season Leaderboard" : "Cumulative Leaderboard"}
             </h3>
             {snapshotDate && (
-              <span className="text-sm text-nasun-white/50">
+              <span className="text-sm text-nasun-white/70">
                 (Snapshot: {snapshotDate})
               </span>
             )}
@@ -214,21 +214,21 @@ export function LeaderboardViewTab() {
         </div>
 
         {isLoading ? (
-          <div className="text-nasun-white/50 text-sm py-8 text-center">Loading...</div>
+          <div className="text-nasun-white/70 text-sm py-8 text-center">Loading...</div>
         ) : !entries.length ? (
-          <div className="text-nasun-white/50 text-sm py-8 text-center">No data available</div>
+          <div className="text-nasun-white/70 text-sm py-8 text-center">No data available</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-nasun-c5/20">
-                  <th className="text-left py-3 px-2 text-nasun-white/50 font-medium">#</th>
-                  <th className="text-left py-3 px-2 text-nasun-white/50 font-medium">User</th>
-                  <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Posts</th>
-                  <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Days</th>
-                  <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Score</th>
+                <tr className="border-b border-nasun-c5/35">
+                  <th className="text-left py-3 px-2 text-nasun-white/70 font-medium">#</th>
+                  <th className="text-left py-3 px-2 text-nasun-white/70 font-medium">User</th>
+                  <th className="text-right py-3 px-2 text-nasun-white/70 font-medium">Posts</th>
+                  <th className="text-right py-3 px-2 text-nasun-white/70 font-medium">Days</th>
+                  <th className="text-right py-3 px-2 text-nasun-white/70 font-medium">Score</th>
                   {viewMode === "season" && (
-                    <th className="text-right py-3 px-2 text-nasun-white/50 font-medium">Change</th>
+                    <th className="text-right py-3 px-2 text-nasun-white/70 font-medium">Change</th>
                   )}
                 </tr>
               </thead>
@@ -236,9 +236,9 @@ export function LeaderboardViewTab() {
                 {visibleEntries.map((entry) => (
                   <tr
                     key={`${entry.username}-${entry.platform}`}
-                    className="border-b border-nasun-c5/10 hover:bg-gray-700/30 transition-colors"
+                    className="border-b border-nasun-c5/20 hover:bg-gray-700/30 transition-colors"
                   >
-                    <td className="py-3 px-2 text-nasun-white/80 font-mono">{entry.rank}</td>
+                    <td className="py-3 px-2 text-nasun-white/90 font-mono">{entry.rank}</td>
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-2">
                         {entry.profileImageUrl ? (
@@ -262,7 +262,7 @@ export function LeaderboardViewTab() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className={`hover:underline truncate block ${
-                              entry.displayName ? "text-[11px] text-nasun-white/60" : "text-blue-400"
+                              entry.displayName ? "text-[11px] text-nasun-white/80" : "text-blue-400"
                             }`}
                           >
                             @{entry.originalUsername || entry.username}
@@ -271,8 +271,8 @@ export function LeaderboardViewTab() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-right text-nasun-white/80">{entry.postCount}</td>
-                    <td className="py-3 px-2 text-right text-nasun-white/80">
+                    <td className="py-3 px-2 text-right text-nasun-white/90">{entry.postCount}</td>
+                    <td className="py-3 px-2 text-right text-nasun-white/90">
                       {entry.uniqueActiveDays}
                     </td>
                     <td className="py-3 px-2 text-right text-nasun-c3 font-medium">
@@ -299,7 +299,7 @@ export function LeaderboardViewTab() {
         {/* Footer */}
         {entries.length > 0 && (
           <div className="mt-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between text-xs text-nasun-white/50">
+            <div className="flex items-center justify-between text-xs text-nasun-white/70">
               <span>
                 Showing {visibleEntries.length} of {totalCount}
               </span>
@@ -308,7 +308,7 @@ export function LeaderboardViewTab() {
             {hasMore && (
               <button
                 onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                className="w-full py-2 text-sm text-nasun-c4 hover:text-nasun-white bg-gray-700/30 hover:bg-gray-700/50 rounded-sm transition-colors"
+                className="w-full py-2 text-sm text-nasun-c4 hover:text-nasun-white bg-gray-700/30 hover:bg-gray-700/70 rounded-sm transition-colors"
               >
                 View More ({remaining} remaining)
               </button>

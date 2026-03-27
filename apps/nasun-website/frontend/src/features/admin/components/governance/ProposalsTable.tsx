@@ -48,10 +48,10 @@ export function ProposalsTable({
   return (
     <div className="w-full">
       <OuterBox color="w2" padding="sm" className="w-full overflow-hidden">
-        <h5 className="uppercase text-nasun-white/80 text-base tracking-widest mb-6 px-2 flex items-center gap-2">
+        <h5 className="uppercase text-nasun-white/90 text-base tracking-widest mb-6 px-2 flex items-center gap-2">
           <span className="w-1 h-4 bg-nasun-c4 rounded-full"></span>
           Proposals Table
-          <span className="text-nasun-white/30 text-xs font-normal normal-case tracking-normal ml-2">
+          <span className="text-nasun-white/50 text-xs font-normal normal-case tracking-normal ml-2">
             ({sortedProposals.length} total)
           </span>
         </h5>
@@ -59,23 +59,23 @@ export function ProposalsTable({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-nasun-c5/20">
-                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
+              <tr className="border-b border-nasun-c5/35">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/60 uppercase tracking-wider">
                   Title / Description
                 </th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/60 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/60 uppercase tracking-wider">
                   Yes
                 </th>
-                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/60 uppercase tracking-wider">
                   No
                 </th>
-                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-sm font-semibold text-nasun-white/60 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/40 uppercase tracking-wider">
+                <th className="px-4 py-4 text-center text-sm font-semibold text-nasun-white/60 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -85,7 +85,7 @@ export function ProposalsTable({
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-4 py-16 text-center text-nasun-white/30 font-light italic"
+                    className="px-4 py-16 text-center text-nasun-white/50 font-light italic"
                   >
                     No proposals found on chain
                   </td>
@@ -112,10 +112,10 @@ export function ProposalsTable({
                           <p className="text-nasun-white font-medium mb-1 line-clamp-1">
                             {proposal.title}
                           </p>
-                          <p className="text-nasun-white/40 text-sm line-clamp-2 leading-relaxed">
+                          <p className="text-nasun-white/60 text-sm line-clamp-2 leading-relaxed">
                             {proposal.description}
                           </p>
-                          <div className="flex items-center gap-3 mt-1.5 text-xs text-nasun-white/25 font-mono">
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-nasun-white/40 font-mono">
                             <span title={proposal.id}>
                               ID: {proposal.id.slice(0, 10)}...{proposal.id.slice(-6)}
                             </span>
@@ -153,7 +153,7 @@ export function ProposalsTable({
                       {proposal.isDelisted ? (
                         <span className="text-red-400 text-sm font-medium">Delisted</span>
                       ) : proposal.isExpired ? (
-                        <span className="text-nasun-white/30 text-sm">Expired</span>
+                        <span className="text-nasun-white/40 text-sm">Expired</span>
                       ) : (
                         <span className="text-nasun-c1 text-sm font-medium animate-pulse-subtle">
                           Active
@@ -164,7 +164,7 @@ export function ProposalsTable({
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => onSelectProposal(proposal)}
-                          className="p-2 bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/70 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/20"
+                          className="p-2 bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/85 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/35"
                           title="View Vote Details"
                         >
                           <svg
@@ -187,7 +187,7 @@ export function ProposalsTable({
                           className={`p-2 rounded-sm transition-all border disabled:opacity-30 flex items-center justify-center ${
                             isHidden(proposal.id)
                               ? "bg-nasun-c1/20 border-nasun-c1/30 text-nasun-c1 hover:bg-nasun-c1/30"
-                              : "bg-nasun-c6/50 border-nasun-c5/20 text-nasun-white/70 hover:text-nasun-white"
+                              : "bg-nasun-c6/50 border-nasun-c5/35 text-nasun-white/85 hover:text-nasun-white"
                           }`}
                           title={isHidden(proposal.id) ? "Unhide from Public" : "Hide from Public"}
                         >
@@ -239,21 +239,21 @@ export function ProposalsTable({
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 pt-4 mt-2 border-t border-nasun-c5/10">
+          <div className="flex items-center justify-between px-4 pt-4 mt-2 border-t border-nasun-c5/20">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 text-sm bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/70 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/20 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-sm bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/85 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/35 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Previous
             </button>
-            <span className="text-sm text-nasun-white/40">
+            <span className="text-sm text-nasun-white/60">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 text-sm bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/70 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/20 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-sm bg-nasun-c6/50 hover:bg-nasun-c5/50 text-nasun-white/85 hover:text-nasun-white rounded-sm transition-all border border-nasun-c5/35 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Next
             </button>

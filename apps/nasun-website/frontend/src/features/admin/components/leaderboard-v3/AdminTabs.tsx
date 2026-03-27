@@ -28,7 +28,7 @@ interface AdminTabsProps {
 
 export function AdminTabs({ activeTab, onTabChange }: AdminTabsProps) {
   return (
-    <div className="flex gap-1 p-1 bg-gray-800/50 rounded-sm border border-nasun-c5/20">
+    <div className="flex gap-1 p-1 bg-gray-800/70 rounded-sm border border-nasun-c5/35">
       {ADMIN_TABS.map((tab) => (
         <button
           key={tab.id}
@@ -37,7 +37,7 @@ export function AdminTabs({ activeTab, onTabChange }: AdminTabsProps) {
             'flex items-center gap-2 px-4 py-2 rounded-sm text-sm font-medium transition-all',
             activeTab === tab.id
               ? 'bg-nasun-c4 text-nasun-white shadow-lg'
-              : 'text-nasun-white/60 hover:text-nasun-white hover:bg-gray-700/50'
+              : 'text-nasun-white/80 hover:text-nasun-white hover:bg-gray-700/70'
           )}
         >
           <span>{tab.icon}</span>

@@ -43,7 +43,7 @@ export function GovernanceManagement() {
             <PageTitle as="h3" align="left" className="">
               Governance Management
             </PageTitle>
-            <p className="text-nasun-white/60  max-w-2xl  -mt-6">
+            <p className="text-nasun-white/80  max-w-2xl  -mt-6">
               Review on-chain proposals, monitor voting power distribution, and manage content
               visibility.
             </p>

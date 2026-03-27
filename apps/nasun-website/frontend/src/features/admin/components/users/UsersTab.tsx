@@ -16,7 +16,7 @@ const FILTERS = [
 const PAGE_SIZE = 50;
 
 function ProviderBadge({ provider }: { provider?: string }) {
-  if (!provider) return <span className="text-nasun-white/30">-</span>;
+  if (!provider) return <span className="text-nasun-white/50">-</span>;
   const lower = provider.toLowerCase();
   const styles: Record<string, string> = {
     google: "bg-blue-500/20 text-blue-300",
@@ -51,7 +51,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-nasun-white/10 text-nasun-white/30 hover:text-nasun-white/60 transition-colors"
+      className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-nasun-white/10 text-nasun-white/50 hover:text-nasun-white/80 transition-colors"
       title="Copy address"
     >
       {copied ? (
@@ -94,7 +94,7 @@ function UserDetailModal({
 
   const Field = ({ label, value }: { label: string; value?: string | boolean | null }) => (
     <div>
-      <dt className="text-xs uppercase tracking-widest text-nasun-white/40 mb-1">{label}</dt>
+      <dt className="text-xs uppercase tracking-widest text-nasun-white/60 mb-1">{label}</dt>
       <dd className="text-sm text-nasun-white break-all">
         {value === undefined || value === null || value === "" ? (
           <span className="text-nasun-white/20">-</span>
@@ -130,7 +130,7 @@ function UserDetailModal({
                 className="w-12 h-12 rounded-full"
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-nasun-c5/30 flex items-center justify-center text-nasun-white/40 text-lg">
+              <div className="w-12 h-12 rounded-full bg-nasun-c5/30 flex items-center justify-center text-nasun-white/60 text-lg">
                 ?
               </div>
             )}
@@ -138,7 +138,7 @@ function UserDetailModal({
               <h3 className="text-nasun-white font-medium text-lg">
                 {user.username || "Unknown User"}
               </h3>
-              <p className="text-nasun-white/40 text-xs font-mono">{user.identityId}</p>
+              <p className="text-nasun-white/60 text-xs font-mono">{user.identityId}</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -162,7 +162,7 @@ function UserDetailModal({
           <Field label="Twitter Handle" value={user.originalTwitterHandle || user.twitterHandle ? `@${user.originalTwitterHandle || user.twitterHandle}` : undefined} />
           <Field label="Twitter ID" value={user.twitterId} />
           <div>
-            <dt className="text-xs uppercase tracking-widest text-nasun-white/40 mb-1">Wallet Address</dt>
+            <dt className="text-xs uppercase tracking-widest text-nasun-white/60 mb-1">Wallet Address</dt>
             <dd className="text-sm text-nasun-white break-all">
               {user.walletAddress ? (
                 <span className="inline-flex items-center gap-1">
@@ -186,7 +186,7 @@ function UserDetailModal({
         {/* Linked Accounts */}
         {user.linkedAccounts && Object.keys(user.linkedAccounts).length > 0 && (
           <div>
-            <h4 className="text-nasun-white/60 text-xs uppercase tracking-widest mb-3 border-t border-nasun-white/10 pt-4">
+            <h4 className="text-nasun-white/80 text-xs uppercase tracking-widest mb-3 border-t border-nasun-white/20 pt-4">
               Linked Accounts
             </h4>
             <div className="space-y-3">
@@ -198,26 +198,26 @@ function UserDetailModal({
                     <dl className="grid grid-cols-2 gap-2 mt-2 text-xs">
                       {account.username && (
                         <div>
-                          <dt className="text-nasun-white/30">Username</dt>
-                          <dd className="text-nasun-white/70">{account.username}</dd>
+                          <dt className="text-nasun-white/50">Username</dt>
+                          <dd className="text-nasun-white/85">{account.username}</dd>
                         </div>
                       )}
                       {account.email && (
                         <div>
-                          <dt className="text-nasun-white/30">Email</dt>
-                          <dd className="text-nasun-white/70">{account.email}</dd>
+                          <dt className="text-nasun-white/50">Email</dt>
+                          <dd className="text-nasun-white/85">{account.email}</dd>
                         </div>
                       )}
                       {account.twitterHandle && (
                         <div>
-                          <dt className="text-nasun-white/30">Twitter</dt>
-                          <dd className="text-nasun-white/70">@{account.twitterHandle}</dd>
+                          <dt className="text-nasun-white/50">Twitter</dt>
+                          <dd className="text-nasun-white/85">@{account.twitterHandle}</dd>
                         </div>
                       )}
                       {account.walletAddress && (
                         <div>
-                          <dt className="text-nasun-white/30">Wallet</dt>
-                          <dd className="text-nasun-white/70 font-mono inline-flex items-center gap-1">
+                          <dt className="text-nasun-white/50">Wallet</dt>
+                          <dd className="text-nasun-white/85 font-mono inline-flex items-center gap-1">
                             {truncateAddress(account.walletAddress)}
                             <CopyButton text={account.walletAddress} />
                           </dd>
@@ -283,7 +283,7 @@ export function UsersTab() {
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by username, wallet, twitter, or email..."
             aria-label="Search users"
-            className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4"
+            className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4"
           />
           <div className="flex gap-1.5">
             {FILTERS.map((f) => (
@@ -311,7 +311,7 @@ export function UsersTab() {
             Failed to load users: {error.message}
           </p>
         ) : users.length === 0 ? (
-          <p className="text-nasun-white/40 text-center py-8">
+          <p className="text-nasun-white/60 text-center py-8">
             {debouncedSearch || selectedFilter ? "No users found matching your search." : "No registered users."}
           </p>
         ) : (
@@ -319,7 +319,7 @@ export function UsersTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-nasun-white/10 text-nasun-white/60">
+                  <tr className="border-b border-nasun-white/20 text-nasun-white/80">
                     <th className="text-left py-3 px-2 font-medium w-8"></th>
                     <th className="text-left py-3 px-2 font-medium">Username</th>
                     <th className="text-left py-3 px-2 font-medium">Wallet</th>
@@ -345,7 +345,7 @@ export function UsersTab() {
                             className="w-6 h-6 rounded-full"
                           />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-nasun-c5/30 flex items-center justify-center text-nasun-white/30 text-xs">
+                          <div className="w-6 h-6 rounded-full bg-nasun-c5/30 flex items-center justify-center text-nasun-white/50 text-xs">
                             ?
                           </div>
                         )}
@@ -353,7 +353,7 @@ export function UsersTab() {
                       <td className="py-3 px-2 text-nasun-white font-medium">
                         {user.username || "-"}
                       </td>
-                      <td className="py-3 px-2 text-nasun-white/40 font-mono text-xs">
+                      <td className="py-3 px-2 text-nasun-white/60 font-mono text-xs">
                         {user.walletAddress ? (
                           <span className="inline-flex items-center gap-1">
                             {truncateAddress(user.walletAddress, 2, 4)}
@@ -361,7 +361,7 @@ export function UsersTab() {
                           </span>
                         ) : "-"}
                       </td>
-                      <td className="py-3 px-2 text-nasun-white/60">
+                      <td className="py-3 px-2 text-nasun-white/80">
                         {user.originalTwitterHandle || user.twitterHandle ? (
                           <a
                             href={`https://x.com/${user.originalTwitterHandle || user.twitterHandle}`}
@@ -376,7 +376,7 @@ export function UsersTab() {
                           <span className="text-nasun-white/20">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-2 text-nasun-white/60 max-w-[180px] truncate">
+                      <td className="py-3 px-2 text-nasun-white/80 max-w-[180px] truncate">
                         {user.googleEmail || <span className="text-nasun-white/20">-</span>}
                       </td>
                       <td className="py-3 px-2">
@@ -389,7 +389,7 @@ export function UsersTab() {
                       <td className="py-3 px-2">
                         <RoleBadge role={user.role} />
                       </td>
-                      <td className="py-3 px-2 text-nasun-white/40 whitespace-nowrap">
+                      <td className="py-3 px-2 text-nasun-white/60 whitespace-nowrap">
                         {user.createdAt
                           ? new Date(user.createdAt).toLocaleString("en-US", {
                               month: "short",
@@ -408,8 +408,8 @@ export function UsersTab() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-nasun-white/10">
-                <p className="text-nasun-white/40 text-sm">
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-nasun-white/20">
+                <p className="text-nasun-white/60 text-sm">
                   Page {page} of {totalPages}
                 </p>
                 <div className="flex gap-2">
@@ -429,7 +429,7 @@ export function UsersTab() {
                       return (
                         <span key={p} className="flex items-center">
                           {showEllipsis && (
-                            <span className="text-nasun-white/30 px-1">...</span>
+                            <span className="text-nasun-white/50 px-1">...</span>
                           )}
                           <Button
                             variant={p === page ? "c4" : "outlineC5"}

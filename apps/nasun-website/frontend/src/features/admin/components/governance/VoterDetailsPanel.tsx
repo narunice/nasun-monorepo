@@ -25,11 +25,11 @@ export function VoterDetailsPanel({
 
   return (
     <div className="w-full">
-      <OuterBox color="c1" padding="md" className="w-full !border-nasun-c4/30 !bg-gray-800/50">
+      <OuterBox color="c1" padding="md" className="w-full !border-nasun-c4/30 !bg-gray-800/70">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
           <div>
             <h4 className="text-xl font-medium text-nasun-white mb-2">{proposal.title}</h4>
-            <p className="text-nasun-white/60 text-sm flex items-center gap-3">
+            <p className="text-nasun-white/80 text-sm flex items-center gap-3">
               <span className="flex items-center gap-1">
                 <strong className="text-nasun-c1 font-medium">{voters.length}</strong> Participants
               </span>
@@ -60,24 +60,24 @@ export function VoterDetailsPanel({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Spinner size="lg" />
-            <p className="text-nasun-white/40 text-sm">Fetching on-chain voter data...</p>
+            <p className="text-nasun-white/60 text-sm">Fetching on-chain voter data...</p>
           </div>
         ) : voters.length === 0 ? (
-          <div className="py-16 text-center text-nasun-white/30 italic font-light">
+          <div className="py-16 text-center text-nasun-white/50 italic font-light">
             No votes have been cast for this proposal yet.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-nasun-white/10">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-nasun-white/40 uppercase">
+                <tr className="border-b border-nasun-white/20">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-nasun-white/60 uppercase">
                     Voter Wallet
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-nasun-white/40 uppercase">
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-nasun-white/60 uppercase">
                     Choice
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-nasun-white/40 uppercase">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-nasun-white/60 uppercase">
                     Voting Power
                   </th>
                 </tr>
@@ -85,7 +85,7 @@ export function VoterDetailsPanel({
               <tbody className="divide-y divide-nasun-white/5 font-mono">
                 {voters.map((voter, idx) => (
                   <tr key={idx} className="hover:bg-nasun-white/5 transition-colors">
-                    <td className="px-4 py-3 text-nasun-white/80 text-sm">{voter.voter}</td>
+                    <td className="px-4 py-3 text-nasun-white/90 text-sm">{voter.voter}</td>
                     <td className="px-4 py-3 text-center">
                       <span
                         className={`px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase border ${

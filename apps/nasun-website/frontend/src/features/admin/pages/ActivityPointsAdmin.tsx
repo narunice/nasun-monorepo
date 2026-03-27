@@ -65,7 +65,7 @@ function ScannerHealthSection() {
     return (
       <OuterBox color="c5" padding="sm">
         <h2 className="text-lg font-semibold text-nasun-white mb-4">Scanner Status</h2>
-        <p className="text-nasun-white/50 text-sm">Loading...</p>
+        <p className="text-nasun-white/70 text-sm">Loading...</p>
       </OuterBox>
     );
   }
@@ -140,7 +140,7 @@ function LeaderboardSection() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-nasun-white/10 text-nasun-white/60 text-left">
+            <tr className="border-b border-nasun-white/20 text-nasun-white/80 text-left">
               <th className="pb-2 pr-3 w-12">#</th>
               <th className="pb-2 pr-3">User</th>
               <th className="pb-2 pr-3 text-right">Points</th>
@@ -150,16 +150,16 @@ function LeaderboardSection() {
           </thead>
           <tbody className="divide-y divide-nasun-white/5">
             {isLoading ? (
-              <tr><td colSpan={5} className="py-8 text-center text-nasun-white/50">Loading...</td></tr>
+              <tr><td colSpan={5} className="py-8 text-center text-nasun-white/70">Loading...</td></tr>
             ) : entries.length === 0 ? (
-              <tr><td colSpan={5} className="py-8 text-center text-nasun-white/50">No data</td></tr>
+              <tr><td colSpan={5} className="py-8 text-center text-nasun-white/70">No data</td></tr>
             ) : entries.map((entry) => {
               const profile = profileMap.get(entry.identityId);
               const xHandle = profile?.originalTwitterHandle || profile?.twitterHandle;
               const displayName = profile?.username || null;
               return (
                 <tr key={entry.identityId} className="hover:bg-nasun-white/5 transition-colors">
-                  <td className="py-2 pr-3 text-nasun-white/60">{entry.rank}</td>
+                  <td className="py-2 pr-3 text-nasun-white/80">{entry.rank}</td>
                   <td className="py-2 pr-3">
                     <div className="flex items-center gap-2 min-w-0">
                       {profile?.profileImageUrl ? (
@@ -177,15 +177,15 @@ function LeaderboardSection() {
                             {displayName && (
                               <span className="text-nasun-white text-sm truncate block">{displayName}</span>
                             )}
-                            <span className="text-nasun-white/50 text-xs truncate block">@{xHandle}</span>
+                            <span className="text-nasun-white/70 text-xs truncate block">@{xHandle}</span>
                           </>
                         ) : displayName ? (
                           <>
                             <span className="text-nasun-white text-sm truncate block">{displayName}</span>
-                            <span className="text-nasun-white/30 font-mono text-[10px] truncate block max-w-[180px]">{entry.identityId.split(':').pop()}</span>
+                            <span className="text-nasun-white/50 font-mono text-[10px] truncate block max-w-[180px]">{entry.identityId.split(':').pop()}</span>
                           </>
                         ) : (
-                          <span className="text-nasun-white/60 font-mono text-xs truncate block max-w-[200px]">
+                          <span className="text-nasun-white/80 font-mono text-xs truncate block max-w-[200px]">
                             {entry.identityId}
                           </span>
                         )}
@@ -195,8 +195,8 @@ function LeaderboardSection() {
                   <td className="py-2 pr-3 text-right text-nasun-white font-medium">
                     {Number(entry.totalPoints).toLocaleString("en-US")}
                   </td>
-                  <td className="py-2 pr-3 text-right text-nasun-white/70">{entry.activityCount}</td>
-                  <td className="py-2 text-right text-nasun-white/70">{entry.activeCategories}</td>
+                  <td className="py-2 pr-3 text-right text-nasun-white/85">{entry.activityCount}</td>
+                  <td className="py-2 text-right text-nasun-white/85">{entry.activeCategories}</td>
                 </tr>
               );
             })}
@@ -212,7 +212,7 @@ function LeaderboardSection() {
         >
           Previous
         </button>
-        <span className="text-nasun-white/50">Page {page + 1}</span>
+        <span className="text-nasun-white/70">Page {page + 1}</span>
         <button
           onClick={() => setPage((p) => p + 1)}
           disabled={entries.length < limit}
@@ -263,7 +263,7 @@ function UserLookupSection() {
           onChange={(e) => setAddress(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           placeholder="0x... wallet address"
-          className="flex-1 bg-nasun-dark-700/50 border border-nasun-dark-500/30 rounded-lg px-3 py-2 text-nasun-white text-sm font-mono placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4/50"
+          className="flex-1 bg-nasun-dark-700/50 border border-nasun-dark-500/30 rounded-lg px-3 py-2 text-nasun-white text-sm font-mono placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4/50"
         />
         <button
           onClick={handleSearch}
@@ -277,7 +277,7 @@ function UserLookupSection() {
       {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
 
       {searched && !isLoading && !error && !result && (
-        <p className="text-nasun-white/50 text-sm">No points found for this address</p>
+        <p className="text-nasun-white/70 text-sm">No points found for this address</p>
       )}
 
       {result && (
@@ -296,7 +296,7 @@ function UserLookupSection() {
           </div>
 
           {result.identityId && (
-            <p className="text-xs text-nasun-white/40 font-mono truncate">
+            <p className="text-xs text-nasun-white/60 font-mono truncate">
               Identity: {result.identityId}
             </p>
           )}
@@ -304,7 +304,7 @@ function UserLookupSection() {
           {result.categories.length > 0 && (
             <table className="w-full text-sm border-collapse mt-2">
               <thead>
-                <tr className="border-b border-nasun-white/10 text-nasun-white/60 text-left">
+                <tr className="border-b border-nasun-white/20 text-nasun-white/80 text-left">
                   <th className="pb-2 pr-3">Category</th>
                   <th className="pb-2 pr-3 text-right">Points</th>
                   <th className="pb-2 text-right">Count</th>
@@ -314,10 +314,10 @@ function UserLookupSection() {
                 {result.categories.map((cat) => (
                   <tr key={cat.category}>
                     <td className="py-1.5 pr-3 text-nasun-white">{cat.category}</td>
-                    <td className="py-1.5 pr-3 text-right text-nasun-white/70">
+                    <td className="py-1.5 pr-3 text-right text-nasun-white/85">
                       {Number(cat.points).toLocaleString("en-US")}
                     </td>
-                    <td className="py-1.5 text-right text-nasun-white/70">{cat.count}</td>
+                    <td className="py-1.5 text-right text-nasun-white/85">{cat.count}</td>
                   </tr>
                 ))}
               </tbody>

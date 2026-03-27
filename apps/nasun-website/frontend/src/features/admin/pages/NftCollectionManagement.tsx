@@ -147,7 +147,7 @@ export function NftCollectionManagement() {
           <PageTitle as="h3" align="left">
             NFT Collection Management
           </PageTitle>
-          <p className="text-nasun-white/60 max-w-2xl -mt-6">
+          <p className="text-nasun-white/80 max-w-2xl -mt-6">
             Manage which NFT collections are displayed in MY ASSETS. Only enabled collections will
             be shown to users. If no collections are registered, all NFTs will be displayed.
           </p>
@@ -164,12 +164,12 @@ export function NftCollectionManagement() {
                   value={contractAddress}
                   onChange={(e) => setContractAddress(e.target.value)}
                   placeholder="Contract address (0x...)"
-                  className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4 font-mono text-sm"
+                  className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4 font-mono text-sm"
                 />
                 <select
                   value={chain}
                   onChange={(e) => setChain(e.target.value as NFTChain)}
-                  className="bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white focus:outline-none focus:border-nasun-c4"
+                  className="bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white focus:outline-none focus:border-nasun-c4"
                 >
                   {CHAIN_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -185,9 +185,9 @@ export function NftCollectionManagement() {
                   onChange={(e) => setCollectionName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                   placeholder="Collection name (e.g., Founders NFT)"
-                  className="flex-1 bg-gray-800/80 border border-nasun-c5/30 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4"
+                  className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4"
                 />
-                <label className="flex items-center gap-1.5 text-nasun-white/70 text-sm cursor-pointer whitespace-nowrap">
+                <label className="flex items-center gap-1.5 text-nasun-white/85 text-sm cursor-pointer whitespace-nowrap">
                   <input
                     type="checkbox"
                     checked={featured}
@@ -219,14 +219,14 @@ export function NftCollectionManagement() {
             {error ? (
               <p className="text-red-400 text-center py-8">Failed to load collections: {error.message}</p>
             ) : !collections || collections.length === 0 ? (
-              <p className="text-nasun-white/40 text-center py-8">
+              <p className="text-nasun-white/60 text-center py-8">
                 No collections registered. All NFTs will be displayed to users.
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-nasun-white/10 text-nasun-white/60">
+                    <tr className="border-b border-nasun-white/20 text-nasun-white/80">
                       <th className="text-left py-3 px-2 font-medium">Name</th>
                       <th className="text-left py-3 px-2 font-medium">Contract</th>
                       <th className="text-left py-3 px-2 font-medium">Chain</th>
@@ -281,7 +281,7 @@ export function NftCollectionManagement() {
                             />
                           </button>
                         </td>
-                        <td className="py-3 px-2 text-nasun-white/40">
+                        <td className="py-3 px-2 text-nasun-white/60">
                           {new Date(collection.createdAt).toLocaleString("en-US")}
                         </td>
                         <td className="py-3 px-2 text-right">
@@ -318,7 +318,7 @@ export function NftCollectionManagement() {
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
             <OuterBox color="w5" padding="md" className="max-w-md w-full mx-4 shadow-2xl">
               <h3 className="text-nasun-white font-medium text-lg mb-4">Confirm Delete</h3>
-              <p className="text-nasun-white/70 mb-6">
+              <p className="text-nasun-white/85 mb-6">
                 Delete{" "}
                 <strong className="text-nasun-white">{deleteTarget.collectionName}</strong>{" "}
                 ({truncateAddress(deleteTarget.contractAddress)} on {deleteTarget.chain})?

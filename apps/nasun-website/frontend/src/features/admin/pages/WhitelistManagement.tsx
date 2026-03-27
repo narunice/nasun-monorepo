@@ -130,7 +130,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
       <h3 className="text-xl font-medium text-nasun-white mb-2">
         Manage Entries
       </h3>
-      <p className="text-nasun-white/60 text-sm mb-6">
+      <p className="text-nasun-white/80 text-sm mb-6">
         Add, edit, or remove Genesis Pass allowlist entries. Total: {entries.length}
       </p>
 
@@ -141,18 +141,18 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
       )}
 
       {/* Add Form */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-gray-800/50 rounded-sm">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-gray-800/70 rounded-sm">
         <input
           type="text"
           placeholder="0x... (EVM address)"
           value={newAddress}
           onChange={(e) => setNewAddress(e.target.value)}
-          className="flex-1 px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4/50"
+          className="flex-1 px-3 py-2 bg-gray-900 border border-nasun-c5/45 rounded-sm text-nasun-white text-sm placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4/50"
         />
         <select
           value={newMintType}
           onChange={(e) => setNewMintType(e.target.value)}
-          className="px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm focus:outline-none focus:border-nasun-c4/50"
+          className="px-3 py-2 bg-gray-900 border border-nasun-c5/45 rounded-sm text-nasun-white text-sm focus:outline-none focus:border-nasun-c4/50"
         >
           <option value="">No mint type</option>
           <option value="FREE_MINT">FREE_MINT</option>
@@ -164,7 +164,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
           placeholder="Source (optional)"
           value={newSource}
           onChange={(e) => setNewSource(e.target.value)}
-          className="w-32 px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm placeholder:text-nasun-white/30 focus:outline-none focus:border-nasun-c4/50"
+          className="w-32 px-3 py-2 bg-gray-900 border border-nasun-c5/45 rounded-sm text-nasun-white text-sm placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4/50"
         />
         <Button
           variant="filledOutlineC7"
@@ -178,14 +178,14 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
 
       {/* Entries Table */}
       {isLoading ? (
-        <div className="text-nasun-white/40 text-sm py-8 text-center">Loading entries...</div>
+        <div className="text-nasun-white/60 text-sm py-8 text-center">Loading entries...</div>
       ) : entries.length === 0 ? (
-        <div className="text-nasun-white/40 text-sm py-8 text-center">No entries found</div>
+        <div className="text-nasun-white/60 text-sm py-8 text-center">No entries found</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-nasun-c5/20 text-nasun-white/50 text-left">
+              <tr className="border-b border-nasun-c5/35 text-nasun-white/70 text-left">
                 <th className="pb-2 pr-4 font-medium">Wallet</th>
                 <th className="pb-2 pr-4 font-medium">Mint Type</th>
                 <th className="pb-2 pr-4 font-medium">Source</th>
@@ -196,8 +196,8 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
             </thead>
             <tbody>
               {entries.map((entry) => (
-                <tr key={entry.walletAddress} className="border-b border-nasun-c5/10 hover:bg-nasun-c5/5">
-                  <td className="py-2 pr-4 font-mono text-nasun-white/80">{shortenAddress(entry.walletAddress)}</td>
+                <tr key={entry.walletAddress} className="border-b border-nasun-c5/20 hover:bg-nasun-c5/5">
+                  <td className="py-2 pr-4 font-mono text-nasun-white/90">{shortenAddress(entry.walletAddress)}</td>
                   <td className="py-2 pr-4">
                     {entry.mintType === "FREE_MINT" ? (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-medium border border-amber-400/20">
@@ -212,12 +212,12 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
                         FCFS
                       </span>
                     ) : (
-                      <span className="text-nasun-white/30">-</span>
+                      <span className="text-nasun-white/50">-</span>
                     )}
                   </td>
-                  <td className="py-2 pr-4 text-nasun-white/50">{entry.source || "-"}</td>
-                  <td className="py-2 pr-4 text-nasun-white/50">{entry.twitterHandle ? `@${entry.twitterHandle}` : "-"}</td>
-                  <td className="py-2 pr-4 text-nasun-white/40">{entry.registeredAt ? new Date(entry.registeredAt).toLocaleDateString("en-US") : "-"}</td>
+                  <td className="py-2 pr-4 text-nasun-white/70">{entry.source || "-"}</td>
+                  <td className="py-2 pr-4 text-nasun-white/70">{entry.twitterHandle ? `@${entry.twitterHandle}` : "-"}</td>
+                  <td className="py-2 pr-4 text-nasun-white/60">{entry.registeredAt ? new Date(entry.registeredAt).toLocaleDateString("en-US") : "-"}</td>
                   <td className="py-2 text-right">
                     <div className="flex gap-2 justify-end">
                       <button
@@ -244,16 +244,16 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
       {/* Edit Modal */}
       {editingAddress && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setEditingAddress(null)}>
-          <div className="bg-gray-900 border border-nasun-c5/30 rounded-sm p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gray-900 border border-nasun-c5/45 rounded-sm p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-nasun-white font-medium mb-4">Edit Entry</h4>
-            <p className="text-nasun-white/50 text-sm mb-4 font-mono">{shortenAddress(editingAddress)}</p>
+            <p className="text-nasun-white/70 text-sm mb-4 font-mono">{shortenAddress(editingAddress)}</p>
             <div className="flex flex-col gap-3 mb-4">
               <div>
-                <label className="text-nasun-white/50 text-xs uppercase mb-1 block">Mint Type</label>
+                <label className="text-nasun-white/70 text-xs uppercase mb-1 block">Mint Type</label>
                 <select
                   value={editMintType}
                   onChange={(e) => setEditMintType(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm"
+                  className="w-full px-3 py-2 bg-gray-800 border border-nasun-c5/45 rounded-sm text-nasun-white text-sm"
                 >
                   <option value="">None</option>
                   <option value="FREE_MINT">FREE_MINT</option>
@@ -262,12 +262,12 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
                 </select>
               </div>
               <div>
-                <label className="text-nasun-white/50 text-xs uppercase mb-1 block">Source</label>
+                <label className="text-nasun-white/70 text-xs uppercase mb-1 block">Source</label>
                 <input
                   type="text"
                   value={editSource}
                   onChange={(e) => setEditSource(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm"
+                  className="w-full px-3 py-2 bg-gray-800 border border-nasun-c5/45 rounded-sm text-nasun-white text-sm"
                   placeholder="e.g., RAFFLE"
                 />
               </div>
@@ -285,10 +285,10 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
       {/* Delete Confirmation */}
       {deletingAddress && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setDeletingAddress(null)}>
-          <div className="bg-gray-900 border border-nasun-c5/30 rounded-sm p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gray-900 border border-nasun-c5/45 rounded-sm p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-nasun-white font-medium mb-2">Delete Entry?</h4>
-            <p className="text-nasun-white/50 text-sm mb-4">
-              Remove <span className="font-mono text-nasun-white/80">{shortenAddress(deletingAddress)}</span> from the allowlist?
+            <p className="text-nasun-white/70 text-sm mb-4">
+              Remove <span className="font-mono text-nasun-white/90">{shortenAddress(deletingAddress)}</span> from the allowlist?
             </p>
             <div className="flex gap-3 justify-end">
               <Button variant="outlineC5" size="sm" onClick={() => setDeletingAddress(null)}>Cancel</Button>
@@ -355,7 +355,7 @@ export function WhitelistManagement() {
   const tabClass = (tab: Tab) =>
     activeTab === tab
       ? "px-6 py-2 rounded-sm font-medium bg-nasun-c4 text-nasun-white shadow-lg"
-      : "px-6 py-2 rounded-sm font-medium text-nasun-white/50 hover:text-nasun-white/80 transition-colors";
+      : "px-6 py-2 rounded-sm font-medium text-nasun-white/70 hover:text-nasun-white/90 transition-colors";
 
   return (
     <AdminLayout>
@@ -364,7 +364,7 @@ export function WhitelistManagement() {
           <PageTitle as="h3" align="left" className="">
             Allowlist Management
           </PageTitle>
-          <p className="text-nasun-white/60 max-w-2xl -mt-6">
+          <p className="text-nasun-white/80 max-w-2xl -mt-6">
             Export, add, edit, and remove NFT allowlist entries.
           </p>
         </div>
@@ -382,17 +382,17 @@ export function WhitelistManagement() {
             </div>
           ) : stats ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-              <DashboardCard variant="default">
-                <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
+              <DashboardCard variant="default" className="!bg-gray-800/50 !border-nasun-nw4/45">
+                <h5 className="uppercase text-nasun-white/80 text-sm tracking-wider mb-2">
                   Genesis Pass Allowlist
                 </h5>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-nasun-c1">
                     {(stats.genesisPass?.active ?? 0).toLocaleString()}
                   </span>
-                  <span className="text-nasun-white/40 text-base font-light">Active Users</span>
+                  <span className="text-nasun-white/60 text-base font-light">Active Users</span>
                 </div>
-                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
+                <div className="mt-4 pt-4 border-t border-nasun-c5/35 text-nasun-white/70 text-sm">
                   Total: {(stats.genesisPass?.total ?? 0).toLocaleString()} registered /{" "}
                   {(stats.genesisPass?.withdrawn ?? 0).toLocaleString()} withdrawn
                 </div>
@@ -401,33 +401,33 @@ export function WhitelistManagement() {
                 </div>
               </DashboardCard>
 
-              <DashboardCard variant="default">
-                <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
+              <DashboardCard variant="default" className="!bg-gray-800/50 !border-nasun-nw4/45">
+                <h5 className="uppercase text-nasun-white/80 text-sm tracking-wider mb-2">
                   Battalion NFT Allowlist
                 </h5>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-nasun-c1">
                     {stats.battalion.active.toLocaleString()}
                   </span>
-                  <span className="text-nasun-white/40 text-base font-light">Active Users</span>
+                  <span className="text-nasun-white/60 text-base font-light">Active Users</span>
                 </div>
-                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
+                <div className="mt-4 pt-4 border-t border-nasun-c5/35 text-nasun-white/70 text-sm">
                   Total: {stats.battalion.total.toLocaleString()} registered /{" "}
                   {stats.battalion.withdrawn.toLocaleString()} withdrawn
                 </div>
               </DashboardCard>
 
-              <DashboardCard variant="default">
-                <h5 className="uppercase text-nasun-white/60 text-sm tracking-wider mb-2">
+              <DashboardCard variant="default" className="!bg-gray-800/50 !border-nasun-nw4/45">
+                <h5 className="uppercase text-nasun-white/80 text-sm tracking-wider mb-2">
                   Frontiers Allowlist (Legacy)
                 </h5>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-nasun-c1">
                     {stats.genesis.active.toLocaleString()}
                   </span>
-                  <span className="text-nasun-white/40 text-base font-light">Active Users</span>
+                  <span className="text-nasun-white/60 text-base font-light">Active Users</span>
                 </div>
-                <div className="mt-4 pt-4 border-t border-nasun-c5/20 text-nasun-white/50 text-sm">
+                <div className="mt-4 pt-4 border-t border-nasun-c5/35 text-nasun-white/70 text-sm">
                   Total: {stats.genesis.total.toLocaleString()} registered /{" "}
                   {stats.genesis.withdrawn.toLocaleString()} withdrawn
                 </div>
@@ -444,7 +444,7 @@ export function WhitelistManagement() {
 
           {/* Tabs & Content */}
           <div className="w-full">
-            <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-sm w-fit border border-nasun-c5/20">
+            <div className="flex gap-2 mb-6 bg-nasun-c6/30 p-1 rounded-sm w-fit border border-nasun-c5/35">
               <button className={tabClass("genesis-pass")} onClick={() => { setActiveTab("genesis-pass"); setError(null); }}>
                 Genesis Pass
               </button>
@@ -459,7 +459,7 @@ export function WhitelistManagement() {
                   <h3 className="text-xl font-medium text-nasun-white mb-2">
                     Genesis Pass Allowlist
                   </h3>
-                  <p className="text-nasun-white/60 text-base mb-8">
+                  <p className="text-nasun-white/80 text-base mb-8">
                     Export all wallet addresses registered for the Genesis Pass allowlist.
                   </p>
 
@@ -480,12 +480,12 @@ export function WhitelistManagement() {
                       {isExporting ? "Exporting..." : "Download CSV (All)"}
                     </Button>
                     <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                      <span className="text-nasun-white/50 text-sm uppercase tracking-wider">OpenSea</span>
+                      <span className="text-nasun-white/70 text-sm uppercase tracking-wider">OpenSea</span>
                       <select
                         value={openSeaMintType}
                         onChange={(e) => setOpenSeaMintType(e.target.value)}
                         disabled={isExporting}
-                        className="px-3 py-2 bg-gray-900 border border-nasun-c5/30 rounded-sm text-nasun-white text-sm focus:outline-none focus:border-nasun-c4/50"
+                        className="px-3 py-2 bg-gray-900 border border-nasun-c5/45 rounded-sm text-nasun-white text-sm focus:outline-none focus:border-nasun-c4/50"
                       >
                         <option value="">All Tiers</option>
                         <option value="FREE_MINT">Free Mint</option>
@@ -518,7 +518,7 @@ export function WhitelistManagement() {
                 <h3 className="text-xl font-medium text-nasun-white mb-2">
                   Battalion NFT Allowlist
                 </h3>
-                <p className="text-nasun-white/60 text-base mb-8">
+                <p className="text-nasun-white/80 text-base mb-8">
                   Export all wallet addresses registered for the Battalion NFT allowlist.
                 </p>
 
@@ -555,7 +555,7 @@ export function WhitelistManagement() {
           {/* Information Section */}
           <div className="w-full">
             <OuterBox color="w1" padding="sm" className="w-full">
-              <h4 className="text-base font-semibold text-nasun-white/80 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <h4 className="text-base font-semibold text-nasun-white/90 mb-3 uppercase tracking-wider flex items-center gap-2">
                 <span className="w-1 h-4 bg-nasun-c1 rounded-full"></span>
                 CSV Column Definitions
               </h4>
@@ -564,7 +564,7 @@ export function WhitelistManagement() {
                   <span className="text-sm font-medium text-nasun-c1 uppercase">
                     Standard Format
                   </span>
-                  <p className="text-nasun-white/50 text-sm mt-1 leading-relaxed">
+                  <p className="text-nasun-white/70 text-sm mt-1 leading-relaxed">
                     {activeTab === "battalion"
                       ? "walletAddress, verifiedAt, xUserId, xUsername, status"
                       : "walletAddress, identityId, registeredAt, status"}
@@ -574,7 +574,7 @@ export function WhitelistManagement() {
                   <span className="text-sm font-medium text-nasun-c1 uppercase">
                     OpenSea Format
                   </span>
-                  <p className="text-nasun-white/50 text-sm mt-1 leading-relaxed">
+                  <p className="text-nasun-white/70 text-sm mt-1 leading-relaxed">
                     Optimized for OpenSea Allowlist upload. Includes only mandatory columns: Wallet
                     address, Mint limit, and Price.
                   </p>
