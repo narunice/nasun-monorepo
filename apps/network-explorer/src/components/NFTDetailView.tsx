@@ -13,7 +13,7 @@ import { SectionBox } from './ui/SectionBox';
 import { Card } from './ui/Card';
 import { getDisplayMediaUrl, getNFTName, getNFTDescription } from '../lib/media';
 import { extractAttributes, getCollectionName, getModuleName } from '../lib/nft';
-import { formatObjectType, truncateId } from '../lib/format';
+import { formatObjectType, truncateId, sanitizeJsonForDisplay } from '../lib/format';
 import { parseContent, getOwnerAddress } from '../lib/object-utils';
 
 interface NFTDetailViewProps {
@@ -183,14 +183,14 @@ export default function NFTDetailView({ object }: NFTDetailViewProps) {
           {content && (
             <SectionBox title="Content" color="c3">
               <pre className="text-xs overflow-auto bg-muted/30 border border-border p-4 rounded-lg max-h-96 text-muted-foreground">
-                {JSON.stringify(content, null, 2)}
+                {JSON.stringify(sanitizeJsonForDisplay(content), null, 2)}
               </pre>
             </SectionBox>
           )}
 
           <SectionBox title="Raw Object Data" color="c6">
             <pre className="text-xs overflow-auto bg-muted/30 border border-border p-4 rounded-lg max-h-96 text-muted-foreground">
-              {JSON.stringify(object, null, 2)}
+              {JSON.stringify(sanitizeJsonForDisplay(object), null, 2)}
             </pre>
           </SectionBox>
         </>

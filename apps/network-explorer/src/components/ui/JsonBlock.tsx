@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useCopyToClipboard } from '../../hooks';
+import { sanitizeJsonForDisplay } from '../../lib/format';
 
 interface JsonBlockProps {
   data: unknown;
@@ -8,7 +9,7 @@ interface JsonBlockProps {
 
 export function JsonBlock({ data, borderColor = 'border-border' }: JsonBlockProps) {
   const { copied, handleCopy } = useCopyToClipboard();
-  const jsonString = useMemo(() => JSON.stringify(data, null, 2), [data]);
+  const jsonString = useMemo(() => JSON.stringify(sanitizeJsonForDisplay(data), null, 2), [data]);
 
   return (
     <div className="relative">
