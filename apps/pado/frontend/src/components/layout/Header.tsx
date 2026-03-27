@@ -26,6 +26,7 @@ const TRADE_ITEMS: DropdownItem[] = [
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Lottery', path: '/lottery', enabled: true },
+  { label: 'Scratch', path: '/scratch', enabled: true },
   { label: 'Predict', path: '/predict', enabled: true },
   { label: 'Earn', path: '/earn', enabled: true },
 ];
