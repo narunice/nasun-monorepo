@@ -72,6 +72,7 @@ const TABS: NavTab[] = [
 // Bottom sheet menu items
 const MORE_ITEMS = [
   { label: 'Lottery', path: '/lottery', icon: '🎰' },
+  { label: 'Scratch Cards', path: '/scratch', icon: '🎫' },
   { label: 'Earn', path: '/earn', icon: '💰' },
   { label: 'Perpetuals', path: '/markets/perp', icon: '📈' },
   { label: 'Portfolio', path: '/portfolio', icon: '📊' },

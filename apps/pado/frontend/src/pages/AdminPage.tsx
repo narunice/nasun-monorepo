@@ -8,17 +8,19 @@ import { Link } from 'react-router-dom';
 import { useAdminAccess } from '../features/admin';
 import { PredictionAdminPanel } from '../features/prediction/components/PredictionAdminPanel';
 import { LotteryAdminPanel } from '../features/lottery/components/LotteryAdminPanel';
+import { ScratchCardAdminPanel } from '../features/scratchcard/components/ScratchCardAdminPanel';
 
-type AdminTab = 'prediction' | 'lottery';
+type AdminTab = 'prediction' | 'lottery' | 'scratchcard';
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: 'prediction', label: 'Prediction' },
   { id: 'lottery', label: 'Lottery' },
+  { id: 'scratchcard', label: 'Scratch Cards' },
 ];
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('prediction');
-  const { isAdmin, isPredictionAdmin, isLotteryAdmin, isLoading } = useAdminAccess();
+  const { isAdmin, isPredictionAdmin, isLotteryAdmin, isScratchcardAdmin, isLoading } = useAdminAccess();
 
   // Loading state
   if (isLoading) {
@@ -83,6 +85,11 @@ export function AdminPage() {
               Lottery
             </span>
           )}
+          {isScratchcardAdmin && (
+            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">
+              Scratch
+            </span>
+          )}
         </div>
       </div>
 
@@ -91,7 +98,8 @@ export function AdminPage() {
         {TABS.map((tab) => {
           const isDisabled =
             (tab.id === 'prediction' && !isPredictionAdmin) ||
-            (tab.id === 'lottery' && !isLotteryAdmin);
+            (tab.id === 'lottery' && !isLotteryAdmin) ||
+            (tab.id === 'scratchcard' && !isScratchcardAdmin);
 
           return (
             <button
@@ -117,6 +125,7 @@ export function AdminPage() {
       <div>
         {activeTab === 'prediction' && isPredictionAdmin && <PredictionAdminPanel />}
         {activeTab === 'lottery' && isLotteryAdmin && <LotteryAdminPanel />}
+        {activeTab === 'scratchcard' && isScratchcardAdmin && <ScratchCardAdminPanel />}
 
         {/* Fallback if no access to selected tab */}
         {activeTab === 'prediction' && !isPredictionAdmin && (
@@ -127,6 +136,11 @@ export function AdminPage() {
         {activeTab === 'lottery' && !isLotteryAdmin && (
           <div className="bg-theme-bg-secondary rounded-xl p-6 text-center text-theme-text-muted">
             You don't have Lottery AdminCap
+          </div>
+        )}
+        {activeTab === 'scratchcard' && !isScratchcardAdmin && (
+          <div className="bg-theme-bg-secondary rounded-xl p-6 text-center text-theme-text-muted">
+            You don't have Scratchcard AdminCap
           </div>
         )}
       </div>
