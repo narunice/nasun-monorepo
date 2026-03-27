@@ -14,6 +14,7 @@ export function useTokenSparkline(tokenSymbol: string) {
     queryFn: async (): Promise<number[]> => {
       if (!binanceSymbol) return [];
       const candles = await fetchBinanceCandles(binanceSymbol, '1h', 24);
+      if (!candles) return [];
       return candles.map((c) => c.close);
     },
     enabled: !!binanceSymbol,
