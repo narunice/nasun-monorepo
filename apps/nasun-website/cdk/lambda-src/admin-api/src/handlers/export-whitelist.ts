@@ -121,6 +121,11 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
     }
   }
 
+  // Fallback: if primary provider is Google, use top-level email as googleEmail
+  if (!googleEmail && item.provider?.S === "Google" && item.email?.S) {
+    googleEmail = item.email.S;
+  }
+
   return {
     identityId: item.identityId?.S || "",
     username: item.username?.S,
