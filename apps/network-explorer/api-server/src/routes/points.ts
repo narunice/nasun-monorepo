@@ -126,13 +126,35 @@ app.get('/user/:address', async (c) => {
     },
   );
 
-  const data = await getUserPoints();
+  // Today's active categories (separate cache, shorter TTL for daily mission freshness)
+  const getTodayCategories = cached(
+    `points-today-${addrLower}`,
+    60 * 1000, // 60 seconds
+    async () => {
+      const rows = await pointsDb!`
+        SELECT DISTINCT category
+        FROM activity_points
+        WHERE wallet_address = ${addrLower}
+          AND NOT flagged
+          AND category != 'referral-bonus'
+          AND tx_timestamp >= CURRENT_DATE AT TIME ZONE 'UTC'
+          AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
+      `;
+      return rows.map((r) => r.category as string);
+    },
+  );
+
+  const [data, todayCategories] = await Promise.all([
+    getUserPoints(),
+    getTodayCategories(),
+  ]);
+
   if (!data) {
     return c.json({ error: 'not_found' }, 404);
   }
 
-  c.header('Cache-Control', 'public, max-age=300');
-  return c.json({ data });
+  c.header('Cache-Control', 'public, max-age=60');
+  return c.json({ data: { ...data, todayCategories } });
 });
 
 // GET /api/v1/points/referral-stats?referrer=:identityId
