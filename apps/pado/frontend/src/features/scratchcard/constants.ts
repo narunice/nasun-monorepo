@@ -34,8 +34,8 @@ export const ADMIN_CAP_TYPE = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::AdminCap`
 
 // Prize table (matches Move contract thresholds)
 export const PRIZE_TIERS = [
-  { label: 'Lose', multiplier: 0, probability: '80.50%', threshold: 0 },
-  { label: 'Even', multiplier: 1, probability: '10.00%', threshold: 8050 },
+  { label: 'Lose', multiplier: 0, probability: '75.00%', threshold: 0 },
+  { label: 'Even', multiplier: 1, probability: '15.50%', threshold: 7500 },
   { label: '2x', multiplier: 2, probability: '4.00%', threshold: 9050 },
   { label: '5x', multiplier: 5, probability: '3.00%', threshold: 9450 },
   { label: '10x', multiplier: 10, probability: '1.50%', threshold: 9750 },
