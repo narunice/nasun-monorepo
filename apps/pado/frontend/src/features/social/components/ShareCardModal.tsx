@@ -8,7 +8,7 @@ import { useToast } from '@/components/common';
 import { downloadShareCard, copyShareCardToClipboard } from '../utils/canvasRenderer';
 
 const TWEET_TEXT = encodeURIComponent(
-  'Just traded on @PadoFinance \u2014 a full on-chain CLOB DEX on Nasun L1!\n\npado.finance',
+  'Just traded on #Pado, a full on-chain CLOB DEX on Nasun L1!\n\n@Nasun_io',
 );
 const TWITTER_URL = `https://x.com/intent/tweet?text=${TWEET_TEXT}`;
 

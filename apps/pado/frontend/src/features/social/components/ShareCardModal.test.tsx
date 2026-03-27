@@ -156,14 +156,15 @@ describe('ShareCardModal', () => {
       expect(xLink.rel).toContain('noopener');
     });
 
-    it('tweet text mentions @PadoFinance', () => {
+    it('tweet text mentions #Pado and @Nasun_io', () => {
       render(
         <ShareCardModal isOpen={true} onClose={vi.fn()} canvas={createMockCanvas()} />
       );
       const xLink = screen.getByTitle('Share on X') as HTMLAnchorElement;
       const decodedUrl = decodeURIComponent(xLink.href);
-      expect(decodedUrl).toContain('@PadoFinance');
-      expect(decodedUrl).toContain('pado.finance');
+      expect(decodedUrl).toContain('#Pado');
+      expect(decodedUrl).toContain('@Nasun_io');
+      expect(decodedUrl).not.toContain('pado.finance');
     });
 
     it('tweet text mentions Nasun L1', () => {
