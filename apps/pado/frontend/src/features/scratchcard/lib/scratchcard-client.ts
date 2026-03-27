@@ -6,7 +6,7 @@ import { getSuiClient } from '../../../lib/sui-client';
 import {
   SCRATCHCARD_POOL_ID,
   SCRATCHCARD_TYPE,
-  SCRATCHCARD_PACKAGE_ID,
+  SCRATCHCARD_ORIGINAL_PACKAGE_ID,
 } from '../constants';
 import type { ScratchCardPool, ScratchCard, ScratchResult } from '../types';
 
@@ -63,13 +63,14 @@ export async function fetchUserScratchCards(
     .sort((a, b) => b.cardId - a.cardId); // Newest first
 }
 
-/** Fetch purchase history from events (includes both wins and losses) */
+/** Fetch purchase history from events (includes both wins and losses).
+ *  Uses originalPackageId for event type query (Sui events use the original defining package). */
 export async function fetchPurchaseHistory(
   userAddress: string,
   limit = 50,
 ): Promise<ScratchResult[]> {
   const client = getSuiClient();
-  const eventType = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
+  const eventType = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
 
   const response = await client.queryEvents({
     query: { MoveEventType: eventType },
@@ -93,12 +94,12 @@ export async function fetchPurchaseHistory(
     .filter((r) => r.buyer === userAddress);
 }
 
-/** Parse ScratchCardPurchased event from transaction result */
+/** Parse ScratchCardPurchased event from transaction result.
+ *  Matches by suffix to handle package upgrades (events use original package ID). */
 export function parseScratchCardEvent(
   events: Array<{ type: string; parsedJson: unknown }>,
 ): ScratchResult | null {
-  const eventType = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
-  const event = events.find((e) => e.type === eventType);
+  const event = events.find((e) => e.type.endsWith('::scratchcard::ScratchCardPurchased'));
   if (!event) return null;
 
   const data = event.parsedJson as Record<string, string>;

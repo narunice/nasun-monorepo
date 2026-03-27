@@ -51,6 +51,7 @@ export interface LotteryConfig {
 
 export interface ScratchcardConfig {
   packageId: ObjectId;
+  originalPackageId?: ObjectId;
   pool: ObjectId;
   adminCap: ObjectId;
   upgradeCap: ObjectId;
