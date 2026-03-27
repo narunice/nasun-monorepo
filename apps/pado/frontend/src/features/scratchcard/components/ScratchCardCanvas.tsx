@@ -29,7 +29,7 @@ export function ScratchCardCanvas({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     // Scale for device pixel ratio
@@ -63,7 +63,7 @@ export function ScratchCardCanvas({
     if (!revealed) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     // Fade out animation
@@ -91,7 +91,7 @@ export function ScratchCardCanvas({
     (x: number, y: number) => {
       const canvas = canvasRef.current;
       if (!canvas || revealedRef.current) return;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return;
 
       const dpr = window.devicePixelRatio || 1;
@@ -109,7 +109,7 @@ export function ScratchCardCanvas({
   const checkRevealProgress = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || revealedRef.current) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
