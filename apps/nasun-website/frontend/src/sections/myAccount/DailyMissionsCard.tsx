@@ -156,6 +156,19 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
             </div>
           );
         })}
+        {/* All-clear bonus row */}
+        {completedCount === DAILY_MISSIONS.length && (
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-sm border bg-nasun-c1/10 border-nasun-c1/30">
+            <div className="flex items-center gap-2.5">
+              <span className="text-nasun-c1">★</span>
+              <span className="text-nasun-white text-sm font-medium">All Missions Complete!</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-mono text-nasun-c1">+20</span>
+              <span className="text-xs text-nasun-c1/60">bonus</span>
+            </div>
+          </div>
+        )}
       </div>
       <p className="text-[10px] text-nasun-white/30 mt-3 text-center">
         Updates every few minutes &middot; Resets daily at 00:00 UTC
