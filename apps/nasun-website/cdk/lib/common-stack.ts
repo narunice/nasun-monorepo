@@ -175,6 +175,11 @@ export class CommonStack extends cdk.Stack {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         USER_IDENTITY_MAP_TABLE: userIdentityMapTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        COGNITO_IDENTITY_POOL_ID: (() => {
+          const poolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
+          if (!poolId) throw new Error('VITE_COGNITO_IDENTITY_POOL_ID is required for user-profile JWT auth');
+          return poolId;
+        })(),
       },
       logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-profile",
