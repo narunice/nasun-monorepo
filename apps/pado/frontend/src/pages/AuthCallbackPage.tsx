@@ -11,7 +11,7 @@ export function AuthCallbackPage() {
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-theme-bg-secondary rounded-2xl p-8 max-w-md w-full shadow-xl h-[420px] flex flex-col items-center justify-center">
+      <div className="bg-theme-bg-secondary rounded-2xl p-8 max-w-md w-full shadow-xl">
         <ZkLoginCallback
           onSuccess={() => {
             // Redirect to home after successful login
