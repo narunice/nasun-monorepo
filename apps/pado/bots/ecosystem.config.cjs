@@ -33,7 +33,7 @@ const COMMON_LP_ENV = {
   LP_MIN_SPREAD_BPS: '10',
   LP_MAX_FAILURES: '5',
   // Gas management
-  LP_GAS_REFILL_THRESHOLD: '1.0',
+  LP_GAS_REFILL_THRESHOLD: '0.4',
 };
 
 const COMMON_LP_OPTS = {
