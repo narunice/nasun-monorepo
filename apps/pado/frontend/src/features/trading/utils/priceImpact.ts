@@ -8,6 +8,9 @@
  * Returns a theme-aware Tailwind color class for a given price impact percentage.
  * Low (<0.5%): green, Medium (0.5-2%): amber, High (>=2%): red
  */
+/** Threshold (%) above which a blocking confirmation gate is shown before execution */
+export const PRICE_IMPACT_CONFIRM_THRESHOLD = 5;
+
 export function getPriceImpactColorClass(impactPct: number): string {
   if (impactPct < 0.5) return 'text-green-700 dark:text-green-400';
   if (impactPct < 2.0) return 'text-amber-700 dark:text-yellow-400';
