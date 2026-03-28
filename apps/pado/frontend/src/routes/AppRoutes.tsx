@@ -12,6 +12,11 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PageSpinner } from '../components/common/PageSpinner';
+import { NETWORK_CONFIG } from '../config/network';
+
+// Games-only mode: hide non-games routes (TEMPORARY: Remove after 2026-04-07)
+const gated = NETWORK_CONFIG.gamesOnlyMode;
+function GatedRedirect() { return <Navigate to="/games/lottery" replace />; }
 
 // Eager: landing page and auth redirect (must load immediately)
 import { HomePage } from '../pages/HomePage';
@@ -41,21 +46,22 @@ export function AppRoutes() {
     <Suspense fallback={<PageSpinner />}>
       <Routes>
         {/* Home (Dashboard) */}
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={gated ? <GatedRedirect /> : <HomePage />} />
 
         {/* Markets */}
         <Route path="/markets" element={<Navigate to="/markets/spot" replace />} />
+        {/* Spot: accessible but access-code-gated inside TradePage (not route-gated) */}
         <Route path="/markets/spot" element={<TradePage />} />
-        <Route path="/markets/perp" element={<PerpTradePage />} />
+        <Route path="/markets/perp" element={gated ? <GatedRedirect /> : <PerpTradePage />} />
 
-        {/* Wallet (Send/Receive) */}
+        {/* Wallet (Send/Receive) - whitelisted for games token management */}
         <Route path="/wallet" element={<WalletPage />} />
 
         {/* Prediction Markets */}
-        <Route path="/predict" element={<PredictPage />} />
-        <Route path="/predict/:marketId" element={<PredictMarketPage />} />
+        <Route path="/predict" element={gated ? <GatedRedirect /> : <PredictPage />} />
+        <Route path="/predict/:marketId" element={gated ? <GatedRedirect /> : <PredictMarketPage />} />
 
-        {/* Games (Lottery + Scratch Cards + Number Match) */}
+        {/* Games (Lottery + Scratch Cards + Number Match) - always public */}
         <Route path="/games/lottery" element={<LotteryPage />} />
         <Route path="/games/lottery/:roundId" element={<LotteryRoundPage />} />
         <Route path="/games/scratch" element={<ScratchCardPage />} />
@@ -67,28 +73,28 @@ export function AppRoutes() {
         <Route path="/numbermatch" element={<Navigate to="/games/numbermatch" replace />} />
         <Route path="/leisure/*" element={<Navigate to="/games/lottery" replace />} />
 
-        {/* Admin (Unified Dashboard) */}
+        {/* Admin (Unified Dashboard) - AdminCap guard already exists */}
         <Route path="/admin" element={<AdminPage />} />
 
         {/* Leaderboard */}
-        <Route path="/leaderboard" element={<LeaderboardPage />} />
-        <Route path="/leaderboard/trader/:address" element={<TraderProfilePage />} />
+        <Route path="/leaderboard" element={gated ? <GatedRedirect /> : <LeaderboardPage />} />
+        <Route path="/leaderboard/trader/:address" element={gated ? <GatedRedirect /> : <TraderProfilePage />} />
 
         {/* Competitions */}
-        <Route path="/competitions" element={<CompetitionsPage />} />
-        <Route path="/competitions/:id" element={<CompetitionDetailPage />} />
+        <Route path="/competitions" element={gated ? <GatedRedirect /> : <CompetitionsPage />} />
+        <Route path="/competitions/:id" element={gated ? <GatedRedirect /> : <CompetitionDetailPage />} />
 
         {/* Earn (Staking + Lending) */}
-        <Route path="/earn" element={<EarnPage />} />
+        <Route path="/earn" element={gated ? <GatedRedirect /> : <EarnPage />} />
 
         {/* Portfolio */}
-        <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="/portfolio" element={gated ? <GatedRedirect /> : <PortfolioPage />} />
 
-        {/* Auth (zkLogin callback) */}
+        {/* Auth (zkLogin callback) - whitelisted */}
         <Route path="/callback" element={<AuthCallbackPage />} />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={gated ? <Navigate to="/games/lottery" replace /> : <Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );

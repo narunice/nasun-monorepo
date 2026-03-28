@@ -35,3 +35,4 @@ export { MobileMarketHeader } from './MobileMarketHeader';
 export { MiniOrderbook } from './MiniOrderbook';
 export { FavoriteStrip } from './FavoriteStrip';
 export { FirstTradeCelebration } from './FirstTradeCelebration';
+export { SpotAccessGate, isSpotAccessGranted } from './SpotAccessGate'; // TEMPORARY: Remove after 2026-04-07
