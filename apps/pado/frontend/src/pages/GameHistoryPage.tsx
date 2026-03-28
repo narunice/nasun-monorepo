@@ -1,13 +1,13 @@
 /**
- * LeisureHistoryPage
- * Unified view of all leisure game activity (lottery, scratchcard, numbermatch).
+ * GameHistoryPage
+ * Unified view of all game activity (lottery, scratchcard, numbermatch).
  */
 import { useState } from 'react';
-import { useActiveAddress } from '../features/leisure-history/hooks/useActiveAddress';
-import { useLeisureHistory } from '../features/leisure-history/hooks/useLeisureHistory';
-import { LeisureSummaryCards } from '../features/leisure-history/components/LeisureSummaryCards';
-import { LeisureActivityList } from '../features/leisure-history/components/LeisureActivityList';
-import type { GameType } from '../features/leisure-history/types';
+import { useActiveAddress } from '../features/game-history/hooks/useActiveAddress';
+import { useGameHistory } from '../features/game-history/hooks/useGameHistory';
+import { GameSummaryCards } from '../features/game-history/components/GameSummaryCards';
+import { GameActivityList } from '../features/game-history/components/GameActivityList';
+import type { GameType } from '../features/game-history/types';
 
 const FILTER_OPTIONS: { value: GameType | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -16,16 +16,16 @@ const FILTER_OPTIONS: { value: GameType | 'all'; label: string }[] = [
   { value: 'numbermatch', label: 'Match' },
 ];
 
-export function LeisureHistoryPage() {
+export function GameHistoryPage() {
   const address = useActiveAddress();
   const [filter, setFilter] = useState<GameType | 'all'>('all');
-  const { activities, summary, isLoading, error } = useLeisureHistory(filter);
+  const { activities, summary, isLoading, error } = useGameHistory(filter);
 
   if (!address) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <p className="text-theme-text-muted text-lg">
-          Connect wallet to view your leisure history
+          Connect wallet to view your game history
         </p>
       </div>
     );
@@ -33,9 +33,9 @@ export function LeisureHistoryPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-bold text-theme-text">Leisure History</h1>
+      <h1 className="text-2xl font-bold text-theme-text">Game History</h1>
 
-      <LeisureSummaryCards summary={summary} isLoading={isLoading} />
+      <GameSummaryCards summary={summary} isLoading={isLoading} />
 
       {/* Filter buttons */}
       <div className="flex gap-2">
@@ -54,7 +54,7 @@ export function LeisureHistoryPage() {
         ))}
       </div>
 
-      <LeisureActivityList activities={activities} isLoading={isLoading} error={error} />
+      <GameActivityList activities={activities} isLoading={isLoading} error={error} />
     </div>
   );
 }

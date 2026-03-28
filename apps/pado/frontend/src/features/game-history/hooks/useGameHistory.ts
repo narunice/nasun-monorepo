@@ -1,6 +1,6 @@
 /**
- * useLeisureHistory Hook
- * Fetches and merges game history from 3 leisure games (lottery, scratchcard, numbermatch)
+ * useGameHistory Hook
+ * Fetches and merges game history from 3 games (lottery, scratchcard, numbermatch)
  * using 3 parallel MoveEventType queries.
  */
 import { useMemo } from 'react';
@@ -10,17 +10,17 @@ import {
   fetchScratchHistory,
   fetchNumberMatchHistory,
   fetchLotteryHistory,
-} from '../lib/leisure-client';
-import type { GameType, LeisureActivity, LeisureSummary } from '../types';
+} from '../lib/game-client';
+import type { GameType, GameActivity, GameSummary } from '../types';
 
-export interface UseLeisureHistoryResult {
-  activities: LeisureActivity[];
-  summary: LeisureSummary;
+export interface UseGameHistoryResult {
+  activities: GameActivity[];
+  summary: GameSummary;
   isLoading: boolean;
   error: string | null;
 }
 
-const EMPTY_SUMMARY: LeisureSummary = {
+const EMPTY_SUMMARY: GameSummary = {
   totalSpent: 0n,
   totalPayouts: 0n,
   netPnl: 0n,
@@ -30,25 +30,25 @@ const EMPTY_SUMMARY: LeisureSummary = {
   isTruncated: false,
 };
 
-export function useLeisureHistory(filter: GameType | 'all' = 'all'): UseLeisureHistoryResult {
+export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistoryResult {
   const address = useActiveAddress();
 
   const scratchQuery = useQuery({
-    queryKey: ['leisure-history', 'scratch', address],
+    queryKey: ['game-history', 'scratch', address],
     queryFn: () => fetchScratchHistory(address!),
     enabled: !!address,
     staleTime: 30_000,
   });
 
   const numberMatchQuery = useQuery({
-    queryKey: ['leisure-history', 'numbermatch', address],
+    queryKey: ['game-history', 'numbermatch', address],
     queryFn: () => fetchNumberMatchHistory(address!),
     enabled: !!address,
     staleTime: 30_000,
   });
 
   const lotteryQuery = useQuery({
-    queryKey: ['leisure-history', 'lottery', address],
+    queryKey: ['game-history', 'lottery', address],
     queryFn: () => fetchLotteryHistory(address!),
     enabled: !!address,
     staleTime: 30_000,
@@ -59,7 +59,7 @@ export function useLeisureHistory(filter: GameType | 'all' = 'all'): UseLeisureH
 
   // Merge all activities and sort by timestamp descending
   const allActivities = useMemo(() => {
-    const items: LeisureActivity[] = [
+    const items: GameActivity[] = [
       ...(scratchQuery.data?.items ?? []),
       ...(numberMatchQuery.data?.items ?? []),
       ...(lotteryQuery.data?.activities ?? []),
@@ -74,7 +74,7 @@ export function useLeisureHistory(filter: GameType | 'all' = 'all'): UseLeisureH
   );
 
   // Compute summary from all (unfiltered) activities
-  const summary = useMemo<LeisureSummary>(() => {
+  const summary = useMemo<GameSummary>(() => {
     if (allActivities.length === 0) return EMPTY_SUMMARY;
 
     const nonPending = allActivities.filter((a) => a.result !== 'pending');

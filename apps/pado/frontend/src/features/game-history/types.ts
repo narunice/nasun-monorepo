@@ -1,11 +1,11 @@
 /**
- * Leisure History Type Definitions
+ * Game History Type Definitions
  */
 
 export type GameType = 'lottery' | 'scratch' | 'numbermatch';
 export type ActivityResult = 'win' | 'loss' | 'pending';
 
-export interface LeisureActivity {
+export interface GameActivity {
   id: string;
   gameType: GameType;
   gameId: number;
@@ -19,7 +19,7 @@ export interface LeisureActivity {
   detail: string;
 }
 
-export interface LeisureSummary {
+export interface GameSummary {
   totalSpent: bigint;
   totalPayouts: bigint;
   /** totalPayouts - totalSpent */

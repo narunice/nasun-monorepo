@@ -1,5 +1,5 @@
 /**
- * Leisure History Client
+ * Game History Client
  * Fetches game history for lottery, scratchcard, and numbermatch
  * using MoveEventType queries with cursor-based pagination.
  */
@@ -15,7 +15,7 @@ import { parseLotteryRoundFields } from '../../lottery/lib/lottery-client';
 import { getTicketTier, getTierPayout, getTierLabel } from '../../lottery/types';
 import { PRIZE_TIER } from '../../lottery/constants';
 import type { LotteryRound } from '../../lottery/types';
-import type { LeisureActivity, ActivityResult } from '../types';
+import type { GameActivity, ActivityResult } from '../types';
 
 // -- Generic cursor-paginated event fetcher --
 
@@ -65,7 +65,7 @@ async function fetchUserEventsForType<T>(
 
 const SCRATCH_EVENT_TYPE = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
 
-function mapScratchEvent(event: SuiEvent): LeisureActivity {
+function mapScratchEvent(event: SuiEvent): GameActivity {
   const data = event.parsedJson as Record<string, string>;
   const multiplier = Number(data.multiplier);
   return {
@@ -82,7 +82,7 @@ function mapScratchEvent(event: SuiEvent): LeisureActivity {
   };
 }
 
-export function fetchScratchHistory(userAddress: string): Promise<FetchResult<LeisureActivity>> {
+export function fetchScratchHistory(userAddress: string): Promise<FetchResult<GameActivity>> {
   return fetchUserEventsForType(SCRATCH_EVENT_TYPE, userAddress, 'buyer', mapScratchEvent);
 }
 
@@ -90,7 +90,7 @@ export function fetchScratchHistory(userAddress: string): Promise<FetchResult<Le
 
 const NUMBERMATCH_EVENT_TYPE = `${NUMBERMATCH_ORIGINAL_PACKAGE_ID}::numbermatch::NumberMatchPlayed`;
 
-function mapNumberMatchEvent(event: SuiEvent): LeisureActivity {
+function mapNumberMatchEvent(event: SuiEvent): GameActivity {
   const data = event.parsedJson as Record<string, unknown>;
   return {
     id: `numbermatch-${data.game_id}`,
@@ -105,7 +105,7 @@ function mapNumberMatchEvent(event: SuiEvent): LeisureActivity {
   };
 }
 
-export function fetchNumberMatchHistory(userAddress: string): Promise<FetchResult<LeisureActivity>> {
+export function fetchNumberMatchHistory(userAddress: string): Promise<FetchResult<GameActivity>> {
   return fetchUserEventsForType(NUMBERMATCH_EVENT_TYPE, userAddress, 'player', mapNumberMatchEvent);
 }
 
@@ -169,7 +169,7 @@ async function fetchRoundsByIds(roundIds: string[]): Promise<Map<string, Lottery
 function resolveTicketResults(
   tickets: ParsedTicketEvent[],
   rounds: Map<string, LotteryRound>,
-): LeisureActivity[] {
+): GameActivity[] {
   return tickets.map((ticket) => {
     const round = rounds.get(ticket.roundId);
     let result: ActivityResult = 'pending';
@@ -201,7 +201,7 @@ function resolveTicketResults(
 }
 
 export interface LotteryHistoryResult {
-  activities: LeisureActivity[];
+  activities: GameActivity[];
   isTruncated: boolean;
 }
 
