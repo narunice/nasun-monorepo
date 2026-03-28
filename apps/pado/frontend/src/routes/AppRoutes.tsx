@@ -31,6 +31,7 @@ const TraderProfilePage = lazy(() => import('../pages/TraderProfilePage').then(m
 const CompetitionsPage = lazy(() => import('../pages/CompetitionsPage').then(m => ({ default: m.CompetitionsPage })));
 const CompetitionDetailPage = lazy(() => import('../pages/CompetitionDetailPage').then(m => ({ default: m.CompetitionDetailPage })));
 const ScratchCardPage = lazy(() => import('../pages/ScratchCardPage').then(m => ({ default: m.ScratchCardPage })));
+const NumberMatchPage = lazy(() => import('../pages/NumberMatchPage').then(m => ({ default: m.NumberMatchPage })));
 const EarnPage = lazy(() => import('../pages/EarnPage').then(m => ({ default: m.EarnPage })));
 const PortfolioPage = lazy(() => import('../pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 
@@ -57,9 +58,11 @@ export function AppRoutes() {
         <Route path="/leisure/lottery" element={<LotteryPage />} />
         <Route path="/leisure/lottery/:roundId" element={<LotteryRoundPage />} />
         <Route path="/leisure/scratch" element={<ScratchCardPage />} />
+        <Route path="/leisure/numbermatch" element={<NumberMatchPage />} />
         {/* Redirect old paths */}
         <Route path="/lottery" element={<Navigate to="/leisure/lottery" replace />} />
         <Route path="/scratch" element={<Navigate to="/leisure/scratch" replace />} />
+        <Route path="/numbermatch" element={<Navigate to="/leisure/numbermatch" replace />} />
 
         {/* Admin (Unified Dashboard) */}
         <Route path="/admin" element={<AdminPage />} />

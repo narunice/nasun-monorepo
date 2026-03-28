@@ -1,0 +1,15 @@
+[package]
+name = "pado_numbermatch"
+edition = "2024"
+version = "0.0.1"
+published-at = "0xf1087293200f23afdcce3415fcf025943bb22708b6b29588be671629dcb92758"
+
+[dependencies]
+devnet_tokens = { local = "../../../packages/devnet-tokens" }
+
+[addresses]
+numbermatch = "0x0"
+
+[environments]
+devnet = "272218f1"
+nasun-devnet = "272218f1"
