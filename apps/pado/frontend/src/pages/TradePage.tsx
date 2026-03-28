@@ -11,6 +11,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAdaptiveInterval } from "../hooks/useAdaptiveInterval";
+import { NETWORK_CONFIG } from "../config/network";
 import { OrderFormProvider, MarketProvider, useMarket } from "../features/trading/context";
 import { TradingPanel, EnablePadoCard } from "../features/trading/containers";
 import {
@@ -28,6 +29,8 @@ import {
   OnboardingTour,
   FavoriteStrip,
   FirstTradeCelebration,
+  SpotAccessGate,
+  isSpotAccessGranted,
 } from "../features/trading/components";
 import {
   useTradeMode,
@@ -581,7 +584,16 @@ function TradePageContent() {
   );
 }
 
+// TEMPORARY: Remove gate logic after 2026-04-07
 export function TradePage() {
+  const [granted, setGranted] = useState(() =>
+    !NETWORK_CONFIG.gamesOnlyMode || !NETWORK_CONFIG.spotAccessCode || isSpotAccessGranted()
+  );
+
+  if (!granted) {
+    return <SpotAccessGate onSuccess={() => setGranted(true)} />;
+  }
+
   return (
     <MarketProvider>
       <OrderFormProvider>

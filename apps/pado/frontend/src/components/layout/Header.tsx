@@ -6,6 +6,7 @@ import { HeaderNetValue } from './HeaderNetValue';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { useAdminAccess } from '../../features/admin';
 import { useTradeMode } from '../../features/trading/hooks';
+import { NETWORK_CONFIG } from '../../config/network';
 
 interface NavItem {
   label: string;
@@ -19,9 +20,12 @@ interface DropdownItem {
   enabled: boolean;
 }
 
+// TEMPORARY: gated flag controls nav visibility (Remove after 2026-04-07)
+const gated = NETWORK_CONFIG.gamesOnlyMode;
+
 const TRADE_ITEMS: DropdownItem[] = [
   { label: 'Spot', path: '/markets/spot', enabled: true },
-  { label: 'Perpetuals', path: '/markets/perp', enabled: true },
+  { label: 'Perpetuals', path: '/markets/perp', enabled: !gated },
 ];
 
 const GAMES_ITEMS: DropdownItem[] = [
@@ -32,13 +36,13 @@ const GAMES_ITEMS: DropdownItem[] = [
 ];
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Predict', path: '/predict', enabled: true },
-  { label: 'Earn', path: '/earn', enabled: true },
+  { label: 'Predict', path: '/predict', enabled: !gated },
+  { label: 'Earn', path: '/earn', enabled: !gated },
 ];
 
 const SOCIAL_ITEMS: DropdownItem[] = [
-  { label: 'Leaderboard', path: '/leaderboard', enabled: true },
-  { label: 'Competitions', path: '/competitions', enabled: true },
+  { label: 'Leaderboard', path: '/leaderboard', enabled: !gated },
+  { label: 'Competitions', path: '/competitions', enabled: !gated },
 ];
 
 export function Header() {
@@ -166,7 +170,7 @@ export function Header() {
             : ''
       }`}>
         {/* Logo Wordmark - Click to go Home */}
-        <Link to="/" className="hover:opacity-80 transition-opacity">
+        <Link to={gated ? '/games/lottery' : '/'} className="hover:opacity-80 transition-opacity">
           <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">PADO</h1>
         </Link>
 
@@ -195,33 +199,23 @@ export function Header() {
 
             {isTradeOpen && (
               <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {TRADE_ITEMS.map((item) =>
-                  item.enabled ? (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={(e) => {
-                        handleNavClick(e, item.path);
-                        setIsTradeOpen(false);
-                      }}
-                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                        isActive(item.path)
-                          ? 'text-pd3 bg-pd3/10'
-                          : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <span
-                      key={item.path}
-                      className="block px-4 py-2.5 text-sm text-theme-text-muted cursor-not-allowed"
-                    >
-                      {item.label}
-                      <span className="text-xs ml-1 text-purple-400">(Soon)</span>
-                    </span>
-                  )
-                )}
+                {TRADE_ITEMS.filter(item => item.enabled).map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={(e) => {
+                      handleNavClick(e, item.path);
+                      setIsTradeOpen(false);
+                    }}
+                    className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isActive(item.path)
+                        ? 'text-pd3 bg-pd3/10'
+                        : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             )}
           </div>
@@ -271,56 +265,46 @@ export function Header() {
           </div>
 
           {/* Direct Nav Items: Predict, Earn */}
-          {NAV_ITEMS.map((item) =>
-            item.enabled ? (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={(e) => handleNavClick(e, item.path)}
-                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive(item.path)
-                    ? 'text-pd3 bg-pd3/10'
-                    : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <span
-                key={item.path}
-                className="px-3 py-2 text-sm text-theme-text-muted cursor-not-allowed"
-                title="Coming Soon"
-              >
-                {item.label}
-              </span>
-            )
-          )}
-
-          {/* Social Dropdown */}
-          <div className="relative" ref={socialRef}>
-            <button
-              onClick={toggleSocial}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                isActive('/social')
+          {NAV_ITEMS.filter(item => item.enabled).map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={(e) => handleNavClick(e, item.path)}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                isActive(item.path)
                   ? 'text-pd3 bg-pd3/10'
                   : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
               }`}
             >
-              Social
-              <svg
-                className={`w-3 h-3 transition-transform ${isSocialOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+              {item.label}
+            </Link>
+          ))}
 
-            {isSocialOpen && (
-              <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {SOCIAL_ITEMS.map((item) =>
-                  item.enabled ? (
+          {/* Social Dropdown (hidden when all items disabled) */}
+          {SOCIAL_ITEMS.some(item => item.enabled) && (
+            <div className="relative" ref={socialRef}>
+              <button
+                onClick={toggleSocial}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
+                  isActive('/social')
+                    ? 'text-pd3 bg-pd3/10'
+                    : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                }`}
+              >
+                Social
+                <svg
+                  className={`w-3 h-3 transition-transform ${isSocialOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isSocialOpen && (
+                <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
+                  {SOCIAL_ITEMS.filter(item => item.enabled).map((item) => (
                     <Link
                       key={item.path}
                       to={item.path}
@@ -336,32 +320,26 @@ export function Header() {
                     >
                       {item.label}
                     </Link>
-                  ) : (
-                    <span
-                      key={item.path}
-                      className="block px-4 py-2.5 text-sm text-theme-text-muted cursor-not-allowed"
-                    >
-                      {item.label}
-                      <span className="text-xs ml-1 text-purple-400">(Soon)</span>
-                    </span>
-                  )
-                )}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Portfolio */}
-          <Link
-            to="/portfolio"
-            onClick={(e) => handleNavClick(e, '/portfolio')}
-            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              isActive('/portfolio')
-                ? 'text-pd3 bg-pd3/10'
-                : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
-            }`}
-          >
-            Portfolio
-          </Link>
+          {/* Portfolio (hidden in games-only mode) */}
+          {!gated && (
+            <Link
+              to="/portfolio"
+              onClick={(e) => handleNavClick(e, '/portfolio')}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                isActive('/portfolio')
+                  ? 'text-pd3 bg-pd3/10'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+              }`}
+            >
+              Portfolio
+            </Link>
+          )}
 
           {/* Admin (conditional) */}
           {isAdmin && (
@@ -382,7 +360,7 @@ export function Header() {
         {/* Right side: Theme Toggle + Wallet */}
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
-          <HeaderNetValue />
+          {!gated && <HeaderNetValue />}
           {showWalletButton && (
             <WalletConnect
               addressStartChars={isMobile ? 0 : 2}
