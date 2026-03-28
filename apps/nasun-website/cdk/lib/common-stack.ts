@@ -204,7 +204,7 @@ export class CommonStack extends cdk.Stack {
       proxy: true,
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ["GET", "POST", "OPTIONS"],
+        allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
     });

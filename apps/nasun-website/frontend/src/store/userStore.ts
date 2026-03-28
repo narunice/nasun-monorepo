@@ -34,6 +34,8 @@ export interface UserData {
   walletAddress?: string;
   // Cognito OIDC token for authenticated API calls
   cognitoToken?: string;
+  // Custom display name (set by user via My Account)
+  customDisplayName?: string;
   // Admin role (set via admin action, returned from DB)
   role?: string;
   // Linked accounts
