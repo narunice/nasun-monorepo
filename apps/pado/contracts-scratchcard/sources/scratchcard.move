@@ -13,12 +13,12 @@ module scratchcard::scratchcard {
     // ===== Constants =====
 
     // Card pricing (NUSDC has 6 decimals)
-    const CARD_PRICE: u64 = 1_000_000;          // 1 NUSDC
+    const CARD_PRICE: u64 = 2_000_000;          // 2 NUSDC
     const MAX_MULTIPLIER: u64 = 100;             // 100x max
-    const MAX_PRIZE: u64 = 100_000_000;          // 100 NUSDC = CARD_PRICE * MAX_MULTIPLIER
+    const MAX_PRIZE: u64 = 200_000_000;          // 200 NUSDC = CARD_PRICE * MAX_MULTIPLIER
 
     // Pool safety (5x buffer for concurrent max-prize wins)
-    const POOL_MIN_BALANCE: u64 = 500_000_000;   // 500 NUSDC = MAX_PRIZE * 5
+    const POOL_MIN_BALANCE: u64 = 1_000_000_000; // 1000 NUSDC = MAX_PRIZE * 5
 
     // Daily global card cap (initial launch value, upgrade to increase)
     const MAX_DAILY_CARDS: u64 = 1000;
@@ -37,7 +37,7 @@ module scratchcard::scratchcard {
     // RTP = 0.155 + 0.08 + 0.15 + 0.15 + 0.16 + 0.075 + 0.05 = 0.82 (82%)
 
     // PoolLow warning threshold (3x of POOL_MIN_BALANCE)
-    const POOL_LOW_THRESHOLD: u64 = 1_500_000_000; // 1500 NUSDC
+    const POOL_LOW_THRESHOLD: u64 = 3_000_000_000; // 3000 NUSDC
 
     // ===== Error Codes =====
     const EPaused: u64 = 0;

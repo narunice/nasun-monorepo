@@ -13,7 +13,7 @@ module lottery::lottery {
     // ===== Constants =====
     const NUMBERS_COUNT: u64 = 5;           // Numbers to select
     const MAX_NUMBER: u8 = 32;              // Range: 1-32
-    const TICKET_PRICE: u64 = 1_000_000;    // 1 NUSDC (6 decimals)
+    const TICKET_PRICE: u64 = 5_000_000;    // 5 NUSDC (6 decimals)
     const MAX_TICKETS_PER_ADDRESS: u64 = 100;  // Anti-sybil limit
 
     // Prize distribution (basis points, total = 10000)

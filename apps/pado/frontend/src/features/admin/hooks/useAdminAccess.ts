@@ -6,15 +6,13 @@
 import { useState, useEffect } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
-import { LOTTERY_PACKAGE_ID } from '../../lottery/constants';
+import { ADMIN_CAP_TYPE as LOTTERY_ADMIN_CAP_TYPE } from '../../lottery/constants';
 import { PREDICTION_PACKAGE_ID } from '../../prediction/constants';
-import { SCRATCHCARD_PACKAGE_ID } from '../../scratchcard/constants';
-import { NUMBERMATCH_PACKAGE_ID } from '../../numbermatch/constants';
+import { ADMIN_CAP_TYPE as SCRATCHCARD_ADMIN_CAP_TYPE } from '../../scratchcard/constants';
+import { ADMIN_CAP_TYPE as NUMBERMATCH_ADMIN_CAP_TYPE } from '../../numbermatch/constants';
 
-const LOTTERY_ADMIN_CAP_TYPE = `${LOTTERY_PACKAGE_ID}::lottery::AdminCap`;
+// Prediction has no originalPackageId yet (no upgrade). Use packageId directly.
 const PREDICTION_ADMIN_CAP_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::AdminCap`;
-const SCRATCHCARD_ADMIN_CAP_TYPE = `${SCRATCHCARD_PACKAGE_ID}::scratchcard::AdminCap`;
-const NUMBERMATCH_ADMIN_CAP_TYPE = `${NUMBERMATCH_PACKAGE_ID}::numbermatch::AdminCap`;
 
 export interface AdminCapInfo {
   lotteryAdminCapId: string | null;
