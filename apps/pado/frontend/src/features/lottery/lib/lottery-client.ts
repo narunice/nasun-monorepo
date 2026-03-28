@@ -214,7 +214,7 @@ export function countMatchingNumbers(
 
 // ===== Helper Functions =====
 
-function parseLotteryRoundFields(
+export function parseLotteryRoundFields(
   id: string,
   fields: Record<string, unknown>
 ): LotteryRound {

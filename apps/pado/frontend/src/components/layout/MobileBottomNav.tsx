@@ -75,6 +75,8 @@ const MORE_ITEMS = [
   { label: 'Perpetuals', path: '/markets/perp', icon: '📈' },
   { label: 'Portfolio', path: '/portfolio', icon: '📊' },
   { label: 'Wallet', path: '/wallet', icon: '👛' },
+  { label: 'Leisure History', path: '/leisure/history', icon: '🎲' },
+  { label: 'Predict', path: '/predict', icon: '🔮' },
 ];
 
 export function MobileBottomNav() {
