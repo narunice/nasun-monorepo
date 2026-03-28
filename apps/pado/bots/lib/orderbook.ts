@@ -96,7 +96,7 @@ export async function getFullOrderbookState(client: SuiClient): Promise<FullOrde
       typeArguments: [MARKET.baseType, MARKET.quoteType],
       arguments: [
         tx.object(MARKET.poolId),
-        tx.pure.u64(50),
+        tx.pure.u64(100),
         tx.object(CLOCK_ID),
       ],
     });
