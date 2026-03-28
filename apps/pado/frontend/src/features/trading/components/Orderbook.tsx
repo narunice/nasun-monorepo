@@ -155,7 +155,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   const poolKey = `${currentPool.baseToken.symbol}_${currentPool.quoteToken.symbol}`;
   const [depthLevel, setDepthLevel] = useState<DepthLevel>(() => {
     const stored = parseInt(localStorage.getItem('pado:orderbook:depth') || '');
-    return ([5, 10, 20] as DepthLevel[]).includes(stored as DepthLevel) ? stored as DepthLevel : 10;
+    return ([5, 10, 20] as DepthLevel[]).includes(stored as DepthLevel) ? stored as DepthLevel : 20;
   });
   const [groupSize, setGroupSize] = useState<number>(() => {
     const stored = parseFloat(localStorage.getItem(`pado:orderbook:group:${currentPool.baseToken.symbol}_${currentPool.quoteToken.symbol}`) || '');
