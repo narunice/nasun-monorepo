@@ -56,6 +56,53 @@ module.exports = {
           '0%': { strokeDashoffset: '24' },
           '100%': { strokeDashoffset: '0' },
         },
+        // Scratch card result animations
+        'scratch-drumroll': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%': { transform: 'translateX(-6px) rotate(-1deg)' },
+          '20%': { transform: 'translateX(6px) rotate(1deg)' },
+          '30%': { transform: 'translateX(-5px) rotate(-0.5deg)' },
+          '40%': { transform: 'translateX(5px) rotate(0.5deg)' },
+          '50%': { transform: 'translateX(-4px)' },
+          '60%': { transform: 'translateX(4px)' },
+          '70%': { transform: 'translateX(-3px)' },
+          '80%': { transform: 'translateX(3px)' },
+          '90%': { transform: 'translateX(-1px)' },
+        },
+        'scratch-bounce': {
+          '0%': { transform: 'scale(0)', opacity: '0' },
+          '50%': { transform: 'scale(1.15)' },
+          '70%': { transform: 'scale(0.95)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+        'scratch-slam': {
+          '0%': { transform: 'scale(2.5) translateY(-20px)', opacity: '0' },
+          '60%': { transform: 'scale(0.95) translateY(2px)', opacity: '1' },
+          '80%': { transform: 'scale(1.02)' },
+          '100%': { transform: 'scale(1) translateY(0)' },
+        },
+        'scratch-flash': {
+          '0%': { opacity: '0.8' },
+          '100%': { opacity: '0' },
+        },
+        'scratch-golden-glow': {
+          '0%': { transform: 'scale(0)', opacity: '0' },
+          '50%': { opacity: '1' },
+          '100%': { transform: 'scale(1)', opacity: '0.8' },
+        },
+        'scratch-typewriter-char': {
+          '0%': { opacity: '0', transform: 'scale(1.5)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'scratch-text-fade': {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'scratch-card-shake': {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '25%': { transform: 'translateX(-3px)' },
+          '75%': { transform: 'translateX(3px)' },
+        },
       },
       animation: {
         'flash-buy': 'flash-buy 1s ease-out',
@@ -65,6 +112,15 @@ module.exports = {
         'fill-flash-buy': 'fill-flash-buy 2s ease-out',
         'fill-flash-sell': 'fill-flash-sell 2s ease-out',
         'checkmark-draw': 'checkmark-draw 0.4s ease-out forwards',
+        // Scratch card animations
+        'scratch-drumroll': 'scratch-drumroll 0.6s ease-out',
+        'scratch-bounce': 'scratch-bounce 0.4s ease-out forwards',
+        'scratch-slam': 'scratch-slam 0.45s ease-out forwards',
+        'scratch-flash': 'scratch-flash 0.15s ease-out forwards',
+        'scratch-golden-glow': 'scratch-golden-glow 0.7s ease-out forwards',
+        'scratch-typewriter-char': 'scratch-typewriter-char 0.1s ease-out forwards',
+        'scratch-text-fade': 'scratch-text-fade 0.4s ease-out forwards',
+        'scratch-card-shake': 'scratch-card-shake 0.1s ease-out 3',
       },
       colors: {
         // Theme-aware colors using CSS variables
