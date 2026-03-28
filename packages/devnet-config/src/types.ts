@@ -60,6 +60,7 @@ export interface ScratchcardConfig {
 
 export interface NumberMatchConfig {
   packageId: ObjectId;
+  originalPackageId?: ObjectId;
   pool: ObjectId;
   adminCap: ObjectId;
   upgradeCap: ObjectId;
