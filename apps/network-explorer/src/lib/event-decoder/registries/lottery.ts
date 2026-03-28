@@ -7,7 +7,10 @@ import type { ProtocolEventGroup } from '../types';
 export const LOTTERY_EVENTS: ProtocolEventGroup = {
   name: 'Lottery',
   badgeVariant: 'success',
-  packageIds: [devnetConfig.lottery.packageId],
+  packageIds: [...new Set([
+    devnetConfig.lottery.packageId,
+    ...(devnetConfig.lottery.originalPackageId ? [devnetConfig.lottery.originalPackageId] : []),
+  ])],
   module: 'lottery',
   events: {
     RoundCreated: {

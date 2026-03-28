@@ -20,11 +20,11 @@ export const CLOCK_ID = '0x6';
 export const NUSDC_TYPE = DEVNET_NUSDC_TYPE;
 
 // Game constants (must match Move contract)
-export const CARD_PRICE = 1_000_000n; // 1 NUSDC (6 decimals)
-export const CARD_PRICE_DISPLAY = 1; // For UI display
+export const CARD_PRICE = 2_000_000n; // 2 NUSDC (6 decimals)
+export const CARD_PRICE_DISPLAY = 2; // For UI display
 export const MAX_MULTIPLIER = 100;
-export const MAX_PRIZE = 100_000_000n; // 100 NUSDC
-export const POOL_MIN_BALANCE = 500_000_000n; // 500 NUSDC
+export const MAX_PRIZE = 200_000_000n; // 200 NUSDC
+export const POOL_MIN_BALANCE = 1_000_000_000n; // 1000 NUSDC
 export const MAX_DAILY_CARDS = 1000;
 export const PER_ADDRESS_SOFT_LIMIT = 10; // Frontend-only soft limit
 

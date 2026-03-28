@@ -1,4 +1,4 @@
-import { LOTTERY, NUSDC_TYPE as DEVNET_NUSDC_TYPE } from '@nasun/devnet-config';
+import { LOTTERY, LOTTERY_ORIGINAL_PACKAGE_ID, NUSDC_TYPE as DEVNET_NUSDC_TYPE } from '@nasun/devnet-config';
 
 // Lottery Package deployed on Nasun Devnet (v2 - Multi-Tier)
 // IDs imported from @nasun/devnet-config for centralized management
@@ -16,7 +16,7 @@ export const CLOCK_ID = '0x6';
 // Game constants (must match Move contract)
 export const NUMBERS_COUNT = 5;
 export const MAX_NUMBER = 32;
-export const TICKET_PRICE = 1_000_000n; // 1 NUSDC (6 decimals)
+export const TICKET_PRICE = 5_000_000n; // 5 NUSDC (6 decimals)
 export const MAX_TICKETS_PER_ADDRESS = 100;
 
 // Prize distribution (basis points)
@@ -50,6 +50,7 @@ export const ROUND_STATUS = {
 // NUSDC type (from @nasun/devnet-config)
 export const NUSDC_TYPE = DEVNET_NUSDC_TYPE;
 
-// Lottery module types
-export const LOTTERY_ROUND_TYPE = `${LOTTERY_PACKAGE_ID}::lottery::LotteryRound`;
-export const TICKET_TYPE = `${LOTTERY_PACKAGE_ID}::lottery::Ticket`;
+// On-chain type strings (use original package ID -- immutable across upgrades)
+export const LOTTERY_ROUND_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::LotteryRound`;
+export const TICKET_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::Ticket`;
+export const ADMIN_CAP_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::AdminCap`;
