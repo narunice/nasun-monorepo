@@ -5,6 +5,7 @@ import {
   TICKET_TYPE,
   ROUND_STATUS,
 } from '../constants';
+import { LOTTERY_ORIGINAL_PACKAGE_ID } from '@nasun/devnet-config';
 import type { LotteryRound, Ticket, LotteryRegistry } from '../types';
 
 /**
@@ -76,7 +77,7 @@ export async function fetchLotteryRounds(): Promise<LotteryRound[]> {
     // Query RoundCreated events to get round IDs
     const events = await client.queryEvents({
       query: {
-        MoveEventType: `${LOTTERY_ROUND_TYPE.split('::')[0]}::lottery::RoundCreated`,
+        MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::RoundCreated`,
       },
       limit: 50,
       order: 'descending',

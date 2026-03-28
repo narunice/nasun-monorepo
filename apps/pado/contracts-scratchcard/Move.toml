@@ -2,7 +2,7 @@
 name = "pado_scratchcard"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x4f17ad8313d3f8ce62389b31f4251d5212349b0aae4cc1a3fac9c332218725d5"
+published-at = "0x25ebed7be9ab897d0734ae1341d45052bc53fa2f6f14a4818db0505add28699e"
 
 [dependencies]
 devnet_tokens = { local = "../../../packages/devnet-tokens" }

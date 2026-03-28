@@ -44,6 +44,7 @@ export interface PredictionConfig {
 
 export interface LotteryConfig {
   packageId: ObjectId;
+  originalPackageId?: ObjectId;
   registry: ObjectId;
   adminCap: ObjectId;
   upgradeCap: ObjectId;

@@ -15,7 +15,7 @@ import {
   buildSettleRound,
   buildWithdrawTreasury,
 } from '../transactions';
-import { LOTTERY_PACKAGE_ID } from '../constants';
+import { ADMIN_CAP_TYPE } from '../constants';
 
 export interface AdminResult {
   success: boolean;
@@ -45,8 +45,6 @@ export interface UseLotteryAdminResult {
   ) => Promise<AdminResult>;
   withdrawTreasury: () => Promise<AdminResult>;
 }
-
-const ADMIN_CAP_TYPE = `${LOTTERY_PACKAGE_ID}::lottery::AdminCap`;
 
 function parseLotteryAdminError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);

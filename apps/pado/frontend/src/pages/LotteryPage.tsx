@@ -129,7 +129,7 @@ export function LotteryPage() {
               Buy Ticket
             </h3>
             <p className="text-sm text-theme-text-secondary">
-              Each ticket costs 1 NUSDC
+              Each ticket costs 5 NUSDC
             </p>
           </div>
           <div className="text-center p-4">
