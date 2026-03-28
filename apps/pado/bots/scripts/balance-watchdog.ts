@@ -33,9 +33,10 @@ const FAUCET_URL = process.env.FAUCET_URL || 'https://faucet.devnet.nasun.io';
 // Contract addresses
 const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
 const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
-const TOKENS_V2_FAUCET_PACKAGE = '0xc2d09b5e026b1d8378e8f70333e8e74ed3b5798715caa284bcb82d22cb60b78e';
+const TOKENS_V2_FAUCET_PACKAGE = '0xd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f';
 const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31';
+const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
 const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
 
 // Token type strings for balance queries
@@ -51,19 +52,19 @@ const MARKETS = {
   NBTC: {
     baseType: TOKEN_TYPES.NBTC,
     baseDecimals: 8,
-    baseThreshold: 5,      // Refill when < 5 NBTC in wallet
+    baseThreshold: 15,     // Refill when < 15 NBTC in wallet
     quoteThreshold: 500_000, // Refill when < 500K NUSDC
     faucetType: 'v1' as const,
-    basePerRound: 1,       // 1 NBTC per faucet call
+    basePerRound: 0.01,    // 0.01 NBTC per faucet call
     quotePerRound: 100_000, // 100K NUSDC per faucet call
   },
   NETH: {
     baseType: TOKEN_TYPES.NETH,
     baseDecimals: 8,
-    baseThreshold: 100,     // Refill when < 100 NETH
+    baseThreshold: 500,     // Refill when < 500 NETH
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
-    faucetV2Package: NETH_PACKAGE,
+    faucetV2Package: NETH_FAUCET_PACKAGE,
     faucetV2Object: NETH_FAUCET_V2,
     basePerRound: 2.5,     // 2.5 NETH per faucet call
     quotePerRound: 100_000,
@@ -71,7 +72,7 @@ const MARKETS = {
   NSOL: {
     baseType: TOKEN_TYPES.NSOL,
     baseDecimals: 9,
-    baseThreshold: 2000,    // Refill when < 2000 NSOL
+    baseThreshold: 8000,    // Refill when < 8000 NSOL
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
     faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
