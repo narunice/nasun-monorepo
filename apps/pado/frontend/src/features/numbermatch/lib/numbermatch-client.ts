@@ -4,7 +4,7 @@
  * No winner NFTs -- history is events-only.
  */
 import { getSuiClient } from '../../../lib/sui-client';
-import { NUMBERMATCH_POOL_ID, NUMBERMATCH_PACKAGE_ID } from '../constants';
+import { NUMBERMATCH_POOL_ID, NUMBERMATCH_ORIGINAL_PACKAGE_ID } from '../constants';
 import type { NumberMatchPool, NumberMatchResult } from '../types';
 
 /** Fetch the shared NumberMatchPool object */
@@ -40,7 +40,7 @@ export async function fetchPlayHistory(
   limit = 50,
 ): Promise<NumberMatchResult[]> {
   const client = getSuiClient();
-  const eventType = `${NUMBERMATCH_PACKAGE_ID}::numbermatch::NumberMatchPlayed`;
+  const eventType = `${NUMBERMATCH_ORIGINAL_PACKAGE_ID}::numbermatch::NumberMatchPlayed`;
 
   const response = await client.queryEvents({
     query: { MoveEventType: eventType },

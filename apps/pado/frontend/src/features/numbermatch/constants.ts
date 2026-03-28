@@ -3,11 +3,13 @@
  */
 import {
   NUMBERMATCH,
+  NUMBERMATCH_ORIGINAL_PACKAGE_ID as DEVNET_NUMBERMATCH_ORIGINAL_PACKAGE_ID,
   NUSDC_TYPE as DEVNET_NUSDC_TYPE,
 } from '@nasun/devnet-config';
 
 // Contract IDs
 export const NUMBERMATCH_PACKAGE_ID = NUMBERMATCH.packageId;
+export const NUMBERMATCH_ORIGINAL_PACKAGE_ID = DEVNET_NUMBERMATCH_ORIGINAL_PACKAGE_ID;
 export const NUMBERMATCH_POOL_ID = NUMBERMATCH.pool;
 export const NUMBERMATCH_ADMIN_CAP_ID = NUMBERMATCH.adminCap;
 
@@ -18,9 +20,9 @@ export const CLOCK_ID = '0x6';
 // NUSDC type
 export const NUSDC_TYPE = DEVNET_NUSDC_TYPE;
 
-// On-chain type strings (no upgrade yet, so packageId = originalPackageId)
-export const ADMIN_CAP_TYPE = `${NUMBERMATCH_PACKAGE_ID}::numbermatch::AdminCap`;
-export const NUMBERMATCH_POOL_TYPE = `${NUMBERMATCH_PACKAGE_ID}::numbermatch::NumberMatchPool`;
+// On-chain type strings (use original package ID -- immutable across upgrades)
+export const ADMIN_CAP_TYPE = `${NUMBERMATCH_ORIGINAL_PACKAGE_ID}::numbermatch::AdminCap`;
+export const NUMBERMATCH_POOL_TYPE = `${NUMBERMATCH_ORIGINAL_PACKAGE_ID}::numbermatch::NumberMatchPool`;
 
 // Game constants (must match Move contract)
 export const MIN_NUMBER = 1;
