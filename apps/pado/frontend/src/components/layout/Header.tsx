@@ -28,6 +28,7 @@ const LEISURE_ITEMS: DropdownItem[] = [
   { label: 'Lottery', path: '/leisure/lottery', enabled: true },
   { label: 'Scratch Cards', path: '/leisure/scratch', enabled: true },
   { label: 'Number Match', path: '/leisure/numbermatch', enabled: true },
+  { label: 'History', path: '/leisure/history', enabled: true },
 ];
 
 const NAV_ITEMS: NavItem[] = [
