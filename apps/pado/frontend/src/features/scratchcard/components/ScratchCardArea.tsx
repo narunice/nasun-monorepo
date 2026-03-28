@@ -1,16 +1,47 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useReducer, useCallback, useEffect, useRef } from 'react';
 import { useScratchCardActions, useMyScratchCards } from '../hooks';
 import { useScratchCardPool } from '../hooks';
 import { useToast } from '../../../components/common';
+import { CANVAS_FADE_MS } from '../constants';
+import { getAnimationTier, getTierLabel, formatNusdc, TIER_DURATIONS } from '../types';
+import type { ScratchResult, AnimationTier } from '../types';
 import { BuyCardButton } from './BuyCardButton';
 import { ScratchCardCanvas } from './ScratchCardCanvas';
 import { CardResultDisplay } from './CardResultDisplay';
-import { getTierLabel, formatNusdc } from '../types';
-import type { ScratchResult } from '../types';
+import { LossReaction } from './LossReaction';
+import { WinCelebration } from './WinCelebration';
 
-const RESULT_LINGER_MS = 3500;
+// Phase state machine
+type Phase = 'idle' | 'buying' | 'scratching' | 'revealing' | 'animating' | 'settled';
 
-type Phase = 'idle' | 'buying' | 'scratching' | 'revealed';
+type PhaseAction =
+  | { type: 'START_BUY' }
+  | { type: 'CARD_READY' }
+  | { type: 'BUY_FAILED' }
+  | { type: 'REVEAL' }
+  | { type: 'START_ANIMATION' }
+  | { type: 'SETTLE' }
+  | { type: 'RESET' };
+
+const VALID_TRANSITIONS: Record<string, Phase> = {
+  'idle:START_BUY': 'buying',
+  'buying:CARD_READY': 'scratching',
+  'buying:BUY_FAILED': 'idle',
+  'scratching:REVEAL': 'revealing',
+  'revealing:START_ANIMATION': 'animating',
+  'animating:SETTLE': 'settled',
+  'settled:RESET': 'idle',
+  // Fallback: allow SETTLE from revealing (safety net)
+  'revealing:SETTLE': 'settled',
+};
+
+function phaseReducer(state: Phase, action: PhaseAction): Phase {
+  const key = `${state}:${action.type}`;
+  return VALID_TRANSITIONS[key] ?? state;
+}
+
+const isCardVisible = (p: Phase) =>
+  p === 'scratching' || p === 'revealing' || p === 'animating' || p === 'settled';
 
 export function ScratchCardArea() {
   const { buyCard, isBuying, error } = useScratchCardActions();
@@ -18,72 +49,85 @@ export function ScratchCardArea() {
   const { refetch: refetchHistory } = useMyScratchCards();
   const { showToast } = useToast();
 
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [result, setResult] = useState<ScratchResult | null>(null);
-  const [canvasRevealed, setCanvasRevealed] = useState(false);
-  const [showBuyAnother, setShowBuyAnother] = useState(false);
+  const [phase, dispatch] = useReducer(phaseReducer, 'idle');
+  const resultRef = useRef<ScratchResult | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const lingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
-    };
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   }, []);
 
+  const clearFallback = useCallback(() => {
+    if (fallbackRef.current) { clearTimeout(fallbackRef.current); fallbackRef.current = null; }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { clearTimer(); clearFallback(); };
+  }, [clearTimer, clearFallback]);
+
   const handleBuy = useCallback(async () => {
-    setPhase('buying');
+    dispatch({ type: 'START_BUY' });
     const scratchResult = await buyCard();
 
     if (scratchResult) {
-      setResult(scratchResult);
-      setCanvasRevealed(false);
-      setShowBuyAnother(false);
-      setPhase('scratching');
+      resultRef.current = scratchResult;
+      dispatch({ type: 'CARD_READY' });
     } else {
-      setPhase('idle');
+      dispatch({ type: 'BUY_FAILED' });
     }
   }, [buyCard]);
 
   const handleReveal = useCallback(() => {
-    setCanvasRevealed(true);
-    setPhase('revealed');
+    const result = resultRef.current;
+    if (!result) return;
 
-    if (result && result.isWinner) {
+    dispatch({ type: 'REVEAL' });
+
+    const tier = getAnimationTier(result.multiplier);
+
+    // Toast for real wins only (LOSS tier includes 0x and 1x Even)
+    if (result.isWinner && tier !== 'loss') {
       showToast(
         `${getTierLabel(result.multiplier)}! +${formatNusdc(result.prizeAmount)} NUSDC`,
         'success',
       );
     }
 
-    // Refetch purchase history now that result is visible (not before scratch)
     refetchHistory();
 
-    // Show "Buy Another" after linger delay
-    if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
-    lingerTimerRef.current = setTimeout(() => {
-      setShowBuyAnother(true);
-      lingerTimerRef.current = null;
-    }, RESULT_LINGER_MS);
-  }, [result, showToast, refetchHistory]);
+    // After canvas fade, start result animation
+    clearTimer();
+    timerRef.current = setTimeout(() => {
+      dispatch({ type: 'START_ANIMATION' });
+    }, CANVAS_FADE_MS);
 
-  const handleRevealAll = useCallback(() => {
-    handleReveal();
-  }, [handleReveal]);
+    // Fallback safety: force settle if animation gets stuck
+    clearFallback();
+    const totalBudget = CANVAS_FADE_MS + TIER_DURATIONS[tier] + 500;
+    fallbackRef.current = setTimeout(() => {
+      dispatch({ type: 'SETTLE' });
+    }, totalBudget);
+  }, [showToast, refetchHistory, clearTimer, clearFallback]);
+
+  const handleAnimationEnd = useCallback(() => {
+    clearFallback();
+    dispatch({ type: 'SETTLE' });
+  }, [clearFallback]);
 
   const handleReset = useCallback(() => {
-    if (lingerTimerRef.current) {
-      clearTimeout(lingerTimerRef.current);
-      lingerTimerRef.current = null;
-    }
-    setResult(null);
-    setCanvasRevealed(false);
-    setShowBuyAnother(false);
-    setPhase('idle');
-  }, []);
+    clearTimer();
+    clearFallback();
+    resultRef.current = null;
+    dispatch({ type: 'RESET' });
+  }, [clearTimer, clearFallback]);
 
+  const result = resultRef.current;
+  const tier = result ? getAnimationTier(result.multiplier) : 'loss';
   const isPaused = pool?.isPaused ?? true;
   const canBuy = !isPaused && phase === 'idle';
+  const canvasRevealed = phase === 'revealing' || phase === 'animating' || phase === 'settled';
 
   return (
     <div className="space-y-4">
@@ -92,31 +136,52 @@ export function ScratchCardArea() {
       </h2>
 
       {/* Card area */}
-      {(phase === 'scratching' || phase === 'revealed') && result && (
+      {isCardVisible(phase) && result && (
         <div className="flex flex-col items-center gap-3">
-          <ScratchCardCanvas
-            width={320}
-            height={200}
-            onReveal={handleReveal}
-            revealed={canvasRevealed}
+          {/* Canvas wrapper with scale transition (buttons excluded) */}
+          <div
+            className="transition-transform duration-400 ease-out"
+            style={{ transform: canvasRevealed ? 'scale(1.02)' : 'scale(1)' }}
           >
-            <CardResultDisplay result={result} revealed={canvasRevealed} />
-          </ScratchCardCanvas>
+            <ScratchCardCanvas
+              width={320}
+              height={200}
+              onReveal={handleReveal}
+              revealed={canvasRevealed}
+            >
+              {/* During scratching/revealing: show static result underneath */}
+              {(phase === 'scratching' || phase === 'revealing') && (
+                <CardResultDisplay result={result} />
+              )}
+
+              {/* During animating: show tier-specific animation */}
+              {phase === 'animating' && (
+                tier === 'loss'
+                  ? <LossReaction onComplete={handleAnimationEnd} />
+                  : <WinCelebration result={result} tier={tier} onComplete={handleAnimationEnd} />
+              )}
+
+              {/* During settled: show static result */}
+              {phase === 'settled' && (
+                <CardResultDisplay result={result} />
+              )}
+            </ScratchCardCanvas>
+          </div>
 
           {phase === 'scratching' && (
             <button
-              onClick={handleRevealAll}
+              onClick={handleReveal}
               className="text-sm text-theme-text-muted hover:text-theme-text-secondary transition-colors"
             >
               Reveal All
             </button>
           )}
 
-          {phase === 'revealed' && showBuyAnother && (
+          {phase === 'settled' && (
             <button
               onClick={handleReset}
               className="px-4 py-2 rounded-lg bg-theme-accent hover:bg-theme-accent-hover
-                text-white font-medium text-sm transition-colors animate-fade-in"
+                text-white font-medium text-sm transition-colors animate-scratch-text-fade"
             >
               Buy Another
             </button>

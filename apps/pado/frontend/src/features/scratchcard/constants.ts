@@ -47,3 +47,6 @@ export const PRIZE_TIERS = [
 
 // Transaction sync delay (wait for RPC indexing)
 export const TX_SYNC_DELAY_MS = 1500;
+
+// Animation timing (must match ScratchCardCanvas CSS transition duration)
+export const CANVAS_FADE_MS = 400;
