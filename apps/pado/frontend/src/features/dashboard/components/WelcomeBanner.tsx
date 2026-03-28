@@ -16,19 +16,14 @@ export function WelcomeBanner() {
 
       {/* Content - Light: dark text, Dark: white text */}
       <div className="relative z-10 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <h2 className="text-2xl md:text-3xl font-bold text-theme-text-primary">
-            Welcome to <span className="font-brand tracking-wider">PADO</span>
-          </h2>
-          <span className="px-2 py-0.5 text-[10px] font-semibold bg-pd2/20 text-pd3 rounded-full uppercase tracking-wide">
-            Public Test
-          </span>
-        </div>
+        <h2 className="text-2xl md:text-3xl font-bold mb-2 text-theme-text-primary">
+          Welcome to <span className="font-brand tracking-wider">PADO</span>
+        </h2>
         <p className="text-theme-text-secondary mb-1 text-base font-medium">
-          Thanks for being here early.
+          Trade. Socialize. On-Chain.
         </p>
-        <p className="text-theme-text-muted mb-4 text-sm max-w-lg mx-auto">
-          You're one of the first to explore Pado, a unified financial app on Nasun Network. Right now, the Weekly Lottery is live. Grab some free test tokens, pick your lucky numbers, and let's see how it goes. More features are on the way.
+        <p className="text-theme-text-muted mb-4 text-sm">
+          Get free tokens from the faucet, place your first order on a real orderbook, and explore what's possible - all on Nasun, our own L1 blockchain.
         </p>
         {/* z-50 to ensure dropdown appears above banner */}
         <div className="inline-block relative z-50">
