@@ -17,7 +17,7 @@ import type {
 } from './types.js';
 import { DEFAULT_CONFIG as CONFIG } from './types.js';
 import {
-  initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents,
+  initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents, getLeaderboardDb,
   getLeaderboard, getLeaderboardPnl, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount,
   getIndexerState,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
@@ -1352,23 +1352,39 @@ function start(): void {
   }, 5 * 60_000);
 
   // Periodic retention cleanup (messages + order events)
-  const retentionTimer = setInterval(() => {
+  // Messages: daily cleanup (retention period is 90 days, low volume)
+  const messageRetentionTimer = setInterval(() => {
     const msgPurged = purgeOldMessages(CONFIG.messageRetentionDays);
     if (msgPurged > 0) {
       console.log(`[Chat] Purged ${msgPurged} expired messages`);
     }
-    const ordersPurged = purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
-    if (ordersPurged > 0) {
-      console.log(`[Leaderboard] Purged ${ordersPurged} expired order events`);
-    }
   }, CONFIG.retentionCleanupIntervalMs);
+
+  // Order events: hourly cleanup + incremental VACUUM
+  // order_events grows rapidly (~28 events/sec from DeepBook indexer),
+  // so purge every hour instead of daily to prevent disk exhaustion.
+  const orderEventRetentionTimer = setInterval(() => {
+    try {
+      const ordersPurged = purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
+      if (ordersPurged > 0) {
+        console.log(`[Leaderboard] Purged ${ordersPurged} expired order events`);
+        // Reclaim disk space after large deletes
+        try {
+          getLeaderboardDb().pragma('incremental_vacuum(1000)');
+        } catch { /* ignore vacuum errors */ }
+      }
+    } catch (err) {
+      console.error('[Leaderboard] Order event purge failed:', (err as Error).message);
+    }
+  }, 60 * 60 * 1000); // Every hour
 
   // Graceful shutdown
   const shutdown = () => {
     console.log('\n[Chat] Shutting down...');
     clearInterval(heartbeatTimer);
     clearInterval(rateLimitCleanupTimer);
-    clearInterval(retentionTimer);
+    clearInterval(messageRetentionTimer);
+    clearInterval(orderEventRetentionTimer);
     stopChatbot();
     if (leaderboardEnabled) {
       stopNarrator();
