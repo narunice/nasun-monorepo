@@ -32,7 +32,7 @@ const CompetitionsPage = lazy(() => import('../pages/CompetitionsPage').then(m =
 const CompetitionDetailPage = lazy(() => import('../pages/CompetitionDetailPage').then(m => ({ default: m.CompetitionDetailPage })));
 const ScratchCardPage = lazy(() => import('../pages/ScratchCardPage').then(m => ({ default: m.ScratchCardPage })));
 const NumberMatchPage = lazy(() => import('../pages/NumberMatchPage').then(m => ({ default: m.NumberMatchPage })));
-const LeisureHistoryPage = lazy(() => import('../pages/LeisureHistoryPage').then(m => ({ default: m.LeisureHistoryPage })));
+const GameHistoryPage = lazy(() => import('../pages/GameHistoryPage').then(m => ({ default: m.GameHistoryPage })));
 const EarnPage = lazy(() => import('../pages/EarnPage').then(m => ({ default: m.EarnPage })));
 const PortfolioPage = lazy(() => import('../pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 
@@ -55,16 +55,17 @@ export function AppRoutes() {
         <Route path="/predict" element={<PredictPage />} />
         <Route path="/predict/:marketId" element={<PredictMarketPage />} />
 
-        {/* Leisure (Lottery + Scratch Cards) */}
-        <Route path="/leisure/lottery" element={<LotteryPage />} />
-        <Route path="/leisure/lottery/:roundId" element={<LotteryRoundPage />} />
-        <Route path="/leisure/scratch" element={<ScratchCardPage />} />
-        <Route path="/leisure/numbermatch" element={<NumberMatchPage />} />
-        <Route path="/leisure/history" element={<LeisureHistoryPage />} />
+        {/* Games (Lottery + Scratch Cards + Number Match) */}
+        <Route path="/games/lottery" element={<LotteryPage />} />
+        <Route path="/games/lottery/:roundId" element={<LotteryRoundPage />} />
+        <Route path="/games/scratch" element={<ScratchCardPage />} />
+        <Route path="/games/numbermatch" element={<NumberMatchPage />} />
+        <Route path="/games/history" element={<GameHistoryPage />} />
         {/* Redirect old paths */}
-        <Route path="/lottery" element={<Navigate to="/leisure/lottery" replace />} />
-        <Route path="/scratch" element={<Navigate to="/leisure/scratch" replace />} />
-        <Route path="/numbermatch" element={<Navigate to="/leisure/numbermatch" replace />} />
+        <Route path="/lottery" element={<Navigate to="/games/lottery" replace />} />
+        <Route path="/scratch" element={<Navigate to="/games/scratch" replace />} />
+        <Route path="/numbermatch" element={<Navigate to="/games/numbermatch" replace />} />
+        <Route path="/leisure/*" element={<Navigate to="/games/lottery" replace />} />
 
         {/* Admin (Unified Dashboard) */}
         <Route path="/admin" element={<AdminPage />} />

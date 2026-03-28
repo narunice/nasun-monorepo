@@ -24,11 +24,11 @@ const TRADE_ITEMS: DropdownItem[] = [
   { label: 'Perpetuals', path: '/markets/perp', enabled: true },
 ];
 
-const LEISURE_ITEMS: DropdownItem[] = [
-  { label: 'Lottery', path: '/leisure/lottery', enabled: true },
-  { label: 'Scratch Cards', path: '/leisure/scratch', enabled: true },
-  { label: 'Number Match', path: '/leisure/numbermatch', enabled: true },
-  { label: 'History', path: '/leisure/history', enabled: true },
+const GAMES_ITEMS: DropdownItem[] = [
+  { label: 'Lottery', path: '/games/lottery', enabled: true },
+  { label: 'Scratch Cards', path: '/games/scratch', enabled: true },
+  { label: 'Number Match', path: '/games/numbermatch', enabled: true },
+  { label: 'History', path: '/games/history', enabled: true },
 ];
 
 const NAV_ITEMS: NavItem[] = [
@@ -45,11 +45,11 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isTradeOpen, setIsTradeOpen] = useState(false);
-  const [isLeisureOpen, setIsLeisureOpen] = useState(false);
+  const [isGamesOpen, setIsGamesOpen] = useState(false);
   const [isSocialOpen, setIsSocialOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const tradeRef = useRef<HTMLDivElement>(null);
-  const leisureRef = useRef<HTMLDivElement>(null);
+  const gamesRef = useRef<HTMLDivElement>(null);
   const socialRef = useRef<HTMLDivElement>(null);
 
   // Detect mobile viewport for address shortening
@@ -82,7 +82,7 @@ export function Header() {
   // Close dropdowns on route change
   useEffect(() => {
     setIsTradeOpen(false);
-    setIsLeisureOpen(false);
+    setIsGamesOpen(false);
     setIsSocialOpen(false);
   }, [location.pathname]);
 
@@ -92,22 +92,22 @@ export function Header() {
       if (tradeRef.current && !tradeRef.current.contains(event.target as Node)) {
         setIsTradeOpen(false);
       }
-      if (leisureRef.current && !leisureRef.current.contains(event.target as Node)) {
-        setIsLeisureOpen(false);
+      if (gamesRef.current && !gamesRef.current.contains(event.target as Node)) {
+        setIsGamesOpen(false);
       }
       if (socialRef.current && !socialRef.current.contains(event.target as Node)) {
         setIsSocialOpen(false);
       }
     };
 
-    if (isTradeOpen || isLeisureOpen || isSocialOpen) {
+    if (isTradeOpen || isGamesOpen || isSocialOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isTradeOpen, isLeisureOpen, isSocialOpen]);
+  }, [isTradeOpen, isGamesOpen, isSocialOpen]);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -119,8 +119,8 @@ export function Header() {
     if (path === '/markets') {
       return location.pathname.startsWith('/markets') || location.pathname === '/trade';
     }
-    if (path === '/leisure') {
-      return location.pathname.startsWith('/leisure');
+    if (path === '/games') {
+      return location.pathname.startsWith('/games');
     }
     if (path === '/social') {
       return location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/competitions');
@@ -140,12 +140,12 @@ export function Header() {
 
   const toggleTrade = () => {
     setIsTradeOpen((prev) => !prev);
-    setIsLeisureOpen(false);
+    setIsGamesOpen(false);
     setIsSocialOpen(false);
   };
 
-  const toggleLeisure = () => {
-    setIsLeisureOpen((prev) => !prev);
+  const toggleGames = () => {
+    setIsGamesOpen((prev) => !prev);
     setIsTradeOpen(false);
     setIsSocialOpen(false);
   };
@@ -153,7 +153,7 @@ export function Header() {
   const toggleSocial = () => {
     setIsSocialOpen((prev) => !prev);
     setIsTradeOpen(false);
-    setIsLeisureOpen(false);
+    setIsGamesOpen(false);
   };
 
   return (
@@ -226,19 +226,19 @@ export function Header() {
             )}
           </div>
 
-          {/* Leisure Dropdown (Lottery + Scratch Cards) */}
-          <div className="relative" ref={leisureRef}>
+          {/* Games Dropdown */}
+          <div className="relative" ref={gamesRef}>
             <button
-              onClick={toggleLeisure}
+              onClick={toggleGames}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                isActive('/leisure')
+                isActive('/games')
                   ? 'text-pd3 bg-pd3/10'
                   : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
               }`}
             >
-              Leisure
+              Games
               <svg
-                className={`w-3 h-3 transition-transform ${isLeisureOpen ? 'rotate-180' : ''}`}
+                className={`w-3 h-3 transition-transform ${isGamesOpen ? 'rotate-180' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -247,15 +247,15 @@ export function Header() {
               </svg>
             </button>
 
-            {isLeisureOpen && (
+            {isGamesOpen && (
               <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {LEISURE_ITEMS.map((item) => (
+                {GAMES_ITEMS.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
                     onClick={(e) => {
                       handleNavClick(e, item.path);
-                      setIsLeisureOpen(false);
+                      setIsGamesOpen(false);
                     }}
                     className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                       isActive(item.path)

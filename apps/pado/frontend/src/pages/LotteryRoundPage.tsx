@@ -58,7 +58,7 @@ export function LotteryRoundPage() {
       <div className="text-center py-12">
         <p className="text-red-500">Failed to load round</p>
         <Link
-          to="/leisure/lottery"
+          to="/games/lottery"
           className="text-pd3 hover:text-pd3 mt-4 inline-block"
         >
           &larr; Back to Lottery
@@ -75,7 +75,7 @@ export function LotteryRoundPage() {
     <div className="space-y-6">
       {/* Back Link */}
       <Link
-        to="/leisure/lottery"
+        to="/games/lottery"
         className="text-pd3 hover:text-pd3 inline-flex items-center gap-1"
       >
         &larr; Back to Lottery

@@ -1,12 +1,12 @@
 /**
- * LeisureSummaryCards
+ * GameSummaryCards
  * Displays Total Spent, Total Payouts, Net P&L with win rate.
  */
 import { formatNusdc } from '../../../lib/format';
-import type { LeisureSummary } from '../types';
+import type { GameSummary } from '../types';
 
 interface Props {
-  summary: LeisureSummary;
+  summary: GameSummary;
   isLoading: boolean;
 }
 
@@ -19,7 +19,7 @@ function SkeletonCard() {
   );
 }
 
-export function LeisureSummaryCards({ summary, isLoading }: Props) {
+export function GameSummaryCards({ summary, isLoading }: Props) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
