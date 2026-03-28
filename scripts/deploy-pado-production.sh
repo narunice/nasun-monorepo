@@ -26,6 +26,7 @@ BACKUP_DIR="/var/www/pado.finance-backups"
 BOTS_DIR="$MONOREPO_ROOT/apps/pado/bots"
 BOTS_REMOTE_DIR="/home/ec2-user/pado-bots"
 HEALTH_CHECK_URL="https://pado.finance"
+CLOUDFRONT_DISTRIBUTION_ID="E35SWPQEJB8HHE"
 
 TOTAL_STEPS=9
 START_TIME=$(date +%s)
@@ -241,6 +242,16 @@ log_success "Nginx 재시작 완료"
 log_step 7 $TOTAL_STEPS "헬스 체크"
 
 health_check "$HEALTH_CHECK_URL"
+
+# --- Phase 7.5: CloudFront 캐시 무효화 ---
+if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+  log_info "CloudFront 캐시 무효화 중..."
+  aws cloudfront create-invalidation --profile nasun-prod \
+    --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+    --paths "/index.html" "/" > /dev/null 2>&1 && \
+    log_success "CloudFront 캐시 무효화 요청 완료" || \
+    log_warning "CloudFront 캐시 무효화 실패 (수동 확인 필요)"
+fi
 
 # --- Phase 8-9: LP 봇 배포 ---
 if [ "$SKIP_BOTS" = false ]; then
