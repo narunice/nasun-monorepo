@@ -71,8 +71,8 @@ export class NewsStack extends cdk.Stack {
       },
       deployOptions: {
         stageName: 'prod',
-        throttlingRateLimit: 10,
-        throttlingBurstLimit: 20,
+        throttlingRateLimit: 50,
+        throttlingBurstLimit: 100,
       },
     });
 
