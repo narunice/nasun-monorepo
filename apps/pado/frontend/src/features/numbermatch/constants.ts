@@ -18,6 +18,10 @@ export const CLOCK_ID = '0x6';
 // NUSDC type
 export const NUSDC_TYPE = DEVNET_NUSDC_TYPE;
 
+// On-chain type strings (no upgrade yet, so packageId = originalPackageId)
+export const ADMIN_CAP_TYPE = `${NUMBERMATCH_PACKAGE_ID}::numbermatch::AdminCap`;
+export const NUMBERMATCH_POOL_TYPE = `${NUMBERMATCH_PACKAGE_ID}::numbermatch::NumberMatchPool`;
+
 // Game constants (must match Move contract)
 export const MIN_NUMBER = 1;
 export const MAX_NUMBER = 5;
