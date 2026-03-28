@@ -57,6 +57,13 @@ export interface ScratchcardConfig {
   upgradeCap: ObjectId;
 }
 
+export interface NumberMatchConfig {
+  packageId: ObjectId;
+  pool: ObjectId;
+  adminCap: ObjectId;
+  upgradeCap: ObjectId;
+}
+
 export interface GovernanceConfig {
   packageId: ObjectId;
   originalPackageId?: ObjectId;
@@ -156,6 +163,7 @@ export interface DevnetConfig {
   prediction: PredictionConfig;
   lottery: LotteryConfig;
   scratchcard: ScratchcardConfig;
+  numbermatch: NumberMatchConfig;
   governance: GovernanceConfig;
   baram: Omit<BaramConfig, 'nusdcType'>;
   tokensV2: Omit<TokensV2Config, 'nethType' | 'nsolType'>;
