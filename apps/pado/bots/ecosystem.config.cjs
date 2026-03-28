@@ -21,16 +21,19 @@
  * Non-secret config (contract addresses, RPC URLs) is set in env: blocks below.
  */
 
+// Per-environment feature flags (set in .env, sourced before pm2 start)
+const DISABLE_PRICE_UPDATER = process.env.DISABLE_PRICE_UPDATER === 'true';
+
 const COMMON_LP_ENV = {
   NODE_ENV: 'production',
-  // Order depth (30 levels per side = 60 total orders)
-  LP_ORDER_LEVELS: '30',
+  // Order depth (45 levels per side = 90 total orders)
+  LP_ORDER_LEVELS: '45',
   LP_UPDATE_INTERVAL: '10000',   // 10 seconds
   // Risk controls
   LP_MIN_SPREAD_BPS: '10',
   LP_MAX_FAILURES: '5',
   // Gas management
-  LP_GAS_REFILL_THRESHOLD: '0.5',
+  LP_GAS_REFILL_THRESHOLD: '1.0',
 };
 
 const COMMON_LP_OPTS = {
@@ -59,14 +62,14 @@ module.exports = {
         ...COMMON_LP_ENV,
         LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NBTC || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NBTC',
-        // Tight spread for main market (~$4,850/level)
+        // Tight spread for main market
         LP_SPREAD_BPS: '20',
-        LP_REQUOTE_THRESHOLD: '30',
-        LP_LEVEL_SPACING_BPS: '8',
-        LP_ORDER_SIZE: '0.05',
+        LP_REQUOTE_THRESHOLD: '20',
+        LP_LEVEL_SPACING_BPS: '6',
+        LP_ORDER_SIZE: '0.1',
         LP_MAX_ORDER_SIZE: '0.5',
         LP_MAX_ARB_QUANTITY: '0.1',
-        LP_REFILL_THRESHOLD_BASE: '2',
+        LP_REFILL_THRESHOLD_BASE: '6',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '50000',
         LP_MAX_PRICE: '200000',
@@ -81,14 +84,14 @@ module.exports = {
         ...COMMON_LP_ENV,
         LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NETH || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NETH',
-        // Standard spread (~$5,400/level)
+        // Standard spread
         LP_SPREAD_BPS: '30',
-        LP_REQUOTE_THRESHOLD: '40',
-        LP_LEVEL_SPACING_BPS: '12',
-        LP_ORDER_SIZE: '2',
+        LP_REQUOTE_THRESHOLD: '25',
+        LP_LEVEL_SPACING_BPS: '8',
+        LP_ORDER_SIZE: '4',
         LP_MAX_ORDER_SIZE: '20',
         LP_MAX_ARB_QUANTITY: '5',
-        LP_REFILL_THRESHOLD_BASE: '80',
+        LP_REFILL_THRESHOLD_BASE: '250',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '1000',
         LP_MAX_PRICE: '10000',
@@ -103,14 +106,14 @@ module.exports = {
         ...COMMON_LP_ENV,
         LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NSOL || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NSOL',
-        // Wide spread for volatile asset (~$5,100/level)
+        // Wide spread for volatile asset
         LP_SPREAD_BPS: '40',
-        LP_REQUOTE_THRESHOLD: '50',
-        LP_LEVEL_SPACING_BPS: '15',
-        LP_ORDER_SIZE: '30',
+        LP_REQUOTE_THRESHOLD: '30',
+        LP_LEVEL_SPACING_BPS: '10',
+        LP_ORDER_SIZE: '50',
         LP_MAX_ORDER_SIZE: '300',
         LP_MAX_ARB_QUANTITY: '100',
-        LP_REFILL_THRESHOLD_BASE: '1000',
+        LP_REFILL_THRESHOLD_BASE: '3500',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '10',
         LP_MAX_PRICE: '1000',
@@ -121,8 +124,9 @@ module.exports = {
 
     // ==============================
     // Price Updater (single instance, all symbols)
+    // Disabled on staging via DISABLE_PRICE_UPDATER=true (staging reads prod oracle)
     // ==============================
-    {
+    ...(DISABLE_PRICE_UPDATER ? [] : [{
       name: 'price-updater',
       script: './node_modules/.bin/tsx',
       args: 'price-updater.ts',
@@ -139,7 +143,7 @@ module.exports = {
       error_file: './logs/price-updater-error.log',
       out_file: './logs/price-updater-out.log',
       merge_logs: true,
-    },
+    }]),
 
     // ==============================
     // Balance Watchdog (auto-refills bot wallets via batched legacy faucet)
@@ -154,7 +158,7 @@ module.exports = {
         NODE_ENV: 'production',
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         WATCHDOG_INTERVAL_MS: '600000',   // 10 minutes
-        WATCHDOG_REFILL_ROUNDS: '50',     // 50 rounds per refill TX
+        WATCHDOG_REFILL_ROUNDS: '100',    // 100 rounds per refill TX
       },
       max_restarts: 10,
       restart_delay: 30000,  // 30s between restarts (not urgent)
