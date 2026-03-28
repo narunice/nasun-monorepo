@@ -179,6 +179,14 @@ async function runBot(
     }
   }
 
+  // Depth monitoring
+  const bidDepthUsd = fullOrderbook.bids.reduce((sum, lvl) => sum + lvl.price * lvl.quantity, 0);
+  const askDepthUsd = fullOrderbook.asks.reduce((sum, lvl) => sum + lvl.price * lvl.quantity, 0);
+  console.log(`[${timestamp()}] [DEPTH] bid=$${bidDepthUsd.toFixed(0)} ask=$${askDepthUsd.toFixed(0)}`);
+  if (bidDepthUsd < 20000 || askDepthUsd < 20000) {
+    console.error(`[${timestamp()}] [ALERT] Depth critically low! bid=$${bidDepthUsd.toFixed(0)} ask=$${askDepthUsd.toFixed(0)}`);
+  }
+
   // Step 7: Calculate new grid orders
   const orders = calculateOrders(price, config, inventory, fullOrderbook);
   const validOrders = validateOrders(orders, config, price);

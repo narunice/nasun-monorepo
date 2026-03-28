@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { getPriceImpactColorClass } from '../utils/priceImpact';
+import { getPriceImpactColorClass, PRICE_IMPACT_CONFIRM_THRESHOLD } from '../utils/priceImpact';
 import type { ExecutionOption } from '../context';
 import { useMarket, useOrderForm } from '../context';
 import { UnderlineTabs } from '@/components/common';
@@ -85,6 +85,7 @@ export function OrderForm({
 
   const [totalInput, setTotalInput] = useState('');
   const [activeField, setActiveField] = useState<'amount' | 'total'>('amount');
+  const [impactAcked, setImpactAcked] = useState(false);
 
   const isMarket = orderMode === 'market';
   const isStopLimit = orderMode === 'stop-limit';
@@ -250,6 +251,9 @@ export function OrderForm({
     }
   }, [isBuy, effectivePrice, availableQuote, availableBase, amountNum, feeRate]);
 
+  // Reset impact acknowledgment when inputs or order mode change
+  useEffect(() => { setImpactAcked(false); }, [amount, side, orderMode]);
+
   // Price impact for market orders (VWAP calculation from orderbook depth)
   const priceImpact = useMemo(() => {
     if (!isMarket || amountNum <= 0 || !Number.isFinite(midPrice) || (midPrice ?? 0) <= 0) {
@@ -285,8 +289,9 @@ export function OrderForm({
   const stopLimitPriceInvalid = isStopLimit && effectivePrice > 0 && !priceValidation.valid;
   const trailingStopMissing = isTrailingStop && (trailValueNum <= 0 || amountNum <= 0);
   const trailingStopInvalid = isTrailingStop && trailMode === 'percent' && trailValueNum > 50;
+  const requiresImpactAck = isMarket && priceImpact.impactPct >= PRICE_IMPACT_CONFIRM_THRESHOLD;
   const isButtonDisabled = isMarket
-    ? disabled || !amount || isLoading || isAutoDepositing || !quantityValidation.valid
+    ? disabled || !amount || isLoading || isAutoDepositing || !quantityValidation.valid || (requiresImpactAck && !impactAcked)
     : isStopLimit
       ? disabled || isLoading || isAutoDepositing || stopLimitMissingFields || !quantityValidation.valid || stopLimitPriceInvalid
       : isTrailingStop
@@ -602,6 +607,17 @@ export function OrderForm({
                 <p className="text-amber-700 dark:text-yellow-400 mt-1">
                   High price impact. Consider reducing size or using a limit order.
                 </p>
+              )}
+              {requiresImpactAck && (
+                <label className="flex items-center gap-2 cursor-pointer mt-2">
+                  <input
+                    type="checkbox"
+                    checked={impactAcked}
+                    onChange={(e) => setImpactAcked(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-red-500/50 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-xs text-red-700 dark:text-red-400">I understand the price impact</span>
+                </label>
               )}
             </div>
           )}

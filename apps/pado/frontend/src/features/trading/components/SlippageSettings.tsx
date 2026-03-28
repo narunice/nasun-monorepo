@@ -25,7 +25,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
   const handleCustomChange = (input: string) => {
     setCustomValue(input);
     const num = parseFloat(input);
-    if (!isNaN(num) && num > 0 && num <= 50) {
+    if (!isNaN(num) && num > 0 && num <= 10) {
       onChange(num);
     }
   };
@@ -70,7 +70,7 @@ export function SlippageSettings({ value, onChange }: SlippageSettingsProps) {
                 : 'bg-theme-bg-secondary text-theme-text-primary placeholder-theme-text-muted'
             } focus:outline-none`}
             min="0.01"
-            max="50"
+            max="10"
             step="0.1"
           />
           {isCustom && customValue && (

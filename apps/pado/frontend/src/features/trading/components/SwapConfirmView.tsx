@@ -4,7 +4,8 @@
  * Shows trade summary with Sell/Buy labels and Confirm/Back buttons.
  */
 
-import { getPriceImpactColorClass } from '../utils/priceImpact';
+import { useState } from 'react';
+import { getPriceImpactColorClass, PRICE_IMPACT_CONFIRM_THRESHOLD } from '../utils/priceImpact';
 
 interface SwapConfirmViewProps {
   payToken: string;
@@ -41,9 +42,11 @@ export function SwapConfirmView({
   isLoading,
   isBuying,
 }: SwapConfirmViewProps) {
+  const [impactAcked, setImpactAcked] = useState(false);
   const payDecimals = payToken === 'NUSDC' ? 2 : 6;
   const receiveDecimals = receiveToken === 'NUSDC' ? 2 : 6;
   const actionLabel = isBuying ? 'Buy' : 'Sell';
+  const requiresAck = (impactPct ?? 0) >= PRICE_IMPACT_CONFIRM_THRESHOLD;
 
   return (
     <div className="h-full flex flex-col">
@@ -100,6 +103,24 @@ export function SwapConfirmView({
         </div>
       </div>
 
+      {/* High Price Impact Warning */}
+      {requiresAck && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 shrink-0">
+          <p className="text-xs text-red-700 dark:text-red-400 font-medium mb-2">
+            This order has {impactPct?.toFixed(2)}% price impact. You may receive significantly fewer tokens than expected.
+          </p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={impactAcked}
+              onChange={(e) => setImpactAcked(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-red-500/50 text-red-600 focus:ring-red-500"
+            />
+            <span className="text-xs text-red-700 dark:text-red-400">I understand the price impact</span>
+          </label>
+        </div>
+      )}
+
       {/* Spacer */}
       <div className="flex-1 min-h-2" />
 
@@ -114,7 +135,7 @@ export function SwapConfirmView({
         </button>
         <button
           onClick={onConfirm}
-          disabled={isLoading}
+          disabled={isLoading || (requiresAck && !impactAcked)}
           className={`flex-1 h-10 rounded-lg text-xs font-semibold text-white transition-colors ${
             isBuying
               ? 'bg-green-600 hover:bg-green-600/80 disabled:bg-green-600/40'
