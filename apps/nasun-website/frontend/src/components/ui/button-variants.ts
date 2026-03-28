@@ -40,39 +40,39 @@ export const buttonVariants = cva(
         // Gensol Red: Solid red button
         "gensol-red": "bg-nasun-gensol-red text-nasun-white hover:bg-nasun-gensol-red/80",
 
-        // Outline Scarlet (투명 배경)
+        // Outline Scarlet
         outlineScarlet:
-          "ring-1 ring-inset ring-nasun-scarlet/70 bg-transparent text-nasun-scarlet hover:bg-nasun-scarlet/10",
+          "ring-1 ring-inset ring-nasun-scarlet bg-nasun-scarlet/10 text-nasun-scarlet hover:bg-nasun-scarlet/20",
 
-        // Outline c1 (투명 배경)
+        // Outline c1
         outlineC1:
-          "ring-1 ring-inset ring-nasun-c1/70 bg-transparent text-nasun-c1 hover:bg-nasun-c1/10",
+          "ring-1 ring-inset ring-nasun-c1 bg-nasun-c1/10 text-nasun-c1 hover:bg-nasun-c1/20",
 
-        // Outline c2 (투명 배경)
+        // Outline c2
         outlineC2:
-          "ring-1 ring-inset ring-nasun-c2/70 bg-transparent text-nasun-c2 hover:bg-nasun-c2/10",
+          "ring-1 ring-inset ring-nasun-c2 bg-nasun-c2/10 text-nasun-c2 hover:bg-nasun-c2/20",
 
-        // Outline c3 (투명 배경)
+        // Outline c3
         outlineC3:
-          "ring-1 ring-inset ring-nasun-c3/70 bg-transparent text-nasun-c3 hover:bg-nasun-c3/10",
+          "ring-1 ring-inset ring-nasun-c3 bg-nasun-c3/10 text-nasun-c3 hover:bg-nasun-c3/20",
 
-        // Outline c4 (투명 배경)
+        // Outline c4
         outlineC4:
-          "ring-1 ring-inset ring-nasun-c4/70 bg-transparent text-nasun-c4 hover:bg-nasun-c4/10",
+          "ring-1 ring-inset ring-nasun-c4 bg-nasun-c4/10 text-nasun-c4 hover:bg-nasun-c4/20",
 
-        // Outline c5 (투명 배경)
+        // Outline c5
         outlineC5:
-          "ring-1 ring-inset ring-nasun-c5/70 bg-transparent text-nasun-c5 hover:bg-nasun-c5/10",
+          "ring-1 ring-inset ring-nasun-c5 bg-nasun-c5/10 text-nasun-c5 hover:bg-nasun-c5/20",
         outlineC7:
-          "ring-1 ring-inset ring-nasun-c7/70 bg-transparent text-nasun-c7 hover:bg-nasun-c7/10",
+          "ring-1 ring-inset ring-nasun-c7 bg-nasun-c7/10 text-nasun-c7 hover:bg-nasun-c7/20",
 
-        // Outline Coral (투명 배경)
+        // Outline Coral
         outlineCoral:
-          "ring-1 ring-inset ring-nasun-coral/70 bg-transparent text-nasun-coral hover:bg-nasun-coral/10",
+          "ring-1 ring-inset ring-nasun-coral bg-nasun-coral/10 text-nasun-coral hover:bg-nasun-coral/20",
 
-        // Outline Gensol Red (투명 배경)
+        // Outline Gensol Red
         outlineGensolRed:
-          "ring-1 ring-inset ring-nasun-gensol-red/70 bg-transparent text-nasun-gensol-red hover:bg-nasun-gensol-red/10",
+          "ring-1 ring-inset ring-nasun-gensol-red bg-nasun-gensol-red/10 text-nasun-gensol-red hover:bg-nasun-gensol-red/20",
 
         // Filled Outline Scarlet (연한 배경색)
         filledOutlineScarlet:
@@ -126,9 +126,9 @@ export const buttonVariants = cva(
 
         // NW Outline (outlineNw2 uses nw1 text for contrast on dark bg)
         outlineNw1:
-          "ring-1 ring-inset ring-nasun-nw1/70 bg-transparent text-nasun-nw1 hover:bg-nasun-nw1/10",
+          "ring-1 ring-inset ring-nasun-nw1 bg-nasun-nw1/10 text-nasun-nw1 hover:bg-nasun-nw1/20",
         outlineNw2:
-          "ring-1 ring-inset ring-nasun-nw2/70 bg-transparent text-nasun-nw1 hover:bg-nasun-nw2/10",
+          "ring-1 ring-inset ring-nasun-nw2 bg-nasun-nw2/10 text-nasun-nw1 hover:bg-nasun-nw2/20",
 
         // NW Filled Outline
         filledOutlineNw1:
@@ -139,7 +139,7 @@ export const buttonVariants = cva(
 
         // Outline Pado (teal outline)
         outlinePado:
-          "ring-1 ring-inset ring-pado-2/70 bg-transparent text-pado-2 hover:bg-pado-2/10",
+          "ring-1 ring-inset ring-pado-2 bg-pado-2/10 text-pado-2 hover:bg-pado-2/20",
 
         // Destructive: 위험한 동작용 빨간색 버튼 (Unlink, Delete 등)
         destructive:
