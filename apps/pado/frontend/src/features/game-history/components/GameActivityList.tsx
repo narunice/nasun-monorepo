@@ -1,11 +1,11 @@
 /**
- * LeisureActivityList
- * Unified timeline of leisure game activities with mobile card / desktop list layout.
+ * GameActivityList
+ * Unified timeline of game activities with mobile card / desktop list layout.
  */
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { formatNusdc } from '../../../lib/format';
-import type { LeisureActivity, GameType } from '../types';
+import type { GameActivity, GameType } from '../types';
 
 const ITEMS_PER_PAGE = 15;
 
@@ -26,7 +26,7 @@ const GAME_BADGE: Record<GameType, { label: string; className: string }> = {
   },
 };
 
-function ResultBadge({ result, payout }: { result: LeisureActivity['result']; payout: bigint }) {
+function ResultBadge({ result, payout }: { result: GameActivity['result']; payout: bigint }) {
   if (result === 'win') {
     return (
       <span className="text-green-600 dark:text-green-400 font-medium text-sm">
@@ -59,7 +59,7 @@ function formatTime(timestampMs: number): string {
 
 // -- Mobile card --
 
-function ActivityCard({ activity }: { activity: LeisureActivity }) {
+function ActivityCard({ activity }: { activity: GameActivity }) {
   const badge = GAME_BADGE[activity.gameType];
 
   return (
@@ -83,7 +83,7 @@ function ActivityCard({ activity }: { activity: LeisureActivity }) {
 
 // -- Desktop row --
 
-function ActivityRow({ activity }: { activity: LeisureActivity }) {
+function ActivityRow({ activity }: { activity: GameActivity }) {
   const badge = GAME_BADGE[activity.gameType];
 
   return (
@@ -130,22 +130,22 @@ function SkeletonRows() {
 function EmptyState() {
   return (
     <div className="text-center py-12 text-theme-text-muted">
-      <p className="mb-4">No leisure activity yet.</p>
+      <p className="mb-4">No game activity yet.</p>
       <div className="flex flex-wrap justify-center gap-3">
         <Link
-          to="/leisure/lottery"
+          to="/games/lottery"
           className="px-3 py-1.5 text-sm rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 hover:opacity-80"
         >
           Try Lottery
         </Link>
         <Link
-          to="/leisure/scratch"
+          to="/games/scratch"
           className="px-3 py-1.5 text-sm rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 hover:opacity-80"
         >
           Try Scratch Cards
         </Link>
         <Link
-          to="/leisure/numbermatch"
+          to="/games/numbermatch"
           className="px-3 py-1.5 text-sm rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:opacity-80"
         >
           Try Number Match
@@ -158,12 +158,12 @@ function EmptyState() {
 // -- Main component --
 
 interface Props {
-  activities: LeisureActivity[];
+  activities: GameActivity[];
   isLoading: boolean;
   error: string | null;
 }
 
-export function LeisureActivityList({ activities, isLoading, error }: Props) {
+export function GameActivityList({ activities, isLoading, error }: Props) {
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
   const visible = useMemo(
