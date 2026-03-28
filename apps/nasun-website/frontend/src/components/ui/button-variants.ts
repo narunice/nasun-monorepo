@@ -60,9 +60,9 @@ export const buttonVariants = cva(
         outlineC4:
           "ring-1 ring-inset ring-nasun-c4 bg-nasun-c4/10 text-nasun-c4 hover:bg-nasun-c4/20",
 
-        // Outline c5
+        // Outline c5 (uses sky-400 for readability on dark backgrounds)
         outlineC5:
-          "ring-1 ring-inset ring-nasun-c5 bg-nasun-c5/10 text-nasun-c5 hover:bg-nasun-c5/20",
+          "ring-1 ring-inset ring-sky-400 bg-sky-400/10 text-sky-400 hover:bg-sky-400/20",
         outlineC7:
           "ring-1 ring-inset ring-nasun-c7 bg-nasun-c7/10 text-nasun-c7 hover:bg-nasun-c7/20",
 
