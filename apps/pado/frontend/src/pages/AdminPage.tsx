@@ -9,21 +9,34 @@ import { useAdminAccess } from '../features/admin';
 import { PredictionAdminPanel } from '../features/prediction/components/PredictionAdminPanel';
 import { LotteryAdminPanel } from '../features/lottery/components/LotteryAdminPanel';
 import { ScratchCardAdminPanel } from '../features/scratchcard/components/ScratchCardAdminPanel';
+import { NumberMatchAdminPanel } from '../features/numbermatch/components/NumberMatchAdminPanel';
 
-type AdminTab = 'prediction' | 'lottery' | 'scratchcard';
+type AdminTab = 'prediction' | 'lottery' | 'scratchcard' | 'numbermatch';
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: 'prediction', label: 'Prediction' },
   { id: 'lottery', label: 'Lottery' },
   { id: 'scratchcard', label: 'Scratch Cards' },
+  { id: 'numbermatch', label: 'Number Match' },
 ];
+
+const TAB_ACCESS_MAP: Record<AdminTab, string> = {
+  prediction: 'isPredictionAdmin',
+  lottery: 'isLotteryAdmin',
+  scratchcard: 'isScratchcardAdmin',
+  numbermatch: 'isNumberMatchAdmin',
+};
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('prediction');
-  const { isAdmin, isPredictionAdmin, isLotteryAdmin, isScratchcardAdmin, isLoading } = useAdminAccess();
+  const access = useAdminAccess();
+
+  const getTabAccess = (tabId: AdminTab): boolean => {
+    return access[TAB_ACCESS_MAP[tabId] as keyof typeof access] as boolean;
+  };
 
   // Loading state
-  if (isLoading) {
+  if (access.isLoading) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-theme-bg-secondary rounded-xl p-6 text-center">
@@ -37,7 +50,7 @@ export function AdminPage() {
   }
 
   // Not authorized
-  if (!isAdmin) {
+  if (!access.isAdmin) {
     return (
       <div className="max-w-lg mx-auto">
         <div className="bg-theme-bg-secondary rounded-xl p-6 text-center">
@@ -75,20 +88,17 @@ export function AdminPage() {
           <h1 className="text-2xl font-bold text-theme-text-primary">Admin</h1>
         </div>
         <div className="flex items-center gap-2 text-sm text-theme-text-secondary">
-          {isPredictionAdmin && (
-            <span className="px-2 py-1 bg-pd2/20 text-pd3 rounded">
-              Prediction
-            </span>
+          {access.isPredictionAdmin && (
+            <span className="px-2 py-1 bg-pd2/20 text-pd3 rounded">Prediction</span>
           )}
-          {isLotteryAdmin && (
-            <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded">
-              Lottery
-            </span>
+          {access.isLotteryAdmin && (
+            <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded">Lottery</span>
           )}
-          {isScratchcardAdmin && (
-            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">
-              Scratch
-            </span>
+          {access.isScratchcardAdmin && (
+            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">Scratch</span>
+          )}
+          {access.isNumberMatchAdmin && (
+            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">Match</span>
           )}
         </div>
       </div>
@@ -96,26 +106,23 @@ export function AdminPage() {
       {/* Tab Navigation */}
       <div className="flex gap-1 bg-theme-bg-secondary rounded-lg p-1">
         {TABS.map((tab) => {
-          const isDisabled =
-            (tab.id === 'prediction' && !isPredictionAdmin) ||
-            (tab.id === 'lottery' && !isLotteryAdmin) ||
-            (tab.id === 'scratchcard' && !isScratchcardAdmin);
+          const hasAccess = getTabAccess(tab.id);
 
           return (
             <button
               key={tab.id}
-              onClick={() => !isDisabled && setActiveTab(tab.id)}
-              disabled={isDisabled}
+              onClick={() => hasAccess && setActiveTab(tab.id)}
+              disabled={!hasAccess}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-theme-accent text-white'
-                  : isDisabled
+                  : !hasAccess
                     ? 'text-theme-text-muted cursor-not-allowed'
                     : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-tertiary'
               }`}
             >
               {tab.label}
-              {isDisabled && ' (No Access)'}
+              {!hasAccess && ' (No Access)'}
             </button>
           );
         })}
@@ -123,24 +130,15 @@ export function AdminPage() {
 
       {/* Tab Content */}
       <div>
-        {activeTab === 'prediction' && isPredictionAdmin && <PredictionAdminPanel />}
-        {activeTab === 'lottery' && isLotteryAdmin && <LotteryAdminPanel />}
-        {activeTab === 'scratchcard' && isScratchcardAdmin && <ScratchCardAdminPanel />}
+        {activeTab === 'prediction' && access.isPredictionAdmin && <PredictionAdminPanel />}
+        {activeTab === 'lottery' && access.isLotteryAdmin && <LotteryAdminPanel />}
+        {activeTab === 'scratchcard' && access.isScratchcardAdmin && <ScratchCardAdminPanel />}
+        {activeTab === 'numbermatch' && access.isNumberMatchAdmin && <NumberMatchAdminPanel />}
 
         {/* Fallback if no access to selected tab */}
-        {activeTab === 'prediction' && !isPredictionAdmin && (
+        {!getTabAccess(activeTab) && (
           <div className="bg-theme-bg-secondary rounded-xl p-6 text-center text-theme-text-muted">
-            You don't have Prediction AdminCap
-          </div>
-        )}
-        {activeTab === 'lottery' && !isLotteryAdmin && (
-          <div className="bg-theme-bg-secondary rounded-xl p-6 text-center text-theme-text-muted">
-            You don't have Lottery AdminCap
-          </div>
-        )}
-        {activeTab === 'scratchcard' && !isScratchcardAdmin && (
-          <div className="bg-theme-bg-secondary rounded-xl p-6 text-center text-theme-text-muted">
-            You don't have Scratchcard AdminCap
+            You don't have {TABS.find(t => t.id === activeTab)?.label} AdminCap
           </div>
         )}
       </div>
