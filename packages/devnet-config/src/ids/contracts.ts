@@ -8,7 +8,7 @@
 import config from '../../devnet-ids.json';
 
 // Matches @nasun/wallet ContractType — duplicated to avoid circular dependency
-type ContractType = 'token' | 'nft' | 'dex' | 'lending' | 'bridge' | 'governance' | 'oracle' | 'system' | 'unknown';
+type ContractType = 'token' | 'nft' | 'dex' | 'lending' | 'bridge' | 'governance' | 'oracle' | 'leisure' | 'system' | 'unknown';
 
 export interface KnownContractEntry {
   address: string;
@@ -97,4 +97,12 @@ export const KNOWN_CONTRACTS: KnownContractEntry[] = [
         chainId: NASUN_DEVNET_CHAIN_ID,
       }]
     : []),
+  // Number Match
+  {
+    address: config.numbermatch.packageId,
+    name: 'Pado Number Match',
+    type: 'leisure' as ContractType,
+    verified: true,
+    chainId: NASUN_DEVNET_CHAIN_ID,
+  },
 ];

@@ -11,6 +11,7 @@ export * from './deepbook';
 export * from './prediction';
 export * from './lottery';
 export * from './scratchcard';
+export * from './numbermatch';
 export * from './governance';
 export * from './baram';
 export * from './nsa';
