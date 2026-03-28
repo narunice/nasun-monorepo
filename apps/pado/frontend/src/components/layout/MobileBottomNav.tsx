@@ -11,6 +11,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAdminAccess } from '../../features/admin';
+import { NETWORK_CONFIG } from '../../config/network';
 
 interface NavTab {
   label: string;
@@ -19,65 +20,67 @@ interface NavTab {
   matchPaths: string[];
 }
 
-const TABS: NavTab[] = [
-  {
-    label: 'Home',
-    path: '/',
-    matchPaths: ['/'],
-    icon: (active) => (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round" />
-        <polyline points="9 22 9 12 15 12 15 22" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Trade',
-    path: '/markets/spot',
-    matchPaths: ['/markets', '/trade'],
-    icon: (active) => (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
-        <polyline points="7 17 2 12 7 7" strokeLinecap="round" strokeLinejoin="round" />
-        <polyline points="17 7 22 12 17 17" strokeLinecap="round" strokeLinejoin="round" />
-        <line x1="2" y1="12" x2="15" y2="12" strokeLinecap="round" strokeLinejoin="round" />
-        <line x1="9" y1="12" x2="22" y2="12" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Games',
-    path: '/games/lottery',
-    matchPaths: ['/games'],
-    icon: (active) => (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
-        <path d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Social',
-    path: '/leaderboard',
-    matchPaths: ['/leaderboard', '/competitions'],
-    icon: (active) => (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M23 21v-2a4 4 0 00-3-3.87" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-];
+// TEMPORARY: gated flag controls mobile nav (Remove after 2026-04-07)
+const gated = NETWORK_CONFIG.gamesOnlyMode;
+
+// Shared icon functions to avoid duplication between gated/ungated arrays
+const homeIcon = (active: boolean) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
+    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round" />
+    <polyline points="9 22 9 12 15 12 15 22" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const tradeIcon = (active: boolean) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
+    <polyline points="7 17 2 12 7 7" strokeLinecap="round" strokeLinejoin="round" />
+    <polyline points="17 7 22 12 17 17" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="2" y1="12" x2="15" y2="12" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="9" y1="12" x2="22" y2="12" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const gamesIcon = (active: boolean) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
+    <path d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const socialIcon = (active: boolean) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
+    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M23 21v-2a4 4 0 00-3-3.87" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const TABS: NavTab[] = gated
+  ? [
+      { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon },
+      { label: 'Spot', path: '/markets/spot', matchPaths: ['/markets'], icon: tradeIcon },
+    ]
+  : [
+      { label: 'Home', path: '/', matchPaths: ['/'], icon: homeIcon },
+      { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon },
+      { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon },
+      { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon },
+    ];
 
 // Bottom sheet menu items
-const MORE_ITEMS = [
-  { label: 'Earn', path: '/earn', icon: '💰' },
-  { label: 'Perpetuals', path: '/markets/perp', icon: '📈' },
-  { label: 'Portfolio', path: '/portfolio', icon: '📊' },
-  { label: 'Wallet', path: '/wallet', icon: '👛' },
-  { label: 'Game History', path: '/games/history', icon: '🎲' },
-  { label: 'Predict', path: '/predict', icon: '🔮' },
-];
+const MORE_ITEMS = gated
+  ? [
+      { label: 'Wallet', path: '/wallet', icon: '👛' },
+      { label: 'Game History', path: '/games/history', icon: '🎲' },
+    ]
+  : [
+      { label: 'Earn', path: '/earn', icon: '💰' },
+      { label: 'Perpetuals', path: '/markets/perp', icon: '📈' },
+      { label: 'Portfolio', path: '/portfolio', icon: '📊' },
+      { label: 'Wallet', path: '/wallet', icon: '👛' },
+      { label: 'Game History', path: '/games/history', icon: '🎲' },
+      { label: 'Predict', path: '/predict', icon: '🔮' },
+    ];
 
 export function MobileBottomNav() {
   const location = useLocation();
