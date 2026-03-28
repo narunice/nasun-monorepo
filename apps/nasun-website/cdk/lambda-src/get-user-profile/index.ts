@@ -1,5 +1,5 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
-import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand, PutItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -53,7 +53,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': getCorsOrigin(requestOrigin),
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -268,6 +268,88 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           message: 'User profile created successfully',
           success: true
         }),
+      };
+
+    } else if (event.httpMethod === 'PATCH') {
+      // Update display name (authenticated users only)
+      const authHeader = event.headers.Authorization || event.headers.authorization;
+      const authenticatedIdentityId = await verifyToken(authHeader);
+
+      if (!authenticatedIdentityId) {
+        return {
+          statusCode: 401,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Authentication required' }),
+        };
+      }
+
+      let patchData: Record<string, unknown>;
+      try {
+        patchData = JSON.parse(event.body || '{}');
+      } catch {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'Invalid JSON body' }),
+        };
+      }
+
+      // Field allowlist: only displayName is allowed
+      const allowedFields = ['displayName'];
+      const updateFields: Record<string, string> = {};
+      for (const field of allowedFields) {
+        if (field in patchData && typeof patchData[field] === 'string') {
+          updateFields[field] = (patchData[field] as string).trim();
+        }
+      }
+
+      if (Object.keys(updateFields).length === 0) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: 'No valid fields to update' }),
+        };
+      }
+
+      // Validate displayName length
+      if (updateFields.displayName !== undefined) {
+        if (updateFields.displayName.length < 2 || updateFields.displayName.length > 30) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'Display name must be 2-30 characters' }),
+          };
+        }
+      }
+
+      const tableName = process.env.USER_PROFILES_TABLE || 'UserProfiles';
+      try {
+        await dynamoClient.send(new UpdateItemCommand({
+          TableName: tableName,
+          Key: { identityId: { S: authenticatedIdentityId } },
+          UpdateExpression: 'SET customDisplayName = :name, displayNameUpdatedAt = :now, updatedAt = :now',
+          ExpressionAttributeValues: {
+            ':name': { S: updateFields.displayName },
+            ':now': { S: new Date().toISOString() },
+          },
+          ConditionExpression: 'attribute_exists(identityId)',
+        }));
+      } catch (updateError: unknown) {
+        const updateErr = updateError as { name?: string };
+        if (updateErr.name === 'ConditionalCheckFailedException') {
+          return {
+            statusCode: 404,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'User profile not found' }),
+          };
+        }
+        throw updateError;
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ success: true }),
       };
     }
 
