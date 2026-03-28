@@ -52,6 +52,25 @@ export function getTierLabel(multiplier: number): string {
   return 'No Prize';
 }
 
+/** Animation tier for result animations */
+export type AnimationTier = 'loss' | 'normal' | 'big' | 'jackpot';
+
+/** Map multiplier to animation tier */
+export function getAnimationTier(multiplier: number): AnimationTier {
+  if (multiplier >= 50) return 'jackpot';
+  if (multiplier >= 10) return 'big';
+  if (multiplier >= 2) return 'normal';
+  return 'loss'; // 0x and 1x (Even) - no celebration for breaking even
+}
+
+/** Animation duration in ms per tier */
+export const TIER_DURATIONS: Record<AnimationTier, number> = {
+  loss: 1000,
+  normal: 2000,
+  big: 2500,
+  jackpot: 4000,
+};
+
 /** Get tier color class for a given multiplier */
 export function getTierColorClass(multiplier: number): string {
   if (multiplier >= 50) return 'text-yellow-200 dark:text-yellow-300';
