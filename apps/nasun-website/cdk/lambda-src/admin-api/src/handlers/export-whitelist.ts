@@ -26,6 +26,7 @@ const USER_WALLETS_TABLE = process.env.USER_WALLETS_TABLE || "UserWallets";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 const REFERRAL_CODES_TABLE = process.env.REFERRAL_CODES_TABLE || "nasun-referral-codes";
 const REFERRALS_TABLE = process.env.REFERRALS_TABLE || "nasun-referrals";
+const ACTIVATIONS_TABLE = process.env.ACTIVATIONS_TABLE || "nasun-ecosystem-activations";
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -741,6 +742,56 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       console.log(`[internal] Referral activation: ${activated} activated, ${skipped} skipped`);
       return jsonResponse(200, { activated, skipped }, requestOrigin);
+    }
+
+    // Internal endpoint: GET /internal/ecosystem-activations (API key auth, no Cognito)
+    // Returns all ACTIVE NFT activations grouped by identityId for ecosystem score multiplier.
+    // Called by explorer-api points scanner to apply NFT multipliers.
+    if (path.endsWith("/ecosystem-activations") && event.httpMethod === "GET") {
+      const apiKey = event.headers?.["x-api-key"] || event.headers?.["X-Api-Key"];
+      const isValidKey =
+        INTERNAL_API_KEY &&
+        apiKey &&
+        apiKey.length === INTERNAL_API_KEY.length &&
+        timingSafeEqual(Buffer.from(apiKey), Buffer.from(INTERNAL_API_KEY));
+      if (!isValidKey) {
+        console.warn("[internal] Invalid or missing API key for ecosystem-activations");
+        return errorResponse(401, "Unauthorized", requestOrigin);
+      }
+
+      console.log("[internal] Fetching ecosystem activations for points scanner");
+
+      // Scan nasun-ecosystem-activations table for ACTIVE entries
+      const activations: Record<string, Array<{ nftType: string; nftCount: number }>> = {};
+      let actLastKey: Record<string, any> | undefined;
+      let totalActive = 0;
+      do {
+        const result = await dynamoClient.send(
+          new ScanCommand({
+            TableName: ACTIVATIONS_TABLE,
+            FilterExpression: "#s = :active",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":active": { S: "ACTIVE" } },
+            ProjectionExpression: "identityId, sk, nftCount",
+            ...(actLastKey && { ExclusiveStartKey: actLastKey }),
+          })
+        );
+        for (const item of result.Items || []) {
+          const id = item.identityId?.S;
+          const sk = item.sk?.S; // format: nftType#walletAddress
+          const nftCount = Number(item.nftCount?.N ?? "1");
+          if (id && sk) {
+            const nftType = sk.split("#")[0];
+            if (!activations[id]) activations[id] = [];
+            activations[id].push({ nftType, nftCount });
+            totalActive++;
+          }
+        }
+        actLastKey = result.LastEvaluatedKey;
+      } while (actLastKey);
+
+      console.log(`[internal] Ecosystem activations: ${totalActive} active across ${Object.keys(activations).length} users`);
+      return jsonResponse(200, { activations }, requestOrigin);
     }
 
     // All other endpoints require admin authentication.

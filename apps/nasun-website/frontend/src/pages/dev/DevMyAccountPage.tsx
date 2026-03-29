@@ -43,6 +43,7 @@ import { RankHistoryCard } from "../../sections/myAccount/RankHistoryCard";
 import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 import { DailyMissionsCard } from "../../sections/myAccount/DailyMissionsCard";
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
+import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
 
 const DevMyAccountPage = () => {
   const { t } = useTranslation(["myAccount", "common"]);
@@ -157,10 +158,10 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 2: DailyMissionsCard(2col) + GovernanceCard(1col) */}
+          {/* Row 2: EcosystemStatusCard(2col) + GovernanceCard(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DailyMissionsCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <EcosystemStatusCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
@@ -170,10 +171,10 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 3: RankHistoryCard(2col) + ReferralCard(1col) */}
+          {/* Row 3: DailyMissionsCard(2col) + ReferralCard(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <RankHistoryCard className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <DailyMissionsCard className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
@@ -183,24 +184,31 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 4: ConnectedAccountsCard(3col, z-20 for wallet dropdown) */}
+          {/* Row 4: RankHistoryCard(2col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ConnectedAccountsCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-3 relative z-20" />
+              <RankHistoryCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 5: AssetsCard(2col) */}
+          {/* Row 5: ConnectedAccountsCard(3col, z-20 for wallet dropdown) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <ConnectedAccountsCard className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-3 relative z-20" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 6: DangerZoneCard(3col) */}
+          {/* Row 6: AssetsCard(2col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <AssetsCard walletAddress={walletAddress} className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+            </Suspense>
+          </ErrorBoundary>
+
+          {/* Row 7: DangerZoneCard(3col) */}
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <DangerZoneCard className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>
