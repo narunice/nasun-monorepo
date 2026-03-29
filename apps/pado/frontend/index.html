@@ -15,7 +15,7 @@
     <!-- Note: X-Frame-Options and frame-ancestors must be set via HTTP headers, not meta tags -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self';
+      script-src 'self' https://analytics.nasun.io;
       worker-src 'self';
       style-src 'self' 'unsafe-inline' https://use.typekit.net https://p.typekit.net;
       font-src 'self' https://use.typekit.net https://p.typekit.net data:;
@@ -49,7 +49,8 @@
         https://sepolia.optimism.io
         https://rpc-amoy.polygon.technology
         https://rpc.sepolia.linea.build
-        https://api.pimlico.io;
+        https://api.pimlico.io
+        https://analytics.nasun.io;
       object-src 'none';
       frame-src https://accounts.google.com;
       base-uri 'self';
@@ -61,6 +62,9 @@
     <link rel="preconnect" href="https://use.typekit.net" crossorigin />
     <link rel="stylesheet" href="https://use.typekit.net/idl0drx.css" />
     <title>Pado</title>
+
+    <!-- Analytics (Umami - self-hosted, privacy-friendly) -->
+    <script defer src="https://analytics.nasun.io/ns.js" data-website-id="fcf0ce34-acb4-4cee-b1db-f76a9ab28e69"></script>
   </head>
   <body>
     <div id="root"></div>
