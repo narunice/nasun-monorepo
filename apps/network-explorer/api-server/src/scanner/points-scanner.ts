@@ -107,7 +107,7 @@ async function scanLoop(): Promise<void> {
     if (totalProcessed > 0) {
       // Daily mission bonus: runs once per scanLoop, not per batch
       try {
-        const missionCount = await calculateDailyMissions();
+        const missionCount = await calculateDailyMissions(registeredWallets);
         if (missionCount > 0) {
           totalProcessed += missionCount;
           console.log(`[DailyMission] Awarded ${missionCount} mission points`);
