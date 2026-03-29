@@ -1233,6 +1233,11 @@ function start(): void {
     console.log(`[Leaderboard] Startup: purged ${orderEventsPurged} expired order events (>${CONFIG.orderEventRetentionDays}d)`);
   }
 
+  // Checkpoint WAL to reclaim disk (WAL can grow large if server was down)
+  try {
+    getLeaderboardDb().pragma('wal_checkpoint(TRUNCATE)');
+  } catch { /* ignore checkpoint errors on startup */ }
+
   // Start indexer + aggregator if DeepBook package is configured
   const leaderboardEnabled = !!CONFIG.deepbookPackage;
   if (leaderboardEnabled) {
@@ -1371,7 +1376,9 @@ function start(): void {
         // Reclaim disk space after large deletes
         try {
           getLeaderboardDb().pragma('incremental_vacuum(1000)');
-        } catch { /* ignore vacuum errors */ }
+          getLeaderboardDb().pragma('wal_checkpoint(TRUNCATE)');
+          console.log('[Leaderboard] WAL checkpoint completed');
+        } catch { /* ignore vacuum/checkpoint errors */ }
       }
     } catch (err) {
       console.error('[Leaderboard] Order event purge failed:', (err as Error).message);
