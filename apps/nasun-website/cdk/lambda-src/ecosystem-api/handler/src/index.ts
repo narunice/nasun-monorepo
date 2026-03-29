@@ -66,7 +66,6 @@ function jsonResponse(
     statusCode,
     headers: {
       "Access-Control-Allow-Origin": corsOrigin,
-      "Access-Control-Allow-Credentials": "true",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -185,19 +184,34 @@ async function activateAlliance(
   const sk = `alliance#${walletAddress}`;
   const now = new Date().toISOString();
 
-  await client.send(
-    new PutCommand({
-      TableName: ACTIVATIONS_TABLE,
-      Item: {
-        identityId,
-        sk,
-        status: "ACTIVE",
-        activatedAt: now,
-        lastVerifiedAt: now,
-        nftCount: 1,
-      },
-    })
-  );
+  // Use conditional PutCommand: only write if not already ACTIVE (idempotency guard)
+  try {
+    await client.send(
+      new PutCommand({
+        TableName: ACTIVATIONS_TABLE,
+        Item: {
+          identityId,
+          sk,
+          status: "ACTIVE",
+          activatedAt: now,
+          lastVerifiedAt: now,
+          nftCount: 1,
+        },
+        ConditionExpression: "attribute_not_exists(sk) OR #s <> :active",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":active": "ACTIVE" },
+      })
+    );
+  } catch (err: any) {
+    if (err.name === "ConditionalCheckFailedException") {
+      return jsonResponse(200, {
+        success: true,
+        activation: { nftType: "alliance", walletAddress, status: "ACTIVE" },
+        message: "Already activated",
+      }, origin);
+    }
+    throw err;
+  }
 
   return jsonResponse(200, {
     success: true,
@@ -250,7 +264,8 @@ async function activateEthNft(
     }
   }
 
-  if (hasTelegram && !hasTwitter) {
+  // Check Telegram independently (not exclusive with Twitter)
+  if (hasTelegram) {
     const telegramUserId = profile.telegramUserId as string;
     if (telegramUserId) {
       const dupCheck = await client.send(
@@ -320,19 +335,33 @@ async function activateEthNft(
   const sk = `${nftType}#${evmWallet}`;
   const now = new Date().toISOString();
 
-  await client.send(
-    new PutCommand({
-      TableName: ACTIVATIONS_TABLE,
-      Item: {
-        identityId,
-        sk,
-        status: "ACTIVE",
-        activatedAt: now,
-        lastVerifiedAt: now,
-        nftCount,
-      },
-    })
-  );
+  try {
+    await client.send(
+      new PutCommand({
+        TableName: ACTIVATIONS_TABLE,
+        Item: {
+          identityId,
+          sk,
+          status: "ACTIVE",
+          activatedAt: now,
+          lastVerifiedAt: now,
+          nftCount,
+        },
+        ConditionExpression: "attribute_not_exists(sk) OR #s <> :active",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: { ":active": "ACTIVE" },
+      })
+    );
+  } catch (err: any) {
+    if (err.name === "ConditionalCheckFailedException") {
+      return jsonResponse(200, {
+        success: true,
+        activation: { nftType, walletAddress: evmWallet, status: "ACTIVE", nftCount },
+        message: "Already activated",
+      }, origin);
+    }
+    throw err;
+  }
 
   return jsonResponse(200, {
     success: true,
