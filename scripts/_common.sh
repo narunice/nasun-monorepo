@@ -115,6 +115,10 @@ if [ -z "$NVM_DIR" ]; then
 fi
 if [ -s "$NVM_DIR/nvm.sh" ]; then
   source "$NVM_DIR/nvm.sh"
+  # .nvmrc가 있으면 해당 버전으로 자동 전환
+  if [ -f "$MONOREPO_ROOT/.nvmrc" ]; then
+    nvm use --silent
+  fi
 fi
 
 # Deploy credentials (.credentials 파일에서 로드)
