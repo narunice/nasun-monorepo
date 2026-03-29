@@ -4,10 +4,12 @@
  *
  * Reads devnet NFT snapshot from DynamoDB and re-mints NFTs
  * to their original owners after a devnet reset.
+ * For AllianceNFTs, also updates nasun-alliance-mint DynamoDB with
+ * new nftObjectId/txDigest so frontend Explorer links remain valid.
  *
  * Usage:
  *   npx tsx scripts/restore-nfts.ts --dry-run
- *   npx tsx scripts/restore-nfts.ts --type VoteProofNFT
+ *   npx tsx scripts/restore-nfts.ts --type AllianceNFT
  *   npx tsx scripts/restore-nfts.ts --snapshot 2026-03-27
  *   npx tsx scripts/restore-nfts.ts
  *
@@ -16,10 +18,17 @@
  *   - devnet-ids.json updated with new addresses
  *   - AWS credentials configured
  *   - Admin keypair available
+ *
+ * Operational Procedure (devnet reset):
+ *   1. BEFORE reset: Run devnet-collector to create a fresh snapshot
+ *   2. Disable Alliance mint Lambda (set ALLIANCE_PACKAGE_ID="" or remove env var)
+ *   3. Redeploy contracts, update devnet-ids.json with new addresses
+ *   4. Run this script to restore NFTs
+ *   5. Re-enable Alliance mint Lambda with new package/registry/admin IDs
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
@@ -31,6 +40,7 @@ import type { DevnetNftRecord } from '../src/types';
 // ========== Config ==========
 
 const OWNERSHIP_TABLE = process.env.OWNERSHIP_TABLE || 'nasun-nft-ownership';
+const ALLIANCE_MINT_TABLE = process.env.ALLIANCE_MINT_TABLE || 'nasun-alliance-mint';
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const BATCH_SIZE = 50;
 
@@ -97,6 +107,9 @@ async function main() {
   console.log();
 
   // 5. Restore each type
+  // 5a. Build wallet->identityId map for Alliance DynamoDB sync
+  const walletToIdentity = await buildAllianceWalletMap();
+
   const results: Record<string, { success: number; failed: number }> = {};
 
   for (const [type, nfts] of byType) {
@@ -106,9 +119,14 @@ async function main() {
     for (let i = 0; i < nfts.length; i += BATCH_SIZE) {
       const batch = nfts.slice(i, i + BATCH_SIZE);
       try {
-        await restoreBatch(client, keypair, config, type, batch);
+        const txResult = await restoreBatch(client, keypair, config, type, batch);
         results[type].success += batch.length;
         console.log(`  Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.length} restored`);
+
+        // Sync Alliance NFT DynamoDB records with new on-chain IDs
+        if (type === 'AllianceNFT' && txResult.events) {
+          await syncAllianceMintRecords(txResult, batch, walletToIdentity);
+        }
       } catch (err) {
         results[type].failed += batch.length;
         console.error(
@@ -216,13 +234,18 @@ function loadAdminKeypair(): Ed25519Keypair {
 
 // ========== Restore Logic ==========
 
+interface RestoreBatchResult {
+  digest: string;
+  events?: Array<{ type: string; parsedJson: Record<string, unknown> }>;
+}
+
 async function restoreBatch(
   client: SuiClient,
   keypair: Ed25519Keypair,
   config: ContractConfig,
   nftType: string,
   batch: DevnetNftRecord[],
-) {
+): Promise<RestoreBatchResult> {
   const tx = new Transaction();
 
   for (const nft of batch) {
@@ -250,12 +273,17 @@ async function restoreBatch(
   const result = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
-    options: { showEffects: true },
+    options: { showEffects: true, showEvents: true },
   });
 
   if (result.effects?.status?.status !== 'success') {
     throw new Error(`Transaction failed: ${result.effects?.status?.error || 'unknown'}`);
   }
+
+  return {
+    digest: result.digest,
+    events: result.events as RestoreBatchResult['events'],
+  };
 }
 
 function restoreVoteProof(
@@ -348,6 +376,120 @@ function restoreAllianceNft(
       tx.pure.u64(Number(f.minted_at || 0)),
     ],
   });
+}
+
+// ========== Alliance DynamoDB Sync ==========
+
+/**
+ * Build walletAddress -> identityId map from nasun-alliance-mint table.
+ * NOTE: Full table Scan. Re-evaluate if alliance-mint exceeds 2000 records.
+ */
+async function buildAllianceWalletMap(): Promise<Map<string, string>> {
+  const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'ap-northeast-2' }));
+  const map = new Map<string, string>();
+  let lastKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: ALLIANCE_MINT_TABLE,
+        ProjectionExpression: 'identityId, walletAddress',
+        ExclusiveStartKey: lastKey,
+      }),
+    );
+
+    for (const item of result.Items || []) {
+      const wallet = item.walletAddress as string;
+      const identity = item.identityId as string;
+      if (wallet && identity) {
+        if (map.has(wallet) && map.get(wallet) !== identity) {
+          console.warn(`  [Alliance] Duplicate wallet detected: ${wallet} -> ${identity} (existing: ${map.get(wallet)})`);
+        }
+        map.set(wallet, identity);
+      }
+    }
+
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
+
+  console.log(`[Alliance] Wallet->Identity map: ${map.size} entries`);
+  return map;
+}
+
+/**
+ * After restoring AllianceNFTs on-chain, update nasun-alliance-mint DynamoDB
+ * with new nftObjectId and txDigest so frontend Explorer links remain valid.
+ *
+ * Matches events to records via recipient (wallet) + serial_number.
+ */
+async function syncAllianceMintRecords(
+  txResult: RestoreBatchResult,
+  batch: DevnetNftRecord[],
+  walletToIdentity: Map<string, string>,
+): Promise<void> {
+  const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'ap-northeast-2' }));
+  const allianceEvents = (txResult.events || []).filter((e) =>
+    e.type.includes('::alliance_nft::AllianceMinted'),
+  );
+
+  if (allianceEvents.length === 0) {
+    console.warn('  [Alliance] No AllianceMinted events found in tx result');
+    return;
+  }
+
+  // Build a lookup from (recipient, serial_number) -> new nft_id
+  const eventMap = new Map<string, string>();
+  for (const event of allianceEvents) {
+    const json = event.parsedJson;
+    const recipient = json.recipient as string;
+    const serialNumber = String(json.serial_number);
+    const nftId = json.nft_id as string;
+    eventMap.set(`${recipient}:${serialNumber}`, nftId);
+  }
+
+  let updated = 0;
+  let skipped = 0;
+
+  for (const nft of batch) {
+    const f = nft.fields as Record<string, unknown>;
+    const serialNumber = String(f.serial_number || 0);
+    const key = `${nft.owner}:${serialNumber}`;
+    const newNftId = eventMap.get(key);
+
+    if (!newNftId) {
+      console.warn(`  [Alliance] No event match for ${nft.owner.slice(0, 16)}... serial=${serialNumber}`);
+      skipped++;
+      continue;
+    }
+
+    const identityId = walletToIdentity.get(nft.owner);
+    if (!identityId) {
+      console.warn(`  [Alliance] No identityId for wallet ${nft.owner.slice(0, 16)}...`);
+      skipped++;
+      continue;
+    }
+
+    try {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: ALLIANCE_MINT_TABLE,
+          Key: { identityId },
+          UpdateExpression: 'SET nftObjectId = :nft, txDigest = :tx, lastRestoredAt = :now',
+          ExpressionAttributeValues: {
+            ':nft': newNftId,
+            ':tx': txResult.digest,
+            ':now': new Date().toISOString(),
+          },
+        }),
+      );
+      updated++;
+    } catch (err) {
+      console.error(`  [Alliance] DynamoDB update failed for ${identityId}:`, err instanceof Error ? err.message : 'Unknown');
+      skipped++;
+    }
+  }
+
+  console.log(`  [Alliance] DynamoDB sync: ${updated} updated, ${skipped} skipped`);
 }
 
 // ========== Helpers ==========

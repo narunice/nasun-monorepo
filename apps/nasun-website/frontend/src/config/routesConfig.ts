@@ -34,6 +34,7 @@ export const Pages = {
   LeaderboardV3: lazyWithRetry(() => import("../pages/LeaderboardV3Page")),
   AiEconomy: lazyWithRetry(() => import("../pages/ecosystem/AiEconomyPage")),
   // Wave 1 Campaign Pages
+  AllianceNft: lazyWithRetry(() => import("../pages/wave1/AllianceNftPage")),
   GenesisPass: lazyWithRetry(() => import("../pages/dev/DevGenesisPassPage")),
   BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
   EarlyContributors: lazyWithRetry(() => import("../pages/wave1/EarlyContributorsPage")),
@@ -374,6 +375,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.GenesisPass,
         },
         {
+          name: "navigation.allianceNft",
+          path: "/wave1/alliance-nft",
+          element: Pages.AllianceNft,
+        },
+        {
           name: "navigation.battalionNft",
           path: "/wave1/battalion-nft",
           element: Pages.BattalionNft,
@@ -635,6 +641,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.opportunities": "Opportunities",
   },
   wave1: {
+    "navigation.allianceNft": "Alliance NFT",
     "navigation.battalionNft": "Battalion NFT",
     "navigation.earlyContributors": "Early Contributors",
     "navigation.leaderboard": "Leaderboard",
