@@ -15,6 +15,12 @@ import {
   type PointsInsert,
 } from './referral-bonus.js';
 import { calculateDailyMissions } from './daily-mission.js';
+import {
+  maybeRefreshActivationsCache,
+  maybeRefreshMatview,
+  isMatviewStale,
+  getMatviewStatus,
+} from './ecosystem-cache.js';
 import { rpcCall } from '../rpc.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
@@ -70,6 +76,8 @@ async function scanLoop(): Promise<void> {
     // Referral: refresh cache and build reverse wallet map
     await maybeRefreshReferralCache();
     updateIdentityToWalletMap(registeredWallets);
+    // Ecosystem: refresh NFT activations cache (for multiplier calculation)
+    await maybeRefreshActivationsCache();
 
     let lastSeq = await getLastProcessedSequence();
 
@@ -111,6 +119,20 @@ async function scanLoop(): Promise<void> {
       console.log(
         `[Points] Scan complete: ${totalProcessed} points recorded in ${elapsed}s`,
       );
+
+      // Refresh ecosystem matview when new data was processed
+      try {
+        await maybeRefreshMatview();
+      } catch (err) {
+        console.error('[Ecosystem] Matview refresh error (non-fatal):', (err as Error).message);
+      }
+    } else if (isMatviewStale()) {
+      // Even without new data, refresh if stale beyond max threshold
+      try {
+        await maybeRefreshMatview(true);
+      } catch (err) {
+        console.error('[Ecosystem] Matview stale refresh error (non-fatal):', (err as Error).message);
+      }
     }
   } catch (err) {
     console.error('[Points] Scan error:', err);
@@ -401,6 +423,7 @@ export async function getScannerHealth(): Promise<{
   txCount: number;
   registeredWallets: number;
   genesisPassHolders: number;
+  ecosystem: { lastRefresh: string | null; stale: boolean; activationsCacheSize: number };
 }> {
   if (!pointsDb) {
     return {
@@ -411,6 +434,7 @@ export async function getScannerHealth(): Promise<{
       txCount: 0,
       registeredWallets: 0,
       genesisPassHolders: 0,
+      ecosystem: { lastRefresh: null, stale: true, activationsCacheSize: 0 },
     };
   }
 
@@ -428,5 +452,6 @@ export async function getScannerHealth(): Promise<{
     txCount: Number(state?.tx_count ?? 0),
     registeredWallets: registeredWallets.size,
     genesisPassHolders: genesisPassHolders.size,
+    ecosystem: getMatviewStatus(),
   };
 }
