@@ -47,7 +47,7 @@
     "directory": "packages/baram-sdk"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "peerDependencies": {
     "@mysten/sui": "^1.45.0"
