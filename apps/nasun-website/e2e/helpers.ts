@@ -33,6 +33,8 @@ export const URLS = {
   adminApi: requireEnv('VITE_ADMIN_API_URL'),
   zkLoginSalt: optionalEnv('VITE_ZKLOGIN_SALT_API_URL'),
   randomImage: requireEnv('VITE_RANDOM_IMAGE_API_ENDPOINT'),
+  explorerApi: optionalEnv('VITE_EXPLORER_API_URL'),
+  referralApi: optionalEnv('VITE_REFERRAL_API'),
 } as const;
 
 // Test wallet addresses (not real - for testing only)
