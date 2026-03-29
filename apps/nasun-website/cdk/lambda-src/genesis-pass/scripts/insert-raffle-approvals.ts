@@ -1,13 +1,24 @@
 /**
- * One-time script: insert raffle winner identityIds into Genesis Pass approvals table.
+ * Script: insert pre-approvals into Genesis Pass approvals table by X handle.
  *
  * When approved users later connect MetaMask and click "Join", the register Lambda
- * automatically applies mintType: "FREE_MINT" and source: "RAFFLE".
+ * automatically applies the configured mintType and source.
+ *
+ * Environment variables:
+ *   EXECUTE=1        Actually write to DynamoDB (default: dry run)
+ *   MINT_TYPE=...    mintType value (default: FREE_MINT)
+ *   SOURCE=...       source value (default: RAFFLE)
+ *   HANDLES=...      Comma-separated X handles (default: built-in raffle list)
  *
  * Usage:
  *   cd apps/nasun-website/cdk/lambda-src/genesis-pass
+ *
+ *   # Raffle approvals (default)
  *   AWS_REGION=ap-northeast-2 AWS_PROFILE=nasun-prod npx tsx scripts/insert-raffle-approvals.ts
- *   AWS_REGION=ap-northeast-2 AWS_PROFILE=nasun-prod EXECUTE=1 npx tsx scripts/insert-raffle-approvals.ts
+ *
+ *   # GTD approvals
+ *   HANDLES="handle1,handle2" MINT_TYPE=GUARANTEED SOURCE=MANUAL_GTD \
+ *   AWS_REGION=ap-northeast-2 AWS_PROFILE=nasun-prod npx tsx scripts/insert-raffle-approvals.ts
  */
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
@@ -21,10 +32,13 @@ import {
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const EXECUTE = process.env.EXECUTE === "1";
+const MINT_TYPE = process.env.MINT_TYPE || "FREE_MINT";
+const SOURCE = process.env.SOURCE || "RAFFLE";
 const USER_PROFILES_TABLE = "UserProfiles";
 const APPROVALS_TABLE = "nasun-genesis-pass-approvals";
 
-const RAFFLE_HANDLES = [
+// Default: raffle winners (37 X handles, without @ prefix)
+const DEFAULT_HANDLES = [
   "theJediworld77", "ApexSeek", "sch_stev", "igangsan54078", "hyonggoo93",
   "ccboomer_", "thatboytimiyy", "ShanQuesq", "saera84", "Pressure_404",
   "kangtaehong88", "iam_aesir", "HUR_YG", "D33n_web3", "Altra_Beta7",
@@ -35,7 +49,11 @@ const RAFFLE_HANDLES = [
   "ReopaahScrin", "0xjtrade",
 ];
 
-const handleSet = new Set(RAFFLE_HANDLES.map((h) => h.toLowerCase()));
+const HANDLES = process.env.HANDLES
+  ? process.env.HANDLES.split(",").map((h) => h.trim()).filter(Boolean)
+  : DEFAULT_HANDLES;
+
+const handleSet = new Set(HANDLES.map((h) => h.toLowerCase()));
 
 interface UserProfile {
   identityId: string;
@@ -74,8 +92,9 @@ async function scanAllUserProfiles(): Promise<UserProfile[]> {
 }
 
 async function main() {
-  console.log(`=== Insert Raffle Approvals (${EXECUTE ? "EXECUTE" : "DRY RUN"}) ===\n`);
-  console.log(`Raffle handles: ${RAFFLE_HANDLES.length}`);
+  console.log(`=== Insert Approvals (${EXECUTE ? "EXECUTE" : "DRY RUN"}) ===\n`);
+  console.log(`Handles: ${HANDLES.length} (${process.env.HANDLES ? "custom" : "default raffle list"})`);
+  console.log(`mintType: ${MINT_TYPE}, source: ${SOURCE}`);
   console.log(`Target table: ${APPROVALS_TABLE}\n`);
 
   console.log("Scanning UserProfiles...");
@@ -127,8 +146,8 @@ async function main() {
           TableName: APPROVALS_TABLE,
           Item: {
             identityId: entry.identityId,
-            mintType: "FREE_MINT",
-            source: "RAFFLE",
+            mintType: MINT_TYPE,
+            source: SOURCE,
             twitterHandle: entry.handle,
             approvedAt: new Date().toISOString(),
           },

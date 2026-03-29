@@ -1,17 +1,24 @@
 /**
- * One-time script: insert raffle winners into Genesis Pass allowlist.
+ * Script: insert allowlist entries into Genesis Pass allowlist by X handle.
  *
  * Scans UserProfiles to match X handles, extracts MetaMask wallet addresses,
- * and inserts into genesis-pass-allowlist with mintType: "FREE_MINT".
+ * and inserts into genesis-pass-allowlist with the configured mintType.
+ *
+ * Environment variables:
+ *   EXECUTE=1        Actually write to DynamoDB (default: dry run)
+ *   MINT_TYPE=...    mintType value (default: FREE_MINT)
+ *   SOURCE=...       source value (default: RAFFLE)
+ *   HANDLES=...      Comma-separated X handles (default: built-in raffle list)
  *
  * Usage:
- *   # Dry run (read-only, shows what would be done)
  *   cd apps/nasun-website/cdk/lambda-src/genesis-pass
+ *
+ *   # Raffle winners (default)
  *   AWS_REGION=ap-northeast-2 AWS_PROFILE=nasun-prod npx tsx scripts/insert-raffle-winners.ts
  *
- *   # Actual run
- *   cd apps/nasun-website/cdk/lambda-src/genesis-pass
- *   AWS_REGION=ap-northeast-2 AWS_PROFILE=nasun-prod EXECUTE=1 npx tsx scripts/insert-raffle-winners.ts
+ *   # GTD allowlist
+ *   HANDLES="handle1,handle2" MINT_TYPE=GUARANTEED SOURCE=MANUAL_GTD \
+ *   AWS_REGION=ap-northeast-2 AWS_PROFILE=nasun-prod npx tsx scripts/insert-raffle-winners.ts
  */
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
@@ -26,11 +33,13 @@ import {
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const EXECUTE = process.env.EXECUTE === "1";
+const MINT_TYPE = process.env.MINT_TYPE || "FREE_MINT";
+const SOURCE = process.env.SOURCE || "RAFFLE";
 const USER_PROFILES_TABLE = "UserProfiles";
 const ALLOWLIST_TABLE = "nasun-genesis-pass-allowlist";
 
-// Raffle winners (37 X handles, without @ prefix)
-const RAFFLE_HANDLES = [
+// Default: raffle winners (37 X handles, without @ prefix)
+const DEFAULT_HANDLES = [
   "theJediworld77", "ApexSeek", "sch_stev", "igangsan54078", "hyonggoo93",
   "ccboomer_", "thatboytimiyy", "ShanQuesq", "saera84", "Pressure_404",
   "kangtaehong88", "iam_aesir", "HUR_YG", "D33n_web3", "Altra_Beta7",
@@ -41,8 +50,12 @@ const RAFFLE_HANDLES = [
   "ReopaahScrin", "0xjtrade",
 ];
 
+const HANDLES = process.env.HANDLES
+  ? process.env.HANDLES.split(",").map((h) => h.trim()).filter(Boolean)
+  : DEFAULT_HANDLES;
+
 // Build a lowercase Set for case-insensitive matching
-const handleSet = new Set(RAFFLE_HANDLES.map((h) => h.toLowerCase()));
+const handleSet = new Set(HANDLES.map((h) => h.toLowerCase()));
 
 interface UserProfile {
   identityId: string;
@@ -108,8 +121,9 @@ interface MatchResult {
 }
 
 async function main() {
-  console.log(`=== Insert Raffle Winners (${EXECUTE ? "EXECUTE" : "DRY RUN"}) ===\n`);
-  console.log(`Raffle handles: ${RAFFLE_HANDLES.length}`);
+  console.log(`=== Insert Allowlist Entries (${EXECUTE ? "EXECUTE" : "DRY RUN"}) ===\n`);
+  console.log(`Handles: ${HANDLES.length} (${process.env.HANDLES ? "custom" : "default raffle list"})`);
+  console.log(`mintType: ${MINT_TYPE}, source: ${SOURCE}`);
   console.log(`Target table: ${ALLOWLIST_TABLE}\n`);
 
   // 1. Scan UserProfiles
@@ -189,7 +203,7 @@ async function main() {
         continue;
       }
 
-      console.log(`  UPDATE @${entry.handle} (${entry.walletAddress}) - adding FREE_MINT tag`);
+      console.log(`  UPDATE @${entry.handle} (${entry.walletAddress}) - adding ${MINT_TYPE} tag`);
       if (EXECUTE) {
         await client.send(
           new UpdateCommand({
@@ -198,8 +212,8 @@ async function main() {
             UpdateExpression: "SET mintType = :mt, #src = :src, twitterHandle = :th",
             ExpressionAttributeNames: { "#src": "source" },
             ExpressionAttributeValues: {
-              ":mt": "FREE_MINT",
-              ":src": "RAFFLE",
+              ":mt": MINT_TYPE,
+              ":src": SOURCE,
               ":th": entry.handle,
             },
           }),
@@ -210,20 +224,30 @@ async function main() {
       // New entry
       console.log(`  INSERT @${entry.handle} (${entry.walletAddress})`);
       if (EXECUTE) {
-        await client.send(
-          new PutCommand({
-            TableName: ALLOWLIST_TABLE,
-            Item: {
-              walletAddress: entry.walletAddress,
-              identityId: entry.identityId,
-              registeredAt: new Date().toISOString(),
-              status: "ACTIVE",
-              mintType: "FREE_MINT",
-              source: "RAFFLE",
-              twitterHandle: entry.handle,
-            },
-          }),
-        );
+        try {
+          await client.send(
+            new PutCommand({
+              TableName: ALLOWLIST_TABLE,
+              Item: {
+                walletAddress: entry.walletAddress,
+                identityId: entry.identityId,
+                registeredAt: new Date().toISOString(),
+                status: "ACTIVE",
+                mintType: MINT_TYPE,
+                source: SOURCE,
+                twitterHandle: entry.handle,
+              },
+              ConditionExpression: "attribute_not_exists(walletAddress)",
+            }),
+          );
+        } catch (err: any) {
+          if (err.name === "ConditionalCheckFailedException") {
+            console.log(`    (entry appeared since check, skipped)`);
+            skipped++;
+            continue;
+          }
+          throw err;
+        }
       }
       inserted++;
     }
@@ -232,8 +256,8 @@ async function main() {
   // 4. Report
   console.log("\n=== Report ===");
   console.log(`Inserted: ${inserted}`);
-  console.log(`Updated (added FREE_MINT): ${updated}`);
-  console.log(`Skipped (already FREE_MINT): ${skipped}`);
+  console.log(`Updated (added ${MINT_TYPE}): ${updated}`);
+  console.log(`Skipped (already has mintType): ${skipped}`);
   console.log(`No MetaMask wallet: ${noWallet.length} [${noWallet.map((e) => `@${e.handle}`).join(", ")}]`);
   console.log(`Not found: ${notFound.length} [${notFound.map((h) => `@${h}`).join(", ")}]`);
 
