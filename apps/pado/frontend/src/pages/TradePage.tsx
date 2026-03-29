@@ -46,7 +46,7 @@ import { type TokenSymbol, set24hChange } from "../lib/prices";
 import type { PriceLevel } from "../lib/deepbook";
 import { fetchBinance24hTicker, getBinanceSymbol } from "../lib/indicators";
 import { useState, useEffect, useCallback } from "react";
-import { ChatPanel, MobileChatDrawer, useChatPanel, FloatingChatPopup } from "../features/social";
+import { ChatPanel, useChatMode } from "../features/social";
 import { NewsCarousel } from "../features/news";
 
 // Fixed height for chart and orderbook to ensure consistent layout
@@ -198,8 +198,12 @@ function TradePageContent() {
   const [shortcutsPanelOpen, setShortcutsPanelOpen] = useState(false);
   const toggleShortcutsPanel = useCallback(() => setShortcutsPanelOpen(prev => !prev), []);
   useKeyboardShortcuts(!isSimple, { onToggleShortcutsPanel: toggleShortcutsPanel }); // Pro mode only
-  const { isVisible: chatVisible, toggle: toggleChat } = useChatPanel();
-  const [chatFloating, setChatFloating] = useState(false);
+  const { chatMode, setChatMode, setOnTradePage } = useChatMode();
+  // TradePage is a singleton route, no refcount needed
+  useEffect(() => {
+    setOnTradePage(true);
+    return () => setOnTradePage(false);
+  }, [setOnTradePage]);
   const [newsVisible, setNewsVisible] = useState(true);
   const [chartView, setChartView] = useState<ChartView>("price");
   const tour = useOnboardingTour();
@@ -386,14 +390,12 @@ function TradePageContent() {
           </div>
           {/* Col 3: Chat (same height as Quick Trade) */}
           <div data-tour="chat" className={`shrink-0 ${CARD_W}`}>
-            {!chatFloating &&
-              (chatVisible ? (
-                <div style={{ height: `${CHART_HEIGHT}px` }}>
-                  <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
-                </div>
-              ) : (
-                <ChatCollapsedBar onClick={toggleChat} />
-              ))}
+            {chatMode === 'docked' && (
+              <div style={{ height: `${CHART_HEIGHT}px` }}>
+                <ChatPanel onMinimize={() => setChatMode('closed')} onPopOut={() => setChatMode('floating')} />
+              </div>
+            )}
+            {chatMode === 'closed' && <ChatCollapsedBar onClick={() => setChatMode('docked')} />}
           </div>
         </div>
       ) : (
@@ -424,14 +426,12 @@ function TradePageContent() {
             >
               <Orderbook orderbook={orderbook} onPriceClick={handlePriceClick} compact isError={isOrderbookError} />
             </div>
-            {!chatFloating &&
-              (chatVisible ? (
-                <div data-tour="chat" style={{ height: `${CHAT_HEIGHT}px` }}>
-                  <ChatPanel onMinimize={toggleChat} onPopOut={() => setChatFloating(true)} />
-                </div>
-              ) : (
-                <ChatCollapsedBar onClick={toggleChat} />
-              ))}
+            {chatMode === 'docked' && (
+              <div data-tour="chat" style={{ height: `${CHAT_HEIGHT}px` }}>
+                <ChatPanel onMinimize={() => setChatMode('closed')} onPopOut={() => setChatMode('floating')} />
+              </div>
+            )}
+            {chatMode === 'closed' && <ChatCollapsedBar onClick={() => setChatMode('docked')} />}
           </div>
           {/* Col 3 (CARD_W): EnablePado + OrderForm + News + Shortcut Help */}
           <div className={`shrink-0 ${CARD_W} flex flex-col gap-3`}>
@@ -556,16 +556,6 @@ function TradePageContent() {
           </div>
         </div>
       )}
-
-      {/* Floating chat popup (xl+ only, when popped out) */}
-      {chatFloating && (
-        <div className="hidden xl:block">
-          <FloatingChatPopup onDock={() => setChatFloating(false)} />
-        </div>
-      )}
-
-      {/* Chat drawer (below xl) — available at both lg-xl and mobile */}
-      <MobileChatDrawer />
 
       {/* First trade celebration overlay */}
       {showCelebration && <FirstTradeCelebration onDismiss={dismissCelebration} />}

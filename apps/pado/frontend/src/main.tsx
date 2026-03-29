@@ -15,6 +15,7 @@ import { ThemeProvider } from './providers/theme';
 import { ErrorBoundary } from './components/layout';
 import { ToastProvider } from './components/common';
 import { MarketProvider } from './features/trading/context';
+import { ChatModeProvider } from './features/social';
 import { validateEnvWithWarning, logEnvSummary } from './utils';
 import { NETWORK_CONFIG, TOKENS } from './config/network';
 import App from './App';
@@ -94,9 +95,11 @@ createRoot(document.getElementById('root')!).render(
           <QueryClientProvider client={queryClient}>
             <ToastProvider>
               <WalletProvider addressBookApiEndpoint={import.meta.env.DEV ? undefined : import.meta.env.VITE_WALLET_API_ENDPOINT}>
-                <MarketProvider>
-                  <App />
-                </MarketProvider>
+                <ChatModeProvider>
+                  <MarketProvider>
+                    <App />
+                  </MarketProvider>
+                </ChatModeProvider>
               </WalletProvider>
             </ToastProvider>
           </QueryClientProvider>
