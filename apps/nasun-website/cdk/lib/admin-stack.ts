@@ -110,7 +110,7 @@ export class AdminStack extends cdk.Stack {
 
     // Admin Export Lambda
     this.exportFunction = new NodejsFunction(this, "AdminExportFunction", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "handler",
       entry: path.join(__dirname, "../lambda-src/admin-api/src/handlers/export-whitelist.ts"),
       timeout: cdk.Duration.seconds(30),
@@ -133,7 +133,7 @@ export class AdminStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        target: "node20",
+        target: "node22",
         format: OutputFormat.ESM,
         mainFields: ["module", "main"],
       },
@@ -163,7 +163,7 @@ export class AdminStack extends cdk.Stack {
 
     // NFT Collections Lambda
     this.nftCollectionsFunction = new NodejsFunction(this, "NftCollectionsFunction", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "handler",
       entry: path.join(__dirname, "../lambda-src/admin-api/src/handlers/nft-collections.ts"),
       timeout: cdk.Duration.seconds(15),
@@ -178,7 +178,7 @@ export class AdminStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        target: "node20",
+        target: "node22",
         format: OutputFormat.ESM,
         mainFields: ["module", "main"],
       },
@@ -190,7 +190,7 @@ export class AdminStack extends cdk.Stack {
 
     // Lambda Token Authorizer for Cognito OIDC token verification
     const authorizerFunction = new NodejsFunction(this, "AdminApiAuthorizer", {
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: "handler",
       entry: path.join(__dirname, "../lambda-src/admin-api/src/authorizer/tokenAuthorizer.ts"),
       timeout: cdk.Duration.seconds(10),
@@ -202,7 +202,7 @@ export class AdminStack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        target: "node20",
+        target: "node22",
         format: OutputFormat.ESM,
         mainFields: ["module", "main"],
       },
