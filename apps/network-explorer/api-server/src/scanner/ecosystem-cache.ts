@@ -11,6 +11,7 @@
 import { pointsDb } from '../db.js';
 import {
   ACTIVATIONS_CACHE_REFRESH_MS,
+  ACTIVATIONS_ERROR_RETRY_MS,
   MATVIEW_REFRESH_MIN_INTERVAL_MS,
   MATVIEW_REFRESH_MAX_STALE_MS,
   calculateMultiplier,
@@ -91,8 +92,8 @@ export async function maybeRefreshActivationsCache(): Promise<void> {
     console.log(`[Ecosystem] Activations cache refreshed: ${activationsCache.size} users`);
   } catch (err) {
     console.error('[Ecosystem] Activations cache refresh error:', err);
-    // Use shorter retry interval (5 min) on failure instead of full 3-hour interval
-    activationsCacheLastRefresh = now - ACTIVATIONS_CACHE_REFRESH_MS + 5 * 60 * 1000;
+    // Transient error: retry sooner than full interval (catch only, not HTTP errors)
+    activationsCacheLastRefresh = now - ACTIVATIONS_CACHE_REFRESH_MS + ACTIVATIONS_ERROR_RETRY_MS;
   }
 }
 

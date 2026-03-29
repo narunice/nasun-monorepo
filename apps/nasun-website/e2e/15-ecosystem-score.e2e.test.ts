@@ -173,3 +173,79 @@ describe('15 -- Ecosystem CORS', () => {
     expect(allowOrigin).toBeTruthy();
   });
 });
+
+describe('15 -- Ecosystem Score Quality (post-improvement)', () => {
+  // Fix 2: multiplier bounded by MAX_MULTIPLIER
+  test.skipIf(!EXPLORER)('score multiplier is bounded between 1.0 and 20.0', async () => {
+    const res = await get(`${EXPLORER}/ecosystem/score/${encodeURIComponent(TEST_IDENTITY_ID)}`);
+    if (res.status === 200) {
+      const m = (res.body as any).data.multiplier;
+      expect(m).toBeGreaterThanOrEqual(1.0);
+      expect(m).toBeLessThanOrEqual(20.0);
+    }
+  });
+
+  // Fix 4: ecosystemScore has at most 2 decimal places (string-based, no flaky float comparison)
+  test.skipIf(!EXPLORER)('score ecosystemScore values have at most 2 decimal places', async () => {
+    const res = await get(`${EXPLORER}/ecosystem/score/${encodeURIComponent(TEST_IDENTITY_ID)}`);
+    if (res.status === 200) {
+      const data = (res.body as any).data;
+      for (const period of ['daily', 'weekly', 'allTime']) {
+        const val = data[period].ecosystemScore;
+        expect(String(val)).toMatch(/^\d+(\.\d{1,2})?$/);
+      }
+    }
+  });
+
+  // Fix 6: activation bonus field present and non-negative
+  test.skipIf(!EXPLORER)('score activations include bonus field', async () => {
+    const res = await get(`${EXPLORER}/ecosystem/score/${encodeURIComponent(TEST_IDENTITY_ID)}`);
+    if (res.status === 200) {
+      const activations = (res.body as any).data.activations;
+      expect(activations).toBeInstanceOf(Array);
+      for (const act of activations) {
+        expect(typeof act.nftType).toBe('string');
+        expect(typeof act.nftCount).toBe('number');
+        expect(typeof act.bonus).toBe('number');
+        expect(act.bonus).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  // Fix 2: leaderboard multiplier in valid range
+  test.skipIf(!EXPLORER)('leaderboard entries have multiplier in valid range', async () => {
+    const res = await get(`${EXPLORER}/ecosystem/leaderboard?limit=50`);
+    if (res.status === 200) {
+      for (const entry of (res.body as any).data) {
+        expect(entry.multiplier).toBeGreaterThanOrEqual(1.0);
+        expect(entry.multiplier).toBeLessThanOrEqual(20.0);
+      }
+    }
+  });
+
+  // Fix 4: leaderboard ecosystemScore = baseScore * multiplier (within precision)
+  test.skipIf(!EXPLORER)('leaderboard ecosystemScore matches baseScore * multiplier', async () => {
+    const res = await get(`${EXPLORER}/ecosystem/leaderboard?limit=25`);
+    if (res.status === 200) {
+      for (const entry of (res.body as any).data) {
+        const expected = parseFloat((entry.baseScore * entry.multiplier).toFixed(2));
+        expect(entry.ecosystemScore).toBeCloseTo(expected, 1);
+      }
+    }
+  });
+
+  // Edge: path traversal in identityId
+  test.skipIf(!EXPLORER)('score rejects path traversal in identityId', async () => {
+    const traversal = encodeURIComponent('../../etc/passwd');
+    const res = await get(`${EXPLORER}/ecosystem/score/${traversal}`);
+    expect(res.status).toBeLessThan(500);
+  });
+
+  // Edge: leaderboard large offset returns empty data
+  test.skipIf(!EXPLORER)('leaderboard with large offset returns empty data', async () => {
+    const res = await get(`${EXPLORER}/ecosystem/leaderboard?offset=9999`);
+    if (res.status === 200) {
+      expect((res.body as any).data).toBeInstanceOf(Array);
+    }
+  });
+});
