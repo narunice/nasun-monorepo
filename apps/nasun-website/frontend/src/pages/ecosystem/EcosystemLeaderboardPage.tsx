@@ -72,10 +72,10 @@ const EcosystemLeaderboardPage = () => {
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-nasun-latte">
+            <h1 className="text-2xl font-bold text-nasun-white">
               Ecosystem Leaderboard
             </h1>
-            <p className="mt-1 text-sm text-nasun-latte/60">
+            <p className="mt-1 text-sm text-nasun-white/60">
               Earn points through diverse on-chain activity. Activate NFTs for score multipliers.
             </p>
           </div>
@@ -89,7 +89,7 @@ const EcosystemLeaderboardPage = () => {
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
                   period === p
                     ? "bg-nasun-c4 text-white"
-                    : "text-nasun-latte/60 hover:text-nasun-latte"
+                    : "text-nasun-white/60 hover:text-nasun-white"
                 }`}
               >
                 {p === "daily" ? "Daily" : "Weekly"}
@@ -101,20 +101,20 @@ const EcosystemLeaderboardPage = () => {
         {/* Scoring Info */}
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg bg-nasun-c6/30 p-3">
-            <p className="text-xs text-nasun-latte/50">Base Score</p>
-            <p className="text-sm text-nasun-latte">
+            <p className="text-xs text-nasun-white/50">Base Score</p>
+            <p className="text-sm text-nasun-white">
               Distinct activity categories per day (max 6+)
             </p>
           </div>
           <div className="rounded-lg bg-nasun-c6/30 p-3">
-            <p className="text-xs text-nasun-latte/50">Multiplier</p>
-            <p className="text-sm text-nasun-latte">
+            <p className="text-xs text-nasun-white/50">Multiplier</p>
+            <p className="text-sm text-nasun-white">
               Activated NFTs boost your score (Alliance, Genesis Pass, Battalion)
             </p>
           </div>
           <div className="rounded-lg bg-nasun-c6/30 p-3">
-            <p className="text-xs text-nasun-latte/50">Ecosystem Score</p>
-            <p className="text-sm text-nasun-latte">
+            <p className="text-xs text-nasun-white/50">Ecosystem Score</p>
+            <p className="text-sm text-nasun-white">
               Base Score x Multiplier = Final ranking score
             </p>
           </div>
@@ -130,24 +130,24 @@ const EcosystemLeaderboardPage = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-nasun-c6/50 bg-nasun-c6/20">
-                  <th className="px-4 py-3 text-left font-medium text-nasun-latte/60">
+                  <th className="px-4 py-3 text-left font-medium text-nasun-white/60">
                     Rank
                   </th>
-                  <th className="px-4 py-3 text-left font-medium text-nasun-latte/60">
+                  <th className="px-4 py-3 text-left font-medium text-nasun-white/60">
                     User
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-nasun-latte/60">
+                  <th className="px-4 py-3 text-right font-medium text-nasun-white/60">
                     Base Score
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-nasun-latte/60">
+                  <th className="px-4 py-3 text-right font-medium text-nasun-white/60">
                     Multiplier
                   </th>
                   {period === "weekly" && (
-                    <th className="px-4 py-3 text-right font-medium text-nasun-latte/60">
+                    <th className="px-4 py-3 text-right font-medium text-nasun-white/60">
                       Active Days
                     </th>
                   )}
-                  <th className="px-4 py-3 text-right font-medium text-nasun-latte/60">
+                  <th className="px-4 py-3 text-right font-medium text-nasun-white/60">
                     Score
                   </th>
                 </tr>
@@ -157,7 +157,7 @@ const EcosystemLeaderboardPage = () => {
                   <tr>
                     <td
                       colSpan={period === "weekly" ? 6 : 5}
-                      className="px-4 py-12 text-center text-nasun-latte/40"
+                      className="px-4 py-12 text-center text-nasun-white/40"
                     >
                       Loading...
                     </td>
@@ -166,7 +166,7 @@ const EcosystemLeaderboardPage = () => {
                   <tr>
                     <td
                       colSpan={period === "weekly" ? 6 : 5}
-                      className="px-4 py-12 text-center text-nasun-latte/40"
+                      className="px-4 py-12 text-center text-nasun-white/40"
                     >
                       No activity recorded yet. Start using the ecosystem to appear here!
                     </td>
@@ -177,15 +177,15 @@ const EcosystemLeaderboardPage = () => {
                       key={entry.identityId}
                       className="border-b border-nasun-c6/20 transition-colors hover:bg-nasun-c6/10"
                     >
-                      <td className="px-4 py-3 font-mono text-nasun-latte/80">
+                      <td className="px-4 py-3 font-mono text-nasun-white/80">
                         #{entry.rank}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-mono text-xs text-nasun-latte/60">
+                        <span className="font-mono text-xs text-nasun-white/60">
                           {truncateId(entry.identityId)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-nasun-latte">
+                      <td className="px-4 py-3 text-right font-mono text-nasun-white">
                         {entry.baseScore}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -193,14 +193,14 @@ const EcosystemLeaderboardPage = () => {
                           className={`font-mono ${
                             entry.multiplier > 1
                               ? "text-nasun-c3"
-                              : "text-nasun-latte/60"
+                              : "text-nasun-white/60"
                           }`}
                         >
                           {entry.multiplier.toFixed(1)}x
                         </span>
                       </td>
                       {period === "weekly" && (
-                        <td className="px-4 py-3 text-right font-mono text-nasun-latte/60">
+                        <td className="px-4 py-3 text-right font-mono text-nasun-white/60">
                           {entry.activeDays}/7
                         </td>
                       )}
@@ -218,7 +218,7 @@ const EcosystemLeaderboardPage = () => {
         {/* Pagination */}
         {total > PAGE_SIZE && (
           <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs text-nasun-latte/40">
+            <p className="text-xs text-nasun-white/40">
               Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, total)} of{" "}
               {total} participants
             </p>
@@ -226,14 +226,14 @@ const EcosystemLeaderboardPage = () => {
               <button
                 disabled={offset === 0}
                 onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                className="rounded-md bg-nasun-c6/30 px-3 py-1.5 text-sm text-nasun-latte disabled:opacity-30"
+                className="rounded-md bg-nasun-c6/30 px-3 py-1.5 text-sm text-nasun-white disabled:opacity-30"
               >
                 Previous
               </button>
               <button
                 disabled={offset + PAGE_SIZE >= total}
                 onClick={() => setOffset(offset + PAGE_SIZE)}
-                className="rounded-md bg-nasun-c6/30 px-3 py-1.5 text-sm text-nasun-latte disabled:opacity-30"
+                className="rounded-md bg-nasun-c6/30 px-3 py-1.5 text-sm text-nasun-white disabled:opacity-30"
               >
                 Next
               </button>

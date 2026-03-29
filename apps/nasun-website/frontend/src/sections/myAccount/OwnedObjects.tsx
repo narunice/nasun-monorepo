@@ -93,7 +93,7 @@ export const OwnedObjects = ({
           {isSuiPending ? (
             <p className="text-gray-400">Loading...</p>
           ) : suiError ? (
-            <p className="text-nasun-latte">
+            <p className="text-nasun-white">
               Error loading Sui objects: {suiError.message}
             </p>
           ) : paginatedSuiObjects.length > 0 ? (

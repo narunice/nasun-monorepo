@@ -64,7 +64,7 @@ export default function HomePage() {
 
   const errorFallback = (
     <SectionLayout>
-      <p className="text-nasun-latte">Failed to load section</p>
+      <p className="text-nasun-white">Failed to load section</p>
     </SectionLayout>
   );
 

@@ -68,7 +68,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
     <div className={`rounded-xl border border-nasun-c6/50 bg-nasun-c6/20 p-5 ${className}`}>
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-nasun-latte">
+        <h3 className="text-lg font-semibold text-nasun-white">
           Ecosystem Score
         </h3>
         <Link
@@ -80,7 +80,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
       </div>
 
       {loading ? (
-        <div className="flex h-32 items-center justify-center text-nasun-latte/40">
+        <div className="flex h-32 items-center justify-center text-nasun-white/40">
           Loading...
         </div>
       ) : (
@@ -95,8 +95,8 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
           {/* Multiplier */}
           <div className="mb-4 rounded-lg bg-nasun-c6/30 p-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-nasun-latte/60">Multiplier</span>
-              <span className={`text-xl font-bold ${multiplier > 1 ? "text-nasun-c3" : "text-nasun-latte/60"}`}>
+              <span className="text-sm text-nasun-white/60">Multiplier</span>
+              <span className={`text-xl font-bold ${multiplier > 1 ? "text-nasun-c3" : "text-nasun-white/60"}`}>
                 {multiplier.toFixed(1)}x
               </span>
             </div>
@@ -107,7 +107,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
               <NftBadge label="Battalion" active={battalionActive} bonus={battalionBonusStr} />
             </div>
             {activeCount === 0 && (
-              <p className="mt-2 text-xs text-nasun-latte/40">
+              <p className="mt-2 text-xs text-nasun-white/40">
                 Activate NFTs in the NFT Status card to boost your multiplier
               </p>
             )}
@@ -116,8 +116,8 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
           {/* Weekly Active Days */}
           <div className="rounded-lg bg-nasun-c6/30 p-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm text-nasun-latte/60">Active Days (7d)</span>
-              <span className="text-sm font-medium text-nasun-latte">
+              <span className="text-sm text-nasun-white/60">Active Days (7d)</span>
+              <span className="text-sm font-medium text-nasun-white">
                 {weeklyDays}/7 days
               </span>
             </div>
@@ -140,7 +140,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
           </div>
 
           {/* Experimental Season Notice */}
-          <p className="mt-3 text-center text-[10px] text-nasun-latte/30">
+          <p className="mt-3 text-center text-[10px] text-nasun-white/30">
             Experimental Season - scores may be adjusted
           </p>
         </>
@@ -152,7 +152,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
 function ScoreBox({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg bg-nasun-c6/40 p-2.5 text-center">
-      <p className="text-[10px] text-nasun-latte/50">{label}</p>
+      <p className="text-[10px] text-nasun-white/50">{label}</p>
       <p className="text-lg font-bold text-nasun-c4">
         {value > 0 ? value.toFixed(1) : "0"}
       </p>
@@ -184,7 +184,7 @@ function NftBadge({
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${
         active
           ? "bg-nasun-c3/20 text-nasun-c3"
-          : "bg-nasun-c6/50 text-nasun-latte/30"
+          : "bg-nasun-c6/50 text-nasun-white/30"
       }`}
     >
       {label}
