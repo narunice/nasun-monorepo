@@ -27,6 +27,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAllianceMintStatus } from "../../hooks/useAllianceMintStatus";
+import { useEcosystemStatus } from "../../hooks/useEcosystemStatus";
+import type { NftType } from "../../services/ecosystemApi";
 import { AllianceMintDialog } from "./components/AllianceMintDialog";
 
 interface CompactNftStatusProps {
@@ -85,6 +87,27 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
   } = useAllianceMintStatus(cognitoToken);
 
   const [showAllianceMintDialog, setShowAllianceMintDialog] = useState(false);
+
+  // Ecosystem activation (only when showAllSections is true)
+  const ecosystem = useEcosystemStatus(showAllSections ? cognitoToken : undefined);
+
+  const handleActivate = async (nftType: NftType) => {
+    try {
+      await ecosystem.activate(nftType);
+      toast.success(`${nftType === "genesis-pass" ? "Genesis Pass" : nftType.charAt(0).toUpperCase() + nftType.slice(1)} activated!`);
+    } catch (err) {
+      toast.error((err as Error).message || "Activation failed");
+    }
+  };
+
+  const handleDeactivate = async (nftType: NftType) => {
+    try {
+      await ecosystem.deactivate(nftType);
+      toast.info("Deactivated");
+    } catch (err) {
+      toast.error((err as Error).message || "Deactivation failed");
+    }
+  };
 
   const [showMismatchDialog, setShowMismatchDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -165,7 +188,14 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
           {/* Alliance NFT */}
           {showAllSections && isAllianceConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-              <h6 className="text-nasun-white">Alliance</h6>
+              <div className="flex items-center justify-between">
+                <h6 className="text-nasun-white">Alliance</h6>
+                {ecosystem.getActivation("alliance") && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                    ACTIVE
+                  </span>
+                )}
+              </div>
               <div className="flex items-center justify-between">
                 {isAllianceLoading ? (
                   <Spinner size="sm" />
@@ -185,15 +215,37 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                     Use Nasun ecosystem to earn points
                   </p>
                 )}
-                {!isAllianceLoading && !isAllianceMinted && allianceWallets.length > 0 && (
-                  <Button
-                    onClick={() => setShowAllianceMintDialog(true)}
-                    variant="filledOutlineC7"
-                    size="sm"
-                  >
-                    Mint
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {!isAllianceLoading && !isAllianceMinted && allianceWallets.length > 0 && (
+                    <Button
+                      onClick={() => setShowAllianceMintDialog(true)}
+                      variant="filledOutlineC7"
+                      size="sm"
+                    >
+                      Mint
+                    </Button>
+                  )}
+                  {isAllianceMinted && !ecosystem.getActivation("alliance") && ecosystem.isConfigured && (
+                    <Button
+                      onClick={() => handleActivate("alliance")}
+                      variant="filledOutlineC7"
+                      size="sm"
+                      disabled={ecosystem.isActivating}
+                    >
+                      {ecosystem.isActivating ? "..." : "Activate"}
+                    </Button>
+                  )}
+                  {ecosystem.getActivation("alliance") && (
+                    <Button
+                      onClick={() => handleDeactivate("alliance")}
+                      variant="filledOutlineScarlet"
+                      size="sm"
+                      disabled={ecosystem.isActivating}
+                    >
+                      Deactivate
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -201,7 +253,14 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
           {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-              <h6 className="text-nasun-white">Genesis Pass</h6>
+              <div className="flex items-center justify-between">
+                <h6 className="text-nasun-white">Genesis Pass</h6>
+                {showAllSections && ecosystem.getActivation("genesis-pass") && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                    ACTIVE
+                  </span>
+                )}
+              </div>
               <div className="flex items-center justify-between">
                 {isGenesisPassLoading ? (
                   <Spinner size="sm" />
@@ -247,6 +306,30 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
               </div>
               {joinError && (
                 <p className="text-red-400 text-xs">{joinError}</p>
+              )}
+              {/* Genesis Pass Activate/Deactivate (dev only) */}
+              {showAllSections && isGenesisPassRegistered && ecosystem.isConfigured && (
+                <div className="flex gap-2 self-end">
+                  {!ecosystem.getActivation("genesis-pass") ? (
+                    <Button
+                      onClick={() => handleActivate("genesis-pass")}
+                      variant="filledOutlineC7"
+                      size="sm"
+                      disabled={ecosystem.isActivating}
+                    >
+                      {ecosystem.isActivating ? "..." : "Activate"}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleDeactivate("genesis-pass")}
+                      variant="filledOutlineScarlet"
+                      size="sm"
+                      disabled={ecosystem.isActivating}
+                    >
+                      Deactivate
+                    </Button>
+                  )}
+                </div>
               )}
               <a
                 href="https://opensea.io/collection/nasun-genesis-pass/overview"
