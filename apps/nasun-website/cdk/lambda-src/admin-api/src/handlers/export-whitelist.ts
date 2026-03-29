@@ -631,7 +631,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     }
 
     // Internal endpoint: GET /internal/referral-mappings (API key auth, no Cognito)
-    // Returns all active referral relationships for the points scanner bonus calculation
+    // Returns ACTIVATED referral relationships only for points scanner bonus calculation.
+    // PENDING referrals are excluded to prevent bonus payouts for unverified signups.
     if (path.endsWith("/referral-mappings") && event.httpMethod === "GET") {
       const apiKey = event.headers?.["x-api-key"] || event.headers?.["X-Api-Key"];
       const isValidKey =
@@ -646,7 +647,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       console.log("[internal] Fetching referral mappings for points scanner");
 
-      // Scan nasun-referrals table for all relationships
+      // Scan nasun-referrals table, only include ACTIVATED referrals
       const referrals: Record<string, string> = {};
       let totalRelationships = 0;
       let totalActivated = 0;
@@ -665,19 +666,81 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           const referrerId = item.referrerIdentityId?.S;
           const status = item.status?.S;
           if (referredId && referrerId) {
-            referrals[referredId] = referrerId;
             totalRelationships++;
-            if (status === "ACTIVATED") totalActivated++;
+            if (status === "ACTIVATED") {
+              referrals[referredId] = referrerId;
+              totalActivated++;
+            }
           }
         }
         refLastKey = result.LastEvaluatedKey;
       } while (refLastKey);
 
-      console.log(`[internal] Referral mappings: ${totalRelationships} relationships, ${totalActivated} activated`);
+      console.log(`[internal] Referral mappings: ${totalRelationships} total, ${totalActivated} activated (returned)`);
       return jsonResponse(200, {
         referrals,
         stats: { totalRelationships, totalActivated },
       }, requestOrigin);
+    }
+
+    // Internal endpoint: POST /internal/referral-activate (API key auth, no Cognito)
+    // Batch-activates PENDING referrals by identityId list.
+    // Called by points scanner when referred users have >= 5 distinct activity days.
+    if (path.endsWith("/referral-activate") && event.httpMethod === "POST") {
+      const apiKey = event.headers?.["x-api-key"] || event.headers?.["X-Api-Key"];
+      const isValidKey =
+        INTERNAL_API_KEY &&
+        apiKey &&
+        apiKey.length === INTERNAL_API_KEY.length &&
+        timingSafeEqual(Buffer.from(apiKey), Buffer.from(INTERNAL_API_KEY));
+      if (!isValidKey) {
+        console.warn("[internal] Invalid or missing API key for referral-activate");
+        return errorResponse(401, "Unauthorized", requestOrigin);
+      }
+
+      const body = event.body ? JSON.parse(event.body) : {};
+      const identityIds = body.identityIds as string[] | undefined;
+      if (!identityIds || !Array.isArray(identityIds) || identityIds.length === 0) {
+        return errorResponse(400, "identityIds array is required", requestOrigin);
+      }
+      if (identityIds.length > 100) {
+        return errorResponse(400, "Max 100 identityIds per batch", requestOrigin);
+      }
+
+      console.log(`[internal] Activating ${identityIds.length} referrals`);
+      const now = new Date().toISOString();
+      let activated = 0;
+      let skipped = 0;
+
+      for (const referredId of identityIds) {
+        try {
+          await dynamoClient.send(
+            new UpdateItemCommand({
+              TableName: REFERRALS_TABLE,
+              Key: { referredIdentityId: { S: referredId } },
+              UpdateExpression: "SET #s = :activated, activatedAt = :now",
+              ConditionExpression: "#s = :pending",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: {
+                ":activated": { S: "ACTIVATED" },
+                ":pending": { S: "PENDING" },
+                ":now": { S: now },
+              },
+            })
+          );
+          activated++;
+        } catch (err: any) {
+          if (err.name === "ConditionalCheckFailedException") {
+            skipped++; // Already activated or doesn't exist
+          } else {
+            console.error(`[internal] Failed to activate referral ${referredId}:`, err.message);
+            skipped++;
+          }
+        }
+      }
+
+      console.log(`[internal] Referral activation: ${activated} activated, ${skipped} skipped`);
+      return jsonResponse(200, { activated, skipped }, requestOrigin);
     }
 
     // All other endpoints require admin authentication.
