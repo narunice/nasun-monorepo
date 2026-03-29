@@ -168,6 +168,7 @@ export class ChatService {
       this.ws = null;
     }
     this.currentNickname = null;
+    this.seenMessageIds.clear();
     this.setStatus('disconnected');
   }
 

@@ -1,3 +1,4 @@
+export { ChatModeProvider, useChatMode } from './context/ChatModeContext';
 export { ChatPanel } from './components/ChatPanel';
 export { ChatToggleButton } from './components/ChatToggleButton';
 export { MobileChatDrawer } from './components/MobileChatDrawer';
@@ -7,5 +8,4 @@ export { ShareTradeButton } from './components/ShareTradeButton';
 export { SharePnlButton } from './components/SharePnlButton';
 export { SharePortfolioButton } from './components/SharePortfolioButton';
 export { useChat } from './hooks/useChat';
-export { useChatPanel } from './hooks/useChatPanel';
 export type { ChatMessage, ChatConnectionStatus, ChatState } from './types';

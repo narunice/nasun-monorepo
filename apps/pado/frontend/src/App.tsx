@@ -6,6 +6,26 @@
 import { Header, Footer, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
 import { OfflineBanner } from './components/common/OfflineBanner';
+import { useChatMode, FloatingChatPopup, MobileChatDrawer } from './features/social';
+
+function ChatLayer() {
+  const { chatMode, setChatMode, isOnTradePage } = useChatMode();
+  return (
+    <>
+      {/* Desktop floating (xl+) */}
+      {chatMode === 'floating' && (
+        <div className="hidden xl:block">
+          <FloatingChatPopup
+            onDock={isOnTradePage ? () => setChatMode('docked') : undefined}
+            onClose={() => setChatMode('closed')}
+          />
+        </div>
+      )}
+      {/* Mobile/tablet (< xl) */}
+      <MobileChatDrawer />
+    </>
+  );
+}
 
 export default function App() {
   return (
@@ -23,6 +43,9 @@ export default function App() {
 
       {/* Mobile bottom navigation bar (< md) */}
       <MobileBottomNav />
+
+      {/* Chat layer: outside <main>, uses position:fixed so no padding issue */}
+      <ChatLayer />
     </div>
   );
 }

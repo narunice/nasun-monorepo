@@ -12,6 +12,7 @@ let connectedAddress: string | null = null;
 // Reference count of active useChat instances.
 // Only disconnect when the last instance unmounts (e.g. page navigation).
 let activeChatInstances = 0;
+let disconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Multi-room state (module-level, survives docked↔floating transitions)
 const roomMessages = new Map<number, ChatMessage[]>();
@@ -142,14 +143,22 @@ export function useChat(): UseChatResult {
     connectedAddress = signerAddress;
   }, [signerAddress, signerType]);
 
-  // Track active instances — disconnect only when the last one unmounts
+  // Track active useChat instances. Debounced disconnect prevents brief
+  // WebSocket drop during page transitions (old ChatPanel unmounts before
+  // new one mounts). 300ms covers lazy-loaded route transitions.
   useEffect(() => {
+    if (disconnectTimer) { clearTimeout(disconnectTimer); disconnectTimer = null; }
     activeChatInstances++;
     return () => {
       activeChatInstances--;
       if (activeChatInstances === 0) {
-        getChatService().disconnect();
-        connectedAddress = null;
+        disconnectTimer = setTimeout(() => {
+          if (activeChatInstances === 0) {
+            getChatService().disconnect();
+            connectedAddress = null;
+          }
+          disconnectTimer = null;
+        }, 300);
       }
     };
   }, []);
