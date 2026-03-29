@@ -142,12 +142,23 @@ export function UserSearchBoxV3({
                         src={account.profileImageUrl}
                         alt={account.originalUsername || account.username}
                         className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.classList.remove("hidden");
+                        }}
                       />
                     ) : (
                       <div className="w-8 h-8 rounded-full bg-nasun-c5/30 flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4 text-nasun-white/50" />
                       </div>
                     )}
+                    {/* Hidden fallback (shown on image error) */}
+                    <div className="hidden">
+                      <div className="w-8 h-8 rounded-full bg-nasun-c5/30 flex items-center justify-center flex-shrink-0">
+                        <User className="w-4 h-4 text-nasun-white/50" />
+                      </div>
+                    </div>
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
