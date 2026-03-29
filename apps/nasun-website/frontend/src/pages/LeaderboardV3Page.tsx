@@ -19,7 +19,7 @@ const LeaderboardV3Page = () => {
       <ErrorBoundary
         fallback={
           <SectionLayout>
-            <p className="text-nasun-latte">{t("v3.loadError")}</p>
+            <p className="text-nasun-white">{t("v3.loadError")}</p>
           </SectionLayout>
         }
       >

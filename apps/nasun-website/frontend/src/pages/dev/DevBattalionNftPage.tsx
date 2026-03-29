@@ -47,7 +47,7 @@ const DevBattalionNftPage: React.FC = () => {
       <ErrorBoundary
         fallback={
           <SectionLayout>
-            <p className="text-nasun-latte">{t("error.generic", { ns: "common" })}</p>
+            <p className="text-nasun-white">{t("error.generic", { ns: "common" })}</p>
           </SectionLayout>
         }
       >
