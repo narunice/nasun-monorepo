@@ -24,6 +24,7 @@ interface TraderProfileHeaderProps {
   stats: TraderStatsResponse | undefined;
   classification?: TraderClassification;
   isLoading: boolean;
+  followerCount?: number;
 }
 
 function shortenAddress(addr: string): string {
@@ -41,18 +42,19 @@ function formatVolume(volumeStr: string): string {
 
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 
-export function TraderProfileHeader({ address, stats, classification, isLoading }: TraderProfileHeaderProps) {
+export function TraderProfileHeader({ address, stats, classification, isLoading, followerCount: followerCountProp }: TraderProfileHeaderProps) {
   const nickname = stats?.nickname;
   const explorerUrl = NETWORK_CONFIG.explorerUrl;
-  const { isFollowing, toggleFollow } = useFollowedTraders();
+  const { isFollowing, toggleFollow, followCount: followingCount } = useFollowedTraders();
   const followed = isFollowing(address);
   const earnedBadges = computeBadges(stats);
   const isActive = stats?.lastTradeAt != null && Date.now() - stats.lastTradeAt < ACTIVE_THRESHOLD_MS;
+  const followerCount = followerCountProp ?? 0;
 
   return (
     <div className="bg-theme-bg-secondary rounded-lg border border-theme-border p-5">
       {/* Identity */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <TraderAvatar address={address} size={48} />
           <div>
@@ -93,12 +95,17 @@ export function TraderProfileHeader({ address, stats, classification, isLoading 
                 <BadgeDisplay badges={earnedBadges} />
               </div>
             )}
+            {/* Follower count */}
+            <div className="text-xs text-theme-text-muted mt-1">
+              {followerCount < 10 ? '< 10' : followerCount} followers
+              <span className="hidden sm:inline"> &middot; {followingCount} following</span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => toggleFollow(address)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors min-h-[44px] w-full sm:w-auto ${
               followed
                 ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400'
                 : 'border-theme-border hover:border-theme-text-muted text-theme-text-muted hover:text-theme-text-secondary'

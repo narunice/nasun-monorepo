@@ -48,6 +48,29 @@ export interface TradeShareData {
   tx: string;          // shortened txDigest (first8...last4)
 }
 
+// ===== Activity Feed Types =====
+
+export interface FeedActivity {
+  type: 'trade';
+  traderAddress: string;
+  traderNickname: string | null;
+  timestamp: number;
+  data: {
+    poolId: string;
+    pair: string;
+    side: 'buy' | 'sell';
+    price: string;
+    baseQuantity: string;
+    quoteQuantity: string;
+    txDigest: string;
+  };
+}
+
+export interface FeedResponse {
+  activities: FeedActivity[];
+  hasMore: boolean;
+}
+
 const TRADE_SHARE_PREFIX = '[TRADE]';
 
 /** Check if a chat message contains a trade share */

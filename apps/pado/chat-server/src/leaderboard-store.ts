@@ -524,6 +524,87 @@ export function getTraderFills(
     .all(address, address, limit + 1) as TradeFillRow[];
 }
 
+// ===== Feed Query (followed traders' fills) =====
+
+export interface FeedFillRow {
+  id: number;
+  tx_digest: string;
+  pool_id: string;
+  address: string; // the followed trader's address
+  maker_address: string;
+  taker_address: string;
+  price: string;
+  base_quantity: string;
+  quote_quantity: string;
+  taker_is_bid: number;
+  timestamp_ms: number;
+}
+
+/**
+ * Get recent trade fills for a set of followed addresses.
+ * Uses UNION ALL + JS dedup (same fill can appear as both maker and taker).
+ * Leverages existing indexes: idx_fills_maker(maker_address, timestamp_ms DESC)
+ * and idx_fills_taker(taker_address, timestamp_ms DESC).
+ */
+export function getFollowedTraderFills(
+  addresses: string[],
+  limit: number = 30,
+  beforeTs?: number,
+): { fills: FeedFillRow[]; hasMore: boolean } {
+  if (addresses.length === 0) return { fills: [], hasMore: false };
+
+  const placeholders = addresses.map(() => '?').join(',');
+  const cursor = beforeTs ?? Date.now();
+  const floor = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7 days
+
+  const innerLimit = limit + 10; // margin for dedup
+  const sql = `
+    SELECT * FROM (
+      SELECT * FROM (
+        SELECT id, tx_digest, pool_id, maker_address as address,
+               maker_address, taker_address,
+               price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
+        FROM trade_fills
+        WHERE maker_address IN (${placeholders})
+          AND timestamp_ms < ? AND timestamp_ms >= ?
+        ORDER BY timestamp_ms DESC LIMIT ${innerLimit}
+      )
+
+      UNION ALL
+
+      SELECT * FROM (
+        SELECT id, tx_digest, pool_id, taker_address as address,
+               maker_address, taker_address,
+               price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms
+        FROM trade_fills
+        WHERE taker_address IN (${placeholders})
+          AND timestamp_ms < ? AND timestamp_ms >= ?
+        ORDER BY timestamp_ms DESC LIMIT ${innerLimit}
+      )
+    )
+    ORDER BY timestamp_ms DESC
+  `;
+
+  const params = [...addresses, cursor, floor, ...addresses, cursor, floor];
+  const rows = getLeaderboardDb().prepare(sql).all(...params) as FeedFillRow[];
+
+  // JS dedup: same fill(id) may appear from both maker and taker branches
+  const seen = new Set<number>();
+  const deduped: FeedFillRow[] = [];
+  for (const row of rows) {
+    if (!seen.has(row.id)) {
+      seen.add(row.id);
+      deduped.push(row);
+      if (deduped.length > limit) break; // limit + 1 for hasMore
+    }
+  }
+
+  const hasMore = deduped.length > limit;
+  const result = hasMore ? deduped.slice(0, limit) : deduped;
+
+  return { fills: result, hasMore };
+}
+
 // ===== Trade History API Queries =====
 
 export interface TradeHistoryRow {

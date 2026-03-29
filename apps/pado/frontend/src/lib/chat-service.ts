@@ -10,7 +10,7 @@ import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../features/so
 // ===== Protocol types (mirror server types) =====
 
 interface AuthChallengeMsg { type: 'auth_challenge'; challenge: string }
-interface AuthSuccessMsg { type: 'auth_success'; address: string; nickname: string | null; rateLimit?: NicknameRateLimit }
+interface AuthSuccessMsg { type: 'auth_success'; address: string; nickname: string | null; rateLimit?: NicknameRateLimit; sessionToken?: string }
 interface AuthErrorMsg { type: 'auth_error'; reason: string }
 interface ChatMessageMsg {
   type: 'chat_message';
@@ -35,15 +35,19 @@ interface ErrorMsg { type: 'error'; code: string; message: string }
 interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string; rateLimit?: NicknameRateLimit }
 interface NicknameCheckMsg { type: 'nickname_check'; available: boolean; nickname: string }
 interface HeartbeatMsg { type: 'heartbeat' }
+interface ReactionUpdateMsg { type: 'reaction_update'; messageId: number; roomId: number; reactions: Record<string, number> }
+interface FollowResultMsg { type: 'follow_result'; target: string; following: boolean; followerCount: number; error?: string }
+interface FollowingListMsg { type: 'following_list'; addresses: string[] }
 
 type ServerMessage =
   | AuthChallengeMsg | AuthSuccessMsg | AuthErrorMsg
   | ChatMessageMsg | HistoryMsg | RoomsListMsg | OnlineCountMsg | ErrorMsg
-  | NicknameResultMsg | NicknameCheckMsg | HeartbeatMsg;
+  | NicknameResultMsg | NicknameCheckMsg | HeartbeatMsg | ReactionUpdateMsg
+  | FollowResultMsg | FollowingListMsg;
 
 // ===== Listener types =====
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check' | 'rooms_list' | 'reaction_update';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check' | 'rooms_list' | 'reaction_update' | 'follow_result' | 'following_list';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -55,6 +59,8 @@ export interface ChatEventMap {
   nickname_check: { available: boolean; nickname: string };
   rooms_list: RoomInfo[];
   reaction_update: { messageId: number; roomId: number; reactions: Record<string, number> };
+  follow_result: { target: string; following: boolean; followerCount: number; error?: string };
+  following_list: { addresses: string[] };
 }
 
 export interface NicknameRateLimit {
@@ -111,8 +117,11 @@ export class ChatService {
   // Cache nickname so new subscribers can read it without waiting for events
   private currentNickname: string | null = null;
 
+  // Session token for REST API authentication (issued on WS auth_success)
+  private sessionToken: string | null = null;
+
   constructor() {
-    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list', 'reaction_update'] as ChatEventType[]) {
+    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list', 'reaction_update', 'follow_result', 'following_list'] as ChatEventType[]) {
       this.listeners.set(type, new Set());
     }
   }
@@ -168,6 +177,7 @@ export class ChatService {
       this.ws = null;
     }
     this.currentNickname = null;
+    this.sessionToken = null;
     this.seenMessageIds.clear();
     this.setStatus('disconnected');
   }
@@ -222,6 +232,29 @@ export class ChatService {
   toggleReaction(messageId: number, emojiCode: string): void {
     if (!this.ws || this.status !== 'connected') return;
     this.ws.send(JSON.stringify({ type: 'toggle_reaction', messageId, emojiCode }));
+  }
+
+  /**
+   * Toggle follow on a trader address
+   */
+  toggleFollow(target: string): void {
+    if (!this.ws || this.status !== 'connected') return;
+    this.ws.send(JSON.stringify({ type: 'toggle_follow', target }));
+  }
+
+  /**
+   * Request the list of followed addresses
+   */
+  getFollowing(): void {
+    if (!this.ws || this.status !== 'connected') return;
+    this.ws.send(JSON.stringify({ type: 'get_following' }));
+  }
+
+  /**
+   * Get the current session token for REST API calls
+   */
+  getSessionToken(): string | null {
+    return this.sessionToken;
   }
 
   /**
@@ -315,6 +348,7 @@ export class ChatService {
           this.connectionTimer = null;
         }
         this.currentNickname = msg.nickname ?? null;
+        this.sessionToken = msg.sessionToken ?? null;
         this.setStatus('connected');
         this.startKeepalive();
         // Emit nickname info from auth_success (preserve null for needsNickname detection)
@@ -360,6 +394,14 @@ export class ChatService {
 
       case 'reaction_update':
         this.emit('reaction_update', { messageId: msg.messageId, roomId: msg.roomId, reactions: msg.reactions });
+        break;
+
+      case 'follow_result':
+        this.emit('follow_result', { target: msg.target, following: msg.following, followerCount: msg.followerCount, error: msg.error });
+        break;
+
+      case 'following_list':
+        this.emit('following_list', { addresses: msg.addresses });
         break;
 
       case 'heartbeat':
