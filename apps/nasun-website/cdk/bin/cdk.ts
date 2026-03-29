@@ -38,6 +38,7 @@ import { DevnetMetricsStack } from '../lib/devnet-metrics-stack';
 import { GenesisPassStack } from '../lib/genesis-pass-stack';
 import { ReferralStack } from '../lib/referral-stack';
 import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
+import { EcosystemStack } from '../lib/ecosystem-stack';
 
 const app = new cdk.App();
 
@@ -112,6 +113,14 @@ const devnetMetricsStack = new DevnetMetricsStack(app, 'DevnetMetricsStack', { e
 // NFT snapshot stack (ETH daily ownership + Devnet on-demand backup)
 const nftSnapshotStack = new NftSnapshotStack(app, 'NftSnapshotStack', { env: cdkEnv });
 // No dependencies - standalone stack
+
+// Ecosystem stack (NFT activation for ecosystem points)
+const ecosystemStack = new EcosystemStack(app, 'EcosystemStack', {
+  env: cdkEnv,
+  userProfilesTableName: 'UserProfiles',
+  cognitoIdentityPoolId,
+});
+// No dependencies - references tables by name
 
 // Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
