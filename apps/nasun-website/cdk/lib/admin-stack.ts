@@ -328,9 +328,12 @@ export class AdminStack extends cdk.Stack {
     const walletMappingsResource = internalResource.addResource("wallet-mappings");
     // GET /internal/wallet-mappings - Points scanner wallet cache refresh
     walletMappingsResource.addMethod("GET", exportIntegration);
-    // GET /internal/referral-mappings - Points scanner referral relationship cache
+    // GET /internal/referral-mappings - Points scanner referral relationship cache (ACTIVATED only)
     const referralMappingsResource = internalResource.addResource("referral-mappings");
     referralMappingsResource.addMethod("GET", exportIntegration);
+    // POST /internal/referral-activate - Batch-activate PENDING referrals
+    const referralActivateResource = internalResource.addResource("referral-activate");
+    referralActivateResource.addMethod("POST", exportIntegration);
 
     // NFT Collections API Routes
     const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);
