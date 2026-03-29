@@ -15,8 +15,11 @@ import {
   getActivationsForUser,
   getMatviewStatus,
 } from '../scanner/ecosystem-cache.js';
+import { getActivationBonus } from '../config/ecosystem.js';
 
 const app = new Hono();
+
+const roundTo2 = (n: number) => parseFloat(n.toFixed(2));
 
 const ALLOWED_LIMITS = [25, 50, 100, 200] as const;
 const MAX_OFFSET = 10000;
@@ -95,23 +98,24 @@ app.get('/score/:identityId', async (c) => {
 
   const data = {
     identityId,
-    multiplier: parseFloat(multiplier.toFixed(2)),
+    multiplier: roundTo2(multiplier),
     activations: activations.map((a) => ({
       nftType: a.nftType,
       nftCount: a.nftCount,
+      bonus: roundTo2(getActivationBonus(a)),
     })),
     daily: {
       baseScore: scores.todayBaseScore,
-      ecosystemScore: parseFloat((scores.todayBaseScore * multiplier).toFixed(2)),
+      ecosystemScore: roundTo2(scores.todayBaseScore * multiplier),
     },
     weekly: {
       baseScore: scores.weeklyBaseScore,
-      ecosystemScore: parseFloat((scores.weeklyBaseScore * multiplier).toFixed(2)),
+      ecosystemScore: roundTo2(scores.weeklyBaseScore * multiplier),
       activeDays: scores.weeklyActiveDays,
     },
     allTime: {
       baseScore: scores.allTimeBaseScore,
-      ecosystemScore: parseFloat((scores.allTimeBaseScore * multiplier).toFixed(2)),
+      ecosystemScore: roundTo2(scores.allTimeBaseScore * multiplier),
       activeDays: scores.allTimeActiveDays,
     },
   };
@@ -171,8 +175,8 @@ app.get('/leaderboard', async (c) => {
     return {
       identityId: r.identity_id as string,
       baseScore,
-      multiplier: parseFloat(multiplier.toFixed(2)),
-      ecosystemScore: parseFloat((baseScore * multiplier).toFixed(2)),
+      multiplier: roundTo2(multiplier),
+      ecosystemScore: roundTo2(baseScore * multiplier),
       ...(period === 'weekly' ? { activeDays: r.active_days as number } : {}),
     };
   });
