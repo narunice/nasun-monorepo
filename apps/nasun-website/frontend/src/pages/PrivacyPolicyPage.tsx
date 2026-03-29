@@ -162,7 +162,7 @@ function PrivacyPolicyPage() {
       <ErrorBoundary
         fallback={
           <SectionLayout>
-            <p className="text-nasun-latte">Content loading failed</p>
+            <p className="text-nasun-white">Content loading failed</p>
           </SectionLayout>
         }
       >
