@@ -1,13 +1,13 @@
 ---
 name: leaderboard-export
-description: 리더보드 참여자 및 X 연결 가입자 전체 목록을 클릭 가능한 HTML로 내보냅니다. 5개 섹션(Top 500, Posts, Registered, Yellow, Orange) 분류, 프로필 방문 추적, 색상 플래그(Green/Orange/Yellow), Export 기능을 포함합니다. _tmp/ 디렉토리의 *-done.html 파일들을 자동 탐색하여 체크/플래그 상태를 병합합니다. "리더보드 내보내기", "X 프로필 리스트", "leaderboard export" 등의 요청에 사용합니다.
+description: 리더보드 참여자 및 X 연결 가입자 전체 목록을 클릭 가능한 HTML로 내보냅니다. 5개 섹션(Top 500, Posts, Registered, Yellow, Orange) 분류, 프로필 방문 추적, 색상 플래그(Green/Orange/Yellow), Export 기능을 포함합니다. _tmp/ 디렉토리의 *-done.html 및 x-flags-*.json 파일들을 자동 탐색하여 체크/플래그 상태를 병합합니다. "리더보드 내보내기", "X 프로필 리스트", "leaderboard export" 등의 요청에 사용합니다.
 argument-hint: "[YYYY-MM-DD]"
 ---
 
 # Leaderboard Export: X 프로필 HTML 생성
 
 리더보드 참여자 및 나선 웹사이트 X 연결 가입자의 프로필을 클릭 가능한 HTML로 내보냅니다.
-`_tmp/` 디렉토리의 `*-done.html` 파일들을 자동 탐색하여 체크/플래그 상태를 병합(union)한 후, 신규 가입자를 추가합니다.
+`_tmp/` 디렉토리의 `*-done.html` 및 `x-flags-*.json` 파일들을 자동 탐색하여 체크/플래그 상태를 병합(union)한 후, 신규 가입자를 추가합니다.
 
 ## $ARGUMENTS 처리
 
@@ -102,6 +102,48 @@ else:
     print('No *-done.html files found in _tmp/ - generating fresh without merge')
 
 old_users = set(merged_states.keys())
+
+# ══════════════════════════════════════════════════
+# Phase A2: Merge JSON flag overrides (highest priority)
+# ══════════════════════════════════════════════════
+
+json_flag_files = sorted(glob.glob(f'{TMP_DIR}/x-flags-*.json'))
+if json_flag_files:
+    print(f'\nFound {len(json_flag_files)} JSON flag file(s):')
+    json_flags = {}
+    for jf in json_flag_files:
+        with open(jf) as f:
+            data = json.load(f)
+        flags = data.get('flags', {})
+        non_empty = {k: v for k, v in flags.items() if v}
+        flag_counts = {}
+        for v in non_empty.values():
+            flag_counts[v] = flag_counts.get(v, 0) + 1
+        print(f'  {os.path.basename(jf)}: {len(non_empty)} non-empty flags, {flag_counts}')
+        # Later files override earlier ones
+        for k, v in flags.items():
+            json_flags[k.lower()] = v
+
+    json_applied = 0
+    for u, flag in json_flags.items():
+        if flag:
+            if u in merged_states:
+                if merged_states[u]['flag'] != flag:
+                    json_applied += 1
+                merged_states[u]['flag'] = flag
+            else:
+                merged_states[u] = {'checked': False, 'flag': flag}
+                json_applied += 1
+        elif u in merged_states and merged_states[u]['flag']:
+            merged_states[u]['flag'] = ''
+            json_applied += 1
+
+    merged_flags_after = {}
+    for v in merged_states.values():
+        if v['flag']:
+            merged_flags_after[v['flag']] = merged_flags_after.get(v['flag'], 0) + 1
+    print(f'  JSON overrides applied: {json_applied} changes')
+    print(f'  Merged (after JSON): flags={merged_flags_after}')
 
 # ══════════════════════════════════════════════════
 # Phase B: Fetch fresh data from API + DynamoDB
@@ -370,7 +412,7 @@ js = f'''
 const CK = 'nasun-lb-clicked-{snapshot_date}';
 const FK = 'nasun-lb-flags';
 const clicked = new Set(JSON.parse(localStorage.getItem(CK) || '[]'));
-const flagOverrides = JSON.parse(localStorage.getItem(FK) || '{{}}');
+const flagOverrides = JSON.parse(localStorage.getItem(FK) || '{{}}'  );
 
 function applyFlag(li, flag) {{
   li.dataset.flag = flag || '';
@@ -554,16 +596,18 @@ PYEOF
 
 ## 병합 동작
 
-스킬 실행 시 `_tmp/` 디렉토리에서 `*-done.html` 파일을 자동 탐색합니다.
+스킬 실행 시 `_tmp/` 디렉토리에서 `*-done.html`과 `x-flags-*.json` 파일을 자동 탐색합니다.
 
-| 상황 | 동작 |
-|------|------|
-| `*-done.html` 파일 없음 | 병합 없이 fresh HTML만 생성 |
-| 1개 이상 발견 | 모든 파일의 체크/플래그 상태를 union 병합 후 적용 |
+| 소스 | 우선순위 | 설명 |
+|------|----------|------|
+| `x-flags-*.json` | 최우선 | 브라우저 Export Flags JSON으로 내보낸 localStorage 플래그 |
+| `*-done.html` | 2순위 | Export Progress로 내보낸 HTML의 data-flag 속성 |
+| `flagged-*.txt` | 3순위 (baseline) | 서버 측 기본 플래그 파일 |
 
 **병합 규칙:**
-- **checked**: 어느 파일에서든 체크되어 있으면 체크 처리
-- **flag**: 첫 번째 파일(알파벳순)의 플래그를 우선 적용 (충돌 시)
+- **checked**: 어느 done 파일에서든 체크되어 있으면 체크 처리
+- **flag**: JSON > done HTML(첫 번째 파일, 알파벳순) > baseline txt
+- **JSON 빈 문자열**: 해당 사용자의 플래그를 명시적으로 해제
 - **신규 가입자**: 이전 done 파일에 없던 사용자는 S2 하단에 `[NEW]` 태그와 함께 배치
 - **플래그 섹션 이동**: 병합된 orange/yellow 플래그에 따라 S3/S4로 자동 이동
 
@@ -589,4 +633,5 @@ PYEOF
 - `flagged-orange.txt`, `flagged-yellow.txt`, `flagged-green.txt` 파일이 없으면 플래그 없이 정상 생성됩니다
 - localStorage 키: `nasun-lb-clicked` (방문 추적), `nasun-lb-flags` (플래그 변경)
 - Green/Orange/Yellow 플래그는 배타적 (하나만 선택 가능)
-- Export Flags JSON으로 플래그 상태를 JSON 파일로 내보낼 수 있습니다 (향후 병합에 활용)
+- Export Flags JSON으로 플래그 상태를 JSON 파일로 내보낼 수 있습니다 (`_tmp/x-flags-*.json`으로 저장하면 다음 생성 시 자동 병합)
+- done HTML에는 localStorage 플래그가 완전히 반영되지 않을 수 있으므로, 리뷰어별 JSON 플래그 export를 권장
