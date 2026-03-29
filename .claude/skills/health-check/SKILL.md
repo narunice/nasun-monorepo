@@ -1,17 +1,17 @@
 ---
 name: health-check
 description: |
-  nasun-website와 network-explorer의 프로덕션 인프라 헬스를 총체적으로 체크합니다.
-  CloudFront CDN, Lambda API 20+개, EC2 nginx, Explorer API, DynamoDB, EventBridge,
-  CloudWatch 알람, SSL 인증서, DNS, Umami 등 전체 웹 인프라를 점검합니다.
+  nasun-website, network-explorer, pado의 프로덕션 인프라 헬스를 총체적으로 체크합니다.
+  CloudFront CDN, Lambda API 20+개, EC2 nginx, Explorer API, Pado Chat Server,
+  DynamoDB, EventBridge, CloudWatch 알람, SSL 인증서, DNS, Umami 등 전체 웹 인프라를 점검합니다.
   "헬스체크", "상태 확인", "health check", "사이트 상태" 등의 요청에 사용합니다.
-  인자로 quick, full, website, explorer를 지원합니다.
+  인자로 quick, full, website, explorer, pado를 지원합니다.
 ---
 
 # Health Check: Nasun Production 웹 인프라 점검
 
-nasun-website(nasun.io)와 network-explorer(explorer.nasun.io)의 프로덕션 인프라를 총체적으로 점검합니다.
-CloudFront CDN, Lambda API, EC2 nginx, Explorer API, AWS 서비스까지 7단계로 체크합니다.
+nasun-website(nasun.io), network-explorer(explorer.nasun.io), pado(pado.finance)의 프로덕션 인프라를 총체적으로 점검합니다.
+CloudFront CDN, Lambda API, EC2 nginx, Explorer API, Pado Chat Server, AWS 서비스를 다단계로 체크합니다.
 
 > **Scope**: 웹 애플리케이션 계층에 집중합니다. 블록체인 노드 심층 점검(fullnode RSS, indexer OOM, .chk 파일, DB reinit 등)은
 > nasun-devnet 워크스페이스의 `/health-check` 스킬이 담당합니다. 여기서는 devnet 인프라와 중복 점검하지 않습니다.
@@ -32,6 +32,7 @@ CloudFront CDN, Lambda API, EC2 nginx, Explorer API, AWS 서비스까지 7단계
 |--------|----------------|--------|
 | nasun.io | E362CCGDH7WA7C | EC2 43.200.67.52:80 |
 | explorer.nasun.io | E31QOCW4WNY9FL | EC2 43.200.67.52:80 |
+| pado.finance | E35SWPQEJB8HHE | EC2 43.200.67.52:80 |
 
 ### AWS 프로필
 
@@ -44,10 +45,11 @@ CloudFront CDN, Lambda API, EC2 nginx, Explorer API, AWS 서비스까지 7단계
 
 | 인자 | 동작 |
 |------|------|
-| (없음) 또는 `full` | 전체 7단계 실행 |
-| `quick` | 1단계만 (외부 엔드포인트 + SSL + DNS + Lambda, SSH/AWS CLI 없음) |
-| `website` | nasun-website 관련만 (전체 단계) |
-| `explorer` | network-explorer 관련만 (전체 단계) |
+| (없음) 또는 `full` | 전체 실행 |
+| `quick` | 1단계만 (1a~1d, 1f~1h. 1e SSH 제외. SSH/AWS CLI 불필요) |
+| `website` | nasun-website 관련만 (1a-d,1f-g + 2a,2b + 2.5 + 3 + 5 + 6W,A,B,S + 7) |
+| `explorer` | network-explorer 관련만 (1a-e + 2c + 3 + 4 + 5 + 6E,A,S + 7) |
+| `pado` | pado.finance 관련만 (1a,1b,1c,1d,1h + 2a,2b + 2.5 + 3e만 + 5(pado CDN만) + 6P,A,B,S + 7) |
 
 `$ARGUMENTS`를 파싱하여 해당 범위와 단계만 실행합니다. 인자가 없으면 전체 실행.
 
@@ -57,8 +59,8 @@ CloudFront CDN, Lambda API, EC2 nginx, Explorer API, AWS 서비스까지 7단계
 
 ### 1단계: 외부 엔드포인트 검증
 
-curl만 사용 (SSH/AWS CLI 없음). 가능한 한 **병렬로** 실행합니다.
-`quick` 모드는 이 단계만 수행 후 7단계(요약)로 건너뜁니다.
+가능한 한 **병렬로** 실행합니다.
+`quick` 모드는 이 단계(1e SSH 제외)만 수행 후 Summary로 건너뜁니다.
 
 #### 1a. Frontend (CloudFront CDN)
 
@@ -73,6 +75,8 @@ curl -sI -m 10 https://nasun.io -w "\n%{http_code}|%{time_total}|%{ssl_verify_re
 | nasun.io | `https://nasun.io` | HTTP 200 | `x-cache`, `x-amz-cf-pop` 헤더 분석 |
 | staging.nasun.io | `https://staging.nasun.io` | HTTP 200 또는 401 | Basic Auth 설정 시 401 정상 |
 | explorer.nasun.io | `https://explorer.nasun.io/devnet` | HTTP 200 | CloudFront 응답 확인 |
+| pado.finance | `https://pado.finance` | HTTP 200 | CloudFront 응답 확인 |
+| staging.pado.finance | `https://staging.pado.finance` | HTTP 200 | Staging EC2 직접 서빙 |
 
 분석 기준:
 - HTTP 200 또는 301 (trailing slash redirect) = OK
@@ -85,7 +89,7 @@ curl -sI -m 10 https://nasun.io -w "\n%{http_code}|%{time_total}|%{ssl_verify_re
 
 #### 1b. SSL 인증서 만료 확인
 
-6개 도메인의 SSL 인증서 만료일을 확인합니다:
+8개 도메인의 SSL 인증서 만료일을 확인합니다:
 
 ```bash
 echo | openssl s_client -servername nasun.io -connect nasun.io:443 2>/dev/null \
@@ -99,6 +103,8 @@ echo | openssl s_client -servername nasun.io -connect nasun.io:443 2>/dev/null \
 - `rpc.devnet.nasun.io`
 - `faucet.devnet.nasun.io`
 - `analytics.nasun.io`
+- `pado.finance`
+- `staging.pado.finance`
 
 판정:
 - 30일 초과 = OK
@@ -116,7 +122,7 @@ echo | openssl s_client -servername nasun.io -connect nasun.io:443 2>/dev/null \
 주요 도메인의 DNS 해석을 확인합니다. `getent hosts`를 사용합니다 (`dig`/`nslookup`은 환경에 따라 미설치):
 
 ```bash
-for domain in nasun.io explorer.nasun.io rpc.devnet.nasun.io analytics.nasun.io staging.nasun.io faucet.devnet.nasun.io; do
+for domain in nasun.io explorer.nasun.io pado.finance staging.pado.finance rpc.devnet.nasun.io analytics.nasun.io staging.nasun.io faucet.devnet.nasun.io; do
   result=$(getent hosts "$domain" 2>/dev/null)
   echo "$domain: ${result:-FAILED}"
 done
@@ -236,12 +242,35 @@ curl -s -m 10 -o /dev/null -w "%{http_code}" https://analytics.nasun.io
 - HTTP 200 = OK
 - timeout/5xx = **WARNING** (분석 데이터 수집 중단)
 
+#### 1h. Pado Chat Server & APIs
+
+Pado chat server는 nginx 뒤에서 port 3100으로 동작합니다. 외부에서 HTTP API로 점검합니다:
+
+**Prod (pado.finance):**
+```bash
+curl -s -m 10 https://pado.finance/chat/api/status
+curl -s -m 10 -o /dev/null -w "%{http_code}|%{time_total}" "https://pado.finance/chat/api/leaderboard?period=24h&mode=volume&limit=3"
+```
+
+**Staging (staging.pado.finance):**
+```bash
+curl -s -m 10 https://staging.pado.finance/chat/api/status
+curl -s -m 10 -o /dev/null -w "%{http_code}|%{time_total}" "https://staging.pado.finance/chat/api/leaderboard?period=24h&mode=volume&limit=3"
+```
+
+판정:
+- `/chat/api/status` 응답에 `uptime` 필드 존재 = **OK** (chat server 정상)
+- HTTP 502 = **CRITICAL** (chat server 다운, nginx는 살아있지만 upstream 3100 연결 불가)
+- timeout = **CRITICAL**
+- `/chat/api/leaderboard` HTTP 200 = **OK** (indexer 정상 동작)
+- `/chat/api/leaderboard` HTTP 502 = **CRITICAL** (chat server 다운)
+
 ---
 
 ### 2단계: EC2 Internal State (SSH)
 
 세 개의 SSH 세션을 **병렬로** 실행합니다.
-`website` 모드는 2a + 2b만, `explorer` 모드는 2c만 실행합니다.
+`website` 모드는 2a + 2b만, `explorer` 모드는 2c만, `pado` 모드는 2a + 2b만 실행합니다.
 
 #### 2a. Production EC2 (43.200.67.52) — nasun-website 호스팅
 
@@ -262,6 +291,25 @@ ls /var/www/nasun/dist/assets/ 2>/dev/null | wc -l
 echo "-- explorer --"
 ls -la /var/www/explorer.nasun.io/devnet/index.html 2>/dev/null || echo "MISSING"
 ls /var/www/explorer.nasun.io/devnet/assets/ 2>/dev/null | wc -l
+
+echo "-- pado --"
+ls -la /var/www/pado.finance/index.html 2>/dev/null || echo "MISSING"
+ls /var/www/pado.finance/assets/ 2>/dev/null | wc -l
+
+echo "=== PADO PM2 PROCESSES ==="
+pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+    for a in apps:
+        name = a['name']
+        status = a['pm2_env']['status']
+        restarts = a['pm2_env']['restart_time']
+        mem = round(a['monit']['memory'] / 1024 / 1024, 1)
+        print(f'{name}: status={status}, restarts={restarts}, mem={mem}MB')
+except: print('PM2 parse error')
+" 2>/dev/null || echo "pm2 not available"
+ss -tlnp 2>/dev/null | grep -E "3100|4001" | head -2
 
 echo "=== DISK ==="
 df -h / | tail -1
@@ -293,10 +341,19 @@ HEALTH_EOF
 - asset 파일 수: 0 = **CRITICAL** (빌드 아티팩트 누락)
 - `/var/www/explorer.nasun.io/devnet/index.html` 존재: missing = **CRITICAL** (explorer 배포 깨짐)
 - explorer asset 파일 수: 0 = **CRITICAL**
+- `/var/www/pado.finance/index.html` 존재: missing = **CRITICAL** (pado 배포 깨짐)
+- pado asset 파일 수: 0 = **CRITICAL**
+- `pado-chat-server` PM2 상태: stopped = **CRITICAL** (chat/leaderboard/trade API 다운)
+- port 3100 리스닝: 없음 = **CRITICAL** (chat server 프로세스 다운)
+- `lp-bot-nbtc/neth/nsol` PM2 상태: stopped = **WARNING** (LP 호가 제공 중단)
+- `price-updater` PM2 상태: stopped = **CRITICAL** (오라클 가격 갱신 중단, 단일 인스턴스 필수)
+- `tpsl-keeper` PM2 상태: stopped/errored = **WARNING** (TP/SL 주문 실행 중단)
+- port 4001 리스닝: 없음 = **WARNING** (TP/SL API 다운)
+- `balance-watchdog` PM2 상태: stopped = **WARNING** (봇 잔고 자동 충전 중단)
 - 디스크/메모리/스왑: Threshold 표 참조
 - CPU load avg: > 2.0 (2 vCPU 기준) = **WARNING**
 - nginx 에러 로그: 최근 10분 에러 확인
-- nginx access log HTTP 상태코드 분포: 5xx > 10% = **WARNING**
+- nginx access log HTTP 상태코드 분포: 5xx 5%+ = **WARNING**, 10%+ = **CRITICAL**
 - 연결 수: 비정상적으로 높으면 **WARNING**
 
 #### 2b. Staging EC2 (15.165.19.180) — Staging + Umami Analytics
@@ -309,6 +366,23 @@ systemctl is-active nginx 2>/dev/null
 
 echo "=== STAGING STATIC FILES ==="
 ls -la /var/www/staging.nasun.io/index.html 2>/dev/null || echo "MISSING"
+ls -la /var/www/staging.pado.finance/index.html 2>/dev/null || echo "MISSING"
+
+echo "=== PADO PM2 PROCESSES ==="
+# Note: price-updater는 staging에서 비활성화됨 (DISABLE_PRICE_UPDATER=true, staging은 prod oracle 참조)
+pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+    for a in apps:
+        name = a['name']
+        status = a['pm2_env']['status']
+        restarts = a['pm2_env']['restart_time']
+        mem = round(a['monit']['memory'] / 1024 / 1024, 1)
+        print(f'{name}: status={status}, restarts={restarts}, mem={mem}MB')
+except: print('PM2 parse error')
+" 2>/dev/null || echo "pm2 not available"
+ss -tlnp 2>/dev/null | grep -E "3100|4001" | head -2
 
 echo "=== UMAMI DOCKER ==="
 sudo docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | grep -E "umami|postgres"
@@ -329,7 +403,11 @@ HEALTH_EOF
 
 점검 항목:
 - nginx 상태: inactive = **WARNING**
-- staging index.html 존재: missing = **WARNING**
+- `staging.nasun.io/index.html` 존재: missing = **WARNING**
+- `staging.pado.finance/index.html` 존재: missing = **WARNING**
+- staging `pado-chat-server` PM2 상태: stopped = **WARNING**
+- staging LP bots / tpsl-keeper / balance-watchdog PM2 상태 확인
+- `price-updater` 부재는 정상 (staging은 DISABLE_PRICE_UPDATER=true, prod oracle 참조)
 - Umami + PostgreSQL Docker 컨테이너: Exited = **WARNING** (분석 수집 중단)
 - 디스크 (Docker 이미지/볼륨 포함): Threshold 표 참조
 - 메모리/스왑
@@ -384,6 +462,55 @@ HEALTH_EOF
 - `baram-aer-api` PM2 프로세스 (있는 경우): 상태 확인
 - API 응답 시간 (localhost): > 1s = **WARNING** (DB 부하 가능)
 - 디스크/메모리: Threshold 표 참조
+
+---
+
+### 2.5단계: Daily Local Backup Verification
+
+로컬 crontab으로 DynamoDB 테이블을 매일 백업하는 자동화가 구성되어 있습니다.
+백업 파일의 존재 여부, 나이(freshness), 크기를 검증합니다.
+
+**SSH/AWS CLI 불필요 (로컬 파일시스템 점검)**
+
+```bash
+BACKUP_DIR="/home/naru/my_apps/nasun-monorepo/_backup"
+TODAY=$(date +%Y%m%d)
+YESTERDAY=$(date -d '1 day ago' +%Y%m%d)
+
+# Check each backup file
+for prefix in "zklogin-users-backup" "zklogin-salts-backup" "leaderboard-v3-snapshots-backup"; do
+  # Try today's file first, then yesterday's (cron runs at midnight, timing could vary)
+  file="${BACKUP_DIR}/${prefix}-${TODAY}.json"
+  if [ ! -f "$file" ]; then
+    file="${BACKUP_DIR}/${prefix}-${YESTERDAY}.json"
+  fi
+  if [ -f "$file" ]; then
+    size=$(stat -c%s "$file" 2>/dev/null)
+    age_hours=$(( ($(date +%s) - $(stat -c%Y "$file")) / 3600 ))
+    # JSON validity + record count check
+    records=$(python3 -c "import json; d=json.load(open('$file')); print(len(d.get('Items',[])))" 2>/dev/null || echo "INVALID_JSON")
+    echo "${prefix}: size=${size} bytes, age=${age_hours}h, records=${records}, file=$(basename $file)"
+  else
+    echo "${prefix}: MISSING (no file for today or yesterday)"
+  fi
+done
+```
+
+판정:
+- 파일 존재 + 유효한 JSON + records > 0 + 나이 < 48h = **OK**
+- 파일 존재 + 크기 == 0 또는 < 100 bytes = **WARNING** (빈 백업, AWS CLI 인증 실패 가능성)
+- 파일 존재 + records == INVALID_JSON = **WARNING** (손상된 백업, AWS CLI 에러 메시지가 저장되었을 가능성)
+- 파일 없음 (오늘 + 어제 모두) = **CRITICAL** (cron 미실행 또는 삭제됨)
+- 나이 > 48h = **WARNING** (2일 이상 미갱신)
+
+Cron 스케줄 참조:
+| 시각 (KST) | 대상 테이블 | 파일 패턴 |
+|------------|------------|-----------|
+| 00:00 | ZkLoginUsers (full) | `zklogin-users-backup-YYYYMMDD.json` |
+| 00:02 | ZkLoginUsers (salt projection) | `zklogin-salts-backup-YYYYMMDD.json` |
+| 00:05 | leaderboard-v3-snapshots | `leaderboard-v3-snapshots-backup-YYYYMMDD.json` |
+
+> 추후 백업 항목이 추가되면 위 for loop의 prefix 목록에 추가합니다.
 
 ---
 
@@ -477,6 +604,9 @@ aws cloudfront get-distribution --id E362CCGDH7WA7C --profile nasun-prod \
 
 aws cloudfront get-distribution --id E31QOCW4WNY9FL --profile nasun-prod \
   --query 'Distribution.{Status:Status,DomainName:DomainName,Enabled:DistributionConfig.Enabled}' --output json
+
+aws cloudfront get-distribution --id E35SWPQEJB8HHE --profile nasun-prod \
+  --query 'Distribution.{Status:Status,DomainName:DomainName,Enabled:DistributionConfig.Enabled}' --output json
 ```
 
 판정:
@@ -560,6 +690,9 @@ curl -sI -m 10 "https://nasun.io/assets/" | grep -iE "x-cache|cache-control|cont
 
 # explorer.nasun.io
 curl -sI -m 10 https://explorer.nasun.io/devnet | grep -iE "x-cache|x-amz-cf-pop|cache-control|content-encoding"
+
+# pado.finance
+curl -sI -m 10 https://pado.finance | grep -iE "x-cache|x-amz-cf-pop|cache-control|content-encoding"
 ```
 
 분석:
@@ -600,7 +733,7 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | W6 | SSL 인증서 임박 만료 | 30일 이내 만료 | WARNING | ACM 자동 갱신 확인. ACM 인증서는 보통 자동 갱신됨 |
 | W7 | SSL 인증서 만료 | 이미 만료 또는 7일 미만 | CRITICAL | 즉시 인증서 갱신 필요 |
 | W8 | Lambda cold start 지연 | 5개 이상 API에서 응답 > 5s | WARNING | Provisioned Concurrency 검토 (비용 증가 고려) |
-| W9 | nginx 5xx 비율 높음 | access log에서 5xx > 10% | WARNING | nginx 에러 로그 분석, upstream 확인 |
+| W9 | nginx 5xx 비율 높음 | access log에서 5xx 5%+ (W), 10%+ (C) | W/C | nginx 에러 로그 분석, upstream 확인 |
 | W10 | Prod EC2 CPU 과부하 | load avg > 2.0 (2 vCPU 기준) | WARNING | 프로세스 확인 (`top`), nginx worker 수 조정 |
 
 #### Explorer Patterns (E1-E6)
@@ -625,13 +758,36 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | A5 | Lambda 에러 급증 | 1시간 내 에러 > 5 (단일 함수) | CRITICAL | CloudWatch Logs 확인 후 코드 수정 필요 |
 | A6 | Umami Analytics 다운 | Docker 컨테이너 Exited | WARNING | `ssh ubuntu@15.165.19.180 "cd ~/umami && sudo docker compose up -d"` |
 
+#### Pado Patterns (P1-P10)
+
+| ID | 패턴 | 감지 조건 | 심각도 | 권장 조치 |
+|----|------|-----------|--------|-----------|
+| P1 | Pado Chat Server 다운 (prod) | `/chat/api/status` HTTP 502 또는 PM2 stopped | CRITICAL | `ssh ec2-user@43.200.67.52 "pm2 restart pado-chat-server"`. env 유실 시 `cd /var/www/pado-chat-server && pm2 delete pado-chat-server && pm2 start ecosystem.config.cjs` |
+| P2 | Pado Chat Server 다운 (staging) | staging `/chat/api/status` HTTP 502 또는 PM2 stopped | CRITICAL | `ssh ubuntu@15.165.19.180 "pm2 restart pado-chat-server"`. env 유실 시 cwd `/home/ubuntu/pado-chat-server`에서 동일 패턴 |
+| P3 | Pado 정적 파일 누락 (prod) | `/var/www/pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ec2-user@43.200.67.52:/var/www/pado.finance/` |
+| P4 | Pado 정적 파일 누락 (staging) | `/var/www/staging.pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ubuntu@15.165.19.180:/var/www/staging.pado.finance/` |
+| P5 | Chat Server crash-loop | PM2 restart > 10 | WARNING | `pm2 logs pado-chat-server --lines 50` -- better-sqlite3 native module 불일치 또는 DB 손상 가능성 |
+| P6 | Chat Server 메모리 과다 | PM2 메모리 > 200MB (W), > 300MB (C, auto-restart) | W/C | 200MB 초과 시 주시, 300MB 초과 시 PM2가 자동 재시작 (max_memory_restart 300M) |
+| P7 | Price Updater 다운 | PM2 status != online | CRITICAL | 오라클 가격 미갱신으로 DEX 거래 불가. 단일 인스턴스 필수 (prod에서만 실행) |
+| P8 | LP Bot 다운 | lp-bot-nbtc/neth/nsol 중 하나 이상 stopped | WARNING | LP 호가 제공 중단. `pm2 restart lp-bot-nbtc` |
+| P9 | TP/SL Keeper 다운 | tpsl-keeper stopped 또는 port 4001 미리스닝 | WARNING | 사용자 TP/SL 주문 미실행. restart 횟수 > 6000은 알려진 이슈 (waiting restart) |
+| P10 | Balance Watchdog 다운 | balance-watchdog stopped | WARNING | 봇 지갑 잔고 자동 충전 중단, 장기적으로 봇 가스 고갈 |
+
+#### Backup Patterns (B1-B3)
+
+| ID | 패턴 | 감지 조건 | 심각도 | 권장 조치 |
+|----|------|-----------|--------|-----------|
+| B1 | 백업 파일 누락 | 오늘+어제 파일 모두 없음 | CRITICAL | `crontab -l`로 cron job 확인. AWS CLI 인증 (`aws sts get-caller-identity --profile nasun-prod`) 점검 |
+| B2 | 빈 백업 파일 | 파일 크기 < 100 bytes | WARNING | AWS CLI 인증 만료 또는 DynamoDB 접근 권한 문제. `aws dynamodb scan --table-name ZkLoginUsers --profile nasun-prod --max-items 1`로 테스트 |
+| B3 | 백업 미갱신 | 최신 파일 나이 > 48h | WARNING | cron 실행 여부 확인: `grep CRON /var/log/syslog` 또는 WSL 재시작으로 cron 중단 가능 (`sudo service cron status`) |
+
 #### Shared Infrastructure Patterns (S1-S3)
 
 | ID | 패턴 | 감지 조건 | 심각도 | 권장 조치 |
 |----|------|-----------|--------|-----------|
 | S1 | RPC 다운 | Chain ID 확인 실패/timeout | CRITICAL | Shared infra 문제 → nasun-devnet `/health-check` 실행 |
 | S2 | Faucet 다운 | 5xx 또는 timeout | WARNING | Shared infra 문제 → nasun-devnet `/health-check 1` 실행 |
-| S3 | DNS 해석 실패 | dig 응답 없음 | CRITICAL | Route53 또는 DNS 레지스트라 확인 |
+| S3 | DNS 해석 실패 | `getent hosts` 응답 없음 | CRITICAL | Route53 또는 DNS 레지스트라 확인 |
 
 ---
 
@@ -651,6 +807,8 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | staging.nasun.io | OK/WARN | 0.5s | HTTP 200 |
 | explorer.nasun.io (CloudFront) | OK/WARN/CRIT | 0.3s | x-cache: Hit, POP: NRT52-C1 |
 | analytics.nasun.io (Umami) | OK/WARN | 0.4s | HTTP 200 |
+| pado.finance (CloudFront) | OK/WARN/CRIT | 0.2s | x-cache: Hit, POP: ICN57-P4 |
+| staging.pado.finance | OK/WARN | 0.1s | HTTP 200 |
 | Origin direct (43.200.67.52) | OK/WARN/CRIT | 0.1s | HTTP 200 |
 
 ### 2. SSL Certificates
@@ -663,6 +821,8 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | rpc.devnet.nasun.io | OK | 2026-07-01 | 118 |
 | faucet.devnet.nasun.io | OK | 2026-07-01 | 118 |
 | analytics.nasun.io | OK | 2026-08-15 | 163 |
+| pado.finance | OK | 2026-08-15 | 163 |
+| staging.pado.finance | OK | 2026-08-15 | 163 |
 
 ### 3. DNS Resolution
 
@@ -672,6 +832,8 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | explorer.nasun.io | OK | d3950nhuogw1zy.cloudfront.net |
 | rpc.devnet.nasun.io | OK | 54.180.61.196 |
 | analytics.nasun.io | OK | 15.165.19.180 |
+| pado.finance | OK | CloudFront (2600:9000:...) |
+| staging.pado.finance | OK | 15.165.19.180 |
 
 ### 4. Shared Infrastructure
 
@@ -725,18 +887,43 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | network-summary | OK/CRIT | totalTx: 1234567 |
 | API response time | OK/WARN | health: 0.05s, stats: 0.12s |
 
-### 8. AWS Services
+### 8. Pado Chat Server
+
+| Item | Status | Notes |
+|------|--------|-------|
+| pado.finance /chat/api/status | OK/CRIT | uptime: 1234s, online: 0 |
+| pado.finance /chat/api/leaderboard | OK/CRIT | HTTP 200, traders: 13 |
+| staging /chat/api/status | OK/CRIT | uptime: 5678s, online: 0 |
+| staging /chat/api/leaderboard | OK/CRIT | HTTP 200, traders: 13 |
+| PM2 pado-chat-server (prod) | online/stopped | restarts: 0, mem: 70MB |
+| PM2 pado-chat-server (staging) | online/stopped | restarts: 0, mem: 65MB |
+| PM2 lp-bot-nbtc (prod) | online/stopped | restarts: 0, mem: 50MB |
+| PM2 lp-bot-neth (prod) | online/stopped | restarts: 0, mem: 50MB |
+| PM2 lp-bot-nsol (prod) | online/stopped | restarts: 0, mem: 50MB |
+| PM2 price-updater (prod) | online/stopped | restarts: 0, mem: 50MB |
+| PM2 tpsl-keeper (prod) | online/waiting | restarts: 0, mem: 55MB, port 4001 |
+| PM2 balance-watchdog (prod) | online/stopped | restarts: 0, mem: 50MB |
+
+### 9. Daily Local Backups
+
+| Backup | Status | File | Size | Age |
+|--------|--------|------|------|-----|
+| ZkLogin Users | OK/WARN/CRIT | zklogin-users-backup-20260329.json | 2.4M | 0d |
+| ZkLogin Salts | OK/WARN/CRIT | zklogin-salts-backup-20260329.json | 803K | 0d |
+| Leaderboard V3 Snapshots | OK/WARN/CRIT | leaderboard-v3-snapshots-backup-20260329.json | 27M | 0d |
+
+### 10. AWS Services
 
 | Service | Status | Details |
 |---------|--------|---------|
 | CloudWatch Alarms | OK/ALARM | No alarms in ALARM state |
 | EventBridge Rules | OK/WARN | 4/4 rules ENABLED |
 | DynamoDB Tables | OK/CRIT | 12/12 tables ACTIVE |
-| CloudFront Distributions | OK/CRIT | 2/2 Deployed & Enabled |
-| Secrets Manager | OK/WARN/CRIT | 3/3 secrets accessible |
+| CloudFront Distributions | OK/CRIT | 3/3 Deployed & Enabled |
+| Secrets Manager | OK/WARN/CRIT | 5/5 secrets accessible |
 | Lambda Errors (1h) | OK/WARN/CRIT | 0 errors across 8 functions |
 
-### 9. Detected Issues
+### 11. Detected Issues
 
 (장애 패턴 감지 시 각 패턴별로 출력)
 #### [CRITICAL] W1: Prod EC2 Nginx Down
@@ -773,6 +960,8 @@ All systems operational. No issues detected.
 | Lambda 에러 (1시간) | 0 | 1-5 | 5+ |
 | nginx 5xx 비율 | < 1% | 5%+ | 10%+ |
 | Explorer API 응답시간 | < 0.5s | 1s+ | 5s+ |
+| PM2 restart (chat-server) | < 5 | 10+ | 50+ |
+| PM2 메모리 (chat-server) | < 150MB | 200MB+ | 300MB+ (auto-restart) |
 
 ---
 
@@ -799,12 +988,29 @@ All systems operational. No issues detected.
 | Lambda에 POST/PUT 전송 | 부작용 가능 | GET만 사용 |
 | SSH 키/시크릿 값 출력 | 보안 | 키 경로만 내부 사용, 출력하지 않음 |
 | DynamoDB 데이터 읽기 | 불필요한 접근 | describe-table로 메타데이터만 확인 |
+| `pm2 env` / `pm2 prettylist` / `printenv` 실행 | 앱 시크릿 노출 (DB 비밀번호, API 키, 개인키) | `pm2 jlist` + Python 파서로 status/restarts/memory만 추출 |
+| CloudWatch Logs `events[].message` 조회 | 인증 함수 에러 로그에 OAuth 토큰, JWT, salt 포함 가능 | `--query 'length(events)'`로 count만 추출 |
+| 백업 파일 내용 출력 | ZkLoginUsers 테이블 백업에 지갑 주소, salt 등 PII 포함 | 크기/레코드 수만 확인, 내용 출력 금지 |
+| `rsync --delete` 무확인 실행 | 런타임 생성 파일(SQLite DB, 로그) 삭제 위험 | 사용자 승인 후 실행. 런타임 파일 존재 시 `--delete` 없이 먼저 시도 |
 | 시간 예측 | CLAUDE.md 원칙 | 시간 예측하지 않음 |
+
+## Pado 인프라 참조
+
+| 항목 | Prod | Staging |
+|------|------|---------|
+| Frontend URL | pado.finance (CloudFront -> EC2 43.200.67.52) | staging.pado.finance (EC2 15.165.19.180 직접) |
+| Static files | `/var/www/pado.finance/` | `/var/www/staging.pado.finance/` |
+| Chat server | `/var/www/pado-chat-server/` (PM2: pado-chat-server, port 3100) | `/home/ubuntu/pado-chat-server/` (PM2: pado-chat-server, port 3100) |
+| Chat API | `https://pado.finance/chat/api/*` | `https://staging.pado.finance/chat/api/*` |
+| WebSocket | `wss://pado.finance/ws` | `wss://staging.pado.finance/ws` |
+| TP/SL Keeper | port 4001 (`/api/tpsl/*`) | port 4001 (`/api/tpsl/*`) |
+| nginx config | `/etc/nginx/conf.d/pado.finance.conf` | `/etc/nginx/sites-enabled/staging.pado.finance` |
 
 ## 확장성
 
-추후 pado/gensol/baram 런칭 시:
-- 1단계에 해당 앱의 프론트엔드 URL, Lambda API 추가
+추후 gensol/baram 런칭 시:
+- 1단계에 해당 앱의 프론트엔드 URL 추가
 - 2단계에 해당 EC2/PM2 프로세스 추가
-- 6단계에 앱별 failure pattern 추가 (P1-Pn, G1-Gn, B1-Bn)
+- 6단계에 앱별 failure pattern 추가 (GenSol: G1-Gn, Baram: BR1-BRn)
+  - Note: B prefix는 Backup Patterns (B1-B3)이 사용 중이므로 Baram은 BR prefix 사용
 - Stage 구조 자체는 변경 불필요
