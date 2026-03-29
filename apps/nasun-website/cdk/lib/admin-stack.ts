@@ -18,6 +18,7 @@ interface AdminStackProps extends cdk.StackProps {
   genesisPassTableName?: string;
   referralCodesTableName?: string;
   referralsTableName?: string;
+  activationsTableName?: string;
 }
 
 export class AdminStack extends cdk.Stack {
@@ -37,6 +38,7 @@ export class AdminStack extends cdk.Stack {
     const genesisPassTableName = props?.genesisPassTableName || "nasun-genesis-pass-allowlist";
     const referralCodesTableName = props?.referralCodesTableName || "nasun-referral-codes";
     const referralsTableName = props?.referralsTableName || "nasun-referrals";
+    const activationsTableName = props?.activationsTableName || "nasun-ecosystem-activations";
 
     // Create NFT Collections DynamoDB table
     const nftCollectionsTable = new dynamodb.Table(this, "NftCollectionsTable", {
@@ -102,6 +104,13 @@ export class AdminStack extends cdk.Stack {
       referralsTableName
     );
 
+    // Reference Ecosystem Activations table (from EcosystemStack)
+    const activationsTable = dynamodb.Table.fromTableName(
+      this,
+      "ActivationsTableRef",
+      activationsTableName
+    );
+
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
     const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
     if (!cognitoIdentityPoolId) {
@@ -127,6 +136,7 @@ export class AdminStack extends cdk.Stack {
         INTERNAL_API_KEY: process.env.INTERNAL_API_KEY || "",
         REFERRAL_CODES_TABLE: referralCodesTableName,
         REFERRALS_TABLE: referralsTableName,
+        ACTIVATIONS_TABLE: activationsTableName,
         ALLOWED_ORIGINS: allowedOrigins,
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
@@ -149,6 +159,7 @@ export class AdminStack extends cdk.Stack {
     userWalletsTable.grantReadData(this.exportFunction);
     referralCodesTable.grantReadData(this.exportFunction);
     referralsTable.grantReadData(this.exportFunction);
+    activationsTable.grantReadData(this.exportFunction);
 
     // Grant permission to query GSI (batch-index + referrerIdentityId-index)
     this.exportFunction.addToRolePolicy(
@@ -334,6 +345,9 @@ export class AdminStack extends cdk.Stack {
     // POST /internal/referral-activate - Batch-activate PENDING referrals
     const referralActivateResource = internalResource.addResource("referral-activate");
     referralActivateResource.addMethod("POST", exportIntegration);
+    // GET /internal/ecosystem-activations - NFT activation data for ecosystem multiplier
+    const ecosystemActivationsResource = internalResource.addResource("ecosystem-activations");
+    ecosystemActivationsResource.addMethod("GET", exportIntegration);
 
     // NFT Collections API Routes
     const nftCollectionsIntegration = new apigateway.LambdaIntegration(this.nftCollectionsFunction);
