@@ -29,12 +29,23 @@ export function OutsideTopCard({ data }: OutsideTopCardProps) {
             src={data.profileImageUrl}
             alt={data.displayName || data.originalUsername || data.username}
             className="w-14 h-14 rounded-2xl border-2 border-nasun-c4/30"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fallback = e.currentTarget.nextElementSibling;
+              if (fallback) fallback.classList.remove("hidden");
+            }}
           />
         ) : (
           <div className="w-14 h-14 rounded-full bg-nasun-c4/30 flex items-center justify-center border-2 border-nasun-c4/30">
             <User className="w-6 h-6 text-nasun-white/40" />
           </div>
         )}
+        {/* Hidden fallback (shown on image error) */}
+        <div className="hidden">
+          <div className="w-14 h-14 rounded-2xl bg-nasun-c4/30 flex items-center justify-center border-2 border-nasun-c4/30">
+            <User className="w-6 h-6 text-nasun-white/40" />
+          </div>
+        </div>
 
         {/* Rank & Score */}
         <div className="flex-1">
