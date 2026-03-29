@@ -1,13 +1,14 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
-import { generateChallenge, verifySignature } from './auth.js';
+import { generateChallenge, verifySignature, isValidSuiAddress } from './auth.js';
 import {
   initStore, insertMessage, getRecentMessages, purgeOldMessages, closeStore,
   getNickname, setNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
   getNicknameRateLimit,
   toggleReaction, getReactionSummaries, getMessageRoomId,
+  toggleFollow, getFollowing, getFollowerCounts, getFollowingCount,
 } from './store.js';
-import { roomExists, getAllRooms, getPoolRoom, setPoolRoomMapping } from './rooms.js';
+import { roomExists, getAllRooms, getPoolRoom, setPoolRoomMapping, getPoolSymbol } from './rooms.js';
 import type {
   AuthenticatedClient,
   ClientMessage,
@@ -26,6 +27,7 @@ import {
   getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
+  getFollowedTraderFills,
 } from './leaderboard-store.js';
 import { getPoolBaseDecimals } from './rooms.js';
 import { startIndexer, stopIndexer } from './indexer.js';
@@ -57,6 +59,19 @@ const connectionsPerIp = new Map<string, number>();
 const lastReactionTime = new Map<string, number>(); // address -> last reaction timestamp
 const lastReactionMessageMap = new Map<string, { messageId: number; at: number }>(); // address -> per-message cooldown
 
+// Follow rate limiting: address -> last toggle timestamp
+const lastFollowToggleTime = new Map<string, number[]>(); // address -> timestamps (window)
+
+// Session tokens for REST API authentication (issued on WS auth_success)
+const sessionTokens = new Map<string, { address: string; expiresAt: number }>();
+const addressToToken = new Map<string, string>(); // reverse lookup: address -> token
+const SESSION_TOKEN_TTL = 60 * 60 * 1000; // 1 hour
+const MAX_SESSION_TOKENS = 10_000;
+
+// Follower count cache (30s TTL)
+const followerCountCache = { data: new Map<string, number>(), expiresAt: 0 };
+const FOLLOWER_CACHE_TTL = 30_000;
+
 // ===== Helpers =====
 
 function send(ws: WebSocket, msg: ServerMessage): void {
@@ -71,6 +86,90 @@ function broadcast(msg: ServerMessage, excludeWs?: WebSocket): void {
       send(ws, msg);
     }
   }
+}
+
+function issueSessionToken(address: string): string {
+  // Per-address token limit: revoke existing token
+  const existingToken = addressToToken.get(address);
+  if (existingToken) {
+    sessionTokens.delete(existingToken);
+  }
+
+  // Evict oldest if at capacity
+  if (sessionTokens.size >= MAX_SESSION_TOKENS) {
+    const oldestKey = sessionTokens.keys().next().value;
+    if (oldestKey) {
+      const oldSession = sessionTokens.get(oldestKey);
+      if (oldSession) addressToToken.delete(oldSession.address);
+      sessionTokens.delete(oldestKey);
+    }
+  }
+
+  const token = randomBytes(32).toString('hex');
+  sessionTokens.set(token, { address, expiresAt: Date.now() + SESSION_TOKEN_TTL });
+  addressToToken.set(address, token);
+  return token;
+}
+
+function resolveSessionToken(authHeader: string | undefined): string | null {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  const session = sessionTokens.get(token);
+  if (!session || session.expiresAt < Date.now()) return null;
+  return session.address;
+}
+
+function cleanupSessionTokens(): void {
+  const now = Date.now();
+  for (const [token, session] of sessionTokens) {
+    if (session.expiresAt < now) {
+      addressToToken.delete(session.address);
+      sessionTokens.delete(token);
+    }
+  }
+}
+
+function getCachedFollowerCounts(addresses: string[]): Map<string, number> {
+  if (followerCountCache.expiresAt > Date.now()) {
+    const result = new Map<string, number>();
+    for (const addr of addresses) {
+      result.set(addr, followerCountCache.data.get(addr) ?? 0);
+    }
+    return result;
+  }
+  // Cache miss: full rebuild
+  followerCountCache.data = new Map<string, number>();
+  const counts = getFollowerCounts(addresses);
+  for (const [addr, count] of counts) {
+    followerCountCache.data.set(addr, count);
+  }
+  followerCountCache.expiresAt = Date.now() + FOLLOWER_CACHE_TTL;
+  return counts;
+}
+
+function updateFollowerCountCache(targetAddress: string, newCount: number): void {
+  followerCountCache.data.set(targetAddress, newCount);
+}
+
+function checkFollowRateLimit(address: string): boolean {
+  const now = Date.now();
+  const windowMs = 60_000; // 1 minute
+  const maxPerWindow = 20;
+
+  let timestamps = lastFollowToggleTime.get(address);
+  if (!timestamps) {
+    timestamps = [];
+    lastFollowToggleTime.set(address, timestamps);
+  }
+
+  // Remove expired entries
+  while (timestamps.length > 0 && now - timestamps[0] > windowMs) {
+    timestamps.shift();
+  }
+
+  if (timestamps.length >= maxPerWindow) return false;
+  timestamps.push(now);
+  return true;
 }
 
 function broadcastOnlineCount(): void {
@@ -349,17 +448,20 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
       }
 
       // Successfully authenticated
+      const migrated = getFollowingCount(verifiedAddress) > 0;
       const client: AuthenticatedClient = {
         ws,
         address: verifiedAddress,
         connectedAt: Date.now(),
         lastMessageAt: 0,
+        migrationBurstUntil: migrated ? 0 : Date.now() + 5000, // 5s burst for unmigrated users
       };
       authenticatedClients.set(ws, client);
 
       const existingNickname = getNickname(verifiedAddress);
       const rateLimit = existingNickname ? getNicknameRateLimit(verifiedAddress) : undefined;
-      send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname, rateLimit });
+      const sessionToken = issueSessionToken(verifiedAddress);
+      send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname, rateLimit, sessionToken });
 
       // Send available rooms list
       send(ws, { type: 'rooms_list', rooms: getAllRooms() });
@@ -448,6 +550,39 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
         lastReactionTime.set(client.address, now);
         lastReactionMessageMap.set(client.address, { messageId, at: now });
         broadcast({ type: 'reaction_update', messageId, roomId, reactions });
+        break;
+      }
+      case 'toggle_follow': {
+        const { target } = msg as { target: string };
+
+        // Address validation
+        if (!target || !isValidSuiAddress(target)) {
+          send(ws, { type: 'follow_result', target: target || '', following: false, followerCount: 0, error: 'INVALID_ADDRESS' });
+          break;
+        }
+
+        // Rate limit: burst window for migration, otherwise 20/min
+        const now = Date.now();
+        if (now >= client.migrationBurstUntil) {
+          if (!checkFollowRateLimit(client.address)) {
+            send(ws, { type: 'follow_result', target, following: false, followerCount: 0, error: 'RATE_LIMITED' });
+            break;
+          }
+        }
+
+        try {
+          const result = toggleFollow(client.address, target);
+          updateFollowerCountCache(target.toLowerCase(), result.followerCount);
+          send(ws, { type: 'follow_result', target, following: result.following, followerCount: result.followerCount });
+        } catch (err) {
+          const code = (err as Error).message;
+          send(ws, { type: 'follow_result', target, following: false, followerCount: 0, error: code });
+        }
+        break;
+      }
+      case 'get_following': {
+        const addresses = getFollowing(client.address);
+        send(ws, { type: 'following_list', addresses });
         break;
       }
       default:
@@ -571,6 +706,84 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     return;
   }
 
+  // ===== Feed API (authenticated, session token) =====
+
+  if (url.pathname === '/api/feed' && req.method === 'GET') {
+    const clientIp = (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'unknown';
+    if (!checkApiRateLimit(clientIp)) {
+      res.writeHead(429, corsHeaders);
+      res.end(JSON.stringify({ error: 'Too many requests' }));
+      return;
+    }
+
+    const address = resolveSessionToken(req.headers?.authorization as string | undefined);
+    if (!address) {
+      res.writeHead(401, corsHeaders);
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    try {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10), 1), 50);
+      const beforeTsParam = url.searchParams.get('beforeTs');
+      const beforeTs = beforeTsParam ? parseInt(beforeTsParam, 10) : undefined;
+
+      if (beforeTs !== undefined && (!Number.isFinite(beforeTs) || beforeTs < 0)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid beforeTs' }));
+        return;
+      }
+
+      // Step 1: Get followed addresses from chat DB
+      const following = getFollowing(address);
+      if (following.length === 0) {
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({ activities: [], hasMore: false }));
+        return;
+      }
+
+      // Step 2: Query trade fills from leaderboard DB
+      const { fills, hasMore } = getFollowedTraderFills(following, limit, beforeTs);
+
+      // Step 3: Enrich with nicknames from chat DB
+      const traderAddresses = [...new Set(fills.map((f) => f.address))];
+      const nicknames = traderAddresses.length > 0 ? getNicknamesBatch(traderAddresses) : new Map();
+
+      // Step 4: Build activity feed response
+      const activities = fills.map((fill) => {
+        // Determine trade side relative to the feed trader
+        const isTaker = fill.address === fill.taker_address;
+        const isBid = !!fill.taker_is_bid;
+        // taker_is_bid=1: taker bought, maker sold
+        const side = isTaker ? (isBid ? 'buy' : 'sell') : (isBid ? 'sell' : 'buy');
+
+        return {
+          type: 'trade' as const,
+          traderAddress: fill.address,
+          traderNickname: nicknames.get(fill.address) ?? null,
+          timestamp: fill.timestamp_ms,
+          data: {
+            poolId: fill.pool_id,
+            pair: `${getPoolSymbol(fill.pool_id) ?? 'UNKNOWN'}/NUSDC`,
+            side,
+            price: formatQuoteVolume(fill.price),
+            baseQuantity: fill.base_quantity,
+            quoteQuantity: formatQuoteVolume(fill.quote_quantity),
+            txDigest: fill.tx_digest,
+          },
+        };
+      });
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ activities, hasMore }));
+    } catch (err) {
+      console.error('[Feed] API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
   // ===== Leaderboard API =====
 
   // Rate limit all leaderboard endpoints
@@ -607,6 +820,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         const rows = getLeaderboardPnl(period, limit);
         const addresses = rows.map((r) => r.address);
         const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+        const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
 
         const traders = rows.map((r) => ({
           rank: r.rank,
@@ -616,6 +830,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
           pnlPercent: r.pnl_percent,
           tradeCount: r.trade_count,
           rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
+          followerCount: followerCounts.get(r.address) ?? 0,
         }));
 
         const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
@@ -628,6 +843,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         const rows = getLeaderboard(period, limit);
         const addresses = rows.map((r) => r.address);
         const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+        const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
 
         const traders = rows.map((r) => ({
           rank: r.rank,
@@ -638,6 +854,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
           uniquePools: r.unique_pools,
           rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
           lastTradeAt: r.last_trade_at,
+          followerCount: followerCounts.get(r.address) ?? 0,
         }));
 
         const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
@@ -756,6 +973,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       const totalTraders = getTotalPointsTraders();
       const addresses = rows.map((r) => r.address);
       const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map<string, string>();
+      const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
 
       const traders = rows.map((row) => ({
         rank: row.rank,
@@ -765,6 +983,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         tradeCount: row.trade_count,
         volumeUsd: formatQuoteVolume(row.volume_quote),
         rankChange: row.prev_rank > 0 ? row.prev_rank - row.rank : 0,
+        followerCount: followerCounts.get(row.address) ?? 0,
       }));
 
       res.writeHead(200, corsHeaders);
@@ -1416,6 +1635,12 @@ function start(): void {
     for (const [addr, entry] of lastReactionMessageMap) {
       if (now - entry.at > staleThreshold) lastReactionMessageMap.delete(addr);
     }
+    for (const [addr, timestamps] of lastFollowToggleTime) {
+      // Remove expired entries, delete map entry if empty
+      while (timestamps.length > 0 && now - timestamps[0] > 60_000) timestamps.shift();
+      if (timestamps.length === 0) lastFollowToggleTime.delete(addr);
+    }
+    cleanupSessionTokens();
   }, 5 * 60_000);
 
   // Periodic retention cleanup (messages + order events)

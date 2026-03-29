@@ -79,6 +79,16 @@ export function initStore(config: ChatServerConfig): void {
 
     CREATE INDEX IF NOT EXISTS idx_reactions_message
       ON reactions(message_id, emoji_code);
+
+    CREATE TABLE IF NOT EXISTS follows (
+      follower TEXT NOT NULL,
+      followed TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      PRIMARY KEY (follower, followed)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower);
+    CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed);
   `);
 
   // Migration: add nickname rate limit columns (safe to re-run)
@@ -372,6 +382,72 @@ export function getMessageRoomId(messageId: number): number | null {
     .prepare('SELECT room_id FROM messages WHERE id = ?')
     .get(messageId) as { room_id: number } | undefined;
   return row?.room_id ?? null;
+}
+
+// ===== Follows API =====
+
+const MAX_FOLLOWED = 50;
+
+export function toggleFollow(
+  follower: string,
+  followed: string
+): { following: boolean; followerCount: number } {
+  const d = getDb();
+
+  // Lowercase only (preserve 0x prefix). normalizeAddress strips 0x, causing cross-table mismatch.
+  const nFollower = follower.toLowerCase();
+  const nFollowed = followed.toLowerCase();
+
+  if (nFollower === nFollowed) throw new Error('SELF_FOLLOW');
+
+  return d.transaction(() => {
+    const existing = d
+      .prepare('SELECT 1 FROM follows WHERE follower=? AND followed=?')
+      .get(nFollower, nFollowed);
+
+    if (existing) {
+      d.prepare('DELETE FROM follows WHERE follower=? AND followed=?').run(nFollower, nFollowed);
+      const count = d.prepare('SELECT COUNT(*) as c FROM follows WHERE followed=?').pluck().get(nFollowed) as number;
+      return { following: false, followerCount: count };
+    }
+
+    const currentCount = d.prepare('SELECT COUNT(*) as c FROM follows WHERE follower=?').pluck().get(nFollower) as number;
+    if (currentCount >= MAX_FOLLOWED) throw new Error('MAX_FOLLOWED_EXCEEDED');
+
+    d.prepare('INSERT INTO follows (follower, followed) VALUES (?, ?)').run(nFollower, nFollowed);
+    const count = d.prepare('SELECT COUNT(*) as c FROM follows WHERE followed=?').pluck().get(nFollowed) as number;
+    return { following: true, followerCount: count };
+  })();
+}
+
+export function getFollowing(address: string): string[] {
+  const rows = getDb()
+    .prepare('SELECT followed FROM follows WHERE follower=? ORDER BY created_at DESC')
+    .all(address.toLowerCase()) as Array<{ followed: string }>;
+  return rows.map((r) => r.followed);
+}
+
+export function getFollowerCounts(addresses: string[]): Map<string, number> {
+  if (addresses.length === 0) return new Map();
+
+  const normalized = addresses.map((a) => a.toLowerCase());
+  const placeholders = normalized.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(`SELECT followed, COUNT(*) as cnt FROM follows WHERE followed IN (${placeholders}) GROUP BY followed`)
+    .all(...normalized) as Array<{ followed: string; cnt: number }>;
+
+  const result = new Map<string, number>();
+  for (const row of rows) {
+    result.set(row.followed, row.cnt);
+  }
+  return result;
+}
+
+export function getFollowingCount(address: string): number {
+  return getDb()
+    .prepare('SELECT COUNT(*) as c FROM follows WHERE follower=?')
+    .pluck()
+    .get(address.toLowerCase()) as number;
 }
 
 export function closeStore(): void {
