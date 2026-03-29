@@ -21,7 +21,7 @@ export class EcosystemScoreError extends Error {
 export interface EcosystemScoreData {
   identityId: string;
   multiplier: number;
-  activations: Array<{ nftType: string; nftCount: number }>;
+  activations: Array<{ nftType: string; nftCount: number; bonus?: number }>;
   daily: {
     baseScore: number;
     ecosystemScore: number;

@@ -59,11 +59,10 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
   const battalionActive = !!battalionActivation;
   const activeCount = [allianceActive, genesisActive, battalionActive].filter(Boolean).length;
 
-  // Battalion bonus varies by count: base(1.0) + ln(count) * 0.8
-  const battalionCount = battalionActivation?.nftCount ?? 1;
-  const battalionBonus = battalionActive
-    ? (1.0 + Math.log(Math.max(1, battalionCount)) * 0.8).toFixed(1)
-    : "1.0";
+  // Read per-NFT bonus from score API (server-computed). Fallback to defaults during deploy transition.
+  const allianceBonusStr = formatBonus(score?.activations, "alliance", 1.0);
+  const genesisBonusStr = formatBonus(score?.activations, "genesis-pass", 1.5);
+  const battalionBonusStr = formatBonus(score?.activations, "battalion", 1.0);
 
   return (
     <div className={`rounded-xl border border-nasun-c6/50 bg-nasun-c6/20 p-5 ${className}`}>
@@ -103,13 +102,9 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
             </div>
             {/* NFT breakdown */}
             <div className="mt-2 flex gap-2">
-              <NftBadge label="Alliance" active={allianceActive} bonus="+1.0x" />
-              <NftBadge label="Genesis" active={genesisActive} bonus="+1.5x" />
-              <NftBadge
-                label="Battalion"
-                active={battalionActive}
-                bonus={`+${battalionBonus}x`}
-              />
+              <NftBadge label="Alliance" active={allianceActive} bonus={allianceBonusStr} />
+              <NftBadge label="Genesis" active={genesisActive} bonus={genesisBonusStr} />
+              <NftBadge label="Battalion" active={battalionActive} bonus={battalionBonusStr} />
             </div>
             {activeCount === 0 && (
               <p className="mt-2 text-xs text-nasun-latte/40">
@@ -163,6 +158,16 @@ function ScoreBox({ label, value }: { label: string; value: number }) {
       </p>
     </div>
   );
+}
+
+function formatBonus(
+  activations: Array<{ nftType: string; bonus?: number }> | undefined,
+  nftType: string,
+  fallback: number,
+): string {
+  const act = activations?.find((a) => a.nftType === nftType);
+  const bonus = act?.bonus ?? fallback;
+  return `+${parseFloat(bonus.toFixed(1))}x`;
 }
 
 function NftBadge({
