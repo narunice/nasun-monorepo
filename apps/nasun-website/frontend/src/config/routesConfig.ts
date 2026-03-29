@@ -46,6 +46,7 @@ export const Pages = {
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
   BaramDark: lazyWithRetry(() => import("../pages/ecosystem/BaramDarkPage")),
+  EcosystemLeaderboard: lazyWithRetry(() => import("../pages/ecosystem/EcosystemLeaderboardPage")),
 
   // Infra Pages
   InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
@@ -170,6 +171,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.padoFinance",
           path: "/ecosystem/pado",
           element: Pages.FinancePado,
+        },
+        {
+          name: "navigation.ecosystemLeaderboard",
+          path: "/ecosystem/leaderboard",
+          element: Pages.EcosystemLeaderboard,
         },
         {
           name: "navigation.baramAi",
@@ -626,6 +632,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.gameServers": "Game Servers",
   },
   ecosystem: {
+    "navigation.ecosystemLeaderboard": "Ecosystem Leaderboard",
     "navigation.baramAi": "Baram - AI",
     "navigation.padoFinance": "Pado - Finance",
     "navigation.genSol": "GenSol",
