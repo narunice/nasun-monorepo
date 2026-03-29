@@ -7,7 +7,8 @@ import { ChatPanel } from './ChatPanel';
 import { useFloatingPanel } from '../hooks/useFloatingPanel';
 
 interface Props {
-  onDock: () => void;
+  onDock?: () => void;
+  onClose?: () => void;
 }
 
 const DEFAULTS = { x: 0, y: 0, width: 340, height: 480 };
@@ -20,7 +21,7 @@ function getInitialPosition() {
   };
 }
 
-export function FloatingChatPopup({ onDock }: Props) {
+export function FloatingChatPopup({ onDock, onClose }: Props) {
   const { position, onDragStart, onResizeStart } = useFloatingPanel(
     'pado_chat_float_pos',
     getInitialPosition()
@@ -43,16 +44,28 @@ export function FloatingChatPopup({ onDock }: Props) {
       >
         <span className="text-[11px] font-medium text-theme-text-secondary">Chat</span>
         <div className="flex items-center gap-1">
-          {/* Dock back button */}
-          <button
-            onClick={onDock}
-            className="p-0.5 text-theme-text-muted hover:text-theme-text-primary transition-colors"
-            title="Dock chat back"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-            </svg>
-          </button>
+          {onDock && (
+            <button
+              onClick={onDock}
+              className="p-0.5 text-theme-text-muted hover:text-theme-text-primary transition-colors"
+              title="Dock chat back"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+              </svg>
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-0.5 text-theme-text-muted hover:text-theme-text-primary transition-colors"
+              title="Close chat"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
