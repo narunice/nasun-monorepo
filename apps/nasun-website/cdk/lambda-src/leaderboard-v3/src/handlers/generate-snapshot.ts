@@ -38,6 +38,7 @@ import { getTodayDateString, getYesterdayDateString } from '../utils/date';
 import { calculateRankChange } from '../utils/rank';
 import { authenticateAdmin } from '../utils/admin-auth';
 import { createResponse, getRequestOrigin } from '../utils/response';
+import { getLatestSnapshot } from '../utils/snapshot-utils';
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({});
@@ -62,72 +63,6 @@ const SNAPSHOT_TTL_DAYS = 180;
 // Feature toggle: when true, uses post-based daily batch decay instead of cumulative decay
 const ENABLE_BATCH_DECAY = process.env.ENABLE_BATCH_DECAY === 'true';
 
-/**
- * Get previous day's snapshot for a season
- */
-async function getPreviousDaySnapshot(
-  seasonId: string,
-  yesterdayDate: string
-): Promise<Map<string, number>> {
-  const pk = `${seasonId}#${yesterdayDate}`;
-  const rankMap = new Map<string, number>();
-
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: SNAPSHOTS_TABLE,
-      KeyConditionExpression: 'pk = :pk',
-      ExpressionAttributeValues: {
-        ':pk': pk,
-      },
-    })
-  );
-
-  if (result.Items) {
-    for (const item of result.Items) {
-      const snapshot = item as DailySnapshot;
-      rankMap.set(snapshot.accountId, snapshot.rank);
-    }
-  }
-
-  return rankMap;
-}
-
-/**
- * Get previous day's full snapshot data for rawScore monotonicity floor.
- * Returns Map<accountId, DailySnapshot> with pagination for large snapshots.
- */
-async function getFullPreviousDaySnapshot(
-  seasonId: string,
-  yesterdayDate: string
-): Promise<Map<string, DailySnapshot>> {
-  const pk = `${seasonId}#${yesterdayDate}`;
-  const snapshotMap = new Map<string, DailySnapshot>();
-  let lastEvaluatedKey: Record<string, unknown> | undefined;
-
-  do {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: SNAPSHOTS_TABLE,
-        KeyConditionExpression: 'pk = :pk',
-        ExpressionAttributeValues: {
-          ':pk': pk,
-        },
-        ExclusiveStartKey: lastEvaluatedKey,
-      })
-    );
-
-    if (result.Items) {
-      for (const item of result.Items) {
-        const snapshot = item as DailySnapshot;
-        snapshotMap.set(snapshot.accountId, snapshot);
-      }
-    }
-
-    lastEvaluatedKey = result.LastEvaluatedKey;
-  } while (lastEvaluatedKey);
-
-  return snapshotMap;
-}
 
 /**
  * Write snapshots in batches (DynamoDB limit: 25 items per batch)
@@ -339,11 +274,23 @@ async function runSnapshotCore(params: {
     ? new Date(customDate + 'T00:00:00+09:00')
     : undefined;
 
-  // Fetch full previous snapshot for rawScore monotonicity floor
+  // Fetch previous snapshot for rawScore monotonicity floor and rank change calculation
+  // Uses getLatestSnapshot with 7-day fallback to handle missing intermediate snapshots
   const todayDate = customDate || getTodayDateString();
   const yesterdayDate = getYesterdayDateString(todayDate);
-  const prevFullSnapshot = await getFullPreviousDaySnapshot(activeSeason.seasonId, yesterdayDate);
-  console.log(`Previous snapshot has ${prevFullSnapshot.size} entries for rawScore floor`);
+  const { entries: prevEntries, date: prevSnapshotDate } = await getLatestSnapshot(activeSeason.seasonId, yesterdayDate);
+
+  const prevFullSnapshot = new Map<string, DailySnapshot>();
+  const previousRanks = new Map<string, number>();
+  for (const entry of prevEntries) {
+    prevFullSnapshot.set(entry.accountId, entry);
+    previousRanks.set(entry.accountId, entry.rank);
+  }
+  if (prevEntries.length === 0) {
+    console.warn('No previous snapshot found within 7-day fallback window');
+  } else {
+    console.log(`Previous snapshot found at ${prevSnapshotDate}, ${prevFullSnapshot.size} entries for rawScore floor`);
+  }
 
   // Recalculate scores and sort by userScore
   let scoredAccounts: (SeasonAccountScore & {
@@ -435,13 +382,9 @@ async function runSnapshotCore(params: {
       .sort((a, b) => b.userScore - a.userScore);
   }
 
-  // Get previous day's ranks for rank change calculation
-  const previousRanks = await getPreviousDaySnapshot(activeSeason.seasonId, yesterdayDate);
-
   if (customDate) {
     console.log(`Backfill mode: generating snapshot for ${customDate}`);
   }
-  console.log(`Previous day snapshot has ${previousRanks.size} entries`);
 
   // Create snapshot entries (limit to top 2000; public API caps at 500 via PUBLIC_LEADERBOARD_LIMIT)
   const MAX_SNAPSHOT_ENTRIES = 2000;

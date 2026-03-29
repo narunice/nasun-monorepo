@@ -61,8 +61,8 @@ const EcosystemLeaderboardPage = () => {
 
       <SectionLayout maxWidth="7xl" className="pt-8 md:pt-12">
         {/* Experimental Season Banner */}
-        <div className="mb-6 rounded-lg border border-nasun-c4/30 bg-nasun-c4/5 px-4 py-3">
-          <p className="text-sm text-nasun-c4">
+        <div className="mb-6 rounded-xl border border-nasun-c3/20 bg-nasun-c3/5 px-4 py-3">
+          <p className="text-sm text-nasun-c3">
             <span className="font-semibold">Experimental Season</span>
             {" "}
             - Scoring rules and multiplier values may change based on community feedback and ecosystem data. Your contributions are tracked from day one.
@@ -81,14 +81,14 @@ const EcosystemLeaderboardPage = () => {
           </div>
 
           {/* Period Toggle */}
-          <div className="flex rounded-lg bg-nasun-c6/50 p-1">
+          <div className="flex w-full rounded-xl bg-nasun-c6/50 p-1 sm:w-auto">
             {(["daily", "weekly"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => handlePeriodChange(p)}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`flex-1 rounded-lg px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none ${
                   period === p
-                    ? "bg-nasun-c4 text-white"
+                    ? "bg-nasun-c3 text-nasun-black"
                     : "text-nasun-white/60 hover:text-nasun-white"
                 }`}
               >
@@ -99,21 +99,21 @@ const EcosystemLeaderboardPage = () => {
         </div>
 
         {/* Scoring Info */}
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg bg-nasun-c6/30 p-3">
-            <p className="text-xs text-nasun-white/50">Base Score</p>
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-xl border border-nasun-c3/10 bg-nasun-c6/25 p-3">
+            <p className="text-xs text-nasun-c3/70">Base Score</p>
             <p className="text-sm text-nasun-white">
-              Distinct activity categories per day (max 6+)
+              Distinct activity categories per day
             </p>
           </div>
-          <div className="rounded-lg bg-nasun-c6/30 p-3">
-            <p className="text-xs text-nasun-white/50">Multiplier</p>
+          <div className="rounded-xl border border-nasun-c3/10 bg-nasun-c6/25 p-3">
+            <p className="text-xs text-nasun-c3/70">Multiplier</p>
             <p className="text-sm text-nasun-white">
               Activated NFTs boost your score (Alliance, Genesis Pass, Battalion)
             </p>
           </div>
-          <div className="rounded-lg bg-nasun-c6/30 p-3">
-            <p className="text-xs text-nasun-white/50">Ecosystem Score</p>
+          <div className="rounded-xl border border-nasun-c3/10 bg-nasun-c6/25 p-3">
+            <p className="text-xs text-nasun-c3/70">Ecosystem Score</p>
             <p className="text-sm text-nasun-white">
               Base Score x Multiplier = Final ranking score
             </p>
@@ -122,14 +122,14 @@ const EcosystemLeaderboardPage = () => {
 
         {/* Table */}
         {error ? (
-          <div className="rounded-lg bg-red-500/10 p-4 text-center text-red-400">
+          <div className="rounded-xl bg-red-500/10 p-4 text-center text-red-400">
             {error}
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-nasun-c6/50">
+          <div className="overflow-x-auto rounded-xl border border-nasun-c3/15 bg-nasun-c6/20">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-nasun-c6/50 bg-nasun-c6/20">
+                <tr className="border-b border-nasun-c3/15 bg-nasun-c3/5">
                   <th className="px-4 py-3 text-left font-medium text-nasun-white/60">
                     Rank
                   </th>
@@ -139,7 +139,7 @@ const EcosystemLeaderboardPage = () => {
                   <th className="px-4 py-3 text-right font-medium text-nasun-white/60">
                     Base Score
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-nasun-white/60">
+                  <th className="hidden px-4 py-3 text-right font-medium text-nasun-white/60 sm:table-cell">
                     Multiplier
                   </th>
                   {period === "weekly" && (
@@ -157,7 +157,7 @@ const EcosystemLeaderboardPage = () => {
                   <tr>
                     <td
                       colSpan={period === "weekly" ? 6 : 5}
-                      className="px-4 py-12 text-center text-nasun-white/40"
+                      className="px-4 py-12 text-center text-nasun-white/50"
                     >
                       Loading...
                     </td>
@@ -166,16 +166,32 @@ const EcosystemLeaderboardPage = () => {
                   <tr>
                     <td
                       colSpan={period === "weekly" ? 6 : 5}
-                      className="px-4 py-12 text-center text-nasun-white/40"
+                      className="px-4 py-16 text-center"
                     >
-                      No activity recorded yet. Start using the ecosystem to appear here!
+                      <div className="flex flex-col items-center gap-3">
+                        {/* Teal activity icon */}
+                        <svg
+                          className="h-10 w-10 text-nasun-c3/40"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                        </svg>
+                        <p className="text-sm text-nasun-white/50">
+                          No activity recorded yet. Start using the ecosystem to appear here!
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   entries.map((entry) => (
                     <tr
                       key={entry.identityId}
-                      className="border-b border-nasun-c6/20 transition-colors hover:bg-nasun-c6/10"
+                      className="border-b border-nasun-c3/8 transition-colors hover:bg-nasun-c3/8"
                     >
                       <td className="px-4 py-3 font-mono text-nasun-white/80">
                         #{entry.rank}
@@ -188,7 +204,7 @@ const EcosystemLeaderboardPage = () => {
                       <td className="px-4 py-3 text-right font-mono text-nasun-white">
                         {entry.baseScore}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="hidden px-4 py-3 text-right sm:table-cell">
                         <span
                           className={`font-mono ${
                             entry.multiplier > 1
@@ -204,7 +220,7 @@ const EcosystemLeaderboardPage = () => {
                           {entry.activeDays}/7
                         </td>
                       )}
-                      <td className="px-4 py-3 text-right font-bold text-nasun-c4">
+                      <td className="px-4 py-3 text-right font-bold text-nasun-c3">
                         {entry.ecosystemScore.toFixed(1)}
                       </td>
                     </tr>
@@ -217,8 +233,8 @@ const EcosystemLeaderboardPage = () => {
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs text-nasun-white/40">
+          <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+            <p className="text-xs text-nasun-white/50">
               Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, total)} of{" "}
               {total} participants
             </p>
@@ -226,14 +242,14 @@ const EcosystemLeaderboardPage = () => {
               <button
                 disabled={offset === 0}
                 onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                className="rounded-md bg-nasun-c6/30 px-3 py-1.5 text-sm text-nasun-white disabled:opacity-30"
+                className="min-h-[44px] rounded-xl bg-nasun-c6/30 px-4 py-1.5 text-sm text-nasun-white transition-colors hover:bg-nasun-c3/8 disabled:opacity-30"
               >
                 Previous
               </button>
               <button
                 disabled={offset + PAGE_SIZE >= total}
                 onClick={() => setOffset(offset + PAGE_SIZE)}
-                className="rounded-md bg-nasun-c6/30 px-3 py-1.5 text-sm text-nasun-white disabled:opacity-30"
+                className="min-h-[44px] rounded-xl bg-nasun-c6/30 px-4 py-1.5 text-sm text-nasun-white transition-colors hover:bg-nasun-c3/8 disabled:opacity-30"
               >
                 Next
               </button>
