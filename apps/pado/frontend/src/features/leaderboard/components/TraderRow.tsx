@@ -65,6 +65,9 @@ export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
       <td className="py-2.5 px-3">
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
+            {trader.lastTradeAt && Date.now() - trader.lastTradeAt < 15 * 60 * 1000 && (
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" title="Active" />
+            )}
             <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
               {displayName}
             </span>
