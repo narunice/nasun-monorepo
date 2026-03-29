@@ -44,6 +44,15 @@ export interface ToggleReactionPayload {
   emojiCode: string;
 }
 
+export interface ToggleFollowPayload {
+  type: 'toggle_follow';
+  target: string;
+}
+
+export interface GetFollowingPayload {
+  type: 'get_following';
+}
+
 export type ClientMessage =
   | AuthResponseMessage
   | SendMessagePayload
@@ -51,7 +60,9 @@ export type ClientMessage =
   | SetNicknamePayload
   | CheckNicknamePayload
   | ListRoomsPayload
-  | ToggleReactionPayload;
+  | ToggleReactionPayload
+  | ToggleFollowPayload
+  | GetFollowingPayload;
 
 // ===== Protocol Messages (Server -> Client) =====
 
@@ -71,6 +82,7 @@ export interface AuthSuccessMessage {
   address: string;
   nickname: string | null;
   rateLimit?: NicknameRateLimit;
+  sessionToken?: string;
 }
 
 export interface AuthErrorMessage {
@@ -140,6 +152,19 @@ export interface ReactionUpdatePayload {
   reactions: Record<string, number>; // emojiCode -> count
 }
 
+export interface FollowResultPayload {
+  type: 'follow_result';
+  target: string;
+  following: boolean;
+  followerCount: number;
+  error?: string;
+}
+
+export interface FollowingListPayload {
+  type: 'following_list';
+  addresses: string[];
+}
+
 export type ServerMessage =
   | AuthChallengeMessage
   | AuthSuccessMessage
@@ -152,7 +177,9 @@ export type ServerMessage =
   | NicknameCheckMessage
   | HeartbeatMessage
   | RoomsListPayload
-  | ReactionUpdatePayload;
+  | ReactionUpdatePayload
+  | FollowResultPayload
+  | FollowingListPayload;
 
 // ===== Reaction Constants =====
 
@@ -167,6 +194,7 @@ export interface AuthenticatedClient {
   address: string;
   connectedAt: number;
   lastMessageAt: number;
+  migrationBurstUntil: number; // epoch ms: burst window for follow migration
 }
 
 export interface RoomInfo {

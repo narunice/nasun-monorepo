@@ -186,6 +186,6 @@ function normalizeAddress(addr: string): string {
   return addr.toLowerCase().replace(/^0x/, '');
 }
 
-function isValidSuiAddress(addr: string): boolean {
+export function isValidSuiAddress(addr: string): boolean {
   return /^0x[0-9a-fA-F]{64}$/.test(addr);
 }

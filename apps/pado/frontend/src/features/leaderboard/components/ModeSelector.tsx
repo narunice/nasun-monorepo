@@ -1,6 +1,7 @@
 import type { LeaderboardMode } from '../types';
 
 const MODES: { id: LeaderboardMode; label: string }[] = [
+  { id: 'activity', label: 'Activity' },
   { id: 'volume', label: 'Volume' },
   { id: 'pnl', label: 'PnL' },
   { id: 'points', label: 'Points' },
@@ -13,7 +14,7 @@ interface ModeSelectorProps {
 
 export function ModeSelector({ selected, onSelect }: ModeSelectorProps) {
   return (
-    <div className="flex items-center bg-theme-bg-tertiary rounded-lg p-0.5">
+    <div className="flex items-center bg-theme-bg-tertiary rounded-lg p-0.5 overflow-x-auto scrollbar-hide flex-nowrap">
       {MODES.map((mode) => (
         <button
           key={mode.id}
