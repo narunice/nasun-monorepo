@@ -26,10 +26,16 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   'wallet-transfer': { transfer: 1, 'merge-coins': 0, 'split-coins': 0 },
   staking: { delegate: 10, unstake: 0 },
   faucet: { claim: 0 },
+  'pado-scratchcard': { 'scratchcard-purchase': 2 },
   'daily-mission': {
     'dex-first': 10,
     'lottery-first': 10,
     'governance-first': 20,
+    'perp-first': 10,
+    'scratchcard-first': 10,
+    'baram-first': 12,
+    'tier-4': 5,
+    'tier-5': 10,
     'all-clear': 20,
   },
 } as const;
@@ -89,6 +95,9 @@ const PKG = {
   perp: stripHex(
     '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',
   ),
+  scratchcard: stripHex(
+    '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
+  ),
   tokens: stripHex(
     '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731',
   ),
@@ -128,6 +137,9 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.perp, 'perp', 'PositionClosed', { category: 'pado-perp', activityType: 'close-position' }],
   [PKG.perp, 'perp', 'MarginAdded', { category: 'pado-perp', activityType: 'add-margin' }],
   [PKG.perp, 'perp', 'MarginRemoved', { category: 'pado-perp', activityType: 'remove-margin' }],
+
+  // Pado Scratchcard
+  [PKG.scratchcard, 'scratchcard', 'ScratchCardPurchased', { category: 'pado-scratchcard', activityType: 'scratchcard-purchase' }],
 
   // Pado Lending
   [PKG.lending, 'lending', 'DepositEvent', { category: 'pado-lending', activityType: 'deposit' }],
