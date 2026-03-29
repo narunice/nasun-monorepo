@@ -73,7 +73,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
         </h3>
         <Link
           to="/ecosystem/leaderboard"
-          className="text-xs text-nasun-c4 hover:underline"
+          className="text-xs text-nasun-c3 hover:underline"
         >
           View Leaderboard
         </Link>
@@ -127,7 +127,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
                 <div
                   key={i}
                   className={`h-2 flex-1 rounded-full ${
-                    i < weeklyDays ? "bg-nasun-c4" : "bg-nasun-c6/50"
+                    i < weeklyDays ? "bg-nasun-c3" : "bg-nasun-c6/50"
                   }`}
                 />
               ))}
@@ -153,7 +153,7 @@ function ScoreBox({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg bg-nasun-c6/40 p-2.5 text-center">
       <p className="text-[10px] text-nasun-white/50">{label}</p>
-      <p className="text-lg font-bold text-nasun-c4">
+      <p className="text-lg font-bold text-nasun-c3">
         {value > 0 ? value.toFixed(1) : "0"}
       </p>
     </div>

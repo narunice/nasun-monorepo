@@ -5,6 +5,8 @@
  * Missions reset daily at UTC 00:00. Completion is detected by the
  * points scanner (runs every 5 minutes) via todayCategories in the
  * /points/user/:address API response.
+ *
+ * 6 missions with tiered bonus: 4/6 (+5), 5/6 (+10), 6/6 (+20).
  */
 
 import { FC, useEffect, useState } from "react";
@@ -31,6 +33,15 @@ const DAILY_MISSIONS: Mission[] = [
   { id: "pado-dex", label: "Spot Trade", points: 10, link: "https://pado.finance/markets/spot", external: true },
   { id: "pado-lottery", label: "Buy Lottery Ticket", points: 10, link: "https://pado.finance/lottery", external: true },
   { id: "governance", label: "Vote on Proposal", points: 20, link: "/governance", external: false },
+  { id: "pado-perp", label: "Open Perp Position", points: 10, link: "https://pado.finance/markets/perp", external: true },
+  { id: "pado-scratchcard", label: "Buy Scratch Card", points: 10, link: "https://pado.finance/scratchcard", external: true },
+  { id: "baram-ai", label: "Use Baram AI", points: 12, link: "https://baram.io", external: true },
+];
+
+const TIER_BONUSES = [
+  { threshold: 4, label: "Tier 4 Bonus", points: 5 },
+  { threshold: 5, label: "Tier 5 Bonus", points: 10 },
+  { threshold: 6, label: "All Clear!", points: 20 },
 ];
 
 export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }) => {
@@ -131,7 +142,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
             >
               <div className="flex items-center gap-2.5">
                 <span className={completed ? "text-emerald-400" : "text-nasun-white/30"}>
-                  {completed ? "☑" : "☐"}
+                  {completed ? "\u2611" : "\u2610"}
                 </span>
                 <span className={completed ? "text-nasun-white text-sm" : "text-nasun-white/70 text-sm"}>
                   {mission.label}
@@ -156,19 +167,38 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
             </div>
           );
         })}
-        {/* All-clear bonus row */}
-        {completedCount === DAILY_MISSIONS.length && (
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-sm border bg-nasun-c1/10 border-nasun-c1/30">
-            <div className="flex items-center gap-2.5">
-              <span className="text-nasun-c1">★</span>
-              <span className="text-nasun-white text-sm font-medium">All Missions Complete!</span>
+        {/* Tiered bonus rows */}
+        {TIER_BONUSES.map((tier) => {
+          const earned = completedCount >= tier.threshold;
+          if (!earned && completedCount < tier.threshold - 1) return null;
+          return (
+            <div
+              key={tier.threshold}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-sm border ${
+                earned
+                  ? "bg-nasun-c1/10 border-nasun-c1/30"
+                  : "bg-nasun-c6/30 border-nasun-c5/10"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className={earned ? "text-nasun-c1" : "text-nasun-white/20"}>
+                  {tier.threshold === 6 ? "\u2605" : "\u25C6"}
+                </span>
+                <span className={`text-sm ${earned ? "text-nasun-white font-medium" : "text-nasun-white/40"}`}>
+                  {tier.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs font-mono ${earned ? "text-nasun-c1" : "text-nasun-white/30"}`}>
+                  +{tier.points}
+                </span>
+                {earned && (
+                  <span className="text-xs text-nasun-c1/60">bonus</span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-mono text-nasun-c1">+20</span>
-              <span className="text-xs text-nasun-c1/60">bonus</span>
-            </div>
-          </div>
-        )}
+          );
+        })}
       </div>
       <p className="text-[10px] text-nasun-white/30 mt-3 text-center">
         Updates every few minutes &middot; Resets daily at 00:00 UTC
