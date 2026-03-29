@@ -5,6 +5,7 @@ import {
   initStore, insertMessage, getRecentMessages, purgeOldMessages, closeStore,
   getNickname, setNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
   getNicknameRateLimit,
+  toggleReaction, getReactionSummaries, getMessageRoomId,
 } from './store.js';
 import { roomExists, getAllRooms, getPoolRoom, setPoolRoomMapping } from './rooms.js';
 import type {
@@ -15,7 +16,7 @@ import type {
   ChatServerConfig,
   DEFAULT_CONFIG,
 } from './types.js';
-import { DEFAULT_CONFIG as CONFIG } from './types.js';
+import { DEFAULT_CONFIG as CONFIG, VALID_REACTION_CODES } from './types.js';
 import {
   initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents, getLeaderboardDb,
   getLeaderboard, getLeaderboardPnl, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount,
@@ -51,6 +52,10 @@ const lastHistoryTime = new Map<string, number>();
 
 // Connection count per IP for DoS prevention
 const connectionsPerIp = new Map<string, number>();
+
+// Reaction rate limiting
+const lastReactionTime = new Map<string, number>(); // address -> last reaction timestamp
+const lastReactionMessageMap = new Map<string, { messageId: number; at: number }>(); // address -> per-message cooldown
 
 // ===== Helpers =====
 
@@ -237,20 +242,29 @@ function handleLoadHistory(ws: WebSocket, msg: ClientMessage & { type: 'load_his
   const uniqueSenders = [...new Set(result.map((m) => m.sender))];
   const nicknames = getNicknamesBatch(uniqueSenders);
 
+  // Batch-fetch reactions for all messages in this page
+  const messageIds = result.map((m) => m.id);
+  const viewerAddress = client?.address;
+  const reactionMap = getReactionSummaries(messageIds, viewerAddress);
+
   send(ws, {
     type: 'history',
     roomId,
-    messages: result.map((m) => ({
-      type: 'chat_message' as const,
-      id: m.id,
-      roomId: m.roomId,
-      sender: m.sender,
-      senderNickname: nicknames.get(m.sender) ?? null,
-      content: m.content,
-      messageType: m.messageType,
-      replyToId: m.replyToId,
-      timestamp: m.timestamp,
-    })),
+    messages: result.map((m) => {
+      const reactionData = reactionMap.get(m.id);
+      return {
+        type: 'chat_message' as const,
+        id: m.id,
+        roomId: m.roomId,
+        sender: m.sender,
+        senderNickname: nicknames.get(m.sender) ?? null,
+        content: m.content,
+        messageType: m.messageType,
+        replyToId: m.replyToId,
+        timestamp: m.timestamp,
+        ...(reactionData ? { reactions: reactionData.reactions, myReaction: reactionData.myReaction } : {}),
+      };
+    }),
     hasMore,
   });
 }
@@ -399,6 +413,43 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
       case 'list_rooms':
         send(ws, { type: 'rooms_list', rooms: getAllRooms() });
         break;
+      case 'toggle_reaction': {
+        // Explicit destructure: only messageId, emojiCode from payload. address from client.
+        const { messageId, emojiCode } = msg as { messageId: number; emojiCode: string };
+
+        // (1) Whitelist validation
+        if (!VALID_REACTION_CODES.has(emojiCode)) {
+          send(ws, { type: 'error', code: 'INVALID_REACTION', message: 'Invalid reaction code' });
+          break;
+        }
+
+        // (2) Rate limit: 2/sec + 3sec per-message cooldown
+        const now = Date.now();
+        const lastReaction = lastReactionTime.get(client.address);
+        if (lastReaction && now - lastReaction < 500) {
+          send(ws, { type: 'error', code: 'RATE_LIMITED', message: 'Reaction rate limited' });
+          break;
+        }
+        const lastMsgReaction = lastReactionMessageMap.get(client.address);
+        if (lastMsgReaction && lastMsgReaction.messageId === messageId && now - lastMsgReaction.at < 3000) {
+          send(ws, { type: 'error', code: 'RATE_LIMITED', message: 'Per-message cooldown' });
+          break;
+        }
+
+        // (3) Message existence + roomId
+        const roomId = getMessageRoomId(messageId);
+        if (roomId === null) {
+          send(ws, { type: 'error', code: 'MESSAGE_NOT_FOUND', message: 'Message not found' });
+          break;
+        }
+
+        // (4) DB operation
+        const reactions = toggleReaction(messageId, client.address, emojiCode);
+        lastReactionTime.set(client.address, now);
+        lastReactionMessageMap.set(client.address, { messageId, at: now });
+        broadcast({ type: 'reaction_update', messageId, roomId, reactions });
+        break;
+      }
       default:
         send(ws, { type: 'error', code: 'UNKNOWN_TYPE', message: `Unknown message type: ${(msg as { type: string }).type}` });
     }
@@ -616,6 +667,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         '24h': null, '7d': null, '30d': null, 'all': null,
       };
 
+      let lastTradeAt: number | null = null;
       for (const row of rows) {
         stats[row.period] = {
           rank: row.rank,
@@ -624,10 +676,14 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
           uniquePools: row.unique_pools,
           rankChange: row.prev_rank > 0 ? row.prev_rank - row.rank : 0,
         };
+        // Track most recent trade across all periods
+        if (row.last_trade_at && (lastTradeAt === null || row.last_trade_at > lastTradeAt)) {
+          lastTradeAt = row.last_trade_at;
+        }
       }
 
       res.writeHead(200, corsHeaders);
-      res.end(JSON.stringify({ address, nickname, stats }));
+      res.end(JSON.stringify({ address, nickname, lastTradeAt, stats }));
     } catch (err) {
       console.error('[Leaderboard] Trader API error:', (err as Error).message);
       res.writeHead(500, corsHeaders);
@@ -1353,6 +1409,12 @@ function start(): void {
     }
     for (const [addr, ts] of lastHistoryTime) {
       if (now - ts > staleThreshold) lastHistoryTime.delete(addr);
+    }
+    for (const [addr, ts] of lastReactionTime) {
+      if (now - ts > staleThreshold) lastReactionTime.delete(addr);
+    }
+    for (const [addr, entry] of lastReactionMessageMap) {
+      if (now - entry.at > staleThreshold) lastReactionMessageMap.delete(addr);
     }
   }, 5 * 60_000);
 

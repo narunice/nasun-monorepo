@@ -1,9 +1,11 @@
+import { useState, useRef, useCallback } from 'react';
 import { shortenAddress } from '@nasun/wallet';
 import Avatar from 'boring-avatars';
 import type { ChatMessage as ChatMessageType } from '../types';
 import { isTradeShare, parseTradeShare } from '../types';
 import type { ChatTextSize } from '../hooks/useChatTextSize';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { ReactionBar } from './ReactionBar';
 
 // Text size presets: [content, sender, system, avatar]
 const SIZE_PRESETS: Record<ChatTextSize, { content: string; sender: string; system: string; avatar: number }> = {
@@ -16,6 +18,7 @@ interface Props {
   message: ChatMessageType;
   isOwnMessage: boolean;
   textSize?: ChatTextSize;
+  onToggleReaction?: (messageId: number, emojiCode: string) => void;
 }
 
 function formatTime(timestamp: number): string {
@@ -116,8 +119,24 @@ function TradeShareCard({ content, sizes }: { content: string; sizes: typeof SIZ
   );
 }
 
-export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
+export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReaction }: Props) {
   const sizes = SIZE_PRESETS[textSize];
+
+  // Long-press for mobile reaction picker
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showMobilePicker, setShowMobilePicker] = useState(false);
+
+  const handleTouchStart = useCallback(() => {
+    longPressTimer.current = setTimeout(() => setShowMobilePicker(true), 500);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
+
+  const handleTouchMove = useCallback(() => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
 
   if (message.messageType === 'system') {
     const isBot = message.content.startsWith('[BOT] ');
@@ -154,9 +173,15 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
   const tradeShare = isTradeShare(message.content);
 
   return (
-    <div className={`group ${message.pending ? 'opacity-60' : ''} ${
-      isOwnMessage ? 'flex flex-col items-end' : ''
-    }`}>
+    <div
+      className={`group ${message.pending ? 'opacity-60' : ''} ${
+        isOwnMessage ? 'flex flex-col items-end' : ''
+      }`}
+      style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
+    >
       <div className={`flex items-center gap-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
         <Avatar name={message.sender} variant="beam" size={sizes.avatar} />
         <span
@@ -178,6 +203,15 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0 }: Props) {
         }`}>
           {message.content}
         </p>
+      )}
+      {onToggleReaction && (message.reactions || showMobilePicker) && (
+        <ReactionBar
+          messageId={message.id}
+          reactions={message.reactions ?? {}}
+          myReaction={message.myReaction ?? null}
+          onToggle={(code) => { onToggleReaction(message.id, code); setShowMobilePicker(false); }}
+          compact={textSize === 0}
+        />
       )}
     </div>
   );

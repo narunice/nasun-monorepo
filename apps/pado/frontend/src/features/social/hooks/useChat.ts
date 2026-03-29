@@ -46,6 +46,7 @@ export interface UseChatResult {
   nicknameRateLimit: NicknameRateLimit | null;
   setNickname: (name: string) => void;
   checkNickname: (name: string) => void;
+  toggleReaction: (messageId: number, emojiCode: string) => void;
   rooms: RoomInfo[];
   activeRoomId: number;
   setActiveRoom: (roomId: number) => void;
@@ -305,6 +306,21 @@ export function useChat(): UseChatResult {
       }
     });
 
+    const unsubReaction = chatService.on('reaction_update', (data) => {
+      // Update reaction counts on the matching message in all rooms
+      for (const [rid, msgs] of roomMessages) {
+        const idx = msgs.findIndex((m) => m.id === data.messageId);
+        if (idx !== -1) {
+          const updated = [...msgs];
+          updated[idx] = { ...updated[idx], reactions: data.reactions };
+          roomMessages.set(rid, updated);
+          if (rid === activeRoomIdRef.current) {
+            setMessages(updated);
+          }
+        }
+      }
+    });
+
     // If already connected (e.g. re-mount after docked↔floating switch),
     // request history to populate the fresh empty messages state.
     if (chatService.getStatus() === 'connected') {
@@ -319,6 +335,7 @@ export function useChat(): UseChatResult {
       unsubError();
       unsubNickname();
       unsubRoomsList();
+      unsubReaction();
     };
   }, []);
 
@@ -372,6 +389,40 @@ export function useChat(): UseChatResult {
     getChatService().checkNickname(name);
   }, []);
 
+  const toggleReaction = useCallback((messageId: number, emojiCode: string) => {
+    const chatService = getChatService();
+    if (chatService.getStatus() !== 'connected') return;
+
+    // Optimistic update: toggle myReaction locally
+    const rid = activeRoomIdRef.current;
+    const msgs = roomMessages.get(rid) ?? [];
+    const idx = msgs.findIndex((m) => m.id === messageId);
+    if (idx !== -1) {
+      const msg = msgs[idx];
+      const oldReaction = msg.myReaction;
+      const newReaction = oldReaction === emojiCode ? null : emojiCode;
+      const newReactions = { ...(msg.reactions ?? {}) };
+
+      // Decrement old reaction count
+      if (oldReaction && newReactions[oldReaction]) {
+        newReactions[oldReaction]--;
+        if (newReactions[oldReaction] <= 0) delete newReactions[oldReaction];
+      }
+      // Increment new reaction count
+      if (newReaction) {
+        newReactions[newReaction] = (newReactions[newReaction] ?? 0) + 1;
+      }
+
+      const updated = [...msgs];
+      updated[idx] = { ...msg, myReaction: newReaction, reactions: newReactions };
+      roomMessages.set(rid, updated);
+      setMessages(updated);
+    }
+
+    // Send to server
+    chatService.toggleReaction(messageId, emojiCode);
+  }, []);
+
   const needsNickname = status === 'connected' && nickname === null;
 
   return {
@@ -388,6 +439,7 @@ export function useChat(): UseChatResult {
     nicknameRateLimit,
     setNickname,
     checkNickname,
+    toggleReaction,
     rooms,
     activeRoomId,
     setActiveRoom,

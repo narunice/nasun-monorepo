@@ -76,6 +76,7 @@ export interface TraderPeriodStats {
 export interface TraderStatsResponse {
   address: string;
   nickname: string | null;
+  lastTradeAt?: number | null;
   stats: Record<Period, TraderPeriodStats | null>;
 }
 
