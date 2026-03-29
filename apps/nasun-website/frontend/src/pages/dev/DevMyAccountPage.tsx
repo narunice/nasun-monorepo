@@ -1,12 +1,15 @@
 /**
  * DevMyAccountPage - Dev version of My Account for testing new features.
  *
- * Identical to MyAccountPage except:
- * - Uses DevCompactNftStatus (Alliance, Battalion, Frontiers enabled)
- * - Title shows "MY ACCOUNT (DEV)" for visual distinction
+ * Differences from production MyAccountPage:
+ * - Uses CompactNftStatus with showAllSections (Alliance, Battalion, Frontiers enabled)
+ * - ProfileHeroCard redesigned: points-centric hero, no Connected Accounts inline
+ * - PointsCard removed (absorbed into ProfileHeroCard)
+ * - ConnectedAccountsCard at page bottom (extracted from ProfileHeroCard)
+ * - DailyMissionsCard and ReferralCard visible
+ * - Title shows "MY ACCOUNT (DEV)"
  *
  * Route: /dev/my-account
- * Once verified, this replaces the production MyAccountPage.
  */
 
 import { useTranslation } from "react-i18next";
@@ -33,11 +36,10 @@ import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking"
 // Dashboard Card Components
 import { ProfileHeroCard } from "../../sections/myAccount/ProfileHeroCard";
 import { GovernanceCard } from "../../sections/myAccount/GovernanceCard";
-import { DevCompactNftStatus } from "../../sections/myAccount/DevCompactNftStatus";
+import { CompactNftStatus } from "../../sections/myAccount/CompactNftStatus";
 import { AssetsCard } from "../../sections/myAccount/AssetsCard";
 import { DangerZoneCard } from "../../sections/myAccount/DangerZoneCard";
 import { RankHistoryCard } from "../../sections/myAccount/RankHistoryCard";
-import { PointsCard } from "../../sections/myAccount/PointsCard";
 import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 import { DailyMissionsCard } from "../../sections/myAccount/DailyMissionsCard";
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
@@ -90,9 +92,7 @@ const DevMyAccountPage = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Prefer linked MetaMask wallet (updated during Battalion NFT Step 4 linking)
-  // over login wallet. When user re-registers with a different wallet,
-  // the linked wallet reflects their most recent choice.
+  // Prefer linked MetaMask wallet over login wallet
   const walletAddress =
     user?.linkedAccounts?.metamask?.walletAddress
       || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
@@ -142,21 +142,22 @@ const DevMyAccountPage = () => {
         <PageTitle>MY ACCOUNT (DEV)</PageTitle>
 
         {/* Bento Grid Dashboard Layout */}
+        {/* Row-by-row sequential layout (no row-span) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* Row 1: ProfileHeroCard(2col) + PointsCard(1col) */}
+          {/* Row 1: ProfileHeroCard(2col) + CompactNftStatus(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ProfileHeroCard className="order-1 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <ProfileHeroCard showPoints className="order-1 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <PointsCard className="order-2 lg:order-none col-span-1" />
+              <CompactNftStatus showAllSections className="order-2 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 2: DailyMissionsCard(2col) + NFT Status(1col) */}
+          {/* Row 2: DailyMissionsCard(2col) + GovernanceCard(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <DailyMissionsCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
@@ -165,11 +166,11 @@ const DevMyAccountPage = () => {
 
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DevCompactNftStatus className="order-4 lg:order-none col-span-1" />
+              <GovernanceCard className="order-4 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 3: RankHistoryCard(2col) + GovernanceCard(1col) */}
+          {/* Row 3: RankHistoryCard(2col) + ReferralCard(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <RankHistoryCard className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
@@ -178,34 +179,28 @@ const DevMyAccountPage = () => {
 
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <GovernanceCard className="order-6 lg:order-none col-span-1" />
+              <ReferralCard className="order-6 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 4: ReferralCard(1col) + ConnectedAccountsCard(2col, z-20 for wallet dropdown) */}
+          {/* Row 4: ConnectedAccountsCard(3col, z-20 for wallet dropdown) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ReferralCard className="order-7 lg:order-none col-span-1" />
-            </Suspense>
-          </ErrorBoundary>
-
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-            <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ConnectedAccountsCard className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
+              <ConnectedAccountsCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-3 relative z-20" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Row 5: AssetsCard(2col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <AssetsCard walletAddress={walletAddress} className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Row 6: DangerZoneCard(3col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <DangerZoneCard className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>

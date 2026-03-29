@@ -31,11 +31,13 @@ import { AllianceMintDialog } from "./components/AllianceMintDialog";
 
 interface CompactNftStatusProps {
   className?: string;
+  /** When true, show Alliance NFT, Battalion NFT, and Frontiers sections (hidden in production). */
+  showAllSections?: boolean;
 }
 
 const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) => {
+export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", showAllSections = false }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const cognitoToken = user?.cognitoToken;
@@ -160,8 +162,8 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
             </div>
           )}
 
-          {/* Alliance NFT - hidden until launch
-          {isAllianceConfigured && (
+          {/* Alliance NFT */}
+          {showAllSections && isAllianceConfigured && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Alliance</h6>
               <div className="flex items-center justify-between">
@@ -195,7 +197,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
               </div>
             </div>
           )}
-          */}
 
           {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
@@ -261,8 +262,9 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
             </div>
           )}
 
-          {/* Battalion NFT Allowlist - hidden
-          <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+          {/* Battalion NFT Allowlist */}
+          {showAllSections && (
+            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Battalion</h6>
               <div className="flex items-center justify-between">
                 {isBattalionLoading ? (
@@ -286,19 +288,20 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "" }) 
                 )}
               </div>
             </div>
-          */}
+          )}
 
-          {/* Frontiers - hidden until launch
-          <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-            <h6 className="text-nasun-white">Frontiers</h6>
-            <p className="text-nasun-white/70 text-sm">
-              Details coming soon.
-            </p>
-            <Button variant="filledOutlineC7" size="sm" className="self-end mt-1" disabled>
-              Coming Soon
-            </Button>
-          </div>
-          */}
+          {/* Frontiers */}
+          {showAllSections && (
+            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+              <h6 className="text-nasun-white">Frontiers</h6>
+              <p className="text-nasun-white/70 text-sm">
+                Details coming soon.
+              </p>
+              <Button variant="filledOutlineC7" size="sm" className="self-end mt-1" disabled>
+                Coming Soon
+              </Button>
+            </div>
+          )}
         </div>
       </OuterBox>
 
