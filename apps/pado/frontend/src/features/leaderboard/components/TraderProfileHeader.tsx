@@ -10,6 +10,8 @@ import { PERIOD_LABELS } from '../types';
 import type { Period } from '../types';
 import type { TraderClassification } from '../hooks/useTraderClassification';
 
+const ACTIVE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
 const STYLE_COLORS: Record<string, string> = {
   'scalper': 'text-red-400 bg-red-400/10',
   'day-trader': 'text-orange-400 bg-orange-400/10',
@@ -45,6 +47,7 @@ export function TraderProfileHeader({ address, stats, classification, isLoading 
   const { isFollowing, toggleFollow } = useFollowedTraders();
   const followed = isFollowing(address);
   const earnedBadges = computeBadges(stats);
+  const isActive = stats?.lastTradeAt != null && Date.now() - stats.lastTradeAt < ACTIVE_THRESHOLD_MS;
 
   return (
     <div className="bg-theme-bg-secondary rounded-lg border border-theme-border p-5">
@@ -56,9 +59,11 @@ export function TraderProfileHeader({ address, stats, classification, isLoading 
             {nickname ? (
               <div>
                 <div className="flex items-center gap-2">
+                  {isActive && <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" title="Active" />}
                   <h2 className="text-lg font-semibold text-theme-text-primary">
                     {nickname}
                   </h2>
+                  {isActive && <span className="hidden sm:inline text-xs text-green-400">Active</span>}
                   {classification && (
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STYLE_COLORS[classification.style] ?? 'text-theme-text-muted bg-theme-bg-tertiary'}`}>
                       {classification.label}
@@ -71,9 +76,11 @@ export function TraderProfileHeader({ address, stats, classification, isLoading 
               </div>
             ) : (
               <div className="flex items-center gap-2">
+                {isActive && <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" title="Active" />}
                 <h2 className="text-lg font-semibold text-theme-text-primary font-mono">
                   {shortenAddress(address)}
                 </h2>
+                {isActive && <span className="hidden sm:inline text-xs text-green-400">Active</span>}
                 {classification && (
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STYLE_COLORS[classification.style] ?? 'text-theme-text-muted bg-theme-bg-tertiary'}`}>
                     {classification.label}

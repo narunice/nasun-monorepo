@@ -25,6 +25,7 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
   const {
     messages, sendMessage, loadMore, isConnected, status, onlineCount, hasMore,
     nickname, needsNickname, nicknameRateLimit,
+    toggleReaction,
     rooms, activeRoomId, setActiveRoom, unreadCounts,
   } = useChat();
 
@@ -158,6 +159,7 @@ export function ChatPanel({ onMinimize, onPopOut }: Props) {
         hasMore={hasMore}
         onLoadMore={loadMore}
         textSize={textSize}
+        onToggleReaction={toggleReaction}
       />
 
       {/* Input */}

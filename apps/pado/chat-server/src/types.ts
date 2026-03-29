@@ -38,13 +38,20 @@ export interface ListRoomsPayload {
   type: 'list_rooms';
 }
 
+export interface ToggleReactionPayload {
+  type: 'toggle_reaction';
+  messageId: number;
+  emojiCode: string;
+}
+
 export type ClientMessage =
   | AuthResponseMessage
   | SendMessagePayload
   | LoadHistoryPayload
   | SetNicknamePayload
   | CheckNicknamePayload
-  | ListRoomsPayload;
+  | ListRoomsPayload
+  | ToggleReactionPayload;
 
 // ===== Protocol Messages (Server -> Client) =====
 
@@ -81,6 +88,8 @@ export interface ChatMessagePayload {
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
   timestamp: number;
+  reactions?: Record<string, number>;
+  myReaction?: string | null;
 }
 
 export interface HistoryPayload {
@@ -124,6 +133,13 @@ export interface HeartbeatMessage {
   type: 'heartbeat';
 }
 
+export interface ReactionUpdatePayload {
+  type: 'reaction_update';
+  messageId: number;
+  roomId: number;
+  reactions: Record<string, number>; // emojiCode -> count
+}
+
 export type ServerMessage =
   | AuthChallengeMessage
   | AuthSuccessMessage
@@ -135,7 +151,14 @@ export type ServerMessage =
   | NicknameResultMessage
   | NicknameCheckMessage
   | HeartbeatMessage
-  | RoomsListPayload;
+  | RoomsListPayload
+  | ReactionUpdatePayload;
+
+// ===== Reaction Constants =====
+
+export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'chart_down', 'laugh'] as const;
+export type ReactionCode = typeof REACTION_CODES[number];
+export const VALID_REACTION_CODES = new Set<string>(REACTION_CODES);
 
 // ===== Internal Types =====
 

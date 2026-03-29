@@ -33,6 +33,13 @@ export function initStore(config: ChatServerConfig): void {
   db = new Database(config.dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
+  db.pragma('foreign_keys = ON'); // per-connection setting, must be before table creation
+
+  // Startup self-test: verify FK enforcement is active
+  const fkStatus = db.pragma('foreign_keys') as Array<{ foreign_keys: number }>;
+  if (!fkStatus[0]?.foreign_keys) {
+    throw new Error('FATAL: foreign_keys pragma failed to enable');
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -60,6 +67,18 @@ export function initStore(config: ChatServerConfig): void {
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname
       ON users(nickname COLLATE NOCASE);
+
+    CREATE TABLE IF NOT EXISTS reactions (
+      message_id INTEGER NOT NULL,
+      address TEXT NOT NULL,
+      emoji_code TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      PRIMARY KEY (message_id, address),
+      FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_reactions_message
+      ON reactions(message_id, emoji_code);
   `);
 
   // Migration: add nickname rate limit columns (safe to re-run)
@@ -261,6 +280,98 @@ export function getNicknamesBatch(addresses: string[]): Map<string, string> {
     result.set(row.address, row.nickname);
   }
   return result;
+}
+
+// ===== Reactions API =====
+
+export function toggleReaction(
+  messageId: number,
+  address: string,
+  emojiCode: string
+): Record<string, number> {
+  const d = getDb();
+  return d.transaction(() => {
+    // Step 1: try to remove same emoji (toggle off)
+    const deleted = d
+      .prepare('DELETE FROM reactions WHERE message_id=? AND address=? AND emoji_code=?')
+      .run(messageId, address, emojiCode);
+
+    if (deleted.changes === 0) {
+      // Step 2: not removed = different emoji or none -> insert or replace
+      d.prepare(
+        'INSERT OR REPLACE INTO reactions (message_id, address, emoji_code, created_at) VALUES (?, ?, ?, ?)'
+      ).run(messageId, address, emojiCode, Date.now());
+    }
+
+    return getReactionSummaryForMessage(messageId);
+  })();
+}
+
+export function getReactionSummaryForMessage(messageId: number): Record<string, number> {
+  const rows = getDb()
+    .prepare('SELECT emoji_code, COUNT(*) as cnt FROM reactions WHERE message_id=? GROUP BY emoji_code')
+    .all(messageId) as Array<{ emoji_code: string; cnt: number }>;
+
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.emoji_code] = row.cnt;
+  }
+  return result;
+}
+
+export function getReactionSummaries(
+  messageIds: number[],
+  viewerAddress?: string
+): Map<number, { reactions: Record<string, number>; myReaction: string | null }> {
+  if (messageIds.length === 0) return new Map();
+
+  const placeholders = messageIds.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(
+      `SELECT message_id, emoji_code, COUNT(*) as cnt
+       FROM reactions WHERE message_id IN (${placeholders})
+       GROUP BY message_id, emoji_code`
+    )
+    .all(...messageIds) as Array<{ message_id: number; emoji_code: string; cnt: number }>;
+
+  // Build summary map
+  const result = new Map<number, { reactions: Record<string, number>; myReaction: string | null }>();
+  for (const row of rows) {
+    let entry = result.get(row.message_id);
+    if (!entry) {
+      entry = { reactions: {}, myReaction: null };
+      result.set(row.message_id, entry);
+    }
+    entry.reactions[row.emoji_code] = row.cnt;
+  }
+
+  // Fetch viewer's reactions if address provided
+  if (viewerAddress) {
+    const myRows = getDb()
+      .prepare(
+        `SELECT message_id, emoji_code FROM reactions
+         WHERE message_id IN (${placeholders}) AND address = ?`
+      )
+      .all(...messageIds, viewerAddress) as Array<{ message_id: number; emoji_code: string }>;
+
+    for (const row of myRows) {
+      let entry = result.get(row.message_id);
+      if (!entry) {
+        entry = { reactions: {}, myReaction: null };
+        result.set(row.message_id, entry);
+      }
+      entry.myReaction = row.emoji_code;
+    }
+  }
+
+  return result;
+}
+
+export function getMessageRoomId(messageId: number): number | null {
+  const row = getDb()
+    .prepare('SELECT room_id FROM messages WHERE id = ?')
+    .get(messageId) as { room_id: number } | undefined;
+  return row?.room_id ?? null;
 }
 
 export function closeStore(): void {

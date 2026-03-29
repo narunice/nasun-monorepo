@@ -43,7 +43,7 @@ type ServerMessage =
 
 // ===== Listener types =====
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check' | 'rooms_list';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check' | 'rooms_list' | 'reaction_update';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -54,6 +54,7 @@ export interface ChatEventMap {
   nickname: { ok: boolean; nickname?: string | null; error?: string; rateLimit?: NicknameRateLimit };
   nickname_check: { available: boolean; nickname: string };
   rooms_list: RoomInfo[];
+  reaction_update: { messageId: number; roomId: number; reactions: Record<string, number> };
 }
 
 export interface NicknameRateLimit {
@@ -111,7 +112,7 @@ export class ChatService {
   private currentNickname: string | null = null;
 
   constructor() {
-    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list'] as ChatEventType[]) {
+    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list', 'reaction_update'] as ChatEventType[]) {
       this.listeners.set(type, new Set());
     }
   }
@@ -212,6 +213,14 @@ export class ChatService {
   checkNickname(nickname: string): void {
     if (!this.ws || this.status !== 'connected') return;
     this.ws.send(JSON.stringify({ type: 'check_nickname', nickname }));
+  }
+
+  /**
+   * Toggle reaction on a message
+   */
+  toggleReaction(messageId: number, emojiCode: string): void {
+    if (!this.ws || this.status !== 'connected') return;
+    this.ws.send(JSON.stringify({ type: 'toggle_reaction', messageId, emojiCode }));
   }
 
   /**
@@ -346,6 +355,10 @@ export class ChatService {
 
       case 'rooms_list':
         this.emit('rooms_list', msg.rooms);
+        break;
+
+      case 'reaction_update':
+        this.emit('reaction_update', { messageId: msg.messageId, roomId: msg.roomId, reactions: msg.reactions });
         break;
 
       case 'heartbeat':

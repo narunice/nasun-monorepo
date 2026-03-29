@@ -1,3 +1,11 @@
+export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'chart_down', 'laugh'] as const;
+export type ReactionCode = typeof REACTION_CODES[number];
+
+export const REACTION_EMOJI: Record<ReactionCode, string> = {
+  thumbsup: '\u{1F44D}', fire: '\u{1F525}', rocket: '\u{1F680}',
+  gem: '\u{1F48E}', chart_down: '\u{1F4C9}', laugh: '\u{1F602}',
+};
+
 export interface ChatMessage {
   id: number;
   roomId: number;
@@ -7,6 +15,8 @@ export interface ChatMessage {
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
   timestamp: number;
+  reactions?: Record<string, number>;
+  myReaction?: string | null;
   /** Client-side only: pending confirmation from server */
   pending?: boolean;
 }
