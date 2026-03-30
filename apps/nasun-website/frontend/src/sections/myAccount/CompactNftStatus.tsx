@@ -30,6 +30,7 @@ import { useAllianceMintStatus } from "../../hooks/useAllianceMintStatus";
 import { useEcosystemStatus } from "../../hooks/useEcosystemStatus";
 import type { NftType } from "../../services/ecosystemApi";
 import { AllianceMintDialog } from "./components/AllianceMintDialog";
+import { ALLIANCE_IMAGES } from "@/constants/alliance";
 
 interface CompactNftStatusProps {
   className?: string;
@@ -87,6 +88,9 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
   } = useAllianceMintStatus(cognitoToken);
 
   const [showAllianceMintDialog, setShowAllianceMintDialog] = useState(false);
+  const [showAllianceMenu, setShowAllianceMenu] = useState(false);
+  const [showGenesisMenu, setShowGenesisMenu] = useState(false);
+  const [showBattalionMenu, setShowBattalionMenu] = useState(false);
 
   // Ecosystem activation (only when showAllSections is true)
   const ecosystem = useEcosystemStatus(showAllSections ? cognitoToken : undefined);
@@ -187,38 +191,52 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
 
           {/* Alliance NFT */}
           {showAllSections && isAllianceConfigured && (
-            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
-              <div className="flex items-center justify-between">
+            <div className="relative flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+              {/* NFT image badge (overlapping top-right) */}
+              <div className="absolute -top-3 -right-3">
+                <div className="relative">
+                  {isAllianceMinted && allianceData ? (
+                    <img
+                      src={ALLIANCE_IMAGES[allianceData.imageIndex] || ALLIANCE_IMAGES[0]}
+                      alt="Alliance NFT"
+                      className={`w-10 h-10 rounded-full object-cover border-2 ${
+                        ecosystem.getActivation("alliance")
+                          ? "border-green-500/50 brightness-100"
+                          : "border-gray-600 brightness-50"
+                      }`}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-600 border-2 border-gray-500" />
+                  )}
+                  {ecosystem.getActivation("alliance") && (
+                    <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-gray-800" />
+                  )}
+                </div>
+              </div>
+              <div>
                 <h6 className="text-nasun-white">Alliance</h6>
-                {ecosystem.getActivation("alliance") && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                    ACTIVE
-                  </span>
-                )}
               </div>
               <div className="flex items-center justify-between">
                 {isAllianceLoading ? (
                   <Spinner size="sm" />
                 ) : isAllianceMinted ? (
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-green-400 text-sm">&#10003; Minted</span>
+                    <span className={`text-sm ${ecosystem.getActivation("alliance") ? "text-green-400" : "text-nasun-white/70"}`}>
+                      {ecosystem.getActivation("alliance") ? "Active" : "Minted"}
+                    </span>
                     {allianceData?.walletAddress && (
                       <span className="text-nasun-white/50 text-xs font-mono">
                         {shortenAddress(allianceData.walletAddress)}
                       </span>
                     )}
                   </div>
-                ) : allianceWallets.length === 0 ? (
-                  <span className="text-nasun-white/50 text-sm">Register a wallet first</span>
                 ) : (
-                  <p className="text-nasun-white/70 text-sm">
-                    Use Nasun ecosystem to earn points
-                  </p>
+                  <span className="text-nasun-white/50 text-sm">Not Minted</span>
                 )}
                 <div className="flex gap-2">
-                  {!isAllianceLoading && !isAllianceMinted && allianceWallets.length > 0 && (
+                  {!isAllianceLoading && !isAllianceMinted && (
                     <Button
-                      onClick={() => setShowAllianceMintDialog(true)}
+                      onClick={() => navigate("/wave1/alliance-nft")}
                       variant="filledOutlineC7"
                       size="sm"
                     >
@@ -236,14 +254,35 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                     </Button>
                   )}
                   {ecosystem.getActivation("alliance") && (
-                    <Button
-                      onClick={() => handleDeactivate("alliance")}
-                      variant="filledOutlineScarlet"
-                      size="sm"
-                      disabled={ecosystem.isActivating}
-                    >
-                      Deactivate
-                    </Button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowAllianceMenu((v) => !v)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                          <circle cx="8" cy="3" r="1.5" />
+                          <circle cx="8" cy="8" r="1.5" />
+                          <circle cx="8" cy="13" r="1.5" />
+                        </svg>
+                      </button>
+                      {showAllianceMenu && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowAllianceMenu(false)} />
+                          <div className="absolute right-0 top-8 z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px]">
+                            <button
+                              onClick={() => {
+                                setShowAllianceMenu(false);
+                                handleDeactivate("alliance");
+                              }}
+                              disabled={ecosystem.isActivating}
+                              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                            >
+                              {ecosystem.isActivating ? "Deactivating..." : "Deactivate"}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -310,7 +349,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
               {/* Genesis Pass Activate/Deactivate (dev only) */}
               {showAllSections && isGenesisPassRegistered && ecosystem.isConfigured && (
                 <div className="flex gap-2 self-end">
-                  {!ecosystem.getActivation("genesis-pass") ? (
+                  {!ecosystem.getActivation("genesis-pass") && (
                     <Button
                       onClick={() => handleActivate("genesis-pass")}
                       variant="filledOutlineC7"
@@ -319,15 +358,37 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                     >
                       {ecosystem.isActivating ? "..." : "Activate"}
                     </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleDeactivate("genesis-pass")}
-                      variant="filledOutlineScarlet"
-                      size="sm"
-                      disabled={ecosystem.isActivating}
-                    >
-                      Deactivate
-                    </Button>
+                  )}
+                  {ecosystem.getActivation("genesis-pass") && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowGenesisMenu((v) => !v)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                          <circle cx="8" cy="3" r="1.5" />
+                          <circle cx="8" cy="8" r="1.5" />
+                          <circle cx="8" cy="13" r="1.5" />
+                        </svg>
+                      </button>
+                      {showGenesisMenu && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowGenesisMenu(false)} />
+                          <div className="absolute right-0 top-8 z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px]">
+                            <button
+                              onClick={() => {
+                                setShowGenesisMenu(false);
+                                handleDeactivate("genesis-pass");
+                              }}
+                              disabled={ecosystem.isActivating}
+                              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                            >
+                              {ecosystem.isActivating ? "Deactivating..." : "Deactivate"}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -364,11 +425,54 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                 ) : (
                   <span className="text-nasun-white/50 text-sm">Not Registered</span>
                 )}
-                {!isBattalionLoading && !isBattalionRegistered && (
-                  <Button onClick={() => navigate("/wave1/battalion-nft")} variant="filledOutlineC7" size="sm">
-                    Join Allowlist
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {!isBattalionLoading && !isBattalionRegistered && (
+                    <Button onClick={() => navigate("/wave1/battalion-nft")} variant="filledOutlineC7" size="sm">
+                      Join Allowlist
+                    </Button>
+                  )}
+                  {isBattalionRegistered && !ecosystem.getActivation("battalion") && ecosystem.isConfigured && (
+                    <Button
+                      onClick={() => handleActivate("battalion")}
+                      variant="filledOutlineC7"
+                      size="sm"
+                      disabled={ecosystem.isActivating}
+                    >
+                      {ecosystem.isActivating ? "..." : "Activate"}
+                    </Button>
+                  )}
+                  {ecosystem.getActivation("battalion") && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowBattalionMenu((v) => !v)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                          <circle cx="8" cy="3" r="1.5" />
+                          <circle cx="8" cy="8" r="1.5" />
+                          <circle cx="8" cy="13" r="1.5" />
+                        </svg>
+                      </button>
+                      {showBattalionMenu && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowBattalionMenu(false)} />
+                          <div className="absolute right-0 top-8 z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px]">
+                            <button
+                              onClick={() => {
+                                setShowBattalionMenu(false);
+                                handleDeactivate("battalion");
+                              }}
+                              disabled={ecosystem.isActivating}
+                              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                            >
+                              {ecosystem.isActivating ? "Deactivating..." : "Deactivate"}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

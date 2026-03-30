@@ -6,8 +6,8 @@
  * Resources:
  * - DynamoDB table: nasun-nft-ownership (ETH + Devnet snapshots)
  * - Lambda: nasun-eth-nft-collector (daily ETH NFT ownership via Alchemy)
- * - Lambda: nasun-devnet-nft-collector (on-demand devnet NFT backup via RPC)
- * - EventBridge rule: daily at 01:00 UTC (ETH collector only)
+ * - Lambda: nasun-devnet-nft-collector (daily + on-demand devnet NFT backup via RPC)
+ * - EventBridge rules: ETH at 01:00 UTC, Devnet at 02:00 UTC
  * - CloudWatch alarm: ETH collector error notification
  */
 
@@ -146,7 +146,18 @@ export class NftSnapshotStack extends cdk.Stack {
 
     ownershipTable.grantReadWriteData(devnetCollector);
 
-    // No EventBridge for devnet collector (on-demand only)
+    // EventBridge: daily at 02:00 UTC (after ETH collector at 01:00)
+    const devnetDailyRule = new events.Rule(this, 'DevnetNftDailyRule', {
+      ruleName: 'nasun-devnet-nft-daily',
+      description: 'Daily devnet NFT ownership snapshot at 02:00 UTC',
+      enabled: true,
+      schedule: events.Schedule.cron({
+        minute: '0',
+        hour: '2',
+      }),
+    });
+
+    devnetDailyRule.addTarget(new targets.LambdaFunction(devnetCollector));
 
     // ========== CloudWatch Alarm ==========
 
