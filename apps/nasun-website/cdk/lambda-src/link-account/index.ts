@@ -1,7 +1,7 @@
 
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCommand, DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -313,7 +313,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     // Link flow
-    const { primaryIdentityId, secondaryIdentityId, secondaryProvider } = JSON.parse(event.body || '{}');
+    const { primaryIdentityId, secondaryIdentityId, secondaryProvider,
+            secondaryUsername, secondaryEmail,
+            secondaryTwitterHandle, secondaryTwitterId, secondaryProfileImageUrl,
+            secondaryOriginalTwitterHandle } = JSON.parse(event.body || '{}');
 
     if (!primaryIdentityId || !secondaryIdentityId || !secondaryProvider) {
       return {
@@ -363,14 +366,57 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       Key: { identityId: secondaryIdentityId },
     });
     const secondaryProfileResult = await dynamoClient.send(getCommand);
-    const secondaryProfile = secondaryProfileResult.Item;
+    let secondaryProfile = secondaryProfileResult.Item;
 
     if (!secondaryProfile) {
-        return {
-            statusCode: 404,
-            headers: corsHeaders,
-            body: JSON.stringify({ message: 'Secondary user profile not found.' }),
-        };
+      // Auto-create minimal secondary profile with ownership already set.
+      // linkedToPrimaryId is set atomically to prevent orphan profiles.
+      const newSecondaryProfile: Record<string, any> = {
+        identityId: secondaryIdentityId,
+        provider: secondaryProvider,
+        username: secondaryUsername || secondaryIdentityId,
+        linkedToPrimaryId: primaryIdentityId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      if (secondaryEmail) newSecondaryProfile.email = secondaryEmail;
+      if (secondaryTwitterHandle) newSecondaryProfile.twitterHandle = secondaryTwitterHandle;
+      if (secondaryOriginalTwitterHandle) newSecondaryProfile.originalTwitterHandle = secondaryOriginalTwitterHandle;
+      if (secondaryTwitterId) newSecondaryProfile.twitterId = secondaryTwitterId;
+      if (secondaryProfileImageUrl) newSecondaryProfile.profileImageUrl = secondaryProfileImageUrl;
+
+      try {
+        await dynamoClient.send(new PutCommand({
+          TableName: tableName,
+          Item: newSecondaryProfile,
+          ConditionExpression: 'attribute_not_exists(identityId)',
+        }));
+        console.log(JSON.stringify({
+          event: 'SECONDARY_PROFILE_AUTO_CREATED',
+          secondaryIdentityId,
+          primaryIdentityId,
+          provider: secondaryProvider,
+        }));
+        secondaryProfile = newSecondaryProfile;
+      } catch (putErr: any) {
+        if (putErr.name === 'ConditionalCheckFailedException') {
+          // Race condition: profile was created between Get and Put. Re-fetch.
+          const retryResult = await dynamoClient.send(new GetCommand({
+            TableName: tableName,
+            Key: { identityId: secondaryIdentityId },
+          }));
+          if (!retryResult.Item) {
+            return {
+              statusCode: 500,
+              headers: corsHeaders,
+              body: JSON.stringify({ message: 'Failed to create or retrieve secondary profile.' }),
+            };
+          }
+          secondaryProfile = retryResult.Item;
+        } else {
+          throw putErr;
+        }
+      }
     }
 
     // 1.5. Cross-reference: if linking Google, check if a zkLogin wallet already exists for this email

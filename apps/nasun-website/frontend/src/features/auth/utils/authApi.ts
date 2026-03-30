@@ -20,28 +20,44 @@ export const handleTwitterCallback = async (code: string, state: string, session
 };
 
 // Account Linking
+interface SecondaryProfileInfo {
+  username: string;
+  email?: string;
+  twitterHandle?: string;
+  originalTwitterHandle?: string;
+  twitterId?: string;
+  profileImageUrl?: string;
+}
+
 export const linkAccounts = async (
   primaryIdentityId: string,
   secondaryIdentityId: string,
   secondaryProvider: "Google" | "Twitter",
-  cognitoToken?: string
+  cognitoToken?: string,
+  secondaryInfo?: SecondaryProfileInfo,
 ) => {
   if (!cognitoToken) {
     throw new Error("Session expired. Please sign in again to link accounts.");
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${cognitoToken}`,
-  };
-
   const response = await fetch(`${import.meta.env.VITE_LINK_ACCOUNT_API}/link`, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${cognitoToken}`,
+    },
     body: JSON.stringify({
       primaryIdentityId,
       secondaryIdentityId,
       secondaryProvider,
+      ...(secondaryInfo && {
+        secondaryUsername: secondaryInfo.username,
+        secondaryEmail: secondaryInfo.email,
+        secondaryTwitterHandle: secondaryInfo.twitterHandle,
+        secondaryOriginalTwitterHandle: secondaryInfo.originalTwitterHandle,
+        secondaryTwitterId: secondaryInfo.twitterId,
+        secondaryProfileImageUrl: secondaryInfo.profileImageUrl,
+      }),
     }),
   });
 
