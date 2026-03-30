@@ -16,6 +16,7 @@ import { getTwitterHandle } from "@/utils/getTwitterHandle";
 import { useRankHistory, useActiveSeason } from "@/features/leaderboard-v3/hooks";
 import { OuterBox, Spinner } from "@/components/ui";
 import { GenesisPassBadge } from "./components/StatusBadges";
+import { ConnectedAccountsCard } from "./ConnectedAccountsCard";
 
 // ---- Category display config ----
 
@@ -251,6 +252,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
             })()}
           </div>
         </div>
+
+        {/* Connected Accounts (production layout, when showPoints is off) */}
+        {!showPoints && <ConnectedAccountsCard bare />}
 
         {/* Activity Points Summary + Ecosystem Placeholder (only in dev/renewed layout) */}
         {showPoints && (
