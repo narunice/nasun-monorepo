@@ -20,12 +20,17 @@ import { sql, pointsDb } from '../db.js';
 import { GENESIS_PASS_MULTIPLIER } from '../config/points.js';
 import type { PointsInsert } from './referral-bonus.js';
 
-// Original package IDs (hex, no 0x prefix) for faucet contracts
-const FAUCET_V1_PKG = '96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
-const FAUCET_V2_PKG = 'cc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
-
-const FAUCET_V1_PKG_BYTES = Buffer.from(FAUCET_V1_PKG, 'hex');
-const FAUCET_V2_PKG_BYTES = Buffer.from(FAUCET_V2_PKG, 'hex');
+// All known package IDs (hex, no 0x prefix) for faucet contracts.
+// tx_calls_fun stores the RUNTIME (upgraded) package ID, not the original.
+// Must include all upgrade versions.
+const FAUCET_PKG_IDS = [
+  '1c93579be99e89ab05a33ac04af2fd7b1a604f9c98fe74d1b6cae6913c8362e7', // tokens V1 current
+  '7f8dba64318adb8042b266d52d372b4b876778aa7f27f7e37847cc15611f75b2', // tokens V1 older
+  'd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f', // tokens V2 current
+  'bf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474', // tokens V2 older
+  '2e08785948d44afb14f912a6bfd6bca0dc83f0d623b290ed1b7d0f57a7dced5d', // tokens V2 older
+  'c2d09b5e026b1d8378e8f70333e8e74ed3b5798715caa284bcb82d22cb60b78e', // tokens V2 older
+].map((hex) => Buffer.from(hex, 'hex'));
 
 // Track scanner position (persisted in processing_state)
 let lastFaucetSeq = 0;
@@ -40,7 +45,6 @@ let lastFaucetSeq = 0;
  * @returns Number of points rows inserted
  */
 export async function scanFaucetClaims(
-  maxSeq: number,
   registeredWallets: Map<string, string>,
   genesisPassHolders: Set<string>,
   dailyCategorySeen: Set<string>,
@@ -64,6 +68,11 @@ export async function scanFaucetClaims(
     }
   }
 
+  // Use indexer's latest sequence as upper bound (independent of event scanner)
+  const [maxRow] = await sql`
+    SELECT MAX(tx_sequence_number)::bigint as max_seq FROM tx_calls_fun
+  `;
+  const maxSeq = Number(maxRow?.max_seq ?? 0);
   if (lastFaucetSeq >= maxSeq) return 0;
 
   // Query tx_calls_fun for faucet function calls
@@ -78,7 +87,7 @@ export async function scanFaucetClaims(
     JOIN transactions t ON c.tx_sequence_number = t.tx_sequence_number
     WHERE c.tx_sequence_number > ${lastFaucetSeq}
       AND c.tx_sequence_number <= ${maxSeq}
-      AND (c.package = ${FAUCET_V1_PKG_BYTES} OR c.package = ${FAUCET_V2_PKG_BYTES})
+      AND c.package IN ${sql(FAUCET_PKG_IDS)}
       AND c.module IN ('faucet', 'faucet_v2')
       AND c.func LIKE 'request_%'
     ORDER BY c.tx_sequence_number
