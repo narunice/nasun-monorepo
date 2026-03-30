@@ -27,9 +27,11 @@ import { useNasunWalletState } from "./hooks/useNasunWalletState";
 
 interface ConnectedAccountsCardProps {
   className?: string;
+  /** Render without OuterBox wrapper (for embedding inside another card). */
+  bare?: boolean;
 }
 
-export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ className = "" }) => {
+export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ className = "", bare = false }) => {
   const { user } = useAuth();
   const [disclaimerExpanded, setDisclaimerExpanded] = useState(false);
   const [addWalletModalOpen, setAddWalletModalOpen] = useState(false);
@@ -42,6 +44,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   const walletState = useNasunWalletState(user, walletReg);
 
   if (!user) {
+    if (bare) return <div className={className}>Loading...</div>;
     return (
       <OuterBox color="c1" padding="sm" className={className}>
         Loading...
@@ -72,14 +75,14 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
     autoRegisterAttemptedRef,
   } = walletState;
 
-  return (
-    <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
-      <div>
-        <h6 className="text-sm lg:text-base text-nasun-white/40 uppercase mb-1 md:mb-1 lg:mb-2">
-          Connected Accounts
-        </h6>
-        <div className="space-y-3">
-          {/* 1. Nasun Wallet */}
+  const content = (
+    <>
+    <div>
+      <h6 className="text-sm lg:text-base text-nasun-white/40 uppercase mb-1 md:mb-1 lg:mb-2">
+        Connected Accounts
+      </h6>
+      <div className="space-y-3">
+        {/* 1. Nasun Wallet */}
           <AccountItem
             provider="nasun"
             identifier={
@@ -424,6 +427,14 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
         isOpen={addWalletModalOpen}
         onClose={() => setAddWalletModalOpen(false)}
       />
+    </>
+  );
+
+  if (bare) return <div className={className}>{content}</div>;
+
+  return (
+    <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
+      {content}
     </OuterBox>
   );
 };
