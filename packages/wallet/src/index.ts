@@ -36,6 +36,8 @@ export {
   // Mnemonic backup (module-level, survives component unmount)
   getPendingBackupMnemonic,
   clearPendingBackupMnemonic,
+  // Event: wallet identity changed (create/import)
+  WALLET_IDENTITY_CHANGED_EVENT,
 } from './hooks/useWallet';
 
 export {
