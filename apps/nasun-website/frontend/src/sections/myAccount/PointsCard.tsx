@@ -84,7 +84,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (!hasValidAddress) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
           <p className="text-nasun-white/50 text-center text-sm">
             Connect Nasun Wallet to view activity points
@@ -98,7 +98,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (isLoading) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
         <div className="flex items-center justify-center py-8">
           <Spinner />
         </div>
@@ -110,7 +110,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (error) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
         <p className="text-red-400 text-sm text-center py-4">Failed to load points</p>
       </OuterBox>
     );
@@ -120,12 +120,12 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (!points) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
           <p className="text-nasun-white/50 text-center text-sm">
             No activity points yet
           </p>
-          <p className="text-nasun-white/30 text-center text-xs">
+          <p className="text-nasun-white/30 text-center text-sm">
             Use Nasun ecosystem to earn points
           </p>
         </div>
@@ -141,7 +141,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
 
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      <h5 className="font-medium uppercase text-nasun-white mb-3 flex items-center gap-2">ACTIVITY POINTS <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+      <h5 className="font-medium uppercase text-nasun-white mb-3 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
 
       {/* Total Points */}
       <div className="text-3xl font-bold text-nasun-white mb-3">
@@ -169,7 +169,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
           {/* Legend */}
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
             {points.categories.map((cat) => (
-              <span key={cat.category} className="flex items-center gap-1 text-xs text-nasun-white/60">
+              <span key={cat.category} className="flex items-center gap-1 text-sm text-nasun-white/60">
                 <span className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`} />
                 {CATEGORY_LABELS[cat.category] || cat.category}
               </span>
@@ -179,7 +179,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
       )}
 
       {/* Footer */}
-      <div className="text-xs text-nasun-white/40 mt-1">
+      <div className="text-sm text-nasun-white/40 mt-1">
         {points.activityCount} {points.activityCount === 1 ? "activity" : "activities"}
         {firstDate && <span> &middot; Since {firstDate}</span>}
       </div>

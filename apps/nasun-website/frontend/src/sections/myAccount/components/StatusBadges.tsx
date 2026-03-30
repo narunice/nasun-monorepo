@@ -6,7 +6,7 @@ import { useEnabledNftCollections } from "@/features/admin/hooks/useNftCollectio
 
 export const LoggedInBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-nasun-c4/10 text-nasun-c4 text-[10px] font-medium border border-nasun-c4/20"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-nasun-c4/10 text-nasun-c4 text-sm font-medium border border-nasun-c4/20"
     aria-label="Currently logged in with this account"
   >
     <Check className="w-3 h-3 flex-shrink-0" />
@@ -16,7 +16,7 @@ export const LoggedInBadge: FC = () => (
 
 export const LinkedBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 text-[10px] font-medium"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 text-sm font-medium"
     aria-label="Account is linked"
   >
     <Link2 className="w-3 h-3 flex-shrink-0" />
@@ -26,7 +26,7 @@ export const LinkedBadge: FC = () => (
 
 export const ConnectedBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-nasun-c4/10 text-nasun-c4 text-[10px] font-medium border border-nasun-c4/20"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-nasun-c4/10 text-nasun-c4 text-sm font-medium border border-nasun-c4/20"
     aria-label="Wallet is connected"
   >
     <Check className="w-3 h-3 flex-shrink-0" />
@@ -36,7 +36,7 @@ export const ConnectedBadge: FC = () => (
 
 export const RegisteredBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-medium border border-indigo-400/20"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-sm font-medium border border-indigo-400/20"
     aria-label="Wallet is registered"
   >
     <Bookmark className="w-3 h-3 flex-shrink-0" />
@@ -46,7 +46,7 @@ export const RegisteredBadge: FC = () => (
 
 export const ChannelMemberBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-[10px] font-medium border border-sky-400/20"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 text-sm font-medium border border-sky-400/20"
     aria-label="Telegram channel member"
   >
     <Check className="w-3 h-3 flex-shrink-0" />
@@ -56,7 +56,7 @@ export const ChannelMemberBadge: FC = () => (
 
 export const GuaranteedBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-400/20"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-medium border border-emerald-400/20"
     aria-label="Guaranteed allowlist spot"
   >
     <ShieldCheck className="w-3 h-3 flex-shrink-0" />
@@ -66,7 +66,7 @@ export const GuaranteedBadge: FC = () => (
 
 export const FcfsBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[10px] font-medium border border-violet-400/20"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-sm font-medium border border-violet-400/20"
     aria-label="First come first serve allowlist"
   >
     <Users className="w-3 h-3 flex-shrink-0" />
@@ -76,7 +76,7 @@ export const FcfsBadge: FC = () => (
 
 export const FreeMintBadge: FC = () => (
   <span
-    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-medium border border-amber-400/20"
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-sm font-medium border border-amber-400/20"
     aria-label="Free mint raffle winner"
   >
     <Gift className="w-3 h-3 flex-shrink-0" />
@@ -117,7 +117,7 @@ export const GenesisPassBadge: FC = () => {
     <span
       className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full
                  bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15
-                 text-amber-300 text-[10px] font-semibold tracking-wide
+                 text-amber-300 text-sm font-semibold tracking-wide
                  border border-amber-400/25
                  shadow-[0_0_6px_rgba(249,168,36,0.12)]"
       aria-label="Genesis Pass NFT holder"

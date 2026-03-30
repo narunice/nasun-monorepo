@@ -180,7 +180,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
           {effectiveXUserId && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Leaderboard Event</h6>
-              <p className="text-nasun-white/70 text-sm">
+              <p className="text-nasun-white/70 text-base">
                 You're in! Share content about Nasun and get recognized.
               </p>
               <Button onClick={() => navigate("/wave1/leaderboard-guide")} variant="filledOutlineC7" size="sm" className="self-end mt-1">
@@ -225,7 +225,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                       {ecosystem.getActivation("alliance") ? "Active" : "Minted"}
                     </span>
                     {allianceData?.walletAddress && (
-                      <span className="text-nasun-white/50 text-xs font-mono">
+                      <span className="text-nasun-white/50 text-sm font-mono">
                         {shortenAddress(allianceData.walletAddress)}
                       </span>
                     )}
@@ -295,7 +295,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
               <div className="flex items-center justify-between">
                 <h6 className="text-nasun-white">Genesis Pass</h6>
                 {showAllSections && ecosystem.getActivation("genesis-pass") && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                  <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
                     ACTIVE
                   </span>
                 )}
@@ -312,14 +312,14 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                       {genesisPassMintType && genesisPassMintType !== "FREE_MINT" && genesisPassMintType !== "GUARANTEED" && <FcfsBadge />}
                     </div>
                     {genesisPassWallet && (
-                      <span className="text-nasun-white/50 text-xs font-mono">
+                      <span className="text-nasun-white/50 text-sm font-mono">
                         {shortenAddress(genesisPassWallet)}
                       </span>
                     )}
                     {hasMismatch && (
                       <button
                         onClick={() => setShowMismatchDialog(true)}
-                        className="text-yellow-400 text-xs text-left hover:underline"
+                        className="text-yellow-400 text-sm text-left hover:underline"
                       >
                         Wallet mismatch - click to update
                       </button>
@@ -329,7 +329,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                   <div className="flex flex-col gap-0.5">
                     <span className="text-yellow-400 text-sm">&#9679; Applied</span>
                     {genesisPassWallet && (
-                      <span className="text-nasun-white/50 text-xs font-mono">
+                      <span className="text-nasun-white/50 text-sm font-mono">
                         {shortenAddress(genesisPassWallet)}
                       </span>
                     )}
@@ -344,7 +344,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                 )}
               </div>
               {joinError && (
-                <p className="text-red-400 text-xs">{joinError}</p>
+                <p className="text-red-400 text-sm">{joinError}</p>
               )}
               {/* Genesis Pass Activate/Deactivate (dev only) */}
               {showAllSections && isGenesisPassRegistered && ecosystem.isConfigured && (
@@ -417,7 +417,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                   <div className="flex flex-col gap-0.5">
                     <span className="text-green-400 text-sm">&#10003; Registered</span>
                     {battalionStatus?.walletAddress && (
-                      <span className="text-nasun-white/50 text-xs font-mono">
+                      <span className="text-nasun-white/50 text-sm font-mono">
                         {shortenAddress(battalionStatus.walletAddress)}
                       </span>
                     )}
@@ -481,7 +481,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
           {showAllSections && (
             <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
               <h6 className="text-nasun-white">Frontiers</h6>
-              <p className="text-nasun-white/70 text-sm">
+              <p className="text-nasun-white/70 text-base">
                 Details coming soon.
               </p>
               <Button variant="filledOutlineC7" size="sm" className="self-end mt-1" disabled>

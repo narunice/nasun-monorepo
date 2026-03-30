@@ -37,7 +37,7 @@ function EvmWalletLinkButton() {
         {isWalletLinking ? "Linking..." : "Link"}
       </Button>
       {walletLinkError && (
-        <p className="text-xs text-red-400 mt-1">{walletLinkError}</p>
+        <p className="text-sm text-red-400 mt-1">{walletLinkError}</p>
       )}
     </>
   );
@@ -159,7 +159,7 @@ function MobileMetaMaskLinkButton() {
                   Install MetaMask
                 </Button>
               </a>
-              <p className="text-yellow-400/70 text-xs text-center leading-relaxed">
+              <p className="text-yellow-400/70 text-sm text-center leading-relaxed">
                 Return to this browser after each approval step.
                 If you have trouble, try from a desktop browser.
               </p>
@@ -172,7 +172,7 @@ function MobileMetaMaskLinkButton() {
               <p className="text-nasun-white/60 text-sm">
                 {step === "connecting" ? "Waiting for MetaMask..." : "Waiting for signature..."}
               </p>
-              <p className="text-nasun-white/40 text-xs">
+              <p className="text-nasun-white/40 text-sm">
                 Complete the request in your MetaMask app, then return here.
               </p>
             </div>
@@ -252,7 +252,7 @@ function ManualEvmAddressForm() {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-yellow-400/70 text-xs leading-relaxed">
+      <p className="text-yellow-400/70 text-sm leading-relaxed">
         Put in your EVM wallet address. This will be used for NFT allowlists.
       </p>
       <input
@@ -271,12 +271,12 @@ function ManualEvmAddressForm() {
         disabled={isSubmitting}
       />
       {showValidation && !isValidEvmAddress && (
-        <p className="text-red-400/70 text-xs">
+        <p className="text-red-400/70 text-sm">
           Invalid format. EVM address must start with 0x followed by 40 hex characters.
         </p>
       )}
       {error && (
-        <p className="text-red-400 text-xs">{error}</p>
+        <p className="text-red-400 text-sm">{error}</p>
       )}
       <Button
         size="sm"
@@ -343,7 +343,7 @@ export const EvmWalletSection: FC<{
         <ManualEvmAddressForm />
       )}
       {!isMetaMaskLinked && useIOSMetaMaskSdk && (
-        <p className="text-yellow-400/70 text-xs leading-relaxed">
+        <p className="text-yellow-400/70 text-sm leading-relaxed">
           Requires MetaMask app. Return to this browser after each approval step.
         </p>
       )}

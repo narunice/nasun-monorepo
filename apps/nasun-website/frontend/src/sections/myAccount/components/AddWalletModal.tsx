@@ -77,7 +77,7 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
           </button>
         </div>
 
-        <p className="text-xs text-nasun-white/50 mb-4 text-center">
+        <p className="text-sm text-nasun-white/50 mb-4 text-center">
           Register your wallet to participate in on-chain events and earn activity-based rewards on Nasun Network.
         </p>
 
@@ -93,7 +93,7 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
             {/* Divider */}
             <div className="flex items-center gap-3">
               <div className="flex-1 border-t border-nasun-white/10" />
-              <span className="text-xs text-nasun-white/30">or</span>
+              <span className="text-sm text-nasun-white/30">or</span>
               <div className="flex-1 border-t border-nasun-white/10" />
             </div>
 
@@ -123,7 +123,7 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
           <div>
             <button
               onClick={() => setSubView("menu")}
-              className="flex items-center gap-1 text-xs text-nasun-white/40 hover:text-nasun-white/60 transition-colors mb-3"
+              className="flex items-center gap-1 text-sm text-nasun-white/40 hover:text-nasun-white/60 transition-colors mb-3"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
