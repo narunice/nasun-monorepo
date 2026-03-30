@@ -88,15 +88,15 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
       title: "Alliance NFT Free Mint",
       line1: "Earn points: daily missions, access games and the DeFi platform, climb our ecosystem leaderboards.",
       line2: "Active holders may also qualify for future points airdrops.",
-      cta: "Join the Leaderboard",
-      to: "/wave1/leaderboard-guide",
+      cta: "Mint Now",
+      to: "/dev/alliance-nft",
     },
     {
       title: "Genesis Pass",
       line1: "Activate to earn daily points.",
       line2: "Boost points 2x for ecosystem activities and qualification for future airdrops.",
       cta: "Join the Allowlist",
-      to: "/wave1/battalion-nft",
+      to: "/wave1/genesis-pass",
     },
   ] as const;
 
@@ -152,9 +152,9 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
           </p>
 
           {/* Two-column layout: cards + image */}
-          <div className="flex flex-col lg:flex-row lg:gap-10 justify-center items-center w-full">
-            {/* Left: cards */}
-            <div className="flex flex-col w-full lg:w-auto lg:max-w-md order-2 lg:order-1 mt-6 lg:mt-0">
+          <div className="flex flex-col lg:flex-row lg:gap-10 justify-center items-center w-full max-w-5xl mx-auto">
+            {/* Left: cards (wider) */}
+            <div className="flex flex-col w-full lg:w-[58%] order-2 lg:order-1 mt-6 lg:mt-0">
               <div className="flex flex-col gap-6 lg:gap-8">
                 {cards.map((card) => (
                   <Link
@@ -183,7 +183,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             </div>
 
             {/* Right: rotating showcase images */}
-            <div className="relative order-1 lg:order-2 w-full max-w-xs sm:max-w-sm lg:max-w-md shrink-0">
+            <div className="relative order-1 lg:order-2 w-full lg:w-[38%] max-w-xs sm:max-w-sm shrink-0">
               {showcaseImages.map((src, i) => (
                 <img
                   key={src}
