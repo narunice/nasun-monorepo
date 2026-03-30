@@ -7,6 +7,7 @@ import { ThemeToggle } from '../theme/ThemeToggle';
 import { useAdminAccess } from '../../features/admin';
 import { useTradeMode } from '../../features/trading/hooks';
 import { NETWORK_CONFIG } from '../../config/network';
+import { useAppAdmin } from '../../hooks/useAppAdmin';
 
 interface NavItem {
   label: string;
@@ -70,6 +71,10 @@ export function Header() {
 
   // Admin access check
   const { isAdmin } = useAdminAccess();
+  const isAppAdmin = useAppAdmin();
+
+  // Platform admins bypass games-only gate
+  const isEffectivelyGated = gated && !isAppAdmin;
 
   // Trade mode for header max-width in Simple mode
   const { isSimple } = useTradeMode();
@@ -199,8 +204,9 @@ export function Header() {
 
             {isTradeOpen && (
               <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {TRADE_ITEMS.map((item) =>
-                  item.enabled ? (
+                {TRADE_ITEMS.map((item) => {
+                  const enabled = item.enabled || isAppAdmin;
+                  return enabled ? (
                     <Link
                       key={item.path}
                       to={item.path}
@@ -223,8 +229,8 @@ export function Header() {
                     >
                       {item.label}
                     </span>
-                  )
-                )}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -274,8 +280,9 @@ export function Header() {
           </div>
 
           {/* Direct Nav Items: Predict, Earn */}
-          {NAV_ITEMS.map((item) =>
-            item.enabled ? (
+          {NAV_ITEMS.map((item) => {
+            const enabled = item.enabled || isAppAdmin;
+            return enabled ? (
               <Link
                 key={item.path}
                 to={item.path}
@@ -295,12 +302,12 @@ export function Header() {
               >
                 {item.label}
               </span>
-            )
-          )}
+            );
+          })}
 
           {/* Social Dropdown */}
           <div className="relative" ref={socialRef}>
-            {SOCIAL_ITEMS.some(item => item.enabled) ? (
+            {SOCIAL_ITEMS.some(item => item.enabled || isAppAdmin) ? (
               <button
                 onClick={toggleSocial}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
@@ -328,9 +335,9 @@ export function Header() {
               </span>
             )}
 
-            {isSocialOpen && SOCIAL_ITEMS.some(item => item.enabled) && (
+            {isSocialOpen && SOCIAL_ITEMS.some(item => item.enabled || isAppAdmin) && (
               <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {SOCIAL_ITEMS.filter(item => item.enabled).map((item) => (
+                {SOCIAL_ITEMS.filter(item => item.enabled || isAppAdmin).map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
@@ -352,7 +359,7 @@ export function Header() {
           </div>
 
           {/* Portfolio */}
-          {gated ? (
+          {isEffectivelyGated ? (
             <span className="px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed">
               Portfolio
             </span>
@@ -389,7 +396,7 @@ export function Header() {
         {/* Right side: Theme Toggle + Wallet */}
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
-          {!gated && <HeaderNetValue />}
+          {!isEffectivelyGated && <HeaderNetValue />}
           {showWalletButton && (
             <WalletConnect
               addressStartChars={isMobile ? 0 : 2}

@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAdminAccess } from '../../features/admin';
 import { NETWORK_CONFIG } from '../../config/network';
+import { useAppAdmin } from '../../hooks/useAppAdmin';
 
 interface NavTab {
   label: string;
@@ -84,6 +85,7 @@ export function MobileBottomNav() {
   const navigate = useNavigate();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const { isAdmin } = useAdminAccess();
+  const isAppAdmin = useAppAdmin();
 
   // Close bottom sheet on route change
   useEffect(() => {
@@ -117,8 +119,9 @@ export function MobileBottomNav() {
               <div className="w-10 h-1 rounded-full bg-theme-text-muted/30" />
             </div>
             <nav className="px-4 pb-4 grid grid-cols-3 gap-2">
-              {MORE_ITEMS.map((item) =>
-                item.enabled ? (
+              {MORE_ITEMS.map((item) => {
+                const enabled = item.enabled || isAppAdmin;
+                return enabled ? (
                   <button
                     key={item.path}
                     onClick={() => {
@@ -142,8 +145,8 @@ export function MobileBottomNav() {
                     <span className="text-xl opacity-40">{item.icon}</span>
                     <span className="text-xs font-medium">{item.label}</span>
                   </span>
-                )
-              )}
+                );
+              })}
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -173,7 +176,7 @@ export function MobileBottomNav() {
         <div className="flex items-center justify-around h-14">
           {TABS.map((tab) => {
             const active = isTabActive(tab);
-            const enabled = tab.enabled !== false;
+            const enabled = (tab.enabled !== false) || isAppAdmin;
             if (!enabled) {
               return (
                 <span
