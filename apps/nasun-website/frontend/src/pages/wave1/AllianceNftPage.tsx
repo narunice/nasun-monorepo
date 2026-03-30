@@ -12,7 +12,11 @@ import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/features/auth";
 import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
 import { AllianceMintDialog } from "@/sections/myAccount/components/AllianceMintDialog";
-import { ALLIANCE_IMAGES, ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
+import {
+  ALLIANCE_IMAGES,
+  ALLIANCE_PREVIEW_IMAGES,
+  ALLIANCE_NAMES,
+} from "@/constants/alliance";
 
 import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -33,6 +37,7 @@ const AllianceNftPage = () => {
   const mintSectionRef = useRef<HTMLDivElement>(null);
   const wasLoggedOut = useRef(!user);
 
+  // Scroll to mint section after Nasun Wallet login (no page reload)
   useEffect(() => {
     if (user && wasLoggedOut.current) {
       wasLoggedOut.current = false;
@@ -43,7 +48,16 @@ const AllianceNftPage = () => {
     }
   }, [user]);
 
+  // Scroll to mint section after OAuth redirect (page reload with #mint hash)
+  useEffect(() => {
+    if (window.location.hash === "#mint") {
+      mintSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+      history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+
   const handleConnect = () => {
+    localStorage.setItem("auth_return_to", "/dev/alliance-nft#mint");
     window.dispatchEvent(new Event("nasun:open-login"));
   };
 
@@ -65,7 +79,10 @@ const AllianceNftPage = () => {
 
       <AllianceNftHeroSection />
 
-      <SectionLayout ref={mintSectionRef} className="!max-w-8xl min-h-[80vh] px-6 sm:px-10 lg:px-12">
+      <SectionLayout
+        ref={mintSectionRef}
+        className="!max-w-8xl min-h-[80vh] px-6 sm:px-10 lg:px-12"
+      >
         <h5 className="text-center text-nasun-white max-w-5xl mx-auto -mt-2 mb-4">
           {isMinted ? (
             <>
@@ -74,7 +91,7 @@ const AllianceNftPage = () => {
               Explore the Nasun ecosystem and earn points.
             </>
           ) : (
-            "Pick your character and start earning ecosystem points."
+            "Pick your character first and start earning ecosystem points."
           )}
         </h5>
 
@@ -96,7 +113,12 @@ const AllianceNftPage = () => {
                   </div>
                 ))}
               </div>
-              <ButtonV3 variant="gradient" size="xl" className="!px-12 !py-4 !text-xl !font-medium" onClick={handleConnect}>
+              <ButtonV3
+                variant="gradient"
+                size="xl"
+                className="!px-12 !py-4 !text-xl !font-medium"
+                onClick={handleConnect}
+              >
                 Login/Sign up to Mint
               </ButtonV3>
             </div>
@@ -147,7 +169,9 @@ const AllianceNftPage = () => {
                       key={i}
                       type="button"
                       aria-pressed={selectedImage === i}
-                      onClick={() => setSelectedImage(prev => prev === i ? null : i)}
+                      onClick={() =>
+                        setSelectedImage((prev) => (prev === i ? null : i))
+                      }
                       className={`flex flex-col items-center gap-2 transition-all ${
                         selectedImage !== null && selectedImage !== i
                           ? "opacity-40"
@@ -168,16 +192,18 @@ const AllianceNftPage = () => {
                           loading="lazy"
                         />
                         {selectedImage === i && (
-                          <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-nasun-c7 flex items-center justify-center">
-                            <span className="text-white text-sm">&#10003;</span>
+                          <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-green-500 shadow-lg shadow-green-500/40 flex items-center justify-center">
+                            <span className="text-white text-base font-bold">&#10003;</span>
                           </div>
                         )}
                       </div>
-                      <h6 className={`transition-colors ${
-                        selectedImage === i
-                          ? "text-nasun-white"
-                          : "text-nasun-white/80 hover:text-nasun-white"
-                      }`}>
+                      <h6
+                        className={`transition-colors ${
+                          selectedImage === i
+                            ? "text-nasun-white"
+                            : "text-nasun-white/80 hover:text-nasun-white"
+                        }`}
+                      >
                         {ALLIANCE_NAMES[i]}
                       </h6>
                     </button>
@@ -190,7 +216,9 @@ const AllianceNftPage = () => {
                   disabled={selectedImage === null}
                   onClick={() => setShowMintDialog(true)}
                 >
-                  Mint Alliance NFT
+                  {selectedImage !== null
+                    ? `Mint ${ALLIANCE_NAMES[selectedImage]}`
+                    : "Mint Alliance NFT"}
                 </ButtonV3>
               </div>
             )}
@@ -209,10 +237,10 @@ const AllianceNftPage = () => {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-nasun-white font-medium text-lg mb-1">
-                  Alliance NFT Minted
-                </p>
-                <p className="text-nasun-white/50 text-sm">
+                <h5 className="text-nasun-white font-semibold mb-1">
+                  {ALLIANCE_NAMES[data.imageIndex] || "Alliance NFT"}
+                </h5>
+                <p className="text-nasun-white/50 text-base">
                   Minted to{" "}
                   <span className="font-mono">
                     {data.walletAddress.slice(0, 6)}...
@@ -221,6 +249,7 @@ const AllianceNftPage = () => {
                 </p>
               </div>
               <ButtonV3
+                className="mt-4"
                 variant="gradient"
                 size="xl"
                 onClick={() => navigate("/my-account")}

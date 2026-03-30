@@ -648,16 +648,20 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       console.log("[internal] Fetching referral mappings for points scanner");
 
-      // Scan nasun-referrals table, only include ACTIVATED referrals
+      // Scan nasun-referrals table, only include ACTIVATED + non-expired referrals.
+      // Expiry: 180 days from appliedAt. Legacy records without appliedAt are treated as non-expired.
+      const EXPIRY_MS = 180 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
       const referrals: Record<string, string> = {};
       let totalRelationships = 0;
       let totalActivated = 0;
+      let totalExpired = 0;
       let refLastKey: Record<string, any> | undefined;
       do {
         const result = await dynamoClient.send(
           new ScanCommand({
             TableName: REFERRALS_TABLE,
-            ProjectionExpression: "referredIdentityId, referrerIdentityId, #s",
+            ProjectionExpression: "referredIdentityId, referrerIdentityId, #s, appliedAt",
             ExpressionAttributeNames: { "#s": "status" },
             ...(refLastKey && { ExclusiveStartKey: refLastKey }),
           })
@@ -669,6 +673,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           if (referredId && referrerId) {
             totalRelationships++;
             if (status === "ACTIVATED") {
+              // Filter expired referrals (legacy records without appliedAt are never expired)
+              const appliedAt = item.appliedAt?.S;
+              if (appliedAt) {
+                const appliedMs = Date.parse(appliedAt);
+                if (!isNaN(appliedMs) && now - appliedMs > EXPIRY_MS) {
+                  totalExpired++;
+                  continue;
+                }
+              }
               referrals[referredId] = referrerId;
               totalActivated++;
             }
@@ -677,7 +690,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         refLastKey = result.LastEvaluatedKey;
       } while (refLastKey);
 
-      console.log(`[internal] Referral mappings: ${totalRelationships} total, ${totalActivated} activated (returned)`);
+      console.log(`[internal] Referral mappings: ${totalRelationships} total, ${totalActivated} activated (returned), ${totalExpired} expired (filtered)`);
       return jsonResponse(200, {
         referrals,
         stats: { totalRelationships, totalActivated },
