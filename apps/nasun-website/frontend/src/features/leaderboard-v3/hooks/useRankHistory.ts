@@ -49,7 +49,7 @@ export function useRankHistory(options: UseRankHistoryOptions = {}): UseRankHist
     enabled: enabled && !!seasonId && !!twitterUsername,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
-    retry: 1,
+    retry: false,
   });
 
   return {
