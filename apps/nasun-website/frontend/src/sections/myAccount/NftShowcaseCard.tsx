@@ -162,10 +162,13 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
         <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
           <div className="flex flex-col gap-2">
             <h6 className="text-nasun-white font-medium uppercase">GENESIS PASS</h6>
-            <div className={`relative rounded-sm overflow-hidden aspect-[2/1] transition-all ${genesisIsActive ? "bg-gray-700" : "bg-gray-800"}`}>
+            <div className={`relative rounded-sm overflow-hidden aspect-[2/1] transition-all flex items-center justify-center ${genesisIsActive ? "bg-gray-700" : "bg-gray-800"}`}>
               <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
+              {!genesisIsActive && (
+                <span className="text-nasun-white/60 text-sm font-medium">Join Allowlist</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               {isGenesisPassLoading ? (
