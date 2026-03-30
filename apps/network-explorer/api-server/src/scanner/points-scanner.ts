@@ -36,6 +36,11 @@ let isScanning = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
 let lastDailyNftCheckDate = '';
 
+// Daily category cap: only one base_points insert per (identity, category) per day.
+// Key format: "identityId::category". Cleared on date rollover and chain reset.
+let dailyCategorySeen = new Set<string>();
+let dailyCategoryDate = '';
+
 // --- Public API ---
 
 export function startPointsScanner(): void {
@@ -47,6 +52,7 @@ export function startPointsScanner(): void {
   // Initial scan after 5s delay (let API server warm up)
   scanTimerId = setTimeout(async () => {
     await warmUpDailyBonusAccumulator();
+    await warmUpDailyCategoryCap();
     await scanLoop();
     scheduleNext();
   }, 5000);
@@ -161,6 +167,35 @@ async function scanLoop(): Promise<void> {
   }
 }
 
+// --- Daily category cap warm-up ---
+
+async function warmUpDailyCategoryCap(): Promise<void> {
+  if (!pointsDb) return;
+  const today = new Date().toISOString().slice(0, 10);
+  dailyCategoryDate = today;
+
+  try {
+    const rows = await pointsDb`
+      SELECT DISTINCT identity_id, category
+      FROM activity_points
+      WHERE tx_timestamp >= ${today}::date
+        AND tx_timestamp < (${today}::date + interval '1 day')
+        AND base_points > 0
+        AND NOT flagged
+    `;
+
+    dailyCategorySeen = new Set();
+    for (const row of rows) {
+      if (row.identity_id) {
+        dailyCategorySeen.add(`${row.identity_id}::${row.category}`);
+      }
+    }
+    console.log(`[Points] Daily cap warm-up: ${dailyCategorySeen.size} entries`);
+  } catch (err) {
+    console.error('[Points] Daily cap warm-up error:', err);
+  }
+}
+
 // --- Chain reset detection ---
 
 async function detectChainReset(): Promise<void> {
@@ -192,6 +227,8 @@ async function detectChainReset(): Promise<void> {
       );
       console.warn('[Points] Purging old activity_points and resetting scanner');
       await pointsDb`TRUNCATE activity_points`;
+      dailyCategorySeen = new Set();
+      dailyCategoryDate = '';
       await pointsDb`
         UPDATE processing_state
         SET last_tx_sequence = 0, chain_genesis_hash = ${currentHash},
@@ -309,6 +346,13 @@ async function processBatch(
 ): Promise<{ count: number; inserts: PointsInsert[] }> {
   if (!pointsDb) return { count: 0, inserts: [] };
 
+  // Daily category cap: reset on date rollover
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== dailyCategoryDate) {
+    dailyCategorySeen = new Set();
+    dailyCategoryDate = today;
+  }
+
   const inserts: PointsInsert[] = [];
 
   for (const event of batch) {
@@ -333,6 +377,11 @@ async function processBatch(
     // Phase 1: only score registered wallets
     if (!identityId) continue;
 
+    // Daily category cap: 1 base_points insert per (identity, category) per day.
+    // Also limits referral bonus generation for capped events.
+    const capKey = `${identityId}::${mapping.category}`;
+    if (dailyCategorySeen.has(capKey)) continue;
+
     const volumeTier = 1.0; // Phase 1: no volume parsing yet
     const genesisMult = genesisPassHolders.has(identityId)
       ? GENESIS_PASS_MULTIPLIER
@@ -355,6 +404,8 @@ async function processBatch(
       tx_timestamp: new Date(Number(event.timestamp_ms)),
       event_seq: event.event_sequence_number,
     });
+
+    dailyCategorySeen.add(capKey);
   }
 
   if (inserts.length === 0) return { count: 0, inserts: [] };
