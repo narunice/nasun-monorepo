@@ -8,7 +8,7 @@ import type { ScratchResult, AnimationTier } from '../types';
 import { BuyCardButton } from './BuyCardButton';
 import { ScratchCardCanvas } from './ScratchCardCanvas';
 import { CardResultDisplay } from './CardResultDisplay';
-import { LossReaction } from './LossReaction';
+import { pickRandomText } from './LossReaction';
 import { WinCelebration } from './WinCelebration';
 
 // Phase state machine
@@ -51,6 +51,7 @@ export function ScratchCardArea() {
 
   const [phase, dispatch] = useReducer(phaseReducer, 'idle');
   const resultRef = useRef<ScratchResult | null>(null);
+  const lossTextRef = useRef<{ emoji: string; text: string } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -83,9 +84,14 @@ export function ScratchCardArea() {
     const result = resultRef.current;
     if (!result) return;
 
-    dispatch({ type: 'REVEAL' });
-
     const tier = getAnimationTier(result.multiplier);
+
+    // Pick loss reaction text before phase change
+    if (tier === 'loss') {
+      lossTextRef.current = pickRandomText();
+    }
+
+    dispatch({ type: 'REVEAL' });
 
     // Toast for real wins only (LOSS tier includes 0x and 1x Even)
     if (result.isWinner && tier !== 'loss') {
@@ -97,18 +103,26 @@ export function ScratchCardArea() {
 
     refetchHistory();
 
-    // After canvas fade, start result animation
     clearTimer();
-    timerRef.current = setTimeout(() => {
-      dispatch({ type: 'START_ANIMATION' });
-    }, CANVAS_FADE_MS);
+    if (tier === 'loss') {
+      // For losses: skip animating phase, settle after canvas fade.
+      // CardResultDisplay stays stable; reaction text fades in via CSS.
+      timerRef.current = setTimeout(() => {
+        dispatch({ type: 'SETTLE' });
+      }, CANVAS_FADE_MS);
+    } else {
+      // For wins: use standard animation flow
+      timerRef.current = setTimeout(() => {
+        dispatch({ type: 'START_ANIMATION' });
+      }, CANVAS_FADE_MS);
 
-    // Fallback safety: force settle if animation gets stuck
-    clearFallback();
-    const totalBudget = CANVAS_FADE_MS + TIER_DURATIONS[tier] + 500;
-    fallbackRef.current = setTimeout(() => {
-      dispatch({ type: 'SETTLE' });
-    }, totalBudget);
+      // Fallback safety: force settle if animation gets stuck
+      clearFallback();
+      const totalBudget = CANVAS_FADE_MS + TIER_DURATIONS[tier] + 500;
+      fallbackRef.current = setTimeout(() => {
+        dispatch({ type: 'SETTLE' });
+      }, totalBudget);
+    }
   }, [showToast, refetchHistory, clearTimer, clearFallback]);
 
   const handleAnimationEnd = useCallback(() => {
@@ -120,6 +134,7 @@ export function ScratchCardArea() {
     clearTimer();
     clearFallback();
     resultRef.current = null;
+    lossTextRef.current = null;
     dispatch({ type: 'RESET' });
   }, [clearTimer, clearFallback]);
 
@@ -154,16 +169,17 @@ export function ScratchCardArea() {
                 <CardResultDisplay result={result} />
               )}
 
-              {/* During animating: show tier-specific animation */}
+              {/* During animating: show tier-specific animation (wins only) */}
               {phase === 'animating' && (
-                tier === 'loss'
-                  ? <LossReaction onComplete={handleAnimationEnd} />
-                  : <WinCelebration result={result} tier={tier} onComplete={handleAnimationEnd} />
+                <WinCelebration result={result} tier={tier} onComplete={handleAnimationEnd} />
               )}
 
-              {/* During settled: show static result */}
+              {/* During settled: show static result + loss reaction text below */}
               {phase === 'settled' && (
-                <CardResultDisplay result={result} />
+                <CardResultDisplay
+                  result={result}
+                  reactionText={tier === 'loss' ? lossTextRef.current : undefined}
+                />
               )}
             </ScratchCardCanvas>
           </div>
@@ -189,13 +205,23 @@ export function ScratchCardArea() {
         </div>
       )}
 
-      {/* Buy button */}
+      {/* Buy button with skeleton card preview */}
       {(phase === 'idle' || phase === 'buying') && (
-        <BuyCardButton
-          onClick={handleBuy}
-          isBuying={isBuying || phase === 'buying'}
-          disabled={!canBuy}
-        />
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-[320px] h-[200px] rounded-lg bg-gradient-to-br from-[#1a8cbc] to-[#3bb9d8]
+              flex items-center justify-center animate-pulse"
+          >
+            <p className="text-white/40 text-sm font-medium select-none">
+              Scratch here!
+            </p>
+          </div>
+          <BuyCardButton
+            onClick={handleBuy}
+            isBuying={isBuying || phase === 'buying'}
+            disabled={!canBuy}
+          />
+        </div>
       )}
 
       {/* Error display */}
