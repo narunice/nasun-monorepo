@@ -46,6 +46,11 @@ const LoginButton = () => {
       if (hasPendingBackup) {
         window.dispatchEvent(new CustomEvent('nasun:wallet-backup-pending'));
       }
+      // Redirect to my-account after wallet sign-in (same as OAuth flow)
+      const savedPath = localStorage.getItem("auth_return_to");
+      localStorage.removeItem("auth_return_to");
+      const returnTo = (!savedPath || savedPath === '/') ? '/dev/my-account' : savedPath;
+      navigate(returnTo);
     } catch (err) {
       signFlowCalledRef.current = false;
       setSigningIn(false);
