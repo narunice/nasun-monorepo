@@ -375,11 +375,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       name: "navigation.wave1Campaign",
       path: "/wave1",
       subMenu: [
-        {
-          name: "navigation.alliance",
-          path: "/wave1/alliance-nft",
-          element: Pages.AllianceNft,
-        },
+        // {
+        //   name: "navigation.alliance",
+        //   path: "/wave1/alliance-nft",
+        //   element: Pages.AllianceNft,
+        // },
         {
           name: "navigation.genesisPass",
           path: "/wave1/genesis-pass",
