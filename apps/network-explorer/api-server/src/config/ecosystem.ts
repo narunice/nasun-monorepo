@@ -20,14 +20,15 @@ function safeInt(raw: string | undefined, fallback: number): number {
 }
 
 // NFT Multiplier Config
-// Base multiplier is 1.0 (no NFTs activated).
+// Base multiplier is 1.0 when any NFT is active, 0 when none.
 // Each activated NFT type adds to the base.
+// Price-proportional: Genesis $10, Battalion $100 per unit (G=0.1x, 10G=1.0x).
 export const MULTIPLIER_CONFIG = {
-  alliance: safeFloat(process.env.ECO_MULT_ALLIANCE, 1.0),
-  // Note: separate from GENESIS_PASS_MULTIPLIER in points.ts (per-tx multiplier, also 2.0)
-  genesisPass: safeFloat(process.env.ECO_MULT_GENESIS_PASS, 2.0),
+  alliance: safeFloat(process.env.ECO_MULT_ALLIANCE, 0),
+  // Note: separate from GENESIS_PASS_MULTIPLIER in points.ts (per-tx multiplier, 2.0)
+  genesisPass: safeFloat(process.env.ECO_MULT_GENESIS_PASS, 0.1),
   battalion: {
-    perUnit: safeFloat(process.env.ECO_MULT_BATTALION_PER_UNIT, 0.3),
+    perUnit: safeFloat(process.env.ECO_MULT_BATTALION_PER_UNIT, 1.0),
     maxUnits: safeInt(process.env.ECO_MULT_BATTALION_MAX_UNITS, 10),
   },
 };
@@ -91,12 +92,22 @@ export function getActivationBonus(act: NftActivation): number {
 
 /**
  * Calculate total multiplier for a user based on their NFT activations.
- * Formula: 1.0 (base) + sum of per-activation bonuses, capped at MAX_MULTIPLIER.
+ *
+ * No active NFTs -> 0 (disabled; points recorded but not scored).
+ * Any active NFT  -> 1.0 (base) + sum of per-activation bonuses, capped at MAX_MULTIPLIER.
+ *
+ * Users without any Nasun NFT accumulate base scores, but their ecosystem
+ * score stays 0 until they acquire any NFT, at which point all historical
+ * base scores become effective retroactively.
  */
 export function calculateMultiplier(activations: NftActivation[]): number {
-  let multiplier = 1.0;
+  let bonus = 0;
+  let hasActive = false;
   for (const act of activations) {
-    multiplier += getActivationBonus(act);
+    const b = getActivationBonus(act);
+    if (b > 0 || act.status === 'ACTIVE') hasActive = true;
+    bonus += b;
   }
-  return Math.min(multiplier, MAX_MULTIPLIER);
+  if (!hasActive) return 0;
+  return Math.min(1.0 + bonus, MAX_MULTIPLIER);
 }
