@@ -1,8 +1,8 @@
 /**
- * Trading Sound System
+ * Sound System
  *
- * Web Audio API-based sound effects for trading events.
- * No external audio files needed — generates tones programmatically.
+ * Web Audio API-based sound effects for trading and game events.
+ * No external audio files needed -- generates tones programmatically.
  * Respects user preferences (sound enabled, volume).
  */
 
@@ -106,5 +106,53 @@ export function playSound(sound: TradingSound): void {
   for (const tone of tones) {
     playTone(ctx, tone, volume, offset);
     offset += tone.duration + 0.03; // 30ms gap between tones
+  }
+}
+
+// --- Game sounds (lottery, scratchcard) ---
+
+export type GameSound = 'winSmall' | 'winMedium' | 'winJackpot';
+
+const GAME_SOUND_DEFS: Record<GameSound, ToneParams[]> = {
+  // Single ding
+  winSmall: [
+    { frequency: 880, duration: 0.15, type: 'sine' },
+  ],
+  // 2-tone chime
+  winMedium: [
+    { frequency: 660, duration: 0.12, type: 'sine' },
+    { frequency: 880, duration: 0.15, type: 'sine' },
+  ],
+  // Rising arpeggio (C-E-G-C)
+  winJackpot: [
+    { frequency: 523, duration: 0.1, type: 'sine' },  // C5
+    { frequency: 659, duration: 0.1, type: 'sine' },  // E5
+    { frequency: 784, duration: 0.1, type: 'sine' },  // G5
+    { frequency: 1047, duration: 0.25, type: 'sine' }, // C6
+  ],
+};
+
+/**
+ * Play a game sound effect (lottery/scratchcard wins).
+ * Respects the same user notification preferences as trading sounds.
+ */
+export function playGameSound(sound: GameSound): void {
+  const prefs = getNotificationPrefs();
+  if (!prefs.soundEnabled) return;
+
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+
+  const tones = GAME_SOUND_DEFS[sound];
+  const volume = prefs.soundVolume;
+  let offset = ctx.currentTime;
+
+  for (const tone of tones) {
+    playTone(ctx, tone, volume, offset);
+    offset += tone.duration + 0.03;
   }
 }
