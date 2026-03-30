@@ -376,17 +376,17 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       path: "/wave1",
       subMenu: [
         {
+          name: "navigation.alliance",
+          path: "/wave1/alliance-nft",
+          element: Pages.AllianceNft,
+        },
+        {
           name: "navigation.genesisPass",
           path: "/wave1/genesis-pass",
           element: Pages.GenesisPass,
         },
         {
-          name: "navigation.allianceNft",
-          path: "/wave1/alliance-nft",
-          element: Pages.AllianceNft,
-        },
-        {
-          name: "navigation.battalionNft",
+          name: "navigation.battalion",
           path: "/wave1/battalion-nft",
           element: Pages.BattalionNft,
         },
@@ -648,8 +648,9 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.opportunities": "Opportunities",
   },
   wave1: {
-    "navigation.allianceNft": "Alliance NFT",
-    "navigation.battalionNft": "Battalion NFT",
+    "navigation.alliance": "Alliance",
+    "navigation.genesisPass": "Genesis Pass",
+    "navigation.battalion": "Battalion",
     "navigation.earlyContributors": "Early Contributors",
     "navigation.leaderboard": "Leaderboard",
     "navigation.leaderboardGuide": "Leaderboard Guide",
