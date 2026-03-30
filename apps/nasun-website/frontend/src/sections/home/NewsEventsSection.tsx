@@ -82,7 +82,7 @@ function NewsEventsSection() {
     <SectionLayout id="news-events" className="relative min-h-screen bg-nasun-black">
       {/* 컨텐츠 */}
       <FadeInUp>
-        <div className="relative max-w-6xl mx-auto z-10 w-full h-full px-4 md:px-8 lg:px-32 flex flex-col justify-start min-h-screen gap-6 md:gap-9 lg:gap-12 pt-10 md:pt-20 lg:pt-24 pb-8 md:pb-16 lg:pb-20">
+        <div className="relative max-w-6xl mx-auto z-10 w-full px-4 md:px-8 lg:px-32 flex flex-col gap-6 md:gap-9 lg:gap-12 mt-8 sm:mt-12 md:mt-16 lg:mt-20 mb-6 md:mb-12 lg:mb-14">
           {/* 섹션 타이틀 - Awards & Grants 스타일 */}
           <SectionTitle as="h2" color="white" className="!font-eurostile text-center">
             {t("newsEvents.title")}
