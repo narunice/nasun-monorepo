@@ -11,7 +11,6 @@ import { Hono } from 'hono';
 import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import {
-  getMultiplierForUser,
   getActivationsForUser,
   getMatviewStatus,
 } from '../scanner/ecosystem-cache.js';
@@ -112,9 +111,12 @@ app.get('/score/:identityId', async (c) => {
 
   const scores = await getData();
 
+  const disabled = scores.multiplier === 0;
+
   const data = {
     identityId,
     multiplier: roundTo2(scores.multiplier),
+    disabled,
     isPenalized: scores.isPenalized,
     activations: scores.activations.map((a) => ({
       nftType: a.nftType,
@@ -211,10 +213,12 @@ app.get('/leaderboard', async (c) => {
 
   const scored = await getScoredLeaderboard();
 
-  scored.sort((a, b) => b.ecosystemScore - a.ecosystemScore);
+  // Exclude users with no active NFTs (multiplier=0, disabled)
+  const active = scored.filter(e => e.multiplier > 0);
+  active.sort((a, b) => b.ecosystemScore - a.ecosystemScore);
 
   // Apply offset/limit and assign ranks
-  const page = scored.slice(offset, offset + limit);
+  const page = active.slice(offset, offset + limit);
   const ranked = page.map((entry, i) => ({
     ...entry,
     rank: offset + i + 1,
@@ -227,7 +231,7 @@ app.get('/leaderboard', async (c) => {
       period,
       limit,
       offset,
-      total: scored.length,
+      total: active.length,
     },
   });
 });
