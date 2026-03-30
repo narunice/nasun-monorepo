@@ -18,6 +18,7 @@ interface NavTab {
   path: string;
   icon: (active: boolean) => React.ReactNode;
   matchPaths: string[];
+  enabled?: boolean;
 }
 
 // TEMPORARY: gated flag controls mobile nav (Remove after 2026-04-07)
@@ -55,32 +56,28 @@ const socialIcon = (active: boolean) => (
   </svg>
 );
 
-const TABS: NavTab[] = gated
-  ? [
-      { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon },
-      { label: 'Spot', path: '/markets/spot', matchPaths: ['/markets'], icon: tradeIcon },
-    ]
-  : [
-      { label: 'Home', path: '/', matchPaths: ['/'], icon: homeIcon },
-      { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon },
-      { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon },
-      { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon },
-    ];
+const TABS: NavTab[] = [
+  { label: 'Home', path: '/', matchPaths: ['/'], icon: homeIcon, enabled: true },
+  { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon, enabled: true },
+  { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon, enabled: true },
+  { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon, enabled: !gated },
+];
 
-// Bottom sheet menu items
-const MORE_ITEMS = gated
-  ? [
-      { label: 'Wallet', path: '/wallet', icon: '👛' },
-      { label: 'Game History', path: '/games/history', icon: '🎲' },
-    ]
-  : [
-      { label: 'Earn', path: '/earn', icon: '💰' },
-      { label: 'Perpetuals', path: '/markets/perp', icon: '📈' },
-      { label: 'Portfolio', path: '/portfolio', icon: '📊' },
-      { label: 'Wallet', path: '/wallet', icon: '👛' },
-      { label: 'Game History', path: '/games/history', icon: '🎲' },
-      { label: 'Predict', path: '/predict', icon: '🔮' },
-    ];
+interface MoreItem {
+  label: string;
+  path: string;
+  icon: string;
+  enabled: boolean;
+}
+
+const MORE_ITEMS: MoreItem[] = [
+  { label: 'Earn', path: '/earn', icon: '💰', enabled: !gated },
+  { label: 'Perpetuals', path: '/markets/perp', icon: '📈', enabled: !gated },
+  { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: !gated },
+  { label: 'Wallet', path: '/wallet', icon: '👛', enabled: true },
+  { label: 'Game History', path: '/games/history', icon: '🎲', enabled: true },
+  { label: 'Predict', path: '/predict', icon: '🔮', enabled: !gated },
+];
 
 export function MobileBottomNav() {
   const location = useLocation();
@@ -120,23 +117,33 @@ export function MobileBottomNav() {
               <div className="w-10 h-1 rounded-full bg-theme-text-muted/30" />
             </div>
             <nav className="px-4 pb-4 grid grid-cols-3 gap-2">
-              {MORE_ITEMS.map((item) => (
-                <button
-                  key={item.path}
-                  onClick={() => {
-                    navigate(item.path);
-                    setIsMoreOpen(false);
-                  }}
-                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
-                    location.pathname.startsWith(item.path)
-                      ? 'bg-theme-accent/10 text-theme-accent'
-                      : 'text-theme-text-secondary hover:bg-theme-bg-tertiary'
-                  }`}
-                >
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="text-xs font-medium">{item.label}</span>
-                </button>
-              ))}
+              {MORE_ITEMS.map((item) =>
+                item.enabled ? (
+                  <button
+                    key={item.path}
+                    onClick={() => {
+                      navigate(item.path);
+                      setIsMoreOpen(false);
+                    }}
+                    className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
+                      location.pathname.startsWith(item.path)
+                        ? 'bg-theme-accent/10 text-theme-accent'
+                        : 'text-theme-text-secondary hover:bg-theme-bg-tertiary'
+                    }`}
+                  >
+                    <span className="text-xl">{item.icon}</span>
+                    <span className="text-xs font-medium">{item.label}</span>
+                  </button>
+                ) : (
+                  <span
+                    key={item.path}
+                    className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl text-theme-text-muted/40 cursor-not-allowed"
+                  >
+                    <span className="text-xl opacity-40">{item.icon}</span>
+                    <span className="text-xs font-medium">{item.label}</span>
+                  </span>
+                )
+              )}
               {isAdmin && (
                 <button
                   onClick={() => {
@@ -166,6 +173,18 @@ export function MobileBottomNav() {
         <div className="flex items-center justify-around h-14">
           {TABS.map((tab) => {
             const active = isTabActive(tab);
+            const enabled = tab.enabled !== false;
+            if (!enabled) {
+              return (
+                <span
+                  key={tab.label}
+                  className="flex flex-col items-center justify-center flex-1 h-full text-theme-text-muted/40 cursor-not-allowed"
+                >
+                  {tab.icon(false)}
+                  <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
+                </span>
+              );
+            }
             return (
               <Link
                 key={tab.label}

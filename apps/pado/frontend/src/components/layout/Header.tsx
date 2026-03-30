@@ -170,7 +170,7 @@ export function Header() {
             : ''
       }`}>
         {/* Logo Wordmark - Click to go Home */}
-        <Link to={gated ? '/games/lottery' : '/'} className="hover:opacity-80 transition-opacity">
+        <Link to="/" className="hover:opacity-80 transition-opacity">
           <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">PADO</h1>
         </Link>
 
@@ -199,23 +199,32 @@ export function Header() {
 
             {isTradeOpen && (
               <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {TRADE_ITEMS.filter(item => item.enabled).map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={(e) => {
-                      handleNavClick(e, item.path);
-                      setIsTradeOpen(false);
-                    }}
-                    className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                      isActive(item.path)
-                        ? 'text-pd3 bg-pd3/10'
-                        : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {TRADE_ITEMS.map((item) =>
+                  item.enabled ? (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={(e) => {
+                        handleNavClick(e, item.path);
+                        setIsTradeOpen(false);
+                      }}
+                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                        isActive(item.path)
+                          ? 'text-pd3 bg-pd3/10'
+                          : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <span
+                      key={item.path}
+                      className="block px-4 py-2.5 text-sm font-medium text-theme-text-muted cursor-not-allowed"
+                    >
+                      {item.label}
+                    </span>
+                  )
+                )}
               </div>
             )}
           </div>
@@ -265,24 +274,33 @@ export function Header() {
           </div>
 
           {/* Direct Nav Items: Predict, Earn */}
-          {NAV_ITEMS.filter(item => item.enabled).map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={(e) => handleNavClick(e, item.path)}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                isActive(item.path)
-                  ? 'text-pd3 bg-pd3/10'
-                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.enabled ? (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={(e) => handleNavClick(e, item.path)}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  isActive(item.path)
+                    ? 'text-pd3 bg-pd3/10'
+                    : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                }`}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <span
+                key={item.path}
+                className="px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed"
+              >
+                {item.label}
+              </span>
+            )
+          )}
 
-          {/* Social Dropdown (hidden when all items disabled) */}
-          {SOCIAL_ITEMS.some(item => item.enabled) && (
-            <div className="relative" ref={socialRef}>
+          {/* Social Dropdown */}
+          <div className="relative" ref={socialRef}>
+            {SOCIAL_ITEMS.some(item => item.enabled) ? (
               <button
                 onClick={toggleSocial}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
@@ -301,33 +319,44 @@ export function Header() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
+            ) : (
+              <span className="px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed flex items-center gap-1">
+                Social
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+            )}
 
-              {isSocialOpen && (
-                <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                  {SOCIAL_ITEMS.filter(item => item.enabled).map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={(e) => {
-                        handleNavClick(e, item.path);
-                        setIsSocialOpen(false);
-                      }}
-                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                        isActive(item.path)
-                          ? 'text-pd3 bg-pd3/10'
-                          : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            {isSocialOpen && SOCIAL_ITEMS.some(item => item.enabled) && (
+              <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
+                {SOCIAL_ITEMS.filter(item => item.enabled).map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={(e) => {
+                      handleNavClick(e, item.path);
+                      setIsSocialOpen(false);
+                    }}
+                    className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isActive(item.path)
+                        ? 'text-pd3 bg-pd3/10'
+                        : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
-          {/* Portfolio (hidden in games-only mode) */}
-          {!gated && (
+          {/* Portfolio */}
+          {gated ? (
+            <span className="px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed">
+              Portfolio
+            </span>
+          ) : (
             <Link
               to="/portfolio"
               onClick={(e) => handleNavClick(e, '/portfolio')}
