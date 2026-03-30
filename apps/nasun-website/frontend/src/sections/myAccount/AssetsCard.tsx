@@ -10,6 +10,9 @@ import { FC, useMemo } from "react";
 import { OuterBox } from "@/components/ui";
 import { useMultiChainNFTs } from "@/features/wallet";
 import { useEnabledNftCollections } from "@/features/admin/hooks/useNftCollections";
+import { useAuth } from "@/features/auth";
+import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
+import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
 import { OwnedObjects } from "./OwnedObjects";
 import { NasunVoteNfts } from "./NasunVoteNfts";
 import { FeaturedNftSection } from "./components/FeaturedNftSection";
@@ -23,6 +26,10 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   walletAddress,
   className = "",
 }) => {
+  const { user } = useAuth();
+  const cognitoToken = user?.cognitoToken;
+  const { isMinted: isAllianceMinted, data: allianceData } = useAllianceMintStatus(cognitoToken);
+
   const {
     data: multiChainNfts,
     error: nftError,
@@ -65,7 +72,36 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   return (
     <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">MY ASSETS</h5>
-      <NasunVoteNfts />
+
+      <NasunVoteNfts>
+        {isAllianceMinted && allianceData && (
+          <div className="group relative rounded-lg overflow-hidden border border-nasun-white/10 bg-nasun-white/[0.03] hover:border-nasun-nw1/30 transition-colors">
+            <div className="aspect-square">
+              <a
+                href={`https://explorer.nasun.io/devnet/object/${allianceData.nftObjectId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  src={ALLIANCE_PREVIEW_IMAGES[allianceData.imageIndex] || ALLIANCE_PREVIEW_IMAGES[0]}
+                  alt={ALLIANCE_NAMES[allianceData.imageIndex] || "Alliance NFT"}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </a>
+            </div>
+            <div className="p-2">
+              <p className="text-sm text-nasun-white/40 uppercase tracking-wider">Alliance</p>
+              <p className="text-sm text-nasun-white/60 font-mono truncate" title={allianceData.nftObjectId}>
+                {allianceData.nftObjectId.slice(0, 6)}...{allianceData.nftObjectId.slice(-4)}
+              </p>
+              <p className="text-sm text-nasun-white/50 truncate mt-0.5">
+                {ALLIANCE_NAMES[allianceData.imageIndex] || "Alliance NFT"}
+              </p>
+            </div>
+          </div>
+        )}
+      </NasunVoteNfts>
       <FeaturedNftSection
         nfts={featuredNfts}
         collections={collections ?? []}

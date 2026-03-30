@@ -20,6 +20,7 @@ import {
 import { OuterBox, Spinner } from "@/components/ui";
 import { GenesisPassBadge } from "./components/StatusBadges";
 import { ConnectedAccountsCard } from "./ConnectedAccountsCard";
+import { DailyMissionsCard } from "./DailyMissionsCard";
 
 // ---- Category display config ----
 
@@ -293,12 +294,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
         {showPoints && (
           <>
             <div className="border border-dashed border-nasun-white/10 rounded-lg p-4">
-              <h6 className=" text-nasun-white uppercase mb-2 flex items-center gap-2">
+              <h6 className=" text-nasun-white uppercase mb-1 flex items-center gap-2">
                 Ecosystem Points
                 <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
               </h6>
+              <p className="text-nasun-white/40 text-sm mb-3">
+                Base Score (Daily Missions) x NFT Multiplier + Bonus Points
+              </p>
 
               {!hasValidAddress ? (
                 <p className="text-nasun-white/50 text-base">
@@ -384,6 +388,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
               )}
             </div>
 
+            {/* Today's Missions (embedded, shares points data) */}
+            <DailyMissionsCard bare pointsData={points} />
           </>
         )}
       </div>

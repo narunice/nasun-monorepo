@@ -6,9 +6,9 @@
  * points scanner (runs every 5 minutes) via todayCategories in the
  * /points/user/:address API response.
  *
- * 6 static missions (4 coming-soon, 2 active) + 1 conditional governance mission.
+ * 6 static missions (2 active, 4 disabled) + 1 conditional governance mission.
  * Governance mission shown only when hasActiveProposals === true from backend.
- * Tier bonuses removed from UI (backend still awards them based on 7 categories).
+ * Points shown are base activity points from config/points.ts.
  */
 
 import { FC, useEffect, useState } from "react";
@@ -19,6 +19,10 @@ import { OuterBox, Spinner } from "@/components/ui";
 
 interface DailyMissionsCardProps {
   className?: string;
+  /** Render without OuterBox wrapper (for embedding inside another card) */
+  bare?: boolean;
+  /** Pass points data from parent to avoid duplicate API fetch */
+  pointsData?: UserPoints | null;
 }
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -29,26 +33,26 @@ interface Mission {
   points: number;
   link: string;
   external: boolean;
-  comingSoon?: boolean;
+  disabled?: boolean;
 }
 
+// Points = base activity points from config/points.ts (not daily-mission bonus)
 const DAILY_MISSIONS: Mission[] = [
-  { id: "faucet", label: "Claim Tokens", points: 0, link: "", external: true, comingSoon: true },
-  { id: "wallet-transfer", label: "Send Tokens", points: 0, link: "", external: true, comingSoon: true },
-  { id: "pado-lottery", label: "Buy Lottery Ticket", points: 5, link: "https://pado.finance/lottery", external: true },
-  { id: "pado-scratchcard", label: "Play Scratch Card", points: 5, link: "https://pado.finance/scratchcard", external: true },
-  { id: "pado-games", label: "Play Quick Pick", points: 0, link: "", external: true, comingSoon: true },
-  // pado-dex: shown as "coming soon" per product decision; backend still awards daily bonus
-  { id: "pado-dex", label: "Spot Trade", points: 0, link: "", external: true, comingSoon: true },
+  { id: "faucet", label: "Claim Tokens", points: 1, link: "", external: false },
+  { id: "wallet-transfer", label: "Send Tokens", points: 1, link: "", external: true, disabled: true },
+  { id: "pado-dex", label: "Spot Trade", points: 2, link: "https://pado.finance/markets/spot", external: true, disabled: true },
+  { id: "pado-lottery", label: "Buy Lottery Ticket", points: 1, link: "https://pado.finance/lottery", external: true },
+  { id: "pado-scratchcard", label: "Play Scratch Card", points: 1, link: "https://pado.finance/scratchcard", external: true },
+  { id: "pado-games", label: "Play Quick Pick", points: 1, link: "https://pado.finance/scratchcard", external: true, disabled: true },
 ];
 
 const GOVERNANCE_MISSION: Mission = {
   id: "governance", label: "Governance Vote", points: 10, link: "/network/governance", external: false,
 };
 
-export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }) => {
+export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", bare = false, pointsData }) => {
   const { user } = useAuth();
-  const [points, setPoints] = useState<UserPoints | null>(null);
+  const [fetchedPoints, setFetchedPoints] = useState<UserPoints | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,8 +60,12 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
     user?.linkedAccounts?.["nasun wallet"]?.walletAddress ?? user?.walletAddress;
   const hasValidAddress = nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
 
+  // Skip internal fetch when pointsData is provided from parent
+  const useParentData = pointsData !== undefined;
+  const points = useParentData ? pointsData : fetchedPoints;
+
   useEffect(() => {
-    if (!hasValidAddress) {
+    if (useParentData || !hasValidAddress) {
       setIsLoading(false);
       return;
     }
@@ -68,7 +76,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
 
     getPointsUser(nasunWalletAddress!)
       .then((data) => {
-        if (!cancelled) setPoints(data);
+        if (!cancelled) setFetchedPoints(data);
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -78,7 +86,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
       });
 
     return () => { cancelled = true; };
-  }, [nasunWalletAddress, hasValidAddress]);
+  }, [useParentData, nasunWalletAddress, hasValidAddress]);
 
   const todayCategories = points?.todayCategories ?? [];
 
@@ -91,7 +99,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
     ? [...DAILY_MISSIONS, GOVERNANCE_MISSION]
     : DAILY_MISSIONS;
 
-  const activeMissions = missions.filter((m) => !m.comingSoon);
+  const activeMissions = missions.filter((m) => !m.disabled);
   const completedCount = activeMissions.filter((m) => todayCategories.includes(m.id)).length;
 
   const title = (
@@ -105,45 +113,49 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
     </div>
   );
 
+  const Wrapper = bare
+    ? ({ children }: { children: React.ReactNode }) => <div className={className}>{children}</div>
+    : ({ children }: { children: React.ReactNode }) => <OuterBox color="c5" padding="sm" className={className}>{children}</OuterBox>;
+
   if (!hasValidAddress) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <Wrapper>
         {title}
         <p className="text-nasun-white/50 text-center text-base py-4">
           Connect Nasun Wallet to view daily missions
         </p>
-      </OuterBox>
+      </Wrapper>
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !useParentData) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <Wrapper>
         {title}
         <div className="flex items-center justify-center py-8">
           <Spinner />
         </div>
-      </OuterBox>
+      </Wrapper>
     );
   }
 
   if (error) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <Wrapper>
         {title}
         <p className="text-red-400 text-base text-center py-4">
           Failed to load missions
         </p>
-      </OuterBox>
+      </Wrapper>
     );
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <Wrapper>
       {title}
       <div className="flex flex-col gap-2">
         {missions.map((mission) => {
-          if (mission.comingSoon) {
+          if (mission.disabled) {
             return (
               <div
                 key={mission.id}
@@ -153,7 +165,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
                   <span className="text-nasun-white/20">{"\u2610"}</span>
                   <span className="text-nasun-white/30 text-base">{mission.label}</span>
                 </div>
-                <span className="text-sm text-nasun-white/20 italic">coming soon</span>
+                <span className="text-sm font-mono text-nasun-white/20">+{mission.points}</span>
               </div>
             );
           }
@@ -182,7 +194,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
                 </span>
                 {completed ? (
                   <span className="text-sm text-emerald-400/60">done</span>
-                ) : (
+                ) : mission.link ? (
                   <a
                     href={mission.link}
                     {...(mission.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
@@ -190,15 +202,12 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
                   >
                     go &rarr;
                   </a>
-                )}
+                ) : null}
               </div>
             </div>
           );
         })}
       </div>
-      <p className="text-sm text-nasun-white/30 mt-3 text-center">
-        Updates every few minutes &middot; Resets daily at 00:00 UTC
-      </p>
-    </OuterBox>
+    </Wrapper>
   );
 };
