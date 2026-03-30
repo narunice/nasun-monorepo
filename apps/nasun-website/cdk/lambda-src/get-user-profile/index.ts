@@ -223,6 +223,21 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         };
       }
 
+      // Block direct creation of social-only profiles.
+      // Social providers should only exist as linked secondary profiles,
+      // created exclusively by the link-account Lambda.
+      const BLOCKED_PROVIDERS = ['google', 'twitter'];
+      if (BLOCKED_PROVIDERS.includes(postData.provider?.toLowerCase?.().trim())) {
+        console.warn(`Blocked social provider profile creation: provider=${postData.provider}, identityId=${postData.identityId}`);
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            message: 'Social provider profiles cannot be created directly. Use account linking.',
+          }),
+        };
+      }
+
       // Build Item with conditional fields
       const item: any = {
         identityId: { S: postData.identityId },
