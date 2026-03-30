@@ -1,33 +1,36 @@
 /**
  * AllianceMintDialog Component
  *
- * 2-step dialog: image+wallet selection -> minting result.
+ * Confirmation dialog: shows selected image + wallet, then minting result.
+ * Image selection happens on the page, not in this dialog.
  * Server-side minting via governance-api Lambda.
  */
 
 import { FC, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { mintAllianceNft, type AllianceWallet } from "@/services/allianceNftApi";
 import { invalidateAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
 import { Spinner } from "@/components/ui";
-import { Button } from "@/components/ui/button";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import { ALLIANCE_IMAGES, EXPLORER_TX_URL } from "@/constants/alliance";
+import { EXPLORER_TX_URL, ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
 
 interface AllianceMintDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   wallets: AllianceWallet[];
   cognitoToken: string;
+  selectedImage: number | null;
 }
 
-type MintState = "select" | "minting" | "success" | "error";
+type MintState = "ready" | "minting" | "success" | "error";
 
 const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
@@ -36,17 +39,17 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
   onOpenChange,
   wallets,
   cognitoToken,
+  selectedImage,
 }) => {
-  const [selectedImage, setSelectedImage] = useState<number | null>(null);
+  const navigate = useNavigate();
   const [selectedWallet, setSelectedWallet] = useState(0);
-  const [mintState, setMintState] = useState<MintState>("select");
+  const [mintState, setMintState] = useState<MintState>("ready");
   const [result, setResult] = useState<{ txDigest: string; nftObjectId: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   const resetState = () => {
-    setSelectedImage(null);
     setSelectedWallet(0);
-    setMintState("select");
+    setMintState("ready");
     setResult(null);
     setErrorMessage("");
   };
@@ -57,7 +60,7 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
   };
 
   const handleMint = async () => {
-    if (selectedImage === null) return;
+    if (selectedImage === null || selectedImage < 0 || selectedImage > 3) return;
 
     setMintState("minting");
     setErrorMessage("");
@@ -80,58 +83,47 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
   };
 
   const handleRetry = () => {
-    setMintState("select");
+    setMintState("ready");
     setErrorMessage("");
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg bg-gray-900 border-nasun-c5/30">
+      <DialogContent className="max-w-md bg-gray-900 border-nasun-c5/30">
         <DialogHeader>
-          <DialogTitle className="text-nasun-white">
-            {mintState === "success" ? "NFT Minted!" : "Mint Alliance NFT"}
+          <DialogTitle asChild>
+            <h4 className="text-nasun-white text-xl font-semibold">
+              {mintState === "success" ? "NFT Minted!" : "Confirm Mint"}
+            </h4>
           </DialogTitle>
-          {mintState === "select" && (
-            <DialogDescription className="text-nasun-white/70">
-              Choose an image for your Alliance NFT
+          {mintState === "ready" && (
+            <DialogDescription className="text-nasun-white/60 text-sm mt-1">
+              Mint this character as your Alliance NFT?
             </DialogDescription>
           )}
         </DialogHeader>
 
-        {/* Step 1: Select image + wallet */}
-        {mintState === "select" && (
-          <div className="flex flex-col gap-4">
-            {/* Image grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {ALLIANCE_IMAGES.map((url, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedImage(i)}
-                  className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedImage === i
-                      ? "border-nasun-c7 ring-2 ring-nasun-c7/50"
-                      : "border-gray-700 hover:border-gray-500"
-                  }`}
-                >
-                  <img
-                    src={url}
-                    alt={`Alliance #${i + 1}`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  {selectedImage === i && (
-                    <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-nasun-c7 flex items-center justify-center">
-                      <span className="text-white text-sm">&#10003;</span>
-                    </div>
-                  )}
-                </button>
-              ))}
+        {/* Confirmation: show selected image + wallet */}
+        {mintState === "ready" && selectedImage !== null && (
+          <div className="flex flex-col items-center gap-5">
+            <div className="relative w-48 h-48">
+              <img
+                src={ALLIANCE_PREVIEW_IMAGES[selectedImage]}
+                alt={ALLIANCE_NAMES[selectedImage]}
+                className="w-full h-full rounded-sm object-cover border-2 border-nasun-c7 ring-2 ring-nasun-c7/50"
+              />
+              <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-nasun-c7 flex items-center justify-center">
+                <span className="text-white text-sm">&#10003;</span>
+              </div>
             </div>
+            <h6 className="text-nasun-white font-medium text-lg">
+              {ALLIANCE_NAMES[selectedImage]}
+            </h6>
 
             {/* Wallet selector */}
             {wallets.length > 1 && (
-              <div className="flex flex-col gap-1">
-                <label className="text-nasun-white/70 text-sm">Mint to wallet</label>
+              <div className="flex flex-col gap-1 w-full">
+                <label className="text-nasun-white/80 text-sm">Mint to wallet</label>
                 <select
                   value={selectedWallet}
                   onChange={(e) => setSelectedWallet(Number(e.target.value))}
@@ -147,20 +139,19 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
             )}
 
             {wallets.length === 1 && (
-              <p className="text-nasun-white/50 text-sm">
+              <p className="text-nasun-white/60 text-sm">
                 Mint to: <span className="font-mono">{shortenAddress(wallets[0].walletAddress)}</span>
               </p>
             )}
 
-            <Button
+            <ButtonV3
+              variant="c1-gradient"
+              size="lg"
               onClick={handleMint}
-              variant="filledOutlineC7"
-              size="default"
-              disabled={selectedImage === null}
-              className="w-full"
+              className="w-full !py-3 !text-lg !font-semibold"
             >
-              Mint
-            </Button>
+              Confirm Mint
+            </ButtonV3>
           </div>
         )}
 
@@ -175,27 +166,54 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
         {/* Success */}
         {mintState === "success" && result && (
           <div className="flex flex-col items-center gap-4 py-4">
-            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
-              <span className="text-green-400 text-3xl">&#10003;</span>
+            {selectedImage !== null && (
+              <img
+                src={ALLIANCE_PREVIEW_IMAGES[selectedImage]}
+                alt={ALLIANCE_NAMES[selectedImage]}
+                className="w-24 h-24 rounded-sm object-cover border-2 border-green-500/50"
+              />
+            )}
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+              <span className="text-green-400 text-2xl">&#10003;</span>
             </div>
             <p className="text-nasun-white text-center">
               Your Alliance NFT has been minted successfully!
             </p>
+            <p className="text-nasun-white/60 text-sm text-center">
+              Activate your Alliance NFT
+            </p>
+            <ButtonV3
+              variant="c1-gradient"
+              size="md"
+              className="!font-semibold"
+              onClick={() => {
+                handleOpenChange(false);
+                navigate("/my-account");
+              }}
+            >
+              Go to My Account Page
+            </ButtonV3>
             <a
               href={`${EXPLORER_TX_URL}/${result.txDigest}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-nasun-c7 hover:text-nasun-c7/80 text-sm underline underline-offset-2"
+              className="inline-flex items-center gap-1.5 text-nasun-c7 hover:text-nasun-c7/80 text-sm underline underline-offset-2"
             >
               View on Explorer
+              <svg
+                className="w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
             </a>
-            <Button
-              onClick={() => handleOpenChange(false)}
-              variant="filledOutlineC7"
-              size="sm"
-            >
-              Done
-            </Button>
           </div>
         )}
 
@@ -206,13 +224,13 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
               <span className="text-red-400 text-3xl">&#10007;</span>
             </div>
             <p className="text-red-400 text-center text-sm">{errorMessage}</p>
-            <Button
-              onClick={handleRetry}
-              variant="filledOutlineC7"
+            <ButtonV3
+              variant="gradient"
               size="sm"
+              onClick={handleRetry}
             >
               Try Again
-            </Button>
+            </ButtonV3>
           </div>
         )}
       </DialogContent>
