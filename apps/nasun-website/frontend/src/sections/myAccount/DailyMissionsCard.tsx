@@ -86,7 +86,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
       <h5 className="font-medium uppercase text-nasun-white flex items-center gap-2">
         Today's Missions
       </h5>
-      <span className="text-sm text-nasun-white/50">
+      <span className="text-base text-nasun-white/50">
         {completedCount}/{DAILY_MISSIONS.length}
       </span>
     </div>
@@ -96,7 +96,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
     return (
       <OuterBox color="c5" padding="sm" className={className}>
         {title}
-        <p className="text-nasun-white/50 text-center text-sm py-4">
+        <p className="text-nasun-white/50 text-center text-base py-4">
           Connect Nasun Wallet to view daily missions
         </p>
       </OuterBox>
@@ -118,7 +118,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
     return (
       <OuterBox color="c5" padding="sm" className={className}>
         {title}
-        <p className="text-red-400 text-sm text-center py-4">
+        <p className="text-red-400 text-base text-center py-4">
           Failed to load missions
         </p>
       </OuterBox>
@@ -144,21 +144,21 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
                 <span className={completed ? "text-emerald-400" : "text-nasun-white/30"}>
                   {completed ? "\u2611" : "\u2610"}
                 </span>
-                <span className={completed ? "text-nasun-white text-sm" : "text-nasun-white/70 text-sm"}>
+                <span className={completed ? "text-nasun-white text-base" : "text-nasun-white/70 text-base"}>
                   {mission.label}
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`text-xs font-mono ${completed ? "text-nasun-c1" : "text-nasun-white/40"}`}>
+                <span className={`text-sm font-mono ${completed ? "text-nasun-c1" : "text-nasun-white/40"}`}>
                   +{mission.points}
                 </span>
                 {completed ? (
-                  <span className="text-xs text-emerald-400/60">done</span>
+                  <span className="text-sm text-emerald-400/60">done</span>
                 ) : (
                   <a
                     href={mission.link}
                     {...(mission.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    className="text-xs text-nasun-c3 hover:text-nasun-c1 transition-colors"
+                    className="text-sm text-nasun-c3 hover:text-nasun-c1 transition-colors"
                   >
                     go &rarr;
                   </a>
@@ -184,23 +184,23 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "" }
                 <span className={earned ? "text-nasun-c1" : "text-nasun-white/20"}>
                   {tier.threshold === 6 ? "\u2605" : "\u25C6"}
                 </span>
-                <span className={`text-sm ${earned ? "text-nasun-white font-medium" : "text-nasun-white/40"}`}>
+                <span className={`text-base ${earned ? "text-nasun-white font-medium" : "text-nasun-white/40"}`}>
                   {tier.label}
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`text-xs font-mono ${earned ? "text-nasun-c1" : "text-nasun-white/30"}`}>
+                <span className={`text-sm font-mono ${earned ? "text-nasun-c1" : "text-nasun-white/30"}`}>
                   +{tier.points}
                 </span>
                 {earned && (
-                  <span className="text-xs text-nasun-c1/60">bonus</span>
+                  <span className="text-sm text-nasun-c1/60">bonus</span>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-      <p className="text-[10px] text-nasun-white/30 mt-3 text-center">
+      <p className="text-sm text-nasun-white/30 mt-3 text-center">
         Updates every few minutes &middot; Resets daily at 00:00 UTC
       </p>
     </OuterBox>

@@ -38,12 +38,12 @@ export const AccountItem: FC<AccountItemProps> = ({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-nasun-white">{LABELS[provider]}</span>
+            <span className="text-lg font-medium text-nasun-white">{LABELS[provider]}</span>
             {statusBadge}
           </div>
-          <div className="text-sm font-light text-nasun-white/50 truncate">{identifier || "Not linked"}</div>
+          <div className="text-base font-light text-nasun-white/50 truncate">{identifier || "Not linked"}</div>
           {description && (
-            <div className="text-xs text-nasun-nw4 mt-0.5">{description}</div>
+            <div className="text-sm text-nasun-nw4 mt-0.5">{description}</div>
           )}
         </div>
 

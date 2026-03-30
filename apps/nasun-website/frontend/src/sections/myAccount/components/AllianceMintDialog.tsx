@@ -121,7 +121,7 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
                   />
                   {selectedImage === i && (
                     <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-nasun-c7 flex items-center justify-center">
-                      <span className="text-white text-xs">&#10003;</span>
+                      <span className="text-white text-sm">&#10003;</span>
                     </div>
                   )}
                 </button>

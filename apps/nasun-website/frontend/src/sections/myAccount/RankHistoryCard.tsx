@@ -87,7 +87,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
     <select
       value={selectedSeasonId || ''}
       onChange={(e) => setSelectedSeasonId(e.target.value)}
-      className="bg-nasun-c6 text-nasun-white text-xs border border-nasun-c5/50 rounded px-2 py-1 focus:outline-none focus:border-nasun-c4 cursor-pointer"
+      className="bg-nasun-c6 text-nasun-white text-sm border border-nasun-c5/50 rounded px-2 py-1 focus:outline-none focus:border-nasun-c4 cursor-pointer"
     >
       {selectableSeasons.map((season) => (
         <option key={season.seasonId} value={season.seasonId}>
@@ -131,7 +131,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
               : t('rankHistory.noData')}
           </p>
           {!isSeasonEnded && (
-            <p className="text-nasun-white/30 text-xs text-center">
+            <p className="text-nasun-white/30 text-sm text-center">
               {t('rankHistory.noDataDescription')}
             </p>
           )}
@@ -169,7 +169,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
               <button
                 key={val}
                 onClick={() => setSelectedDays(Number(val) as DateRangeOptionV3)}
-                className={`px-2 py-1 text-xs rounded transition-colors ${
+                className={`px-2 py-1 text-sm rounded transition-colors ${
                   selectedDays === Number(val)
                     ? 'bg-nasun-c4 text-nasun-white'
                     : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'

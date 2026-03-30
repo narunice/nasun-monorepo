@@ -85,10 +85,10 @@ const FeaturedNftCard: FC<{ nft: EthereumNFT; collectionName: string }> = ({
           <ExternalLink className="w-3.5 h-3.5 text-gray-500 group-hover:text-amber-400 flex-shrink-0" />
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none bg-amber-500/20 text-amber-300">
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-sm font-medium leading-none bg-amber-500/20 text-amber-300">
             Featured
           </span>
-          <span className="text-[10px] text-gray-500 truncate">
+          <span className="text-sm text-gray-500 truncate">
             {collectionName}
           </span>
         </div>

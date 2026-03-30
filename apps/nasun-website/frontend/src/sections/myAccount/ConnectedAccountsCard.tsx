@@ -46,7 +46,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   if (!user) {
     if (bare) return <div className={className}>Loading...</div>;
     return (
-      <OuterBox color="c1" padding="sm" className={className}>
+      <OuterBox color="c5" padding="sm" className={className}>
         Loading...
       </OuterBox>
     );
@@ -78,9 +78,9 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   const content = (
     <>
     <div>
-      <h6 className="text-sm lg:text-base text-nasun-white/40 uppercase mb-1 md:mb-1 lg:mb-2">
-        Connected Accounts
-      </h6>
+      <h5 className="font-medium uppercase text-nasun-white mb-4">
+        CONNECTED WALLETS & SOCIAL ACCOUNTS
+      </h5>
       <div className="space-y-3">
         {/* 1. Nasun Wallet */}
           <AccountItem
@@ -122,7 +122,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                   disabled={walletReg.isRemoving === displayAddress}
                 >
                   {walletReg.isRemoving === displayAddress ? (
-                    <span className="text-[10px]">...</span>
+                    <span className="text-sm">...</span>
                   ) : (
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14" />
@@ -131,7 +131,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                 </button>,
               ] : showAsConnected && !walletReg.isCurrentWalletRegistered && !walletReg.isLoading ? [
                 walletReg.isRegistering ? (
-                  <span key="registering" className="text-xs text-nasun-white/40">Registering...</span>
+                  <span key="registering" className="text-sm text-nasun-white/40">Registering...</span>
                 ) : (
                   <Button
                     key="register"
@@ -170,7 +170,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
               </div>
             )}
             {/* Collapsible devnet disclaimer */}
-            <div className="text-xs text-nasun-white/50">
+            <div className="text-sm text-nasun-white/50">
               <button
                 className="flex items-center gap-1 hover:text-nasun-white/70 transition-colors"
                 onClick={() => setDisclaimerExpanded((v) => !v)}
@@ -186,7 +186,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                 Devnet notice
               </button>
               {disclaimerExpanded && (
-                <ul className="mt-1.5 space-y-1 pl-1 text-nasun-white/40 leading-relaxed">
+                <ul className="mt-1.5 space-y-1 pl-1 text-sm text-nasun-white/40 leading-relaxed">
                   <li>· Assets on Devnet have no monetary value.</li>
                   <li>· The network may be reset at any time.</li>
                   <li>· After a reset, your existing seedphrase, private key, or backup file will restore the same address - your permanent identity on Nasun Website.</li>
@@ -199,7 +199,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
           {/* Additional Wallets sub-section */}
           {user.cognitoToken && (displayAddress || walletReg.registeredWallets.length > 0) && (
             <div className="pl-2 border-l-2 border-indigo-500/20 space-y-2">
-              <div className="text-xs text-nasun-white/40 uppercase">
+              <div className="text-sm text-nasun-white/40 uppercase">
                 Additional Wallets
                 {walletReg.isLoading && " (loading...)"}
               </div>
@@ -208,7 +208,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                 const short = `${addr.slice(0, 6)}...${addr.slice(-4)}`;
                 const isCurrent = nasunWalletAddress?.toLowerCase() === addr;
                 return (
-                  <div key={addr} className="flex items-center justify-between gap-2 text-sm">
+                  <div key={addr} className="flex items-center justify-between gap-2 text-base">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-nasun-white/80 font-mono truncate">{short}</span>
                       {isCurrent && <ConnectedBadge />}
@@ -226,7 +226,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                       disabled={walletReg.isRemoving === addr}
                     >
                       {walletReg.isRemoving === addr ? (
-                        <span className="text-[10px]">...</span>
+                        <span className="text-sm">...</span>
                       ) : (
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14" />
@@ -240,7 +240,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
               {isNasunConnected && nasunWalletAddress && !walletReg.isCurrentWalletRegistered && !walletReg.isLoading &&
                 nasunWalletAddress.toLowerCase() !== displayAddress &&
                 sessionStorage.getItem('nasun:dismissed-wallet') !== nasunWalletAddress.toLowerCase() && (
-                <div className="flex items-center justify-between gap-2 text-sm">
+                <div className="flex items-center justify-between gap-2 text-base">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-nasun-white/80 font-mono truncate">
                       {nasunWalletAddress.slice(0, 6)}...{nasunWalletAddress.slice(-4)}
@@ -248,7 +248,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                     <ConnectedBadge />
                   </div>
                   {walletReg.isRegistering ? (
-                    <span className="text-xs text-nasun-white/40">Registering...</span>
+                    <span className="text-sm text-nasun-white/40">Registering...</span>
                   ) : (
                     <Button
                       size="sm"
@@ -265,7 +265,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                 </div>
               )}
               {walletReg.error && (
-                <p className="text-xs text-red-400">{walletReg.error}</p>
+                <p className="text-sm text-red-400">{walletReg.error}</p>
               )}
               <Button
                 size="sm"
@@ -433,7 +433,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   if (bare) return <div className={className}>{content}</div>;
 
   return (
-    <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
+    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       {content}
     </OuterBox>
   );

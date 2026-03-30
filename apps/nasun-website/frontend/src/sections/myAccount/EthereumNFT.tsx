@@ -60,7 +60,7 @@ export const EthereumNFT: FC<EthereumNFTProps> = ({ nft }) => {
           {nft.attributes.map((attr, index) => (
             <span
               key={index}
-              className="px-2 py-1 text-xs rounded bg-gray-800 text-gray-300"
+              className="px-2 py-1 text-sm rounded bg-gray-800 text-gray-300"
             >
               {attr.traitType}: {attr.value}
             </span>
@@ -146,7 +146,7 @@ export const EthereumNFT: FC<EthereumNFTProps> = ({ nft }) => {
 
       {/* Data Source (Development only) */}
       {import.meta.env.DEV && (
-        <p className="text-xs text-gray-400 pt-2">
+        <p className="text-sm text-gray-400 pt-2">
           Data source: {nft.source === 'alchemy' ? 'Alchemy' : 'Etherscan'}
         </p>
       )}
