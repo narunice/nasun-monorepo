@@ -194,7 +194,7 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
               Go to My Account Page
             </ButtonV3>
             <a
-              href={`${EXPLORER_TX_URL}/${result.txDigest}`}
+              href={`https://explorer.nasun.io/devnet/object/${result.nftObjectId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-nasun-c7 hover:text-nasun-c7/80 text-sm underline underline-offset-2"
