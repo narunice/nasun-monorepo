@@ -12,9 +12,17 @@ import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/features/auth";
 import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
 import { AllianceMintDialog } from "@/sections/myAccount/components/AllianceMintDialog";
-import { ALLIANCE_IMAGES, EXPLORER_TX_URL } from "@/constants/alliance";
+import { ALLIANCE_IMAGES } from "@/constants/alliance";
+
+const ALLIANCE_NAMES = [
+  "The Strategist",
+  "The Explorer",
+  "The Guardian",
+  "The Artisan",
+];
 import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
+import { PageTitle } from "@/components/ui/PageTitle";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { Spinner } from "@/components/ui";
 
@@ -35,12 +43,12 @@ const AllianceNftPage = () => {
   return (
     <PageLayout>
       <Helmet>
-        <title>Alliance NFT - NASUN</title>
+        <title>Alliance - NASUN</title>
         <meta
           name="description"
           content="Mint your free Nasun Alliance NFT. Choose from 4 unique designs and join the Nasun ecosystem."
         />
-        <meta property="og:title" content="Nasun Alliance NFT" />
+        <meta property="og:title" content="Nasun Alliance" />
         <meta
           property="og:description"
           content="Mint your free Alliance NFT and join the Nasun ecosystem."
@@ -48,96 +56,118 @@ const AllianceNftPage = () => {
         <meta property="og:type" content="website" />
       </Helmet>
 
-      <SectionLayout className="!max-w-3xl">
-        {/* Hero */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl md:text-4xl font-bold text-nasun-white mb-4 tracking-tight">
-            ALLIANCE NFT
-          </h1>
-          <p className="text-nasun-white/70 text-lg max-w-xl mx-auto">
-            Your entry to the Nasun ecosystem. Mint a free Alliance NFT to start
-            earning ecosystem points and climb the leaderboard.
-          </p>
-        </div>
+      <SectionLayout className="!max-w-7xl px-6 sm:px-10 lg:px-12">
+        <PageTitle>ALLIANCE</PageTitle>
+
+        <p className="text-center text-nasun-white/70 text-lg max-w-xl mx-auto -mt-2 mb-4">
+          {isMinted
+            ? <>You already own an Alliance NFT.<br />Explore the Nasun ecosystem and earn points.</>
+            : "Pick your character, join Nasun, and start earning ecosystem points."}
+        </p>
 
         {/* State-based content */}
-        <div className="bg-gray-900/50 border border-nasun-c5/20 rounded-xl p-6 md:p-8">
+        <div>
           {/* State 1: Not logged in */}
           {!user && (
-            <div className="flex flex-col items-center gap-6 py-8">
-              <div className="grid grid-cols-2 gap-3 max-w-xs">
-                {ALLIANCE_IMAGES.map((url, i) => (
-                  <img
-                    key={i}
-                    src={url}
-                    alt={`Alliance #${i + 1}`}
-                    className="aspect-square rounded-lg object-cover border border-gray-700"
-                    loading="lazy"
-                  />
-                ))}
+            <div className="flex flex-col items-center gap-12 py-8">
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 sm:gap-x-8 sm:gap-y-10 lg:gap-x-8 mx-auto">
+                  {ALLIANCE_IMAGES.map((url, i) => (
+                    <div key={i} className="flex flex-col items-center gap-2">
+                      <img
+                        src={url}
+                        alt={ALLIANCE_NAMES[i]}
+                        className="aspect-square rounded-xl object-cover border border-gray-700 w-full"
+                        loading="lazy"
+                      />
+                      <h6 className="text-nasun-white/50">
+                        {ALLIANCE_NAMES[i]}
+                      </h6>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <p className="text-nasun-white/60 text-sm text-center">
-                Connect your account to mint your Alliance NFT.
-              </p>
-              <ButtonV3 variant="nw2" size="md" onClick={handleConnect}>
-                Connect to Mint
+              <ButtonV3 variant="gradient" size="xl" onClick={handleConnect}>
+                Login/Sign up to Mint
               </ButtonV3>
             </div>
           )}
 
           {/* State 2: Logged in but no wallet registered */}
-          {user && !isLoading && wallets.length === 0 && !isMinted && isConfigured && (
-            <div className="flex flex-col items-center gap-6 py-8">
-              <div className="grid grid-cols-2 gap-3 max-w-xs">
-                {ALLIANCE_IMAGES.map((url, i) => (
-                  <img
-                    key={i}
-                    src={url}
-                    alt={`Alliance #${i + 1}`}
-                    className="aspect-square rounded-lg object-cover border border-gray-700"
-                    loading="lazy"
-                  />
-                ))}
+          {user &&
+            !isLoading &&
+            wallets.length === 0 &&
+            !isMinted &&
+            isConfigured && (
+              <div className="flex flex-col items-center gap-12 py-8">
+                <div>
+                  <p className="text-center text-nasun-white/80 text-sm mb-5">
+                    Pick your character, join Nasun, and start earning points.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
+                    {ALLIANCE_IMAGES.map((url, i) => (
+                      <img
+                        key={i}
+                        src={url}
+                        alt={`Alliance #${i + 1}`}
+                        className="aspect-square rounded-xl object-cover border border-gray-700 w-full"
+                        loading="lazy"
+                      />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-nasun-white/60 text-sm text-center">
+                  Register a Nasun wallet in My Account to mint.
+                </p>
+                <ButtonV3
+                  variant="nw2"
+                  size="md"
+                  onClick={() => navigate("/my-account")}
+                >
+                  Go to My Account
+                </ButtonV3>
               </div>
-              <p className="text-nasun-white/60 text-sm text-center">
-                Register a Nasun wallet in My Account to mint.
-              </p>
-              <ButtonV3
-                variant="nw2"
-                size="md"
-                onClick={() => navigate("/my-account")}
-              >
-                Go to My Account
-              </ButtonV3>
-            </div>
-          )}
+            )}
 
           {/* State 3: Ready to mint */}
-          {user && !isLoading && wallets.length > 0 && !isMinted && isConfigured && (
-            <div className="flex flex-col items-center gap-6 py-8">
-              <div className="grid grid-cols-2 gap-3 max-w-xs">
-                {ALLIANCE_IMAGES.map((url, i) => (
-                  <img
-                    key={i}
-                    src={url}
-                    alt={`Alliance #${i + 1}`}
-                    className="aspect-square rounded-lg object-cover border border-gray-700 hover:border-nasun-c7 transition-colors"
-                    loading="lazy"
-                  />
-                ))}
+          {user &&
+            !isLoading &&
+            wallets.length > 0 &&
+            !isMinted &&
+            isConfigured && (
+              <div className="flex flex-col items-center gap-12 py-8">
+                <div>
+                  <p className="text-center text-nasun-white/80 text-sm mb-5">
+                    Pick your character and start earning points.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 sm:gap-x-8 sm:gap-y-10 lg:gap-x-8 mx-auto">
+                    {ALLIANCE_IMAGES.map((url, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col items-center gap-2 cursor-pointer group"
+                      >
+                        <img
+                          src={url}
+                          alt={ALLIANCE_NAMES[i]}
+                          className="aspect-square rounded-xl object-cover border border-gray-700 group-hover:border-nasun-c7 transition-colors w-full"
+                          loading="lazy"
+                        />
+                        <h6 className="text-nasun-white/50 group-hover:text-nasun-white/70 transition-colors">
+                          {ALLIANCE_NAMES[i]}
+                        </h6>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <ButtonV3
+                  variant="nw2"
+                  size="md"
+                  onClick={() => setShowMintDialog(true)}
+                >
+                  Mint Alliance NFT
+                </ButtonV3>
               </div>
-              <p className="text-nasun-white/60 text-sm text-center">
-                Choose an image and mint your Alliance NFT. One per account.
-              </p>
-              <ButtonV3
-                variant="nw2"
-                size="md"
-                onClick={() => setShowMintDialog(true)}
-              >
-                Mint Alliance NFT
-              </ButtonV3>
-            </div>
-          )}
+            )}
 
           {/* State 4: Already minted */}
           {user && !isLoading && isMinted && data && (
@@ -159,18 +189,27 @@ const AllianceNftPage = () => {
                 <p className="text-nasun-white/50 text-sm">
                   Minted to{" "}
                   <span className="font-mono">
-                    {data.walletAddress.slice(0, 6)}...{data.walletAddress.slice(-4)}
+                    {data.walletAddress.slice(0, 6)}...
+                    {data.walletAddress.slice(-4)}
                   </span>
                 </p>
               </div>
-              {data.txDigest && (
+              <ButtonV3 variant="gradient" size="md" onClick={() => navigate("/my-account")}>
+                Activate Alliance in My Account
+              </ButtonV3>
+              {data.nftObjectId && (
                 <a
-                  href={`${EXPLORER_TX_URL}/${data.txDigest}`}
+                  href={`https://explorer.nasun.io/devnet/object/${data.nftObjectId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-nasun-c7 hover:text-nasun-c7/80 text-sm underline underline-offset-2"
+                  className="inline-flex items-center gap-1.5 text-nasun-c7 hover:text-nasun-c7/80 text-sm underline underline-offset-2"
                 >
                   View on Explorer
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
                 </a>
               )}
             </div>
