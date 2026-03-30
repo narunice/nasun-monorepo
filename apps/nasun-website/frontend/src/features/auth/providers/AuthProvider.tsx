@@ -13,6 +13,7 @@ import { getMyRank } from "@/features/leaderboard-v3/services/leaderboardV3Api";
 import { registerWallet } from "@/services/suiWalletApi";
 import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
 import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
+import { WALLET_IDENTITY_CHANGED_EVENT } from "@nasun/wallet";
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -375,6 +376,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   }, [setIsLoading, setUser]);
+
+  // Clear stale auth session when wallet identity changes (create/import).
+  // The old Cognito token is tied to the previous wallet address and must not
+  // leak into the new wallet's session.
+  useEffect(() => {
+    const handler = () => {
+      logger.debug("Wallet identity changed, clearing auth session");
+      clearAllAuthState();
+      clearUser();
+    };
+    window.addEventListener(WALLET_IDENTITY_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(WALLET_IDENTITY_CHANGED_EVENT, handler);
+  }, [clearUser]);
 
   const logout = async () => {
     setIsLoading(true);
