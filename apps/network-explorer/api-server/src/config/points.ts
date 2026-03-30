@@ -25,6 +25,7 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   governance: { vote: 10, delegate: 5 },
   'wallet-transfer': { transfer: 1, 'merge-coins': 0, 'split-coins': 0 },
   staking: { delegate: 10, unstake: 0 },
+  // Faucet: detected by faucet-scanner via tx_calls_fun (no Move events)
   faucet: { claim: 1 },
   'pado-scratchcard': { 'scratchcard-purchase': 1 },
   // TODO: Add EVENT_MAP_ENTRIES when pado-games contract is deployed
@@ -37,6 +38,7 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
     'perp-first': 5,
     'scratchcard-first': 5,
     'baram-first': 5,
+    'faucet-first': 5,
     'tier-4': 3,
     'tier-5': 5,
     'all-clear': 10,

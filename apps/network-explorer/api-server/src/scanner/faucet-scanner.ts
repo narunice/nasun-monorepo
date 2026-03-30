@@ -1,0 +1,163 @@
+/**
+ * Faucet Activity Scanner
+ *
+ * Detects token faucet claims by querying the indexer's tx_calls_fun table
+ * for Move function calls to known faucet packages/modules.
+ *
+ * Faucet contracts (devnet_tokens::faucet, devnet_tokens_v2::faucet_v2)
+ * do NOT emit Move events, so the event-based scanner cannot detect them.
+ * This module scans tx_calls_fun directly instead.
+ *
+ * Design:
+ * - Runs once per scanLoop, after event batch processing
+ * - Uses the indexer DB (sql) to find faucet calls by registered wallets
+ * - Applies dailyCategorySeen cap (shared with main scanner)
+ * - Synthetic tx_digest format: faucet:{walletAddress}:{YYYY-MM-DD}
+ * - Idempotency: UNIQUE(tx_digest, activity_type, event_seq) + ON CONFLICT DO NOTHING
+ */
+
+import { sql, pointsDb } from '../db.js';
+import { GENESIS_PASS_MULTIPLIER } from '../config/points.js';
+import type { PointsInsert } from './referral-bonus.js';
+
+// Original package IDs (hex, no 0x prefix) for faucet contracts
+const FAUCET_V1_PKG = '96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
+const FAUCET_V2_PKG = 'cc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
+
+const FAUCET_V1_PKG_BYTES = Buffer.from(FAUCET_V1_PKG, 'hex');
+const FAUCET_V2_PKG_BYTES = Buffer.from(FAUCET_V2_PKG, 'hex');
+
+// Track scanner position (persisted in processing_state)
+let lastFaucetSeq = 0;
+
+/**
+ * Scan for faucet claims and insert activity points.
+ *
+ * @param maxSeq - Upper bound tx_sequence_number (from event scanner)
+ * @param registeredWallets - Map<walletAddress, identityId>
+ * @param genesisPassHolders - Set<identityId>
+ * @param dailyCategorySeen - Shared daily cap Set from main scanner
+ * @returns Number of points rows inserted
+ */
+export async function scanFaucetClaims(
+  maxSeq: number,
+  registeredWallets: Map<string, string>,
+  genesisPassHolders: Set<string>,
+  dailyCategorySeen: Set<string>,
+): Promise<number> {
+  if (!pointsDb || registeredWallets.size === 0) return 0;
+
+  // Initialize position from processing_state on first run
+  if (lastFaucetSeq === 0) {
+    const [row] = await pointsDb`
+      SELECT last_tx_sequence FROM processing_state WHERE scanner_id = 'faucet'
+    `;
+    lastFaucetSeq = Number(row?.last_tx_sequence ?? 0);
+
+    // Seed the row if it doesn't exist yet
+    if (!row) {
+      await pointsDb`
+        INSERT INTO processing_state (scanner_id, last_tx_sequence, processed_at)
+        VALUES ('faucet', 0, NOW())
+        ON CONFLICT (scanner_id) DO NOTHING
+      `;
+    }
+  }
+
+  if (lastFaucetSeq >= maxSeq) return 0;
+
+  // Query tx_calls_fun for faucet function calls
+  // V1: devnet_tokens::faucet, V2: devnet_tokens_v2::faucet_v2
+  const rows = await sql`
+    SELECT DISTINCT
+      c.tx_sequence_number::bigint as tx_sequence_number,
+      encode(c.sender, 'hex') as sender_hex,
+      encode(t.transaction_digest, 'hex') as tx_digest_hex,
+      t.timestamp_ms::text as timestamp_ms
+    FROM tx_calls_fun c
+    JOIN transactions t ON c.tx_sequence_number = t.tx_sequence_number
+    WHERE c.tx_sequence_number > ${lastFaucetSeq}
+      AND c.tx_sequence_number <= ${maxSeq}
+      AND (c.package = ${FAUCET_V1_PKG_BYTES} OR c.package = ${FAUCET_V2_PKG_BYTES})
+      AND c.module IN ('faucet', 'faucet_v2')
+      AND c.func LIKE 'request_%'
+    ORDER BY c.tx_sequence_number
+    LIMIT 500
+  `;
+
+  if (rows.length === 0) {
+    lastFaucetSeq = maxSeq;
+    await updateFaucetState(maxSeq);
+    return 0;
+  }
+
+  const inserts: PointsInsert[] = [];
+
+  for (const row of rows) {
+    const walletAddress = `0x${row.sender_hex}`;
+    const identityId = registeredWallets.get(walletAddress.toLowerCase());
+    if (!identityId) continue;
+
+    // Daily category cap (shared with main scanner)
+    const capKey = `${identityId}::faucet`;
+    if (dailyCategorySeen.has(capKey)) continue;
+
+    const basePoints = 1; // faucet.claim = 1
+    const genesisMult = genesisPassHolders.has(identityId) ? GENESIS_PASS_MULTIPLIER : 1.0;
+    const finalPoints = (basePoints * genesisMult).toFixed(2);
+
+    inserts.push({
+      wallet_address: walletAddress,
+      identity_id: identityId,
+      tx_digest: `faucet:0x${row.tx_digest_hex}`,
+      tx_sequence_number: row.tx_sequence_number,
+      category: 'faucet',
+      activity_type: 'claim',
+      base_points: basePoints,
+      volume_tier: 1.0,
+      genesis_multiplier: genesisMult,
+      final_points: finalPoints,
+      tx_timestamp: new Date(Number(row.timestamp_ms)),
+      event_seq: 0,
+    });
+
+    dailyCategorySeen.add(capKey);
+  }
+
+  if (inserts.length > 0) {
+    await pointsDb`
+      INSERT INTO activity_points ${pointsDb(inserts,
+        'wallet_address', 'identity_id', 'tx_digest', 'tx_sequence_number',
+        'category', 'activity_type', 'base_points', 'volume_tier',
+        'genesis_multiplier', 'final_points', 'tx_timestamp', 'event_seq'
+      )}
+      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+    `;
+  }
+
+  const newLastSeq = rows[rows.length - 1].tx_sequence_number;
+  lastFaucetSeq = newLastSeq;
+  await updateFaucetState(newLastSeq);
+
+  if (inserts.length > 0) {
+    console.log(`[Faucet] Detected ${inserts.length} faucet claims`);
+  }
+
+  return inserts.length;
+}
+
+/**
+ * Reset faucet scanner position (called on chain reset).
+ */
+export function resetFaucetScanner(): void {
+  lastFaucetSeq = 0;
+}
+
+async function updateFaucetState(lastSeq: number): Promise<void> {
+  if (!pointsDb) return;
+  await pointsDb`
+    UPDATE processing_state
+    SET last_tx_sequence = ${lastSeq}, processed_at = NOW()
+    WHERE scanner_id = 'faucet'
+  `;
+}

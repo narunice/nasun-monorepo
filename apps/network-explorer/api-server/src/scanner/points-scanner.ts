@@ -24,6 +24,7 @@ import {
 } from './ecosystem-cache.js';
 import { getIdentityToWalletMap } from './referral-bonus.js';
 import { runDailyNftChecks } from './daily-nft-check.js';
+import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
 import { rpcCall } from '../rpc.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
@@ -111,6 +112,16 @@ async function scanLoop(): Promise<void> {
 
       // Yield to event loop between batches
       await new Promise((resolve) => setImmediate(resolve));
+    }
+
+    // Faucet detection: scan tx_calls_fun for faucet claims (no Move events)
+    try {
+      const faucetCount = await scanFaucetClaims(
+        lastSeq, registeredWallets, genesisPassHolders, dailyCategorySeen,
+      );
+      totalProcessed += faucetCount;
+    } catch (err) {
+      console.error('[Faucet] Scan error (non-fatal):', (err as Error).message);
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -229,11 +240,12 @@ async function detectChainReset(): Promise<void> {
       await pointsDb`TRUNCATE activity_points`;
       dailyCategorySeen = new Set();
       dailyCategoryDate = '';
+      resetFaucetScanner();
       await pointsDb`
         UPDATE processing_state
         SET last_tx_sequence = 0, chain_genesis_hash = ${currentHash},
             processed_at = NOW(), tx_count = 0
-        WHERE scanner_id = 'main'
+        WHERE scanner_id IN ('main', 'faucet')
       `;
     } else if (!state?.chain_genesis_hash) {
       await pointsDb`
