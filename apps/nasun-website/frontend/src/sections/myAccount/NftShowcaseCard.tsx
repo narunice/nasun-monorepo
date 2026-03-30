@@ -1,8 +1,9 @@
 /**
  * NftShowcaseCard
  *
- * Image-prominent NFT display card for the My Account dashboard.
- * Shows Alliance NFT (with image), Genesis Pass (placeholder), Battalion (coming soon).
+ * Image-prominent NFT display cards for the My Account dashboard.
+ * Renders Alliance, Genesis Pass, and Battalion as independent OuterBox cards
+ * stacked vertically in a single column.
  */
 
 import { FC, useState } from "react";
@@ -34,7 +35,6 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
       ? user.walletAddress?.toLowerCase()
       : undefined);
 
-  // Alliance
   const {
     isMinted: isAllianceMinted,
     isLoading: isAllianceLoading,
@@ -42,7 +42,6 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     isConfigured: isAllianceConfigured,
   } = useAllianceMintStatus(cognitoToken);
 
-  // Genesis Pass
   const {
     isRegistered: isGenesisPassRegistered,
     isApplied: isGenesisPassApplied,
@@ -50,7 +49,6 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     isConfigured: isGenesisPassConfigured,
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
-  // Ecosystem activation
   const ecosystem = useEcosystemStatus(cognitoToken);
 
   const [showAllianceMenu, setShowAllianceMenu] = useState(false);
@@ -76,31 +74,22 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     }
   };
 
-  // Alliance image state
   const allianceIsActive = !!ecosystem.getActivation("alliance");
   const allianceImgSrc =
     isAllianceMinted && allianceData
-      ? ALLIANCE_PREVIEW_IMAGES[allianceData.imageIndex] ||
-        ALLIANCE_PREVIEW_IMAGES[0]
+      ? ALLIANCE_PREVIEW_IMAGES[allianceData.imageIndex] || ALLIANCE_PREVIEW_IMAGES[0]
       : ALLIANCE_PREVIEW_IMAGES[0];
 
-  // Genesis Pass state
   const genesisIsActive = !!ecosystem.getActivation("genesis-pass");
 
   return (
-    <>
-    <OuterBox
-      color="c5"
-      padding="sm"
-      className={`animate-fade-slide-up ${className}`}
-    >
-      <div className="flex flex-col gap-5">
-        {/* === Alliance === */}
-        {isAllianceConfigured && (
+    <div className={`flex flex-col gap-4 lg:gap-6 ${className}`}>
+
+      {/* === Alliance === */}
+      {isAllianceConfigured && (
+        <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
           <div className="flex flex-col gap-2">
             <h6 className="text-nasun-white font-medium uppercase">ALLIANCE</h6>
-
-            {/* Image */}
             <div className="relative rounded-sm overflow-hidden aspect-square">
               {isAllianceLoading ? (
                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -120,11 +109,9 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                     }`}
                     loading="lazy"
                   />
-                  {/* x1 badge */}
                   <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
-                  {/* Overlay text */}
                   {!isAllianceMinted && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-nasun-white/80 text-sm font-medium text-center px-4">
@@ -142,8 +129,6 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 </>
               )}
             </div>
-
-            {/* Status + Actions */}
             <div className="flex items-center justify-between">
               {isAllianceLoading ? (
                 <span className="text-nasun-white/50 text-sm">Loading...</span>
@@ -154,97 +139,37 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               ) : (
                 <span className="text-nasun-white/70 text-sm">Minted</span>
               )}
-
               <div className="flex gap-2">
                 {!isAllianceLoading && !isAllianceMinted && (
-                  <Button
-                    onClick={() => navigate("/wave1/alliance-nft")}
-                    variant="filledOutlineC7"
-                    size="sm"
-                  >
+                  <Button onClick={() => navigate("/wave1/alliance-nft")} variant="filledOutlineC7" size="sm">
                     Mint
                   </Button>
                 )}
-                {isAllianceMinted &&
-                  !allianceIsActive &&
-                  ecosystem.isConfigured && (
-                    <Button
-                      onClick={() => handleActivate("alliance")}
-                      variant="filledOutlineC7"
-                      size="sm"
-                      disabled={ecosystem.isActivating}
-                    >
-                      {ecosystem.isActivating ? "..." : "Activate"}
-                    </Button>
-                  )}
+                {isAllianceMinted && !allianceIsActive && ecosystem.isConfigured && (
+                  <Button onClick={() => handleActivate("alliance")} variant="filledOutlineC7" size="sm" disabled={ecosystem.isActivating}>
+                    {ecosystem.isActivating ? "..." : "Activate"}
+                  </Button>
+                )}
                 {allianceIsActive && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowAllianceMenu((v) => !v)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                      >
-                        <circle cx="8" cy="3" r="1.5" />
-                        <circle cx="8" cy="8" r="1.5" />
-                        <circle cx="8" cy="13" r="1.5" />
-                      </svg>
-                    </button>
-                    {showAllianceMenu && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setShowAllianceMenu(false)}
-                        />
-                        <div className="absolute right-0 top-8 z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px]">
-                          <button
-                            onClick={() => {
-                              setShowAllianceMenu(false);
-                              handleDeactivate("alliance");
-                            }}
-                            disabled={ecosystem.isActivating}
-                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                          >
-                            {ecosystem.isActivating
-                              ? "Deactivating..."
-                              : "Deactivate"}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <ThreeDotMenu show={showAllianceMenu} onToggle={() => setShowAllianceMenu((v) => !v)} onClose={() => setShowAllianceMenu(false)} onAction={() => { setShowAllianceMenu(false); handleDeactivate("alliance"); }} isLoading={ecosystem.isActivating} />
                 )}
               </div>
             </div>
           </div>
-        )}
+        </OuterBox>
+      )}
 
-        {/* === Genesis Pass === */}
-        {isGenesisPassConfigured && (
+      {/* === Genesis Pass === */}
+      {isGenesisPassConfigured && (
+        <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
           <div className="flex flex-col gap-2">
-            <h6 className="text-nasun-white font-medium uppercase">
-              GENESIS PASS
-            </h6>
-
-            {/* Placeholder image */}
-            <div
-              className={`relative rounded-sm overflow-hidden aspect-[2/1] transition-all ${
-                genesisIsActive ? "bg-gray-700" : "bg-gray-800"
-              }`}
-            >
-              {/* Boost x2 badge */}
+            <h6 className="text-nasun-white font-medium uppercase">GENESIS PASS</h6>
+            <div className={`relative rounded-sm overflow-hidden aspect-[2/1] transition-all ${genesisIsActive ? "bg-gray-700" : "bg-gray-800"}`}>
               <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
-              {!genesisIsActive && (
-                <div className="absolute inset-0 bg-black/30" />
-              )}
+              {!genesisIsActive && <div className="absolute inset-0 bg-black/30" />}
             </div>
-
-            {/* Status + Actions */}
             <div className="flex items-center justify-between">
               {isGenesisPassLoading ? (
                 <Spinner size="sm" />
@@ -257,74 +182,22 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               ) : (
                 <span className="text-nasun-white/50 text-sm">Not Applied</span>
               )}
-
               <div className="flex gap-2">
-                {!isGenesisPassLoading &&
-                  !isGenesisPassRegistered &&
-                  !isGenesisPassApplied && (
-                    <Button
-                      onClick={() => navigate("/wave1/genesis-pass")}
-                      variant="filledOutlineC7"
-                      size="sm"
-                    >
-                      Join Allowlist
-                    </Button>
-                  )}
-                {isGenesisPassRegistered &&
-                  !genesisIsActive &&
-                  ecosystem.isConfigured && (
-                    <Button
-                      onClick={() => handleActivate("genesis-pass")}
-                      variant="filledOutlineC7"
-                      size="sm"
-                      disabled={ecosystem.isActivating}
-                    >
-                      {ecosystem.isActivating ? "..." : "Activate"}
-                    </Button>
-                  )}
+                {!isGenesisPassLoading && !isGenesisPassRegistered && !isGenesisPassApplied && (
+                  <Button onClick={() => navigate("/wave1/genesis-pass")} variant="filledOutlineC7" size="sm">
+                    Join Allowlist
+                  </Button>
+                )}
+                {isGenesisPassRegistered && !genesisIsActive && ecosystem.isConfigured && (
+                  <Button onClick={() => handleActivate("genesis-pass")} variant="filledOutlineC7" size="sm" disabled={ecosystem.isActivating}>
+                    {ecosystem.isActivating ? "..." : "Activate"}
+                  </Button>
+                )}
                 {genesisIsActive && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowGenesisMenu((v) => !v)}
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                      >
-                        <circle cx="8" cy="3" r="1.5" />
-                        <circle cx="8" cy="8" r="1.5" />
-                        <circle cx="8" cy="13" r="1.5" />
-                      </svg>
-                    </button>
-                    {showGenesisMenu && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setShowGenesisMenu(false)}
-                        />
-                        <div className="absolute right-0 top-8 z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px]">
-                          <button
-                            onClick={() => {
-                              setShowGenesisMenu(false);
-                              handleDeactivate("genesis-pass");
-                            }}
-                            disabled={ecosystem.isActivating}
-                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                          >
-                            {ecosystem.isActivating
-                              ? "Deactivating..."
-                              : "Deactivate"}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <ThreeDotMenu show={showGenesisMenu} onToggle={() => setShowGenesisMenu((v) => !v)} onClose={() => setShowGenesisMenu(false)} onAction={() => { setShowGenesisMenu(false); handleDeactivate("genesis-pass"); }} isLoading={ecosystem.isActivating} />
                 )}
               </div>
             </div>
-
             <a
               href="https://opensea.io/collection/nasun-genesis-pass/overview"
               target="_blank"
@@ -332,31 +205,47 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               className="inline-flex items-center gap-1.5 text-nasun-white/70 hover:text-nasun-white text-sm self-end transition-colors underline underline-offset-2"
             >
               Go to OpenSea
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-                />
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
               </svg>
             </a>
           </div>
-        )}
+        </OuterBox>
+      )}
 
-      </div>
-    </OuterBox>
+      {/* === Battalion === */}
+      <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
+        <h6 className="text-nasun-white font-medium uppercase">BATTALION</h6>
+        <p className="text-nasun-white/40 text-sm mt-1">Coming Soon</p>
+      </OuterBox>
 
-    {/* === Battalion (outside card) === */}
-    <div className="flex flex-col gap-2 p-4 mt-4">
-      <h6 className="text-nasun-white font-medium uppercase">BATTALION</h6>
-      <p className="text-nasun-white/40 text-sm">Coming Soon</p>
     </div>
-    </>
   );
 };
+
+// Inline three-dot deactivate menu (used for Alliance and Genesis Pass)
+function ThreeDotMenu({ show, onToggle, onClose, onAction, isLoading }: {
+  show: boolean; onToggle: () => void; onClose: () => void; onAction: () => void; isLoading: boolean;
+}) {
+  return (
+    <div className="relative">
+      <button onClick={onToggle} className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors">
+        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="8" cy="3" r="1.5" />
+          <circle cx="8" cy="8" r="1.5" />
+          <circle cx="8" cy="13" r="1.5" />
+        </svg>
+      </button>
+      {show && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div className="absolute right-0 top-8 z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px]">
+            <button onClick={onAction} disabled={isLoading} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
+              {isLoading ? "Deactivating..." : "Deactivate"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

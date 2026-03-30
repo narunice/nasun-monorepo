@@ -70,7 +70,7 @@ function useNasunAddresses(): string[] {
   }, [account?.address, zkLoginState?.address, linkedWallet, user?.walletAddress]);
 }
 
-export const NasunVoteNfts: FC = () => {
+export const NasunVoteNfts: FC<{ children?: React.ReactNode }> = ({ children }) => {
   const addresses = useNasunAddresses();
   const originalPackageId = useNetworkVariable("originalPackageId");
   const multiChoicePackageId = useNetworkVariable("multiChoicePackageId");
@@ -132,14 +132,12 @@ export const NasunVoteNfts: FC = () => {
   const explorerUrl =
     import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet";
 
-  if (nfts.length === 0) return null;
+  if (nfts.length === 0 && !children) return null;
 
   return (
     <div className="mb-6">
-      <h6 className="font-semibold mb-3 text-gray-200">
-        Vote Proof NFTs ({nfts.length})
-      </h6>
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+        {children}
         {nfts.map((nft) => (
           <div
             key={nft.id}

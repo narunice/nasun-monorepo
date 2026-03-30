@@ -48,11 +48,15 @@ const AllianceNftPage = () => {
     }
   }, [user]);
 
-  // Scroll to mint section after OAuth redirect (page reload with #mint hash)
+  // Scroll to mint section after OAuth/zkLogin redirect (page reload with #mint hash).
+  // Delay scroll until after layout settles (hero image load + API fetch).
   useEffect(() => {
     if (window.location.hash === "#mint") {
-      mintSectionRef.current?.scrollIntoView({ behavior: "smooth" });
-      history.replaceState(null, "", window.location.pathname);
+      const timer = setTimeout(() => {
+        mintSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+        history.replaceState(null, "", window.location.pathname);
+      }, 600);
+      return () => clearTimeout(timer);
     }
   }, []);
 
