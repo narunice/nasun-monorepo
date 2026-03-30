@@ -29,7 +29,6 @@ import {
 import { useAllianceMintStatus } from "../../hooks/useAllianceMintStatus";
 import { useEcosystemStatus } from "../../hooks/useEcosystemStatus";
 import type { NftType } from "../../services/ecosystemApi";
-import { AllianceMintDialog } from "./components/AllianceMintDialog";
 import { ALLIANCE_IMAGES } from "@/constants/alliance";
 
 interface CompactNftStatusProps {
@@ -83,11 +82,9 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
     isMinted: isAllianceMinted,
     isLoading: isAllianceLoading,
     data: allianceData,
-    wallets: allianceWallets,
     isConfigured: isAllianceConfigured,
   } = useAllianceMintStatus(cognitoToken);
 
-  const [showAllianceMintDialog, setShowAllianceMintDialog] = useState(false);
   const [showAllianceMenu, setShowAllianceMenu] = useState(false);
   const [showGenesisMenu, setShowGenesisMenu] = useState(false);
   const [showBattalionMenu, setShowBattalionMenu] = useState(false);
@@ -491,16 +488,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
           )}
         </div>
       </OuterBox>
-
-      {/* Alliance Mint Dialog */}
-      {cognitoToken && (
-        <AllianceMintDialog
-          open={showAllianceMintDialog}
-          onOpenChange={setShowAllianceMintDialog}
-          wallets={allianceWallets}
-          cognitoToken={cognitoToken}
-        />
-      )}
 
       {/* Wallet Mismatch Update Dialog */}
       <Dialog open={showMismatchDialog} onOpenChange={setShowMismatchDialog}>
