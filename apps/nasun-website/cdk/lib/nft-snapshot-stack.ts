@@ -177,5 +177,73 @@ export class NftSnapshotStack extends cdk.Stack {
     });
 
     ethErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+
+    // ========== Ownership Verifier Lambda ==========
+
+    // Cross-stack reference: ecosystem-activations table (owned by EcosystemStack)
+    const activationsTable = dynamodb.Table.fromTableName(
+      this,
+      'EcosystemActivationsTable',
+      'nasun-ecosystem-activations',
+    );
+
+    const ownershipVerifier = new NodejsFunction(this, 'OwnershipVerifierFunction', {
+      functionName: 'nasun-eth-ownership-verifier',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(lambdaSrcPath, 'ownership-verifier.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 256,
+      reservedConcurrentExecutions: 1,
+      description: 'Daily ETH NFT ownership verification and auto-deactivation',
+      environment: {
+        OWNERSHIP_TABLE: ownershipTable.tableName,
+        ACTIVATIONS_TABLE: activationsTable.tableName,
+        COLLECTIONS_TABLE: collectionsTable.tableName,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logRetention: logs.RetentionDays.ONE_MONTH,
+      depsLockFilePath,
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        externalModules: [
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+        ],
+      },
+    });
+
+    ownershipTable.grantReadData(ownershipVerifier);
+    // Write META#VERIFICATION records
+    ownershipTable.grantWriteData(ownershipVerifier);
+    collectionsTable.grantReadData(ownershipVerifier);
+    // Least-privilege: Scan (read) + UpdateItem (write) on activations table
+    activationsTable.grantReadWriteData(ownershipVerifier);
+
+    // EventBridge: daily at 01:45 UTC (45min after eth-collector)
+    const verifierRule = new events.Rule(this, 'OwnershipVerifierDailyRule', {
+      ruleName: 'nasun-eth-ownership-verifier-daily',
+      description: 'Daily ETH NFT ownership verification at 01:45 UTC',
+      enabled: true,
+      schedule: events.Schedule.cron({
+        minute: '45',
+        hour: '1',
+      }),
+    });
+
+    verifierRule.addTarget(new targets.LambdaFunction(ownershipVerifier));
+
+    // CloudWatch alarm for verifier errors
+    const verifierErrorAlarm = new cloudwatch.Alarm(this, 'OwnershipVerifierErrorAlarm', {
+      alarmName: 'nasun-eth-ownership-verifier-errors',
+      alarmDescription: 'ETH NFT ownership verifier Lambda errors',
+      metric: ownershipVerifier.metricErrors({ period: cdk.Duration.hours(1) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    verifierErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
   }
 }

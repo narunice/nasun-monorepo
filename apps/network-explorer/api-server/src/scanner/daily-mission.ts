@@ -18,22 +18,23 @@ import { BASE_POINTS } from '../config/points.js';
 
 // Mission category -> daily mission type + points
 const MISSION_MAP: Record<string, { missionType: string; points: number }> = {
-  'pado-dex':         { missionType: 'dex-first', points: 10 },
-  'pado-lottery':     { missionType: 'lottery-first', points: 10 },
-  'governance':       { missionType: 'governance-first', points: 20 },
-  'pado-perp':        { missionType: 'perp-first', points: 10 },
-  'pado-scratchcard': { missionType: 'scratchcard-first', points: 10 },
-  'baram-ai':         { missionType: 'baram-first', points: 12 },
+  'pado-dex':         { missionType: 'dex-first', points: 5 },
+  'pado-prediction':  { missionType: 'prediction-first', points: 5 },
+  'pado-lottery':     { missionType: 'lottery-first', points: 5 },
+  'governance':       { missionType: 'governance-first', points: 10 },
+  'pado-perp':        { missionType: 'perp-first', points: 5 },
+  'pado-scratchcard': { missionType: 'scratchcard-first', points: 5 },
+  'baram-ai':         { missionType: 'baram-first', points: 5 },
 };
 
 const QUALIFYING_CATEGORIES = Object.keys(MISSION_MAP);
-const TOTAL_MISSIONS = QUALIFYING_CATEGORIES.length; // 6
+const TOTAL_MISSIONS = QUALIFYING_CATEGORIES.length; // 7
 
 // Tiered bonus thresholds
 const TIER_BONUSES: { threshold: number; missionType: string; points: number }[] = [
-  { threshold: 4, missionType: 'tier-4', points: 5 },
-  { threshold: 5, missionType: 'tier-5', points: 10 },
-  { threshold: 6, missionType: 'all-clear', points: 20 },
+  { threshold: 4, missionType: 'tier-4', points: 3 },
+  { threshold: 5, missionType: 'tier-5', points: 5 },
+  { threshold: QUALIFYING_CATEGORIES.length, missionType: 'all-clear', points: 10 },
 ];
 
 /**

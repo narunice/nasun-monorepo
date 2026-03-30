@@ -301,29 +301,32 @@ async function activateEthNft(
   }
 
   // Check NFT ownership from latest snapshot
-  // PK format: ETH#<contractAddress>, SK: LATEST
+  // PK: ETH#LATEST, SK: WALLET#<address> (matches eth-collector write pattern)
   const ownershipResult = await client.send(
     new GetCommand({
       TableName: NFT_OWNERSHIP_TABLE,
       Key: {
-        pk: `ETH#${contractAddress}`,
-        sk: "LATEST",
+        pk: "ETH#LATEST",
+        sk: `WALLET#${evmWallet.toLowerCase()}`,
       },
     })
   );
 
-  const snapshot = ownershipResult.Item;
-  if (!snapshot) {
-    console.warn(`[ecosystem] No LATEST snapshot for ${contractAddress}`);
+  const walletRecord = ownershipResult.Item;
+  if (!walletRecord) {
+    console.warn(`[ecosystem] No LATEST snapshot for wallet ${evmWallet}`);
     return jsonResponse(503, {
       error: "SNAPSHOT_UNAVAILABLE",
       message: "Ownership data is not yet available. Please try again later.",
     }, origin);
   }
 
-  // Snapshot owners is a map of address -> count
-  const owners = (snapshot.owners || {}) as Record<string, number>;
-  const nftCount = owners[evmWallet] || owners[evmWallet.toLowerCase()] || 0;
+  // walletRecord.holdings is an array of { contractAddress, tokenCount, ... }
+  const holdings = (walletRecord.holdings || []) as Array<{ contractAddress: string; tokenCount: number }>;
+  const match = holdings.find(
+    (h) => h.contractAddress.toLowerCase() === contractAddress.toLowerCase()
+  );
+  const nftCount = match?.tokenCount || 0;
 
   if (nftCount === 0) {
     return jsonResponse(400, {
