@@ -271,8 +271,8 @@ function WhatWeBuildingSection() {
   };
 
   return (
-    <SectionLayout className="max-w-none relative min-h-screen !h-auto bg-nasun-black !justify-start">
-      <div className="relative z-10 flex flex-col items-center pt-[max(4.5rem,8vh)] pb-16 md:pb-20 lg:pb-24 px-4 md:px-8">
+    <SectionLayout className="max-w-none relative min-h-screen bg-nasun-black">
+      <div className="relative z-10 flex flex-col items-center mt-8 sm:mt-12 md:mt-16 lg:mt-20 mb-6 md:mb-12 lg:mb-14 px-4 md:px-8">
         {/* Section Title */}
         <FadeInUp>
           <SectionTitle
