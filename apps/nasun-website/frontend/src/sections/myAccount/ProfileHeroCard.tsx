@@ -262,24 +262,24 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
             <div>
               <h6 className="text-sm text-nasun-white/40 uppercase mb-2 flex items-center gap-2">
                 Activity Points
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
+                <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
               </h6>
 
               {!hasValidAddress ? (
-                <p className="text-nasun-white/50 text-sm">
+                <p className="text-nasun-white/50 text-base">
                   Connect Nasun Wallet to view activity points
                 </p>
               ) : pointsLoading ? (
                 <div className="flex items-center gap-2 py-2">
                   <Spinner size="sm" />
-                  <span className="text-nasun-white/50 text-sm">Loading points...</span>
+                  <span className="text-nasun-white/50 text-base">Loading points...</span>
                 </div>
               ) : pointsError ? (
-                <p className="text-red-400 text-sm">Failed to load points</p>
+                <p className="text-red-400 text-base">Failed to load points</p>
               ) : !points ? (
-                <p className="text-nasun-white/50 text-sm">No activity points yet</p>
+                <p className="text-nasun-white/50 text-base">No activity points yet</p>
               ) : (
                 <div>
                   {/* Total Points + Stats Row */}
@@ -293,7 +293,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
                     {/* V3 Rank */}
                     {rankData?.stats?.currentRank != null && rankData.stats.currentRank > 0 && (
                       <div className="flex items-baseline gap-1 text-nasun-white/60">
-                        <span className="text-xs uppercase">Rank</span>
+                        <span className="text-sm uppercase">Rank</span>
                         <span className="text-lg font-semibold text-nasun-c7">
                           #{rankData.stats.currentRank}
                         </span>
@@ -320,7 +320,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                         {points.categories.map((cat) => (
-                          <span key={cat.category} className="flex items-center gap-1 text-xs text-nasun-white/60">
+                          <span key={cat.category} className="flex items-center gap-1 text-sm text-nasun-white/60">
                             <span className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`} />
                             {CATEGORY_LABELS[cat.category] || cat.category}
                           </span>
@@ -330,7 +330,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
                   )}
 
                   {/* Footer */}
-                  <div className="text-xs text-nasun-white/40">
+                  <div className="text-sm text-nasun-white/40">
                     {points.activityCount} {points.activityCount === 1 ? "activity" : "activities"}
                     {firstDate && <span> &middot; Since {firstDate}</span>}
                   </div>
@@ -341,7 +341,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
             {/* Ecosystem Score Placeholder (Step 5D) */}
             <div className="border border-dashed border-nasun-white/10 rounded-lg p-4">
               <h6 className="text-sm text-nasun-white/30 uppercase mb-1">Ecosystem Score</h6>
-              <p className="text-nasun-white/20 text-xs">Coming soon</p>
+              <p className="text-nasun-white/20 text-sm">Coming soon</p>
             </div>
           </>
         )}

@@ -19,7 +19,7 @@ const ChainBadge: FC<{ chain: NFTChain }> = ({ chain }) => {
   const isEth = chain === 'ethereum';
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-sm font-medium leading-none ${
         isEth
           ? 'bg-blue-500/20 text-blue-300'
           : 'bg-purple-500/20 text-purple-300'
@@ -115,7 +115,7 @@ const NftThumbnail: FC<NftThumbnailProps> = ({ nft }) => {
       {/* Info */}
       <div className="p-2 space-y-1">
         <div className="flex items-center justify-between gap-1">
-          <p className="text-xs text-gray-200 truncate font-medium flex-1">
+          <p className="text-sm text-gray-200 truncate font-medium flex-1">
             {displayName}
           </p>
           <ExternalLink className="w-3 h-3 text-gray-500 group-hover:text-nasun-c4 flex-shrink-0" />
@@ -123,7 +123,7 @@ const NftThumbnail: FC<NftThumbnailProps> = ({ nft }) => {
         <div className="flex items-center gap-1.5">
           <ChainBadge chain={chain} />
           {nft.collectionName && nft.name !== nft.collectionName && (
-            <span className="text-[10px] text-gray-500 truncate">
+            <span className="text-sm text-gray-500 truncate">
               {nft.collectionName}
             </span>
           )}
