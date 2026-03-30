@@ -46,7 +46,7 @@ export function AppRoutes() {
     <Suspense fallback={<PageSpinner />}>
       <Routes>
         {/* Home (Dashboard) */}
-        <Route path="/" element={gated ? <GatedRedirect /> : <HomePage />} />
+        <Route path="/" element={<HomePage />} />
 
         {/* Markets */}
         <Route path="/markets" element={<Navigate to="/markets/spot" replace />} />

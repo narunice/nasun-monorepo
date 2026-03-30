@@ -1,10 +1,12 @@
 /**
  * FloatingChatPopup - Draggable + resizable floating chat window.
  * Contains ChatPanel inside a movable container with drag header and resize handle.
+ * ChatPanel header is visible; drag bar only provides dock/close controls.
+ * Supports 8-directional resize (4 edges + 4 corners).
  */
 
 import { ChatPanel } from './ChatPanel';
-import { useFloatingPanel } from '../hooks/useFloatingPanel';
+import { useFloatingPanel, type ResizeDirection } from '../hooks/useFloatingPanel';
 
 interface Props {
   onDock?: () => void;
@@ -12,6 +14,31 @@ interface Props {
 }
 
 const DEFAULTS = { x: 0, y: 0, width: 340, height: 480 };
+const EDGE = 4; // resize handle thickness (px)
+
+const CURSOR_MAP: Record<ResizeDirection, string> = {
+  n: 'cursor-ns-resize',
+  s: 'cursor-ns-resize',
+  e: 'cursor-ew-resize',
+  w: 'cursor-ew-resize',
+  ne: 'cursor-nesw-resize',
+  sw: 'cursor-nesw-resize',
+  nw: 'cursor-nwse-resize',
+  se: 'cursor-nwse-resize',
+};
+
+const HANDLE_STYLES: Record<ResizeDirection, React.CSSProperties> = {
+  n:  { top: 0, left: EDGE, right: EDGE, height: EDGE },
+  s:  { bottom: 0, left: EDGE, right: EDGE, height: EDGE },
+  e:  { top: EDGE, right: 0, bottom: EDGE, width: EDGE },
+  w:  { top: EDGE, left: 0, bottom: EDGE, width: EDGE },
+  nw: { top: 0, left: 0, width: EDGE * 2, height: EDGE * 2 },
+  ne: { top: 0, right: 0, width: EDGE * 2, height: EDGE * 2 },
+  sw: { bottom: 0, left: 0, width: EDGE * 2, height: EDGE * 2 },
+  se: { bottom: 0, right: 0, width: EDGE * 2, height: EDGE * 2 },
+};
+
+const DIRECTIONS: ResizeDirection[] = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
 
 function getInitialPosition() {
   return {
@@ -22,7 +49,7 @@ function getInitialPosition() {
 }
 
 export function FloatingChatPopup({ onDock, onClose }: Props) {
-  const { position, onDragStart, onResizeStart } = useFloatingPanel(
+  const { position, onDragStart, onEdgeResizeStart } = useFloatingPanel(
     'pado_chat_float_pos',
     getInitialPosition()
   );
@@ -37,13 +64,22 @@ export function FloatingChatPopup({ onDock, onClose }: Props) {
         height: position.height,
       }}
     >
-      {/* Draggable header */}
+      {/* 8-directional resize handles */}
+      {DIRECTIONS.map((dir) => (
+        <div
+          key={dir}
+          className={`absolute z-10 ${CURSOR_MAP[dir]}`}
+          style={HANDLE_STYLES[dir]}
+          onMouseDown={(e) => onEdgeResizeStart(dir, e)}
+        />
+      ))}
+
+      {/* Draggable header with dock/close controls */}
       <div
-        className="shrink-0 h-7 bg-theme-bg-tertiary flex items-center justify-between px-2.5 cursor-move select-none border-b border-theme-border"
+        className="shrink-0 h-7 bg-theme-bg-tertiary flex items-center justify-end px-2.5 cursor-move select-none"
         onMouseDown={onDragStart}
       >
-        <span className="text-[11px] font-medium text-theme-text-secondary">Chat</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" onMouseDown={(e) => e.stopPropagation()}>
           {onDock && (
             <button
               onClick={onDock}
@@ -72,16 +108,6 @@ export function FloatingChatPopup({ onDock, onClose }: Props) {
       {/* Chat content */}
       <div className="flex-1 min-h-0">
         <ChatPanel />
-      </div>
-
-      {/* Resize handle (bottom-right) */}
-      <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5"
-        onMouseDown={onResizeStart}
-      >
-        <svg width="8" height="8" viewBox="0 0 8 8" className="text-theme-text-muted opacity-40 hover:opacity-80">
-          <path d="M7 1L1 7M7 4L4 7M7 7L7 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
       </div>
     </div>
   );

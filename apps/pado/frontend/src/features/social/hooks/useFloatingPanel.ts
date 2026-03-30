@@ -1,6 +1,7 @@
 /**
  * useFloatingPanel - Drag + resize logic for floating panels.
  * Persists position/size in localStorage, clamps to viewport.
+ * Supports 8-directional resize (4 edges + 4 corners).
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -11,6 +12,8 @@ interface PanelState {
   width: number;
   height: number;
 }
+
+export type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const MIN_W = 280;
 const MIN_H = 300;
@@ -61,7 +64,7 @@ export function useFloatingPanel(storageKey: string, defaults: PanelState) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Drag handler — attach to header element
+  // Drag handler -- attach to header element
   const onDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     const s = stateRef.current;
@@ -83,8 +86,8 @@ export function useFloatingPanel(storageKey: string, defaults: PanelState) {
     document.addEventListener('mouseup', onUp);
   }, []);
 
-  // Resize handler — attach to resize handle element
-  const onResizeStart = useCallback((e: React.MouseEvent) => {
+  // Directional resize handler
+  const onEdgeResizeStart = useCallback((dir: ResizeDirection, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const s = stateRef.current;
@@ -92,15 +95,45 @@ export function useFloatingPanel(storageKey: string, defaults: PanelState) {
     const startY = e.clientY;
     const startW = s.width;
     const startH = s.height;
+    const startLeft = s.x;
+    const startTop = s.y;
+
+    const resizesLeft = dir.includes('w');
+    const resizesRight = dir.includes('e');
+    const resizesTop = dir.includes('n');
+    const resizesBottom = dir.includes('s');
 
     const onMove = (ev: MouseEvent) => {
-      const newW = clamp(startW + (ev.clientX - startX), MIN_W, MAX_W);
-      const newH = clamp(startH + (ev.clientY - startY), MIN_H, MAX_H);
-      setState(prev => ({
-        ...prev,
-        width: newW,
-        height: newH,
-      }));
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+
+      let newW = startW;
+      let newH = startH;
+      let newX = startLeft;
+      let newY = startTop;
+
+      if (resizesRight) {
+        newW = clamp(startW + dx, MIN_W, MAX_W);
+      }
+      if (resizesLeft) {
+        const proposedW = clamp(startW - dx, MIN_W, MAX_W);
+        newX = startLeft + (startW - proposedW);
+        newW = proposedW;
+      }
+      if (resizesBottom) {
+        newH = clamp(startH + dy, MIN_H, MAX_H);
+      }
+      if (resizesTop) {
+        const proposedH = clamp(startH - dy, MIN_H, MAX_H);
+        newY = startTop + (startH - proposedH);
+        newH = proposedH;
+      }
+
+      // Clamp position to viewport
+      newX = clamp(newX, 0, window.innerWidth - newW);
+      newY = clamp(newY, 0, window.innerHeight - newH);
+
+      setState({ x: newX, y: newY, width: newW, height: newH });
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
@@ -110,5 +143,10 @@ export function useFloatingPanel(storageKey: string, defaults: PanelState) {
     document.addEventListener('mouseup', onUp);
   }, []);
 
-  return { position: state, onDragStart, onResizeStart };
+  // Legacy: bottom-right only (backward compat)
+  const onResizeStart = useCallback((e: React.MouseEvent) => {
+    onEdgeResizeStart('se', e);
+  }, [onEdgeResizeStart]);
+
+  return { position: state, onDragStart, onResizeStart, onEdgeResizeStart };
 }

@@ -7,6 +7,9 @@ import { getSuiClient } from '../../../lib/sui-client';
 import { NUSDC_TYPE, TICKET_PRICE } from '../constants';
 import { TX_SYNC_DELAY_MS } from '../../../lib/constants';
 
+export const LOTTERY_PURCHASED_KEY = 'pado:lotteryTicketPurchased';
+export const LOTTERY_PURCHASE_EVENT = 'pado:lottery-purchased';
+
 export interface UseLotteryActionsResult {
   buyTicket: (roundId: string, numbers: number[]) => Promise<boolean>;
   claimPrize: (roundId: string, ticketId: string) => Promise<boolean>;
@@ -144,6 +147,10 @@ export function useLotteryActions(): UseLotteryActionsResult {
         // Also invalidate inactive queries so they refetch on mount
         queryClient.invalidateQueries({ queryKey: ['lottery-rounds'] });
         queryClient.invalidateQueries({ queryKey: ['lottery-round'] });
+
+        // Mark lottery ticket purchased for Getting Started checklist
+        try { localStorage.setItem(LOTTERY_PURCHASED_KEY, String(Date.now())); } catch { /* noop */ }
+        document.dispatchEvent(new Event(LOTTERY_PURCHASE_EVENT));
 
         return true;
       } catch (err) {

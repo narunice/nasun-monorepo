@@ -6,25 +6,19 @@
  */
 
 import { Link } from 'react-router-dom';
+import { NETWORK_CONFIG } from '../../../config/network';
+
+const gated = NETWORK_CONFIG.gamesOnlyMode;
 
 interface QuickAction {
   label: string;
   path: string;
   icon: React.ReactNode;
   color: string;
+  enabled: boolean;
 }
 
 const ACTIONS: QuickAction[] = [
-  {
-    label: 'Lottery',
-    path: '/games/lottery',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-      </svg>
-    ),
-    color: 'text-yellow-500',
-  },
   {
     label: 'Spot',
     path: '/markets/spot',
@@ -34,16 +28,7 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-pd3',
-  },
-  {
-    label: 'Predict',
-    path: '/predict',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-      </svg>
-    ),
-    color: 'text-indigo-500',
+    enabled: true,
   },
   {
     label: 'Perp',
@@ -54,6 +39,51 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-purple-500',
+    enabled: !gated,
+  },
+  {
+    label: 'Predict',
+    path: '/predict',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    ),
+    color: 'text-indigo-500',
+    enabled: !gated,
+  },
+  {
+    label: 'Lottery',
+    path: '/games/lottery',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+      </svg>
+    ),
+    color: 'text-yellow-500',
+    enabled: true,
+  },
+  {
+    label: 'Scratch',
+    path: '/games/scratch',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5l-1 1m0 0l-2 2m2-2l-2-2m2 2l2 2M3 21h18M5 21V7a2 2 0 012-2h10a2 2 0 012 2v14" />
+      </svg>
+    ),
+    color: 'text-yellow-500',
+    enabled: true,
+  },
+  {
+    label: 'NumMatch',
+    path: '/games/numbermatch',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+      </svg>
+    ),
+    color: 'text-yellow-500',
+    enabled: true,
   },
   {
     label: 'Earn',
@@ -64,6 +94,7 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-green-500',
+    enabled: !gated,
   },
   {
     label: 'Send',
@@ -74,24 +105,37 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-cyan-500',
+    enabled: true,
   },
 ];
 
 export function MobileQuickActions() {
   return (
     <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
-      {ACTIONS.map((action) => (
-        <Link
-          key={action.label}
-          to={action.path}
-          className="flex flex-col items-center gap-1 shrink-0 min-w-[52px]"
-        >
-          <div className="w-10 h-10 rounded-full bg-theme-bg-secondary flex items-center justify-center">
-            <span className={action.color}>{action.icon}</span>
+      {ACTIONS.map((action) =>
+        action.enabled ? (
+          <Link
+            key={action.label}
+            to={action.path}
+            className="flex flex-col items-center gap-1 shrink-0 min-w-[52px]"
+          >
+            <div className="w-10 h-10 rounded-full bg-theme-bg-secondary flex items-center justify-center">
+              <span className={action.color}>{action.icon}</span>
+            </div>
+            <span className="text-[10px] font-medium text-theme-text-secondary">{action.label}</span>
+          </Link>
+        ) : (
+          <div
+            key={action.label}
+            className="flex flex-col items-center gap-1 shrink-0 min-w-[52px] opacity-30 cursor-not-allowed"
+          >
+            <div className="w-10 h-10 rounded-full bg-theme-bg-secondary flex items-center justify-center">
+              <span className={action.color}>{action.icon}</span>
+            </div>
+            <span className="text-[10px] font-medium text-theme-text-secondary">{action.label}</span>
           </div>
-          <span className="text-[10px] font-medium text-theme-text-secondary">{action.label}</span>
-        </Link>
-      ))}
+        )
+      )}
     </div>
   );
 }
