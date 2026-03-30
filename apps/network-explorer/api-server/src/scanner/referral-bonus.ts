@@ -31,6 +31,10 @@ let dailyBonusDate = '';
 // Reverse wallet map: identityId -> walletAddress (built from registeredWallets)
 let identityToWallet = new Map<string, string>();
 
+export function getIdentityToWalletMap(): Map<string, string> {
+  return identityToWallet;
+}
+
 // Types matching points-scanner inserts
 export interface PointsInsert {
   wallet_address: string;

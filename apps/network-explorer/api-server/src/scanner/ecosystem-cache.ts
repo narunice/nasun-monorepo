@@ -36,6 +36,10 @@ export function getActivationsCacheSize(): number {
   return activationsCache.size;
 }
 
+export function getActivationsCacheMap(): Map<string, NftActivation[]> {
+  return activationsCache;
+}
+
 export async function maybeRefreshActivationsCache(): Promise<void> {
   const now = Date.now();
   if (now - activationsCacheLastRefresh < ACTIVATIONS_CACHE_REFRESH_MS) return;

@@ -84,7 +84,5 @@ aws dynamodb query \
 
 echo "[$TIMESTAMP] LATEST snapshots updated"
 
-# Retention: keep last 30 days
-find "$BACKUP_DIR" -name "devnet-20*.json" -mtime +30 -delete 2>/dev/null || true
-find "$BACKUP_DIR" -name "eth-20*.json" -mtime +30 -delete 2>/dev/null || true
-echo "[$TIMESTAMP] Cleanup done (30-day retention)"
+# No retention limit: keep all snapshots permanently (~50KB/day, ~18MB/year)
+echo "[$TIMESTAMP] Backup complete (permanent retention)"
