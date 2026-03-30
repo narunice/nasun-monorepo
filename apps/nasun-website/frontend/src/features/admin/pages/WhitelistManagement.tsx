@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DashboardCard } from "@/components/ui/DashboardCard";
@@ -22,6 +22,7 @@ type Tab = "battalion" | "genesis-pass";
 
 const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
   const [entries, setEntries] = useState<GenesisPassEntry[]>([]);
@@ -43,6 +44,13 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
   // Delete state
   const [deletingAddress, setDeletingAddress] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Approve All state
+  const [isApproving, setIsApproving] = useState(false);
+  const [approveProgress, setApproveProgress] = useState<{ current: number; total: number } | null>(null);
+  const [approveResult, setApproveResult] = useState<{ approved: number; failed: number } | null>(null);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const abortRef = useRef(false);
 
   const fetchEntries = useCallback(async () => {
     setIsLoading(true);
@@ -119,6 +127,64 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
     }
   };
 
+  const appliedEntries = entries.filter((e) => e.status === "APPLIED");
+
+  const handleApproveAll = async () => {
+    setShowApproveConfirm(false);
+    setIsApproving(true);
+    setApproveResult(null);
+    abortRef.current = false;
+
+    // Re-fetch to avoid stale data
+    let freshApplied: GenesisPassEntry[];
+    try {
+      const freshEntries = await getGenesisPassEntries(cognitoToken);
+      setEntries(freshEntries);
+      freshApplied = freshEntries.filter((e) => e.status === "APPLIED");
+    } catch {
+      setError("Failed to refresh entries before approval");
+      setIsApproving(false);
+      return;
+    }
+
+    if (freshApplied.length === 0) {
+      setIsApproving(false);
+      setApproveResult({ approved: 0, failed: 0 });
+      return;
+    }
+
+    let approved = 0;
+    let failed = 0;
+    setApproveProgress({ current: 0, total: freshApplied.length });
+
+    for (let i = 0; i < freshApplied.length; i++) {
+      if (abortRef.current) break;
+      try {
+        await updateGenesisPassEntry(cognitoToken, freshApplied[i].walletAddress, { status: "ACTIVE" });
+        approved++;
+      } catch {
+        failed++;
+      }
+      setApproveProgress({ current: i + 1, total: freshApplied.length });
+      if (i < freshApplied.length - 1 && !abortRef.current) await sleep(150);
+    }
+
+    setIsApproving(false);
+    setApproveProgress(null);
+    setApproveResult({ approved, failed });
+    await fetchEntries();
+  };
+
+  const handleExportOpenSea = async () => {
+    try {
+      const blob = await exportGenesisPassAllowlist({ cognitoToken, format: "opensea" });
+      const date = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `genesis-pass-opensea-allowlist-all-${date}.csv`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed");
+    }
+  };
+
   const startEdit = (entry: GenesisPassEntry) => {
     setEditingAddress(entry.walletAddress);
     setEditMintType(entry.mintType || "");
@@ -139,6 +205,52 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
           {error}
         </div>
       )}
+
+      {/* Approve All */}
+      <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-gray-800/70 rounded-sm">
+        {isApproving && approveProgress ? (
+          <>
+            <span className="text-nasun-white text-sm">
+              Approving... {approveProgress.current}/{approveProgress.total}
+            </span>
+            <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden min-w-[100px]">
+              <div
+                className="h-full bg-nasun-c4 rounded-full transition-all"
+                style={{ width: `${(approveProgress.current / approveProgress.total) * 100}%` }}
+              />
+            </div>
+            <Button
+              variant="outlineC5"
+              size="sm"
+              onClick={() => { abortRef.current = true; }}
+            >
+              Abort
+            </Button>
+          </>
+        ) : approveResult ? (
+          <>
+            <span className="text-nasun-white text-sm">
+              {approveResult.approved} approved, {approveResult.failed} failed.
+              {approveResult.failed > 0 ? " Safe to retry." : ""}
+            </span>
+            <Button variant="c4" size="sm" onClick={handleExportOpenSea}>
+              Export OpenSea CSV
+            </Button>
+            <Button variant="outlineC5" size="sm" onClick={() => setApproveResult(null)}>
+              Dismiss
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="filledOutlineC7"
+            size="sm"
+            onClick={() => setShowApproveConfirm(true)}
+            disabled={appliedEntries.length === 0 || isApproving}
+          >
+            Approve All APPLIED ({appliedEntries.length} pending)
+          </Button>
+        )}
+      </div>
 
       {/* Add Form */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6 p-4 bg-gray-800/70 rounded-sm">
@@ -187,6 +299,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
             <thead>
               <tr className="border-b border-nasun-c5/35 text-nasun-white/70 text-left">
                 <th className="pb-2 pr-4 font-medium">Wallet</th>
+                <th className="pb-2 pr-4 font-medium">Status</th>
                 <th className="pb-2 pr-4 font-medium">Mint Type</th>
                 <th className="pb-2 pr-4 font-medium">Source</th>
                 <th className="pb-2 pr-4 font-medium">X Handle</th>
@@ -198,6 +311,25 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
               {entries.map((entry) => (
                 <tr key={entry.walletAddress} className="border-b border-nasun-c5/20 hover:bg-nasun-c5/5">
                   <td className="py-2 pr-4 font-mono text-nasun-white/90">{shortenAddress(entry.walletAddress)}</td>
+                  <td className="py-2 pr-4">
+                    {entry.status === "APPLIED" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-medium border border-amber-400/20">
+                        APPLIED
+                      </span>
+                    ) : entry.status === "ACTIVE" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-400/20">
+                        ACTIVE
+                      </span>
+                    ) : entry.status === "WITHDRAWN" ? (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 text-[10px] font-medium border border-red-400/20">
+                        WITHDRAWN
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-500/10 text-gray-400 text-[10px] font-medium border border-gray-400/20">
+                        {entry.status || "UNKNOWN"}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2 pr-4">
                     {entry.mintType === "FREE_MINT" ? (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-medium border border-amber-400/20">
@@ -294,6 +426,24 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
               <Button variant="outlineC5" size="sm" onClick={() => setDeletingAddress(null)}>Cancel</Button>
               <Button variant="filledOutlineScarlet" size="sm" onClick={handleDelete} disabled={isDeleting}>
                 {isDeleting ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve All Confirmation */}
+      {showApproveConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowApproveConfirm(false)}>
+          <div className="bg-gray-900 border border-nasun-c5/45 rounded-sm p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h4 className="text-nasun-white font-medium mb-2">Approve All APPLIED?</h4>
+            <p className="text-nasun-white/70 text-sm mb-4">
+              This will change <span className="text-nasun-white font-medium">{appliedEntries.length}</span> entries from APPLIED to ACTIVE.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outlineC5" size="sm" onClick={() => setShowApproveConfirm(false)}>Cancel</Button>
+              <Button variant="filledOutlineC7" size="sm" onClick={handleApproveAll}>
+                Approve
               </Button>
             </div>
           </div>

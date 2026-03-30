@@ -219,7 +219,7 @@ export async function addGenesisPassEntry(
 export async function updateGenesisPassEntry(
   cognitoToken: string,
   walletAddress: string,
-  data: { mintType?: string; source?: string },
+  data: { mintType?: string; source?: string; status?: "ACTIVE" | "APPLIED" | "LEGACY" | "WITHDRAWN" },
 ): Promise<void> {
   const url = `${ADMIN_API_URL}/genesis-pass/entries/${encodeURIComponent(walletAddress)}`;
   const response = await fetch(url, {
