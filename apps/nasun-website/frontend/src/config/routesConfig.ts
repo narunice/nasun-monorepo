@@ -375,11 +375,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       name: "navigation.wave1Campaign",
       path: "/wave1",
       subMenu: [
-        // {
-        //   name: "navigation.alliance",
-        //   path: "/wave1/alliance-nft",
-        //   element: Pages.AllianceNft,
-        // },
+        {
+          name: "navigation.alliance",
+          path: "/wave1/alliance-nft",
+          element: Pages.AllianceNft,
+          hidden: true,
+        },
         {
           name: "navigation.genesisPass",
           path: "/wave1/genesis-pass",
@@ -579,7 +580,7 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
     .map((route) => ({
       ...route.navItem!,
       name: t(route.navItem!.name as never),
-      subMenu: route.navItem!.subMenu?.map((subItem) => ({
+      subMenu: route.navItem!.subMenu?.filter((subItem) => !subItem.hidden).map((subItem) => ({
         ...subItem,
         name: t(subItem.name as never),
         path:
