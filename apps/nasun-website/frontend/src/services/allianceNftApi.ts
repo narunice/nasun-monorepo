@@ -52,6 +52,7 @@ export async function getAllianceStatus(cognitoToken: string): Promise<AllianceS
       "Content-Type": "application/json",
       Authorization: `Bearer ${cognitoToken}`,
     },
+    cache: "no-cache",
   });
 
   const data = await response.json();
