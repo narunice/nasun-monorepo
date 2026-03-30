@@ -12,7 +12,23 @@ function ChatLayer() {
   const { chatMode, setChatMode, isOnTradePage } = useChatMode();
   return (
     <>
-      {/* Desktop floating (xl+) */}
+      {/* Desktop chat FAB (xl+): visible when chat is not open and not on TradePage */}
+      {chatMode !== 'floating' && !isOnTradePage && (
+        <button
+          className="hidden xl:flex fixed z-40 bottom-6 right-6 w-12 h-12
+            rounded-full bg-theme-accent text-white shadow-lg
+            items-center justify-center hover:opacity-90 transition-opacity"
+          onClick={() => setChatMode('floating')}
+          aria-label="Open chat"
+          title="Open chat"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+      )}
+
+      {/* Desktop floating popup (xl+) */}
       {chatMode === 'floating' && (
         <div className="hidden xl:block">
           <FloatingChatPopup
@@ -21,7 +37,8 @@ function ChatLayer() {
           />
         </div>
       )}
-      {/* Mobile/tablet (< xl) */}
+
+      {/* Mobile/tablet drawer (< xl) */}
       <MobileChatDrawer />
     </>
   );
