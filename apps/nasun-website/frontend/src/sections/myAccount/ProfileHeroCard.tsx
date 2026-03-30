@@ -8,7 +8,7 @@
  * Connected Accounts management has been extracted to ConnectedAccountsCard.
  */
 
-import { FC, useState, useCallback, useMemo, useEffect } from "react";
+import { FC, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/features/auth";
 import { getPointsUser } from "@/services/activityPointsApi";
 import type { UserPoints } from "@/types/points";
@@ -294,13 +294,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
         {showPoints && (
           <>
             <div className="border border-dashed border-nasun-white/10 rounded-lg p-4">
-              <h6 className=" text-nasun-white uppercase mb-1 flex items-center gap-2">
+              <h6 className=" text-nasun-white mb-1 flex items-center gap-2">
                 Ecosystem Points
                 <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
+                <InfoTooltip text="Activate a Nasun membership NFT to start earning Ecosystem Points. Your on-chain activity score, multiplier bonuses, and bonus points are combined into a daily total. During this experimental phase, the scoring formula may be adjusted frequently at the operator's discretion as we fix bugs and fine-tune the balance." />
               </h6>
-              <p className="text-nasun-white/40 text-sm mb-3">
+              <p className="text-nasun-white/80 text-sm mb-3">
                 Base Score (Daily Missions) x NFT Multiplier + Bonus Points
               </p>
 
@@ -396,3 +397,41 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
     </OuterBox>
   );
 };
+
+function InfoTooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-4 w-4 items-center justify-center rounded-full border border-nasun-white/50 text-[10px] leading-none text-nasun-white/70 hover:border-nasun-white/80 hover:text-nasun-white transition-colors"
+        aria-label="More info"
+      >
+        i
+      </button>
+      {open && (
+        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-72 -translate-x-1/2 rounded-lg border border-nasun-c6/60 bg-nasun-c6 p-3 text-left text-xs leading-relaxed text-nasun-white/70 shadow-lg">
+          {text}
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-nasun-c6" />
+        </div>
+      )}
+    </div>
+  );
+}

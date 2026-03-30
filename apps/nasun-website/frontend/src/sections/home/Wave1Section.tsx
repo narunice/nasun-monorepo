@@ -90,6 +90,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
       line2: "Active holders may also qualify for future points airdrops.",
       cta: "Mint Now",
       to: "/dev/alliance-nft",
+      disabled: true,
     },
     {
       title: "Genesis Pass",
@@ -97,6 +98,7 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
       line2: "Boost points 2x for ecosystem activities and qualification for future airdrops.",
       cta: "Join the Allowlist",
       to: "/wave1/genesis-pass",
+      disabled: false,
     },
   ] as const;
 
@@ -156,12 +158,8 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             {/* Left: cards (wider) */}
             <div className="flex flex-col w-full lg:w-[58%] order-2 lg:order-1 mt-6 lg:mt-0">
               <div className="flex flex-col gap-6 lg:gap-8">
-                {cards.map((card) => (
-                  <Link
-                    key={card.to}
-                    to={card.to}
-                    className="block w-full group transition-all duration-300 ease-out"
-                  >
+                {cards.map((card) => {
+                  const inner = (
                     <div className="flex flex-col bg-white/70 backdrop-blur-sm rounded-lg p-5 md:p-6 border border-white/50 shadow-sm group-hover:bg-white/85 transition-colors">
                       <h6 className="mb-2 font-semibold text-nasun-black tracking-wide">
                         {card.title}
@@ -172,13 +170,25 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
                         {card.line2}
                       </p>
                       <div className="flex justify-end mt-3">
-                        <ButtonV3 variant="gradient" size="sm" className="w-[160px]">
+                        <ButtonV3 variant="gradient" size="sm" className="w-[160px]" disabled={card.disabled}>
                           {card.cta}
                         </ButtonV3>
                       </div>
                     </div>
-                  </Link>
-                ))}
+                  );
+                  if (card.disabled) {
+                    return (
+                      <div key={card.to} className="block w-full group transition-all duration-300 ease-out">
+                        {inner}
+                      </div>
+                    );
+                  }
+                  return (
+                    <Link key={card.to} to={card.to} className="block w-full group transition-all duration-300 ease-out">
+                      {inner}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
