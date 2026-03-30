@@ -200,10 +200,12 @@ function TradePageContent() {
   useKeyboardShortcuts(!isSimple, { onToggleShortcutsPanel: toggleShortcutsPanel }); // Pro mode only
   const { chatMode, setChatMode, setOnTradePage } = useChatMode();
   // TradePage is a singleton route, no refcount needed
+  // Always open chat when entering TradePage
   useEffect(() => {
     setOnTradePage(true);
+    setChatMode('docked');
     return () => setOnTradePage(false);
-  }, [setOnTradePage]);
+  }, [setOnTradePage, setChatMode]);
   const [newsVisible, setNewsVisible] = useState(true);
   const [chartView, setChartView] = useState<ChartView>("price");
   const tour = useOnboardingTour();

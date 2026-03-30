@@ -10,8 +10,11 @@ import { Link } from 'react-router-dom';
 import { useWallet, useBalance, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { FIRST_TRADE_STORAGE_KEY } from '../../trading/hooks/useFirstTradeCelebration';
 import { ORDER_FILL_EVENT } from '../../trading/hooks/useOrderFillNotifier';
+import { LOTTERY_PURCHASED_KEY, LOTTERY_PURCHASE_EVENT } from '../../lottery/hooks/useLotteryActions';
+import { NETWORK_CONFIG } from '../../../config/network';
 
 const DISMISS_KEY = 'pado:gettingStartedDismissed';
+const gated = NETWORK_CONFIG.gamesOnlyMode;
 
 interface Step {
   id: string;
@@ -40,6 +43,10 @@ export function GettingStartedCard() {
     try { return !!localStorage.getItem(FIRST_TRADE_STORAGE_KEY); } catch { return false; }
   });
 
+  const [hasLotteryTicket, setHasLotteryTicket] = useState(() => {
+    try { return !!localStorage.getItem(LOTTERY_PURCHASED_KEY); } catch { return false; }
+  });
+
   // Listen for first trade event to update reactively
   useEffect(() => {
     if (hasTraded) return;
@@ -47,31 +54,57 @@ export function GettingStartedCard() {
     document.addEventListener(ORDER_FILL_EVENT, handler);
     return () => document.removeEventListener(ORDER_FILL_EVENT, handler);
   }, [hasTraded]);
+
+  // Listen for lottery purchase event to update reactively
+  useEffect(() => {
+    if (hasLotteryTicket) return;
+    const handler = () => setHasLotteryTicket(true);
+    document.addEventListener(LOTTERY_PURCHASE_EVENT, handler);
+    return () => document.removeEventListener(LOTTERY_PURCHASE_EVENT, handler);
+  }, [hasLotteryTicket]);
+
   const hasBalance = !!balance && Number(balance.totalBalance) > 0;
 
-  const steps: Step[] = useMemo(() => [
-    {
-      id: 'wallet',
-      label: 'Create Wallet',
-      description: 'Set up your wallet to start trading',
-      completed: isWalletConnected,
-    },
-    {
-      id: 'faucet',
-      label: 'Get Test Tokens',
-      description: 'Use the faucet in your wallet to get free tokens',
-      completed: hasBalance,
-    },
-    {
-      id: 'trade',
-      label: 'Buy a Lottery Ticket',
-      description: 'Pick 5 numbers and try your luck',
-      completed: hasTraded,
-      action: isWalletConnected && hasBalance
-        ? { label: 'Go to Lottery', to: '/lottery' }
-        : undefined,
-    },
-  ], [isWalletConnected, hasBalance, hasTraded]);
+  const steps: Step[] = useMemo(() => {
+    const base: Step[] = [
+      {
+        id: 'wallet',
+        label: 'Create Wallet',
+        description: 'Set up your wallet to start trading',
+        completed: isWalletConnected,
+      },
+      {
+        id: 'faucet',
+        label: 'Get Test Tokens',
+        description: 'Use the faucet in your wallet to get free tokens',
+        completed: hasBalance,
+      },
+      {
+        id: 'lottery',
+        label: 'Buy a Lottery Ticket',
+        description: 'Pick 5 numbers and try your luck',
+        completed: hasLotteryTicket,
+        action: isWalletConnected && hasBalance
+          ? { label: 'Go to Lottery', to: '/games/lottery' }
+          : undefined,
+      },
+    ];
+
+    // Add spot trading step when not in games-only mode
+    if (!gated) {
+      base.push({
+        id: 'trade',
+        label: 'Make Your First Trade',
+        description: 'Place a spot order on the orderbook',
+        completed: hasTraded,
+        action: isWalletConnected && hasBalance
+          ? { label: 'Go to Spot', to: '/markets/spot' }
+          : undefined,
+      });
+    }
+
+    return base;
+  }, [isWalletConnected, hasBalance, hasLotteryTicket, hasTraded]);
 
   const completedCount = steps.filter((s) => s.completed).length;
   const allComplete = completedCount === steps.length;
