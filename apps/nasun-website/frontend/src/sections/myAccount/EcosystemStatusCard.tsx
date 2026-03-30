@@ -13,7 +13,7 @@ import {
   getEcosystemScore,
   type EcosystemScoreData,
 } from "@/services/ecosystemScoreApi";
-import { Link } from "react-router-dom";
+
 
 interface EcosystemStatusCardProps {
   className?: string;
@@ -71,12 +71,9 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
         <h3 className="text-lg font-semibold text-nasun-white">
           Ecosystem Score
         </h3>
-        <Link
-          to="/ecosystem/leaderboard"
-          className="text-sm text-nasun-c3 hover:underline"
-        >
+        <span className="text-sm text-nasun-white/30 cursor-not-allowed">
           View Leaderboard
-        </Link>
+        </span>
       </div>
 
       {loading ? (

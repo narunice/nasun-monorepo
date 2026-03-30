@@ -43,7 +43,8 @@ import { RankHistoryCard } from "../../sections/myAccount/RankHistoryCard";
 import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 import { DailyMissionsCard } from "../../sections/myAccount/DailyMissionsCard";
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
-import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
+import { NftShowcaseCard } from "../../sections/myAccount/NftShowcaseCard";
+// import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
 
 const DevMyAccountPage = () => {
   const { t } = useTranslation(["myAccount", "common"]);
@@ -145,7 +146,7 @@ const DevMyAccountPage = () => {
         {/* Bento Grid Dashboard Layout */}
         {/* Row-by-row sequential layout (no row-span) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* Row 1: ProfileHeroCard(2col) + CompactNftStatus(1col) */}
+          {/* Row 1: ProfileHeroCard(2col) + NftShowcaseCard(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <ProfileHeroCard showPoints className="order-1 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
@@ -154,61 +155,54 @@ const DevMyAccountPage = () => {
 
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <CompactNftStatus showAllSections className="order-2 lg:order-none col-span-1" />
+              <NftShowcaseCard className="order-2 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 2: EcosystemStatusCard(3col) */}
+          {/* Row 2: DailyMissionsCard(2col) + CompactNftStatus(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <EcosystemStatusCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
-            </Suspense>
-          </ErrorBoundary>
-
-          {/* Row 3: DailyMissionsCard(2col) + ReferralCard(1col) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-            <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DailyMissionsCard className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
-            </Suspense>
-          </ErrorBoundary>
-
-          {/* <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-            <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ReferralCard className="order-6 lg:order-none col-span-1" />
-            </Suspense>
-          </ErrorBoundary> */}
-
-          {/* Row 4: RankHistoryCard(2col) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-            <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <RankHistoryCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
-            </Suspense>
-          </ErrorBoundary>
-
-          {/* Row 5: ConnectedAccountsCard(2col) + GovernanceCard(1col) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
-            <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ConnectedAccountsCard className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
+              <DailyMissionsCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <GovernanceCard className="order-9 lg:order-none col-span-1" />
+              <CompactNftStatus className="order-4 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 6: AssetsCard(2col) */}
+          {/* Row 3: RankHistoryCard(2col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <RankHistoryCard className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Row 7: DangerZoneCard(3col) */}
+          {/* Row 4: ConnectedAccountsCard(2col) + GovernanceCard(1col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-11 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <ConnectedAccountsCard className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
+            </Suspense>
+          </ErrorBoundary>
+
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <GovernanceCard className="order-7 lg:order-none col-span-1" />
+            </Suspense>
+          </ErrorBoundary>
+
+          {/* Row 5: AssetsCard(2col) */}
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <AssetsCard walletAddress={walletAddress} className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+            </Suspense>
+          </ErrorBoundary>
+
+          {/* Row 6: DangerZoneCard(3col) */}
+          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <DangerZoneCard className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>

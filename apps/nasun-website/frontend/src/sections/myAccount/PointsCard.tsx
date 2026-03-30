@@ -84,7 +84,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (!hasValidAddress) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h4 className="text-lg font-semibold uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h4>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
           <p className="text-nasun-white/50 text-center text-sm">
             Connect Nasun Wallet to view activity points
@@ -98,7 +98,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (isLoading) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h4 className="text-lg font-semibold uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h4>
         <div className="flex items-center justify-center py-8">
           <Spinner />
         </div>
@@ -110,7 +110,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (error) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h4 className="text-lg font-semibold uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h4>
         <p className="text-red-400 text-sm text-center py-4">Failed to load points</p>
       </OuterBox>
     );
@@ -120,7 +120,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
   if (!points) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+        <h4 className="text-lg font-semibold uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h4>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
           <p className="text-nasun-white/50 text-center text-sm">
             No activity points yet
@@ -141,7 +141,7 @@ export const PointsCard: FC<PointsCardProps> = ({ className = "" }) => {
 
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      <h5 className="font-medium uppercase text-nasun-white mb-3 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h5>
+      <h4 className="text-lg font-semibold uppercase text-nasun-white mb-4 flex items-center gap-2">ACTIVITY POINTS <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span></h4>
 
       {/* Total Points */}
       <div className="text-3xl font-bold text-nasun-white mb-3">
