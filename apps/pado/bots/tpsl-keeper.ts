@@ -684,8 +684,20 @@ async function main() {
     }
   }
 
-  // Start HTTP server
+  // Start HTTP server with EADDRINUSE handling
   const server = createServer(createHttpHandler(store, client, keeperAddress, startTime));
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[keeper] Port ${PORT} already in use. Retrying in 3s...`);
+      setTimeout(() => {
+        server.close();
+        server.listen(PORT);
+      }, 3000);
+    } else {
+      console.error('[keeper] Server error:', err);
+      process.exit(1);
+    }
+  });
   server.listen(PORT, () => {
     console.log(`[keeper] HTTP API listening on port ${PORT}`);
   });
