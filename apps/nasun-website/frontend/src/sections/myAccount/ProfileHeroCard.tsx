@@ -219,12 +219,12 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
         {/* Header: Avatar + Name */}
         <div className="flex items-center gap-4">
           <div className="relative">
-            {(walletIdenticonUrl || (profileImageUrl && !imageError)) ? (
+            {(profileImageUrl && !imageError) || walletIdenticonUrl ? (
               <img
-                src={walletIdenticonUrl ?? profileImageUrl!}
+                src={profileImageUrl && !imageError ? profileImageUrl : walletIdenticonUrl!}
                 alt={displayName}
                 className={`w-16 h-16 rounded-2xl object-cover bg-gray-800 ${
-                  walletIdenticonUrl || imageLoaded ? "opacity-100" : "opacity-0"
+                  (profileImageUrl && !imageError) ? imageLoaded ? "opacity-100" : "opacity-0" : "opacity-100"
                 }`}
                 onError={handleImageError}
                 onLoad={handleImageLoad}
