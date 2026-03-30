@@ -24,10 +24,11 @@ function safeInt(raw: string | undefined, fallback: number): number {
 // Each activated NFT type adds to the base.
 export const MULTIPLIER_CONFIG = {
   alliance: safeFloat(process.env.ECO_MULT_ALLIANCE, 1.0),
-  genesisPass: safeFloat(process.env.ECO_MULT_GENESIS_PASS, 1.5),
+  // Note: separate from GENESIS_PASS_MULTIPLIER in points.ts (per-tx multiplier, also 2.0)
+  genesisPass: safeFloat(process.env.ECO_MULT_GENESIS_PASS, 2.0),
   battalion: {
-    base: safeFloat(process.env.ECO_MULT_BATTALION_BASE, 1.0),
-    logCoefficient: safeFloat(process.env.ECO_MULT_BATTALION_LOG_K, 0.8),
+    perUnit: safeFloat(process.env.ECO_MULT_BATTALION_PER_UNIT, 0.3),
+    maxUnits: safeInt(process.env.ECO_MULT_BATTALION_MAX_UNITS, 10),
   },
 };
 
@@ -76,11 +77,8 @@ export function getActivationBonus(act: NftActivation): number {
     case 'genesis-pass':
       return MULTIPLIER_CONFIG.genesisPass;
     case 'battalion': {
-      const count = Math.max(1, act.nftCount);
-      return (
-        MULTIPLIER_CONFIG.battalion.base +
-        Math.log(count) * MULTIPLIER_CONFIG.battalion.logCoefficient
-      );
+      const count = Math.min(Math.max(0, act.nftCount), MULTIPLIER_CONFIG.battalion.maxUnits);
+      return count * MULTIPLIER_CONFIG.battalion.perUnit;
     }
     default:
       // Sanitize external API data before logging (prevent log injection)

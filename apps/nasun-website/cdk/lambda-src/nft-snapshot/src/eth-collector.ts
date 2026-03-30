@@ -6,15 +6,17 @@
  *
  * Flow:
  * 1. Read enabled collections from nasun-nft-collections
- * 2. Read user wallets from UserProfiles (ETH addresses only)
- * 3. For each wallet, query Alchemy getNFTsForOwner
+ * 2. Read user wallets from UserProfiles (linkedAccounts.metamask.walletAddress)
+ * 3. For each wallet, query Alchemy getNFTsForOwner (with pagination)
  * 4. Write ownership records to nasun-nft-ownership table
+ * 5. Clean up stale ETH#LATEST records for wallets no longer holding NFTs
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
   ScanCommand,
+  QueryCommand,
   BatchWriteCommand,
   PutCommand,
 } from '@aws-sdk/lib-dynamodb';
@@ -38,8 +40,13 @@ const ALCHEMY_BASE_URL = process.env.ALCHEMY_BASE_URL || 'https://eth-mainnet.g.
 const ALCHEMY_TIMEOUT_MS = 10_000;
 const MAX_WALLETS_PER_RUN = 500;
 const BATCH_WRITE_SIZE = 25;
+const MAX_ALCHEMY_PAGES = 10;
 
 export async function handler(event: EthCollectorEvent) {
+  if (!ALCHEMY_API_KEY) {
+    throw new Error('ALCHEMY_API_KEY is required');
+  }
+
   const startTime = Date.now();
   const today = event.customDate || new Date().toISOString().slice(0, 10);
   console.log(`[eth-collector] Starting ETH NFT snapshot for ${today}`);
@@ -94,10 +101,14 @@ export async function handler(event: EthCollectorEvent) {
 
   console.log(`[eth-collector] Collected ${records.length} wallets with NFTs (${errorCount} errors)`);
 
-  // 4. Write to DynamoDB
+  // 4. Write to DynamoDB (dated + LATEST records)
+  const todayWalletSks = new Set(records.map((r) => r.sk));
   await batchWriteRecords(records, today);
 
-  // 5. Write metadata
+  // 5. Clean up stale LATEST records for wallets that no longer hold NFTs
+  await cleanupStaleLatestRecords(todayWalletSks);
+
+  // 6. Write metadata
   const meta: SnapshotMeta = {
     pk: 'META',
     sk: `ETH#${today}`,
@@ -127,7 +138,7 @@ async function getEnabledCollections(): Promise<NftCollection[]> {
 }
 
 async function getUserEthWallets(): Promise<string[]> {
-  // Scan UserProfiles for users with ethWalletAddress field
+  // Scan UserProfiles for users with linked MetaMask wallet
   const wallets: string[] = [];
   let lastKey: Record<string, unknown> | undefined;
 
@@ -135,14 +146,21 @@ async function getUserEthWallets(): Promise<string[]> {
     const result = await client.send(
       new ScanCommand({
         TableName: PROFILES_TABLE,
-        FilterExpression: 'attribute_exists(ethWalletAddress)',
-        ProjectionExpression: 'ethWalletAddress',
+        FilterExpression: 'attribute_exists(#la.#mm.#wa)',
+        ProjectionExpression: '#la.#mm.#wa',
+        ExpressionAttributeNames: {
+          '#la': 'linkedAccounts',
+          '#mm': 'metamask',
+          '#wa': 'walletAddress',
+        },
         ExclusiveStartKey: lastKey,
       }),
     );
 
     for (const item of result.Items || []) {
-      const addr = item.ethWalletAddress as string;
+      const la = item.linkedAccounts as Record<string, unknown> | undefined;
+      const mm = la?.metamask as Record<string, unknown> | undefined;
+      const addr = mm?.walletAddress as string | undefined;
       if (addr && addr.startsWith('0x')) {
         wallets.push(addr.toLowerCase());
       }
@@ -160,35 +178,50 @@ async function queryAlchemyNfts(
   contractAddresses: string[],
   collections: NftCollection[],
 ): Promise<EthNftHolding[]> {
-  const params = new URLSearchParams({
-    owner: walletAddress,
-    withMetadata: 'false',
-    pageSize: '100',
-  });
-
-  // Add contract filter
-  for (const addr of contractAddresses) {
-    params.append('contractAddresses[]', addr);
-  }
-
-  const url = `${ALCHEMY_BASE_URL}/${ALCHEMY_API_KEY}/getNFTsForOwner?${params}`;
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(ALCHEMY_TIMEOUT_MS),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Alchemy HTTP ${res.status}`);
-  }
-
-  const data = (await res.json()) as AlchemyNftsResponse;
-
-  // Group by contract address
   const byContract = new Map<string, string[]>();
-  for (const nft of data.ownedNfts) {
-    const addr = nft.contract.address.toLowerCase();
-    if (!byContract.has(addr)) byContract.set(addr, []);
-    byContract.get(addr)!.push(nft.tokenId);
-  }
+  let pageKey: string | undefined;
+  let pageCount = 0;
+
+  do {
+    const params = new URLSearchParams({
+      owner: walletAddress,
+      withMetadata: 'false',
+      pageSize: '100',
+    });
+
+    for (const addr of contractAddresses) {
+      params.append('contractAddresses[]', addr);
+    }
+
+    if (pageKey) {
+      params.set('pageKey', pageKey);
+    }
+
+    const url = `${ALCHEMY_BASE_URL}/${ALCHEMY_API_KEY}/getNFTsForOwner?${params}`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(ALCHEMY_TIMEOUT_MS),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Alchemy HTTP ${res.status}`);
+    }
+
+    const data = (await res.json()) as AlchemyNftsResponse;
+
+    for (const nft of data.ownedNfts) {
+      const addr = nft.contract.address.toLowerCase();
+      if (!byContract.has(addr)) byContract.set(addr, []);
+      byContract.get(addr)!.push(nft.tokenId);
+    }
+
+    pageKey = data.pageKey;
+    pageCount++;
+
+    if (pageCount >= MAX_ALCHEMY_PAGES) {
+      console.warn(`[eth-collector] Hit max pages (${MAX_ALCHEMY_PAGES}) for ${walletAddress.slice(0, 10)}...`);
+      break;
+    }
+  } while (pageKey);
 
   // Build holdings with collection names
   const collectionMap = new Map(collections.map((c) => [c.contractAddress.toLowerCase(), c]));
@@ -217,14 +250,73 @@ async function batchWriteRecords(records: EthOwnershipRecord[], today: string) {
 
   for (let i = 0; i < allItems.length; i += BATCH_WRITE_SIZE) {
     const batch = allItems.slice(i, i + BATCH_WRITE_SIZE);
-    await client.send(
-      new BatchWriteCommand({
-        RequestItems: {
-          [OWNERSHIP_TABLE]: batch.map((item) => ({
-            PutRequest: { Item: item },
-          })),
+    let unprocessed = batch.map((item) => ({ PutRequest: { Item: item } }));
+
+    for (let retry = 0; retry < 3 && unprocessed.length > 0; retry++) {
+      const result = await client.send(
+        new BatchWriteCommand({
+          RequestItems: { [OWNERSHIP_TABLE]: unprocessed },
+        }),
+      );
+      unprocessed = (result.UnprocessedItems?.[OWNERSHIP_TABLE] ?? []) as typeof unprocessed;
+      if (unprocessed.length > 0 && retry < 2) {
+        await new Promise((r) => setTimeout(r, 100 * 2 ** retry));
+      }
+    }
+  }
+}
+
+/**
+ * Remove stale ETH#LATEST records for wallets that no longer hold any tracked NFTs.
+ * This prevents the ownership-verifier from seeing phantom holdings.
+ */
+async function cleanupStaleLatestRecords(currentWalletSks: Set<string>) {
+  // Query all existing ETH#LATEST WALLET# records
+  let lastKey: Record<string, unknown> | undefined;
+  const staleKeys: Array<{ pk: string; sk: string }> = [];
+
+  do {
+    const result = await client.send(
+      new QueryCommand({
+        TableName: OWNERSHIP_TABLE,
+        KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': 'ETH#LATEST',
+          ':prefix': 'WALLET#',
         },
+        ProjectionExpression: 'pk, sk',
+        ExclusiveStartKey: lastKey,
       }),
     );
+
+    for (const item of result.Items || []) {
+      const sk = item.sk as string;
+      if (!currentWalletSks.has(sk)) {
+        staleKeys.push({ pk: 'ETH#LATEST', sk });
+      }
+    }
+
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
+
+  if (staleKeys.length === 0) return;
+
+  console.log(`[eth-collector] Cleaning up ${staleKeys.length} stale LATEST records`);
+
+  for (let i = 0; i < staleKeys.length; i += BATCH_WRITE_SIZE) {
+    const batch = staleKeys.slice(i, i + BATCH_WRITE_SIZE);
+    let unprocessed = batch.map((key) => ({ DeleteRequest: { Key: key } }));
+
+    for (let retry = 0; retry < 3 && unprocessed.length > 0; retry++) {
+      const result = await client.send(
+        new BatchWriteCommand({
+          RequestItems: { [OWNERSHIP_TABLE]: unprocessed },
+        }),
+      );
+      unprocessed = (result.UnprocessedItems?.[OWNERSHIP_TABLE] ?? []) as typeof unprocessed;
+      if (unprocessed.length > 0 && retry < 2) {
+        await new Promise((r) => setTimeout(r, 100 * 2 ** retry));
+      }
+    }
   }
 }

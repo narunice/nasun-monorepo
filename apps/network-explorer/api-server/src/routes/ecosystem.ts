@@ -15,7 +15,7 @@ import {
   getActivationsForUser,
   getMatviewStatus,
 } from '../scanner/ecosystem-cache.js';
-import { getActivationBonus } from '../config/ecosystem.js';
+import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
 
 const app = new Hono();
 
@@ -52,35 +52,50 @@ app.get('/score/:identityId', async (c) => {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
 
-  const getScore = cached(
+  const getData = cached(
     `eco-score-${identityId}`,
     5 * 60 * 1000,
     async () => {
-      // Daily base score (today)
-      const [todayRow] = await pointsDb!`
-        SELECT base_score::int as base_score
-        FROM ecosystem_daily_scores
-        WHERE identity_id = ${identityId}
-          AND day = CURRENT_DATE
-      `;
+      const [todayRow, weeklyRow, allTimeRow] = await Promise.all([
+        pointsDb!`
+          SELECT base_score::int as base_score
+          FROM ecosystem_daily_scores
+          WHERE identity_id = ${identityId}
+            AND day = CURRENT_DATE
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(base_score), 0)::int as base_score,
+                 COUNT(*)::int as active_days
+          FROM ecosystem_daily_scores
+          WHERE identity_id = ${identityId}
+            AND day >= CURRENT_DATE - INTERVAL '6 days'
+            AND day <= CURRENT_DATE
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(base_score), 0)::int as base_score,
+                 COUNT(*)::int as active_days
+          FROM ecosystem_daily_scores
+          WHERE identity_id = ${identityId}
+        `.then(r => r[0]),
+      ]);
 
-      // Weekly base score (last 7 days including today)
-      const [weeklyRow] = await pointsDb!`
-        SELECT COALESCE(SUM(base_score), 0)::int as base_score,
-               COUNT(*)::int as active_days
-        FROM ecosystem_daily_scores
-        WHERE identity_id = ${identityId}
-          AND day >= CURRENT_DATE - INTERVAL '6 days'
-          AND day <= CURRENT_DATE
-      `;
+      // Alliance penalty check (PK lookup, <1ms)
+      const activations = getActivationsForUser(identityId);
+      const hasAlliance = activations.some(a => a.nftType === 'alliance');
+      const hasGenesis = activations.some(a => a.nftType === 'genesis-pass');
 
-      // All-time base score
-      const [allTimeRow] = await pointsDb!`
-        SELECT COALESCE(SUM(base_score), 0)::int as base_score,
-               COUNT(*)::int as active_days
-        FROM ecosystem_daily_scores
-        WHERE identity_id = ${identityId}
-      `;
+      let isPenalized = false;
+      if (hasAlliance && !hasGenesis) {
+        const [penalty] = await pointsDb!`
+          SELECT 1 FROM alliance_penalties WHERE identity_id = ${identityId}
+        `;
+        if (penalty) isPenalized = true;
+      }
+
+      const effectiveActivations = isPenalized
+        ? activations.filter(a => a.nftType !== 'alliance')
+        : activations;
+      const multiplier = calculateMultiplier(effectiveActivations);
 
       return {
         todayBaseScore: todayRow?.base_score ?? 0,
@@ -88,34 +103,36 @@ app.get('/score/:identityId', async (c) => {
         weeklyActiveDays: weeklyRow?.active_days ?? 0,
         allTimeBaseScore: allTimeRow?.base_score ?? 0,
         allTimeActiveDays: allTimeRow?.active_days ?? 0,
+        multiplier,
+        activations,
+        isPenalized,
       };
     },
   );
 
-  const scores = await getScore();
-  const multiplier = getMultiplierForUser(identityId);
-  const activations = getActivationsForUser(identityId);
+  const scores = await getData();
 
   const data = {
     identityId,
-    multiplier: roundTo2(multiplier),
-    activations: activations.map((a) => ({
+    multiplier: roundTo2(scores.multiplier),
+    isPenalized: scores.isPenalized,
+    activations: scores.activations.map((a) => ({
       nftType: a.nftType,
       nftCount: a.nftCount,
       bonus: roundTo2(getActivationBonus(a)),
     })),
     daily: {
       baseScore: scores.todayBaseScore,
-      ecosystemScore: roundTo2(scores.todayBaseScore * multiplier),
+      ecosystemScore: roundTo2(scores.todayBaseScore * scores.multiplier),
     },
     weekly: {
       baseScore: scores.weeklyBaseScore,
-      ecosystemScore: roundTo2(scores.weeklyBaseScore * multiplier),
+      ecosystemScore: roundTo2(scores.weeklyBaseScore * scores.multiplier),
       activeDays: scores.weeklyActiveDays,
     },
     allTime: {
       baseScore: scores.allTimeBaseScore,
-      ecosystemScore: roundTo2(scores.allTimeBaseScore * multiplier),
+      ecosystemScore: roundTo2(scores.allTimeBaseScore * scores.multiplier),
       activeDays: scores.allTimeActiveDays,
     },
   };
@@ -138,48 +155,61 @@ app.get('/leaderboard', async (c) => {
   // We fetch more than requested to account for multiplier reordering.
   const fetchLimit = Math.min(limit + offset + 200, 500);
 
-  const getLeaderboard = cached(
-    `eco-leaderboard-${period}-${fetchLimit}`,
+  const getScoredLeaderboard = cached(
+    `eco-leaderboard-scored-${period}-${fetchLimit}`,
     5 * 60 * 1000,
     async () => {
-      if (period === 'daily') {
-        return await pointsDb!`
-          SELECT identity_id, base_score::int as base_score
-          FROM ecosystem_daily_scores
-          WHERE day = CURRENT_DATE
-          ORDER BY base_score DESC
-          LIMIT ${fetchLimit}
+      const rows = period === 'daily'
+        ? await pointsDb!`
+            SELECT identity_id, base_score::int as base_score
+            FROM ecosystem_daily_scores
+            WHERE day = CURRENT_DATE
+            ORDER BY base_score DESC
+            LIMIT ${fetchLimit}
+          `
+        : await pointsDb!`
+            SELECT identity_id,
+                   SUM(base_score)::int as base_score,
+                   COUNT(*)::int as active_days
+            FROM ecosystem_daily_scores
+            WHERE day >= CURRENT_DATE - INTERVAL '6 days'
+              AND day <= CURRENT_DATE
+            GROUP BY identity_id
+            ORDER BY SUM(base_score) DESC
+            LIMIT ${fetchLimit}
+          `;
+
+      // Batch penalty check inside cache
+      const leaderboardIds = rows.map(r => r.identity_id as string);
+      let penalizedSet = new Set<string>();
+      if (leaderboardIds.length > 0) {
+        const penalizedRows = await pointsDb!`
+          SELECT identity_id FROM alliance_penalties
+          WHERE identity_id = ANY(${leaderboardIds})
         `;
-      } else {
-        return await pointsDb!`
-          SELECT identity_id,
-                 SUM(base_score)::int as base_score,
-                 COUNT(*)::int as active_days
-          FROM ecosystem_daily_scores
-          WHERE day >= CURRENT_DATE - INTERVAL '6 days'
-            AND day <= CURRENT_DATE
-          GROUP BY identity_id
-          ORDER BY SUM(base_score) DESC
-          LIMIT ${fetchLimit}
-        `;
+        penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
       }
+
+      return rows.map((r) => {
+        const id = r.identity_id as string;
+        let activations = getActivationsForUser(id);
+        if (penalizedSet.has(id)) {
+          activations = activations.filter(a => a.nftType !== 'alliance');
+        }
+        const multiplier = calculateMultiplier(activations);
+        const baseScore = r.base_score as number;
+        return {
+          identityId: id,
+          baseScore,
+          multiplier: roundTo2(multiplier),
+          ecosystemScore: roundTo2(baseScore * multiplier),
+          ...(period === 'weekly' ? { activeDays: r.active_days as number } : {}),
+        };
+      });
     },
   );
 
-  const rows = await getLeaderboard();
-
-  // Apply multipliers and re-sort
-  const scored = rows.map((r) => {
-    const multiplier = getMultiplierForUser(r.identity_id as string);
-    const baseScore = r.base_score as number;
-    return {
-      identityId: r.identity_id as string,
-      baseScore,
-      multiplier: roundTo2(multiplier),
-      ecosystemScore: roundTo2(baseScore * multiplier),
-      ...(period === 'weekly' ? { activeDays: r.active_days as number } : {}),
-    };
-  });
+  const scored = await getScoredLeaderboard();
 
   scored.sort((a, b) => b.ecosystemScore - a.ecosystemScore);
 

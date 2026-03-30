@@ -20,7 +20,10 @@ import {
   maybeRefreshMatview,
   isMatviewStale,
   getMatviewStatus,
+  getActivationsCacheMap,
 } from './ecosystem-cache.js';
+import { getIdentityToWalletMap } from './referral-bonus.js';
+import { runDailyNftChecks } from './daily-nft-check.js';
 import { rpcCall } from '../rpc.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
@@ -31,6 +34,7 @@ let walletCacheLastRefresh = 0;
 
 let isScanning = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
+let lastDailyNftCheckDate = '';
 
 // --- Public API ---
 
@@ -119,7 +123,23 @@ async function scanLoop(): Promise<void> {
       console.log(
         `[Points] Scan complete: ${totalProcessed} points recorded in ${elapsed}s`,
       );
+    }
 
+    // Daily NFT checks: alliance penalty + genesis passive (once per day)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (todayStr !== lastDailyNftCheckDate) {
+      try {
+        await runDailyNftChecks(
+          getActivationsCacheMap(),
+          getIdentityToWalletMap(),
+        );
+        lastDailyNftCheckDate = todayStr;
+      } catch (err) {
+        console.error('[DailyNftCheck] Error (non-fatal):', (err as Error).message);
+      }
+    }
+
+    if (totalProcessed > 0) {
       // Refresh ecosystem matview when new data was processed
       try {
         await maybeRefreshMatview();
