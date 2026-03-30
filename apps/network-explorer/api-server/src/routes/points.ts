@@ -1,9 +1,60 @@
 import { Hono } from 'hono';
 import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
+import { rpcCall } from '../rpc.js';
 import { getScannerHealth } from '../scanner/points-scanner.js';
 
 const app = new Hono();
+
+// Governance Dashboard object ID (from devnet-ids.json)
+const GOVERNANCE_DASHBOARD_ID =
+  '0xc6eff35e83378d77e1ef7214cac1b447b6e486c5ba1daa0ae0ca88bef2d1f0f2';
+
+// Global cache: check if any active governance proposals exist (shared across all users)
+const getHasActiveProposals = cached(
+  'governance-active-proposals',
+  5 * 60 * 1000,
+  async (): Promise<boolean> => {
+    // 1. Fetch dashboard to get proposal IDs
+    const dashboard = await rpcCall<{
+      data?: {
+        content?: {
+          dataType: string;
+          fields?: { proposals_ids?: string[] };
+        };
+      };
+    }>('sui_getObject', [GOVERNANCE_DASHBOARD_ID, { showContent: true }]);
+
+    const proposalIds =
+      dashboard.data?.content?.fields?.proposals_ids ?? [];
+    if (proposalIds.length === 0) return false;
+
+    // 2. Batch fetch proposals to check active status
+    // TODO: batch in chunks of 50 if proposal count grows
+    const proposals = await rpcCall<
+      Array<{
+        data?: {
+          content?: {
+            dataType: string;
+            fields?: {
+              expiration?: string | number;
+              status?: { variant?: string };
+            };
+          };
+        };
+      }>
+    >('sui_multiGetObjects', [proposalIds, { showContent: true }]);
+
+    const now = Date.now();
+    return proposals.some((p) => {
+      const fields = p.data?.content?.fields;
+      if (!fields) return false;
+      const isDelisted = fields.status?.variant === 'Delisted';
+      const isExpired = Number(fields.expiration ?? 0) < now;
+      return !isDelisted && !isExpired;
+    });
+  },
+);
 
 const ALLOWED_LIMITS = [25, 50, 100] as const;
 
@@ -144,9 +195,12 @@ app.get('/user/:address', async (c) => {
     },
   );
 
-  const [data, todayCategories] = await Promise.all([
+  // Fetch user data + governance active proposals in parallel
+  // hasActiveProposals: fail-open (true on error) so governance mission shows by default
+  const [data, todayCategories, hasActiveProposals] = await Promise.all([
     getUserPoints(),
     getTodayCategories(),
+    getHasActiveProposals().catch(() => true),
   ]);
 
   if (!data) {
@@ -154,7 +208,7 @@ app.get('/user/:address', async (c) => {
   }
 
   c.header('Cache-Control', 'public, max-age=60');
-  return c.json({ data: { ...data, todayCategories } });
+  return c.json({ data: { ...data, todayCategories, hasActiveProposals } });
 });
 
 // GET /api/v1/points/referral-stats?referrer=:identityId
@@ -187,6 +241,7 @@ app.get('/referral-stats', async (c) => {
         FROM activity_points
         WHERE identity_id = ${referrer}
           AND category = 'referral-bonus'
+          AND activity_type = 'l1-bonus'
           AND NOT flagged
       `;
       return {
