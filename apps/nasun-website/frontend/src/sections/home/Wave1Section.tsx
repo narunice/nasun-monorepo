@@ -1,12 +1,12 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 const wave1VideoDesktop = "/videos/Home-Wave1-rf24.mp4";
 const wave1VideoMobile = "/videos/Home-Wave1-mobile-rf28.mp4";
-const leaderboardVideoDesktop = "/videos/Leaderboard-Ui-rf28.mp4";
-const leaderboardVideoMobile = "/videos/Leaderboard-Ui-mobile-rf28.mp4";
+const allianceNftImage = "/images/posters/Alliance-NFT-Event-Website-Princess-Kaebo.webp";
+const trianglePlanetImage = "/images/posters/Triangle-Planet-Website.webp";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
 
@@ -22,7 +22,8 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
   const isMobile = useIsMobile();
 
   const videoSrc = isMobile ? wave1VideoMobile : wave1VideoDesktop;
-  const leaderboardSrc = isMobile ? leaderboardVideoMobile : leaderboardVideoDesktop;
+  const showcaseImages = [allianceNftImage, trianglePlanetImage];
+  const [showcaseIndex, setShowcaseIndex] = useState(0);
 
   // Video autoplay handling (iOS support)
   useEffect(() => {
@@ -74,18 +75,26 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
     return () => observer.disconnect();
   }, [shouldLoadVideo]);
 
+  // Rotate showcase images every 4 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setShowcaseIndex((prev) => (prev + 1) % showcaseImages.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [showcaseImages.length]);
+
   const cards = [
     {
-      title: "Nasun Leaderboard",
-      line1: "Contribute content, bring people in, and help build the Nasun ecosystem.",
-      line2: "Climb the ranks to earn USDC rewards and Battalion NFTs.",
+      title: "Alliance NFT Free Mint",
+      line1: "Earn points: daily missions, access games and the DeFi platform, climb our ecosystem leaderboards.",
+      line2: "Active holders may also qualify for future points airdrops.",
       cta: "Join the Leaderboard",
       to: "/wave1/leaderboard-guide",
     },
     {
-      title: "Battalion NFT",
-      line1: "Be recognized on-chain as part of Nasun's first wave.",
-      line2: "Get early access to three live platforms and priority participation as the ecosystem expands.",
+      title: "Genesis Pass",
+      line1: "Activate to earn daily points.",
+      line2: "Boost points 2x for ecosystem activities and qualification for future airdrops.",
       cta: "Join the Allowlist",
       to: "/wave1/battalion-nft",
     },
@@ -142,14 +151,10 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
             Build With Us From Day 1
           </p>
 
-          {/* Two-column layout: cards + video */}
-          <div className="flex flex-col lg:flex-row lg:gap-10 justify-center items-center lg:items-stretch w-full">
-            {/* Left: intro + cards */}
-            <div className="flex flex-col w-full lg:w-[50%] order-2 lg:order-1 mt-6 lg:mt-0">
-              <p className="font-medium text-nasun-black/90 text-sm md:text-base mb-5 leading-relaxed">
-                Nasun is opening its first cohort of contributors ahead of mainnet. There are two ways to participate:
-              </p>
-
+          {/* Two-column layout: cards + image */}
+          <div className="flex flex-col lg:flex-row lg:gap-10 justify-center items-center w-full">
+            {/* Left: cards */}
+            <div className="flex flex-col w-full lg:w-auto lg:max-w-md order-2 lg:order-1 mt-6 lg:mt-0">
               <div className="flex flex-col gap-6 lg:gap-8">
                 {cards.map((card) => (
                   <Link
@@ -177,18 +182,18 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
               </div>
             </div>
 
-            {/* Right: video (cropped on narrower viewports) */}
-            <div className="w-full lg:w-[50%] order-1 lg:order-2 overflow-hidden rounded-md shadow-lg lg:h-auto lg:self-stretch">
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                poster="/images/posters/Leaderboard-Ui-rf28.webp"
-                className="w-full lg:h-full lg:max-w-none object-cover xl:object-contain object-left-top rounded-md"
-              >
-                <source src={leaderboardSrc} type="video/mp4" />
-              </video>
+            {/* Right: rotating showcase images */}
+            <div className="relative order-1 lg:order-2 w-full max-w-xs sm:max-w-sm lg:max-w-md shrink-0">
+              {showcaseImages.map((src, i) => (
+                <img
+                  key={src}
+                  src={src}
+                  alt={`Showcase ${i + 1}`}
+                  className={`w-full h-auto rounded-md shadow-lg transition-opacity duration-700 ${
+                    i === showcaseIndex ? "opacity-100" : "opacity-0"
+                  } ${i === 0 ? "relative" : "absolute inset-0"}`}
+                />
+              ))}
             </div>
           </div>
         </div>
