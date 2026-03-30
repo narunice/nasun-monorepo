@@ -222,9 +222,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ? JSON.parse(cachedProfile).cognitoToken
             : parsed.cognitoToken;
 
-          // Ensure the secondary identity has a UserProfiles entry before linking.
-          // Without this, link-account Lambda returns 404 ("Secondary user profile not found")
-          // because Google/Twitter OAuth only creates a Cognito identity, not a DynamoDB record.
+          // Best-effort: link-account Lambda handles secondary profile creation,
+          // but try creating via ensureUserProfile first for backward compatibility
+          // during rolling deployment.
           const secondaryUserData: UserData = {
             identityId,
             provider: provider as "Google" | "Twitter",
@@ -236,12 +236,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
             ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
           };
-          const secondaryProfile = await ensureUserProfile(secondaryUserData);
-          if (!secondaryProfile) {
-            throw new Error("Failed to create secondary user profile. Please try again.");
-          }
+          await ensureUserProfile(secondaryUserData).catch(() => { /* best-effort */ });
 
-          await linkAccounts(primaryIdentityId, identityId, provider as "Google" | "Twitter", primaryCognitoToken);
+          await linkAccounts(
+            primaryIdentityId,
+            identityId,
+            provider as "Google" | "Twitter",
+            primaryCognitoToken,
+            {
+              username: userInfo.name,
+              email: userInfo.email,
+              ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
+              ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
+              ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
+              ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
+            }
+          );
           sessionStorage.removeItem(linkSessionKey);
           await refreshAndSaveUserProfile(primaryIdentityId, primaryCognitoToken);
           setUser(useUserStore.getState().user);
