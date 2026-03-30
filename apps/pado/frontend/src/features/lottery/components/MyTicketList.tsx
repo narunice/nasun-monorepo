@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMyTickets } from '../hooks';
 import { WinningNumbers } from './WinningNumbers';
 import { useLotteryActions } from '../hooks';
@@ -11,6 +11,9 @@ import {
 } from '../types';
 import { PRIZE_TIER } from '../constants';
 import { formatNusdc } from '../lib/lottery-client';
+import { CelebrationOverlay } from '../../../components/common';
+import { type CelebrationPreset, CELEBRATION_COLORS } from '../../../lib/celebration';
+import { playGameSound } from '../../../lib/sounds';
 
 interface MyTicketListProps {
   roundId: string;
@@ -50,14 +53,48 @@ function getTierColorClasses(tier: PrizeTier): {
   }
 }
 
+function tierToPreset(tier: PrizeTier): CelebrationPreset {
+  switch (tier) {
+    case PRIZE_TIER.JACKPOT: return 'large';
+    case PRIZE_TIER.SECOND: return 'medium';
+    case PRIZE_TIER.THIRD: return 'small';
+    default: return 'small';
+  }
+}
+
+function tierToColors(tier: PrizeTier): string[] {
+  switch (tier) {
+    case PRIZE_TIER.JACKPOT: return CELEBRATION_COLORS.gold;
+    case PRIZE_TIER.SECOND: return CELEBRATION_COLORS.brand;
+    case PRIZE_TIER.THIRD: return CELEBRATION_COLORS.mint;
+    default: return CELEBRATION_COLORS.brand;
+  }
+}
+
+function tierToSound(tier: PrizeTier) {
+  switch (tier) {
+    case PRIZE_TIER.JACKPOT: return 'winJackpot' as const;
+    case PRIZE_TIER.SECOND: return 'winMedium' as const;
+    case PRIZE_TIER.THIRD: return 'winSmall' as const;
+    default: return 'winSmall' as const;
+  }
+}
+
 function TicketCard({
   ticket,
   round,
+  claimPrize,
+  burnTicket,
+  isClaiming,
+  onClaimSuccess,
 }: {
   ticket: Ticket;
   round?: LotteryRound;
+  claimPrize: (roundId: string, ticketId: string) => Promise<boolean>;
+  burnTicket: (roundId: string, ticketId: string) => Promise<boolean>;
+  isClaiming: boolean;
+  onClaimSuccess?: (preset: CelebrationPreset, colors: string[]) => void;
 }) {
-  const { claimPrize, burnTicket, isClaiming } = useLotteryActions();
 
   const isDrawn = round?.status === 2 || round?.status === 3;
   const drawnNumbers = round?.drawnNumbers;
@@ -72,9 +109,12 @@ function TicketCard({
   const tierColors = getTierColorClasses(tier);
   const prizeAmount = round && isWinner ? getTierPayout(round, tier) : 0n;
 
-  const handleClaim = () => {
-    if (round) {
-      claimPrize(round.id, ticket.id);
+  const handleClaim = async () => {
+    if (!round) return;
+    const success = await claimPrize(round.id, ticket.id);
+    if (success) {
+      playGameSound(tierToSound(tier));
+      onClaimSuccess?.(tierToPreset(tier), tierToColors(tier));
     }
   };
 
@@ -168,7 +208,25 @@ const PAGE_SIZE = 5;
 
 export function MyTicketList({ roundId, round }: MyTicketListProps) {
   const { tickets, isLoading, error } = useMyTickets(roundId);
+  const { claimPrize, burnTicket, isClaiming } = useLotteryActions();
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
+
+  // Celebration state (managed at list level)
+  const [celebration, setCelebration] = useState<{
+    preset: CelebrationPreset;
+    colors: string[];
+  } | null>(null);
+
+  const handleClaimSuccess = useCallback(
+    (preset: CelebrationPreset, colors: string[]) => {
+      setCelebration({ preset, colors });
+    },
+    [],
+  );
+
+  const handleCelebrationComplete = useCallback(() => {
+    setCelebration(null);
+  }, []);
 
   if (isLoading) {
     return (
@@ -214,7 +272,15 @@ export function MyTicketList({ roundId, round }: MyTicketListProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
         {visibleTickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} round={round} />
+          <TicketCard
+            key={ticket.id}
+            ticket={ticket}
+            round={round}
+            claimPrize={claimPrize}
+            burnTicket={burnTicket}
+            isClaiming={isClaiming}
+            onClaimSuccess={handleClaimSuccess}
+          />
         ))}
       </div>
 
@@ -225,6 +291,15 @@ export function MyTicketList({ roundId, round }: MyTicketListProps) {
         >
           Show More ({tickets.length - visibleCount} remaining)
         </button>
+      )}
+
+      {celebration && (
+        <CelebrationOverlay
+          preset={celebration.preset}
+          trigger={true}
+          colors={celebration.colors}
+          onComplete={handleCelebrationComplete}
+        />
       )}
     </div>
   );
