@@ -189,7 +189,7 @@ const DevMyAccountPage = () => {
           {/* AssetsCard(2col) */}
           <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <AssetsCard walletAddress={walletAddress} className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
 

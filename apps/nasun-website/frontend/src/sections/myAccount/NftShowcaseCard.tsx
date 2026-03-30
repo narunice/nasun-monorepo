@@ -87,7 +87,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
 
       {/* === Alliance === */}
       {isAllianceConfigured && (
-        <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
+        <OuterBox color="c5" padding="sm" className="animate-fade-slide-up relative z-10">
           <div className="flex flex-col gap-2">
             <h6 className="text-nasun-white font-medium uppercase">ALLIANCE</h6>
             <div className="relative rounded-sm overflow-hidden aspect-square">
