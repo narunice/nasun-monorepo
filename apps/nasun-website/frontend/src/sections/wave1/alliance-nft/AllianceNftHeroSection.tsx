@@ -12,9 +12,9 @@ const BOTTOM_VIGNETTE =
 function AllianceNftHeroSection() {
   return (
     <>
-      {/* ========== HERO - Mobile (< xl) ========== */}
+      {/* ========== HERO - Mobile (< lg) ========== */}
       <section
-        className="lg:hidden relative w-full h-[80vh] md:h-screen overflow-hidden"
+        className="lg:hidden relative w-full h-[85vh] md:h-screen overflow-hidden"
         style={{ background: GRADIENT }}
       >
         {/* Atmospheric overlays */}
@@ -22,34 +22,37 @@ function AllianceNftHeroSection() {
           className="absolute inset-0 pointer-events-none"
           style={{ background: RADIAL_GLOW }}
         />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: BOTTOM_VIGNETTE }}
-        />
 
-        {/* Character - right side */}
+        {/* Character - centered on mobile, right-biased on md */}
         <img
           src={PrincessKaebo}
           alt="Alliance character"
-          className="absolute bottom-0  h-[95%]  object-cover object-top"
+          className="absolute bottom-0 right-[-10%] md:right-0 h-[80%] md:h-[90%] object-cover object-top"
         />
 
-        {/* Title overlay - left half, vertically centered */}
-        <div className="absolute left-0 top-[40%] z-10 w-[60%] md:w-[55%] flex justify-center px-6 md:px-12">
+        {/* Bottom gradient for text readability */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(20,30,48,0.95) 0%, rgba(20,30,48,0.7) 30%, transparent 55%)",
+          }}
+        />
+
+        {/* Title overlay - bottom area */}
+        <div className="absolute bottom-12 inset-x-0 z-10 px-6 md:px-12">
           <FadeInUp>
-            <div className="text-center">
-              <h1 className=" !font-eurostile text-nasun-white uppercase text-4xl md:text-5xl tracking-[0.15em] leading-none">
+            <div className="text-center md:text-left md:max-w-[55%]">
+              <h1 className="!font-eurostile text-nasun-white uppercase text-4xl md:text-5xl tracking-[0.15em] leading-none">
                 ALLIANCE
               </h1>
               <p className="!font-eurostile uppercase text-lg md:text-xl tracking-wider mt-2 text-[#5ecbf0]">
                 FREE MINT EVENT
               </p>
-            </div>
-            <div className="text-left mt-4">
-              <p className="!font-rubik font-bold text-nasun-white text-sm md:text-base">
+              <p className="!font-rubik font-bold text-nasun-white text-sm md:text-base mt-4">
                 Unlock Your Powers
               </p>
-              <ul className="mt-2 space-y-1 text-nasun-white/90 text-xs md:text-sm !font-rubik list-disc pl-5">
+              <ul className="mt-2 space-y-0.5 text-nasun-white/90 text-xs md:text-sm !font-rubik list-disc pl-5">
                 <li>Daily Points</li>
                 <li>Air Drops</li>
                 <li>Test and Earn</li>
@@ -62,7 +65,7 @@ function AllianceNftHeroSection() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-6 inset-x-0 z-20 flex justify-center">
+        <div className="absolute bottom-3 inset-x-0 z-20 flex justify-center">
           <svg
             className="w-5 h-5 text-nasun-white/50 animate-bounce"
             fill="none"
