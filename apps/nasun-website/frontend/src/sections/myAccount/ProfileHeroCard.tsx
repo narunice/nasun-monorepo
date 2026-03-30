@@ -13,7 +13,10 @@ import { useAuth } from "@/features/auth";
 import { getPointsUser } from "@/services/activityPointsApi";
 import type { UserPoints } from "@/types/points";
 import { getTwitterHandle } from "@/utils/getTwitterHandle";
-import { useRankHistory, useActiveSeason } from "@/features/leaderboard-v3/hooks";
+import {
+  useRankHistory,
+  useActiveSeason,
+} from "@/features/leaderboard-v3/hooks";
 import { OuterBox, Spinner } from "@/components/ui";
 import { GenesisPassBadge } from "./components/StatusBadges";
 import { ConnectedAccountsCard } from "./ConnectedAccountsCard";
@@ -54,7 +57,7 @@ const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 
 /** Generate a deterministic GitHub-style identicon SVG for a wallet address. */
 function generateWalletIdenticon(address: string): string {
-  const clean = address.replace('0x', '').toLowerCase().padEnd(62, '0');
+  const clean = address.replace("0x", "").toLowerCase().padEnd(62, "0");
   const hue = parseInt(clean.slice(0, 6), 16) % 360;
   const sat = 50 + (parseInt(clean.slice(6, 8), 16) % 30);
   const light = 40 + (parseInt(clean.slice(8, 10), 16) % 20);
@@ -67,7 +70,7 @@ function generateWalletIdenticon(address: string): string {
   }
 
   const CELL = 10;
-  let rects = '';
+  let rects = "";
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 5; col++) {
       const idx = row * 3 + (col <= 2 ? col : 4 - col);
@@ -129,7 +132,10 @@ interface ProfileHeroCardProps {
   showPoints?: boolean;
 }
 
-export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", showPoints = false }) => {
+export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
+  className = "",
+  showPoints = false,
+}) => {
   const { user } = useAuth();
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -140,8 +146,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
   const [pointsError, setPointsError] = useState<string | null>(null);
 
   const nasunWalletAddress =
-    user?.linkedAccounts?.["nasun wallet"]?.walletAddress ?? user?.walletAddress;
-  const hasValidAddress = nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
+    user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
+    user?.walletAddress;
+  const hasValidAddress =
+    nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
 
   useEffect(() => {
     if (!showPoints || !hasValidAddress) {
@@ -154,11 +162,19 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
     setPointsError(null);
 
     getPointsUser(nasunWalletAddress!)
-      .then((data) => { if (!cancelled) setPoints(data); })
-      .catch((err) => { if (!cancelled) setPointsError(err.message); })
-      .finally(() => { if (!cancelled) setPointsLoading(false); });
+      .then((data) => {
+        if (!cancelled) setPoints(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setPointsError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setPointsLoading(false);
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [showPoints, nasunWalletAddress, hasValidAddress]);
 
   // ---- V3 Leaderboard Rank (only when showPoints) ----
@@ -177,7 +193,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
   const displayName = (() => {
     if (!user) return "User";
     const tw = user.linkedAccounts?.twitter;
-    const xDisplayName = user.provider === "Twitter" ? user.username : tw?.username;
+    const xDisplayName =
+      user.provider === "Twitter" ? user.username : tw?.username;
     if (xDisplayName) return xDisplayName;
 
     const gl = user.linkedAccounts?.google;
@@ -201,9 +218,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
 
   // ---- Derived Points Values ----
   const totalPts = points ? Number(points.totalPoints) : 0;
-  const totalForBar = points?.categories.reduce((sum, c) => sum + Number(c.points), 0) ?? 0;
+  const totalForBar =
+    points?.categories.reduce((sum, c) => sum + Number(c.points), 0) ?? 0;
   const firstDate = points?.firstActivity
-    ? new Date(points.firstActivity).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    ? new Date(points.firstActivity).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
     : null;
 
   if (!user)
@@ -214,17 +235,29 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
     );
 
   return (
-    <OuterBox color="nw1" padding="sm" className={`animate-fade-slide-up ${className}`}>
+    <OuterBox
+      color="nw1"
+      padding="sm"
+      className={`animate-fade-slide-up ${className}`}
+    >
       <div className="space-y-5">
         {/* Header: Avatar + Name */}
         <div className="flex items-center gap-4">
           <div className="relative">
             {(profileImageUrl && !imageError) || walletIdenticonUrl ? (
               <img
-                src={profileImageUrl && !imageError ? profileImageUrl : walletIdenticonUrl!}
+                src={
+                  profileImageUrl && !imageError
+                    ? profileImageUrl
+                    : walletIdenticonUrl!
+                }
                 alt={displayName}
                 className={`w-16 h-16 rounded-2xl object-cover bg-gray-800 ${
-                  (profileImageUrl && !imageError) ? imageLoaded ? "opacity-100" : "opacity-0" : "opacity-100"
+                  profileImageUrl && !imageError
+                    ? imageLoaded
+                      ? "opacity-100"
+                      : "opacity-0"
+                    : "opacity-100"
                 }`}
                 onError={handleImageError}
                 onLoad={handleImageLoad}
@@ -259,10 +292,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
         {/* Activity Points Summary + Ecosystem Placeholder (only in dev/renewed layout) */}
         {showPoints && (
           <>
-            <div>
-              <h6 className="text-sm text-nasun-white/40 uppercase mb-2 flex items-center gap-2">
-                Activity Points
-                <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
+            <div className="border border-dashed border-nasun-white/10 rounded-lg p-4">
+              <h6 className=" text-nasun-white uppercase mb-2 flex items-center gap-2">
+                Ecosystem Points
+                <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
               </h6>
@@ -274,12 +307,16 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
               ) : pointsLoading ? (
                 <div className="flex items-center gap-2 py-2">
                   <Spinner size="sm" />
-                  <span className="text-nasun-white/50 text-base">Loading points...</span>
+                  <span className="text-nasun-white/50 text-base">
+                    Loading points...
+                  </span>
                 </div>
               ) : pointsError ? (
                 <p className="text-red-400 text-base">Failed to load points</p>
               ) : !points ? (
-                <p className="text-nasun-white/50 text-base">No activity points yet</p>
+                <p className="text-nasun-white/50 text-base">
+                  No activity points yet
+                </p>
               ) : (
                 <div>
                   {/* Total Points + Stats Row */}
@@ -288,17 +325,20 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
                       <span className="text-3xl font-bold text-nasun-white">
                         {totalPts.toLocaleString("en-US")}
                       </span>
-                      <span className="text-sm font-normal text-nasun-white/50 ml-2">pts</span>
+                      <span className="text-sm font-normal text-nasun-white/50 ml-2">
+                        pts
+                      </span>
                     </div>
                     {/* V3 Rank */}
-                    {rankData?.stats?.currentRank != null && rankData.stats.currentRank > 0 && (
-                      <div className="flex items-baseline gap-1 text-nasun-white/60">
-                        <span className="text-sm uppercase">Rank</span>
-                        <span className="text-lg font-semibold text-nasun-c7">
-                          #{rankData.stats.currentRank}
-                        </span>
-                      </div>
-                    )}
+                    {rankData?.stats?.currentRank != null &&
+                      rankData.stats.currentRank > 0 && (
+                        <div className="flex items-baseline gap-1 text-nasun-white/60">
+                          <span className="text-sm uppercase">Rank</span>
+                          <span className="text-lg font-semibold text-nasun-c7">
+                            #{rankData.stats.currentRank}
+                          </span>
+                        </div>
+                      )}
                   </div>
 
                   {/* Category Distribution Bar */}
@@ -320,8 +360,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                         {points.categories.map((cat) => (
-                          <span key={cat.category} className="flex items-center gap-1 text-sm text-nasun-white/60">
-                            <span className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`} />
+                          <span
+                            key={cat.category}
+                            className="flex items-center gap-1 text-sm text-nasun-white/60"
+                          >
+                            <span
+                              className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
+                            />
                             {CATEGORY_LABELS[cat.category] || cat.category}
                           </span>
                         ))}
@@ -331,18 +376,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({ className = "", show
 
                   {/* Footer */}
                   <div className="text-sm text-nasun-white/40">
-                    {points.activityCount} {points.activityCount === 1 ? "activity" : "activities"}
+                    {points.activityCount}{" "}
+                    {points.activityCount === 1 ? "activity" : "activities"}
                     {firstDate && <span> &middot; Since {firstDate}</span>}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Ecosystem Score Placeholder (Step 5D) */}
-            <div className="border border-dashed border-nasun-white/10 rounded-lg p-4">
-              <h6 className="text-sm text-nasun-white/30 uppercase mb-1">Ecosystem Score</h6>
-              <p className="text-nasun-white/20 text-sm">Coming soon</p>
-            </div>
           </>
         )}
       </div>
