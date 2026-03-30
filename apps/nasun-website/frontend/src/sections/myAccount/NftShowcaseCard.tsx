@@ -95,31 +95,29 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
                   <Spinner />
                 </div>
+              ) : !isAllianceMinted ? (
+                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                  <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                    x1
+                  </span>
+                  <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
+                    Mint your Alliance NFT
+                  </span>
+                </div>
               ) : (
                 <>
                   <img
                     src={allianceImgSrc}
                     alt="Alliance NFT"
                     className={`w-full h-full object-cover transition-all ${
-                      !isAllianceMinted
-                        ? "brightness-[0.3]"
-                        : !allianceIsActive
-                          ? "brightness-50 grayscale"
-                          : ""
+                      !allianceIsActive ? "brightness-50 grayscale" : ""
                     }`}
                     loading="lazy"
                   />
                   <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
-                  {!isAllianceMinted && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-nasun-white/80 text-sm font-medium text-center px-4">
-                        Mint your Alliance NFT
-                      </span>
-                    </div>
-                  )}
-                  {isAllianceMinted && !allianceIsActive && (
+                  {!allianceIsActive && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-nasun-white/90 text-sm font-semibold bg-black/40 px-3 py-1 rounded-full">
                         Activate to earn points
@@ -168,7 +166,6 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
-              {!genesisIsActive && <div className="absolute inset-0 bg-black/30" />}
             </div>
             <div className="flex items-center justify-between">
               {isGenesisPassLoading ? (
