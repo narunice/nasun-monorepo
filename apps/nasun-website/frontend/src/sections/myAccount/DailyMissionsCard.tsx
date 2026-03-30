@@ -38,11 +38,11 @@ interface Mission {
 
 // Points = base activity points from config/points.ts (not daily-mission bonus)
 const DAILY_MISSIONS: Mission[] = [
-  { id: "faucet", label: "Claim Tokens", points: 1, link: "", external: false },
+  { id: "faucet", label: "Claim Tokens", points: 1, link: "", external: false, disabled: true },
   { id: "wallet-transfer", label: "Send Tokens", points: 1, link: "", external: true, disabled: true },
   { id: "pado-dex", label: "Spot Trade", points: 2, link: "https://pado.finance/markets/spot", external: true, disabled: true },
-  { id: "pado-lottery", label: "Buy Lottery Ticket", points: 1, link: "https://pado.finance/lottery", external: true },
-  { id: "pado-scratchcard", label: "Play Scratch Card", points: 1, link: "https://pado.finance/scratchcard", external: true },
+  { id: "pado-lottery", label: "Buy Lottery Ticket", points: 1, link: "", external: true, disabled: true },
+  { id: "pado-scratchcard", label: "Play Scratch Card", points: 1, link: "", external: true, disabled: true },
   { id: "pado-games", label: "Play Quick Pick", points: 1, link: "https://pado.finance/scratchcard", external: true, disabled: true },
 ];
 
@@ -99,17 +99,14 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
     ? [...DAILY_MISSIONS, GOVERNANCE_MISSION]
     : DAILY_MISSIONS;
 
-  const activeMissions = missions.filter((m) => !m.disabled);
-  const completedCount = activeMissions.filter((m) => todayCategories.includes(m.id)).length;
-
   const title = (
     <div className="flex items-center justify-between mb-4">
       <h5 className="font-medium uppercase text-nasun-white flex items-center gap-2">
         Today's Missions
+        <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
+          Coming Soon
+        </span>
       </h5>
-      <span className="text-base text-nasun-white/50">
-        {completedCount}/{activeMissions.length}
-      </span>
     </div>
   );
 

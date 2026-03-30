@@ -59,9 +59,11 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
   const battalionActive = !!battalionActivation;
   const activeCount = [allianceActive, genesisActive, battalionActive].filter(Boolean).length;
 
+  const disabled = score?.disabled ?? (multiplier === 0);
+
   // Read per-NFT bonus from score API (server-computed). Fallback to defaults during deploy transition.
-  const allianceBonusStr = formatBonus(score?.activations, "alliance", 1.0);
-  const genesisBonusStr = formatBonus(score?.activations, "genesis-pass", 1.5);
+  const allianceBonusStr = formatBonus(score?.activations, "alliance", 0);
+  const genesisBonusStr = formatBonus(score?.activations, "genesis-pass", 0.1);
   const battalionBonusStr = formatBonus(score?.activations, "battalion", 1.0);
 
   return (
@@ -93,8 +95,10 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
           <div className="mb-4 rounded-lg bg-nasun-c6/30 p-3">
             <div className="flex items-center justify-between">
               <span className="text-base text-nasun-white/60">Multiplier</span>
-              <span className={`text-xl font-bold ${multiplier > 1 ? "text-nasun-c3" : "text-nasun-white/60"}`}>
-                {multiplier.toFixed(1)}x
+              <span className={`text-xl font-bold ${
+                disabled ? "text-amber-400/60" : multiplier > 1 ? "text-nasun-c3" : "text-nasun-white/60"
+              }`}>
+                {disabled ? "0x" : `${multiplier.toFixed(1)}x`}
               </span>
             </div>
             {/* NFT breakdown */}
@@ -103,7 +107,13 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
               <NftBadge label="Genesis" active={genesisActive} bonus={genesisBonusStr} />
               <NftBadge label="Battalion" active={battalionActive} bonus={battalionBonusStr} />
             </div>
-            {activeCount === 0 && (
+            {disabled && (
+              <p className="mt-2 text-sm text-amber-400/80">
+                Get any Nasun NFT to activate your ecosystem score.
+                Your activity is being recorded and will count retroactively.
+              </p>
+            )}
+            {!disabled && activeCount === 0 && (
               <p className="mt-2 text-sm text-nasun-white/40">
                 Activate NFTs in the NFT Status card to boost your multiplier
               </p>
@@ -176,6 +186,7 @@ function NftBadge({
   active: boolean;
   bonus: string;
 }) {
+  const showBonus = active && bonus !== "+0x";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm ${
@@ -185,7 +196,9 @@ function NftBadge({
       }`}
     >
       {label}
-      {active && <span className="font-medium">{bonus}</span>}
+      {showBonus && <span className="font-medium">{bonus}</span>}
+      {active && !showBonus && <span className="font-medium">Entry</span>}
     </span>
   );
 }
+
