@@ -117,7 +117,7 @@ async function scanLoop(): Promise<void> {
     // Faucet detection: scan tx_calls_fun for faucet claims (no Move events)
     try {
       const faucetCount = await scanFaucetClaims(
-        lastSeq, registeredWallets, genesisPassHolders, dailyCategorySeen,
+        registeredWallets, genesisPassHolders, dailyCategorySeen,
       );
       totalProcessed += faucetCount;
     } catch (err) {
