@@ -7,6 +7,7 @@
 
 import { Link } from 'react-router-dom';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { useAppAdmin } from '../../../hooks/useAppAdmin';
 
 const gated = NETWORK_CONFIG.gamesOnlyMode;
 
@@ -110,10 +111,13 @@ const ACTIONS: QuickAction[] = [
 ];
 
 export function MobileQuickActions() {
+  const isAppAdmin = useAppAdmin();
+
   return (
     <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
-      {ACTIONS.map((action) =>
-        action.enabled ? (
+      {ACTIONS.map((action) => {
+        const enabled = action.enabled || isAppAdmin;
+        return enabled ? (
           <Link
             key={action.label}
             to={action.path}
@@ -134,8 +138,8 @@ export function MobileQuickActions() {
             </div>
             <span className="text-[10px] font-medium text-theme-text-secondary">{action.label}</span>
           </div>
-        )
-      )}
+        );
+      })}
     </div>
   );
 }

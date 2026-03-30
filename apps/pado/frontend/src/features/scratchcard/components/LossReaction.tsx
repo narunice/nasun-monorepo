@@ -36,6 +36,8 @@ function pickRandomText(): (typeof LOSS_TEXTS)[number] {
   return LOSS_TEXTS[idx];
 }
 
+export { pickRandomText };
+
 interface LossReactionProps {
   onComplete: () => void;
 }

@@ -13,10 +13,17 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PageSpinner } from '../components/common/PageSpinner';
 import { NETWORK_CONFIG } from '../config/network';
+import { useAppAdmin } from '../hooks/useAppAdmin';
 
-// Games-only mode: hide non-games routes (TEMPORARY: Remove after 2026-04-07)
-const gated = NETWORK_CONFIG.gamesOnlyMode;
-function GatedRedirect() { return <Navigate to="/games/lottery" replace />; }
+// Games-only mode: hide non-games routes, but allow platform admins through
+// TEMPORARY: Remove after 2026-04-07
+function GatedRoute({ children }: { children: React.ReactNode }) {
+  const isAppAdmin = useAppAdmin();
+  if (NETWORK_CONFIG.gamesOnlyMode && !isAppAdmin) {
+    return <Navigate to="/games/lottery" replace />;
+  }
+  return <>{children}</>;
+}
 
 // Eager: landing page and auth redirect (must load immediately)
 import { HomePage } from '../pages/HomePage';
@@ -52,14 +59,14 @@ export function AppRoutes() {
         <Route path="/markets" element={<Navigate to="/markets/spot" replace />} />
         {/* Spot: accessible but access-code-gated inside TradePage (not route-gated) */}
         <Route path="/markets/spot" element={<TradePage />} />
-        <Route path="/markets/perp" element={gated ? <GatedRedirect /> : <PerpTradePage />} />
+        <Route path="/markets/perp" element={<GatedRoute><PerpTradePage /></GatedRoute>} />
 
         {/* Wallet (Send/Receive) - whitelisted for games token management */}
         <Route path="/wallet" element={<WalletPage />} />
 
         {/* Prediction Markets */}
-        <Route path="/predict" element={gated ? <GatedRedirect /> : <PredictPage />} />
-        <Route path="/predict/:marketId" element={gated ? <GatedRedirect /> : <PredictMarketPage />} />
+        <Route path="/predict" element={<GatedRoute><PredictPage /></GatedRoute>} />
+        <Route path="/predict/:marketId" element={<GatedRoute><PredictMarketPage /></GatedRoute>} />
 
         {/* Games (Lottery + Scratch Cards + Number Match) - always public */}
         <Route path="/games/lottery" element={<LotteryPage />} />
@@ -77,24 +84,24 @@ export function AppRoutes() {
         <Route path="/admin" element={<AdminPage />} />
 
         {/* Leaderboard */}
-        <Route path="/leaderboard" element={gated ? <GatedRedirect /> : <LeaderboardPage />} />
-        <Route path="/leaderboard/trader/:address" element={gated ? <GatedRedirect /> : <TraderProfilePage />} />
+        <Route path="/leaderboard" element={<GatedRoute><LeaderboardPage /></GatedRoute>} />
+        <Route path="/leaderboard/trader/:address" element={<GatedRoute><TraderProfilePage /></GatedRoute>} />
 
         {/* Competitions */}
-        <Route path="/competitions" element={gated ? <GatedRedirect /> : <CompetitionsPage />} />
-        <Route path="/competitions/:id" element={gated ? <GatedRedirect /> : <CompetitionDetailPage />} />
+        <Route path="/competitions" element={<GatedRoute><CompetitionsPage /></GatedRoute>} />
+        <Route path="/competitions/:id" element={<GatedRoute><CompetitionDetailPage /></GatedRoute>} />
 
         {/* Earn (Staking + Lending) */}
-        <Route path="/earn" element={gated ? <GatedRedirect /> : <EarnPage />} />
+        <Route path="/earn" element={<GatedRoute><EarnPage /></GatedRoute>} />
 
         {/* Portfolio */}
-        <Route path="/portfolio" element={gated ? <GatedRedirect /> : <PortfolioPage />} />
+        <Route path="/portfolio" element={<GatedRoute><PortfolioPage /></GatedRoute>} />
 
         {/* Auth (zkLogin callback) - whitelisted */}
         <Route path="/callback" element={<AuthCallbackPage />} />
 
         {/* Fallback */}
-        <Route path="*" element={gated ? <Navigate to="/games/lottery" replace /> : <Navigate to="/" replace />} />
+        <Route path="*" element={<GatedRoute><Navigate to="/" replace /></GatedRoute>} />
       </Routes>
     </Suspense>
   );

@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { useAppAdmin } from '../../../hooks/useAppAdmin';
 
 const gated = NETWORK_CONFIG.gamesOnlyMode;
 
@@ -184,6 +185,7 @@ function GamesCard() {
 
 export function QuickActions() {
   const [hoveredDisabled, setHoveredDisabled] = useState<string | null>(null);
+  const isAppAdmin = useAppAdmin();
 
   // Split actions: first 3 (Row 1), then remaining (Row 2 after Games)
   const row1 = ACTIONS.slice(0, 3);
@@ -191,8 +193,9 @@ export function QuickActions() {
 
   const renderAction = (action: ActionItem) => {
     const colors = COLOR_CLASSES[action.color];
+    const enabled = action.enabled || isAppAdmin;
 
-    if (!action.enabled) {
+    if (!enabled) {
       return (
         <div
           key={action.id}
