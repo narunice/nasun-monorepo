@@ -12,6 +12,10 @@ let mockIsZkConnected = false;
 let mockIsPasskeyUnlocked = false;
 let mockBalance: { totalBalance: string; formattedBalance: string } | undefined;
 
+vi.mock('@nasun/wallet-ui', () => ({
+  ClaimAllButton: () => null,
+}));
+
 vi.mock('@nasun/wallet', () => ({
   useWallet: () => ({ status: mockWalletStatus }),
   useZkLogin: () => ({ isConnected: mockIsZkConnected }),

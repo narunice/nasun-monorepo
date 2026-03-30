@@ -8,6 +8,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet, useBalance, useZkLogin, usePasskeyStore } from '@nasun/wallet';
+import { ClaimAllButton } from '@nasun/wallet-ui';
 import { FIRST_TRADE_STORAGE_KEY } from '../../trading/hooks/useFirstTradeCelebration';
 import { ORDER_FILL_EVENT } from '../../trading/hooks/useOrderFillNotifier';
 import { LOTTERY_PURCHASED_KEY, LOTTERY_PURCHASE_EVENT } from '../../lottery/hooks/useLotteryActions';
@@ -30,7 +31,7 @@ export function GettingStartedCard() {
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
 
-  // Adaptive polling: 3s while waiting for faucet (step 2), default 30s otherwise
+  // Poll balance at 3s while wallet connected (card auto-hides on completion)
   const { data: balance } = useBalance(undefined, {
     pollingInterval: isWalletConnected ? 3_000 : undefined,
   });
@@ -109,13 +110,38 @@ export function GettingStartedCard() {
   const completedCount = steps.filter((s) => s.completed).length;
   const allComplete = completedCount === steps.length;
 
-  // Don't show if dismissed or all steps complete
-  if (dismissed || allComplete) return null;
+  // Show a brief "All done!" state before hiding the card
+  const [showingComplete, setShowingComplete] = useState(false);
+  useEffect(() => {
+    if (!allComplete || dismissed) return;
+    setShowingComplete(true);
+    const timer = setTimeout(() => {
+      setDismissed(true);
+      try { localStorage.setItem(DISMISS_KEY, 'true'); } catch { /* noop */ }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [allComplete, dismissed]);
+
+  // Don't show if dismissed (but DO show briefly when allComplete via showingComplete)
+  if (dismissed) return null;
 
   const handleDismiss = () => {
     setDismissed(true);
     try { localStorage.setItem(DISMISS_KEY, 'true'); } catch { /* noop */ }
   };
+
+  if (showingComplete) {
+    return (
+      <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 md:p-5 mb-4 md:mb-6 text-center">
+        <p className="text-sm xl:text-base font-semibold text-green-400">
+          All set! You're ready to go.
+        </p>
+        <p className="text-xs xl:text-sm text-theme-text-muted mt-1">
+          Check your wallet to see your tokens.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4 md:p-5 mb-4 md:mb-6">
@@ -183,6 +209,13 @@ export function GettingStartedCard() {
               >
                 {step.action.label} &rarr;
               </Link>
+            )}
+
+            {/* Faucet claim button (step 2 only, ClaimAllButton self-guards for devnet/cooldown) */}
+            {step.id === 'faucet' && !step.completed && isWalletConnected && (
+              <div className="shrink-0 w-48">
+                <ClaimAllButton />
+              </div>
             )}
           </div>
         ))}
