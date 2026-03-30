@@ -25,6 +25,7 @@ const MISSION_MAP: Record<string, { missionType: string; points: number }> = {
   'pado-perp':        { missionType: 'perp-first', points: 5 },
   'pado-scratchcard': { missionType: 'scratchcard-first', points: 5 },
   'baram-ai':         { missionType: 'baram-first', points: 5 },
+  'faucet':           { missionType: 'faucet-first', points: 5 },
 };
 
 const QUALIFYING_CATEGORIES = Object.keys(MISSION_MAP);
