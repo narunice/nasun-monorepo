@@ -189,7 +189,10 @@ module.exports = {
         // TPSL_ALLOWED_ORIGIN loaded from .env (per-environment CORS origin)
       },
       max_restarts: 10,
+      min_uptime: '30s',
       restart_delay: 5000,
+      exp_backoff_restart_delay: 100,
+      kill_timeout: 10000,
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
       error_file: './logs/tpsl-keeper-error.log',
       out_file: './logs/tpsl-keeper-out.log',
