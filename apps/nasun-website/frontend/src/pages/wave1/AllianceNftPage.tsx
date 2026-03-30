@@ -81,7 +81,7 @@ const AllianceNftPage = () => {
 
       <SectionLayout
         ref={mintSectionRef}
-        className="!max-w-8xl min-h-[80vh] px-6 sm:px-10 lg:px-12"
+        className="!max-w-8xl min-h-[80vh] px-6 sm:px-10 lg:px-12 !pt-12 md:!pt-16 lg:!pt-10"
       >
         <h5 className="text-center text-nasun-white max-w-5xl mx-auto -mt-2 mb-4">
           {isMinted ? (
@@ -100,7 +100,7 @@ const AllianceNftPage = () => {
           {/* State 1: Not logged in */}
           {!user && (
             <div className="flex flex-col items-center gap-16 py-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 sm:gap-x-8 sm:gap-y-10 lg:gap-x-8 mx-auto">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-x-8 sm:gap-y-10 lg:gap-x-8 mx-auto">
                 {ALLIANCE_PREVIEW_IMAGES.map((url, i) => (
                   <div key={i} className="flex flex-col items-center gap-2">
                     <img
@@ -163,7 +163,7 @@ const AllianceNftPage = () => {
             !isMinted &&
             isConfigured && (
               <div className="flex flex-col items-center gap-16 py-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 sm:gap-x-8 sm:gap-y-10 lg:gap-x-8 mx-auto">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-x-8 sm:gap-y-10 lg:gap-x-8 mx-auto">
                   {ALLIANCE_PREVIEW_IMAGES.map((url, i) => (
                     <button
                       key={i}

@@ -14,7 +14,7 @@ function AllianceNftHeroSection() {
     <>
       {/* ========== HERO - Mobile (< lg) ========== */}
       <section
-        className="lg:hidden relative w-full h-[85vh] md:h-screen overflow-hidden"
+        className="lg:hidden relative w-full overflow-hidden"
         style={{ background: GRADIENT }}
       >
         {/* Atmospheric overlays */}
@@ -23,62 +23,55 @@ function AllianceNftHeroSection() {
           style={{ background: RADIAL_GLOW }}
         />
 
-        {/* Character - centered on mobile, right-biased on md */}
-        <img
-          src={PrincessKaebo}
-          alt="Alliance character"
-          className="absolute bottom-0 right-[-10%] md:right-0 h-[80%] md:h-[90%] object-cover object-top"
-        />
+        {/* Upper area: character image */}
+        <div className="relative w-full h-[80vh] md:h-screen">
+          {/* Character - centered */}
+          <img
+            src={PrincessKaebo}
+            alt="Alliance character"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[95%] object-cover object-top"
+          />
 
-        {/* Bottom gradient for text readability */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(20,30,48,0.95) 0%, rgba(20,30,48,0.7) 30%, transparent 55%)",
-          }}
-        />
+          {/* Bottom gradient for title readability */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to top, rgba(20,30,48,1) 0%, rgba(20,30,48,0.6) 25%, transparent 50%)",
+            }}
+          />
 
-        {/* Title overlay - bottom area */}
-        <div className="absolute bottom-12 inset-x-0 z-10 px-6 md:px-12">
-          <FadeInUp>
-            <div className="text-center md:text-left md:max-w-[55%]">
-              <h1 className="!font-eurostile text-nasun-white uppercase text-4xl md:text-5xl tracking-[0.15em] leading-none">
-                ALLIANCE
-              </h1>
-              <p className="!font-eurostile uppercase text-lg md:text-xl tracking-wider mt-2 text-[#5ecbf0]">
-                FREE MINT EVENT
-              </p>
-              <p className="!font-rubik font-bold text-nasun-white text-sm md:text-base mt-4">
-                Unlock Your Powers
-              </p>
-              <ul className="mt-2 space-y-0.5 text-nasun-white/90 text-xs md:text-sm !font-rubik list-disc pl-5">
-                <li>Daily Points</li>
-                <li>Air Drops</li>
-                <li>Test and Earn</li>
-                <li>Leaderboards</li>
-                <li>Exclusive Events</li>
-                <li>Allowlists Priority</li>
-              </ul>
-            </div>
-          </FadeInUp>
+          {/* Title overlay - bottom of character area */}
+          <div className="absolute bottom-6 inset-x-0 z-10 px-6">
+            <FadeInUp>
+              <div className="text-center">
+                <h1 className="!font-eurostile text-nasun-white uppercase text-4xl md:text-5xl tracking-[0.15em] leading-none">
+                  ALLIANCE
+                </h1>
+                <p className="!font-eurostile uppercase text-lg md:text-xl tracking-wider mt-2 text-[#5ecbf0]">
+                  FREE MINT EVENT
+                </p>
+              </div>
+            </FadeInUp>
+          </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-3 inset-x-0 z-20 flex justify-center">
-          <svg
-            className="w-5 h-5 text-nasun-white/50 animate-bounce"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-            />
-          </svg>
+        {/* Lower area: benefits list (below character) */}
+        <div
+          className="relative z-10 px-8 pt-6 pb-10 text-center"
+          style={{ backgroundColor: "#141e30" }}
+        >
+          <p className="!font-rubik font-bold text-nasun-white text-base md:text-lg">
+            Unlock Your Powers
+          </p>
+          <ul className="mt-3 space-y-1 text-nasun-white/90 text-sm md:text-base !font-rubik list-disc inline-block text-left pl-5">
+            <li>Daily Points</li>
+            <li>Air Drops</li>
+            <li>Test and Earn</li>
+            <li>Leaderboards</li>
+            <li>Exclusive Events</li>
+            <li>Allowlists Priority</li>
+          </ul>
         </div>
       </section>
 
