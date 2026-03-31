@@ -106,7 +106,7 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-cyan-500',
-    enabled: true,
+    enabled: false,
   },
 ];
 
