@@ -1,25 +1,21 @@
 /**
  * DailyMissionsCard Component
  *
- * Checklist-style daily missions card (inspired by Pado's GettingStarted).
- * Completion is detected by the points scanner via todayCategories in the
- * /points/user/:address API response. Resets daily at UTC 00:00.
- * Faucet step includes a functional "Claim All Tokens" button.
+ * Checklist-style daily missions. Completion detected via direct Sui RPC
+ * queries (not the points scanner pipeline). Two RPC calls per poll:
+ * queryEvents({Sender}) + queryTransactionBlocks({FromAddress}).
+ * Faucet claim has instant optimistic checkmark via ClaimAllButton onSuccess.
  */
 
-import { FC, useEffect, useState } from "react";
+import { FC, useState, useCallback } from "react";
 import { useAuth } from "@/features/auth";
-import { getPointsUser } from "@/services/activityPointsApi";
-import type { UserPoints } from "@/types/points";
 import { OuterBox, Spinner } from "@/components/ui";
 import { ClaimAllButton } from "@nasun/wallet-ui";
+import { useDailyMissions } from "@/hooks/useDailyMissions";
 
 interface DailyMissionsCardProps {
   className?: string;
-  /** Render without OuterBox wrapper (for embedding inside another card) */
   bare?: boolean;
-  /** Pass points data from parent to avoid duplicate API fetch */
-  pointsData?: UserPoints | null;
 }
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -41,64 +37,38 @@ const MISSIONS: Mission[] = [
   { id: "pado-games", label: "Play Quick Pick", description: "Auto-pick numbers for a quick game", points: 1 },
 ];
 
-export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", bare = false, pointsData }) => {
+export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", bare = false }) => {
   const { user } = useAuth();
-  const [fetchedPoints, setFetchedPoints] = useState<UserPoints | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
 
   const nasunWalletAddress =
     user?.linkedAccounts?.["nasun wallet"]?.walletAddress ?? user?.walletAddress;
   const hasValidAddress = nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
 
-  const useParentData = pointsData !== undefined;
-  const points = useParentData ? pointsData : fetchedPoints;
+  const { completedMissions, isLoading, refetch } = useDailyMissions(
+    hasValidAddress ? nasunWalletAddress : undefined,
+  );
 
-  useEffect(() => {
-    if (useParentData || !hasValidAddress) {
-      setIsLoading(false);
-      return;
-    }
+  const isCompleted = useCallback(
+    (id: string) => completedMissions.has(id as any) || localCompleted.has(id),
+    [completedMissions, localCompleted],
+  );
+  const completedCount = MISSIONS.filter((m) => isCompleted(m.id)).length;
 
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-
-    getPointsUser(nasunWalletAddress!)
-      .then((data) => {
-        if (!cancelled) setFetchedPoints(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [useParentData, nasunWalletAddress, hasValidAddress]);
-
-  const todayCategories = points?.todayCategories ?? [];
-  const completedCount = MISSIONS.filter((m) => todayCategories.includes(m.id)).length;
+  const handleFaucetSuccess = useCallback(() => {
+    setLocalCompleted((prev) => new Set(prev).add("faucet"));
+    refetch();
+  }, [refetch]);
 
   const Wrapper = bare
-    ? ({ children }: { children: React.ReactNode }) => <div className={className}>{children}</div>
+    ? ({ children }: { children: React.ReactNode }) => <div className={`border border-dashed border-nasun-white/10 rounded-lg p-4 ${className}`}>{children}</div>
     : ({ children }: { children: React.ReactNode }) => <OuterBox color="c5" padding="sm" className={className}>{children}</OuterBox>;
 
-  if (isLoading && !useParentData) {
+  if (isLoading) {
     return (
       <Wrapper>
-        <h5 className="font-medium text-nasun-white mb-4">Daily Missions</h5>
+        <h6 className="text-nasun-white text-sm font-medium mb-4">Daily Missions</h6>
         <div className="flex items-center justify-center py-8"><Spinner /></div>
-      </Wrapper>
-    );
-  }
-
-  if (error) {
-    return (
-      <Wrapper>
-        <h5 className="font-medium text-nasun-white mb-4">Daily Missions</h5>
-        <p className="text-red-400 text-sm text-center py-4">Failed to load missions</p>
       </Wrapper>
     );
   }
@@ -108,12 +78,9 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h5 className="font-medium text-nasun-white flex items-center gap-2">
+          <h6 className="text-nasun-white text-sm font-medium">
             Daily Missions
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
-              Experimental
-            </span>
-          </h5>
+          </h6>
           <p className="text-xs text-nasun-white/40 mt-0.5">
             {completedCount}/{MISSIONS.length} completed
           </p>
@@ -131,7 +98,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
       {/* Steps */}
       <div className="space-y-3">
         {MISSIONS.map((mission, i) => {
-          const completed = todayCategories.includes(mission.id);
+          const completed = isCompleted(mission.id);
           return (
             <div key={mission.id} className="flex items-start gap-3">
               {/* Circle checkbox */}
@@ -160,10 +127,10 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
                 )}
               </div>
 
-              {/* Faucet claim button (step 1 only, when not yet completed) */}
+              {/* Faucet claim button */}
               {mission.showFaucet && !completed && (
-                <div className="shrink-0 w-40">
-                  <ClaimAllButton />
+                <div className="shrink-0 w-44">
+                  <ClaimAllButton persistent onSuccess={handleFaucetSuccess} />
                 </div>
               )}
             </div>

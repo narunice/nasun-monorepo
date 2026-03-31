@@ -21,6 +21,20 @@ import { OuterBox, Spinner } from "@/components/ui";
 import { GenesisPassBadge } from "./components/StatusBadges";
 import { ConnectedAccountsCard } from "./ConnectedAccountsCard";
 import { DailyMissionsCard } from "./DailyMissionsCard";
+import { HealthStatusBar } from "./HealthStatusBar";
+import { useEcosystemScore } from "@/hooks/useEcosystemScore";
+import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
+import { useDailyMissions } from "@/hooks/useDailyMissions";
+
+// Mission point values (must match DailyMissionsCard)
+const MISSION_POINTS: Record<string, number> = {
+  faucet: 1,
+  "wallet-transfer": 1,
+  "pado-dex": 2,
+  "pado-lottery": 1,
+  "pado-scratchcard": 1,
+  "pado-games": 1,
+};
 
 // ---- Category display config ----
 
@@ -187,6 +201,46 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
     enabled: !!twitterUsername && !!activeSeason?.seasonId,
   });
 
+  // ---- Ecosystem Score (for Health Status Bar, only when showPoints) ----
+  const cognitoToken = showPoints ? user?.cognitoToken : undefined;
+  const identityId = showPoints ? user?.identityId : undefined;
+  const { score: ecosystemScore, isLoading: ecosystemLoading } =
+    useEcosystemScore(identityId);
+
+  // Activation state from DynamoDB (real-time, not cached)
+  const { getActivation } = useEcosystemStatus(cognitoToken);
+
+  const hasGenesisPass = !!getActivation("genesis-pass");
+  const hasActiveNft = !!getActivation("alliance") || !!getActivation("genesis-pass") || !!getActivation("battalion");
+
+  // Real-time multiplier from activation state (fallback when ecosystem cache is stale)
+  const realtimeMultiplier = useMemo(() => {
+    if (!hasActiveNft) return 0;
+    let m = 1.0; // base
+    if (getActivation("genesis-pass")) m += 0.1;
+    const bat = getActivation("battalion");
+    if (bat) m += Math.min(bat.nftCount ?? 1, 10) * 1.0;
+    // alliance adds +0x (entry level)
+    return m;
+  }, [hasActiveNft, getActivation]);
+
+  // Real-time base score from daily missions (fallback when ecosystem cache is stale)
+  const { completedMissions } = useDailyMissions(
+    showPoints && hasValidAddress ? nasunWalletAddress : undefined,
+  );
+  const realtimeBaseScore = useMemo(() => {
+    let score = 0;
+    for (const id of completedMissions) {
+      score += MISSION_POINTS[id] ?? 0;
+    }
+    return score;
+  }, [completedMissions]);
+
+  // Use the higher of ecosystem API vs real-time computed values
+  const displayBaseScore = Math.max(ecosystemScore?.daily.baseScore ?? 0, realtimeBaseScore);
+  const displayMultiplier = Math.max(ecosystemScore?.multiplier ?? 0, realtimeMultiplier);
+  const displayTodayScore = parseFloat((displayBaseScore * displayMultiplier).toFixed(1));
+
   // ---- Display Name & Avatar ----
   const handleImageError = useCallback(() => setImageError(true), []);
   const handleImageLoad = useCallback(() => setImageLoaded(true), []);
@@ -296,101 +350,125 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
             <div className="border border-dashed border-nasun-white/10 rounded-lg p-4">
               <h6 className=" text-nasun-white mb-1 flex items-center gap-2">
                 Ecosystem Points
-                <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
-                <InfoTooltip text="Activate a Nasun membership NFT to start earning Ecosystem Points. Your on-chain activity score, multiplier bonuses, and bonus points are combined into a daily total. During this experimental phase, the scoring formula may be adjusted frequently at the operator's discretion as we fix bugs and fine-tune the balance." />
+                <InfoTooltip text="WARNING: This feature may be buggy during the experimental phase. We appreciate your patience. -- Activate a Nasun membership NFT to start earning Ecosystem Points. Your on-chain activity score, multiplier bonuses, and bonus points are combined into a daily total. The scoring formula may be adjusted at the operator's discretion as we fix bugs and fine-tune the balance." />
               </h6>
-              <p className="text-nasun-white/80 text-sm mb-3">
-                Base Score (Daily Missions) x NFT Multiplier + Bonus Points
-              </p>
-
               {!hasValidAddress ? (
                 <p className="text-nasun-white/50 text-base">
                   Connect Nasun Wallet to view activity points
                 </p>
-              ) : pointsLoading ? (
+              ) : ecosystemLoading ? (
                 <div className="flex items-center gap-2 py-2">
                   <Spinner size="sm" />
                   <span className="text-nasun-white/50 text-base">
                     Loading points...
                   </span>
                 </div>
-              ) : pointsError ? (
-                <p className="text-red-400 text-base">Failed to load points</p>
-              ) : !points ? (
+              ) : !hasActiveNft ? (
                 <p className="text-nasun-white/50 text-base">
-                  No activity points yet
+                  Activate an NFT to start earning points
                 </p>
               ) : (
                 <div>
-                  {/* Total Points + Stats Row */}
-                  <div className="flex items-baseline gap-4 mb-3">
-                    <div>
-                      <span className="text-3xl font-bold text-nasun-white">
-                        {totalPts.toLocaleString("en-US")}
+                  {/* Today's Score + Formula (same line) */}
+                  <div className="flex items-baseline flex-wrap gap-x-6 gap-y-1 mb-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-nasun-white">
+                        {displayTodayScore.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
                       </span>
-                      <span className="text-sm font-normal text-nasun-white/50 ml-2">
-                        pts
+                      <span className="text-base text-nasun-white/70">
+                        pts today
                       </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-nasun-white/40">
+                      <span>Base</span>
+                      <span className="font-mono text-nasun-white/60">{displayBaseScore}</span>
+                      <span>x</span>
+                      <span>Multiplier</span>
+                      <span className="font-mono text-nasun-white/60">{displayMultiplier.toFixed(1)}</span>
+                      <span>+</span>
+                      <span>Bonus</span>
+                      <span className="font-mono text-nasun-white/60">0</span>
                     </div>
                     {/* V3 Rank */}
                     {rankData?.stats?.currentRank != null &&
                       rankData.stats.currentRank > 0 && (
-                        <div className="flex items-baseline gap-1 text-nasun-white/60">
-                          <span className="text-sm uppercase">Rank</span>
-                          <span className="text-lg font-semibold text-nasun-c7">
+                        <div className="flex items-baseline gap-1 text-nasun-white/60 ml-auto">
+                          <span className="text-xs uppercase">Rank</span>
+                          <span className="text-base font-semibold text-nasun-c7">
                             #{rankData.stats.currentRank}
                           </span>
                         </div>
                       )}
                   </div>
 
-                  {/* Category Distribution Bar */}
-                  {points.categories.length > 0 && totalForBar > 0 && (
-                    <div className="mb-3">
-                      <div className="flex h-2 rounded-full overflow-hidden gap-px">
-                        {points.categories.map((cat) => {
-                          const pct = (Number(cat.points) / totalForBar) * 100;
-                          if (pct < 1) return null;
-                          return (
-                            <div
-                              key={cat.category}
-                              className={`${CATEGORY_COLORS[cat.category] || "bg-gray-400"} transition-all`}
-                              style={{ width: `${pct}%` }}
-                              title={`${CATEGORY_LABELS[cat.category] || cat.category}: ${Number(cat.points).toLocaleString("en-US")} pts`}
-                            />
-                          );
-                        })}
-                      </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                        {points.categories.map((cat) => (
-                          <span
-                            key={cat.category}
-                            className="flex items-center gap-1 text-sm text-nasun-white/60"
-                          >
-                            <span
-                              className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
-                            />
-                            {CATEGORY_LABELS[cat.category] || cat.category}
-                          </span>
-                        ))}
-                      </div>
+                  {/* All-time summary */}
+                  <div className="border-t border-nasun-white/5 pt-2">
+                    <div className="flex items-baseline gap-2 text-sm text-nasun-white/40">
+                      <span>All time:</span>
+                      <span className="font-mono text-nasun-white/60">
+                        {(ecosystemScore?.allTime.ecosystemScore ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
+                      </span>
+                      <span>pts</span>
+                      {points && (
+                        <>
+                          <span>&middot;</span>
+                          <span>{points.activityCount} {points.activityCount === 1 ? "activity" : "activities"}</span>
+                          {firstDate && <span>&middot; Since {firstDate}</span>}
+                        </>
+                      )}
                     </div>
-                  )}
 
-                  {/* Footer */}
-                  <div className="text-sm text-nasun-white/40">
-                    {points.activityCount}{" "}
-                    {points.activityCount === 1 ? "activity" : "activities"}
-                    {firstDate && <span> &middot; Since {firstDate}</span>}
+                    {/* Category Distribution Bar */}
+                    {points && points.categories.length > 0 && totalForBar > 0 && (
+                      <div className="mt-2">
+                        <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
+                          {points.categories.map((cat) => {
+                            const pct = (Number(cat.points) / totalForBar) * 100;
+                            if (pct < 1) return null;
+                            return (
+                              <div
+                                key={cat.category}
+                                className={`${CATEGORY_COLORS[cat.category] || "bg-gray-400"} transition-all`}
+                                style={{ width: `${pct}%` }}
+                                title={`${CATEGORY_LABELS[cat.category] || cat.category}: ${Number(cat.points).toLocaleString("en-US")} pts`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                          {points.categories.map((cat) => (
+                            <span
+                              key={cat.category}
+                              className="flex items-center gap-1 text-xs text-nasun-white/40"
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
+                              />
+                              {CATEGORY_LABELS[cat.category] || cat.category}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Today's Missions (embedded, shares points data) */}
-            <DailyMissionsCard bare pointsData={points} />
+            {/* Health Status Bar (HP gauge) */}
+            <HealthStatusBar
+              activeDays={ecosystemScore?.weekly?.activeDays ?? 0}
+              isPenalized={ecosystemScore?.isPenalized ?? false}
+              hasGenesisPass={hasGenesisPass}
+              hasActiveNft={hasActiveNft}
+              isLoading={ecosystemLoading}
+            />
+
+            {/* Daily Missions (self-polling, independent data fetch) */}
+            <DailyMissionsCard bare />
           </>
         )}
       </div>
