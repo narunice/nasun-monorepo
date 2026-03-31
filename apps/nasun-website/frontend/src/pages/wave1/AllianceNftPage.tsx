@@ -97,8 +97,10 @@ const AllianceNftPage = () => {
               <br />
               Explore the Nasun ecosystem and earn points.
             </>
-          ) : (
+          ) : user ? (
             "Pick your character first and start earning ecosystem points."
+          ) : (
+            "Login/sign up to mint free Alliance NFT."
           )}
         </h5>
 
