@@ -157,8 +157,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
 
   // ---- Points Data (only fetched when showPoints is true) ----
   const [points, setPoints] = useState<UserPoints | null>(null);
-  const [pointsLoading, setPointsLoading] = useState(true);
-  const [pointsError, setPointsError] = useState<string | null>(null);
+  const [, setPointsLoading] = useState(true);
+  const [, setPointsError] = useState<string | null>(null);
 
   const nasunWalletAddress =
     user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
@@ -283,15 +283,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   }, [user?.provider, user?.walletAddress]);
 
   // ---- Derived Points Values ----
-  const totalPts = points ? Number(points.totalPoints) : 0;
   const totalForBar =
     points?.categories.reduce((sum, c) => sum + Number(c.points), 0) ?? 0;
-  const firstDate = points?.firstActivity
-    ? new Date(points.firstActivity).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
-    : null;
 
   if (!user)
     return (
@@ -359,7 +352,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
         {showPoints && (
           <>
             <div className="border border-dashed border-nasun-white/10 rounded-lg p-4">
-              <h6 className=" text-nasun-white mb-1 flex items-center gap-2">
+              {/* Section title */}
+              <h6 className="text-nasun-white mb-3 flex items-center gap-2">
                 Ecosystem Points
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
@@ -378,6 +372,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                   </p>
                 </InfoTooltip>
               </h6>
+
               {!hasValidAddress ? (
                 <p className="text-nasun-white/50 text-base">
                   Connect Nasun Wallet to view activity points
@@ -395,123 +390,118 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 </p>
               ) : (
                 <div>
-                  {/* Today's Score + Formula (same line) */}
-                  <div className="flex items-baseline flex-wrap gap-x-6 gap-y-1 mb-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-nasun-white">
-                        {displayTodayScore.toLocaleString("en-US", {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 1,
-                        })}
-                      </span>
-                      <span className="text-base text-nasun-white/70">
-                        pts today
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-nasun-white/40">
-                      <span>Base</span>
-                      <span className="font-mono text-nasun-white/60">
+                  {/* All time score: baseline-aligned */}
+                  <div className="flex items-baseline justify-center gap-3 mb-3">
+                    <span className="text-lg font-semibold text-nasun-white uppercase tracking-wider">
+                      All time
+                    </span>
+                    <span className="text-7xl font-semibold bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent leading-none">
+                      {(
+                        ecosystemScore?.allTime.ecosystemScore ?? 0
+                      ).toLocaleString("en-US", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 1,
+                      })}
+                    </span>
+                    <span className="text-lg font-semibold text-nasun-white uppercase tracking-wider">
+                      pts
+                    </span>
+                  </div>
+
+                  {/* Today + Formula (single line) */}
+                  <div className="flex items-baseline justify-center flex-wrap gap-x-2 gap-y-1">
+                    <span className="text-2xl font-bold text-amber-400">
+                      {displayTodayScore.toLocaleString("en-US", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 1,
+                      })}
+                    </span>
+                    <span className="text-sm text-nasun-white/70">
+                      pts today
+                    </span>
+                    <span className="text-sm text-nasun-white/40 ml-1">=</span>
+                    <span className="text-sm text-nasun-white/60 ml-1">
+                      (
+                      <span className="font-mono text-nasun-white/80">
                         {displayBaseScore}
-                      </span>
-                      <span>x</span>
-                      <span>Multiplier</span>
-                      <span className="font-mono text-nasun-white/60">
+                      </span>{" "}
+                      base
+                      <span className="text-nasun-white/40"> x </span>
+                      <span className="font-mono text-nasun-white/80">
                         {displayMultiplier.toFixed(1)}
-                      </span>
-                      <span>+</span>
-                      <span>Bonus</span>
-                      <span className="font-mono text-nasun-white/60">0</span>
-                    </div>
-                    {/* V3 Rank */}
+                      </span>{" "}
+                      mult)
+                      <span className="text-nasun-white/40"> + </span>
+                      <span className="font-mono text-nasun-white/80">
+                        0
+                      </span>{" "}
+                      bonus
+                    </span>
                     {rankData?.stats?.currentRank != null &&
                       rankData.stats.currentRank > 0 && (
-                        <div className="flex items-baseline gap-1 text-nasun-white/60 ml-auto">
-                          <span className="text-xs uppercase">Rank</span>
-                          <span className="text-base font-semibold text-nasun-c7">
+                        <span className="text-sm text-nasun-white/60 ml-2">
+                          Rank{" "}
+                          <span className="font-semibold text-nasun-c7">
                             #{rankData.stats.currentRank}
                           </span>
-                        </div>
+                        </span>
                       )}
                   </div>
 
-                  {/* All-time summary */}
-                  <div className="border-t border-nasun-white/5 pt-2">
-                    <div className="flex items-baseline gap-2 text-sm text-nasun-white/40">
-                      <span>All time:</span>
-                      <span className="font-mono text-nasun-white/60">
-                        {(
-                          ecosystemScore?.allTime.ecosystemScore ?? 0
-                        ).toLocaleString("en-US", {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 1,
-                        })}
-                      </span>
-                      <span>pts</span>
-                      {points && (
-                        <>
-                          <span>&middot;</span>
-                          <span>
-                            {points.activityCount}{" "}
-                            {points.activityCount === 1
-                              ? "activity"
-                              : "activities"}
-                          </span>
-                          {firstDate && <span>&middot; Since {firstDate}</span>}
-                        </>
-                      )}
-                    </div>
-
-                    {/* Category Distribution Bar */}
-                    {points &&
-                      points.categories.length > 0 &&
-                      totalForBar > 0 && (
-                        <div className="mt-2">
-                          <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
-                            {points.categories.map((cat) => {
-                              const pct =
-                                (Number(cat.points) / totalForBar) * 100;
-                              if (pct < 1) return null;
-                              return (
-                                <div
-                                  key={cat.category}
-                                  className={`${CATEGORY_COLORS[cat.category] || "bg-gray-400"} transition-all`}
-                                  style={{ width: `${pct}%` }}
-                                  title={`${CATEGORY_LABELS[cat.category] || cat.category}: ${Number(cat.points).toLocaleString("en-US")} pts`}
-                                />
-                              );
-                            })}
-                          </div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
-                            {points.categories.map((cat) => (
-                              <span
+                  {/* Category Distribution Bar */}
+                  {points &&
+                    points.categories.length > 0 &&
+                    totalForBar > 0 && (
+                      <div>
+                        <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
+                          {points.categories.map((cat) => {
+                            const pct =
+                              (Number(cat.points) / totalForBar) * 100;
+                            if (pct < 1) return null;
+                            return (
+                              <div
                                 key={cat.category}
-                                className="flex items-center gap-1 text-xs text-nasun-white/40"
-                              >
-                                <span
-                                  className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
-                                />
-                                {CATEGORY_LABELS[cat.category] || cat.category}
-                              </span>
-                            ))}
-                          </div>
+                                className={`${CATEGORY_COLORS[cat.category] || "bg-gray-400"} transition-all`}
+                                style={{ width: `${pct}%` }}
+                                title={`${CATEGORY_LABELS[cat.category] || cat.category}: ${Number(cat.points).toLocaleString("en-US")} pts`}
+                              />
+                            );
+                          })}
                         </div>
-                      )}
-                  </div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                          {points.categories.map((cat) => (
+                            <span
+                              key={cat.category}
+                              className="flex items-center gap-1 text-xs text-nasun-white/40"
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
+                              />
+                              {CATEGORY_LABELS[cat.category] || cat.category}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                 </div>
               )}
             </div>
 
-            {/* Health Status Bar (HP gauge) */}
-            <HealthStatusBar
-              activeDays={ecosystemScore?.weekly?.activeDays ?? 0}
-              isPenalized={ecosystemScore?.isPenalized ?? false}
-              hasGenesisPass={hasGenesisPass}
-              hasActiveNft={hasActiveNft}
-              isLoading={ecosystemLoading}
-            />
-
-            {/* Daily Missions (self-polling, independent data fetch) */}
-            <DailyMissionsCard bare />
+            {/* Daily Missions + Health Donut (side by side) */}
+            <div className="flex gap-4">
+              <div className="flex-[2] min-w-0">
+                <DailyMissionsCard bare />
+              </div>
+              <div className="flex-[1] min-w-0 border border-dashed border-nasun-white/10 rounded-lg flex items-center justify-center">
+                <HealthStatusBar
+                  activeDays={ecosystemScore?.weekly?.activeDays ?? 0}
+                  isPenalized={ecosystemScore?.isPenalized ?? false}
+                  hasGenesisPass={hasGenesisPass}
+                  hasActiveNft={hasActiveNft}
+                  isLoading={ecosystemLoading}
+                />
+              </div>
+            </div>
           </>
         )}
       </div>

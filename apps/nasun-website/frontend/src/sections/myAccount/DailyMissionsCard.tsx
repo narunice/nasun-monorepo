@@ -26,16 +26,16 @@ interface Mission {
   description: string;
   points: number;
   showFaucet?: boolean;
+  comingSoon?: boolean;
 }
 
 const MISSIONS: Mission[] = [
   { id: "faucet", label: "Claim Tokens", description: "Use the faucet to get free test tokens", points: 1, showFaucet: true },
   { id: "wallet-transfer", label: "Send Tokens", description: "Transfer tokens to another wallet", points: 1 },
-  // TODO: Uncomment after Pado launch
-  // { id: "pado-dex", label: "Spot Trade", description: "Place a trade on the DEX orderbook", points: 2 },
-  // { id: "pado-lottery", label: "Buy Lottery Ticket", description: "Pick 5 numbers and try your luck", points: 1 },
-  // { id: "pado-scratchcard", label: "Play Scratch Card", description: "Scratch and win instant prizes", points: 1 },
-  // { id: "pado-games", label: "Play Quick Pick", description: "Auto-pick numbers for a quick game", points: 1 },
+  { id: "pado-dex", label: "Spot Trade", description: "Place a trade on the DEX orderbook", points: 2, comingSoon: true },
+  { id: "pado-lottery", label: "Buy Lottery Ticket", description: "Pick 5 numbers and try your luck", points: 1, comingSoon: true },
+  { id: "pado-scratchcard", label: "Play Scratch Card", description: "Scratch and win instant prizes", points: 1, comingSoon: true },
+  { id: "pado-games", label: "Play Quick Pick", description: "Auto-pick numbers for a quick game", points: 1, comingSoon: true },
 ];
 
 export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", bare = false }) => {
@@ -54,7 +54,8 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
     (id: string) => completedMissions.has(id as any) || localCompleted.has(id),
     [completedMissions, localCompleted],
   );
-  const completedCount = MISSIONS.filter((m) => isCompleted(m.id)).length;
+  const activeMissions = MISSIONS.filter((m) => !m.comingSoon);
+  const completedCount = activeMissions.filter((m) => isCompleted(m.id)).length;
 
   const handleFaucetSuccess = useCallback(() => {
     setLocalCompleted((prev) => new Set(prev).add("faucet"));
@@ -83,7 +84,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
             Daily Missions
           </h6>
           <p className="text-xs text-nasun-white/40 mt-0.5">
-            {completedCount}/{MISSIONS.length} completed
+            {completedCount}/{activeMissions.length} completed
           </p>
         </div>
       </div>
@@ -92,21 +93,23 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
       <div className="w-full h-1.5 bg-nasun-c6/50 rounded-full mb-4 overflow-hidden">
         <div
           className="h-full bg-green-500 rounded-full transition-all duration-500"
-          style={{ width: `${(completedCount / MISSIONS.length) * 100}%` }}
+          style={{ width: `${activeMissions.length > 0 ? (completedCount / activeMissions.length) * 100 : 0}%` }}
         />
       </div>
 
       {/* Steps */}
       <div className="space-y-3">
         {MISSIONS.map((mission, i) => {
-          const completed = isCompleted(mission.id);
+          const completed = !mission.comingSoon && isCompleted(mission.id);
           return (
             <div key={mission.id} className="flex items-start gap-3">
               {/* Circle checkbox */}
               <div className={`shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                 completed
                   ? "bg-green-500 border-green-500"
-                  : "border-nasun-white/20"
+                  : mission.comingSoon
+                    ? "border-nasun-white/10"
+                    : "border-nasun-white/20"
               }`}>
                 {completed && (
                   <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,12 +121,21 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium ${
-                  completed ? "text-nasun-white/40 line-through" : "text-nasun-white"
+                  completed
+                    ? "text-nasun-white/40 line-through"
+                    : mission.comingSoon
+                      ? "text-nasun-white/25"
+                      : "text-nasun-white"
                 }`}>
                   {i + 1}. {mission.label}
+                  {mission.comingSoon && (
+                    <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-nasun-white/5 text-nasun-white/20">
+                      Coming Soon
+                    </span>
+                  )}
                   <span className="ml-2 text-xs font-mono text-nasun-white/25">+{mission.points}</span>
                 </p>
-                {!completed && (
+                {!completed && !mission.comingSoon && (
                   <p className="text-xs text-nasun-white/40 mt-0.5">{mission.description}</p>
                 )}
               </div>
