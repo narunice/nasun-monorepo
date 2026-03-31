@@ -179,7 +179,7 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
             <p className="text-nasun-white text-center">
               Your Alliance NFT has been minted successfully!
             </p>
-            <p className="text-nasun-white/60 text-sm text-center">
+            <p className="text-nasun-white text-center">
               Activate your Alliance NFT
             </p>
             <ButtonV3
