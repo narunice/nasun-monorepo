@@ -166,7 +166,9 @@ export function useTrading(): UseTrading {
         const managerId = created.objectId;
         storeBalanceManagerId(walletAddress, managerId);
         await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
+        console.log('[createBalanceManager] Setting store balanceManagerId:', managerId.slice(0, 16));
         setBalanceManagerId(managerId);
+        console.log('[createBalanceManager] Store value after set:', useBalanceManagerStore.getState().balanceManagerId?.slice(0, 16));
         return { success: true, digest: result.digest };
       }
     }

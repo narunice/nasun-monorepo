@@ -113,6 +113,7 @@ export function EnablePadoCard() {
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
   const { isLoading, balanceManagerId, handleCreateBalanceManager } = useOrderActions();
 
+  console.log('[EnablePadoCard] balanceManagerId:', balanceManagerId);
   if (!isConnected || balanceManagerId) return null;
 
   return (
@@ -175,6 +176,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     handleMarketOrder,
     handleCreateBalanceManager,
   } = useOrderActions();
+
+  console.log('[TradingPanel] balanceManagerId:', balanceManagerId, 'isConnected:', isConnected, 'disabled:', !isConnected || !balanceManagerId);
 
   // Open orders + BM balance data
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
