@@ -89,8 +89,8 @@ function Wave1SectionV3({ shouldLoadVideo = false, onVideoReady }: Wave1SectionV
       line1: "Earn points: daily missions, access games and the DeFi platform, climb our ecosystem leaderboards.",
       line2: "Active holders may also qualify for future points airdrops.",
       cta: "Mint Now",
-      to: "/dev/alliance-nft",
-      disabled: true,
+      to: "/wave1/alliance-nft",
+      disabled: false,
     },
     {
       title: "Genesis Pass",

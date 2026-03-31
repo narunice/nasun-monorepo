@@ -24,7 +24,7 @@ export const Pages = {
   GenesisNft: lazyWithRetry(() => import("../pages/GenesisNftPage")),
   Web3: lazyWithRetry(() => import("../pages/protocol/ProposalPage")),
   ProposalDetail: lazyWithRetry(() => import("../pages/protocol/ProposalDetailPage")),
-  MyAccountPage: lazyWithRetry(() => import("../pages/MyAccountPage")),
+  MyAccountPage: lazyWithRetry(() => import("../pages/dev/DevMyAccountPage")),
   PrivacyPolicy: lazyWithRetry(() => import("../pages/PrivacyPolicyPage")),
   TermsOfUse: lazyWithRetry(() => import("../pages/TermsOfUsePage")),
   PostDetailPage: lazyWithRetry(() => import("../pages/PostDetailPage")), // Headless WP Post Page
@@ -34,7 +34,7 @@ export const Pages = {
   LeaderboardV3: lazyWithRetry(() => import("../pages/LeaderboardV3Page")),
   AiEconomy: lazyWithRetry(() => import("../pages/ecosystem/AiEconomyPage")),
   // Wave 1 Campaign Pages
-  // AllianceNft moved to /dev/alliance-nft (AppRoutes.tsx)
+  AllianceNft: lazyWithRetry(() => import("../pages/wave1/AllianceNftPage")),
   GenesisPass: lazyWithRetry(() => import("../pages/dev/DevGenesisPassPage")),
   BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
   EarlyContributors: lazyWithRetry(() => import("../pages/wave1/EarlyContributorsPage")),
@@ -376,7 +376,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       name: "navigation.wave1Campaign",
       path: "/wave1",
       subMenu: [
-        // Alliance NFT moved to /dev/alliance-nft
+        {
+          name: "navigation.alliance",
+          path: "/wave1/alliance-nft",
+          element: Pages.AllianceNft,
+        },
         {
           name: "navigation.genesisPass",
           path: "/wave1/genesis-pass",
