@@ -230,6 +230,7 @@ export function useOrderActions(): UseOrderActionsResult {
       queryClient.invalidateQueries({ queryKey: ["openOrders"] });
       queryClient.invalidateQueries({ queryKey: ["balance-manager-balance"] });
       queryClient.invalidateQueries({ queryKey: ["bm-balance-global"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-multi-balance"] });
       queryClient.invalidateQueries({ queryKey: ["orderbook"] });
       queryClient.invalidateQueries({ queryKey: ["orderHistory"] });
       queryClient.invalidateQueries({ queryKey: ["sender-events"] });
@@ -419,8 +420,11 @@ export function useOrderActions(): UseOrderActionsResult {
       showToast("Pado enabled!", "success");
     }
 
+    // Refresh balance queries so the order form picks up wallet balances immediately
+    refreshData();
+
     return result;
-  }, [createBalanceManager, hasMarginAccount, createMarginAccount, showToast]);
+  }, [createBalanceManager, hasMarginAccount, createMarginAccount, showToast, refreshData]);
 
   // Trading 잔고로 추가
   const handleDeposit = useCallback(async (): Promise<TradeResult> => {

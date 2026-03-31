@@ -116,7 +116,7 @@ export function EnablePadoCard() {
   if (!isConnected || balanceManagerId) return null;
 
   return (
-    <div className="shrink-0 bg-theme-bg-secondary rounded-lg p-4 border border-[var(--color-panel-border)] shadow-panel">
+    <div data-tour="enable-pado" className="shrink-0 bg-theme-bg-secondary rounded-lg p-4 border border-[var(--color-panel-border)] shadow-panel">
       <h3 className="text-sm xl:text-base font-semibold mb-3 text-theme-text-primary">Enable Pado</h3>
       <div className="text-xs xl:text-sm text-theme-text-muted mb-3">
         Enable Pado to start trading. Funds will be automatically deposited when needed.

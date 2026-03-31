@@ -40,7 +40,7 @@ function getInitialMode(): ChatMode {
   } catch {
     // localStorage unavailable
   }
-  return 'docked';
+  return 'closed';
 }
 
 export function ChatModeProvider({ children }: { children: ReactNode }) {
