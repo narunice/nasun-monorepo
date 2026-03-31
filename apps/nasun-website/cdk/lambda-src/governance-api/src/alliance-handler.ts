@@ -27,7 +27,7 @@ const ALLIANCE_REGISTRY_ID = process.env.ALLIANCE_REGISTRY_ID || "";
 const ALLIANCE_ADMIN_ID = process.env.ALLIANCE_ADMIN_ID || "";
 
 const ALLIANCE_IMAGES = [
-  "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafybeieehzagjrl5sitgywnxx3fjbuxg7kson3da4z3ljmeupporveyqeu",   // Desert Alien
+  "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafybeieehzagjrl5sitgywnxx3fjbuxg7kson3da4z3ljmeupporveyqeu",   // Taroka
   "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreignsezz4o23lnbdrwmtsv6ycgsrv4tdpnywanny7pwrnblph3u22y",   // Princess Kaebo
   "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreig6fenrv23z375xjifz3wadvwrh4plrtpb7pebx6yc2b4gxmm5mc4",   // The Contractor
   "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreigoirws7dj4uupljzbmc4zcpa3qqgkrd4juvlgfxr4nyslr2sjcri",   // Young Josen
