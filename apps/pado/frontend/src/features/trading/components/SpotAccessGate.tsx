@@ -13,7 +13,7 @@ import { NETWORK_CONFIG } from '../../../config/network';
 const STORAGE_KEY = 'pado:spot-access';
 const ACCESS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
-export function SpotAccessGate({ onSuccess }: { onSuccess: () => void }) {
+export function SpotAccessGate({ onSuccess, featureName = 'Spot Trading' }: { onSuccess: () => void; featureName?: string }) {
   const [accessId, setAccessId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
@@ -40,7 +40,7 @@ export function SpotAccessGate({ onSuccess }: { onSuccess: () => void }) {
           </h1>
 
           <h2 className="text-base font-semibold text-theme-text-primary text-center mb-2">
-            Spot Trading Access
+            {featureName} Access
           </h2>
           <p className="text-sm text-theme-text-muted text-center mb-6">
             This feature is currently available to invited testers only.
