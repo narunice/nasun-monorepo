@@ -94,12 +94,12 @@ function AllianceNftHeroSection() {
         <img
           src={PrincessKaebo}
           alt="Alliance character"
-          className="absolute bottom-0 right-0 min-[1640px]:right-[3%] h-[90%] object-contain"
+          className="absolute bottom-0 -right-[8%] min-[1700px]:right-[6%] h-[90%] object-contain"
           fetchPriority="high"
         />
 
         {/* Title overlay - left half (push left on narrower screens) */}
-        <div className="absolute left-8 min-[1640px]:left-20 top-[55%] -translate-y-1/2 w-[48%] min-[1640px]:w-[55%] flex justify-center pl-8 min-[1640px]:pl-20">
+        <div className="absolute left-8 min-[1700px]:left-20 top-[55%] -translate-y-1/2 w-[48%] min-[1700px]:w-[55%] flex justify-center pl-8 min-[1700px]:pl-20">
           <FadeInUp>
             <div className="text-center">
               <h1 className="!font-eurostile text-nasun-white uppercase lg:text-6xl min-[1440px]:text-7xl tracking-[0.15em] leading-none">
