@@ -52,10 +52,10 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
     if (!tour.isActive) return;
     updateRect();
 
-    // Auto-skip step if target element is not in the DOM
+    // Auto-skip step if target element is not in the DOM (unless step has fallback text)
     if (tour.currentStep) {
       const el = document.querySelector(tour.currentStep.target);
-      if (!el) {
+      if (!el && !tour.currentStep.noTargetDescription) {
         const goingForward = tour.step >= prevStepRef.current;
         prevStepRef.current = tour.step;
         const timer = setTimeout(() => goingForward ? tour.next() : tour.prev(), 100);
@@ -76,7 +76,13 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
 
   if (!tour.isActive || !tour.currentStep) return null;
 
-  // Compute tooltip position (below or above target)
+  // Use fallback description when target is not in the DOM
+  const hasTarget = !!targetRect;
+  const displayDescription = hasTarget
+    ? tour.currentStep.description
+    : (tour.currentStep.noTargetDescription ?? tour.currentStep.description);
+
+  // Compute tooltip position (below or above target, or centered if no target)
   const tooltipStyle: React.CSSProperties = {};
   if (targetRect) {
     const viewportHeight = window.innerHeight;
@@ -92,6 +98,12 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
     } else {
       tooltipStyle.bottom = viewportHeight - targetRect.top + 12;
     }
+  } else {
+    tooltipStyle.position = 'fixed';
+    tooltipStyle.top = '50%';
+    tooltipStyle.left = '50%';
+    tooltipStyle.transform = 'translate(-50%, -50%)';
+    tooltipStyle.zIndex = 60;
   }
 
   return (
@@ -163,7 +175,7 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
           {tour.currentStep.title}
         </h3>
         <p className="text-xs text-theme-text-secondary leading-relaxed mb-3">
-          {tour.currentStep.description}
+          {displayDescription}
         </p>
 
         {/* Buttons */}

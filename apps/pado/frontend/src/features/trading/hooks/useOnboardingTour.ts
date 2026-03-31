@@ -12,6 +12,8 @@ export interface TourStep {
   target: string;
   title: string;
   description: string;
+  /** Shown instead of description when the target element is not in the DOM. */
+  noTargetDescription?: string;
 }
 
 export const TOUR_STEPS: TourStep[] = [
@@ -39,6 +41,12 @@ export const TOUR_STEPS: TourStep[] = [
     target: '[data-tour="mode-toggle"]',
     title: 'Interface Mode',
     description: 'Switch between Simple and Pro layouts. Simple mode is great for quick trades.',
+  },
+  {
+    target: '[data-tour="enable-pado"]',
+    title: 'Enable Pado',
+    description: 'Click Enable Pado to create your trading account and start placing orders.',
+    noTargetDescription: 'Connect your wallet first, then click Enable Pado to create your trading account and start placing orders.',
   },
 ];
 
