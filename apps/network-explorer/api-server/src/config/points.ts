@@ -50,7 +50,7 @@ export const VOLUME_TIER_CAP = 3.0;
 
 // --- Scanner parameters ---
 
-export const SCAN_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes (reduced for daily mission freshness)
+export const SCAN_INTERVAL_MS = 60 * 1000; // 1 minute (fast detection for daily mission checklist)
 export const BATCH_SIZE = 1000;
 export const WALLET_CACHE_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
 
