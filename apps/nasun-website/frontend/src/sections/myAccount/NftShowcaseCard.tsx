@@ -224,15 +224,15 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               )}
             </div>
             {/* Actions */}
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex gap-3 mt-1">
               {!isGenesisPassLoading &&
                 !isGenesisPassRegistered &&
                 !isGenesisPassApplied && (
                   <ButtonV3
                     onClick={() => navigate("/wave1/genesis-pass")}
                     variant="nw1"
-                    size="md"
-                    className="font-medium"
+                    size="sm"
+                    className="flex-1"
                   >
                     Join Allowlist
                   </ButtonV3>
@@ -261,27 +261,18 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                   isLoading={ecosystem.isActivating}
                 />
               )}
-              <a
-                href="https://opensea.io/collection/nasun-genesis-pass/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-nasun-white/70 hover:text-nasun-white text-sm transition-colors underline underline-offset-2"
+              <ButtonV3
+                onClick={() => window.open("https://opensea.io/collection/nasun-genesis-pass/overview", "_blank")}
+                variant="nw2"
+                size="sm"
+                outline
+                className="flex-1"
               >
                 OpenSea
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-                  />
+                <svg className="w-3.5 h-3.5 ml-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                 </svg>
-              </a>
+              </ButtonV3>
             </div>
           </div>
         </OuterBox>
