@@ -22,6 +22,7 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { Spinner } from "@/components/ui";
+import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import AllianceNftHeroSection from "@/sections/wave1/alliance-nft/AllianceNftHeroSection";
 
 const AllianceNftPage = () => {
@@ -31,6 +32,8 @@ const AllianceNftPage = () => {
 
   const { isMinted, isLoading, data, wallets, isConfigured } =
     useAllianceMintStatus(cognitoToken);
+  const ecosystem = useEcosystemStatus(cognitoToken ?? undefined);
+  const allianceIsActive = !!ecosystem.getActivation("alliance");
 
   const [showMintDialog, setShowMintDialog] = useState(false);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
@@ -260,7 +263,7 @@ const AllianceNftPage = () => {
                 size="xl"
                 onClick={() => navigate("/my-account")}
               >
-                Activate Alliance
+                {allianceIsActive ? "Go to My Account" : "Activate Alliance"}
               </ButtonV3>
               {data.nftObjectId && (
                 <a
