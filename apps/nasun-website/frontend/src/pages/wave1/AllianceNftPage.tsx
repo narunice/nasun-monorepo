@@ -61,7 +61,7 @@ const AllianceNftPage = () => {
   }, []);
 
   const handleConnect = () => {
-    localStorage.setItem("auth_return_to", "/dev/alliance-nft#mint");
+    localStorage.setItem("auth_return_to", "/wave1/alliance-nft#mint");
     window.dispatchEvent(new Event("nasun:open-login"));
   };
 
