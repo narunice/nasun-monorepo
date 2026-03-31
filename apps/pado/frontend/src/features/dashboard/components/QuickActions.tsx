@@ -89,7 +89,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'cyan',
-    enabled: true,
+    enabled: false,
   },
 ];
 
