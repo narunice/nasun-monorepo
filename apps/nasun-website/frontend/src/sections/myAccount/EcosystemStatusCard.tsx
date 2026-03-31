@@ -1,7 +1,7 @@
 /**
  * EcosystemStatusCard
  *
- * Dashboard card for /dev/my-account showing ecosystem score,
+ * Dashboard card for /my-account showing ecosystem score,
  * NFT multiplier breakdown, and activity streak.
  * Uses ecosystem score API (public) + ecosystem status API (auth'd).
  */

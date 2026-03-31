@@ -30,21 +30,61 @@ interface Mission {
 }
 
 const MISSIONS: Mission[] = [
-  { id: "faucet", label: "Claim Tokens", description: "Use the faucet to get free test tokens", points: 1, showFaucet: true },
-  { id: "wallet-transfer", label: "Send Tokens", description: "Transfer tokens to another wallet", points: 1 },
-  { id: "pado-dex", label: "Spot Trade", description: "Place a trade on the DEX orderbook", points: 2, comingSoon: true },
-  { id: "pado-lottery", label: "Buy Lottery Ticket", description: "Pick 5 numbers and try your luck", points: 1, comingSoon: true },
-  { id: "pado-scratchcard", label: "Play Scratch Card", description: "Scratch and win instant prizes", points: 1, comingSoon: true },
-  { id: "pado-games", label: "Play Quick Pick", description: "Auto-pick numbers for a quick game", points: 1, comingSoon: true },
+  {
+    id: "faucet",
+    label: "Claim Tokens",
+    description: "Use the faucet to get free test tokens",
+    points: 1,
+    showFaucet: true,
+  },
+  {
+    id: "wallet-transfer",
+    label: "Send Tokens",
+    description: "Transfer tokens to another wallet",
+    points: 1,
+  },
+  {
+    id: "pado-dex",
+    label: "Spot Trade",
+    description: "Place a trade on the DEX orderbook",
+    points: 2,
+    comingSoon: true,
+  },
+  {
+    id: "pado-lottery",
+    label: "Buy Lottery Ticket",
+    description: "Pick 5 numbers and try your luck",
+    points: 1,
+    comingSoon: true,
+  },
+  {
+    id: "pado-scratchcard",
+    label: "Play Scratch Card",
+    description: "Scratch and win instant prizes",
+    points: 1,
+    comingSoon: true,
+  },
+  {
+    id: "pado-games",
+    label: "Play Quick Pick",
+    description: "Auto-pick numbers for a quick game",
+    points: 1,
+    comingSoon: true,
+  },
 ];
 
-export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", bare = false }) => {
+export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
+  className = "",
+  bare = false,
+}) => {
   const { user } = useAuth();
   const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
 
   const nasunWalletAddress =
-    user?.linkedAccounts?.["nasun wallet"]?.walletAddress ?? user?.walletAddress;
-  const hasValidAddress = nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
+    user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
+    user?.walletAddress;
+  const hasValidAddress =
+    nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
 
   const { completedMissions, isLoading, refetch } = useDailyMissions(
     hasValidAddress ? nasunWalletAddress : undefined,
@@ -63,14 +103,28 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
   }, [refetch]);
 
   const Wrapper = bare
-    ? ({ children }: { children: React.ReactNode }) => <div className={`border border-dashed border-nasun-white/10 rounded-lg p-4 ${className}`}>{children}</div>
-    : ({ children }: { children: React.ReactNode }) => <OuterBox color="c5" padding="sm" className={className}>{children}</OuterBox>;
+    ? ({ children }: { children: React.ReactNode }) => (
+        <div
+          className={`border border-dashed border-nasun-white/10 rounded-lg p-4 ${className}`}
+        >
+          {children}
+        </div>
+      )
+    : ({ children }: { children: React.ReactNode }) => (
+        <OuterBox color="c5" padding="sm" className={className}>
+          {children}
+        </OuterBox>
+      );
 
   if (isLoading) {
     return (
       <Wrapper>
-        <h6 className="text-nasun-white text-sm font-medium mb-4">Daily Missions</h6>
-        <div className="flex items-center justify-center py-8"><Spinner /></div>
+        <h6 className="text-nasun-white text-sm font-medium mb-4">
+          Daily Missions
+        </h6>
+        <div className="flex items-center justify-center py-8">
+          <Spinner />
+        </div>
       </Wrapper>
     );
   }
@@ -83,7 +137,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
           <h6 className="text-nasun-white text-sm font-medium">
             Daily Missions
           </h6>
-          <p className="text-xs text-nasun-white/40 mt-0.5">
+          <p className="text-sm text-nasun-white/40 mt-0.5">
             {completedCount}/{activeMissions.length} completed
           </p>
         </div>
@@ -93,7 +147,9 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
       <div className="w-full h-1.5 bg-nasun-c6/50 rounded-full mb-4 overflow-hidden">
         <div
           className="h-full bg-green-500 rounded-full transition-all duration-500"
-          style={{ width: `${activeMissions.length > 0 ? (completedCount / activeMissions.length) * 100 : 0}%` }}
+          style={{
+            width: `${activeMissions.length > 0 ? (completedCount / activeMissions.length) * 100 : 0}%`,
+          }}
         />
       </div>
 
@@ -104,39 +160,57 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", 
           return (
             <div key={mission.id} className="flex items-start gap-3">
               {/* Circle checkbox */}
-              <div className={`shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                completed
-                  ? "bg-green-500 border-green-500"
-                  : mission.comingSoon
-                    ? "border-nasun-white/10"
-                    : "border-nasun-white/20"
-              }`}>
+              <div
+                className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  completed
+                    ? "bg-green-500 border-green-500"
+                    : mission.comingSoon
+                      ? "border-nasun-white/60"
+                      : "border-nasun-white/80"
+                }`}
+              >
                 {completed && (
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-2.5 h-2.5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 )}
               </div>
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${
-                  completed
-                    ? "text-nasun-white/40 line-through"
-                    : mission.comingSoon
-                      ? "text-nasun-white/25"
-                      : "text-nasun-white"
-                }`}>
+                <p
+                  className={`text-sm font-medium ${
+                    completed
+                      ? "text-nasun-white/60 line-through"
+                      : mission.comingSoon
+                        ? "text-nasun-white/70"
+                        : "text-nasun-white"
+                  }`}
+                >
                   {i + 1}. {mission.label}
                   {mission.comingSoon && (
-                    <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-nasun-white/5 text-nasun-white/20">
+                    <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-nasun-white/10 text-nasun-white/50">
                       Coming Soon
                     </span>
                   )}
-                  <span className="ml-2 text-xs font-mono text-nasun-white/25">+{mission.points}</span>
+                  <span className="ml-2 text-sm font-mono text-nasun-white/50">
+                    +{mission.points}
+                  </span>
                 </p>
                 {!completed && !mission.comingSoon && (
-                  <p className="text-xs text-nasun-white/40 mt-0.5">{mission.description}</p>
+                  <p className="text-sm text-nasun-white/80 mt-0.5">
+                    {mission.description}
+                  </p>
                 )}
               </div>
 

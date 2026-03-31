@@ -1,15 +1,12 @@
 /**
- * DevMyAccountPage - Dev version of My Account for testing new features.
+ * MyAccountPage (V2) - Renewed My Account page.
  *
- * Differences from production MyAccountPage:
- * - Uses CompactNftStatus with showAllSections (Alliance, Battalion, Frontiers enabled)
- * - ProfileHeroCard redesigned: points-centric hero, no Connected Accounts inline
- * - PointsCard removed (absorbed into ProfileHeroCard)
+ * - ProfileHeroCard: points-centric hero, no Connected Accounts inline
+ * - NftShowcaseCard replacing PointsCard + CompactNftStatus
  * - ConnectedAccountsCard at page bottom (extracted from ProfileHeroCard)
  * - DailyMissionsCard and ReferralCard visible
- * - Title shows "MY ACCOUNT (DEV)"
  *
- * Route: /dev/my-account
+ * Route: /my-account
  */
 
 import { useTranslation } from "react-i18next";
