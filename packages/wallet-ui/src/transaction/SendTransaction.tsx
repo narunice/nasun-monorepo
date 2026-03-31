@@ -501,6 +501,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                   if (result.status === 'success') {
                     recordTransaction(recipient);
                     onSuccess?.(result.hash);
+                    window.dispatchEvent(new Event('nasun:transfer-success'));
                   }
                 } else {
                   // Move chain: use token transaction
@@ -512,6 +513,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
                   if (result.status === 'success') {
                     recordTransaction(recipient);
                     onSuccess?.(result.digest);
+                    window.dispatchEvent(new Event('nasun:transfer-success'));
                   }
                 }
               } catch {

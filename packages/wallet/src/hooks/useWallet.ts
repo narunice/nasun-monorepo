@@ -144,6 +144,10 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
   // Initialize (called at app start)
   _initialize: async () => {
+    // Already unlocked with a valid keypair; skip re-initialization to prevent
+    // race conditions (StrictMode double-invoke, HMR) from overwriting status.
+    if (currentKeypair !== null && get().status === 'unlocked') return;
+
     const hasKS = hasKeystore();
     const address = getStoredAddress();
     const sessionPwd = getSessionPassword();
