@@ -87,6 +87,7 @@ export function useEcosystemStatus(
       try {
         await activateNft(cognitoToken, nftType);
         await fetchStatus();
+        invalidateEcosystemStatus();
       } catch (err) {
         const msg = (err as EcosystemApiError).message || "Activation failed";
         setActivateError(msg);
@@ -106,6 +107,7 @@ export function useEcosystemStatus(
       try {
         await deactivateNft(cognitoToken, nftType);
         await fetchStatus();
+        invalidateEcosystemStatus();
       } catch (err) {
         const msg = (err as EcosystemApiError).message || "Deactivation failed";
         setActivateError(msg);
