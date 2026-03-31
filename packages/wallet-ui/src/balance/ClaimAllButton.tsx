@@ -11,9 +11,12 @@ import { useTokenFaucet, useNetwork, useMultiBalance } from '@nasun/wallet';
 
 interface ClaimAllButtonProps {
   className?: string;
+  onSuccess?: () => void;
+  /** When true, button stays visible after claim (shows success/disabled instead of hiding). */
+  persistent?: boolean;
 }
 
-export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
+export function ClaimAllButton({ className = '', onSuccess, persistent = false }: ClaimAllButtonProps) {
   const { isDevnet, isTestnet } = useNetwork();
   const {
     requestBatchFaucet,
@@ -30,10 +33,11 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
   const claimable = getClaimableTokens();
   const nsnBalance = balances?.native?.balance ?? 0n;
 
-  // Only show on devnet/testnet, wallet connected, at least 2 on-chain tokens claimable
+  // Only show on devnet/testnet with wallet connected
   if (!isDevnet && !isTestnet) return null;
   if (!canUseFaucet) return null;
-  if (claimable.length < 2) return null;
+  // In persistent mode, stay visible after claim (show disabled state instead of hiding)
+  if (!persistent && claimable.length < 2) return null;
 
   const handleClick = async () => {
     if (isAnyLoading) return;
@@ -47,6 +51,7 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
     if (result.success && result.claimed.length > 0) {
       const tokens = result.claimed.join(', ');
       setMessage({ type: 'success', text: `Received: ${tokens}` });
+      onSuccess?.();
     } else if (result.failed.length > 0) {
       setMessage({ type: 'error', text: result.failed[0].error });
     } else {
@@ -59,7 +64,7 @@ export function ClaimAllButton({ className = '' }: ClaimAllButtonProps) {
   return (
     <button
       onClick={handleClick}
-      disabled={isAnyLoading || claimable.length < 2}
+      disabled={isAnyLoading || !!message || claimable.length < (persistent ? 1 : 2)}
       className={`w-full py-1.5 text-xs xl:text-sm font-medium rounded-md transition-colors
         ${
           message?.type === 'success'
