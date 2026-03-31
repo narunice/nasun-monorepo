@@ -12,7 +12,10 @@ export function CompetitionsPage() {
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-theme-text-primary">Competitions</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-semibold text-theme-text-primary">Competitions</h1>
+          <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">PREVIEW</span>
+        </div>
         <p className="text-sm text-theme-text-muted mt-0.5">
           Compete for prizes based on trading volume
         </p>

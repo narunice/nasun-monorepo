@@ -30,7 +30,10 @@
       "WebFetch(domain:techcrunch.com)",
       "WebFetch(domain:www.zidooka.com)",
       "WebFetch(domain:www.socialmediatoday.com)",
-      "WebFetch(domain:www.techbuzz.ai)"
+      "WebFetch(domain:www.techbuzz.ai)",
+      "Bash(ssh -i ~/.ssh/.awskey/naru_seoul.pem ubuntu@15.165.19.180 \"sudo cp /tmp/nginx-staging.conf /etc/nginx/sites-available/staging.pado.conf && sudo nginx -t && sudo systemctl reload nginx && echo ''--- nginx reloaded successfully ---''\")",
+      "Bash(ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sudo cp /tmp/nginx-production.conf /etc/nginx/sites-available/pado.conf && sudo nginx -t && sudo systemctl reload nginx && echo ''--- nginx reloaded successfully ---''\")",
+      "Edit(/.claude/skills/leaderboard-export/**)"
     ]
   }
 }
