@@ -42,8 +42,8 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const SOCIAL_ITEMS: DropdownItem[] = [
-  { label: 'Leaderboard', path: '/leaderboard', enabled: !gated },
-  { label: 'Competitions', path: '/competitions', enabled: !gated },
+  { label: 'Leaderboard', path: '/leaderboard', enabled: true },
+  { label: 'Competitions', path: '/competitions', enabled: true },
 ];
 
 export function Header() {
@@ -359,23 +359,17 @@ export function Header() {
           </div>
 
           {/* Portfolio */}
-          {isEffectivelyGated ? (
-            <span className="px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed">
-              Portfolio
-            </span>
-          ) : (
-            <Link
-              to="/portfolio"
-              onClick={(e) => handleNavClick(e, '/portfolio')}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                isActive('/portfolio')
-                  ? 'text-pd3 bg-pd3/10'
-                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
-              }`}
-            >
-              Portfolio
-            </Link>
-          )}
+          <Link
+            to="/portfolio"
+            onClick={(e) => handleNavClick(e, '/portfolio')}
+            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive('/portfolio')
+                ? 'text-pd3 bg-pd3/10'
+                : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+            }`}
+          >
+            Portfolio
+          </Link>
 
           {/* Admin (conditional) */}
           {isAdmin && (

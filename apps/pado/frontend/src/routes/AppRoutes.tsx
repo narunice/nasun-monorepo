@@ -9,11 +9,12 @@
  * - Admin (/admin) - conditional, admin-only
  */
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PageSpinner } from '../components/common/PageSpinner';
 import { NETWORK_CONFIG } from '../config/network';
 import { useAppAdmin } from '../hooks/useAppAdmin';
+import { SpotAccessGate, isSpotAccessGranted } from '../features/trading/components/SpotAccessGate';
 
 // Games-only mode: hide non-games routes, but allow platform admins through
 // TEMPORARY: Remove after 2026-04-07
@@ -21,6 +22,20 @@ function GatedRoute({ children }: { children: React.ReactNode }) {
   const isAppAdmin = useAppAdmin();
   if (NETWORK_CONFIG.gamesOnlyMode && !isAppAdmin) {
     return <Navigate to="/games/lottery" replace />;
+  }
+  return <>{children}</>;
+}
+
+// Access-code-gated route: shows access gate instead of redirecting
+// Used for Social and Portfolio pages (same credentials as Spot Trading)
+// TEMPORARY: Remove after 2026-04-07
+function AccessCodeRoute({ children, featureName }: { children: React.ReactNode; featureName?: string }) {
+  const isAppAdmin = useAppAdmin();
+  const [granted, setGranted] = useState(() =>
+    !NETWORK_CONFIG.gamesOnlyMode || !NETWORK_CONFIG.spotAccessCode || isSpotAccessGranted()
+  );
+  if (NETWORK_CONFIG.gamesOnlyMode && !isAppAdmin && !granted) {
+    return <SpotAccessGate featureName={featureName} onSuccess={() => setGranted(true)} />;
   }
   return <>{children}</>;
 }
@@ -84,18 +99,18 @@ export function AppRoutes() {
         <Route path="/admin" element={<AdminPage />} />
 
         {/* Leaderboard */}
-        <Route path="/leaderboard" element={<GatedRoute><LeaderboardPage /></GatedRoute>} />
-        <Route path="/leaderboard/trader/:address" element={<GatedRoute><TraderProfilePage /></GatedRoute>} />
+        <Route path="/leaderboard" element={<AccessCodeRoute featureName="Social"><LeaderboardPage /></AccessCodeRoute>} />
+        <Route path="/leaderboard/trader/:address" element={<AccessCodeRoute featureName="Social"><TraderProfilePage /></AccessCodeRoute>} />
 
         {/* Competitions */}
-        <Route path="/competitions" element={<GatedRoute><CompetitionsPage /></GatedRoute>} />
-        <Route path="/competitions/:id" element={<GatedRoute><CompetitionDetailPage /></GatedRoute>} />
+        <Route path="/competitions" element={<AccessCodeRoute featureName="Social"><CompetitionsPage /></AccessCodeRoute>} />
+        <Route path="/competitions/:id" element={<AccessCodeRoute featureName="Social"><CompetitionDetailPage /></AccessCodeRoute>} />
 
         {/* Earn (Staking + Lending) */}
         <Route path="/earn" element={<GatedRoute><EarnPage /></GatedRoute>} />
 
         {/* Portfolio */}
-        <Route path="/portfolio" element={<GatedRoute><PortfolioPage /></GatedRoute>} />
+        <Route path="/portfolio" element={<AccessCodeRoute featureName="Portfolio"><PortfolioPage /></AccessCodeRoute>} />
 
         {/* Auth (zkLogin callback) - whitelisted */}
         <Route path="/callback" element={<AuthCallbackPage />} />
