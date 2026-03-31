@@ -16,7 +16,7 @@ import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import type { NftType } from "@/services/ecosystemApi";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { ALLIANCE_PREVIEW_IMAGES } from "@/constants/alliance";
+import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
 
 interface NftShowcaseCardProps {
   className?: string;
@@ -117,6 +117,14 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                   <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
+                  {/* Character name overlay at belly/waist area */}
+                  {allianceData && (
+                    <div className="absolute bottom-[10%] inset-x-0 flex justify-center pointer-events-none">
+                      <span className="text-white text-lg font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                        {ALLIANCE_NAMES[allianceData.imageIndex] ?? ""}
+                      </span>
+                    </div>
+                  )}
                   {!allianceIsActive && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-nasun-white/90 text-sm font-semibold bg-black/40 px-3 py-1 rounded-full">
@@ -133,7 +141,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               ) : !isAllianceMinted ? (
                 <span className="text-nasun-white/50 text-sm">Not Minted</span>
               ) : allianceIsActive ? (
-                <span className="text-green-400 text-sm">Active</span>
+                <span className="text-green-400 text-sm">Activated</span>
               ) : (
                 <span className="text-nasun-white/70 text-sm">Minted</span>
               )}
@@ -174,7 +182,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               {isGenesisPassLoading ? (
                 <Spinner size="sm" />
               ) : genesisIsActive ? (
-                <span className="text-green-400 text-sm">Active</span>
+                <span className="text-green-400 text-sm">Activated</span>
               ) : isGenesisPassRegistered ? (
                 <span className="text-nasun-white/70 text-sm">Registered</span>
               ) : isGenesisPassApplied ? (

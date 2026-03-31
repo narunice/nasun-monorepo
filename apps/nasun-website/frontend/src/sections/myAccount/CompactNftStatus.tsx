@@ -219,7 +219,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                 ) : isAllianceMinted ? (
                   <div className="flex flex-col gap-0.5">
                     <span className={`text-sm ${ecosystem.getActivation("alliance") ? "text-green-400" : "text-nasun-white/70"}`}>
-                      {ecosystem.getActivation("alliance") ? "Active" : "Minted"}
+                      {ecosystem.getActivation("alliance") ? "Activated" : "Minted"}
                     </span>
                     {allianceData?.walletAddress && (
                       <span className="text-nasun-white/50 text-sm font-mono">
@@ -293,7 +293,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                 <h6 className="text-nasun-white">Genesis Pass</h6>
                 {showAllSections && ecosystem.getActivation("genesis-pass") && (
                   <span className="text-sm font-semibold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                    ACTIVE
+                    ACTIVATED
                   </span>
                 )}
               </div>
