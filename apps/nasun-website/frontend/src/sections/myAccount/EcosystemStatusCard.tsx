@@ -6,14 +6,9 @@
  * Uses ecosystem score API (public) + ecosystem status API (auth'd).
  */
 
-import { useState, useEffect } from "react";
 import { useAuth } from "@/features/auth";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
-import {
-  getEcosystemScore,
-  type EcosystemScoreData,
-} from "@/services/ecosystemScoreApi";
-
+import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 
 interface EcosystemStatusCardProps {
   className?: string;
@@ -22,29 +17,7 @@ interface EcosystemStatusCardProps {
 export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps) {
   const { user, cognitoToken } = useAuth();
   const { activations, getActivation } = useEcosystemStatus(cognitoToken ?? undefined);
-  const [score, setScore] = useState<EcosystemScoreData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const identityId = user?.identityId;
-
-  useEffect(() => {
-    if (!identityId) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await getEcosystemScore(identityId);
-        if (!cancelled) setScore(data);
-      } catch (err) {
-        console.error("[EcosystemStatus]", err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [identityId]);
+  const { score, isLoading: loading } = useEcosystemScore(user?.identityId);
 
   const multiplier = score?.multiplier ?? 1.0;
   const dailyScore = score?.daily.ecosystemScore ?? 0;
