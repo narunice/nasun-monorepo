@@ -33,7 +33,10 @@
       "WebFetch(domain:www.techbuzz.ai)",
       "Bash(ssh -i ~/.ssh/.awskey/naru_seoul.pem ubuntu@15.165.19.180 \"sudo cp /tmp/nginx-staging.conf /etc/nginx/sites-available/staging.pado.conf && sudo nginx -t && sudo systemctl reload nginx && echo ''--- nginx reloaded successfully ---''\")",
       "Bash(ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sudo cp /tmp/nginx-production.conf /etc/nginx/sites-available/pado.conf && sudo nginx -t && sudo systemctl reload nginx && echo ''--- nginx reloaded successfully ---''\")",
-      "Edit(/.claude/skills/leaderboard-export/**)"
+      "Edit(/.claude/skills/leaderboard-export/**)",
+      "Bash(find /home/naru/my_apps/nasun-monorepo -type f \\\\\\(-name *lambda* -o -name *eventbridge* -o -name *cdk.ts \\\\\\))",
+      "Bash(find /home/naru/my_apps/nasun-monorepo -type f \\\\\\(-name *.service -o -name pado-chat* -o -name systemd* \\\\\\))",
+      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@3.38.76.85 \"uptime && echo ''---'' && sudo docker logs --tail 5 zkprover-prover-fe-1 2>&1 | tail -3\")"
     ]
   }
 }
