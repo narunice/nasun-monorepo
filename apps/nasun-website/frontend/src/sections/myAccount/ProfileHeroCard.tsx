@@ -211,7 +211,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   const { getActivation } = useEcosystemStatus(cognitoToken);
 
   const hasGenesisPass = !!getActivation("genesis-pass");
-  const hasActiveNft = !!getActivation("alliance") || !!getActivation("genesis-pass") || !!getActivation("battalion");
+  const hasActiveNft =
+    !!getActivation("alliance") ||
+    !!getActivation("genesis-pass") ||
+    !!getActivation("battalion");
 
   // Real-time multiplier from activation state (fallback when ecosystem cache is stale)
   const realtimeMultiplier = useMemo(() => {
@@ -237,9 +240,17 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   }, [completedMissions]);
 
   // Use the higher of ecosystem API vs real-time computed values
-  const displayBaseScore = Math.max(ecosystemScore?.daily.baseScore ?? 0, realtimeBaseScore);
-  const displayMultiplier = Math.max(ecosystemScore?.multiplier ?? 0, realtimeMultiplier);
-  const displayTodayScore = parseFloat((displayBaseScore * displayMultiplier).toFixed(1));
+  const displayBaseScore = Math.max(
+    ecosystemScore?.daily.baseScore ?? 0,
+    realtimeBaseScore,
+  );
+  const displayMultiplier = Math.max(
+    ecosystemScore?.multiplier ?? 0,
+    realtimeMultiplier,
+  );
+  const displayTodayScore = parseFloat(
+    (displayBaseScore * displayMultiplier).toFixed(1),
+  );
 
   // ---- Display Name & Avatar ----
   const handleImageError = useCallback(() => setImageError(true), []);
@@ -353,7 +364,19 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
-                <InfoTooltip text="WARNING: This feature may be buggy during the experimental phase. We appreciate your patience. -- Activate a Nasun membership NFT to start earning Ecosystem Points. Your on-chain activity score, multiplier bonuses, and bonus points are combined into a daily total. The scoring formula may be adjusted at the operator's discretion as we fix bugs and fine-tune the balance." />
+                <InfoTooltip>
+                  <p className="text-amber-400 font-semibold mb-1.5">
+                    This feature may be buggy during the experimental phase. We
+                    appreciate your patience.
+                  </p>
+                  <p>
+                    Activate a Nasun membership NFT to start earning Ecosystem
+                    Points. Your on-chain activity score, multiplier bonuses,
+                    and bonus points are combined into a daily total. The
+                    scoring formula may be adjusted at the operator's discretion
+                    as we fix bugs and fine-tune the balance.
+                  </p>
+                </InfoTooltip>
               </h6>
               {!hasValidAddress ? (
                 <p className="text-nasun-white/50 text-base">
@@ -376,7 +399,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                   <div className="flex items-baseline flex-wrap gap-x-6 gap-y-1 mb-3">
                     <div className="flex items-baseline gap-2">
                       <span className="text-4xl font-bold text-nasun-white">
-                        {displayTodayScore.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
+                        {displayTodayScore.toLocaleString("en-US", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 1,
+                        })}
                       </span>
                       <span className="text-base text-nasun-white/70">
                         pts today
@@ -384,10 +410,14 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-nasun-white/40">
                       <span>Base</span>
-                      <span className="font-mono text-nasun-white/60">{displayBaseScore}</span>
+                      <span className="font-mono text-nasun-white/60">
+                        {displayBaseScore}
+                      </span>
                       <span>x</span>
                       <span>Multiplier</span>
-                      <span className="font-mono text-nasun-white/60">{displayMultiplier.toFixed(1)}</span>
+                      <span className="font-mono text-nasun-white/60">
+                        {displayMultiplier.toFixed(1)}
+                      </span>
                       <span>+</span>
                       <span>Bonus</span>
                       <span className="font-mono text-nasun-white/60">0</span>
@@ -409,50 +439,63 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                     <div className="flex items-baseline gap-2 text-sm text-nasun-white/40">
                       <span>All time:</span>
                       <span className="font-mono text-nasun-white/60">
-                        {(ecosystemScore?.allTime.ecosystemScore ?? 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
+                        {(
+                          ecosystemScore?.allTime.ecosystemScore ?? 0
+                        ).toLocaleString("en-US", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 1,
+                        })}
                       </span>
                       <span>pts</span>
                       {points && (
                         <>
                           <span>&middot;</span>
-                          <span>{points.activityCount} {points.activityCount === 1 ? "activity" : "activities"}</span>
+                          <span>
+                            {points.activityCount}{" "}
+                            {points.activityCount === 1
+                              ? "activity"
+                              : "activities"}
+                          </span>
                           {firstDate && <span>&middot; Since {firstDate}</span>}
                         </>
                       )}
                     </div>
 
                     {/* Category Distribution Bar */}
-                    {points && points.categories.length > 0 && totalForBar > 0 && (
-                      <div className="mt-2">
-                        <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
-                          {points.categories.map((cat) => {
-                            const pct = (Number(cat.points) / totalForBar) * 100;
-                            if (pct < 1) return null;
-                            return (
-                              <div
-                                key={cat.category}
-                                className={`${CATEGORY_COLORS[cat.category] || "bg-gray-400"} transition-all`}
-                                style={{ width: `${pct}%` }}
-                                title={`${CATEGORY_LABELS[cat.category] || cat.category}: ${Number(cat.points).toLocaleString("en-US")} pts`}
-                              />
-                            );
-                          })}
-                        </div>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
-                          {points.categories.map((cat) => (
-                            <span
-                              key={cat.category}
-                              className="flex items-center gap-1 text-xs text-nasun-white/40"
-                            >
+                    {points &&
+                      points.categories.length > 0 &&
+                      totalForBar > 0 && (
+                        <div className="mt-2">
+                          <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
+                            {points.categories.map((cat) => {
+                              const pct =
+                                (Number(cat.points) / totalForBar) * 100;
+                              if (pct < 1) return null;
+                              return (
+                                <div
+                                  key={cat.category}
+                                  className={`${CATEGORY_COLORS[cat.category] || "bg-gray-400"} transition-all`}
+                                  style={{ width: `${pct}%` }}
+                                  title={`${CATEGORY_LABELS[cat.category] || cat.category}: ${Number(cat.points).toLocaleString("en-US")} pts`}
+                                />
+                              );
+                            })}
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                            {points.categories.map((cat) => (
                               <span
-                                className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
-                              />
-                              {CATEGORY_LABELS[cat.category] || cat.category}
-                            </span>
-                          ))}
+                                key={cat.category}
+                                className="flex items-center gap-1 text-xs text-nasun-white/40"
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
+                                />
+                                {CATEGORY_LABELS[cat.category] || cat.category}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 </div>
               )}
@@ -476,7 +519,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   );
 };
 
-function InfoTooltip({ text }: { text: string }) {
+function InfoTooltip({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -505,9 +548,9 @@ function InfoTooltip({ text }: { text: string }) {
         i
       </button>
       {open && (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-72 -translate-x-1/2 rounded-lg border border-nasun-c6/60 bg-nasun-c6 p-3 text-left text-xs leading-relaxed text-nasun-white/70 shadow-lg">
-          {text}
-          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-nasun-c6" />
+        <div className="absolute top-full left-0 z-50 mt-2 w-96 rounded-lg border border-nasun-c6/60 bg-nasun-c6 p-2 text-left text-sm leading-snug text-nasun-white/70 shadow-lg">
+          <div className="absolute left-1/2 bottom-full -translate-x-1/2 border-4 border-transparent border-b-nasun-c6" />
+          {children}
         </div>
       )}
     </div>
