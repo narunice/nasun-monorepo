@@ -403,7 +403,6 @@ css = '''
   li[data-flag="green"] .fg { opacity: 1; background: #c8e6c9; }
   li[data-flag="orange"] .fo { opacity: 1; background: #ffe0b2; }
   li[data-flag="yellow"] .fy { opacity: 1; background: #fff9c4; }
-  li[data-flag="green"] { background-color: #e8f5e9; border-left: 3px solid #1b5e20; padding-left: 8px; }
   li[data-flag="orange"] { background-color: #fff3e0; border-left: 3px solid #e65100; padding-left: 8px; }
   li[data-flag="yellow"] { background-color: #fffde7; border-left: 3px solid #f9a825; padding-left: 8px; }
 '''

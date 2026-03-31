@@ -45,7 +45,10 @@ export function LeaderboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-theme-text-primary">Leaderboard</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-theme-text-primary">Leaderboard</h1>
+            <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">PREVIEW</span>
+          </div>
           <p className="text-sm text-theme-text-muted mt-0.5">
             {MODE_DESCRIPTIONS[mode]}
           </p>
