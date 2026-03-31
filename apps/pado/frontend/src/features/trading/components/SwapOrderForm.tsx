@@ -222,9 +222,14 @@ export function SwapOrderForm({
   }, [baseAmount, midPrice, isBuying, asks, bids]);
 
   // Balance and validation
+  // When auto deposit is enabled, only block if total available is zero.
+  // Auto deposit handles the shortfall at execution time.
+  const { autoDepositEnabled } = useOrderForm();
   const payBalance = isBuying ? quoteBalance : baseBalance;
   const maxPayAmount = isBuying ? quoteBalance / (1 + feeRate) : baseBalance;
-  const isInsufficientBalance = payAmount > 0 && payAmount > maxPayAmount;
+  const isInsufficientBalance = autoDepositEnabled
+    ? (payAmount > 0 && payBalance <= 0)
+    : (payAmount > 0 && payAmount > maxPayAmount);
 
   // Percent quick buttons
   const getPercentAmount = useCallback((pct: number) => {

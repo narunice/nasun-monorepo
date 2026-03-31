@@ -4,7 +4,11 @@
  * balance manager operations, and order placement.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useBalanceManagerStore } from './stores/balanceManagerStore';
+
+// Module-level guard to prevent duplicate validation across hook instances
+let _validatingForAddress: string | null = null;
 import {
   buildPlaceLimitOrder,
   buildPlaceMarketOrder,
@@ -85,23 +89,36 @@ export function useTrading(): UseTrading {
   const { currentPool } = useMarket();
   const { isLoading, error, walletAddress, executeTransaction } = useTransactionExecutor();
 
-  const [balanceManagerId, setBalanceManagerId] = useState<string | null>(null);
-  const [isValidatingBalanceManager, setIsValidatingBalanceManager] = useState(true);
+  // Shared store for balanceManagerId (all useTrading instances see the same value)
+  const balanceManagerId = useBalanceManagerStore((s) => s.balanceManagerId);
+  const setBalanceManagerId = useBalanceManagerStore((s) => s.setBalanceManagerId);
+  const isValidatingBalanceManager = useBalanceManagerStore((s) => s.isValidating);
+  const setIsValidatingBalanceManager = useBalanceManagerStore((s) => s.setIsValidating);
 
-  // Validate BalanceManager on init and wallet address change
+  // Validate BalanceManager on init and wallet address change.
+  // Module-level guard ensures only one instance runs validation at a time.
   useEffect(() => {
+    if (!walletAddress) {
+      setBalanceManagerId(null);
+      setIsValidatingBalanceManager(false);
+      _validatingForAddress = null;
+      return;
+    }
+
+    // Skip if already validating/validated for this address
+    if (_validatingForAddress === walletAddress) return;
+    _validatingForAddress = walletAddress;
+
+    let cancelled = false;
+
     const validateAndCleanup = async () => {
       setBalanceManagerId(null);
       setIsValidatingBalanceManager(true);
 
-      if (!walletAddress) {
-        setIsValidatingBalanceManager(false);
-        return;
-      }
-
       const storedId = getStoredBalanceManagerId(walletAddress);
       if (storedId) {
         const exists = await validateBalanceManagerExists(storedId);
+        if (cancelled) return;
         if (exists) {
           setBalanceManagerId(storedId);
         } else {
@@ -109,8 +126,9 @@ export function useTrading(): UseTrading {
           clearBalanceManagerId(walletAddress);
         }
       } else {
-        // No stored ID — attempt on-chain recovery via event query
+        // No stored ID -- attempt on-chain recovery via event query
         const recoveredId = await findUserBalanceManager(walletAddress);
+        if (cancelled) return;
         if (recoveredId) {
           storeBalanceManagerId(walletAddress, recoveredId);
           setBalanceManagerId(recoveredId);
@@ -119,8 +137,14 @@ export function useTrading(): UseTrading {
       }
       setIsValidatingBalanceManager(false);
     };
+
     validateAndCleanup();
-  }, [walletAddress]);
+
+    return () => {
+      cancelled = true;
+      _validatingForAddress = null;
+    };
+  }, [walletAddress, setBalanceManagerId, setIsValidatingBalanceManager]);
 
   // --- Balance Manager Operations ---
 
