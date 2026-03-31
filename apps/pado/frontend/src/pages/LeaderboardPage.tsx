@@ -47,7 +47,7 @@ export function LeaderboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-theme-text-primary">Leaderboard</h1>
-            <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">PREVIEW</span>
+            <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">FEATURE PREVIEW</span>
           </div>
           <p className="text-sm text-theme-text-muted mt-0.5">
             {MODE_DESCRIPTIONS[mode]}
