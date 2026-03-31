@@ -197,7 +197,9 @@ const AllianceNftPage = () => {
                         />
                         {selectedImage === i && (
                           <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-green-500 shadow-lg shadow-green-500/40 flex items-center justify-center">
-                            <span className="text-white text-base font-bold">&#10003;</span>
+                            <span className="text-white text-base font-bold">
+                              &#10003;
+                            </span>
                           </div>
                         )}
                       </div>
@@ -302,6 +304,28 @@ const AllianceNftPage = () => {
               </p>
             </div>
           )}
+        </div>
+
+        <div className="flex items-start gap-2 max-w-3xl mx-auto mt-12 text-nasun-white/80">
+          <svg
+            className="w-4 h-4 mt-0.5 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <p className="text-sm">
+            This NFT is a devnet asset minted on Nasun Devnet. It exists solely
+            for testing and community participation purposes. If the devnet is
+            reset, your chosen NFT will be restored automatically, although the
+            object ID will change.
+          </p>
         </div>
       </SectionLayout>
 
