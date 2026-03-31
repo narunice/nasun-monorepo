@@ -141,7 +141,7 @@ const DevMyAccountPage = () => {
         )}
 
         {/* Page Title */}
-        <PageTitle>MY ACCOUNT (DEV)</PageTitle>
+        <PageTitle>ACCOUNT</PageTitle>
 
         {/* Bento Grid Dashboard Layout */}
         {/* Row-by-row sequential layout (no row-span) */}
