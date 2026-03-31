@@ -31,10 +31,11 @@ interface Mission {
 const MISSIONS: Mission[] = [
   { id: "faucet", label: "Claim Tokens", description: "Use the faucet to get free test tokens", points: 1, showFaucet: true },
   { id: "wallet-transfer", label: "Send Tokens", description: "Transfer tokens to another wallet", points: 1 },
-  { id: "pado-dex", label: "Spot Trade", description: "Place a trade on the DEX orderbook", points: 2 },
-  { id: "pado-lottery", label: "Buy Lottery Ticket", description: "Pick 5 numbers and try your luck", points: 1 },
-  { id: "pado-scratchcard", label: "Play Scratch Card", description: "Scratch and win instant prizes", points: 1 },
-  { id: "pado-games", label: "Play Quick Pick", description: "Auto-pick numbers for a quick game", points: 1 },
+  // TODO: Uncomment after Pado launch
+  // { id: "pado-dex", label: "Spot Trade", description: "Place a trade on the DEX orderbook", points: 2 },
+  // { id: "pado-lottery", label: "Buy Lottery Ticket", description: "Pick 5 numbers and try your luck", points: 1 },
+  // { id: "pado-scratchcard", label: "Play Scratch Card", description: "Scratch and win instant prizes", points: 1 },
+  // { id: "pado-games", label: "Play Quick Pick", description: "Auto-pick numbers for a quick game", points: 1 },
 ];
 
 export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({ className = "", bare = false }) => {
