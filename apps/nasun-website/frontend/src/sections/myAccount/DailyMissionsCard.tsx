@@ -27,6 +27,7 @@ interface Mission {
   points: number;
   showFaucet?: boolean;
   comingSoon?: boolean;
+  externalUrl?: string;
 }
 
 const MISSIONS: Mission[] = [
@@ -55,21 +56,21 @@ const MISSIONS: Mission[] = [
     label: "Buy Lottery Ticket",
     description: "Pick 5 numbers and try your luck",
     points: 1,
-    comingSoon: true,
+    externalUrl: "https://pado.finance/games/lottery",
   },
   {
     id: "pado-scratchcard",
     label: "Play Scratch Card",
     description: "Scratch and win instant prizes",
     points: 1,
-    comingSoon: true,
+    externalUrl: "https://pado.finance/games/scratch",
   },
   {
     id: "pado-games",
     label: "Play Quick Pick",
     description: "Auto-pick numbers for a quick game",
     points: 1,
-    comingSoon: true,
+    externalUrl: "https://pado.finance/games/scratch",
   },
 ];
 
@@ -197,7 +198,32 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                         : "text-nasun-white"
                   }`}
                 >
-                  {i + 1}. {mission.label}
+                  {i + 1}.{" "}
+                  {mission.externalUrl ? (
+                    <a
+                      href={mission.externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline inline-flex items-center gap-1"
+                    >
+                      {mission.label}
+                      <svg
+                        className="w-3 h-3 inline-block opacity-60"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  ) : (
+                    mission.label
+                  )}
                   {mission.comingSoon && (
                     <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-nasun-white/10 text-nasun-white/50">
                       Coming Soon
