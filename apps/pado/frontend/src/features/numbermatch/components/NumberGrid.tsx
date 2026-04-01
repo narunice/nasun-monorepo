@@ -1,8 +1,8 @@
 /**
  * NumberGrid - Pick 1-5 number selector with pick count control
  */
-import { FC } from 'react';
-import { MIN_NUMBER, MAX_NUMBER, MAX_PICKS, PRICE_PER_PICK_DISPLAY, PAYOUT_TABLE } from '../constants';
+import type { FC } from 'react';
+import { MIN_NUMBER, MAX_NUMBER, PRICE_PER_PICK_DISPLAY, PAYOUT_TABLE } from '../constants';
 
 interface NumberGridProps {
   selectedNumbers: number[];

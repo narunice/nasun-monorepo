@@ -1,7 +1,7 @@
 /**
  * PoolStatusBar - Shows Number Match pool status
  */
-import { FC } from 'react';
+import type { FC } from 'react';
 import { useNumberMatchPool } from '../hooks/useNumberMatchPool';
 import { formatNusdc } from '../types';
 import { MAX_DAILY_PLAYS } from '../constants';

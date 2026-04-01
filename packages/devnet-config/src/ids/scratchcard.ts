@@ -5,11 +5,7 @@ import config from '../../devnet-ids.json';
 import type { ObjectId, ScratchcardConfig } from '../types';
 
 export const SCRATCHCARD_PACKAGE_ID = config.scratchcard.packageId as ObjectId;
-export const SCRATCHCARD_ORIGINAL_PACKAGE_ID = (
-  'originalPackageId' in config.scratchcard
-    ? config.scratchcard.originalPackageId
-    : config.scratchcard.packageId
-) as ObjectId;
+export const SCRATCHCARD_ORIGINAL_PACKAGE_ID = (config.scratchcard.originalPackageId ?? config.scratchcard.packageId) as ObjectId;
 export const SCRATCHCARD_POOL = config.scratchcard.pool as ObjectId;
 export const SCRATCHCARD_ADMIN_CAP = config.scratchcard.adminCap as ObjectId;
 export const SCRATCHCARD_UPGRADE_CAP = config.scratchcard.upgradeCap as ObjectId;

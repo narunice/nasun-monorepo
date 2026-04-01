@@ -415,6 +415,7 @@ export type ContractType =
   | 'governance' // DAO / Voting
   | 'oracle' // Price oracle
   | 'system' // System contract
+  | 'leisure' // Lottery / Scratchcard / Games
   | 'unknown';
 
 /** Contract registry interface */
