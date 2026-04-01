@@ -1,7 +1,6 @@
 import { getSuiClient } from '../../../lib/sui-client';
 import {
   LOTTERY_REGISTRY_ID,
-  LOTTERY_ROUND_TYPE,
   TICKET_TYPE,
   ROUND_STATUS,
 } from '../constants';

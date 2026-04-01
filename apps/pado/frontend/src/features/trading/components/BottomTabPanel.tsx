@@ -8,8 +8,8 @@
 import { useState, useEffect } from 'react';
 import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
-import { OrderHistory } from './OrderHistory';
-import { TradeHistory } from './TradeHistory';
+// import { OrderHistory } from './OrderHistory';
+// import { TradeHistory } from './TradeHistory';
 import { useOpenOrders, useOrderActions, useBalanceManagerBalance } from '../hooks';
 import { useMarket } from '../context/MarketContext';
 import { calcLockedAmounts } from '../types';
@@ -46,8 +46,8 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   const tabs: TabConfig[] = [
     { id: 'openOrders', label: 'Open Orders', badge: openOrderCount > 0 ? openOrderCount : undefined },
     { id: 'tpsl', label: 'TP/SL', badge: tpslActiveCount > 0 ? tpslActiveCount : undefined },
-    { id: 'orderHistory', label: 'Order History' },
-    { id: 'tradeHistory', label: 'Trade History' },
+    // { id: 'orderHistory', label: 'Order History' },
+    // { id: 'tradeHistory', label: 'Trade History' },
     { id: 'assets', label: 'Assets' },
     { id: 'portfolio', label: 'Portfolio' },
   ];
@@ -74,8 +74,8 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
           />
         )}
         {activeTab === 'tpsl' && <TPSLTab />}
-        {activeTab === 'orderHistory' && <OrderHistoryTab />}
-        {activeTab === 'tradeHistory' && <TradeHistoryTab />}
+        {/* {activeTab === 'orderHistory' && <OrderHistoryTab />} */}
+        {/* {activeTab === 'tradeHistory' && <TradeHistoryTab />} */}
         {activeTab === 'assets' && <AssetsTab />}
         {activeTab === 'portfolio' && <MiniPortfolioWidget />}
       </div>
@@ -100,22 +100,22 @@ function OpenOrdersTab({ orders, isLoading, onCancel, onCancelAll }: OpenOrdersT
 }
 
 // Order History Tab - shows personal order lifecycle (limit + market)
-function OrderHistoryTab() {
-  return (
-    <div className="min-h-[180px]">
-      <OrderHistory />
-    </div>
-  );
-}
+// function OrderHistoryTab() {
+//   return (
+//     <div className="min-h-[180px]">
+//       <OrderHistory />
+//     </div>
+//   );
+// }
 
 // Trade History Tab - shows personal trade fills (1 fill = 1 row)
-function TradeHistoryTab() {
-  return (
-    <div className="min-h-[180px]">
-      <TradeHistory />
-    </div>
-  );
-}
+// function TradeHistoryTab() {
+//   return (
+//     <div className="min-h-[180px]">
+//       <TradeHistory />
+//     </div>
+//   );
+// }
 
 // TP/SL Tab - shows active and triggered TP/SL orders
 const TPSL_HISTORY_PAGE_SIZE = 20;

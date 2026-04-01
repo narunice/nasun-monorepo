@@ -56,7 +56,7 @@ export interface UseChatResult {
 
 /** Derive HTTP base URL from WebSocket URL (ws:// → http://, wss:// → https://) */
 function wsToHttpUrl(wsUrl: string): string {
-  return wsUrl.replace(/^ws(s?):\/\//, 'http$1://');
+  return wsUrl.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/ws\/?$/, '/chat');
 }
 
 export function useChat(): UseChatResult {

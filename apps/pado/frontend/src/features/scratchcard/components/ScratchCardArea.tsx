@@ -4,7 +4,7 @@ import { useScratchCardPool } from '../hooks';
 import { useToast } from '../../../components/common';
 import { CANVAS_FADE_MS } from '../constants';
 import { getAnimationTier, getTierLabel, formatNusdc, TIER_DURATIONS } from '../types';
-import type { ScratchResult, AnimationTier } from '../types';
+import type { ScratchResult } from '../types';
 import { BuyCardButton } from './BuyCardButton';
 import { ScratchCardCanvas } from './ScratchCardCanvas';
 import { CardResultDisplay } from './CardResultDisplay';
@@ -170,7 +170,7 @@ export function ScratchCardArea() {
               )}
 
               {/* During animating: show tier-specific animation (wins only) */}
-              {phase === 'animating' && (
+              {phase === 'animating' && tier !== 'loss' && (
                 <WinCelebration result={result} tier={tier} onComplete={handleAnimationEnd} />
               )}
 

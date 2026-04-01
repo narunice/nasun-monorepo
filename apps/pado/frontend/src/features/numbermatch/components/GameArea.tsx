@@ -2,7 +2,8 @@
  * GameArea - Main game loop component for Number Match
  * Phases: idle -> buying -> revealing -> revealed
  */
-import { FC, useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import type { FC } from 'react';
 import { MAX_PICKS, PRICE_PER_PICK_DISPLAY } from '../constants';
 import { NumberGrid } from './NumberGrid';
 import { useNumberMatchActions } from '../hooks/useNumberMatchActions';
@@ -20,7 +21,7 @@ export const GameArea: FC<GameAreaProps> = ({ onResultRevealed }) => {
   const [result, setResult] = useState<NumberMatchResult | null>(null);
   const { playGame, isPlaying, error } = useNumberMatchActions();
   const { pool } = useNumberMatchPool();
-  const revealTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Cleanup reveal timer on unmount
   useEffect(() => {
