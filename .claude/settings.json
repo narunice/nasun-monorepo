@@ -36,7 +36,8 @@
       "Edit(/.claude/skills/leaderboard-export/**)",
       "Bash(find /home/naru/my_apps/nasun-monorepo -type f \\\\\\(-name *lambda* -o -name *eventbridge* -o -name *cdk.ts \\\\\\))",
       "Bash(find /home/naru/my_apps/nasun-monorepo -type f \\\\\\(-name *.service -o -name pado-chat* -o -name systemd* \\\\\\))",
-      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@3.38.76.85 \"uptime && echo ''---'' && sudo docker logs --tail 5 zkprover-prover-fe-1 2>&1 | tail -3\")"
+      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@3.38.76.85 \"uptime && echo ''---'' && sudo docker logs --tail 5 zkprover-prover-fe-1 2>&1 | tail -3\")",
+      "Bash(/home/naru/.local/share/pnpm/pnpm build:pado)"
     ]
   }
 }

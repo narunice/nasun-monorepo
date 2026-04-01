@@ -248,7 +248,7 @@ if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
   log_info "CloudFront 캐시 무효화 중..."
   aws cloudfront create-invalidation --profile nasun-prod \
     --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
-    --paths "/index.html" "/" > /dev/null 2>&1 && \
+    --paths "/*" > /dev/null 2>&1 && \
     log_success "CloudFront 캐시 무효화 요청 완료" || \
     log_warning "CloudFront 캐시 무효화 실패 (수동 확인 필요)"
 fi

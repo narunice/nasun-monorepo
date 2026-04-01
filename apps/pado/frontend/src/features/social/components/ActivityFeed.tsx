@@ -92,7 +92,7 @@ export function ActivityFeed() {
             <div className="flex-1 h-px bg-theme-border" />
           </div>
           <div className="space-y-1.5">
-            {group.activities.map((activity, idx) => (
+            {group.activities.map((activity) => (
               <ActivityCard
                 key={`${activity.data.txDigest}-${activity.traderAddress}`}
                 activity={activity}

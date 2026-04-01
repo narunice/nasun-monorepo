@@ -1,7 +1,7 @@
 /**
  * PayoutTable - Shows odds and payouts for each pick count
  */
-import { FC } from 'react';
+import type { FC } from 'react';
 import { PAYOUT_TABLE } from '../constants';
 
 export const PayoutTable: FC = () => {
