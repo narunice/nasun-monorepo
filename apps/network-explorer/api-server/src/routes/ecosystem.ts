@@ -12,6 +12,7 @@ import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import {
   getActivationsForUser,
+  getActivationsCacheMap,
   getMatviewStatus,
   updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
@@ -169,33 +170,35 @@ app.get('/leaderboard', async (c) => {
   const limit = parseLimit(c.req.query('limit'));
   const offset = parseOffset(c.req.query('offset'));
 
-  // Fetch a generous set of top users by base_score, then apply multipliers and re-sort.
-  // We fetch more than requested to account for multiplier reordering.
-  const fetchLimit = Math.min(limit + offset + 200, 500);
-
+  // Query only NFT-activated users from matview, then apply multipliers and re-sort.
+  // No LIMIT: every activated user is included regardless of base_score.
   const getScoredLeaderboard = cached(
-    `eco-leaderboard-scored-${period}-${fetchLimit}`,
+    `eco-leaderboard-scored-${period}`,
     5 * 60 * 1000,
     async () => {
+      // Snapshot activated IDs inside closure (evaluated on cache miss only)
+      const activatedIds = [...getActivationsCacheMap().keys()];
+      if (activatedIds.length === 0) return [];
+
       const daysBack = period === 'monthly' ? 29 : 6;
       const rows = period === 'daily'
         ? await pointsDb!`
             SELECT identity_id, base_score::int as base_score
             FROM ecosystem_daily_scores
-            WHERE day = CURRENT_DATE
+            WHERE identity_id = ANY(${activatedIds})
+              AND day = CURRENT_DATE
             ORDER BY base_score DESC
-            LIMIT ${fetchLimit}
           `
         : await pointsDb!`
             SELECT identity_id,
                    SUM(base_score)::int as base_score,
                    COUNT(*)::int as active_days
             FROM ecosystem_daily_scores
-            WHERE day >= CURRENT_DATE - make_interval(days => ${daysBack})
+            WHERE identity_id = ANY(${activatedIds})
+              AND day >= CURRENT_DATE - make_interval(days => ${daysBack})
               AND day <= CURRENT_DATE
             GROUP BY identity_id
             ORDER BY SUM(base_score) DESC
-            LIMIT ${fetchLimit}
           `;
 
       // Batch penalty check inside cache
@@ -248,7 +251,7 @@ app.get('/leaderboard', async (c) => {
 
   const scored = await getScoredLeaderboard();
 
-  // Exclude users with no active NFTs (multiplier=0, disabled)
+  // Exclude penalized alliance-only users (multiplier=0 after penalty)
   const active = scored.filter(e => e.multiplier > 0);
   active.sort((a, b) => b.ecosystemScore - a.ecosystemScore);
 
