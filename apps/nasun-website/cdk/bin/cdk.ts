@@ -39,6 +39,7 @@ import { GenesisPassStack } from '../lib/genesis-pass-stack';
 import { ReferralStack } from '../lib/referral-stack';
 import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
 import { EcosystemStack } from '../lib/ecosystem-stack';
+import { AirdropStack } from '../lib/airdrop-stack';
 
 const app = new cdk.App();
 
@@ -116,6 +117,14 @@ const nftSnapshotStack = new NftSnapshotStack(app, 'NftSnapshotStack', { env: cd
 
 // Ecosystem stack (NFT activation for ecosystem points)
 const ecosystemStack = new EcosystemStack(app, 'EcosystemStack', {
+  env: cdkEnv,
+  userProfilesTableName: 'UserProfiles',
+  cognitoIdentityPoolId,
+});
+// No dependencies - references tables by name
+
+// Airdrop stack (April 16th Airdrop registration)
+const airdropStack = new AirdropStack(app, 'AirdropStack', {
   env: cdkEnv,
   userProfilesTableName: 'UserProfiles',
   cognitoIdentityPoolId,
