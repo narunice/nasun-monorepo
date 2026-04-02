@@ -16,7 +16,7 @@
 import postgres from 'postgres';
 
 const POINTS_DB_URL = process.env.POINTS_DATABASE_URL;
-const TX_COUNT_CAP = 10;
+const TX_PER_DAY_CAP = 20;
 
 if (!POINTS_DB_URL) {
   console.error('POINTS_DATABASE_URL not set');
@@ -62,7 +62,8 @@ async function main() {
     const activeDays = Number(row.active_days);
     const txCount = Number(row.tx_count);
 
-    const pts = (activeDays * 10) + Math.min(txCount, TX_COUNT_CAP);
+    const avgTxPerDay = Math.min(txCount / activeDays, TX_PER_DAY_CAP);
+    const pts = Math.floor(activeDays * avgTxPerDay);
     if (pts <= 0) continue;
 
     const digest = `bonus-earlybird:${identityId}`;
