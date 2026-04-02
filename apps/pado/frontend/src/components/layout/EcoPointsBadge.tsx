@@ -4,12 +4,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useWallet } from '@nasun/wallet';
+import { useSignerAddress } from '@nasun/wallet';
 
 const EXPLORER_API = import.meta.env.VITE_EXPLORER_API_URL || '';
 
 export function EcoPointsBadge() {
-  const { address } = useWallet();
+  const address = useSignerAddress();
   const [score, setScore] = useState<number | null>(null);
 
   useEffect(() => {
