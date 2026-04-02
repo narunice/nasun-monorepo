@@ -117,8 +117,8 @@ async function _importWithMnemonic(
 ): Promise<string> {
   set({ isLoading: true, error: null });
   try {
-    dispatchIdentityChanged(get);
     const address = await importWalletFromMnemonic(mnemonic, password);
+    dispatchIdentityChanged(get);
     await _unlockAndActivate(set, address, password, mnemonic);
     return address;
   } catch (error) {
@@ -201,9 +201,8 @@ export const useWallet = create<WalletStore>((set, get) => ({
   createWallet: async (password: string): Promise<string> => {
     set({ isLoading: true, error: null });
     try {
-      dispatchIdentityChanged(get);
-
       const address = await createAndSaveWallet(password);
+      dispatchIdentityChanged(get);
 
       // Auto-unlock after creation
       const keypair = await unlockKeystore(password);
@@ -301,8 +300,8 @@ export const useWallet = create<WalletStore>((set, get) => ({
   createWalletWithBackup: async (password: string): Promise<{ address: string; mnemonic: string }> => {
     set({ isLoading: true, error: null });
     try {
-      dispatchIdentityChanged(get);
       const { address, mnemonic } = await createWalletWithMnemonic(password);
+      dispatchIdentityChanged(get);
 
       // Store mnemonic BEFORE status change — React may re-render immediately
       // when _unlockAndActivate sets status to "unlocked", causing WalletConnect
@@ -330,8 +329,8 @@ export const useWallet = create<WalletStore>((set, get) => ({
   importFromPrivateKey: async (privateKey: string, password: string): Promise<string> => {
     set({ isLoading: true, error: null });
     try {
-      dispatchIdentityChanged(get);
       const address = await importWalletFromPrivateKey(privateKey, password);
+      dispatchIdentityChanged(get);
       await _unlockAndActivate(set, address, password);
       return address;
     } catch (error) {
