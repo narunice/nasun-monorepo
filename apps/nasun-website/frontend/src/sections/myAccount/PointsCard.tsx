@@ -33,6 +33,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   staking: "Staking",
+  "staking-daily": "Staking Days",
   "pado-dex": "DEX",
   governance: "Governance",
   "pado-prediction": "Prediction",
