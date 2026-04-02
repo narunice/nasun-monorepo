@@ -4,18 +4,19 @@
  * Fetches the Pado points leaderboard, calculates delta from previous snapshot,
  * and distributes bonus points to top performers.
  *
- * Distribution (2-tier):
- *   Top 15:  60% of pool, equally split
- *   Rest:    40% of pool, equally split
+ * Distribution (2-tier, rank 1-300):
+ *   Top 100:  50% of pool, equally split
+ *   Rest 200: 50% of pool, equally split
  *
- * Pools:
- *   Weekly:  50,000 pts (run every Monday UTC 00:05)
- *   Monthly: 100,000 pts (run 1st of each month UTC 00:05)
+ * Default pools:
+ *   Weekly:  5,000 pts
+ *   Monthly: 10,000 pts
+ * Override with --pool flag (e.g. --pool 25000)
  *
  * Usage:
  *   cd ~/explorer-api && set -a && source .env && set +a
  *   npx tsx src/scripts/settle-pado.ts --period weekly
- *   npx tsx src/scripts/settle-pado.ts --period monthly
+ *   npx tsx src/scripts/settle-pado.ts --period weekly --pool 25000
  *   npx tsx src/scripts/settle-pado.ts --period weekly --dry-run
  */
 
@@ -32,10 +33,10 @@ const WALLET_MAPPINGS_KEY = process.env.WALLET_MAPPINGS_API_KEY;
 // Pado chat-server points API (accessible from node-3 via localhost or pado.finance)
 const PADO_POINTS_URL = process.env.PADO_POINTS_URL || 'https://pado.finance/chat/api/leaderboard/points';
 
-const POOLS = {
-  weekly: { size: 50_000, topN: 15, topShare: 0.6 },
-  monthly: { size: 100_000, topN: 15, topShare: 0.6 },
-} as const;
+const DEFAULT_POOLS = {
+  weekly: { size: 5_000, topN: 100, maxRank: 300, topShare: 0.5 },
+  monthly: { size: 10_000, topN: 100, maxRank: 300, topShare: 0.5 },
+};
 
 const SNAPSHOT_DIR = path.join(process.cwd(), 'data', 'pado-snapshots');
 
@@ -53,13 +54,18 @@ const db = postgres(POINTS_DB_URL, {
 // --- Args ---
 
 const args = process.argv.slice(2);
-const periodArg = args.find(a => a === '--period');
-const periodIdx = args.indexOf('--period');
-const period = periodIdx >= 0 ? args[periodIdx + 1] : undefined;
+
+function getArg(name: string): string | undefined {
+  const idx = args.indexOf(`--${name}`);
+  return idx >= 0 ? args[idx + 1] : undefined;
+}
+
+const period = getArg('period');
 const dryRun = args.includes('--dry-run');
+const poolOverride = getArg('pool');
 
 if (!period || (period !== 'weekly' && period !== 'monthly')) {
-  console.error('Usage: npx tsx src/scripts/settle-pado.ts --period weekly|monthly [--dry-run]');
+  console.error('Usage: npx tsx src/scripts/settle-pado.ts --period weekly|monthly [--pool N] [--dry-run]');
   process.exit(1);
 }
 
@@ -167,25 +173,31 @@ async function main() {
   }
 
   // 3. Rank by delta and distribute
-  const ranked = [...deltas.entries()]
+  const allRanked = [...deltas.entries()]
     .sort((a, b) => b[1] - a[1])
     .filter(([, d]) => d > 0);
 
-  if (ranked.length === 0) {
+  if (allRanked.length === 0) {
     console.log('No positive deltas. Saving snapshot and exiting.');
     if (!dryRun) saveSnapshot(period!, traders);
     process.exit(0);
   }
 
-  const pool = POOLS[period as keyof typeof POOLS];
+  const pool = DEFAULT_POOLS[period as keyof typeof DEFAULT_POOLS];
+  const poolSize = poolOverride ? parseInt(poolOverride, 10) : pool.size;
+
+  // Cap eligible traders at maxRank
+  const ranked = allRanked.slice(0, pool.maxRank);
   const topN = Math.min(pool.topN, ranked.length);
-  const topPool = pool.size * pool.topShare;
-  const restPool = pool.size * (1 - pool.topShare);
-  const topPerTrader = topN > 0 ? Math.round(topPool / topN) : 0;
   const restCount = Math.max(ranked.length - topN, 0);
+
+  // If everyone fits in top tier, use full pool for them
+  const topPool = restCount > 0 ? poolSize * pool.topShare : poolSize;
+  const restPool = restCount > 0 ? poolSize * (1 - pool.topShare) : 0;
+  const topPerTrader = topN > 0 ? Math.round(topPool / topN) : 0;
   const restPerTrader = restCount > 0 ? Math.round(restPool / restCount) : 0;
 
-  console.log(`\nDistribution (pool: ${pool.size.toLocaleString()} pts):`);
+  console.log(`\nDistribution (pool: ${poolSize.toLocaleString()} pts, eligible: ${ranked.length}/${allRanked.length}):`);
   console.log(`  Top ${topN}: ${topPerTrader.toLocaleString()} pts each (${topPool.toLocaleString()} total)`);
   console.log(`  Rest ${restCount}: ${restPerTrader.toLocaleString()} pts each (${restPool.toLocaleString()} total)`);
 
