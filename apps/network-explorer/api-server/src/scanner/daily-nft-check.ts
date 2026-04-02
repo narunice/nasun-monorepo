@@ -339,7 +339,7 @@ async function detectWalletTransfers(
   const now = new Date();
   let totalDetected = 0;
 
-  for (let daysAgo = 1; daysAgo <= 2; daysAgo++) {
+  for (let daysAgo = 0; daysAgo <= 2; daysAgo++) {
     const targetDate = new Date(now);
     targetDate.setUTCDate(targetDate.getUTCDate() - daysAgo);
     const dateStr = targetDate.toISOString().slice(0, 10);
@@ -367,8 +367,9 @@ async function detectWalletTransfers(
           const ts = Number(tx.timestampMs ?? 0);
           if (ts < dayStartMs || ts >= dayEndMs) continue;
 
-          const commands = tx.transaction?.data?.transaction?.commands ?? [];
-          if (commands.some((c) => 'TransferObjects' in c)) {
+          const txData = tx.transaction?.data?.transaction;
+          const commands = txData?.commands ?? txData?.transactions ?? [];
+          if (commands.some((c: Record<string, unknown>) => 'TransferObjects' in c)) {
             hasTransfer = true;
             break;
           }
