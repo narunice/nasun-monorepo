@@ -71,24 +71,29 @@ function buildRequestTokensV2(): Transaction {
  * Request native gas coins (NASUN) from faucet via HTTP API.
  */
 export async function requestGas(address: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${FAUCET_URL}/gas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        FixedAmountRequest: { recipient: address },
-      }),
-    });
+  const body = JSON.stringify({ FixedAmountRequest: { recipient: address } });
+  const headers = { 'Content-Type': 'application/json' };
 
+  // Try V1 faucet first (no rate limit, ~100 NASUN per call)
+  try {
+    const res = await fetch(`${FAUCET_URL}/v1/gas`, { method: 'POST', headers, body });
+    if (res.ok) {
+      console.log(`[${timestamp()}] Received gas from v1 faucet`);
+      await new Promise((r) => setTimeout(r, 3000));
+      return true;
+    }
+  } catch { /* fall through to legacy */ }
+
+  // Fallback: legacy /gas endpoint (has rate limit)
+  try {
+    const response = await fetch(`${FAUCET_URL}/gas`, { method: 'POST', headers, body });
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[${timestamp()}] Gas faucet request failed: ${response.status} ${errorText}`);
       return false;
     }
-
     console.log(`[${timestamp()}] Received gas from faucet`);
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
+    await new Promise((r) => setTimeout(r, 3000));
     return true;
   } catch (error) {
     console.error(`[${timestamp()}] Error requesting gas from faucet:`, error);
