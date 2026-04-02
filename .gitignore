@@ -43,6 +43,7 @@ _tmp/
 
 # Backups (sensitive data)
 _backup/
+**/backups/
 
 # Test scripts with hardcoded credentials
 auth-e2e-test.mjs
