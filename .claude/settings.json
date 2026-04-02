@@ -37,7 +37,19 @@
       "Bash(find /home/naru/my_apps/nasun-monorepo -type f \\\\\\(-name *lambda* -o -name *eventbridge* -o -name *cdk.ts \\\\\\))",
       "Bash(find /home/naru/my_apps/nasun-monorepo -type f \\\\\\(-name *.service -o -name pado-chat* -o -name systemd* \\\\\\))",
       "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@3.38.76.85 \"uptime && echo ''---'' && sudo docker logs --tail 5 zkprover-prover-fe-1 2>&1 | tail -3\")",
-      "Bash(/home/naru/.local/share/pnpm/pnpm build:pado)"
+      "Bash(/home/naru/.local/share/pnpm/pnpm build:pado)",
+      "Bash(nasun move:*)",
+      "Bash(cp _tmp/x-profiles-exported-2026-04-01woody.html _tmp/x-profiles-exported-2026-04-01woody-done.html)",
+      "Bash(cp _tmp/x-profiles-exported-2026-03-31ak.html _tmp/x-profiles-exported-2026-03-31ak-done.html)",
+      "Bash(convert --version)",
+      "Bash(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/images/posters/Alliance-NFT-Event-Website-Princess-Kaebo.webp)",
+      "Bash(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/src/assets/images/Alliance-NFT-Event-Website-Princess-Kaebo.png)",
+      "Bash(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /home/naru/my_apps/nasun-monorepo/_tmp/kaebo.png)",
+      "Bash(ffmpeg -y -i /home/naru/my_apps/nasun-monorepo/_tmp/kaebo.png -vf \"crop=1527:630*1527/1200:0:0,scale=1200:630\" /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/Alliance-NFT-OG.png)",
+      "Bash(ffmpeg -y -i /home/naru/my_apps/nasun-monorepo/_tmp/kaebo.png -vf \"crop=1527:802:0:0,scale=1200:630\" -frames:v 1 -update 1 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/Alliance-NFT-OG.png)"
+    ],
+    "additionalDirectories": [
+      "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs"
     ]
   }
 }
