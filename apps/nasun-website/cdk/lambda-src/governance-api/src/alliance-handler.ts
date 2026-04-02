@@ -35,6 +35,45 @@ const ALLIANCE_IMAGES = [
 
 const NFT_DESCRIPTION = "Nasun Alliance NFT";
 
+// Distributed mint lock to prevent owned object contention on Sui
+const MINT_LOCK_KEY = "__ALLIANCE_MINT_LOCK__";
+const MINT_LOCK_TTL_MS = 30_000; // 30s auto-expire for crash recovery
+
+async function acquireMintLock(docClient: DynamoDBDocumentClient): Promise<boolean> {
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: ALLIANCE_MINT_TABLE,
+        Item: {
+          identityId: MINT_LOCK_KEY,
+          status: "LOCKED",
+          lockedAt: Date.now(),
+          ttl: Math.floor(Date.now() / 1000) + 30,
+        },
+        ConditionExpression:
+          "attribute_not_exists(identityId) OR lockedAt < :expired",
+        ExpressionAttributeValues: {
+          ":expired": Date.now() - MINT_LOCK_TTL_MS,
+        },
+      }),
+    );
+    return true;
+  } catch (err) {
+    if (err instanceof ConditionalCheckFailedException) return false;
+    throw err;
+  }
+}
+
+async function releaseMintLock(docClient: DynamoDBDocumentClient): Promise<void> {
+  try {
+    await docClient.send(
+      new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId: MINT_LOCK_KEY } }),
+    );
+  } catch (err) {
+    console.error("[alliance] Failed to release mint lock:", err);
+  }
+}
+
 // ========== JWT Verification ==========
 
 let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -240,6 +279,16 @@ async function handleMint(
   const targetWallet = wallets[walletIndex].walletAddress as string;
   const imageUrl = ALLIANCE_IMAGES[imageIndex];
 
+  // Acquire distributed lock to serialize Sui tx (prevents owned object contention)
+  const lockAcquired = await acquireMintLock(docClient);
+  if (!lockAcquired) {
+    return {
+      statusCode: 429,
+      headers: { ...corsHeaders(), "Retry-After": "3" },
+      body: JSON.stringify({ error: "Mint service busy, please retry", code: "MINT_BUSY" }),
+    };
+  }
+
   // DynamoDB conditional write FIRST (PENDING)
   // If PENDING record exists but is stale (>5min), delete and retry.
   const PENDING_TTL_MS = 5 * 60 * 1000;
@@ -264,6 +313,7 @@ async function handleMint(
         new GetCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }),
       );
       if (existing.Item?.status === "MINTED") {
+        await releaseMintLock(docClient);
         return {
           statusCode: 409,
           headers: corsHeaders(),
@@ -285,6 +335,7 @@ async function handleMint(
             }),
           );
         } else {
+          await releaseMintLock(docClient);
           return {
             statusCode: 409,
             headers: corsHeaders(),
@@ -309,6 +360,7 @@ async function handleMint(
     if (balanceMist < 50_000_000n) {
       // Rollback PENDING record
       await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
+      await releaseMintLock(docClient);
       console.error(`[alliance] Admin gas low: ${balanceMist} MIST`);
       return {
         statusCode: 500,
@@ -372,6 +424,7 @@ async function handleMint(
 
     console.log(`[alliance] Minted NFT for ${identityId}: tx=${txDigest}, nft=${nftObjectId}`);
 
+    await releaseMintLock(docClient);
     return {
       statusCode: 200,
       headers: corsHeaders(),
@@ -392,6 +445,7 @@ async function handleMint(
       console.error("[alliance] Rollback failed:", rollbackErr);
     }
 
+    await releaseMintLock(docClient);
     return {
       statusCode: 500,
       headers: corsHeaders(),
