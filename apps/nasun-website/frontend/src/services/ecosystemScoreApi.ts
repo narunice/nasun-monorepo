@@ -153,7 +153,13 @@ export async function getSnapshotHistory(
 
   const json = await res.json();
   // API returns DESC order; reverse for chronological display
-  return (json.data ?? []).reverse();
+  // Normalize date to YYYY-MM-DD (API may return ISO timestamp)
+  return ((json.data ?? []) as SnapshotHistoryEntry[])
+    .map(entry => ({
+      ...entry,
+      date: entry.date.split('T')[0],
+    }))
+    .reverse();
 }
 
 export interface BonusHistoryItem {
