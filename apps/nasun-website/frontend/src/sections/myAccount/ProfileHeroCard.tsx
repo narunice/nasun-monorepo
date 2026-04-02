@@ -214,6 +214,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   // Ecosystem score values from API (single source of truth)
   const displayBaseScore = ecosystemScore?.daily.baseScore ?? 0;
   const displayMultiplier = ecosystemScore?.multiplier ?? 0;
+  const displayBonus = ecosystemScore?.bonusTotal ?? 0;
   const displayTodayScore = parseFloat(
     (displayBaseScore * displayMultiplier).toFixed(1),
   );
@@ -422,7 +423,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       mult)
                       <span className="text-nasun-white/40"> + </span>
                       <span className="font-mono text-nasun-white/80">
-                        0
+                        {displayBonus.toLocaleString("en-US", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 1,
+                        })}
                       </span>{" "}
                       bonus
                     </span>

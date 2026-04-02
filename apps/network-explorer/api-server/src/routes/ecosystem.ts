@@ -56,7 +56,7 @@ app.get('/score/:identityId', async (c) => {
     `eco-score-${identityId}`,
     5 * 60 * 1000,
     async () => {
-      const [todayRow, weeklyRow, allTimeRow] = await Promise.all([
+      const [todayRow, weeklyRow, allTimeRow, bonusRow] = await Promise.all([
         pointsDb!`
           SELECT base_score::int as base_score
           FROM ecosystem_daily_scores
@@ -76,6 +76,13 @@ app.get('/score/:identityId', async (c) => {
                  COUNT(*)::int as active_days
           FROM ecosystem_daily_scores
           WHERE identity_id = ${identityId}
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as bonus_total
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category LIKE 'ecosystem-bonus-%'
+            AND NOT flagged
         `.then(r => r[0]),
       ]);
 
@@ -97,12 +104,15 @@ app.get('/score/:identityId', async (c) => {
         : activations;
       const multiplier = calculateMultiplier(effectiveActivations);
 
+      const bonusTotal = parseFloat(bonusRow?.bonus_total ?? '0');
+
       return {
         todayBaseScore: todayRow?.base_score ?? 0,
         weeklyBaseScore: weeklyRow?.base_score ?? 0,
         weeklyActiveDays: weeklyRow?.active_days ?? 0,
         allTimeBaseScore: allTimeRow?.base_score ?? 0,
         allTimeActiveDays: allTimeRow?.active_days ?? 0,
+        bonusTotal,
         multiplier,
         activations,
         isPenalized,
@@ -114,11 +124,14 @@ app.get('/score/:identityId', async (c) => {
 
   const disabled = scores.multiplier === 0;
 
+  const bt = scores.bonusTotal;
+
   const data = {
     identityId,
     multiplier: roundTo2(scores.multiplier),
     disabled,
     isPenalized: scores.isPenalized,
+    bonusTotal: roundTo2(bt),
     activations: scores.activations.map((a) => ({
       nftType: a.nftType,
       nftCount: a.nftCount,
@@ -135,7 +148,7 @@ app.get('/score/:identityId', async (c) => {
     },
     allTime: {
       baseScore: scores.allTimeBaseScore,
-      ecosystemScore: roundTo2(scores.allTimeBaseScore * scores.multiplier),
+      ecosystemScore: roundTo2(scores.allTimeBaseScore * scores.multiplier + bt),
       activeDays: scores.allTimeActiveDays,
     },
   };
@@ -193,6 +206,22 @@ app.get('/leaderboard', async (c) => {
         penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
       }
 
+      // Batch bonus query for all leaderboard users
+      let bonusMap = new Map<string, number>();
+      if (leaderboardIds.length > 0) {
+        const bonusRows = await pointsDb!`
+          SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
+          FROM activity_points
+          WHERE identity_id = ANY(${leaderboardIds})
+            AND category LIKE 'ecosystem-bonus-%'
+            AND NOT flagged
+          GROUP BY identity_id
+        `;
+        for (const br of bonusRows) {
+          bonusMap.set(br.identity_id as string, parseFloat(br.bonus as string));
+        }
+      }
+
       return rows.map((r) => {
         const id = r.identity_id as string;
         let activations = getActivationsForUser(id);
@@ -201,11 +230,13 @@ app.get('/leaderboard', async (c) => {
         }
         const multiplier = calculateMultiplier(activations);
         const baseScore = r.base_score as number;
+        const bonus = bonusMap.get(id) ?? 0;
         return {
           identityId: id,
           baseScore,
           multiplier: roundTo2(multiplier),
-          ecosystemScore: roundTo2(baseScore * multiplier),
+          bonusTotal: roundTo2(bonus),
+          ecosystemScore: roundTo2(baseScore * multiplier + bonus),
           ...(period === 'weekly' ? { activeDays: r.active_days as number } : {}),
         };
       });
