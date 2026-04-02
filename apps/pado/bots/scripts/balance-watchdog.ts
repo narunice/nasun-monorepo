@@ -115,20 +115,39 @@ async function getGasBalance(client: SuiClient, owner: string): Promise<number> 
   return Number(balance.totalBalance) / 1e9;
 }
 
-async function requestGas(address: string): Promise<boolean> {
+/**
+ * Request gas via faucet V1 API (no rate limit, gives 100 NASUN per call).
+ * Falls back to legacy /gas endpoint if V1 fails.
+ */
+async function requestGas(_client: SuiClient, address: string): Promise<boolean> {
+  const body = JSON.stringify({ FixedAmountRequest: { recipient: address } });
+  const headers = { 'Content-Type': 'application/json' };
+
+  // Try V1 faucet first (no rate limit)
   try {
-    const res = await fetch(`${FAUCET_URL}/gas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ FixedAmountRequest: { recipient: address } }),
-    });
-    if (!res.ok) return false;
-    console.log(`[${timestamp()}] Gas refilled from faucet`);
-    await new Promise((r) => setTimeout(r, 3000));
-    return true;
-  } catch {
-    return false;
+    const res = await fetch(`${FAUCET_URL}/v1/gas`, { method: 'POST', headers, body });
+    if (res.ok) {
+      const data = await res.json() as { coins_sent?: { amount: number }[] };
+      const total = (data.coins_sent ?? []).reduce((s: number, c: { amount: number }) => s + c.amount, 0);
+      console.log(`[${timestamp()}] Gas refilled: ${(total / 1e9).toFixed(0)} NASUN -> ${address.slice(0, 10)}... (v1 faucet)`);
+      await new Promise((r) => setTimeout(r, 3000));
+      return true;
+    }
+  } catch { /* fall through */ }
+
+  // Fallback: legacy /gas endpoint (has rate limit)
+  try {
+    const res = await fetch(`${FAUCET_URL}/gas`, { method: 'POST', headers, body });
+    if (res.ok) {
+      console.log(`[${timestamp()}] Gas refilled from legacy faucet -> ${address.slice(0, 10)}...`);
+      await new Promise((r) => setTimeout(r, 3000));
+      return true;
+    }
+    console.warn(`[${timestamp()}] Gas faucet rate-limited for ${address.slice(0, 10)}...`);
+  } catch (err) {
+    console.error(`[${timestamp()}] Gas faucet error:`, err instanceof Error ? err.message : err);
   }
+  return false;
 }
 
 function buildBatchedRefillTx(market: keyof typeof MARKETS, rounds: number): Transaction {
@@ -185,7 +204,7 @@ async function checkAndRefill(client: SuiClient): Promise<void> {
     const gas = await getGasBalance(client, address);
     if (gas < 1) {
       console.log(`[${timestamp()}] Low gas (${gas.toFixed(2)} NASUN) for ${address.slice(0, 10)}..., requesting...`);
-      await requestGas(address);
+      await requestGas(client, address);
     }
 
     // Check NUSDC (shared across all markets for this address)
