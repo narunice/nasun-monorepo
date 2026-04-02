@@ -231,9 +231,7 @@ export function parseLotteryRoundFields(
     startTime: Number(fields.start_time || 0),
     closeTime: Number(fields.close_time || 0),
     drawTime: Number(fields.draw_time || 0),
-    prizePool: BigInt(
-      (fields.prize_pool as { fields: { value: string } })?.fields?.value || '0'
-    ),
+    prizePool: BigInt(fields.prize_pool?.toString() || '0'),
     rolloverIn: BigInt(fields.rollover_in?.toString() || '0'),
     drawnNumbers,
     ticketCount: Number(fields.ticket_count || 0),

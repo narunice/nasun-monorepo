@@ -3,11 +3,7 @@
  * Tab container for Trades and Transfers history
  */
 
-import { useState } from 'react';
-import { RecentTrades } from './RecentTrades';
 import { TransferHistory } from './TransferHistory';
-
-type ActivityTab = 'trades' | 'transfers';
 
 interface TabButtonProps {
   active: boolean;
@@ -33,28 +29,17 @@ function TabButton({ active, onClick, children }: TabButtonProps) {
 }
 
 export function ActivityTabs() {
-  const [activeTab, setActiveTab] = useState<ActivityTab>('trades');
-
   return (
     <div className="bg-theme-bg-secondary rounded-lg overflow-hidden">
       {/* Tab Headers */}
       <div className="flex border-b border-theme-border">
-        <TabButton
-          active={activeTab === 'trades'}
-          onClick={() => setActiveTab('trades')}
-        >
-          Trades
-        </TabButton>
-        <TabButton
-          active={activeTab === 'transfers'}
-          onClick={() => setActiveTab('transfers')}
-        >
+        <TabButton active onClick={() => {}}>
           Transfers
         </TabButton>
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'trades' ? <RecentTrades embedded /> : <TransferHistory />}
+      <TransferHistory />
     </div>
   );
 }
