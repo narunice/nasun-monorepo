@@ -67,10 +67,10 @@ const MISSIONS: Mission[] = [
   },
   {
     id: "pado-games",
-    label: "Play Quick Pick",
-    description: "Auto-pick numbers for a quick game",
+    label: "Play Number Match",
+    description: "Pick numbers for a quick game",
     points: 1,
-    externalUrl: "https://pado.finance/games/scratch",
+    externalUrl: "https://pado.finance/games/numbermatch",
   },
 ];
 

@@ -53,7 +53,6 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
   const ecosystem = useEcosystemStatus(cognitoToken);
 
   const [showAllianceMenu, setShowAllianceMenu] = useState(false);
-  const [showGenesisMenu, setShowGenesisMenu] = useState(false);
 
   const handleActivate = async (nftType: NftType) => {
     try {
@@ -198,79 +197,67 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               GENESIS PASS
             </h6>
             <div
-              className={`relative rounded-sm overflow-hidden aspect-[2/1] transition-all flex items-center justify-center ${genesisIsActive ? "bg-gray-700" : "bg-gray-800"}`}
+              className={`relative rounded-sm overflow-hidden aspect-[4/3] transition-all flex items-center justify-center ${genesisIsActive ? "bg-gray-700" : "bg-gray-800"}`}
             >
               <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
-              {!genesisIsActive && (
-                <span className="text-nasun-white/60 text-sm font-medium">
-                  Join Allowlist
-                </span>
-              )}
-            </div>
-            {/* Status */}
-            <div className="">
               {isGenesisPassLoading ? (
-                <Spinner size="sm" />
-              ) : genesisIsActive ? (
-                <span className="text-green-400 text-sm">Activated</span>
-              ) : isGenesisPassRegistered ? (
-                <span className="text-nasun-white/70 text-sm">Registered</span>
+                <Spinner />
+              ) : genesisIsActive ? null : isGenesisPassRegistered ? (
+                <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
+                  You are in the allowlist.
+                </span>
               ) : isGenesisPassApplied ? (
-                <span className="text-yellow-400 text-sm">Applied</span>
+                <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
+                  You applied to the allowlist.
+                </span>
               ) : (
-                <span className="text-nasun-white/50 text-sm">Not Applied</span>
+                <div>
+                  <div className="mx-auto max-w-sm space-y-1 my-4">
+                    <p className="text-sm">• $10 Allowlist GTD Full</p>
+                    <p className="text-sm">• $10 Allowlist FCFS</p>
+                    <p className="text-sm">• $15 Public Sale</p>
+                  </div>
+
+                  <ButtonV3
+                    onClick={() => navigate("/wave1/genesis-pass")}
+                    variant="gradient"
+                    size="md"
+                    className="font-medium"
+                  >
+                    Join Allowlist FCFS
+                  </ButtonV3>
+                </div>
               )}
             </div>
             {/* Actions */}
-            <div className="flex gap-3 mt-1">
-              {!isGenesisPassLoading &&
-                !isGenesisPassRegistered &&
-                !isGenesisPassApplied && (
-                  <ButtonV3
-                    onClick={() => navigate("/wave1/genesis-pass")}
-                    variant="nw1"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Join Allowlist
-                  </ButtonV3>
-                )}
-              {isGenesisPassRegistered &&
-                !genesisIsActive &&
-                ecosystem.isConfigured && (
-                  <Button
-                    onClick={() => handleActivate("genesis-pass")}
-                    variant="filledOutlineC7"
-                    size="sm"
-                    disabled={ecosystem.isActivating}
-                  >
-                    {ecosystem.isActivating ? "..." : "Activate"}
-                  </Button>
-                )}
-              {genesisIsActive && (
-                <ThreeDotMenu
-                  show={showGenesisMenu}
-                  onToggle={() => setShowGenesisMenu((v) => !v)}
-                  onClose={() => setShowGenesisMenu(false)}
-                  onAction={() => {
-                    setShowGenesisMenu(false);
-                    handleDeactivate("genesis-pass");
-                  }}
-                  isLoading={ecosystem.isActivating}
-                />
-              )}
+            <div className="flex flex-col gap-2 mt-1">
               <ButtonV3
-                onClick={() => window.open("https://opensea.io/collection/nasun-genesis-pass/overview", "_blank")}
+                onClick={() =>
+                  window.open(
+                    "https://opensea.io/collection/nasun-genesis-pass/overview",
+                    "_blank",
+                  )
+                }
                 variant="nw2"
                 size="sm"
                 outline
-                className="flex-1"
+                className="w-full"
               >
-                OpenSea
-                <svg className="w-3.5 h-3.5 ml-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                Go to OpenSea
+                <svg
+                  className="w-3.5 h-3.5 ml-1 inline"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                  />
                 </svg>
               </ButtonV3>
             </div>

@@ -934,16 +934,23 @@ const DevGenesisPassPage = () => {
 
             {/* CTA */}
             <div className="flex flex-col items-center gap-12 py-8">
+              <div className="mx-auto max-w-sm space-y-1 ">
+                <p>• $10 Allowlist GTD Full</p>
+                <p>• $10 Allowlist FCFS</p>
+                <p>• $15 Public Sale</p>
+              </div>
+
               <ButtonV3
                 variant="nw2"
                 size="lg"
                 className="min-w-[220px]"
                 onClick={handleOpen}
               >
-                Apply for Allowlist
+                Apply for Allowlist FCFS
               </ButtonV3>
               <p className="text-nasun-white/60 text-base md:text-lg leading-relaxed mx-auto text-center mt-2">
-                The first 100 to register will be placed on the Guaranteed Allowlist. <br />
+                The first 100 to register will be placed on the Guaranteed
+                Allowlist. <br />
                 The total mint supply and date will be revealed on OpenSea.
               </p>
             </div>
