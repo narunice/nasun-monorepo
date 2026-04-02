@@ -3,7 +3,6 @@
  * Shows featured prediction markets on the dashboard
  */
 
-import { Link } from 'react-router-dom';
 import { useMarkets } from '../../prediction';
 import { calculateProbabilityFromOrderbook } from '../../prediction/types';
 
@@ -29,9 +28,9 @@ export function PredictionHighlight() {
       <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
         <h2 className="font-bold text-theme-text-primary mb-1">Prediction Markets</h2>
         <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Bet on future events and win rewards</p>
-        <Link to="/predict" className="text-sm xl:text-base text-pd3 hover:text-pd4 font-medium">
+        <span className="text-sm xl:text-base text-theme-text-muted cursor-not-allowed font-medium">
           Explore Markets &rarr;
-        </Link>
+        </span>
       </div>
     );
   }
@@ -40,9 +39,9 @@ export function PredictionHighlight() {
     <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-bold text-theme-text-primary">Prediction Markets</h2>
-        <Link to="/predict" className="text-xs xl:text-sm text-pd3 hover:text-pd4">
+        <span className="text-xs xl:text-sm text-theme-text-muted cursor-not-allowed">
           View All →
-        </Link>
+        </span>
       </div>
       <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Bet on future events and win rewards</p>
 
@@ -55,14 +54,18 @@ export function PredictionHighlight() {
           );
 
           return (
-            <Link
+            <div
               key={market.id}
-              to={`/predict/${market.id}`}
-              className="block p-3 -mx-1 rounded-lg hover:bg-theme-bg-tertiary transition-colors"
+              className="group block p-3 -mx-1 rounded-lg cursor-not-allowed opacity-60"
             >
-              <p className="text-sm xl:text-base font-medium text-theme-text-primary line-clamp-1 mb-2">
-                {market.question}
-              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-sm xl:text-base font-medium text-theme-text-primary line-clamp-1 flex-1">
+                  {market.question}
+                </p>
+                <svg className="w-4 h-4 shrink-0 text-theme-text-muted hidden group-hover:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              </div>
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <div className="h-2 bg-theme-bg-tertiary rounded-full overflow-hidden">
@@ -77,7 +80,7 @@ export function PredictionHighlight() {
                   <span className="text-theme-text-muted">YES</span>
                 </div>
               </div>
-            </Link>
+            </div>
           );
         })}
       </div>

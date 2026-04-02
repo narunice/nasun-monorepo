@@ -25,7 +25,7 @@ interface DropdownItem {
 const gated = NETWORK_CONFIG.gamesOnlyMode;
 
 const TRADE_ITEMS: DropdownItem[] = [
-  { label: 'Spot', path: '/markets/spot', enabled: true },
+  { label: 'Spot', path: '/markets/spot', enabled: !gated },
   { label: 'Perpetuals', path: '/markets/perp', enabled: !gated },
 ];
 
@@ -42,8 +42,8 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const SOCIAL_ITEMS: DropdownItem[] = [
-  { label: 'Leaderboard', path: '/leaderboard', enabled: true },
-  { label: 'Competitions', path: '/competitions', enabled: true },
+  { label: 'Leaderboard', path: '/leaderboard', enabled: !gated },
+  { label: 'Competitions', path: '/competitions', enabled: !gated },
 ];
 
 export function Header() {
@@ -183,55 +183,56 @@ export function Header() {
         <nav className="hidden md:flex items-center gap-1">
           {/* Trade Dropdown */}
           <div className="relative" ref={tradeRef}>
-            <button
-              onClick={toggleTrade}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                isActive('/markets')
-                  ? 'text-pd3 bg-pd3/10'
-                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
-              }`}
-            >
-              Trade
-              <svg
-                className={`w-3 h-3 transition-transform ${isTradeOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            {TRADE_ITEMS.some(item => item.enabled || isAppAdmin) ? (
+              <>
+                <button
+                  onClick={toggleTrade}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
+                    isActive('/markets')
+                      ? 'text-pd3 bg-pd3/10'
+                      : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                  }`}
+                >
+                  Trade
+                  <svg
+                    className={`w-3 h-3 transition-transform ${isTradeOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
 
-            {isTradeOpen && (
-              <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {TRADE_ITEMS.map((item) => {
-                  const enabled = item.enabled || isAppAdmin;
-                  return enabled ? (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={(e) => {
-                        handleNavClick(e, item.path);
-                        setIsTradeOpen(false);
-                      }}
-                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                        isActive(item.path)
-                          ? 'text-pd3 bg-pd3/10'
-                          : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <span
-                      key={item.path}
-                      className="block px-4 py-2.5 text-sm font-medium text-theme-text-muted cursor-not-allowed"
-                    >
-                      {item.label}
-                    </span>
-                  );
-                })}
-              </div>
+                {isTradeOpen && (
+                  <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
+                    {TRADE_ITEMS.filter(item => item.enabled || isAppAdmin).map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={(e) => {
+                          handleNavClick(e, item.path);
+                          setIsTradeOpen(false);
+                        }}
+                        className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                          isActive(item.path)
+                            ? 'text-pd3 bg-pd3/10'
+                            : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <span className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed flex items-center gap-1">
+                Trade
+                <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+              </span>
             )}
           </div>
 
@@ -298,9 +299,12 @@ export function Header() {
             ) : (
               <span
                 key={item.path}
-                className="px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed"
+                className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed inline-flex items-center gap-1"
               >
                 {item.label}
+                <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
               </span>
             );
           })}
@@ -327,10 +331,10 @@ export function Header() {
                 </svg>
               </button>
             ) : (
-              <span className="px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed flex items-center gap-1">
+              <span className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed flex items-center gap-1">
                 Social
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
                 </svg>
               </span>
             )}
@@ -359,17 +363,26 @@ export function Header() {
           </div>
 
           {/* Portfolio */}
-          <Link
-            to="/portfolio"
-            onClick={(e) => handleNavClick(e, '/portfolio')}
-            className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              isActive('/portfolio')
-                ? 'text-pd3 bg-pd3/10'
-                : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
-            }`}
-          >
-            Portfolio
-          </Link>
+          {!isEffectivelyGated ? (
+            <Link
+              to="/portfolio"
+              onClick={(e) => handleNavClick(e, '/portfolio')}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                isActive('/portfolio')
+                  ? 'text-pd3 bg-pd3/10'
+                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+              }`}
+            >
+              Portfolio
+            </Link>
+          ) : (
+            <span className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed inline-flex items-center gap-1">
+              Portfolio
+              <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+              </svg>
+            </span>
+          )}
 
           {/* Admin (conditional) */}
           {isAdmin && (
