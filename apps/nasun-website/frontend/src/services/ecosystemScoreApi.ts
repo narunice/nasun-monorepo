@@ -23,6 +23,7 @@ export interface EcosystemScoreData {
   multiplier: number;
   disabled?: boolean;
   isPenalized?: boolean;
+  bonusTotal?: number;
   activations: Array<{ nftType: string; nftCount: number; bonus?: number }>;
   daily: {
     baseScore: number;

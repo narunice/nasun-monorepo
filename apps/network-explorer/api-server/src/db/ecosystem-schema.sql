@@ -26,15 +26,8 @@ SELECT
 FROM activity_points
 WHERE NOT flagged
   AND identity_id IS NOT NULL
-  AND category NOT IN (
-    'referral-bonus',
-    'daily-mission',
-    'wallet-transfer',
-    'ecosystem-bonus-pnl',
-    'ecosystem-bonus-rank',
-    'ecosystem-bonus-game',
-    'ecosystem-bonus-diversity'
-  )
+  AND category NOT IN ('referral-bonus', 'daily-mission', 'wallet-transfer')
+  AND category NOT LIKE 'ecosystem-bonus-%'
 GROUP BY identity_id, date_trunc('day', tx_timestamp)::date;
 
 -- 3. Unique index required for REFRESH MATERIALIZED VIEW CONCURRENTLY
