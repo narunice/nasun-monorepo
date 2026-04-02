@@ -101,6 +101,73 @@ export async function maybeRefreshActivationsCache(): Promise<void> {
   }
 }
 
+// --- Per-user Sync ---
+
+// Rate limit: 1 sync per user per 20 seconds
+const syncTimestamps = new Map<string, number>();
+const SYNC_RATE_LIMIT_MS = 20_000;
+
+/**
+ * Fetch a single user's activations from admin-api and update the in-memory cache.
+ * Returns the updated activations for the user, or null if rate-limited/error.
+ */
+export async function updateActivationsForUser(
+  identityId: string,
+): Promise<NftActivation[] | null> {
+  const now = Date.now();
+  const lastSync = syncTimestamps.get(identityId) ?? 0;
+  if (now - lastSync < SYNC_RATE_LIMIT_MS) {
+    return null; // rate-limited
+  }
+  syncTimestamps.set(identityId, now);
+
+  const baseUrl = process.env.ECOSYSTEM_ACTIVATIONS_URL;
+  const apiKey = process.env.ECOSYSTEM_ACTIVATIONS_API_KEY;
+  if (!baseUrl) return null;
+
+  // Derive single-user URL from the bulk endpoint URL
+  // e.g., https://api.nasun.io/internal/ecosystem-activations -> .../ecosystem-activations/{id}
+  const singleUserUrl = `${baseUrl}/${encodeURIComponent(identityId)}`;
+
+  try {
+    const headers: Record<string, string> = {};
+    if (apiKey) headers['x-api-key'] = apiKey;
+
+    const res = await fetch(singleUserUrl, {
+      headers,
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!res.ok) {
+      console.error(`[Ecosystem] Per-user sync failed for ${identityId}: ${res.status}`);
+      return null;
+    }
+
+    const data = (await res.json()) as {
+      activations: Array<{ nftType: string; nftCount: number }>;
+    };
+
+    const acts: NftActivation[] = (data.activations || []).map((a) => ({
+      nftType: a.nftType,
+      status: 'ACTIVE',
+      nftCount: a.nftCount ?? 1,
+    }));
+
+    // Update only this user's entry in the cache
+    if (acts.length > 0) {
+      activationsCache.set(identityId, acts);
+    } else {
+      activationsCache.delete(identityId);
+    }
+
+    console.log(`[Ecosystem] Per-user sync: ${identityId} -> ${acts.length} activations`);
+    return acts;
+  } catch (err) {
+    console.error(`[Ecosystem] Per-user sync error for ${identityId}:`, err);
+    return null;
+  }
+}
+
 // --- Materialized View Refresh ---
 
 let lastMatviewRefresh = 0;
