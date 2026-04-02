@@ -2,10 +2,11 @@
 // Multi-chain NFT thumbnail gallery + Sui objects display
 // NFT data is received as props from AssetsCard (which handles featured/regular splitting).
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useWalletAccount } from "@nasun/wallet";
-import { useSuiClientQuery } from "@mysten/dapp-kit";
+import { useSuiClientQueries } from "@mysten/dapp-kit";
 import type { EthereumNFT } from "@/types/ethereum";
+import type { RegisteredWallet } from "@/services/suiWalletApi";
 import { SuiObject } from "./SuiObjects";
 import { NftThumbnailGallery } from "./components/NftThumbnailGallery";
 
@@ -15,6 +16,7 @@ interface OwnedObjectsProps {
   nftError: Error | null;
   hasFeaturedNfts: boolean;
   walletAddress?: string;
+  registeredWallets?: RegisteredWallet[];
 }
 
 export const OwnedObjects = ({
@@ -23,39 +25,61 @@ export const OwnedObjects = ({
   nftError,
   hasFeaturedNfts,
   walletAddress,
+  registeredWallets = [],
 }: OwnedObjectsProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Sui objects
+  // Collect all unique Sui addresses: active wallet + registered wallets
   const suiAccount = useWalletAccount();
-  const {
-    data: suiResponse,
-    error: suiError,
-    isPending: isSuiPending,
-  } = useSuiClientQuery(
-    "getOwnedObjects",
-    {
-      owner: suiAccount?.address as string,
-      options: {
-        showType: true,
-        showOwner: true,
-        showContent: true,
-        showDisplay: true,
+  const allAddresses = useMemo(() => {
+    const addrs = new Set<string>();
+    if (suiAccount?.address) addrs.add(suiAccount.address);
+    for (const w of registeredWallets) {
+      addrs.add(w.walletAddress);
+    }
+    return Array.from(addrs);
+  }, [suiAccount?.address, registeredWallets]);
+
+  // Query owned objects for all addresses
+  const queries = useMemo(() =>
+    allAddresses.map((addr) => ({
+      method: "getOwnedObjects" as const,
+      params: {
+        owner: addr,
+        options: {
+          showType: true,
+          showOwner: true,
+          showContent: true,
+          showDisplay: true,
+        },
       },
-    },
-    { enabled: !!suiAccount }
-  );
+    })),
+  [allAddresses]);
+
+  const results = useSuiClientQueries({ queries, combine: (res) => res });
+
+  const isSuiPending = results.some((r) => r.isPending);
+  const suiError = results.find((r) => r.error)?.error ?? null;
 
   const filterStrings = import.meta.env.VITE_FILTER_STRINGS?.split(",") || [];
-  const suiObjects =
-    suiAccount && suiResponse?.data
-      ? suiResponse.data.filter((objectRes) =>
-          objectRes.data?.type &&
-          filterStrings.some((filter: string) => objectRes.data?.type!.includes(filter))
-        )
-      : [];
+  const suiObjects = useMemo(() => {
+    const seen = new Set<string>();
+    const objects: NonNullable<ReturnType<typeof results[number]["data"]>>["data"][number][] = [];
+    for (const r of results) {
+      if (!r.data?.data) continue;
+      for (const obj of r.data.data) {
+        const id = obj.data?.objectId;
+        if (!id || seen.has(id)) continue;
+        if (!obj.data?.type || !filterStrings.some((f: string) => obj.data?.type!.includes(f))) continue;
+        seen.add(id);
+        objects.push(obj);
+      }
+    }
+    return objects;
+  }, [results, filterStrings]);
 
+  const hasAddresses = allAddresses.length > 0;
   const nftCount = nfts?.length ?? 0;
   const hasNoAssets =
     suiObjects.length === 0 && nftCount === 0 && !hasFeaturedNfts && !isNftPending && !isSuiPending;
@@ -88,7 +112,7 @@ export const OwnedObjects = ({
       )}
 
       {/* Sui Objects */}
-      {suiAccount && (
+      {hasAddresses && (
         <div>
           {isSuiPending ? (
             <p className="text-gray-400">Loading...</p>

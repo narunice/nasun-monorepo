@@ -16,6 +16,7 @@ import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
 import { OwnedObjects } from "./OwnedObjects";
 import { NasunVoteNfts } from "./NasunVoteNfts";
 import { FeaturedNftSection } from "./components/FeaturedNftSection";
+import { useWalletRegistration } from "./hooks/useWalletRegistration";
 
 interface AssetsCardProps {
   walletAddress?: string;
@@ -29,6 +30,7 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   const { user } = useAuth();
   const cognitoToken = user?.cognitoToken;
   const { isMinted: isAllianceMinted, data: allianceData } = useAllianceMintStatus(cognitoToken);
+  const { registeredWallets } = useWalletRegistration();
 
   const {
     data: multiChainNfts,
@@ -113,6 +115,7 @@ export const AssetsCard: FC<AssetsCardProps> = ({
         nftError={nftError}
         hasFeaturedNfts={hasFeaturedNfts}
         walletAddress={walletAddress}
+        registeredWallets={registeredWallets}
       />
     </OuterBox>
   );
