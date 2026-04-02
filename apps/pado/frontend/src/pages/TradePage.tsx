@@ -11,7 +11,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAdaptiveInterval } from "../hooks/useAdaptiveInterval";
-import { NETWORK_CONFIG } from "../config/network";
+
 import { OrderFormProvider, MarketProvider, useMarket } from "../features/trading/context";
 import { TradingPanel, EnablePadoCard } from "../features/trading/containers";
 import {
@@ -29,8 +29,6 @@ import {
   OnboardingTour,
   FavoriteStrip,
   FirstTradeCelebration,
-  SpotAccessGate,
-  isSpotAccessGranted,
 } from "../features/trading/components";
 import {
   useTradeMode,
@@ -48,7 +46,7 @@ import { fetchBinance24hTicker, getBinanceSymbol } from "../lib/indicators";
 import { useState, useEffect, useCallback } from "react";
 import { ChatPanel, useChatMode } from "../features/social";
 import { NewsCarousel } from "../features/news";
-import { useAppAdmin } from "../hooks/useAppAdmin";
+
 
 // Fixed height for chart and orderbook to ensure consistent layout
 // 750px: room for 4+ sub-indicators in chart, TP/SL in order form without scroll
@@ -577,18 +575,7 @@ function TradePageContent() {
   );
 }
 
-// TEMPORARY: Remove gate logic after 2026-04-07
 export function TradePage() {
-  const isAppAdmin = useAppAdmin();
-  const [granted, setGranted] = useState(() =>
-    !NETWORK_CONFIG.gamesOnlyMode || !NETWORK_CONFIG.spotAccessCode || isSpotAccessGranted()
-  );
-
-  // Platform admins bypass spot access gate
-  if (!granted && !isAppAdmin) {
-    return <SpotAccessGate onSuccess={() => setGranted(true)} />;
-  }
-
   return (
     <MarketProvider>
       <OrderFormProvider>
