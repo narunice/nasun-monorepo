@@ -16,6 +16,7 @@ import {
   updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
+import { getIdentityByWallet } from '../scanner/points-scanner.js';
 
 const app = new Hono();
 
@@ -163,7 +164,8 @@ app.get('/leaderboard', async (c) => {
     return c.json({ error: 'points_not_configured' }, 503);
   }
 
-  const period = c.req.query('period') === 'weekly' ? 'weekly' : 'daily';
+  const rawPeriod = c.req.query('period');
+  const period = rawPeriod === 'weekly' ? 'weekly' : rawPeriod === 'monthly' ? 'monthly' : 'daily';
   const limit = parseLimit(c.req.query('limit'));
   const offset = parseOffset(c.req.query('offset'));
 
@@ -175,6 +177,7 @@ app.get('/leaderboard', async (c) => {
     `eco-leaderboard-scored-${period}-${fetchLimit}`,
     5 * 60 * 1000,
     async () => {
+      const interval = period === 'monthly' ? '29 days' : '6 days';
       const rows = period === 'daily'
         ? await pointsDb!`
             SELECT identity_id, base_score::int as base_score
@@ -188,7 +191,7 @@ app.get('/leaderboard', async (c) => {
                    SUM(base_score)::int as base_score,
                    COUNT(*)::int as active_days
             FROM ecosystem_daily_scores
-            WHERE day >= CURRENT_DATE - INTERVAL '6 days'
+            WHERE day >= CURRENT_DATE - INTERVAL ${interval}
               AND day <= CURRENT_DATE
             GROUP BY identity_id
             ORDER BY SUM(base_score) DESC
@@ -290,6 +293,63 @@ app.post('/sync/:identityId', async (c) => {
       multiplier: roundTo2(multiplier),
       synced: true,
     },
+  });
+});
+
+// GET /api/v1/ecosystem/score/wallet/:address
+// Wallet-based score lookup (for Pado frontend, no Cognito identity).
+const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{1,64}$/;
+
+app.get('/score/wallet/:address', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+
+  const address = c.req.param('address');
+  if (!address || !SUI_ADDRESS_RE.test(address)) {
+    return c.json({ error: 'invalid_address' }, 400);
+  }
+
+  const identityId = getIdentityByWallet(address);
+  if (!identityId) {
+    return c.json({ data: null, message: 'wallet_not_registered' });
+  }
+
+  // Redirect internally to the identityId-based score endpoint
+  const url = new URL(c.req.url);
+  url.pathname = url.pathname.replace(`/wallet/${address}`, `/${encodeURIComponent(identityId)}`);
+  return c.redirect(url.pathname, 302);
+});
+
+// GET /api/v1/ecosystem/snapshot/history/:identityId?days=30
+app.get('/snapshot/history/:identityId', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+
+  const days = Math.min(Math.max(1, parseInt(c.req.query('days') ?? '30', 10)), 90);
+
+  const rows = await pointsDb`
+    SELECT snapshot_date, base_score, multiplier::numeric, bonus_total::numeric,
+           ecosystem_score::numeric, is_penalized, rank
+    FROM ecosystem_score_snapshots
+    WHERE identity_id = ${identityId}
+    ORDER BY snapshot_date DESC
+    LIMIT ${days}
+  `;
+
+  c.header('Cache-Control', 'public, max-age=300');
+  return c.json({
+    data: rows.map(r => ({
+      date: r.snapshot_date,
+      baseScore: Number(r.base_score),
+      multiplier: parseFloat(r.multiplier as string),
+      bonusTotal: parseFloat(r.bonus_total as string),
+      ecosystemScore: parseFloat(r.ecosystem_score as string),
+      isPenalized: r.is_penalized,
+      rank: r.rank,
+    })),
   });
 });
 

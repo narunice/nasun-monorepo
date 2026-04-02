@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { WalletConnect } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { HeaderNetValue } from './HeaderNetValue';
+import { EcoPointsBadge } from './EcoPointsBadge';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { useAdminAccess } from '../../features/admin';
 import { useTradeMode } from '../../features/trading/hooks';
@@ -403,6 +404,7 @@ export function Header() {
         {/* Right side: Theme Toggle + Wallet */}
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
+          <EcoPointsBadge />
           {!isEffectivelyGated && <HeaderNetValue />}
           {showWalletButton && (
             <WalletConnect
