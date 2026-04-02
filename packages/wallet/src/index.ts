@@ -40,6 +40,8 @@ export {
   WALLET_IDENTITY_CHANGED_EVENT,
 } from './hooks/useWallet';
 
+export type { WalletIdentityChangeReason } from './hooks/useWallet';
+
 export {
   useBalance,
   useRefreshBalance,

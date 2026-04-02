@@ -380,8 +380,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Clear stale auth session when wallet identity changes (create/import).
   // The old Cognito token is tied to the previous wallet address and must not
   // leak into the new wallet's session.
+  // When reason is "add" (registering additional wallet), preserve the session.
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: Event) => {
+      const reason = (e as CustomEvent)?.detail?.reason ?? "switch";
+      if (reason === "add") {
+        logger.debug("Wallet added for registration, keeping auth session");
+        return;
+      }
       logger.debug("Wallet identity changed, clearing auth session");
       clearAllAuthState();
       clearUser();
