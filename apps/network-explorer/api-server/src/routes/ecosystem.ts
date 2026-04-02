@@ -177,7 +177,7 @@ app.get('/leaderboard', async (c) => {
     `eco-leaderboard-scored-${period}-${fetchLimit}`,
     5 * 60 * 1000,
     async () => {
-      const interval = period === 'monthly' ? '29 days' : '6 days';
+      const daysBack = period === 'monthly' ? 29 : 6;
       const rows = period === 'daily'
         ? await pointsDb!`
             SELECT identity_id, base_score::int as base_score
@@ -191,7 +191,7 @@ app.get('/leaderboard', async (c) => {
                    SUM(base_score)::int as base_score,
                    COUNT(*)::int as active_days
             FROM ecosystem_daily_scores
-            WHERE day >= CURRENT_DATE - INTERVAL ${interval}
+            WHERE day >= CURRENT_DATE - make_interval(days => ${daysBack})
               AND day <= CURRENT_DATE
             GROUP BY identity_id
             ORDER BY SUM(base_score) DESC
