@@ -52,10 +52,35 @@ async function rpcCall<T>(method: string, params: unknown[]): Promise<T> {
   return json.result as T;
 }
 
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+function hexToBase58(hex: string): string {
+  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+  const bytes = Buffer.from(clean, 'hex');
+  const digits = [0];
+  for (const b of bytes) {
+    let carry = b;
+    for (let j = 0; j < digits.length; j++) {
+      carry += digits[j] << 8;
+      digits[j] = carry % 58;
+      carry = (carry / 58) | 0;
+    }
+    while (carry > 0) {
+      digits.push(carry % 58);
+      carry = (carry / 58) | 0;
+    }
+  }
+  let str = '';
+  for (let i = 0; bytes[i] === 0 && i < bytes.length - 1; i++) str += BASE58_ALPHABET[0];
+  for (let i = digits.length - 1; i >= 0; i--) str += BASE58_ALPHABET[digits[i]];
+  return str;
+}
+
 async function getPayoutFromTx(txDigest: string): Promise<number> {
+  const digest = hexToBase58(txDigest);
   const tx = await rpcCall<{
     events?: RpcEvent[];
-  }>('sui_getTransactionBlock', [txDigest, { showEvents: true }]);
+  }>('sui_getTransactionBlock', [digest, { showEvents: true }]);
 
   if (!tx?.events) return 0;
 
