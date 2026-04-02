@@ -4,7 +4,7 @@
  * Persists mode to localStorage and auto-transitions docked -> floating when leaving TradePage.
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 
 type ChatMode = 'docked' | 'floating' | 'closed';
 
@@ -52,12 +52,21 @@ export function ChatModeProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(NEW_KEY, mode); } catch { /* noop */ }
   }, []);
 
-  // Auto-transition: docked -> floating when leaving TradePage
+  // Auto-close chat when navigating away from TradePage.
+  // On initial load, if not on TradePage and chat was persisted as docked, close it.
+  const initialRef = useRef(true);
   useEffect(() => {
-    if (!isOnTradePage && chatMode === 'docked') {
-      setChatMode('floating');
+    if (!isOnTradePage && chatMode !== 'closed') {
+      // On initial load: close persisted docked/floating mode on non-trade pages
+      // On navigation: close when leaving TradePage
+      if (initialRef.current || chatMode === 'docked') {
+        setChatMode('closed');
+      }
     }
-  }, [isOnTradePage, chatMode, setChatMode]);
+    initialRef.current = false;
+    // Only react to page changes, not chatMode changes from user interaction
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnTradePage]);
 
   return (
     <ChatModeContext.Provider value={{ chatMode, setChatMode, isOnTradePage, setOnTradePage }}>

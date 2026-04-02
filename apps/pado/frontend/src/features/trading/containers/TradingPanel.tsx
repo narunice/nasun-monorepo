@@ -190,7 +190,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
   // Wallet balances for unified available balance
   const { data: multiBalance } = useMultiBalance();
-  const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
+  const walletBaseToken = baseSymbol === 'NSN' ? multiBalance?.native : multiBalance?.tokens[baseSymbol];
+  const walletBase = parseFloat(walletBaseToken?.formatted ?? '0');
   const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
