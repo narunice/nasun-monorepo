@@ -64,6 +64,8 @@ export function useEcosystemScore(
         await new Promise((r) => setTimeout(r, 500));
         const data = await fetchScore(identityId);
         if (data) setScore(data);
+        // Notify other components (DailyMissions, etc.) to refresh
+        window.dispatchEvent(new Event("ecosystem:refresh"));
       } catch (err) {
         console.error("[useEcosystemScore] refresh error:", err);
       } finally {
