@@ -16,7 +16,7 @@
 import postgres from 'postgres';
 
 const POINTS_DB_URL = process.env.POINTS_DATABASE_URL;
-const TX_COUNT_CAP = 500;
+const TX_COUNT_CAP = 10;
 
 if (!POINTS_DB_URL) {
   console.error('POINTS_DATABASE_URL not set');
