@@ -32,18 +32,22 @@ const STATUS_CONFIG = {
   rejected: { label: "Rejected", color: "text-red-400" },
 } as const;
 
-export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({ className = "", bare = false }) => {
+export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
+  className = "",
+  bare = false,
+}) => {
   const { user } = useAuth();
   const cognitoToken = user?.cognitoToken;
-  const { status, isLoading, isRegistering, error, register } = useAirdropRegistration(cognitoToken);
+  const { status, isLoading, isRegistering, error, register } =
+    useAirdropRegistration(cognitoToken);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const handleRegister = useCallback(async () => {
+  const handleConfirmedRegister = useCallback(async () => {
+    setShowConfirm(false);
     await register();
-    if (!error) {
-      setShowSuccess(true);
-    }
-  }, [register, error]);
+    setShowSuccess(true);
+  }, [register]);
 
   const statusConfig = STATUS_CONFIG[status];
 
@@ -66,9 +70,13 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({ clas
             variant="nw2"
             size="sm"
             disabled={status === "pending" || isRegistering}
-            onClick={handleRegister}
+            onClick={() => setShowConfirm(true)}
           >
-            {isRegistering ? "Registering..." : status === "pending" ? "Registered" : "Register"}
+            {isRegistering
+              ? "Registering..."
+              : status === "pending"
+                ? "Registered"
+                : "Register"}
           </ButtonV3>
         )}
       </div>
@@ -82,17 +90,45 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({ clas
       )}
 
       {/* Error message */}
-      {error && (
-        <p className="text-red-400 text-xs">{error}</p>
-      )}
+      {error && <p className="text-red-400 text-xs">{error}</p>}
 
-      {/* Success Modal */}
+      {/* Step 1: Confirm Modal */}
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="max-w-sm text-center !bg-slate-800">
+          <DialogHeader className="items-center">
+            <DialogTitle>Airdrop Registration</DialogTitle>
+            <DialogDescription className="text-nasun-white/70 pt-2">
+              Register for the April 16th Airdrop?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center gap-3 mt-2">
+            <ButtonV3
+              variant="nw2"
+              size="sm"
+              onClick={handleConfirmedRegister}
+              disabled={isRegistering}
+            >
+              {isRegistering ? "Registering..." : "Register"}
+            </ButtonV3>
+            <ButtonV3
+              variant="nw2"
+              size="sm"
+              outline
+              onClick={() => setShowConfirm(false)}
+            >
+              Cancel
+            </ButtonV3>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Step 2: Success Modal */}
       <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
-        <DialogContent className="max-w-sm text-center">
+        <DialogContent className="max-w-sm text-center !bg-slate-800">
           <DialogHeader className="items-center">
             <DialogTitle>Registration Complete</DialogTitle>
             <DialogDescription className="text-nasun-white/70 pt-2">
-              Successfully registered for April 16th Airdrop. Status will be updated.
+              Successfully registered. Status will be updated.
             </DialogDescription>
           </DialogHeader>
           <ButtonV3
@@ -110,7 +146,9 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({ clas
 
   if (bare) {
     return (
-      <div className={`border border-dashed border-nasun-white/10 rounded-lg p-4 ${className}`}>
+      <div
+        className={`border border-dashed border-nasun-white/10 rounded-lg p-4 ${className}`}
+      >
         {content}
       </div>
     );
