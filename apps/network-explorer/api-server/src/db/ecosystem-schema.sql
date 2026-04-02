@@ -11,7 +11,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
 -- (e.g., if a user does DEX + lottery + governance in one day, base_score = 3)
 --
 -- Excluded categories:
---   referral-bonus, daily-mission, wallet-transfer (system/spam-prone)
+--   referral-bonus, daily-mission (system-generated)
 --   ecosystem-bonus-* (prevent double-counting bonus points)
 --
 -- Note: 'ecosystem-passive' is intentionally NOT excluded.
@@ -26,7 +26,7 @@ SELECT
 FROM activity_points
 WHERE NOT flagged
   AND identity_id IS NOT NULL
-  AND category NOT IN ('referral-bonus', 'daily-mission', 'wallet-transfer')
+  AND category NOT IN ('referral-bonus', 'daily-mission')
   AND category NOT LIKE 'ecosystem-bonus-%'
 GROUP BY identity_id, date_trunc('day', tx_timestamp)::date;
 

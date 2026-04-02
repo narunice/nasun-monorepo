@@ -58,7 +58,7 @@ app.get('/score/:identityId', async (c) => {
     `eco-score-${identityId}`,
     5 * 60 * 1000,
     async () => {
-      const [todayRow, weeklyRow, allTimeRow, bonusRow] = await Promise.all([
+      const [todayRow, weeklyRow, allTimeRow, snapshotSumRow, bonusRow, bonusTodayRow, bonusWeeklyRow] = await Promise.all([
         pointsDb!`
           SELECT base_score::int as base_score
           FROM ecosystem_daily_scores
@@ -79,12 +79,35 @@ app.get('/score/:identityId', async (c) => {
           FROM ecosystem_daily_scores
           WHERE identity_id = ${identityId}
         `.then(r => r[0]),
+        // Sum of past daily snapshots (each day's score locked with that day's multiplier)
+        pointsDb!`
+          SELECT COALESCE(SUM(ecosystem_score), 0)::numeric as cumulative_score
+          FROM ecosystem_score_snapshots
+          WHERE identity_id = ${identityId}
+        `.then(r => r[0]),
         pointsDb!`
           SELECT COALESCE(SUM(final_points), 0)::numeric as bonus_total
           FROM activity_points
           WHERE identity_id = ${identityId}
             AND category LIKE 'ecosystem-bonus-%'
             AND NOT flagged
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as bonus_today
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category LIKE 'ecosystem-bonus-%'
+            AND NOT flagged
+            AND tx_timestamp >= CURRENT_DATE AT TIME ZONE 'UTC'
+            AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as bonus_weekly
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category LIKE 'ecosystem-bonus-%'
+            AND NOT flagged
+            AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
         `.then(r => r[0]),
       ]);
 
@@ -107,14 +130,25 @@ app.get('/score/:identityId', async (c) => {
       const multiplier = calculateMultiplier(effectiveActivations);
 
       const bonusTotal = parseFloat(bonusRow?.bonus_total ?? '0');
+      const bonusToday = parseFloat(bonusTodayRow?.bonus_today ?? '0');
+      const bonusWeekly = parseFloat(bonusWeeklyRow?.bonus_weekly ?? '0');
+      const snapshotCumulative = parseFloat(snapshotSumRow?.cumulative_score ?? '0');
+
+      // allTime = sum of past snapshots + today's live score
+      const todayBase = todayRow?.base_score ?? 0;
+      const todayLiveScore = todayBase * multiplier + bonusToday;
+      const allTimeCumulative = snapshotCumulative + todayLiveScore;
 
       return {
-        todayBaseScore: todayRow?.base_score ?? 0,
+        todayBaseScore: todayBase,
         weeklyBaseScore: weeklyRow?.base_score ?? 0,
         weeklyActiveDays: weeklyRow?.active_days ?? 0,
         allTimeBaseScore: allTimeRow?.base_score ?? 0,
         allTimeActiveDays: allTimeRow?.active_days ?? 0,
+        allTimeCumulative,
         bonusTotal,
+        bonusToday,
+        bonusWeekly,
         multiplier,
         activations,
         isPenalized,
@@ -141,16 +175,19 @@ app.get('/score/:identityId', async (c) => {
     })),
     daily: {
       baseScore: scores.todayBaseScore,
-      ecosystemScore: roundTo2(scores.todayBaseScore * scores.multiplier),
+      bonusTotal: roundTo2(scores.bonusToday),
+      ecosystemScore: roundTo2(scores.todayBaseScore * scores.multiplier + scores.bonusToday),
     },
     weekly: {
       baseScore: scores.weeklyBaseScore,
-      ecosystemScore: roundTo2(scores.weeklyBaseScore * scores.multiplier),
+      bonusTotal: roundTo2(scores.bonusWeekly),
+      ecosystemScore: roundTo2(scores.weeklyBaseScore * scores.multiplier + scores.bonusWeekly),
       activeDays: scores.weeklyActiveDays,
     },
     allTime: {
       baseScore: scores.allTimeBaseScore,
-      ecosystemScore: roundTo2(scores.allTimeBaseScore * scores.multiplier + bt),
+      bonusTotal: roundTo2(bt),
+      ecosystemScore: roundTo2(scores.allTimeCumulative),
       activeDays: scores.allTimeActiveDays,
     },
   };

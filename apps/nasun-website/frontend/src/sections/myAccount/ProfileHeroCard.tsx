@@ -31,6 +31,7 @@ import { AirdropRegistrationCard } from "./AirdropRegistrationCard";
 
 const CATEGORY_COLORS: Record<string, string> = {
   staking: "bg-emerald-500",
+  "staking-daily": "bg-emerald-400",
   "pado-dex": "bg-blue-500",
   governance: "bg-purple-500",
   "pado-prediction": "bg-amber-500",
@@ -39,8 +40,16 @@ const CATEGORY_COLORS: Record<string, string> = {
   "pado-lending": "bg-cyan-500",
   "baram-ai": "bg-indigo-500",
   "baram-executor": "bg-violet-500",
+  "pado-scratchcard": "bg-rose-400",
+  "pado-games": "bg-orange-400",
   "wallet-transfer": "bg-gray-500",
-  "referral-bonus": "bg-amber-500",
+  "referral-bonus": "bg-amber-600",
+  "daily-mission": "bg-teal-500",
+  faucet: "bg-sky-400",
+  "ecosystem-bonus-earlybird": "bg-yellow-500",
+  "ecosystem-bonus-pado": "bg-lime-500",
+  "ecosystem-bonus-game": "bg-orange-500",
+  "ecosystem-bonus-airdrop": "bg-fuchsia-500",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -56,6 +65,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   "baram-executor": "Executor",
   "wallet-transfer": "Transfer",
   "referral-bonus": "Referral",
+  "daily-mission": "Daily Mission",
+  faucet: "Faucet",
+  "pado-scratchcard": "Scratch Card",
+  "pado-games": "Games",
+  "ecosystem-bonus-earlybird": "Early Bird",
+  "ecosystem-bonus-pado": "Pado Bonus",
+  "ecosystem-bonus-game": "Game Reward",
+  "ecosystem-bonus-airdrop": "Airdrop",
 };
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -215,10 +232,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   // Ecosystem score values from API (single source of truth)
   const displayBaseScore = ecosystemScore?.daily.baseScore ?? 0;
   const displayMultiplier = ecosystemScore?.multiplier ?? 0;
-  const displayBonus = ecosystemScore?.bonusTotal ?? 0;
-  const displayTodayScore = parseFloat(
-    (displayBaseScore * displayMultiplier).toFixed(1),
-  );
+  const displayTodayScore = ecosystemScore?.daily.ecosystemScore ?? 0;
 
   // ---- Display Name & Avatar ----
   const handleImageError = useCallback(() => setImageError(true), []);
@@ -412,7 +426,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                     </span>
                     <span className="text-sm text-nasun-white/40 ml-1">=</span>
                     <span className="text-sm text-nasun-white/60 ml-1">
-                      (
                       <span className="font-mono text-nasun-white/80">
                         {displayBaseScore}
                       </span>{" "}
@@ -421,13 +434,10 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       <span className="font-mono text-nasun-white/80">
                         {displayMultiplier.toFixed(1)}
                       </span>{" "}
-                      mult)
+                      mult
                       <span className="text-nasun-white/40"> + </span>
                       <span className="font-mono text-nasun-white/80">
-                        {displayBonus.toLocaleString("en-US", {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 1,
-                        })}
+                        {Math.max(0, displayTodayScore - Math.round(displayBaseScore * displayMultiplier))}
                       </span>{" "}
                       bonus
                     </span>

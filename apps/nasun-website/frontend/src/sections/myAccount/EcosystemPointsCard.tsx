@@ -319,14 +319,14 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
             </div>
           </div>
 
-          {/* Score Trend Chart */}
-          {chartData.length > 0 && (
+          {/* Score Trend Chart (only show when 3+ days of data) */}
+          {chartData.length >= 3 && (
             <div className="mb-5">
               <p className="text-sm text-nasun-white/40 uppercase tracking-wide mb-3">
                 Score Trend
               </p>
               <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }} style={{ background: 'transparent' }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(59, 130, 246, 0.08)" />
                   <XAxis
                     dataKey="displayDate"
@@ -355,8 +355,8 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
             </div>
           )}
 
-          {/* Ecosystem Rank Chart */}
-          {chartData.some((d) => d.rank != null) && (
+          {/* Ecosystem Rank Chart (only show when 3+ ranked days) */}
+          {chartData.filter((d) => d.rank != null).length >= 3 && (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm text-nasun-white/40 uppercase tracking-wide">
@@ -438,19 +438,25 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
 
                     {/* Formula: (base x mult) + bonus = total */}
                     <span className="text-nasun-white/40 hidden sm:flex items-center gap-1 flex-wrap">
-                      <span className="text-nasun-white/70">{entry.baseScore}</span>
-                      <span>x</span>
-                      <span className="text-nasun-white/70">{entry.multiplier.toFixed(1)}</span>
-                      {entry.bonusTotal > 0 && (
+                      {entry.multiplier === 0 ? (
+                        <span className="text-amber-400/60">No NFT activated</span>
+                      ) : (
                         <>
-                          <span>+</span>
-                          <span className="text-amber-400" title={
-                            entry.bonusItems?.map(i =>
-                              `${BONUS_LABELS[i.category] || i.activityType}: +${i.points}`
-                            ).join('\n') || `Bonus: +${entry.bonusTotal}`
-                          }>
-                            {entry.bonusTotal}
-                          </span>
+                          <span className="text-nasun-white/70">{entry.baseScore}</span>
+                          <span>x</span>
+                          <span className="text-nasun-white/70">{entry.multiplier.toFixed(1)}</span>
+                          {entry.bonusTotal > 0 && (
+                            <>
+                              <span>+</span>
+                              <span className="text-amber-400" title={
+                                entry.bonusItems?.map(i =>
+                                  `${BONUS_LABELS[i.category] || i.activityType}: +${i.points}`
+                                ).join('\n') || `Bonus: +${entry.bonusTotal}`
+                              }>
+                                {entry.bonusTotal}
+                              </span>
+                            </>
+                          )}
                         </>
                       )}
                     </span>
