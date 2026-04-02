@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DashboardCard } from "@/components/ui/DashboardCard";
@@ -191,7 +192,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
     setEditSource(entry.source || "");
   };
 
-  return (
+  const content = (
     <OuterBox color="w5" padding="md" className="w-full mt-6">
       <h3 className="text-xl font-medium text-nasun-white mb-2">
         Manage Entries
@@ -414,8 +415,13 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
         </div>
       )}
 
-      {/* Delete Confirmation */}
-      {deletingAddress && (
+    </OuterBox>
+  );
+
+  const modals = (
+    <>
+      {/* Delete Confirmation - portaled to body to escape OuterBox backdrop-filter containing block */}
+      {deletingAddress && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setDeletingAddress(null)}>
           <div className="bg-gray-900 border border-nasun-c5/45 rounded-sm p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-nasun-white font-medium mb-2">Delete Entry?</h4>
@@ -429,11 +435,12 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {/* Approve All Confirmation */}
-      {showApproveConfirm && (
+      {/* Approve All Confirmation - portaled to body to escape OuterBox backdrop-filter containing block */}
+      {showApproveConfirm && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowApproveConfirm(false)}>
           <div className="bg-gray-900 border border-nasun-c5/45 rounded-sm p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <h4 className="text-nasun-white font-medium mb-2">Approve All APPLIED?</h4>
@@ -447,9 +454,17 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </OuterBox>
+    </>
+  );
+
+  return (
+    <>
+      {content}
+      {modals}
+    </>
   );
 }
 
