@@ -214,5 +214,12 @@ export function useDailyMissions(
     return () => window.removeEventListener("nasun:transfer-success", handler);
   }, [fetchMissions]);
 
+  // Refetch when ecosystem refresh button is clicked
+  useEffect(() => {
+    const handler = () => fetchMissions();
+    window.addEventListener("ecosystem:refresh", handler);
+    return () => window.removeEventListener("ecosystem:refresh", handler);
+  }, [fetchMissions]);
+
   return { completedMissions, isLoading, refetch: fetchMissions };
 }
