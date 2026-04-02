@@ -7,7 +7,7 @@
 
 const API_BASE = import.meta.env.VITE_AIRDROP_API_URL;
 
-export type AirdropStatus = "not_applied" | "pending" | "approved";
+export type AirdropStatus = "not_applied" | "pending" | "approved" | "rejected";
 
 export interface AirdropStatusResponse {
   status: AirdropStatus;

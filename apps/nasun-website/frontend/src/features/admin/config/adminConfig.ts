@@ -23,6 +23,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/whitelist', label: 'Allowlist Export', icon: '📋' },
   { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
   { path: '/admin/points', label: 'Activity Points', icon: '🎯' },
+  { path: '/admin/airdrop', label: 'Airdrop', icon: '🪂' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
@@ -81,5 +82,12 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     icon: '🎯',
     link: '/admin/points',
     linkText: 'View Points',
+  },
+  {
+    title: 'Airdrop',
+    description: 'Manage April 16th Airdrop registrations. View applicants, approve or revert status.',
+    icon: '🪂',
+    link: '/admin/airdrop',
+    linkText: 'Manage Airdrop',
   },
 ];
