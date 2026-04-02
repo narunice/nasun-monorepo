@@ -356,6 +356,57 @@ app.get('/snapshot/history/:identityId', async (c) => {
   });
 });
 
+// GET /api/v1/ecosystem/bonus-history/:identityId?days=30
+// Returns per-day breakdown of bonus categories (earlybird, pado, game, airdrop)
+app.get('/bonus-history/:identityId', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+
+  const days = Math.min(Math.max(1, parseInt(c.req.query('days') ?? '30', 10)), 90);
+
+  const rows = await pointsDb`
+    SELECT
+      date_trunc('day', tx_timestamp)::date AS day,
+      category,
+      activity_type,
+      SUM(final_points)::numeric AS points,
+      COUNT(*)::int AS count
+    FROM activity_points
+    WHERE identity_id = ${identityId}
+      AND NOT flagged
+      AND category LIKE 'ecosystem-bonus-%'
+      AND tx_timestamp >= CURRENT_DATE - make_interval(days => ${days})
+    GROUP BY day, category, activity_type
+    ORDER BY day DESC, points DESC
+  `;
+
+  // Group by day
+  const byDay = new Map<string, Array<{ category: string; activityType: string; points: number; count: number }>>();
+  for (const r of rows) {
+    const day = (r.day as Date).toISOString().split('T')[0];
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day)!.push({
+      category: r.category as string,
+      activityType: r.activity_type as string,
+      points: parseFloat(r.points as string),
+      count: r.count as number,
+    });
+  }
+
+  c.header('Cache-Control', 'public, max-age=300');
+  return c.json({
+    data: [...byDay.entries()].map(([day, items]) => ({
+      date: day,
+      total: items.reduce((s, i) => s + i.points, 0),
+      items,
+    })),
+  });
+});
+
 // GET /api/v1/ecosystem/health
 app.get('/health', async (c) => {
   const status = getMatviewStatus();
