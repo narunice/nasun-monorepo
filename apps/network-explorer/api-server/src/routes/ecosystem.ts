@@ -13,6 +13,7 @@ import { cached } from '../cache.js';
 import {
   getActivationsForUser,
   getMatviewStatus,
+  updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
 
@@ -232,6 +233,31 @@ app.get('/leaderboard', async (c) => {
       limit,
       offset,
       total: active.length,
+    },
+  });
+});
+
+// POST /api/v1/ecosystem/sync/:identityId
+// Triggers per-user NFT activation cache refresh.
+// Called by frontend after activate/deactivate or manual Refresh button.
+app.post('/sync/:identityId', async (c) => {
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+
+  const updated = await updateActivationsForUser(identityId);
+  if (updated === null) {
+    return c.json({ error: 'rate_limited', message: 'Try again in 20 seconds' }, 429);
+  }
+
+  const multiplier = calculateMultiplier(updated);
+  return c.json({
+    data: {
+      identityId,
+      activations: updated,
+      multiplier: roundTo2(multiplier),
+      synced: true,
     },
   });
 });

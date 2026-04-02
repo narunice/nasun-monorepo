@@ -25,11 +25,11 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   governance: { vote: 10, delegate: 5 },
   'wallet-transfer': { transfer: 1, 'merge-coins': 0, 'split-coins': 0 },
   staking: { delegate: 10, unstake: 0 },
+  'staking-daily': { 'staking-active': 1 },
   // Faucet: detected by faucet-scanner via tx_calls_fun (no Move events)
   faucet: { claim: 1 },
   'pado-scratchcard': { 'scratchcard-purchase': 1 },
-  // TODO: Add EVENT_MAP_ENTRIES when pado-games contract is deployed
-  'pado-games': { 'quick-pick': 1 },
+  'pado-games': { 'numbermatch-play': 1 },
   'daily-mission': {
     'dex-first': 5,
     'prediction-first': 5,
@@ -103,6 +103,9 @@ const PKG = {
   scratchcard: stripHex(
     '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
   ),
+  numbermatch: stripHex(
+    '0xf1087293200f23afdcce3415fcf025943bb22708b6b29588be671629dcb92758',
+  ),
   tokens: stripHex(
     '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731',
   ),
@@ -145,6 +148,9 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
 
   // Pado Scratchcard
   [PKG.scratchcard, 'scratchcard', 'ScratchCardPurchased', { category: 'pado-scratchcard', activityType: 'scratchcard-purchase' }],
+
+  // Pado NumberMatch (Games)
+  [PKG.numbermatch, 'numbermatch', 'NumberMatchPlayed', { category: 'pado-games', activityType: 'numbermatch-play' }],
 
   // Pado Lending
   [PKG.lending, 'lending', 'DepositEvent', { category: 'pado-lending', activityType: 'deposit' }],

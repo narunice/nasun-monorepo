@@ -126,16 +126,18 @@ async function scanLoop(): Promise<void> {
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     if (totalProcessed > 0) {
-      // Daily mission bonus: runs once per scanLoop, not per batch
-      try {
-        const missionCount = await calculateDailyMissions(registeredWallets);
-        if (missionCount > 0) {
-          totalProcessed += missionCount;
-          console.log(`[DailyMission] Awarded ${missionCount} mission points`);
-        }
-      } catch (err) {
-        console.error('[DailyMission] Error (non-fatal):', (err as Error).message);
-      }
+      // Daily mission bonus: DISABLED in Ecosystem Points V1.
+      // base_score (distinct categories per day) already rewards category diversity.
+      // Keeping the code for reference; remove entirely after V1 stabilizes.
+      // try {
+      //   const missionCount = await calculateDailyMissions(registeredWallets);
+      //   if (missionCount > 0) {
+      //     totalProcessed += missionCount;
+      //     console.log(`[DailyMission] Awarded ${missionCount} mission points`);
+      //   }
+      // } catch (err) {
+      //   console.error('[DailyMission] Error (non-fatal):', (err as Error).message);
+      // }
 
       console.log(
         `[Points] Scan complete: ${totalProcessed} points recorded in ${elapsed}s`,

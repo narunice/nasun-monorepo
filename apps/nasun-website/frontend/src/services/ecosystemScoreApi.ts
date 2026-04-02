@@ -104,6 +104,28 @@ export async function getEcosystemLeaderboard(
   return res.json();
 }
 
+/**
+ * Trigger per-user NFT activation cache sync on explorer-api.
+ * Call after activate/deactivate or manual Refresh.
+ */
+export async function syncEcosystemActivations(
+  identityId: string,
+): Promise<{ multiplier: number; synced: boolean } | null> {
+  if (!API_BASE) return null;
+  if (!IDENTITY_ID_RE.test(identityId)) return null;
+
+  const encoded = encodeURIComponent(identityId);
+  const res = await fetch(`${API_BASE}/ecosystem/sync/${encoded}`, {
+    method: 'POST',
+  });
+
+  if (res.status === 429) return null; // rate-limited, silent
+  if (!res.ok) return null;
+
+  const json = await res.json();
+  return json.data ?? null;
+}
+
 export async function getEcosystemHealth(): Promise<{
   lastRefresh: string | null;
   stale: boolean;
