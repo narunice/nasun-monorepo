@@ -968,7 +968,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
   // GET /api/leaderboard/points - points leaderboard
   if (url.pathname === '/api/leaderboard/points' && req.method === 'GET') {
     try {
-      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 100);
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 1000);
       const rows = getPointsLeaderboard(limit);
       const totalTraders = getTotalPointsTraders();
       const addresses = rows.map((r) => r.address);
