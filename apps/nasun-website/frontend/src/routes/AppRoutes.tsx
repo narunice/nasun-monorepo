@@ -20,6 +20,7 @@ const UserManagement = lazy(() => import("../features/admin/pages/UserManagement
 const DevnetMetrics = lazy(() => import("../features/admin/pages/DevnetMetrics").then(m => ({ default: m.DevnetMetrics })));
 const FeaturedFeedManagement = lazy(() => import("../features/admin/pages/FeaturedFeedManagement").then(m => ({ default: m.FeaturedFeedManagement })));
 const ActivityPointsAdmin = lazy(() => import("../features/admin/pages/ActivityPointsAdmin").then(m => ({ default: m.ActivityPointsAdmin })));
+const AirdropAdmin = lazy(() => import("../features/admin/pages/AirdropAdmin").then(m => ({ default: m.AirdropAdmin })));
 
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
@@ -44,6 +45,7 @@ const adminRoutes = [
   { path: "/admin/devnet-metrics", title: "Devnet Metrics", component: DevnetMetrics },
   { path: "/admin/featured-feed", title: "Featured Feed", component: FeaturedFeedManagement },
   { path: "/admin/points", title: "Activity Points", component: ActivityPointsAdmin },
+  { path: "/admin/airdrop", title: "Airdrop Management", component: AirdropAdmin },
 ];
 
 const AppRoutes = () => {
