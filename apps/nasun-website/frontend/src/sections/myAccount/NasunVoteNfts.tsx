@@ -6,6 +6,7 @@ import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useUserStore } from "@/store/userStore";
 import { NftImageModal } from "@/features/governance/components/NftImageModal";
 import { Spinner } from "@/components/ui";
+import { useWalletRegistration } from "./hooks/useWalletRegistration";
 
 interface VoteNftItem {
   id: string;
@@ -47,7 +48,8 @@ function isSuiAddress(addr: string): boolean {
 }
 
 /**
- * Collects all known Nasun (Sui) wallet addresses from multiple sources.
+ * Collects all known Nasun (Sui) wallet addresses from multiple sources,
+ * including registered wallets from the backend.
  * Works even when the wallet is locked, since user profile stores the address.
  */
 function useNasunAddresses(): string[] {
@@ -55,6 +57,7 @@ function useNasunAddresses(): string[] {
   const { state: zkLoginState } = useZkLogin();
   const user = useUserStore((s) => s.user);
   const linkedWallet = user?.linkedAccounts?.["nasun wallet"]?.walletAddress;
+  const { registeredWallets } = useWalletRegistration();
 
   return useMemo(() => {
     const addrs = new Set<string>();
@@ -66,8 +69,12 @@ function useNasunAddresses(): string[] {
     if (linkedWallet && isSuiAddress(linkedWallet)) addrs.add(linkedWallet);
     // Primary login wallet address (filter out EVM addresses)
     if (user?.walletAddress && isSuiAddress(user.walletAddress)) addrs.add(user.walletAddress);
+    // All registered wallets from backend
+    for (const w of registeredWallets) {
+      if (isSuiAddress(w.walletAddress)) addrs.add(w.walletAddress);
+    }
     return Array.from(addrs);
-  }, [account?.address, zkLoginState?.address, linkedWallet, user?.walletAddress]);
+  }, [account?.address, zkLoginState?.address, linkedWallet, user?.walletAddress, registeredWallets]);
 }
 
 export const NasunVoteNfts: FC<{ children?: React.ReactNode }> = ({ children }) => {
