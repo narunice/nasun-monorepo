@@ -15,10 +15,20 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
 }) => {
   const [subView, setSubView] = useState<SubView>("menu");
   const { login: zkLogin } = useZkLogin();
-  const { account } = useWallet();
+  const { account, setIdentityChangeReason } = useWallet();
   const { state: zkState } = useZkLogin();
   const currentAddress = account?.address ?? zkState?.address;
   const openAddressRef = useRef<string | undefined>();
+
+  // Set identity change reason to "add" while modal is open so that
+  // wallet create/import preserves the current auth session.
+  useEffect(() => {
+    if (isOpen) {
+      setIdentityChangeReason("add");
+    } else {
+      setIdentityChangeReason("switch");
+    }
+  }, [isOpen, setIdentityChangeReason]);
 
   // Reset subView and snapshot address when modal opens
   useEffect(() => {

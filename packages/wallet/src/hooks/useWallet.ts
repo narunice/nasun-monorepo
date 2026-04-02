@@ -29,6 +29,11 @@ import { useChainStore } from './useChain';
 // Consumers (e.g., auth providers) should listen and clear stale sessions.
 export const WALLET_IDENTITY_CHANGED_EVENT = "nasun-wallet-identity-changed";
 
+// Reason for wallet identity change.
+// "switch": primary wallet changed (default) - auth session should be cleared
+// "add": additional wallet registered - auth session should be preserved
+export type WalletIdentityChangeReason = "switch" | "add";
+
 // Internal state (keypair is not stored in the store)
 let currentKeypair: Ed25519Keypair | null = null;
 
@@ -61,12 +66,22 @@ interface WalletStore extends WalletState, WalletActions {
   security: SecuritySettings;
   updateSecuritySettings: (settings: Partial<SecuritySettings>) => void;
   updateLastActivity: () => void;
+  // Identity change reason (controls whether auth session is cleared)
+  identityChangeReason: WalletIdentityChangeReason;
+  setIdentityChangeReason: (reason: WalletIdentityChangeReason) => void;
 }
 
 // ============================================
 // Shared import helpers (reduce code duplication)
 // ============================================
 type SetFn = (partial: Partial<WalletStore>) => void;
+type GetFn = () => WalletStore;
+
+function dispatchIdentityChanged(get: GetFn): void {
+  window.dispatchEvent(new CustomEvent(WALLET_IDENTITY_CHANGED_EVENT, {
+    detail: { reason: get().identityChangeReason },
+  }));
+}
 
 async function _unlockAndActivate(
   set: SetFn,
@@ -96,12 +111,13 @@ async function _unlockAndActivate(
 
 async function _importWithMnemonic(
   set: SetFn,
+  get: GetFn,
   mnemonic: string,
   password: string,
 ): Promise<string> {
   set({ isLoading: true, error: null });
   try {
-    window.dispatchEvent(new Event(WALLET_IDENTITY_CHANGED_EVENT));
+    dispatchIdentityChanged(get);
     const address = await importWalletFromMnemonic(mnemonic, password);
     await _unlockAndActivate(set, address, password, mnemonic);
     return address;
@@ -118,6 +134,10 @@ export const useWallet = create<WalletStore>((set, get) => ({
   account: null,
   isLoading: false,
   error: null,
+
+  // Identity change reason (default: "switch" clears auth, "add" preserves it)
+  identityChangeReason: "switch" as WalletIdentityChangeReason,
+  setIdentityChangeReason: (reason: WalletIdentityChangeReason) => set({ identityChangeReason: reason }),
 
   // Security settings (persisted separately in localStorage)
   security: loadSecuritySettings(),
@@ -181,7 +201,7 @@ export const useWallet = create<WalletStore>((set, get) => ({
   createWallet: async (password: string): Promise<string> => {
     set({ isLoading: true, error: null });
     try {
-      window.dispatchEvent(new Event(WALLET_IDENTITY_CHANGED_EVENT));
+      dispatchIdentityChanged(get);
 
       const address = await createAndSaveWallet(password);
 
@@ -274,14 +294,14 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
   // Import from mnemonic (legacy compatible)
   importWallet: async (mnemonic: string, password: string): Promise<string> => {
-    return _importWithMnemonic(set, mnemonic, password);
+    return _importWithMnemonic(set, get, mnemonic, password);
   },
 
   // Create wallet with mnemonic backup
   createWalletWithBackup: async (password: string): Promise<{ address: string; mnemonic: string }> => {
     set({ isLoading: true, error: null });
     try {
-      window.dispatchEvent(new Event(WALLET_IDENTITY_CHANGED_EVENT));
+      dispatchIdentityChanged(get);
       const { address, mnemonic } = await createWalletWithMnemonic(password);
 
       // Store mnemonic BEFORE status change — React may re-render immediately
@@ -303,14 +323,14 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
   // Import from mnemonic (explicit method)
   importFromMnemonic: async (mnemonic: string, password: string): Promise<string> => {
-    return _importWithMnemonic(set, mnemonic, password);
+    return _importWithMnemonic(set, get, mnemonic, password);
   },
 
   // Import from private key (no EVM wallet -- no mnemonic available)
   importFromPrivateKey: async (privateKey: string, password: string): Promise<string> => {
     set({ isLoading: true, error: null });
     try {
-      window.dispatchEvent(new Event(WALLET_IDENTITY_CHANGED_EVENT));
+      dispatchIdentityChanged(get);
       const address = await importWalletFromPrivateKey(privateKey, password);
       await _unlockAndActivate(set, address, password);
       return address;
