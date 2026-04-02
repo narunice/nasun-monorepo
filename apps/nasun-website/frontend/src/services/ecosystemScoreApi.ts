@@ -127,6 +127,65 @@ export async function syncEcosystemActivations(
   return json.data ?? null;
 }
 
+export interface SnapshotHistoryEntry {
+  date: string;
+  baseScore: number;
+  multiplier: number;
+  bonusTotal: number;
+  ecosystemScore: number;
+  isPenalized: boolean;
+  rank: number | null;
+}
+
+export async function getSnapshotHistory(
+  identityId: string,
+  days: number = 30,
+): Promise<SnapshotHistoryEntry[]> {
+  if (!API_BASE) return [];
+  if (!IDENTITY_ID_RE.test(identityId)) return [];
+
+  const encoded = encodeURIComponent(identityId);
+  const res = await fetch(
+    `${API_BASE}/ecosystem/snapshot/history/${encoded}?days=${days}`,
+  );
+
+  if (!res.ok) return [];
+
+  const json = await res.json();
+  // API returns DESC order; reverse for chronological display
+  return (json.data ?? []).reverse();
+}
+
+export interface BonusHistoryItem {
+  category: string;
+  activityType: string;
+  points: number;
+  count: number;
+}
+
+export interface BonusHistoryDay {
+  date: string;
+  total: number;
+  items: BonusHistoryItem[];
+}
+
+export async function getBonusHistory(
+  identityId: string,
+  days: number = 30,
+): Promise<BonusHistoryDay[]> {
+  if (!API_BASE) return [];
+  if (!IDENTITY_ID_RE.test(identityId)) return [];
+
+  const encoded = encodeURIComponent(identityId);
+  const res = await fetch(
+    `${API_BASE}/ecosystem/bonus-history/${encoded}?days=${days}`,
+  );
+
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.data ?? [];
+}
+
 export async function getEcosystemHealth(): Promise<{
   lastRefresh: string | null;
   stale: boolean;

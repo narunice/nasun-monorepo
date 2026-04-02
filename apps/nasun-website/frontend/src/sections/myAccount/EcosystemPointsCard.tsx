@@ -1,0 +1,498 @@
+/**
+ * EcosystemPointsCard
+ *
+ * Dashboard card showing ecosystem points history:
+ * - Score overview (Today / Weekly / All Time)
+ * - Score trend bar chart with formula breakdown tooltip
+ * - Ecosystem rank line chart (inverted Y-axis)
+ * - Daily log with score formula breakdown
+ */
+
+import { FC, useMemo, useState } from "react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { useAuth } from "@/features/auth";
+import { useEcosystemScore } from "@/hooks/useEcosystemScore";
+import { useSnapshotHistory } from "@/hooks/useSnapshotHistory";
+import { useQuery } from "@tanstack/react-query";
+import { OuterBox, Spinner } from "@/components/ui";
+import {
+  getBonusHistory,
+  type SnapshotHistoryEntry,
+  type BonusHistoryItem,
+} from "@/services/ecosystemScoreApi";
+
+interface EcosystemPointsCardProps {
+  className?: string;
+}
+
+type DaysOption = 7 | 14 | 30;
+
+// -- Helpers --
+
+function formatDisplayDate(dateStr: string): string {
+  const [, m, d] = dateStr.split("-");
+  return `${parseInt(m, 10)}/${parseInt(d, 10)}`;
+}
+
+function generateDateRange(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const cur = new Date(start + "T00:00:00Z");
+  const last = new Date(end + "T00:00:00Z");
+  while (cur <= last) {
+    dates.push(cur.toISOString().split("T")[0]);
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+const BONUS_LABELS: Record<string, string> = {
+  "ecosystem-bonus-earlybird": "Early Bird",
+  "ecosystem-bonus-pado": "Pado Leaderboard",
+  "ecosystem-bonus-game": "Game Reward",
+  "ecosystem-bonus-airdrop": "Airdrop",
+};
+
+// -- Chart data type --
+
+interface ChartPoint {
+  date: string;
+  displayDate: string;
+  ecosystemScore: number;
+  baseScore: number;
+  multiplier: number;
+  bonusTotal: number;
+  rank: number | null;
+  isPenalized: boolean;
+  bonusItems?: BonusHistoryItem[];
+}
+
+// -- Tooltip components --
+
+function ScoreTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: ChartPoint }>;
+}) {
+  if (!active || !payload?.[0]) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-gray-950 border border-gray-700/70 rounded-sm shadow-lg p-3 min-w-[180px]">
+      <p className="font-semibold text-nasun-white mb-2">{d.date}</p>
+      <div className="space-y-1 text-sm">
+        <p className="text-gray-400">
+          Base: <span className="text-nasun-white font-medium">{d.baseScore}</span>
+          <span className="text-gray-500"> x </span>
+          <span className="text-nasun-white font-medium">{d.multiplier.toFixed(1)}</span>
+          <span className="text-gray-500"> = </span>
+          <span className="text-nasun-white font-medium">{(d.baseScore * d.multiplier).toFixed(0)}</span>
+        </p>
+        {d.bonusTotal > 0 && (
+          <div className="text-gray-400">
+            <span>Bonus: <span className="text-amber-400 font-medium">+{d.bonusTotal}</span></span>
+            {d.bonusItems && d.bonusItems.length > 0 && (
+              <div className="ml-2 mt-0.5 space-y-0.5">
+                {d.bonusItems.map((item, i) => (
+                  <p key={i} className="text-gray-500">
+                    {BONUS_LABELS[item.category] || item.activityType}: <span className="text-amber-400/80">+{item.points}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <p className="text-gray-400 border-t border-gray-700/50 pt-1 mt-1">
+          Total: <span className="font-bold text-nasun-c3">{d.ecosystemScore}</span>
+          {d.rank != null && (
+            <span className="text-gray-500 ml-2">#{d.rank}</span>
+          )}
+        </p>
+        {d.isPenalized && (
+          <p className="text-amber-400 text-sm">Penalized</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RankTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: ChartPoint }>;
+}) {
+  if (!active || !payload?.[0]) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-gray-950 border border-gray-700/70 rounded-sm shadow-lg p-3">
+      <p className="font-semibold text-nasun-white mb-1">{d.date}</p>
+      {d.rank != null ? (
+        <div className="space-y-1 text-sm">
+          <p className="text-gray-400">
+            Rank: <span className="font-bold text-blue-400">#{d.rank}</span>
+          </p>
+          <p className="text-gray-400">
+            Score: <span className="text-nasun-white">{d.baseScore}</span>
+            <span className="text-gray-500"> x {d.multiplier.toFixed(1)}</span>
+            {d.bonusTotal > 0 && <span className="text-amber-400"> +{d.bonusTotal}</span>}
+            <span className="text-gray-500"> = </span>
+            <span className="font-bold text-nasun-c3">{d.ecosystemScore}</span>
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">Unranked</p>
+      )}
+    </div>
+  );
+}
+
+// -- Main Component --
+
+export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
+  className = "",
+}) => {
+  const { user } = useAuth();
+  const identityId = user?.identityId;
+  const [days, setDays] = useState<DaysOption>(30);
+
+  const { score, isLoading: scoreLoading } = useEcosystemScore(identityId);
+  const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
+    identityId,
+    days,
+  });
+
+  const { data: bonusHistory } = useQuery({
+    queryKey: ["ecosystem", "bonus-history", identityId, days],
+    queryFn: () => getBonusHistory(identityId!, days),
+    enabled: !!identityId,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const isLoading = scoreLoading || historyLoading;
+
+  // Prepare chart data with gap-filling and bonus breakdown
+  const chartData = useMemo(() => {
+    if (snapshots.length === 0) return [];
+
+    const byDate = new Map<string, SnapshotHistoryEntry>();
+    for (const s of snapshots) byDate.set(s.date, s);
+
+    // Build bonus items lookup by date
+    const bonusByDate = new Map<string, BonusHistoryItem[]>();
+    if (bonusHistory) {
+      for (const day of bonusHistory) {
+        bonusByDate.set(day.date, day.items);
+      }
+    }
+
+    const firstDate = snapshots[0].date;
+    const lastDate = snapshots[snapshots.length - 1].date;
+    const allDates = generateDateRange(firstDate, lastDate);
+
+    return allDates.map((date): ChartPoint => {
+      const entry = byDate.get(date);
+      return {
+        date,
+        displayDate: formatDisplayDate(date),
+        ecosystemScore: entry?.ecosystemScore ?? 0,
+        baseScore: entry?.baseScore ?? 0,
+        multiplier: entry?.multiplier ?? 0,
+        bonusTotal: entry?.bonusTotal ?? 0,
+        rank: entry?.rank ?? null,
+        isPenalized: entry?.isPenalized ?? false,
+        bonusItems: bonusByDate.get(date),
+      };
+    });
+  }, [snapshots, bonusHistory]);
+
+  // Rank stats
+  const rankStats = useMemo(() => {
+    const ranked = chartData.filter((d) => d.rank != null);
+    if (ranked.length === 0) return { best: null, current: null };
+    const ranks = ranked.map((d) => d.rank as number);
+    return {
+      best: Math.min(...ranks),
+      current: ranked[ranked.length - 1].rank,
+    };
+  }, [chartData]);
+
+  // Rank Y-axis domain
+  const rankDomain = useMemo(() => {
+    const ranked = chartData.filter((d) => d.rank != null).map((d) => d.rank as number);
+    if (ranked.length === 0) return [1, 100];
+    const min = Math.min(...ranked);
+    const max = Math.max(...ranked);
+    const pad = Math.max(1, Math.ceil((max - min) * 0.1));
+    return [Math.max(1, min - pad), max + pad];
+  }, [chartData]);
+
+  // Daily log (last 7 entries, reverse chronological)
+  const dailyLog = useMemo(() => {
+    const recent = [...chartData].reverse().slice(0, 7);
+    return recent.map((entry, i) => {
+      const prev = recent[i + 1];
+      let rankChange: "up" | "down" | null = null;
+      if (entry.rank != null && prev?.rank != null) {
+        if (entry.rank < prev.rank) rankChange = "up";
+        else if (entry.rank > prev.rank) rankChange = "down";
+      }
+      return { ...entry, rankChange };
+    });
+  }, [chartData]);
+
+  // Not authenticated
+  if (!identityId) {
+    return (
+      <OuterBox color="c5" padding="sm" className={className}>
+        <h5 className="font-medium uppercase text-nasun-white mb-4">
+          Ecosystem Points
+        </h5>
+        <p className="text-sm text-nasun-white/50 text-center py-8">
+          Sign in to view your ecosystem points history
+        </p>
+      </OuterBox>
+    );
+  }
+
+  return (
+    <OuterBox color="c5" padding="sm" className={className}>
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between">
+        <h5 className="font-medium uppercase text-nasun-white">
+          Ecosystem Points
+        </h5>
+        <div className="flex gap-1">
+          {([7, 14, 30] as DaysOption[]).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`px-2.5 py-1 rounded-sm text-sm font-medium transition-colors ${
+                days === d
+                  ? "bg-nasun-c3/20 text-nasun-c3"
+                  : "text-nasun-white/40 hover:text-nasun-white/60"
+              }`}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex h-32 items-center justify-center">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          {/* Score Overview */}
+          <div className="mb-5 grid grid-cols-3 gap-3">
+            <div className="rounded-sm bg-gray-800/30 border border-nasun-c5/40 p-3 text-center">
+              <p className="text-sm text-nasun-white/50">Today</p>
+              <p className="text-lg font-bold text-nasun-c3">
+                {(score?.daily.ecosystemScore ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div className="rounded-sm bg-gray-800/30 border border-nasun-c5/40 p-3 text-center">
+              <p className="text-sm text-nasun-white/50">This Week</p>
+              <p className="text-lg font-bold text-nasun-c3">
+                {(score?.weekly.ecosystemScore ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div className="rounded-sm bg-gray-800/30 border border-nasun-c5/40 p-3 text-center">
+              <p className="text-sm text-nasun-white/50">All Time</p>
+              <p className="text-lg font-bold text-nasun-c3">
+                {(score?.allTime.ecosystemScore ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+          </div>
+
+          {/* Score Trend Chart */}
+          {chartData.length > 0 && (
+            <div className="mb-5">
+              <p className="text-sm text-nasun-white/40 uppercase tracking-wide mb-3">
+                Score Trend
+              </p>
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(59, 130, 246, 0.08)" />
+                  <XAxis
+                    dataKey="displayDate"
+                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                    stroke="rgba(59, 130, 246, 0.15)"
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                    stroke="rgba(59, 130, 246, 0.15)"
+                    tickLine={false}
+                    axisLine={false}
+                    width={35}
+                  />
+                  <Tooltip content={<ScoreTooltip />} />
+                  <Bar
+                    dataKey="ecosystemScore"
+                    fill="rgb(52, 211, 153)"
+                    radius={[2, 2, 0, 0]}
+                    maxBarSize={20}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Ecosystem Rank Chart */}
+          {chartData.some((d) => d.rank != null) && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-nasun-white/40 uppercase tracking-wide">
+                  Ecosystem Rank
+                </p>
+                <div className="flex gap-4 text-sm">
+                  {rankStats.best != null && (
+                    <span className="text-nasun-white/50">
+                      Best: <span className="font-bold text-emerald-400">#{rankStats.best}</span>
+                    </span>
+                  )}
+                  {rankStats.current != null && (
+                    <span className="text-nasun-white/50">
+                      Current: <span className="font-bold text-blue-400">#{rankStats.current}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={140}>
+                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(59, 130, 246, 0.08)" />
+                  <XAxis
+                    dataKey="displayDate"
+                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                    stroke="rgba(59, 130, 246, 0.15)"
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    reversed
+                    domain={rankDomain}
+                    tick={{ fill: "#9ca3af", fontSize: 12 }}
+                    stroke="rgba(59, 130, 246, 0.15)"
+                    tickLine={false}
+                    axisLine={false}
+                    width={35}
+                  />
+                  <Tooltip content={<RankTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="rank"
+                    stroke="rgb(96, 165, 250)"
+                    strokeWidth={2}
+                    connectNulls={false}
+                    dot={{ fill: "rgb(96, 165, 250)", strokeWidth: 0, r: 3 }}
+                    activeDot={{
+                      r: 5,
+                      fill: "rgb(255, 255, 255)",
+                      stroke: "rgb(96, 165, 250)",
+                      strokeWidth: 2,
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Daily Log with formula breakdown */}
+          {dailyLog.length > 0 && (
+            <div>
+              <p className="text-sm text-nasun-white/40 uppercase tracking-wide mb-3">
+                Daily Log
+              </p>
+              <div className="space-y-1">
+                {dailyLog.map((entry) => (
+                  <div
+                    key={entry.date}
+                    className={`flex items-center justify-between rounded-sm px-3 py-2 text-sm ${
+                      entry.isPenalized
+                        ? "bg-amber-500/5 border border-amber-500/15"
+                        : "bg-gray-800/20 border border-transparent"
+                    }`}
+                  >
+                    {/* Date */}
+                    <span className="text-nasun-white/60 w-16 shrink-0">
+                      {formatDisplayDate(entry.date)}
+                    </span>
+
+                    {/* Formula: (base x mult) + bonus = total */}
+                    <span className="text-nasun-white/40 hidden sm:flex items-center gap-1 flex-wrap">
+                      <span className="text-nasun-white/70">{entry.baseScore}</span>
+                      <span>x</span>
+                      <span className="text-nasun-white/70">{entry.multiplier.toFixed(1)}</span>
+                      {entry.bonusTotal > 0 && (
+                        <>
+                          <span>+</span>
+                          <span className="text-amber-400" title={
+                            entry.bonusItems?.map(i =>
+                              `${BONUS_LABELS[i.category] || i.activityType}: +${i.points}`
+                            ).join('\n') || `Bonus: +${entry.bonusTotal}`
+                          }>
+                            {entry.bonusTotal}
+                          </span>
+                        </>
+                      )}
+                    </span>
+
+                    {/* Score */}
+                    <span className="font-bold text-nasun-c3 w-14 text-right">
+                      {entry.ecosystemScore}
+                    </span>
+
+                    {/* Rank */}
+                    <span className="w-16 text-right shrink-0">
+                      {entry.rank != null ? (
+                        <span className="text-nasun-white/50">
+                          {entry.rankChange === "up" && (
+                            <span className="text-emerald-400 mr-1">^</span>
+                          )}
+                          {entry.rankChange === "down" && (
+                            <span className="text-red-400 mr-1">v</span>
+                          )}
+                          #{entry.rank}
+                        </span>
+                      ) : (
+                        <span className="text-nasun-white/20">--</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {chartData.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <p className="text-sm text-nasun-white/50">No snapshot history yet</p>
+              <p className="text-sm text-nasun-white/30">
+                Points are recorded daily. Check back tomorrow.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </OuterBox>
+  );
+};
