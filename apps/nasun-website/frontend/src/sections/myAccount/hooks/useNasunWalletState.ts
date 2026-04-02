@@ -8,6 +8,8 @@ export interface NasunWalletState {
   nasunWalletAddress: string | undefined;
   displayAddress: string | null;
   isPrimaryRegistered: boolean;
+  /** True when displayAddress matches the user profile wallet (should not be removable) */
+  isProfileWallet: boolean;
   additionalWallets: { walletAddress: string }[];
   showAsConnected: boolean | "" | null;
   hasLinkedWallet: boolean;
@@ -45,8 +47,18 @@ export function useNasunWalletState(
     sessionStorage.getItem('nasun:dismissed-wallet') === nasunWalletAddress.toLowerCase();
   const showAsConnected = isNasunConnected && nasunWalletAddress && !isConnectedButDismissed;
 
-  // Primary registered wallet: shown when wallet is not actively connected
-  const primaryRegisteredWallet = walletReg.registeredWallets[0] ?? null;
+  // Primary registered wallet: prefer the wallet matching profile (linkedWalletAddress)
+  // so that the displayed address stays consistent with ProfileHeroCard.
+  const primaryRegisteredWallet = (() => {
+    if (!walletReg.registeredWallets.length) return null;
+    if (linkedWalletAddress) {
+      const match = walletReg.registeredWallets.find(
+        w => w.walletAddress === linkedWalletAddress.toLowerCase(),
+      );
+      if (match) return match;
+    }
+    return walletReg.registeredWallets[0];
+  })();
   const displayAddress = showAsConnected
     ? nasunWalletAddress!.toLowerCase()
     : hasLinkedWallet
@@ -54,6 +66,9 @@ export function useNasunWalletState(
       : primaryRegisteredWallet?.walletAddress ?? null;
   const isPrimaryRegistered = !!displayAddress &&
     walletReg.registeredWallets.some(w => w.walletAddress === displayAddress);
+  // Profile wallet should not be removable (matches ProfileHeroCard address)
+  const isProfileWallet = !!displayAddress && !!linkedWalletAddress &&
+    displayAddress === linkedWalletAddress.toLowerCase();
   const additionalWallets = displayAddress
     ? walletReg.registeredWallets.filter(w => w.walletAddress !== displayAddress)
     : walletReg.registeredWallets;
@@ -81,6 +96,7 @@ export function useNasunWalletState(
     nasunWalletAddress,
     displayAddress,
     isPrimaryRegistered,
+    isProfileWallet,
     additionalWallets,
     showAsConnected,
     hasLinkedWallet,

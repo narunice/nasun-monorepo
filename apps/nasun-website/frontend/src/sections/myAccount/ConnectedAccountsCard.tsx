@@ -67,6 +67,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   const {
     displayAddress,
     isPrimaryRegistered,
+    isProfileWallet,
     additionalWallets,
     showAsConnected,
     hasLinkedWallet,
@@ -107,7 +108,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                     dropdownAlign="right"
                   />
                 </div>,
-              ] : (isPrimaryRegistered && additionalWallets.length > 0) || hasLinkedWallet ? [
+              ] : isPrimaryRegistered && !isProfileWallet ? [
                 <button
                   key="remove-primary"
                   title="Remove"
