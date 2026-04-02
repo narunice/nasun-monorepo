@@ -25,6 +25,7 @@ import {
 import { getIdentityToWalletMap } from './referral-bonus.js';
 import { runDailyNftChecks } from './daily-nft-check.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
+import { takeDailySnapshot } from './daily-snapshot.js';
 import { rpcCall } from '../rpc.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
@@ -36,6 +37,7 @@ let walletCacheLastRefresh = 0;
 let isScanning = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
 let lastDailyNftCheckDate = '';
+let lastSnapshotDate = '';
 
 // Daily category cap: only one base_points insert per (identity, category) per day.
 // Key format: "identityId::category". Cleared on date rollover and chain reset.
@@ -171,6 +173,22 @@ async function scanLoop(): Promise<void> {
         await maybeRefreshMatview(true);
       } catch (err) {
         console.error('[Ecosystem] Matview stale refresh error (non-fatal):', (err as Error).message);
+      }
+    }
+
+    // Daily ecosystem snapshot (after matview is fresh, 5min grace after UTC midnight)
+    const utcMinutes = new Date().getUTCMinutes();
+    if (todayStr !== lastSnapshotDate && utcMinutes >= 5) {
+      try {
+        const yesterday = new Date();
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        await takeDailySnapshot(
+          yesterday.toISOString().slice(0, 10),
+          getActivationsCacheMap(),
+        );
+        lastSnapshotDate = todayStr;
+      } catch (err) {
+        console.error('[Snapshot] Error (non-fatal):', (err as Error).message);
       }
     }
   } catch (err) {
@@ -496,6 +514,11 @@ async function maybeRefreshWalletCache(): Promise<void> {
     console.error('[Points] Wallet cache refresh error:', err);
     walletCacheLastRefresh = now;
   }
+}
+
+/** Look up identityId by wallet address (from scanner's cache). */
+export function getIdentityByWallet(walletAddress: string): string | undefined {
+  return registeredWallets.get(walletAddress.toLowerCase());
 }
 
 // --- Exported for health endpoint ---

@@ -15,7 +15,7 @@ import {
   type EcosystemLeaderboardEntry,
 } from "@/services/ecosystemScoreApi";
 
-type Period = "daily" | "weekly";
+type Period = "daily" | "weekly" | "monthly";
 const PAGE_SIZE = 50;
 
 const EcosystemLeaderboardPage = () => {
@@ -81,7 +81,7 @@ const EcosystemLeaderboardPage = () => {
 
           {/* Period Toggle */}
           <div className="flex w-full rounded-sm bg-nasun-c6/50 p-1 sm:w-auto">
-            {(["daily", "weekly"] as const).map((p) => (
+            {(["daily", "weekly", "monthly"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => handlePeriodChange(p)}
@@ -91,7 +91,7 @@ const EcosystemLeaderboardPage = () => {
                     : "text-nasun-white/80 hover:text-nasun-white"
                 }`}
               >
-                {p === "daily" ? "Daily" : "Weekly"}
+                {p === "daily" ? "Daily" : p === "weekly" ? "Weekly" : "Monthly"}
               </button>
             ))}
           </div>
@@ -141,7 +141,7 @@ const EcosystemLeaderboardPage = () => {
                   <th className="hidden px-4 py-3 text-right font-medium text-nasun-white/80 sm:table-cell">
                     Multiplier
                   </th>
-                  {period === "weekly" && (
+                  {period !== "daily" && (
                     <th className="px-4 py-3 text-right font-medium text-nasun-white/80">
                       Active Days
                     </th>
@@ -155,7 +155,7 @@ const EcosystemLeaderboardPage = () => {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={period === "weekly" ? 6 : 5}
+                      colSpan={period !== "daily" ? 6 : 5}
                       className="px-4 py-12 text-center text-nasun-white/70"
                     >
                       Loading...
@@ -164,7 +164,7 @@ const EcosystemLeaderboardPage = () => {
                 ) : entries.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={period === "weekly" ? 6 : 5}
+                      colSpan={period !== "daily" ? 6 : 5}
                       className="px-4 py-16 text-center"
                     >
                       <div className="flex flex-col items-center gap-3">
@@ -213,9 +213,9 @@ const EcosystemLeaderboardPage = () => {
                           {entry.multiplier.toFixed(1)}x
                         </span>
                       </td>
-                      {period === "weekly" && (
+                      {period !== "daily" && (
                         <td className="px-4 py-3 text-right font-mono text-nasun-white/80">
-                          {entry.activeDays}/7
+                          {entry.activeDays}/{period === "weekly" ? 7 : 30}
                         </td>
                       )}
                       <td className="px-4 py-3 text-right font-bold text-nasun-c3">
