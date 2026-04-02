@@ -36,7 +36,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'blue',
-    enabled: true,
+    enabled: !gated,
   },
   {
     id: 'perp',

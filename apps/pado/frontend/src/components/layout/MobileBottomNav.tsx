@@ -59,9 +59,9 @@ const socialIcon = (active: boolean) => (
 
 const TABS: NavTab[] = [
   { label: 'Home', path: '/', matchPaths: ['/'], icon: homeIcon, enabled: true },
-  { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon, enabled: true },
+  { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon, enabled: !gated },
   { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon, enabled: true },
-  { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon, enabled: true },
+  { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon, enabled: !gated },
 ];
 
 interface MoreItem {
@@ -74,8 +74,8 @@ interface MoreItem {
 const MORE_ITEMS: MoreItem[] = [
   { label: 'Earn', path: '/earn', icon: '💰', enabled: !gated },
   { label: 'Perpetuals', path: '/markets/perp', icon: '📈', enabled: !gated },
-  { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: true },
-  { label: 'Wallet', path: '/wallet', icon: '👛', enabled: true },
+  { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: !gated },
+  { label: 'Wallet', path: '/wallet', icon: '👛', enabled: !gated },
   { label: 'Game History', path: '/games/history', icon: '🎲', enabled: true },
   { label: 'Predict', path: '/predict', icon: '🔮', enabled: !gated },
 ];
