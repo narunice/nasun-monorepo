@@ -37,8 +37,7 @@ module numbermatch::numbermatch {
     const POOL_MIN_BALANCE: u64 = 500_000_000;    // 500 NUSDC (~28x MAX_PAYOUT)
     const POOL_LOW_THRESHOLD: u64 = 1_500_000_000; // 1500 NUSDC (3x POOL_MIN_BALANCE)
 
-    // Rate limiting
-    const MAX_DAILY_PLAYS: u64 = 1000;
+    // Rate limiting (disabled -- no cap)
     const MS_PER_DAY: u64 = 86_400_000;           // 24h in milliseconds (UTC midnight reset)
 
     // ===== Error Codes =====
@@ -182,7 +181,6 @@ module numbermatch::numbermatch {
             pool.daily_play_count = 0;
         };
         pool.daily_play_count = pool.daily_play_count + 1;
-        assert!(pool.daily_play_count <= MAX_DAILY_PLAYS, EDailyCapReached);
 
         // === Phase 2: Payment + Solvency (abort allowed) ===
 

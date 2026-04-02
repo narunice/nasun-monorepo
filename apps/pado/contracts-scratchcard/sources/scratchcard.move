@@ -145,14 +145,13 @@ module scratchcard::scratchcard {
         assert!(!pool.is_paused, EPaused);
         assert!(coin::value(&payment) >= CARD_PRICE, EInsufficientPayment);
 
-        // Global daily cap check + reset
+        // Daily card counter (tracking only, no cap enforced)
         let today = clock::timestamp_ms(clock) / MS_PER_DAY;
         if (pool.current_day != today) {
             pool.current_day = today;
             pool.daily_card_count = 0;
         };
         pool.daily_card_count = pool.daily_card_count + 1;
-        assert!(pool.daily_card_count <= MAX_DAILY_CARDS, EDailyCapReached);
 
         // Pool solvency check (5x buffer)
         assert!(balance::value(&pool.pool) >= POOL_MIN_BALANCE, EPoolInsufficient);
