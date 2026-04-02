@@ -19,35 +19,27 @@ function safeInt(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-// NFT Multiplier Config
-// Base multiplier is 1.0 when any NFT is active, 0 when none.
-// Each activated NFT type adds to the base.
-// Price-proportional: Genesis $10, Battalion $100 per unit (G=0.1x, 10G=1.0x).
+// NFT Multiplier Config (V1)
+// Multiplier = max(base tier) + battalion stack, capped at MAX_MULTIPLIER.
+// No active NFTs -> 0 (disabled). Any active NFT -> at least alliance base (1x).
 export const MULTIPLIER_CONFIG = {
-  alliance: safeFloat(process.env.ECO_MULT_ALLIANCE, 0),
-  // Note: separate from GENESIS_PASS_MULTIPLIER in points.ts (per-tx multiplier, 2.0)
-  genesisPass: safeFloat(process.env.ECO_MULT_GENESIS_PASS, 0.1),
+  // Base tier multipliers (highest wins, not additive)
+  alliance: safeFloat(process.env.ECO_MULT_ALLIANCE, 1),
+  genesisPass: safeFloat(process.env.ECO_MULT_GENESIS_PASS, 2),
+  // Battalion stacks on top of the base tier
   battalion: {
-    perUnit: safeFloat(process.env.ECO_MULT_BATTALION_PER_UNIT, 1.0),
+    perUnit: safeFloat(process.env.ECO_MULT_BATTALION_PER_UNIT, 5.0),
     maxUnits: safeInt(process.env.ECO_MULT_BATTALION_MAX_UNITS, 10),
   },
 };
 
-// Bonus pool config (for Step 5B, deferred)
-export const BONUS_CONFIG = {
-  padoPnlDailyPool: safeInt(process.env.ECO_BONUS_PNL_POOL, 1000),
-  padoGameLogCoefficient: safeFloat(process.env.ECO_BONUS_GAME_LOG_K, 5.0),
-  padoGameDailyCap: safeInt(process.env.ECO_BONUS_GAME_CAP, 50),
-  dailyLeaderboardPool: safeInt(process.env.ECO_BONUS_DAILY_LB_POOL, 500),
-  weeklyLeaderboardPool: safeInt(process.env.ECO_BONUS_WEEKLY_LB_POOL, 2000),
-};
+// Activations cache refresh interval (12h default, per-user sync for immediate updates)
+export const ACTIVATIONS_CACHE_REFRESH_MS = safeInt(process.env.ECO_ACTIVATIONS_CACHE_MS, 12 * 60 * 60 * 1000);
 
 // Matview refresh config
 export const MATVIEW_REFRESH_MIN_INTERVAL_MS = safeInt(process.env.ECO_MATVIEW_MIN_INTERVAL_MS, 5 * 60 * 1000);
 export const MATVIEW_REFRESH_MAX_STALE_MS = safeInt(process.env.ECO_MATVIEW_MAX_STALE_MS, 15 * 60 * 1000);
 
-// Ecosystem activations cache (from admin API)
-export const ACTIVATIONS_CACHE_REFRESH_MS = safeInt(process.env.ECO_ACTIVATIONS_CACHE_MS, 3 * 60 * 60 * 1000);
 // Floor 30s to prevent rapid-fire retry on misconfigured env var
 export const ACTIVATIONS_ERROR_RETRY_MS = Math.max(30_000, safeInt(process.env.ECO_ACTIVATIONS_ERROR_RETRY_MS, 5 * 60 * 1000));
 
@@ -67,8 +59,10 @@ export interface NftActivation {
 export const MAX_MULTIPLIER = Math.max(1.0, Math.min(safeFloat(process.env.ECO_MAX_MULTIPLIER, 20.0), 100.0));
 
 /**
- * Per-activation bonus calculation. Single source of truth for multiplier formula.
- * Used by both calculateMultiplier (scoring) and routes (API bonus field).
+ * Per-activation contribution to the multiplier.
+ * For base-tier NFTs (alliance, genesis-pass): returns the tier's base multiplier.
+ * For stackable NFTs (battalion): returns the additive bonus.
+ * Used by routes for the API `bonus` field display.
  */
 export function getActivationBonus(act: NftActivation): number {
   if (act.status !== 'ACTIVE') return 0;
@@ -82,7 +76,6 @@ export function getActivationBonus(act: NftActivation): number {
       return count * MULTIPLIER_CONFIG.battalion.perUnit;
     }
     default:
-      // Sanitize external API data before logging (prevent log injection)
       console.warn(
         `[Ecosystem] Unknown nftType ignored: ${String(act.nftType).slice(0, 50).replace(/[^\w-]/g, '_')}`,
       );
@@ -93,21 +86,40 @@ export function getActivationBonus(act: NftActivation): number {
 /**
  * Calculate total multiplier for a user based on their NFT activations.
  *
- * No active NFTs -> 0 (disabled; points recorded but not scored).
- * Any active NFT  -> 1.0 (base) + sum of per-activation bonuses, capped at MAX_MULTIPLIER.
+ * V1 formula: max(base tier) + battalion stack, capped at MAX_MULTIPLIER.
  *
- * Users without any Nasun NFT accumulate base scores, but their ecosystem
- * score stays 0 until they acquire any NFT, at which point all historical
- * base scores become effective retroactively.
+ * Base tier (highest wins, not additive):
+ *   - Alliance: 1x
+ *   - Genesis Pass: 2x
+ * Stackable (additive on top of base):
+ *   - Battalion: 5x per unit
+ *
+ * No active NFTs -> 0 (disabled; base scores recorded but ecosystem score stays 0).
+ * Example: Genesis(2x) + Battalion x3(15x) = 17x
  */
 export function calculateMultiplier(activations: NftActivation[]): number {
-  let bonus = 0;
+  let baseTier = 0;
+  let battalionStack = 0;
   let hasActive = false;
+
   for (const act of activations) {
-    const b = getActivationBonus(act);
-    if (b > 0 || act.status === 'ACTIVE') hasActive = true;
-    bonus += b;
+    if (act.status !== 'ACTIVE') continue;
+    hasActive = true;
+    switch (act.nftType) {
+      case 'alliance':
+        baseTier = Math.max(baseTier, MULTIPLIER_CONFIG.alliance);
+        break;
+      case 'genesis-pass':
+        baseTier = Math.max(baseTier, MULTIPLIER_CONFIG.genesisPass);
+        break;
+      case 'battalion': {
+        const count = Math.min(Math.max(0, act.nftCount), MULTIPLIER_CONFIG.battalion.maxUnits);
+        battalionStack += count * MULTIPLIER_CONFIG.battalion.perUnit;
+        break;
+      }
+    }
   }
+
   if (!hasActive) return 0;
-  return Math.min(1.0 + bonus, MAX_MULTIPLIER);
+  return Math.min(baseTier + battalionStack, MAX_MULTIPLIER);
 }

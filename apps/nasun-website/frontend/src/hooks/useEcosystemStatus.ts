@@ -15,6 +15,7 @@ import {
   type NftType,
   type EcosystemApiError,
 } from "@/services/ecosystemApi";
+import { syncEcosystemActivations } from "@/services/ecosystemScoreApi";
 
 const INVALIDATE_EVENT = "ecosystem:invalidate";
 
@@ -36,6 +37,7 @@ interface UseEcosystemStatusResult {
 
 export function useEcosystemStatus(
   cognitoToken: string | undefined,
+  identityId?: string,
 ): UseEcosystemStatusResult {
   const [activations, setActivations] = useState<Activation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +89,8 @@ export function useEcosystemStatus(
       try {
         await activateNft(cognitoToken, nftType);
         await fetchStatus();
+        // Sync explorer-api activation cache (fire-and-forget)
+        if (identityId) syncEcosystemActivations(identityId).catch(() => {});
         invalidateEcosystemStatus();
       } catch (err) {
         const msg = (err as EcosystemApiError).message || "Activation failed";
@@ -107,6 +111,7 @@ export function useEcosystemStatus(
       try {
         await deactivateNft(cognitoToken, nftType);
         await fetchStatus();
+        if (identityId) syncEcosystemActivations(identityId).catch(() => {});
         invalidateEcosystemStatus();
       } catch (err) {
         const msg = (err as EcosystemApiError).message || "Deactivation failed";

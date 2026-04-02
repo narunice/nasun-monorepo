@@ -24,17 +24,8 @@ import { DailyMissionsCard } from "./DailyMissionsCard";
 import { HealthStatusBar } from "./HealthStatusBar";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
-import { useDailyMissions } from "@/hooks/useDailyMissions";
+import { AirdropRegistrationCard } from "./AirdropRegistrationCard";
 
-// Mission point values (must match DailyMissionsCard)
-const MISSION_POINTS: Record<string, number> = {
-  faucet: 1,
-  "wallet-transfer": 1,
-  "pado-dex": 2,
-  "pado-lottery": 1,
-  "pado-scratchcard": 1,
-  "pado-games": 1,
-};
 
 // ---- Category display config ----
 
@@ -204,11 +195,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   // ---- Ecosystem Score (for Health Status Bar, only when showPoints) ----
   const cognitoToken = showPoints ? user?.cognitoToken : undefined;
   const identityId = showPoints ? user?.identityId : undefined;
-  const { score: ecosystemScore, isLoading: ecosystemLoading } =
-    useEcosystemScore(identityId);
+  const {
+    score: ecosystemScore,
+    isLoading: ecosystemLoading,
+    refresh: refreshEcosystem,
+    isRefreshing: ecosystemRefreshing,
+  } = useEcosystemScore(identityId);
 
   // Activation state from DynamoDB (real-time, not cached)
-  const { getActivation } = useEcosystemStatus(cognitoToken);
+  const { getActivation } = useEcosystemStatus(cognitoToken, identityId);
 
   const hasGenesisPass = !!getActivation("genesis-pass");
   const hasActiveNft =
@@ -216,38 +211,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
     !!getActivation("genesis-pass") ||
     !!getActivation("battalion");
 
-  // Real-time multiplier from activation state (fallback when ecosystem cache is stale)
-  const realtimeMultiplier = useMemo(() => {
-    if (!hasActiveNft) return 0;
-    let m = 1.0; // base
-    if (getActivation("genesis-pass")) m += 0.1;
-    const bat = getActivation("battalion");
-    if (bat) m += Math.min(bat.nftCount ?? 1, 10) * 1.0;
-    // alliance adds +0x (entry level)
-    return m;
-  }, [hasActiveNft, getActivation]);
-
-  // Real-time base score from daily missions (fallback when ecosystem cache is stale)
-  const { completedMissions } = useDailyMissions(
-    showPoints && hasValidAddress ? nasunWalletAddress : undefined,
-  );
-  const realtimeBaseScore = useMemo(() => {
-    let score = 0;
-    for (const id of completedMissions) {
-      score += MISSION_POINTS[id] ?? 0;
-    }
-    return score;
-  }, [completedMissions]);
-
-  // Use the higher of ecosystem API vs real-time computed values
-  const displayBaseScore = Math.max(
-    ecosystemScore?.daily.baseScore ?? 0,
-    realtimeBaseScore,
-  );
-  const displayMultiplier = Math.max(
-    ecosystemScore?.multiplier ?? 0,
-    realtimeMultiplier,
-  );
+  // Ecosystem score values from API (single source of truth)
+  const displayBaseScore = ecosystemScore?.daily.baseScore ?? 0;
+  const displayMultiplier = ecosystemScore?.multiplier ?? 0;
   const displayTodayScore = parseFloat(
     (displayBaseScore * displayMultiplier).toFixed(1),
   );
@@ -358,6 +324,29 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
+                {hasActiveNft && (
+                  <button
+                    type="button"
+                    onClick={refreshEcosystem}
+                    disabled={ecosystemRefreshing}
+                    className="ml-auto text-xs text-nasun-white/40 hover:text-nasun-white/70 transition-colors disabled:opacity-30"
+                    title="Refresh points"
+                  >
+                    <svg
+                      className={`w-3.5 h-3.5 ${ecosystemRefreshing ? "animate-spin" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                  </button>
+                )}
                 <InfoTooltip>
                   <p className="text-amber-400 font-semibold mb-1.5">
                     This feature may be buggy during the experimental phase. We
@@ -486,6 +475,9 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Airdrop Registration Bar */}
+            <AirdropRegistrationCard bare />
 
             {/* Daily Missions + Health Donut (side by side) */}
             <div className="flex gap-4">

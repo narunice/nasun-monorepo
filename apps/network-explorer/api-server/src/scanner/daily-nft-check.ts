@@ -16,6 +16,7 @@
  */
 
 import { pointsDb } from '../db.js';
+import { rpcCall } from '../rpc.js';
 import type { NftActivation } from '../config/ecosystem.js';
 
 // Categories excluded from "real activity" checks
@@ -24,6 +25,7 @@ const EXCLUDED_CATEGORIES = [
   'daily-mission',
   'wallet-transfer',
   'ecosystem-passive',
+  'staking-daily',
   'ecosystem-bonus-pnl',
   'ecosystem-bonus-rank',
   'ecosystem-bonus-game',
@@ -55,6 +57,7 @@ export async function runDailyNftChecks(
   let penaltiesApplied = 0;
   let penaltiesRecovered = 0;
   let passiveAwarded = 0;
+  let transfersDetected = 0;
 
   // --- Alliance Penalty Check ---
   if (allianceOnlyIds.length > 0) {
@@ -68,9 +71,25 @@ export async function runDailyNftChecks(
     passiveAwarded = await awardGenesisPassivePoints(genesisIds, identityToWallet);
   }
 
-  if (penaltiesApplied > 0 || penaltiesRecovered > 0 || passiveAwarded > 0) {
+  // --- Staking Daily Points ---
+  let stakingAwarded = 0;
+  try {
+    stakingAwarded = await awardStakingDailyPoints(identityToWallet);
+  } catch (err) {
+    console.error('[DailyNftCheck] Staking daily points error (non-fatal):', err);
+  }
+
+  // --- Wallet Transfer Detection (RPC-based) ---
+  try {
+    transfersDetected = await detectWalletTransfers(identityToWallet);
+  } catch (err) {
+    console.error('[DailyNftCheck] Wallet transfer detection error (non-fatal):', err);
+  }
+
+  if (penaltiesApplied > 0 || penaltiesRecovered > 0 || passiveAwarded > 0 || stakingAwarded > 0 || transfersDetected > 0) {
     console.log(
-      `[DailyNftCheck] penalties: ${penaltiesApplied} applied, ${penaltiesRecovered} recovered, ${passiveAwarded} passive awarded`,
+      `[DailyNftCheck] penalties: ${penaltiesApplied} applied, ${penaltiesRecovered} recovered, ` +
+      `${passiveAwarded} passive, ${stakingAwarded} staking, ${transfersDetected} transfers`,
     );
   }
 }
@@ -201,4 +220,180 @@ async function awardGenesisPassivePoints(
   }
 
   return totalAwarded;
+}
+
+// --- Staking Daily Points ---
+
+interface StakeInfo {
+  stakes: Array<{ status: string }>;
+}
+
+/**
+ * Award 1 staking-daily point per user per day if they have active stakes.
+ * Uses suix_getStakes RPC. Only queries users who have a StakingRequestEvent
+ * record in activity_points (optimization: ~50-100 instead of all 1400).
+ * Lookback 2 days for PM2 downtime recovery.
+ */
+async function awardStakingDailyPoints(
+  identityToWallet: Map<string, string>,
+): Promise<number> {
+  if (!pointsDb || identityToWallet.size === 0) return 0;
+
+  // Only check users who have ever staked (optimization)
+  const stakingUsers = await pointsDb`
+    SELECT DISTINCT identity_id FROM activity_points
+    WHERE category = 'staking' AND activity_type = 'delegate' AND NOT flagged
+  `;
+
+  const stakingIdentityIds = new Set(stakingUsers.map(r => r.identity_id as string));
+  if (stakingIdentityIds.size === 0) return 0;
+
+  const now = new Date();
+  let totalAwarded = 0;
+
+  for (let daysAgo = 1; daysAgo <= 2; daysAgo++) {
+    const targetDate = new Date(now);
+    targetDate.setUTCDate(targetDate.getUTCDate() - daysAgo);
+    const dateStr = targetDate.toISOString().slice(0, 10);
+
+    for (const identityId of stakingIdentityIds) {
+      const wallet = identityToWallet.get(identityId);
+      if (!wallet) continue;
+
+      const digest = `stk:${identityId}:${dateStr}`;
+
+      try {
+        const stakeResult = await rpcCall<StakeInfo[]>(
+          'suix_getStakes',
+          [wallet],
+        );
+
+        // Check if any stake is active
+        const hasActiveStake = stakeResult.some(
+          (v) => v.stakes?.some((s) => s.status === 'Active'),
+        );
+        if (!hasActiveStake) continue;
+
+        const txTimestamp = `${dateStr}T00:00:00Z`;
+        const result = await pointsDb`
+          INSERT INTO activity_points
+            (wallet_address, identity_id, tx_digest, category, activity_type,
+             base_points, volume_tier, genesis_multiplier, final_points,
+             tx_timestamp, event_seq, tx_sequence_number)
+          VALUES
+            (${wallet}, ${identityId}, ${digest}, 'staking-daily', 'staking-active',
+             1, 1.0, 1.0, ${'1.00'},
+             ${txTimestamp}::timestamptz, 0, 0)
+          ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+        `;
+        if (result.count > 0) totalAwarded++;
+      } catch {
+        // Skip user on RPC error (non-fatal)
+      }
+    }
+  }
+
+  return totalAwarded;
+}
+
+// --- Wallet Transfer Detection ---
+
+// RPC response types for suix_queryTransactionBlocks with showInput
+interface TxCommand {
+  TransferObjects?: unknown;
+  MoveCall?: unknown;
+  MergeCoins?: unknown;
+  SplitCoins?: unknown;
+  [key: string]: unknown;
+}
+
+interface TxBlockResponse {
+  digest: string;
+  timestampMs?: string;
+  transaction?: {
+    data?: {
+      transaction?: {
+        commands?: TxCommand[];
+      };
+    };
+  };
+}
+
+interface TxQueryResponse {
+  data: TxBlockResponse[];
+  nextCursor: string | null;
+  hasNextPage: boolean;
+}
+
+/**
+ * Detect wallet transfers (native coin transfers) for registered users.
+ * Uses suix_queryTransactionBlocks RPC to find TransferObjects commands.
+ * Runs once per day, lookback 2 days for PM2 downtime recovery.
+ * Inserts 1 point per user per day (category: wallet-transfer, type: transfer).
+ */
+async function detectWalletTransfers(
+  identityToWallet: Map<string, string>,
+): Promise<number> {
+  if (!pointsDb || identityToWallet.size === 0) return 0;
+
+  const now = new Date();
+  let totalDetected = 0;
+
+  for (let daysAgo = 1; daysAgo <= 2; daysAgo++) {
+    const targetDate = new Date(now);
+    targetDate.setUTCDate(targetDate.getUTCDate() - daysAgo);
+    const dateStr = targetDate.toISOString().slice(0, 10);
+    const dayStartMs = new Date(`${dateStr}T00:00:00Z`).getTime();
+    const dayEndMs = dayStartMs + 86_400_000;
+
+    for (const [identityId, wallet] of identityToWallet) {
+      const digest = `wt:${identityId}:${dateStr}`;
+
+      try {
+        // Query recent transactions from this wallet (descending, limit 10)
+        const result = await rpcCall<TxQueryResponse>(
+          'suix_queryTransactionBlocks',
+          [
+            { filter: { FromAddress: wallet }, options: { showInput: true } },
+            null,
+            10,
+            true,
+          ],
+        );
+
+        // Check if any transaction on target day has TransferObjects command
+        let hasTransfer = false;
+        for (const tx of result.data) {
+          const ts = Number(tx.timestampMs ?? 0);
+          if (ts < dayStartMs || ts >= dayEndMs) continue;
+
+          const commands = tx.transaction?.data?.transaction?.commands ?? [];
+          if (commands.some((c) => 'TransferObjects' in c)) {
+            hasTransfer = true;
+            break;
+          }
+        }
+
+        if (!hasTransfer) continue;
+
+        const txTimestamp = `${dateStr}T12:00:00Z`;
+        const insertResult = await pointsDb`
+          INSERT INTO activity_points
+            (wallet_address, identity_id, tx_digest, category, activity_type,
+             base_points, volume_tier, genesis_multiplier, final_points,
+             tx_timestamp, event_seq, tx_sequence_number)
+          VALUES
+            (${wallet}, ${identityId}, ${digest}, 'wallet-transfer', 'transfer',
+             1, 1.0, 1.0, ${'1.00'},
+             ${txTimestamp}::timestamptz, 0, 0)
+          ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+        `;
+        if (insertResult.count > 0) totalDetected++;
+      } catch {
+        // Skip user on RPC error (non-fatal)
+      }
+    }
+  }
+
+  return totalDetected;
 }

@@ -27,7 +27,6 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 const REFERRAL_CODES_TABLE = process.env.REFERRAL_CODES_TABLE || "nasun-referral-codes";
 const REFERRALS_TABLE = process.env.REFERRALS_TABLE || "nasun-referrals";
 const ACTIVATIONS_TABLE = process.env.ACTIVATIONS_TABLE || "nasun-ecosystem-activations";
-
 interface GenesisWhitelistItem {
   walletAddress: string;
   joinedAt: string;
@@ -805,6 +804,54 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       console.log(`[internal] Ecosystem activations: ${totalActive} active across ${Object.keys(activations).length} users`);
       return jsonResponse(200, { activations }, requestOrigin);
+    }
+
+    // Internal endpoint: GET /internal/ecosystem-activations/{identityId} (API key auth)
+    // Returns ACTIVE NFT activations for a single user. Used by explorer-api per-user sync.
+    if (path.match(/\/internal\/ecosystem-activations\/[^/]+$/) && event.httpMethod === "GET") {
+      const apiKey = event.headers?.["x-api-key"] || event.headers?.["X-Api-Key"];
+      const isValidKey =
+        INTERNAL_API_KEY &&
+        apiKey &&
+        apiKey.length === INTERNAL_API_KEY.length &&
+        timingSafeEqual(Buffer.from(apiKey), Buffer.from(INTERNAL_API_KEY));
+      if (!isValidKey) {
+        return errorResponse(401, "Unauthorized", requestOrigin);
+      }
+
+      const targetIdentityId = event.pathParameters?.identityId;
+      if (!targetIdentityId || !/^[\w-]+:[\w-]{36}$/.test(targetIdentityId)) {
+        return errorResponse(400, "Invalid identityId format", requestOrigin);
+      }
+
+      const userActivations: Array<{ nftType: string; nftCount: number }> = [];
+      let lastKey: Record<string, any> | undefined;
+      do {
+        const result = await dynamoClient.send(
+          new QueryCommand({
+            TableName: ACTIVATIONS_TABLE,
+            KeyConditionExpression: "identityId = :id",
+            FilterExpression: "#s = :active",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: {
+              ":id": { S: targetIdentityId },
+              ":active": { S: "ACTIVE" },
+            },
+            ProjectionExpression: "sk, nftCount",
+            ...(lastKey && { ExclusiveStartKey: lastKey }),
+          })
+        );
+        for (const item of result.Items || []) {
+          const sk = item.sk?.S;
+          const nftCount = Number(item.nftCount?.N ?? "1");
+          if (sk) {
+            userActivations.push({ nftType: sk.split("#")[0], nftCount });
+          }
+        }
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
+
+      return jsonResponse(200, { identityId: targetIdentityId, activations: userActivations }, requestOrigin);
     }
 
     // All other endpoints require admin authentication.
