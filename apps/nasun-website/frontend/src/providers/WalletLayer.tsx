@@ -3,7 +3,7 @@
 // Downloaded on-demand after the app shell renders.
 
 import type { ReactNode } from "react";
-import { configureWallet, initZkLogin, configureClearSigning, setFormatterConfig } from "@nasun/wallet";
+import { configureWallet, initZkLogin, configureClearSigning, setFormatterConfig, configurePortfolio } from "@nasun/wallet";
 import { createContractRegistry } from "@nasun/devnet-config";
 import { WalletProvider } from "@nasun/wallet-ui";
 import { WagmiProvider } from "wagmi";
@@ -37,6 +37,12 @@ if (googleClientId && saltApiUrl) {
     },
   });
 }
+
+// Only query Nasun chains in portfolio (skip external chains like sui-testnet)
+configurePortfolio({
+  enabledChains: ['nasun-devnet'],
+  includeTestnets: false,
+});
 
 // Configure Clear Signing with known contract registry
 const contractRegistry = createContractRegistry();
