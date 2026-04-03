@@ -62,6 +62,7 @@ app.get('/score/:identityId', async (c) => {
       const [
         todayRow, weeklyRow, allTimeRow, snapshotSumRow,
         bonusRow, bonusTodayRow, bonusWeeklyRow, bonusCategoryRows,
+        govAllTimeRow, govTodayRow, govWeeklyRow,
         refAllTimeRow, refTodayRow, refWeeklyRow,
       ] = await Promise.all([
         pointsDb!`
@@ -84,9 +85,10 @@ app.get('/score/:identityId', async (c) => {
           FROM ecosystem_daily_scores
           WHERE identity_id = ${identityId}
         `.then(r => r[0]),
-        // Sum of past daily snapshots (each day's score locked with that day's multiplier)
+        // Sum of base contributions from past snapshots (base_score * multiplier per day)
+        // Bonus/gov/referral are queried directly from activity_points (not from snapshots)
         pointsDb!`
-          SELECT COALESCE(SUM(ecosystem_score), 0)::numeric as cumulative_score
+          SELECT COALESCE(SUM(base_score * multiplier), 0)::numeric as base_cumulative
           FROM ecosystem_score_snapshots
           WHERE identity_id = ${identityId}
         `.then(r => r[0]),
@@ -114,16 +116,44 @@ app.get('/score/:identityId', async (c) => {
             AND NOT flagged
             AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
         `.then(r => r[0]),
-        // Bonus breakdown by category (for score composition bar)
+        // Category breakdown for composition bar (bonus + governance + referral)
         pointsDb!`
           SELECT category, COALESCE(SUM(final_points), 0)::numeric as points
           FROM activity_points
           WHERE identity_id = ${identityId}
-            AND category LIKE 'ecosystem-bonus-%'
             AND NOT flagged
+            AND (
+              category LIKE 'ecosystem-bonus-%'
+              OR category IN ('governance', 'referral-bonus')
+            )
           GROUP BY category
           ORDER BY points DESC
         `,
+        // Governance points (allTime / today / weekly)
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as gov_total
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'governance'
+            AND NOT flagged
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as gov_today
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'governance'
+            AND NOT flagged
+            AND tx_timestamp >= CURRENT_DATE AT TIME ZONE 'UTC'
+            AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as gov_weekly
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'governance'
+            AND NOT flagged
+            AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
+        `.then(r => r[0]),
         // Referral bonus (separate from ecosystem-bonus, scaled independently)
         pointsDb!`
           SELECT COALESCE(SUM(final_points), 0)::numeric as referral_total
@@ -172,17 +202,40 @@ app.get('/score/:identityId', async (c) => {
       const bonusTotal = parseFloat(bonusRow?.bonus_total ?? '0');
       const bonusToday = parseFloat(bonusTodayRow?.bonus_today ?? '0');
       const bonusWeekly = parseFloat(bonusWeeklyRow?.bonus_weekly ?? '0');
-      const snapshotCumulative = parseFloat(snapshotSumRow?.cumulative_score ?? '0');
+      const baseCumulative = parseFloat(snapshotSumRow?.base_cumulative ?? '0');
+
+      const govTotal = parseFloat(govAllTimeRow?.gov_total ?? '0');
+      const govToday = parseFloat(govTodayRow?.gov_today ?? '0');
+      const govWeekly = parseFloat(govWeeklyRow?.gov_weekly ?? '0');
 
       const refTotal = parseFloat(refAllTimeRow?.referral_total ?? '0');
       const refToday = parseFloat(refTodayRow?.referral_today ?? '0');
       const refWeekly = parseFloat(refWeeklyRow?.referral_weekly ?? '0');
       const scalingFactor = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
 
-      // allTime = sum of past snapshots + today's live score
+      // allTime = SUM(base*mult from past snapshots) + today's base*mult
+      //         + allTime bonus + allTime governance + allTime referral*sf
+      // No compounding: bonus/gov/referral are from activity_points (raw totals)
       const todayBase = todayRow?.base_score ?? 0;
-      const todayLiveScore = todayBase * multiplier + bonusToday + refToday * scalingFactor;
-      const allTimeCumulative = snapshotCumulative + todayLiveScore;
+      const todayBaseContribution = todayBase * multiplier;
+      const totalBasePoints = baseCumulative + todayBaseContribution;
+      const allTimeCumulative = totalBasePoints
+        + bonusTotal + govTotal + refTotal * scalingFactor;
+
+      // Score breakdown for composition bar (base included, no reverse calculation)
+      const nonBaseCategories = bonusCategoryRows.map((r: any) => ({
+        category: r.category as string,
+        points: parseFloat(r.points ?? '0'),
+      }));
+      // Apply scaling factor to referral-bonus in the breakdown
+      const scoreBreakdown = [
+        { category: 'base', points: totalBasePoints },
+        ...nonBaseCategories.map(c =>
+          c.category === 'referral-bonus'
+            ? { ...c, points: c.points * scalingFactor }
+            : c,
+        ),
+      ].filter(c => c.points > 0);
 
       return {
         todayBaseScore: todayBase,
@@ -194,10 +247,11 @@ app.get('/score/:identityId', async (c) => {
         bonusTotal,
         bonusToday,
         bonusWeekly,
-        bonusCategories: bonusCategoryRows.map((r: any) => ({
-          category: r.category as string,
-          points: parseFloat(r.points ?? '0'),
-        })),
+        bonusCategories: nonBaseCategories,
+        scoreBreakdown,
+        govTotal,
+        govToday,
+        govWeekly,
         refTotal,
         refToday,
         refWeekly,
@@ -233,16 +287,18 @@ app.get('/score/:identityId', async (c) => {
       baseScore: scores.todayBaseScore,
       bonusTotal: roundTo2(scores.bonusToday),
       referralBonus: roundTo2(scores.refToday),
+      governancePoints: roundTo2(scores.govToday),
       ecosystemScore: roundTo2(
-        scores.todayBaseScore * scores.multiplier + scores.bonusToday + scores.refToday * sf,
+        scores.todayBaseScore * scores.multiplier + scores.bonusToday + scores.govToday + scores.refToday * sf,
       ),
     },
     weekly: {
       baseScore: scores.weeklyBaseScore,
       bonusTotal: roundTo2(scores.bonusWeekly),
       referralBonus: roundTo2(scores.refWeekly),
+      governancePoints: roundTo2(scores.govWeekly),
       ecosystemScore: roundTo2(
-        scores.weeklyBaseScore * scores.multiplier + scores.bonusWeekly + scores.refWeekly * sf,
+        scores.weeklyBaseScore * scores.multiplier + scores.bonusWeekly + scores.govWeekly + scores.refWeekly * sf,
       ),
       activeDays: scores.weeklyActiveDays,
     },
@@ -250,13 +306,18 @@ app.get('/score/:identityId', async (c) => {
       baseScore: scores.allTimeBaseScore,
       bonusTotal: roundTo2(bt),
       referralBonus: roundTo2(scores.refTotal),
+      governancePoints: roundTo2(scores.govTotal),
       ecosystemScore: roundTo2(scores.allTimeCumulative),
       activeDays: scores.allTimeActiveDays,
       bonusCategories: scores.bonusCategories.filter((c: any) => c.points > 0),
+      scoreBreakdown: scores.scoreBreakdown.map((c: any) => ({
+        category: c.category,
+        points: roundTo2(c.points),
+      })),
     },
   };
 
-  c.header('Cache-Control', 'public, max-age=300');
+  c.header('Cache-Control', 'public, max-age=30');
   return c.json({ data });
 });
 

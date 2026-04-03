@@ -5,12 +5,14 @@
  * so ProfileHeroCard and other components can reuse it.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getEcosystemScore,
   syncEcosystemActivations,
   type EcosystemScoreData,
 } from "@/services/ecosystemScoreApi";
+
+const RATE_LIMIT_COOLDOWN_MS = 20_000;
 
 interface UseEcosystemScoreResult {
   score: EcosystemScoreData | null;
@@ -18,6 +20,8 @@ interface UseEcosystemScoreResult {
   /** Sync activations cache then refetch score */
   refresh: () => void;
   isRefreshing: boolean;
+  /** Seconds remaining until refresh is available again (0 = ready) */
+  cooldownSeconds: number;
 }
 
 export function useEcosystemScore(
@@ -26,6 +30,25 @@ export function useEcosystemScore(
   const [score, setScore] = useState<EcosystemScoreData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const cooldownTimer = useRef<ReturnType<typeof setInterval>>();
+
+  const startCooldown = useCallback(() => {
+    setCooldownSeconds(Math.ceil(RATE_LIMIT_COOLDOWN_MS / 1000));
+    clearInterval(cooldownTimer.current);
+    cooldownTimer.current = setInterval(() => {
+      setCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownTimer.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => clearInterval(cooldownTimer.current), []);
 
   const fetchScore = useCallback(async (id: string) => {
     const data = await getEcosystemScore(id);
@@ -55,11 +78,17 @@ export function useEcosystemScore(
   }, [identityId, fetchScore]);
 
   const refresh = useCallback(() => {
-    if (!identityId || isRefreshing) return;
+    if (!identityId || isRefreshing || cooldownSeconds > 0) return;
     setIsRefreshing(true);
     (async () => {
       try {
-        await syncEcosystemActivations(identityId);
+        const syncResult = await syncEcosystemActivations(identityId);
+        if (syncResult === null) {
+          // Rate-limited by server
+          startCooldown();
+          return;
+        }
+        startCooldown();
         // Brief delay for cache propagation before refetch
         await new Promise((r) => setTimeout(r, 500));
         const data = await fetchScore(identityId);
@@ -72,7 +101,7 @@ export function useEcosystemScore(
         setIsRefreshing(false);
       }
     })();
-  }, [identityId, isRefreshing, fetchScore]);
+  }, [identityId, isRefreshing, cooldownSeconds, fetchScore, startCooldown]);
 
-  return { score, isLoading, refresh, isRefreshing };
+  return { score, isLoading, refresh, isRefreshing, cooldownSeconds };
 }
