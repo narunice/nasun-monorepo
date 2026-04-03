@@ -226,8 +226,8 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
           {/* How it works */}
           <div className=" text-nasun-white/30 pt-2 border-t border-nasun-white/10 space-y-1">
             <p className="text-sm">
-              Earn 10% of your referrals' on-chain activity points. Referred
-              users also earn a 5% bonus on their own activities.
+              Earn 10% of your referrals' on-chain activity as ecosystem points
+              (scaled at 50%). Referred users also earn a 5% bonus.
             </p>
             <p className="text-sm">
               Bonuses are active for 180 days after sign-up. Daily cap: 50 pts.

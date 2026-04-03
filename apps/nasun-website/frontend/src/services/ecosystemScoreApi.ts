@@ -24,20 +24,29 @@ export interface EcosystemScoreData {
   disabled?: boolean;
   isPenalized?: boolean;
   bonusTotal?: number;
+  referralBonus?: number;
+  referralScalingFactor?: number;
   activations: Array<{ nftType: string; nftCount: number; bonus?: number }>;
   daily: {
     baseScore: number;
+    bonusTotal?: number;
+    referralBonus?: number;
     ecosystemScore: number;
   };
   weekly: {
     baseScore: number;
+    bonusTotal?: number;
+    referralBonus?: number;
     ecosystemScore: number;
     activeDays: number;
   };
   allTime: {
     baseScore: number;
+    bonusTotal?: number;
+    referralBonus?: number;
     ecosystemScore: number;
     activeDays: number;
+    bonusCategories?: Array<{ category: string; points: number }>;
   };
 }
 
@@ -132,6 +141,7 @@ export interface SnapshotHistoryEntry {
   baseScore: number;
   multiplier: number;
   bonusTotal: number;
+  referralBonus: number;
   ecosystemScore: number;
   isPenalized: boolean;
   rank: number | null;
