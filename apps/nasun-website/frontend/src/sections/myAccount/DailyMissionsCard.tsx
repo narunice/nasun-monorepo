@@ -115,7 +115,10 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
     return base;
   }, [hasUnvotedProposal, unvotedCount]);
 
-  const completedCount = activeMissions.filter((m) => isCompleted(m.id)).length;
+  const completedCount = useMemo(
+    () => activeMissions.filter((m) => isCompleted(m.id)).length,
+    [activeMissions, isCompleted],
+  );
 
   const handleFaucetSuccess = useCallback(() => {
     setLocalCompleted((prev) => new Set(prev).add("faucet"));
