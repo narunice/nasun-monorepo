@@ -7,7 +7,7 @@
  */
 
 // Safe parse helpers: return default on NaN/invalid input
-function safeFloat(raw: string | undefined, fallback: number): number {
+export function safeFloat(raw: string | undefined, fallback: number): number {
   if (!raw) return fallback;
   const n = parseFloat(raw);
   return Number.isFinite(n) ? n : fallback;
