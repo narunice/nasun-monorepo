@@ -367,8 +367,8 @@ async function detectWalletTransfers(
           const ts = Number(tx.timestampMs ?? 0);
           if (ts < dayStartMs || ts >= dayEndMs) continue;
 
-          const txData = tx.transaction?.data?.transaction;
-          const commands = txData?.commands ?? txData?.transactions ?? [];
+          const txData = tx.transaction?.data?.transaction as Record<string, unknown> | undefined;
+          const commands = (txData?.commands ?? txData?.transactions ?? []) as Record<string, unknown>[];
           if (commands.some((c: Record<string, unknown>) => 'TransferObjects' in c)) {
             hasTransfer = true;
             break;
