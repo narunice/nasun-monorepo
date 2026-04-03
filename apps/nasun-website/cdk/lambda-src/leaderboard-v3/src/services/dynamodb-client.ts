@@ -92,6 +92,20 @@ export async function getPostByUrl(normalizedUrl: string): Promise<Post | null> 
 /**
  * Create a new post and update the associated account
  */
+/**
+ * Check if a displayName is stale and should be refreshed from UserProfiles.
+ * Stale means: wallet address, missing, or same as the X handle (was incorrectly
+ * set from originalTwitterHandle instead of the actual X display name).
+ */
+export function isStaleDisplayName(displayName: string | undefined, username: string): boolean {
+  if (!displayName) return true;
+  if (displayName.startsWith('0x')) return true;
+  // If displayName matches the handle (case-insensitive), it was likely set from
+  // originalTwitterHandle instead of the real X display name (e.g. "GoSun" vs "Go Sun")
+  if (displayName.toLowerCase() === username.toLowerCase()) return true;
+  return false;
+}
+
 export async function createPost(params: {
   normalizedUrl: string;
   rawUrl: string;
@@ -156,10 +170,10 @@ export async function createPost(params: {
       originalUsername,
       language || followerCount ? { language, followerCount } : undefined
     );
-  } else if (platform === 'twitter' && account.displayName?.startsWith('0x')) {
-    // Refresh stale wallet-address displayName for existing accounts
+  } else if (platform === 'twitter' && isStaleDisplayName(account.displayName, account.username)) {
+    // Refresh stale displayName (wallet address or handle used as display name)
     const freshProfile = await lookupUserProfile(username);
-    if (freshProfile?.displayName && !freshProfile.displayName.startsWith('0x')) {
+    if (freshProfile?.displayName && !isStaleDisplayName(freshProfile.displayName, username)) {
       account.displayName = freshProfile.displayName;
       account.profileImageUrl = freshProfile.profileImageUrl || account.profileImageUrl;
       account.isRegistered = true;
@@ -686,11 +700,12 @@ export async function lookupUserProfile(twitterHandle: string): Promise<{
       }
     }
 
-    // Fallback: if all profiles have 0x username (wallet-first auth),
-    // use originalTwitterHandle or the queried twitterHandle as displayName
+    // Use the profile's username as displayName only if it's a real display name
+    // (not a wallet address). originalTwitterHandle is the X handle, NOT the display name,
+    // so we must not use it as a fallback.
     let displayName = bestProfile.username;
     if (displayName.startsWith('0x')) {
-      displayName = bestProfile.originalTwitterHandle || twitterHandle;
+      displayName = '';
     }
 
     return {
