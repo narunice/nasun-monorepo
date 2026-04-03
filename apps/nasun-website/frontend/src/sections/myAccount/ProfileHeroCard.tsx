@@ -10,13 +10,6 @@
 
 import { FC, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/features/auth";
-import { getPointsUser } from "@/services/activityPointsApi";
-import type { UserPoints } from "@/types/points";
-import { getTwitterHandle } from "@/utils/getTwitterHandle";
-import {
-  useRankHistory,
-  useActiveSeason,
-} from "@/features/leaderboard-v3/hooks";
 import { OuterBox, Spinner } from "@/components/ui";
 import { GenesisPassBadge } from "./components/StatusBadges";
 import { ConnectedAccountsCard } from "./ConnectedAccountsCard";
@@ -29,23 +22,12 @@ import { AirdropRegistrationCard } from "./AirdropRegistrationCard";
 
 // ---- Category display config ----
 
+// ---- Score composition bar: base + bonus categories ----
+
 const CATEGORY_COLORS: Record<string, string> = {
-  staking: "bg-emerald-500",
-  "staking-daily": "bg-emerald-400",
-  "pado-dex": "bg-blue-500",
+  base: "bg-cyan-500",
   governance: "bg-purple-500",
-  "pado-prediction": "bg-amber-500",
-  "pado-lottery": "bg-pink-500",
-  "pado-perp": "bg-red-500",
-  "pado-lending": "bg-cyan-500",
-  "baram-ai": "bg-indigo-500",
-  "baram-executor": "bg-violet-500",
-  "pado-scratchcard": "bg-rose-400",
-  "pado-games": "bg-orange-400",
-  "wallet-transfer": "bg-gray-500",
-  "referral-bonus": "bg-amber-600",
-  "daily-mission": "bg-teal-500",
-  faucet: "bg-sky-400",
+  "referral-bonus": "bg-sky-500",
   "ecosystem-bonus-earlybird": "bg-yellow-500",
   "ecosystem-bonus-pado": "bg-lime-500",
   "ecosystem-bonus-game": "bg-orange-500",
@@ -53,22 +35,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  staking: "Staking",
-  "staking-daily": "Staking Days",
-  "pado-dex": "DEX",
+  base: "Base Score",
   governance: "Governance",
-  "pado-prediction": "Prediction",
-  "pado-lottery": "Lottery",
-  "pado-perp": "Perp",
-  "pado-lending": "Lending",
-  "baram-ai": "Baram AI",
-  "baram-executor": "Executor",
-  "wallet-transfer": "Transfer",
   "referral-bonus": "Referral",
-  "daily-mission": "Daily Mission",
-  faucet: "Faucet",
-  "pado-scratchcard": "Scratch Card",
-  "pado-games": "Games",
   "ecosystem-bonus-earlybird": "Early Bird",
   "ecosystem-bonus-pado": "Pado Bonus",
   "ecosystem-bonus-game": "Game Reward",
@@ -164,10 +133,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  // ---- Points Data (only fetched when showPoints is true) ----
-  const [points, setPoints] = useState<UserPoints | null>(null);
-  const [, setPointsLoading] = useState(true);
-  const [, setPointsError] = useState<string | null>(null);
 
   const nasunWalletAddress =
     user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
@@ -175,40 +140,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   const hasValidAddress =
     nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
 
-  useEffect(() => {
-    if (!showPoints || !hasValidAddress) {
-      setPointsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setPointsLoading(true);
-    setPointsError(null);
-
-    getPointsUser(nasunWalletAddress!)
-      .then((data) => {
-        if (!cancelled) setPoints(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setPointsError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setPointsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showPoints, nasunWalletAddress, hasValidAddress]);
-
-  // ---- V3 Leaderboard Rank (only when showPoints) ----
-  const twitterUsername = showPoints ? getTwitterHandle(user) : null;
-  const activeSeason = useActiveSeason();
-  const { data: rankData } = useRankHistory({
-    seasonId: activeSeason?.seasonId,
-    days: 7,
-    enabled: !!twitterUsername && !!activeSeason?.seasonId,
-  });
 
   // ---- Ecosystem Score (for Health Status Bar, only when showPoints) ----
   const cognitoToken = showPoints ? user?.cognitoToken : undefined;
@@ -218,6 +149,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
     isLoading: ecosystemLoading,
     refresh: refreshEcosystem,
     isRefreshing: ecosystemRefreshing,
+    cooldownSeconds,
   } = useEcosystemScore(identityId);
 
   // Activation state from DynamoDB (real-time, not cached)
@@ -264,9 +196,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
     return null;
   }, [user?.provider, user?.walletAddress]);
 
-  // ---- Derived Points Values ----
-  const totalForBar =
-    points?.categories.reduce((sum, c) => sum + Number(c.points), 0) ?? 0;
+  // ---- Category bar (all-time points breakdown by category) ----
+  // scoreBreakdown includes base + all non-base categories directly from API.
+  // No reverse calculation needed.
+  const scoreBreakdown = ecosystemScore?.allTime.scoreBreakdown ?? [];
+  const barSegments = useMemo(
+    () => scoreBreakdown.filter((c) => c.points > 0),
+    [scoreBreakdown],
+  );
+  const totalForBar = barSegments.reduce((s, c) => s + c.points, 0);
 
   if (!user)
     return (
@@ -341,27 +279,34 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                   Experimental
                 </span>
                 {hasActiveNft && (
-                  <button
-                    type="button"
-                    onClick={refreshEcosystem}
-                    disabled={ecosystemRefreshing}
-                    className="ml-auto text-xs text-nasun-white/40 hover:text-nasun-white/70 transition-colors disabled:opacity-30"
-                    title="Refresh points"
-                  >
-                    <svg
-                      className={`w-3.5 h-3.5 ${ecosystemRefreshing ? "animate-spin" : ""}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  <span className="ml-auto flex items-center gap-1.5">
+                    {cooldownSeconds > 0 && (
+                      <span className="text-[10px] text-nasun-white/30 tabular-nums">
+                        {cooldownSeconds}s
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={refreshEcosystem}
+                      disabled={ecosystemRefreshing || cooldownSeconds > 0}
+                      className="text-xs text-nasun-white/40 hover:text-nasun-white/70 transition-colors disabled:opacity-30"
+                      title={cooldownSeconds > 0 ? `Cooldown ${cooldownSeconds}s` : "Refresh points"}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
-                  </button>
+                      <svg
+                        className={`w-3.5 h-3.5 ${ecosystemRefreshing ? "animate-spin" : ""}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                    </button>
+                  </span>
                 )}
                 <InfoTooltip>
                   <p className="text-amber-400 font-semibold mb-1.5">
@@ -389,12 +334,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                     Loading points...
                   </span>
                 </div>
-              ) : !hasActiveNft ? (
-                <p className="text-nasun-white/50 text-base">
-                  Activate an NFT to start earning points
-                </p>
               ) : (
-                <div>
+                <div className={!hasActiveNft ? "opacity-40 grayscale pointer-events-none select-none" : ""}>
+                  {!hasActiveNft && (
+                    <div className="flex justify-center mb-2">
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 text-nasun-white/70 tracking-wide uppercase">
+                        Paused - Activate an NFT to resume
+                      </span>
+                    </div>
+                  )}
                   {/* All time score: baseline-aligned */}
                   <div className="flex items-baseline justify-center gap-3 mb-3">
                     <span className="text-lg font-semibold text-nasun-white uppercase tracking-wider">
@@ -441,52 +389,40 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       </span>{" "}
                       bonus
                     </span>
-                    {rankData?.stats?.currentRank != null &&
-                      rankData.stats.currentRank > 0 && (
-                        <span className="text-sm text-nasun-white/60 ml-2">
-                          Rank{" "}
-                          <span className="font-semibold text-nasun-c7">
-                            #{rankData.stats.currentRank}
-                          </span>
-                        </span>
-                      )}
                   </div>
 
-                  {/* Category Distribution Bar */}
-                  {points &&
-                    points.categories.length > 0 &&
-                    totalForBar > 0 && (
-                      <div>
-                        <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
-                          {points.categories.map((cat) => {
-                            const pct =
-                              (Number(cat.points) / totalForBar) * 100;
-                            if (pct < 1) return null;
-                            return (
-                              <div
-                                key={cat.category}
-                                className={`${CATEGORY_COLORS[cat.category] || "bg-gray-400"} transition-all`}
-                                style={{ width: `${pct}%` }}
-                                title={`${CATEGORY_LABELS[cat.category] || cat.category}: ${Number(cat.points).toLocaleString("en-US")} pts`}
-                              />
-                            );
-                          })}
-                        </div>
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
-                          {points.categories.map((cat) => (
-                            <span
-                              key={cat.category}
-                              className="flex items-center gap-1 text-xs text-nasun-white/40"
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[cat.category] || "bg-gray-400"}`}
-                              />
-                              {CATEGORY_LABELS[cat.category] || cat.category}
-                            </span>
-                          ))}
-                        </div>
+                  {/* Score Composition Bar (base + bonus categories) */}
+                  {barSegments.length > 0 && totalForBar > 0 && (
+                    <div>
+                      <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
+                        {barSegments.map((seg) => {
+                          const pct = (seg.points / totalForBar) * 100;
+                          if (pct < 1) return null;
+                          return (
+                            <div
+                              key={seg.category}
+                              className={`${CATEGORY_COLORS[seg.category] || "bg-gray-400"} transition-all`}
+                              style={{ width: `${pct}%` }}
+                              title={`${CATEGORY_LABELS[seg.category] || seg.category}: ${seg.points.toLocaleString("en-US")} pts`}
+                            />
+                          );
+                        })}
                       </div>
-                    )}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                        {barSegments.map((seg) => (
+                          <span
+                            key={seg.category}
+                            className="flex items-center gap-1 text-xs text-nasun-white/40"
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[seg.category] || "bg-gray-400"}`}
+                            />
+                            {CATEGORY_LABELS[seg.category] || seg.category}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

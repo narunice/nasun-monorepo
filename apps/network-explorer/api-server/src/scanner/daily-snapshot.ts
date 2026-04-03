@@ -2,7 +2,8 @@
  * Daily Ecosystem Score Snapshot
  *
  * Takes an immutable snapshot of all users' ecosystem scores at end of day.
- * Formula: ecosystem_score = (base_score x multiplier) + bonus_total
+ * Formula: ecosystem_score = base_score * multiplier + todayBonus + todayGov + todayRef * sf
+ * (daily delta only, no compounding -- bonus/referral/governance use date-filtered queries)
  *
  * Called once per day from scanLoop, after matview refresh.
  * Idempotent via ON CONFLICT DO NOTHING on (identity_id, snapshot_date).
@@ -59,14 +60,16 @@ export async function takeDailySnapshot(
   `;
   const penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
 
-  // 5. Batch bonus + referral queries
-  const [bonusRows, referralRows] = await Promise.all([
+  // 5. Batch bonus + referral + governance queries (date-filtered: today's delta only)
+  const [bonusRows, referralRows, govRows] = await Promise.all([
     pointsDb`
       SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
       FROM activity_points
       WHERE identity_id = ANY(${allIdsArr})
         AND category LIKE 'ecosystem-bonus-%'
         AND NOT flagged
+        AND tx_timestamp >= ${snapshotDate}::date
+        AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
       GROUP BY identity_id
     `,
     pointsDb`
@@ -75,6 +78,18 @@ export async function takeDailySnapshot(
       WHERE identity_id = ANY(${allIdsArr})
         AND category = 'referral-bonus'
         AND NOT flagged
+        AND tx_timestamp >= ${snapshotDate}::date
+        AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
+      GROUP BY identity_id
+    `,
+    pointsDb`
+      SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as gov
+      FROM activity_points
+      WHERE identity_id = ANY(${allIdsArr})
+        AND category = 'governance'
+        AND NOT flagged
+        AND tx_timestamp >= ${snapshotDate}::date
+        AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
       GROUP BY identity_id
     `,
   ]);
@@ -86,6 +101,10 @@ export async function takeDailySnapshot(
   for (const rr of referralRows) {
     referralMap.set(rr.identity_id as string, parseFloat(rr.referral as string));
   }
+  const govMap = new Map<string, number>();
+  for (const gr of govRows) {
+    govMap.set(gr.identity_id as string, parseFloat(gr.gov as string));
+  }
 
   // 6. Calculate scores and rank
   interface SnapshotRow {
@@ -94,6 +113,7 @@ export async function takeDailySnapshot(
     multiplier: number;
     bonusTotal: number;
     referralBonus: number;
+    governanceBonus: number;
     ecosystemScore: number;
     isPenalized: boolean;
   }
@@ -113,11 +133,13 @@ export async function takeDailySnapshot(
     const multiplier = calculateMultiplier(activations);
     const bonusTotal = bonusMap.get(identityId) ?? 0;
     const referralBonus = referralMap.get(identityId) ?? 0;
+    const governanceBonus = govMap.get(identityId) ?? 0;
+    // Daily delta: base*mult + today's bonus + today's governance + today's referral*sf
     const ecosystemScore = parseFloat(
-      (baseScore * multiplier + bonusTotal + referralBonus * sf).toFixed(2),
+      (baseScore * multiplier + bonusTotal + governanceBonus + referralBonus * sf).toFixed(2),
     );
 
-    entries.push({ identityId, baseScore, multiplier, bonusTotal, referralBonus, ecosystemScore, isPenalized });
+    entries.push({ identityId, baseScore, multiplier, bonusTotal, referralBonus, governanceBonus, ecosystemScore, isPenalized });
   }
 
   // Sort by ecosystemScore DESC, assign ranks (multiplier > 0 only)
