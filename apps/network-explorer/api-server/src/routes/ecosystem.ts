@@ -57,7 +57,7 @@ app.get('/score/:identityId', async (c) => {
 
   const getData = cached(
     `eco-score-${identityId}`,
-    5 * 60 * 1000,
+    30 * 1000,
     async () => {
       const [
         todayRow, weeklyRow, allTimeRow, snapshotSumRow,
@@ -297,6 +297,8 @@ app.get('/score/:identityId', async (c) => {
       bonusTotal: roundTo2(scores.bonusWeekly),
       referralBonus: roundTo2(scores.refWeekly),
       governancePoints: roundTo2(scores.govWeekly),
+      // Note: uses current multiplier for entire week (approximation).
+      // Accurate per-day multipliers would require snapshot lookback.
       ecosystemScore: roundTo2(
         scores.weeklyBaseScore * scores.multiplier + scores.bonusWeekly + scores.govWeekly + scores.refWeekly * sf,
       ),
