@@ -77,7 +77,7 @@ const PKG = {
     '0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895',
   ),
   lottery: stripHex(
-    '0xd56f405af7127a15e30a5104ec91574a7483699e5ac1d74383ed5478aee43900',
+    '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
   ),
   governance: stripHex(
     '0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3',
