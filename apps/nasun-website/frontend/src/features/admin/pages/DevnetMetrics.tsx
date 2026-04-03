@@ -98,7 +98,7 @@ export function DevnetMetrics() {
                 <button
                   key={opt.value}
                   onClick={() => setRange(opt.value)}
-                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
                     range === opt.value
                       ? "bg-nasun-brand text-white"
                       : "bg-nasun-dark-700/50 text-nasun-white/70 hover:text-nasun-white/80"
@@ -141,7 +141,7 @@ export function DevnetMetrics() {
             {/* DAU Breakdown: New vs Repeat */}
             {chartDataWithRepeat.length > 0 && (
               <OuterBox className="p-4 mt-4">
-                <h3 className="text-nasun-white/85 text-sm font-medium mb-4">DAU Breakdown: New vs Repeat</h3>
+                <h3 className="text-nasun-white text-sm font-medium mb-4">DAU Breakdown: New vs Repeat</h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={chartDataWithRepeat}>
                     <defs>
@@ -154,21 +154,21 @@ export function DevnetMetrics() {
                         <stop offset="95%" stopColor={CHART_COLORS.dau} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
                     <XAxis
                       dataKey="date"
                       tickFormatter={formatChartDate}
-                      stroke="rgba(255,255,255,0.2)"
-                      fontSize={11}
+                      stroke="rgba(255,255,255,0.7)"
+                      fontSize={12}
                       tickLine={false}
                     />
-                    <YAxis stroke="rgba(255,255,255,0.2)" fontSize={11} tickLine={false} />
+                    <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
                     <Tooltip
                       labelFormatter={formatChartDate}
                       {...TOOLTIP_STYLE}
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: "11px", color: "rgba(255,255,255,0.6)" }}
+                      wrapperStyle={{ fontSize: "12px", color: "rgba(255,255,255,0.85)" }}
                     />
                     <Area
                       type="monotone"

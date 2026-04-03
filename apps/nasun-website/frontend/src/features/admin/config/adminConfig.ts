@@ -24,6 +24,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
   { path: '/admin/points', label: 'Activity Points', icon: '🎯' },
   { path: '/admin/airdrop', label: 'Airdrop', icon: '🪂' },
+  { path: '/admin/alliance-nft', label: 'Alliance NFT', icon: '🛡️' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
@@ -89,5 +90,12 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     icon: '🪂',
     link: '/admin/airdrop',
     linkText: 'Manage Airdrop',
+  },
+  {
+    title: 'Alliance NFT',
+    description: 'Monitor Alliance NFT minting progress in real-time. View total minted, remaining supply, and collection preview.',
+    icon: '🛡️',
+    link: '/admin/alliance-nft',
+    linkText: 'View Alliance NFT',
   },
 ];
