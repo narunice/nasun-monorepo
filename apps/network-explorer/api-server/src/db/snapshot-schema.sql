@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS ecosystem_score_snapshots (
   base_score      INT NOT NULL DEFAULT 0,
   multiplier      NUMERIC(5,2) NOT NULL DEFAULT 0,
   bonus_total     NUMERIC(10,2) NOT NULL DEFAULT 0,
+  referral_bonus  NUMERIC(10,2) NOT NULL DEFAULT 0,
   ecosystem_score NUMERIC(10,2) NOT NULL DEFAULT 0,
   is_penalized    BOOLEAN NOT NULL DEFAULT FALSE,
   rank            INT,

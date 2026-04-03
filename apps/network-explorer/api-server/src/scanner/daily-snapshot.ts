@@ -10,6 +10,7 @@
 
 import { pointsDb } from '../db.js';
 import { calculateMultiplier, type NftActivation } from '../config/ecosystem.js';
+import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 
 export async function takeDailySnapshot(
   snapshotDate: string,
@@ -58,18 +59,32 @@ export async function takeDailySnapshot(
   `;
   const penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
 
-  // 5. Batch bonus query
-  const bonusRows = await pointsDb`
-    SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
-    FROM activity_points
-    WHERE identity_id = ANY(${allIdsArr})
-      AND category LIKE 'ecosystem-bonus-%'
-      AND NOT flagged
-    GROUP BY identity_id
-  `;
+  // 5. Batch bonus + referral queries
+  const [bonusRows, referralRows] = await Promise.all([
+    pointsDb`
+      SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
+      FROM activity_points
+      WHERE identity_id = ANY(${allIdsArr})
+        AND category LIKE 'ecosystem-bonus-%'
+        AND NOT flagged
+      GROUP BY identity_id
+    `,
+    pointsDb`
+      SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as referral
+      FROM activity_points
+      WHERE identity_id = ANY(${allIdsArr})
+        AND category = 'referral-bonus'
+        AND NOT flagged
+      GROUP BY identity_id
+    `,
+  ]);
   const bonusMap = new Map<string, number>();
   for (const br of bonusRows) {
     bonusMap.set(br.identity_id as string, parseFloat(br.bonus as string));
+  }
+  const referralMap = new Map<string, number>();
+  for (const rr of referralRows) {
+    referralMap.set(rr.identity_id as string, parseFloat(rr.referral as string));
   }
 
   // 6. Calculate scores and rank
@@ -78,10 +93,12 @@ export async function takeDailySnapshot(
     baseScore: number;
     multiplier: number;
     bonusTotal: number;
+    referralBonus: number;
     ecosystemScore: number;
     isPenalized: boolean;
   }
 
+  const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
   const entries: SnapshotRow[] = [];
 
   for (const identityId of allIds) {
@@ -95,9 +112,12 @@ export async function takeDailySnapshot(
 
     const multiplier = calculateMultiplier(activations);
     const bonusTotal = bonusMap.get(identityId) ?? 0;
-    const ecosystemScore = parseFloat((baseScore * multiplier + bonusTotal).toFixed(2));
+    const referralBonus = referralMap.get(identityId) ?? 0;
+    const ecosystemScore = parseFloat(
+      (baseScore * multiplier + bonusTotal + referralBonus * sf).toFixed(2),
+    );
 
-    entries.push({ identityId, baseScore, multiplier, bonusTotal, ecosystemScore, isPenalized });
+    entries.push({ identityId, baseScore, multiplier, bonusTotal, referralBonus, ecosystemScore, isPenalized });
   }
 
   // Sort by ecosystemScore DESC, assign ranks (multiplier > 0 only)
@@ -117,11 +137,12 @@ export async function takeDailySnapshot(
     const result = await pointsDb`
       INSERT INTO ecosystem_score_snapshots
         (identity_id, snapshot_date, base_score, multiplier, bonus_total,
-         ecosystem_score, is_penalized, rank)
+         referral_bonus, ecosystem_score, is_penalized, rank)
       VALUES
         (${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
          ${e.multiplier.toFixed(2)}, ${e.bonusTotal.toFixed(2)},
-         ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r})
+         ${e.referralBonus.toFixed(2)}, ${e.ecosystemScore.toFixed(2)},
+         ${e.isPenalized}, ${r})
       ON CONFLICT (identity_id, snapshot_date) DO NOTHING
     `;
     if (result.count > 0) inserted++;
