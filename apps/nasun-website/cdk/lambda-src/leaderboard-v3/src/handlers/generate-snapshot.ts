@@ -212,19 +212,28 @@ async function runSnapshotCore(params: {
     `Found ${scores.length} accounts, ${scores.length - filteredScores.length} filtered (banned or missing username), ${filteredScores.length} included in snapshot`
   );
 
-  // Refresh displayName for registered users whose displayName is a wallet address
-  const staleProfiles = filteredScores.filter(
-    (s) => s.isRegistered && s.displayName && s.displayName.startsWith('0x')
-  );
+  // Refresh displayName for ALL registered users by comparing with UserProfile.
+  // Pattern-matching (0x, handle match) misses handle-change cases where
+  // displayName is the OLD handle (e.g. "GoSun" but current handle is "thejediworld77").
+  const registeredProfiles = filteredScores.filter((s) => s.isRegistered);
 
-  if (staleProfiles.length > 0) {
-    console.log(`Refreshing ${staleProfiles.length} profiles with wallet-address displayName`);
+  if (registeredProfiles.length > 0) {
+    console.log(`Checking displayName freshness for ${registeredProfiles.length} registered users`);
+    let refreshedCount = 0;
     let persistedCount = 0;
-    for (const score of staleProfiles) {
-      const profile = await lookupUserProfile(score.username);
-      if (profile && profile.displayName && !profile.displayName.startsWith('0x')) {
+    for (const score of registeredProfiles) {
+      let profile = await lookupUserProfile(score.username);
+      // If current handle lookup fails, the user may have changed handles.
+      // Try the current displayName as it might be the old handle (e.g. "GoSun"
+      // lowercased to "gosun" matches the UserProfile's twitterHandle GSI).
+      if (!profile && score.displayName && !score.displayName.startsWith('0x')) {
+        profile = await lookupUserProfile(score.displayName);
+      }
+      if (profile && profile.displayName && profile.displayName !== score.displayName) {
+        console.log(`Refreshing displayName: ${score.username} "${score.displayName}" -> "${profile.displayName}"`);
         score.displayName = profile.displayName;
         score.profileImageUrl = profile.profileImageUrl || score.profileImageUrl;
+        refreshedCount++;
 
         // Persist corrected displayName back to source tables (skip in dryRun)
         if (!dryRun) {
@@ -264,8 +273,9 @@ async function runSnapshotCore(params: {
         }
       }
     }
+    console.log(`DisplayName refresh: ${refreshedCount} updated out of ${registeredProfiles.length} registered`);
     if (!dryRun && persistedCount > 0) {
-      console.log(`Persisted ${persistedCount}/${staleProfiles.length} corrected displayNames to DB`);
+      console.log(`Persisted ${persistedCount}/${refreshedCount} corrected displayNames to DB`);
     }
   }
 
