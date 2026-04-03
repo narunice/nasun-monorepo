@@ -50,7 +50,7 @@ export const wagmiConfig = createConfig({
   connectors,
   chains,
   transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
+    [mainnet.id]: http("https://cloudflare-eth.com"),
+    [sepolia.id]: http("https://rpc.sepolia.org"),
   },
 });
