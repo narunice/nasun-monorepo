@@ -17,6 +17,7 @@ import {
   updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
+import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { getIdentityByWallet } from '../scanner/points-scanner.js';
 
 const app = new Hono();
@@ -58,7 +59,11 @@ app.get('/score/:identityId', async (c) => {
     `eco-score-${identityId}`,
     5 * 60 * 1000,
     async () => {
-      const [todayRow, weeklyRow, allTimeRow, snapshotSumRow, bonusRow, bonusTodayRow, bonusWeeklyRow] = await Promise.all([
+      const [
+        todayRow, weeklyRow, allTimeRow, snapshotSumRow,
+        bonusRow, bonusTodayRow, bonusWeeklyRow, bonusCategoryRows,
+        refAllTimeRow, refTodayRow, refWeeklyRow,
+      ] = await Promise.all([
         pointsDb!`
           SELECT base_score::int as base_score
           FROM ecosystem_daily_scores
@@ -109,6 +114,41 @@ app.get('/score/:identityId', async (c) => {
             AND NOT flagged
             AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
         `.then(r => r[0]),
+        // Bonus breakdown by category (for score composition bar)
+        pointsDb!`
+          SELECT category, COALESCE(SUM(final_points), 0)::numeric as points
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category LIKE 'ecosystem-bonus-%'
+            AND NOT flagged
+          GROUP BY category
+          ORDER BY points DESC
+        `,
+        // Referral bonus (separate from ecosystem-bonus, scaled independently)
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as referral_total
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'referral-bonus'
+            AND NOT flagged
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as referral_today
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'referral-bonus'
+            AND NOT flagged
+            AND tx_timestamp >= CURRENT_DATE AT TIME ZONE 'UTC'
+            AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::numeric as referral_weekly
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'referral-bonus'
+            AND NOT flagged
+            AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
+        `.then(r => r[0]),
       ]);
 
       // Alliance penalty check (PK lookup, <1ms)
@@ -134,9 +174,14 @@ app.get('/score/:identityId', async (c) => {
       const bonusWeekly = parseFloat(bonusWeeklyRow?.bonus_weekly ?? '0');
       const snapshotCumulative = parseFloat(snapshotSumRow?.cumulative_score ?? '0');
 
+      const refTotal = parseFloat(refAllTimeRow?.referral_total ?? '0');
+      const refToday = parseFloat(refTodayRow?.referral_today ?? '0');
+      const refWeekly = parseFloat(refWeeklyRow?.referral_weekly ?? '0');
+      const scalingFactor = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
+
       // allTime = sum of past snapshots + today's live score
       const todayBase = todayRow?.base_score ?? 0;
-      const todayLiveScore = todayBase * multiplier + bonusToday;
+      const todayLiveScore = todayBase * multiplier + bonusToday + refToday * scalingFactor;
       const allTimeCumulative = snapshotCumulative + todayLiveScore;
 
       return {
@@ -149,6 +194,14 @@ app.get('/score/:identityId', async (c) => {
         bonusTotal,
         bonusToday,
         bonusWeekly,
+        bonusCategories: bonusCategoryRows.map((r: any) => ({
+          category: r.category as string,
+          points: parseFloat(r.points ?? '0'),
+        })),
+        refTotal,
+        refToday,
+        refWeekly,
+        scalingFactor,
         multiplier,
         activations,
         isPenalized,
@@ -162,12 +215,15 @@ app.get('/score/:identityId', async (c) => {
 
   const bt = scores.bonusTotal;
 
+  const sf = scores.scalingFactor;
   const data = {
     identityId,
     multiplier: roundTo2(scores.multiplier),
     disabled,
     isPenalized: scores.isPenalized,
     bonusTotal: roundTo2(bt),
+    referralBonus: roundTo2(scores.refTotal),
+    referralScalingFactor: sf,
     activations: scores.activations.map((a) => ({
       nftType: a.nftType,
       nftCount: a.nftCount,
@@ -176,19 +232,27 @@ app.get('/score/:identityId', async (c) => {
     daily: {
       baseScore: scores.todayBaseScore,
       bonusTotal: roundTo2(scores.bonusToday),
-      ecosystemScore: roundTo2(scores.todayBaseScore * scores.multiplier + scores.bonusToday),
+      referralBonus: roundTo2(scores.refToday),
+      ecosystemScore: roundTo2(
+        scores.todayBaseScore * scores.multiplier + scores.bonusToday + scores.refToday * sf,
+      ),
     },
     weekly: {
       baseScore: scores.weeklyBaseScore,
       bonusTotal: roundTo2(scores.bonusWeekly),
-      ecosystemScore: roundTo2(scores.weeklyBaseScore * scores.multiplier + scores.bonusWeekly),
+      referralBonus: roundTo2(scores.refWeekly),
+      ecosystemScore: roundTo2(
+        scores.weeklyBaseScore * scores.multiplier + scores.bonusWeekly + scores.refWeekly * sf,
+      ),
       activeDays: scores.weeklyActiveDays,
     },
     allTime: {
       baseScore: scores.allTimeBaseScore,
       bonusTotal: roundTo2(bt),
+      referralBonus: roundTo2(scores.refTotal),
       ecosystemScore: roundTo2(scores.allTimeCumulative),
       activeDays: scores.allTimeActiveDays,
+      bonusCategories: scores.bonusCategories.filter((c: any) => c.points > 0),
     },
   };
 
@@ -249,22 +313,37 @@ app.get('/leaderboard', async (c) => {
         penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
       }
 
-      // Batch bonus query for all leaderboard users
+      // Batch bonus + referral queries for all leaderboard users
       let bonusMap = new Map<string, number>();
+      let referralMap = new Map<string, number>();
       if (leaderboardIds.length > 0) {
-        const bonusRows = await pointsDb!`
-          SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
-          FROM activity_points
-          WHERE identity_id = ANY(${leaderboardIds})
-            AND category LIKE 'ecosystem-bonus-%'
-            AND NOT flagged
-          GROUP BY identity_id
-        `;
+        const [bonusRows, referralRows] = await Promise.all([
+          pointsDb!`
+            SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
+            FROM activity_points
+            WHERE identity_id = ANY(${leaderboardIds})
+              AND category LIKE 'ecosystem-bonus-%'
+              AND NOT flagged
+            GROUP BY identity_id
+          `,
+          pointsDb!`
+            SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as referral
+            FROM activity_points
+            WHERE identity_id = ANY(${leaderboardIds})
+              AND category = 'referral-bonus'
+              AND NOT flagged
+            GROUP BY identity_id
+          `,
+        ]);
         for (const br of bonusRows) {
           bonusMap.set(br.identity_id as string, parseFloat(br.bonus as string));
         }
+        for (const rr of referralRows) {
+          referralMap.set(rr.identity_id as string, parseFloat(rr.referral as string));
+        }
       }
 
+      const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
       return rows.map((r) => {
         const id = r.identity_id as string;
         let activations = getActivationsForUser(id);
@@ -274,12 +353,14 @@ app.get('/leaderboard', async (c) => {
         const multiplier = calculateMultiplier(activations);
         const baseScore = r.base_score as number;
         const bonus = bonusMap.get(id) ?? 0;
+        const referral = referralMap.get(id) ?? 0;
         return {
           identityId: id,
           baseScore,
           multiplier: roundTo2(multiplier),
           bonusTotal: roundTo2(bonus),
-          ecosystemScore: roundTo2(baseScore * multiplier + bonus),
+          referralBonus: roundTo2(referral),
+          ecosystemScore: roundTo2(baseScore * multiplier + bonus + referral * sf),
           ...(period === 'weekly' ? { activeDays: r.active_days as number } : {}),
         };
       });
@@ -372,6 +453,7 @@ app.get('/snapshot/history/:identityId', async (c) => {
 
   const rows = await pointsDb`
     SELECT snapshot_date, base_score, multiplier::numeric, bonus_total::numeric,
+           COALESCE(referral_bonus, 0)::numeric as referral_bonus,
            ecosystem_score::numeric, is_penalized, rank
     FROM ecosystem_score_snapshots
     WHERE identity_id = ${identityId}
@@ -386,6 +468,7 @@ app.get('/snapshot/history/:identityId', async (c) => {
       baseScore: Number(r.base_score),
       multiplier: parseFloat(r.multiplier as string),
       bonusTotal: parseFloat(r.bonus_total as string),
+      referralBonus: parseFloat(r.referral_bonus as string),
       ecosystemScore: parseFloat(r.ecosystem_score as string),
       isPenalized: r.is_penalized,
       rank: r.rank,
@@ -394,7 +477,7 @@ app.get('/snapshot/history/:identityId', async (c) => {
 });
 
 // GET /api/v1/ecosystem/bonus-history/:identityId?days=30
-// Returns per-day breakdown of bonus categories (earlybird, pado, game, airdrop)
+// Returns per-day breakdown of bonus categories (earlybird, pado, game, airdrop, referral)
 app.get('/bonus-history/:identityId', async (c) => {
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
 
@@ -415,7 +498,7 @@ app.get('/bonus-history/:identityId', async (c) => {
     FROM activity_points
     WHERE identity_id = ${identityId}
       AND NOT flagged
-      AND category LIKE 'ecosystem-bonus-%'
+      AND (category LIKE 'ecosystem-bonus-%' OR category = 'referral-bonus')
       AND tx_timestamp >= CURRENT_DATE - make_interval(days => ${days})
     GROUP BY day, category, activity_type
     ORDER BY day DESC, points DESC

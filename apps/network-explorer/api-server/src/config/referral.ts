@@ -1,6 +1,8 @@
 // Referral bonus configuration
 // Changes here are forward-only: existing bonus records are never recalculated.
 
+import { safeFloat } from './ecosystem.js';
+
 export const REFERRAL_REWARD_ENABLED =
   process.env.REFERRAL_REWARD_ENABLED === 'true';
 
@@ -22,3 +24,9 @@ export const REFERRAL_MAX_PER_USER = 100;
 
 // Referral cache refresh interval (same as wallet cache)
 export const REFERRAL_CACHE_REFRESH_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+// Scaling factor for referral bonus contribution to ecosystem score.
+// Referral bonuses are added as a separate term: ecosystemScore += referralTotal * factor.
+// 1.0 = full contribution, 0.5 = half, 0 = excluded from ecosystem score.
+export const REFERRAL_ECOSYSTEM_SCALING_FACTOR =
+  safeFloat(process.env.REFERRAL_ECOSYSTEM_SCALING, 0.5);
