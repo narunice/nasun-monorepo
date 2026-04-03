@@ -60,6 +60,7 @@ const BONUS_LABELS: Record<string, string> = {
   "ecosystem-bonus-pado": "Pado Leaderboard",
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
+  "referral-bonus": "Referral",
 };
 
 // -- Chart data type --
@@ -71,6 +72,7 @@ interface ChartPoint {
   baseScore: number;
   multiplier: number;
   bonusTotal: number;
+  referralBonus: number;
   rank: number | null;
   isPenalized: boolean;
   bonusItems?: BonusHistoryItem[];
@@ -103,7 +105,7 @@ function ScoreTooltip({
             <span>Bonus: <span className="text-amber-400 font-medium">+{d.bonusTotal}</span></span>
             {d.bonusItems && d.bonusItems.length > 0 && (
               <div className="ml-2 mt-0.5 space-y-0.5">
-                {d.bonusItems.map((item, i) => (
+                {d.bonusItems.filter(i => i.category !== 'referral-bonus').map((item, i) => (
                   <p key={i} className="text-gray-500">
                     {BONUS_LABELS[item.category] || item.activityType}: <span className="text-amber-400/80">+{item.points}</span>
                   </p>
@@ -111,6 +113,12 @@ function ScoreTooltip({
               </div>
             )}
           </div>
+        )}
+        {d.referralBonus > 0 && (
+          <p className="text-gray-400">
+            Referral: <span className="text-emerald-400 font-medium">+{d.referralBonus}</span>
+            <span className="text-gray-500 text-xs ml-1">(x0.5)</span>
+          </p>
         )}
         <p className="text-gray-400 border-t border-gray-700/50 pt-1 mt-1">
           Total: <span className="font-bold text-nasun-c3">{d.ecosystemScore}</span>
@@ -147,6 +155,7 @@ function RankTooltip({
             Score: <span className="text-nasun-white">{d.baseScore}</span>
             <span className="text-gray-500"> x {d.multiplier.toFixed(1)}</span>
             {d.bonusTotal > 0 && <span className="text-amber-400"> +{d.bonusTotal}</span>}
+            {d.referralBonus > 0 && <span className="text-emerald-400"> +{(d.referralBonus * 0.5).toFixed(1)}</span>}
             <span className="text-gray-500"> = </span>
             <span className="font-bold text-nasun-c3">{d.ecosystemScore}</span>
           </p>
@@ -211,6 +220,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
         baseScore: entry?.baseScore ?? 0,
         multiplier: entry?.multiplier ?? 0,
         bonusTotal: entry?.bonusTotal ?? 0,
+        referralBonus: entry?.referralBonus ?? 0,
         rank: entry?.rank ?? null,
         isPenalized: entry?.isPenalized ?? false,
         bonusItems: bonusByDate.get(date),
@@ -449,11 +459,19 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
                             <>
                               <span>+</span>
                               <span className="text-amber-400" title={
-                                entry.bonusItems?.map(i =>
+                                entry.bonusItems?.filter(i => i.category !== 'referral-bonus').map(i =>
                                   `${BONUS_LABELS[i.category] || i.activityType}: +${i.points}`
                                 ).join('\n') || `Bonus: +${entry.bonusTotal}`
                               }>
                                 {entry.bonusTotal}
+                              </span>
+                            </>
+                          )}
+                          {entry.referralBonus > 0 && (
+                            <>
+                              <span>+</span>
+                              <span className="text-emerald-400" title={`Referral: +${entry.referralBonus} (x0.5)`}>
+                                {(entry.referralBonus * 0.5).toFixed(1)}
                               </span>
                             </>
                           )}
