@@ -268,7 +268,11 @@ async function syncProfileFromUserProfiles(
       }
     }
 
-    const freshDisplayName = profile.username;
+    // Only use profile.username as displayName if it's a real name (not a wallet address).
+    // Wallet-first users have 0x addresses as username, which must NOT overwrite existing displayNames.
+    const freshDisplayName = (profile.username && !profile.username.startsWith('0x'))
+      ? profile.username
+      : undefined;
     const freshProfileImage = profile.profileImageUrl;
 
     const resolvedDisplayName = freshDisplayName || account.displayName;
