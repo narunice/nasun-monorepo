@@ -1672,8 +1672,12 @@ function start(): void {
     }
   }, 60 * 60 * 1000); // Every hour
 
-  // Graceful shutdown
+  // Graceful shutdown: wait for HTTP server to fully close before exiting
+  // so the port is released and PM2 restart won't hit EADDRINUSE.
+  let shuttingDown = false;
   const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log('\n[Chat] Shutting down...');
     clearInterval(heartbeatTimer);
     clearInterval(rateLimitCleanupTimer);
@@ -1686,11 +1690,19 @@ function start(): void {
       stopAggregator();
     }
     wss.clients.forEach((ws) => ws.close(1001, 'Server shutting down'));
-    wss.close();
-    httpServer.close();
-    closeLeaderboardStore();
-    closeStore();
-    process.exit(0);
+    wss.close(() => {
+      httpServer.close(() => {
+        closeLeaderboardStore();
+        closeStore();
+        console.log('[Chat] Shutdown complete');
+        process.exit(0);
+      });
+    });
+    // Force exit if graceful shutdown takes too long
+    setTimeout(() => {
+      console.error('[Chat] Forced shutdown after timeout');
+      process.exit(1);
+    }, 8000).unref();
   };
 
   process.on('SIGINT', shutdown);
