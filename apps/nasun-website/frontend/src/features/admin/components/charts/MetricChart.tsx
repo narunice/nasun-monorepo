@@ -19,12 +19,12 @@ import { OuterBox } from "@/components/ui/OuterBox";
 export const TOOLTIP_STYLE = {
   contentStyle: {
     backgroundColor: "#1a1a2e",
-    border: "1px solid rgba(255,255,255,0.1)",
+    border: "1px solid rgba(255,255,255,0.15)",
     borderRadius: "8px",
-    fontSize: "12px",
+    fontSize: "13px",
     color: "#fff",
   },
-  labelStyle: { color: "rgba(255,255,255,0.6)" },
+  labelStyle: { color: "rgba(255,255,255,0.85)" },
 };
 
 export function formatChartDate(date: string): string {
@@ -73,7 +73,7 @@ export function MetricChart({
   if (chartData.length === 0) {
     return (
       <OuterBox className="p-4">
-        <h3 className="text-nasun-white/85 text-sm font-medium mb-4">{title}</h3>
+        <h3 className="text-nasun-white text-sm font-medium mb-4">{title}</h3>
         <div className="h-48 flex items-center justify-center text-nasun-white/50 text-sm">
           No data available
         </div>
@@ -83,7 +83,7 @@ export function MetricChart({
 
   return (
     <OuterBox className="p-4">
-      <h3 className="text-nasun-white/85 text-sm font-medium mb-4">{title}</h3>
+      <h3 className="text-nasun-white text-sm font-medium mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={200}>
         {type === "area" ? (
           <AreaChart data={chartData}>
@@ -93,15 +93,15 @@ export function MetricChart({
                 <stop offset="95%" stopColor={color} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
             <XAxis
               dataKey="date"
               tickFormatter={formatChartDate}
-              stroke="rgba(255,255,255,0.2)"
-              fontSize={11}
+              stroke="rgba(255,255,255,0.7)"
+              fontSize={12}
               tickLine={false}
             />
-            <YAxis stroke="rgba(255,255,255,0.2)" fontSize={11} tickLine={false} />
+            <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
             <Tooltip
               labelFormatter={formatChartDate}
               {...TOOLTIP_STYLE}
@@ -116,15 +116,15 @@ export function MetricChart({
           </AreaChart>
         ) : (
           <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
             <XAxis
               dataKey="date"
               tickFormatter={formatChartDate}
-              stroke="rgba(255,255,255,0.2)"
-              fontSize={11}
+              stroke="rgba(255,255,255,0.7)"
+              fontSize={12}
               tickLine={false}
             />
-            <YAxis stroke="rgba(255,255,255,0.2)" fontSize={11} tickLine={false} />
+            <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
             <Tooltip
               labelFormatter={formatChartDate}
               {...TOOLTIP_STYLE}

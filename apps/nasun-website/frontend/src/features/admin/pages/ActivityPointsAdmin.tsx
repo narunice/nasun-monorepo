@@ -10,13 +10,16 @@ import { StatCard } from "../components/StatCard";
 import { OuterBox } from "@/components/ui";
 import {
   getPointsHealth,
-  getPointsLeaderboard,
   getPointsUser,
 } from "@/services/activityPointsApi";
+import {
+  getEcosystemLeaderboard,
+  type EcosystemLeaderboardEntry,
+} from "@/services/ecosystemScoreApi";
 import { listUsers } from "../services/userManagementApi";
 import { useAdminAuth } from "../hooks/useAdminAuth";
 import type { UserProfile } from "../types";
-import type { ScannerHealth, LeaderboardEntry, UserPoints } from "@/types/points";
+import type { ScannerHealth, UserPoints } from "@/types/points";
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 const HEALTH_POLL_MS = 30_000;
@@ -101,9 +104,10 @@ function ScannerHealthSection() {
 
 function LeaderboardSection() {
   const { cognitoToken } = useAdminAuth();
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [entries, setEntries] = useState<EcosystemLeaderboardEntry[]>([]);
   const [profileMap, setProfileMap] = useState<Map<string, UserProfile>>(new Map());
   const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const limit = 50;
 
@@ -127,8 +131,13 @@ function LeaderboardSection() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    getPointsLeaderboard(limit, page * limit)
-      .then((data) => { if (!cancelled) setEntries(data); })
+    getEcosystemLeaderboard("daily", limit, page * limit)
+      .then((res) => {
+        if (!cancelled) {
+          setEntries(res.data);
+          setTotal(res.meta.total);
+        }
+      })
       .catch(() => {})
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
@@ -136,23 +145,24 @@ function LeaderboardSection() {
 
   return (
     <OuterBox color="c5" padding="sm">
-      <h2 className="text-lg font-semibold text-nasun-white mb-4">Points Leaderboard</h2>
+      <h2 className="text-lg font-semibold text-nasun-white mb-4">Ecosystem Points Leaderboard</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-nasun-white/20 text-nasun-white/80 text-left">
               <th className="pb-2 pr-3 w-12">#</th>
               <th className="pb-2 pr-3">User</th>
-              <th className="pb-2 pr-3 text-right">Points</th>
-              <th className="pb-2 pr-3 text-right">Activities</th>
-              <th className="pb-2 text-right">Categories</th>
+              <th className="pb-2 pr-3 text-right">Ecosystem Score</th>
+              <th className="pb-2 pr-3 text-right">Base Score</th>
+              <th className="pb-2 pr-3 text-right">Multiplier</th>
+              <th className="pb-2 text-right">Active Days</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-nasun-white/5">
             {isLoading ? (
-              <tr><td colSpan={5} className="py-8 text-center text-nasun-white/70">Loading...</td></tr>
+              <tr><td colSpan={6} className="py-8 text-center text-nasun-white/70">Loading...</td></tr>
             ) : entries.length === 0 ? (
-              <tr><td colSpan={5} className="py-8 text-center text-nasun-white/70">No data</td></tr>
+              <tr><td colSpan={6} className="py-8 text-center text-nasun-white/70">No data</td></tr>
             ) : entries.map((entry) => {
               const profile = profileMap.get(entry.identityId);
               const xHandle = profile?.originalTwitterHandle || profile?.twitterHandle;
@@ -193,10 +203,13 @@ function LeaderboardSection() {
                     </div>
                   </td>
                   <td className="py-2 pr-3 text-right text-nasun-white font-medium">
-                    {Number(entry.totalPoints).toLocaleString("en-US")}
+                    {Number(entry.ecosystemScore).toLocaleString("en-US")}
                   </td>
-                  <td className="py-2 pr-3 text-right text-nasun-white/85">{entry.activityCount}</td>
-                  <td className="py-2 text-right text-nasun-white/85">{entry.activeCategories}</td>
+                  <td className="py-2 pr-3 text-right text-nasun-white/85">
+                    {Number(entry.baseScore).toLocaleString("en-US")}
+                  </td>
+                  <td className="py-2 pr-3 text-right text-nasun-white/85">x{entry.multiplier}</td>
+                  <td className="py-2 text-right text-nasun-white/85">{entry.activeDays ?? "-"}</td>
                 </tr>
               );
             })}
@@ -212,7 +225,7 @@ function LeaderboardSection() {
         >
           Previous
         </button>
-        <span className="text-nasun-white/70">Page {page + 1}</span>
+        <span className="text-nasun-white/70">Page {page + 1}{total > 0 ? ` / ${Math.ceil(total / limit)}` : ""}</span>
         <button
           onClick={() => setPage((p) => p + 1)}
           disabled={entries.length < limit}

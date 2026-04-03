@@ -350,7 +350,7 @@ function GenesisPassCrudSection({ cognitoToken }: { cognitoToken: string }) {
                   </td>
                   <td className="py-2 pr-4 text-nasun-white/70">{entry.source || "-"}</td>
                   <td className="py-2 pr-4 text-nasun-white/70">{entry.twitterHandle ? `@${entry.twitterHandle}` : "-"}</td>
-                  <td className="py-2 pr-4 text-nasun-white/60">{entry.registeredAt ? new Date(entry.registeredAt).toLocaleDateString("en-US") : "-"}</td>
+                  <td className="py-2 pr-4 text-nasun-white/60">{entry.registeredAt ? new Date(entry.registeredAt).toLocaleString("en-US") : "-"}</td>
                   <td className="py-2 text-right">
                     <div className="flex gap-2 justify-end">
                       <button

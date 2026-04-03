@@ -21,6 +21,7 @@ const DevnetMetrics = lazy(() => import("../features/admin/pages/DevnetMetrics")
 const FeaturedFeedManagement = lazy(() => import("../features/admin/pages/FeaturedFeedManagement").then(m => ({ default: m.FeaturedFeedManagement })));
 const ActivityPointsAdmin = lazy(() => import("../features/admin/pages/ActivityPointsAdmin").then(m => ({ default: m.ActivityPointsAdmin })));
 const AirdropAdmin = lazy(() => import("../features/admin/pages/AirdropAdmin").then(m => ({ default: m.AirdropAdmin })));
+const AllianceNftAdmin = lazy(() => import("../features/admin/pages/AllianceNftAdmin").then(m => ({ default: m.AllianceNftAdmin })));
 
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
@@ -47,6 +48,7 @@ const adminRoutes = [
   { path: "/admin/featured-feed", title: "Featured Feed", component: FeaturedFeedManagement },
   { path: "/admin/points", title: "Activity Points", component: ActivityPointsAdmin },
   { path: "/admin/airdrop", title: "Airdrop Management", component: AirdropAdmin },
+  { path: "/admin/alliance-nft", title: "Alliance NFT", component: AllianceNftAdmin },
 ];
 
 const AppRoutes = () => {
