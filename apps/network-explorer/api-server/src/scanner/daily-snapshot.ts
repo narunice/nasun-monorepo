@@ -159,12 +159,12 @@ export async function takeDailySnapshot(
     const result = await pointsDb`
       INSERT INTO ecosystem_score_snapshots
         (identity_id, snapshot_date, base_score, multiplier, bonus_total,
-         referral_bonus, ecosystem_score, is_penalized, rank)
+         referral_bonus, governance_bonus, ecosystem_score, is_penalized, rank)
       VALUES
         (${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
          ${e.multiplier.toFixed(2)}, ${e.bonusTotal.toFixed(2)},
-         ${e.referralBonus.toFixed(2)}, ${e.ecosystemScore.toFixed(2)},
-         ${e.isPenalized}, ${r})
+         ${e.referralBonus.toFixed(2)}, ${e.governanceBonus.toFixed(2)},
+         ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r})
       ON CONFLICT (identity_id, snapshot_date) DO NOTHING
     `;
     if (result.count > 0) inserted++;
