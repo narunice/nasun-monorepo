@@ -23,7 +23,7 @@ import {
 const TOKEN_FAUCET_DISABLED = process.env.LP_DISABLE_TOKEN_FAUCET === 'true';
 
 // ========================================
-// V1 Faucet (NBTC + NUSDC, no cooldown)
+// V1 Faucet (NBTC + NUSDC, on-chain -- no HTTP rate limit)
 // ========================================
 
 function buildRequestTokensV1(): Transaction {
@@ -69,22 +69,34 @@ function buildRequestTokensV2(): Transaction {
 
 /**
  * Request native gas coins (NASUN) from faucet via HTTP API.
+ * Note: All faucet endpoints have a 24h per-address cooldown.
+ * Bot addresses should be whitelisted on the faucet server to bypass this.
+ * Retries with exponential backoff on rate limit (429) responses.
  */
 export async function requestGas(address: string): Promise<boolean> {
   const body = JSON.stringify({ FixedAmountRequest: { recipient: address } });
   const headers = { 'Content-Type': 'application/json' };
 
-  // Try V1 faucet first (no rate limit, ~100 NASUN per call)
-  try {
-    const res = await fetch(`${FAUCET_URL}/v1/gas`, { method: 'POST', headers, body });
-    if (res.ok) {
-      console.log(`[${timestamp()}] Received gas from v1 faucet`);
-      await new Promise((r) => setTimeout(r, 3000));
-      return true;
-    }
-  } catch { /* fall through to legacy */ }
+  // Try V1 faucet with retry + backoff
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${FAUCET_URL}/v1/gas`, { method: 'POST', headers, body });
+      if (res.ok) {
+        console.log(`[${timestamp()}] Received gas from v1 faucet`);
+        await new Promise((r) => setTimeout(r, 3000));
+        return true;
+      }
+      if (res.status === 429) {
+        const wait = 5000 * 2 ** attempt;
+        console.warn(`[${timestamp()}] V1 faucet rate-limited, retry in ${wait / 1000}s...`);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+    } catch { /* retry */ }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
+  }
 
-  // Fallback: legacy /gas endpoint (has rate limit)
+  // Fallback: legacy /gas endpoint (same 24h per-address cooldown)
   try {
     const response = await fetch(`${FAUCET_URL}/gas`, { method: 'POST', headers, body });
     if (!response.ok) {

@@ -436,9 +436,20 @@ async function main() {
     justInitialized: false,
   };
 
-  const initSuccess = await initialize(client, keypair, config, state);
+  // Retry initialization instead of crashing -- avoids PM2 restart loops
+  // that flood the faucet with rate-limited requests.
+  // After 20 attempts (~20 min), exit and let PM2 handle restart with its own backoff.
+  const MAX_INIT_ATTEMPTS = 20;
+  let initSuccess = false;
+  for (let attempt = 1; attempt <= MAX_INIT_ATTEMPTS; attempt++) {
+    initSuccess = await initialize(client, keypair, config, state);
+    if (initSuccess) break;
+    const delay = Math.min(60, attempt * 15);
+    console.warn(`[${timestamp()}] Initialization failed (attempt ${attempt}/${MAX_INIT_ATTEMPTS}), retrying in ${delay}s...`);
+    await new Promise((r) => setTimeout(r, delay * 1000));
+  }
   if (!initSuccess) {
-    console.error(`[${timestamp()}] Initialization failed`);
+    console.error(`[${timestamp()}] Initialization failed after ${MAX_INIT_ATTEMPTS} attempts`);
     process.exit(1);
   }
 
