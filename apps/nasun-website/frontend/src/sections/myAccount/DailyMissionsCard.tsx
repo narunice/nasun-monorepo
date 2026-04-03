@@ -7,11 +7,12 @@
  * Faucet claim has instant optimistic checkmark via ClaimAllButton onSuccess.
  */
 
-import { FC, useState, useCallback } from "react";
+import { FC, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/features/auth";
 import { OuterBox, Spinner } from "@/components/ui";
 import { ClaimAllButton } from "@nasun/wallet-ui";
 import { useDailyMissions } from "@/hooks/useDailyMissions";
+import { useGovernanceMission } from "@/hooks/useGovernanceMission";
 
 interface DailyMissionsCardProps {
   className?: string;
@@ -91,11 +92,29 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
     hasValidAddress ? nasunWalletAddress : undefined,
   );
 
+  const { hasUnvotedProposal, unvotedCount, isLoading: isGovLoading } =
+    useGovernanceMission();
+
   const isCompleted = useCallback(
     (id: string) => completedMissions.has(id as any) || localCompleted.has(id),
     [completedMissions, localCompleted],
   );
-  const activeMissions = MISSIONS.filter((m) => !m.comingSoon);
+
+  // Build active missions list: static missions + conditional governance item
+  const activeMissions = useMemo(() => {
+    const base = MISSIONS.filter((m) => !m.comingSoon);
+    if (hasUnvotedProposal) {
+      base.push({
+        id: "governance-vote",
+        label: `Vote on Proposal${unvotedCount > 1 ? "s" : ""}`,
+        description: `${unvotedCount} active proposal${unvotedCount > 1 ? "s" : ""} awaiting your vote`,
+        points: 1,
+        externalUrl: "/network/governance",
+      });
+    }
+    return base;
+  }, [hasUnvotedProposal, unvotedCount]);
+
   const completedCount = activeMissions.filter((m) => isCompleted(m.id)).length;
 
   const handleFaucetSuccess = useCallback(() => {
@@ -156,7 +175,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
 
       {/* Steps */}
       <div className="space-y-3">
-        {MISSIONS.map((mission, i) => {
+        {activeMissions.map((mission, i) => {
           const completed = !mission.comingSoon && isCompleted(mission.id);
           return (
             <div key={mission.id} className="flex items-start gap-3">

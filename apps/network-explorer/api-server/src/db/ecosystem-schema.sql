@@ -12,6 +12,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
 --
 -- Excluded categories:
 --   referral-bonus, daily-mission (system-generated)
+--   governance (non-daily; appears as conditional item in Daily Missions)
 --   ecosystem-bonus-* (prevent double-counting bonus points)
 --
 -- Note: 'ecosystem-passive' is intentionally NOT excluded.
@@ -26,7 +27,7 @@ SELECT
 FROM activity_points
 WHERE NOT flagged
   AND identity_id IS NOT NULL
-  AND category NOT IN ('referral-bonus', 'daily-mission')
+  AND category NOT IN ('referral-bonus', 'daily-mission', 'governance')
   AND category NOT LIKE 'ecosystem-bonus-%'
 GROUP BY identity_id, date_trunc('day', tx_timestamp)::date;
 

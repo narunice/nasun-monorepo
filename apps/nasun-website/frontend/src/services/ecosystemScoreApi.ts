@@ -47,6 +47,7 @@ export interface EcosystemScoreData {
     ecosystemScore: number;
     activeDays: number;
     bonusCategories?: Array<{ category: string; points: number }>;
+    scoreBreakdown?: Array<{ category: string; points: number }>;
   };
 }
 

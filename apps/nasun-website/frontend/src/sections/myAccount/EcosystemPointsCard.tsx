@@ -432,7 +432,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
                 Daily Log
               </p>
               <div className="space-y-1">
-                {dailyLog.map((entry) => (
+                {dailyLog.filter((entry) => entry.multiplier > 0).map((entry) => (
                   <div
                     key={entry.date}
                     className={`flex items-center justify-between rounded-sm px-3 py-2 text-sm ${
