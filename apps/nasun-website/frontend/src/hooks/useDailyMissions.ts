@@ -2,19 +2,24 @@
  * useDailyMissions Hook
  *
  * Detects daily mission completion via direct Sui RPC queries.
- * Two RPC calls per check:
+ * Checks ALL registered wallets for the account (not just one).
+ * Two RPC calls per wallet per check (with cursor-based pagination):
  *   1. queryEvents({Sender}) - DEX, lottery, scratchcard, quick pick
  *   2. queryTransactionBlocks({FromAddress}) - faucet claim, token transfer
  *
  * Polls every 60 seconds. Skips when tab is hidden.
+ * Results cached in localStorage (keyed by UTC date + identityId) to survive
+ * page navigation and remounts. Resets at UTC midnight globally.
+ *
  * Independent of the points scanner pipeline.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { suiClient } from "@/lib/sui-client";
-import type { SuiTransactionBlockResponse, SuiEvent } from "@mysten/sui/client";
+import type { SuiTransactionBlockResponse } from "@mysten/sui/client";
 
 const POLL_INTERVAL_MS = 60_000;
+const MAX_PAGES = 10; // Cap pagination (10 * 50 = 500 results max per wallet)
 
 // Mission IDs matching DailyMissionsCard
 type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lottery" | "pado-scratchcard" | "pado-games";
@@ -30,42 +35,92 @@ const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
 // Faucet modules (upgrade-safe: match by module+function, not package ID)
 const FAUCET_MODULES = new Set(["faucet", "faucet_v2"]);
 
+// All possible mission IDs for early exit optimization
+const ALL_MISSION_IDS: Set<MissionId> = new Set(["faucet", "wallet-transfer", "pado-dex", "pado-lottery", "pado-scratchcard", "pado-games"]);
+
 function getTodayUtcStart(): number {
   const now = new Date();
   return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 }
 
+// Derive UTC date string from getTodayUtcStart to avoid timezone mismatch
+function getTodayUtcDateStr(): string {
+  return new Date(getTodayUtcStart()).toISOString().slice(0, 10);
+}
+
+// localStorage key scoped by UTC date + identityId (per-account, not per-wallet)
+function getCacheKey(identityId: string): string {
+  return `daily-missions:${getTodayUtcDateStr()}:${identityId}`;
+}
+
+// Remove stale cache keys from previous days
+function cleanupStaleCacheKeys(): void {
+  const todayPrefix = `daily-missions:${getTodayUtcDateStr()}:`;
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key?.startsWith("daily-missions:") && !key.startsWith(todayPrefix)) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
+// Read cached missions from localStorage
+function readCache(identityId: string): Set<MissionId> {
+  try {
+    const cached = localStorage.getItem(getCacheKey(identityId));
+    return cached ? new Set(JSON.parse(cached) as MissionId[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
 /**
  * Detect event-based missions (DEX, lottery, scratchcard, quick pick).
- * Single RPC call: queryEvents({Sender}).
+ * Paginated RPC calls: queryEvents({Sender}) with cursor.
  */
 async function detectEventMissions(
   walletAddress: string,
   todayStart: number,
+  alreadyFound: Set<MissionId>,
 ): Promise<Set<MissionId>> {
   const detected = new Set<MissionId>();
 
+  // Skip if all event missions already found from another wallet
+  const eventMissionIds = EVENT_MISSION_MAP.map(e => e.missionId);
+  if (eventMissionIds.every(id => alreadyFound.has(id))) return detected;
+
+  let cursor: string | null | undefined = undefined;
+  let pages = 0;
+
   try {
-    const result = await suiClient.queryEvents({
-      query: { Sender: walletAddress },
-      limit: 50,
-      order: "descending",
-    });
+    do {
+      const result = await suiClient.queryEvents({
+        query: { Sender: walletAddress },
+        limit: 50,
+        order: "descending",
+        ...(cursor ? { cursor } : {}),
+      });
 
-    for (const event of result.data) {
-      const ts = Number(event.timestampMs ?? 0);
-      if (ts < todayStart) break; // Past today, stop scanning
+      for (const event of result.data) {
+        const ts = Number(event.timestampMs ?? 0);
+        if (ts < todayStart) return detected; // Past today, stop scanning
 
-      for (const { suffix, missionId } of EVENT_MISSION_MAP) {
-        if (event.type.endsWith(suffix)) {
-          detected.add(missionId);
-          break;
+        for (const { suffix, missionId } of EVENT_MISSION_MAP) {
+          if (event.type.endsWith(suffix)) {
+            detected.add(missionId);
+            break;
+          }
+        }
+
+        // Early exit if all event missions found (combining already found + new)
+        if (eventMissionIds.every(id => alreadyFound.has(id) || detected.has(id))) {
+          return detected;
         }
       }
 
-      // Early exit if all event missions found
-      if (detected.size === EVENT_MISSION_MAP.length) break;
-    }
+      cursor = result.hasNextPage ? (result.nextCursor as string) : null;
+      pages++;
+    } while (cursor && pages < MAX_PAGES);
   } catch (err) {
     console.error("[useDailyMissions] Event query failed:", err);
   }
@@ -75,49 +130,64 @@ async function detectEventMissions(
 
 /**
  * Detect TX-based missions (faucet, token transfer).
- * Single RPC call: queryTransactionBlocks({FromAddress}).
+ * Paginated RPC calls: queryTransactionBlocks({FromAddress}) with cursor.
  */
 async function detectTxMissions(
   walletAddress: string,
   todayStart: number,
+  alreadyFound: Set<MissionId>,
 ): Promise<Set<MissionId>> {
   const detected = new Set<MissionId>();
 
+  // Skip if both TX missions already found from another wallet
+  if (alreadyFound.has("faucet") && alreadyFound.has("wallet-transfer")) return detected;
+
+  let cursor: string | null | undefined = undefined;
+  let pages = 0;
+
   try {
-    const result = await suiClient.queryTransactionBlocks({
-      filter: { FromAddress: walletAddress },
-      options: { showInput: true, showBalanceChanges: true },
-      limit: 50,
-      order: "descending",
-    });
+    do {
+      const result = await suiClient.queryTransactionBlocks({
+        filter: { FromAddress: walletAddress },
+        options: { showInput: true, showBalanceChanges: true },
+        limit: 50,
+        order: "descending",
+        ...(cursor ? { cursor } : {}),
+      });
 
-    for (const tx of result.data) {
-      const ts = Number(tx.timestampMs ?? 0);
-      if (ts < todayStart) break;
+      for (const tx of result.data) {
+        const ts = Number(tx.timestampMs ?? 0);
+        if (ts < todayStart) return detected; // Past today, stop scanning
 
-      // Skip failed transactions
-      if (tx.effects?.status?.status === "failure") continue;
+        // Skip failed transactions
+        if (tx.effects?.status?.status === "failure") continue;
 
-      const commands = getCommands(tx);
-      const hasFaucetCall = commands.some(
-        (cmd) =>
-          cmd.type === "MoveCall" &&
-          FAUCET_MODULES.has(cmd.module) &&
-          cmd.fn.startsWith("request_"),
-      );
+        const commands = getCommands(tx);
+        const hasFaucetCall = commands.some(
+          (cmd) =>
+            cmd.type === "MoveCall" &&
+            FAUCET_MODULES.has(cmd.module) &&
+            cmd.fn.startsWith("request_"),
+        );
 
-      if (hasFaucetCall) {
-        detected.add("faucet");
+        if (hasFaucetCall) {
+          detected.add("faucet");
+        }
+
+        // Transfer detection: has TransferObjects command and is not a faucet TX
+        const hasTransfer = commands.some((cmd) => cmd.type === "TransferObjects");
+        if (hasTransfer && !hasFaucetCall) {
+          detected.add("wallet-transfer");
+        }
+
+        const faucetDone = alreadyFound.has("faucet") || detected.has("faucet");
+        const transferDone = alreadyFound.has("wallet-transfer") || detected.has("wallet-transfer");
+        if (faucetDone && transferDone) return detected;
       }
 
-      // Transfer detection: has TransferObjects command and is not a faucet TX
-      const hasTransfer = commands.some((cmd) => cmd.type === "TransferObjects");
-      if (hasTransfer && !hasFaucetCall) {
-        detected.add("wallet-transfer");
-      }
-
-      if (detected.has("faucet") && detected.has("wallet-transfer")) break;
-    }
+      cursor = result.hasNextPage ? (result.nextCursor as string) : null;
+      pages++;
+    } while (cursor && pages < MAX_PAGES);
   } catch (err) {
     console.error("[useDailyMissions] TX query failed:", err);
   }
@@ -152,48 +222,102 @@ function getCommands(tx: SuiTransactionBlockResponse): ParsedCommand[] {
   });
 }
 
+/**
+ * Detect missions across multiple wallet addresses.
+ * Queries wallets sequentially, skipping already-found missions.
+ */
+async function detectAllWallets(
+  walletAddresses: string[],
+  todayStart: number,
+  existingMissions: Set<MissionId>,
+): Promise<Set<MissionId>> {
+  const allDetected = new Set<MissionId>(existingMissions);
+
+  for (const wallet of walletAddresses) {
+    // Early exit if all missions found
+    if (allDetected.size >= ALL_MISSION_IDS.size) break;
+
+    // Query events and TXs for this wallet in parallel
+    const [eventMissions, txMissions] = await Promise.all([
+      detectEventMissions(wallet, todayStart, allDetected),
+      detectTxMissions(wallet, todayStart, allDetected),
+    ]);
+
+    for (const id of eventMissions) allDetected.add(id);
+    for (const id of txMissions) allDetected.add(id);
+  }
+
+  return allDetected;
+}
+
 export interface UseDailyMissionsResult {
   completedMissions: Set<MissionId>;
   isLoading: boolean;
   refetch: () => Promise<void>;
 }
 
+/**
+ * Hook to detect daily mission completion across all wallets for an account.
+ *
+ * @param identityId - Nasun account identifier (for cache scoping)
+ * @param walletAddresses - All registered wallet addresses for this account
+ */
 export function useDailyMissions(
-  walletAddress: string | undefined,
+  identityId: string | undefined,
+  walletAddresses: string[],
 ): UseDailyMissionsResult {
-  const [completedMissions, setCompletedMissions] = useState<Set<MissionId>>(new Set());
+  const [completedMissions, setCompletedMissions] = useState<Set<MissionId>>(() => {
+    if (!identityId) return new Set();
+    return readCache(identityId);
+  });
   const [isLoading, setIsLoading] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Stable reference for walletAddresses to avoid unnecessary re-renders
+  const walletsKey = walletAddresses.join(",");
+
+  // Reload cache when identity changes
+  useEffect(() => {
+    if (!identityId) {
+      setCompletedMissions(new Set());
+      return;
+    }
+    setCompletedMissions(readCache(identityId));
+    cleanupStaleCacheKeys();
+  }, [identityId]);
+
+  // Persist to localStorage whenever completedMissions changes
+  useEffect(() => {
+    if (!identityId || completedMissions.size === 0) return;
+    localStorage.setItem(getCacheKey(identityId), JSON.stringify([...completedMissions]));
+  }, [completedMissions, identityId]);
+
   const fetchMissions = useCallback(async () => {
-    if (!walletAddress) return;
+    if (!identityId || walletAddresses.length === 0) return;
 
     const todayStart = getTodayUtcStart();
-
-    const [eventMissions, txMissions] = await Promise.all([
-      detectEventMissions(walletAddress, todayStart),
-      detectTxMissions(walletAddress, todayStart),
-    ]);
+    const detected = await detectAllWallets(walletAddresses, todayStart, new Set());
 
     // Merge: never remove previously detected missions (only add)
     setCompletedMissions((prev) => {
       const merged = new Set(prev);
-      for (const id of eventMissions) merged.add(id);
-      for (const id of txMissions) merged.add(id);
+      for (const id of detected) merged.add(id);
       return merged;
     });
-  }, [walletAddress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityId, walletsKey]);
 
   // Initial fetch
   useEffect(() => {
-    if (!walletAddress) return;
+    if (!identityId || walletAddresses.length === 0) return;
     setIsLoading(true);
     fetchMissions().finally(() => setIsLoading(false));
-  }, [walletAddress, fetchMissions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityId, walletsKey, fetchMissions]);
 
   // 60-second polling
   useEffect(() => {
-    if (!walletAddress) return;
+    if (!identityId || walletAddresses.length === 0) return;
 
     intervalRef.current = setInterval(() => {
       if (!document.hidden) fetchMissions();
@@ -202,7 +326,7 @@ export function useDailyMissions(
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [walletAddress, fetchMissions]);
+  }, [identityId, walletAddresses.length, fetchMissions]);
 
   // Instant refetch on wallet transfer success (from SendTransaction modal)
   useEffect(() => {
