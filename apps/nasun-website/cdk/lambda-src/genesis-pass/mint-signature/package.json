@@ -1,0 +1,7 @@
+{
+  "name": "genesis-pass-mint-signature",
+  "private": true,
+  "dependencies": {
+    "ethers": "^6.15.0"
+  }
+}
