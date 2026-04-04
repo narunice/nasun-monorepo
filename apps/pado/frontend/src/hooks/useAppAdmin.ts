@@ -2,7 +2,7 @@
  * useAppAdmin Hook
  * Checks if the current user is a platform admin who bypasses feature gates.
  * Distinct from useAdminAccess which checks on-chain AdminCap ownership.
- * TEMPORARY: Remove after 2026-04-07 when gates are removed.
+ * TEMPORARY: Remove after 2026-07-01 when gates are removed.
  */
 
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
