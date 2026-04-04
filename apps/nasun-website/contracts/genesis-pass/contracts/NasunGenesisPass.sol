@@ -43,12 +43,15 @@ contract NasunGenesisPass is
     error ZeroAddress();
     error ZeroQuantity();
     error ContractMinter();
+    error BackwardStageTransition();
+    error MintingEnded();
 
     // ──────────────────────── Events ────────────────────────
 
     event StageChanged(Stage indexed newStage);
     event SignerChanged(address indexed newSigner);
     event MintPriceChanged(uint256 newPrice);
+    event MintDeadlineChanged(uint256 newDeadline);
 
     // ──────────────────────── Constants ────────────────────────
 
@@ -68,6 +71,9 @@ contract NasunGenesisPass is
     mapping(uint256 tokenId => uint256) public maxSupply;
     mapping(Stage => mapping(address => uint256)) public mintedPerStage;
     mapping(Stage => uint256) public walletLimitPerStage;
+
+    uint8 public highWaterMark; // Highest non-PAUSED stage ever reached
+    uint256 public mintDeadline; // Unix timestamp, 0 = no deadline
 
     string private _baseURI;
     string private _contractURI;
@@ -111,6 +117,7 @@ contract NasunGenesisPass is
         bytes calldata signature
     ) external payable nonReentrant {
         if (currentStage == Stage.PAUSED) revert StagePaused();
+        if (mintDeadline != 0 && block.timestamp > mintDeadline) revert MintingEnded();
         // Block contract-based bots in PUBLIC stage
         if (currentStage == Stage.PUBLIC && msg.sender != tx.origin) revert ContractMinter();
         if (quantity == 0) revert ZeroQuantity();
@@ -158,7 +165,16 @@ contract NasunGenesisPass is
     // ──────────────────────── Admin ────────────────────────
 
     function setStage(Stage stage_) external onlyOwner {
+        // Forward-only progression; PAUSED(0) always allowed as emergency brake
+        // highWaterMark prevents backward regression via PAUSED bypass
+        // (e.g., GTD->PAUSED->FREE_MINT would allow signature replay)
+        if (stage_ != Stage.PAUSED && uint8(stage_) <= highWaterMark) {
+            revert BackwardStageTransition();
+        }
         currentStage = stage_;
+        if (uint8(stage_) > highWaterMark) {
+            highWaterMark = uint8(stage_);
+        }
         emit StageChanged(stage_);
     }
 
@@ -189,6 +205,11 @@ contract NasunGenesisPass is
 
     function setContractURI(string calldata newContractURI) external onlyOwner {
         _contractURI = newContractURI;
+    }
+
+    function setMintDeadline(uint256 deadline_) external onlyOwner {
+        mintDeadline = deadline_;
+        emit MintDeadlineChanged(deadline_);
     }
 
     function withdrawTo(address payable to) external onlyOwner {
