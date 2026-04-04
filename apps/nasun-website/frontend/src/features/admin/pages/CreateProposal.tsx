@@ -612,7 +612,7 @@ export function CreateProposal() {
                   />
                   {formData.customEndDate && (
                     <p className="text-nasun-white/60 text-xs mt-2">
-                      Expires: {new Date(formData.customEndDate).toLocaleString("en-US")} (local time)
+                      Expires: {new Date(formData.customEndDate).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })} (local time)
                     </p>
                   )}
                 </div>

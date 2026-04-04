@@ -63,7 +63,7 @@ export interface EcosystemLeaderboardEntry {
 export interface EcosystemLeaderboardResponse {
   data: EcosystemLeaderboardEntry[];
   meta: {
-    period: "daily" | "weekly" | "monthly";
+    period: "daily" | "weekly" | "monthly" | "all-time";
     limit: number;
     offset: number;
     total: number;
@@ -92,7 +92,7 @@ export async function getEcosystemScore(
 }
 
 export async function getEcosystemLeaderboard(
-  period: "daily" | "weekly" | "monthly" = "daily",
+  period: "daily" | "weekly" | "monthly" | "all-time" = "daily",
   limit: number = 50,
   offset: number = 0,
 ): Promise<EcosystemLeaderboardResponse> {

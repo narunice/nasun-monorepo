@@ -207,7 +207,7 @@ export function FeaturedFeedTab() {
           </h3>
           {feedData?.updatedAt && (
             <span className="text-xs text-nasun-white/60">
-              Last saved: {new Date(feedData.updatedAt).toLocaleString("en-US")} by{" "}
+              Last saved: {new Date(feedData.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })} by{" "}
               {feedData.updatedBy}
             </span>
           )}

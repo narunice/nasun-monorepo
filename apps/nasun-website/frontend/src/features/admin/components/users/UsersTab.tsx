@@ -179,8 +179,8 @@ function UserDetailModal({
           <Field label="Telegram Username" value={user.telegramUsername} />
           <Field label="Status" value={user.status || "ACTIVE"} />
           <Field label="Telegram User ID" value={user.telegramUserId} />
-          <Field label="Created" value={user.createdAt ? new Date(user.createdAt).toLocaleString("en-US") : undefined} />
-          <Field label="Updated" value={user.updatedAt ? new Date(user.updatedAt).toLocaleString("en-US") : undefined} />
+          <Field label="Created" value={user.createdAt ? new Date(user.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : undefined} />
+          <Field label="Updated" value={user.updatedAt ? new Date(user.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : undefined} />
         </dl>
 
         {/* Linked Accounts */}
@@ -397,6 +397,7 @@ export function UsersTab() {
                               year: "numeric",
                               hour: "2-digit",
                               minute: "2-digit",
+                              second: "2-digit",
                             })
                           : "-"}
                       </td>

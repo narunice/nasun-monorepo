@@ -303,7 +303,7 @@ export function LeaderboardViewTab() {
               <span>
                 Showing {visibleEntries.length} of {totalCount}
               </span>
-              {calculatedAt && <span>Last updated: {new Date(calculatedAt).toLocaleString()}</span>}
+              {calculatedAt && <span>Last updated: {new Date(calculatedAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>}
             </div>
             {hasMore && (
               <button

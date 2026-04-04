@@ -21,7 +21,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-nasun-black flex pt-14">
+    <div className="min-h-screen bg-nasun-black flex pt-20">
       {/* Sidebar */}
       <aside className="w-64 bg-nasun-c6/40 border-r border-nasun-white/20 flex flex-col fixed top-20 left-0 bottom-0 z-10">
         {/* Logo */}
@@ -76,7 +76,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto ml-64">
-        <div className="">{children}</div>
+        <div className="p-6">{children}</div>
       </main>
     </div>
   );

@@ -121,7 +121,7 @@ export function ProposalsTable({
                             </span>
                             {proposal.createdAt && (
                               <span>
-                                Created: {new Date(proposal.createdAt).toLocaleString('en-US')}
+                                Created: {new Date(proposal.createdAt).toLocaleString('en-US', { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                               </span>
                             )}
                           </div>

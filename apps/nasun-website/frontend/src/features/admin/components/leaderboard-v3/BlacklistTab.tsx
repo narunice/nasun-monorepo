@@ -184,7 +184,7 @@ export function BlacklistTab() {
                       </td>
                       <td className="py-3 px-2 text-nasun-white/60">
                         {account.bannedAt
-                          ? new Date(account.bannedAt).toLocaleString("en-US")
+                          ? new Date(account.bannedAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
                           : "-"}
                       </td>
                       <td className="py-3 px-2 text-nasun-white/60">{account.bannedBy || "-"}</td>
