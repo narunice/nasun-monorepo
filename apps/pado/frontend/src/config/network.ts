@@ -52,8 +52,8 @@ export const NETWORK_CONFIG = {
 
   // Feature Flags
   useTradingView: import.meta.env.VITE_USE_TRADINGVIEW === 'true',
-  gamesOnlyMode: import.meta.env.VITE_GAMES_ONLY_MODE === 'true',       // TEMPORARY: Remove after 2026-04-07
-  spotAccessCode: import.meta.env.VITE_SPOT_ACCESS_CODE || '',           // TEMPORARY: Remove after 2026-04-07
+  gamesOnlyMode: import.meta.env.VITE_GAMES_ONLY_MODE === 'true',       // TEMPORARY: Remove after 2026-07-01
+  spotAccessCode: import.meta.env.VITE_SPOT_ACCESS_CODE || '',           // TEMPORARY: Remove after 2026-07-01
 } as const;
 
 // Token Metadata

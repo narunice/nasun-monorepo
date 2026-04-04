@@ -22,7 +22,7 @@ interface NavTab {
   enabled?: boolean;
 }
 
-// TEMPORARY: gated flag controls mobile nav (Remove after 2026-04-07)
+// TEMPORARY: gated flag controls mobile nav (Remove after 2026-07-01)
 const gated = NETWORK_CONFIG.gamesOnlyMode;
 
 // Shared icon functions to avoid duplication between gated/ungated arrays
