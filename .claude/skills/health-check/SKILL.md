@@ -548,7 +548,6 @@ aws events list-rules --profile nasun-prod --region ap-northeast-2 \
 | nasun-common-price-update | 1분 | NFT 가격 갱신 |
 | nasun-common-purge-deactivated-accounts-daily | 1일 | 비활성 계정 정리 |
 | nasun-leaderboard-v3-daily-snapshot | 매일 00:00 UTC | 리더보드 스냅샷 |
-| nasun-follower-token-refresh-schedule | 70분 | OAuth 토큰 갱신 |
 
 - State = ENABLED → OK
 - State = DISABLED → **WARNING** (의도적 비활성화인지 확인 필요)
@@ -928,11 +927,6 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 - **현재 상태**: nginx is inactive
 - **영향**: nasun.io origin 접근 불가. CloudFront가 stale 캐시 또는 5xx 서빙
 - **조치**: `ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 "sudo systemctl restart nginx"`
-
-#### [WARNING] A2: EventBridge Rule Disabled
-- **현재 상태**: nasun-follower-token-refresh-schedule is DISABLED
-- **영향**: Twitter OAuth 토큰 자동 갱신 중단. 토큰 만료 시 인증 장애
-- **조치**: 의도적 비활성화인지 확인. 아니면 `aws events enable-rule --name nasun-follower-token-refresh-schedule --profile nasun-prod`
 
 (전체 정상 시)
 All systems operational. No issues detected.

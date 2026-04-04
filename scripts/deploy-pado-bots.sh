@@ -167,7 +167,7 @@ case $ACTION in
     # Phase 3: 환경변수 확인
     log_step 3 4 "환경변수 확인"
 
-    REQUIRED_KEYS=("LP_PRIVATE_KEY" "ORACLE_ADMIN_KEY" "KEEPER_PRIVATE_KEY" "TPSL_API_KEY")
+    REQUIRED_KEYS=("LP_PRIVATE_KEY" "ORACLE_ADMIN_KEY" "KEEPER_PRIVATE_KEY" "TPSL_API_KEY" "LOTTERY_ADMIN_KEY")
 
     ENV_CHECK=$(ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "
       if [ ! -f ${REMOTE_DIR}/.env ]; then

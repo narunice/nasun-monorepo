@@ -27,7 +27,6 @@
 | MonitoringStack | CommonStack | Price API 모니터링 |
 | NftEventStack | 없음 | Frontiers Event (Wave 1 Battalion Free Mint) |
 | AdminStack | 없음 | Whitelist Export, Governance Management |
-| FollowerStack | 없음 | X API daily follower tracking |
 | LeaderboardV3Stack | 없음 | Leaderboard V3 (manual curation system) |
 
 **환경 파일:**
@@ -42,8 +41,6 @@
 | 변수명 | 사용처 | 비고 |
 | ------ | ------ | ---- |
 | `VITE_COGNITO_IDENTITY_POOL_ID` | LeaderboardV3Stack | 누락 시 throw Error |
-| `TWITTER_BEARER_TOKEN` | FollowerStack | 누락 시 빈 문자열 |
-| `TARGET_ACCOUNTS` | FollowerStack | JSON array 형태 |
 
 **기타 .env 변수 (스택에서 참조):**
 
@@ -188,7 +185,7 @@ API URL 교차 검증(5단계)에서 참조합니다.
 
 CloudFormation이 관리하는 리소스(Lambda 등)를 AWS 콘솔에서 수동 삭제하면, `cdk deploy` 시 "resource could not be found" 오류가 발생합니다.
 
-**사례:** FollowerStack의 Lambda `nasun-collect-followers`가 수동 삭제됨 → 배포 실패 → `continue-update-rollback` → `cdk destroy` → DynamoDB 테이블 `NasunTargetFollowers`는 `RETAIN` 정책으로 보존 → `cdk import --resource-mapping`으로 테이블 재연결 → `cdk deploy`로 Lambda/EventBridge 재생성.
+**사례:** CDK 관리 Lambda가 수동 삭제됨 → 배포 실패 → `continue-update-rollback` → `cdk destroy` → DynamoDB 테이블은 `RETAIN` 정책으로 보존 → `cdk import --resource-mapping`으로 테이블 재연결 → `cdk deploy`로 리소스 재생성.
 
 **핵심:** CDK 관리 리소스는 반드시 CDK로 삭제. `cdk import`는 비대화형 터미널에서 `--resource-mapping` JSON 파일 필수. 복구 절차는 SKILL.md 7단계 참조.
 

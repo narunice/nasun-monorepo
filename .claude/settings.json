@@ -13,10 +13,6 @@
       "Bash(/tmp/analyze_i18n.sh:*)",
       "Bash(git -C /home/naru/my_apps/nasun-monorepo diff HEAD)",
       "Bash(git -C /home/naru/my_apps/nasun-monorepo log --oneline -20)",
-      "Bash(AWS_PROFILE=nasun-prod aws logs tail /aws/lambda/nasun-follower-token-refresh --since 2h --format short --region ap-northeast-2)",
-      "Bash(AWS_PROFILE=nasun-prod aws cloudwatch describe-alarms --alarm-names \"nasun-follower-invalid-refresh-token\" --region ap-northeast-2 --query 'MetricAlarms[0].{State:StateValue,Reason:StateReason,Updated:StateUpdatedTimestamp}' --output json)",
-      "Bash(AWS_PROFILE=nasun-prod aws lambda invoke --function-name nasun-follower-token-refresh --payload 'eyJzb3VyY2UiOiJtYW51YWwudmVyaWZpY2F0aW9uIiwiZm9yY2VSZWZyZXNoIjpmYWxzZX0=' --region ap-northeast-2 /tmp/refresh-result.json)",
-      "Bash(AWS_PROFILE=nasun-prod aws cloudwatch set-alarm-state --alarm-name \"nasun-follower-invalid-refresh-token\" --state-value OK --state-reason \"Manual re-auth completed, token verified\" --region ap-northeast-2)",
       "WebFetch(domain:www.wearefounders.uk)",
       "WebFetch(domain:www.medianama.com)",
       "WebFetch(domain:getlate.dev)",
@@ -52,12 +48,18 @@
       "Bash(command -v nvm)",
       "Bash(cargo build:*)",
       "Edit(/.claude/skills/health-check/**)",
-      "WebFetch(domain:help.manifold.xyz)"
+      "WebFetch(domain:help.manifold.xyz)",
+      "Bash(npm ls:*)",
+      "Bash(ffmpeg -i /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/videos/Canyons-X-Post-web.mp4 -vframes 1 -ss 2 -q:v 80 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/images/posters/Canyons-X-Post-web.webp)",
+      "Bash(ffmpeg -y -i /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/videos/Canyons-X-Post-web.mp4 -vframes 1 -ss 2 -vf scale=960:-1 -quality 60 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/images/posters/Canyons-X-Post-web.webp)",
+      "Edit(/.claude/skills/deploy/**)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/cdk/cdk.out.dev-deploy",
-      "/home/naru/my_apps/nasun-devnet/sui/crates/sui-faucet/src"
+      "/home/naru/my_apps/nasun-devnet/sui/crates/sui-faucet/src",
+      "/home/naru/.claude/projects/-home-naru-my_apps-nasun-monorepo/memory",
+      "/tmp"
     ]
   }
 }
