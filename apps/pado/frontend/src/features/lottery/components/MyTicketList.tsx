@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { PRIZE_TIER } from '../constants';
 import { formatNusdc } from '../lib/lottery-client';
+import { getExplorerObjectUrl } from '@/lib/explorer';
 import { CelebrationOverlay } from '../../../components/common';
 import { type CelebrationPreset, CELEBRATION_COLORS } from '../../../lib/celebration';
 import { playGameSound } from '../../../lib/sounds';
@@ -149,9 +150,24 @@ function TicketCard({
             </span>
           )}
         </div>
-        <span className="text-[11px] text-theme-text-muted tabular-nums">
-          {new Date(ticket.purchaseTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <a
+            href={getExplorerObjectUrl(ticket.id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-0.5 rounded text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary transition-colors inline-flex"
+            title="View on Explorer"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </a>
+          <span className="text-[11px] text-theme-text-muted tabular-nums">
+            {new Date(ticket.purchaseTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-1.5 mb-2">

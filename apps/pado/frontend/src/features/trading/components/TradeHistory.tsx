@@ -20,6 +20,7 @@ import { useCostBasis } from '@/features/portfolio/hooks/useCostBasis';
 import { renderTradeCard, downloadShareCard, copyShareCardToClipboard, type TradeCardData } from '@/features/social/utils/canvasRenderer';
 import { generateCsv, downloadCsv } from '@/lib/csv-export';
 import { getChatService } from '@/lib/chat-service';
+import { getExplorerTxUrl } from '@/lib/explorer';
 
 export const CHAT_DRAFT_EVENT = 'pado:chat-draft';
 
@@ -417,6 +418,21 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
                     >
                       <ChatIcon />
                     </button>
+                    {trade.txDigest && (
+                      <a
+                        href={getExplorerTxUrl(trade.txDigest)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 rounded text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary transition-colors inline-flex"
+                        title="View on Explorer"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                          <polyline points="15 3 21 3 21 9" />
+                          <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                      </a>
+                    )}
                   </div>
                 </td>
               </tr>

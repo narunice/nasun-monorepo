@@ -9,6 +9,7 @@ import { usePerpPositionsWithMetrics } from '../hooks/usePerpPositions';
 import { usePerpOrder } from '../hooks/usePerpOrder';
 import { RISK_LEVEL, fromContractPrice, fromContractAmount } from '../constants';
 import type { PositionWithMetrics } from '../types';
+import { getExplorerObjectUrl } from '@/lib/explorer';
 
 interface PerpPositionListProps {
   onCloseSuccess?: (txDigest: string) => void;
@@ -142,9 +143,24 @@ function PositionCard({ position, onClose, isClosing }: PositionCardProps) {
           </span>
           <span className="text-sm font-medium">{position.leverage}x</span>
         </div>
-        <span className={`px-2 py-0.5 text-xs rounded ${riskColor}`}>
-          {position.riskLevel.toUpperCase()}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className={`px-2 py-0.5 text-xs rounded ${riskColor}`}>
+            {position.riskLevel.toUpperCase()}
+          </span>
+          <a
+            href={getExplorerObjectUrl(position.id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-0.5 rounded text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary transition-colors inline-flex"
+            title="View on Explorer"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </a>
+        </div>
       </div>
 
       {/* Stats Grid */}

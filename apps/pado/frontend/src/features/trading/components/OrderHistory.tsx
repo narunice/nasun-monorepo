@@ -9,6 +9,7 @@ import { useMarket } from '../context/MarketContext';
 import { useOrderActions } from '../hooks';
 import { useOrderHistory } from '../hooks/useOrderHistory';
 import { SkeletonTable } from '@/components/common';
+import { getExplorerTxUrl } from '@/lib/explorer';
 
 type SideFilter = 'all' | 'buy' | 'sell';
 type PeriodFilter = 'all' | '24h' | '7d';
@@ -161,6 +162,7 @@ export function OrderHistory() {
             <th className="py-2 px-2 text-right font-medium">Filled / Qty</th>
             <th className="py-2 px-2 text-center font-medium">Status</th>
             <th className="py-2 px-2 text-right font-medium">Time</th>
+            <th className="py-2 px-1 w-8"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-theme-border">
@@ -204,6 +206,23 @@ export function OrderHistory() {
               </td>
               <td className="py-1.5 px-2 text-right text-theme-text-muted">
                 {formatDate(order.timestamp)}
+              </td>
+              <td className="py-1.5 px-1">
+                {order.txDigest && (
+                  <a
+                    href={getExplorerTxUrl(order.txDigest)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1 rounded text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary transition-colors inline-flex"
+                    title="View on Explorer"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </a>
+                )}
               </td>
             </tr>
           ))}
