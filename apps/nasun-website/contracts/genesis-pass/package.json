@@ -1,0 +1,20 @@
+{
+  "name": "@nasun/genesis-pass-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat --config hardhat.config.cjs compile",
+    "test": "hardhat --config hardhat.config.cjs test",
+    "deploy:sepolia": "hardhat --config hardhat.config.cjs run scripts/deploy.cjs --network sepolia",
+    "deploy:mainnet": "hardhat --config hardhat.config.cjs run scripts/deploy.cjs --network mainnet",
+    "verify": "hardhat --config hardhat.config.cjs verify",
+    "copy-abi": "node scripts/copy-abi.cjs"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@openzeppelin/contracts": "^5.1.0",
+    "ethers": "^6.13.0",
+    "hardhat": "^2.22.0"
+  }
+}

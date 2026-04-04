@@ -1,0 +1,21 @@
+{
+  "name": "Nasun Genesis Pass #TOKEN_ID - TOKEN_NAME",
+  "description": "TOKEN_DESCRIPTION",
+  "image": "ipfs://REPLACE_WITH_THUMBNAIL_CID",
+  "animation_url": "ipfs://REPLACE_WITH_VIDEO_CID",
+  "external_url": "https://nasun.io/wave1/nft-drop",
+  "attributes": [
+    {
+      "trait_type": "Edition",
+      "value": "TOKEN_NAME"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Video"
+    },
+    {
+      "trait_type": "Collection",
+      "value": "Genesis Pass"
+    }
+  ]
+}
