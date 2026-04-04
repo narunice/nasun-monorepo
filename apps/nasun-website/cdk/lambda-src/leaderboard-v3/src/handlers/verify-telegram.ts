@@ -194,6 +194,17 @@ function isAuthDateValid(authDate: number): boolean {
   return now - authDate < maxAge;
 }
 
+class TelegramApiError extends Error {
+  constructor(public readonly httpStatus: number, public readonly body: string) {
+    super(`Telegram API error: ${httpStatus}`);
+    this.name = 'TelegramApiError';
+  }
+
+  get isClientError(): boolean {
+    return this.httpStatus >= 400 && this.httpStatus < 500;
+  }
+}
+
 async function checkChannelMembership(
   botToken: string,
   channelUsername: string,
@@ -205,7 +216,7 @@ async function checkChannelMembership(
   if (!response.ok) {
     const errorBody = await response.text();
     console.error('[verify-telegram] getChatMember failed:', response.status, errorBody);
-    throw new Error(`Telegram API error: ${response.status}`);
+    throw new TelegramApiError(response.status, errorBody);
   }
 
   const data = await response.json();
@@ -554,6 +565,12 @@ export const handler = async (
       membership = await checkChannelMembership(botToken, TELEGRAM_CHANNEL_USERNAME, telegramAuth.id);
     } catch (error) {
       console.error('[verify-telegram] Telegram API error:', error);
+      if (error instanceof TelegramApiError && error.isClientError) {
+        return createResponse(400, {
+          error: 'Telegram verification failed',
+          message: 'Could not verify your Telegram account. Please ensure your account is valid and try again.',
+        }, requestOrigin);
+      }
       return createResponse(503, {
         error: 'Telegram API unavailable',
         message: 'Telegram API is temporarily unavailable. Please try again later.',
