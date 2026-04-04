@@ -40,7 +40,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_eco_daily_identity_day
 CREATE INDEX IF NOT EXISTS idx_eco_daily_day_score
   ON ecosystem_daily_scores(day, base_score DESC);
 
--- 5. Alliance inactivity penalty tracking
+-- 5. Ensure matview is owned by sui_indexer (required for REFRESH CONCURRENTLY)
+ALTER MATERIALIZED VIEW ecosystem_daily_scores OWNER TO sui_indexer;
+
+-- 6. Alliance inactivity penalty tracking
 -- Users with alliance-only NFT and <=5 active days in last 7 get penalized.
 -- Recovery: 2 consecutive active days -> row deleted.
 CREATE TABLE IF NOT EXISTS alliance_penalties (

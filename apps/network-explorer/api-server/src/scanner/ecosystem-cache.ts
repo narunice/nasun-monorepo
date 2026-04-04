@@ -127,7 +127,9 @@ export async function updateActivationsForUser(
 
   // Derive single-user URL from the bulk endpoint URL
   // e.g., https://api.nasun.io/internal/ecosystem-activations -> .../ecosystem-activations/{id}
-  const singleUserUrl = `${baseUrl}/${encodeURIComponent(identityId)}`;
+  // Do not encode the colon in identityId (e.g. "ap-northeast-2:uuid")
+  // as API Gateway treats %3A as invalid format
+  const singleUserUrl = `${baseUrl}/${identityId}`;
 
   try {
     const headers: Record<string, string> = {};
