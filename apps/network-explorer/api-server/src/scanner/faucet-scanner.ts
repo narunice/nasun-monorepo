@@ -111,9 +111,10 @@ export async function scanFaucetClaims(
     const capKey = `${identityId}::faucet`;
     if (dailyCategorySeen.has(capKey)) continue;
 
-    const basePoints = 1; // faucet.claim = 1
-    const genesisMult = genesisPassHolders.has(identityId) ? GENESIS_PASS_MULTIPLIER : 1.0;
-    const finalPoints = (basePoints * genesisMult).toFixed(2);
+    // Faucet is a base category: existence-only, final_points always 1
+    const basePoints = 1;
+    const genesisMult = 1.0;
+    const finalPoints = '1.00';
 
     inserts.push({
       wallet_address: walletAddress,

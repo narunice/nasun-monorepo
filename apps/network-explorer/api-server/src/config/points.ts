@@ -2,34 +2,32 @@
 // Changes here are forward-only: existing points are never recalculated.
 // git history serves as the audit log for all config changes.
 
-// --- Base Points per activity ---
+// --- Points per activity ---
+//
+// Two groups:
+//   Base categories: ecosystem score uses COUNT(DISTINCT category)/day only.
+//     Values are 1 (existence marker) or 0 (skip). final_points is always 1.
+//   Score categories (governance, daily-mission): final_points are added
+//     directly to ecosystem score. Values are meaningful.
 
 export const BASE_POINTS: Record<string, Record<string, number>> = {
-  'pado-dex': { 'limit-order': 2, 'market-order': 2, 'cancel-order': 1 },
-  'pado-prediction': {
-    'mint-tokens': 3,
-    'place-bid': 3,
-    'place-ask': 3,
-    'claim-winnings': 3,
-  },
+  // Base categories (existence markers)
+  'pado-dex': { 'limit-order': 1, 'market-order': 1, 'cancel-order': 1 },
+  'pado-prediction': { 'mint-tokens': 1, 'place-bid': 1, 'place-ask': 1, 'claim-winnings': 1 },
   'pado-lottery': { 'buy-ticket': 1, 'claim-prize': 1 },
-  'pado-perp': {
-    'open-position': 3,
-    'close-position': 5,
-    'add-margin': 3,
-    'remove-margin': 3,
-  },
-  'pado-lending': { deposit: 3, withdraw: 2, borrow: 3, repay: 2 },
-  'baram-ai': { 'create-request': 1, settle: 8, cancel: 1 },
-  'baram-executor': { register: 30, stake: 10, unstake: 0, update: 5 },
-  governance: { vote: 10, delegate: 5 },
+  'pado-perp': { 'open-position': 1, 'close-position': 1, 'add-margin': 1, 'remove-margin': 1 },
+  'pado-lending': { deposit: 1, withdraw: 1, borrow: 1, repay: 1 },
+  'baram-ai': { 'create-request': 1, settle: 1, cancel: 1 },
+  'baram-executor': { register: 1, stake: 1, unstake: 0, update: 1 },
   'wallet-transfer': { transfer: 1, 'merge-coins': 0, 'split-coins': 0 },
-  staking: { delegate: 10, unstake: 0 },
+  staking: { delegate: 1, unstake: 0 },
   'staking-daily': { 'staking-active': 1 },
-  // Faucet: detected by faucet-scanner via tx_calls_fun (no Move events)
   faucet: { claim: 1 },
   'pado-scratchcard': { 'scratchcard-purchase': 1 },
   'pado-games': { 'numbermatch-play': 1 },
+
+  // Score categories (final_points used in ecosystem score)
+  governance: { vote: 10, delegate: 5 },
   'daily-mission': {
     'dex-first': 5,
     'prediction-first': 5,
@@ -44,6 +42,12 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
     'all-clear': 10,
   },
 } as const;
+
+// Categories whose final_points are added to ecosystem score.
+// For all other categories, only existence (1 per category/day) matters.
+export const SCORE_CATEGORIES = new Set([
+  'governance', 'daily-mission', 'referral-bonus', 'ecosystem-passive',
+]);
 
 export const GENESIS_PASS_MULTIPLIER = 2.0; // Forward-only: existing 1.5x records remain immutable
 export const VOLUME_TIER_CAP = 3.0;

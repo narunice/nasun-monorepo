@@ -4,6 +4,7 @@ import {
   BATCH_SIZE,
   WALLET_CACHE_REFRESH_MS,
   GENESIS_PASS_MULTIPLIER,
+  SCORE_CATEGORIES,
   getEventMapping,
   getBasePoints,
 } from '../config/points.js';
@@ -414,13 +415,15 @@ async function processBatch(
     const capKey = `${identityId}::${mapping.category}`;
     if (dailyCategorySeen.has(capKey)) continue;
 
-    const volumeTier = 1.0; // Phase 1: no volume parsing yet
-    const genesisMult = genesisPassHolders.has(identityId)
+    // Score categories: apply genesis multiplier. Base categories: always 1.
+    const isScoreCat = SCORE_CATEGORIES.has(mapping.category);
+    const volumeTier = 1.0;
+    const genesisMult = isScoreCat && genesisPassHolders.has(identityId)
       ? GENESIS_PASS_MULTIPLIER
       : 1.0;
-
-    // Compute final_points as string to preserve NUMERIC precision
-    const finalPoints = (basePoints * volumeTier * genesisMult).toFixed(2);
+    const finalPoints = isScoreCat
+      ? (basePoints * volumeTier * genesisMult).toFixed(2)
+      : '1.00';
 
     inserts.push({
       wallet_address: walletAddress,

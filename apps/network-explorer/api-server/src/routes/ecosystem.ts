@@ -330,7 +330,7 @@ app.get('/leaderboard', async (c) => {
   }
 
   const rawPeriod = c.req.query('period');
-  const period = rawPeriod === 'weekly' ? 'weekly' : rawPeriod === 'monthly' ? 'monthly' : 'daily';
+  const period = rawPeriod === 'weekly' ? 'weekly' : rawPeriod === 'monthly' ? 'monthly' : rawPeriod === 'all-time' ? 'all-time' : 'daily';
   const limit = parseLimit(c.req.query('limit'));
   const offset = parseOffset(c.req.query('offset'));
 
@@ -344,7 +344,6 @@ app.get('/leaderboard', async (c) => {
       const activatedIds = [...getActivationsCacheMap().keys()];
       if (activatedIds.length === 0) return [];
 
-      const daysBack = period === 'monthly' ? 29 : 6;
       const rows = period === 'daily'
         ? await pointsDb!`
             SELECT identity_id, base_score::int as base_score
@@ -353,13 +352,23 @@ app.get('/leaderboard', async (c) => {
               AND day = CURRENT_DATE
             ORDER BY base_score DESC
           `
+        : period === 'all-time'
+        ? await pointsDb!`
+            SELECT identity_id,
+                   SUM(base_score)::int as base_score,
+                   COUNT(*)::int as active_days
+            FROM ecosystem_daily_scores
+            WHERE identity_id = ANY(${activatedIds})
+            GROUP BY identity_id
+            ORDER BY SUM(base_score) DESC
+          `
         : await pointsDb!`
             SELECT identity_id,
                    SUM(base_score)::int as base_score,
                    COUNT(*)::int as active_days
             FROM ecosystem_daily_scores
             WHERE identity_id = ANY(${activatedIds})
-              AND day >= CURRENT_DATE - make_interval(days => ${daysBack})
+              AND day >= CURRENT_DATE - make_interval(days => ${period === 'monthly' ? 29 : 6})
               AND day <= CURRENT_DATE
             GROUP BY identity_id
             ORDER BY SUM(base_score) DESC
@@ -424,7 +433,7 @@ app.get('/leaderboard', async (c) => {
           bonusTotal: roundTo2(bonus),
           referralBonus: roundTo2(referral),
           ecosystemScore: roundTo2(baseScore * multiplier + bonus + referral * sf),
-          ...(period === 'weekly' ? { activeDays: r.active_days as number } : {}),
+          ...(period !== 'daily' ? { activeDays: r.active_days as number } : {}),
         };
       });
     },
