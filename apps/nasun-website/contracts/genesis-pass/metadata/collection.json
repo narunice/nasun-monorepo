@@ -1,0 +1,9 @@
+{
+  "name": "Nasun Genesis Pass",
+  "description": "The Nasun Genesis Pass grants holders founding access to the Nasun ecosystem. 7 unique video editions, each representing a core pillar of the Nasun vision.",
+  "image": "ipfs://REPLACE_WITH_COLLECTION_IMAGE_CID",
+  "banner_image": "ipfs://REPLACE_WITH_BANNER_IMAGE_CID",
+  "external_link": "https://nasun.io/wave1/nft-drop",
+  "seller_fee_basis_points": 500,
+  "fee_recipient": "REPLACE_WITH_ROYALTY_WALLET_ADDRESS"
+}
