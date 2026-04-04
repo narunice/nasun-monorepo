@@ -34,6 +34,7 @@ const DevGenesisNftPage = lazy(() => import("../pages/dev/DevGenesisNftPage"));
 const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
 const DevHomePage = lazy(() => import("../pages/dev/DevHomePage"));
+const NftDropPage = lazy(() => import("../pages/wave1/NftDropPage"));
 
 // Admin route definitions
 const adminRoutes = [
@@ -156,6 +157,7 @@ const AppRoutes = () => {
         <Route path="/dev/genesis-nft" element={<DevGenesisNftPage />} />
         <Route path="/dev/investors" element={<DevInvestorsPage />} />
         <Route path="/dev/genesis-pass" element={<DevGenesisPassPage />} />
+        <Route path="/dev/genesis-pass-drop" element={<NftDropPage />} />
         <Route path="/dev/home" element={<DevHomePage />} />
         <Route path="/dev/my-account" element={<Navigate to="/my-account" replace />} />
         <Route path="/dev/alliance-nft" element={<Navigate to="/wave1/alliance-nft" replace />} />

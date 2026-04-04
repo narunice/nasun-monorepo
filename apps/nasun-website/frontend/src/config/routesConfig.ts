@@ -36,6 +36,7 @@ export const Pages = {
   // Wave 1 Campaign Pages
   AllianceNft: lazyWithRetry(() => import("../pages/wave1/AllianceNftPage")),
   GenesisPass: lazyWithRetry(() => import("../pages/dev/DevGenesisPassPage")),
+  NftDrop: lazyWithRetry(() => import("../pages/wave1/NftDropPage")),
   BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
   EarlyContributors: lazyWithRetry(() => import("../pages/wave1/EarlyContributorsPage")),
   LeaderboardInfo: lazyWithRetry(() => import("../pages/wave1/LeaderboardInfoPage")),
