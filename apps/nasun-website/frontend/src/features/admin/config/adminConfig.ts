@@ -22,7 +22,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
   { path: '/admin/whitelist', label: 'Allowlist Export', icon: '📋' },
   { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
-  { path: '/admin/points', label: 'Activity Points', icon: '🎯' },
+  { path: '/admin/points', label: 'Ecosystem Points', icon: '🎯' },
   { path: '/admin/airdrop', label: 'Airdrop', icon: '🪂' },
   { path: '/admin/alliance-nft', label: 'Alliance NFT', icon: '🛡️' },
 ];
@@ -78,7 +78,7 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     linkText: 'Manage NFTs',
   },
   {
-    title: 'Activity Points',
+    title: 'Ecosystem Points',
     description: 'Monitor on-chain activity points scanner, view leaderboard rankings, and look up user points by wallet address.',
     icon: '🎯',
     link: '/admin/points',

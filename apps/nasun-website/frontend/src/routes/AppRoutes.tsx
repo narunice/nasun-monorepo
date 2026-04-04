@@ -46,7 +46,7 @@ const adminRoutes = [
   { path: "/admin/nft-collections", title: "NFT Collections", component: NftCollectionManagement },
   { path: "/admin/devnet-metrics", title: "Devnet Metrics", component: DevnetMetrics },
   { path: "/admin/featured-feed", title: "Featured Feed", component: FeaturedFeedManagement },
-  { path: "/admin/points", title: "Activity Points", component: ActivityPointsAdmin },
+  { path: "/admin/points", title: "Ecosystem Points", component: ActivityPointsAdmin },
   { path: "/admin/airdrop", title: "Airdrop Management", component: AirdropAdmin },
   { path: "/admin/alliance-nft", title: "Alliance NFT", component: AllianceNftAdmin },
 ];

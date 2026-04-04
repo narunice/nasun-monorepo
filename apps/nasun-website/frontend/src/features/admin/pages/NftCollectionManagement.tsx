@@ -282,7 +282,7 @@ export function NftCollectionManagement() {
                           </button>
                         </td>
                         <td className="py-3 px-2 text-nasun-white/60">
-                          {new Date(collection.createdAt).toLocaleString("en-US")}
+                          {new Date(collection.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                         </td>
                         <td className="py-3 px-2 text-right">
                           <div className="flex justify-end gap-2">

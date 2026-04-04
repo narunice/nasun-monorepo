@@ -43,6 +43,34 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>, origin?
   };
 }
 
+// ==================== Linked identity dedup ====================
+
+/**
+ * Resolve the primary identity for dedup checks.
+ * If this identity has linkedToPrimaryId, return it; otherwise return self.
+ * Also returns the linked identity's registration if it exists.
+ */
+async function checkLinkedRegistration(
+  identityId: string,
+): Promise<{ linkedRegistration: Record<string, unknown> | null }> {
+  // Look up this identity's profile to check linkedToPrimaryId
+  const profileResult = await client.send(
+    new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId } }),
+  );
+  const linkedToPrimaryId = profileResult.Item?.linkedToPrimaryId;
+
+  if (!linkedToPrimaryId || linkedToPrimaryId === identityId) {
+    return { linkedRegistration: null };
+  }
+
+  // Check if the linked primary identity is already registered
+  const linkedReg = await client.send(
+    new GetCommand({ TableName: REGISTRATIONS_TABLE, Key: { identityId: linkedToPrimaryId } }),
+  );
+
+  return { linkedRegistration: linkedReg.Item ?? null };
+}
+
 // ==================== GET: Check registration status ====================
 
 async function handleGetStatus(identityId: string, origin?: string): Promise<APIGatewayProxyResult> {
@@ -53,21 +81,36 @@ async function handleGetStatus(identityId: string, origin?: string): Promise<API
     })
   );
 
-  if (!result.Item) {
+  if (result.Item) {
     return jsonResponse(200, {
       success: true,
-      data: { status: "not_applied" },
+      data: {
+        status: result.Item.status,
+        registeredAt: result.Item.registeredAt,
+        walletAddress: result.Item.walletAddress,
+        ...(result.Item.approvedAt && { approvedAt: result.Item.approvedAt }),
+      },
+    }, origin);
+  }
+
+  // Check if a linked identity already registered (show as registered)
+  const { linkedRegistration } = await checkLinkedRegistration(identityId);
+  if (linkedRegistration) {
+    return jsonResponse(200, {
+      success: true,
+      data: {
+        status: linkedRegistration.status,
+        registeredAt: linkedRegistration.registeredAt,
+        walletAddress: linkedRegistration.walletAddress,
+        ...(linkedRegistration.approvedAt && { approvedAt: linkedRegistration.approvedAt }),
+        registeredVia: "linked_account",
+      },
     }, origin);
   }
 
   return jsonResponse(200, {
     success: true,
-    data: {
-      status: result.Item.status,
-      registeredAt: result.Item.registeredAt,
-      walletAddress: result.Item.walletAddress,
-      ...(result.Item.approvedAt && { approvedAt: result.Item.approvedAt }),
-    },
+    data: { status: "not_applied" },
   }, origin);
 }
 
@@ -90,6 +133,17 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
       error: "ALREADY_REGISTERED",
       message: "You have already registered for this airdrop.",
       data: { status: existing.Item.status, registeredAt: existing.Item.registeredAt },
+    }, origin);
+  }
+
+  // 1.5. Check if a linked identity already registered (prevent multi-wallet abuse)
+  const { linkedRegistration } = await checkLinkedRegistration(identityId);
+  if (linkedRegistration) {
+    console.log(`[airdrop-register] Blocked duplicate: ${identityId} (linked account already registered)`);
+    return jsonResponse(409, {
+      success: false,
+      error: "ALREADY_REGISTERED",
+      message: "You have already registered for this airdrop via a linked account.",
     }, origin);
   }
 

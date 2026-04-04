@@ -379,7 +379,7 @@ export function SeasonManagementTab() {
               <div>
                 <div className="text-sm font-medium text-nasun-white">Snapshot Preview</div>
                 <div className="text-xs text-nasun-white/70 mt-0.5">
-                  Season: {previewResult.seasonId} — {previewResult.totalAccounts} accounts — {new Date(previewResult.calculatedAt).toLocaleString('en-US')}
+                  Season: {previewResult.seasonId} — {previewResult.totalAccounts} accounts — {new Date(previewResult.calculatedAt).toLocaleString('en-US', { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 </div>
               </div>
               <button
