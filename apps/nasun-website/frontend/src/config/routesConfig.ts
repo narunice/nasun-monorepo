@@ -37,6 +37,7 @@ export const Pages = {
   AllianceNft: lazyWithRetry(() => import("../pages/wave1/AllianceNftPage")),
   GenesisPass: lazyWithRetry(() => import("../pages/dev/DevGenesisPassPage")),
   NftDrop: lazyWithRetry(() => import("../pages/wave1/NftDropPage")),
+  GenesisPassDrop: lazyWithRetry(() => import("../pages/wave1/GenesisPassDropPage")),
   BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
   EarlyContributors: lazyWithRetry(() => import("../pages/wave1/EarlyContributorsPage")),
   LeaderboardInfo: lazyWithRetry(() => import("../pages/wave1/LeaderboardInfoPage")),
@@ -424,6 +425,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Wave 1 — NASUN",
       description: "Nasun Wave 1 campaign — Battalion NFT free mint, community leaderboard, and early contributor rewards.",
+    },
+  },
+
+  genesisPassDrop: {
+    path: "/wave1/genesis-pass-drop",
+    component: Pages.GenesisPassDrop,
+    navItem: {
+      name: "navigation.genesisPassDrop",
+      path: "/wave1/genesis-pass-drop",
+      hidden: true,
+    },
+    meta: {
+      title: "Genesis Pass Drop - NASUN",
+      description: "Nasun Genesis Pass mint schedule. Free mint, allowlist, and public mint phases.",
     },
   },
 
