@@ -16,6 +16,7 @@
  *   KEEPER_PRIVATE_KEY=<keeper-hex-key>   # Required by tpsl-keeper
  *   TPSL_API_KEY=<api-key>               # Required by tpsl-keeper
  *   TPSL_ALLOWED_ORIGIN=<origin-url>     # Required by tpsl-keeper (CORS)
+ *   LOTTERY_ADMIN_KEY=<admin-key>        # Required by lottery-keeper (AdminCap owner)
  *
  * The deploy script (scripts/deploy-pado-bots.sh) sources .env before PM2 start.
  * Non-secret config (contract addresses, RPC URLs) is set in env: blocks below.
@@ -198,6 +199,31 @@ module.exports = {
       out_file: './logs/tpsl-keeper-out.log',
       merge_logs: true,
       max_memory_restart: '300M',
+    },
+
+    // ==============================
+    // Lottery Keeper Bot (weekly cycle automation)
+    // ==============================
+    {
+      name: 'lottery-keeper',
+      script: './node_modules/.bin/tsx',
+      args: 'lottery-keeper.ts',
+      cwd: __dirname,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+        // LOTTERY_ADMIN_KEY loaded from .env via deploy script
+        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+      },
+      max_restarts: 10,
+      min_uptime: '30s',
+      restart_delay: 10000,  // 10s between restarts (not latency-sensitive)
+      kill_timeout: 15000,   // 15s for in-progress settlement to complete
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: './logs/lottery-keeper-error.log',
+      out_file: './logs/lottery-keeper-out.log',
+      merge_logs: true,
+      max_memory_restart: '200M',
     },
   ],
 };

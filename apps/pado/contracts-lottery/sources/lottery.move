@@ -58,6 +58,8 @@ module lottery::lottery {
     const ECloseTimeNotReached: u64 = 16;   // For permissionless close
     const EDrawTimeNotReached: u64 = 17;    // For permissionless draw
     const ENotPrizeWinner: u64 = 18;        // Less than 3 matches
+    const ERoundNotSettledForTransfer: u64 = 19;  // transfer_rollover: source not settled
+    const ETargetRoundNotOpen: u64 = 20;          // transfer_rollover: target not open
 
     // ===== Structs =====
 
@@ -243,8 +245,8 @@ module lottery::lottery {
             tickets_by_address: table::new(ctx),
         };
 
-        // If rollover provided, it should be transferred separately
-        // For now, just track the amount (actual balance transfer happens in settle_round)
+        // rollover_amount is informational only (for UI/events).
+        // Actual NUSDC transfer happens via transfer_rollover() after round creation.
 
         event::emit(RoundCreated {
             round_id: object::id(&round),
@@ -300,7 +302,10 @@ module lottery::lottery {
 
     /// Settle round: calculate multi-tier payouts
     /// tier1 = 5 match (Jackpot), tier2 = 4 match, tier3 = 3 match
-    /// Called after counting winners off-chain
+    /// Called after counting winners off-chain.
+    /// Uses actual prize_pool balance only (rollover_in is informational).
+    /// Rollover funds must be transferred via transfer_rollover() before settlement
+    /// for correct payout calculation.
     public entry fun settle_round(
         _admin: &AdminCap,
         round: &mut LotteryRound,
@@ -311,7 +316,8 @@ module lottery::lottery {
     ) {
         assert!(round.status == STATUS_DRAWN, ERoundNotDrawn);
 
-        let total_pool = balance::value(&round.prize_pool) + round.rollover_in;
+        // Use actual balance only. rollover_in is informational metadata.
+        let total_pool = balance::value(&round.prize_pool);
 
         // Calculate base distributions
         let prize_amount = (total_pool * PRIZE_POOL_BPS) / 10000;  // 70%
@@ -773,6 +779,32 @@ module lottery::lottery {
             balance::value(&registry.treasury_balance),
             registry.treasury_address
         )
+    }
+
+    /// Transfer rollover balance from a settled round to a new open round.
+    /// Moves all remaining NUSDC except the amount reserved for unclaimed winner prizes.
+    /// Must be called after settle_round(from) and create_round(to).
+    /// Safe to call at any time: only transfers excess beyond winner claim obligations.
+    public entry fun transfer_rollover(
+        _admin: &AdminCap,
+        from_round: &mut LotteryRound,
+        to_round: &mut LotteryRound,
+    ) {
+        assert!(from_round.status == STATUS_SETTLED, ERoundNotSettledForTransfer);
+        assert!(to_round.status == STATUS_OPEN, ETargetRoundNotOpen);
+
+        // Reserve funds for unclaimed winner prizes
+        let reserved_for_claims =
+            from_round.tier1_payout_per_winner * from_round.tier1_winners +
+            from_round.tier2_payout_per_winner * from_round.tier2_winners +
+            from_round.tier3_payout_per_winner * from_round.tier3_winners;
+
+        let available = balance::value(&from_round.prize_pool);
+        if (available > reserved_for_claims) {
+            let transferable = available - reserved_for_claims;
+            let rollover_bal = balance::split(&mut from_round.prize_pool, transferable);
+            balance::join(&mut to_round.prize_pool, rollover_bal);
+        };
     }
 
     // ===== Permissionless Keeper Functions =====

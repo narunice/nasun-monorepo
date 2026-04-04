@@ -12,8 +12,9 @@ function isValidObjectId(value: string): boolean {
   return /^0x[0-9a-fA-F]{64}$/.test(value);
 }
 
-/** Validate URL format */
+/** Validate URL format (absolute or relative path like "/rpc") */
 function isValidUrl(value: string): boolean {
+  if (value.startsWith('/')) return true;
   try {
     const url = new URL(value);
     return url.protocol === 'https:' || url.protocol === 'http:';

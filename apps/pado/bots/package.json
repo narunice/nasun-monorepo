@@ -14,7 +14,9 @@
     "lp-bot:neth": "LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts",
     "lp-bot:nsol": "LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts",
     "lp-bot:all": "LP_MARKET=NBTC node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NETH node --env-file=.env --import tsx lp-bot.ts & LP_MARKET=NSOL node --env-file=.env --import tsx lp-bot.ts & wait",
-    "tpsl-keeper": "node --env-file=.env --import tsx tpsl-keeper.ts"
+    "tpsl-keeper": "node --env-file=.env --import tsx tpsl-keeper.ts",
+    "lottery-keeper": "node --env-file=.env --import tsx lottery-keeper.ts",
+    "lottery-keeper:once": "node --env-file=.env --import tsx lottery-keeper.ts --once"
   },
   "dependencies": {
     "@mysten/sui": "^1.21.1",

@@ -3,17 +3,29 @@
  * Weekly lottery listing and ticket purchase
  */
 
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   useLotteries,
   useLotteryKeeper,
   LotteryRoundCard,
   TicketPurchaseForm,
   MyTicketList,
+  ROUND_STATUS,
+  formatNusdc,
 } from '../features/lottery';
 import { Spinner } from '../components/common';
 
+const PAST_ROUNDS_PAGE_SIZE = 5;
+
 export function LotteryPage() {
-  const { currentRound, isLoading, error, refetch } = useLotteries();
+  const { currentRound, rounds, isLoading, error, refetch } = useLotteries();
+  const [pastRoundsVisible, setPastRoundsVisible] = useState(PAST_ROUNDS_PAGE_SIZE);
+
+  // Past rounds: settled or closed/drawn, sorted by round number descending
+  const pastRounds = rounds
+    .filter((r) => r.id !== currentRound?.id && r.ticketCount > 0)
+    .sort((a, b) => b.roundNumber - a.roundNumber);
   const { closeRound, drawNumbers, isLoading: isKeeperLoading } = useLotteryKeeper();
 
   const handleCloseRound = async () => {
@@ -156,6 +168,84 @@ export function LotteryPage() {
           </div>
         </div>
       </div>
+
+      {/* Past Rounds */}
+      {pastRounds.length > 0 && (
+        <div className="bg-theme-bg-secondary rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-theme-text-primary mb-4">
+            Past Rounds
+          </h2>
+          <div className="space-y-3">
+            {pastRounds.slice(0, pastRoundsVisible).map((round) => {
+              const isSettled = round.status === ROUND_STATUS.SETTLED;
+              const totalWinners = round.tier1Winners + round.tier2Winners + round.tier3Winners;
+              const statusLabel = isSettled
+                ? 'Settled'
+                : ['Open', 'Closed', 'Drawn', 'Settled'][round.status];
+
+              return (
+                <Link
+                  key={round.id}
+                  to={`/games/lottery/${round.id}`}
+                  className="flex items-center justify-between p-4 rounded-lg bg-theme-bg-primary hover:bg-theme-bg-tertiary transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="text-lg font-bold text-theme-text-primary">
+                      #{round.roundNumber}
+                    </div>
+                    <div>
+                      <div className="text-sm text-theme-text-secondary">
+                        {round.ticketCount.toLocaleString()} ticket{round.ticketCount !== 1 ? 's' : ''}
+                        {' / '}
+                        {formatNusdc(round.totalSales)} NUSDC
+                      </div>
+                      {isSettled && round.drawnNumbers && (
+                        <div className="flex gap-1.5 mt-1">
+                          {round.drawnNumbers.map((num, i) => (
+                            <span
+                              key={i}
+                              className="w-7 h-7 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                            >
+                              {num}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                        isSettled
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                          : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                      }`}
+                    >
+                      {statusLabel}
+                    </span>
+                    <div className="text-sm text-theme-text-secondary mt-1">
+                      {isSettled && totalWinners > 0
+                        ? `${totalWinners} winner${totalWinners !== 1 ? 's' : ''}`
+                        : isSettled
+                          ? 'No winners'
+                          : ''}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          {pastRoundsVisible < pastRounds.length && (
+            <button
+              onClick={() => setPastRoundsVisible((v) => v + PAST_ROUNDS_PAGE_SIZE)}
+              className="w-full mt-4 py-2.5 text-sm font-medium text-pd3 hover:text-pd2 bg-theme-bg-primary hover:bg-theme-bg-tertiary rounded-lg transition-colors"
+            >
+              Show More ({pastRounds.length - pastRoundsVisible} remaining)
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Prize Distribution */}
       <div className="bg-theme-bg-secondary rounded-xl p-6">

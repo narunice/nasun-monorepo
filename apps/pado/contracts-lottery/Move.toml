@@ -2,7 +2,7 @@
 name = "pado_lottery"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x5605eda3794c1701a15f5fe0ee8ecae0fcb7529490db38544a0d865658d0dc43"
+published-at = "0xeb5af6c536464672cc6975b07957ff222037c724a4f2810b0cd295bb8b4304da"
 
 [dependencies]
 devnet_tokens = { local = "../../../packages/devnet-tokens" }
