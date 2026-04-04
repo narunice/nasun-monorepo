@@ -2,15 +2,7 @@
  * Get Follower Count Lambda
  *
  * Fetches the @Nasun_io follower count via Twitter API v2.
- * This Lambda is READ-ONLY — it never refreshes tokens.
- *
- * Token strategy:
- * - Primary: Bearer Token (App-Only) — never expires, no refresh needed
- * - Fallback: OAuth2 User Access Token — requires periodic refresh
- *
- * Bearer Token is preferred because the token refresh Lambda is disabled
- * in dev to prevent cross-environment invalidation when dev and prod
- * share the same Twitter OAuth2 App.
+ * Uses Bearer Token (App-Only) which never expires.
  */
 
 import {
@@ -48,20 +40,12 @@ async function loadAccessToken(): Promise<string> {
 
   const raw = JSON.parse(response.SecretString);
 
-  // Prefer Bearer Token (App-Only) — never expires, no refresh needed.
-  // GET /2/users/:id with public_metrics works with App-Only auth.
-  if (raw.bearerToken) {
-    console.log("[GET_FOLLOWER_COUNT] Using Bearer Token (App-Only)");
-    return raw.bearerToken;
+  if (!raw.bearerToken) {
+    throw new Error("No Bearer Token found in secrets");
   }
 
-  // Fallback to OAuth2 User Access Token
-  if (raw.oauth2?.userAccessToken) {
-    console.log("[GET_FOLLOWER_COUNT] Using OAuth2 User Access Token (fallback)");
-    return raw.oauth2.userAccessToken;
-  }
-
-  throw new Error("No Bearer Token or OAuth2 User Access Token found in secrets");
+  console.log("[GET_FOLLOWER_COUNT] Using Bearer Token (App-Only)");
+  return raw.bearerToken;
 }
 
 // ---------------------------------------------------------------------------
