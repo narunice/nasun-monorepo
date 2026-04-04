@@ -1250,4 +1250,6 @@ export const GENESIS_PASS_ABI = [
   }
 ] as const;
 
-export const GENESIS_PASS_ADDRESSES: Record<number, string> = {};
+export const GENESIS_PASS_ADDRESSES: Record<number, string> = {
+  "11155111": "0xE37a4B22A2854aD99EAFeb199E9614E519F60541"
+};
