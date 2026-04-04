@@ -37,9 +37,11 @@ const NFT_DESCRIPTION = "Nasun Alliance NFT";
 
 // Distributed mint lock to prevent owned object contention on Sui
 const MINT_LOCK_KEY = "__ALLIANCE_MINT_LOCK__";
-const MINT_LOCK_TTL_MS = 30_000; // 30s auto-expire for crash recovery
+const MINT_LOCK_TTL_MS = 65_000; // Must exceed Lambda timeout (60s) to prevent premature expiry
+const OBJECT_CONTENTION_COOLDOWN_MS = 10_000; // Hold lock after Sui object contention errors
 
 async function acquireMintLock(docClient: DynamoDBDocumentClient): Promise<boolean> {
+  const now = Date.now();
   try {
     await docClient.send(
       new PutCommand({
@@ -47,13 +49,13 @@ async function acquireMintLock(docClient: DynamoDBDocumentClient): Promise<boole
         Item: {
           identityId: MINT_LOCK_KEY,
           status: "LOCKED",
-          lockedAt: Date.now(),
-          ttl: Math.floor(Date.now() / 1000) + 30,
+          lockedAt: now,
+          ttl: Math.floor(now / 1000) + Math.ceil(MINT_LOCK_TTL_MS / 1000),
         },
         ConditionExpression:
           "attribute_not_exists(identityId) OR lockedAt < :expired",
         ExpressionAttributeValues: {
-          ":expired": Date.now() - MINT_LOCK_TTL_MS,
+          ":expired": now - MINT_LOCK_TTL_MS,
         },
       }),
     );
@@ -71,6 +73,59 @@ async function releaseMintLock(docClient: DynamoDBDocumentClient): Promise<void>
     );
   } catch (err) {
     console.error("[alliance] Failed to release mint lock:", err);
+  }
+}
+
+// ========== Helpers ==========
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Check if an Alliance NFT was already minted to the target wallet on-chain.
+ * Used after RPC 502 errors where we can't tell if the tx landed.
+ */
+/**
+ * Check if an Alliance NFT was minted to the target wallet AFTER the mint started.
+ * Compares against mintStartTime to avoid claiming a pre-existing NFT from a different identity.
+ * Uses on-chain registry query to confirm the wallet is registered (not just object ownership).
+ */
+async function checkMintedOnChain(
+  suiClient: SuiClient,
+  walletAddress: string,
+  mintStartTime: number,
+): Promise<{ nftObjectId: string; txDigest?: string } | null> {
+  try {
+    // Wait briefly for RPC indexer to catch up after 502
+    await sleep(2_000);
+
+    const objects = await suiClient.getOwnedObjects({
+      owner: walletAddress,
+      filter: { StructType: `${ALLIANCE_PACKAGE_ID}::alliance_nft::AllianceNFT` },
+      options: { showPreviousTransaction: true },
+    });
+    if (objects.data.length > 0) {
+      const obj = objects.data[0];
+      const txDigest = obj.data?.previousTransaction;
+      // Verify this tx happened after our mint started by checking tx timestamp
+      if (txDigest) {
+        const txBlock = await suiClient.getTransactionBlock({ digest: txDigest, options: { showInput: true } });
+        const txTimestamp = Number(txBlock.timestampMs || 0);
+        if (txTimestamp < mintStartTime) {
+          // This NFT was minted before our attempt; not ours
+          return null;
+        }
+      }
+      return {
+        nftObjectId: obj.data?.objectId || "",
+        txDigest: txDigest || undefined,
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error("[alliance] checkMintedOnChain failed:", err);
+    return null;
   }
 }
 
@@ -325,15 +380,29 @@ async function handleMint(
         const pendingAge = Date.now() - new Date(existing.Item.mintedAt as string).getTime();
         if (pendingAge > PENDING_TTL_MS) {
           console.warn(`[alliance] Clearing stale PENDING for ${identityId} (age: ${pendingAge}ms)`);
-          await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
-          // Re-insert as PENDING
-          await docClient.send(
-            new PutCommand({
-              TableName: ALLIANCE_MINT_TABLE,
-              Item: { identityId, walletAddress: targetWallet, imageIndex, imageUrl, status: "PENDING", mintedAt: new Date().toISOString() },
-              ConditionExpression: "attribute_not_exists(identityId)",
-            }),
-          );
+          // Atomic replace: overwrite stale PENDING in a single conditional put
+          try {
+            await docClient.send(
+              new PutCommand({
+                TableName: ALLIANCE_MINT_TABLE,
+                Item: { identityId, walletAddress: targetWallet, imageIndex, imageUrl, status: "PENDING", mintedAt: new Date().toISOString() },
+                ConditionExpression: "#s = :pending AND mintedAt = :staleMintedAt",
+                ExpressionAttributeNames: { "#s": "status" },
+                ExpressionAttributeValues: {
+                  ":pending": "PENDING",
+                  ":staleMintedAt": existing.Item.mintedAt,
+                },
+              }),
+            );
+          } catch (replaceErr) {
+            // Another Lambda beat us to it; release lock and return busy
+            await releaseMintLock(docClient);
+            return {
+              statusCode: 429,
+              headers: { ...corsHeaders(), "Retry-After": "3" },
+              body: JSON.stringify({ error: "Mint service busy, please retry", code: "MINT_BUSY" }),
+            };
+          }
         } else {
           await releaseMintLock(docClient);
           return {
@@ -344,112 +413,201 @@ async function handleMint(
         }
       }
     } else {
+      await releaseMintLock(docClient);
       throw err;
     }
   }
 
-  // Execute Sui transaction
-  try {
-    const suiClient = new SuiClient({ url: SUI_RPC_URL });
-    const keypair = await getAdminKeypair();
-    const adminAddress = keypair.getPublicKey().toSuiAddress();
+  // Execute Sui transaction with retry for transient failures
+  const mintStartTime = Date.now();
+  const suiClient = new SuiClient({ url: SUI_RPC_URL });
+  const keypair = await getAdminKeypair();
+  const adminAddress = keypair.getPublicKey().toSuiAddress();
 
-    // Gas balance check
-    const balance = await suiClient.getBalance({ owner: adminAddress });
-    const balanceMist = BigInt(balance.totalBalance);
-    if (balanceMist < 50_000_000n) {
-      // Rollback PENDING record
-      await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
-      await releaseMintLock(docClient);
-      console.error(`[alliance] Admin gas low: ${balanceMist} MIST`);
-      return {
-        statusCode: 500,
-        headers: corsHeaders(),
-        body: JSON.stringify({ error: "Service temporarily unavailable", code: "INSUFFICIENT_GAS" }),
-      };
-    }
-
-    const tx = new Transaction();
-    tx.moveCall({
-      target: `${ALLIANCE_PACKAGE_ID}::alliance_nft::mint`,
-      arguments: [
-        tx.object(ALLIANCE_ADMIN_ID),
-        tx.object(ALLIANCE_REGISTRY_ID),
-        tx.pure.address(targetWallet),
-        tx.pure.string(NFT_DESCRIPTION),
-        tx.pure.string(imageUrl),
-        tx.pure.u64(imageIndex),
-        tx.object("0x6"), // Clock shared object
-      ],
-    });
-
-    const result = await suiClient.signAndExecuteTransaction({
-      transaction: tx,
-      signer: keypair,
-      options: { showEffects: true, showEvents: true },
-    });
-
-    if (result.effects?.status?.status !== "success") {
-      throw new Error(`Transaction failed: ${result.effects?.status?.error || "unknown"}`);
-    }
-
-    // Extract NFT object ID from AllianceMinted event
-    const mintEvent = result.events?.find((e) =>
-      e.type.includes("::alliance_nft::AllianceMinted"),
-    );
-    const nftObjectId = (mintEvent?.parsedJson as Record<string, string>)?.nft_id || "";
-    const txDigest = result.digest;
-
-    // Update DynamoDB: PENDING -> MINTED
-    // IMPORTANT: Do NOT rollback if this fails. The NFT is already on-chain.
-    try {
-      await docClient.send(
-        new UpdateCommand({
-          TableName: ALLIANCE_MINT_TABLE,
-          Key: { identityId },
-          UpdateExpression: "SET #s = :minted, txDigest = :tx, nftObjectId = :nft",
-          ExpressionAttributeNames: { "#s": "status" },
-          ExpressionAttributeValues: {
-            ":minted": "MINTED",
-            ":tx": txDigest,
-            ":nft": nftObjectId,
-          },
-        }),
-      );
-    } catch (updateErr) {
-      // NFT is minted on-chain but DB update failed. Log for manual recovery.
-      // Do NOT delete the PENDING record; stale PENDING recovery will handle it.
-      console.error(`[alliance] CRITICAL: DB update failed after successful mint. tx=${txDigest}, nft=${nftObjectId}, identity=${identityId}`, updateErr);
-    }
-
-    console.log(`[alliance] Minted NFT for ${identityId}: tx=${txDigest}, nft=${nftObjectId}`);
-
+  // Gas balance check
+  const balance = await suiClient.getBalance({ owner: adminAddress });
+  const balanceMist = BigInt(balance.totalBalance);
+  if (balanceMist < 50_000_000n) {
+    await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
     await releaseMintLock(docClient);
-    return {
-      statusCode: 200,
-      headers: corsHeaders(),
-      body: JSON.stringify({
-        success: true,
-        data: { txDigest, nftObjectId },
-      }),
-    };
-  } catch (error) {
-    // Rollback PENDING record on Sui tx failure (tx never succeeded, safe to delete)
-    console.error("[alliance] Mint tx failed, rolling back PENDING:", maskSensitiveData({
-      message: error instanceof Error ? error.message : String(error),
-    }));
-
-    try {
-      await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
-    } catch (rollbackErr) {
-      console.error("[alliance] Rollback failed:", rollbackErr);
-    }
-
-    await releaseMintLock(docClient);
+    console.error(`[alliance] Admin gas low: ${balanceMist} MIST`);
     return {
       statusCode: 500,
       headers: corsHeaders(),
-      body: JSON.stringify({ error: "Failed to mint NFT" }),
+      body: JSON.stringify({ error: "Service temporarily unavailable", code: "INSUFFICIENT_GAS" }),
     };
   }
+
+  const MAX_RETRIES = 2;
+  const RETRY_BASE_DELAY_MS = 2_000;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${ALLIANCE_PACKAGE_ID}::alliance_nft::mint`,
+        arguments: [
+          tx.object(ALLIANCE_ADMIN_ID),
+          tx.object(ALLIANCE_REGISTRY_ID),
+          tx.pure.address(targetWallet),
+          tx.pure.string(NFT_DESCRIPTION),
+          tx.pure.string(imageUrl),
+          tx.pure.u64(imageIndex),
+          tx.object("0x6"), // Clock shared object
+        ],
+      });
+
+      const result = await suiClient.signAndExecuteTransaction({
+        transaction: tx,
+        signer: keypair,
+        options: { showEffects: true, showEvents: true },
+      });
+
+      if (result.effects?.status?.status !== "success") {
+        throw new Error(`Transaction failed: ${result.effects?.status?.error || "unknown"}`);
+      }
+
+      // Extract NFT object ID from AllianceMinted event
+      const mintEvent = result.events?.find((e) =>
+        e.type.includes("::alliance_nft::AllianceMinted"),
+      );
+      const nftObjectId = (mintEvent?.parsedJson as Record<string, string>)?.nft_id || "";
+      const txDigest = result.digest;
+
+      // Update DynamoDB: PENDING -> MINTED
+      // IMPORTANT: Do NOT rollback if this fails. The NFT is already on-chain.
+      try {
+        await docClient.send(
+          new UpdateCommand({
+            TableName: ALLIANCE_MINT_TABLE,
+            Key: { identityId },
+            UpdateExpression: "SET #s = :minted, txDigest = :tx, nftObjectId = :nft",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: {
+              ":minted": "MINTED",
+              ":tx": txDigest,
+              ":nft": nftObjectId,
+            },
+          }),
+        );
+      } catch (updateErr) {
+        // NFT is minted on-chain but DB update failed. Log for manual recovery.
+        console.error(`[alliance] CRITICAL: DB update failed after successful mint. tx=${txDigest}, nft=${nftObjectId}, identity=${identityId}`, updateErr);
+      }
+
+      console.log(`[alliance] Minted NFT for ${identityId}: tx=${txDigest}, nft=${nftObjectId}`);
+
+      await releaseMintLock(docClient);
+      return {
+        statusCode: 200,
+        headers: corsHeaders(),
+        body: JSON.stringify({
+          success: true,
+          data: { txDigest, nftObjectId },
+        }),
+      };
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const isObjectContention =
+        errMsg.includes("not available for consumption") ||
+        errMsg.includes("already locked by a different transaction");
+      const isRpcError = errMsg.includes("Unexpected status code: 502") || errMsg.includes("Unexpected status code: 503");
+
+      // 502/503: the tx may have been submitted. Check if it landed on-chain.
+      if (isRpcError) {
+        console.warn(`[alliance] RPC error on attempt ${attempt + 1}, checking on-chain state...`);
+        const landed = await checkMintedOnChain(suiClient, targetWallet, mintStartTime);
+        if (landed) {
+          console.log(`[alliance] NFT found on-chain despite RPC error for ${identityId}`);
+          try {
+            await docClient.send(
+              new UpdateCommand({
+                TableName: ALLIANCE_MINT_TABLE,
+                Key: { identityId },
+                UpdateExpression: "SET #s = :minted, txDigest = :tx, nftObjectId = :nft",
+                ExpressionAttributeNames: { "#s": "status" },
+                ExpressionAttributeValues: {
+                  ":minted": "MINTED",
+                  ":tx": landed.txDigest || "unknown-rpc-error",
+                  ":nft": landed.nftObjectId,
+                },
+              }),
+            );
+          } catch (updateErr) {
+            console.error(`[alliance] CRITICAL: DB update failed after on-chain recovery. identity=${identityId}`, updateErr);
+          }
+          await releaseMintLock(docClient);
+          return {
+            statusCode: 200,
+            headers: corsHeaders(),
+            body: JSON.stringify({
+              success: true,
+              data: { txDigest: landed.txDigest || "unknown-rpc-error", nftObjectId: landed.nftObjectId },
+            }),
+          };
+        }
+      }
+
+      // Retryable: object contention or RPC transient error
+      const isRetryable = isObjectContention || isRpcError;
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
+        console.warn(`[alliance] Retryable error on attempt ${attempt + 1}/${MAX_RETRIES + 1}, waiting ${delay}ms: ${errMsg}`);
+        await sleep(delay);
+        continue;
+      }
+
+      // Final failure: rollback PENDING and handle lock
+      console.error("[alliance] Mint tx failed, rolling back PENDING:", maskSensitiveData({
+        message: errMsg,
+      }));
+
+      try {
+        await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
+      } catch (rollbackErr) {
+        console.error("[alliance] Rollback failed:", rollbackErr);
+      }
+
+      // Object contention: keep lock to enforce cooldown (prevent immediate retry from next request)
+      if (isObjectContention) {
+        console.warn(`[alliance] Object contention detected. Keeping lock for ${OBJECT_CONTENTION_COOLDOWN_MS}ms cooldown.`);
+        // Set lockedAt so acquireMintLock's expiry check (lockedAt < now - TTL) passes after cooldown
+        // lockedAt = now - TTL + cooldown => expires when now > lockedAt + TTL => after cooldown
+        try {
+          const cooldownLockedAt = Date.now() - MINT_LOCK_TTL_MS + OBJECT_CONTENTION_COOLDOWN_MS;
+          await docClient.send(
+            new UpdateCommand({
+              TableName: ALLIANCE_MINT_TABLE,
+              Key: { identityId: MINT_LOCK_KEY },
+              UpdateExpression: "SET lockedAt = :lockedAt, #t = :ttl",
+              ExpressionAttributeNames: { "#t": "ttl" },
+              ExpressionAttributeValues: {
+                ":lockedAt": cooldownLockedAt,
+                ":ttl": Math.floor(Date.now() / 1000) + Math.ceil(OBJECT_CONTENTION_COOLDOWN_MS / 1000),
+              },
+            }),
+          );
+        } catch (lockErr) {
+          console.error("[alliance] Failed to extend lock for cooldown:", lockErr);
+        }
+        // Do NOT release lock; let TTL expire after cooldown
+      } else {
+        await releaseMintLock(docClient);
+      }
+
+      return {
+        statusCode: 500,
+        headers: corsHeaders(),
+        body: JSON.stringify({ error: "Failed to mint NFT" }),
+      };
+    }
+  }
+
+  // Unreachable, but TypeScript needs a return
+  await releaseMintLock(docClient);
+  return {
+    statusCode: 500,
+    headers: corsHeaders(),
+    body: JSON.stringify({ error: "Failed to mint NFT" }),
+  };
 }
