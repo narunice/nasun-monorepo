@@ -60,27 +60,7 @@
 
 ## 2. 기타 주기적 작업 (Other Periodic Tasks)
 
-### 2.1. OAuth 2.0 토큰 자동 갱신
-
--   **목적**: X API와 통신하는 데 사용되는 OAuth 2.0 토큰이 만료되지 않도록 자동으로 갱신하여 24/7 서비스 연속성을 보장하는 가장 중요한 백그라운드 작업입니다.
--   **실행 주기**: **90분마다**
--   **상태**: ✅ **정상** (2025-11-02 복구 완료 및 모니터링 강화)
--   **작동 방식**:
-    -   **CDK 스택**: `CdkStack`
-    -   **EventBridge 규칙**: `TokenRefreshSchedule`
-    -   **트리거 대상**: `nasun-refresh-oauth2-token` Lambda 함수
-    -   **설명**: X API의 Access Token 유효 기간(120분)보다 짧은 90분 주기로 갱신을 시도하여, 토큰 만료로 인한 API 호출 실패를 원천적으로 방지합니다.
--   **검증 내역**:
-    -   **2025-11-02 복구 작업**: 개발 환경에서 Refresh Token이 revoked되어 11시간 동안 갱신 실패가 발생했던 문제를 긴급 복구했습니다. 수동 OAuth 재인증을 통해 새로운 토큰을 발급받아 정상화했습니다.
-    -   **모니터링 강화**: CloudWatch Alarm(`NASUN-OAuth토큰-갱신실패`)을 추가하여 10분간 2회 연속 실패 시 즉시 알림을 받도록 개선했습니다. 이를 통해 문제 감지 시간을 11시간 → 10분으로 98.5% 단축했습니다.
-    -   자세한 내용은 [OAUTH_TOKEN_RECOVERY_AND_MONITORING_REPORT.md](./OAUTH_TOKEN_RECOVERY_AND_MONITORING_REPORT.md)를 참조하세요.
--   **재발 방지**:
-    -   **Dead Letter Queue (DLQ)**: EventBridge Rule에 DLQ 연결 (최대 3회 재시도, 10분 이내)
-    -   **CloudWatch Alarm**: 10분간 2회 연속 실패 시 SNS 알림
-    -   **CloudWatch Dashboard**: 실행 상태 및 실행 시간 실시간 모니터링
-    -   **정기 점검**: 매주 토큰 상태 및 CloudWatch 메트릭 확인 권장
-
-### 2.2. 가격 정보 업데이트
+### 2.1. 가격 정보 업데이트
 
 -   **목적**: NFT 또는 기타 자산의 가격 정보를 외부 소스로부터 주기적으로 가져와 업데이트합니다.
 -   **실행 주기**: **매시간**
@@ -108,80 +88,7 @@
 
 ## 3. 모니터링 및 알림 (Monitoring & Alerts)
 
-### 3.1. OAuth 토큰 갱신 실패 감지
-
-**목적**: OAuth 2.0 토큰 갱신 실패를 조기에 감지하여 서비스 중단을 방지합니다.
-
-**CloudWatch Alarm 설정**:
--   **알람명**: `NASUN-OAuth토큰-갱신실패`
--   **Metric**: Lambda Errors (`nasun-refresh-oauth2-token`)
--   **임계값**: 1회 에러
--   **Period**: 5분
--   **EvaluationPeriods**: 2회 연속 (총 10분)
--   **Action**: SNS 알림 (`nasun-monitoring-alerts`)
-
-**작동 방식**:
-1. Lambda 함수 실행 시 에러 발생
-2. CloudWatch Metrics에 에러 기록
-3. 5분간 1회 에러 감지
-4. 다시 5분간 1회 에러 감지 (총 10분간 2회)
-5. CloudWatch Alarm 상태 변경: `OK` → `ALARM`
-6. SNS Topic으로 알림 발송 (이메일/SMS)
-
-**효과**:
-- **이전**: 11시간 동안 방치 (2025-11-02 사례)
-- **개선**: 10분 내 감지 및 알림
-- **개선율**: 98.5% (660분 → 10분)
-
-**알람 상태 확인**:
-```bash
-aws cloudwatch describe-alarms \
-  --alarm-names "NASUN-OAuth토큰-갱신실패" \
-  --region ap-northeast-2 \
-  --query 'MetricAlarms[0].{Name:AlarmName, State:StateValue}'
-```
-
-**알람 상태별 의미**:
-- `OK`: 정상 (에러 없음)
-- `INSUFFICIENT_DATA`: 데이터 부족 (Lambda 실행 없음 또는 초기 상태)
-- `ALARM`: 경고 (10분간 2회 연속 에러)
-
-### 3.2. CloudWatch Dashboard
-
-**목적**: OAuth 토큰 갱신 상태를 실시간으로 시각화하여 트렌드를 파악합니다.
-
-**Dashboard URL**:
-```
-https://console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#dashboards:name=NASUN-Operations-Monitoring
-```
-
-**추가된 위젯** (2025-11-02):
-
-**1. OAuth 2.0 Token Refresh - 실행 상태 (90분 주기)**
-- **Metrics**:
-  - 실행 횟수 (Invocations)
-  - 실패 횟수 (Errors)
-- **Period**: 30분
-- **Statistic**: Sum
-- **용도**: 정상 실행 여부 및 에러 빈도 확인
-
-**2. OAuth 2.0 Token Refresh - 실행 시간**
-- **Metrics**:
-  - 평균 실행 시간 (Duration - Average)
-  - 최대 실행 시간 (Duration - Maximum)
-- **Period**: 30분
-- **Statistic**: Average, Maximum
-- **용도**: 성능 트렌드 및 타임아웃 위험 감지
-
-**정기 점검 권장 사항**:
-- **주기**: 매주 월요일
-- **확인 항목**:
-  1. 실행 횟수: 주당 112회 (90분 × 16회/일 × 7일) 정상
-  2. 실패 횟수: 0회 정상
-  3. 평균 실행 시간: 500-700ms 정상
-  4. 최대 실행 시간: 1000ms 이하 정상
-
-### 3.3. SNS 알림 설정
+### 3.1. SNS 알림 설정
 
 **목적**: CloudWatch Alarm 발생 시 개발팀에게 즉시 알림을 전달합니다.
 
@@ -220,24 +127,6 @@ aws sns subscribe \
   --region ap-northeast-2
 ```
 
-**알림 메시지 예시**:
-```
-ALARM: "NASUN-OAuth토큰-갱신실패" in Asia Pacific (Seoul)
-
-OAuth 2.0 토큰 갱신이 10분간 2회 이상 실패. Refresh Token이 revoked되었거나 X API 장애 가능성.
-
-Alarm Details:
-- State: ALARM
-- Threshold: >= 1.0 for 2 datapoints within 10 minutes
-- Metric: Errors (nasun-refresh-oauth2-token)
-- Period: 5 minutes
-
-Recommended Actions:
-1. CloudWatch Logs 확인: /aws/lambda/nasun-refresh-oauth2-token
-2. 긴급 복구: OAUTH_TOKEN_RECOVERY_AND_MONITORING_REPORT.md 참조
-3. 근본 원인 조사: X Developer Portal 설정 확인
-```
-
 **구독 확인**:
 ```bash
 aws sns list-subscriptions-by-topic \
@@ -257,7 +146,6 @@ aws sns unsubscribe \
 
 ## 관련 문서
 
-- **[OAUTH_TOKEN_RECOVERY_AND_MONITORING_REPORT.md](./OAUTH_TOKEN_RECOVERY_AND_MONITORING_REPORT.md)** - OAuth 토큰 복구 및 모니터링 강화 완료 보고서 (2025-11-02)
 - **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - 환경별 배포 가이드 (개발/프로덕션 분리)
 - **[BUILD_CONFIGURATION_GUIDE.md](./BUILD_CONFIGURATION_GUIDE.md)** - 빌드 설정 가이드
 - **[LAMBDA_CREATION_GUIDE.md](./LAMBDA_CREATION_GUIDE.md)** - Lambda 함수 생성 가이드

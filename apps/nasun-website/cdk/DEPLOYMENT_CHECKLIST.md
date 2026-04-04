@@ -59,7 +59,6 @@ aws secretsmanager list-secrets --profile nasun-prod --region ap-northeast-2 \
 | CommonStack | Cognito, DynamoDB (UserProfiles, Whitelist), API Gateway, price/governance Lambdas |
 | AuthStack | Twitter login, MetaMask auth, zkLogin salt Lambdas |
 | NftEventStack | NFT whitelist verify/register/withdraw/export/status Lambdas |
-| FollowerStack | Follower collection, OAuth2 token refresh Lambdas |
 | LeaderboardV3Stack | Leaderboard CRUD, admin, snapshot Lambdas |
 | AdminStack | Admin API, NFT collections, authorizer Lambdas |
 

@@ -32,7 +32,6 @@ import { CommonStack } from '../lib/common-stack';
 import { MonitoringStack } from '../lib/monitoring-stack';
 import { NftEventStack } from '../lib/nft-event-stack';
 import { AdminStack } from '../lib/admin-stack';
-import { FollowerStack } from '../lib/follower-stack';
 import { LeaderboardV3Stack } from '../lib/leaderboard-v3-stack';
 import { DevnetMetricsStack } from '../lib/devnet-metrics-stack';
 import { GenesisPassStack } from '../lib/genesis-pass-stack';
@@ -65,17 +64,6 @@ const adminStack = new AdminStack(app, 'AdminStack', {
   battalionTableName: 'nasun-nft-whitelist',
 });
 // No dependencies - references existing tables by name
-
-// OAuth2 token refresh stack (collect-followers removed — X API cost optimization)
-// Dev schedule disabled: dev and prod share the same Twitter OAuth2 App + @Nasun_io account.
-// Concurrent refresh from both environments causes refresh token cross-invalidation.
-const isProduction = nodeEnv === 'production';
-const followerStack = new FollowerStack(app, 'FollowerStack', {
-  env: cdkEnv,
-  twitterTokensSecretName: process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens',
-  enableTokenRefreshSchedule: isProduction,
-});
-// No dependencies - standalone stack
 
 // Leaderboard V3 stack (Independent manual curation system)
 const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
