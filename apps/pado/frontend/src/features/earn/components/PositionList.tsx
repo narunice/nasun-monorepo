@@ -10,6 +10,7 @@ import { useLendingPool } from '../hooks/useLendingPool';
 import { useLendingActions } from '../hooks/useLendingActions';
 import { formatNUSDC, type PositionValue } from '../types/lending';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { getExplorerObjectUrl } from '@/lib/explorer';
 
 export function PositionList() {
   const { status, account } = useWallet();
@@ -187,6 +188,19 @@ function PositionCard({
                 (+${formatNUSDC(earnedInterest)})
               </span>
             )}
+            <a
+              href={getExplorerObjectUrl(position.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-0.5 rounded text-theme-text-muted hover:text-theme-text-secondary hover:bg-theme-bg-tertiary transition-colors inline-flex"
+              title="View on Explorer"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
           </div>
           <p className="text-xs text-theme-text-muted mt-0.5">
             Deposited: {new Date(Number(position.createdAt)).toLocaleDateString()}
