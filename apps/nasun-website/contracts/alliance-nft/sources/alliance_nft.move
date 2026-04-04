@@ -16,7 +16,7 @@ module alliance_nft::alliance_nft {
 
     // ========== Constants ==========
     const MAX_IMAGE_INDEX: u64 = 3;
-    const DEFAULT_MAX_SUPPLY: u64 = 10000;
+    const DEFAULT_MAX_SUPPLY: u64 = 20000;
 
     // ========== OTW ==========
 
@@ -164,6 +164,17 @@ module alliance_nft::alliance_nft {
         });
 
         transfer::transfer(nft, recipient);
+    }
+
+    // ========== Admin Functions ==========
+
+    /// Update the max supply cap. Admin-gated.
+    public fun update_max_supply(
+        _admin: &AllianceAdmin,
+        registry: &mut AllianceRegistry,
+        new_max_supply: u64,
+    ) {
+        registry.max_supply = new_max_supply;
     }
 
     // ========== View Functions ==========

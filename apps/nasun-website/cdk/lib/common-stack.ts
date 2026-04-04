@@ -327,7 +327,7 @@ export class CommonStack extends cdk.Stack {
         // Alliance NFT minting
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLIANCE_MINT_TABLE: "nasun-alliance-mint",
-        ALLIANCE_PACKAGE_ID: "0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b",
+        ALLIANCE_PACKAGE_ID: "0xef29f3b4eaaefd35a1c7b2684122b1538f1a996da55657d0867b96019988df0b",
         ALLIANCE_REGISTRY_ID: "0xed64e2d9661dde6f6f6fb303680c4ab7c95f9070c41e967b746299610ca7b00f",
         ALLIANCE_ADMIN_ID: "0x6d95e0abd50784e01b106f86bfe5474a3a895059fb67d4c4a5147f03e694791c",
       },
