@@ -2,11 +2,10 @@ import { Helmet } from "react-helmet-async";
 import { NftDropHeroSection } from "@/sections/wave1/nft-drop/NftDropHeroSection";
 import { NftDropMintSection } from "@/sections/wave1/nft-drop/NftDropMintSection";
 import { MetaMaskRedirectBanner } from "@/sections/wave1/nft-drop/MetaMaskRedirectBanner";
+import { useNftDropRead } from "@/hooks/useNftDrop";
 
 export default function NftDropPage() {
-  // TODO: Read from contract on-chain (Phase 5 integration)
-  const currentStage = 0; // PAUSED
-  const mintPrice = "0.05";
+  const { currentStage, mintPrice, isDeployed } = useNftDropRead();
 
   return (
     <>
@@ -25,10 +24,16 @@ export default function NftDropPage() {
         }}
       >
         <NftDropHeroSection />
-        <NftDropMintSection
-          currentStage={currentStage}
-          mintPrice={mintPrice}
-        />
+        {!isDeployed ? (
+          <div className="text-center py-20 text-nasun-white/40">
+            Contract not deployed on this network.
+          </div>
+        ) : (
+          <NftDropMintSection
+            currentStage={currentStage}
+            mintPrice={mintPrice}
+          />
+        )}
         <MetaMaskRedirectBanner />
       </div>
     </>

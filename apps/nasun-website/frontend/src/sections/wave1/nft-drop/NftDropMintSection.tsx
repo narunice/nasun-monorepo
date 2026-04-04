@@ -2,9 +2,11 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
+import { parseEther } from "viem";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { NFT_EDITIONS, STAGE_LABELS, STAGE_DESCRIPTIONS } from "@/constants/nft-drop";
 import { NftDropVideoCard } from "./NftDropVideoCard";
+import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
 
 interface NftDropMintSectionProps {
   currentStage: number;
@@ -17,11 +19,19 @@ export function NftDropMintSection({
 }: NftDropMintSectionProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { isConnected } = useAccount();
+  const { mintPriceWei } = useNftDropRead();
+  const { mint, txHash, error, isWriting, isConfirming, isSuccess, clearError } = useNftDropMint();
 
   const isPaused = currentStage === 0;
   const isFree = currentStage === 1;
   const stageLabel = STAGE_LABELS[currentStage] || "Unknown";
   const stageDesc = STAGE_DESCRIPTIONS[currentStage] || "";
+
+  const handleMint = async () => {
+    if (selectedId === null || !mintPriceWei) return;
+    clearError();
+    await mint(selectedId, 1, isFree ? 0n : mintPriceWei);
+  };
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
@@ -99,6 +109,37 @@ export function NftDropMintSection({
               Minting is currently paused. Stay tuned for announcements.
             </p>
           </div>
+        ) : isSuccess ? (
+          <div className="text-center">
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-green-400 text-lg font-semibold">Minted successfully!</p>
+            {txHash && (
+              <a
+                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-nasun-c4 text-sm underline mt-2 inline-block"
+              >
+                View on Etherscan
+              </a>
+            )}
+            <div className="mt-4">
+              <ButtonV3
+                variant="nw2"
+                size="md"
+                onClick={() => {
+                  setSelectedId(null);
+                  clearError();
+                }}
+              >
+                Mint Another
+              </ButtonV3>
+            </div>
+          </div>
         ) : (
           <>
             {/* Price display */}
@@ -115,19 +156,27 @@ export function NftDropMintSection({
               variant="c1-gradient"
               size="xl"
               className="!px-14 !py-4 !text-lg !font-semibold !rounded-xl"
-              disabled={selectedId === null || isPaused}
-              onClick={() => {
-                if (selectedId === null) return;
-                // TODO: Phase 4 integration - call useNftDrop hook
-                console.log("Mint token:", selectedId);
-              }}
+              disabled={selectedId === null || isPaused || isWriting || isConfirming}
+              onClick={handleMint}
             >
-              {selectedId === null ? "Select an Edition" : `Mint "${NFT_EDITIONS.find(e => e.id === selectedId)?.name}"`}
+              {isWriting
+                ? "Confirm in wallet..."
+                : isConfirming
+                ? "Minting..."
+                : selectedId === null
+                ? "Select an Edition"
+                : `Mint "${NFT_EDITIONS.find((e) => e.id === selectedId)?.name}"`}
             </ButtonV3>
 
             {selectedId === null && (
               <p className="text-nasun-white/30 text-xs">
                 Choose one of the 7 editions above to mint
+              </p>
+            )}
+
+            {error && (
+              <p className="text-red-400 text-sm mt-2 text-center max-w-md">
+                {error}
               </p>
             )}
           </>

@@ -1,5 +1,6 @@
 require("@nomicfoundation/hardhat-ethers");
 require("@nomicfoundation/hardhat-verify");
+require("dotenv").config();
 
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "0x" + "0".repeat(64);
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
