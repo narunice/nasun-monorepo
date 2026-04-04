@@ -33,7 +33,7 @@ const BOTTOM_VIGNETTE =
 
 // Alliance column bottom vignette (matches blue gradient base)
 const ALLIANCE_BOTTOM_FADE =
-  "linear-gradient(to top, #141e30 0%, #141e30 10%, rgba(20,30,48,0.95) 25%, rgba(20,30,48,0.7) 40%, transparent 60%)";
+  "linear-gradient(to top, #141e30 0%, #141e30 15%, rgba(20,30,48,0.95) 30%, rgba(20,30,48,0.7) 45%, transparent 65%)";
 
 // Airdrop column bottom vignette (matches dark gradient base)
 const AIRDROP_BOTTOM_FADE =
@@ -84,7 +84,7 @@ export default function TriptychSection() {
         <img
           src={kaeboImg}
           alt="Kaebo"
-          className="absolute bottom-[18%] left-1/2 -translate-x-1/2 h-[64%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
+          className="absolute bottom-[22%] left-1/2 -translate-x-1/2 h-[64%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
         />
 
         {/* Bottom fade (color-matched to blend character cutoff) */}
@@ -100,7 +100,7 @@ export default function TriptychSection() {
               <h3 className="!font-eurostile text-nasun-white text-2xl md:text-3xl tracking-[0.2em] uppercase">
                 Alliance
               </h3>
-              <ButtonV3 variant="nw2" size="sm" asChild>
+              <ButtonV3 variant="nw2" size="lg" asChild>
                 <Link to="/wave1/alliance-nft">Explore</Link>
               </ButtonV3>
             </div>
@@ -108,7 +108,40 @@ export default function TriptychSection() {
         </div>
       </div>
 
-      {/* ===== CENTER: Airdrop ===== */}
+      {/* ===== CENTER: Genesis Pass ===== */}
+      <div className="group flex-1 relative overflow-hidden min-h-[60vh] md:min-h-0">
+        {/* Canyon background image (center-cropped) */}
+        <img
+          src={canyonImg}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-transform duration-700 group-hover:scale-[1.015]"
+        />
+
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/35 pointer-events-none" />
+
+        {/* Bottom vignette */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: BOTTOM_VIGNETTE }}
+        />
+
+        {/* Label + Button */}
+        <div className="absolute bottom-[12%] md:bottom-[14%] inset-x-0 z-10 flex flex-col items-center gap-4">
+          <FadeInUp delay="0.15s">
+            <div className="flex flex-col items-center gap-4">
+              <h3 className="!font-eurostile text-nasun-white text-2xl md:text-3xl tracking-[0.2em] uppercase text-center">
+                Genesis Pass
+              </h3>
+              <ButtonV3 variant="nw2" size="lg" asChild>
+                <Link to="/wave1/genesis-pass-drop">Explore</Link>
+              </ButtonV3>
+            </div>
+          </FadeInUp>
+        </div>
+      </div>
+
+      {/* ===== RIGHT: Airdrop ===== */}
       <div
         className="group flex-1 relative overflow-hidden min-h-[60vh] md:min-h-0"
         style={{ background: AIRDROP_GRADIENT }}
@@ -117,7 +150,7 @@ export default function TriptychSection() {
         <img
           src={josenImg}
           alt="Josen"
-          className="absolute bottom-[18%] left-1/2 -translate-x-1/2 h-[68%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
+          className="absolute bottom-[14%] left-[46%] -translate-x-1/2 h-[73%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
         />
 
         {/* Bottom fade (color-matched to blend character cutoff) */}
@@ -128,16 +161,23 @@ export default function TriptychSection() {
 
         {/* Label + Button/Status */}
         <div className="absolute bottom-[12%] md:bottom-[14%] inset-x-0 z-10 flex flex-col items-center gap-4">
-          <FadeInUp delay="0.15s">
+          <FadeInUp delay="0.3s">
             <div className="flex flex-col items-center gap-4">
               <h3 className="!font-eurostile text-nasun-white text-2xl md:text-3xl tracking-[0.2em] uppercase">
                 Airdrop
               </h3>
 
               {!user ? (
-                <p className="text-nasun-white/40 text-sm">
+                <ButtonV3
+                  variant="nw2"
+                  size="lg"
+                  onClick={() => {
+                    localStorage.setItem("auth_return_to", "/my-account");
+                    window.dispatchEvent(new CustomEvent("nasun:open-login"));
+                  }}
+                >
                   Sign in to register
-                </p>
+                </ButtonV3>
               ) : isLoading ? (
                 <Spinner />
               ) : isRegistered ? (
@@ -217,39 +257,6 @@ export default function TriptychSection() {
             </ButtonV3>
           </DialogContent>
         </Dialog>
-      </div>
-
-      {/* ===== RIGHT: Genesis Pass ===== */}
-      <div className="group flex-1 relative overflow-hidden min-h-[60vh] md:min-h-0">
-        {/* Canyon background image (center-cropped) */}
-        <img
-          src={canyonImg}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-transform duration-700 group-hover:scale-[1.015]"
-        />
-
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/35 pointer-events-none" />
-
-        {/* Bottom vignette */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: BOTTOM_VIGNETTE }}
-        />
-
-        {/* Label + Button */}
-        <div className="absolute bottom-[12%] md:bottom-[14%] inset-x-0 z-10 flex flex-col items-center gap-4">
-          <FadeInUp delay="0.3s">
-            <div className="flex flex-col items-center gap-4">
-              <h3 className="!font-eurostile text-nasun-white text-2xl md:text-3xl tracking-[0.2em] uppercase text-center">
-                Genesis Pass
-              </h3>
-              <ButtonV3 variant="nw2" size="sm" asChild>
-                <Link to="/wave1/genesis-pass">Explore</Link>
-              </ButtonV3>
-            </div>
-          </FadeInUp>
-        </div>
       </div>
     </div>
   );
