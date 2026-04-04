@@ -1,7 +1,7 @@
 /**
  * Platform Admin Accounts
  * Admin accounts bypass games-only mode gate and spot access code.
- * TEMPORARY: Remove after 2026-04-07 when gates are removed.
+ * TEMPORARY: Remove after 2026-07-01 when gates are removed.
  */
 
 // zkLogin emails that are treated as platform admins

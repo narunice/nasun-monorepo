@@ -4,7 +4,7 @@
  * Validates access code against VITE_SPOT_ACCESS_CODE env var.
  * Not a security boundary -- code is visible in client bundle.
  *
- * TEMPORARY: Remove after 2026-04-07
+ * TEMPORARY: Remove after 2026-07-01
  */
 
 import { useState, type FormEvent } from 'react';
@@ -108,7 +108,7 @@ export function SpotAccessGate({ onSuccess, featureName = 'Spot Trading' }: { on
 
 /**
  * Check localStorage with TTL expiry.
- * TEMPORARY: Remove after 2026-04-07
+ * TEMPORARY: Remove after 2026-07-01
  */
 export function isSpotAccessGranted(): boolean {
   try {
