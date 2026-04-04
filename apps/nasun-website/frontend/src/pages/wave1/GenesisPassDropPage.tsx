@@ -6,6 +6,7 @@ import {
   CountdownTimer,
   type TimeLeft,
 } from "@/sections/wave1/genesis-pass-drop/CountdownTimer";
+import { SectionTitle } from "@/components/ui";
 
 // ---------------------------------------------------------------------------
 // Mint phase schedule (all times in UTC)
@@ -22,23 +23,25 @@ const MINT_PHASES: MintPhase[] = [
   {
     label: "Free Mint",
     target: new Date("2026-04-07T15:00:00Z"),
+    price: "0 ETH",
     targetTimeUTC: "Apr 7, 3:00 PM UTC",
   },
   {
     label: "GTD Allowlist",
     target: new Date("2026-04-08T03:00:00Z"),
-    price: "$8",
+    price: "~$8 in ETH",
     targetTimeUTC: "Apr 8, 3:00 AM UTC",
   },
   {
     label: "FCFS Allowlist",
     target: new Date("2026-04-08T15:00:00Z"),
-    price: "$10",
+    price: "~$10 in ETH",
     targetTimeUTC: "Apr 8, 3:00 PM UTC",
   },
   {
     label: "Public Mint",
     target: new Date("2026-04-09T15:00:00Z"),
+    price: "~$15 in ETH",
     targetTimeUTC: "Apr 9, 3:00 PM UTC",
   },
 ];
@@ -55,9 +58,13 @@ const PUBLIC_MINT_START = MINT_PHASES[3].target;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function calcTimeLeft(target: Date, now: number): TimeLeft & { isExpired: boolean } {
+function calcTimeLeft(
+  target: Date,
+  now: number,
+): TimeLeft & { isExpired: boolean } {
   const diff = target.getTime() - now;
-  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true };
+  if (diff <= 0)
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true };
   const seconds = Math.floor((diff / 1000) % 60);
   const minutes = Math.floor((diff / 1000 / 60) % 60);
   const hours = Math.floor((diff / 1000 / 60 / 60) % 24);
@@ -76,7 +83,9 @@ export default function GenesisPassDropPage() {
   const [skipVideo, setSkipVideo] = useState(false);
 
   // Countdown state: array of TimeLeft for each active phase
-  const [countdowns, setCountdowns] = useState<(TimeLeft & { isExpired: boolean })[]>(() => {
+  const [countdowns, setCountdowns] = useState<
+    (TimeLeft & { isExpired: boolean })[]
+  >(() => {
     const now = Date.now();
     const phases =
       now >= PUBLIC_MINT_START.getTime()
@@ -109,7 +118,10 @@ export default function GenesisPassDropPage() {
     const video = videoRef.current;
     if (!video || skipVideo) return;
     if (video.readyState >= 3) setIsVideoPlaying(true);
-    video.play().then(() => setIsVideoPlaying(true)).catch(() => {});
+    video
+      .play()
+      .then(() => setIsVideoPlaying(true))
+      .catch(() => {});
   }, [skipVideo]);
 
   // 5-second timeout fallback
@@ -164,7 +176,7 @@ export default function GenesisPassDropPage() {
             <img
               src="/images/posters/Canyons-X-Post-web.webp"
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover max-w-[1920px] mx-auto"
             />
           ) : (
             <>
@@ -182,14 +194,11 @@ export default function GenesisPassDropPage() {
                 preload="metadata"
                 poster="/images/posters/Canyons-X-Post-web.webp"
                 onPlaying={handleVideoPlaying}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+                className={`absolute inset-0 w-full h-full object-cover max-w-[1920px] left-1/2 -translate-x-1/2 transition-opacity duration-500 ${
                   isVideoPlaying ? "opacity-100" : "opacity-0"
                 }`}
               >
-                <source
-                  src="/videos/Canyons-X-Post-web.mp4"
-                  type="video/mp4"
-                />
+                <source src="/videos/Canyons-X-Post-web.mp4" type="video/mp4" />
               </video>
             </>
           )}
@@ -203,31 +212,93 @@ export default function GenesisPassDropPage() {
             }}
           />
 
-          {/* Title + Countdown overlay */}
-          <div className="relative z-20 flex flex-col items-center px-4 w-full max-w-2xl mt-12 md:mt-0">
-            <FadeInUp>
-              <h1 className="!font-changeling text-4xl md:text-6xl lg:text-7xl text-nasun-white text-center tracking-widest uppercase leading-tight">
-                GENESIS PASS
-              </h1>
-              <p className="!font-changeling text-xl md:text-3xl text-nasun-white/70 text-center tracking-[0.2em] uppercase mt-2">
-                COMING SOON
-              </p>
-            </FadeInUp>
+          {/* Mobile: flex column layout (title + timers flow together) */}
+          <div className="md:hidden relative z-20 flex flex-col items-center justify-between h-full px-4 pb-8 pt-[50vh]">
+            <div className="flex items-center">
+              <FadeInUp>
+                <SectionTitle as="h1" className="pt-6 text-center">
+                  <span className="!font-changeling font-bold">GENESIS</span>{" "}
+                  <span className="!font-changeling font-medium">PASS</span>
+                </SectionTitle>
+                <p className="text-xl text-nasun-white/90 text-center tracking-[0.2em] uppercase mt-2">
+                  COMING SOON
+                </p>
+              </FadeInUp>
+            </div>
 
-            {/* Countdown timers */}
-            <div className="w-full mt-8 md:mt-12 flex flex-col gap-2 md:gap-3">
+            <div className="w-full max-w-3xl grid grid-cols-1 gap-2 mt-6">
               {activePhases.map((phase, i) => (
                 <FadeInUp key={phase.label} delay={`${0.2 + i * 0.1}s`}>
                   <CountdownTimer
                     label={phase.label}
                     price={phase.price}
                     targetTimeUTC={phase.targetTimeUTC}
-                    timeLeft={countdowns[i] ?? { days: 0, hours: 0, minutes: 0, seconds: 0 }}
+                    timeLeft={
+                      countdowns[i] ?? {
+                        days: 0,
+                        hours: 0,
+                        minutes: 0,
+                        seconds: 0,
+                      }
+                    }
                     isExpired={countdowns[i]?.isExpired ?? false}
                   />
                 </FadeInUp>
               ))}
             </div>
+          </div>
+
+          {/* Desktop: title centered, timers absolute bottom */}
+          <div className="hidden md:flex relative z-20 flex-col items-center px-4 mt-[10vh]">
+            <FadeInUp>
+              <SectionTitle as="h1" className="">
+                <span className="!font-changeling font-bold">GENESIS</span>{" "}
+                <span className="!font-changeling font-medium">PASS</span>
+              </SectionTitle>
+              <p className="text-3xl text-nasun-white/90 text-center tracking-[0.2em] uppercase mt-2">
+                COMING SOON
+              </p>
+            </FadeInUp>
+          </div>
+
+          <div className="hidden md:flex absolute bottom-20 inset-x-0 z-20 px-4 justify-center">
+            <div className="w-full max-w-3xl grid grid-cols-2 gap-3">
+              {activePhases.map((phase, i) => (
+                <FadeInUp key={phase.label} delay={`${0.2 + i * 0.1}s`}>
+                  <CountdownTimer
+                    label={phase.label}
+                    price={phase.price}
+                    targetTimeUTC={phase.targetTimeUTC}
+                    timeLeft={
+                      countdowns[i] ?? {
+                        days: 0,
+                        hours: 0,
+                        minutes: 0,
+                        seconds: 0,
+                      }
+                    }
+                    isExpired={countdowns[i]?.isExpired ?? false}
+                  />
+                </FadeInUp>
+              ))}
+            </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-4 inset-x-0 z-30 hidden md:flex justify-center">
+            <svg
+              className="w-6 h-6 text-nasun-white/50 animate-bounce"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+              />
+            </svg>
           </div>
         </div>
       </div>

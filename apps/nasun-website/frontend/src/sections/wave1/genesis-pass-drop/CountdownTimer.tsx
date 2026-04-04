@@ -25,19 +25,17 @@ function CountdownTimerInner({
   targetTimeUTC,
 }: CountdownTimerProps) {
   return (
-    <div className="bg-white/5 backdrop-blur-sm rounded-lg px-4 py-3 md:px-6 md:py-4 flex items-center justify-between gap-4">
+    <div className="h-[72px] md:h-[80px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-lg px-4 md:px-6 flex items-center justify-between gap-4 transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-black/50 hover:border-white/25 cursor-default">
       {/* Label + price + UTC time */}
       <div className="flex flex-col gap-0.5 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-nasun-white text-sm md:text-base font-medium whitespace-nowrap">
-            {label}
+        <span className="text-nasun-white text-sm md:text-base font-medium whitespace-nowrap">
+          {label}
+        </span>
+        {price && (
+          <span className="text-nasun-white/60 text-xs md:text-sm">
+            {price}
           </span>
-          {price && (
-            <span className="text-nasun-white/60 text-xs md:text-sm">
-              @ {price}
-            </span>
-          )}
-        </div>
+        )}
         {targetTimeUTC && (
           <span className="text-nasun-white/40 text-xs">{targetTimeUTC}</span>
         )}
@@ -66,7 +64,9 @@ function CountdownTimerInner({
 function DigitBlock({ value, unit }: { value: string; unit: string }) {
   return (
     <div className="flex flex-col items-center">
-      <span className="text-lg md:text-2xl font-bold leading-none">{value}</span>
+      <span className="text-lg md:text-2xl font-bold leading-none">
+        {value}
+      </span>
       <span className="text-[10px] text-nasun-white/40 mt-0.5">{unit}</span>
     </div>
   );
