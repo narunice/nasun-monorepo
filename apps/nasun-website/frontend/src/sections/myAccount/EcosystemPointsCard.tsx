@@ -61,6 +61,7 @@ const BONUS_LABELS: Record<string, string> = {
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
   "referral-bonus": "Referral",
+  "ecosystem-bonus-admin": "Bonus",
 };
 
 // -- Chart data type --

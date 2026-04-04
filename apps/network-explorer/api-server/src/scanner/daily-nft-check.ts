@@ -30,6 +30,7 @@ const EXCLUDED_CATEGORIES = [
   'ecosystem-bonus-rank',
   'ecosystem-bonus-game',
   'ecosystem-bonus-diversity',
+  'ecosystem-bonus-admin',
 ];
 
 export async function runDailyNftChecks(
@@ -99,6 +100,17 @@ export async function runDailyNftChecks(
 async function checkAlliancePenalties(
   allianceOnlyIds: string[],
 ): Promise<{ applied: number; recovered: number }> {
+  // Grace period: penalty enforcement starts 7 days after system launch.
+  // Before this date, all users are treated as healthy.
+  const PENALTY_ENFORCEMENT_START = '2026-04-11';
+  if (new Date().toISOString().slice(0, 10) < PENALTY_ENFORCEMENT_START) {
+    const cleared = await pointsDb!`DELETE FROM alliance_penalties`;
+    if (cleared.count > 0) {
+      console.log(`[DailyNftCheck] Grace period active, cleared ${cleared.count} penalties`);
+    }
+    return { applied: 0, recovered: 0 };
+  }
+
   // Batch query: active days in last 7 for all alliance-only users
   const activityRows = await pointsDb!`
     SELECT identity_id, COUNT(DISTINCT date_trunc('day', tx_timestamp)::date) as active_days

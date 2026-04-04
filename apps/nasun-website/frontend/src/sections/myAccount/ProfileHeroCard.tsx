@@ -32,6 +32,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ecosystem-bonus-pado": "bg-lime-500",
   "ecosystem-bonus-game": "bg-orange-500",
   "ecosystem-bonus-airdrop": "bg-fuchsia-500",
+  "ecosystem-bonus-admin": "bg-teal-500",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -42,6 +43,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "ecosystem-bonus-pado": "Pado Bonus",
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
+  "ecosystem-bonus-admin": "Bonus",
 };
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
