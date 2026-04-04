@@ -10,15 +10,16 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
 -- base_score = number of distinct activity categories per day
 -- (e.g., if a user does DEX + lottery + governance in one day, base_score = 3)
 --
--- Excluded categories:
---   referral-bonus, daily-mission (system-generated)
---   governance (non-daily; appears as conditional item in Daily Missions)
+-- Excluded categories (unified with daily-nft-check.ts EXCLUDED_CATEGORIES):
+--   referral-bonus, daily-mission (system-generated bonuses)
+--   ecosystem-passive (Genesis Pass auto-grant, not real user activity)
+--   staking-daily (auto-grant for maintaining active stakes)
 --   ecosystem-bonus-* (prevent double-counting bonus points)
 --
--- Note: 'ecosystem-passive' is intentionally NOT excluded.
--- It counts as a distinct category so Genesis Pass holders get base_score=1 on inactive days.
--- The alliance penalty check uses activity_points directly (excluding ecosystem-passive),
--- so passive points do not prevent penalty detection.
+-- NOT excluded (counts as real user activity):
+--   governance (voting/delegation is active participation)
+--   wallet-transfer (user-initiated token transfers)
+--   faucet, staking, pado-*, baram-* (on-chain actions)
 CREATE MATERIALIZED VIEW IF NOT EXISTS ecosystem_daily_scores AS
 SELECT
   identity_id,
@@ -27,7 +28,7 @@ SELECT
 FROM activity_points
 WHERE NOT flagged
   AND identity_id IS NOT NULL
-  AND category NOT IN ('referral-bonus', 'daily-mission', 'governance')
+  AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily')
   AND category NOT LIKE 'ecosystem-bonus-%'
 GROUP BY identity_id, date_trunc('day', tx_timestamp)::date;
 

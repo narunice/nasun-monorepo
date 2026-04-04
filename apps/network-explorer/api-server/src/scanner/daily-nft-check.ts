@@ -23,7 +23,6 @@ import type { NftActivation } from '../config/ecosystem.js';
 const EXCLUDED_CATEGORIES = [
   'referral-bonus',
   'daily-mission',
-  'wallet-transfer',
   'ecosystem-passive',
   'staking-daily',
   'ecosystem-bonus-pnl',

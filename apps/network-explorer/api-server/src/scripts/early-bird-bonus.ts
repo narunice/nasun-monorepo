@@ -30,7 +30,7 @@ async function main() {
   console.log(`\n=== Early Bird Retroactive Bonus (${dryRun ? 'DRY RUN' : 'LIVE'}) ===\n`);
 
   // Calculate active_days and tx_count per user from activity_points
-  // Exclude synthetic records (referral, daily-mission, ecosystem-passive, etc.)
+  // Exclude synthetic records (unified with daily-nft-check.ts EXCLUDED_CATEGORIES)
   const stats = await db`
     SELECT
       identity_id,
@@ -41,7 +41,7 @@ async function main() {
     WHERE identity_id IS NOT NULL
       AND NOT flagged
       AND category NOT IN (
-        'referral-bonus', 'daily-mission', 'wallet-transfer',
+        'referral-bonus', 'daily-mission',
         'ecosystem-passive', 'staking-daily'
       )
       AND category NOT LIKE 'ecosystem-bonus-%'
