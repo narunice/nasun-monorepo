@@ -2,8 +2,8 @@
  * DailyMissionsCard Component
  *
  * Checklist-style daily missions. Completion detected via direct Sui RPC
- * queries (not the points scanner pipeline). Two RPC calls per poll:
- * queryEvents({Sender}) + queryTransactionBlocks({FromAddress}).
+ * queries (not the points scanner pipeline). Checks ALL registered wallets
+ * for the account so missions completed on any wallet count.
  * Faucet claim has instant optimistic checkmark via ClaimAllButton onSuccess.
  */
 
@@ -13,6 +13,7 @@ import { OuterBox, Spinner } from "@/components/ui";
 import { ClaimAllButton } from "@nasun/wallet-ui";
 import { useDailyMissions } from "@/hooks/useDailyMissions";
 import { useGovernanceMission } from "@/hooks/useGovernanceMission";
+import { useWalletRegistration } from "./hooks/useWalletRegistration";
 
 interface DailyMissionsCardProps {
   className?: string;
@@ -81,15 +82,26 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
 }) => {
   const { user } = useAuth();
   const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
+  const { registeredWallets } = useWalletRegistration();
 
-  const nasunWalletAddress =
-    user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
-    user?.walletAddress;
-  const hasValidAddress =
-    nasunWalletAddress && SUI_ADDRESS_RE.test(nasunWalletAddress);
+  // Collect all valid wallet addresses for this account
+  const allWalletAddresses = useMemo(() => {
+    const addrs = new Set<string>();
+    // Primary nasun wallet
+    const primary =
+      user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
+      user?.walletAddress;
+    if (primary && SUI_ADDRESS_RE.test(primary)) addrs.add(primary);
+    // All registered wallets
+    for (const w of registeredWallets) {
+      if (SUI_ADDRESS_RE.test(w.walletAddress)) addrs.add(w.walletAddress);
+    }
+    return [...addrs];
+  }, [user, registeredWallets]);
 
   const { completedMissions, isLoading, refetch } = useDailyMissions(
-    hasValidAddress ? nasunWalletAddress : undefined,
+    user?.identityId,
+    allWalletAddresses,
   );
 
   const { hasUnvotedProposal, unvotedCount, isLoading: isGovLoading } =
