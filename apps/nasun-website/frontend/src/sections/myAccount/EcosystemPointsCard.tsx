@@ -223,7 +223,8 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
         bonusTotal: entry?.bonusTotal ?? 0,
         referralBonus: entry?.referralBonus ?? 0,
         rank: entry?.rank ?? null,
-        isPenalized: entry?.isPenalized ?? false,
+        // Grace period: suppress penalty display before enforcement date
+        isPenalized: date < "2026-04-11" ? false : (entry?.isPenalized ?? false),
         bonusItems: bonusByDate.get(date),
       };
     });
