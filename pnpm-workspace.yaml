@@ -6,6 +6,7 @@ packages:
   - 'apps/*/executor-nitro'
   - 'apps/*/agent-runner'
   - 'apps/*/api-server'
+  - 'apps/*/contracts/*'
   - 'packages/*'
   # deepbookv3는 별도 관리 (외부 라이브러리)
   - '!apps/pado/deepbookv3'
