@@ -280,7 +280,7 @@ NODE_ENV={node_env} npx cdk deploy {stack} \
 # 5. resource-mapping.json 삭제 (임시 파일)
 ```
 
-**근거:** 2026-02-17 FollowerStack 배포에서 수동 삭제된 Lambda `nasun-collect-followers`로 인해 발생. DynamoDB `NasunTargetFollowers` 테이블은 `removalPolicy: RETAIN`으로 보존되어 `cdk import`로 복구.
+**근거:** 2026-02-17에 수동 삭제된 Lambda로 인해 발생한 사례. DynamoDB 테이블은 `removalPolicy: RETAIN`으로 보존되어 `cdk import`로 복구 가능.
 
 ### 8단계: Post-deployment 검증
 
