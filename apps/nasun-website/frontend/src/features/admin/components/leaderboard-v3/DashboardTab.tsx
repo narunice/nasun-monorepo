@@ -182,7 +182,7 @@ export function DashboardTab() {
       {/* Footer */}
       {stats?.calculatedAt && (
         <div className="text-xs text-nasun-white/60 text-right">
-          Last updated: {new Date(stats.calculatedAt).toLocaleString()}
+          Last updated: {new Date(stats.calculatedAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
         </div>
       )}
 

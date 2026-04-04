@@ -27,7 +27,7 @@ const HEALTH_POLL_MS = 30_000;
 export const ActivityPointsAdmin = () => {
   return (
     <AdminLayout>
-      <h1 className="text-2xl font-bold text-nasun-white mb-6 flex items-center gap-3">Activity Points <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Experimental</span></h1>
+      <h1 className="text-2xl font-bold text-nasun-white mb-6 flex items-center gap-3">Ecosystem Points <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Experimental</span></h1>
       <div className="space-y-6">
         <ScannerHealthSection />
         <LeaderboardSection />
@@ -102,36 +102,59 @@ function ScannerHealthSection() {
 
 // --- Leaderboard ---
 
+type LeaderboardPeriod = "daily" | "weekly" | "monthly" | "all-time";
+const PERIOD_TABS: { value: LeaderboardPeriod; label: string }[] = [
+  { value: "daily", label: "Today" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "all-time", label: "All Time" },
+];
+
 function LeaderboardSection() {
   const { cognitoToken } = useAdminAuth();
   const [entries, setEntries] = useState<EcosystemLeaderboardEntry[]>([]);
   const [profileMap, setProfileMap] = useState<Map<string, UserProfile>>(new Map());
+  const [profileStatus, setProfileStatus] = useState<string>("waiting");
+  const [period, setPeriod] = useState<LeaderboardPeriod>("daily");
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const limit = 50;
 
-  // Load user profiles once for identity -> display name mapping
+  // Load all user profiles for identity -> display name mapping
   useEffect(() => {
-    if (!cognitoToken) return;
+    if (!cognitoToken) {
+      setProfileStatus("no token");
+      return;
+    }
     let cancelled = false;
-    listUsers(cognitoToken, { limit: 500 })
-      .then((res) => {
-        if (cancelled) return;
-        const map = new Map<string, UserProfile>();
-        for (const u of res.users) {
-          map.set(u.identityId, u);
+    setProfileStatus("loading...");
+    (async () => {
+      const map = new Map<string, UserProfile>();
+      let currentPage = 1;
+      const pageLimit = 100;
+      try {
+        while (!cancelled) {
+          const res = await listUsers(cognitoToken, { page: currentPage, limit: pageLimit });
+          for (const u of res.users) {
+            map.set(u.identityId, u);
+          }
+          if (currentPage >= res.totalPages) break;
+          currentPage++;
         }
-        setProfileMap(map);
-      })
-      .catch(() => {});
+        if (!cancelled) setProfileStatus(`${map.size} profiles`);
+      } catch (err: any) {
+        if (!cancelled) setProfileStatus(`error: ${err.message}`);
+      }
+      if (!cancelled) setProfileMap(map);
+    })();
     return () => { cancelled = true; };
   }, [cognitoToken]);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    getEcosystemLeaderboard("daily", limit, page * limit)
+    getEcosystemLeaderboard(period, limit, page * limit)
       .then((res) => {
         if (!cancelled) {
           setEntries(res.data);
@@ -141,18 +164,36 @@ function LeaderboardSection() {
       .catch(() => {})
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
-  }, [page]);
+  }, [period, page]);
 
   return (
     <OuterBox color="c5" padding="sm">
-      <h2 className="text-lg font-semibold text-nasun-white mb-4">Ecosystem Points Leaderboard</h2>
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-lg font-semibold text-nasun-white">Ecosystem Points Leaderboard</h2>
+        <span className="text-xs text-nasun-white/50">[{profileStatus}]</span>
+      </div>
+      <div className="flex gap-1 mb-4">
+        {PERIOD_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => { setPeriod(tab.value); setPage(0); }}
+            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              period === tab.value
+                ? "bg-nasun-c4/40 text-nasun-white"
+                : "bg-nasun-white/5 text-nasun-white/60 hover:bg-nasun-white/10"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-nasun-white/20 text-nasun-white/80 text-left">
               <th className="pb-2 pr-3 w-12">#</th>
               <th className="pb-2 pr-3">User</th>
-              <th className="pb-2 pr-3 text-right">Ecosystem Score</th>
+              <th className="pb-2 pr-3 text-right">Ecosystem Points</th>
               <th className="pb-2 pr-3 text-right">Base Score</th>
               <th className="pb-2 pr-3 text-right">Multiplier</th>
               <th className="pb-2 text-right">Active Days</th>
@@ -166,7 +207,9 @@ function LeaderboardSection() {
             ) : entries.map((entry) => {
               const profile = profileMap.get(entry.identityId);
               const xHandle = profile?.originalTwitterHandle || profile?.twitterHandle;
-              const displayName = profile?.username || null;
+              // username is often a wallet address (0x...) for MetaMask users; skip those
+              const rawName = profile?.username || null;
+              const displayName = rawName && !rawName.startsWith("0x") ? rawName : null;
               return (
                 <tr key={entry.identityId} className="hover:bg-nasun-white/5 transition-colors">
                   <td className="py-2 pr-3 text-nasun-white/80">{entry.rank}</td>
@@ -184,10 +227,10 @@ function LeaderboardSection() {
                       <div className="min-w-0">
                         {xHandle ? (
                           <>
-                            {displayName && (
-                              <span className="text-nasun-white text-sm truncate block">{displayName}</span>
+                            <span className="text-nasun-white text-sm truncate block">@{xHandle}</span>
+                            {displayName && displayName !== xHandle && (
+                              <span className="text-nasun-white/50 text-xs truncate block">{displayName}</span>
                             )}
-                            <span className="text-nasun-white/70 text-xs truncate block">@{xHandle}</span>
                           </>
                         ) : displayName ? (
                           <>
@@ -300,11 +343,11 @@ function UserLookupSection() {
             <StatCard label="Activities" value={result.activityCount} />
             <StatCard
               label="First Activity"
-              value={result.firstActivity ? new Date(result.firstActivity).toLocaleDateString("en-US") : "N/A"}
+              value={result.firstActivity ? new Date(result.firstActivity).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "N/A"}
             />
             <StatCard
               label="Last Activity"
-              value={result.lastActivity ? new Date(result.lastActivity).toLocaleDateString("en-US") : "N/A"}
+              value={result.lastActivity ? new Date(result.lastActivity).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "N/A"}
             />
           </div>
 
