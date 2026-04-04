@@ -45,6 +45,11 @@ export const GENESIS_PASS_ABI = [
   },
   {
     "inputs": [],
+    "name": "BackwardStageTransition",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ContractMinter",
     "type": "error"
   },
@@ -284,6 +289,11 @@ export const GENESIS_PASS_ABI = [
   },
   {
     "inputs": [],
+    "name": "MintingEnded",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NotEligible",
     "type": "error"
   },
@@ -389,6 +399,19 @@ export const GENESIS_PASS_ABI = [
     "anonymous": false,
     "inputs": [],
     "name": "EIP712DomainChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newDeadline",
+        "type": "uint256"
+      }
+    ],
+    "name": "MintDeadlineChanged",
     "type": "event"
   },
   {
@@ -712,6 +735,19 @@ export const GENESIS_PASS_ABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "highWaterMark",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -785,6 +821,19 @@ export const GENESIS_PASS_ABI = [
     "name": "mint",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mintDeadline",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -997,6 +1046,19 @@ export const GENESIS_PASS_ABI = [
       }
     ],
     "name": "setMaxSupply",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "deadline_",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMintDeadline",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

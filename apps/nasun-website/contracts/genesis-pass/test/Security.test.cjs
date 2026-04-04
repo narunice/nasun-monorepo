@@ -34,17 +34,58 @@ async function expectRevert(fn, err) {
 
 describe("Security E2E Tests", function () {
 
-  describe("1. Reentrancy", function () {
-    it("should block reentrancy via onERC1155Received", async function () {
+  describe("1. Reentrancy + Bot Protection", function () {
+    it("should block contract minters in PUBLIC stage (ContractMinter guard)", async function () {
       const { c, mp } = await deployFixture();
       await c.setStage(4);
       const A = await ethers.getContractFactory("ReentrancyAttacker");
       const a = await A.deploy(await c.getAddress());
       await a.waitForDeployment();
-      // Bot protection blocks contracts in PUBLIC stage
-      try { await a.attack({ value: mp * 3n }); } catch {}
+      try { await a.attackPublic({ value: mp * 3n }); assert.fail(); }
+      catch (e) { assert.ok(e.message.includes("ContractMinter") || e.message.includes("revert")); }
       const bal = await c.balanceOf(await a.getAddress(), 1);
-      assert.strictEqual(bal, 0n, "Contract should not be able to mint in PUBLIC");
+      assert.strictEqual(bal, 0n);
+    });
+
+    it("should block reentrancy in allowlist stage via nonReentrant guard", async function () {
+      const { c, sw, mp } = await deployFixture();
+      const [ci, a] = [await cid(), await c.getAddress()];
+      await c.setStage(1); // FREE_MINT - no ContractMinter check
+
+      const A = await ethers.getContractFactory("ReentrancyAttacker");
+      const attacker = await A.deploy(a);
+      await attacker.waitForDeployment();
+      const attackerAddr = await attacker.getAddress();
+
+      // Sign for the attacker contract address
+      const d = await dl();
+      const s = await sig(sw, a, ci, attackerAddr, 1, 3, d);
+
+      // Attacker tries to re-enter mint() via onERC1155Received callback
+      // nonReentrant should block re-entrant calls
+      await attacker.attackWithSignature(3, d, s, { value: 0 });
+
+      // Only 1 token should be minted (re-entrant calls blocked)
+      const bal = await c.balanceOf(attackerAddr, 1);
+      assert.strictEqual(bal, 1n, "nonReentrant should limit to 1 mint despite re-entry attempts");
+    });
+
+    it("should allow contract minting in allowlist stages (no ContractMinter check)", async function () {
+      const { c, sw, mp } = await deployFixture();
+      const [ci, a] = [await cid(), await c.getAddress()];
+      await c.setStage(2); // GTD - no ContractMinter check
+
+      const A = await ethers.getContractFactory("ReentrancyAttacker");
+      const attacker = await A.deploy(a);
+      await attacker.waitForDeployment();
+      const attackerAddr = await attacker.getAddress();
+
+      const d = await dl();
+      // maxQuantity=3 so wallet limit is the only other cap, not maxQuantity
+      const s = await sig(sw, a, ci, attackerAddr, 2, 3, d);
+      await attacker.attackWithSignature(3, d, s, { value: mp * 3n });
+      // First mint succeeds, re-entrant calls blocked by nonReentrant
+      assert.strictEqual(await c.balanceOf(attackerAddr, 1), 1n);
     });
   });
 
@@ -255,7 +296,7 @@ describe("Security E2E Tests", function () {
     });
   });
 
-  describe("8. Stage Transition", function () {
+  describe("8. Stage Transition + Backward Guard", function () {
     it("should prevent cross-stage signature use", async function () {
       const { c, sw, u1, mp } = await deployFixture();
       const [ci, d, a] = [await cid(), await dl(), await c.getAddress()];
@@ -264,12 +305,81 @@ describe("Security E2E Tests", function () {
       await expectRevert(() => c.connect(u1).mint(1, 1, 1, d, s, { value: mp }), "InvalidSignature");
     });
 
-    it("should handle rapid stage transitions", async function () {
+    it("should handle forward stage transitions and PAUSED", async function () {
       const { c, u1, mp } = await deployFixture();
+      // Forward progression works
       await c.setStage(1); await c.setStage(2); await c.setStage(3); await c.setStage(4);
-      await c.setStage(0); await c.setStage(4);
-      await c.connect(u1).mint(1, 1, 0, 0, "0x", { value: mp });
+      // PAUSED always allowed
+      await c.setStage(0);
+      // After reaching PUBLIC(4), cannot re-enter (highWaterMark=4)
+      await expectRevert(() => c.setStage(4), "BackwardStageTransition");
+      // Can only PAUSE again
+      assert.strictEqual(await c.currentStage(), 0n);
+    });
+
+    it("should block backward stage transition", async function () {
+      const { c } = await deployFixture();
+      await c.setStage(2); // GTD
+      await expectRevert(() => c.setStage(1), "BackwardStageTransition"); // back to FREE_MINT
+    });
+
+    it("should block same-stage re-entry", async function () {
+      const { c } = await deployFixture();
+      await c.setStage(2);
+      await expectRevert(() => c.setStage(2), "BackwardStageTransition"); // same stage
+    });
+
+    it("should allow PAUSED from any stage", async function () {
+      const { c } = await deployFixture();
+      await c.setStage(3);
+      await c.setStage(0); // PAUSED from FCFS - OK
+      assert.strictEqual(await c.currentStage(), 0n);
+    });
+
+    it("should allow forward resume after PAUSED", async function () {
+      const { c } = await deployFixture();
+      await c.setStage(2); // GTD
+      await c.setStage(0); // PAUSED
+      await c.setStage(3); // FCFS (forward past highWaterMark=2)
+      assert.strictEqual(await c.currentStage(), 3n);
+    });
+
+    it("should block backward regression via PAUSED bypass", async function () {
+      const { c } = await deployFixture();
+      await c.setStage(2); // GTD, highWaterMark=2
+      await c.setStage(0); // PAUSED, highWaterMark stays 2
+      // Attempt to go back to FREE_MINT(1) - should fail even though currentStage=0
+      await expectRevert(() => c.setStage(1), "BackwardStageTransition");
+    });
+
+    it("should block same-stage re-entry after PAUSED", async function () {
+      const { c } = await deployFixture();
+      await c.setStage(2); // GTD, highWaterMark=2
+      await c.setStage(0); // PAUSED
+      // Attempt to re-enter GTD(2) - should fail (2 <= highWaterMark=2)
+      await expectRevert(() => c.setStage(2), "BackwardStageTransition");
+    });
+  });
+
+  describe("8b. Same Signature Split Minting", function () {
+    it("should allow split minting with same signature across same tokenId", async function () {
+      const { c, sw, u1 } = await deployFixture();
+      const [ci, a] = [await cid(), await c.getAddress()];
+      await c.setStage(1); // FREE_MINT, walletLimit=2
+      const d = await dl();
+      const s = await sig(sw, a, ci, u1.address, 1, 2, d);
+
+      // Mint 1, then 1 more with same signature
+      await c.connect(u1).mint(1, 1, 2, d, s, { value: 0 });
       assert.strictEqual(await c.totalMinted(1), 1n);
+      await c.connect(u1).mint(1, 1, 2, d, s, { value: 0 });
+      assert.strictEqual(await c.totalMinted(1), 2n);
+
+      // Third should fail (maxQuantity exhausted)
+      await expectRevert(
+        () => c.connect(u1).mint(1, 1, 2, d, s, { value: 0 }),
+        "WalletLimitExceeded"
+      );
     });
   });
 
@@ -280,7 +390,7 @@ describe("Security E2E Tests", function () {
       const A = await ethers.getContractFactory("ReentrancyAttacker");
       const a = await A.deploy(await c.getAddress());
       await a.waitForDeployment();
-      try { await a.attack({ value: mp }); assert.fail(); }
+      try { await a.attackPublic({ value: mp }); assert.fail(); }
       catch (e) { assert.ok(e.message.includes("ContractMinter") || e.message.includes("revert")); }
     });
 
@@ -336,7 +446,86 @@ describe("Security E2E Tests", function () {
     });
   });
 
-  describe("13. Emergency Withdrawal While Paused", function () {
+  describe("13. Mint Deadline", function () {
+    it("should block minting after deadline", async function () {
+      const { c, u1, mp } = await deployFixture();
+      await c.setStage(4);
+      // Set deadline 2 seconds in the future
+      const block = await ethers.provider.getBlock("latest");
+      await c.setMintDeadline(block.timestamp + 2);
+
+      // Mine a block to advance time past deadline
+      await ethers.provider.send("evm_increaseTime", [3]);
+      await ethers.provider.send("evm_mine", []);
+
+      await expectRevert(
+        () => c.connect(u1).mint(1, 1, 0, 0, "0x", { value: mp }),
+        "MintingEnded"
+      );
+    });
+
+    it("should allow minting before deadline", async function () {
+      const { c, u1, mp } = await deployFixture();
+      await c.setStage(4);
+      const block = await ethers.provider.getBlock("latest");
+      await c.setMintDeadline(block.timestamp + 3600); // 1 hour from now
+      await c.connect(u1).mint(1, 1, 0, 0, "0x", { value: mp });
+      assert.strictEqual(await c.totalMinted(1), 1n);
+    });
+
+    it("should have no deadline when mintDeadline = 0 (default)", async function () {
+      const { c, u1, mp } = await deployFixture();
+      await c.setStage(4);
+      assert.strictEqual(await c.mintDeadline(), 0n);
+      await c.connect(u1).mint(1, 1, 0, 0, "0x", { value: mp });
+      assert.strictEqual(await c.totalMinted(1), 1n);
+    });
+
+    it("should allow owner to change deadline", async function () {
+      const { c } = await deployFixture();
+      await c.setMintDeadline(1000000);
+      assert.strictEqual(await c.mintDeadline(), 1000000n);
+      await c.setMintDeadline(2000000);
+      assert.strictEqual(await c.mintDeadline(), 2000000n);
+      await c.setMintDeadline(0);
+      assert.strictEqual(await c.mintDeadline(), 0n);
+    });
+
+    it("should block minting when both deadline passed AND stage active", async function () {
+      const { c, u1, mp } = await deployFixture();
+      await c.setStage(4); // PUBLIC active
+      await c.setMintDeadline(1); // Past timestamp
+      await expectRevert(
+        () => c.connect(u1).mint(1, 1, 0, 0, "0x", { value: mp }),
+        "MintingEnded"
+      );
+    });
+
+    it("should block non-owner from setting deadline", async function () {
+      const { c, u1 } = await deployFixture();
+      await expectRevert(
+        () => c.connect(u1).setMintDeadline(9999999),
+        "OwnableUnauthorizedAccount"
+      );
+    });
+
+    it("should re-enable minting when deadline extended", async function () {
+      const { c, u1, mp } = await deployFixture();
+      await c.setStage(4);
+      await c.setMintDeadline(1); // Past deadline
+      await expectRevert(
+        () => c.connect(u1).mint(1, 1, 0, 0, "0x", { value: mp }),
+        "MintingEnded"
+      );
+      // Extend deadline
+      const block = await ethers.provider.getBlock("latest");
+      await c.setMintDeadline(block.timestamp + 3600);
+      await c.connect(u1).mint(1, 1, 0, 0, "0x", { value: mp });
+      assert.strictEqual(await c.totalMinted(1), 1n);
+    });
+  });
+
+  describe("14. Emergency Withdrawal While Paused", function () {
     it("should allow withdrawal when stage is PAUSED", async function () {
       const { c, u1, mp, owner } = await deployFixture();
       await c.setStage(4);
