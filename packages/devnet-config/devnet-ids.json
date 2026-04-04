@@ -29,7 +29,7 @@
     "upgradeCap": "0x0a8e1e93cade0b9b6f5b069f540fa8cf3e223646a7ca62f5b105234d70093f77"
   },
   "lottery": {
-    "packageId": "0x5605eda3794c1701a15f5fe0ee8ecae0fcb7529490db38544a0d865658d0dc43",
+    "packageId": "0xeb5af6c536464672cc6975b07957ff222037c724a4f2810b0cd295bb8b4304da",
     "originalPackageId": "0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c",
     "registry": "0x8a0d95d3bfb3d9771d333673e3d1943dfe2c31b7c8dc3ef6c1310fe0f3317ae5",
     "adminCap": "0x20e79c01aa862fbf0273dfb2b769feb0f87ac07f3788478115efb6f2d3a33c71",
