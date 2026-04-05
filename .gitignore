@@ -43,6 +43,7 @@ _tmp/
 
 # Backups (sensitive data)
 _backup/
+_backups/
 **/backups/
 
 # Test scripts with hardcoded credentials

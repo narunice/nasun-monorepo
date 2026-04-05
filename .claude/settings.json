@@ -52,14 +52,17 @@
       "Bash(npm ls:*)",
       "Bash(ffmpeg -i /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/videos/Canyons-X-Post-web.mp4 -vframes 1 -ss 2 -q:v 80 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/images/posters/Canyons-X-Post-web.webp)",
       "Bash(ffmpeg -y -i /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/videos/Canyons-X-Post-web.mp4 -vframes 1 -ss 2 -vf scale=960:-1 -quality 60 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/images/posters/Canyons-X-Post-web.webp)",
-      "Edit(/.claude/skills/deploy/**)"
+      "Edit(/.claude/skills/deploy/**)",
+      "Read(//etc/**)",
+      "Read(//mnt/d/wsl-mirror/**)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/cdk/cdk.out.dev-deploy",
       "/home/naru/my_apps/nasun-devnet/sui/crates/sui-faucet/src",
       "/home/naru/.claude/projects/-home-naru-my_apps-nasun-monorepo/memory",
-      "/tmp"
+      "/tmp",
+      "/home/naru/.claude/plans"
     ]
   }
 }
