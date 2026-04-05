@@ -1,16 +1,8 @@
-import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { Spinner } from "@/components/ui";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { useAirdropRegistration } from "@/sections/myAccount/hooks/useAirdropRegistration";
 
 import kaeboImg from "@/assets/images/kaebo.webp";
@@ -39,31 +31,10 @@ const ALLIANCE_BOTTOM_FADE =
 const AIRDROP_BOTTOM_FADE =
   "linear-gradient(to top, #0a0a0a 0%, #0a0a0a 10%, rgba(10,10,10,0.95) 25%, rgba(10,10,10,0.7) 40%, transparent 60%)";
 
-const AIRDROP_STATUS = {
-  not_applied: { label: "Not registered", color: "text-nasun-white/40" },
-  pending: { label: "Pending", color: "text-yellow-400" },
-  approved: { label: "Registered", color: "text-emerald-400" },
-  rejected: { label: "Rejected", color: "text-red-400" },
-} as const;
-
 export default function TriptychSection() {
   const { user } = useAuth();
-  const { status, isLoading, isRegistering, error, register } =
+  const { status, isLoading } =
     useAirdropRegistration(user?.cognitoToken);
-
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  const handleAirdropClick = useCallback(() => {
-    if (!user) return;
-    setShowConfirm(true);
-  }, [user]);
-
-  const handleConfirmedRegister = useCallback(async () => {
-    setShowConfirm(false);
-    await register();
-    setShowSuccess(true);
-  }, [register]);
 
   const isRegistered = status === "approved" || status === "pending";
 
@@ -107,7 +78,7 @@ export default function TriptychSection() {
                 <p>Points + Trade + Games + Apps + Leaderboards</p>
                 <p>No Seed Phrases. Just Clicks</p>
               </div>
-              <div className="mt-6">
+              <div className="mt-2 mb-6 md:mt-6 md:mb-0">
                 <ButtonV3 variant="nw2" size="lg" asChild>
                   <Link to="/wave1/alliance-nft">Explore</Link>
                 </ButtonV3>
@@ -198,7 +169,7 @@ export default function TriptychSection() {
                 <p>Registration Closes April 8th</p>
                 <p>Airdrop April 16th</p>
               </div>
-              <div className="mt-6">
+              <div className="mt-2 mb-6 md:mt-6 md:mb-0">
                 {!user ? (
                   <ButtonV3
                     variant="nw2"
@@ -212,84 +183,21 @@ export default function TriptychSection() {
                   </ButtonV3>
                 ) : isLoading ? (
                   <Spinner />
-                ) : isRegistered ? (
-                  <div className="flex flex-col items-center gap-1">
-                    <span
-                      className={`text-sm font-medium ${AIRDROP_STATUS[status].color}`}
-                    >
-                      {AIRDROP_STATUS[status].label}
-                    </span>
-                  </div>
                 ) : (
-                  <ButtonV3
-                    variant="nw2"
-                    size="sm"
-                    disabled={isRegistering}
-                    onClick={handleAirdropClick}
-                  >
-                    {isRegistering ? "Registering..." : "Register"}
+                  <ButtonV3 variant="nw2" size="lg" asChild>
+                    <Link to="/my-account">
+                      {isRegistered ? "Registered" : "Not Registered"}
+                      <svg className="w-4 h-4 ml-1.5 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 010-1.06l7.22-7.22H8.75a.75.75 0 010-1.5h5.5a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0V7.06l-7.22 7.22a.75.75 0 01-1.06 0z" clipRule="evenodd" />
+                      </svg>
+                    </Link>
                   </ButtonV3>
-                )}
-
-                {error && (
-                  <p className="text-red-400 text-xs max-w-[200px] text-center">
-                    {error}
-                  </p>
                 )}
               </div>
             </div>
           </FadeInUp>
         </div>
 
-        {/* Confirm Dialog */}
-        <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-          <DialogContent className="max-w-sm text-center !bg-slate-800">
-            <DialogHeader className="items-center">
-              <DialogTitle>Airdrop Registration</DialogTitle>
-              <DialogDescription className="text-nasun-white/70 pt-2">
-                Register for the April 16th Airdrop?
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-center gap-3 mt-2">
-              <ButtonV3
-                variant="nw2"
-                size="sm"
-                onClick={handleConfirmedRegister}
-                disabled={isRegistering}
-              >
-                {isRegistering ? "Registering..." : "Register"}
-              </ButtonV3>
-              <ButtonV3
-                variant="nw2"
-                size="sm"
-                outline
-                onClick={() => setShowConfirm(false)}
-              >
-                Cancel
-              </ButtonV3>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Success Dialog */}
-        <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
-          <DialogContent className="max-w-sm text-center !bg-slate-800">
-            <DialogHeader className="items-center">
-              <DialogTitle>Registration Complete</DialogTitle>
-              <DialogDescription className="text-nasun-white/70 pt-2">
-                Successfully registered. Status will be updated.
-              </DialogDescription>
-            </DialogHeader>
-            <ButtonV3
-              variant="nw2"
-              size="sm"
-              onClick={() => setShowSuccess(false)}
-              className="mt-2"
-            >
-              Close
-            </ButtonV3>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
