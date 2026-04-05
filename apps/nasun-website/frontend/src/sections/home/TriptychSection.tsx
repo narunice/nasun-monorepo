@@ -93,16 +93,25 @@ export default function TriptychSection() {
           style={{ background: ALLIANCE_BOTTOM_FADE }}
         />
 
-        {/* Label + Button */}
-        <div className="absolute bottom-[12%] md:bottom-[14%] inset-x-0 z-10 flex flex-col items-center gap-4">
+        {/* Label + Details + Button */}
+        <div className="absolute bottom-[4%] md:bottom-[6%] inset-x-0 z-10 flex flex-col items-center">
           <FadeInUp delay="0s">
-            <div className="flex flex-col items-center gap-4">
-              <h3 className="!font-eurostile text-nasun-white text-2xl md:text-3xl tracking-[0.2em] uppercase">
+            <div className="flex flex-col items-center">
+              <h3 className="!font-eurostile text-nasun-white text-3xl md:text-4xl tracking-[0.2em] uppercase">
                 Alliance
               </h3>
-              <ButtonV3 variant="nw2" size="lg" asChild>
-                <Link to="/wave1/alliance-nft">Explore</Link>
-              </ButtonV3>
+              <div className="mt-4 h-[140px] md:h-[200px] text-center text-nasun-white/80 text-sm md:text-base leading-relaxed space-y-1.5 px-4">
+                <p className="text-nasun-white font-semibold text-base md:text-lg">
+                  Free NFT Mint
+                </p>
+                <p>Points + Trade + Games + Apps + Leaderboards</p>
+                <p>No Seed Phrases. Just Clicks</p>
+              </div>
+              <div className="mt-6">
+                <ButtonV3 variant="nw2" size="lg" asChild>
+                  <Link to="/wave1/alliance-nft">Explore</Link>
+                </ButtonV3>
+              </div>
             </div>
           </FadeInUp>
         </div>
@@ -126,16 +135,30 @@ export default function TriptychSection() {
           style={{ background: BOTTOM_VIGNETTE }}
         />
 
-        {/* Label + Button */}
-        <div className="absolute bottom-[12%] md:bottom-[14%] inset-x-0 z-10 flex flex-col items-center gap-4">
+        {/* Label + Details + Button */}
+        <div className="absolute bottom-[4%] md:bottom-[6%] inset-x-0 z-10 flex flex-col items-center">
           <FadeInUp delay="0.15s">
-            <div className="flex flex-col items-center gap-4">
-              <h3 className="!font-eurostile text-nasun-white text-2xl md:text-3xl tracking-[0.2em] uppercase text-center">
+            <div className="flex flex-col items-center">
+              <h3 className="!font-eurostile text-nasun-white text-3xl md:text-4xl tracking-[0.2em] uppercase text-center">
                 Genesis Pass
               </h3>
-              <ButtonV3 variant="nw2" size="lg" asChild>
-                <Link to="/wave1/genesis-pass-drop">Explore</Link>
-              </ButtonV3>
+              <div className="mt-4 h-[140px] md:h-[200px] flex flex-col items-center px-4">
+                <p className="text-nasun-white font-semibold text-base md:text-lg">
+                  2x Boost
+                </p>
+                <ul className="mt-2 text-left text-nasun-white/70 text-xs md:text-sm leading-relaxed space-y-0.5">
+                  <li>Free Mint: Apr 7 &mdash; 3:00 PM UTC</li>
+                  <li>GTD Allowlist: Apr 8 &mdash; 3:00 AM UTC @ ~$8 in ETH</li>
+                  <li>FCFS Allowlist: Apr 8 &mdash; 3:00 PM UTC @ ~$10 in ETH</li>
+                  <li>Public Mint: Apr 9 &mdash; 3:00 PM UTC @ ~$15 in ETH</li>
+                  <li>Mint closes: Apr 14 &mdash; 3:00 PM UTC</li>
+                </ul>
+              </div>
+              <div className="mt-6">
+                <ButtonV3 variant="nw2" size="lg" asChild>
+                  <Link to="/wave1/genesis-pass-drop">Explore</Link>
+                </ButtonV3>
+              </div>
             </div>
           </FadeInUp>
         </div>
@@ -159,51 +182,59 @@ export default function TriptychSection() {
           style={{ background: AIRDROP_BOTTOM_FADE }}
         />
 
-        {/* Label + Button/Status */}
-        <div className="absolute bottom-[12%] md:bottom-[14%] inset-x-0 z-10 flex flex-col items-center gap-4">
+        {/* Label + Details + Button/Status */}
+        <div className="absolute bottom-[4%] md:bottom-[6%] inset-x-0 z-10 flex flex-col items-center">
           <FadeInUp delay="0.3s">
-            <div className="flex flex-col items-center gap-4">
-              <h3 className="!font-eurostile text-nasun-white text-2xl md:text-3xl tracking-[0.2em] uppercase">
+            <div className="flex flex-col items-center">
+              <h3 className="!font-eurostile text-nasun-white text-3xl md:text-4xl tracking-[0.2em] uppercase">
                 Airdrop
               </h3>
-
-              {!user ? (
-                <ButtonV3
-                  variant="nw2"
-                  size="lg"
-                  onClick={() => {
-                    localStorage.setItem("auth_return_to", "/my-account");
-                    window.dispatchEvent(new CustomEvent("nasun:open-login"));
-                  }}
-                >
-                  Sign in to register
-                </ButtonV3>
-              ) : isLoading ? (
-                <Spinner />
-              ) : isRegistered ? (
-                <div className="flex flex-col items-center gap-1">
-                  <span
-                    className={`text-sm font-medium ${AIRDROP_STATUS[status].color}`}
-                  >
-                    {AIRDROP_STATUS[status].label}
-                  </span>
-                </div>
-              ) : (
-                <ButtonV3
-                  variant="nw2"
-                  size="sm"
-                  disabled={isRegistering}
-                  onClick={handleAirdropClick}
-                >
-                  {isRegistering ? "Registering..." : "Register"}
-                </ButtonV3>
-              )}
-
-              {error && (
-                <p className="text-red-400 text-xs max-w-[200px] text-center">
-                  {error}
+              <div className="mt-4 h-[140px] md:h-[200px] text-center text-nasun-white/80 text-sm md:text-base leading-relaxed space-y-1.5 px-4">
+                <p className="text-nasun-white font-semibold text-base md:text-lg">
+                  200,000 Points
                 </p>
-              )}
+                <p>Registration Closes April 8th</p>
+                <p>Airdrop April 16th</p>
+              </div>
+              <div className="mt-6">
+                {!user ? (
+                  <ButtonV3
+                    variant="nw2"
+                    size="lg"
+                    onClick={() => {
+                      localStorage.setItem("auth_return_to", "/my-account");
+                      window.dispatchEvent(new CustomEvent("nasun:open-login"));
+                    }}
+                  >
+                    Sign in to register
+                  </ButtonV3>
+                ) : isLoading ? (
+                  <Spinner />
+                ) : isRegistered ? (
+                  <div className="flex flex-col items-center gap-1">
+                    <span
+                      className={`text-sm font-medium ${AIRDROP_STATUS[status].color}`}
+                    >
+                      {AIRDROP_STATUS[status].label}
+                    </span>
+                  </div>
+                ) : (
+                  <ButtonV3
+                    variant="nw2"
+                    size="sm"
+                    disabled={isRegistering}
+                    onClick={handleAirdropClick}
+                  >
+                    {isRegistering ? "Registering..." : "Register"}
+                  </ButtonV3>
+                )}
+
+                {error && (
+                  <p className="text-red-400 text-xs max-w-[200px] text-center">
+                    {error}
+                  </p>
+                )}
+              </div>
             </div>
           </FadeInUp>
         </div>
