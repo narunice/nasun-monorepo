@@ -389,7 +389,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.GenesisPass,
         },
         {
-          name: "navigation.genesisPassDrop",
+          name: "Genesis Pass Drop",
           path: "/wave1/genesis-pass-drop",
           element: Pages.GenesisPassDrop,
         },
