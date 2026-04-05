@@ -97,6 +97,13 @@ export default function GenesisPassDropPage() {
     () => Date.now() >= PUBLIC_MINT_START.getTime(),
   );
 
+  // Apply genesis-drop-theme to html for footer black background
+  useEffect(() => {
+    document.documentElement.classList.add("genesis-drop-theme");
+    return () =>
+      document.documentElement.classList.remove("genesis-drop-theme");
+  }, []);
+
   // Skip video on slow connections
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -166,17 +173,18 @@ export default function GenesisPassDropPage() {
         className="min-h-screen w-full"
         style={{
           background:
-            "linear-gradient(180deg, #0f0d0b 0%, #141210 50%, #0f0d0b 100%)",
+            "linear-gradient(180deg, #000000 0%, #0a0a0a 50%, #000000 100%)",
         }}
       >
         {/* Hero section */}
-        <div className="relative w-full h-screen overflow-hidden flex items-center justify-center">
+        <div className="relative w-full min-h-screen overflow-hidden flex items-center justify-center">
           {/* Video background or poster fallback */}
+          {/* Mobile: -mt-[15%] crops top of video, desktop: normal */}
           {skipVideo ? (
             <img
               src="/images/posters/Canyons-X-Post-web.webp"
               alt=""
-              className="absolute inset-0 w-full h-full object-cover max-w-[1920px] mx-auto"
+              className="absolute inset-0 w-full min-h-full object-cover max-w-[1920px] mx-auto -mt-[15%] md:mt-0"
             />
           ) : (
             <>
@@ -194,7 +202,7 @@ export default function GenesisPassDropPage() {
                 preload="metadata"
                 poster="/images/posters/Canyons-X-Post-web.webp"
                 onPlaying={handleVideoPlaying}
-                className={`absolute inset-0 w-full h-full object-cover max-w-[1920px] left-1/2 -translate-x-1/2 transition-opacity duration-500 ${
+                className={`absolute inset-0 w-full h-full object-cover min-h-full max-w-[1920px] left-1/2 -translate-x-1/2 -mt-[15%] md:mt-0 transition-opacity duration-500 ${
                   isVideoPlaying ? "opacity-100" : "opacity-0"
                 }`}
               >
@@ -208,61 +216,54 @@ export default function GenesisPassDropPage() {
             className="absolute inset-0 pointer-events-none z-10"
             style={{
               background:
-                "linear-gradient(to bottom, rgba(15,13,11,0.3) 0%, transparent 30%, transparent 50%, rgba(15,13,11,0.8) 80%, rgb(15,13,11) 100%)",
+                "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 25%, transparent 60%, rgba(0,0,0,0.25) 72%, rgba(0,0,0,0.6) 85%, rgb(0,0,0) 95%)",
+            }}
+          />
+          {/* Mobile: solid fill below video area to extend hero */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[30%] pointer-events-none z-[9] md:hidden"
+            style={{
+              background:
+                "linear-gradient(to bottom, transparent 0%, rgb(0,0,0) 15%)",
             }}
           />
 
-          {/* Mobile: flex column layout (title + timers flow together) */}
-          <div className="md:hidden relative z-20 flex flex-col items-center justify-between h-full px-4 pb-8 pt-[50vh]">
-            <div className="flex items-center">
-              <FadeInUp>
-                <SectionTitle as="h1" className="pt-6 text-center">
-                  <span className="!font-changeling font-bold">GENESIS</span>{" "}
-                  <span className="!font-changeling font-medium">PASS</span>
-                </SectionTitle>
-                <p className="text-xl text-nasun-white/90 text-center tracking-[0.2em] uppercase mt-2">
-                  COMING SOON
-                </p>
-              </FadeInUp>
-            </div>
-
-            <div className="w-full max-w-3xl grid grid-cols-1 gap-2 mt-6">
-              {activePhases.map((phase, i) => (
-                <FadeInUp key={phase.label} delay={`${0.2 + i * 0.1}s`}>
-                  <CountdownTimer
-                    label={phase.label}
-                    price={phase.price}
-                    targetTimeUTC={phase.targetTimeUTC}
-                    timeLeft={
-                      countdowns[i] ?? {
-                        days: 0,
-                        hours: 0,
-                        minutes: 0,
-                        seconds: 0,
-                      }
-                    }
-                    isExpired={countdowns[i]?.isExpired ?? false}
-                  />
-                </FadeInUp>
-              ))}
-            </div>
-          </div>
-
-          {/* Desktop: title centered, timers absolute bottom */}
-          <div className="hidden md:flex relative z-20 flex-col items-center px-4 mt-[10vh]">
+          {/* Mobile: title positioned via top padding from video center */}
+          <div className="md:hidden relative z-20 flex items-center justify-center h-screen px-4 pt-[5vh]">
             <FadeInUp>
-              <SectionTitle as="h1" className="">
-                <span className="!font-changeling font-bold">GENESIS</span>{" "}
-                <span className="!font-changeling font-medium">PASS</span>
+              <SectionTitle as="h1" className="text-center">
+                <span className="!font-changeling font-bold tracking-widest">
+                  GENESIS
+                </span>{" "}
+                <span className="!font-changeling font-medium tracking-widest">
+                  PASS
+                </span>
               </SectionTitle>
-              <p className="text-3xl text-nasun-white/90 text-center tracking-[0.2em] uppercase mt-2">
+              <p className="text-xl text-nasun-white/90 text-center tracking-[0.2em] uppercase mt-2">
                 COMING SOON
               </p>
             </FadeInUp>
           </div>
 
-          <div className="hidden md:flex absolute bottom-20 inset-x-0 z-20 px-4 justify-center">
-            <div className="w-full max-w-3xl grid grid-cols-2 gap-3">
+          {/* Desktop: flex column layout, no absolute positioning */}
+          <div className="hidden md:flex relative z-20 flex-col items-center justify-center h-screen px-4">
+            <div className="flex-1 flex items-end pb-6">
+              <FadeInUp>
+                <SectionTitle as="h1" className="!mb-0">
+                  <span className="!font-changeling font-bold tracking-widest">
+                    GENESIS
+                  </span>{" "}
+                  <span className="!font-changeling font-medium tracking-widest">
+                    PASS
+                  </span>
+                </SectionTitle>
+                <p className="text-3xl text-nasun-white/90 text-center tracking-[0.2em] uppercase mt-2">
+                  COMING SOON
+                </p>
+              </FadeInUp>
+            </div>
+
+            <div className="w-full max-w-4xl grid grid-cols-2 gap-3 pb-6 mb-6 mt-4">
               {activePhases.map((phase, i) => (
                 <FadeInUp key={phase.label} delay={`${0.2 + i * 0.1}s`}>
                   <CountdownTimer
@@ -282,23 +283,143 @@ export default function GenesisPassDropPage() {
                 </FadeInUp>
               ))}
             </div>
-          </div>
 
-          {/* Scroll indicator */}
-          <div className="absolute bottom-4 inset-x-0 z-30 hidden md:flex justify-center">
-            <svg
-              className="w-6 h-6 text-nasun-white/50 animate-bounce"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-              />
-            </svg>
+            {/* Scroll indicator */}
+            <div className="pb-6">
+              <svg
+                className="w-6 h-6 text-nasun-white/50 animate-bounce"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile: countdown timers on black bg, outside hero */}
+        <div className="md:hidden relative z-30 bg-black px-6 pb-20 -mt-[18vh]">
+          <div className="max-w-sm mx-auto grid grid-cols-1 gap-2">
+            {activePhases.map((phase, i) => (
+              <FadeInUp key={phase.label} delay={`${0.2 + i * 0.1}s`}>
+                <CountdownTimer
+                  label={phase.label}
+                  price={phase.price}
+                  targetTimeUTC={phase.targetTimeUTC}
+                  timeLeft={
+                    countdowns[i] ?? {
+                      days: 0,
+                      hours: 0,
+                      minutes: 0,
+                      seconds: 0,
+                    }
+                  }
+                  isExpired={countdowns[i]?.isExpired ?? false}
+                />
+              </FadeInUp>
+            ))}
+          </div>
+        </div>
+
+        {/* Drop Details Section */}
+        <div className="bg-black px-6 md:px-8 py-16 md:py-24">
+          <div className="max-w-[840px] mx-auto space-y-12">
+            {/* Schedule & Price */}
+            <FadeInUp>
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-nasun-white mb-6">
+                  Updated Schedule (UTC) &amp; Price
+                </h2>
+                <ul className="space-y-2 text-nasun-white/80 text-sm md:text-base">
+                  <li className="flex items-start gap-2">
+                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span>
+                      <strong className="text-nasun-white">Free Mint:</strong>{" "}
+                      April 7th — 3:00 PM UTC
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span>
+                      <strong className="text-nasun-white">
+                        GTD Allowlist:
+                      </strong>{" "}
+                      April 8th — 3:00 AM UTC @ ~$8 in ETH
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span>
+                      <strong className="text-nasun-white">
+                        FCFS Allowlist:
+                      </strong>{" "}
+                      April 8th — 3:00 PM UTC @ ~$10 in ETH
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span>
+                      <strong className="text-nasun-white">Public Mint:</strong>{" "}
+                      April 9th — 3:00 PM UTC @ ~$15 in ETH
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span>
+                      <strong className="text-nasun-white">Mint closes:</strong>{" "}
+                      April 14th — 3:00 PM UTC
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </FadeInUp>
+
+            {/* Supply Info */}
+            <FadeInUp delay="0.2s">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-nasun-white mb-4">
+                  Supply is limited by time, not by number.
+                </h2>
+                <div className="space-y-4 text-nasun-white/80 text-sm md:text-base leading-relaxed">
+                  <p>
+                    There is no fixed supply cap. The mint window is what
+                    determines how many Genesis Passes exist. Once the window
+                    closes, minting ends.
+                  </p>
+                  <p>
+                    This changes how the allowlist works: GTD and FCFS are no
+                    longer about guaranteed access vs. limited slots - everyone
+                    can mint. The difference is now price. GTD allowlist gets
+                    early access at $8 (20% off original), FCFS allowlist at
+                    $10, and Public at $15.
+                  </p>
+                  <p>
+                    If you're on the FCFS allowlist, make sure to mint before
+                    Public opens to lock in your price at $10. <br />
+                    After that, it's $15 for everyone.
+                  </p>
+                </div>
+              </div>
+            </FadeInUp>
+
+            {/* Ethereum Mainnet */}
+            <FadeInUp delay="0.3s">
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-nasun-white mb-4">
+                  Ethereum Mainnet
+                </h2>
+                <p className="text-nasun-white/80">
+                  The Genesis Pass is an Ethereum Mainnet NFT, minted on Nasun
+                  website.
+                </p>
+              </div>
+            </FadeInUp>
           </div>
         </div>
       </div>

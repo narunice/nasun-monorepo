@@ -25,19 +25,19 @@ function CountdownTimerInner({
   targetTimeUTC,
 }: CountdownTimerProps) {
   return (
-    <div className="h-[72px] md:h-[80px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-lg px-4 md:px-6 flex items-center justify-between gap-4 transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-black/50 hover:border-white/25 cursor-default">
+    <div className="h-[80px] lg:h-[90px] bg-white/5 border border-nasun-white/50 rounded-lg px-4 lg:px-6 flex items-center justify-between gap-4 transition-all duration-200 ease-out hover:scale-[1.03] hover:bg-white/10 hover:border-nasun-white/70 cursor-default">
       {/* Label + price + UTC time */}
       <div className="flex flex-col gap-0.5 min-w-0">
-        <span className="text-nasun-white text-sm md:text-base font-medium whitespace-nowrap">
+        <span className="text-nasun-white text-sm lg:text-lg font-semibold whitespace-nowrap">
           {label}
         </span>
         {price && (
-          <span className="text-nasun-white/60 text-xs md:text-sm">
+          <span className="text-nasun-white/80 text-xs lg:text-base">
             {price}
           </span>
         )}
         {targetTimeUTC && (
-          <span className="text-nasun-white/40 text-xs">{targetTimeUTC}</span>
+          <span className="text-nasun-white/60 text-[11px] lg:text-sm">{targetTimeUTC}</span>
         )}
       </div>
 
@@ -47,7 +47,7 @@ function CountdownTimerInner({
           LIVE
         </span>
       ) : (
-        <div className="flex items-center gap-1.5 md:gap-2 font-mono text-nasun-white shrink-0">
+        <div className="flex items-center gap-1 lg:gap-2 font-mono text-nasun-white shrink-0">
           <DigitBlock value={pad(timeLeft.days)} unit="D" />
           <span className="text-nasun-white/30">:</span>
           <DigitBlock value={pad(timeLeft.hours)} unit="H" />
@@ -63,8 +63,8 @@ function CountdownTimerInner({
 
 function DigitBlock({ value, unit }: { value: string; unit: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-lg md:text-2xl font-bold leading-none">
+    <div className="flex flex-col items-center w-6 lg:w-9">
+      <span className="text-base lg:text-2xl font-bold leading-none tabular-nums text-center">
         {value}
       </span>
       <span className="text-[10px] text-nasun-white/40 mt-0.5">{unit}</span>
