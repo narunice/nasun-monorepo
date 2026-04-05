@@ -306,6 +306,7 @@ export interface BotState {
   clientOrderIdCounter: bigint;
   balanceManagerId: string | null;
   justInitialized: boolean;
+  skipCount: number;
 }
 
 // ========================================

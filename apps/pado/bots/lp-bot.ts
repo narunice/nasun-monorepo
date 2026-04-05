@@ -100,6 +100,18 @@ async function runBot(
 
   console.log(`[${timestamp()}] ${MARKET.name} price: $${price.toLocaleString()}`);
 
+  // Step 2.5: Skip cycle if price hasn't moved beyond requote threshold
+  // Force refresh every 30 cycles (~5min at 10s interval) to prevent stale orderbooks
+  const MAX_SKIP_CYCLES = 30;
+  if (state.lastQuotedPrice > 0 && state.skipCount < MAX_SKIP_CYCLES) {
+    const priceDeltaBps = Math.abs(price - state.lastQuotedPrice) / state.lastQuotedPrice * 10000;
+    if (priceDeltaBps < config.requoteThresholdBps) {
+      state.skipCount++;
+      state.consecutiveFailures = 0;
+      return;
+    }
+  }
+
   // Step 3: Ensure BalanceManager exists
   if (!state.balanceManagerId) {
     console.log(`[${timestamp()}] Looking for BalanceManager...`);
@@ -233,6 +245,7 @@ async function runBot(
   if (result.success) {
     state.lastQuotedPrice = price;
     state.consecutiveFailures = 0;
+    state.skipCount = 0;
 
     const bestBid = bids.length > 0 ? rawToPrice(bids[0].price) : 0;
     const bestAsk = asks.length > 0 ? rawToPrice(asks[0].price) : 0;
@@ -434,6 +447,7 @@ async function main() {
     clientOrderIdCounter: BigInt(Date.now()),
     balanceManagerId: null,
     justInitialized: false,
+    skipCount: 0,
   };
 
   // Retry initialization instead of crashing -- avoids PM2 restart loops
@@ -484,6 +498,7 @@ async function main() {
       }
 
       state.consecutiveFailures++;
+      state.skipCount = 0; // force full cycle after failure
     }
   };
 
