@@ -33,8 +33,7 @@ const AIRDROP_BOTTOM_FADE =
 
 export default function TriptychSection() {
   const { user } = useAuth();
-  const { status, isLoading } =
-    useAirdropRegistration(user?.cognitoToken);
+  const { status, isLoading } = useAirdropRegistration(user?.cognitoToken);
 
   const isRegistered = status === "approved" || status === "pending";
 
@@ -75,8 +74,8 @@ export default function TriptychSection() {
                 <p className="text-nasun-white font-semibold text-base md:text-lg">
                   Free NFT Mint
                 </p>
-                <p>Points + Trade + Games + Apps + Leaderboards</p>
-                <p>No Seed Phrases. Just Clicks</p>
+                <p>Points + Trade • Games • Apps + Leaderboards</p>
+                <p>No Seed Phrases • Just Clicks</p>
               </div>
               <div className="mt-2 mb-6 md:mt-6 md:mb-0">
                 <ButtonV3 variant="nw2" size="lg" asChild>
@@ -187,8 +186,16 @@ export default function TriptychSection() {
                   <ButtonV3 variant="nw2" size="lg" asChild>
                     <Link to="/my-account">
                       {isRegistered ? "Registered" : "Not Registered"}
-                      <svg className="w-4 h-4 ml-1.5 inline-block" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 010-1.06l7.22-7.22H8.75a.75.75 0 010-1.5h5.5a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0V7.06l-7.22 7.22a.75.75 0 01-1.06 0z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4 ml-1.5 inline-block"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.22 14.78a.75.75 0 010-1.06l7.22-7.22H8.75a.75.75 0 010-1.5h5.5a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0V7.06l-7.22 7.22a.75.75 0 01-1.06 0z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </Link>
                   </ButtonV3>
@@ -197,7 +204,6 @@ export default function TriptychSection() {
             </div>
           </FadeInUp>
         </div>
-
       </div>
     </div>
   );
