@@ -389,6 +389,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.GenesisPass,
         },
         {
+          name: "navigation.genesisPassDrop",
+          path: "/wave1/genesis-pass-drop",
+          element: Pages.GenesisPassDrop,
+        },
+        {
           name: "navigation.battalion",
           path: "/wave1/battalion-nft",
           element: Pages.BattalionNft,
@@ -667,6 +672,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
   wave1: {
     "navigation.alliance": "Alliance",
     "navigation.genesisPass": "Genesis Pass",
+    "navigation.genesisPassDrop": "Genesis Pass Drop",
     "navigation.battalion": "Battalion",
     "navigation.earlyContributors": "Early Contributors",
     "navigation.leaderboard": "Leaderboard",
