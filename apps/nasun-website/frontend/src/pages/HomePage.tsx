@@ -15,6 +15,8 @@ import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 // it pulled framer-motion (123KB) into the critical path, tripling TBT.
 const HeroSection = lazy(() => import("../sections/home/HeroSection"));
 
+const TriptychSection = lazy(() => import("../sections/home/TriptychSection"));
+
 // Below-fold sections
 const VisionSection = lazy(() => import("../sections/home/VisionSection"));
 const WhatWeBuildingSection = lazy(() => import("../sections/home/WhatWeBuildingSection"));
@@ -80,7 +82,12 @@ export default function HomePage() {
       <ScrollSnapContainer>
         <ErrorBoundary fallback={errorFallback}>
           <Suspense fallback={suspenseFallback}>
-            {/* HeroSection: 맨 위 섹션 (개별 타이밍 애니메이션 + 트레일러) */}
+            {/* TriptychSection: Wave 1 히어로 (Alliance / Genesis Pass / Airdrop) */}
+            <ScrollSnapSection>
+              <TriptychSection />
+            </ScrollSnapSection>
+
+            {/* HeroSection: 트레일러 + 타이밍 애니메이션 */}
             <ScrollSnapSection>
               <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
             </ScrollSnapSection>
