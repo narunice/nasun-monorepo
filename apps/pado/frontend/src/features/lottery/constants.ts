@@ -17,7 +17,7 @@ export const CLOCK_ID = '0x6';
 export const NUMBERS_COUNT = 5;
 export const MAX_NUMBER = 32;
 export const TICKET_PRICE = 5_000_000n; // 5 NUSDC (6 decimals)
-export const MAX_TICKETS_PER_ADDRESS = 100;
+export const MAX_TICKETS_PER_ADDRESS = 300;
 
 // Prize distribution (basis points)
 export const PRIZE_POOL_BPS = 7000; // 70%
