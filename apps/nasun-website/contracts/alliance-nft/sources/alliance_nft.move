@@ -16,7 +16,7 @@ module alliance_nft::alliance_nft {
 
     // ========== Constants ==========
     const MAX_IMAGE_INDEX: u64 = 3;
-    const DEFAULT_MAX_SUPPLY: u64 = 20000;
+    const DEFAULT_MAX_SUPPLY: u64 = 50000;
 
     // ========== OTW ==========
 
