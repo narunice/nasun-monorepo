@@ -9,13 +9,18 @@ import { JsonLd, NASUN_ORG_SCHEMA } from "../utils/jsonLd";
 
 import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 
+// TriptychSection: static import (first visible section, no heavy deps like framer-motion)
+import TriptychSection from "../sections/home/TriptychSection";
+// Preload triptych images for LCP
+import kaeboImg from "@/assets/images/kaebo.webp";
+import josenImg from "@/assets/images/josen.webp";
+import canyonImg from "@/assets/images/canyon.webp";
+
 // All sections lazy-loaded for optimal code splitting.
 // HeroSection's poster image is preloaded via <Helmet> (home-page only),
 // so LCP is fast even with lazy loading. Static import was reverted because
 // it pulled framer-motion (123KB) into the critical path, tripling TBT.
 const HeroSection = lazy(() => import("../sections/home/HeroSection"));
-
-const TriptychSection = lazy(() => import("../sections/home/TriptychSection"));
 
 // Below-fold sections
 const VisionSection = lazy(() => import("../sections/home/VisionSection"));
@@ -75,18 +80,21 @@ export default function HomePage() {
   return (
     <div className="bg-nasun-black">
       <Helmet>
+        <link rel="preload" as="image" href={kaeboImg} type="image/webp" />
+        <link rel="preload" as="image" href={josenImg} type="image/webp" />
+        <link rel="preload" as="image" href={canyonImg} type="image/webp" />
         <link rel="preload" as="image" href="/images/posters/Full-Trailer184s-rf28.webp" type="image/webp" />
       </Helmet>
       <JsonLd data={NASUN_ORG_SCHEMA} />
       {/* Snap Scroll 섹션들 (Hero ~ Wave1) */}
       <ScrollSnapContainer>
+        {/* TriptychSection: static import, renders immediately without Suspense */}
+        <ScrollSnapSection>
+          <TriptychSection />
+        </ScrollSnapSection>
+
         <ErrorBoundary fallback={errorFallback}>
           <Suspense fallback={suspenseFallback}>
-            {/* TriptychSection: Wave 1 히어로 (Alliance / Genesis Pass / Airdrop) */}
-            <ScrollSnapSection>
-              <TriptychSection />
-            </ScrollSnapSection>
-
             {/* HeroSection: 트레일러 + 타이밍 애니메이션 */}
             <ScrollSnapSection>
               <HeroSection onVideoReady={handleVideoReady} isVideoReady={isVideoReady} />
