@@ -9,7 +9,7 @@ export const buttonV3Variants = cva(
       variant: {
         // Solid variants — all visible on dark backgrounds
         nw1: "bg-[#6697b7] text-white hover:bg-[#5a87a5]",
-        nw2: "bg-[#4c7d9a] text-white hover:bg-[#416d87]",
+        nw2: "bg-[#4c7d9a] text-white relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/30 before:via-white/15 before:to-transparent before:-translate-x-full before:transition-transform before:duration-500 before:ease-out hover:before:translate-x-0",
         nw3: "bg-[#3e5c7a] text-white hover:bg-[#344e68]",
         nw4: "bg-[#afc3cf] text-nasun-black hover:bg-[#9bb3c0]",
         nw5: "bg-[#e6e6e6] text-nasun-black hover:bg-[#d4d4d4]",
