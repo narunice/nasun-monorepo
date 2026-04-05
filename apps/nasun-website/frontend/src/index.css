@@ -570,3 +570,8 @@ html.pado-navy-theme .bg-nasun-black,
 html.pado-navy-theme .bg-black {
   background-color: #080c16; /* pado app bg-primary */
 }
+
+/* Genesis Pass Drop page: force pure black background on footer */
+html.genesis-drop-theme .bg-nasun-black {
+  background-color: #000000;
+}
