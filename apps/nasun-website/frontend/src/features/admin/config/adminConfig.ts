@@ -19,12 +19,12 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/users', label: 'Users', icon: '👥' },
   { path: '/admin/leaderboard-v3', label: 'Leaderboard V3', icon: '🏆' },
   { path: '/admin/featured-feed', label: 'Featured Feed', icon: '⭐' },
-  { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
-  { path: '/admin/whitelist', label: 'Allowlist Export', icon: '📋' },
-  { path: '/admin/nft-collections', label: 'NFT Collections', icon: '🖼️' },
-  { path: '/admin/points', label: 'Ecosystem Points', icon: '🎯' },
-  { path: '/admin/airdrop', label: 'Airdrop', icon: '🪂' },
   { path: '/admin/alliance-nft', label: 'Alliance NFT', icon: '🛡️' },
+  { path: '/admin/whitelist', label: 'Allowlist Export', icon: '📋' },
+  { path: '/admin/airdrop', label: 'Airdrop', icon: '🪂' },
+  { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
+  { path: '/admin/points', label: 'Ecosystem Points', icon: '🎯' },
+  { path: '/admin/nft-collections', label: 'Nasun NFT on ETH', icon: '🖼️' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
