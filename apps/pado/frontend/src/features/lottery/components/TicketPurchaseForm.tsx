@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import { useWallet, useZkLogin, usePasskeyStore } from "@nasun/wallet";
-import { useLotteryActions } from "../hooks";
+import { useLotteryActions, useMyTickets } from "../hooks";
 import { useToast } from "@/components/common/Toast";
 import { generateQuickPick, formatNusdc } from "../lib/lottery-client";
-import { MAX_NUMBER, TICKET_PRICE, NUMBERS_COUNT } from "../constants";
+import { MAX_NUMBER, TICKET_PRICE, NUMBERS_COUNT, MAX_TICKETS_PER_ADDRESS } from "../constants";
 import { useNow } from "@/hooks/useNow";
 import type { LotteryRound } from "../types";
 
@@ -24,8 +24,14 @@ export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseF
   const isConnected = isZkLoggedIn || (status === "unlocked" && !!account) || isPasskeyUnlocked;
   const now = useNow();
   const isRoundOpen = now < round.closeTime;
+
+  // Track user's ticket count for this round
+  const { tickets: myTickets } = useMyTickets(round.id);
+  const myTicketCount = myTickets.length;
+  const isLimitReached = myTicketCount >= MAX_TICKETS_PER_ADDRESS;
+
   const canPurchase =
-    isConnected && isRoundOpen && selectedNumbers.size === NUMBERS_COUNT && !isBuying;
+    isConnected && isRoundOpen && selectedNumbers.size === NUMBERS_COUNT && !isBuying && !isLimitReached;
 
   const handleNumberClick = useCallback((num: number) => {
     setSelectedNumbers((prev) => {
@@ -172,6 +178,21 @@ export function TicketPurchaseForm({ round, onPurchaseSuccess }: TicketPurchaseF
       {!isConnected && (
         <div className="text-yellow-500 text-sm text-center">
           Connect your wallet to purchase tickets
+        </div>
+      )}
+
+      {/* Ticket Limit Warning */}
+      {isLimitReached && (
+        <div className="text-orange-500 text-sm text-center">
+          You have reached the maximum of {MAX_TICKETS_PER_ADDRESS} tickets for this round.
+          The limit resets when the next round begins.
+        </div>
+      )}
+
+      {/* Ticket Count Info */}
+      {isConnected && !isLimitReached && myTicketCount > 0 && (
+        <div className="text-theme-text-muted text-xs text-center">
+          {myTicketCount} / {MAX_TICKETS_PER_ADDRESS} tickets purchased this round
         </div>
       )}
 
