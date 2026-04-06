@@ -416,7 +416,8 @@ export default function GenesisPassDropPage() {
                 </h2>
                 <p className="text-nasun-white/80">
                   The Genesis Pass is an Ethereum Mainnet NFT, minted on Nasun
-                  website.
+                  website. <br />
+                  After the drop ends, it will be freely tradeable on OpenSea.
                 </p>
               </div>
             </FadeInUp>

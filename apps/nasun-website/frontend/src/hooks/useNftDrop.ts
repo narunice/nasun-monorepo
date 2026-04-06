@@ -18,13 +18,14 @@ export function useNftDropRead() {
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "currentStage",
-    query: { refetchInterval: 10_000 },
+    query: { refetchInterval: 15_000, refetchOnWindowFocus: true },
   });
 
   const { data: currentMintPrice } = useReadContract({
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "currentMintPrice",
+    query: { refetchInterval: 15_000 },
   });
 
   const { data: mintDeadline } = useReadContract({
