@@ -82,12 +82,13 @@ const NftThumbnail: FC<NftThumbnailProps> = ({ nft }) => {
   const linkUrl = openSeaUrl || explorerUrl;
   const [imgFailed, setImgFailed] = useState(false);
 
+  const tid = nft.tokenId ?? "";
   const displayName =
-    nft.name && nft.name !== `#${nft.tokenId}`
+    nft.name && nft.name !== `#${tid}`
       ? nft.name
       : nft.collectionName
-        ? `${nft.collectionName} #${nft.tokenId.length > 8 ? nft.tokenId.slice(0, 6) + '...' : nft.tokenId}`
-        : `#${nft.tokenId.length > 12 ? nft.tokenId.slice(0, 8) + '...' : nft.tokenId}`;
+        ? `${nft.collectionName} #${tid.length > 8 ? tid.slice(0, 6) + '...' : tid}`
+        : `#${tid.length > 12 ? tid.slice(0, 8) + '...' : tid}`;
 
   return (
     <a

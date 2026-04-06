@@ -8,6 +8,20 @@ import { NftImageModal } from "@/features/governance/components/NftImageModal";
 import { Spinner } from "@/components/ui";
 import { useWalletRegistration } from "./hooks/useWalletRegistration";
 
+// Pinata gateway CID -> local image path mapping for already-minted Vote Proof NFTs
+const IPFS_LOCAL_MAP: Record<string, string> = {
+  bafkreidvwd65472yxlhr4vhoqxqugccpy6xgsat2mdb6vjznltodkxw4tu: "/images/nft/vote-proof-default.webp",
+  bafybeidqzi47x2iue4cyjsn6lduh33ca5y362s4k3dk3eh7ornsa4wzhea: "/images/nft/vote-proof-yes.jpg",
+  bafybeih5vmxazgn7jkyzt3ssi4kbia2pteaq7r6a6svhtmr37oh3c36iui: "/images/nft/vote-proof-no.jpg",
+};
+
+function resolveNftImageUrl(url: string): string {
+  for (const [cid, localPath] of Object.entries(IPFS_LOCAL_MAP)) {
+    if (url.includes(cid)) return localPath;
+  }
+  return url;
+}
+
 interface VoteNftItem {
   id: string;
   url: string;
@@ -152,7 +166,7 @@ export const NasunVoteNfts: FC<{ children?: React.ReactNode }> = ({ children }) 
           >
             <div className="aspect-square">
               <NftImageModal
-                src={nft.url}
+                src={resolveNftImageUrl(nft.url)}
                 alt="Vote Proof NFT"
                 thumbnailClassName="w-full h-full object-cover"
               >
