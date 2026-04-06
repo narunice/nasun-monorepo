@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
-import { parseEther } from "viem";
+import { useAccount, useChainId } from "wagmi";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { NFT_EDITIONS, STAGE_LABELS, STAGE_DESCRIPTIONS } from "@/constants/nft-drop";
 import { NftDropVideoCard } from "./NftDropVideoCard";
 import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
+
+function getEtherscanUrl(chainId: number, txHash: string): string {
+  if (chainId === 11155111) return `https://sepolia.etherscan.io/tx/${txHash}`;
+  return `https://etherscan.io/tx/${txHash}`;
+}
+
+const STAGE_PUBLIC = 4;
 
 interface NftDropMintSectionProps {
   currentStage: number;
@@ -19,19 +25,27 @@ export function NftDropMintSection({
 }: NftDropMintSectionProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { isConnected } = useAccount();
+  const chainId = useChainId();
   const { mintPriceWei } = useNftDropRead();
-  const { mint, txHash, error, isWriting, isConfirming, isSuccess, clearError } = useNftDropMint();
+  const { mint, txHash, error, isWriting, isFetchingSignature, isConfirming, isSuccess, isLoggedIn, clearError } = useNftDropMint();
 
   const isPaused = currentStage === 0;
   const isFree = currentStage === 1;
+  const isAllowlistStage = currentStage >= 1 && currentStage <= 3;
+  const needsLogin = isAllowlistStage && !isLoggedIn;
   const stageLabel = STAGE_LABELS[currentStage] || "Unknown";
   const stageDesc = STAGE_DESCRIPTIONS[currentStage] || "";
 
   const handleMint = async () => {
-    if (selectedId === null || !mintPriceWei) return;
+    if (selectedId === null) return;
     clearError();
-    await mint(selectedId, 1, isFree ? 0n : mintPriceWei);
+    const price = isFree ? 0n : (mintPriceWei || 0n);
+    // Guard: don't mint with 0 price on paid stage
+    if (!isFree && price === 0n) return;
+    await mint(selectedId, price, currentStage);
   };
+
+  const isBusy = isWriting || isFetchingSignature || isConfirming;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
@@ -83,12 +97,20 @@ export function NftDropMintSection({
         ))}
       </div>
 
+      {/* Transfer lock notice */}
+      <div className="mt-6 text-center">
+        <p className="text-nasun-white/25 text-xs">
+          Transfers are locked during the minting period to ensure fair distribution.
+          Trading opens when the drop ends.
+        </p>
+      </div>
+
       {/* Mint controls */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7 }}
-        className="mt-10 flex flex-col items-center gap-4"
+        className="mt-8 flex flex-col items-center gap-4"
       >
         {!isConnected ? (
           <ConnectButton.Custom>
@@ -109,6 +131,12 @@ export function NftDropMintSection({
               Minting is currently paused. Stay tuned for announcements.
             </p>
           </div>
+        ) : needsLogin ? (
+          <div className="text-center">
+            <p className="text-nasun-white/50 text-sm">
+              Sign in with your Nasun account to verify allowlist eligibility and mint.
+            </p>
+          </div>
         ) : isSuccess ? (
           <div className="text-center">
             <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
@@ -119,7 +147,7 @@ export function NftDropMintSection({
             <p className="text-green-400 text-lg font-semibold">Minted successfully!</p>
             {txHash && (
               <a
-                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                href={getEtherscanUrl(chainId, txHash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-nasun-c4 text-sm underline mt-2 inline-block"
@@ -131,10 +159,7 @@ export function NftDropMintSection({
               <ButtonV3
                 variant="nw2"
                 size="md"
-                onClick={() => {
-                  setSelectedId(null);
-                  clearError();
-                }}
+                onClick={clearError}
               >
                 Mint Another
               </ButtonV3>
@@ -145,9 +170,9 @@ export function NftDropMintSection({
             {/* Price display */}
             <div className="flex items-baseline gap-2 mb-1">
               <span className="text-2xl font-bold text-nasun-white">
-                {isFree ? "Free" : `${mintPrice} ETH`}
+                {isFree ? "Free" : mintPriceWei && mintPriceWei > 0n ? `${mintPrice} ETH` : "Price unavailable"}
               </span>
-              {!isFree && (
+              {!isFree && mintPriceWei && mintPriceWei > 0n && (
                 <span className="text-nasun-white/30 text-sm">+ gas</span>
               )}
             </div>
@@ -156,10 +181,12 @@ export function NftDropMintSection({
               variant="c1-gradient"
               size="xl"
               className="!px-14 !py-4 !text-lg !font-semibold !rounded-xl"
-              disabled={selectedId === null || isPaused || isWriting || isConfirming}
+              disabled={selectedId === null || isPaused || isBusy || (!isFree && (!mintPriceWei || mintPriceWei === 0n))}
               onClick={handleMint}
             >
-              {isWriting
+              {isFetchingSignature
+                ? "Preparing mint..."
+                : isWriting
                 ? "Confirm in wallet..."
                 : isConfirming
                 ? "Minting..."

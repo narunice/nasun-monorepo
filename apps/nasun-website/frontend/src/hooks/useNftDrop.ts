@@ -1,7 +1,9 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
-import { parseEther, formatEther } from "viem";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
+import { formatEther } from "viem";
 import { useState, useCallback } from "react";
 import { GENESIS_PASS_ABI, GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
+import { requestMintSignature, GenesisPassApiError } from "@/services/genesisPassApi";
+import { useUserStore } from "@/store/userStore";
 
 function getContractAddress(chainId: number): `0x${string}` | undefined {
   const addr = GENESIS_PASS_ADDRESSES[chainId];
@@ -19,10 +21,10 @@ export function useNftDropRead() {
     query: { refetchInterval: 10_000 },
   });
 
-  const { data: mintPrice } = useReadContract({
+  const { data: currentMintPrice } = useReadContract({
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
-    functionName: "mintPrice",
+    functionName: "currentMintPrice",
   });
 
   const { data: mintDeadline } = useReadContract({
@@ -31,24 +33,34 @@ export function useNftDropRead() {
     functionName: "mintDeadline",
   });
 
+  const { data: transfersUnlocked } = useReadContract({
+    address: contractAddress,
+    abi: GENESIS_PASS_ABI,
+    functionName: "transfersUnlocked",
+  });
+
   return {
     contractAddress,
     currentStage: currentStage != null ? Number(currentStage) : 0,
-    mintPrice: mintPrice != null ? formatEther(mintPrice as bigint) : "0",
-    mintPriceWei: mintPrice as bigint | undefined,
+    mintPrice: currentMintPrice != null ? formatEther(currentMintPrice as bigint) : "0",
+    mintPriceWei: currentMintPrice as bigint | undefined,
     mintDeadline: mintDeadline != null ? Number(mintDeadline) : 0,
+    transfersUnlocked: transfersUnlocked === true,
     isDeployed: !!contractAddress,
   };
 }
 
+const STAGE_PUBLIC = 4;
+
 export function useNftDropMint() {
   const chainId = useChainId();
   const { address } = useAccount();
-  const { switchChainAsync } = useSwitchChain();
   const contractAddress = getContractAddress(chainId);
+  const cognitoToken = useUserStore((s) => s.userData?.cognitoToken);
 
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const [error, setError] = useState<string | null>(null);
+  const [isFetchingSignature, setIsFetchingSignature] = useState(false);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
@@ -57,9 +69,15 @@ export function useNftDropMint() {
   });
 
   const mint = useCallback(
-    async (tokenId: number, quantity: number, mintPriceWei: bigint) => {
+    async (tokenId: number, mintPriceWei: bigint, currentStage: number) => {
       if (!contractAddress || !address) {
         setError("Wallet not connected");
+        return;
+      }
+
+      // Prevent minting with 0 price on paid stages
+      if (currentStage > 1 && currentStage !== STAGE_PUBLIC && mintPriceWei === 0n) {
+        setError("Mint price is not available yet. Please try again shortly.");
         return;
       }
 
@@ -67,18 +85,59 @@ export function useNftDropMint() {
       setTxHash(undefined);
 
       try {
+        let maxQuantity = BigInt(0);
+        let deadline = BigInt(0);
+        let signature: `0x${string}` = "0x";
+
+        // Stages 1-3 require server-issued EIP-712 signature
+        if (currentStage !== STAGE_PUBLIC) {
+          if (!cognitoToken) {
+            setError("Please log in to your Nasun account to mint during this stage.");
+            return;
+          }
+
+          setIsFetchingSignature(true);
+          try {
+            const sigResponse = await requestMintSignature(cognitoToken);
+            const sigData = sigResponse.data;
+
+            // Wallet mismatch guard
+            if (sigData.walletAddress.toLowerCase() !== address.toLowerCase()) {
+              setError(`Connected wallet does not match your registered wallet. Please switch to ${sigData.walletAddress}.`);
+              return;
+            }
+
+            maxQuantity = BigInt(sigData.maxQuantity);
+            deadline = BigInt(sigData.deadline);
+            signature = sigData.signature as `0x${string}`;
+          } catch (e) {
+            if (e instanceof GenesisPassApiError) {
+              if (e.statusCode === 401) setError("Session expired. Please log in again.");
+              else if (e.statusCode === 403) setError("Not eligible for current stage. The stage may have changed.");
+              else setError(e.message);
+            } else if (e instanceof DOMException && e.name === "AbortError") {
+              setError("Request timed out. Please try again.");
+            } else {
+              setError("Failed to prepare mint. Please try again.");
+            }
+            return;
+          } finally {
+            setIsFetchingSignature(false);
+          }
+        }
+
         const hash = await writeContractAsync({
           address: contractAddress,
           abi: GENESIS_PASS_ABI,
           functionName: "mint",
           args: [
             BigInt(tokenId),
-            BigInt(quantity),
-            BigInt(0), // maxQuantity (unused in PUBLIC)
-            BigInt(0), // deadline (unused in PUBLIC)
-            "0x" as `0x${string}`, // empty signature for PUBLIC
+            BigInt(1), // quantity always 1
+            maxQuantity,
+            deadline,
+            signature,
           ],
-          value: mintPriceWei * BigInt(quantity),
+          value: mintPriceWei,
         });
         setTxHash(hash);
       } catch (e: any) {
@@ -86,14 +145,18 @@ export function useNftDropMint() {
         if (msg.includes("StagePaused")) setError("Minting is currently paused.");
         else if (msg.includes("MintingEnded")) setError("Minting period has ended.");
         else if (msg.includes("SoldOut")) setError("This edition is sold out.");
-        else if (msg.includes("WalletLimitExceeded")) setError("You have reached the mint limit for this stage.");
+        else if (msg.includes("WalletLimitExceeded")) setError("You have reached the mint limit.");
         else if (msg.includes("InvalidPayment")) setError("Incorrect payment amount.");
         else if (msg.includes("ContractMinter")) setError("Please use a regular wallet, not a smart contract.");
+        else if (msg.includes("TransfersLocked")) setError("Transfers are locked during the minting period.");
+        else if (msg.includes("StageNotPriced")) setError("Stage price not configured.");
+        else if (msg.includes("InvalidSignature")) setError("Signature verification failed. Please try again.");
+        else if (msg.includes("SignatureExpired")) setError("Signature expired. Please try again.");
         else if (msg.includes("User rejected")) setError("Transaction cancelled.");
         else setError(msg);
       }
     },
-    [contractAddress, address, writeContractAsync]
+    [contractAddress, address, writeContractAsync, cognitoToken]
   );
 
   return {
@@ -101,8 +164,10 @@ export function useNftDropMint() {
     txHash,
     error,
     isWriting,
+    isFetchingSignature,
     isConfirming,
     isSuccess,
-    clearError: () => setError(null),
+    isLoggedIn: !!cognitoToken,
+    clearError: () => { setError(null); setTxHash(undefined); },
   };
 }
