@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import { PageLayout } from "@/components/layout/PageLayout";
 import { NftDropHeroSection } from "@/sections/wave1/nft-drop/NftDropHeroSection";
 import { NftDropMintSection } from "@/sections/wave1/nft-drop/NftDropMintSection";
 
@@ -17,10 +18,10 @@ export default function NftDropPage() {
         />
       </Helmet>
 
-      <div
-        className="min-h-screen w-full"
+      <PageLayout
+        className="!py-0"
         style={{
-          background: "linear-gradient(180deg, #0f0d0b 0%, #141210 50%, #0f0d0b 100%)",
+          background: "linear-gradient(180deg, #191615 0%, #1f1c1a 50%, #191615 100%)",
         }}
       >
         <NftDropHeroSection />
@@ -29,7 +30,7 @@ export default function NftDropPage() {
           mintPrice={mintPrice}
           isDeployed={isDeployed}
         />
-      </div>
+      </PageLayout>
     </>
   );
 }

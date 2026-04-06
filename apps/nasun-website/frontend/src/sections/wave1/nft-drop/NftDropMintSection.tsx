@@ -3,7 +3,11 @@ import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useChainId } from "wagmi";
 import { ButtonV3 } from "@/components/ui/button-v3";
-import { NFT_EDITIONS, STAGE_LABELS, STAGE_DESCRIPTIONS } from "@/constants/nft-drop";
+import {
+  NFT_EDITIONS,
+  STAGE_LABELS,
+  STAGE_DESCRIPTIONS,
+} from "@/constants/nft-drop";
 import { NftDropVideoCard } from "./NftDropVideoCard";
 import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
 
@@ -25,7 +29,8 @@ function MintSuccessView({
   chainId: number;
   isMetaMaskInApp: boolean;
 }) {
-  const edition = selectedId != null ? NFT_EDITIONS.find((e) => e.id === selectedId) : null;
+  const edition =
+    selectedId != null ? NFT_EDITIONS.find((e) => e.id === selectedId) : null;
   const hasFreshMint = isSuccess && edition != null;
 
   return (
@@ -61,7 +66,9 @@ function MintSuccessView({
       {hasFreshMint && (
         <div className="text-center mb-4">
           <h3 className="text-xl font-bold text-nasun-white">{edition.name}</h3>
-          <p className="text-sm text-nasun-white/70 mt-1">{edition.description}</p>
+          <p className="text-sm text-nasun-white/70 mt-1">
+            {edition.description}
+          </p>
         </div>
       )}
 
@@ -69,7 +76,13 @@ function MintSuccessView({
       <div className="flex items-center gap-2 mb-4">
         <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M5 12l5 5L20 7"
+              stroke="#22c55e"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
         <p className="text-green-400 text-lg font-semibold">
@@ -86,8 +99,18 @@ function MintSuccessView({
           className="text-nasun-c4 text-sm underline mb-6 inline-flex items-center gap-1"
         >
           View transaction
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          <svg
+            className="w-3 h-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+            />
           </svg>
         </a>
       )}
@@ -95,7 +118,8 @@ function MintSuccessView({
       {/* Primary CTA */}
       {isMetaMaskInApp ? (
         <p className="text-nasun-white/50 text-sm text-center leading-relaxed max-w-xs">
-          Leave this MetaMask browser and return to Chrome to continue exploring the Nasun website.
+          Leave this MetaMask browser and return to Chrome to continue exploring
+          the Nasun website.
         </p>
       ) : (
         <a href="/my-account?justMinted=genesis-pass">
@@ -127,7 +151,17 @@ export function NftDropMintSection({
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const { mintPriceWei, hasReachedLimit } = useNftDropRead();
-  const { mint, txHash, error, isWriting, isFetchingSignature, isConfirming, isSuccess, isLoggedIn, clearError } = useNftDropMint();
+  const {
+    mint,
+    txHash,
+    error,
+    isWriting,
+    isFetchingSignature,
+    isConfirming,
+    isSuccess,
+    isLoggedIn,
+    clearError,
+  } = useNftDropMint();
 
   const isPaused = currentStage === 0;
   const isFree = currentStage === 1;
@@ -152,7 +186,7 @@ export function NftDropMintSection({
   const handleMint = async () => {
     if (selectedId === null) return;
     clearError();
-    const price = isFree ? 0n : (mintPriceWei || 0n);
+    const price = isFree ? 0n : mintPriceWei || 0n;
     if (!isFree && price === 0n) return;
     await mint(selectedId, price, currentStage);
   };
@@ -172,9 +206,10 @@ export function NftDropMintSection({
           <div
             className={`
               inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold tracking-wider uppercase
-              ${isPaused
-                ? "bg-white/[0.06] text-nasun-white/70 border border-white/[0.1]"
-                : "bg-amber-400/10 text-amber-300 border border-amber-400/20"
+              ${
+                isPaused
+                  ? "bg-white/[0.06] text-nasun-white/70 border border-white/[0.1]"
+                  : "bg-amber-400/10 text-amber-300 border border-amber-400/20"
               }
             `}
           >
@@ -214,7 +249,9 @@ export function NftDropMintSection({
       {/* Transfer lock notice */}
       <div className="mt-8 text-center">
         <p className="text-nasun-white/70 text-sm">
-          Transfers are locked during the minting period to ensure fair distribution.
+          Transfers are locked during the minting period to ensure fair
+          distribution.
+          <br />
           Trading opens when the drop ends.
         </p>
       </div>
@@ -230,7 +267,8 @@ export function NftDropMintSection({
           <div
             className="rounded-2xl border border-white/10 px-8 py-8 text-center max-w-md"
             style={{
-              background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
             }}
           >
             <p className="text-nasun-white/80 text-base">
@@ -242,23 +280,30 @@ export function NftDropMintSection({
             <div
               className="rounded-2xl border border-amber-400/20 px-8 py-8 text-center max-w-lg"
               style={{
-                background: "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
+                background:
+                  "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
               }}
             >
               <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
-                <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-7 h-7" />
+                <img
+                  src="/MetaMask_Fox.svg"
+                  alt="MetaMask"
+                  className="w-7 h-7"
+                />
               </div>
               <p className="text-nasun-white text-lg font-semibold mb-2">
                 Open in MetaMask to mint
               </p>
               <p className="text-nasun-white/70 text-sm mb-6 leading-relaxed max-w-sm mx-auto">
-                Tap the button below to open this page in MetaMask's built-in browser, where your wallet connects automatically.
+                Tap the button below to open this page in MetaMask's built-in
+                browser, where your wallet connects automatically.
               </p>
               <a
                 href={`https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`}
                 className="inline-block w-full max-w-xs rounded-xl py-3.5 text-center text-lg font-semibold transition-all"
                 style={{
-                  background: "linear-gradient(135deg, #E2761B 0%, #CD6116 100%)",
+                  background:
+                    "linear-gradient(135deg, #E2761B 0%, #CD6116 100%)",
                   color: "#fff",
                 }}
               >
@@ -269,11 +314,21 @@ export function NftDropMintSection({
             <div
               className="rounded-2xl border border-amber-400/20 px-8 py-8 text-center max-w-lg"
               style={{
-                background: "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
+                background:
+                  "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
               }}
             >
               <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f9a824" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#f9a824"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <rect x="2" y="6" width="20" height="14" rx="3" />
                   <path d="M2 10h20" />
                   <circle cx="16" cy="16" r="2" />
@@ -283,7 +338,8 @@ export function NftDropMintSection({
                 Connect wallet to mint
               </p>
               <p className="text-nasun-white/70 text-sm mb-6 leading-relaxed max-w-sm mx-auto">
-                Select an edition above, then connect your Ethereum wallet to mint your Genesis Pass.
+                Select an edition above, then connect your Ethereum wallet to
+                mint your Genesis Pass.
               </p>
               <ConnectButton.Custom>
                 {({ openConnectModal }) => (
@@ -308,10 +364,11 @@ export function NftDropMintSection({
         ) : needsLogin ? (
           <div className="text-center py-6">
             <p className="text-nasun-white/80 text-base">
-              Sign in with your Nasun account to verify allowlist eligibility and mint.
+              Sign in with your Nasun account to verify allowlist eligibility
+              and mint.
             </p>
           </div>
-        ) : (isSuccess || hasReachedLimit) ? (
+        ) : isSuccess || hasReachedLimit ? (
           <MintSuccessView
             selectedId={selectedId}
             isSuccess={isSuccess}
@@ -324,7 +381,11 @@ export function NftDropMintSection({
             {/* Price display */}
             <div className="flex items-baseline gap-3 mb-1">
               <span className="text-3xl font-bold text-nasun-white">
-                {isFree ? "Free" : mintPriceWei && mintPriceWei > 0n ? `${mintPrice} ETH` : "Price unavailable"}
+                {isFree
+                  ? "Free"
+                  : mintPriceWei && mintPriceWei > 0n
+                    ? `${mintPrice} ETH`
+                    : "Price unavailable"}
               </span>
               {!isFree && mintPriceWei && mintPriceWei > 0n && (
                 <span className="text-nasun-white/70 text-sm">+ gas</span>
@@ -335,18 +396,23 @@ export function NftDropMintSection({
               variant="c1-gradient"
               size="xl"
               className="!px-14 !py-4 !text-lg !font-semibold !rounded-xl"
-              disabled={selectedId === null || isPaused || isBusy || (!isFree && (!mintPriceWei || mintPriceWei === 0n))}
+              disabled={
+                selectedId === null ||
+                isPaused ||
+                isBusy ||
+                (!isFree && (!mintPriceWei || mintPriceWei === 0n))
+              }
               onClick={handleMint}
             >
               {isFetchingSignature
                 ? "Preparing mint..."
                 : isWriting
-                ? "Confirm in wallet..."
-                : isConfirming
-                ? "Minting..."
-                : selectedId === null
-                ? "Select an Edition"
-                : `Mint "${NFT_EDITIONS.find((e) => e.id === selectedId)?.name}"`}
+                  ? "Confirm in wallet..."
+                  : isConfirming
+                    ? "Minting..."
+                    : selectedId === null
+                      ? "Select an Edition"
+                      : `Mint "${NFT_EDITIONS.find((e) => e.id === selectedId)?.name}"`}
             </ButtonV3>
 
             {selectedId === null && (
