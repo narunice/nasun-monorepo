@@ -58,7 +58,7 @@ contract NasunGenesisPass is
 
     // ──────────────────────── Constants ────────────────────────
 
-    uint256 public constant NUM_TOKEN_TYPES = 7;
+    uint256 public constant NUM_TOKEN_TYPES = 8;
 
     bytes32 public constant MINT_TYPEHASH = keccak256(
         "Mint(address minter,uint8 stage,uint256 maxQuantity,uint256 deadline)"
