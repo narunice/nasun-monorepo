@@ -74,6 +74,16 @@ export const FcfsBadge: FC = () => (
   </span>
 );
 
+export const MintedBadge: FC = () => (
+  <span
+    className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-sm font-medium border border-green-400/20"
+    aria-label="NFT minted"
+  >
+    <span className="text-sm">&#10003;</span>
+    <span>Minted</span>
+  </span>
+);
+
 export const FreeMintBadge: FC = () => (
   <span
     className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-sm font-medium border border-amber-400/20"
