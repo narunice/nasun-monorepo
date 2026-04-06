@@ -2,14 +2,20 @@
  * useAirdropRegistration Hook
  *
  * Fetches and manages April 16th Airdrop registration status.
+ * Uses React Query for data fetching and mutation.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAirdropStatus,
   registerForAirdrop,
   type AirdropStatus,
 } from "@/services/airdropApi";
+
+const airdropKeys = {
+  all: ["airdrop", "status"] as const,
+};
 
 interface UseAirdropRegistrationResult {
   status: AirdropStatus;
@@ -22,47 +28,37 @@ interface UseAirdropRegistrationResult {
 export function useAirdropRegistration(
   cognitoToken: string | undefined,
 ): UseAirdropRegistrationResult {
-  const [status, setStatus] = useState<AirdropStatus>("not_applied");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchStatus = useCallback(async () => {
-    if (!cognitoToken) {
-      setIsLoading(false);
-      return;
-    }
+  const query = useQuery({
+    queryKey: airdropKeys.all,
+    queryFn: () => getAirdropStatus(cognitoToken!),
+    enabled: !!cognitoToken,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await getAirdropStatus(cognitoToken);
-      setStatus(res.status);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [cognitoToken]);
-
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+  const mutation = useMutation({
+    mutationFn: () => registerForAirdrop(cognitoToken!),
+    onSuccess: (data) => {
+      queryClient.setQueryData(airdropKeys.all, data);
+    },
+  });
 
   const register = useCallback(async () => {
     if (!cognitoToken) return;
-
     try {
-      setIsRegistering(true);
-      setError(null);
-      const res = await registerForAirdrop(cognitoToken);
-      setStatus(res.status);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsRegistering(false);
+      await mutation.mutateAsync();
+    } catch {
+      // Error is accessible via mutation.error
     }
-  }, [cognitoToken]);
+  }, [cognitoToken, mutation.mutateAsync]);
 
-  return { status, isLoading, isRegistering, error, register };
+  return {
+    status: query.data?.status ?? "not_applied",
+    isLoading: query.isLoading || query.isFetching,
+    isRegistering: mutation.isPending,
+    error: query.error?.message ?? mutation.error?.message ?? null,
+    register,
+  };
 }

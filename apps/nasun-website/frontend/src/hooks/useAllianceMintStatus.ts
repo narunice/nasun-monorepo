@@ -2,15 +2,17 @@
  * useAllianceMintStatus Hook
  *
  * Checks Alliance NFT mint status and provides registered wallet list.
- * Follows useGenesisPassStatus pattern with global invalidation.
+ * Uses React Query for data fetching with global invalidation support.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getAllianceStatus, isAllianceApiConfigured, type AllianceWallet } from "@/services/allianceNftApi";
-
-const REFETCH_EVENT = "alliance-mint-status-refetch";
+import { queryClient } from "@/lib/queryClient";
 
 const API_CONFIGURED = isAllianceApiConfigured();
+
+const EMPTY_WALLETS: AllianceWallet[] = [];
 
 interface AllianceMintData {
   imageIndex: number;
@@ -19,6 +21,10 @@ interface AllianceMintData {
   nftObjectId: string;
   mintedAt: string;
 }
+
+export const allianceMintKeys = {
+  all: ["alliance", "mint-status"] as const,
+};
 
 interface UseAllianceMintStatusReturn {
   isMinted: boolean;
@@ -31,64 +37,31 @@ interface UseAllianceMintStatusReturn {
 }
 
 export function invalidateAllianceMintStatus(): void {
-  window.dispatchEvent(new Event(REFETCH_EVENT));
+  queryClient.invalidateQueries({ queryKey: allianceMintKeys.all });
 }
 
 export function useAllianceMintStatus(
   cognitoToken?: string | null,
 ): UseAllianceMintStatusReturn {
-  const [isMinted, setIsMinted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [data, setData] = useState<AllianceMintData | null>(null);
-  const [wallets, setWallets] = useState<AllianceWallet[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: allianceMintKeys.all,
+    queryFn: () => getAllianceStatus(cognitoToken!),
+    enabled: API_CONFIGURED && !!cognitoToken,
+    staleTime: 30_000,
+    retry: 1,
+  });
 
-  const fetchStatus = useCallback(async () => {
-    if (!API_CONFIGURED || !cognitoToken) {
-      setIsLoading(false);
-      setIsMinted(false);
-      setData(null);
-      setWallets([]);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const res = await getAllianceStatus(cognitoToken);
-      setIsMinted(res.minted);
-      setData(res.data);
-      setWallets(res.wallets || []);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to check Alliance status";
-      console.error("[useAllianceMintStatus]", message);
-      setError(message);
-      setIsMinted(false);
-      setData(null);
-      setWallets([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [cognitoToken]);
-
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
-
-  useEffect(() => {
-    const handler = () => { fetchStatus(); };
-    window.addEventListener(REFETCH_EVENT, handler);
-    return () => window.removeEventListener(REFETCH_EVENT, handler);
-  }, [fetchStatus]);
+  const refetch = useCallback(async () => {
+    await query.refetch();
+  }, [query.refetch]);
 
   return {
-    isMinted,
-    isLoading,
-    data,
-    wallets,
-    error,
+    isMinted: query.data?.minted ?? false,
+    isLoading: query.isLoading || query.isFetching,
+    data: (query.data?.data as AllianceMintData) ?? null,
+    wallets: query.data?.wallets ?? EMPTY_WALLETS,
+    error: query.error?.message ?? null,
     isConfigured: API_CONFIGURED,
-    refetch: fetchStatus,
+    refetch,
   };
 }
