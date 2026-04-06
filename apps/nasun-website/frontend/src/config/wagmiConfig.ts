@@ -13,7 +13,7 @@ import {
   trustWallet,
   walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
-import { createConfig, http } from "wagmi";
+import { createConfig, http, fallback } from "wagmi";
 import { mainnet, sepolia } from "wagmi/chains";
 
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
@@ -23,6 +23,8 @@ if (!projectId) {
       "Get a free project ID at https://cloud.reown.com"
   );
 }
+
+const alchemyKey = import.meta.env.VITE_ALCHEMY_API_KEY;
 
 const chainId = Number(import.meta.env.VITE_ETHEREUM_CHAIN_ID);
 const chains = chainId === 1 ? ([mainnet] as const) : ([sepolia] as const);
@@ -50,7 +52,14 @@ export const wagmiConfig = createConfig({
   connectors,
   chains,
   transports: {
-    [mainnet.id]: http("https://cloudflare-eth.com"),
-    [sepolia.id]: http("https://rpc.sepolia.org"),
+    [mainnet.id]: fallback([
+      ...(alchemyKey ? [http(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
+      http("https://cloudflare-eth.com"),
+      http("https://eth.merkle.io"),
+    ]),
+    [sepolia.id]: fallback([
+      ...(alchemyKey ? [http(`https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`)] : []),
+      http("https://rpc.sepolia.org"),
+    ]),
   },
 });

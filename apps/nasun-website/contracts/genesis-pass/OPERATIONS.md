@@ -10,8 +10,9 @@
 - [ ] baseURI set (Pinata IPFS CID)
 - [ ] maxSupply = 20,000 per tokenId (increase via setMaxSupply if needed)
 - [ ] mintDeadline set (Unix timestamp)
-- [ ] mintPrice set (wei)
-- [ ] walletLimitPerStage set for each stage
+- [ ] stagePrices set for GTD/FCFS/PUBLIC via `setStagePrice(stage, weiAmount)`
+- [ ] walletLimitPerStage set for each stage (default 0 = all mints revert!)
+- [ ] Transfers locked by default (unlock only after drop ends)
 
 ### Signer Key
 - [ ] Signer private key stored in AWS Secrets Manager
@@ -34,16 +35,66 @@
 ## Stage Transition Runbook
 
 ### Procedure (follow this order exactly)
-1. Send `setStage(N)` on-chain transaction
-2. Wait for block confirmation
-3. `aws ssm put-parameter --name /nasun/genesis-pass/current-stage --value "N" --overwrite`
-4. Wait 60 seconds (Lambda cache expiry)
-5. Verify with test wallet mint
+1. Verify stage price is set: call `stagePriceUSD(N)` or `mintPricePerStage(N)` (must be > 0 for paid stages, otherwise `setStage` will revert with `StageNotPriced`)
+2. Send `setStage(N)` on-chain transaction
+3. Wait for block confirmation
+4. `aws ssm put-parameter --name /nasun/genesis-pass/current-stage --value "N" --overwrite`
+5. Wait 60 seconds (Lambda cache expiry)
+6. Verify with test wallet mint
 
 ### Rules
 - NEVER revert to a previous stage (highWaterMark enforces this on-chain)
 - NEVER update SSM before on-chain tx confirms
+- NEVER activate a paid stage without setting its price first (`StageNotPriced` revert)
 - PUBLIC stage (4) does not require Lambda signatures (frontend mints directly)
+
+---
+
+## Per-Stage Pricing
+
+### Setting Stage Prices
+
+Stage prices are fixed ETH values set by the owner. They must be configured before activating a paid stage.
+
+```
+setStagePrice(2, ethers.parseEther("0.003"))   // GTD ~$8
+setStagePrice(3, ethers.parseEther("0.004"))   // FCFS ~$10
+setStagePrice(4, ethers.parseEther("0.006"))   // PUBLIC ~$15
+```
+
+### Adjusting Price During Drop
+
+Price can be changed at any time without pausing:
+1. Call `setStagePrice(currentStage, newWeiPrice)` on-chain
+2. Frontend polls `currentMintPrice()` every 15 seconds and will pick up the new price
+3. No SSM or Lambda changes needed (price is read on-chain)
+
+### Important Notes
+- `setStagePrice()` reverts for FREE_MINT (stage 1) and PAUSED (stage 0)
+- Price must be > 0 for paid stages
+- `setStage()` reverts with `StageNotPriced` if target paid stage has price = 0
+- The admin page at `/admin/genesis-pass-drop` provides a UI for price adjustments
+
+---
+
+## Transfer Lock
+
+### Design
+- All transfers (including marketplace sales) are blocked during the drop
+- Minting (from = address(0)) is always allowed regardless of lock state
+- `unlockTransfers()` is a **one-way operation** -- once called, transfers cannot be re-locked (rug prevention)
+
+### Unlock Procedure (after drop ends)
+1. Confirm all minting is complete (stage = PAUSED or past mintDeadline)
+2. Call `unlockTransfers()` on-chain (owner only)
+3. Wait for block confirmation
+4. Verify: call `transfersUnlocked()` -- should return `true`
+5. Announce to community: "Transfers are now enabled. You can trade your Genesis Pass on OpenSea."
+
+### Rules
+- NEVER unlock transfers during active minting (creates secondary market chaos)
+- This action is IRREVERSIBLE -- double-check before calling
+- OpenSea will automatically detect the unlock and enable trading
 
 ---
 
@@ -73,12 +124,13 @@ Send `setStage(0)` on-chain (PAUSED) to block all minting instantly.
 - Allowlist stages: Lambda required (signature issuance)
 
 ### Scenario 4: RPC Node Failure
-- wagmi fallback transport: Alchemy -> Cloudflare auto-switch
-- Both down: instruct users to change RPC in their wallet settings
+- wagmi fallback transport: Alchemy (primary) -> Cloudflare (secondary) -> Merkle (tertiary) auto-switch
+- All three down: instruct users to change RPC in their wallet settings
 
 ### Scenario 5: Gas Price Spike
-- Mint price is fixed ETH, not affected
+- Mint price is fixed ETH, not affected by gas
 - If gas is excessive: `setStage(0)` to pause, resume when gas stabilizes
+- Alternative: adjust mint price via `setStagePrice()` to offset high gas costs
 
 ### Scenario 6: Event Extension
 - Call `setMintDeadline(newTimestamp)` on-chain
