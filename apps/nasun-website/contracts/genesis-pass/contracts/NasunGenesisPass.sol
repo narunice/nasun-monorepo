@@ -45,13 +45,16 @@ contract NasunGenesisPass is
     error ContractMinter();
     error BackwardStageTransition();
     error MintingEnded();
+    error TransfersLocked();
+    error StageNotPriced();
 
     // ──────────────────────── Events ────────────────────────
 
     event StageChanged(Stage indexed newStage);
     event SignerChanged(address indexed newSigner);
-    event MintPriceChanged(uint256 newPrice);
+    event StagePriceChanged(Stage indexed stage, uint256 price);
     event MintDeadlineChanged(uint256 newDeadline);
+    event TransfersUnlocked();
 
     // ──────────────────────── Constants ────────────────────────
 
@@ -64,16 +67,17 @@ contract NasunGenesisPass is
     // ──────────────────────── State ────────────────────────
 
     Stage public currentStage;
-    uint256 public mintPrice;
     address public signer;
 
     mapping(uint256 tokenId => uint256) public totalMinted;
     mapping(uint256 tokenId => uint256) public maxSupply;
     mapping(Stage => mapping(address => uint256)) public mintedPerStage;
     mapping(Stage => uint256) public walletLimitPerStage;
+    mapping(Stage => uint256) public mintPricePerStage;
 
-    uint8 public highWaterMark; // Highest non-PAUSED stage ever reached
-    uint256 public mintDeadline; // Unix timestamp, 0 = no deadline
+    uint8 public highWaterMark;
+    uint256 public mintDeadline;
+    bool public transfersUnlocked;
 
     string private _baseURI;
     string private _contractURI;
@@ -84,7 +88,6 @@ contract NasunGenesisPass is
         string memory baseURI_,
         string memory contractURI_,
         address signer_,
-        uint256 mintPrice_,
         uint256 defaultMaxSupply,
         address royaltyReceiver,
         uint96 royaltyBps
@@ -98,7 +101,6 @@ contract NasunGenesisPass is
         _baseURI = baseURI_;
         _contractURI = contractURI_;
         signer = signer_;
-        mintPrice = mintPrice_;
 
         for (uint256 i = 1; i <= NUM_TOKEN_TYPES; i++) {
             maxSupply[i] = defaultMaxSupply;
@@ -132,7 +134,6 @@ contract NasunGenesisPass is
             if (block.timestamp > deadline) revert SignatureExpired();
 
             // Signature grants up to maxQuantity mints total for this stage
-            // mintedPerStage enforces the cumulative cap
             if (mintedPerStage[currentStage][msg.sender] + quantity > maxQuantity) {
                 revert WalletLimitExceeded();
             }
@@ -153,7 +154,10 @@ contract NasunGenesisPass is
         if (currentStage == Stage.FREE_MINT) {
             if (msg.value != 0) revert InvalidPayment();
         } else {
-            if (msg.value != mintPrice * quantity) revert InvalidPayment();
+            // Defense-in-depth: independently verify price even if setStage() guard passed
+            uint256 price = mintPricePerStage[currentStage];
+            if (price == 0) revert StageNotPriced();
+            if (msg.value != price * quantity) revert InvalidPayment();
         }
 
         totalMinted[tokenId] += quantity;
@@ -167,9 +171,12 @@ contract NasunGenesisPass is
     function setStage(Stage stage_) external onlyOwner {
         // Forward-only progression; PAUSED(0) always allowed as emergency brake
         // highWaterMark prevents backward regression via PAUSED bypass
-        // (e.g., GTD->PAUSED->FREE_MINT would allow signature replay)
         if (stage_ != Stage.PAUSED && uint8(stage_) <= highWaterMark) {
             revert BackwardStageTransition();
+        }
+        // Paid stages must have a price configured before activation
+        if (stage_ != Stage.PAUSED && stage_ != Stage.FREE_MINT && mintPricePerStage[stage_] == 0) {
+            revert StageNotPriced();
         }
         currentStage = stage_;
         if (uint8(stage_) > highWaterMark) {
@@ -184,9 +191,13 @@ contract NasunGenesisPass is
         emit SignerChanged(signer_);
     }
 
-    function setMintPrice(uint256 price) external onlyOwner {
-        mintPrice = price;
-        emit MintPriceChanged(price);
+    function setStagePrice(Stage stage_, uint256 price) external onlyOwner {
+        // Cannot set price for FREE_MINT (hardcoded 0) or PAUSED (no minting)
+        if (stage_ == Stage.FREE_MINT || stage_ == Stage.PAUSED) revert StageNotPriced();
+        // Paid stages must have price > 0
+        if (price == 0) revert StageNotPriced();
+        mintPricePerStage[stage_] = price;
+        emit StagePriceChanged(stage_, price);
     }
 
     function setMaxSupply(uint256 tokenId, uint256 supply) external onlyOwner {
@@ -212,9 +223,15 @@ contract NasunGenesisPass is
         emit MintDeadlineChanged(deadline_);
     }
 
-    function withdrawTo(address payable to) external onlyOwner {
+    function withdrawTo(address payable to) external onlyOwner nonReentrant {
         if (to == address(0)) revert ZeroAddress();
         to.sendValue(address(this).balance);
+    }
+
+    /// @notice One-way transfer unlock. Cannot be re-locked after calling.
+    function unlockTransfers() external onlyOwner {
+        transfersUnlocked = true;
+        emit TransfersUnlocked();
     }
 
     // ──────────────────────── View ────────────────────────
@@ -223,9 +240,13 @@ contract NasunGenesisPass is
         return string(abi.encodePacked(_baseURI, "/", _toString(tokenId), ".json"));
     }
 
-    /// @notice Collection-level metadata for OpenSea and marketplaces
     function contractURI() public view returns (string memory) {
         return _contractURI;
+    }
+
+    function currentMintPrice() external view returns (uint256) {
+        if (currentStage == Stage.FREE_MINT) return 0;
+        return mintPricePerStage[currentStage];
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -237,12 +258,19 @@ contract NasunGenesisPass is
         return super.supportsInterface(interfaceId);
     }
 
-    /// @notice Disable renounceOwnership to prevent permanent lockout of admin + withdrawal
     function renounceOwnership() public view override onlyOwner {
         revert("Renounce disabled");
     }
 
     // ──────────────────────── Internal ────────────────────────
+
+    /// @notice Transfer lock: blocks all transfers while locked, minting (from=0x0) always allowed
+    function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
+        internal override
+    {
+        if (from != address(0) && !transfersUnlocked) revert TransfersLocked();
+        super._update(from, to, ids, values);
+    }
 
     function _toString(uint256 value) internal pure returns (string memory) {
         if (value == 0) return "0";
