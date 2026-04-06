@@ -17,7 +17,7 @@ import { useGenesisPassStatus, invalidateGenesisPassStatus } from "../../hooks/u
 import { registerGenesisPass, GenesisPassApiError } from "../../services/genesisPassApi";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
-import { FcfsBadge, FreeMintBadge, GuaranteedBadge } from "./components/StatusBadges";
+import { FcfsBadge, FreeMintBadge, GuaranteedBadge, MintedBadge } from "./components/StatusBadges";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAllianceMintStatus } from "../../hooks/useAllianceMintStatus";
+import { useNftDropRead } from "@/hooks/useNftDrop";
+import { useMultiChainNFTs } from "@/features/wallet";
+import { useEnabledNftCollections } from "@/features/admin/hooks/useNftCollections";
 import { useEcosystemStatus } from "../../hooks/useEcosystemStatus";
 import type { NftType } from "../../services/ecosystemApi";
 import { ALLIANCE_IMAGES } from "@/constants/alliance";
@@ -84,6 +87,18 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
     data: allianceData,
     isConfigured: isAllianceConfigured,
   } = useAllianceMintStatus(cognitoToken);
+
+  // Genesis Pass mint status (on-chain + Alchemy)
+  const { transfersUnlocked } = useNftDropRead();
+  const { data: multiChainNfts } = useMultiChainNFTs(evmWalletAddress);
+  const { data: nftCollections } = useEnabledNftCollections();
+  const hasGenesisPassNft = (() => {
+    if (!multiChainNfts || !nftCollections) return false;
+    const featuredAddresses = new Set(
+      nftCollections.filter((c) => c.featured).map((c) => c.contractAddress.toLowerCase())
+    );
+    return multiChainNfts.some((nft) => featuredAddresses.has(nft.contractAddress.toLowerCase()));
+  })();
 
   const [showAllianceMenu, setShowAllianceMenu] = useState(false);
   const [showGenesisMenu, setShowGenesisMenu] = useState(false);
@@ -302,8 +317,9 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                   <Spinner size="sm" />
                 ) : isGenesisPassRegistered ? (
                   <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-green-400 text-sm">&#10003; Registered</span>
+                      {hasGenesisPassNft && <MintedBadge />}
                       {genesisPassMintType === "FREE_MINT" && <FreeMintBadge />}
                       {genesisPassMintType === "GUARANTEED" && <GuaranteedBadge />}
                       {genesisPassMintType && genesisPassMintType !== "FREE_MINT" && genesisPassMintType !== "GUARANTEED" && <FcfsBadge />}
@@ -389,17 +405,23 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                   )}
                 </div>
               )}
-              <a
-                href="https://opensea.io/collection/nasun-genesis-pass/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-nasun-white/70 hover:text-nasun-white text-sm self-end mt-1 transition-colors underline underline-offset-2"
-              >
-                Go to OpenSea
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                </svg>
-              </a>
+              {transfersUnlocked ? (
+                <a
+                  href="https://opensea.io/collection/nasun-genesis-pass/overview"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-nasun-white/70 hover:text-nasun-white text-sm self-end mt-1 transition-colors underline underline-offset-2"
+                >
+                  Go to OpenSea
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                </a>
+              ) : (
+                <span className="text-nasun-white/60 text-sm self-end mt-1">
+                  Trading opens after the drop ends
+                </span>
+              )}
             </div>
           )}
 
