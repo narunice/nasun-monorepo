@@ -12,12 +12,13 @@ import { useMultiChainNFTs } from "@/features/wallet";
 import { useEnabledNftCollections } from "@/features/admin/hooks/useNftCollections";
 import { useAuth } from "@/features/auth";
 import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
-import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
 import { OwnedObjects } from "./OwnedObjects";
 import { NasunVoteNfts } from "./NasunVoteNfts";
 import { FeaturedNftSection } from "./components/FeaturedNftSection";
 import { useWalletRegistration } from "./hooks/useWalletRegistration";
 import { useNftDropRead } from "@/hooks/useNftDrop";
+import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
+import { NFT_EDITIONS } from "@/constants/nft-drop";
 
 interface AssetsCardProps {
   walletAddress?: string;
@@ -40,7 +41,17 @@ export const AssetsCard: FC<AssetsCardProps> = ({
     refetch: refetchNfts,
   } = useMultiChainNFTs(walletAddress);
 
-  const { transfersUnlocked } = useNftDropRead();
+  const { transfersUnlocked, mintDeadline } = useNftDropRead();
+
+  // Transfer lock ends when contract unlocks OR mint deadline has passed
+  const isDropEnded = mintDeadline > 0 && Date.now() / 1000 > mintDeadline;
+  const effectiveTransfersUnlocked = transfersUnlocked || isDropEnded;
+
+  // On-chain ownership for enriching Alchemy data when tokenId is missing
+  const evmWalletAddress =
+    user?.linkedAccounts?.metamask?.walletAddress?.toLowerCase() ||
+    (user?.provider === "MetaMask" ? user.walletAddress?.toLowerCase() : undefined);
+  const { ownedEditionId } = useGenesisPassOwnership(evmWalletAddress);
 
   const { data: collections } = useEnabledNftCollections();
 
@@ -73,48 +84,40 @@ export const AssetsCard: FC<AssetsCardProps> = ({
     return { featuredNfts: featured, regularNfts: regular };
   }, [multiChainNfts, featuredSet]);
 
-  const hasFeaturedNfts = featuredNfts.length > 0;
+  // Enrich featured NFTs: fill missing tokenId/name from on-chain data
+  const enrichedFeaturedNfts = useMemo(() => {
+    if (!ownedEditionId || featuredNfts.length === 0) return featuredNfts;
+    const edition = NFT_EDITIONS.find((e) => e.id === ownedEditionId);
+    return featuredNfts.map((nft) => {
+      if (nft.tokenId) return nft;
+      return {
+        ...nft,
+        tokenId: String(ownedEditionId),
+        name: edition ? `Genesis Pass - ${edition.name}` : nft.name,
+        description: edition?.description || nft.description,
+      };
+    });
+  }, [featuredNfts, ownedEditionId]);
+
+  const hasFeaturedNfts = enrichedFeaturedNfts.length > 0 || (isAllianceMinted && !!allianceData);
 
   return (
     <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">MY ASSETS</h5>
 
-      <NasunVoteNfts>
-        {isAllianceMinted && allianceData && (
-          <div className="group relative rounded-lg overflow-hidden border border-nasun-white/10 bg-nasun-white/[0.03] hover:border-nasun-nw1/30 transition-colors">
-            <div className="aspect-square">
-              <a
-                href={`https://explorer.nasun.io/devnet/object/${allianceData.nftObjectId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img
-                  src={ALLIANCE_PREVIEW_IMAGES[allianceData.imageIndex] || ALLIANCE_PREVIEW_IMAGES[0]}
-                  alt={ALLIANCE_NAMES[allianceData.imageIndex] || "Alliance NFT"}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </a>
-            </div>
-            <div className="p-2">
-              <p className="text-sm text-nasun-white/40 uppercase tracking-wider">Alliance</p>
-              <p className="text-sm text-nasun-white/60 font-mono truncate" title={allianceData.nftObjectId}>
-                {allianceData.nftObjectId.slice(0, 6)}...{allianceData.nftObjectId.slice(-4)}
-              </p>
-              <p className="text-sm text-nasun-white/50 truncate mt-0.5">
-                {ALLIANCE_NAMES[allianceData.imageIndex] || "Alliance NFT"}
-              </p>
-            </div>
-          </div>
-        )}
-      </NasunVoteNfts>
+      {/* Featured Collection first (Alliance + Genesis Pass) */}
       <FeaturedNftSection
-        nfts={featuredNfts}
+        nfts={enrichedFeaturedNfts}
         collections={collections ?? []}
         walletAddress={walletAddress}
-        isTransferLocked={!transfersUnlocked}
+        isTransferLocked={!effectiveTransfersUnlocked}
         refetchNfts={refetchNfts}
+        allianceData={isAllianceMinted && allianceData ? allianceData : undefined}
       />
+
+      {/* Vote Proof NFTs (no Alliance, it moved to Featured) */}
+      <NasunVoteNfts />
+
       <OwnedObjects
         nfts={regularNfts}
         isNftPending={isNftPending}

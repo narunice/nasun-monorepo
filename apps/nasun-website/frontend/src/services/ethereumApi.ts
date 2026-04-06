@@ -259,10 +259,12 @@ const normalizeAlchemyNFT = (nft: AlchemyNFT, chain: NFTChain = 'ethereum'): Eth
 
   const thumbnailUrl = nft.media?.[0]?.thumbnail || imageUrl;
 
+  const tokenId = nft.tokenId ?? "";
+
   return {
     contractAddress: nft.contract.address.toLowerCase(),
-    tokenId: nft.tokenId,
-    name: nft.title || nft.metadata?.name || `#${nft.tokenId}`,
+    tokenId,
+    name: nft.title || nft.metadata?.name || (tokenId ? `#${tokenId}` : undefined),
     description: nft.description || nft.metadata?.description,
     imageUrl,
     thumbnailUrl,
