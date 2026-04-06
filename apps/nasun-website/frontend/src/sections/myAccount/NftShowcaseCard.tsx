@@ -66,7 +66,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
       searchParams.delete("justMinted");
       setSearchParams(searchParams, { replace: true });
     }
-  }, [justMinted, hasGenesisPassNft]);
+  }, [justMinted, hasGenesisPassNft, searchParams, setSearchParams]);
 
   const ownedEdition = ownedEditionId != null
     ? NFT_EDITIONS.find((e) => e.id === ownedEditionId)
