@@ -261,9 +261,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             {/* Actions */}
             <div className="flex flex-col gap-2 mt-1">
               <ButtonV3
-                onClick={() =>
-                  window.location.href = "/wave1/genesis-pass-drop"
-                }
+                onClick={() => navigate("/wave1/genesis-pass-drop")}
                 variant="nw2"
                 size="sm"
                 outline
