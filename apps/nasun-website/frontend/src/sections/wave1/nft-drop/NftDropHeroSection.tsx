@@ -63,18 +63,22 @@ export function NftDropHeroSection() {
             <span className="font-medium !font-changeling">PASS</span>
           </PageTitle>
         </motion.div>
-
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="mt-6 sm:mt-8 text-nasun-white/80 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed"
-        >
-          8 unique video editions. Choose your mark on the genesis of Nasun.
-          <br className="hidden sm:block" />
-          Each pass grants founding access to the Nasun ecosystem.
-        </motion.p>
+        <div className="max-w-[620px] mx-auto">
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mt-6 sm:mt-8 text-nasun-white/80 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed"
+          >
+            A mysterious pentahedron appears across time and space, disrupting
+            systems that concentrate power into the hands of a few.
+            <br className="hidden sm:block" />
+            Its presence creates new timelines where communities,{" "}
+            <br className="hidden sm:block" />
+            not individuals, shape powerful civilizations.
+          </motion.p>
+        </div>
 
         {/* Decorative line */}
         <motion.div

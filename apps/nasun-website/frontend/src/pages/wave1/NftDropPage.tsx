@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
@@ -11,6 +12,13 @@ const isDev = import.meta.env.MODE === "development";
 export default function NftDropPage() {
   const { currentStage, mintPrice, isDeployed } = useNftDropRead();
   const [searchParams] = useSearchParams();
+
+  // Force black background on footer
+  useEffect(() => {
+    document.documentElement.classList.add("genesis-drop-theme");
+    return () =>
+      document.documentElement.classList.remove("genesis-drop-theme");
+  }, []);
 
   // Dev-only: ?stage=1 to override contract stage for UI testing
   const stageOverride = isDev ? searchParams.get("stage") : null;
@@ -29,7 +37,7 @@ export default function NftDropPage() {
       <PageLayout
         className="!py-0"
         style={{
-          background: "linear-gradient(180deg, #191615 0%, #1f1c1a 50%, #191615 100%)",
+          background: "#000000",
         }}
       >
         <NftDropHeroSection />
