@@ -4,7 +4,7 @@ import { StrictMode, lazy, Suspense } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
 import { Amplify } from "aws-amplify";
 import awsConfig from "./config/awsConfig"; // 기존 awsConfig 임포트 유지
@@ -12,6 +12,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
 import { AuthProvider } from "@/features/auth/providers/AuthProvider";
 import { validateEnv } from "./utils/envValidation";
+import { queryClient } from "@/lib/queryClient";
 import "./index.css";
 import App from "./App";
 
@@ -19,30 +20,7 @@ import App from "./App";
 // are deferred until after the app shell renders (~667KB gzip saved from initial load)
 const WalletLayer = lazy(() => import("./providers/WalletLayer"));
 
-// 1. QueryClient 인스턴스 생성 (가장 먼저 실행)
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        // 4xx errors (client errors, throttling): no retry
-        if (error && typeof error === "object" && "status" in error) {
-          const status = (error as { status: number }).status;
-          if (status >= 400 && status < 500) return false;
-        }
-        // 5xx server errors: retry once
-        if (error && typeof error === "object" && "status" in error) {
-          const status = (error as { status: number }).status;
-          if (status >= 500) return failureCount < 1;
-        }
-        // Network errors: retry up to 2 times
-        return failureCount < 2;
-      },
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    },
-  },
-});
-
-// 2. Chrome Extension 에러 핸들링 (브라우저 확장 프로그램 통신 오류 방지)
+// 1. Chrome Extension 에러 핸들링 (브라우저 확장 프로그램 통신 오류 방지)
 function setupErrorHandlers() {
   // Chrome Extension runtime.lastError 에러 억제
   window.addEventListener('error', (event) => {

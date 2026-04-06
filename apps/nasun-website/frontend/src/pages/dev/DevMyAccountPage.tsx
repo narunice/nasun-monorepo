@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -55,42 +55,40 @@ const DevMyAccountPage = () => {
   const [showLinkXGuidance, setShowLinkXGuidance] = useState(false);
   const { handleLinkTwitter } = useAccountLinking({ user });
 
+  const paramsHandled = useRef(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Handle URL search params once on mount (not reactively to avoid re-render loops)
   useEffect(() => {
-    // Check for account linking cancellation message
+    if (paramsHandled.current) return;
+
     const message = searchParams.get("message");
     const provider = searchParams.get("provider");
+    const guidance = searchParams.get("guidance");
 
     if (message === "account_linking_cancelled" && provider) {
+      paramsHandled.current = true;
       setNotification({
         message:
           t("userInfo.accountLinkingCancelled", { provider }) ||
           `${provider} account linking was cancelled.`,
         type: "info",
       });
-
-      // Clear URL parameters
-      setSearchParams({});
-
-      // Auto-hide notification after 5 seconds
-      const timer = setTimeout(() => {
-        setNotification(null);
-      }, 5000);
-
+      setSearchParams({}, { replace: true });
+      const timer = setTimeout(() => setNotification(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [searchParams, setSearchParams, t]);
 
-  // Show X account linking guidance modal when arriving from leaderboard-guide
-  useEffect(() => {
-    if (searchParams.get("guidance") === "link-x") {
+    if (guidance === "link-x") {
+      paramsHandled.current = true;
       setShowLinkXGuidance(true);
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Prefer linked MetaMask wallet over login wallet
   const walletAddress =

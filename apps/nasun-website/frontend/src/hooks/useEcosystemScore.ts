@@ -1,18 +1,26 @@
 /**
  * useEcosystemScore - Fetches ecosystem score data for a user.
  *
- * Extracted from EcosystemStatusCard's inline useEffect pattern
- * so ProfileHeroCard and other components can reuse it.
+ * Uses React Query for data fetching.
+ * Cooldown timer for refresh rate-limiting is pure UI state (useState + useRef).
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   getEcosystemScore,
   syncEcosystemActivations,
   type EcosystemScoreData,
 } from "@/services/ecosystemScoreApi";
+import { queryClient } from "@/lib/queryClient";
 
 const RATE_LIMIT_COOLDOWN_MS = 20_000;
+
+export const ecosystemScoreKeys = {
+  all: ["ecosystem", "score"] as const,
+  detail: (identityId: string | undefined) =>
+    [...ecosystemScoreKeys.all, identityId] as const,
+};
 
 interface UseEcosystemScoreResult {
   score: EcosystemScoreData | null;
@@ -27,11 +35,13 @@ interface UseEcosystemScoreResult {
 export function useEcosystemScore(
   identityId: string | undefined,
 ): UseEcosystemScoreResult {
-  const [score, setScore] = useState<EcosystemScoreData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Cooldown timer (pure UI state)
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const cooldownTimer = useRef<ReturnType<typeof setInterval>>();
+
+  // Cleanup timer on unmount
+  useEffect(() => () => clearInterval(cooldownTimer.current), []);
 
   const startCooldown = useCallback(() => {
     setCooldownSeconds(Math.ceil(RATE_LIMIT_COOLDOWN_MS / 1000));
@@ -47,42 +57,26 @@ export function useEcosystemScore(
     }, 1000);
   }, []);
 
-  // Cleanup timer on unmount
-  useEffect(() => () => clearInterval(cooldownTimer.current), []);
+  const query = useQuery({
+    queryKey: ecosystemScoreKeys.detail(identityId),
+    queryFn: () => getEcosystemScore(identityId!),
+    enabled: !!identityId,
+    staleTime: 30_000,
+    retry: 1,
+  });
 
-  const fetchScore = useCallback(async (id: string) => {
-    const data = await getEcosystemScore(id);
-    return data;
-  }, []);
-
-  useEffect(() => {
-    if (!identityId) {
-      setIsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setIsLoading(true);
-    (async () => {
-      try {
-        const data = await fetchScore(identityId);
-        if (!cancelled) setScore(data);
-      } catch (err) {
-        console.error("[useEcosystemScore]", err);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [identityId, fetchScore]);
+  // Use refs to avoid stale closure in refresh
+  const identityIdRef = useRef(identityId);
+  identityIdRef.current = identityId;
 
   const refresh = useCallback(() => {
-    if (!identityId || isRefreshing || cooldownSeconds > 0) return;
+    const id = identityIdRef.current;
+    if (!id || isRefreshing || cooldownSeconds > 0) return;
+
     setIsRefreshing(true);
     (async () => {
       try {
-        const syncResult = await syncEcosystemActivations(identityId);
+        const syncResult = await syncEcosystemActivations(id);
         if (syncResult === null) {
           // Rate-limited by server
           startCooldown();
@@ -91,8 +85,7 @@ export function useEcosystemScore(
         startCooldown();
         // Brief delay for cache propagation before refetch
         await new Promise((r) => setTimeout(r, 500));
-        const data = await fetchScore(identityId);
-        if (data) setScore(data);
+        await queryClient.invalidateQueries({ queryKey: ecosystemScoreKeys.detail(id) });
         // Notify other components (DailyMissions, etc.) to refresh
         window.dispatchEvent(new Event("ecosystem:refresh"));
       } catch (err) {
@@ -101,7 +94,13 @@ export function useEcosystemScore(
         setIsRefreshing(false);
       }
     })();
-  }, [identityId, isRefreshing, cooldownSeconds, fetchScore, startCooldown]);
+  }, [isRefreshing, cooldownSeconds, startCooldown]);
 
-  return { score, isLoading, refresh, isRefreshing, cooldownSeconds };
+  return {
+    score: query.data ?? null,
+    isLoading: query.isLoading || query.isFetching,
+    refresh,
+    isRefreshing,
+    cooldownSeconds,
+  };
 }

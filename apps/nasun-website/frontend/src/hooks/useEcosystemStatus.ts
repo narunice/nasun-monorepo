@@ -2,10 +2,12 @@
  * useEcosystemStatus Hook
  *
  * Fetches NFT activation status for the current user.
- * Provides activate/deactivate actions.
+ * Provides activate/deactivate actions via useMutation.
+ * Uses React Query for data fetching with global invalidation support.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getEcosystemStatus,
   activateNft,
@@ -13,14 +15,18 @@ import {
   isEcosystemApiConfigured,
   type Activation,
   type NftType,
-  type EcosystemApiError,
 } from "@/services/ecosystemApi";
 import { syncEcosystemActivations } from "@/services/ecosystemScoreApi";
+import { queryClient as globalQueryClient } from "@/lib/queryClient";
 
-const INVALIDATE_EVENT = "ecosystem:invalidate";
+const EMPTY_ACTIVATIONS: Activation[] = [];
+
+export const ecosystemStatusKeys = {
+  all: ["ecosystem", "status"] as const,
+};
 
 export function invalidateEcosystemStatus() {
-  window.dispatchEvent(new Event(INVALIDATE_EVENT));
+  globalQueryClient.invalidateQueries({ queryKey: ecosystemStatusKeys.all });
 }
 
 interface UseEcosystemStatusResult {
@@ -39,100 +45,74 @@ export function useEcosystemStatus(
   cognitoToken: string | undefined,
   identityId?: string,
 ): UseEcosystemStatusResult {
-  const [activations, setActivations] = useState<Activation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isActivating, setIsActivating] = useState(false);
-  const [activateError, setActivateError] = useState<string | null>(null);
-
+  const localQueryClient = useQueryClient();
   const isConfigured = isEcosystemApiConfigured();
 
-  const fetchStatus = useCallback(async () => {
-    if (!cognitoToken || !isConfigured) {
-      setIsLoading(false);
-      return;
-    }
+  // Stable refs for mutation callbacks
+  const tokenRef = useRef(cognitoToken);
+  tokenRef.current = cognitoToken;
+  const identityIdRef = useRef(identityId);
+  identityIdRef.current = identityId;
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await getEcosystemStatus(cognitoToken);
-      setActivations(res.activations);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [cognitoToken, isConfigured]);
+  const query = useQuery({
+    queryKey: ecosystemStatusKeys.all,
+    queryFn: () => getEcosystemStatus(cognitoToken!),
+    enabled: isConfigured && !!cognitoToken,
+    staleTime: 30_000,
+    retry: 1,
+  });
 
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
-
-  // Listen for invalidation events
-  useEffect(() => {
-    const handler = () => fetchStatus();
-    window.addEventListener(INVALIDATE_EVENT, handler);
-    return () => window.removeEventListener(INVALIDATE_EVENT, handler);
-  }, [fetchStatus]);
+  const activations = query.data?.activations ?? EMPTY_ACTIVATIONS;
 
   const getActivation = useCallback(
-    (nftType: NftType) => activations.find((a) => a.nftType === nftType && a.status === "ACTIVE"),
+    (nftType: NftType) =>
+      activations.find((a) => a.nftType === nftType && a.status === "ACTIVE"),
     [activations],
   );
 
+  const onMutationSuccess = useCallback(() => {
+    localQueryClient.invalidateQueries({ queryKey: ecosystemStatusKeys.all });
+    // Fire-and-forget sync (only when identityId is provided)
+    const id = identityIdRef.current;
+    if (id) syncEcosystemActivations(id).catch(() => {});
+  }, [localQueryClient]);
+
+  const activateMutation = useMutation({
+    mutationFn: (nftType: NftType) => activateNft(tokenRef.current!, nftType),
+    onSuccess: onMutationSuccess,
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (nftType: NftType) => deactivateNft(tokenRef.current!, nftType),
+    onSuccess: onMutationSuccess,
+  });
+
   const activate = useCallback(
     async (nftType: NftType) => {
-      if (!cognitoToken) return;
-      setIsActivating(true);
-      setActivateError(null);
-      try {
-        await activateNft(cognitoToken, nftType);
-        await fetchStatus();
-        // Sync explorer-api activation cache (fire-and-forget)
-        if (identityId) syncEcosystemActivations(identityId).catch(() => {});
-        invalidateEcosystemStatus();
-      } catch (err) {
-        const msg = (err as EcosystemApiError).message || "Activation failed";
-        setActivateError(msg);
-        throw err;
-      } finally {
-        setIsActivating(false);
-      }
+      await activateMutation.mutateAsync(nftType);
     },
-    [cognitoToken, fetchStatus],
+    [activateMutation.mutateAsync],
   );
 
   const deactivate = useCallback(
     async (nftType: NftType) => {
-      if (!cognitoToken) return;
-      setIsActivating(true);
-      setActivateError(null);
-      try {
-        await deactivateNft(cognitoToken, nftType);
-        await fetchStatus();
-        if (identityId) syncEcosystemActivations(identityId).catch(() => {});
-        invalidateEcosystemStatus();
-      } catch (err) {
-        const msg = (err as EcosystemApiError).message || "Deactivation failed";
-        setActivateError(msg);
-        throw err;
-      } finally {
-        setIsActivating(false);
-      }
+      await deactivateMutation.mutateAsync(nftType);
     },
-    [cognitoToken, fetchStatus],
+    [deactivateMutation.mutateAsync],
   );
 
   return {
     activations,
-    isLoading,
-    error,
+    isLoading: query.isLoading || query.isFetching,
+    error: query.error?.message ?? null,
     isConfigured,
     getActivation,
     activate,
     deactivate,
-    isActivating,
-    activateError,
+    isActivating: activateMutation.isPending || deactivateMutation.isPending,
+    activateError:
+      activateMutation.error?.message ??
+      deactivateMutation.error?.message ??
+      null,
   };
 }
