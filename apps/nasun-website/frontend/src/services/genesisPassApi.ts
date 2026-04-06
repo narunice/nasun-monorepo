@@ -9,6 +9,17 @@ const API_BASE = import.meta.env.VITE_GENESIS_PASS_API;
 
 export type GenesisPassStatus = "ACTIVE" | "APPLIED" | "LEGACY" | "WITHDRAWN" | null;
 
+export interface MintSignatureResponse {
+  success: boolean;
+  data: {
+    signature: string;
+    deadline: number;
+    walletAddress: string;
+    stage: number;
+    maxQuantity: number;
+  };
+}
+
 export interface GenesisPassCheckResponse {
   success: boolean;
   data: {
@@ -133,6 +144,61 @@ export async function getMyGenesisPassStatus(cognitoToken: string): Promise<Gene
   }
 
   return data as GenesisPassCheckResponse;
+}
+
+/**
+ * Request an EIP-712 mint signature from the server.
+ * Server derives all parameters (wallet, stage, maxQuantity) from the JWT identity.
+ * Includes a single retry with jittered delay on 429.
+ */
+export async function requestMintSignature(cognitoToken: string): Promise<MintSignatureResponse> {
+  if (!API_BASE) throw new GenesisPassApiError("Genesis Pass API is not configured");
+
+  const url = `${API_BASE}/genesis-pass/mint-signature`;
+
+  const doFetch = () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cognitoToken}`,
+      },
+      body: JSON.stringify({}),
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
+  };
+
+  let response = await doFetch();
+
+  // Single retry with jittered delay on 429
+  if (response.status === 429) {
+    const delay = 2000 + Math.random() * 3000;
+    await new Promise((r) => setTimeout(r, delay));
+    response = await doFetch();
+  }
+
+  let data: any;
+  try {
+    data = await response.json();
+  } catch {
+    throw new GenesisPassApiError(
+      "Unexpected server response. Please try again.",
+      response.status,
+    );
+  }
+
+  if (!response.ok) {
+    throw new GenesisPassApiError(
+      data.message || "Failed to request mint signature",
+      response.status,
+      data.error,
+    );
+  }
+
+  return data as MintSignatureResponse;
 }
 
 /**
