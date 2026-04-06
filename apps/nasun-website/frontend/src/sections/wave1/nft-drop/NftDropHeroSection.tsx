@@ -71,7 +71,7 @@ export function NftDropHeroSection() {
           transition={{ delay: 0.35 }}
           className="mt-6 sm:mt-8 text-nasun-white/80 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed"
         >
-          7 unique video editions. Choose your mark on the genesis of Nasun.
+          8 unique video editions. Choose your mark on the genesis of Nasun.
           <br className="hidden sm:block" />
           Each pass grants founding access to the Nasun ecosystem.
         </motion.p>

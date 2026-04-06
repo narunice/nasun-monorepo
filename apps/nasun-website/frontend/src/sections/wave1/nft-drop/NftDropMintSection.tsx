@@ -6,10 +6,11 @@ import { ButtonV3 } from "@/components/ui/button-v3";
 import {
   NFT_EDITIONS,
   STAGE_LABELS,
-  STAGE_DESCRIPTIONS,
+  STAGE_START_TIMES,
 } from "@/constants/nft-drop";
-import { NftDropVideoCard } from "./NftDropVideoCard";
+import { EditionCarousel } from "./EditionCarousel";
 import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
+import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
 
 function getEtherscanUrl(chainId: number, txHash: string): string {
   if (chainId === 11155111) return `https://sepolia.etherscan.io/tx/${txHash}`;
@@ -148,7 +149,7 @@ export function NftDropMintSection({
   isDeployed,
 }: NftDropMintSectionProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { mintPriceWei, hasReachedLimit } = useNftDropRead();
   const {
@@ -159,14 +160,13 @@ export function NftDropMintSection({
     isFetchingSignature,
     isConfirming,
     isSuccess,
-    isLoggedIn,
     clearError,
   } = useNftDropMint();
 
+  const { hasMinted: alreadyOwns } = useGenesisPassOwnership(address);
+
   const isPaused = currentStage === 0;
   const isFree = currentStage === 1;
-  const isAllowlistStage = currentStage >= 1 && currentStage <= 3;
-  const needsLogin = isAllowlistStage && !isLoggedIn;
 
   // Mobile browser without MetaMask injected -> should use MetaMask deep link instead of Connect Wallet
   const isMobileNonMetaMask =
@@ -181,7 +181,26 @@ export function NftDropMintSection({
     !!(window as any).ethereum?.isMetaMask;
 
   const stageLabel = STAGE_LABELS[currentStage] || "Unknown";
-  const stageDesc = STAGE_DESCRIPTIONS[currentStage] || "";
+
+  // Build contextual status message based on user state.
+  // currentStage from the contract is the source of truth: if a stage is active on-chain, minting is open.
+  const statusMessage = (() => {
+    if (!isConnected) return null;
+    if (alreadyOwns || hasReachedLimit) return "You own a Genesis Pass.";
+    if (isPaused) {
+      const nextStage = STAGE_START_TIMES[1];
+      if (nextStage && nextStage.getTime() > Date.now()) {
+        const diff = nextStage.getTime() - Date.now();
+        const hours = Math.floor(diff / 3_600_000);
+        const mins = Math.floor((diff % 3_600_000) / 60_000);
+        const dateStr = nextStage.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+        const timeStr = nextStage.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" });
+        return `Minting opens in ${hours}h ${mins}m, from ${dateStr} ${timeStr} UTC.`;
+      }
+      return "Minting is currently paused. Stay tuned.";
+    }
+    return "You are eligible to mint now.";
+  })();
 
   const handleMint = async () => {
     if (selectedId === null) return;
@@ -201,7 +220,7 @@ export function NftDropMintSection({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="flex flex-col items-center mb-12"
+          className="relative flex items-center justify-center mb-12"
         >
           <div
             className={`
@@ -220,41 +239,17 @@ export function NftDropMintSection({
             />
             {stageLabel}
           </div>
-          <p className="text-nasun-white/70 text-sm sm:text-base mt-4 text-center max-w-lg leading-relaxed">
-            {stageDesc}
-          </p>
+          {statusMessage && (
+            <span className="hidden sm:block absolute right-0 text-sm text-nasun-white/70">{statusMessage}</span>
+          )}
         </motion.div>
       )}
 
-      {/* Edition grid - always visible */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
-        {NFT_EDITIONS.map((edition, i) => (
-          <motion.div
-            key={edition.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.06, duration: 0.5 }}
-          >
-            <NftDropVideoCard
-              id={edition.id}
-              name={edition.name}
-              description={edition.description}
-              selected={selectedId === edition.id}
-              onSelect={setSelectedId}
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Transfer lock notice */}
-      <div className="mt-8 text-center">
-        <p className="text-nasun-white/70 text-sm">
-          Transfers are locked during the minting period to ensure fair
-          distribution.
-          <br />
-          Trading opens when the drop ends.
-        </p>
-      </div>
+      {/* Edition carousel */}
+      <EditionCarousel
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+      />
 
       {/* Mint controls */}
       <motion.div
@@ -337,9 +332,9 @@ export function NftDropMintSection({
               <p className="text-nasun-white text-lg font-semibold mb-2">
                 Connect wallet to mint
               </p>
-              <p className="text-nasun-white/70 text-sm mb-6 leading-relaxed max-w-sm mx-auto">
-                Select an edition above, then connect your Ethereum wallet to
-                mint your Genesis Pass.
+              <p className="text-nasun-white/70 text-sm mb-6 leading-relaxed max-w-[360px] mx-auto">
+                Connect your Ethereum wallet to check your eligibility and mint
+                your Genesis Pass.
               </p>
               <ConnectButton.Custom>
                 {({ openConnectModal }) => (
@@ -355,19 +350,6 @@ export function NftDropMintSection({
               </ConnectButton.Custom>
             </div>
           )
-        ) : isPaused ? (
-          <div className="text-center py-6">
-            <p className="text-nasun-white/80 text-base">
-              Minting is currently paused. Stay tuned for announcements.
-            </p>
-          </div>
-        ) : needsLogin ? (
-          <div className="text-center py-6">
-            <p className="text-nasun-white/80 text-base">
-              Sign in with your Nasun account to verify allowlist eligibility
-              and mint.
-            </p>
-          </div>
         ) : isSuccess || hasReachedLimit ? (
           <MintSuccessView
             selectedId={selectedId}
@@ -417,7 +399,7 @@ export function NftDropMintSection({
 
             {selectedId === null && (
               <p className="text-nasun-white/70 text-sm">
-                Choose one of the 7 editions above to mint
+                Select an edition above to mint
               </p>
             )}
 
@@ -429,6 +411,16 @@ export function NftDropMintSection({
           </>
         )}
       </motion.div>
+
+      {/* Transfer lock notice */}
+      <div className="mt-12 text-center">
+        <p className="text-nasun-white/50 text-sm leading-relaxed">
+          Transfers are locked during the minting period to ensure fair
+          distribution.
+          <br />
+          Trading opens when the drop ends.
+        </p>
+      </div>
     </section>
   );
 }
