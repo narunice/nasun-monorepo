@@ -77,12 +77,14 @@ function AirdropContent() {
   const pending = registrations.filter((r) => r.status === "pending").length;
   const approved = registrations.filter((r) => r.status === "approved").length;
   const rejected = registrations.filter((r) => r.status === "rejected").length;
+  // Bot filtering (frontend-side: airdrop already fetches all items)
+  const bots = registrations.filter((r) => r.probableBot).length;
 
   return (
     <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Total" value={total} />
+        <StatCard label="Total" value={total} sub={bots > 0 ? `${(total - bots).toLocaleString()} excl. bots` : undefined} />
         <StatCard label="Pending" value={pending} />
         <StatCard label="Approved" value={approved} />
         <StatCard label="Rejected" value={rejected} />
@@ -132,7 +134,7 @@ function AirdropContent() {
                 {registrations.map((r, i) => (
                   <tr
                     key={r.identityId}
-                    className="border-b border-nasun-white/5 hover:bg-nasun-white/5 transition-colors"
+                    className={`border-b border-nasun-white/5 hover:bg-nasun-white/5 transition-colors${r.probableBot ? " opacity-40" : ""}`}
                   >
                     <td className="py-2 px-2 text-nasun-white/40">
                       {i + 1}

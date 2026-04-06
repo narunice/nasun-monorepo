@@ -58,7 +58,7 @@ const USER_LIST_FIELDS = [
   "originalTwitterHandle", "twitterId", "profileImageUrl", "walletAddress",
   "role", "verified", "isTelegramMember", "telegramUserId", "telegramUsername",
   "createdAt", "updatedAt", "status", "linkedToPrimaryId", "linkedAccounts",
-  "googleEmail", "linkedProviders",
+  "googleEmail", "linkedProviders", "probableBot", "botTier",
 ] as const;
 
 // Provider keys that represent social connections (not wallets)
@@ -86,6 +86,8 @@ interface UserProfileItem {
   linkedToPrimaryId?: string;
   googleEmail?: string;
   linkedProviders: string[];
+  probableBot?: boolean;
+  botTier?: number;
 }
 
 function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
@@ -147,6 +149,8 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
     linkedToPrimaryId: item.linkedToPrimaryId?.S,
     googleEmail,
     linkedProviders,
+    probableBot: item.probableBot?.BOOL ?? false,
+    botTier: item.botTier?.N ? Number(item.botTier.N) : undefined,
   };
 }
 
@@ -370,6 +374,7 @@ interface GenesisPassItem {
   mintType?: string;
   source?: string;
   twitterHandle?: string;
+  probableBot?: boolean;
 }
 
 /**
@@ -400,6 +405,7 @@ async function scanGenesisPassAllowlist(status?: string): Promise<GenesisPassIte
           mintType: item.mintType?.S,
           source: item.source?.S,
           twitterHandle: item.twitterHandle?.S,
+          probableBot: item.probableBot?.BOOL ?? false,
         });
       }
     }
@@ -1057,6 +1063,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         (item) => !["LEGACY", "WITHDRAWN"].includes(item.status) && item.mintType !== "FREE_MINT"
       ).length;
 
+      // Bot-excluded counts
+      const genesisPassBotCount = genesisPassItems.filter((item) => item.probableBot).length;
+      const genesisPassPaidBotCount = genesisPassItems.filter(
+        (item) => item.probableBot && !["LEGACY", "WITHDRAWN"].includes(item.status) && item.mintType !== "FREE_MINT"
+      ).length;
+
       return jsonResponse(
         200,
         {
@@ -1075,6 +1087,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             withdrawn: genesisPassWithdrawn,
             total: genesisPassItems.length,
             paidApplied: genesisPassPaidApplied,
+            botCount: genesisPassBotCount,
+            paidAppliedExBot: genesisPassPaidApplied - genesisPassPaidBotCount,
+            totalExBot: genesisPassItems.length - genesisPassBotCount,
           },
         },
         requestOrigin
@@ -1148,12 +1163,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       const telegramCount = primaryUsers.filter(u => u.isTelegramMember === true).length;
       const xConnectedCount = primaryUsers.filter(u => !!u.twitterHandle).length;
+      const botCount = primaryUsers.filter(u => u.probableBot).length;
 
       return jsonResponse(200, {
         success: true,
         ...result,
         stats: {
           totalRegistered: primaryUsers.length,
+          totalRegisteredExBot: primaryUsers.length - botCount,
+          botCount,
           telegramMembers: telegramCount,
           xConnected: xConnectedCount,
         },

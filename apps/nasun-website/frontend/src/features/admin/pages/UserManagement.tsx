@@ -51,6 +51,7 @@ export function UserManagement() {
           <StatCard
             label="Registered Users"
             value={data?.stats?.totalRegistered ?? "-"}
+            sub={data?.stats?.botCount ? `${data.stats.totalRegisteredExBot?.toLocaleString()} excl. bots (${data.stats.botCount.toLocaleString()} bots)` : undefined}
           />
           <StatCard
             label="Leaderboard Accounts"
