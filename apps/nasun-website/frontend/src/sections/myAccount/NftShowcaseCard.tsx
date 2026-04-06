@@ -6,18 +6,20 @@
  * stacked vertically in a single column.
  */
 
-import { FC, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { FC, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
 import { useGenesisPassStatus } from "@/hooks/useGenesisPassStatus";
+import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import type { NftType } from "@/services/ecosystemApi";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
+import { NFT_EDITIONS } from "@/constants/nft-drop";
 
 interface NftShowcaseCardProps {
   className?: string;
@@ -49,6 +51,26 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     isLoading: isGenesisPassLoading,
     isConfigured: isGenesisPassConfigured,
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
+
+  // Direct on-chain ownership check
+  const { hasMinted: hasGenesisPassNft, ownedEditionId } = useGenesisPassOwnership(evmWalletAddress);
+
+  // justMinted query param from drop page redirect
+  const [searchParams, setSearchParams] = useSearchParams();
+  const justMinted = searchParams.get("justMinted") === "genesis-pass";
+  const showMintedState = hasGenesisPassNft || justMinted;
+
+  // Clean up justMinted once on-chain confirms
+  useEffect(() => {
+    if (justMinted && hasGenesisPassNft) {
+      searchParams.delete("justMinted");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [justMinted, hasGenesisPassNft]);
+
+  const ownedEdition = ownedEditionId != null
+    ? NFT_EDITIONS.find((e) => e.id === ownedEditionId)
+    : undefined;
 
   const ecosystem = useEcosystemStatus(cognitoToken);
 
@@ -197,37 +219,42 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               GENESIS PASS
             </h6>
             <div
-              className={`relative rounded-sm overflow-hidden aspect-[4/3] transition-all flex items-center justify-center ${genesisIsActive ? "bg-gray-700" : "bg-gray-800"}`}
+              className={`relative rounded-sm overflow-hidden aspect-[4/3] transition-all flex items-center justify-center ${
+                showMintedState ? "bg-gradient-to-br from-amber-900/40 to-gray-800" : genesisIsActive ? "bg-gray-700" : "bg-gray-800"
+              }`}
             >
               <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
               {isGenesisPassLoading ? (
                 <Spinner />
+              ) : showMintedState ? (
+                <div className="flex flex-col items-center gap-2 px-4">
+                  <span className="text-amber-400 text-lg font-semibold">Minted</span>
+                  {ownedEdition && (
+                    <span className="text-nasun-white/70 text-sm">
+                      {ownedEdition.name} Edition
+                    </span>
+                  )}
+                  {justMinted && !hasGenesisPassNft && (
+                    <span className="text-nasun-white/50 text-sm animate-pulse">
+                      Confirming on chain...
+                    </span>
+                  )}
+                </div>
               ) : genesisIsActive ? null : isGenesisPassRegistered ? (
                 <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
-                  You are in the allowlist.
+                  You are in the allowlist. Mint your Genesis Pass now.
                 </span>
               ) : isGenesisPassApplied ? (
                 <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
                   You applied to the allowlist.
                 </span>
               ) : (
-                <div>
-                  <div className="mx-auto max-w-sm space-y-1 my-4">
-                    <p className="text-sm">• $10 Allowlist GTD Full</p>
-                    <p className="text-sm">• $10 Allowlist FCFS</p>
-                    <p className="text-sm">• $15 Public Sale</p>
-                  </div>
-
-                  <ButtonV3
-                    onClick={() => navigate("/wave1/genesis-pass")}
-                    variant="gradient"
-                    size="md"
-                    className="font-medium"
-                  >
-                    Join Allowlist FCFS
-                  </ButtonV3>
+                <div className="flex flex-col items-center gap-3">
+                  <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
+                    Get your Genesis Pass to earn bonus ecosystem points.
+                  </span>
                 </div>
               )}
             </div>
@@ -235,30 +262,14 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             <div className="flex flex-col gap-2 mt-1">
               <ButtonV3
                 onClick={() =>
-                  window.open(
-                    "https://opensea.io/collection/nasun-genesis-pass/overview",
-                    "_blank",
-                  )
+                  window.location.href = "/wave1/genesis-pass-drop"
                 }
                 variant="nw2"
                 size="sm"
                 outline
                 className="w-full"
               >
-                Go to OpenSea
-                <svg
-                  className="w-3.5 h-3.5 ml-1 inline"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-                  />
-                </svg>
+                {showMintedState ? "View Genesis Pass Drop" : "Go to Genesis Pass Drop"}
               </ButtonV3>
             </div>
           </div>
