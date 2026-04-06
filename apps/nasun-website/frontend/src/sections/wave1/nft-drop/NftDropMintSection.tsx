@@ -8,6 +8,7 @@ import {
   STAGE_LABELS,
   STAGE_START_TIMES,
 } from "@/constants/nft-drop";
+import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { EditionCarousel } from "./EditionCarousel";
 import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
 import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
@@ -67,9 +68,6 @@ function MintSuccessView({
       {hasFreshMint && (
         <div className="text-center mb-4">
           <h3 className="text-xl font-bold text-nasun-white">{edition.name}</h3>
-          <p className="text-sm text-nasun-white/70 mt-1">
-            {edition.description}
-          </p>
         </div>
       )}
 
@@ -193,8 +191,16 @@ export function NftDropMintSection({
         const diff = nextStage.getTime() - Date.now();
         const hours = Math.floor(diff / 3_600_000);
         const mins = Math.floor((diff % 3_600_000) / 60_000);
-        const dateStr = nextStage.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-        const timeStr = nextStage.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "UTC" });
+        const dateStr = nextStage.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+        const timeStr = nextStage.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: "UTC",
+        });
         return `Minting opens in ${hours}h ${mins}m, from ${dateStr} ${timeStr} UTC.`;
       }
       return "Minting is currently paused. Stay tuned.";
@@ -240,16 +246,15 @@ export function NftDropMintSection({
             {stageLabel}
           </div>
           {statusMessage && (
-            <span className="hidden sm:block absolute right-0 text-sm text-nasun-white/70">{statusMessage}</span>
+            <span className="hidden sm:block absolute right-0 text-sm text-nasun-white/70">
+              {statusMessage}
+            </span>
           )}
         </motion.div>
       )}
 
       {/* Edition carousel */}
-      <EditionCarousel
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-      />
+      <EditionCarousel selectedId={selectedId} onSelect={setSelectedId} />
 
       {/* Mint controls */}
       <motion.div
@@ -397,12 +402,6 @@ export function NftDropMintSection({
                       : `Mint "${NFT_EDITIONS.find((e) => e.id === selectedId)?.name}"`}
             </ButtonV3>
 
-            {selectedId === null && (
-              <p className="text-nasun-white/70 text-sm">
-                Select an edition above to mint
-              </p>
-            )}
-
             {error && (
               <p className="text-red-400 text-base mt-2 text-center max-w-md">
                 {error}
@@ -412,13 +411,87 @@ export function NftDropMintSection({
         )}
       </motion.div>
 
+      {/* Possession & Powers */}
+      <div className="mt-16 max-w-lg mx-auto space-y-10">
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold tracking-[0.3em] uppercase text-amber-400/80">
+            Possession
+          </h3>
+          <p className="text-nasun-white/80 leading-relaxed">
+            The Genesis Pass grants access to the Nasun ecosystem, where the
+            community reconfigures the simulation from its collective
+            imagination. Activate your pass to unlock utilities that expand
+            alongside the growth of Nasun.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold tracking-[0.3em] uppercase text-amber-400/80">
+            Powers
+          </h3>
+          <p className="text-nasun-white/80 uppercase tracking-widest">
+            What you unlock
+          </p>
+          <ul className="text-nasun-white/80 text-sm space-y-1.5 list-disc list-inside">
+            <li>Early access to Nasun apps</li>
+            <li>2x Boost in number and quality of rewards</li>
+            <li>Exclusive events and allowlists</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Owner-only actions */}
+      {(alreadyOwns || hasReachedLimit) && (
+        <div className="flex flex-col sm:flex-row justify-center gap-3 mt-8">
+          <a
+            href="/my-account"
+            className="inline-flex items-center justify-center px-6 py-3 bg-nasun-white text-nasun-black font-semibold text-sm rounded-lg hover:bg-nasun-white/90 transition-colors"
+          >
+            Check your Genesis Pass
+          </a>
+          <a
+            href={`${chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io"}/address/${GENESIS_PASS_ADDRESSES[chainId] ?? ""}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-nasun-white/60 text-nasun-white font-semibold text-sm rounded-lg hover:border-nasun-white hover:bg-nasun-white/5 transition-colors"
+          >
+            <span>View on Etherscan</span>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+              />
+            </svg>
+          </a>
+        </div>
+      )}
+
       {/* Transfer lock notice */}
-      <div className="mt-12 text-center">
-        <p className="text-nasun-white/50 text-sm leading-relaxed">
-          Transfers are locked during the minting period to ensure fair
-          distribution.
-          <br />
-          Trading opens when the drop ends.
+      <div className="mt-12 max-w-lg mx-auto">
+        <p className="inline-flex items-start gap-2 text-nasun-white/50 text-sm leading-relaxed">
+          <svg
+            className="w-4 h-4 flex-shrink-0 mt-0.5 text-nasun-white/40"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span>
+            Transfers are locked during the minting period to ensure fair
+            distribution. <br />
+            Trading opens when the drop ends.
+          </span>
         </p>
       </div>
     </section>
