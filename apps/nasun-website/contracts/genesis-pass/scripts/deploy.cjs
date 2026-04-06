@@ -14,7 +14,7 @@ async function main() {
   const SIGNER_ADDRESS = process.env.SIGNER_ADDRESS || deployer.address;
   const DEFAULT_MAX_SUPPLY = parseInt(process.env.DEFAULT_MAX_SUPPLY || "20000", 10);
   const ROYALTY_RECEIVER = process.env.ROYALTY_RECEIVER || deployer.address;
-  const ROYALTY_BPS = parseInt(process.env.ROYALTY_BPS || "500", 10);
+  const ROYALTY_BPS = parseInt(process.env.ROYALTY_BPS || "0", 10);
 
   // Per-stage prices (wei)
   const STAGE_PRICES = {
