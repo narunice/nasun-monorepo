@@ -30,8 +30,6 @@ export function MetaMaskRedirectBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Show banner for mobile users who are NOT on MetaMask in-app browser
-    // and NOT on iPhone Safari (which has its own WalletConnect flow)
     if (isMobile() && !isMetaMaskBrowser() && !isIOSSafari()) {
       setShow(true);
     }
@@ -51,7 +49,7 @@ export function MetaMaskRedirectBanner() {
       >
         <button
           onClick={() => setDismissed(true)}
-          className="absolute top-3 right-3 text-nasun-white/40 hover:text-nasun-white/80 transition-colors"
+          className="absolute top-3 right-3 text-nasun-white/60 hover:text-nasun-white/90 transition-colors"
           aria-label="Dismiss"
         >
           <X size={18} />
@@ -75,7 +73,7 @@ export function MetaMaskRedirectBanner() {
             <p className="text-nasun-white text-sm font-semibold leading-tight">
               Open in MetaMask for the best minting experience
             </p>
-            <p className="text-nasun-white/50 text-xs mt-1 leading-relaxed">
+            <p className="text-nasun-white/70 text-sm mt-1 leading-relaxed">
               Mobile browsers may have connection issues. Use MetaMask's built-in browser for a reliable mint.
             </p>
           </div>

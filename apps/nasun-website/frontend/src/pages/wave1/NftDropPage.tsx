@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { NftDropHeroSection } from "@/sections/wave1/nft-drop/NftDropHeroSection";
 import { NftDropMintSection } from "@/sections/wave1/nft-drop/NftDropMintSection";
-import { MetaMaskRedirectBanner } from "@/sections/wave1/nft-drop/MetaMaskRedirectBanner";
+
 import { useNftDropRead } from "@/hooks/useNftDrop";
 
 export default function NftDropPage() {
@@ -24,17 +24,11 @@ export default function NftDropPage() {
         }}
       >
         <NftDropHeroSection />
-        {!isDeployed ? (
-          <div className="text-center py-20 text-nasun-white/40">
-            Contract not deployed on this network.
-          </div>
-        ) : (
-          <NftDropMintSection
-            currentStage={currentStage}
-            mintPrice={mintPrice}
-          />
-        )}
-        <MetaMaskRedirectBanner />
+        <NftDropMintSection
+          currentStage={currentStage}
+          mintPrice={mintPrice}
+          isDeployed={isDeployed}
+        />
       </div>
     </>
   );
