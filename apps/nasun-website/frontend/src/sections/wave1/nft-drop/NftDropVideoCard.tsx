@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 interface NftDropVideoCardProps {
   id: number;
   name: string;
-  description: string;
   selected: boolean;
   onSelect: (id: number) => void;
   mintedCount?: number;
@@ -14,7 +13,6 @@ interface NftDropVideoCardProps {
 export function NftDropVideoCard({
   id,
   name,
-  description,
   selected,
   onSelect,
   mintedCount = 0,
@@ -79,9 +77,15 @@ export function NftDropVideoCard({
         />
 
         {/* Edition number badge */}
-        <div className="absolute top-3 left-3 z-10">
+        <div
+          className={`absolute z-10 ${compact ? "top-0.5 left-1 sm:top-3 sm:left-3" : "top-3 left-3"}`}
+        >
           <span
-            className="text-sm font-mono tracking-wider uppercase px-2.5 py-1 rounded-lg"
+            className={`font-mono tracking-wider uppercase rounded-lg ${
+              compact
+                ? "text-[10px] px-1.5 py-0.5 sm:text-sm sm:px-2.5 sm:py-1"
+                : "text-sm px-2.5 py-1"
+            }`}
             style={{
               background: "rgba(0,0,0,0.5)",
               color: "rgba(255,255,255,0.8)",
@@ -92,37 +96,18 @@ export function NftDropVideoCard({
           </span>
         </div>
 
-        {/* Selection indicator */}
-        {selected && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center shadow-lg"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M5 12l5 5L20 7"
-                stroke="#000"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </motion.div>
-        )}
-
-        {/* Bottom gradient for text legibility */}
+        {/* Bottom gradient for text legibility (hidden on mobile for compact cards) */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-28"
+          className={`absolute bottom-0 left-0 right-0 h-28 ${compact ? "hidden sm:block" : ""}`}
           style={{
             background:
-              "linear-gradient(to top, rgba(25,22,21,0.95) 0%, rgba(25,22,21,0.6) 50%, transparent 100%)",
+              "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)",
           }}
         />
 
-        {/* Compact: title overlaid on image */}
+        {/* Compact: title overlaid on image (desktop only) */}
         {compact && (
-          <div className="absolute bottom-3 left-3 right-3 z-10">
+          <div className="absolute bottom-3 left-3 right-3 z-10 hidden sm:block">
             <h3
               className={`text-sm font-semibold tracking-wide ${
                 selected ? "text-amber-300" : "text-nasun-white/90"
@@ -139,14 +124,13 @@ export function NftDropVideoCard({
         <div className="p-4 pt-0 relative -mt-3">
           <h3
             className={`text-base font-semibold tracking-wide transition-colors duration-300 ${
-              selected ? "text-amber-300" : "text-nasun-white/90 group-hover:text-nasun-white"
+              selected
+                ? "text-amber-300"
+                : "text-nasun-white/90 group-hover:text-nasun-white"
             }`}
           >
             {name}
           </h3>
-          <p className="text-sm text-nasun-white/70 mt-1 leading-relaxed">
-            {description}
-          </p>
           {mintedCount > 0 && (
             <p className="text-sm text-nasun-white/70 mt-1.5 font-mono">
               {mintedCount.toLocaleString()} minted
