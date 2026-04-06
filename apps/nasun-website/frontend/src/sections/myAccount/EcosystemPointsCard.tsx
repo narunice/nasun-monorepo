@@ -269,8 +269,9 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
   if (!identityId) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4">
-          Ecosystem Points
+        <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">
+          Nasun Ecosystem Points
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span>
         </h5>
         <p className="text-sm text-nasun-white/50 text-center py-8">
           Sign in to view your ecosystem points history
@@ -283,8 +284,9 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
     <OuterBox color="c5" padding="sm" className={className}>
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <h5 className="font-medium uppercase text-nasun-white">
-          Ecosystem Points
+        <h5 className="font-medium uppercase text-nasun-white flex items-center gap-2">
+          Nasun Ecosystem Points
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span>
         </h5>
         <div className="flex gap-1">
           {([7, 14, 30] as DaysOption[]).map((d) => (
