@@ -248,7 +248,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 </div>
               ) : genesisIsActive ? null : isGenesisPassRegistered ? (
                 <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
-                  You are in the allowlist. Mint your Genesis Pass now.
+                  You are in the allowlist.
                 </span>
               ) : isGenesisPassApplied ? (
                 <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
