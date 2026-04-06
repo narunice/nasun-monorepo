@@ -745,6 +745,13 @@ const DevGenesisPassPage = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [skipVideo, setSkipVideo] = useState(false);
 
+  // Apply genesis-drop-theme for black background + footer
+  useEffect(() => {
+    document.documentElement.classList.add("genesis-drop-theme");
+    return () =>
+      document.documentElement.classList.remove("genesis-drop-theme");
+  }, []);
+
   // Skip video on slow connections
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -799,11 +806,11 @@ const DevGenesisPassPage = () => {
   }, []);
 
   return (
-    <>
+    <div className="bg-black min-h-screen">
       {/* Hero Section - outside PageLayout to remove top padding */}
-      <div className="relative h-[75vh] md:h-screen overflow-hidden bg-nasun-black mb-8 md:mb-0">
+      <div className="relative h-[75vh] md:h-screen overflow-hidden bg-black mb-8 md:mb-0">
         {/* Background video (poster shown while loading; skipped on slow connections) */}
-        <div className="absolute inset-0 flex justify-center bg-nasun-black">
+        <div className="absolute inset-0 flex justify-center bg-black">
           {skipVideo ? (
             <img
               src="/videos/genesis-pass-poster.webp"
@@ -971,7 +978,7 @@ const DevGenesisPassPage = () => {
           </div>
         )}
       </PageLayout>
-    </>
+    </div>
   );
 };
 

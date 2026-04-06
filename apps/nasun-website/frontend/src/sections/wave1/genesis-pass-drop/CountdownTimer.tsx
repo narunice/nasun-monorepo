@@ -1,11 +1,7 @@
 import React from "react";
+import type { TimeLeft } from "@/constants/nft-drop";
 
-export interface TimeLeft {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-}
+export type { TimeLeft };
 
 interface CountdownTimerProps {
   label: string;
