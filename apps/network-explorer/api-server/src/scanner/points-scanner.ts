@@ -180,16 +180,21 @@ async function scanLoop(): Promise<void> {
     // Daily ecosystem snapshot (after matview is fresh, 5min grace after UTC midnight)
     const utcMinutes = new Date().getUTCMinutes();
     if (todayStr !== lastSnapshotDate && utcMinutes >= 5) {
-      try {
-        const yesterday = new Date();
-        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-        await takeDailySnapshot(
-          yesterday.toISOString().slice(0, 10),
-          getActivationsCacheMap(),
-        );
-        lastSnapshotDate = todayStr;
-      } catch (err) {
-        console.error('[Snapshot] Error (non-fatal):', (err as Error).message);
+      const cacheMap = getActivationsCacheMap();
+      if (cacheMap.size === 0) {
+        console.warn('[Snapshot] Skipped: activation cache is empty (would record multiplier=0 for all users)');
+      } else {
+        try {
+          const yesterday = new Date();
+          yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+          await takeDailySnapshot(
+            yesterday.toISOString().slice(0, 10),
+            cacheMap,
+          );
+          lastSnapshotDate = todayStr;
+        } catch (err) {
+          console.error('[Snapshot] Error (non-fatal):', (err as Error).message);
+        }
       }
     }
   } catch (err) {
