@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 import {
@@ -7,6 +8,18 @@ import {
   type TimeLeft,
 } from "@/sections/wave1/genesis-pass-drop/CountdownTimer";
 import { SectionTitle } from "@/components/ui";
+import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
+
+const IS_MAINNET = import.meta.env.VITE_NETWORK === "mainnet";
+const SEPOLIA_CHAIN_ID = 11155111;
+const MAINNET_CHAIN_ID = 1;
+
+const GENESIS_PASS_CONTRACT =
+  GENESIS_PASS_ADDRESSES[IS_MAINNET ? MAINNET_CHAIN_ID : SEPOLIA_CHAIN_ID] ??
+  "0x0000000000000000000000000000000000000000";
+const ETHERSCAN_BASE = IS_MAINNET
+  ? "https://etherscan.io"
+  : "https://sepolia.etherscan.io";
 
 // ---------------------------------------------------------------------------
 // Mint phase schedule (all times in UTC)
@@ -173,7 +186,7 @@ export default function GenesisPassDropPage() {
         className="min-h-screen w-full"
         style={{
           background:
-            "linear-gradient(180deg, #000000 0%, #0a0a0a 50%, #000000 100%)",
+            "linear-gradient(180deg, #191615 0%, #1f1c1a 50%, #191615 100%)",
         }}
       >
         {/* Hero section */}
@@ -216,7 +229,7 @@ export default function GenesisPassDropPage() {
             className="absolute inset-0 pointer-events-none z-10"
             style={{
               background:
-                "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 25%, transparent 60%, rgba(0,0,0,0.25) 72%, rgba(0,0,0,0.6) 85%, rgb(0,0,0) 95%)",
+                "linear-gradient(to bottom, rgba(25,22,21,0.2) 0%, transparent 25%, transparent 60%, rgba(25,22,21,0.25) 72%, rgba(25,22,21,0.6) 85%, rgb(25,22,21) 95%)",
             }}
           />
           {/* Mobile: solid fill below video area to extend hero */}
@@ -224,7 +237,7 @@ export default function GenesisPassDropPage() {
             className="absolute bottom-0 left-0 right-0 h-[30%] pointer-events-none z-[9] md:hidden"
             style={{
               background:
-                "linear-gradient(to bottom, transparent 0%, rgb(0,0,0) 15%)",
+                "linear-gradient(to bottom, transparent 0%, rgb(25,22,21) 15%)",
             }}
           />
 
@@ -287,7 +300,7 @@ export default function GenesisPassDropPage() {
             {/* Scroll indicator */}
             <div className="pb-6">
               <svg
-                className="w-6 h-6 text-nasun-white/50 animate-bounce"
+                className="w-6 h-6 text-nasun-white/60 animate-bounce"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -304,7 +317,7 @@ export default function GenesisPassDropPage() {
         </div>
 
         {/* Mobile: countdown timers on black bg, outside hero */}
-        <div className="md:hidden relative z-30 bg-black px-6 pb-20 -mt-[18vh]">
+        <div className="md:hidden relative z-30 bg-nasun-black px-6 pb-20 -mt-[18vh]">
           <div className="max-w-sm mx-auto grid grid-cols-1 gap-2">
             {activePhases.map((phase, i) => (
               <FadeInUp key={phase.label} delay={`${0.2 + i * 0.1}s`}>
@@ -328,7 +341,7 @@ export default function GenesisPassDropPage() {
         </div>
 
         {/* Drop Details Section */}
-        <div className="bg-black px-6 md:px-8 py-16 md:py-24">
+        <div className="bg-nasun-black px-6 md:px-8 py-16 md:py-24">
           <div className="max-w-[840px] mx-auto space-y-12">
             {/* Schedule & Price */}
             <FadeInUp>
@@ -336,16 +349,16 @@ export default function GenesisPassDropPage() {
                 <h2 className="text-xl md:text-2xl font-bold text-nasun-white mb-6">
                   Updated Schedule (UTC) &amp; Price
                 </h2>
-                <ul className="space-y-2 text-nasun-white/80 text-sm md:text-base">
+                <ul className="space-y-2 text-nasun-white/90 text-sm md:text-base">
                   <li className="flex items-start gap-2">
-                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span className="text-nasun-white/60 mt-0.5">&#8226;</span>
                     <span>
                       <strong className="text-nasun-white">Free Mint:</strong>{" "}
                       April 7th — 3:00 PM UTC
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span className="text-nasun-white/60 mt-0.5">&#8226;</span>
                     <span>
                       <strong className="text-nasun-white">
                         GTD Allowlist:
@@ -354,7 +367,7 @@ export default function GenesisPassDropPage() {
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span className="text-nasun-white/60 mt-0.5">&#8226;</span>
                     <span>
                       <strong className="text-nasun-white">
                         FCFS Allowlist:
@@ -363,14 +376,14 @@ export default function GenesisPassDropPage() {
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span className="text-nasun-white/60 mt-0.5">&#8226;</span>
                     <span>
                       <strong className="text-nasun-white">Public Mint:</strong>{" "}
                       April 9th — 3:00 PM UTC @ ~$15 in ETH
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-nasun-white/40 mt-0.5">&#8226;</span>
+                    <span className="text-nasun-white/60 mt-0.5">&#8226;</span>
                     <span>
                       <strong className="text-nasun-white">Mint closes:</strong>{" "}
                       April 14th — 3:00 PM UTC
@@ -386,7 +399,7 @@ export default function GenesisPassDropPage() {
                 <h2 className="text-xl md:text-2xl font-bold text-nasun-white mb-4">
                   Supply is limited by time, not by number.
                 </h2>
-                <div className="space-y-4 text-nasun-white/80 text-sm md:text-base leading-relaxed">
+                <div className="space-y-4 text-nasun-white/90 text-sm md:text-base leading-relaxed">
                   <p>
                     There is no fixed supply cap. The mint window is what
                     determines how many Genesis Passes exist. Once the window
@@ -414,11 +427,34 @@ export default function GenesisPassDropPage() {
                 <h2 className="text-xl md:text-2xl font-bold text-nasun-white mb-4">
                   Ethereum Mainnet
                 </h2>
-                <p className="text-nasun-white/80">
+                <p className="text-nasun-white/90">
                   The Genesis Pass is an Ethereum Mainnet NFT, minted on Nasun
                   website. <br />
                   After the drop ends, it will be freely tradeable on OpenSea.
                 </p>
+              </div>
+            </FadeInUp>
+
+            {/* CTA Buttons */}
+            <FadeInUp delay="0.4s">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Link
+                  to="/my-account"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-nasun-white text-nasun-black font-semibold text-sm rounded-lg hover:bg-nasun-white/90 transition-colors"
+                >
+                  Check your Genesis Pass
+                </Link>
+                <a
+                  href={`${ETHERSCAN_BASE}/address/${GENESIS_PASS_CONTRACT}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-nasun-white/60 text-nasun-white font-semibold text-sm rounded-lg hover:border-nasun-white hover:bg-nasun-white/5 transition-colors"
+                >
+                  <span>View on Etherscan</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                </a>
               </div>
             </FadeInUp>
           </div>
