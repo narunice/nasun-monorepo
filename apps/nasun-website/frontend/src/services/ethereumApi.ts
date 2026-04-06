@@ -482,6 +482,10 @@ export const getAllChainNFTs = async (
 /**
  * Get Etherscan URL for an NFT
  */
+export const getEtherscanContractUrl = (contractAddress: string): string => {
+  return `${ETHERSCAN_EXPLORER_URL}/address/${contractAddress}`;
+};
+
 export const getEtherscanNFTUrl = (
   contractAddress: string,
   tokenId: string

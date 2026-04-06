@@ -14,6 +14,7 @@ import type { EthereumNFT } from "@/types/ethereum";
 import type { NftCollection } from "@/features/admin/types";
 import {
   getExplorerNFTUrl,
+  getEtherscanContractUrl,
   getOpenSeaNFTUrl,
   type NFTChain,
 } from "@/services/ethereumApi";
@@ -54,12 +55,18 @@ const FeaturedNftDetailModal: FC<{
   onClose: () => void;
 }> = ({ nft, collectionName, isTransferLocked, onClose }) => {
   const chain = (nft.chain ?? "ethereum") as NFTChain;
-  const explorerUrl = getExplorerNFTUrl(nft.contractAddress, nft.tokenId ?? "0", chain);
-  const openSeaUrl = getOpenSeaNFTUrl(nft.contractAddress, nft.tokenId ?? "0", chain);
+  const tid = nft.tokenId || "";
+  const hasTid = tid !== "" && tid !== "0";
+  // If tokenId is missing, link to the contract page instead of a broken /nft/ URL
+  const explorerUrl = hasTid
+    ? getExplorerNFTUrl(nft.contractAddress, tid, chain)
+    : getEtherscanContractUrl(nft.contractAddress);
+  const openSeaUrl = hasTid
+    ? getOpenSeaNFTUrl(nft.contractAddress, tid, chain)
+    : null;
   const edition = getEditionInfo(nft.tokenId);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const tid = nft.tokenId ?? "";
   const displayName = nft.name && nft.name !== `#${tid}`
     ? nft.name
     : edition
@@ -151,7 +158,7 @@ const FeaturedNftDetailModal: FC<{
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
                 <p className="text-gray-400 text-sm">Token ID</p>
-                <p className="text-gray-200 font-mono">{tid || "N/A"}</p>
+                <p className="text-gray-200 font-mono">{hasTid ? tid : "Pending"}</p>
               </div>
               <div className="p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
                 <p className="text-gray-400 text-sm">Standard</p>
