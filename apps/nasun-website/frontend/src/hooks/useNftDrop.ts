@@ -1,4 +1,4 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
 import { formatEther } from "viem";
 import { useState, useCallback } from "react";
 import { GENESIS_PASS_ABI, GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
@@ -58,6 +58,7 @@ export function useNftDropMint() {
   const { address } = useAccount();
   const contractAddress = getContractAddress(chainId);
   const cognitoToken = useUserStore((s) => s.userData?.cognitoToken);
+  const { switchChainAsync } = useSwitchChain();
 
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const [error, setError] = useState<string | null>(null);
@@ -71,8 +72,30 @@ export function useNftDropMint() {
 
   const mint = useCallback(
     async (tokenId: number, mintPriceWei: bigint, currentStage: number) => {
-      if (!contractAddress || !address) {
+      if (!address) {
         setError("Wallet not connected");
+        return;
+      }
+
+      // Switch to correct chain if needed
+      const expectedChainId = Number(import.meta.env.VITE_ETHEREUM_CHAIN_ID);
+      if (!expectedChainId) {
+        setError("Network configuration error. Please contact support.");
+        return;
+      }
+      if (chainId !== expectedChainId) {
+        try {
+          await switchChainAsync({ chainId: expectedChainId });
+        } catch {
+          setError("Please switch to the correct network to mint.");
+          return;
+        }
+      }
+
+      // Resolve contract address from expected chain (not stale closure)
+      const resolvedAddress = getContractAddress(expectedChainId);
+      if (!resolvedAddress) {
+        setError("Contract not available on this network.");
         return;
       }
 
@@ -128,7 +151,7 @@ export function useNftDropMint() {
         }
 
         const hash = await writeContractAsync({
-          address: contractAddress,
+          address: resolvedAddress,
           abi: GENESIS_PASS_ABI,
           functionName: "mint",
           args: [
@@ -157,7 +180,7 @@ export function useNftDropMint() {
         else setError(msg);
       }
     },
-    [contractAddress, address, writeContractAsync, cognitoToken]
+    [contractAddress, address, chainId, writeContractAsync, cognitoToken, switchChainAsync]
   );
 
   return {
