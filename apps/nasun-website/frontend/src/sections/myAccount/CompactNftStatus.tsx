@@ -101,7 +101,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
       searchParams.delete("justMinted");
       setSearchParams(searchParams, { replace: true });
     }
-  }, [justMinted, hasGenesisPassNft]);
+  }, [justMinted, hasGenesisPassNft, searchParams, setSearchParams]);
 
   const [showAllianceMenu, setShowAllianceMenu] = useState(false);
   const [showGenesisMenu, setShowGenesisMenu] = useState(false);
@@ -328,7 +328,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                     </div>
                     {(genesisPassWallet || evmWalletAddress) && (
                       <span className="text-nasun-white/50 text-sm font-mono">
-                        {shortenAddress(genesisPassWallet || evmWalletAddress!)}
+                        {shortenAddress((genesisPassWallet || evmWalletAddress)!)}
                       </span>
                     )}
                   </div>
