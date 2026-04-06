@@ -53,7 +53,8 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
   // Direct on-chain ownership check
-  const { hasMinted: hasGenesisPassNft, ownedEditionId } = useGenesisPassOwnership(evmWalletAddress);
+  const { hasMinted: hasGenesisPassNft, ownedEditionId } =
+    useGenesisPassOwnership(evmWalletAddress);
 
   // justMinted query param from drop page redirect
   const [searchParams, setSearchParams] = useSearchParams();
@@ -72,9 +73,10 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     }
   }, [justMinted, hasGenesisPassNft]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ownedEdition = ownedEditionId != null
-    ? NFT_EDITIONS.find((e) => e.id === ownedEditionId)
-    : undefined;
+  const ownedEdition =
+    ownedEditionId != null
+      ? NFT_EDITIONS.find((e) => e.id === ownedEditionId)
+      : undefined;
 
   const ecosystem = useEcosystemStatus(cognitoToken);
 
@@ -224,7 +226,11 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             </h6>
             <div
               className={`relative rounded-sm overflow-hidden aspect-[4/3] transition-all flex items-center justify-center ${
-                showMintedState ? "bg-gradient-to-br from-amber-900/40 to-gray-800" : genesisIsActive ? "bg-gray-700" : "bg-gray-800"
+                showMintedState
+                  ? "bg-gradient-to-br from-amber-900/40 to-gray-800"
+                  : genesisIsActive
+                    ? "bg-gray-700"
+                    : "bg-gray-800"
               }`}
             >
               <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
@@ -234,15 +240,16 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 <Spinner />
               ) : showMintedState ? (
                 <div className="flex flex-col items-center gap-2 px-4">
-                  <span className="text-amber-400 text-lg font-semibold">Minted</span>
-                  {ownedEdition && (
-                    <span className="text-nasun-white/70 text-sm">
-                      {ownedEdition.name} Edition
-                    </span>
-                  )}
-                  {justMinted && !hasGenesisPassNft && (
-                    <span className="text-nasun-white/50 text-sm animate-pulse">
+                  <span className="text-emerald-400 text-lg font-semibold">
+                    Minted
+                  </span>
+                  {justMinted && !hasGenesisPassNft ? (
+                    <span className="text-nasun-white/60 text-sm animate-pulse">
                       Confirming on chain...
+                    </span>
+                  ) : (
+                    <span className="text-nasun-white/60 text-sm text-center">
+                      Activate after the drop
                     </span>
                   )}
                 </div>
@@ -271,7 +278,9 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 outline
                 className="w-full"
               >
-                {showMintedState ? "View Genesis Pass Drop" : "Go to Genesis Pass Drop"}
+                {showMintedState
+                  ? "View Genesis Pass Drop"
+                  : "Go to Genesis Pass Drop"}
               </ButtonV3>
             </div>
           </div>
