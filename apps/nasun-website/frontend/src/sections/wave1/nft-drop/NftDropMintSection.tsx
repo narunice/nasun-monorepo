@@ -39,6 +39,16 @@ export function NftDropMintSection({
     typeof window !== "undefined" &&
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
     !(window as any).ethereum?.isMetaMask;
+
+  // Android intent:// opens Chrome from MetaMask in-app browser; iOS falls back to normal link
+  const isAndroidMetaMask =
+    typeof window !== "undefined" &&
+    /Android/i.test(navigator.userAgent) &&
+    !!(window as any).ethereum?.isMetaMask;
+  const nasunExternalUrl = isAndroidMetaMask
+    ? "intent://nasun.io#Intent;scheme=https;package=com.android.chrome;end"
+    : "https://nasun.io";
+
   const stageLabel = STAGE_LABELS[currentStage] || "Unknown";
   const stageDesc = STAGE_DESCRIPTIONS[currentStage] || "";
 
@@ -139,12 +149,7 @@ export function NftDropMintSection({
               }}
             >
               <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M20.5 4L12.5 10l1.5-3.5L20.5 4z" fill="#E2761B" />
-                  <path d="M3.5 4l7.9 6.1L10 6.5 3.5 4z" fill="#E4761B" />
-                  <path d="M17.5 16.5l-2 3.5 4.5 1.2-1.3-4.7h-1.2z" fill="#E4761B" />
-                  <path d="M5.3 16.5L4 21.2l4.5-1.2-2-3.5H5.3z" fill="#E4761B" />
-                </svg>
+                <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-7 h-7" />
               </div>
               <p className="text-nasun-white text-lg font-semibold mb-2">
                 Open in MetaMask to mint
@@ -222,7 +227,7 @@ export function NftDropMintSection({
             </p>
             <div className="mt-5">
               <a
-                href="https://nasun.io"
+                href={nasunExternalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -252,7 +257,7 @@ export function NftDropMintSection({
             )}
             <div className="mt-5">
               <a
-                href="https://nasun.io"
+                href={nasunExternalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
