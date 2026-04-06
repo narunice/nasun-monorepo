@@ -75,19 +75,19 @@ function computeState(
     };
   }
 
-  // User already minted - show mint close countdown
+  const stageStart = STAGE_START_TIMES[userStage];
+
+  // User already minted
   if (hasMinted) {
     const tl = calcTimeLeft(MINT_CLOSE_TIME, now);
     return {
       title: "GENESIS PASS DROP LIVE",
-      subtitle: "Minted.",
+      subtitle: "You can trade after minting closes.",
       countdownLabel: "Mint closes in",
       timeLeft: tl,
       phase: "MINTED",
     };
   }
-
-  const stageStart = STAGE_START_TIMES[userStage];
   const stageEnd = getNextStageStart(userStage);
 
   // Before user's stage
