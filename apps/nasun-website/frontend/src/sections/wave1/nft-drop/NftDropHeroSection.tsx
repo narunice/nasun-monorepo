@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { PageTitle } from "@/components/ui/PageTitle";
 
 export function NftDropHeroSection() {
   return (
@@ -11,7 +12,7 @@ export function NftDropHeroSection() {
             radial-gradient(ellipse 80% 50% at 50% 0%, rgba(249,168,36,0.12) 0%, transparent 60%),
             radial-gradient(ellipse 60% 40% at 30% 20%, rgba(249,168,36,0.05) 0%, transparent 50%),
             radial-gradient(ellipse 50% 40% at 75% 15%, rgba(68,139,187,0.04) 0%, transparent 50%),
-            linear-gradient(180deg, rgba(15,13,11,1) 0%, rgba(20,18,16,1) 100%)
+            linear-gradient(180deg, rgba(25,22,21,1) 0%, rgba(31,28,26,1) 100%)
           `,
         }}
       />
@@ -40,20 +41,28 @@ export function NftDropHeroSection() {
         </motion.p>
 
         {/* Title */}
-        <motion.h1
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-5xl sm:text-6xl lg:text-8xl font-bold tracking-tight leading-none"
-          style={{
-            background: "linear-gradient(135deg, #faf7f4 0%, #f9a824 50%, #faf7f4 100%)",
-            backgroundSize: "200% auto",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
         >
-          Genesis Pass
-        </motion.h1>
+          <PageTitle
+            as="h1"
+            align="center"
+            wrapperClassName=""
+            className=" text-5xl sm:text-6xl lg:text-8xl tracking-widest leading-none"
+            style={{
+              background:
+                "linear-gradient(135deg, #faf7f4 0%, #f9a824 50%, #faf7f4 100%)",
+              backgroundSize: "200% auto",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            <span className="font-bold !font-changeling">GENESIS</span>{" "}
+            <span className="font-medium !font-changeling">PASS</span>
+          </PageTitle>
+        </motion.div>
 
         {/* Subtitle */}
         <motion.p
