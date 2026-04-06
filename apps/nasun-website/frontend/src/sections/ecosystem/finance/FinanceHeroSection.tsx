@@ -68,15 +68,23 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
         className={`block w-full ${isMobile ? "h-full" : ""} ${!isVideoPlaying ? "opacity-0" : "opacity-100"} transition-opacity duration-500`}
-        style={isMobile ? { objectFit: "cover" as const, objectPosition: "center 10%" } : undefined}
+        style={
+          isMobile
+            ? { objectFit: "cover" as const, objectPosition: "center 10%" }
+            : undefined
+        }
       >
-        <source src={isMobile ? waldenVideoMobile : waldenVideoDesktop} type="video/mp4" />
+        <source
+          src={isMobile ? waldenVideoMobile : waldenVideoDesktop}
+          type="video/mp4"
+        />
       </video>
 
       <div
         className="absolute inset-0 pointer-events-none z-10"
         style={{
-          background: "linear-gradient(to bottom, transparent 66%, rgb(8, 12, 22) 100%)",
+          background:
+            "linear-gradient(to bottom, transparent 66%, rgb(8, 12, 22) 100%)",
         }}
       />
 
@@ -93,8 +101,12 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
           >
             <FadeInUp>
               <div className="text-center md:text-left pr-0 md:pr-10">
-                <h2 className="!font-pirulen uppercase -mb-1 text-white lg:text-4xl xl:text-5xl">PADO</h2>
-                <h3 className="font-medium text-nasun-white uppercase lg:text-3xl xl:text-4xl">Unified Onchain Finance</h3>
+                <h2 className="!font-pirulen uppercase mb-1 text-white lg:text-4xl xl:text-5xl">
+                  PADO
+                </h2>
+                <h3 className="font-medium text-nasun-white uppercase lg:text-3xl xl:text-4xl">
+                  Unified Onchain Finance
+                </h3>
                 <h5 className="!text-nasun-white/60 lg:text-xl xl:text-2xl">
                   Performance without custody
                   <br />
