@@ -6,7 +6,7 @@
  * stacked vertically in a single column.
  */
 
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
@@ -60,13 +60,17 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
   const justMinted = searchParams.get("justMinted") === "genesis-pass";
   const showMintedState = hasGenesisPassNft || justMinted;
 
-  // Clean up justMinted once on-chain confirms
+  // Clean up justMinted once on-chain confirms (run once, not reactively)
+  const cleanedUpRef = useRef(false);
   useEffect(() => {
+    if (cleanedUpRef.current) return;
     if (justMinted && hasGenesisPassNft) {
-      searchParams.delete("justMinted");
-      setSearchParams(searchParams, { replace: true });
+      cleanedUpRef.current = true;
+      const next = new URLSearchParams(searchParams);
+      next.delete("justMinted");
+      setSearchParams(next, { replace: true });
     }
-  }, [justMinted, hasGenesisPassNft, searchParams, setSearchParams]);
+  }, [justMinted, hasGenesisPassNft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ownedEdition = ownedEditionId != null
     ? NFT_EDITIONS.find((e) => e.id === ownedEditionId)

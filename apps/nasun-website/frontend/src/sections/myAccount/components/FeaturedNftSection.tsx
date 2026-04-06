@@ -6,7 +6,7 @@
  * Supports transfer-locked state during active drops.
  */
 
-import { FC, useState, useEffect } from "react";
+import { FC, useState, useEffect, useRef } from "react";
 import { ExternalLink, Wallet, Info } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import type { EthereumNFT } from "@/types/ethereum";
@@ -142,8 +142,9 @@ export const FeaturedNftSection: FC<FeaturedNftSectionProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const justMinted = searchParams.get("justMinted") === "genesis-pass";
   const [isPolling, setIsPolling] = useState(false);
+  const cleanedUp = useRef(false);
 
-  if (featuredCollections.length === 0) return null;
+  // ALL hooks must be called BEFORE any conditional return (React rules of hooks)
 
   // Poll for NFT appearance after fresh mint (Alchemy indexing delay)
   useEffect(() => {
@@ -157,25 +158,33 @@ export const FeaturedNftSection: FC<FeaturedNftSectionProps> = ({
     const timeout = setTimeout(() => {
       clearInterval(interval);
       setIsPolling(false);
-      // Clean up query param
-      searchParams.delete("justMinted");
-      setSearchParams(searchParams, { replace: true });
+      if (!cleanedUp.current) {
+        cleanedUp.current = true;
+        const next = new URLSearchParams(searchParams);
+        next.delete("justMinted");
+        setSearchParams(next, { replace: true });
+      }
     }, 60000);
 
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [justMinted, nfts.length, refetchNfts]);
+  }, [justMinted, nfts.length, refetchNfts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear justMinted param once NFT appears
   useEffect(() => {
-    if (justMinted && nfts.length > 0) {
+    if (justMinted && nfts.length > 0 && !cleanedUp.current) {
+      cleanedUp.current = true;
       setIsPolling(false);
-      searchParams.delete("justMinted");
-      setSearchParams(searchParams, { replace: true });
+      const next = new URLSearchParams(searchParams);
+      next.delete("justMinted");
+      setSearchParams(next, { replace: true });
     }
-  }, [justMinted, nfts.length]);
+  }, [justMinted, nfts.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Conditional returns AFTER all hooks
+  if (featuredCollections.length === 0) return null;
 
   // No wallet connected: show CTA
   if (!walletAddress) {
