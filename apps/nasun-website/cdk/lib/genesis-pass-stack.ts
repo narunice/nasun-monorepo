@@ -285,8 +285,8 @@ export class GenesisPassStack extends cdk.Stack {
       description: "Genesis Pass NFT Allowlist Registration API",
       deployOptions: {
         stageName: "prod",
-        throttlingRateLimit: 50,
-        throttlingBurstLimit: 100,
+        throttlingRateLimit: 200,
+        throttlingBurstLimit: 500,
         tracingEnabled: true,
         dataTraceEnabled: false,
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
