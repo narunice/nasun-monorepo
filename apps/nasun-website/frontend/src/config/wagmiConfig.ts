@@ -59,6 +59,8 @@ export const wagmiConfig = createConfig({
     ]),
     [sepolia.id]: fallback([
       ...(alchemyKey ? [http(`https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`)] : []),
+      http("https://ethereum-sepolia-rpc.publicnode.com"),
+      http("https://1rpc.io/sepolia"),
       http("https://rpc.sepolia.org"),
     ]),
   },

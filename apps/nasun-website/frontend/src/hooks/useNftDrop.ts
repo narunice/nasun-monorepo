@@ -12,6 +12,7 @@ function getContractAddress(chainId: number): `0x${string}` | undefined {
 
 export function useNftDropRead() {
   const chainId = useChainId();
+  const { address } = useAccount();
   const contractAddress = getContractAddress(chainId);
 
   const { data: currentStage } = useReadContract({
@@ -40,14 +41,36 @@ export function useNftDropRead() {
     functionName: "transfersUnlocked",
   });
 
+  const stageNum = currentStage != null ? Number(currentStage) : 0;
+
+  const { data: mintedCount } = useReadContract({
+    address: contractAddress,
+    abi: GENESIS_PASS_ABI,
+    functionName: "mintedPerStage",
+    args: [stageNum, address!],
+    query: { enabled: !!address && stageNum > 0 },
+  });
+
+  const { data: walletLimit } = useReadContract({
+    address: contractAddress,
+    abi: GENESIS_PASS_ABI,
+    functionName: "walletLimitPerStage",
+    args: [stageNum],
+    query: { enabled: stageNum > 0 },
+  });
+
+  const hasReachedLimit =
+    mintedCount != null && walletLimit != null && (mintedCount as bigint) >= (walletLimit as bigint);
+
   return {
     contractAddress,
-    currentStage: currentStage != null ? Number(currentStage) : 0,
+    currentStage: stageNum,
     mintPrice: currentMintPrice != null ? formatEther(currentMintPrice as bigint) : "0",
     mintPriceWei: currentMintPrice as bigint | undefined,
     mintDeadline: mintDeadline != null ? Number(mintDeadline) : 0,
     transfersUnlocked: transfersUnlocked === true,
     isDeployed: !!contractAddress,
+    hasReachedLimit,
   };
 }
 
