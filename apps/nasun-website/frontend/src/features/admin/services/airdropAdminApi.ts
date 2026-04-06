@@ -9,6 +9,8 @@ export interface AirdropRegistration {
   twitterHandle: string;
   registeredAt: string;
   approvedAt: string;
+  probableBot?: boolean;
+  botTier?: number;
 }
 
 export async function listAirdropRegistrations(cognitoToken: string): Promise<AirdropRegistration[]> {

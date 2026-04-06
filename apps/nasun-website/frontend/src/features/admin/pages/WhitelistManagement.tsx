@@ -564,6 +564,11 @@ export function WhitelistManagement() {
                 <div className="mt-2 text-nasun-c4 text-sm font-medium">
                   Paid Applied: {(stats.genesisPass?.paidApplied ?? 0).toLocaleString()}
                 </div>
+                {(stats.genesisPass?.botCount ?? 0) > 0 && (
+                  <div className="mt-1 text-nasun-white/50 text-xs">
+                    Excl. bots: {stats.genesisPass.paidAppliedExBot.toLocaleString()} paid / {stats.genesisPass.totalExBot.toLocaleString()} total
+                  </div>
+                )}
               </DashboardCard>
 
               <DashboardCard variant="default" className="!bg-gray-800/50 !border-nasun-nw4/45">
