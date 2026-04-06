@@ -21,11 +21,6 @@ export const GENESIS_PASS_ABI = [
       },
       {
         "internalType": "uint256",
-        "name": "mintPrice_",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
         "name": "defaultMaxSupply",
         "type": "uint256"
       },
@@ -336,6 +331,11 @@ export const GENESIS_PASS_ABI = [
   },
   {
     "inputs": [],
+    "name": "StageNotPriced",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "StagePaused",
     "type": "error"
   },
@@ -353,6 +353,11 @@ export const GENESIS_PASS_ABI = [
   {
     "inputs": [],
     "name": "SupplyBelowMinted",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TransfersLocked",
     "type": "error"
   },
   {
@@ -418,19 +423,6 @@ export const GENESIS_PASS_ABI = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newPrice",
-        "type": "uint256"
-      }
-    ],
-    "name": "MintPriceChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "address",
         "name": "previousOwner",
@@ -489,6 +481,25 @@ export const GENESIS_PASS_ABI = [
       }
     ],
     "name": "StageChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "enum NasunGenesisPass.Stage",
+        "name": "stage",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "StagePriceChanged",
     "type": "event"
   },
   {
@@ -563,6 +574,12 @@ export const GENESIS_PASS_ABI = [
       }
     ],
     "name": "TransferSingle",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [],
+    "name": "TransfersUnlocked",
     "type": "event"
   },
   {
@@ -673,6 +690,19 @@ export const GENESIS_PASS_ABI = [
         "internalType": "string",
         "name": "",
         "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "currentMintPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -837,8 +867,14 @@ export const GENESIS_PASS_ABI = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "mintPrice",
+    "inputs": [
+      {
+        "internalType": "enum NasunGenesisPass.Stage",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "name": "mintPricePerStage",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1066,19 +1102,6 @@ export const GENESIS_PASS_ABI = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "price",
-        "type": "uint256"
-      }
-    ],
-    "name": "setMintPrice",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "signer_",
         "type": "address"
@@ -1098,6 +1121,24 @@ export const GENESIS_PASS_ABI = [
       }
     ],
     "name": "setStage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum NasunGenesisPass.Stage",
+        "name": "stage_",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "setStagePrice",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1198,6 +1239,26 @@ export const GENESIS_PASS_ABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "transfersUnlocked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unlockTransfers",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -1251,5 +1312,5 @@ export const GENESIS_PASS_ABI = [
 ] as const;
 
 export const GENESIS_PASS_ADDRESSES: Record<number, string> = {
-  "11155111": "0xE37a4B22A2854aD99EAFeb199E9614E519F60541"
+  "11155111": "0x3b89DA1241Ea70D5c2c105601bF77A93bD7e7Aae"
 };
