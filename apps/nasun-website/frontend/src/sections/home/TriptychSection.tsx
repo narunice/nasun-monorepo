@@ -96,9 +96,6 @@ export default function TriptychSection() {
           className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-transform duration-700 group-hover:scale-[1.015]"
         />
 
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/35 pointer-events-none" />
-
         {/* Bottom vignette */}
         <div
           className="absolute inset-0 pointer-events-none"
