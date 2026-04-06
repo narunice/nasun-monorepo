@@ -10,7 +10,7 @@ interface ScratchCardCanvasProps {
   children: React.ReactNode;
 }
 
-const BRUSH_RADIUS = typeof window !== 'undefined' && 'ontouchstart' in window ? 26 : 20;
+const BRUSH_RADIUS = typeof window !== 'undefined' && 'ontouchstart' in window ? 22 : 17;
 const REVEAL_THRESHOLD = 0.5;
 
 export function ScratchCardCanvas({
