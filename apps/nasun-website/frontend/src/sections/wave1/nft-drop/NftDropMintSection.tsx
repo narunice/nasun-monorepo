@@ -40,14 +40,11 @@ export function NftDropMintSection({
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
     !(window as any).ethereum?.isMetaMask;
 
-  // Android intent:// opens Chrome from MetaMask in-app browser; iOS falls back to normal link
-  const isAndroidMetaMask =
+  // MetaMask in-app browser on mobile: close the in-app browser to return to Chrome
+  const isMetaMaskInApp =
     typeof window !== "undefined" &&
-    /Android/i.test(navigator.userAgent) &&
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
     !!(window as any).ethereum?.isMetaMask;
-  const nasunExternalUrl = isAndroidMetaMask
-    ? "intent://nasun.io#Intent;scheme=https;package=com.android.chrome;end"
-    : "https://nasun.io";
 
   const stageLabel = STAGE_LABELS[currentStage] || "Unknown";
   const stageDesc = STAGE_DESCRIPTIONS[currentStage] || "";
@@ -226,15 +223,22 @@ export function NftDropMintSection({
               Limit: 1 per wallet per stage
             </p>
             <div className="mt-5">
-              <a
-                href={nasunExternalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ButtonV3 variant="nw2" size="md">
-                  Back to Nasun
+              {isMetaMaskInApp ? (
+                <ButtonV3 variant="nw2" size="md" onClick={() => window.close()}>
+                  Close and Return to Browser
                 </ButtonV3>
-              </a>
+              ) : (
+                <>
+                  <p className="text-nasun-white/70 text-sm mb-3">
+                    Go to the Account page to check your Genesis Pass.
+                  </p>
+                  <a href="/my-account">
+                    <ButtonV3 variant="nw2" size="md">
+                      Go to My Account
+                    </ButtonV3>
+                  </a>
+                </>
+              )}
             </div>
           </div>
         ) : isSuccess ? (
@@ -256,15 +260,17 @@ export function NftDropMintSection({
               </a>
             )}
             <div className="mt-5">
-              <a
-                href={nasunExternalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ButtonV3 variant="nw2" size="md">
-                  Back to Nasun
+              {isMetaMaskInApp ? (
+                <ButtonV3 variant="nw2" size="md" onClick={() => window.close()}>
+                  Close and Return to Browser
                 </ButtonV3>
-              </a>
+              ) : (
+                <a href="/my-account">
+                  <ButtonV3 variant="nw2" size="md">
+                    Go to My Account
+                  </ButtonV3>
+                </a>
+              )}
             </div>
           </div>
         ) : (
