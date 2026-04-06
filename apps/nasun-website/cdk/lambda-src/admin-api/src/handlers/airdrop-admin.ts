@@ -40,7 +40,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
   try {
     // GET /airdrop/registrations
     if (path.endsWith("/registrations") && event.httpMethod === "GET") {
-      const items: Array<Record<string, string>> = [];
+      const items: Array<Record<string, string | boolean | number | undefined>> = [];
       let lastKey: Record<string, any> | undefined;
       do {
         const result = await dynamoClient.send(
@@ -57,6 +57,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             twitterHandle: item.twitterHandle?.S || "",
             registeredAt: item.registeredAt?.S || "",
             approvedAt: item.approvedAt?.S || "",
+            probableBot: item.probableBot?.BOOL === true,
+            botTier: item.botTier?.N ? Number(item.botTier.N) : undefined,
           });
         }
         lastKey = result.LastEvaluatedKey;
