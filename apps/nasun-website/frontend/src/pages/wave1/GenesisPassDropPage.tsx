@@ -1,26 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { InlineLoading } from "@/components/ui/InlineLoading";
-import {
-  CountdownTimer,
-  type TimeLeft,
-} from "@/sections/wave1/genesis-pass-drop/CountdownTimer";
+import { CountdownTimer } from "@/sections/wave1/genesis-pass-drop/CountdownTimer";
 import { SectionTitle } from "@/components/ui";
-import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
-
-const IS_MAINNET = import.meta.env.VITE_NETWORK === "mainnet";
-const SEPOLIA_CHAIN_ID = 11155111;
-const MAINNET_CHAIN_ID = 1;
-
-const GENESIS_PASS_CONTRACT =
-  GENESIS_PASS_ADDRESSES[IS_MAINNET ? MAINNET_CHAIN_ID : SEPOLIA_CHAIN_ID] ??
-  "0x0000000000000000000000000000000000000000";
-const ETHERSCAN_BASE = IS_MAINNET
-  ? "https://etherscan.io"
-  : "https://sepolia.etherscan.io";
-
+import { calcTimeLeft, type TimeLeft } from "@/constants/nft-drop";
 // ---------------------------------------------------------------------------
 // Mint phase schedule (all times in UTC)
 // ---------------------------------------------------------------------------
@@ -70,20 +54,6 @@ const PUBLIC_MINT_START = MINT_PHASES[3].target;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function calcTimeLeft(
-  target: Date,
-  now: number,
-): TimeLeft & { isExpired: boolean } {
-  const diff = target.getTime() - now;
-  if (diff <= 0)
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true };
-  const seconds = Math.floor((diff / 1000) % 60);
-  const minutes = Math.floor((diff / 1000 / 60) % 60);
-  const hours = Math.floor((diff / 1000 / 60 / 60) % 24);
-  const days = Math.floor(diff / 1000 / 60 / 60 / 24);
-  return { days, hours, minutes, seconds, isExpired: false };
-}
 
 // ---------------------------------------------------------------------------
 // Page component
@@ -435,28 +405,6 @@ export default function GenesisPassDropPage() {
               </div>
             </FadeInUp>
 
-            {/* CTA Buttons */}
-            <FadeInUp delay="0.4s">
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Link
-                  to="/my-account"
-                  className="inline-flex items-center justify-center px-6 py-3 bg-nasun-white text-nasun-black font-semibold text-sm rounded-lg hover:bg-nasun-white/90 transition-colors"
-                >
-                  Check your Genesis Pass
-                </Link>
-                <a
-                  href={`${ETHERSCAN_BASE}/address/${GENESIS_PASS_CONTRACT}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-nasun-white/60 text-nasun-white font-semibold text-sm rounded-lg hover:border-nasun-white hover:bg-nasun-white/5 transition-colors"
-                >
-                  <span>View on Etherscan</span>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                  </svg>
-                </a>
-              </div>
-            </FadeInUp>
           </div>
         </div>
       </div>

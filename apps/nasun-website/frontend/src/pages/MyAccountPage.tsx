@@ -35,6 +35,7 @@ import { DangerZoneCard } from "../sections/myAccount/DangerZoneCard";
 import { RankHistoryCard } from "../sections/myAccount/RankHistoryCard";
 import { EcosystemPointsCard } from "../sections/myAccount/EcosystemPointsCard";
 import { ReferralCard } from "../sections/myAccount/ReferralCard";
+import { GenesisDropCard } from "../sections/myAccount/GenesisDropCard";
 
 const MyAccountPage = () => {
   const { t } = useTranslation(["myAccount", "common"]);
@@ -132,8 +133,11 @@ const MyAccountPage = () => {
           </div>
         )}
 
-        {/* Page Title */}
-        <PageTitle>MY ACCOUNT</PageTitle>
+        {/* Page Title + Genesis Drop Card */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mt-12 mb-6 md:mb-8 lg:mb-10 xl:mb-12">
+          <PageTitle wrapperClassName="" align="left">MY ACCOUNT</PageTitle>
+          <GenesisDropCard className="sm:max-w-sm w-full" />
+        </div>
 
         {/* Bento Grid Dashboard Layout */}
         {/* Mobile order: ProfileHero → Points → NFT → RankHistory → Governance → Assets → DangerZone */}
