@@ -10,7 +10,7 @@ interface ScratchCardCanvasProps {
   children: React.ReactNode;
 }
 
-const BRUSH_RADIUS = typeof window !== 'undefined' && 'ontouchstart' in window ? 20 : 15;
+const BRUSH_RADIUS = typeof window !== 'undefined' && 'ontouchstart' in window ? 26 : 20;
 const REVEAL_THRESHOLD = 0.5;
 
 export function ScratchCardCanvas({
@@ -22,6 +22,7 @@ export function ScratchCardCanvas({
 }: ScratchCardCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
   const revealedRef = useRef(false);
 
@@ -98,10 +99,26 @@ export function ScratchCardCanvas({
       ctx.save();
       ctx.scale(1 / dpr, 1 / dpr);
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.arc(x * dpr, y * dpr, BRUSH_RADIUS * dpr, 0, Math.PI * 2);
-      ctx.fill();
+
+      const last = lastPosRef.current;
+      if (last) {
+        // Draw a thick line from last position to current for gap-free scratching
+        ctx.lineWidth = BRUSH_RADIUS * 2 * dpr;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(last.x * dpr, last.y * dpr);
+        ctx.lineTo(x * dpr, y * dpr);
+        ctx.stroke();
+      } else {
+        // First point: draw a circle
+        ctx.beginPath();
+        ctx.arc(x * dpr, y * dpr, BRUSH_RADIUS * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.restore();
+      lastPosRef.current = { x, y };
     },
     [],
   );
@@ -132,6 +149,7 @@ export function ScratchCardCanvas({
     (e: React.TouchEvent | React.MouseEvent) => {
       e.preventDefault();
       isDrawingRef.current = true;
+      lastPosRef.current = null;
       setHasStarted(true);
       const pos = getPosition(e);
       if (pos) scratch(pos.x, pos.y);
@@ -151,6 +169,7 @@ export function ScratchCardCanvas({
 
   const handleEnd = useCallback(() => {
     isDrawingRef.current = false;
+    lastPosRef.current = null;
     checkRevealProgress();
   }, [checkRevealProgress]);
 
