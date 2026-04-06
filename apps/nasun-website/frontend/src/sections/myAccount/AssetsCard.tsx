@@ -17,6 +17,7 @@ import { OwnedObjects } from "./OwnedObjects";
 import { NasunVoteNfts } from "./NasunVoteNfts";
 import { FeaturedNftSection } from "./components/FeaturedNftSection";
 import { useWalletRegistration } from "./hooks/useWalletRegistration";
+import { useNftDropRead } from "@/hooks/useNftDrop";
 
 interface AssetsCardProps {
   walletAddress?: string;
@@ -36,7 +37,10 @@ export const AssetsCard: FC<AssetsCardProps> = ({
     data: multiChainNfts,
     error: nftError,
     isPending: isNftPending,
+    refetch: refetchNfts,
   } = useMultiChainNFTs(walletAddress);
+
+  const { transfersUnlocked } = useNftDropRead();
 
   const { data: collections } = useEnabledNftCollections();
 
@@ -108,6 +112,8 @@ export const AssetsCard: FC<AssetsCardProps> = ({
         nfts={featuredNfts}
         collections={collections ?? []}
         walletAddress={walletAddress}
+        isTransferLocked={!transfersUnlocked}
+        refetchNfts={refetchNfts}
       />
       <OwnedObjects
         nfts={regularNfts}

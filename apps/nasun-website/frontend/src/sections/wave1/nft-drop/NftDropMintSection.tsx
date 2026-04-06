@@ -12,6 +12,106 @@ function getEtherscanUrl(chainId: number, txHash: string): string {
   return `https://etherscan.io/tx/${txHash}`;
 }
 
+function MintSuccessView({
+  selectedId,
+  isSuccess,
+  txHash,
+  chainId,
+  isMetaMaskInApp,
+}: {
+  selectedId: number | null;
+  isSuccess: boolean;
+  txHash?: `0x${string}`;
+  chainId: number;
+  isMetaMaskInApp: boolean;
+}) {
+  const edition = selectedId != null ? NFT_EDITIONS.find((e) => e.id === selectedId) : null;
+  const hasFreshMint = isSuccess && edition != null;
+
+  return (
+    <div className="flex flex-col items-center py-6 max-w-sm mx-auto">
+      {/* NFT visual - only on fresh mint with known edition */}
+      {hasFreshMint && (
+        <div
+          className="relative w-full max-w-xs rounded-2xl overflow-hidden mb-6 border-2 border-amber-400/30"
+          style={{ boxShadow: "0 0 60px rgba(249,168,36,0.15)" }}
+        >
+          <div className="aspect-[3/4] relative">
+            <img
+              src="/videos/genesis-pass-poster.webp"
+              alt={edition.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{
+                filter: `hue-rotate(${selectedId! * 15}deg) saturate(${0.8 + selectedId! * 0.1})`,
+              }}
+            />
+            <video
+              src="/videos/Founders-Nft-Portal-Rotate-rf28.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Edition info */}
+      {hasFreshMint && (
+        <div className="text-center mb-4">
+          <h3 className="text-xl font-bold text-nasun-white">{edition.name}</h3>
+          <p className="text-sm text-nasun-white/70 mt-1">{edition.description}</p>
+        </div>
+      )}
+
+      {/* Success badge */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <p className="text-green-400 text-lg font-semibold">
+          {isSuccess ? "Minted successfully!" : "You own a Genesis Pass"}
+        </p>
+      </div>
+
+      {/* Etherscan link - subtle text, only on fresh mint */}
+      {isSuccess && txHash && (
+        <a
+          href={getEtherscanUrl(chainId, txHash)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-nasun-c4 text-sm underline mb-6 inline-flex items-center gap-1"
+        >
+          View transaction
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+          </svg>
+        </a>
+      )}
+
+      {/* Primary CTA */}
+      {isMetaMaskInApp ? (
+        <p className="text-nasun-white/50 text-sm text-center leading-relaxed max-w-xs">
+          Leave this MetaMask browser and return to Chrome to continue exploring the Nasun website.
+        </p>
+      ) : (
+        <a href="/my-account?justMinted=genesis-pass">
+          <ButtonV3
+            variant="c1-gradient"
+            size="xl"
+            className="!px-10 !py-3.5 !text-base !font-semibold !rounded-xl"
+          >
+            Check your Genesis Pass
+          </ButtonV3>
+        </a>
+      )}
+    </div>
+  );
+}
+
 interface NftDropMintSectionProps {
   currentStage: number;
   mintPrice: string;
@@ -211,68 +311,14 @@ export function NftDropMintSection({
               Sign in with your Nasun account to verify allowlist eligibility and mint.
             </p>
           </div>
-        ) : hasReachedLimit && !isSuccess ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="text-green-400 text-xl font-semibold">You already own a Genesis Pass</p>
-            <p className="text-nasun-white/60 text-sm mt-2">
-              Limit: 1 per wallet per stage
-            </p>
-            <div className="mt-5">
-              {isMetaMaskInApp ? (
-                <ButtonV3 variant="nw2" size="md" onClick={() => window.close()}>
-                  Close and Return to Browser
-                </ButtonV3>
-              ) : (
-                <>
-                  <p className="text-nasun-white/70 text-sm mb-3">
-                    Go to the Account page to check your Genesis Pass.
-                  </p>
-                  <a href="/my-account">
-                    <ButtonV3 variant="nw2" size="md">
-                      Go to My Account
-                    </ButtonV3>
-                  </a>
-                </>
-              )}
-            </div>
-          </div>
-        ) : isSuccess ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="text-green-400 text-xl font-semibold">Minted successfully!</p>
-            {txHash && (
-              <a
-                href={getEtherscanUrl(chainId, txHash)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-nasun-c4 text-sm underline mt-3 inline-block"
-              >
-                View on Etherscan
-              </a>
-            )}
-            <div className="mt-5">
-              {isMetaMaskInApp ? (
-                <ButtonV3 variant="nw2" size="md" onClick={() => window.close()}>
-                  Close and Return to Browser
-                </ButtonV3>
-              ) : (
-                <a href="/my-account">
-                  <ButtonV3 variant="nw2" size="md">
-                    Go to My Account
-                  </ButtonV3>
-                </a>
-              )}
-            </div>
-          </div>
+        ) : (isSuccess || hasReachedLimit) ? (
+          <MintSuccessView
+            selectedId={selectedId}
+            isSuccess={isSuccess}
+            txHash={txHash}
+            chainId={chainId}
+            isMetaMaskInApp={isMetaMaskInApp}
+          />
         ) : (
           <>
             {/* Price display */}
