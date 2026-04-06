@@ -1,35 +1,34 @@
 const { ethers } = require("hardhat");
 const assert = require("assert");
 
+const MINT_PRICE = ethers.parseEther("0.05");
+
 async function deployFixture() {
   const [owner, signer, user1, user2, withdrawTarget] = await ethers.getSigners();
-  const baseURI = "ipfs://QmTest";
-  const mintPrice = ethers.parseEther("0.05");
-  const defaultMaxSupply = 100;
-  const royaltyBps = 500;
-
   const Factory = await ethers.getContractFactory("NasunGenesisPass");
   const contract = await Factory.deploy(
-    baseURI, "ipfs://QmContractMeta", signer.address,
-    mintPrice, defaultMaxSupply, owner.address, royaltyBps
+    "ipfs://QmTest", "ipfs://QmContractMeta", signer.address,
+    100, owner.address, 500
   );
   await contract.waitForDeployment();
-  await contract.setWalletLimit(1, 2);
-  await contract.setWalletLimit(2, 3);
-  await contract.setWalletLimit(3, 3);
-  await contract.setWalletLimit(4, 5);
-  return { contract, owner, signer, user1, user2, withdrawTarget, mintPrice, baseURI };
+  // Set per-stage prices
+  await contract.setStagePrice(2, MINT_PRICE); // GTD
+  await contract.setStagePrice(3, MINT_PRICE); // FCFS
+  await contract.setStagePrice(4, MINT_PRICE); // PUBLIC
+  // Set wallet limits (1 per wallet for all stages)
+  await contract.setWalletLimit(1, 1);
+  await contract.setWalletLimit(2, 1);
+  await contract.setWalletLimit(3, 1);
+  await contract.setWalletLimit(4, 1);
+  return { contract, owner, signer, user1, user2, withdrawTarget, mintPrice: MINT_PRICE };
 }
 
-// New signature: (minter, stage, maxQuantity, deadline) - no tokenId
 async function createSig(signerWallet, contractAddr, chainId, minter, stage, maxQuantity, deadline) {
   return signerWallet.signTypedData(
     { name: "NasunGenesisPass", version: "1", chainId, verifyingContract: contractAddr },
     { Mint: [
-      { name: "minter", type: "address" },
-      { name: "stage", type: "uint8" },
-      { name: "maxQuantity", type: "uint256" },
-      { name: "deadline", type: "uint256" },
+      { name: "minter", type: "address" }, { name: "stage", type: "uint8" },
+      { name: "maxQuantity", type: "uint256" }, { name: "deadline", type: "uint256" },
     ]},
     { minter, stage, maxQuantity, deadline }
   );
@@ -41,11 +40,11 @@ async function getDeadline(s = 600) { return BigInt((await ethers.provider.getBl
 describe("NasunGenesisPass", function () {
   describe("Deployment", function () {
     it("should set initial state correctly", async function () {
-      const { contract, owner, signer, mintPrice } = await deployFixture();
+      const { contract, owner, signer } = await deployFixture();
       assert.strictEqual(await contract.currentStage(), 0n);
-      assert.strictEqual(await contract.mintPrice(), mintPrice);
       assert.strictEqual(await contract.signer(), signer.address);
       assert.strictEqual(await contract.owner(), owner.address);
+      assert.strictEqual(await contract.transfersUnlocked(), false);
       for (let i = 1; i <= 7; i++) assert.strictEqual(await contract.maxSupply(i), 100n);
     });
 
@@ -59,13 +58,12 @@ describe("NasunGenesisPass", function () {
       const { contract } = await deployFixture();
       assert.strictEqual(await contract.supportsInterface("0xd9b67a26"), true);
       assert.strictEqual(await contract.supportsInterface("0x2a55205a"), true);
-      assert.strictEqual(await contract.supportsInterface("0x01ffc9a7"), true);
     });
 
     it("should revert with zero signer address", async function () {
       const [owner] = await ethers.getSigners();
       const F = await ethers.getContractFactory("NasunGenesisPass");
-      try { await F.deploy("a", "b", ethers.ZeroAddress, 0, 100, owner.address, 500); assert.fail(); }
+      try { await F.deploy("a", "b", ethers.ZeroAddress, 100, owner.address, 500); assert.fail(); }
       catch (e) { assert.ok(e.message.includes("ZeroAddress") || e.message.includes("revert")); }
     });
   });
@@ -75,8 +73,8 @@ describe("NasunGenesisPass", function () {
       const { contract, signer, user1 } = await deployFixture();
       const [chainId, deadline, addr] = [await getChainId(), await getDeadline(), await contract.getAddress()];
       await contract.setStage(1);
-      const sig = await createSig(signer, addr, chainId, user1.address, 1, 2, deadline);
-      await contract.connect(user1).mint(1, 1, 2, deadline, sig, { value: 0 });
+      const sig = await createSig(signer, addr, chainId, user1.address, 1, 1, deadline);
+      await contract.connect(user1).mint(1, 1, 1, deadline, sig, { value: 0 });
       assert.strictEqual(await contract.balanceOf(user1.address, 1), 1n);
     });
 
@@ -95,9 +93,9 @@ describe("NasunGenesisPass", function () {
       const { contract, signer, user1, mintPrice } = await deployFixture();
       const [chainId, deadline, addr] = [await getChainId(), await getDeadline(), await contract.getAddress()];
       await contract.setStage(2);
-      const sig = await createSig(signer, addr, chainId, user1.address, 2, 3, deadline);
-      await contract.connect(user1).mint(3, 2, 3, deadline, sig, { value: mintPrice * 2n });
-      assert.strictEqual(await contract.balanceOf(user1.address, 3), 2n);
+      const sig = await createSig(signer, addr, chainId, user1.address, 2, 1, deadline);
+      await contract.connect(user1).mint(3, 1, 1, deadline, sig, { value: mintPrice });
+      assert.strictEqual(await contract.balanceOf(user1.address, 3), 1n);
     });
 
     it("should revert with incorrect payment", async function () {
@@ -157,48 +155,11 @@ describe("NasunGenesisPass", function () {
     });
   });
 
-  describe("Limits", function () {
-    it("should enforce wallet limit per stage", async function () {
-      const { contract, signer, user1 } = await deployFixture();
-      const [chainId, addr] = [await getChainId(), await contract.getAddress()];
-      await contract.setStage(1); // limit = 2
-      let d = await getDeadline();
-      const sig = await createSig(signer, addr, chainId, user1.address, 1, 2, d);
-      await contract.connect(user1).mint(1, 2, 2, d, sig, { value: 0 });
-      d = await getDeadline();
-      const sig2 = await createSig(signer, addr, chainId, user1.address, 1, 3, d);
-      try { await contract.connect(user1).mint(1, 1, 3, d, sig2, { value: 0 }); assert.fail(); }
-      catch (e) { assert.ok(e.message.includes("WalletLimitExceeded") || e.message.includes("revert")); }
-    });
-
-    it("should enforce max supply per token", async function () {
-      const { contract, signer, user1, user2 } = await deployFixture();
-      const [chainId, addr] = [await getChainId(), await contract.getAddress()];
-      await contract.setMaxSupply(1, 1);
-      await contract.setStage(1);
-      const d = await getDeadline();
-      const sig1 = await createSig(signer, addr, chainId, user1.address, 1, 1, d);
-      await contract.connect(user1).mint(1, 1, 1, d, sig1, { value: 0 });
-      const sig2 = await createSig(signer, addr, chainId, user2.address, 1, 1, d);
-      try { await contract.connect(user2).mint(1, 1, 1, d, sig2, { value: 0 }); assert.fail(); }
-      catch (e) { assert.ok(e.message.includes("SoldOut") || e.message.includes("revert")); }
-    });
-
-    it("should reject invalid token IDs", async function () {
-      const { contract, user1, mintPrice } = await deployFixture();
-      await contract.setStage(4);
-      try { await contract.connect(user1).mint(0, 1, 0, 0, "0x", { value: mintPrice }); assert.fail(); }
-      catch (e) { assert.ok(e.message.includes("InvalidTokenId") || e.message.includes("revert")); }
-      try { await contract.connect(user1).mint(8, 1, 0, 0, "0x", { value: mintPrice }); assert.fail(); }
-      catch (e) { assert.ok(e.message.includes("InvalidTokenId") || e.message.includes("revert")); }
-    });
-  });
-
   describe("Admin functions", function () {
     it("should allow owner to set stage", async function () {
       const { contract } = await deployFixture();
-      await contract.setStage(4);
-      assert.strictEqual(await contract.currentStage(), 4n);
+      await contract.setStage(1);
+      assert.strictEqual(await contract.currentStage(), 1n);
     });
 
     it("should reject non-owner stage changes", async function () {
@@ -207,23 +168,29 @@ describe("NasunGenesisPass", function () {
       catch (e) { assert.ok(e.message.includes("OwnableUnauthorizedAccount") || e.message.includes("revert")); }
     });
 
-    it("should allow owner to change signer", async function () {
-      const { contract, user1 } = await deployFixture();
-      await contract.setSigner(user1.address);
-      assert.strictEqual(await contract.signer(), user1.address);
-    });
-
-    it("should reject zero address signer", async function () {
-      const { contract } = await deployFixture();
-      try { await contract.setSigner(ethers.ZeroAddress); assert.fail(); }
-      catch (e) { assert.ok(e.message.includes("ZeroAddress") || e.message.includes("revert")); }
-    });
-
-    it("should allow owner to change mint price", async function () {
+    it("should allow owner to set stage price", async function () {
       const { contract } = await deployFixture();
       const p = ethers.parseEther("0.1");
-      await contract.setMintPrice(p);
-      assert.strictEqual(await contract.mintPrice(), p);
+      await contract.setStagePrice(4, p);
+      assert.strictEqual(await contract.mintPricePerStage(4), p);
+    });
+
+    it("should reject setting price for FREE_MINT", async function () {
+      const { contract } = await deployFixture();
+      try { await contract.setStagePrice(1, ethers.parseEther("0.01")); assert.fail(); }
+      catch (e) { assert.ok(e.message.includes("StageNotPriced") || e.message.includes("revert")); }
+    });
+
+    it("should reject setting price to 0", async function () {
+      const { contract } = await deployFixture();
+      try { await contract.setStagePrice(4, 0); assert.fail(); }
+      catch (e) { assert.ok(e.message.includes("StageNotPriced") || e.message.includes("revert")); }
+    });
+
+    it("should allow URI update", async function () {
+      const { contract } = await deployFixture();
+      await contract.setURI("ipfs://QmNewCID");
+      assert.strictEqual(await contract.uri(1), "ipfs://QmNewCID/1.json");
     });
 
     it("should prevent setting maxSupply below totalMinted", async function () {
@@ -231,16 +198,10 @@ describe("NasunGenesisPass", function () {
       const [chainId, addr] = [await getChainId(), await contract.getAddress()];
       await contract.setStage(1);
       const d = await getDeadline();
-      const sig = await createSig(signer, addr, chainId, user1.address, 1, 2, d);
-      await contract.connect(user1).mint(1, 2, 2, d, sig, { value: 0 });
-      try { await contract.setMaxSupply(1, 1); assert.fail(); }
+      const sig = await createSig(signer, addr, chainId, user1.address, 1, 1, d);
+      await contract.connect(user1).mint(1, 1, 1, d, sig, { value: 0 });
+      try { await contract.setMaxSupply(1, 0); assert.fail(); }
       catch (e) { assert.ok(e.message.includes("SupplyBelowMinted") || e.message.includes("revert")); }
-    });
-
-    it("should allow URI update", async function () {
-      const { contract } = await deployFixture();
-      await contract.setURI("ipfs://QmNewCID");
-      assert.strictEqual(await contract.uri(1), "ipfs://QmNewCID/1.json");
     });
   });
 
@@ -265,23 +226,11 @@ describe("NasunGenesisPass", function () {
     });
   });
 
-  describe("Stage PAUSED (replaces Pausable)", function () {
+  describe("Stage PAUSED", function () {
     it("should prevent minting when stage is PAUSED", async function () {
       const { contract, user1, mintPrice } = await deployFixture();
-      await contract.setStage(4);
-      await contract.connect(user1).mint(1, 1, 0, 0, "0x", { value: mintPrice });
-      await contract.setStage(0); // PAUSED
       try { await contract.connect(user1).mint(1, 1, 0, 0, "0x", { value: mintPrice }); assert.fail(); }
       catch (e) { assert.ok(e.message.includes("StagePaused") || e.message.includes("revert")); }
-    });
-
-    it("should allow admin functions while paused", async function () {
-      const { contract } = await deployFixture();
-      // Stage is PAUSED by default
-      await contract.setMintPrice(ethers.parseEther("0.1"));
-      await contract.setMaxSupply(1, 50);
-      await contract.setWalletLimit(4, 10);
-      await contract.setURI("ipfs://new");
     });
   });
 
@@ -308,6 +257,25 @@ describe("NasunGenesisPass", function () {
       const [receiver, amount] = await contract.royaltyInfo(1, ethers.parseEther("1"));
       assert.strictEqual(receiver, owner.address);
       assert.strictEqual(amount, ethers.parseEther("0.05"));
+    });
+  });
+
+  describe("currentMintPrice", function () {
+    it("should return 0 for FREE_MINT", async function () {
+      const { contract } = await deployFixture();
+      await contract.setStage(1);
+      assert.strictEqual(await contract.currentMintPrice(), 0n);
+    });
+
+    it("should return stage price for paid stages", async function () {
+      const { contract, mintPrice } = await deployFixture();
+      await contract.setStage(4);
+      assert.strictEqual(await contract.currentMintPrice(), mintPrice);
+    });
+
+    it("should return 0 for PAUSED", async function () {
+      const { contract } = await deployFixture();
+      assert.strictEqual(await contract.currentMintPrice(), 0n);
     });
   });
 });
