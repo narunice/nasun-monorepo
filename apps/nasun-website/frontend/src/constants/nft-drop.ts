@@ -20,8 +20,8 @@ export const STAGE_LABELS: Record<number, string> = {
 
 export const STAGE_DESCRIPTIONS: Record<number, string> = {
   0: "Minting is currently paused.",
-  1: "Exclusive free mint for selected community members.",
-  2: "Guaranteed mint for allowlisted wallets.",
-  3: "First come, first served for registered wallets.",
+  1: "Free mint for selected community members.",
+  2: "Early access at a discounted price for GTD allowlisted wallets.",
+  3: "Discounted price for FCFS allowlisted wallets. Mint before Public opens to lock in your price.",
   4: "Open to everyone. Connect your wallet and mint.",
 };

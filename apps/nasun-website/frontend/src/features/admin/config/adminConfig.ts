@@ -25,6 +25,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
   { path: '/admin/points', label: 'Ecosystem Points', icon: '🎯' },
   { path: '/admin/nft-collections', label: 'Nasun NFT on ETH', icon: '🖼️' },
+  { path: '/admin/genesis-pass-drop', label: 'Genesis Pass Drop', icon: '🎫' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
