@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useSignerAddress } from '@nasun/wallet';
+import { useSignerAddress, useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 
 const EXPLORER_API = import.meta.env.VITE_EXPLORER_API_URL || '';
 
@@ -16,10 +16,14 @@ interface EcoScore {
 
 export function EcoPointsBadge() {
   const address = useSignerAddress();
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = isZkLoggedIn || (status === 'unlocked' && account) || isPasskeyUnlocked;
   const [data, setData] = useState<EcoScore | null>(null);
 
   useEffect(() => {
-    if (!address || !EXPLORER_API) return;
+    if (!isConnected || !address || !EXPLORER_API) return;
     let cancelled = false;
 
     (async () => {
@@ -42,9 +46,9 @@ export function EcoPointsBadge() {
     })();
 
     return () => { cancelled = true; };
-  }, [address]);
+  }, [address, isConnected]);
 
-  if (data === null) return null;
+  if (!isConnected || data === null) return null;
 
   const penalized = data.isPenalized || data.disabled;
 
