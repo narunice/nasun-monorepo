@@ -8,6 +8,7 @@ interface NftDropVideoCardProps {
   selected: boolean;
   onSelect: (id: number) => void;
   mintedCount?: number;
+  compact?: boolean;
 }
 
 export function NftDropVideoCard({
@@ -17,6 +18,7 @@ export function NftDropVideoCard({
   selected,
   onSelect,
   mintedCount = 0,
+  compact = false,
 }: NftDropVideoCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -51,7 +53,7 @@ export function NftDropVideoCard({
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
     >
       {/* Video / poster visual */}
-      <div className="aspect-[3/4] relative overflow-hidden">
+      <div className="aspect-square relative overflow-hidden">
         {/* Poster image as base layer */}
         <img
           src="/videos/genesis-pass-poster.webp"
@@ -114,29 +116,44 @@ export function NftDropVideoCard({
           className="absolute bottom-0 left-0 right-0 h-28"
           style={{
             background:
-              "linear-gradient(to top, rgba(15,13,11,0.95) 0%, rgba(15,13,11,0.6) 50%, transparent 100%)",
+              "linear-gradient(to top, rgba(25,22,21,0.95) 0%, rgba(25,22,21,0.6) 50%, transparent 100%)",
           }}
         />
-      </div>
 
-      {/* Card info */}
-      <div className="p-4 pt-0 relative -mt-3">
-        <h3
-          className={`text-base font-semibold tracking-wide transition-colors duration-300 ${
-            selected ? "text-amber-300" : "text-nasun-white/90 group-hover:text-nasun-white"
-          }`}
-        >
-          {name}
-        </h3>
-        <p className="text-sm text-nasun-white/70 mt-1 leading-relaxed">
-          {description}
-        </p>
-        {mintedCount > 0 && (
-          <p className="text-sm text-nasun-white/70 mt-1.5 font-mono">
-            {mintedCount.toLocaleString()} minted
-          </p>
+        {/* Compact: title overlaid on image */}
+        {compact && (
+          <div className="absolute bottom-3 left-3 right-3 z-10">
+            <h3
+              className={`text-sm font-semibold tracking-wide ${
+                selected ? "text-amber-300" : "text-nasun-white/90"
+              }`}
+            >
+              {name}
+            </h3>
+          </div>
         )}
       </div>
+
+      {/* Full: card info below image */}
+      {!compact && (
+        <div className="p-4 pt-0 relative -mt-3">
+          <h3
+            className={`text-base font-semibold tracking-wide transition-colors duration-300 ${
+              selected ? "text-amber-300" : "text-nasun-white/90 group-hover:text-nasun-white"
+            }`}
+          >
+            {name}
+          </h3>
+          <p className="text-sm text-nasun-white/70 mt-1 leading-relaxed">
+            {description}
+          </p>
+          {mintedCount > 0 && (
+            <p className="text-sm text-nasun-white/70 mt-1.5 font-mono">
+              {mintedCount.toLocaleString()} minted
+            </p>
+          )}
+        </div>
+      )}
     </motion.button>
   );
 }
