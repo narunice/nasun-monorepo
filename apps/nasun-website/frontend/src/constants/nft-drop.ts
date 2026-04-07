@@ -15,6 +15,10 @@ export function getEditionVideoUrl(name: string): string {
   return `/videos/genesispass-encoded-web/${name.toLowerCase()}-web.mp4`;
 }
 
+export function getEditionPosterUrl(name: string): string {
+  return `/videos/genesispass-encoded-web/posters/${name.toLowerCase()}-web.webp`;
+}
+
 export const STAGE_LABELS: Record<number, string> = {
   0: "Paused",
   1: "Free Mint",

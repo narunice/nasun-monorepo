@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
-import { getEditionVideoUrl } from "@/constants/nft-drop";
+import { getEditionVideoUrl, getEditionPosterUrl } from "@/constants/nft-drop";
 
 interface NftDropVideoCardProps {
   id: number;
@@ -9,6 +9,8 @@ interface NftDropVideoCardProps {
   onSelect: (id: number) => void;
   mintedCount?: number;
   compact?: boolean;
+  /** When true, load and play the video. When false, show poster only. */
+  loadVideo?: boolean;
 }
 
 export function NftDropVideoCard({
@@ -18,6 +20,7 @@ export function NftDropVideoCard({
   onSelect,
   mintedCount = 0,
   compact = false,
+  loadVideo = true,
 }: NftDropVideoCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -53,17 +56,28 @@ export function NftDropVideoCard({
     >
       {/* Video / poster visual */}
       <div className="aspect-square relative overflow-hidden">
-        {/* Edition video */}
-        <video
-          ref={videoRef}
-          src={getEditionVideoUrl(name)}
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          onLoadedData={() => setVideoLoaded(true)}
+        {/* Poster (always present as base layer) */}
+        <img
+          src={getEditionPosterUrl(name)}
+          alt=""
           className="absolute inset-0 w-full h-full object-cover"
         />
+
+        {/* Video (only mounted when near viewport to save bandwidth) */}
+        {loadVideo && (
+          <video
+            ref={videoRef}
+            src={getEditionVideoUrl(name)}
+            muted
+            loop
+            playsInline
+            preload="none"
+            onLoadedData={() => setVideoLoaded(true)}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+              videoLoaded ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        )}
 
         {/* Edition number badge */}
         <div
