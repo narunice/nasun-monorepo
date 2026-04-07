@@ -251,7 +251,15 @@ export function NftDropMintSection({
       }
       return "Minting is currently paused. Stay tuned.";
     }
-    return "You are eligible to mint now.";
+    // Public stage: anyone can mint without allowlist
+    if (currentStage === 4) return "You are eligible to mint now.";
+    // Allowlist stages (1-3): check eligibility from API
+    if (!eligibility) return "Checking eligibility...";
+    if (eligibility.eligible) return "You are eligible to mint now.";
+    if (eligibility.registered && eligibility.eligibleStageLabel) {
+      return `Your wallet is registered for ${eligibility.eligibleStageLabel}. Current stage: ${stageLabel}.`;
+    }
+    return "Your wallet is not registered for this stage.";
   })();
 
   const handleMint = async () => {
