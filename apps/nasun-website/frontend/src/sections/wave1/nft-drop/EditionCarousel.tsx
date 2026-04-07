@@ -1,6 +1,6 @@
 import { FC, useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { NFT_EDITIONS, getEditionVideoUrl } from "@/constants/nft-drop";
+import { NFT_EDITIONS, getEditionVideoUrl, getEditionPosterUrl } from "@/constants/nft-drop";
 import { NftDropVideoCard } from "./NftDropVideoCard";
 
 const TOTAL = NFT_EDITIONS.length;
@@ -109,6 +109,7 @@ export const EditionCarousel: FC<EditionCarouselProps> = ({
                     id={edition.id}
                     name={edition.name}
                     compact
+                    loadVideo={distFromCenter <= 1}
                     selected={selectedId === edition.id}
                     onSelect={(id) => {
                       handleSelect(id);
@@ -175,7 +176,9 @@ export const EditionCarousel: FC<EditionCarouselProps> = ({
           <div className="relative rounded-2xl overflow-hidden border-2 border-amber-400/30 shadow-[0_0_60px_rgba(249,168,36,0.1)]">
             <div className="aspect-square relative overflow-hidden bg-gray-900">
               <video
+                key={centerEdition.id}
                 src={getEditionVideoUrl(centerEdition.name)}
+                poster={getEditionPosterUrl(centerEdition.name)}
                 autoPlay
                 muted
                 loop
