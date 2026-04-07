@@ -16,6 +16,7 @@ export interface AuthStackProps extends cdk.StackProps {
 export class AuthStack extends cdk.Stack {
   public readonly metamaskAuthApi: apigw.RestApi;
   public readonly suiAuthApi: apigw.RestApi;
+  public readonly zkLoginAuthApi: apigw.RestApi;
 
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
@@ -281,11 +282,19 @@ export class AuthStack extends cdk.Stack {
       }),
     });
 
+    // Provisioned Concurrency for Genesis Pass drop (eliminates cold starts)
+    const zkLoginSaltVersion = zkLoginSaltFunction.currentVersion;
+    new lambda.Alias(this, "ZkLoginSaltLiveAlias", {
+      aliasName: "live",
+      version: zkLoginSaltVersion,
+      provisionedConcurrentExecutions: 5,
+    });
+
     // 3. DynamoDB 권한 부여
     zkLoginTable.grantReadWriteData(zkLoginSaltFunction);
 
     // 4. API Gateway for zkLogin Auth with rate limiting
-    const zkLoginAuthApi = new apigw.RestApi(this, 'ZkLoginAuthApi', {
+    this.zkLoginAuthApi = new apigw.RestApi(this, 'ZkLoginAuthApi', {
       restApiName: 'zkLogin Auth Service',
       description: 'API for Sui zkLogin authentication with social providers',
       defaultCorsPreflightOptions: {
@@ -293,14 +302,14 @@ export class AuthStack extends cdk.Stack {
         allowMethods: ['POST', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
       },
-      // Rate limiting to prevent abuse
+      // Rate limiting -- raised for Genesis Pass drop traffic
       deployOptions: {
-        throttlingBurstLimit: 500, // Max concurrent requests
-        throttlingRateLimit: 200, // Requests per second
+        throttlingBurstLimit: 1000,
+        throttlingRateLimit: 500,
       },
     });
 
-    const zkLoginAuth = zkLoginAuthApi.root.addResource('auth');
+    const zkLoginAuth = this.zkLoginAuthApi.root.addResource('auth');
     const zkLogin = zkLoginAuth.addResource('zklogin');
 
     // POST /auth/zklogin/salt
@@ -309,7 +318,7 @@ export class AuthStack extends cdk.Stack {
 
     // 5. CloudFormation Outputs
     new cdk.CfnOutput(this, 'ZkLoginAuthApiUrl', {
-      value: zkLoginAuthApi.url,
+      value: this.zkLoginAuthApi.url,
       description: 'The URL of the zkLogin Auth API Gateway',
       exportName: 'ZkLoginAuthApiUrl',
     });

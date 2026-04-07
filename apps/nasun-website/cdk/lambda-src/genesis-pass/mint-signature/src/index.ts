@@ -12,7 +12,7 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import { ethers } from "ethers";
@@ -80,12 +80,19 @@ const MINT_TYPES = {
 
 // ── Caching ──
 
-let cachedWallet: ethers.Wallet | null = null;
+let cachedWallet: { wallet: ethers.Wallet; fetchedAt: number } | null = null;
+const WALLET_CACHE_TTL_MS = 300_000; // 5 minutes
 let cachedStage: { value: string; fetchedAt: number } | null = null;
 const STAGE_CACHE_TTL_MS = 60_000;
 
+// Rate limiting: minimum interval between signature issuances per wallet
+const SIGNATURE_COOLDOWN_SECONDS = 60;
+
 async function getSignerWallet(): Promise<ethers.Wallet> {
-  if (cachedWallet) return cachedWallet;
+  const now = Date.now();
+  if (cachedWallet && now - cachedWallet.fetchedAt < WALLET_CACHE_TTL_MS) {
+    return cachedWallet.wallet;
+  }
 
   const result = await secretsClient.send(
     new GetSecretValueCommand({ SecretId: SIGNER_SECRET_NAME })
@@ -95,9 +102,10 @@ async function getSignerWallet(): Promise<ethers.Wallet> {
   const { privateKey } = JSON.parse(result.SecretString);
   if (!privateKey) throw new Error("privateKey field missing in secret");
 
-  cachedWallet = new ethers.Wallet(privateKey);
-  console.log("[mint-signature] Signer wallet loaded");
-  return cachedWallet;
+  const wallet = new ethers.Wallet(privateKey);
+  cachedWallet = { wallet, fetchedAt: now };
+  console.log("[mint-signature] Signer wallet loaded (TTL 5m)");
+  return wallet;
 }
 
 async function getCurrentStage(): Promise<string> {
@@ -139,15 +147,35 @@ function jsonResponse(statusCode: number, body: Record<string, unknown>, origin?
   };
 }
 
+const MAX_LINKED_IDENTITIES = 5;
+
 function collectLinkedIdentityIds(identityId: string, profile?: Record<string, any>): string[] {
   const ids = new Set<string>([identityId]);
   if (!profile) return [...ids];
-  if (profile.linkedToPrimaryId) ids.add(profile.linkedToPrimaryId);
-  if (profile.linkedAccounts) {
-    for (const account of Object.values(profile.linkedAccounts) as any[]) {
-      if (account?.identityId) ids.add(account.identityId);
+
+  if (profile.linkedToPrimaryId && typeof profile.linkedToPrimaryId === "string") {
+    ids.add(profile.linkedToPrimaryId);
+  }
+
+  if (profile.linkedAccounts && typeof profile.linkedAccounts === "object") {
+    for (const [provider, account] of Object.entries(profile.linkedAccounts) as [string, any][]) {
+      if (account?.identityId && typeof account.identityId === "string") {
+        // Bidirectional check: linked account must reference back to this identity or its primary
+        const backRef = account.linkedToPrimaryId;
+        if (backRef && backRef !== identityId && backRef !== profile.linkedToPrimaryId) {
+          console.warn(`[mint-signature] Skipping suspicious link: ${provider} identity ${account.identityId} points to ${backRef}, not ${identityId}`);
+          continue;
+        }
+        ids.add(account.identityId);
+      }
     }
   }
+
+  if (ids.size > MAX_LINKED_IDENTITIES) {
+    console.warn(`[mint-signature] Too many linked identities (${ids.size}) for ${identityId}, capping at ${MAX_LINKED_IDENTITIES}`);
+    return [...ids].slice(0, MAX_LINKED_IDENTITIES);
+  }
+
   return [...ids];
 }
 
@@ -261,10 +289,38 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return jsonResponse(403, { success: false, error: "NOT_ELIGIBLE", message: "Not eligible for current stage" }, origin);
     }
 
-    // 7. Get signer wallet from Secrets Manager
+    // 7. Rate limiting: 1 signature per wallet per cooldown period
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    try {
+      await ddbClient.send(
+        new UpdateCommand({
+          TableName: ALLOWLIST_TABLE,
+          Key: { walletAddress: normalizedAddress },
+          UpdateExpression: "SET lastSignatureAt = :now",
+          ConditionExpression:
+            "attribute_not_exists(lastSignatureAt) OR lastSignatureAt < :cooldown",
+          ExpressionAttributeValues: {
+            ":now": nowEpoch,
+            ":cooldown": nowEpoch - SIGNATURE_COOLDOWN_SECONDS,
+          },
+        })
+      );
+    } catch (e: any) {
+      if (e.name === "ConditionalCheckFailedException") {
+        console.log(`[mint-signature] Rate limited: ${normalizedAddress}`);
+        return jsonResponse(429, {
+          success: false,
+          error: "RATE_LIMITED",
+          message: "Please wait before requesting another signature.",
+        }, origin);
+      }
+      throw e;
+    }
+
+    // 8. Get signer wallet from Secrets Manager
     const signerWallet = await getSignerWallet();
 
-    // 8. Generate EIP-712 signature
+    // 9. Generate EIP-712 signature
     const deadline = Math.floor(Date.now() / 1000) + SIGNATURE_TTL_SECONDS;
 
     const domain = {
@@ -285,7 +341,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     console.log(`[mint-signature] Signed: wallet=${normalizedAddress}, stage=${mintConfig.stage}, maxQty=${mintConfig.maxQuantity}, deadline=${deadline}`);
 
-    // 9. Return signature
+    // 10. Return signature
     return jsonResponse(200, {
       success: true,
       data: {

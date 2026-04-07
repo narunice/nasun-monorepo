@@ -127,10 +127,13 @@ const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
   governanceApi: commonStack.governanceApi,
   governanceApiLambda: commonStack.governanceApiLambda,
   metamaskAuthApi: authStack.metamaskAuthApi,
+  zkLoginAuthApi: authStack.zkLoginAuthApi,
   leaderboardV3Api: leaderboardV3Stack.api,
   nftEventApi: nftEventStack.api,
+  genesisPassApi: genesisPassStack.api,
 });
 monitoringStack.addDependency(commonStack);
 monitoringStack.addDependency(authStack);
 monitoringStack.addDependency(leaderboardV3Stack);
 monitoringStack.addDependency(nftEventStack);
+monitoringStack.addDependency(genesisPassStack);

@@ -72,18 +72,34 @@ async function findRegistrationByIdentity(identityId: string) {
  * This resolves the cross-identity issue where a user logs in with one identity
  * but their allowlist entry was registered under a different linked identity.
  */
+const MAX_LINKED_IDENTITIES = 5;
+
 function collectLinkedIdentityIds(identityId: string, profile?: Record<string, any>): string[] {
   const ids = new Set<string>([identityId]);
   if (!profile) return [...ids];
 
-  if (profile.linkedToPrimaryId) {
+  if (profile.linkedToPrimaryId && typeof profile.linkedToPrimaryId === "string") {
     ids.add(profile.linkedToPrimaryId);
   }
 
-  if (profile.linkedAccounts) {
-    for (const account of Object.values(profile.linkedAccounts) as any[]) {
-      if (account?.identityId) ids.add(account.identityId);
+  if (profile.linkedAccounts && typeof profile.linkedAccounts === "object") {
+    for (const [provider, account] of Object.entries(profile.linkedAccounts) as [string, any][]) {
+      if (account?.identityId && typeof account.identityId === "string") {
+        // Bidirectional check: linked account must reference back to this identity or its primary
+        const backRef = account.linkedToPrimaryId;
+        if (backRef && backRef !== identityId && backRef !== profile.linkedToPrimaryId) {
+          console.warn(`[genesis-pass] Skipping suspicious link: ${provider} identity ${account.identityId} points to ${backRef}, not ${identityId}`);
+          continue;
+        }
+        ids.add(account.identityId);
+      }
     }
+  }
+
+  // Cap linked identities to prevent abuse
+  if (ids.size > MAX_LINKED_IDENTITIES) {
+    console.warn(`[genesis-pass] Too many linked identities (${ids.size}) for ${identityId}, capping at ${MAX_LINKED_IDENTITIES}`);
+    return [...ids].slice(0, MAX_LINKED_IDENTITIES);
   }
 
   return [...ids];
@@ -384,24 +400,48 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
     }
   }
 
-  // 7. Register to allowlist (unconditional put for takeover support)
+  // 7. Register to allowlist (atomic put with condition to prevent race conditions)
   // Pre-approved users (free mint via approvals table) get ACTIVE; everyone else gets APPLIED.
   const registrationStatus = mintType ? "ACTIVE" : "APPLIED";
   const now = new Date().toISOString();
-  await client.send(
-    new PutCommand({
-      TableName: ALLOWLIST_TABLE,
-      Item: {
-        walletAddress: normalizedAddress,
-        identityId,
-        registeredAt: now,
-        status: registrationStatus,
-        ...(mintType && { mintType }),
-        ...(source && { source }),
-        ...(twitterHandle && { twitterHandle }),
-      },
-    })
-  );
+  const putItem = {
+    walletAddress: normalizedAddress,
+    identityId,
+    registeredAt: now,
+    status: registrationStatus,
+    ...(mintType && { mintType }),
+    ...(source && { source }),
+    ...(twitterHandle && { twitterHandle }),
+  };
+
+  // Condition: takeover requires the expected previous owner; new registration requires no existing entry
+  const conditionExpr = isTakeover
+    ? "identityId = :existingId"
+    : "attribute_not_exists(walletAddress)";
+  const conditionValues = isTakeover
+    ? { ":existingId": existingByAddress.Item!.identityId }
+    : undefined;
+
+  try {
+    await client.send(
+      new PutCommand({
+        TableName: ALLOWLIST_TABLE,
+        Item: putItem,
+        ConditionExpression: conditionExpr,
+        ...(conditionValues && { ExpressionAttributeValues: conditionValues }),
+      })
+    );
+  } catch (e: any) {
+    if (e.name === "ConditionalCheckFailedException") {
+      console.warn(`[genesis-pass-register] Race condition detected for ${normalizedAddress}`);
+      return jsonResponse(409, {
+        success: false,
+        error: "ADDRESS_ALREADY_REGISTERED",
+        message: "This wallet address was just registered. Please try again.",
+      }, origin);
+    }
+    throw e;
+  }
 
   const isUpdate = !!existingByIdentity;
   console.log(`[genesis-pass-register] ${isTakeover ? "Takeover" : isUpdate ? "Updated" : "Registered"}: ${normalizedAddress} (identity: ${identityId})`);
