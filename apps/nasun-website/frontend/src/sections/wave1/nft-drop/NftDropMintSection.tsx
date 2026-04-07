@@ -7,6 +7,7 @@ import {
   NFT_EDITIONS,
   STAGE_LABELS,
   STAGE_START_TIMES,
+  getEditionVideoUrl,
 } from "@/constants/nft-drop";
 import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { EditionCarousel } from "./EditionCarousel";
@@ -44,16 +45,8 @@ function MintSuccessView({
           style={{ boxShadow: "0 0 60px rgba(249,168,36,0.15)" }}
         >
           <div className="aspect-[3/4] relative">
-            <img
-              src="/videos/genesis-pass-poster.webp"
-              alt={edition.name}
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{
-                filter: `hue-rotate(${selectedId! * 15}deg) saturate(${0.8 + selectedId! * 0.1})`,
-              }}
-            />
             <video
-              src="/videos/Founders-Nft-Portal-Rotate-rf28.mp4"
+              src={getEditionVideoUrl(edition.name)}
               autoPlay
               muted
               loop
