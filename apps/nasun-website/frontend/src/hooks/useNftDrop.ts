@@ -1,6 +1,6 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
 import { formatEther } from "viem";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { GENESIS_PASS_ABI, GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { requestMintSignature, GenesisPassApiError } from "@/services/genesisPassApi";
 import { useUserStore } from "@/store/userStore";
@@ -82,10 +82,13 @@ export function useNftDropMint() {
   const contractAddress = getContractAddress(chainId);
   const cognitoToken = useUserStore((s) => s.userData?.cognitoToken);
   const { switchChainAsync } = useSwitchChain();
+  // Read on-chain stage directly for mint logic (immune to UI overrides)
+  const { currentStage: onChainStage } = useNftDropRead();
 
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [isFetchingSignature, setIsFetchingSignature] = useState(false);
+  const mintingRef = useRef(false);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
@@ -94,7 +97,12 @@ export function useNftDropMint() {
   });
 
   const mint = useCallback(
-    async (tokenId: number, mintPriceWei: bigint, currentStage: number) => {
+    async (tokenId: number, mintPriceWei: bigint, _displayStage: number) => {
+      if (mintingRef.current) return;
+      mintingRef.current = true;
+      // Use on-chain stage for all mint logic (ignores UI dev overrides)
+      const currentStage = onChainStage;
+      try {
       if (!address) {
         setError("Wallet not connected");
         return;
@@ -202,8 +210,11 @@ export function useNftDropMint() {
         else if (msg.includes("User rejected")) setError("Transaction cancelled.");
         else setError(msg);
       }
+      } finally {
+        mintingRef.current = false;
+      }
     },
-    [contractAddress, address, chainId, writeContractAsync, cognitoToken, switchChainAsync]
+    [contractAddress, address, chainId, writeContractAsync, cognitoToken, switchChainAsync, onChainStage]
   );
 
   return {
