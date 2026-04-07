@@ -169,6 +169,7 @@ export function useNftDropMint() {
             if (e instanceof GenesisPassApiError) {
               if (e.statusCode === 401) setError("Session expired. Please log in again.");
               else if (e.statusCode === 403) setError("Not eligible for current stage. The stage may have changed.");
+              else if (e.statusCode === 429 && e.errorCode === "RATE_LIMITED") setError("Please wait 60 seconds before requesting another signature.");
               else setError(e.message);
             } else if (e instanceof DOMException && e.name === "AbortError") {
               setError("Request timed out. Please try again.");
@@ -206,7 +207,7 @@ export function useNftDropMint() {
         else if (msg.includes("TransfersLocked")) setError("Transfers are locked during the minting period.");
         else if (msg.includes("StageNotPriced")) setError("Stage price not configured.");
         else if (msg.includes("InvalidSignature")) setError("Signature verification failed. Please try again.");
-        else if (msg.includes("SignatureExpired")) setError("Signature expired. Please try again.");
+        else if (msg.includes("SignatureExpired")) setError("Signature expired (5 min limit). Please click Mint again to get a fresh signature.");
         else if (msg.includes("User rejected")) setError("Transaction cancelled.");
         else setError(msg);
       }
