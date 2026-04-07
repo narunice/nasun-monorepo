@@ -173,7 +173,11 @@ export const EditionCarousel: FC<EditionCarouselProps> = ({
           </button>
 
           {/* Preview card */}
-          <div className="relative rounded-2xl overflow-hidden border-2 border-amber-400/30 shadow-[0_0_60px_rgba(249,168,36,0.1)]">
+          <div className={`relative rounded-2xl overflow-hidden border-2 transition-all duration-300 ${
+            selectedId === centerEdition.id
+              ? "border-amber-400 shadow-[0_0_60px_rgba(249,168,36,0.25)]"
+              : "border-amber-400/30 shadow-[0_0_60px_rgba(249,168,36,0.1)]"
+          }`}>
             <div className="aspect-square relative overflow-hidden bg-gray-900">
               <video
                 key={centerEdition.id}

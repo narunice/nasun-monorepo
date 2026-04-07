@@ -42,7 +42,8 @@ import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
 import { NftShowcaseCard } from "../../sections/myAccount/NftShowcaseCard";
-import { GenesisDropCard } from "../../sections/myAccount/GenesisDropCard";
+// import { GenesisDropCard } from "../../sections/myAccount/GenesisDropCard";
+import { GenesisDropInfoCard } from "../../sections/myAccount/GenesisDropInfoCard";
 // import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
 
 const DevMyAccountPage = () => {
@@ -140,11 +141,12 @@ const DevMyAccountPage = () => {
         {/* Page Title + Genesis Drop Card */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mt-4 mb-6 md:mb-8">
           <PageTitle wrapperClassName="" align="left">ACCOUNT</PageTitle>
-          <ErrorBoundary fallback={<div className="text-red-400 text-sm">GenesisDropCard error</div>}>
+          {/* <ErrorBoundary fallback={<div className="text-red-400 text-sm">GenesisDropCard error</div>}>
             <Suspense fallback={<div className="text-nasun-white/40 text-sm">Loading...</div>}>
               <GenesisDropCard className="sm:max-w-lg w-full" />
             </Suspense>
-          </ErrorBoundary>
+          </ErrorBoundary> */}
+          <GenesisDropInfoCard className="sm:max-w-lg w-full" />
         </div>
 
         {/* Bento Grid Dashboard Layout */}

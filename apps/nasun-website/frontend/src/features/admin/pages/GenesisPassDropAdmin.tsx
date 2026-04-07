@@ -242,6 +242,8 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
   const [priceEth, setPriceEth] = useState("");
   const [withdrawAddr, setWithdrawAddr] = useState("");
   const [deadlineInput, setDeadlineInput] = useState("");
+  const [uriInput, setUriInput] = useState("");
+  const [contractUriInput, setContractUriInput] = useState("");
 
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
@@ -436,6 +438,82 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
             Remove Deadline
           </ButtonV3>
         </div>
+      </OuterBox>
+
+      {/* Metadata URI */}
+      <OuterBox color="c6" padding="sm">
+        <h2 className="text-2xl font-semibold text-nasun-white mb-5">Metadata URI</h2>
+        <div className="space-y-4">
+          <div className="flex items-end gap-4 flex-wrap">
+            <div className="flex-1 min-w-[20rem]">
+              <label className="text-nasun-white/90 text-lg block mb-2">Base URI (token metadata)</label>
+              <input
+                type="text"
+                value={uriInput}
+                onChange={(e) => setUriInput(e.target.value)}
+                placeholder="https://nasun.io/metadata/genesis-pass/"
+                className="bg-nasun-black border border-nasun-white/30 rounded px-4 py-3 text-nasun-white text-lg w-full"
+              />
+            </div>
+            <ButtonV3
+              variant="nw2"
+              size="md"
+              disabled={isPending || !uriInput}
+              onClick={() => {
+                requestConfirm({
+                  title: "Change Base URI",
+                  description: `Set base URI to:\n${uriInput}\n\nAll token metadata URLs will change.\nTokens will resolve as: ${uriInput}{tokenId}.json`,
+                  confirmPhrase: "SET URI",
+                  variant: "danger",
+                  onConfirm: () => execTx("setURI", () =>
+                    writeContractAsync({
+                      address: addr, abi: GENESIS_PASS_ABI,
+                      functionName: "setURI", args: [uriInput],
+                    })
+                  ),
+                });
+              }}
+            >
+              Set URI
+            </ButtonV3>
+          </div>
+          <div className="flex items-end gap-4 flex-wrap">
+            <div className="flex-1 min-w-[20rem]">
+              <label className="text-nasun-white/90 text-lg block mb-2">Contract URI (collection metadata)</label>
+              <input
+                type="text"
+                value={contractUriInput}
+                onChange={(e) => setContractUriInput(e.target.value)}
+                placeholder="https://nasun.io/metadata/genesis-pass/collection.json"
+                className="bg-nasun-black border border-nasun-white/30 rounded px-4 py-3 text-nasun-white text-lg w-full"
+              />
+            </div>
+            <ButtonV3
+              variant="nw2"
+              size="md"
+              disabled={isPending || !contractUriInput}
+              onClick={() => {
+                requestConfirm({
+                  title: "Change Contract URI",
+                  description: `Set contract URI to:\n${contractUriInput}\n\nThis changes collection-level metadata on OpenSea and other marketplaces.`,
+                  confirmPhrase: "SET CONTRACT URI",
+                  variant: "danger",
+                  onConfirm: () => execTx("setContractURI", () =>
+                    writeContractAsync({
+                      address: addr, abi: GENESIS_PASS_ABI,
+                      functionName: "setContractURI", args: [contractUriInput],
+                    })
+                  ),
+                });
+              }}
+            >
+              Set Contract URI
+            </ButtonV3>
+          </div>
+        </div>
+        <p className="text-nasun-white/70 text-lg mt-4">
+          Base URI resolves token metadata as {"{baseURI}{tokenId}.json"}. Contract URI is collection-level metadata for OpenSea.
+        </p>
       </OuterBox>
 
       {/* Withdraw + Unlock */}
