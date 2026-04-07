@@ -1,12 +1,21 @@
 {
   "name": "Nasun Genesis Pass #5 - Awakening",
-  "description": "A mysterious pentahedron appears across time and space, disrupting systems that concentrate power into the hands of a few. Its presence creates new timelines where communities, not individuals, shape powerful civilizations.",
+  "description": "The Genesis Pass grants access to the Nasun ecosystem, where the community reconfigures the simulation from its collective imagination. Activate your pass to unlock utilities that expand alongside the growth of Nasun.",
   "image": "https://arweave.net/PW1w0Fm0mvKatIrFpha42npI673X6YIvBBVerfvqY1w",
   "animation_url": "https://arweave.net/6NHX8Nk1i0f3L2sBXZQFSMgRyeAOe0pwAbMKg2uX6No",
   "external_url": "https://nasun.io/wave1/genesis-pass",
   "attributes": [
-    { "trait_type": "Edition", "value": "Awakening" },
-    { "trait_type": "Type", "value": "Video" },
-    { "trait_type": "Collection", "value": "Genesis Pass" }
+    {
+      "trait_type": "Edition",
+      "value": "Awakening"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Video"
+    },
+    {
+      "trait_type": "Collection",
+      "value": "Genesis Pass"
+    }
   ]
 }
