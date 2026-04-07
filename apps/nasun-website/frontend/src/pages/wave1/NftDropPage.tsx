@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { useSearchParams } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
+import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { NftDropHeroSection } from "@/sections/wave1/nft-drop/NftDropHeroSection";
 import { NftDropMintSection } from "@/sections/wave1/nft-drop/NftDropMintSection";
 
@@ -45,11 +46,20 @@ export default function NftDropPage() {
         }}
       >
         <NftDropHeroSection />
-        <NftDropMintSection
-          currentStage={effectiveStage}
-          mintPrice={mintPrice}
-          isDeployed={isDeployed}
-        />
+        <ErrorBoundary
+          fallback={
+            <div className="text-center py-20 text-nasun-white/70">
+              <p className="text-lg font-semibold mb-2">Something went wrong</p>
+              <p className="text-sm">Please refresh the page to try again.</p>
+            </div>
+          }
+        >
+          <NftDropMintSection
+            currentStage={effectiveStage}
+            mintPrice={mintPrice}
+            isDeployed={isDeployed}
+          />
+        </ErrorBoundary>
       </PageLayout>
     </>
   );
