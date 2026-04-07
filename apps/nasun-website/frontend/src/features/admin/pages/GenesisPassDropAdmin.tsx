@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useBalance, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatEther, parseEther, isAddress } from "viem";
 import {
   Dialog,
@@ -40,9 +40,10 @@ function TxStatus({ hash, label }: { hash?: `0x${string}`; label: string }) {
   );
 }
 
-function ContractStatus({ addr }: { addr: `0x${string}` }) {
+function ContractStatus({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boolean }) {
   const chainId = useChainId();
   const etherscanBase = chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io";
+  const { data: balance } = useBalance({ address: addr, query: { refetchInterval: 10_000 } });
   const read = (fn: string) => useReadContract({
     address: addr, abi: GENESIS_PASS_ABI, functionName: fn as any,
     query: { refetchInterval: 10_000 },
@@ -76,7 +77,7 @@ function ContractStatus({ addr }: { addr: `0x${string}` }) {
   const totalMinted = mintedReads.reduce((sum, r) => sum + (r.data != null ? Number(r.data) : 0), 0);
 
   return (
-    <OuterBox color="c5" padding="sm">
+    <OuterBox color="c5" padding="sm" className={isSepolia ? "border-2 border-orange-500/40" : ""}>
       <h2 className="text-2xl font-semibold text-nasun-white mb-5">Contract Status</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         <div>
@@ -93,6 +94,15 @@ function ContractStatus({ addr }: { addr: `0x${string}` }) {
           <p className="text-nasun-white/80 text-lg">Total Minted</p>
           <p className="text-nasun-white text-2xl font-bold">{totalMinted}</p>
         </div>
+        <div>
+          <p className="text-nasun-white/80 text-lg">Balance</p>
+          <p className="text-nasun-white text-2xl font-bold">
+            {balance ? `${formatEther(balance.value)} ETH` : "-"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-5">
         <div>
           <p className="text-nasun-white/80 text-lg">Transfers</p>
           <p className={`text-2xl font-bold ${locked ? "text-green-400" : "text-amber-400"}`}>
@@ -234,8 +244,11 @@ function useCurrentStage(addr: `0x${string}`) {
   return data != null ? Number(data) : 0;
 }
 
-function AdminActions({ addr }: { addr: `0x${string}` }) {
+function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boolean }) {
+  const sepoliaBorder = isSepolia ? "border-2 border-orange-500/40" : "";
   const currentStage = useCurrentStage(addr);
+  const { data: contractBalance } = useBalance({ address: addr, query: { refetchInterval: 10_000 } });
+  const balanceStr = contractBalance ? formatEther(contractBalance.value) : "0";
   const [lastTxHash, setLastTxHash] = useState<`0x${string}` | undefined>();
   const [lastTxLabel, setLastTxLabel] = useState("");
   const [priceStage, setPriceStage] = useState("4");
@@ -298,7 +311,7 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
       />
 
       {/* Stage Control */}
-      <OuterBox color="c6" padding="sm">
+      <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Stage Control</h2>
         <div className="flex flex-wrap gap-3">
           {stages.map(({ label, stage }) => {
@@ -341,7 +354,7 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
       </OuterBox>
 
       {/* Price Adjustment */}
-      <OuterBox color="c6" padding="sm">
+      <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Price Adjustment</h2>
         <div className="flex items-end gap-4 flex-wrap">
           <div>
@@ -371,15 +384,30 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
             size="md"
             disabled={isPending || !priceEth}
             onClick={() => {
+              const normalized = priceEth.replace(",", ".");
+              const parsed = parseFloat(normalized);
+              if (isNaN(parsed) || parsed <= 0) {
+                alert("Invalid price. Enter a positive number.");
+                return;
+              }
+              if (parsed > 0.1) {
+                alert(`Price ${normalized} ETH seems too high (max 0.1 ETH). Double-check the value.`);
+                return;
+              }
               const stageName = STAGE_NAMES[Number(priceStage)];
-              if (!confirm(`Set ${stageName} price to ${priceEth} ETH?\n\nThis takes effect immediately for all users.`)) return;
-              const wei = parseEther(priceEth.replace(",", "."));
-              execTx(`setStagePrice(${stageName}, ${priceEth} ETH)`, () =>
-                writeContractAsync({
-                  address: addr, abi: GENESIS_PASS_ABI,
-                  functionName: "setStagePrice", args: [Number(priceStage), wei],
-                })
-              );
+              const wei = parseEther(normalized);
+              requestConfirm({
+                title: `Set ${stageName} price to ${normalized} ETH?`,
+                description: `This takes effect immediately for all users.\n\nNew price: ${normalized} ETH`,
+                confirmPhrase: normalized,
+                variant: "warning",
+                onConfirm: () => execTx(`setStagePrice(${stageName}, ${normalized} ETH)`, () =>
+                  writeContractAsync({
+                    address: addr, abi: GENESIS_PASS_ABI,
+                    functionName: "setStagePrice", args: [Number(priceStage), wei],
+                  })
+                ),
+              });
             }}
           >
             Set Price
@@ -391,7 +419,7 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
       </OuterBox>
 
       {/* Deadline */}
-      <OuterBox color="c6" padding="sm">
+      <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Mint Deadline</h2>
         <div className="flex items-end gap-4 flex-wrap">
           <div>
@@ -410,13 +438,22 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
             onClick={() => {
               const ts = Math.floor(new Date(deadlineInput + "Z").getTime() / 1000);
               const dateStr = new Date(ts * 1000).toISOString();
-              if (!confirm(`Set mint deadline to:\n${dateStr}\n\nMinting will stop after this time.`)) return;
-              execTx(`setMintDeadline(${dateStr})`, () =>
-                writeContractAsync({
-                  address: addr, abi: GENESIS_PASS_ABI,
-                  functionName: "setMintDeadline", args: [BigInt(ts)],
-                })
-              );
+              if (ts * 1000 <= Date.now()) {
+                alert("Cannot set a deadline in the past. This would immediately block all minting.");
+                return;
+              }
+              requestConfirm({
+                title: "Set Mint Deadline",
+                description: `Set mint deadline to:\n${dateStr}\n\nMinting will stop after this time.`,
+                confirmPhrase: "SET DEADLINE",
+                variant: "warning",
+                onConfirm: () => execTx(`setMintDeadline(${dateStr})`, () =>
+                  writeContractAsync({
+                    address: addr, abi: GENESIS_PASS_ABI,
+                    functionName: "setMintDeadline", args: [BigInt(ts)],
+                  })
+                ),
+              });
             }}
           >
             Set Deadline
@@ -426,13 +463,18 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
             size="md"
             disabled={isPending}
             onClick={() => {
-              if (!confirm("Remove mint deadline?\n\nMinting window will be unlimited until you set a new deadline.")) return;
-              execTx("Remove deadline", () =>
-                writeContractAsync({
-                  address: addr, abi: GENESIS_PASS_ABI,
-                  functionName: "setMintDeadline", args: [BigInt(0)],
-                })
-              );
+              requestConfirm({
+                title: "Remove Mint Deadline",
+                description: "Remove mint deadline?\n\nMinting window will be unlimited until you set a new deadline.",
+                confirmPhrase: "REMOVE DEADLINE",
+                variant: "warning",
+                onConfirm: () => execTx("Remove deadline", () =>
+                  writeContractAsync({
+                    address: addr, abi: GENESIS_PASS_ABI,
+                    functionName: "setMintDeadline", args: [BigInt(0)],
+                  })
+                ),
+              });
             }}
           >
             Remove Deadline
@@ -441,7 +483,7 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
       </OuterBox>
 
       {/* Metadata URI */}
-      <OuterBox color="c6" padding="sm">
+      <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Metadata URI</h2>
         <div className="space-y-4">
           <div className="flex items-end gap-4 flex-wrap">
@@ -517,7 +559,7 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
       </OuterBox>
 
       {/* Withdraw + Unlock */}
-      <OuterBox color="c6" padding="sm">
+      <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Withdraw + Transfer Unlock</h2>
         <div className="flex items-end gap-4 flex-wrap mb-4">
           <div>
@@ -537,7 +579,7 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
             onClick={() => {
               requestConfirm({
                 title: "Withdraw All ETH",
-                description: `Withdraw all contract ETH to:\n${withdrawAddr}\n\nThis is irreversible. Double-check the address.`,
+                description: `Withdraw ${balanceStr} ETH to:\n${withdrawAddr}\n\nThis is irreversible. Double-check the address and amount.`,
                 confirmPhrase: "WITHDRAW",
                 variant: "danger",
                 onConfirm: () => execTx(`withdrawTo(${withdrawAddr.slice(0, 8)}...)`, () =>
@@ -583,10 +625,24 @@ function AdminActions({ addr }: { addr: `0x${string}` }) {
   );
 }
 
+function useIsOwner(addr: `0x${string}` | undefined) {
+  const { address: walletAddr } = useAccount();
+  const { data: owner } = useReadContract({
+    address: addr, abi: GENESIS_PASS_ABI, functionName: "owner" as any,
+    query: { enabled: !!addr },
+  });
+  if (!addr || !walletAddr || !owner) return { isOwner: undefined, ownerAddr: owner as string | undefined };
+  return {
+    isOwner: (owner as string).toLowerCase() === walletAddr.toLowerCase(),
+    ownerAddr: owner as string,
+  };
+}
+
 export function GenesisPassDropAdmin() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const addr = getContractAddress(chainId);
+  const { isOwner, ownerAddr } = useIsOwner(addr);
 
   return (
     <AdminLayout>
@@ -615,8 +671,38 @@ export function GenesisPassDropAdmin() {
           </OuterBox>
         ) : (
           <div className="space-y-6">
-            <ContractStatus addr={addr} />
-            <AdminActions addr={addr} />
+            {/* Network Warning Banner */}
+            {chainId === 1 ? (
+              <div className="rounded-xl border-2 border-teal-500/50 bg-teal-500/10 px-6 py-4 flex items-center gap-4">
+                <span className="text-3xl">&#9670;</span>
+                <div>
+                  <p className="text-teal-400 text-xl font-bold">MAINNET</p>
+                  <p className="text-teal-300 text-lg">You are connected to Ethereum Mainnet. All transactions use real ETH.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/10 px-6 py-4 flex items-center gap-4">
+                <span className="text-3xl">&#128297;</span>
+                <div>
+                  <p className="text-amber-400 text-xl font-bold">SEPOLIA TESTNET</p>
+                  <p className="text-amber-300 text-lg">You are connected to Sepolia testnet. Safe to experiment.</p>
+                </div>
+              </div>
+            )}
+            {isOwner === false && (
+              <div className="rounded-xl border-2 border-red-500 bg-red-500/10 px-6 py-4 flex items-center gap-4">
+                <span className="text-3xl">&#128683;</span>
+                <div>
+                  <p className="text-red-400 text-xl font-bold">NOT THE OWNER</p>
+                  <p className="text-red-300 text-lg">
+                    Your wallet is not the contract owner. Transactions will fail.
+                    Owner: <span className="font-mono">{ownerAddr?.slice(0, 8)}...{ownerAddr?.slice(-6)}</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            <ContractStatus addr={addr} isSepolia={chainId !== 1} />
+            {isOwner === false ? null : <AdminActions addr={addr} isSepolia={chainId !== 1} />}
           </div>
         )}
       </SectionLayout>

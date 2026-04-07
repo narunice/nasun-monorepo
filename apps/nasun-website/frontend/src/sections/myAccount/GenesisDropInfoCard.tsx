@@ -134,10 +134,9 @@ export const GenesisDropInfoCard: FC<GenesisDropInfoCardProps> = ({
                       : "text-nasun-white/70"
                 }`}
               >
-                <span>
-                  <span className="font-semibold">{stage.label}:</span>{" "}
-                  {formatLocal(stage.date)}
-                </span>
+                <span className="font-semibold">{stage.label}:</span>
+                <br className="sm:hidden" />
+                <span className="sm:ml-1">{formatLocal(stage.date)}</span>
                 {stage.price && <span className="ml-1">@ {stage.price}</span>}
               </div>
             );
@@ -148,10 +147,9 @@ export const GenesisDropInfoCard: FC<GenesisDropInfoCardProps> = ({
               allEnded ? "text-nasun-white/40" : "text-nasun-white/70"
             }`}
           >
-            <span>
-              <span className="font-semibold">Mint closes:</span>{" "}
-              {formatLocal(MINT_CLOSE_TIME)}
-            </span>
+            <span className="font-semibold">Mint closes:</span>
+            <br className="sm:hidden" />
+            <span className="sm:ml-1">{formatLocal(MINT_CLOSE_TIME)}</span>
           </div>
         </div>
 
@@ -167,7 +165,7 @@ export const GenesisDropInfoCard: FC<GenesisDropInfoCardProps> = ({
                     <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
                   </span>
-                  <span className="text-emerald-400 font-bold text-2xl uppercase tracking-wide">
+                  <span className="text-emerald-400 font-bold text-lg sm:text-2xl uppercase tracking-wide whitespace-nowrap">
                     {remainingLabel}
                   </span>
                 </div>

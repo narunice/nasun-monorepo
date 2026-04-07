@@ -56,10 +56,13 @@ export const wagmiConfig = createConfig({
       ...(alchemyKey ? [http(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
       http("https://cloudflare-eth.com"),
       http("https://eth.merkle.io"),
+      http("https://eth.drpc.org"),
+      http("https://rpc.mevblocker.io"),
     ]),
     [sepolia.id]: fallback([
       ...(alchemyKey ? [http(`https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`)] : []),
       http("https://ethereum-sepolia-rpc.publicnode.com"),
+      http("https://sepolia.drpc.org"),
       http("https://1rpc.io/sepolia"),
       http("https://rpc.sepolia.org"),
     ]),

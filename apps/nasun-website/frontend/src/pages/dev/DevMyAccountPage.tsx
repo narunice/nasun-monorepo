@@ -94,8 +94,8 @@ const DevMyAccountPage = () => {
 
   // Prefer linked MetaMask wallet over login wallet
   const walletAddress =
-    user?.linkedAccounts?.metamask?.walletAddress
-      || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
+    user?.linkedAccounts?.metamask?.walletAddress ||
+    (user?.provider === "MetaMask" ? user.walletAddress : undefined);
 
   return (
     <PageLayout>
@@ -111,7 +111,11 @@ const DevMyAccountPage = () => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path
                     fillRule="evenodd"
                     d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
@@ -126,7 +130,11 @@ const DevMyAccountPage = () => {
                 size="icon"
                 className="ml-4"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path
                     fillRule="evenodd"
                     d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -139,7 +147,7 @@ const DevMyAccountPage = () => {
         )}
 
         {/* Page Title (hidden during drop period) + Genesis Drop Card */}
-        <div className="mt-4 mb-6 md:mb-8">
+        <div className="mt-16 sm:mt-8 mb-6 md:mb-8">
           {/* <PageTitle wrapperClassName="" align="left">ACCOUNT</PageTitle> */}
           {/* <ErrorBoundary fallback={<div className="text-red-400 text-sm">GenesisDropCard error</div>}>
             <Suspense fallback={<div className="text-nasun-white/40 text-sm">Loading...</div>}>
@@ -153,53 +161,75 @@ const DevMyAccountPage = () => {
         {/* Row-by-row sequential layout (no row-span) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Left column: ProfileHeroCard(2col) + RankHistoryCard(2col) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ProfileHeroCard showPoints className="order-1 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
+              <ProfileHeroCard
+                showPoints
+                className="order-1 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20"
+              />
             </Suspense>
           </ErrorBoundary>
 
           {/* Right column: NftShowcaseCard (row-span-2, stacks alongside ProfileHero + RankHistory) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <NftShowcaseCard className="order-2 lg:order-none col-span-1 lg:row-span-2" />
             </Suspense>
           </ErrorBoundary>
 
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <RankHistoryCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
           {/* Ecosystem Points(2col) + Governance(1col) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <EcosystemPointsCard className="order-4 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <GovernanceCard className="order-5 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
           {/* AssetsCard (full width) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <AssetsCard walletAddress={walletAddress} className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <AssetsCard
+                walletAddress={walletAddress}
+                className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-3"
+              />
             </Suspense>
           </ErrorBoundary>
 
           {/* ConnectedAccounts(2col) + DangerZone(1col) */}
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <ConnectedAccountsCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
             </Suspense>
           </ErrorBoundary>
 
-          <ErrorBoundary fallback={<div>{t("error.generic", { ns: "common" })}</div>}>
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <DangerZoneCard className="order-8 lg:order-none col-span-1" />
             </Suspense>
@@ -207,13 +237,25 @@ const DevMyAccountPage = () => {
         </div>
 
         {/* X Account Linking Guidance Modal */}
-        <Dialog modal={false} open={showLinkXGuidance} onOpenChange={setShowLinkXGuidance}>
-          <DialogContent className="max-w-md text-center" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+        <Dialog
+          modal={false}
+          open={showLinkXGuidance}
+          onOpenChange={setShowLinkXGuidance}
+        >
+          <DialogContent
+            className="max-w-md text-center"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             <DialogHeader className="items-center">
-              <FontAwesomeIcon icon={faXTwitter} className="w-10 h-10 text-nasun-white mb-2" />
+              <FontAwesomeIcon
+                icon={faXTwitter}
+                className="w-10 h-10 text-nasun-white mb-2"
+              />
               <DialogTitle>Connect Your X Account</DialogTitle>
               <DialogDescription className="text-nasun-white/70">
-                To participate in the Nasun Leaderboard, connect your X account below.
+                To participate in the Nasun Leaderboard, connect your X account
+                below.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
@@ -222,7 +264,10 @@ const DevMyAccountPage = () => {
                 size="sm"
                 onClick={() => {
                   setShowLinkXGuidance(false);
-                  localStorage.setItem("auth_return_to", "/wave1/leaderboard-guide?x_linked=1");
+                  localStorage.setItem(
+                    "auth_return_to",
+                    "/wave1/leaderboard-guide?x_linked=1",
+                  );
                   handleLinkTwitter();
                 }}
               >
