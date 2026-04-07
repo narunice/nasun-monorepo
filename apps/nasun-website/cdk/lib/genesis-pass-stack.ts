@@ -231,7 +231,6 @@ export class GenesisPassStack extends cdk.Stack {
       logGroup: mintSignatureLogGroup,
       environment: {
         ALLOWLIST_TABLE_NAME: this.allowlistTable.tableName,
-        USER_PROFILES_TABLE_NAME: userProfilesTableName,
         SIGNER_SECRET_NAME: signerSecretName,
         CONTRACT_ADDRESS: contractAddress,
         CHAIN_ID: chainId,
@@ -251,29 +250,6 @@ export class GenesisPassStack extends cdk.Stack {
 
     this.allowlistTable.grantReadWriteData(mintSignatureLambda);
     stageParameter.grantRead(mintSignatureLambda);
-
-    // UserProfiles read access
-    mintSignatureLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:GetItem", "dynamodb:Query"],
-        resources: [
-          `arn:aws:dynamodb:${this.region}:${this.account}:table/${userProfilesTableName}`,
-          `arn:aws:dynamodb:${this.region}:${this.account}:table/${userProfilesTableName}/index/*`,
-        ],
-      })
-    );
-
-    // Allowlist GSI query access
-    mintSignatureLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:Query"],
-        resources: [
-          `arn:aws:dynamodb:${this.region}:${this.account}:table/${this.allowlistTable.tableName}/index/*`,
-        ],
-      })
-    );
 
     // Secrets Manager access (scoped to signer secret)
     mintSignatureLambda.addToRolePolicy(
@@ -322,12 +298,11 @@ export class GenesisPassStack extends cdk.Stack {
     registerResource.addMethod("POST", registerIntegration, authOptions);
     registerResource.addMethod("DELETE", registerIntegration, authOptions);
 
-    // POST /genesis-pass/mint-signature (JWT required) - Generate EIP-712 signature
+    // POST /genesis-pass/mint-signature (public, wallet address in body)
     const mintSignatureResource = genesisPassResource.addResource("mint-signature");
     mintSignatureResource.addMethod(
       "POST",
-      new apigateway.LambdaIntegration(mintSigAlias, { proxy: true }),
-      authOptions
+      new apigateway.LambdaIntegration(mintSigAlias, { proxy: true })
     );
 
     // GET /genesis-pass/check?walletAddress=0x...

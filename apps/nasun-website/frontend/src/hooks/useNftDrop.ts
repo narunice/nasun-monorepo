@@ -85,7 +85,7 @@ export function useNftDropMint() {
   const chainId = useChainId();
   const { address } = useAccount();
   const contractAddress = getContractAddress(chainId);
-  const cognitoToken = useUserStore((s) => s.userData?.cognitoToken);
+  const cognitoToken = useUserStore((s) => s.userData?.cognitoToken); // kept for isLoggedIn
   const { switchChainAsync } = useSwitchChain();
   // Read on-chain stage directly for mint logic (immune to UI overrides)
   const { currentStage: onChainStage } = useNftDropRead();
@@ -151,19 +151,14 @@ export function useNftDropMint() {
 
         // Stages 1-3 require server-issued EIP-712 signature
         if (currentStage !== STAGE_PUBLIC) {
-          if (!cognitoToken) {
-            setError("Please log in to your Nasun account to mint during this stage.");
-            return;
-          }
-
           setIsFetchingSignature(true);
           try {
-            const sigResponse = await requestMintSignature(cognitoToken);
+            const sigResponse = await requestMintSignature(address);
             const sigData = sigResponse.data;
 
-            // Wallet mismatch guard
+            // Wallet mismatch guard (server returns checksummed address)
             if (sigData.walletAddress.toLowerCase() !== address.toLowerCase()) {
-              setError(`Connected wallet does not match your registered wallet. Please switch to ${sigData.walletAddress}.`);
+              setError(`Wallet mismatch. Please reconnect your wallet.`);
               return;
             }
 
@@ -172,8 +167,7 @@ export function useNftDropMint() {
             signature = sigData.signature as `0x${string}`;
           } catch (e) {
             if (e instanceof GenesisPassApiError) {
-              if (e.statusCode === 401) setError("Session expired. Please log in again.");
-              else if (e.statusCode === 403) setError("Not eligible for current stage. The stage may have changed.");
+              if (e.statusCode === 403) setError("Not eligible for current stage. The stage may have changed.");
               else if (e.statusCode === 429 && e.errorCode === "RATE_LIMITED") setError("Please wait 60 seconds before requesting another signature.");
               else setError(e.message);
             } else if (e instanceof DOMException && e.name === "AbortError") {
