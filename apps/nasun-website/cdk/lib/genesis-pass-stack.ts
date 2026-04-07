@@ -246,10 +246,10 @@ export class GenesisPassStack extends cdk.Stack {
     const mintSigAlias = new lambda.Alias(this, "MintSignatureLiveAlias", {
       aliasName: "live",
       version: mintSigVersion,
-      provisionedConcurrentExecutions: 5,
+      provisionedConcurrentExecutions: 15,
     });
 
-    this.allowlistTable.grantReadData(mintSignatureLambda);
+    this.allowlistTable.grantReadWriteData(mintSignatureLambda);
     stageParameter.grantRead(mintSignatureLambda);
 
     // UserProfiles read access
@@ -326,7 +326,7 @@ export class GenesisPassStack extends cdk.Stack {
     const mintSignatureResource = genesisPassResource.addResource("mint-signature");
     mintSignatureResource.addMethod(
       "POST",
-      new apigateway.LambdaIntegration(mintSignatureLambda, { proxy: true }),
+      new apigateway.LambdaIntegration(mintSigAlias, { proxy: true }),
       authOptions
     );
 

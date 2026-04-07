@@ -83,7 +83,7 @@ const MINT_TYPES = {
 let cachedWallet: { wallet: ethers.Wallet; fetchedAt: number } | null = null;
 const WALLET_CACHE_TTL_MS = 300_000; // 5 minutes
 let cachedStage: { value: string; fetchedAt: number } | null = null;
-const STAGE_CACHE_TTL_MS = 60_000;
+const STAGE_CACHE_TTL_MS = 15_000;
 
 // Rate limiting: minimum interval between signature issuances per wallet
 const SIGNATURE_COOLDOWN_SECONDS = 60;
@@ -193,11 +193,8 @@ async function findRegistrationByIdentity(identityId: string) {
 }
 
 async function findRegistrationByAnyIdentity(identityIds: string[]) {
-  for (const id of identityIds) {
-    const result = await findRegistrationByIdentity(id);
-    if (result) return result;
-  }
-  return null;
+  const results = await Promise.all(identityIds.map(findRegistrationByIdentity));
+  return results.find((r) => r != null) ?? null;
 }
 
 // ── Handler ──
@@ -245,13 +242,13 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     // 3. Look up allowlist entry by wallet (PK) or by linked identities
     const normalizedAddress = walletAddress.toLowerCase();
+    const allIds = collectLinkedIdentityIds(identityId, profileResult.Item);
+
     let allowlistEntry = await ddbClient.send(
       new GetCommand({ TableName: ALLOWLIST_TABLE, Key: { walletAddress: normalizedAddress } })
     ).then((r) => r.Item);
 
     if (!allowlistEntry) {
-      // Try linked identity resolution
-      const allIds = collectLinkedIdentityIds(identityId, profileResult.Item);
       allowlistEntry = await findRegistrationByAnyIdentity(allIds);
     }
 
@@ -267,7 +264,6 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     // Verify identity ownership
-    const allIds = collectLinkedIdentityIds(identityId, profileResult.Item);
     if (!allIds.includes(allowlistEntry.identityId)) {
       console.log(`[mint-signature] Identity mismatch: ${identityId}`);
       return jsonResponse(403, { success: false, error: "NOT_ELIGIBLE", message: "Not eligible" }, origin);
