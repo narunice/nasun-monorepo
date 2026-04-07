@@ -28,6 +28,10 @@ interface UseGenesisPassStatusReturn {
   registeredWallet: string | null;
   registeredAt: string | null;
   mintType: string | null;
+  eligible: boolean;
+  eligibleStage: number | null;
+  eligibleStageLabel: string | null;
+  currentStageLabel: string | null;
   isLoading: boolean;
   error: string | null;
   isConfigured: boolean;
@@ -71,6 +75,10 @@ export function useGenesisPassStatus(
     registeredWallet: data?.walletAddress ?? null,
     registeredAt: data?.registeredAt ?? null,
     mintType: data?.mintType ?? null,
+    eligible: data?.eligible ?? false,
+    eligibleStage: data?.eligibleStage ?? null,
+    eligibleStageLabel: data?.eligibleStageLabel ?? null,
+    currentStageLabel: data?.currentStageLabel ?? null,
     isLoading: query.isLoading || query.isFetching,
     error: query.error?.message ?? null,
     isConfigured: API_CONFIGURED,

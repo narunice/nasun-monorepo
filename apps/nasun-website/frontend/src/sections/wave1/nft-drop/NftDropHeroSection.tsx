@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { PageTitle } from "@/components/ui/PageTitle";
 
-export function NftDropHeroSection() {
+export function NftDropHeroSection({ showSubtitle = true }: { showSubtitle?: boolean }) {
   return (
     <section className="relative w-full overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-28">
       {/* Cinematic background with golden atmosphere */}
@@ -63,22 +63,24 @@ export function NftDropHeroSection() {
             <span className="font-medium !font-changeling">PASS</span>
           </PageTitle>
         </motion.div>
-        <div className="max-w-[620px] mx-auto">
-          {/* Subtitle */}
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="mt-6 sm:mt-8 text-nasun-white/80 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed"
-          >
-            A mysterious pentahedron appears across time and space, disrupting
-            systems that concentrate power into the hands of a few.
-            <br className="hidden sm:block" />
-            Its presence creates new timelines where communities,{" "}
-            <br className="hidden sm:block" />
-            not individuals, shape powerful civilizations.
-          </motion.p>
-        </div>
+        {showSubtitle && (
+          <div className="max-w-[620px] mx-auto">
+            {/* Subtitle */}
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="mt-6 sm:mt-8 text-nasun-white/80 text-base sm:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed"
+            >
+              A mysterious pentahedron appears across time and space, disrupting
+              systems that concentrate power into the hands of a few.
+              <br className="hidden sm:block" />
+              Its presence creates new timelines where communities,{" "}
+              <br className="hidden sm:block" />
+              not individuals, shape powerful civilizations.
+            </motion.p>
+          </div>
+        )}
 
         {/* Decorative line */}
         <motion.div
