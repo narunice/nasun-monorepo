@@ -1,6 +1,6 @@
 import { FC, useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { NFT_EDITIONS } from "@/constants/nft-drop";
+import { NFT_EDITIONS, getEditionVideoUrl } from "@/constants/nft-drop";
 import { NftDropVideoCard } from "./NftDropVideoCard";
 
 const TOTAL = NFT_EDITIONS.length;
@@ -174,13 +174,13 @@ export const EditionCarousel: FC<EditionCarouselProps> = ({
           {/* Preview card */}
           <div className="relative rounded-2xl overflow-hidden border-2 border-amber-400/30 shadow-[0_0_60px_rgba(249,168,36,0.1)]">
             <div className="aspect-square relative overflow-hidden bg-gray-900">
-              <img
-                src="/videos/genesis-pass-poster.webp"
-                alt={centerEdition.name}
-                className="absolute inset-0 w-full h-full object-cover transition-[filter] duration-500"
-                style={{
-                  filter: `hue-rotate(${centerEdition.id * 15}deg) saturate(${0.8 + centerEdition.id * 0.1})`,
-                }}
+              <video
+                src={getEditionVideoUrl(centerEdition.name)}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
               />
               <div className="absolute top-4 left-4 z-10">
                 <span
