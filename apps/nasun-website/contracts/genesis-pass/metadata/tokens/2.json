@@ -1,0 +1,12 @@
+{
+  "name": "Nasun Genesis Pass #2 - Dawn",
+  "description": "A mysterious pentahedron appears across time and space, disrupting systems that concentrate power into the hands of a few. Its presence creates new timelines where communities, not individuals, shape powerful civilizations.",
+  "image": "https://arweave.net/9VWyXbqk8ElxYBd23EzfnqO2RjWPr6JHiLK1fOexZog",
+  "animation_url": "https://arweave.net/Q_W9FjHbeuxruRAdVNpdbjkRBWi-gLq8J5eb3HiJFPs",
+  "external_url": "https://nasun.io/wave1/genesis-pass",
+  "attributes": [
+    { "trait_type": "Edition", "value": "Dawn" },
+    { "trait_type": "Type", "value": "Video" },
+    { "trait_type": "Collection", "value": "Genesis Pass" }
+  ]
+}

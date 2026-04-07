@@ -1,0 +1,17 @@
+{
+  "manifest": "arweave/paths",
+  "version": "0.2.0",
+  "index": {
+    "path": "1.json"
+  },
+  "paths": {
+    "1.json": { "id": "FU47VBiJ55a9BOQtlvKXoL68YNB2oXbTFkeSxwIIqS0" },
+    "2.json": { "id": "wCNfFbbl46lusgTCb8aOuT4PYnMyMYXRVBJvp90yQ20" },
+    "3.json": { "id": "WCptOBSON2mmbfmwm55Na70TnsaUF0fxi2LIlctvGaI" },
+    "4.json": { "id": "NP4bbey60SFu2CgEWyJFQvSBH_ef6bgdObxIPFCZCtw" },
+    "5.json": { "id": "J7zIhowUR_Nc5i-KuiAMksdbbpwuTARjpCM5vFEJQ2A" },
+    "6.json": { "id": "7wbVdjhRYBvpEnT3Ckqx74rcNWoYwF8f2KSUMjm18es" },
+    "7.json": { "id": "0pjxQv2cRjnYff09zX-oUq3TCj0MJlS86cQs9VwRx3Y" },
+    "8.json": { "id": "JieErKDhWARA3C7rmnfWNuzNPBNb0sBWwLOY6Eg0xaw" }
+  }
+}
