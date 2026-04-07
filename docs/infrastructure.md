@@ -223,6 +223,64 @@ nasun.io는 CloudFront를 통해 글로벌 CDN으로 서빙됩니다.
 | Origin | `ec2-43-200-67-52.ap-northeast-2.compute.amazonaws.com` (HTTP, port 80) |
 | ACM Certificate | `arn:aws:acm:us-east-1:466841130170:certificate/ad93e5d8-9fee-4696-bcf6-423c93610552` |
 | Origin 인증 | Custom header `X-CloudFront-Secret` (nginx에서 검증) |
+| WAF WebACL | `nasun-cloudfront-waf` (us-east-1) |
+
+### AWS WAF (DDoS Protection)
+
+nasun.io와 explorer.nasun.io 모두 동일한 WAF WebACL로 보호됩니다.
+
+| 항목 | 값 |
+|------|-----|
+| WebACL Name | `nasun-cloudfront-waf` |
+| WebACL ID | `20dcb78e-2920-48c4-beb8-2cbf0d3d36e5` |
+| WebACL ARN | `arn:aws:wafv2:us-east-1:466841130170:global/webacl/nasun-cloudfront-waf/20dcb78e-2920-48c4-beb8-2cbf0d3d36e5` |
+| Scope | CLOUDFRONT (us-east-1) |
+| Rules | RateLimit2000Per5Min (IP당 2000 req/5min, Block) |
+| Logging | S3: `aws-waf-logs-nasun-prod` (Block만 로깅, 30일 보관) |
+| Monitoring | CloudWatch Alarms: `nasun-waf-blocked-requests-high`, `nasun-waf-allowed-requests-low` |
+| SNS Topic | `arn:aws:sns:us-east-1:466841130170:nasun-waf-alerts` (admin@nasun.io) |
+| 연결 분포 | `E362CCGDH7WA7C` (nasun.io), `E31QOCW4WNY9FL` (explorer.nasun.io) |
+| 월 비용 | ~$6 (WebACL $5 + Rule $1 + 요청 $0.60/M) |
+
+**관리**: WAF는 CDK가 아닌 AWS CLI로 수동 관리 (CloudFront와 동일).
+
+**긴급 대응 (정상 트래픽 차단 시)**:
+```bash
+# Option 1: Rate limit을 Count 모드로 전환 (로깅만, 차단 안 함)
+aws wafv2 get-web-acl --name nasun-cloudfront-waf --scope CLOUDFRONT \
+  --id 20dcb78e-2920-48c4-beb8-2cbf0d3d36e5 --region us-east-1 --profile nasun-prod
+# 출력의 LockToken을 사용하여 Rule의 Action을 {"Count":{}}로 변경 후 update-web-acl
+
+# Option 2: CloudFront에서 WAF 분리 (Console)
+# CloudFront > Distribution > General > Edit > Web ACL을 None으로 변경
+```
+
+**로그 확인**:
+```bash
+# 최근 차단된 요청 확인
+aws s3 ls s3://aws-waf-logs-nasun-prod/ --profile nasun-prod --region us-east-1
+# 파일 다운로드 후 JSON 분석
+```
+
+### Nginx Rate Limiting (Origin 보호)
+
+EC2 nginx에 CloudFront 우회 공격 대비 rate limiting이 적용되어 있습니다.
+
+| 항목 | 값 |
+|------|-----|
+| 요청 제한 | IP당 30 req/s, burst 50 (429 반환) |
+| 연결 제한 | IP당 동시 20개 |
+| Real IP 추출 | CloudFront IP ranges + X-Forwarded-For |
+| IP 범위 위치 | `/etc/nginx/snippets/cloudfront-realip.conf` |
+| 자동 갱신 | systemd timer (매주 일요일 18:00 UTC) |
+
+### EC2 Security Group (nasun-prod-web-sg)
+
+| Port | Source | 용도 |
+|------|--------|------|
+| 80 | CloudFront managed prefix list (`pl-22a6434b`) | CloudFront origin |
+| 443 | 0.0.0.0/0 | Direct HTTPS (긴급 접속용) |
+| 22 | 특정 IP만 | SSH |
 
 ### 캐시 정책
 
