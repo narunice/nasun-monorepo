@@ -74,7 +74,7 @@ export function NftDropHeroSection({ showSubtitle = true }: { showSubtitle?: boo
             >
               A mysterious pentahedron appears across time and space, disrupting
               systems that concentrate power into the hands of a few.
-              <br className="hidden sm:block" />
+              <span className="block mt-3" />
               Its presence creates new timelines where communities,{" "}
               <br className="hidden sm:block" />
               not individuals, shape powerful civilizations.

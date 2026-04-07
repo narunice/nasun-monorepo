@@ -110,7 +110,7 @@ function MintSuccessDialog({
   const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   return (
-    <Dialog open={open}>
+    <Dialog open={open} modal={false}>
       <DialogContent
         className="max-w-sm sm:max-w-md bg-nasun-black border border-amber-400/20 p-0 overflow-hidden"
         onInteractOutside={(e) => e.preventDefault()}
@@ -191,7 +191,7 @@ function MintSuccessDialog({
           )}
 
           {/* Trading notice */}
-          <p className="text-nasun-white/50 text-xs text-center mt-2 leading-relaxed">
+          <p className="text-nasun-white/70 text-xs text-left mt-2 leading-relaxed">
             Once the drop ends, your Genesis Pass will be tradable
             on OpenSea and other marketplaces.
           </p>
@@ -293,7 +293,7 @@ export function NftDropMintSection({
         className="mt-12 flex flex-col items-center gap-5"
       >
         {isSuccess || alreadyOwns || hasReachedLimit ? (
-          <div className="flex flex-col items-center py-6">
+          <div className="flex flex-col items-center py-6 gap-5">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -301,6 +301,40 @@ export function NftDropMintSection({
                 </svg>
               </div>
               <p className="text-green-400 text-lg font-semibold">You own a Genesis Pass</p>
+            </div>
+
+            {/* Owner actions */}
+            <div className="flex flex-col sm:flex-row justify-center gap-3">
+              {isLoggedIn ? (
+                <a
+                  href="/my-account"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-nasun-white text-nasun-black font-semibold text-sm rounded-lg hover:bg-nasun-white/90 transition-colors"
+                >
+                  Check your Genesis Pass
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-nasun-white text-nasun-black font-semibold text-sm rounded-lg hover:bg-nasun-white/90 transition-colors"
+                  onClick={() => {
+                    localStorage.setItem("auth_return_to", "/my-account");
+                    window.dispatchEvent(new CustomEvent("nasun:open-login"));
+                  }}
+                >
+                  Check your Genesis Pass
+                </button>
+              )}
+              <a
+                href={`${chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io"}/address/${GENESIS_PASS_ADDRESSES[chainId] ?? ""}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-nasun-white/60 text-nasun-white font-semibold text-sm rounded-lg hover:border-nasun-white hover:bg-nasun-white/5 transition-colors"
+              >
+                <span>View on Etherscan</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+              </a>
             </div>
           </div>
         ) : (
@@ -379,28 +413,6 @@ export function NftDropMintSection({
         </div>
       </div>
 
-      {/* Owner-only actions */}
-      {(alreadyOwns || hasReachedLimit) && (
-        <div className="flex flex-col sm:flex-row justify-center gap-3 mt-8">
-          <a
-            href="/my-account"
-            className="inline-flex items-center justify-center px-6 py-3 bg-nasun-white text-nasun-black font-semibold text-sm rounded-lg hover:bg-nasun-white/90 transition-colors"
-          >
-            Check your Genesis Pass
-          </a>
-          <a
-            href={`${chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io"}/address/${GENESIS_PASS_ADDRESSES[chainId] ?? ""}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-nasun-white/60 text-nasun-white font-semibold text-sm rounded-lg hover:border-nasun-white hover:bg-nasun-white/5 transition-colors"
-          >
-            <span>View on Etherscan</span>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-            </svg>
-          </a>
-        </div>
-      )}
 
       {/* Transfer lock notice */}
       <div className="mt-12 max-w-lg mx-auto">
