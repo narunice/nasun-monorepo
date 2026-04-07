@@ -122,6 +122,7 @@ function AirdropContent() {
             No registrations yet
           </p>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -264,6 +265,7 @@ function AirdropContent() {
               </div>
             </div>
           )}
+          </>
         )}
       </OuterBox>
     </div>

@@ -1,5 +1,5 @@
 {
-  "address": "0x742c5d12B5f2F2B8cBD8d3c577d407a5a5FCA2e4",
+  "address": "0x1EdE4F5de249914099B78d7eceDBE8F4C2F0FF1E",
   "chainId": "11155111",
   "deployer": "0xE6828A10190b0360d75A1731C495FdEF604D4c5E",
   "signer": "0xE6828A10190b0360d75A1731C495FdEF604D4c5E",
@@ -15,6 +15,6 @@
     "3": 1,
     "4": 1
   },
-  "deployedAt": "2026-04-06T13:34:14.051Z",
+  "deployedAt": "2026-04-07T12:07:25.043Z",
   "network": "sepolia"
 }
