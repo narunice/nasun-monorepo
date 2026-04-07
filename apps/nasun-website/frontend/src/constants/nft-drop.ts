@@ -40,6 +40,13 @@ const PROD_MINT_CLOSE_TIME = new Date("2026-04-14T15:00:00Z");
 export const STAGE_START_TIMES = PROD_STAGE_START_TIMES;
 export const MINT_CLOSE_TIME = PROD_MINT_CLOSE_TIME;
 
+// Lore text shown in the gate modal entrance sequence
+export const GENESIS_LORE_LINES = [
+  "A mysterious pentahedron appears across time and space, disrupting systems that concentrate power into the hands of a few.",
+  "Its presence creates new timelines where communities,",
+  "not individuals, shape powerful civilizations.",
+] as const;
+
 // Shared countdown helpers
 
 export interface TimeLeft {
