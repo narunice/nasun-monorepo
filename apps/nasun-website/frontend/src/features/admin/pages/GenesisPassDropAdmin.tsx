@@ -15,6 +15,8 @@ import { OuterBox } from "@/components/ui/OuterBox";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { GENESIS_PASS_ABI, GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
+import { useUserStore } from "@/store/userStore";
+import { syncStageToSSM } from "@/services/genesisPassApi";
 
 const STAGE_NAMES: Record<number, string> = {
   0: "PAUSED", 1: "FREE_MINT", 2: "GTD_ALLOWLIST", 3: "FCFS_ALLOWLIST", 4: "PUBLIC",
@@ -312,12 +314,15 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
 
   const { writeContractAsync, isPending } = useWriteContract();
 
-  const execTx = async (label: string, fn: () => Promise<`0x${string}`>) => {
+  const cognitoToken = useUserStore((s) => s.userData?.cognitoToken);
+
+  const execTx = async (label: string, fn: () => Promise<`0x${string}`>, onSuccess?: () => void) => {
     try {
       setLastTxHash(undefined);
       setLastTxLabel(label);
       const hash = await fn();
       setLastTxHash(hash);
+      onSuccess?.();
     } catch (e: any) {
       alert(`Failed: ${e?.shortMessage || e?.message || "Unknown error"}`);
     }
@@ -373,17 +378,25 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
                 className={isCurrent ? "ring-2 ring-nasun-white ring-offset-2 ring-offset-nasun-black" : isBackward ? "opacity-40 cursor-not-allowed" : ""}
                 onClick={() => {
                   requestConfirm({
-                    title: `Advance to ${label}?`,
+                    title: stage === 0 ? "Pause minting?" : `Advance to ${label}?`,
                     description: stage === 0
-                      ? "This will pause all minting. You can resume later."
+                      ? "WARNING: This effectively ENDS the current mint stage. Due to the forward-only stage design, you CANNOT return to the current stage after pausing. You can only advance to the next stage.\n\nOnly use this as an emergency brake or when you are done with the current stage."
                       : `This will advance the contract to ${label}.\n\nStage progression is forward-only and cannot be reversed (except to PAUSED).`,
                     confirmPhrase: label,
-                    variant: stage >= 3 ? "danger" : "warning",
-                    onConfirm: () => execTx(`setStage(${label})`, () =>
-                      writeContractAsync({
+                    variant: stage === 0 ? "danger" : stage >= 3 ? "danger" : "warning",
+                    onConfirm: () => execTx(
+                      `setStage(${label})`,
+                      () => writeContractAsync({
                         address: addr, abi: GENESIS_PASS_ABI,
                         functionName: "setStage", args: [stage],
-                      })
+                      }),
+                      () => {
+                        if (cognitoToken) {
+                          syncStageToSSM(cognitoToken, stage).catch((err) =>
+                            console.error("[admin] SSM sync failed:", err)
+                          );
+                        }
+                      },
                     ),
                   });
                 }}
