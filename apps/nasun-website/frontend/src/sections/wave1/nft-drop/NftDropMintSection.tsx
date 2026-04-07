@@ -1,14 +1,20 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useChainId } from "wagmi";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/Spinner";
 import {
   NFT_EDITIONS,
   STAGE_LABELS,
   STAGE_START_TIMES,
   MINT_CLOSE_TIME,
   getEditionVideoUrl,
+  getEditionPosterUrl,
 } from "@/constants/nft-drop";
 import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { EditionCarousel } from "./EditionCarousel";
@@ -21,16 +27,83 @@ function getEtherscanUrl(chainId: number, txHash: string): string {
   return `https://etherscan.io/tx/${txHash}`;
 }
 
-function MintSuccessView({
+/** Minting progress overlay - shown during signature fetch, wallet confirm, and on-chain confirmation */
+function MintProgressOverlay({
+  isFetchingSignature,
+  isWriting,
+  isConfirming,
+  txHash,
+  chainId,
+}: {
+  isFetchingSignature: boolean;
+  isWriting: boolean;
+  isConfirming: boolean;
+  txHash?: `0x${string}`;
+  chainId: number;
+}) {
+  const isVisible = isFetchingSignature || isWriting || isConfirming;
+
+  const message = isFetchingSignature
+    ? "Preparing your mint..."
+    : isWriting
+      ? "Please confirm in your wallet"
+      : "Confirming transaction on-chain...";
+
+  const subMessage = isFetchingSignature
+    ? "Verifying eligibility and generating signature"
+    : isWriting
+      ? "A MetaMask popup should appear. If not, click the MetaMask icon."
+      : "This may take up to 30 seconds";
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="flex flex-col items-center gap-5 p-8 max-w-sm text-center"
+          >
+            <Spinner size="xl" colorClass="text-amber-400" />
+            <p className="text-nasun-white text-xl font-semibold">{message}</p>
+            <p className="text-nasun-white/60 text-sm">{subMessage}</p>
+            {isConfirming && txHash && (
+              <a
+                href={getEtherscanUrl(chainId, txHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-nasun-c4 text-xs underline inline-flex items-center gap-1 mt-1"
+              >
+                View on Etherscan
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+              </a>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** Success modal shown after mint completes */
+function MintSuccessDialog({
+  open,
   selectedId,
-  isSuccess,
   txHash,
   chainId,
   isMetaMaskInApp,
   isLoggedIn,
 }: {
+  open: boolean;
   selectedId: number | null;
-  isSuccess: boolean;
   txHash?: `0x${string}`;
   chainId: number;
   isMetaMaskInApp: boolean;
@@ -38,19 +111,20 @@ function MintSuccessView({
 }) {
   const edition =
     selectedId != null ? NFT_EDITIONS.find((e) => e.id === selectedId) : null;
-  const hasFreshMint = isSuccess && edition != null;
 
   return (
-    <div className="flex flex-col items-center py-6 max-w-sm mx-auto">
-      {/* NFT visual - only on fresh mint with known edition */}
-      {hasFreshMint && (
-        <div
-          className="relative w-full max-w-xs rounded-2xl overflow-hidden mb-6 border-2 border-amber-400/30"
-          style={{ boxShadow: "0 0 60px rgba(249,168,36,0.15)" }}
-        >
-          <div className="aspect-[3/4] relative">
+    <Dialog open={open}>
+      <DialogContent
+        className="max-w-sm sm:max-w-md bg-nasun-black border border-amber-400/20 p-0 overflow-hidden"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
+        {/* NFT visual */}
+        {edition && (
+          <div className="relative w-full aspect-square overflow-hidden">
             <video
               src={getEditionVideoUrl(edition.name)}
+              poster={getEditionPosterUrl(edition.name)}
               autoPlay
               muted
               loop
@@ -58,95 +132,77 @@ function MintSuccessView({
               className="absolute inset-0 w-full h-full object-cover"
             />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Edition info */}
-      {hasFreshMint && (
-        <div className="text-center mb-4">
-          <h3 className="text-xl font-bold text-nasun-white">{edition.name}</h3>
-        </div>
-      )}
+        <div className="flex flex-col items-center gap-4 px-6 py-6">
+          {/* Edition name */}
+          {edition && (
+            <h3 className="text-xl font-bold text-nasun-white">{edition.name}</h3>
+          )}
 
-      {/* Success badge */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M5 12l5 5L20 7"
-              stroke="#22c55e"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <p className="text-green-400 text-lg font-semibold">
-          {isSuccess ? "Minted successfully!" : "You own a Genesis Pass"}
-        </p>
-      </div>
+          {/* Success badge */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-green-400 text-lg font-semibold">Minted successfully!</p>
+          </div>
 
-      {/* Etherscan link - subtle text, only on fresh mint */}
-      {isSuccess && txHash && (
-        <a
-          href={getEtherscanUrl(chainId, txHash)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-nasun-c4 text-sm underline mb-6 inline-flex items-center gap-1"
-        >
-          View transaction
-          <svg
-            className="w-3 h-3"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-            />
-          </svg>
-        </a>
-      )}
+          {/* Etherscan link */}
+          {txHash && (
+            <a
+              href={getEtherscanUrl(chainId, txHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-nasun-c4 text-sm underline inline-flex items-center gap-1"
+            >
+              View transaction
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+            </a>
+          )}
 
-      {/* Primary CTA */}
-      {isMetaMaskInApp ? (
-        <div className="text-center max-w-xs space-y-2">
-          <p className="text-amber-400 text-sm font-semibold">
-            Close this MetaMask browser and open nasun.io in{" "}
-            {/iPhone|iPad|iPod/i.test(navigator.userAgent) ? "Safari" : "Chrome"}{" "}
-            to check your Genesis Pass.
-          </p>
-          <p className="text-nasun-white/40 text-xs">
-            MetaMask in-app browser does not support full site navigation.
-          </p>
+          {/* Primary CTA */}
+          {isMetaMaskInApp ? (
+            <div className="text-center max-w-xs space-y-2">
+              <p className="text-amber-400 text-sm font-semibold">
+                Close this MetaMask browser and open nasun.io in{" "}
+                {/iPhone|iPad|iPod/i.test(navigator.userAgent) ? "Safari" : "Chrome"}{" "}
+                to check your Genesis Pass.
+              </p>
+              <p className="text-nasun-white/40 text-xs">
+                MetaMask in-app browser does not support full site navigation.
+              </p>
+            </div>
+          ) : isLoggedIn ? (
+            <a href="/my-account?justMinted=genesis-pass" className="w-full">
+              <ButtonV3
+                variant="c1-gradient"
+                size="xl"
+                className="!w-full !py-3.5 !text-base !font-semibold !rounded-xl"
+              >
+                Go to My Account
+              </ButtonV3>
+            </a>
+          ) : (
+            <ButtonV3
+              variant="c1-gradient"
+              size="xl"
+              className="!w-full !py-3.5 !text-base !font-semibold !rounded-xl"
+              onClick={() => {
+                localStorage.setItem("auth_return_to", "/my-account?justMinted=genesis-pass");
+                window.dispatchEvent(new CustomEvent("nasun:open-login"));
+              }}
+            >
+              Log in to view your Genesis Pass
+            </ButtonV3>
+          )}
         </div>
-      ) : isLoggedIn ? (
-        <a href="/my-account?justMinted=genesis-pass">
-          <ButtonV3
-            variant="c1-gradient"
-            size="xl"
-            className="!px-10 !py-3.5 !text-base !font-semibold !rounded-xl"
-          >
-            Go to My Account
-          </ButtonV3>
-        </a>
-      ) : (
-        <ButtonV3
-          variant="c1-gradient"
-          size="xl"
-          className="!px-10 !py-3.5 !text-base !font-semibold !rounded-xl"
-          onClick={() => {
-            localStorage.setItem("auth_return_to", "/my-account?justMinted=genesis-pass");
-            window.dispatchEvent(new CustomEvent("nasun:open-login"));
-          }}
-        >
-          Log in to view your Genesis Pass
-        </ButtonV3>
-      )}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -274,6 +330,25 @@ export function NftDropMintSection({
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-28">
+      {/* Minting progress overlay */}
+      <MintProgressOverlay
+        isFetchingSignature={isFetchingSignature}
+        isWriting={isWriting}
+        isConfirming={isConfirming}
+        txHash={txHash}
+        chainId={chainId}
+      />
+
+      {/* Success modal */}
+      <MintSuccessDialog
+        open={isSuccess}
+        selectedId={selectedId}
+        txHash={txHash}
+        chainId={chainId}
+        isMetaMaskInApp={isMetaMaskInApp}
+        isLoggedIn={isLoggedIn}
+      />
+
       {/* Stage badge - only when contract is deployed */}
       {isDeployed && (
         <motion.div
@@ -331,15 +406,17 @@ export function NftDropMintSection({
           </div>
         ) : !isConnected ? (
           null
-        ) : isSuccess || hasReachedLimit ? (
-          <MintSuccessView
-            selectedId={selectedId}
-            isSuccess={isSuccess}
-            txHash={txHash}
-            chainId={chainId}
-            isMetaMaskInApp={isMetaMaskInApp}
-            isLoggedIn={isLoggedIn}
-          />
+        ) : isSuccess || alreadyOwns || hasReachedLimit ? (
+          <div className="flex flex-col items-center py-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <p className="text-green-400 text-lg font-semibold">You own a Genesis Pass</p>
+            </div>
+          </div>
         ) : isDropEnded ? (
           <div className="text-center py-4">
             <p className="text-nasun-white/80 text-lg font-medium">
