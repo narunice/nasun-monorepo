@@ -1,6 +1,6 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
 import { formatEther } from "viem";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { GENESIS_PASS_ABI, GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { requestMintSignature, GenesisPassApiError } from "@/services/genesisPassApi";
 import { useUserStore } from "@/store/userStore";
@@ -85,7 +85,7 @@ export function useNftDropMint() {
   const chainId = useChainId();
   const { address } = useAccount();
   const contractAddress = getContractAddress(chainId);
-  const cognitoToken = useUserStore((s) => s.userData?.cognitoToken); // kept for isLoggedIn
+  const cognitoToken = useUserStore((s) => s.user?.cognitoToken); // kept for isLoggedIn
   const { switchChainAsync } = useSwitchChain();
   // Read on-chain stage directly for mint logic (immune to UI overrides)
   const { currentStage: onChainStage } = useNftDropRead();
@@ -95,11 +95,28 @@ export function useNftDropMint() {
   const [isFetchingSignature, setIsFetchingSignature] = useState(false);
   const mintingRef = useRef(false);
 
+  // Cache the last signature to reuse on MetaMask reject/failure (valid for 5 min)
+  const sigCacheRef = useRef<{
+    wallet: string;
+    stage: number;
+    maxQuantity: bigint;
+    deadline: bigint;
+    signature: `0x${string}`;
+    fetchedAt: number;
+  } | null>(null);
+
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess, isError: isReceiptError } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+
+  // Surface on-chain revert as user-facing error
+  useEffect(() => {
+    if (isReceiptError && txHash) {
+      setError("Transaction failed on-chain. Please try again.");
+    }
+  }, [isReceiptError, txHash]);
 
   const mint = useCallback(
     async (tokenId: number, mintPriceWei: bigint, _displayStage: number) => {
@@ -151,33 +168,57 @@ export function useNftDropMint() {
 
         // Stages 1-3 require server-issued EIP-712 signature
         if (currentStage !== STAGE_PUBLIC) {
-          setIsFetchingSignature(true);
-          try {
-            const sigResponse = await requestMintSignature(address);
-            const sigData = sigResponse.data;
+          // Reuse cached signature if still valid (4 min buffer before 5 min expiry)
+          const cached = sigCacheRef.current;
+          const SIG_REUSE_TTL = 4 * 60 * 1000; // 4 minutes
+          if (
+            cached &&
+            cached.wallet.toLowerCase() === address.toLowerCase() &&
+            cached.stage === currentStage &&
+            Date.now() - cached.fetchedAt < SIG_REUSE_TTL
+          ) {
+            maxQuantity = cached.maxQuantity;
+            deadline = cached.deadline;
+            signature = cached.signature;
+          } else {
+            setIsFetchingSignature(true);
+            try {
+              const sigResponse = await requestMintSignature(address);
+              const sigData = sigResponse.data;
 
-            // Wallet mismatch guard (server returns checksummed address)
-            if (sigData.walletAddress.toLowerCase() !== address.toLowerCase()) {
-              setError(`Wallet mismatch. Please reconnect your wallet.`);
+              // Wallet mismatch guard (server returns checksummed address)
+              if (sigData.walletAddress.toLowerCase() !== address.toLowerCase()) {
+                setError(`Wallet mismatch. Please reconnect your wallet.`);
+                return;
+              }
+
+              maxQuantity = BigInt(sigData.maxQuantity);
+              deadline = BigInt(sigData.deadline);
+              signature = sigData.signature as `0x${string}`;
+
+              // Cache for reuse
+              sigCacheRef.current = {
+                wallet: address,
+                stage: currentStage,
+                maxQuantity,
+                deadline,
+                signature,
+                fetchedAt: Date.now(),
+              };
+            } catch (e) {
+              if (e instanceof GenesisPassApiError) {
+                if (e.statusCode === 403) setError("Not eligible for current stage. The stage may have changed.");
+                else if (e.statusCode === 429 && e.errorCode === "RATE_LIMITED") setError("Please wait 60 seconds before requesting another signature.");
+                else setError(e.message);
+              } else if (e instanceof DOMException && e.name === "AbortError") {
+                setError("Request timed out. Please try again.");
+              } else {
+                setError("Failed to prepare mint. Please try again.");
+              }
               return;
+            } finally {
+              setIsFetchingSignature(false);
             }
-
-            maxQuantity = BigInt(sigData.maxQuantity);
-            deadline = BigInt(sigData.deadline);
-            signature = sigData.signature as `0x${string}`;
-          } catch (e) {
-            if (e instanceof GenesisPassApiError) {
-              if (e.statusCode === 403) setError("Not eligible for current stage. The stage may have changed.");
-              else if (e.statusCode === 429 && e.errorCode === "RATE_LIMITED") setError("Please wait 60 seconds before requesting another signature.");
-              else setError(e.message);
-            } else if (e instanceof DOMException && e.name === "AbortError") {
-              setError("Request timed out. Please try again.");
-            } else {
-              setError("Failed to prepare mint. Please try again.");
-            }
-            return;
-          } finally {
-            setIsFetchingSignature(false);
           }
         }
 
