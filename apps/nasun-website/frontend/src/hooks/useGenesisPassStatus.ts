@@ -17,8 +17,8 @@ const API_CONFIGURED = !!import.meta.env.VITE_GENESIS_PASS_API;
 
 export const genesisPassKeys = {
   all: ["genesis-pass", "status"] as const,
-  detail: (mode: "auth" | "public") =>
-    [...genesisPassKeys.all, { mode }] as const,
+  detail: (mode: "auth" | "public", wallet?: string | null) =>
+    [...genesisPassKeys.all, { mode, wallet: wallet?.toLowerCase() ?? null }] as const,
 };
 
 interface UseGenesisPassStatusReturn {
@@ -52,7 +52,7 @@ export function useGenesisPassStatus(
   const mode = cognitoToken ? "auth" : "public";
 
   const query = useQuery({
-    queryKey: genesisPassKeys.detail(mode),
+    queryKey: genesisPassKeys.detail(mode, walletAddress),
     queryFn: () =>
       cognitoToken
         ? getMyGenesisPassStatus(cognitoToken)
