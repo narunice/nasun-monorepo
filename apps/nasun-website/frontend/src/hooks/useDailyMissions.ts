@@ -286,9 +286,33 @@ export function useDailyMissions(
     cleanupStaleCacheKeys();
   }, [identityId]);
 
+  // Detect UTC date change (tab stayed open past midnight)
+  const dateRef = useRef(getTodayUtcDateStr());
+  useEffect(() => {
+    if (!identityId) return;
+
+    const checkDateChange = () => {
+      const currentDate = getTodayUtcDateStr();
+      if (currentDate !== dateRef.current) {
+        dateRef.current = currentDate;
+        setCompletedMissions(new Set());
+        cleanupStaleCacheKeys();
+      }
+    };
+
+    const interval = setInterval(checkDateChange, POLL_INTERVAL_MS);
+    const onVisible = () => { if (!document.hidden) checkDateChange(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [identityId]);
+
   // Persist to localStorage whenever completedMissions changes
   useEffect(() => {
-    if (!identityId || completedMissions.size === 0) return;
+    if (!identityId) return;
     localStorage.setItem(getCacheKey(identityId), JSON.stringify([...completedMissions]));
   }, [completedMissions, identityId]);
 
@@ -298,12 +322,8 @@ export function useDailyMissions(
     const todayStart = getTodayUtcStart();
     const detected = await detectAllWallets(walletAddresses, todayStart, new Set());
 
-    // Merge: never remove previously detected missions (only add)
-    setCompletedMissions((prev) => {
-      const merged = new Set(prev);
-      for (const id of detected) merged.add(id);
-      return merged;
-    });
+    // Replace: RPC result is the source of truth for today
+    setCompletedMissions(detected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identityId, walletsKey]);
 
