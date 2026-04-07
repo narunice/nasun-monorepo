@@ -26,12 +26,14 @@ function MintSuccessView({
   txHash,
   chainId,
   isMetaMaskInApp,
+  isLoggedIn,
 }: {
   selectedId: number | null;
   isSuccess: boolean;
   txHash?: `0x${string}`;
   chainId: number;
   isMetaMaskInApp: boolean;
+  isLoggedIn: boolean;
 }) {
   const edition =
     selectedId != null ? NFT_EDITIONS.find((e) => e.id === selectedId) : null;
@@ -120,7 +122,7 @@ function MintSuccessView({
             MetaMask in-app browser does not support full site navigation.
           </p>
         </div>
-      ) : (
+      ) : isLoggedIn ? (
         <a href="/my-account?justMinted=genesis-pass">
           <ButtonV3
             variant="c1-gradient"
@@ -130,6 +132,18 @@ function MintSuccessView({
             Go to My Account
           </ButtonV3>
         </a>
+      ) : (
+        <ButtonV3
+          variant="c1-gradient"
+          size="xl"
+          className="!px-10 !py-3.5 !text-base !font-semibold !rounded-xl"
+          onClick={() => {
+            localStorage.setItem("auth_return_to", "/my-account?justMinted=genesis-pass");
+            window.dispatchEvent(new CustomEvent("nasun:open-login"));
+          }}
+        >
+          Log in to view your Genesis Pass
+        </ButtonV3>
       )}
     </div>
   );
@@ -158,6 +172,7 @@ export function NftDropMintSection({
     isFetchingSignature,
     isConfirming,
     isSuccess,
+    isLoggedIn,
     clearError,
   } = useNftDropMint();
 
@@ -285,6 +300,7 @@ export function NftDropMintSection({
             txHash={txHash}
             chainId={chainId}
             isMetaMaskInApp={isMetaMaskInApp}
+            isLoggedIn={isLoggedIn}
           />
         ) : isDropEnded ? (
           <div className="text-center py-4">
