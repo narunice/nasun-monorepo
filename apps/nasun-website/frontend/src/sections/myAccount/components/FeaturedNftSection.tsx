@@ -18,7 +18,7 @@ import {
   getOpenSeaNFTUrl,
   type NFTChain,
 } from "@/services/ethereumApi";
-import { NFT_EDITIONS } from "@/constants/nft-drop";
+import { NFT_EDITIONS, getEditionVideoUrl } from "@/constants/nft-drop";
 import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
 
 interface AllianceData {
@@ -108,15 +108,11 @@ const FeaturedNftDetailModal: FC<{
           <div className="relative aspect-square bg-black overflow-hidden">
             <video
               ref={videoRef}
-              src="/videos/Founders-Nft-Portal-Rotate-rf28.mp4"
+              src={edition ? getEditionVideoUrl(edition.name) : "/videos/genesispass-encoded-web/colony-web.mp4"}
               muted
               loop
               playsInline
-              poster="/videos/genesis-pass-poster.webp"
               className="w-full h-full object-cover"
-              style={{
-                filter: tid ? `hue-rotate(${parseInt(tid) * 15}deg) saturate(${0.8 + parseInt(tid) * 0.1})` : undefined,
-              }}
             />
 
             {/* Edition badge */}
@@ -250,13 +246,13 @@ const FeaturedNftCard: FC<{
           </div>
         ) : (
           <div className="w-full aspect-square bg-gray-900 overflow-hidden relative">
-            <img
-              src="/videos/genesis-pass-poster.webp"
-              alt={displayName}
+            <video
+              src={edition ? getEditionVideoUrl(edition.name) : "/videos/genesispass-encoded-web/colony-web.mp4"}
+              muted
+              loop
+              autoPlay
+              playsInline
               className="w-full h-full object-cover"
-              style={{
-                filter: tid ? `hue-rotate(${parseInt(tid) * 15}deg) saturate(${0.8 + parseInt(tid) * 0.1})` : undefined,
-              }}
             />
           </div>
         )}

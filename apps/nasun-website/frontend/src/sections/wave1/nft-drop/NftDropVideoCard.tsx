@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useRef, useState } from "react";
+import { getEditionVideoUrl } from "@/constants/nft-drop";
 
 interface NftDropVideoCardProps {
   id: number;
@@ -52,28 +53,16 @@ export function NftDropVideoCard({
     >
       {/* Video / poster visual */}
       <div className="aspect-square relative overflow-hidden">
-        {/* Poster image as base layer */}
-        <img
-          src="/videos/genesis-pass-poster.webp"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{
-            filter: `hue-rotate(${id * 15}deg) saturate(${0.8 + id * 0.1})`,
-          }}
-        />
-
-        {/* Video overlay on hover */}
+        {/* Edition video */}
         <video
           ref={videoRef}
-          src="/videos/Founders-Nft-Portal-Rotate-rf28.mp4"
+          src={getEditionVideoUrl(name)}
           muted
           loop
           playsInline
-          preload="none"
+          preload="metadata"
           onLoadedData={() => setVideoLoaded(true)}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-            videoLoaded ? "opacity-0 group-hover:opacity-100" : "opacity-0"
-          }`}
+          className="absolute inset-0 w-full h-full object-cover"
         />
 
         {/* Edition number badge */}

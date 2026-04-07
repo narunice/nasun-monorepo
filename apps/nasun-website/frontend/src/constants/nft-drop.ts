@@ -11,6 +11,10 @@ export const NFT_EDITIONS = [
   { id: 8, name: "War" },
 ] as const;
 
+export function getEditionVideoUrl(name: string): string {
+  return `/videos/genesispass-encoded-web/${name.toLowerCase()}-web.mp4`;
+}
+
 export const STAGE_LABELS: Record<number, string> = {
   0: "Paused",
   1: "Free Mint",
