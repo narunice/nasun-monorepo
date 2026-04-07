@@ -241,6 +241,14 @@ export class GenesisPassStack extends cdk.Stack {
       },
     });
 
+    // Provisioned Concurrency for Genesis Pass drop (eliminates cold starts)
+    const mintSigVersion = mintSignatureLambda.currentVersion;
+    const mintSigAlias = new lambda.Alias(this, "MintSignatureLiveAlias", {
+      aliasName: "live",
+      version: mintSigVersion,
+      provisionedConcurrentExecutions: 5,
+    });
+
     this.allowlistTable.grantReadData(mintSignatureLambda);
     stageParameter.grantRead(mintSignatureLambda);
 
@@ -285,8 +293,8 @@ export class GenesisPassStack extends cdk.Stack {
       description: "Genesis Pass NFT Allowlist Registration API",
       deployOptions: {
         stageName: "prod",
-        throttlingRateLimit: 200,
-        throttlingBurstLimit: 500,
+        throttlingRateLimit: 500,
+        throttlingBurstLimit: 1000,
         tracingEnabled: true,
         dataTraceEnabled: false,
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
