@@ -250,6 +250,36 @@ function NetworkBadge({ isSepolia }: { isSepolia: boolean }) {
   );
 }
 
+function CurrentUriDisplay({ addr }: { addr: `0x${string}` }) {
+  const { data: rawUri } = useReadContract({
+    address: addr, abi: GENESIS_PASS_ABI, functionName: "uri" as any,
+    args: [BigInt(1)], query: { refetchInterval: 30_000 },
+  });
+  // uri(1) returns "{baseURI}1.json" - strip the tokenId suffix to show base URI
+  const baseUri = rawUri ? String(rawUri).replace(/\d+\.json$/, "") : null;
+  const { data: contractUri } = useReadContract({
+    address: addr, abi: GENESIS_PASS_ABI, functionName: "contractURI" as any,
+    query: { refetchInterval: 30_000 },
+  });
+
+  return (
+    <div className="bg-nasun-white/5 rounded-lg px-4 py-3 space-y-2">
+      <div>
+        <span className="text-nasun-white/60 text-base">Current Base URI: </span>
+        <span className="text-nasun-white text-base font-mono break-all">
+          {baseUri || "Not set"}
+        </span>
+      </div>
+      <div>
+        <span className="text-nasun-white/60 text-base">Current Contract URI: </span>
+        <span className="text-nasun-white text-base font-mono break-all">
+          {contractUri ? String(contractUri) : "Not set"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function useCurrentStage(addr: `0x${string}`) {
   const { data } = useReadContract({
     address: addr, abi: GENESIS_PASS_ABI, functionName: "currentStage" as any,
@@ -504,7 +534,8 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
       <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
         <NetworkBadge isSepolia={isSepolia} />
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Metadata URI</h2>
-        <div className="space-y-4">
+        <CurrentUriDisplay addr={addr} />
+        <div className="space-y-4 mt-4">
           <div className="flex items-end gap-4 flex-wrap">
             <div className="flex-1 min-w-[20rem]">
               <label className="text-nasun-white/90 text-lg block mb-2">Base URI (token metadata)</label>
