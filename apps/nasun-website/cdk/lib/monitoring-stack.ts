@@ -272,6 +272,23 @@ export class MonitoringStack extends cdk.Stack {
     });
     whitelistThrottleAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
+    // Genesis Pass Allowlist DynamoDB Throttling
+    const gpAllowlistThrottleAlarm = new cloudwatch.Alarm(this, "GPAllowlistTableThrottleAlarm", {
+      alarmName: "NASUN-DynamoDB-GenesisPassAllowlist-Throttle",
+      alarmDescription: "Genesis Pass Allowlist 테이블에서 throttling 발생 (온디맨드 모드에서 비정상)",
+      metric: new cloudwatch.Metric({
+        namespace: "AWS/DynamoDB",
+        metricName: "ThrottledRequests",
+        dimensionsMap: { TableName: "nasun-genesis-pass-allowlist" },
+        statistic: "Sum",
+        period,
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    gpAllowlistThrottleAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+
     new cdk.CfnOutput(this, "MonitoringDashboardUrl", {
       value: `https://console.aws.amazon.com/cloudwatch/home?region=${this.region}#dashboards:name=NASUN-Operations-Monitoring`,
       description: "CloudWatch 모니터링 대시보드 URL"
