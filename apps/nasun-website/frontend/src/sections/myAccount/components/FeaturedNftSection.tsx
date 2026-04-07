@@ -20,6 +20,7 @@ import {
 } from "@/services/ethereumApi";
 import { NFT_EDITIONS, getEditionVideoUrl } from "@/constants/nft-drop";
 import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
+import { EvmWalletLinkButton } from "./EvmWalletLink";
 
 interface AllianceData {
   imageIndex: number;
@@ -480,18 +481,19 @@ export const FeaturedNftSection: FC<FeaturedNftSectionProps> = ({
   }, [justMinted, nfts.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Conditional returns AFTER all hooks
-  const hasAnyFeatured = nfts.length > 0 || !!allianceData || justMinted;
   if (featuredCollections.length === 0 && !allianceData) return null;
-  if (!hasAnyFeatured && !walletAddress) return null;
 
   // No wallet connected: show CTA (only if there are featured collections to show)
   if (!walletAddress && featuredCollections.length > 0 && !allianceData) {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-4">
-        <Wallet className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-        <p className="text-sm text-emerald-200/80">
-          Link your MetaMask wallet to view your Genesis Pass.
-        </p>
+      <div className="flex items-center justify-between gap-3 p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-4">
+        <div className="flex items-center gap-3">
+          <Wallet className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+          <p className="text-sm text-emerald-200/80">
+            Link your EVM wallet to view Genesis Pass
+          </p>
+        </div>
+        <EvmWalletLinkButton />
       </div>
     );
   }

@@ -19,7 +19,7 @@ import { AccountItem } from "./AccountItem";
 import { LoggedInBadge, LinkedBadge } from "./StatusBadges";
 
 /** Desktop/in-app: RainbowKit modal link button. */
-function EvmWalletLinkButton() {
+export function EvmWalletLinkButton() {
   const {
     connect: handleLinkWallet,
     isAuthenticating: isWalletLinking,
