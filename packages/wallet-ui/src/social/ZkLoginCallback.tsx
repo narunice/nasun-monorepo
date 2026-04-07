@@ -32,7 +32,7 @@ const stepLabels: Record<Step, string> = {
   verifying: 'Verifying login...',
   fetching_salt: 'Creating address...',
   generating_proof: 'Generating proof...',
-  generating_proof_fallback: 'Retrying with backup prover...',
+  generating_proof_fallback: 'Retrying with backup zkLogin prover...',
   complete: 'Welcome!',
   error: 'Something went wrong',
 };
@@ -245,7 +245,7 @@ export function ZkLoginCallback({
         />
         {(step === 'generating_proof_fallback' || (step === 'complete' && usedFallback)) && (
           <StepIndicator
-            label="Using backup prover (high traffic)"
+            label="Retrying with backup prover"
             status={getStepStatus('generating_proof_fallback', step)}
           />
         )}
@@ -264,12 +264,12 @@ export function ZkLoginCallback({
         </div>
       )}
       {step === 'generating_proof_fallback' && (
-        <div className="mt-6 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 max-w-sm text-center">
-          <p className="text-xs xl:text-sm text-amber-800 dark:text-amber-200 leading-relaxed text-pretty">
-            Our prover is busy. Using a public backup prover by Mysten Labs.
+        <div className="mt-6 px-4 py-3 rounded-lg bg-zinc-100 dark:bg-zinc-700 max-w-sm text-center">
+          <p className="text-xs xl:text-sm text-zinc-700 dark:text-zinc-200 leading-relaxed text-pretty">
+            High traffic detected. Retrying with a backup zkLogin prover.
             <br />
-            <span className="text-amber-600 dark:text-amber-400">
-              Your login token is sent to their server to generate the proof.
+            <span className="text-zinc-500 dark:text-zinc-400">
+              This may take a moment.
             </span>
           </p>
         </div>
