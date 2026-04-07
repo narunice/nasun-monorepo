@@ -61,8 +61,11 @@ export function useNftDropRead() {
     query: { enabled: stageNum > 0 },
   });
 
+  // walletLimit of 0 means "no limit set" -- treat as unlimited
   const hasReachedLimit =
-    mintedCount != null && walletLimit != null && (mintedCount as bigint) >= (walletLimit as bigint);
+    mintedCount != null && walletLimit != null
+    && (walletLimit as bigint) > 0n
+    && (mintedCount as bigint) >= (walletLimit as bigint);
 
   return {
     contractAddress,
