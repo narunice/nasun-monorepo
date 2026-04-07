@@ -392,9 +392,11 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
                       }),
                       () => {
                         if (cognitoToken) {
-                          syncStageToSSM(cognitoToken, stage).catch((err) =>
-                            console.error("[admin] SSM sync failed:", err)
-                          );
+                          syncStageToSSM(cognitoToken, stage)
+                            .then(() => alert(`SSM synced to stage ${stage}`))
+                            .catch((err) => alert(`SSM sync failed: ${err.message}`));
+                        } else {
+                          alert(`Stage set on-chain but SSM NOT synced (not logged in to Nasun). Run manually:\naws ssm put-parameter --name /nasun/genesis-pass/current-stage --value "${stage}" --type String --overwrite`);
                         }
                       },
                     ),
