@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useChainId } from "wagmi";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import {
@@ -11,8 +10,6 @@ import { Spinner } from "@/components/ui/Spinner";
 import {
   NFT_EDITIONS,
   STAGE_LABELS,
-  STAGE_START_TIMES,
-  MINT_CLOSE_TIME,
   getEditionVideoUrl,
   getEditionPosterUrl,
 } from "@/constants/nft-drop";
@@ -20,7 +17,6 @@ import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { EditionCarousel } from "./EditionCarousel";
 import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
 import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
-import { checkGenesisPass } from "@/services/genesisPassApi";
 
 function getEtherscanUrl(chainId: number, txHash: string): string {
   if (chainId === 11155111) return `https://sepolia.etherscan.io/tx/${txHash}`;
@@ -111,6 +107,7 @@ function MintSuccessDialog({
 }) {
   const edition =
     selectedId != null ? NFT_EDITIONS.find((e) => e.id === selectedId) : null;
+  const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   return (
     <Dialog open={open}>
@@ -135,19 +132,12 @@ function MintSuccessDialog({
         )}
 
         <div className="flex flex-col items-center gap-4 px-6 py-6">
-          {/* Edition name */}
-          {edition && (
-            <h3 className="text-xl font-bold text-nasun-white">{edition.name}</h3>
-          )}
-
-          {/* Success badge */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12l5 5L20 7" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="text-green-400 text-lg font-semibold">Minted successfully!</p>
+          {/* Heading */}
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-nasun-white">
+              Your Genesis Pass &ldquo;{edition?.name}&rdquo; minted.
+            </h2>
+            <p className="text-2xl font-bold text-amber-400 mt-1">Welcome to Nasun</p>
           </div>
 
           {/* Etherscan link */}
@@ -167,14 +157,13 @@ function MintSuccessDialog({
 
           {/* Primary CTA */}
           {isMetaMaskInApp ? (
-            <div className="text-center max-w-xs space-y-2">
-              <p className="text-amber-400 text-sm font-semibold">
-                Close this MetaMask browser and open nasun.io in{" "}
-                {/iPhone|iPad|iPod/i.test(navigator.userAgent) ? "Safari" : "Chrome"}{" "}
-                to check your Genesis Pass.
+            <div className="text-center space-y-3">
+              <p className="text-nasun-white/80 text-sm leading-relaxed">
+                Close this browser and return to{" "}
+                {isIOS ? "Safari" : "Chrome"} to explore Nasun.
               </p>
-              <p className="text-nasun-white/40 text-xs">
-                MetaMask in-app browser does not support full site navigation.
+              <p className="text-nasun-white/60 text-xs">
+                You can check your Genesis Pass on the Account page.
               </p>
             </div>
           ) : isLoggedIn ? (
@@ -200,6 +189,12 @@ function MintSuccessDialog({
               Log in to view your Genesis Pass
             </ButtonV3>
           )}
+
+          {/* Trading notice */}
+          <p className="text-nasun-white/50 text-xs text-center mt-2 leading-relaxed">
+            Once the drop ends, your Genesis Pass will be tradable
+            on OpenSea and other marketplaces.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
@@ -215,10 +210,9 @@ interface NftDropMintSectionProps {
 export function NftDropMintSection({
   currentStage,
   mintPrice,
-  isDeployed,
 }: NftDropMintSectionProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const { address, isConnected } = useAccount();
+  const { address } = useAccount();
   const chainId = useChainId();
   const { mintPriceWei, hasReachedLimit } = useNftDropRead();
   const {
@@ -235,88 +229,14 @@ export function NftDropMintSection({
 
   const { hasMinted: alreadyOwns } = useGenesisPassOwnership(address);
 
-  // Eligibility check via /genesis-pass/check API
-  const [eligibility, setEligibility] = useState<{
-    eligible: boolean;
-    registered: boolean;
-    eligibleStageLabel?: string;
-    currentStageLabel?: string;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!address || !isConnected) {
-      setEligibility(null);
-      return;
-    }
-    let cancelled = false;
-    checkGenesisPass(address).then((res) => {
-      if (cancelled) return;
-      const d = res.data;
-      setEligibility({
-        eligible: d.eligible ?? false,
-        registered: d.registered,
-        eligibleStageLabel: d.eligibleStageLabel,
-        currentStageLabel: d.currentStageLabel,
-      });
-    }).catch(() => {
-      if (!cancelled) setEligibility(null);
-    });
-    return () => { cancelled = true; };
-  }, [address, isConnected, currentStage]);
-
-  const isPaused = currentStage === 0;
   const isFree = currentStage === 1;
-  const isDropEnded = isPaused && Date.now() >= MINT_CLOSE_TIME.getTime();
 
-  // Mobile browser without MetaMask injected -> should use MetaMask deep link instead of Connect Wallet
-  const isMobileNonMetaMask =
-    typeof window !== "undefined" &&
-    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
-    !(window as unknown as { ethereum?: { isMetaMask?: boolean } }).ethereum?.isMetaMask;
-
-  // MetaMask in-app browser on mobile: close the in-app browser to return to Chrome
   const isMetaMaskInApp =
     typeof window !== "undefined" &&
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) &&
     !!(window as unknown as { ethereum?: { isMetaMask?: boolean } }).ethereum?.isMetaMask;
 
   const stageLabel = STAGE_LABELS[currentStage] || "Unknown";
-
-  // Build contextual status message based on user state.
-  // currentStage from the contract is the source of truth: if a stage is active on-chain, minting is open.
-  const statusMessage = (() => {
-    if (!isConnected) return null;
-    if (alreadyOwns || hasReachedLimit) return "You own a Genesis Pass.";
-    if (isPaused) {
-      const nextStage = STAGE_START_TIMES[1];
-      if (nextStage && nextStage.getTime() > Date.now()) {
-        const diff = nextStage.getTime() - Date.now();
-        const hours = Math.floor(diff / 3_600_000);
-        const mins = Math.floor((diff % 3_600_000) / 60_000);
-        const dateStr = nextStage.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          timeZone: "UTC",
-        });
-        const timeStr = nextStage.toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          timeZone: "UTC",
-        });
-        return `Minting opens in ${hours}h ${mins}m, from ${dateStr} ${timeStr} UTC.`;
-      }
-      return "Minting is currently paused. Stay tuned.";
-    }
-    // Public stage: anyone can mint without allowlist
-    if (currentStage === 4) return "You are eligible to mint now.";
-    // Allowlist stages (1-3): check eligibility from API
-    if (!eligibility) return "Checking eligibility...";
-    if (eligibility.eligible) return "You are eligible to mint now.";
-    if (eligibility.registered && eligibility.eligibleStageLabel) {
-      return `Your wallet is registered for ${eligibility.eligibleStageLabel}. Current stage: ${stageLabel}.`;
-    }
-    return "Your wallet is not registered for this stage.";
-  })();
 
   const handleMint = async () => {
     if (selectedId === null) return;
@@ -349,38 +269,18 @@ export function NftDropMintSection({
         isLoggedIn={isLoggedIn}
       />
 
-      {/* Stage badge - only when contract is deployed */}
-      {isDeployed && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="relative flex items-center justify-center mb-12"
-        >
-          <div
-            className={`
-              inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold tracking-wider uppercase
-              ${
-                isPaused
-                  ? "bg-white/[0.06] text-nasun-white/70 border border-white/[0.1]"
-                  : "bg-amber-400/10 text-amber-300 border border-amber-400/20"
-              }
-            `}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isPaused ? "bg-nasun-white/60" : "bg-amber-400 animate-pulse"
-              }`}
-            />
-            {stageLabel}
-          </div>
-          {statusMessage && (
-            <span className="hidden sm:block absolute right-0 text-sm text-nasun-white/70">
-              {statusMessage}
-            </span>
-          )}
-        </motion.div>
-      )}
+      {/* Stage badge */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="relative flex items-center justify-center mb-12"
+      >
+        <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full text-sm font-semibold tracking-wider uppercase bg-amber-400/10 text-amber-300 border border-amber-400/20">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          {stageLabel}
+        </div>
+      </motion.div>
 
       {/* Edition carousel */}
       <EditionCarousel selectedId={selectedId} onSelect={setSelectedId} />
@@ -392,21 +292,7 @@ export function NftDropMintSection({
         transition={{ delay: 0.7 }}
         className="mt-12 flex flex-col items-center gap-5"
       >
-        {!isDeployed ? (
-          <div
-            className="rounded-2xl border border-white/10 px-8 py-8 text-center max-w-md"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)",
-            }}
-          >
-            <p className="text-nasun-white/80 text-base">
-              Contract not deployed on this network.
-            </p>
-          </div>
-        ) : !isConnected ? (
-          null
-        ) : isSuccess || alreadyOwns || hasReachedLimit ? (
+        {isSuccess || alreadyOwns || hasReachedLimit ? (
           <div className="flex flex-col items-center py-6">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -416,35 +302,6 @@ export function NftDropMintSection({
               </div>
               <p className="text-green-400 text-lg font-semibold">You own a Genesis Pass</p>
             </div>
-          </div>
-        ) : isDropEnded ? (
-          <div className="text-center py-4">
-            <p className="text-nasun-white/80 text-lg font-medium">
-              The drop has ended.
-            </p>
-          </div>
-        ) : isPaused ? (
-          <div className="text-center py-4">
-            <p className="text-nasun-white/80 text-lg font-medium">
-              Minting starts soon.
-            </p>
-          </div>
-        ) : eligibility && !eligibility.eligible && currentStage !== 4 ? (
-          <div
-            className="rounded-2xl border border-amber-400/20 px-8 py-8 text-center max-w-lg"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
-            }}
-          >
-            <p className="text-amber-300 text-lg font-semibold mb-2">
-              Not eligible for this stage
-            </p>
-            <p className="text-nasun-white/70 text-sm leading-relaxed">
-              {eligibility.registered
-                ? `Your wallet is registered for ${eligibility.eligibleStageLabel}. Current stage is ${eligibility.currentStageLabel}.`
-                : "Your wallet is not on the allowlist for this stage."}
-            </p>
           </div>
         ) : (
           <>
@@ -538,18 +395,8 @@ export function NftDropMintSection({
             className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-nasun-white/60 text-nasun-white font-semibold text-sm rounded-lg hover:border-nasun-white hover:bg-nasun-white/5 transition-colors"
           >
             <span>View on Etherscan</span>
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-              />
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
             </svg>
           </a>
         </div>
@@ -558,16 +405,8 @@ export function NftDropMintSection({
       {/* Transfer lock notice */}
       <div className="mt-12 max-w-lg mx-auto">
         <p className="inline-flex items-start gap-2 text-nasun-white/50 text-sm leading-relaxed">
-          <svg
-            className="w-4 h-4 flex-shrink-0 mt-0.5 text-nasun-white/40"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
-              clipRule="evenodd"
-            />
+          <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-nasun-white/40" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
           </svg>
           <span>
             Transfers are locked during the minting period to ensure fair
@@ -576,112 +415,6 @@ export function NftDropMintSection({
           </span>
         </p>
       </div>
-      {/* Connect wallet CTA (bottom of page) */}
-      {isDeployed && !isConnected && !isMobileNonMetaMask && !(isSuccess || hasReachedLimit) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-12 flex justify-center"
-        >
-          <div
-            className="rounded-2xl border border-amber-400/20 px-8 py-8 text-center max-w-lg w-full"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
-            }}
-          >
-            <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#f9a824"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="2" y="6" width="20" height="14" rx="3" />
-                <path d="M2 10h20" />
-                <circle cx="16" cy="16" r="2" />
-              </svg>
-            </div>
-            <p className="text-nasun-white text-lg font-semibold mb-2">
-              Connect wallet to mint
-            </p>
-            <p className="text-nasun-white/70 text-sm mb-6 leading-relaxed max-w-[360px] mx-auto">
-              Connect your Ethereum wallet to check your eligibility and mint
-              your Genesis Pass.
-            </p>
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
-                <ButtonV3
-                  variant="c1-gradient"
-                  size="xl"
-                  className="!px-14 !py-4 !text-lg !font-semibold !rounded-xl"
-                  onClick={openConnectModal}
-                >
-                  Connect Wallet
-                </ButtonV3>
-              )}
-            </ConnectButton.Custom>
-          </div>
-        </motion.div>
-      )}
-
-      {/* MetaMask info card for mobile (below transfer lock) */}
-      {isMobileNonMetaMask &&
-        !isConnected &&
-        !(isSuccess || hasReachedLimit) && (
-          <div
-            className="mt-10 rounded-2xl border border-amber-400/20 px-8 py-6 text-center max-w-lg mx-auto sm:hidden"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
-            }}
-          >
-            <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
-              <img src="/MetaMask_Fox.svg" alt="MetaMask" className="w-7 h-7" />
-            </div>
-            <p className="text-nasun-white text-lg font-semibold mb-2">
-              Open in MetaMask
-            </p>
-            <p className="text-nasun-white/70 text-sm leading-relaxed max-w-sm mx-auto">
-              Tap the button at the bottom of your screen to open this page in
-              MetaMask's built-in browser, where your wallet connects
-              automatically.
-            </p>
-          </div>
-        )}
-
-      {/* Mobile sticky bottom bar for MetaMask deep link */}
-      {isMobileNonMetaMask &&
-        !isConnected &&
-        !(isSuccess || hasReachedLimit) && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden px-4 pb-4 pt-3 bg-gradient-to-t from-black via-black/95 to-transparent">
-            <a
-              href={`https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`}
-              className="flex items-center justify-center gap-3 w-full rounded-xl py-3 text-left transition-all"
-              style={{
-                background: "linear-gradient(135deg, #E2761B 0%, #CD6116 100%)",
-                color: "#fff",
-              }}
-            >
-              <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                <img src="/MetaMask_Fox.svg" alt="" className="w-4.5 h-4.5" />
-              </span>
-              <span className="flex flex-col">
-                <span className="text-base font-semibold leading-tight">
-                  Open in MetaMask to Mint
-                </span>
-                <span className="text-[11px] text-white/70 leading-tight">
-                  For a better mobile minting experience
-                </span>
-              </span>
-            </a>
-          </div>
-        )}
     </section>
   );
 }
