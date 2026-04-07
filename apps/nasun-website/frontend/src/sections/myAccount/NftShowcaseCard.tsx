@@ -264,7 +264,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 </span>
               ) : isGenesisPassApplied ? (
                 <span className="text-nasun-white/60 text-base font-medium text-center px-4">
-                  You applied to the allowlist.
+                  Approval Pending
                 </span>
               ) : (
                 <div className="flex flex-col items-center gap-2">
