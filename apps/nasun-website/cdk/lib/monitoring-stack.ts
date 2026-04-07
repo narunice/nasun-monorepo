@@ -13,6 +13,8 @@ export interface MonitoringStackProps extends cdk.StackProps {
   metamaskAuthApi?: apigw.RestApi;
   leaderboardV3Api?: apigw.RestApi;
   nftEventApi?: apigw.RestApi;
+  genesisPassApi?: apigw.RestApi;
+  zkLoginAuthApi?: apigw.RestApi;
 }
 
 export class MonitoringStack extends cdk.Stack {
@@ -205,6 +207,52 @@ export class MonitoringStack extends cdk.Stack {
         treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
       });
       nftEventApiErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+    }
+
+    // Genesis Pass API 5xx + 429
+    if (props.genesisPassApi) {
+      const gpApi5xxAlarm = new cloudwatch.Alarm(this, "GenesisPassApiServerErrorAlarm", {
+        alarmName: "NASUN-GenesisPassAPI-서버에러",
+        alarmDescription: "Genesis Pass API 5xx 에러가 5분간 5회 이상 발생",
+        metric: props.genesisPassApi.metricServerError({ period }),
+        threshold: 5,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      });
+      gpApi5xxAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+
+      const gpApi429Alarm = new cloudwatch.Alarm(this, "GenesisPassApiThrottleAlarm", {
+        alarmName: "NASUN-GenesisPassAPI-스로틀링",
+        alarmDescription: "Genesis Pass API 429 (throttling) 이 5분간 10회 이상 발생",
+        metric: props.genesisPassApi.metricClientError({ period }),
+        threshold: 10,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      });
+      gpApi429Alarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+    }
+
+    // zkLogin Auth API 5xx + 429
+    if (props.zkLoginAuthApi) {
+      const zkApi5xxAlarm = new cloudwatch.Alarm(this, "ZkLoginApiServerErrorAlarm", {
+        alarmName: "NASUN-ZkLoginAPI-서버에러",
+        alarmDescription: "zkLogin API 5xx 에러가 5분간 5회 이상 발생",
+        metric: props.zkLoginAuthApi.metricServerError({ period }),
+        threshold: 5,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      });
+      zkApi5xxAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+
+      const zkApi429Alarm = new cloudwatch.Alarm(this, "ZkLoginApiThrottleAlarm", {
+        alarmName: "NASUN-ZkLoginAPI-스로틀링",
+        alarmDescription: "zkLogin API 429 (throttling) 이 5분간 10회 이상 발생",
+        metric: props.zkLoginAuthApi.metricClientError({ period }),
+        threshold: 10,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      });
+      zkApi429Alarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
     }
 
     // DynamoDB Throttling — on-demand tables should never throttle
