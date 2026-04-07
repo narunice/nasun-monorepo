@@ -1,12 +1,21 @@
 {
   "name": "Nasun Genesis Pass #3 - Revolt",
-  "description": "A mysterious pentahedron appears across time and space, disrupting systems that concentrate power into the hands of a few. Its presence creates new timelines where communities, not individuals, shape powerful civilizations.",
+  "description": "The Genesis Pass grants access to the Nasun ecosystem, where the community reconfigures the simulation from its collective imagination. Activate your pass to unlock utilities that expand alongside the growth of Nasun.",
   "image": "https://arweave.net/0WXwTkmIfmlrkQh2fhryycN62y7ufy-1rdw-9YEB5Xo",
   "animation_url": "https://arweave.net/d5m3O_tbGI5jwdXZT8qfwwSxGu2jL-9Q4XtUjzQjEGY",
   "external_url": "https://nasun.io/wave1/genesis-pass",
   "attributes": [
-    { "trait_type": "Edition", "value": "Revolt" },
-    { "trait_type": "Type", "value": "Video" },
-    { "trait_type": "Collection", "value": "Genesis Pass" }
+    {
+      "trait_type": "Edition",
+      "value": "Revolt"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Video"
+    },
+    {
+      "trait_type": "Collection",
+      "value": "Genesis Pass"
+    }
   ]
 }
