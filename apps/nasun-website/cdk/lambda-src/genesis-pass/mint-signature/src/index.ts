@@ -52,7 +52,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://nasun.io").spli
 
 const MINT_CONFIG: Record<string, { stage: number; maxQuantity: number }> = {
   FREE_MINT: { stage: 1, maxQuantity: 1 },
-  GUARANTEED: { stage: 2, maxQuantity: 2 },
+  GUARANTEED: { stage: 2, maxQuantity: 1 },
 };
 const FCFS_CONFIG = { stage: 3, maxQuantity: 1 };
 
