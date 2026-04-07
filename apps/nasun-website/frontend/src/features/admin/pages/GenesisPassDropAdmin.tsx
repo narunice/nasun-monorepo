@@ -65,7 +65,7 @@ function ContractStatus({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: b
   const priceReads = [2,3,4].map(s =>
     useReadContract({
       address: addr, abi: GENESIS_PASS_ABI, functionName: "mintPricePerStage" as any,
-      args: [s], query: { refetchInterval: 30_000 },
+      args: [BigInt(s)], query: { refetchInterval: 30_000 },
     })
   );
 
@@ -77,7 +77,8 @@ function ContractStatus({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: b
   const totalMinted = mintedReads.reduce((sum, r) => sum + (r.data != null ? Number(r.data) : 0), 0);
 
   return (
-    <OuterBox color="c5" padding="sm" className={isSepolia ? "border-2 border-orange-500/40" : ""}>
+    <OuterBox color="c5" padding="sm" className={`relative ${isSepolia ? "border-2 border-orange-500/40" : ""}`}>
+      <NetworkBadge isSepolia={isSepolia} />
       <h2 className="text-2xl font-semibold text-nasun-white mb-5">Contract Status</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         <div>
@@ -236,6 +237,19 @@ function ConfirmDialog({
   );
 }
 
+function NetworkBadge({ isSepolia }: { isSepolia: boolean }) {
+  if (isSepolia) return null;
+  return (
+    <div className="absolute -left-1 top-3 -translate-x-full hidden lg:block pr-3">
+      <span className="text-teal-400 text-xs font-bold uppercase tracking-widest leading-tight text-right block">
+        Ethereum
+        <br />
+        Mainnet
+      </span>
+    </div>
+  );
+}
+
 function useCurrentStage(addr: `0x${string}`) {
   const { data } = useReadContract({
     address: addr, abi: GENESIS_PASS_ABI, functionName: "currentStage" as any,
@@ -245,7 +259,7 @@ function useCurrentStage(addr: `0x${string}`) {
 }
 
 function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boolean }) {
-  const sepoliaBorder = isSepolia ? "border-2 border-orange-500/40" : "";
+  const sepoliaBorder = `relative ${isSepolia ? "border-2 border-orange-500/40" : ""}`;
   const currentStage = useCurrentStage(addr);
   const { data: contractBalance } = useBalance({ address: addr, query: { refetchInterval: 10_000 } });
   const balanceStr = contractBalance ? formatEther(contractBalance.value) : "0";
@@ -312,6 +326,7 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
 
       {/* Stage Control */}
       <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
+        <NetworkBadge isSepolia={isSepolia} />
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Stage Control</h2>
         <div className="flex flex-wrap gap-3">
           {stages.map(({ label, stage }) => {
@@ -355,6 +370,7 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
 
       {/* Price Adjustment */}
       <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
+        <NetworkBadge isSepolia={isSepolia} />
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Price Adjustment</h2>
         <div className="flex items-end gap-4 flex-wrap">
           <div>
@@ -420,15 +436,16 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
 
       {/* Deadline */}
       <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
+        <NetworkBadge isSepolia={isSepolia} />
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Mint Deadline</h2>
         <div className="flex items-end gap-4 flex-wrap">
           <div>
-            <label className="text-nasun-white/90 text-lg block mb-2">Deadline (UTC datetime)</label>
+            <label className="text-nasun-white/90 text-lg block mb-2">Deadline (local time)</label>
             <input
               type="datetime-local"
               value={deadlineInput}
               onChange={(e) => setDeadlineInput(e.target.value)}
-              className="bg-nasun-black border border-nasun-white/30 rounded px-4 py-3 text-nasun-white text-lg"
+              className="bg-nasun-black border border-nasun-white/30 rounded px-4 py-3 text-nasun-white text-lg [&::-webkit-calendar-picker-indicator]:invert"
             />
           </div>
           <ButtonV3
@@ -436,18 +453,19 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
             size="md"
             disabled={isPending || !deadlineInput}
             onClick={() => {
-              const ts = Math.floor(new Date(deadlineInput + "Z").getTime() / 1000);
-              const dateStr = new Date(ts * 1000).toISOString();
+              const ts = Math.floor(new Date(deadlineInput).getTime() / 1000);
+              const localStr = new Date(ts * 1000).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+              const utcStr = new Date(ts * 1000).toISOString();
               if (ts * 1000 <= Date.now()) {
                 alert("Cannot set a deadline in the past. This would immediately block all minting.");
                 return;
               }
               requestConfirm({
                 title: "Set Mint Deadline",
-                description: `Set mint deadline to:\n${dateStr}\n\nMinting will stop after this time.`,
+                description: `Set mint deadline to:\n${localStr} (local time)\n${utcStr} (UTC)\n\nMinting will stop after this time.`,
                 confirmPhrase: "SET DEADLINE",
                 variant: "warning",
-                onConfirm: () => execTx(`setMintDeadline(${dateStr})`, () =>
+                onConfirm: () => execTx(`setMintDeadline(${utcStr})`, () =>
                   writeContractAsync({
                     address: addr, abi: GENESIS_PASS_ABI,
                     functionName: "setMintDeadline", args: [BigInt(ts)],
@@ -484,6 +502,7 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
 
       {/* Metadata URI */}
       <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
+        <NetworkBadge isSepolia={isSepolia} />
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Metadata URI</h2>
         <div className="space-y-4">
           <div className="flex items-end gap-4 flex-wrap">
@@ -560,6 +579,7 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
 
       {/* Withdraw + Unlock */}
       <OuterBox color="c6" padding="sm" className={sepoliaBorder}>
+        <NetworkBadge isSepolia={isSepolia} />
         <h2 className="text-2xl font-semibold text-nasun-white mb-5">Withdraw + Transfer Unlock</h2>
         <div className="flex items-end gap-4 flex-wrap mb-4">
           <div>
