@@ -41,6 +41,8 @@ function TxStatus({ hash, label }: { hash?: `0x${string}`; label: string }) {
 }
 
 function ContractStatus({ addr }: { addr: `0x${string}` }) {
+  const chainId = useChainId();
+  const etherscanBase = chainId === 11155111 ? "https://sepolia.etherscan.io" : "https://etherscan.io";
   const read = (fn: string) => useReadContract({
     address: addr, abi: GENESIS_PASS_ABI, functionName: fn as any,
     query: { refetchInterval: 10_000 },
@@ -110,7 +112,20 @@ function ContractStatus({ addr }: { addr: `0x${string}` }) {
         </div>
         <div>
           <p className="text-nasun-white/80 text-lg">Contract</p>
-          <p className="text-nasun-white text-lg font-mono">{addr.slice(0, 8)}...{addr.slice(-6)}</p>
+          <p className="text-nasun-white text-lg font-mono inline-flex items-center gap-2">
+            {addr.slice(0, 8)}...{addr.slice(-6)}
+            <a
+              href={`${etherscanBase}/address/${addr}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-nasun-white/50 hover:text-nasun-white transition-colors"
+              title="View on Etherscan"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+            </a>
+          </p>
         </div>
       </div>
 
