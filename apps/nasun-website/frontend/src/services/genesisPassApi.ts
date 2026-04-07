@@ -150,10 +150,11 @@ export async function getMyGenesisPassStatus(cognitoToken: string): Promise<Gene
 
 /**
  * Request an EIP-712 mint signature from the server.
- * Server derives all parameters (wallet, stage, maxQuantity) from the JWT identity.
+ * Server verifies the wallet against the allowlist and returns a signature
+ * that authorizes the connected wallet to mint.
  * Includes a single retry with jittered delay on 429.
  */
-export async function requestMintSignature(cognitoToken: string): Promise<MintSignatureResponse> {
+export async function requestMintSignature(walletAddress: string): Promise<MintSignatureResponse> {
   if (!API_BASE) throw new GenesisPassApiError("Genesis Pass API is not configured");
 
   const url = `${API_BASE}/genesis-pass/mint-signature`;
@@ -166,9 +167,8 @@ export async function requestMintSignature(cognitoToken: string): Promise<MintSi
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${cognitoToken}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ walletAddress }),
       signal: controller.signal,
     }).finally(() => clearTimeout(timeoutId));
   };
