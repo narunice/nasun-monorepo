@@ -87,17 +87,21 @@ function reducer(state: Phase, action: Action): Phase {
 
 const GATE_PASSED_PREFIX = "nasun:gate-passed:";
 
-function isGatePassed(address: string): boolean {
+function getGateKey(address: string, stage: number): string {
+  return `${GATE_PASSED_PREFIX}${address.toLowerCase()}:stage-${stage}`;
+}
+
+function isGatePassed(address: string, stage: number): boolean {
   try {
-    return sessionStorage.getItem(`${GATE_PASSED_PREFIX}${address.toLowerCase()}`) === "1";
+    return sessionStorage.getItem(getGateKey(address, stage)) === "1";
   } catch {
     return false;
   }
 }
 
-function markGatePassed(address: string): void {
+function markGatePassed(address: string, stage: number): void {
   try {
-    sessionStorage.setItem(`${GATE_PASSED_PREFIX}${address.toLowerCase()}`, "1");
+    sessionStorage.setItem(getGateKey(address, stage), "1");
   } catch {
     // sessionStorage may be unavailable in some contexts
   }
@@ -158,9 +162,9 @@ export function useDropPageState({
     if (!isConnected || !address) return;
     if (lockedRef.current) return;
 
-    // SessionStorage bypass for re-visits
+    // SessionStorage bypass for re-visits (scoped to current stage)
     if (phase.type === "DISCONNECTED" || phase.type === "CHECKING") {
-      if (isGatePassed(address)) {
+      if (currentStage > 0 && isGatePassed(address, currentStage)) {
         lockedRef.current = true;
         dispatch({ type: "RESOLVE_OWNED" });
         return;
@@ -180,7 +184,7 @@ export function useDropPageState({
       // Already owns or reached limit -> bypass
       if (hasMinted || hasReachedLimit) {
         lockedRef.current = true;
-        markGatePassed(address);
+        markGatePassed(address, currentStage);
         dispatch({ type: "RESOLVE_OWNED" });
         return;
       }
@@ -232,7 +236,7 @@ export function useDropPageState({
   const proceedToMint = useCallback(() => {
     if (address) {
       lockedRef.current = true;
-      markGatePassed(address);
+      markGatePassed(address, currentStage);
       try { sessionStorage.setItem("nasun:lore-seen", "1"); } catch {}
     }
     dispatch({ type: "PROCEED_TO_MINT" });
