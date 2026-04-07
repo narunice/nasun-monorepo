@@ -67,14 +67,14 @@ function MintProgressOverlay({
             className="flex flex-col items-center gap-5 p-8 max-w-sm text-center"
           >
             <Spinner size="xl" colorClass="text-amber-400" />
-            <p className="text-nasun-white text-xl font-semibold">{message}</p>
-            <p className="text-nasun-white/60 text-sm">{subMessage}</p>
+            <p className="text-nasun-white text-2xl font-semibold">{message}</p>
+            <p className="text-nasun-white/60 text-base">{subMessage}</p>
             {isConfirming && txHash && (
               <a
                 href={getEtherscanUrl(chainId, txHash)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-nasun-c4 text-xs underline inline-flex items-center gap-1 mt-1"
+                className="text-nasun-c4 text-sm underline inline-flex items-center gap-1 mt-1"
               >
                 View on Etherscan
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -110,9 +110,13 @@ function MintSuccessDialog({
   const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   return (
-    <Dialog open={open} modal={false}>
-      <DialogContent
-        className="max-w-sm sm:max-w-md bg-nasun-black border border-amber-400/20 p-0 overflow-hidden"
+    <>
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
+      )}
+      <Dialog open={open} modal={false}>
+        <DialogContent
+        className="max-w-sm sm:max-w-md max-h-[90dvh] overflow-y-auto bg-nasun-black border border-amber-400/20 p-0"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
@@ -139,21 +143,6 @@ function MintSuccessDialog({
             </h2>
             <p className="text-2xl font-bold text-amber-400 mt-1">Welcome to Nasun</p>
           </div>
-
-          {/* Etherscan link */}
-          {txHash && (
-            <a
-              href={getEtherscanUrl(chainId, txHash)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-nasun-c4 text-sm underline inline-flex items-center gap-1"
-            >
-              View transaction
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-            </a>
-          )}
 
           {/* Primary CTA */}
           {isMetaMaskInApp ? (
@@ -190,14 +179,30 @@ function MintSuccessDialog({
             </ButtonV3>
           )}
 
+          {/* Etherscan link */}
+          {txHash && (
+            <a
+              href={getEtherscanUrl(chainId, txHash)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-nasun-c4 text-sm underline inline-flex items-center gap-1"
+            >
+              View transaction
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+            </a>
+          )}
+
           {/* Trading notice */}
-          <p className="text-nasun-white/70 text-xs text-left mt-2 leading-relaxed">
+          <p className="text-nasun-white/70 text-sm text-left mt-2 leading-relaxed">
             Once the drop ends, your Genesis Pass will be tradable
             on OpenSea and other marketplaces.
           </p>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
