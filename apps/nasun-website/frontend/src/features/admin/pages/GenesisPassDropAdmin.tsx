@@ -57,7 +57,7 @@ function ContractStatus({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: b
   const { data: locked } = read("transfersUnlocked");
   const { data: hwm } = read("highWaterMark");
 
-  const mintedReads = [1,2,3,4,5,6,7].map(id =>
+  const mintedReads = [1,2,3,4,5,6,7,8].map(id =>
     useReadContract({
       address: addr, abi: GENESIS_PASS_ABI, functionName: "totalMinted" as any,
       args: [BigInt(id)], query: { refetchInterval: 10_000 },
@@ -314,7 +314,7 @@ function AdminActions({ addr, isSepolia }: { addr: `0x${string}`; isSepolia: boo
 
   const { writeContractAsync, isPending } = useWriteContract();
 
-  const cognitoToken = useUserStore((s) => s.userData?.cognitoToken);
+  const cognitoToken = useUserStore((s) => s.user?.cognitoToken);
 
   const execTx = async (label: string, fn: () => Promise<`0x${string}`>, onSuccess?: () => void) => {
     try {

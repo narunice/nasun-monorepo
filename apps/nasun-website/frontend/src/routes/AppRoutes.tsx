@@ -159,7 +159,7 @@ const AppRoutes = () => {
         <Route path="/dev/genesis-nft" element={<DevGenesisNftPage />} />
         <Route path="/dev/investors" element={<DevInvestorsPage />} />
         <Route path="/dev/genesis-pass" element={<DevGenesisPassPage />} />
-        <Route path="/dev/genesis-pass-drop" element={<NftDropPage />} />
+        {/* /dev/genesis-pass-drop moved to /wave1/genesis-pass-drop */}
         <Route path="/dev/home" element={<DevHomePage />} />
         <Route path="/dev/my-account" element={<Navigate to="/my-account" replace />} />
         <Route path="/dev/alliance-nft" element={<Navigate to="/wave1/alliance-nft" replace />} />

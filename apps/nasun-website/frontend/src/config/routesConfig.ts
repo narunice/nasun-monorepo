@@ -391,7 +391,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         {
           name: "Genesis Pass Drop",
           path: "/wave1/genesis-pass-drop",
-          element: Pages.GenesisPassDrop,
+          element: Pages.NftDrop,
         },
         {
           name: "navigation.battalion",
@@ -435,7 +435,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
 
   genesisPassDrop: {
     path: "/wave1/genesis-pass-drop",
-    component: Pages.GenesisPassDrop,
+    component: Pages.NftDrop,
     navItem: {
       name: "navigation.genesisPassDrop",
       path: "/wave1/genesis-pass-drop",
@@ -443,6 +443,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Genesis Pass Drop - NASUN",
+      description: "Mint your Nasun Genesis Pass. 8 unique video editions on Ethereum mainnet.",
+    },
+  },
+
+  genesisPassDropLegacy: {
+    path: "/legacy/genesis-pass-drop",
+    component: Pages.GenesisPassDrop,
+    navItem: {
+      name: "Genesis Pass Drop (Legacy)",
+      path: "/legacy/genesis-pass-drop",
+      hidden: true,
+    },
+    meta: {
+      title: "Genesis Pass Drop (Legacy) - NASUN",
       description: "Nasun Genesis Pass mint schedule. Free mint, allowlist, and public mint phases.",
     },
   },
