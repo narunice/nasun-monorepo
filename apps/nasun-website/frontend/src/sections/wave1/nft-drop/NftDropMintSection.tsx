@@ -7,6 +7,7 @@ import {
   NFT_EDITIONS,
   STAGE_LABELS,
   STAGE_START_TIMES,
+  MINT_CLOSE_TIME,
   getEditionVideoUrl,
 } from "@/constants/nft-drop";
 import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
@@ -164,6 +165,7 @@ export function NftDropMintSection({
 
   const isPaused = currentStage === 0;
   const isFree = currentStage === 1;
+  const isDropEnded = isPaused && Date.now() >= MINT_CLOSE_TIME.getTime();
 
   // Mobile browser without MetaMask injected -> should use MetaMask deep link instead of Connect Wallet
   const isMobileNonMetaMask =
@@ -275,51 +277,7 @@ export function NftDropMintSection({
             </p>
           </div>
         ) : !isConnected ? (
-          isMobileNonMetaMask ? null : (
-          <div
-            className="rounded-2xl border border-amber-400/20 px-8 py-8 text-center max-w-lg"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
-            }}
-          >
-            <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#f9a824"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="2" y="6" width="20" height="14" rx="3" />
-                <path d="M2 10h20" />
-                <circle cx="16" cy="16" r="2" />
-              </svg>
-            </div>
-            <p className="text-nasun-white text-lg font-semibold mb-2">
-              Connect wallet to mint
-            </p>
-            <p className="text-nasun-white/70 text-sm mb-6 leading-relaxed max-w-[360px] mx-auto">
-              Connect your Ethereum wallet to check your eligibility and mint
-              your Genesis Pass.
-            </p>
-            <ConnectButton.Custom>
-              {({ openConnectModal }) => (
-                <ButtonV3
-                  variant="c1-gradient"
-                  size="xl"
-                  className="!px-14 !py-4 !text-lg !font-semibold !rounded-xl"
-                  onClick={openConnectModal}
-                >
-                  Connect Wallet
-                </ButtonV3>
-              )}
-            </ConnectButton.Custom>
-          </div>
-          )
+          null
         ) : isSuccess || hasReachedLimit ? (
           <MintSuccessView
             selectedId={selectedId}
@@ -328,6 +286,18 @@ export function NftDropMintSection({
             chainId={chainId}
             isMetaMaskInApp={isMetaMaskInApp}
           />
+        ) : isDropEnded ? (
+          <div className="text-center py-4">
+            <p className="text-nasun-white/80 text-lg font-medium">
+              The drop has ended.
+            </p>
+          </div>
+        ) : isPaused ? (
+          <div className="text-center py-4">
+            <p className="text-nasun-white/80 text-lg font-medium">
+              Minting starts soon.
+            </p>
+          </div>
         ) : (
           <>
             {/* Price display */}
@@ -350,7 +320,6 @@ export function NftDropMintSection({
               className="!px-14 !py-4 !text-lg !font-semibold !rounded-xl"
               disabled={
                 selectedId === null ||
-                isPaused ||
                 isBusy ||
                 (!isFree && (!mintPriceWei || mintPriceWei === 0n))
               }
@@ -459,6 +428,60 @@ export function NftDropMintSection({
           </span>
         </p>
       </div>
+      {/* Connect wallet CTA (bottom of page) */}
+      {isDeployed && !isConnected && !isMobileNonMetaMask && !(isSuccess || hasReachedLimit) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-12 flex justify-center"
+        >
+          <div
+            className="rounded-2xl border border-amber-400/20 px-8 py-8 text-center max-w-lg w-full"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
+            }}
+          >
+            <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-4">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#f9a824"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="2" y="6" width="20" height="14" rx="3" />
+                <path d="M2 10h20" />
+                <circle cx="16" cy="16" r="2" />
+              </svg>
+            </div>
+            <p className="text-nasun-white text-lg font-semibold mb-2">
+              Connect wallet to mint
+            </p>
+            <p className="text-nasun-white/70 text-sm mb-6 leading-relaxed max-w-[360px] mx-auto">
+              Connect your Ethereum wallet to check your eligibility and mint
+              your Genesis Pass.
+            </p>
+            <ConnectButton.Custom>
+              {({ openConnectModal }) => (
+                <ButtonV3
+                  variant="c1-gradient"
+                  size="xl"
+                  className="!px-14 !py-4 !text-lg !font-semibold !rounded-xl"
+                  onClick={openConnectModal}
+                >
+                  Connect Wallet
+                </ButtonV3>
+              )}
+            </ConnectButton.Custom>
+          </div>
+        </motion.div>
+      )}
+
       {/* MetaMask info card for mobile (below transfer lock) */}
       {isMobileNonMetaMask &&
         !isConnected &&
