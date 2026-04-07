@@ -19,26 +19,28 @@ export function useNftDropRead() {
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "currentStage",
-    query: { refetchInterval: 15_000, refetchOnWindowFocus: true },
+    query: { refetchInterval: 30_000, refetchOnWindowFocus: true },
   });
 
   const { data: currentMintPrice } = useReadContract({
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "currentMintPrice",
-    query: { refetchInterval: 15_000 },
+    query: { refetchInterval: 30_000 },
   });
 
   const { data: mintDeadline } = useReadContract({
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "mintDeadline",
+    query: { staleTime: 300_000 },
   });
 
   const { data: transfersUnlocked } = useReadContract({
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "transfersUnlocked",
+    query: { staleTime: 300_000 },
   });
 
   const stageNum = currentStage != null ? Number(currentStage) : 0;
