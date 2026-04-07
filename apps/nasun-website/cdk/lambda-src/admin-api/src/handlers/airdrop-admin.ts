@@ -40,8 +40,23 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
   try {
     // GET /airdrop/registrations
     if (path.endsWith("/registrations") && event.httpMethod === "GET") {
+      const pageSize = Math.min(Number(event.queryStringParameters?.limit) || 500, 1000);
+      const cursorParam = event.queryStringParameters?.cursor;
+      let exclusiveStartKey: Record<string, any> | undefined;
+      if (cursorParam) {
+        try {
+          const parsed = JSON.parse(Buffer.from(cursorParam, "base64url").toString("utf-8"));
+          if (!parsed.identityId?.S || typeof parsed.identityId.S !== "string" || Object.keys(parsed).length !== 1) {
+            return errorResponse(400, "Invalid cursor", requestOrigin);
+          }
+          exclusiveStartKey = parsed;
+        } catch {
+          return errorResponse(400, "Invalid cursor", requestOrigin);
+        }
+      }
+
       const items: Array<Record<string, string | boolean | number | undefined>> = [];
-      let lastKey: Record<string, any> | undefined;
+      let lastKey: Record<string, any> | undefined = exclusiveStartKey;
       do {
         const result = await dynamoClient.send(
           new ScanCommand({
@@ -62,10 +77,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           });
         }
         lastKey = result.LastEvaluatedKey;
-      } while (lastKey);
+      } while (lastKey && items.length < pageSize);
+
+      let nextCursor: string | undefined;
+      if (lastKey) {
+        nextCursor = Buffer.from(JSON.stringify(lastKey)).toString("base64url");
+      }
 
       items.sort((a, b) => (b.registeredAt || "").localeCompare(a.registeredAt || ""));
-      return jsonResponse(200, { success: true, items }, requestOrigin);
+      return jsonResponse(200, { success: true, items, nextCursor }, requestOrigin);
     }
 
     // PUT /airdrop/registrations/{identityId}

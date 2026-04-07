@@ -32,6 +32,8 @@ function AirdropContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
 
   const fetchData = useCallback(async () => {
     if (!cognitoToken) return;
@@ -79,6 +81,8 @@ function AirdropContent() {
   const rejected = registrations.filter((r) => r.status === "rejected").length;
   // Bot filtering (frontend-side: airdrop already fetches all items)
   const bots = registrations.filter((r) => r.probableBot).length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const paginatedItems = registrations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6">
@@ -131,13 +135,13 @@ function AirdropContent() {
                 </tr>
               </thead>
               <tbody>
-                {registrations.map((r, i) => (
+                {paginatedItems.map((r, i) => (
                   <tr
                     key={r.identityId}
                     className={`border-b border-nasun-white/5 hover:bg-nasun-white/5 transition-colors${r.probableBot ? " opacity-40" : ""}`}
                   >
                     <td className="py-2 px-2 text-nasun-white/40">
-                      {i + 1}
+                      {(currentPage - 1) * pageSize + i + 1}
                     </td>
                     <td className="py-2 px-2 text-nasun-white">
                       {r.twitterHandle ? (
@@ -218,6 +222,48 @@ function AirdropContent() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-nasun-white/10">
+              <span className="text-xs text-nasun-white/40">
+                {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, total)} of {total}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="text-xs px-2 py-1 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="text-xs px-2 py-1 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Prev
+                </button>
+                <span className="text-xs text-nasun-white/60 px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="text-xs px-2 py-1 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="text-xs px-2 py-1 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
+          )}
         )}
       </OuterBox>
     </div>

@@ -14,18 +14,33 @@ export interface AirdropRegistration {
 }
 
 export async function listAirdropRegistrations(cognitoToken: string): Promise<AirdropRegistration[]> {
-  const response = await fetch(`${ADMIN_API_URL}/airdrop/registrations`, {
-    method: 'GET',
-    headers: authHeaders(cognitoToken),
-  });
+  const allItems: AirdropRegistration[] = [];
+  let cursor: string | undefined;
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `Failed to fetch: ${response.status}`);
-  }
+  const maxPages = 50;
+  let page = 0;
 
-  const data = await response.json();
-  return data.items;
+  do {
+    const url = new URL(`${ADMIN_API_URL}/airdrop/registrations`);
+    if (cursor) url.searchParams.set('cursor', cursor);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: authHeaders(cognitoToken),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Failed to fetch: ${response.status}`);
+    }
+
+    const data = await response.json();
+    allItems.push(...data.items);
+    cursor = data.nextCursor;
+    page++;
+  } while (cursor && page < maxPages);
+
+  return allItems;
 }
 
 export async function updateAirdropStatus(
