@@ -138,15 +138,15 @@ const DevMyAccountPage = () => {
           </div>
         )}
 
-        {/* Page Title + Genesis Drop Card */}
+        {/* Page Title (hidden during drop period) + Genesis Drop Card */}
         <div className="mt-4 mb-6 md:mb-8">
-          <PageTitle>ACCOUNT</PageTitle>
+          {/* <PageTitle wrapperClassName="" align="left">ACCOUNT</PageTitle> */}
           {/* <ErrorBoundary fallback={<div className="text-red-400 text-sm">GenesisDropCard error</div>}>
             <Suspense fallback={<div className="text-nasun-white/40 text-sm">Loading...</div>}>
               <GenesisDropCard className="sm:max-w-lg w-full" />
             </Suspense>
           </ErrorBoundary> */}
-          {/* <GenesisDropInfoCard className="sm:max-w-lg w-full" /> */}
+          <GenesisDropInfoCard className="w-full" />
         </div>
 
         {/* Bento Grid Dashboard Layout */}
