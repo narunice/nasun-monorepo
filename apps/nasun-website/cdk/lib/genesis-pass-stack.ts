@@ -16,6 +16,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
+import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
@@ -249,7 +250,7 @@ export class GenesisPassStack extends cdk.Stack {
     const mintSigAlias = new lambda.Alias(this, "MintSignatureLiveAlias", {
       aliasName: "live",
       version: mintSigVersion,
-      provisionedConcurrentExecutions: 15,
+      provisionedConcurrentExecutions: 50,
     });
 
     this.allowlistTable.grantReadWriteData(mintSignatureLambda);
@@ -273,8 +274,8 @@ export class GenesisPassStack extends cdk.Stack {
       description: "Genesis Pass NFT Allowlist Registration API",
       deployOptions: {
         stageName: "prod",
-        throttlingRateLimit: 500,
-        throttlingBurstLimit: 1000,
+        throttlingRateLimit: 1000,
+        throttlingBurstLimit: 2000,
         tracingEnabled: true,
         dataTraceEnabled: false,
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
@@ -285,6 +286,58 @@ export class GenesisPassStack extends cdk.Stack {
         allowHeaders: ["Content-Type", "Authorization"],
         allowCredentials: false,
       },
+    });
+
+    // ========== WAF (DDoS + Bot Protection) ==========
+
+    const webAcl = new wafv2.CfnWebACL(this, "GenesisPassWaf", {
+      name: "nasun-genesis-pass-waf",
+      scope: "REGIONAL",
+      defaultAction: { allow: {} },
+      visibilityConfig: {
+        sampledRequestsEnabled: true,
+        cloudWatchMetricsEnabled: true,
+        metricName: "nasun-genesis-pass-waf",
+      },
+      rules: [
+        {
+          name: "RateLimit300Per5Min",
+          priority: 1,
+          action: { block: {} },
+          statement: {
+            rateBasedStatement: {
+              limit: 300,
+              aggregateKeyType: "IP",
+            },
+          },
+          visibilityConfig: {
+            sampledRequestsEnabled: true,
+            cloudWatchMetricsEnabled: true,
+            metricName: "GenesisPassRateLimit",
+          },
+        },
+        {
+          name: "AWSManagedIPReputation",
+          priority: 2,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              vendorName: "AWS",
+              name: "AWSManagedRulesAmazonIpReputationList",
+            },
+          },
+          visibilityConfig: {
+            sampledRequestsEnabled: true,
+            cloudWatchMetricsEnabled: true,
+            metricName: "GenesisPassIPReputation",
+          },
+        },
+      ],
+    });
+
+    new wafv2.CfnWebACLAssociation(this, "GenesisPassWafAssociation", {
+      resourceArn: this.api.deploymentStage.stageArn,
+      webAclArn: webAcl.attrArn,
     });
 
     const genesisPassResource = this.api.root.addResource("genesis-pass");
