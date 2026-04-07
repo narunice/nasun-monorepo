@@ -345,6 +345,7 @@ export {
   disconnectZkLogin,
   getZkLoginReturnUrl,
   clearZkLoginReturnUrl,
+  type ProverProgressEvent,
 } from './core/zklogin';
 
 // ============================================
