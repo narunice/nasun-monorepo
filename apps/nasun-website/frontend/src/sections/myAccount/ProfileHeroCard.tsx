@@ -432,12 +432,12 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
             {/* Airdrop Registration Bar */}
             <AirdropRegistrationCard bare />
 
-            {/* Daily Missions + Health Donut (side by side) */}
-            <div className="flex gap-4">
-              <div className="flex-[2] min-w-0">
+            {/* Daily Missions + Health Donut */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="order-2 sm:order-1 sm:flex-[2] min-w-0">
                 <DailyMissionsCard bare />
               </div>
-              <div className="flex-[1] min-w-0 border border-dashed border-nasun-white/10 rounded-lg flex items-center justify-center">
+              <div className="order-1 sm:order-2 sm:flex-[1] min-w-0 border border-dashed border-nasun-white/10 rounded-lg flex items-center justify-center py-4 sm:py-0">
                 <HealthStatusBar
                   activeDays={ecosystemScore?.weekly?.activeDays ?? 0}
                   isPenalized={ecosystemScore?.isPenalized ?? false}

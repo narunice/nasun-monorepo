@@ -472,22 +472,22 @@ HEALTH_EOF
 **SSH/AWS CLI 불필요 (로컬 파일시스템 점검)**
 
 ```bash
-BACKUP_DIR="/home/naru/my_apps/nasun-monorepo/_backup"
+BACKUP_DIR="/home/naru/nasun-backups/dynamodb"
 TODAY=$(date +%Y%m%d)
 YESTERDAY=$(date -d '1 day ago' +%Y%m%d)
 
-# Check each backup file
-for prefix in "zklogin-users-backup" "zklogin-salts-backup" "leaderboard-v3-snapshots-backup"; do
-  # Try today's file first, then yesterday's (cron runs at midnight, timing could vary)
-  file="${BACKUP_DIR}/${prefix}-${TODAY}.json"
+# Check each backup file (gzip compressed)
+for prefix in "ZkLoginUsers" "UserProfiles" "UserWallets" "zklogin-salts" "leaderboard-v3-snapshots"; do
+  # Try today's file first, then yesterday's (cron runs at 01:00 UTC = 10:00 KST)
+  file="${BACKUP_DIR}/${prefix}-${TODAY}.json.gz"
   if [ ! -f "$file" ]; then
-    file="${BACKUP_DIR}/${prefix}-${YESTERDAY}.json"
+    file="${BACKUP_DIR}/${prefix}-${YESTERDAY}.json.gz"
   fi
   if [ -f "$file" ]; then
     size=$(stat -c%s "$file" 2>/dev/null)
     age_hours=$(( ($(date +%s) - $(stat -c%Y "$file")) / 3600 ))
-    # JSON validity + record count check
-    records=$(python3 -c "import json; d=json.load(open('$file')); print(len(d.get('Items',[])))" 2>/dev/null || echo "INVALID_JSON")
+    # Decompress and check JSON validity + record count
+    records=$(zcat "$file" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('Items',[])))" 2>/dev/null || echo "INVALID_JSON")
     echo "${prefix}: size=${size} bytes, age=${age_hours}h, records=${records}, file=$(basename $file)"
   else
     echo "${prefix}: MISSING (no file for today or yesterday)"
@@ -503,11 +503,11 @@ done
 - 나이 > 48h = **WARNING** (2일 이상 미갱신)
 
 Cron 스케줄 참조:
-| 시각 (KST) | 대상 테이블 | 파일 패턴 |
+| 시각 (UTC) | 대상 테이블 | 파일 패턴 |
 |------------|------------|-----------|
-| 00:00 | ZkLoginUsers (full) | `zklogin-users-backup-YYYYMMDD.json` |
-| 00:02 | ZkLoginUsers (salt projection) | `zklogin-salts-backup-YYYYMMDD.json` |
-| 00:05 | leaderboard-v3-snapshots | `leaderboard-v3-snapshots-backup-YYYYMMDD.json` |
+| 01:00 | ZkLoginUsers, UserProfiles, UserWallets (Tier 1) | `{table}-YYYYMMDD.json.gz` |
+| 01:05 | ZkLoginUsers (salt projection) | `zklogin-salts-YYYYMMDD.json.gz` |
+| 01:10 | leaderboard-v3-snapshots | `leaderboard-v3-snapshots-YYYYMMDD.json.gz` |
 
 > 추후 백업 항목이 추가되면 위 for loop의 prefix 목록에 추가합니다.
 
@@ -905,9 +905,11 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 
 | Backup | Status | File | Size | Age |
 |--------|--------|------|------|-----|
-| ZkLogin Users | OK/WARN/CRIT | zklogin-users-backup-20260329.json | 2.4M | 0d |
-| ZkLogin Salts | OK/WARN/CRIT | zklogin-salts-backup-20260329.json | 803K | 0d |
-| Leaderboard V3 Snapshots | OK/WARN/CRIT | leaderboard-v3-snapshots-backup-20260329.json | 27M | 0d |
+| ZkLogin Users | OK/WARN/CRIT | ZkLoginUsers-20260408.json.gz | 1.7M | 0d |
+| User Profiles | OK/WARN/CRIT | UserProfiles-20260408.json.gz | 9.7M | 0d |
+| User Wallets | OK/WARN/CRIT | UserWallets-20260408.json.gz | 6.1M | 0d |
+| ZkLogin Salts | OK/WARN/CRIT | zklogin-salts-20260408.json.gz | 781K | 0d |
+| Leaderboard V3 Snapshots | OK/WARN/CRIT | leaderboard-v3-snapshots-20260408.json.gz | 3.2M | 0d |
 
 ### 10. AWS Services
 
