@@ -1,0 +1,12 @@
+{
+  "name": "Nasun Genesis Pass #1 - Colony",
+  "description": "A mysterious pentahedron appears across time and space, disrupting systems that concentrate power into the hands of a few. Its presence creates new timelines where communities, not individuals, shape powerful civilizations.",
+  "image": "https://arweave.net/hdl2nNaLUqSTa83i5vpbKNr_O4eRpYITUlYF5VWbJnY",
+  "animation_url": "https://arweave.net/UJlRjW3YpmYZqUbp7--yFxSLpL61fHH4MJ47cXY9sWA",
+  "external_url": "https://nasun.io/wave1/genesis-pass",
+  "attributes": [
+    { "trait_type": "Edition", "value": "Colony" },
+    { "trait_type": "Type", "value": "Video" },
+    { "trait_type": "Collection", "value": "Genesis Pass" }
+  ]
+}

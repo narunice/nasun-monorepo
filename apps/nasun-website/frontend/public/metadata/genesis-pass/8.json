@@ -1,0 +1,12 @@
+{
+  "name": "Nasun Genesis Pass #8 - War",
+  "description": "A mysterious pentahedron appears across time and space, disrupting systems that concentrate power into the hands of a few. Its presence creates new timelines where communities, not individuals, shape powerful civilizations.",
+  "image": "https://arweave.net/4wcST8n6rmCoZ6wOd97kp3I0a-R2NhjhMoD_uPJX8F4",
+  "animation_url": "https://arweave.net/LKmq5M80bMyvmpCq3MEeSW5JW-CNef6Gpvdv7uCnjTc",
+  "external_url": "https://nasun.io/wave1/genesis-pass",
+  "attributes": [
+    { "trait_type": "Edition", "value": "War" },
+    { "trait_type": "Type", "value": "Video" },
+    { "trait_type": "Collection", "value": "Genesis Pass" }
+  ]
+}
