@@ -118,8 +118,9 @@ function MintSuccessView({
       {isMetaMaskInApp ? (
         <div className="text-center max-w-xs space-y-2">
           <p className="text-amber-400 text-sm font-semibold">
-            Close this MetaMask browser and open nasun.io in Chrome to check
-            your Genesis Pass.
+            Close this MetaMask browser and open nasun.io in{" "}
+            {/iPhone|iPad|iPod/i.test(navigator.userAgent) ? "Safari" : "Chrome"}{" "}
+            to check your Genesis Pass.
           </p>
           <p className="text-nasun-white/40 text-xs">
             MetaMask in-app browser does not support full site navigation.

@@ -20,9 +20,13 @@ export default function NftDropPage() {
       document.documentElement.classList.remove("genesis-drop-theme");
   }, []);
 
-  // Dev-only: ?stage=1 to override contract stage for UI testing
+  // Dev-only: ?stage=N to override UI display stage for testing (0-4 only, does not affect mint logic)
   const stageOverride = isDev ? searchParams.get("stage") : null;
-  const effectiveStage = stageOverride != null ? Number(stageOverride) : currentStage;
+  const parsedOverride = stageOverride != null ? Number(stageOverride) : NaN;
+  const effectiveStage =
+    !isNaN(parsedOverride) && parsedOverride >= 0 && parsedOverride <= 4
+      ? parsedOverride
+      : currentStage;
 
   return (
     <>
