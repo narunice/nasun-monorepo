@@ -158,7 +158,34 @@ export class GenesisPassStack extends cdk.Stack {
       description: "Current minting stage (0=PAUSED, 1=FREE_MINT, 2=GTD, 3=FCFS, 4=PUBLIC)",
     });
 
-    // 3.2 Check Lambda (public, no auth)
+    // 3.2 Sync Stage Lambda (JWT-authorized, admin only)
+    const syncStageLogGroup = new logs.LogGroup(this, "SyncStageLogGroup", {
+      logGroupName: "/aws/lambda/nasun-genesis-pass-sync-stage",
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const syncStageLambda = new NodejsFunction(this, "SyncStageLambda", {
+      functionName: "nasun-genesis-pass-sync-stage",
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(lambdaSrcPath, "sync-stage", "src", "index.ts"),
+      handler: "handler",
+      depsLockFilePath,
+      bundling: bundlingOptions,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logGroup: syncStageLogGroup,
+      environment: {
+        STAGE_PARAM_NAME: stageParameter.parameterName,
+        ADMIN_IDENTITY_IDS: process.env.ADMIN_IDENTITY_IDS || "",
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: "--enable-source-maps",
+      },
+    });
+
+    stageParameter.grantWrite(syncStageLambda);
+
+    // 3.3 Check Lambda (public, no auth)
     const checkLambda = new NodejsFunction(this, "CheckLambda", {
       functionName: "nasun-genesis-pass-check",
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -367,6 +394,15 @@ export class GenesisPassStack extends cdk.Stack {
     checkResource.addMethod(
       "GET",
       new apigateway.LambdaIntegration(checkLambda, { proxy: true })
+    );
+
+    // POST /genesis-pass/admin/sync-stage (JWT required, admin only)
+    const adminResource = genesisPassResource.addResource("admin");
+    const syncStageResource = adminResource.addResource("sync-stage");
+    syncStageResource.addMethod(
+      "POST",
+      new apigateway.LambdaIntegration(syncStageLambda, { proxy: true }),
+      authOptions,
     );
 
     // ========== 5. CloudFormation Outputs ==========
