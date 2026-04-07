@@ -10,6 +10,7 @@ import {
   useZkLogin,
   useZkLoginCallback,
   type ZkLoginState,
+  type ProverProgressEvent,
 } from '@nasun/wallet';
 
 export interface ZkLoginCallbackProps {
@@ -25,12 +26,13 @@ export interface ZkLoginCallbackProps {
   errorComponent?: (error: string, retry: () => void) => React.ReactNode;
 }
 
-type Step = 'verifying' | 'fetching_salt' | 'generating_proof' | 'complete' | 'error';
+type Step = 'verifying' | 'fetching_salt' | 'generating_proof' | 'generating_proof_fallback' | 'complete' | 'error';
 
 const stepLabels: Record<Step, string> = {
   verifying: 'Verifying login...',
   fetching_salt: 'Creating address...',
   generating_proof: 'Generating proof...',
+  generating_proof_fallback: 'Retrying with backup prover...',
   complete: 'Welcome!',
   error: 'Something went wrong',
 };
@@ -38,7 +40,8 @@ const stepLabels: Record<Step, string> = {
 const stepProgress: Record<Step, number> = {
   verifying: 20,
   fetching_salt: 40,
-  generating_proof: 70,
+  generating_proof: 60,
+  generating_proof_fallback: 80,
   complete: 100,
   error: 0,
 };
@@ -55,6 +58,7 @@ export function ZkLoginCallback({
 
   const [step, setStep] = useState<Step>('verifying');
   const [error, setError] = useState<string | null>(null);
+  const [usedFallback, setUsedFallback] = useState(false);
   const isProcessingRef = useRef(false);
 
   const processCallback = async () => {
@@ -72,7 +76,14 @@ export function ZkLoginCallback({
       // Step 2: Generate proof (this includes fetching salt)
       setStep('generating_proof');
 
-      const state = await handleCallback(jwt);
+      const onProverProgress = (event: ProverProgressEvent) => {
+        if (event.phase === 'fallback') {
+          setUsedFallback(true);
+          setStep('generating_proof_fallback');
+        }
+      };
+
+      const state = await handleCallback(jwt, { onProverProgress });
 
       // Step 3: Complete
       setStep('complete');
@@ -232,6 +243,12 @@ export function ZkLoginCallback({
           label="Generating zero-knowledge proof"
           status={getStepStatus('generating_proof', step)}
         />
+        {(step === 'generating_proof_fallback' || (step === 'complete' && usedFallback)) && (
+          <StepIndicator
+            label="Using backup prover (high traffic)"
+            status={getStepStatus('generating_proof_fallback', step)}
+          />
+        )}
       </div>
 
       {/* Privacy note during proof generation */}
@@ -246,6 +263,17 @@ export function ZkLoginCallback({
           </p>
         </div>
       )}
+      {step === 'generating_proof_fallback' && (
+        <div className="mt-6 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 max-w-sm text-center">
+          <p className="text-xs xl:text-sm text-amber-800 dark:text-amber-200 leading-relaxed text-pretty">
+            Our prover is busy. Using a public backup prover by Mysten Labs.
+            <br />
+            <span className="text-amber-600 dark:text-amber-400">
+              Your login token is sent to their server to generate the proof.
+            </span>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -253,7 +281,7 @@ export function ZkLoginCallback({
 type StepStatus = 'pending' | 'active' | 'complete';
 
 function getStepStatus(targetStep: Step, currentStep: Step): StepStatus {
-  const order: Step[] = ['verifying', 'fetching_salt', 'generating_proof', 'complete'];
+  const order: Step[] = ['verifying', 'fetching_salt', 'generating_proof', 'generating_proof_fallback', 'complete'];
   const targetIndex = order.indexOf(targetStep);
   const currentIndex = order.indexOf(currentStep);
 
