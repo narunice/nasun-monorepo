@@ -36,20 +36,9 @@ const PROD_STAGE_START_TIMES: Record<number, Date> = {
 };
 const PROD_MINT_CLOSE_TIME = new Date("2026-04-14T15:00:00Z");
 
-// Staging schedule: 1-hour intervals for testing (2026-04-07 KST 11:00~15:00)
-const STAGING_STAGE_START_TIMES: Record<number, Date> = {
-  1: new Date("2026-04-07T02:00:00Z"), // KST 11:00
-  2: new Date("2026-04-07T03:00:00Z"), // KST 12:00
-  3: new Date("2026-04-07T04:00:00Z"), // KST 13:00
-  4: new Date("2026-04-07T05:00:00Z"), // KST 14:00
-};
-const STAGING_MINT_CLOSE_TIME = new Date("2026-04-07T06:00:00Z"); // KST 15:00
-
-// import.meta.env.PROD is true for ANY `vite build` (including --mode development).
-// Use MODE to distinguish staging (development mode build) from production.
-const IS_PROD = import.meta.env.MODE === "production";
-export const STAGE_START_TIMES = IS_PROD ? PROD_STAGE_START_TIMES : STAGING_STAGE_START_TIMES;
-export const MINT_CLOSE_TIME = IS_PROD ? PROD_MINT_CLOSE_TIME : STAGING_MINT_CLOSE_TIME;
+// Staging now uses the same schedule as production
+export const STAGE_START_TIMES = PROD_STAGE_START_TIMES;
+export const MINT_CLOSE_TIME = PROD_MINT_CLOSE_TIME;
 
 // Shared countdown helpers
 
