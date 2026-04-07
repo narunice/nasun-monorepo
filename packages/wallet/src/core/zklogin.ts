@@ -37,8 +37,17 @@ import { ZkLoginError } from '../types/zklogin';
 // Configuration
 // ============================================
 
-/** Default prover URL (self-hosted on nasun-node-1) */
+/** Default prover URL (self-hosted) */
 const DEFAULT_PROVER_URL = 'https://rpc.devnet.nasun.io/zkprover/v1';
+
+/** Mysten Labs public prover (fallback when self-hosted prover is overloaded) */
+const FALLBACK_PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
+
+/** Primary prover timeout (ms). Short enough to fail fast and try fallback. */
+const PROVER_TIMEOUT_MS = 30_000;
+
+/** Fallback prover timeout (ms). More generous since it's the last resort. */
+const FALLBACK_PROVER_TIMEOUT_MS = 60_000;
 
 /** Session storage key for zkLogin session */
 const ZKLOGIN_SESSION_KEY = 'nasun:zklogin:session';
@@ -530,7 +539,50 @@ export interface FetchZkProofResult {
 }
 
 /**
+ * Call a single prover endpoint with timeout and abort support.
+ */
+async function callProver(
+  proverUrl: string,
+  body: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  // Propagate external abort (e.g. user navigated away)
+  const onExternalAbort = () => controller.abort();
+  signal?.addEventListener('abort', onExternalAbort);
+  if (signal?.aborted) controller.abort();
+
+  try {
+    const response = await fetch(proverUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text);
+    }
+    return response;
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', onExternalAbort);
+  }
+}
+
+/** Event emitted during proof generation to report progress. */
+export type ProverProgressEvent =
+  | { phase: 'primary' }
+  | { phase: 'fallback'; reason: string };
+
+/**
  * Fetch ZK proof from prover service (Step 4b)
+ *
+ * Tries the self-hosted prover first. On timeout, capacity error, or network
+ * failure, automatically falls back to the Mysten Labs public prover.
  */
 export async function fetchZkProof(params: {
   jwt: string;
@@ -538,8 +590,12 @@ export async function fetchZkProof(params: {
   ephemeralPrivateKey: string;
   maxEpoch: number;
   randomness: string;
+  /** Optional abort signal (e.g. component unmount) */
+  signal?: AbortSignal;
+  /** Optional progress callback so UI can show fallback status */
+  onProgress?: (event: ProverProgressEvent) => void;
 }): Promise<FetchZkProofResult> {
-  const proverUrl = zkLoginConfig?.proverUrl || DEFAULT_PROVER_URL;
+  const primaryUrl = zkLoginConfig?.proverUrl || DEFAULT_PROVER_URL;
 
   // Reconstruct keypair from private key (decode bech32 format)
   const { secretKey } = decodeSuiPrivateKey(params.ephemeralPrivateKey);
@@ -550,26 +606,53 @@ export async function fetchZkProof(params: {
   // Get extended ephemeral public key
   const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(publicKey);
 
-  const response = await fetch(proverUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jwt: params.jwt,
-      extendedEphemeralPublicKey: extendedEphemeralPublicKey.toString(),
-      maxEpoch: params.maxEpoch,
-      jwtRandomness: params.randomness,
-      salt: params.salt,
-      keyClaimName: 'sub',
-    }),
+  const body = JSON.stringify({
+    jwt: params.jwt,
+    extendedEphemeralPublicKey: extendedEphemeralPublicKey.toString(),
+    maxEpoch: params.maxEpoch,
+    jwtRandomness: params.randomness,
+    salt: params.salt,
+    keyClaimName: 'sub',
   });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new ZkLoginError('PROVER_FAILED', `Prover error: ${error}`);
+  // Try primary (self-hosted) prover
+  params.onProgress?.({ phase: 'primary' });
+  let response: Response;
+  try {
+    response = await callProver(primaryUrl, body, PROVER_TIMEOUT_MS, params.signal);
+  } catch (primaryErr) {
+    // If the caller aborted (navigation, unmount), don't fallback
+    if (params.signal?.aborted) {
+      throw new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled');
+    }
+
+    const reason = primaryErr instanceof DOMException && primaryErr.name === 'AbortError'
+      ? 'Primary prover timed out'
+      : primaryErr instanceof Error ? primaryErr.message : 'Primary prover unavailable';
+
+    // Fallback to Mysten public prover
+    params.onProgress?.({ phase: 'fallback', reason });
+    try {
+      response = await callProver(FALLBACK_PROVER_URL, body, FALLBACK_PROVER_TIMEOUT_MS, params.signal);
+    } catch (fallbackErr) {
+      if (params.signal?.aborted) {
+        throw new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled');
+      }
+      // Log details for debugging but show generic message to user
+      console.error('[zkLogin] All provers failed.', { primary: reason, fallback: fallbackErr });
+      throw new ZkLoginError(
+        'PROVER_FAILED',
+        'Proof generation failed. All provers are currently unavailable. Please try again later.',
+      );
+    }
   }
 
-  const proof = await response.json() as ProverResponse;
-
+  let proof: ProverResponse;
+  try {
+    proof = await response.json() as ProverResponse;
+  } catch {
+    throw new ZkLoginError('PROVER_FAILED', 'Prover returned invalid response');
+  }
   return { proof, ephemeralPublicKey: publicKeyBase64 };
 }
 
@@ -668,7 +751,10 @@ export function clearZkLoginReturnUrl(): void {
  * Complete zkLogin flow after OAuth callback
  * Returns the complete zkLogin state
  */
-export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
+export async function completeZkLogin(
+  jwt: string,
+  options?: { signal?: AbortSignal; onProverProgress?: (event: ProverProgressEvent) => void },
+): Promise<ZkLoginState> {
   // 1. Get saved session
   const session = getZkLoginSession();
   if (!session) {
@@ -687,13 +773,15 @@ export async function completeZkLogin(jwt: string): Promise<ZkLoginState> {
   // 5. Compute address seed locally
   const localAddressSeed = computeAddressSeed(jwt, saltResponse.salt);
 
-  // 6. Fetch ZK proof
+  // 6. Fetch ZK proof (with fallback to public prover)
   const proofResult = await fetchZkProof({
     jwt,
     salt: saltResponse.salt,
     ephemeralPrivateKey: session.ephemeralPrivateKey,
     maxEpoch: session.maxEpoch,
     randomness: session.randomness,
+    signal: options?.signal,
+    onProgress: options?.onProverProgress,
   });
 
   // Use prover's addressSeed if available, otherwise use locally computed

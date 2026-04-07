@@ -20,6 +20,7 @@ import {
   signWithZkLogin,
   validateOAuthCsrfState,
   clearOAuthCsrfState,
+  type ProverProgressEvent,
 } from '../core/zklogin';
 import { useZkLoginStore } from '../stores/zkLoginStore';
 import { useChainStore } from './useChain';
@@ -60,7 +61,7 @@ export interface UseZkLoginResult {
   /** Start zkLogin flow with a provider */
   login: (provider: ZkLoginProvider) => Promise<void>;
   /** Complete zkLogin after OAuth callback */
-  handleCallback: (jwt: string) => Promise<ZkLoginState>;
+  handleCallback: (jwt: string, options?: { onProverProgress?: (event: ProverProgressEvent) => void }) => Promise<ZkLoginState>;
   /** Disconnect and clear all zkLogin state */
   logout: () => void;
   /** Sign transaction bytes with zkLogin */
@@ -140,9 +141,9 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
 
   // Callback handler mutation (complete OAuth flow)
   const callbackMutation = useMutation({
-    mutationFn: async (jwt: string) => {
+    mutationFn: async ({ jwt, onProverProgress }: { jwt: string; onProverProgress?: (event: ProverProgressEvent) => void }) => {
       setStoreError(null);
-      return completeZkLogin(jwt);
+      return completeZkLogin(jwt, { onProverProgress });
     },
     onSuccess: (newState) => {
       // Update store state (completeZkLogin already saved to sessionStorage)
@@ -167,8 +168,8 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
   }, [loginMutation]);
 
   // Handle OAuth callback
-  const handleCallback = useCallback(async (jwt: string): Promise<ZkLoginState> => {
-    return callbackMutation.mutateAsync(jwt);
+  const handleCallback = useCallback(async (jwt: string, options?: { onProverProgress?: (event: ProverProgressEvent) => void }): Promise<ZkLoginState> => {
+    return callbackMutation.mutateAsync({ jwt, onProverProgress: options?.onProverProgress });
   }, [callbackMutation]);
 
   // Logout function
