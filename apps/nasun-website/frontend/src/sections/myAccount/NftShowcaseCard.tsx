@@ -50,6 +50,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     isApplied: isGenesisPassApplied,
     isLoading: isGenesisPassLoading,
     isConfigured: isGenesisPassConfigured,
+    mintType: genesisPassMintType,
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
   // Direct on-chain ownership check
@@ -254,18 +255,33 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                   )}
                 </div>
               ) : genesisIsActive ? null : isGenesisPassRegistered ? (
-                <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
-                  You are in the allowlist.
+                <span className="text-teal-400 text-lg font-semibold text-center px-4">
+                  {genesisPassMintType === "FREE_MINT"
+                    ? "You are in the Free Mint allowlist."
+                    : genesisPassMintType === "GUARANTEED"
+                      ? "You are in the GTD allowlist."
+                      : "You are in the FCFS allowlist."}
                 </span>
               ) : isGenesisPassApplied ? (
-                <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
+                <span className="text-nasun-white/60 text-base font-medium text-center px-4">
                   You applied to the allowlist.
                 </span>
               ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
-                    Get your Genesis Pass to earn bonus ecosystem points.
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-teal-400 text-lg font-semibold">
+                    Final Call
                   </span>
+                  <span className="text-nasun-white/60 text-base text-center px-4">
+                    Allowlist is closing soon
+                  </span>
+                  <ButtonV3
+                    onClick={() => navigate("/wave1/genesis-pass")}
+                    variant="nw2"
+                    size="sm"
+                    className="mt-1"
+                  >
+                    Join Allowlist
+                  </ButtonV3>
                 </div>
               )}
             </div>
