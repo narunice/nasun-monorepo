@@ -112,6 +112,7 @@ export class GenesisPassStack extends cdk.Stack {
         "@aws-sdk/client-dynamodb",
         "@aws-sdk/lib-dynamodb",
         "@aws-sdk/util-dynamodb",
+        "@aws-sdk/client-ssm",
       ],
     };
 
@@ -149,6 +150,13 @@ export class GenesisPassStack extends cdk.Stack {
       })
     );
 
+    // SSM Parameter for current minting stage
+    const stageParameter = new ssm.StringParameter(this, "CurrentStageParameter", {
+      parameterName: "/nasun/genesis-pass/current-stage",
+      stringValue: "0", // PAUSED by default
+      description: "Current minting stage (0=PAUSED, 1=FREE_MINT, 2=GTD, 3=FCFS, 4=PUBLIC)",
+    });
+
     // 3.2 Check Lambda (public, no auth)
     const checkLambda = new NodejsFunction(this, "CheckLambda", {
       functionName: "nasun-genesis-pass-check",
@@ -162,12 +170,14 @@ export class GenesisPassStack extends cdk.Stack {
       logGroup: checkLogGroup,
       environment: {
         ALLOWLIST_TABLE_NAME: this.allowlistTable.tableName,
+        STAGE_PARAM_NAME: stageParameter.parameterName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
     });
 
     this.allowlistTable.grantReadData(checkLambda);
+    stageParameter.grantRead(checkLambda);
 
     // 3.3 Authorizer Lambda (Cognito JWT verification)
     const authorizerLambda = new NodejsFunction(this, "AuthorizerLambda", {
@@ -201,12 +211,6 @@ export class GenesisPassStack extends cdk.Stack {
       logGroupName: "/aws/lambda/nasun-genesis-pass-mint-signature",
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const stageParameter = new ssm.StringParameter(this, "CurrentStageParameter", {
-      parameterName: "/nasun/genesis-pass/current-stage",
-      stringValue: "0", // PAUSED by default
-      description: "Current minting stage (0=PAUSED, 1=FREE_MINT, 2=GTD, 3=FCFS, 4=PUBLIC)",
     });
 
     const mintSignatureLambda = new NodejsFunction(this, "MintSignatureLambda", {

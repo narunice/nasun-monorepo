@@ -31,7 +31,12 @@ export interface GenesisPassCheckResponse {
     walletAddress?: string;
     registeredAt?: string;
     walletConflict?: boolean;
-    mintType?: string;
+    mintType?: string | null;
+    eligibleStage?: number;
+    eligibleStageLabel?: string;
+    currentStage?: number;
+    currentStageLabel?: string;
+    eligible?: boolean;
   };
 }
 

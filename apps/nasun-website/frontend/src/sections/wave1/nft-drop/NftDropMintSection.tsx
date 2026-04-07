@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount, useChainId } from "wagmi";
@@ -14,6 +14,7 @@ import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { EditionCarousel } from "./EditionCarousel";
 import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
 import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
+import { checkGenesisPass } from "@/services/genesisPassApi";
 
 function getEtherscanUrl(chainId: number, txHash: string): string {
   if (chainId === 11155111) return `https://sepolia.etherscan.io/tx/${txHash}`;
@@ -178,6 +179,35 @@ export function NftDropMintSection({
 
   const { hasMinted: alreadyOwns } = useGenesisPassOwnership(address);
 
+  // Eligibility check via /genesis-pass/check API
+  const [eligibility, setEligibility] = useState<{
+    eligible: boolean;
+    registered: boolean;
+    eligibleStageLabel?: string;
+    currentStageLabel?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!address || !isConnected) {
+      setEligibility(null);
+      return;
+    }
+    let cancelled = false;
+    checkGenesisPass(address).then((res) => {
+      if (cancelled) return;
+      const d = res.data;
+      setEligibility({
+        eligible: d.eligible ?? false,
+        registered: d.registered,
+        eligibleStageLabel: d.eligibleStageLabel,
+        currentStageLabel: d.currentStageLabel,
+      });
+    }).catch(() => {
+      if (!cancelled) setEligibility(null);
+    });
+    return () => { cancelled = true; };
+  }, [address, isConnected, currentStage]);
+
   const isPaused = currentStage === 0;
   const isFree = currentStage === 1;
   const isDropEnded = isPaused && Date.now() >= MINT_CLOSE_TIME.getTime();
@@ -312,6 +342,23 @@ export function NftDropMintSection({
           <div className="text-center py-4">
             <p className="text-nasun-white/80 text-lg font-medium">
               Minting starts soon.
+            </p>
+          </div>
+        ) : eligibility && !eligibility.eligible && currentStage !== 4 ? (
+          <div
+            className="rounded-2xl border border-amber-400/20 px-8 py-8 text-center max-w-lg"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(249,168,36,0.06) 0%, rgba(249,168,36,0.02) 100%)",
+            }}
+          >
+            <p className="text-amber-300 text-lg font-semibold mb-2">
+              Not eligible for this stage
+            </p>
+            <p className="text-nasun-white/70 text-sm leading-relaxed">
+              {eligibility.registered
+                ? `Your wallet is registered for ${eligibility.eligibleStageLabel}. Current stage is ${eligibility.currentStageLabel}.`
+                : "Your wallet is not on the allowlist for this stage."}
             </p>
           </div>
         ) : (
