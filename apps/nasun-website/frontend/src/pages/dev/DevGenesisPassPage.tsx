@@ -942,7 +942,7 @@ const DevGenesisPassPage = () => {
             {/* CTA */}
             <div className="flex flex-col items-center gap-12 py-8">
               <div className="mx-auto max-w-sm space-y-1 ">
-                <p>• $10 Allowlist GTD Full</p>
+                <p>• $8 Allowlist GTD Full</p>
                 <p>• $10 Allowlist FCFS</p>
                 <p>• $15 Public Sale</p>
               </div>
