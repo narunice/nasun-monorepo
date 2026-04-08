@@ -50,6 +50,12 @@ if (isNaN(CHAIN_ID_NUM)) {
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://nasun.io").split(",").map((o) => o.trim());
 
+// Admin wallets that can mint more than the default maxQuantity per stage
+const ADMIN_WALLETS: Set<string> = new Set(
+  (process.env.ADMIN_WALLETS || "").split(",").map((w) => w.trim().toLowerCase()).filter(Boolean)
+);
+const ADMIN_MAX_QUANTITY = parseInt(process.env.ADMIN_MAX_QUANTITY || "16", 10);
+
 // ── Mint configuration (server-side, fail-closed) ──
 
 const MINT_CONFIG: Record<string, { stage: number; maxQuantity: number }> = {
@@ -207,7 +213,13 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return jsonResponse(500, { success: false, error: "INTERNAL_ERROR", message: "Internal error" }, origin);
     }
 
-    // 5. Verify current stage matches user's derived stage
+    // 5. Override maxQuantity for admin wallets
+    if (ADMIN_WALLETS.has(normalizedAddress)) {
+      console.log(`[mint-signature] Admin wallet detected: ${normalizedAddress}, maxQuantity=${ADMIN_MAX_QUANTITY}`);
+      mintConfig = { ...mintConfig, maxQuantity: ADMIN_MAX_QUANTITY };
+    }
+
+    // 6. Verify current stage matches user's derived stage
     const currentStage = await getCurrentStage();
     if (String(mintConfig.stage) !== currentStage) {
       console.log(`[mint-signature] Stage mismatch: user=${mintConfig.stage}, current=${currentStage}`);

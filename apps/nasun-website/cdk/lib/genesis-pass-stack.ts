@@ -268,6 +268,8 @@ export class GenesisPassStack extends cdk.Stack {
         CHAIN_ID: chainId,
         STAGE_PARAM_NAME: stageParameter.parameterName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        ADMIN_WALLETS: process.env.GENESIS_PASS_ADMIN_WALLETS || "",
+        ADMIN_MAX_QUANTITY: process.env.GENESIS_PASS_ADMIN_MAX_QUANTITY || "16",
         NODE_OPTIONS: "--enable-source-maps",
       },
     });
