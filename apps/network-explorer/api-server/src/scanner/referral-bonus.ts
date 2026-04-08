@@ -25,6 +25,8 @@ import {
   REFERRAL_DAILY_BONUS_CAP,
   REFERRAL_CACHE_REFRESH_MS,
 } from '../config/referral.js';
+import { saveCache, loadCache } from './cache-persist.js';
+import { fetchWithOffload } from './fetch-with-offload.js';
 
 // Referral cache: referredIdentityId -> referrerIdentityId
 let referralCache = new Map<string, string>();
@@ -82,34 +84,29 @@ export async function maybeRefreshReferralCache(): Promise<void> {
   }
 
   try {
-    const headers: Record<string, string> = {};
-    if (apiKey) {
-      headers['x-api-key'] = apiKey;
-    }
-
-    const res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(15_000),
+    const data = await fetchWithOffload<{
+      referrals: Record<string, string>;
+    }>({
+      url,
+      apiKey,
+      label: 'Referral',
     });
 
-    if (!res.ok) {
-      console.error(
-        `[Referral] Cache refresh failed: ${res.status} ${res.statusText}`,
-      );
+    if (!data) {
+      if (referralCache.size === 0) {
+        const fallback = loadCache<{ referrals: Record<string, string> }>('referral-mappings');
+        if (fallback?.referrals) {
+          applyReferralData(fallback.referrals);
+          console.warn(`[Referral] Loaded from disk fallback: ${referralCache.size} relationships`);
+        }
+      }
       referralCacheLastRefresh = now;
       return;
     }
 
-    const data = await res.json();
-
-    if (data.referrals && typeof data.referrals === 'object') {
-      const newMap = new Map<string, string>();
-      for (const [referredId, referrerId] of Object.entries(data.referrals)) {
-        if (typeof referredId === 'string' && typeof referrerId === 'string') {
-          newMap.set(referredId, referrerId);
-        }
-      }
-      referralCache = newMap;
+    if (data.referrals) {
+      applyReferralData(data.referrals);
+      saveCache('referral-mappings', data);
     }
 
     referralCacheLastRefresh = now;
@@ -118,7 +115,26 @@ export async function maybeRefreshReferralCache(): Promise<void> {
     );
   } catch (err) {
     console.error('[Referral] Cache refresh error:', err);
+    if (referralCache.size === 0) {
+      const fallback = loadCache<{ referrals: Record<string, string> }>('referral-mappings');
+      if (fallback?.referrals) {
+        applyReferralData(fallback.referrals);
+        console.warn(`[Referral] Loaded from disk fallback: ${referralCache.size} relationships`);
+      }
+    }
     referralCacheLastRefresh = now;
+  }
+}
+
+function applyReferralData(referrals: Record<string, string>): void {
+  if (referrals && typeof referrals === 'object') {
+    const newMap = new Map<string, string>();
+    for (const [referredId, referrerId] of Object.entries(referrals)) {
+      if (typeof referredId === 'string' && typeof referrerId === 'string') {
+        newMap.set(referredId, referrerId);
+      }
+    }
+    referralCache = newMap;
   }
 }
 

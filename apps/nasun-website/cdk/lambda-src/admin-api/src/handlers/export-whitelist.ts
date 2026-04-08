@@ -12,6 +12,7 @@ import {
 import { verifyAdminRole, extractIdentityIdFromAuthorizer, verifyTokenManually } from "../utils/auth.js";
 import { generateCSV, generateFilename } from "../utils/csv.js";
 import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResponse } from "../utils/response.js";
+import { uploadAndPresign } from "../utils/s3-offload.js";
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -632,8 +633,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         gpLastKey = result.LastEvaluatedKey;
       } while (gpLastKey);
 
+      const payload = { wallets, genesisPass };
       console.log(`[internal] Wallet mappings: ${Object.keys(wallets).length} wallets, ${genesisPass.length} genesis pass holders`);
-      return jsonResponse(200, { wallets, genesisPass }, requestOrigin);
+
+      // Offload to S3 to avoid Lambda 6MB response limit
+      const url = await uploadAndPresign("internal/wallet-mappings.json.gz", payload);
+      return jsonResponse(200, { url }, requestOrigin);
     }
 
     // Internal endpoint: GET /internal/referral-mappings (API key auth, no Cognito)
@@ -695,11 +700,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         refLastKey = result.LastEvaluatedKey;
       } while (refLastKey);
 
-      console.log(`[internal] Referral mappings: ${totalRelationships} total, ${totalActivated} activated (returned), ${totalExpired} expired (filtered)`);
-      return jsonResponse(200, {
+      const payload = {
         referrals,
         stats: { totalRelationships, totalActivated },
-      }, requestOrigin);
+      };
+      console.log(`[internal] Referral mappings: ${totalRelationships} total, ${totalActivated} activated (returned), ${totalExpired} expired (filtered)`);
+
+      // Offload to S3 to avoid Lambda 6MB response limit
+      const url = await uploadAndPresign("internal/referral-mappings.json.gz", payload);
+      return jsonResponse(200, { url }, requestOrigin);
     }
 
     // Internal endpoint: POST /internal/referral-activate (API key auth, no Cognito)
@@ -808,8 +817,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         actLastKey = result.LastEvaluatedKey;
       } while (actLastKey);
 
+      const payload = { activations };
       console.log(`[internal] Ecosystem activations: ${totalActive} active across ${Object.keys(activations).length} users`);
-      return jsonResponse(200, { activations }, requestOrigin);
+
+      // Offload to S3 to avoid Lambda 6MB response limit
+      const url = await uploadAndPresign("internal/ecosystem-activations.json.gz", payload);
+      return jsonResponse(200, { url }, requestOrigin);
     }
 
     // Internal endpoint: GET /internal/ecosystem-activations/{identityId} (API key auth)

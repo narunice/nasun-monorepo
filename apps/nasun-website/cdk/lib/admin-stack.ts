@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
@@ -126,6 +127,23 @@ export class AdminStack extends cdk.Stack {
       throw new Error('VITE_COGNITO_IDENTITY_POOL_ID environment variable is required for AdminStack');
     }
 
+    // S3 bucket for internal API payload offload (wallet-mappings, referral-mappings, etc.)
+    // Avoids Lambda 6MB response size limit by uploading data to S3 and returning presigned URLs.
+    const internalCacheBucket = new s3.Bucket(this, "InternalCacheBucket", {
+      bucketName: `nasun-internal-cache-${this.account}`,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      lifecycleRules: [
+        {
+          // Auto-expire cached files after 1 day (presigned URLs expire in 10 min,
+          // but keep the data briefly for debugging)
+          expiration: cdk.Duration.days(1),
+          prefix: "internal/",
+        },
+      ],
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+    });
+
     // Admin Export Lambda
     this.exportFunction = new NodejsFunction(this, "AdminExportFunction", {
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -146,6 +164,7 @@ export class AdminStack extends cdk.Stack {
         REFERRAL_CODES_TABLE: referralCodesTableName,
         REFERRALS_TABLE: referralsTableName,
         ACTIVATIONS_TABLE: activationsTableName,
+        INTERNAL_CACHE_BUCKET: internalCacheBucket.bucketName,
         ALLOWED_ORIGINS: allowedOrigins,
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
@@ -155,6 +174,12 @@ export class AdminStack extends cdk.Stack {
         target: "node22",
         format: OutputFormat.ESM,
         mainFields: ["module", "main"],
+        externalModules: [
+          "@aws-sdk/client-dynamodb",
+          "@aws-sdk/lib-dynamodb",
+          "@aws-sdk/client-s3",
+          "@aws-sdk/s3-request-presigner",
+        ],
       },
     });
 
@@ -169,6 +194,7 @@ export class AdminStack extends cdk.Stack {
     referralCodesTable.grantReadData(this.exportFunction);
     referralsTable.grantReadData(this.exportFunction);
     activationsTable.grantReadData(this.exportFunction);
+    internalCacheBucket.grantReadWrite(this.exportFunction);
 
     // Grant permission to query GSI (batch-index + referrerIdentityId-index)
     this.exportFunction.addToRolePolicy(
