@@ -175,29 +175,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
             </div>
           )}
 
-          {/* Withdraw Genesis Pass Allowlist */}
-          {isGenesisPassConfigured && (isGenesisPassRegistered || isGenesisPassApplied) && (
-            <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
-              <div>
-                <h6 className="font-medium text-nasun-white mb-1">
-                  {isGenesisPassApplied ? "Cancel Application" : "Withdraw Genesis Pass"}
-                </h6>
-                <p className="text-nasun-white/50 text-sm">
-                  {isGenesisPassApplied
-                    ? "Cancel your Genesis Pass allowlist application. You can re-apply later."
-                    : "Remove your EVM wallet from the Genesis Pass NFT allowlist. You can re-apply later."}
-                </p>
-              </div>
-              <Button
-                onClick={() => setShowGenesisWithdrawDialog(true)}
-                variant="outlineScarlet"
-                size="sm"
-                className="text-red-600 self-start"
-              >
-                {isGenesisPassApplied ? "Cancel" : "Withdraw"}
-              </Button>
-            </div>
-          )}
+          {/* Genesis Pass Allowlist - closed, withdraw no longer available */}
 
           {/* Delete Account */}
           <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
