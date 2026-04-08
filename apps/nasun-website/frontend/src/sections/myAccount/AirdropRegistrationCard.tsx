@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { GiParachute } from "react-icons/gi";
 import { useAirdropRegistration } from "./hooks/useAirdropRegistration";
 
 interface AirdropRegistrationCardProps {
@@ -89,6 +90,15 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
         </div>
       )}
 
+      {/* Genesis Pass highlight */}
+      <div className="flex items-center justify-center gap-2 mt-2 bg-teal-100 rounded-md px-3 py-2">
+        <GiParachute className="text-teal-700 text-lg md:text-xl shrink-0" />
+        <h6 className="font-normal text-black">
+          <span className="font-semibold">90%</span> of Airdrop Points go to{" "}
+          <span className="font-semibold">Genesis Pass</span> holders.
+        </h6>
+      </div>
+
       {/* Error message */}
       {error && <p className="text-red-400 text-xs">{error}</p>}
 
@@ -147,7 +157,7 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
   if (bare) {
     return (
       <div
-        className={`border border-dashed border-nasun-white/10 rounded-lg p-4 ${className}`}
+        className={`border border-teal-400/60 bg-teal-900/30 rounded-lg p-4 ${className}`}
       >
         {content}
       </div>
@@ -155,7 +165,11 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox
+      color="c5"
+      padding="sm"
+      className={`!border-teal-400/60 !bg-teal-900/30 ${className}`}
+    >
       {content}
     </OuterBox>
   );
