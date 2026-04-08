@@ -107,14 +107,22 @@ const FeaturedNftDetailModal: FC<{
         <div className="rounded-2xl overflow-hidden bg-gray-900 border border-emerald-500/30 shadow-[0_0_60px_rgba(16,185,129,0.1)]">
           {/* Video / Image area */}
           <div className="relative aspect-square bg-black overflow-hidden">
-            <video
-              ref={videoRef}
-              src={edition ? getEditionVideoUrl(edition.name) : "/videos/genesispass-encoded-web/colony-web.mp4"}
-              muted
-              loop
-              playsInline
-              className="w-full h-full object-cover"
-            />
+            {edition ? (
+              <video
+                ref={videoRef}
+                src={getEditionVideoUrl(edition.name)}
+                muted
+                loop
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <img
+                src={nft.thumbnailUrl || nft.imageUrl}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
+            )}
 
             {/* Edition badge */}
             {edition && (
@@ -247,14 +255,20 @@ const FeaturedNftCard: FC<{
           </div>
         ) : (
           <div className="w-full aspect-square bg-gray-900 overflow-hidden relative">
-            <video
-              src={edition ? getEditionVideoUrl(edition.name) : "/videos/genesispass-encoded-web/colony-web.mp4"}
-              muted
-              loop
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
+            {edition ? (
+              <video
+                src={getEditionVideoUrl(edition.name)}
+                muted
+                loop
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                <span className="text-gray-500 text-sm">No preview</span>
+              </div>
+            )}
           </div>
         )}
 
