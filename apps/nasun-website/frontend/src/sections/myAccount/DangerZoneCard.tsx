@@ -156,7 +156,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
       <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase mb-5">{t("accountManagement.title")}</h5>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4">
           {/* Withdraw Battalion NFT Allowlist */}
           {isBattalionRegistered && (
             <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
