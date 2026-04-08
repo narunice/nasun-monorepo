@@ -44,9 +44,15 @@ export function useGenesisPassOwnership(walletAddress: string | undefined) {
     ? TOKEN_IDS.find((_, i) => balances[i] > 0n)
     : undefined;
 
+  // All owned edition IDs (for multi-NFT enrichment)
+  const ownedEditionIds = balances
+    ? TOKEN_IDS.filter((_, i) => balances[i] > 0n).map(Number)
+    : [];
+
   return {
     hasMinted,
     isLoading,
     ownedEditionId: ownedEditionId != null ? Number(ownedEditionId) : undefined,
+    ownedEditionIds,
   };
 }
