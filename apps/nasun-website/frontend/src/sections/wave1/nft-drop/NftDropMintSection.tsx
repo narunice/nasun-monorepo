@@ -16,7 +16,7 @@ import {
 import { GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
 import { EditionCarousel } from "./EditionCarousel";
 import { useNftDropMint, useNftDropRead } from "@/hooks/useNftDrop";
-import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
+
 
 function getEtherscanUrl(chainId: number, txHash: string): string {
   if (chainId === 11155111) return `https://sepolia.etherscan.io/tx/${txHash}`;
@@ -79,6 +79,7 @@ function MintProgressOverlay({
 /** Success modal shown after mint completes */
 function MintSuccessDialog({
   open,
+  onClose,
   selectedId,
   txHash,
   chainId,
@@ -86,6 +87,7 @@ function MintSuccessDialog({
   isLoggedIn,
 }: {
   open: boolean;
+  onClose: () => void;
   selectedId: number | null;
   txHash?: `0x${string}`;
   chainId: number;
@@ -101,7 +103,7 @@ function MintSuccessDialog({
       {open && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
       )}
-      <Dialog open={open} modal={false}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }} modal={false}>
         <DialogContent
         className="max-w-sm sm:max-w-md max-h-[90dvh] overflow-y-auto bg-nasun-black border border-amber-400/20 p-0"
         onInteractOutside={(e) => e.preventDefault()}
@@ -204,6 +206,7 @@ export function NftDropMintSection({
   mintPrice,
 }: NftDropMintSectionProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [successDismissed, setSuccessDismissed] = useState(false);
   const { address } = useAccount();
   const chainId = useChainId();
   const { mintPriceWei, hasReachedLimit } = useNftDropRead();
@@ -216,10 +219,10 @@ export function NftDropMintSection({
     isConfirming,
     isSuccess,
     isLoggedIn,
+    isCooldown,
+    cooldownRemaining,
     clearError,
   } = useNftDropMint();
-
-  const { hasMinted: alreadyOwns } = useGenesisPassOwnership(address);
 
   const isFree = currentStage === 1;
 
@@ -232,13 +235,14 @@ export function NftDropMintSection({
 
   const handleMint = async () => {
     if (selectedId === null) return;
+    setSuccessDismissed(false);
     clearError();
     const price = isFree ? 0n : mintPriceWei || 0n;
     if (!isFree && price === 0n) return;
     await mint(selectedId, price, currentStage);
   };
 
-  const isBusy = isWriting || isFetchingSignature || isConfirming;
+  const isBusy = isWriting || isFetchingSignature || isConfirming || isCooldown;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-28">
@@ -253,7 +257,8 @@ export function NftDropMintSection({
 
       {/* Success modal */}
       <MintSuccessDialog
-        open={isSuccess}
+        open={isSuccess && !successDismissed}
+        onClose={() => setSuccessDismissed(true)}
         selectedId={selectedId}
         txHash={txHash}
         chainId={chainId}
@@ -284,7 +289,7 @@ export function NftDropMintSection({
         transition={{ delay: 0.7 }}
         className="mt-12 flex flex-col items-center gap-5"
       >
-        {isSuccess || alreadyOwns || hasReachedLimit ? (
+        {isSuccess || hasReachedLimit ? (
           <div className="flex flex-col items-center py-6 gap-5">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -356,15 +361,17 @@ export function NftDropMintSection({
               }
               onClick={handleMint}
             >
-              {isFetchingSignature
-                ? "Preparing mint..."
-                : isWriting
-                  ? "Confirm in wallet..."
-                  : isConfirming
-                    ? "Minting..."
-                    : selectedId === null
-                      ? "Select an Edition"
-                      : `Mint "${NFT_EDITIONS.find((e) => e.id === selectedId)?.name}"`}
+              {isCooldown
+                ? `Please wait ${cooldownRemaining}s`
+                : isFetchingSignature
+                  ? "Preparing mint..."
+                  : isWriting
+                    ? "Confirm in wallet..."
+                    : isConfirming
+                      ? "Minting..."
+                      : selectedId === null
+                        ? "Select an Edition"
+                        : `Mint "${NFT_EDITIONS.find((e) => e.id === selectedId)?.name}"`}
             </ButtonV3>
 
             {error && (

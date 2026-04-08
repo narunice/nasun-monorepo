@@ -5,6 +5,8 @@ import { GENESIS_PASS_ABI, GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pa
 import { requestMintSignature, GenesisPassApiError } from "@/services/genesisPassApi";
 import { useUserStore } from "@/store/userStore";
 
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
+
 function getContractAddress(chainId: number): `0x${string}` | undefined {
   const addr = GENESIS_PASS_ADDRESSES[chainId];
   return addr ? (addr as `0x${string}`) : undefined;
@@ -94,6 +96,8 @@ export function useNftDropMint() {
   const [error, setError] = useState<string | null>(null);
   const [isFetchingSignature, setIsFetchingSignature] = useState(false);
   const mintingRef = useRef(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   // Cache the last signature to reuse on MetaMask reject/failure (valid for 5 min)
   const sigCacheRef = useRef<{
@@ -110,6 +114,19 @@ export function useNftDropMint() {
   const { isLoading: isConfirming, isSuccess, isError: isReceiptError } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+
+  // Countdown timer for rate-limit cooldown
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const id = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+      setCooldownRemaining(remaining);
+      if (remaining <= 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldownUntil]);
+
+  const isCooldown = cooldownRemaining > 0;
 
   // Surface on-chain revert as user-facing error
   useEffect(() => {
@@ -208,7 +225,12 @@ export function useNftDropMint() {
             } catch (e) {
               if (e instanceof GenesisPassApiError) {
                 if (e.statusCode === 403) setError("Not eligible for current stage. The stage may have changed.");
-                else if (e.statusCode === 429 && e.errorCode === "RATE_LIMITED") setError("Please wait 60 seconds before requesting another signature.");
+                else if (e.statusCode === 429 && e.errorCode === "RATE_LIMITED") {
+                  const until = Date.now() + RATE_LIMIT_COOLDOWN_MS;
+                  setCooldownUntil(until);
+                  setCooldownRemaining(Math.ceil(RATE_LIMIT_COOLDOWN_MS / 1000));
+                  setError("Please wait 60 seconds before requesting another signature.");
+                }
                 else setError(e.message);
               } else if (e instanceof DOMException && e.name === "AbortError") {
                 setError("Request timed out. Please try again.");
@@ -267,6 +289,8 @@ export function useNftDropMint() {
     isConfirming,
     isSuccess,
     isLoggedIn: !!cognitoToken,
+    isCooldown,
+    cooldownRemaining,
     clearError: () => { setError(null); setTxHash(undefined); },
   };
 }
