@@ -105,13 +105,13 @@ function MintSuccessDialog({
       )}
       <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }} modal={false}>
         <DialogContent
-        className="max-w-sm sm:max-w-md max-h-[90dvh] overflow-y-auto bg-nasun-black border border-amber-400/20 p-0"
+        className="max-w-sm sm:max-w-md max-h-[85dvh] overflow-y-auto bg-nasun-black border border-amber-400/20 p-0 overscroll-contain touch-pan-y"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        {/* NFT visual */}
+        {/* NFT visual - capped height on mobile to leave room for text */}
         {edition && (
-          <div className="relative w-full aspect-square overflow-hidden">
+          <div className="relative w-full aspect-[4/3] max-h-[40dvh] overflow-hidden">
             <video
               src={getEditionVideoUrl(edition.name)}
               poster={getEditionPosterUrl(edition.name)}
