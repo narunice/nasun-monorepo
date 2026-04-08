@@ -57,8 +57,17 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     isLoading: isGenesisPassLoading,
     isConfigured: isGenesisPassConfigured,
     mintType: genesisPassMintType,
-    eligibleStage,
+    eligibleStage: serverEligibleStage,
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
+
+  // Derive eligibleStage from mintType if server doesn't provide it
+  const MINT_TYPE_TO_STAGE: Record<string, number> = {
+    FREE_MINT: 1,
+    GUARANTEED: 2,
+    FCFS: 3,
+  };
+  const eligibleStage =
+    serverEligibleStage ?? (genesisPassMintType ? MINT_TYPE_TO_STAGE[genesisPassMintType] ?? null : null);
 
   // Direct on-chain ownership check
   const { hasMinted: hasGenesisPassNft, ownedEditionId } =
@@ -160,11 +169,11 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     // Minting is live: show closing countdown
     if (publicIsLive) {
       countdownTarget = MINT_CLOSE_TIME;
-      countdownLabel = "Mint closes in";
+      countdownLabel = "Your mint closes in";
     } else {
       // User's allowlist stage is live, closes when next stage starts
       countdownTarget = STAGE_START_TIMES[currentStage + 1] ?? MINT_CLOSE_TIME;
-      countdownLabel = "Stage closes in";
+      countdownLabel = "Your mint closes in";
     }
   } else {
     // Minting not yet available: show opening countdown
@@ -172,7 +181,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
       stageUpcoming && STAGE_START_TIMES[eligibleStage!]
         ? STAGE_START_TIMES[eligibleStage!]
         : STAGE_START_TIMES[4];
-    countdownLabel = "Mint opens in";
+    countdownLabel = "Your mint opens in";
   }
 
   const timeLeft = countdownTarget ? calcTimeLeft(countdownTarget, now) : null;
@@ -237,7 +246,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 </div>
               ) : canMintNow ? (
                 /* User can mint right now: big "Mint now." + closing countdown */
-                <div className="flex flex-col items-center gap-1 px-4 text-center">
+                <div className="flex flex-col items-center gap-1 px-4 pt-4 text-center">
                   <h6 className="text-emerald-400 font-bold animate-pulse drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
                     Mint now.
                   </h6>
@@ -247,9 +256,11 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 </div>
               ) : isGenesisPassRegistered && mintTypeLabel ? (
                 /* In allowlist, stage upcoming */
-                <div className="flex flex-col items-center gap-1 px-4 text-center">
-                  <h6 className="text-amber-400 font-bold">
-                    You are in the {mintTypeLabel} allowlist.
+                <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
+                  <h6 className="font-bold">
+                    <span className="text-nasun-white">You are in</span>
+                    <br />
+                    <span className="text-amber-400">{mintTypeLabel} allowlist.</span>
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
                     <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
@@ -258,10 +269,10 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               ) : (
                 /* Not in allowlist, public not yet */
                 <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
-                  <h6 className="text-amber-400 font-bold">
-                    You can mint
+                  <h6 className="font-bold">
+                    <span className="text-nasun-white">You can mint in</span>
                     <br />
-                    in public stage.
+                    <span className="text-amber-400">public stage.</span>
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
                     <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
