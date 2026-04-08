@@ -299,7 +299,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                   <span className="text-green-400 text-sm">Activated</span>
                 ) : (
                   <span className="text-nasun-white/70 text-sm">
-                    {isMintClosed ? "Ready to activate" : "Activate after the drop ends"}
+                    {isMintClosed ? "Ready to activate" : "Minted"}
                   </span>
                 )}
                 <div className="flex gap-2">
