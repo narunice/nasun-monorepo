@@ -383,11 +383,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/wave1/alliance-nft",
           element: Pages.AllianceNft,
         },
-        {
-          name: "navigation.genesisPass",
-          path: "/wave1/genesis-pass",
-          element: Pages.GenesisPass,
-        },
+        // Allowlist closed - page no longer needed
+        // {
+        //   name: "navigation.genesisPass",
+        //   path: "/wave1/genesis-pass",
+        //   element: Pages.GenesisPass,
+        // },
         {
           name: "Genesis Pass Drop",
           path: "/wave1/genesis-pass-drop",
