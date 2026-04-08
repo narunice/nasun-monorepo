@@ -157,7 +157,7 @@ export function useNftDropMint() {
         try {
           await switchChainAsync({ chainId: expectedChainId });
         } catch {
-          setError("Please switch to the correct network to mint.");
+          setError("Please switch to Ethereum Mainnet in your wallet and try again.");
           return;
         }
       }
@@ -256,6 +256,7 @@ export function useNftDropMint() {
             signature,
           ],
           value: mintPriceWei,
+          chainId: expectedChainId,
         });
         setTxHash(hash);
       } catch (e: any) {
@@ -271,6 +272,7 @@ export function useNftDropMint() {
         else if (msg.includes("InvalidSignature")) setError("Signature verification failed. Please try again.");
         else if (msg.includes("SignatureExpired")) setError("Signature expired (5 min limit). Please click Mint again to get a fresh signature.");
         else if (msg.includes("User rejected")) setError("Transaction cancelled.");
+        else if (msg.includes("does not match the target chain")) setError("Wrong network. Please switch to Ethereum Mainnet in your wallet and try again.");
         else setError(msg);
       }
       } finally {
