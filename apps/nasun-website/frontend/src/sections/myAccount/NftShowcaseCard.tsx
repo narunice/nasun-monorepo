@@ -66,8 +66,10 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     GUARANTEED: 2,
     FCFS: 3,
   };
-  const eligibleStage =
-    serverEligibleStage ?? (genesisPassMintType ? MINT_TYPE_TO_STAGE[genesisPassMintType] ?? null : null);
+  const eligibleStage: number | null =
+    serverEligibleStage
+    ?? (genesisPassMintType ? (MINT_TYPE_TO_STAGE[genesisPassMintType] ?? 3) : null)
+    ?? (isGenesisPassRegistered ? 3 : null);
 
   // Direct on-chain ownership check
   const { hasMinted: hasGenesisPassNft, ownedEditionId } =
@@ -142,6 +144,8 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
   const genesisIsActive = !!ecosystem.getActivation("genesis-pass");
 
   // Genesis Pass stage messaging logic
+  // FCFS users have mintType=null in DB (by design), so fall back to "FCFS"
+  // when registered but no explicit mintType.
   const mintTypeLabel =
     genesisPassMintType === "FREE_MINT"
       ? "Free Mint"
@@ -149,7 +153,9 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
         ? "GTD"
         : genesisPassMintType === "FCFS"
           ? "FCFS"
-          : null;
+          : isGenesisPassRegistered
+            ? "FCFS"
+            : null;
 
   // Determine if user's eligible stage is live or upcoming
   const stageIsLive = eligibleStage != null && eligibleStage === currentStage;
