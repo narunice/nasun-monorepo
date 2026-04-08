@@ -28,6 +28,8 @@ import { runDailyNftChecks } from './daily-nft-check.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
 import { takeDailySnapshot } from './daily-snapshot.js';
 import { rpcCall } from '../rpc.js';
+import { fetchWithOffload } from './fetch-with-offload.js';
+import { saveCache, loadCache } from './cache-persist.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
 let registeredWallets = new Map<string, string>();
@@ -469,8 +471,6 @@ async function maybeRefreshWalletCache(): Promise<void> {
   const walletMappingsKey = process.env.WALLET_MAPPINGS_API_KEY;
 
   if (!walletMappingsUrl) {
-    // Fallback: if no URL configured, keep empty cache
-    // All events will be skipped until wallet mappings are available
     if (registeredWallets.size === 0) {
       console.warn(
         '[Points] WALLET_MAPPINGS_URL not set, no wallets registered',
@@ -481,38 +481,30 @@ async function maybeRefreshWalletCache(): Promise<void> {
   }
 
   try {
-    const headers: Record<string, string> = {};
-    if (walletMappingsKey) {
-      headers['x-api-key'] = walletMappingsKey;
-    }
-
-    const res = await fetch(walletMappingsUrl, {
-      headers,
-      signal: AbortSignal.timeout(15_000),
+    const data = await fetchWithOffload<{
+      wallets: Record<string, string>;
+      genesisPass: string[];
+    }>({
+      url: walletMappingsUrl,
+      apiKey: walletMappingsKey,
+      label: 'Points',
     });
-    if (!res.ok) {
-      console.error(
-        `[Points] Wallet cache refresh failed: ${res.status} ${res.statusText}`,
-      );
+
+    if (!data) {
+      // Lambda failed on cold start: fall back to disk cache
+      if (registeredWallets.size === 0) {
+        const fallback = loadCache<{ wallets: Record<string, string>; genesisPass: string[] }>('wallet-mappings');
+        if (fallback) {
+          applyWalletData(fallback);
+          console.warn(`[Points] Loaded wallet cache from disk fallback: ${registeredWallets.size} wallets`);
+        }
+      }
       walletCacheLastRefresh = now;
       return;
     }
 
-    const data = await res.json();
-
-    if (data.wallets && typeof data.wallets === 'object' && !Array.isArray(data.wallets)) {
-      const newMap = new Map<string, string>();
-      for (const [addr, id] of Object.entries(data.wallets)) {
-        if (typeof addr === 'string' && typeof id === 'string') {
-          newMap.set(addr.toLowerCase(), id);
-        }
-      }
-      registeredWallets = newMap;
-    }
-
-    if (Array.isArray(data.genesisPass)) {
-      genesisPassHolders = new Set(data.genesisPass.filter((v: unknown) => typeof v === 'string'));
-    }
+    applyWalletData(data);
+    saveCache('wallet-mappings', data);
 
     walletCacheLastRefresh = now;
     console.log(
@@ -520,7 +512,30 @@ async function maybeRefreshWalletCache(): Promise<void> {
     );
   } catch (err) {
     console.error('[Points] Wallet cache refresh error:', err);
+    if (registeredWallets.size === 0) {
+      const fallback = loadCache<{ wallets: Record<string, string>; genesisPass: string[] }>('wallet-mappings');
+      if (fallback) {
+        applyWalletData(fallback);
+        console.warn(`[Points] Loaded wallet cache from disk fallback: ${registeredWallets.size} wallets`);
+      }
+    }
     walletCacheLastRefresh = now;
+  }
+}
+
+function applyWalletData(data: { wallets: Record<string, string>; genesisPass: string[] }): void {
+  if (data.wallets && typeof data.wallets === 'object' && !Array.isArray(data.wallets)) {
+    const newMap = new Map<string, string>();
+    for (const [addr, id] of Object.entries(data.wallets)) {
+      if (typeof addr === 'string' && typeof id === 'string') {
+        newMap.set(addr.toLowerCase(), id);
+      }
+    }
+    registeredWallets = newMap;
+  }
+
+  if (Array.isArray(data.genesisPass)) {
+    genesisPassHolders = new Set(data.genesisPass.filter((v: unknown) => typeof v === 'string'));
   }
 }
 

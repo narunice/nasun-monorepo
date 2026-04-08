@@ -17,6 +17,8 @@ import {
   calculateMultiplier,
   type NftActivation,
 } from '../config/ecosystem.js';
+import { saveCache, loadCache } from './cache-persist.js';
+import { fetchWithOffload } from './fetch-with-offload.js';
 
 // --- Activations Cache ---
 
@@ -56,48 +58,66 @@ export async function maybeRefreshActivationsCache(): Promise<void> {
   }
 
   try {
-    const headers: Record<string, string> = {};
-    if (apiKey) {
-      headers['x-api-key'] = apiKey;
-    }
-
-    const res = await fetch(url, {
-      headers,
-      signal: AbortSignal.timeout(15_000),
+    const data = await fetchWithOffload<{
+      activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
+    }>({
+      url,
+      apiKey,
+      label: 'Ecosystem',
+      timeoutMs: 30_000,
     });
-    if (!res.ok) {
-      console.error(`[Ecosystem] Activations cache refresh failed: ${res.status}`);
+
+    if (!data) {
+      if (activationsCache.size === 0) {
+        tryLoadActivationsFallback();
+      }
       activationsCacheLastRefresh = now;
       return;
     }
 
-    const data = (await res.json()) as {
-      activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
-    };
-
-    if (data.activations && typeof data.activations === 'object') {
-      const newMap = new Map<string, NftActivation[]>();
-      for (const [id, acts] of Object.entries(data.activations)) {
-        if (Array.isArray(acts)) {
-          newMap.set(
-            id,
-            acts.map((a) => ({
-              nftType: a.nftType,
-              status: 'ACTIVE',
-              nftCount: a.nftCount ?? 1,
-            })),
-          );
-        }
-      }
-      activationsCache = newMap;
-    }
+    applyActivationsData(data.activations);
+    saveCache('ecosystem-activations', data);
 
     activationsCacheLastRefresh = now;
     console.log(`[Ecosystem] Activations cache refreshed: ${activationsCache.size} users`);
   } catch (err) {
     console.error('[Ecosystem] Activations cache refresh error:', err);
+    if (activationsCache.size === 0) {
+      tryLoadActivationsFallback();
+    }
     // Transient error: retry sooner than full interval (catch only, not HTTP errors)
     activationsCacheLastRefresh = now - ACTIVATIONS_CACHE_REFRESH_MS + ACTIVATIONS_ERROR_RETRY_MS;
+  }
+}
+
+function applyActivationsData(
+  activations: Record<string, Array<{ nftType: string; nftCount: number }>>,
+): void {
+  if (activations && typeof activations === 'object') {
+    const newMap = new Map<string, NftActivation[]>();
+    for (const [id, acts] of Object.entries(activations)) {
+      if (Array.isArray(acts)) {
+        newMap.set(
+          id,
+          acts.map((a) => ({
+            nftType: a.nftType,
+            status: 'ACTIVE',
+            nftCount: a.nftCount ?? 1,
+          })),
+        );
+      }
+    }
+    activationsCache = newMap;
+  }
+}
+
+function tryLoadActivationsFallback(): void {
+  const fallback = loadCache<{
+    activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
+  }>('ecosystem-activations');
+  if (fallback?.activations) {
+    applyActivationsData(fallback.activations);
+    console.warn(`[Ecosystem] Loaded activations from disk fallback: ${activationsCache.size} users`);
   }
 }
 
