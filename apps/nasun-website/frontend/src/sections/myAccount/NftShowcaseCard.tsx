@@ -142,20 +142,40 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
           : null;
 
   // Determine if user's eligible stage is live or upcoming
-  const stageIsLive =
-    eligibleStage != null && eligibleStage === currentStage;
-  const stageUpcoming =
-    eligibleStage != null && eligibleStage > currentStage;
-
-  // Countdown target: user's stage if upcoming, otherwise public stage
-  const countdownTarget =
-    stageUpcoming && STAGE_START_TIMES[eligibleStage!]
-      ? STAGE_START_TIMES[eligibleStage!]
-      : STAGE_START_TIMES[4];
-  const timeLeft = countdownTarget ? calcTimeLeft(countdownTarget, now) : null;
+  const stageIsLive = eligibleStage != null && eligibleStage === currentStage;
+  const stageUpcoming = eligibleStage != null && eligibleStage > currentStage;
 
   // Public stage is live
   const publicIsLive = currentStage >= 4;
+
+  // Can the user mint right now?
+  const canMintNow =
+    (isGenesisPassRegistered && stageIsLive) || publicIsLive;
+
+  // Countdown logic: different target and label depending on state
+  let countdownTarget: Date | null = null;
+  let countdownLabel = "";
+
+  if (canMintNow) {
+    // Minting is live: show closing countdown
+    if (publicIsLive) {
+      countdownTarget = MINT_CLOSE_TIME;
+      countdownLabel = "Mint closes in";
+    } else {
+      // User's allowlist stage is live, closes when next stage starts
+      countdownTarget = STAGE_START_TIMES[currentStage + 1] ?? MINT_CLOSE_TIME;
+      countdownLabel = "Stage closes in";
+    }
+  } else {
+    // Minting not yet available: show opening countdown
+    countdownTarget =
+      stageUpcoming && STAGE_START_TIMES[eligibleStage!]
+        ? STAGE_START_TIMES[eligibleStage!]
+        : STAGE_START_TIMES[4];
+    countdownLabel = "Mint opens in";
+  }
+
+  const timeLeft = countdownTarget ? calcTimeLeft(countdownTarget, now) : null;
 
   return (
     <div className={`flex flex-col gap-4 lg:gap-6 ${className}`}>
@@ -215,57 +235,36 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                     Activate your Genesis Pass to earn ecosystem points.
                   </h6>
                 </div>
-              ) : isGenesisPassRegistered && mintTypeLabel ? (
-                /* In allowlist */
-                stageIsLive ? (
-                  <div className="flex flex-col items-center gap-1 px-4 text-center">
-                    <h6 className="text-amber-400 font-bold">
-                      You are in the {mintTypeLabel} allowlist.
-                    </h6>
-                    <h6 className="text-emerald-400 font-bold animate-pulse">
-                      Mint now.
-                    </h6>
-                  </div>
-                ) : stageUpcoming ? (
-                  <div className="flex flex-col items-center gap-1 px-4 text-center">
-                    <h6 className="text-amber-400 font-bold">
-                      You are in the {mintTypeLabel} allowlist.
-                    </h6>
-                    {timeLeft && !timeLeft.isExpired && (
-                      <CountdownDisplay timeLeft={timeLeft} />
-                    )}
-                  </div>
-                ) : (
-                  /* Stage passed without minting */
-                  <div className="flex flex-col items-center gap-1 px-4 text-center">
-                    <h6 className="text-nasun-white/90 font-bold">
-                      You can mint in public stage.
-                    </h6>
-                    {publicIsLive ? (
-                      <h6 className="text-emerald-400 font-bold animate-pulse">
-                        Mint now.
-                      </h6>
-                    ) : (
-                      timeLeft && !timeLeft.isExpired && (
-                        <CountdownDisplay timeLeft={timeLeft} />
-                      )
-                    )}
-                  </div>
-                )
-              ) : (
-                /* Not in any allowlist */
+              ) : canMintNow ? (
+                /* User can mint right now: big "Mint now." + closing countdown */
                 <div className="flex flex-col items-center gap-1 px-4 text-center">
-                  <h6 className="text-nasun-white/90 font-bold">
-                    You can mint in public stage.
+                  <h6 className="text-emerald-400 font-bold animate-pulse drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
+                    Mint now.
                   </h6>
-                  {publicIsLive ? (
-                    <h6 className="text-emerald-400 font-bold animate-pulse">
-                      Mint now.
-                    </h6>
-                  ) : (
-                    timeLeft && !timeLeft.isExpired && (
-                      <CountdownDisplay timeLeft={timeLeft} />
-                    )
+                  {timeLeft && !timeLeft.isExpired && (
+                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
+                  )}
+                </div>
+              ) : isGenesisPassRegistered && mintTypeLabel ? (
+                /* In allowlist, stage upcoming */
+                <div className="flex flex-col items-center gap-1 px-4 text-center">
+                  <h6 className="text-amber-400 font-bold">
+                    You are in the {mintTypeLabel} allowlist.
+                  </h6>
+                  {timeLeft && !timeLeft.isExpired && (
+                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
+                  )}
+                </div>
+              ) : (
+                /* Not in allowlist, public not yet */
+                <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
+                  <h6 className="text-amber-400 font-bold">
+                    You can mint
+                    <br />
+                    in public stage.
+                  </h6>
+                  {timeLeft && !timeLeft.isExpired && (
+                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
                   )}
                 </div>
               )}
@@ -403,21 +402,54 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
 
 // Countdown display for Genesis Pass stage timing
 function CountdownDisplay({
+  label,
   timeLeft,
 }: {
+  label: string;
   timeLeft: { days: number; hours: number; minutes: number; seconds: number };
 }) {
   const pad = (n: number) => String(n).padStart(2, "0");
+  const segments = [
+    ...(timeLeft.days > 0
+      ? [{ value: String(timeLeft.days), unit: "D" }]
+      : []),
+    { value: pad(timeLeft.hours), unit: "H" },
+    { value: pad(timeLeft.minutes), unit: "M" },
+    { value: pad(timeLeft.seconds), unit: "S" },
+  ];
+
   return (
-    <div className="flex items-center gap-2 mt-1">
-      {timeLeft.days > 0 && (
-        <span className="text-nasun-white font-mono text-lg font-bold">
-          {timeLeft.days}d
-        </span>
-      )}
-      <span className="text-nasun-white font-mono text-lg font-bold">
-        {pad(timeLeft.hours)}:{pad(timeLeft.minutes)}:{pad(timeLeft.seconds)}
+    <div className="flex flex-col items-center mt-4 gap-2">
+      <span className="text-nasun-white/50 text-xs uppercase tracking-widest">
+        {label}
       </span>
+      <div className="flex items-center gap-1.5">
+        {segments.map((seg, i) => (
+          <div key={seg.unit} className="flex items-center gap-1.5">
+            <div className="flex flex-col items-center">
+              <span
+                className="text-nasun-white text-2xl md:text-3xl font-bold leading-none"
+                style={{
+                  fontVariantNumeric: "tabular-nums",
+                  minWidth: "2ch",
+                  textAlign: "center",
+                  display: "inline-block",
+                }}
+              >
+                {seg.value}
+              </span>
+              <span className="text-nasun-white/60 text-xs uppercase tracking-widest mt-1">
+                {seg.unit}
+              </span>
+            </div>
+            {i < segments.length - 1 && (
+              <span className="text-nasun-white/30 text-xl md:text-2xl font-light -mt-2.5">
+                :
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
