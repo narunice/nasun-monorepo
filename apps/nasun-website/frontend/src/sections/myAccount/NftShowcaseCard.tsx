@@ -2,8 +2,8 @@
  * NftShowcaseCard
  *
  * Image-prominent NFT display cards for the My Account dashboard.
- * Renders Alliance, Genesis Pass, and Battalion as independent OuterBox cards
- * stacked vertically in a single column.
+ * Renders Genesis Pass (priority), Alliance, and Battalion as independent
+ * OuterBox cards stacked vertically in a single column.
  */
 
 import { FC, useState, useEffect, useRef } from "react";
@@ -13,13 +13,20 @@ import { useAuth } from "@/features/auth";
 import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
 import { useGenesisPassStatus } from "@/hooks/useGenesisPassStatus";
 import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
+import { useNftDropRead } from "@/hooks/useNftDrop";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import type { NftType } from "@/services/ecosystemApi";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
-import { NFT_EDITIONS } from "@/constants/nft-drop";
+import {
+  NFT_EDITIONS,
+  getEditionPosterUrl,
+  STAGE_START_TIMES,
+  MINT_CLOSE_TIME,
+  calcTimeLeft,
+} from "@/constants/nft-drop";
 
 interface NftShowcaseCardProps {
   className?: string;
@@ -47,15 +54,18 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
 
   const {
     isRegistered: isGenesisPassRegistered,
-    isApplied: isGenesisPassApplied,
     isLoading: isGenesisPassLoading,
     isConfigured: isGenesisPassConfigured,
     mintType: genesisPassMintType,
+    eligibleStage,
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
   // Direct on-chain ownership check
   const { hasMinted: hasGenesisPassNft, ownedEditionId } =
     useGenesisPassOwnership(evmWalletAddress);
+
+  // On-chain current stage
+  const { currentStage } = useNftDropRead();
 
   // justMinted query param from drop page redirect
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,6 +88,15 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     ownedEditionId != null
       ? NFT_EDITIONS.find((e) => e.id === ownedEditionId)
       : undefined;
+
+  // Countdown timer for Genesis Pass stage messaging
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isMintClosed = now >= MINT_CLOSE_TIME.getTime();
 
   const ecosystem = useEcosystemStatus(cognitoToken);
 
@@ -112,8 +131,163 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
 
   const genesisIsActive = !!ecosystem.getActivation("genesis-pass");
 
+  // Genesis Pass stage messaging logic
+  const mintTypeLabel =
+    genesisPassMintType === "FREE_MINT"
+      ? "Free Mint"
+      : genesisPassMintType === "GUARANTEED"
+        ? "GTD"
+        : genesisPassMintType === "FCFS"
+          ? "FCFS"
+          : null;
+
+  // Determine if user's eligible stage is live or upcoming
+  const stageIsLive =
+    eligibleStage != null && eligibleStage === currentStage;
+  const stageUpcoming =
+    eligibleStage != null && eligibleStage > currentStage;
+
+  // Countdown target: user's stage if upcoming, otherwise public stage
+  const countdownTarget =
+    stageUpcoming && STAGE_START_TIMES[eligibleStage!]
+      ? STAGE_START_TIMES[eligibleStage!]
+      : STAGE_START_TIMES[4];
+  const timeLeft = countdownTarget ? calcTimeLeft(countdownTarget, now) : null;
+
+  // Public stage is live
+  const publicIsLive = currentStage >= 4;
+
   return (
     <div className={`flex flex-col gap-4 lg:gap-6 ${className}`}>
+      {/* === Genesis Pass (priority during drop) === */}
+      {isGenesisPassConfigured && (
+        <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
+          <div className="flex flex-col gap-2">
+            <h6 className="text-nasun-white font-medium uppercase">
+              GENESIS PASS
+            </h6>
+            <div
+              className={`relative rounded-sm overflow-hidden aspect-[4/3] transition-all flex items-center justify-center ${
+                showMintedState
+                  ? "bg-gray-900"
+                  : genesisIsActive
+                    ? "bg-gray-700"
+                    : "bg-gray-800"
+              }`}
+            >
+              <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
+                Boost x2
+              </span>
+
+              {isGenesisPassLoading ? (
+                <Spinner />
+              ) : showMintedState ? (
+                /* Minted: grayscale poster + "Your {name} is ready." */
+                <>
+                  {ownedEdition && (
+                    <img
+                      src={getEditionPosterUrl(ownedEdition.name)}
+                      alt={ownedEdition.name}
+                      className="absolute inset-0 w-full h-full object-cover grayscale brightness-50"
+                      loading="lazy"
+                    />
+                  )}
+                  <div className="relative z-10 flex flex-col items-center gap-1 px-4 text-center">
+                    {justMinted && !hasGenesisPassNft ? (
+                      <h6 className="text-nasun-white animate-pulse font-semibold">
+                        Confirming on chain...
+                      </h6>
+                    ) : (
+                      <h6 className="text-emerald-400 font-bold drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
+                        Your{" "}
+                        <span className="text-nasun-white">
+                          {ownedEdition?.name ?? "Genesis Pass"}
+                        </span>{" "}
+                        is ready.
+                      </h6>
+                    )}
+                  </div>
+                </>
+              ) : isMintClosed ? (
+                /* Mint period ended: activate guidance for secondary market */
+                <div className="flex flex-col items-center gap-2 px-4 text-center">
+                  <h6 className="text-nasun-white/70 font-medium">
+                    Activate your Genesis Pass to earn ecosystem points.
+                  </h6>
+                </div>
+              ) : isGenesisPassRegistered && mintTypeLabel ? (
+                /* In allowlist */
+                stageIsLive ? (
+                  <div className="flex flex-col items-center gap-1 px-4 text-center">
+                    <h6 className="text-amber-400 font-bold">
+                      You are in the {mintTypeLabel} allowlist.
+                    </h6>
+                    <h6 className="text-emerald-400 font-bold animate-pulse">
+                      Mint now.
+                    </h6>
+                  </div>
+                ) : stageUpcoming ? (
+                  <div className="flex flex-col items-center gap-1 px-4 text-center">
+                    <h6 className="text-amber-400 font-bold">
+                      You are in the {mintTypeLabel} allowlist.
+                    </h6>
+                    {timeLeft && !timeLeft.isExpired && (
+                      <CountdownDisplay timeLeft={timeLeft} />
+                    )}
+                  </div>
+                ) : (
+                  /* Stage passed without minting */
+                  <div className="flex flex-col items-center gap-1 px-4 text-center">
+                    <h6 className="text-nasun-white/90 font-bold">
+                      You can mint in public stage.
+                    </h6>
+                    {publicIsLive ? (
+                      <h6 className="text-emerald-400 font-bold animate-pulse">
+                        Mint now.
+                      </h6>
+                    ) : (
+                      timeLeft && !timeLeft.isExpired && (
+                        <CountdownDisplay timeLeft={timeLeft} />
+                      )
+                    )}
+                  </div>
+                )
+              ) : (
+                /* Not in any allowlist */
+                <div className="flex flex-col items-center gap-1 px-4 text-center">
+                  <h6 className="text-nasun-white/90 font-bold">
+                    You can mint in public stage.
+                  </h6>
+                  {publicIsLive ? (
+                    <h6 className="text-emerald-400 font-bold animate-pulse">
+                      Mint now.
+                    </h6>
+                  ) : (
+                    timeLeft && !timeLeft.isExpired && (
+                      <CountdownDisplay timeLeft={timeLeft} />
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Actions */}
+            <div className="flex flex-col gap-2 mt-1">
+              <ButtonV3
+                onClick={() => navigate("/wave1/genesis-pass-drop")}
+                variant="nw2"
+                size="sm"
+                outline
+                className="w-full"
+              >
+                {showMintedState
+                  ? "View Genesis Pass Drop"
+                  : "Go to Genesis Pass Drop"}
+              </ButtonV3>
+            </div>
+          </div>
+        </OuterBox>
+      )}
+
       {/* === Alliance === */}
       {isAllianceConfigured && (
         <OuterBox
@@ -218,91 +392,6 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
         </OuterBox>
       )}
 
-      {/* === Genesis Pass === */}
-      {isGenesisPassConfigured && (
-        <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
-          <div className="flex flex-col gap-2">
-            <h6 className="text-nasun-white font-medium uppercase">
-              GENESIS PASS
-            </h6>
-            <div
-              className={`relative rounded-sm overflow-hidden aspect-[4/3] transition-all flex items-center justify-center ${
-                showMintedState
-                  ? "bg-gradient-to-br from-amber-900/40 to-gray-800"
-                  : genesisIsActive
-                    ? "bg-gray-700"
-                    : "bg-gray-800"
-              }`}
-            >
-              <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
-                Boost x2
-              </span>
-              {isGenesisPassLoading ? (
-                <Spinner />
-              ) : showMintedState ? (
-                <div className="flex flex-col items-center gap-2 px-4">
-                  <span className="text-emerald-400 text-lg font-semibold">
-                    Minted
-                  </span>
-                  {justMinted && !hasGenesisPassNft ? (
-                    <span className="text-nasun-white/60 text-sm animate-pulse">
-                      Confirming on chain...
-                    </span>
-                  ) : (
-                    <span className="text-nasun-white/60 text-sm text-center">
-                      Activate after the drop
-                    </span>
-                  )}
-                </div>
-              ) : genesisIsActive ? null : isGenesisPassRegistered ? (
-                <span className="text-teal-400 text-lg font-semibold text-center px-4">
-                  {genesisPassMintType === "FREE_MINT"
-                    ? "You are in the Free Mint allowlist."
-                    : genesisPassMintType === "GUARANTEED"
-                      ? "You are in the GTD allowlist."
-                      : "You are in the FCFS allowlist."}
-                </span>
-              ) : isGenesisPassApplied ? (
-                <span className="text-nasun-white/60 text-base font-medium text-center px-4">
-                  Approval Pending
-                </span>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-teal-400 text-lg font-semibold">
-                    Final Call
-                  </span>
-                  <span className="text-nasun-white/60 text-base text-center px-4">
-                    Allowlist is closing soon
-                  </span>
-                  <ButtonV3
-                    onClick={() => navigate("/wave1/genesis-pass")}
-                    variant="nw2"
-                    size="sm"
-                    className="mt-1"
-                  >
-                    Join Allowlist
-                  </ButtonV3>
-                </div>
-              )}
-            </div>
-            {/* Actions */}
-            <div className="flex flex-col gap-2 mt-1">
-              <ButtonV3
-                onClick={() => navigate("/wave1/genesis-pass-drop")}
-                variant="nw2"
-                size="sm"
-                outline
-                className="w-full"
-              >
-                {showMintedState
-                  ? "View Genesis Pass Drop"
-                  : "Go to Genesis Pass Drop"}
-              </ButtonV3>
-            </div>
-          </div>
-        </OuterBox>
-      )}
-
       {/* === Battalion === */}
       <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
         <h6 className="text-nasun-white font-medium uppercase">BATTALION</h6>
@@ -311,6 +400,27 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     </div>
   );
 };
+
+// Countdown display for Genesis Pass stage timing
+function CountdownDisplay({
+  timeLeft,
+}: {
+  timeLeft: { days: number; hours: number; minutes: number; seconds: number };
+}) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      {timeLeft.days > 0 && (
+        <span className="text-nasun-white font-mono text-lg font-bold">
+          {timeLeft.days}d
+        </span>
+      )}
+      <span className="text-nasun-white font-mono text-lg font-bold">
+        {pad(timeLeft.hours)}:{pad(timeLeft.minutes)}:{pad(timeLeft.seconds)}
+      </span>
+    </div>
+  );
+}
 
 // Inline three-dot deactivate menu (used for Alliance and Genesis Pass)
 function ThreeDotMenu({
