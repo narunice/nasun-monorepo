@@ -51,7 +51,7 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   const evmWalletAddress =
     user?.linkedAccounts?.metamask?.walletAddress?.toLowerCase() ||
     (user?.provider === "MetaMask" ? user.walletAddress?.toLowerCase() : undefined);
-  const { ownedEditionId } = useGenesisPassOwnership(evmWalletAddress);
+  const { ownedEditionIds } = useGenesisPassOwnership(evmWalletAddress);
 
   const { data: collections } = useEnabledNftCollections();
 
@@ -84,20 +84,29 @@ export const AssetsCard: FC<AssetsCardProps> = ({
     return { featuredNfts: featured, regularNfts: regular };
   }, [multiChainNfts, featuredSet]);
 
-  // Enrich featured NFTs: fill missing tokenId/name from on-chain data
+  // Enrich featured NFTs: fill missing tokenId/name from on-chain data.
+  // When multiple NFTs lack tokenId, assign each a unique owned edition 1:1.
   const enrichedFeaturedNfts = useMemo(() => {
-    if (!ownedEditionId || featuredNfts.length === 0) return featuredNfts;
-    const edition = NFT_EDITIONS.find((e) => e.id === ownedEditionId);
+    if (featuredNfts.length === 0) return featuredNfts;
+    // Collect owned edition IDs not already used by NFTs that have a tokenId
+    const usedIds = new Set(
+      featuredNfts.filter((n) => n.tokenId).map((n) => Number(n.tokenId)),
+    );
+    const available = ownedEditionIds.filter((id) => !usedIds.has(id));
+    let idx = 0;
     return featuredNfts.map((nft) => {
       if (nft.tokenId) return nft;
+      const editionId = available[idx++];
+      if (editionId == null) return nft; // no more editions to assign
+      const edition = NFT_EDITIONS.find((e) => e.id === editionId);
       return {
         ...nft,
-        tokenId: String(ownedEditionId),
+        tokenId: String(editionId),
         name: edition ? `Genesis Pass - ${edition.name}` : nft.name,
         description: edition?.description || nft.description,
       };
     });
-  }, [featuredNfts, ownedEditionId]);
+  }, [featuredNfts, ownedEditionIds]);
 
   const hasFeaturedNfts = enrichedFeaturedNfts.length > 0 || (isAllianceMinted && !!allianceData);
 
