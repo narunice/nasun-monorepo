@@ -110,6 +110,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
   const ecosystem = useEcosystemStatus(cognitoToken);
 
   const [showAllianceMenu, setShowAllianceMenu] = useState(false);
+  const [showGenesisMenu, setShowGenesisMenu] = useState(false);
 
   const handleActivate = async (nftType: NftType) => {
     try {
@@ -196,7 +197,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               GENESIS PASS
             </h6>
             <div
-              className={`relative rounded-sm overflow-hidden aspect-[4/3] transition-all flex items-center justify-center ${
+              className={`relative rounded-sm overflow-hidden aspect-square transition-all flex items-center justify-center ${
                 showMintedState
                   ? "bg-gray-900"
                   : genesisIsActive
@@ -234,6 +235,11 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                         </span>{" "}
                         is ready.
                       </h6>
+                    )}
+                    {!isMintClosed && (
+                      <p className="text-nasun-white/70 text-sm mt-1">
+                        Activate after the drop ends.
+                      </p>
                     )}
                   </div>
                 </>
@@ -281,19 +287,53 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               )}
             </div>
             {/* Actions */}
-            <div className="flex flex-col gap-2 mt-1">
-              <ButtonV3
-                onClick={() => navigate("/wave1/genesis-pass-drop")}
-                variant="nw2"
-                size="sm"
-                outline
-                className="w-full"
-              >
-                {showMintedState
-                  ? "View Genesis Pass Drop"
-                  : "Go to Genesis Pass Drop"}
-              </ButtonV3>
-            </div>
+            {showMintedState ? (
+              <div className="flex items-center justify-between mt-1">
+                {genesisIsActive ? (
+                  <span className="text-green-400 text-sm">Activated</span>
+                ) : (
+                  <span className="text-nasun-white/70 text-sm">
+                    {isMintClosed ? "Ready to activate" : "Activate after the drop ends"}
+                  </span>
+                )}
+                <div className="flex gap-2">
+                  {!genesisIsActive && ecosystem.isConfigured && (
+                    <Button
+                      onClick={() => handleActivate("genesis-pass")}
+                      variant="filledOutlineC7"
+                      size="sm"
+                      disabled={!isMintClosed || ecosystem.isActivating}
+                    >
+                      {ecosystem.isActivating ? "..." : "Activate"}
+                    </Button>
+                  )}
+                  {genesisIsActive && (
+                    <ThreeDotMenu
+                      show={showGenesisMenu}
+                      onToggle={() => setShowGenesisMenu((v) => !v)}
+                      onClose={() => setShowGenesisMenu(false)}
+                      onAction={() => {
+                        setShowGenesisMenu(false);
+                        handleDeactivate("genesis-pass");
+                      }}
+                      isLoading={ecosystem.isActivating}
+                    />
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 mt-1">
+                <ButtonV3
+                  onClick={() => navigate("/wave1/genesis-pass-drop")}
+                  variant="nw2"
+                  size="sm"
+                  outline
+                  className="w-full"
+                >
+                  Go to Genesis Pass Drop
+                </ButtonV3>
+              </div>
+            )}
           </div>
         </OuterBox>
       )}
@@ -431,7 +471,7 @@ function CountdownDisplay({
 
   return (
     <div className="flex flex-col items-center mt-4 gap-2">
-      <span className="text-nasun-white/50 text-xs uppercase tracking-widest">
+      <span className="text-nasun-white/80 text-xs uppercase tracking-widest">
         {label}
       </span>
       <div className="flex items-center gap-1.5">
