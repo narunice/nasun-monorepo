@@ -93,7 +93,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxPrice: 200000,
     defaultOrderSize: 0.05,
     defaultLevelSpacing: 8,
-    defaultSpreadBps: 20,
+    defaultSpreadBps: 6,
     defaultMaxArbQuantity: 0.1,
     defaultMaxOrderSize: 1.0,
     faucetBaseAmount: 0.01,  // V1 faucet: 0.01 NBTC per call
@@ -115,7 +115,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxPrice: 10000,
     defaultOrderSize: 2,
     defaultLevelSpacing: 12,
-    defaultSpreadBps: 30,
+    defaultSpreadBps: 6,
     defaultMaxArbQuantity: 5,
     defaultMaxOrderSize: 10.0,
     faucetBaseAmount: 0.5,   // V2 faucet: 0.5 NETH per call (NETH_FAUCET_AMOUNT = 50_000_000)
@@ -139,7 +139,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxPrice: 1000,
     defaultOrderSize: 30,
     defaultLevelSpacing: 15,
-    defaultSpreadBps: 40,
+    defaultSpreadBps: 6,
     defaultMaxArbQuantity: 100,
     defaultMaxOrderSize: 1000,
     faucetBaseAmount: 10,    // V2 faucet: 10 NSOL per call (request_nsol)

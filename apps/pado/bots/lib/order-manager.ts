@@ -72,7 +72,7 @@ export function buildCancelAndPlaceOrders(
         tx.pure.u64(order.quantity),
         tx.pure.bool(order.isBid),
         tx.pure.bool(false), // pay_with_deep = false
-        tx.pure.u64(Date.now() + 86400000), // 24h expiry
+        tx.pure.u64(Date.now() + 1800000), // 30min expiry
         tx.object(CLOCK_ID),
       ],
     });
@@ -202,7 +202,20 @@ export async function syncOrders(
   }
 
   const tx = buildCancelAndPlaceOrders(balanceManagerId, orders, state);
-  const result = await executeTransaction(client, keypair, tx);
+  let result = await executeTransaction(client, keypair, tx);
+
+  // Self-heal on object version conflict: wait for RPC to sync, then rebuild
+  // a fresh TX and retry once. The same TX cannot be retried (stale version),
+  // but a new TX built after the wait will use the current object version.
+  if (!result.success && result.error?.includes('not available for consumption')) {
+    console.log(`[${timestamp()}] Object version conflict, waiting 3s and rebuilding TX...`);
+    await new Promise((r) => setTimeout(r, 3000));
+    const retryTx = buildCancelAndPlaceOrders(balanceManagerId, orders, state);
+    result = await executeTransaction(client, keypair, retryTx);
+    if (result.success) {
+      console.log(`[${timestamp()}] Version conflict self-healed`);
+    }
+  }
 
   if (result.success) {
     console.log(`[${timestamp()}] Placed ${orders.length} orders (tx: ${result.digest?.slice(0, 10)}...)`);

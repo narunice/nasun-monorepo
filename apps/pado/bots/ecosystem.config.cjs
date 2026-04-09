@@ -45,7 +45,7 @@ const COMMON_LP_OPTS = {
   max_restarts: 10,
   restart_delay: 5000,
   exp_backoff_restart_delay: 100,
-  kill_timeout: 10000, // 10s for graceful shutdown (cancel_all_orders)
+  kill_timeout: 4000, // 4s for best-effort order cancel (3s timeout + 1s buffer)
   log_date_format: 'YYYY-MM-DD HH:mm:ss',
   merge_logs: true,
   max_memory_restart: '500M',
