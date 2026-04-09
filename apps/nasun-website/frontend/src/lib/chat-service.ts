@@ -13,48 +13,69 @@ interface AuthErrorMsg { type: 'auth_error'; reason: string }
 interface ChatMessageMsg {
   type: 'chat_message';
   id: number;
+  roomId: number;
   sender: string;
   senderName: string;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
   timestamp: number;
+  reactions?: Record<string, number>;
+  myReaction?: string | null;
+}
+interface ReactionUpdateMsg {
+  type: 'reaction_update';
+  messageId: number;
+  roomId: number;
+  reactions: Record<string, number>;
 }
 interface HistoryMsg {
   type: 'history';
+  roomId: number;
   messages: ChatMessageMsg[];
   hasMore: boolean;
 }
+interface RoomsListMsg { type: 'rooms_list'; rooms: { id: number; name: string }[] }
 interface OnlineCountMsg { type: 'online_count'; count: number }
 interface ErrorMsg { type: 'error'; code: string; message: string }
 interface HeartbeatMsg { type: 'heartbeat' }
 
 type ServerMessage =
   | AuthRequiredMsg | AuthSuccessMsg | AuthErrorMsg
-  | ChatMessageMsg | HistoryMsg | OnlineCountMsg | ErrorMsg | HeartbeatMsg;
+  | ChatMessageMsg | HistoryMsg | RoomsListMsg | ReactionUpdateMsg | OnlineCountMsg | ErrorMsg | HeartbeatMsg;
 
 // ===== Public types =====
 
 export interface ChatMessage {
   id: number;
+  roomId: number;
   sender: string;
   senderName: string;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
   timestamp: number;
+  reactions?: Record<string, number>;
+  myReaction?: string | null;
+}
+
+export interface RoomInfo {
+  id: number;
+  name: string;
 }
 
 export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update';
 
 export interface ChatEventMap {
   message: ChatMessage;
-  history: { messages: ChatMessage[]; hasMore: boolean };
+  history: { roomId: number; messages: ChatMessage[]; hasMore: boolean };
   status: ChatConnectionStatus;
   online_count: number;
   error: { code: string; message: string };
+  rooms_list: RoomInfo[];
+  reaction_update: { messageId: number; roomId: number; reactions: Record<string, number> };
 }
 
 type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
@@ -117,11 +138,9 @@ export class ChatService {
   }
 
   connect(wsUrl: string, token: string, displayName: string): void {
-    // If already connected with same token, skip
     if (this.ws && this.status === 'connected' && this.token === token) {
       return;
     }
-
     this.wsUrl = wsUrl;
     this.token = token;
     this.displayName = displayName;
@@ -151,9 +170,7 @@ export class ChatService {
       this.ws.close();
       this.ws = null;
     }
-
     this.setStatus('connecting');
-
     try {
       this.ws = new WebSocket(this.wsUrl);
     } catch (err) {
@@ -162,7 +179,6 @@ export class ChatService {
       return;
     }
 
-    // Connection timeout
     this.connectionTimer = setTimeout(() => {
       if (this.status === 'connecting') {
         this.ws?.close();
@@ -175,7 +191,6 @@ export class ChatService {
         clearTimeout(this.connectionTimer);
         this.connectionTimer = null;
       }
-      // Wait for auth_required from server, then send auth
     };
 
     this.ws.onmessage = (event) => {
@@ -199,15 +214,12 @@ export class ChatService {
       }
     };
 
-    this.ws.onerror = () => {
-      // onclose will fire after onerror
-    };
+    this.ws.onerror = () => {};
   }
 
   private handleMessage(msg: ServerMessage): void {
     switch (msg.type) {
       case 'auth_required':
-        // Server is ready for auth, send our JWT
         this.sendRaw({
           type: 'auth',
           token: this.token,
@@ -218,30 +230,34 @@ export class ChatService {
       case 'auth_success':
         this.reconnectAttempts = 0;
         this.setStatus('connected');
-        // Load initial history
-        this.loadHistory();
         break;
 
       case 'auth_error':
         console.warn('Chat auth error:', msg.reason);
         this.emit('error', { code: 'AUTH_ERROR', message: msg.reason });
-        // Don't reconnect on auth errors (token is invalid)
         this.ws?.close();
         this.ws = null;
         this.setStatus('disconnected');
         break;
 
+      case 'rooms_list':
+        this.emit('rooms_list', msg.rooms);
+        break;
+
+      case 'reaction_update':
+        this.emit('reaction_update', { messageId: msg.messageId, roomId: msg.roomId, reactions: msg.reactions });
+        break;
+
       case 'chat_message': {
-        // Dedup
         if (this.seenMessageIds.has(msg.id)) return;
         this.seenMessageIds.add(msg.id);
-        // Cap dedup set
         if (this.seenMessageIds.size > 2000) {
           const ids = Array.from(this.seenMessageIds);
           this.seenMessageIds = new Set(ids.slice(-1000));
         }
         this.emit('message', {
           id: msg.id,
+          roomId: msg.roomId,
           sender: msg.sender,
           senderName: msg.senderName,
           content: msg.content,
@@ -254,18 +270,21 @@ export class ChatService {
 
       case 'history':
         this.emit('history', {
+          roomId: msg.roomId,
           messages: msg.messages.map((m) => ({
             id: m.id,
+            roomId: m.roomId,
             sender: m.sender,
             senderName: m.senderName,
             content: m.content,
             messageType: m.messageType,
             replyToId: m.replyToId,
             timestamp: m.timestamp,
+            reactions: m.reactions,
+            myReaction: m.myReaction,
           })),
           hasMore: msg.hasMore,
         });
-        // Add to dedup set
         for (const m of msg.messages) {
           this.seenMessageIds.add(m.id);
         }
@@ -280,7 +299,6 @@ export class ChatService {
         break;
 
       case 'heartbeat':
-        // Server keepalive, no action needed
         break;
     }
   }
@@ -291,23 +309,25 @@ export class ChatService {
     }
   }
 
-  sendMessage(content: string, replyToId?: number): void {
-    this.sendRaw({ type: 'send_message', content, replyToId });
+  toggleReaction(messageId: number, emojiCode: string): void {
+    this.sendRaw({ type: 'toggle_reaction', messageId, emojiCode });
   }
 
-  loadHistory(beforeId?: number, limit?: number): void {
-    this.sendRaw({ type: 'load_history', before: beforeId, limit });
+  sendMessage(content: string, roomId: number = 0, replyToId?: number): void {
+    this.sendRaw({ type: 'send_message', content, roomId, replyToId });
+  }
+
+  loadHistory(roomId: number = 0, beforeId?: number, limit?: number): void {
+    this.sendRaw({ type: 'load_history', roomId, before: beforeId, limit });
   }
 
   private scheduleReconnect(): void {
     if (this.reconnectTimer) return;
-
     const delay = Math.min(
       RECONNECT_BASE_MS * Math.pow(RECONNECT_MULTIPLIER, this.reconnectAttempts),
       RECONNECT_MAX_MS
     );
     this.reconnectAttempts++;
-
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       if (this.token) {

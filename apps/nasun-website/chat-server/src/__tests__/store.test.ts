@@ -68,6 +68,7 @@ describe('initStore', () => {
 describe('insertMessage', () => {
   it('inserts a message and returns it with an id', () => {
     const msg = insertMessage({
+      roomId: 0,
       senderId: 'user-1',
       senderName: 'Alice',
       content: 'Hello world',
@@ -83,6 +84,7 @@ describe('insertMessage', () => {
 
   it('stores content as-is (no HTML encoding)', () => {
     const msg = insertMessage({
+      roomId: 0,
       senderId: 'user-1',
       senderName: 'Alice',
       content: '<script>alert("xss")</script>',
@@ -95,12 +97,13 @@ describe('insertMessage', () => {
     expect(msg.content).toBe('<script>alert("xss")</script>');
 
     // Verify DB also has raw content
-    const rows = getRecentMessages(10);
+    const rows = getRecentMessages(0,10);
     expect(rows[0].content).toBe('<script>alert("xss")</script>');
   });
 
   it('handles special characters in content', () => {
     const msg = insertMessage({
+      roomId: 0,
       senderId: 'user-1',
       senderName: 'Alice',
       content: 'Price: $10 & 20% off < today > "special"',
@@ -114,6 +117,7 @@ describe('insertMessage', () => {
 
   it('handles emoji in content', () => {
     const msg = insertMessage({
+      roomId: 0,
       senderId: 'user-1',
       senderName: 'Alice',
       content: 'Hello 🌍🚀 World',
@@ -122,12 +126,13 @@ describe('insertMessage', () => {
       timestamp: Date.now(),
     });
 
-    const rows = getRecentMessages(10);
+    const rows = getRecentMessages(0,10);
     expect(rows[0].content).toBe('Hello 🌍🚀 World');
   });
 
   it('handles unicode content (Korean, Japanese)', () => {
     const msg = insertMessage({
+      roomId: 0,
       senderId: 'user-1',
       senderName: 'Alice',
       content: '안녕하세요 こんにちは',
@@ -136,12 +141,13 @@ describe('insertMessage', () => {
       timestamp: Date.now(),
     });
 
-    const rows = getRecentMessages(10);
+    const rows = getRecentMessages(0,10);
     expect(rows[0].content).toBe('안녕하세요 こんにちは');
   });
 
   it('handles replyToId', () => {
     const first = insertMessage({
+      roomId: 0,
       senderId: 'user-1',
       senderName: 'Alice',
       content: 'First message',
@@ -151,6 +157,7 @@ describe('insertMessage', () => {
     });
 
     const reply = insertMessage({
+      roomId: 0,
       senderId: 'user-2',
       senderName: 'Bob',
       content: 'Reply to first',
@@ -164,6 +171,7 @@ describe('insertMessage', () => {
 
   it('allows replyToId pointing to non-existent message (no FK constraint)', () => {
     const msg = insertMessage({
+      roomId: 0,
       senderId: 'user-1',
       senderName: 'Alice',
       content: 'Reply to nothing',
@@ -177,11 +185,11 @@ describe('insertMessage', () => {
 
   it('auto-increments ids', () => {
     const msg1 = insertMessage({
-      senderId: 'user-1', senderName: 'Alice', content: 'First',
+      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'First',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
     const msg2 = insertMessage({
-      senderId: 'user-1', senderName: 'Alice', content: 'Second',
+      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Second',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 
@@ -191,7 +199,7 @@ describe('insertMessage', () => {
   it('handles maximum length content (500 chars)', () => {
     const longContent = 'A'.repeat(500);
     const msg = insertMessage({
-      senderId: 'user-1', senderName: 'Alice', content: longContent,
+      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: longContent,
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 
@@ -203,12 +211,12 @@ describe('getRecentMessages', () => {
   it('returns messages in ascending order (oldest first)', () => {
     for (let i = 0; i < 5; i++) {
       insertMessage({
-        senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }
 
-    const messages = getRecentMessages(10);
+    const messages = getRecentMessages(0,10);
     expect(messages).toHaveLength(5);
     expect(messages[0].content).toBe('Message 0');
     expect(messages[4].content).toBe('Message 4');
@@ -217,12 +225,12 @@ describe('getRecentMessages', () => {
   it('respects limit parameter', () => {
     for (let i = 0; i < 10; i++) {
       insertMessage({
-        senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }
 
-    const messages = getRecentMessages(3);
+    const messages = getRecentMessages(0,3);
     expect(messages).toHaveLength(3);
     // Should return the 3 most recent
     expect(messages[0].content).toBe('Message 7');
@@ -233,50 +241,50 @@ describe('getRecentMessages', () => {
     const ids: number[] = [];
     for (let i = 0; i < 10; i++) {
       const msg = insertMessage({
-        senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
       ids.push(msg.id);
     }
 
     // Get messages before id of message 7 (0-indexed)
-    const messages = getRecentMessages(3, ids[7]);
+    const messages = getRecentMessages(0,3, ids[7]);
     expect(messages).toHaveLength(3);
     expect(messages[0].content).toBe('Message 4');
     expect(messages[2].content).toBe('Message 6');
   });
 
   it('returns empty array when no messages', () => {
-    const messages = getRecentMessages(10);
+    const messages = getRecentMessages(0,10);
     expect(messages).toHaveLength(0);
   });
 
   it('handles beforeId that is less than all message ids', () => {
     insertMessage({
-      senderId: 'user-1', senderName: 'Alice', content: 'Only message',
+      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Only message',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 
     // beforeId=0 is falsy, so getRecentMessages treats it as "no cursor"
     // Use -1 to test "before all messages" scenario
-    const messages = getRecentMessages(10, -1);
+    const messages = getRecentMessages(0,10, -1);
     expect(messages).toHaveLength(0);
   });
 
   it('returns correct hasMore signal via length comparison', () => {
     for (let i = 0; i < 5; i++) {
       insertMessage({
-        senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }
 
     // Request limit=3, get 3 back -> hasMore = true (length === limit)
-    const page1 = getRecentMessages(3);
+    const page1 = getRecentMessages(0,3);
     expect(page1).toHaveLength(3);
 
     // Request limit=10, get 5 back -> hasMore = false (length < limit)
-    const all = getRecentMessages(10);
+    const all = getRecentMessages(0,10);
     expect(all).toHaveLength(5);
   });
 });
@@ -286,26 +294,26 @@ describe('purgeOldMessages', () => {
     const now = Date.now();
     // Old message (31 days ago)
     insertMessage({
-      senderId: 'user-1', senderName: 'Alice', content: 'Old message',
+      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Old message',
       messageType: 'text', replyToId: null, timestamp: now - 31 * 24 * 60 * 60 * 1000,
     });
     // Recent message
     insertMessage({
-      senderId: 'user-1', senderName: 'Alice', content: 'New message',
+      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'New message',
       messageType: 'text', replyToId: null, timestamp: now,
     });
 
     const deleted = purgeOldMessages(30);
     expect(deleted).toBe(1);
 
-    const remaining = getRecentMessages(10);
+    const remaining = getRecentMessages(0,10);
     expect(remaining).toHaveLength(1);
     expect(remaining[0].content).toBe('New message');
   });
 
   it('returns 0 when no messages to purge', () => {
     insertMessage({
-      senderId: 'user-1', senderName: 'Alice', content: 'Recent',
+      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Recent',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 

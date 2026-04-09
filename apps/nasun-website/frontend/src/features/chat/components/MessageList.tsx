@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ChatMessage } from '../../../lib/chat-service';
+import ReactionBar from './ReactionBar';
 
 // Highlight @mentions in message content
 function renderContent(content: string) {
@@ -25,15 +26,15 @@ interface MessageListProps {
   messages: ChatMessage[];
   hasMore: boolean;
   onLoadMore: () => void;
+  onToggleReaction: (messageId: number, emojiCode: string) => void;
   currentUserId?: string;
 }
 
-export default function MessageList({ messages, hasMore, onLoadMore, currentUserId }: MessageListProps) {
+export default function MessageList({ messages, hasMore, onLoadMore, onToggleReaction, currentUserId }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
 
-  // Auto-scroll to bottom on new messages (only if user is near bottom)
   useEffect(() => {
     if (isNearBottomRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,6 +74,7 @@ export default function MessageList({ messages, hasMore, onLoadMore, currentUser
       {messages.map((msg) => {
         const isSystem = msg.messageType === 'system';
         const isMine = msg.sender === currentUserId;
+        const hasReactions = msg.reactions && Object.keys(msg.reactions).length > 0;
 
         if (isSystem) {
           return (
@@ -94,6 +96,14 @@ export default function MessageList({ messages, hasMore, onLoadMore, currentUser
             </div>
             <div className="text-sm text-white/90 break-words leading-relaxed">
               {renderContent(msg.content)}
+            </div>
+            {/* Reactions: show if reactions exist, or show add button on hover */}
+            <div className={`mt-0.5 ${hasReactions ? '' : 'h-0 group-hover:h-auto'}`}>
+              <ReactionBar
+                reactions={msg.reactions ?? {}}
+                myReaction={msg.myReaction}
+                onToggle={(code) => onToggleReaction(msg.id, code)}
+              />
             </div>
           </div>
         );
