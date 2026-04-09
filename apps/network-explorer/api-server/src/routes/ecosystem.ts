@@ -60,7 +60,7 @@ app.get('/score/:identityId', async (c) => {
     30 * 1000,
     async () => {
       const [
-        todayRow, weeklyRow, allTimeRow, snapshotSumRow,
+        todayRow, weeklyRow, allTimeRow, snapshotSumRow, unsnapshottedRow,
         bonusRow, bonusTodayRow, bonusWeeklyRow, bonusCategoryRows,
         govAllTimeRow, govTodayRow, govWeeklyRow,
         refAllTimeRow, refTodayRow, refWeeklyRow,
@@ -91,6 +91,18 @@ app.get('/score/:identityId', async (c) => {
           SELECT COALESCE(SUM(base_score * multiplier), 0)::numeric as base_cumulative
           FROM ecosystem_score_snapshots
           WHERE identity_id = ${identityId}
+        `.then(r => r[0]),
+        // Yesterday's base score if snapshot hasn't been created yet
+        // (covers the ~5min gap between UTC midnight and snapshot creation)
+        pointsDb!`
+          SELECT COALESCE(d.base_score, 0)::int as base_score
+          FROM ecosystem_daily_scores d
+          WHERE d.identity_id = ${identityId}
+            AND d.day = CURRENT_DATE - 1
+            AND NOT EXISTS (
+              SELECT 1 FROM ecosystem_score_snapshots s
+              WHERE s.identity_id = ${identityId} AND s.snapshot_date = CURRENT_DATE - 1
+            )
         `.then(r => r[0]),
         pointsDb!`
           SELECT COALESCE(SUM(final_points), 0)::numeric as bonus_total
@@ -213,11 +225,14 @@ app.get('/score/:identityId', async (c) => {
       const refWeekly = parseFloat(refWeeklyRow?.referral_weekly ?? '0');
       const scalingFactor = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
 
-      // allTime = SUM(base*mult from past snapshots) + today's base*mult
+      // allTime = SUM(base*mult from past snapshots)
+      //         + yesterday's base*mult if snapshot not yet created (midnight gap)
+      //         + today's base*mult
       //         + allTime bonus + allTime governance + allTime referral*sf
       // No compounding: bonus/gov/referral are from activity_points (raw totals)
       const todayBase = todayRow?.base_score ?? 0;
-      const todayBaseContribution = todayBase * multiplier;
+      const unsnapshottedBase = unsnapshottedRow?.base_score ?? 0;
+      const todayBaseContribution = (todayBase + unsnapshottedBase) * multiplier;
       const totalBasePoints = baseCumulative + todayBaseContribution;
       const allTimeCumulative = totalBasePoints
         + bonusTotal + govTotal + refTotal * scalingFactor;
@@ -506,9 +521,14 @@ app.get('/score/wallet/:address', async (c) => {
     return c.json({ data: null, message: 'wallet_not_registered' });
   }
 
-  // Redirect internally to the identityId-based score endpoint
+  // Redirect to the identityId-based score endpoint.
+  // Explicit CORS header on 302 response (nginx/CloudFront may strip middleware headers on redirects)
   const url = new URL(c.req.url);
   url.pathname = url.pathname.replace(`/wallet/${address}`, `/${encodeURIComponent(identityId)}`);
+  const origin = c.req.header('origin');
+  if (origin) {
+    c.header('Access-Control-Allow-Origin', origin);
+  }
   return c.redirect(url.pathname, 302);
 });
 
