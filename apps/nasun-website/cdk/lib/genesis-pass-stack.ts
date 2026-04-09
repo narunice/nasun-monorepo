@@ -199,6 +199,10 @@ export class GenesisPassStack extends cdk.Stack {
       environment: {
         ALLOWLIST_TABLE_NAME: this.allowlistTable.tableName,
         STAGE_PARAM_NAME: stageParameter.parameterName,
+        USER_WALLETS_TABLE_NAME: "UserWallets",
+        USER_PROFILES_TABLE_NAME: userProfilesTableName,
+        NFT_OWNERSHIP_TABLE_NAME: "nasun-nft-ownership",
+        GP_CONTRACT_ADDRESS: process.env.GENESIS_PASS_CONTRACT_ADDRESS || "0x561D4A687e9D13925AD7BEf0209c9eCaEC9858E1",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
@@ -206,6 +210,19 @@ export class GenesisPassStack extends cdk.Stack {
 
     this.allowlistTable.grantReadData(checkLambda);
     stageParameter.grantRead(checkLambda);
+
+    // Grant read access to UserWallets, UserProfiles, NFT ownership for nasunAddress lookup
+    checkLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:GetItem"],
+        resources: [
+          `arn:aws:dynamodb:${this.region}:${this.account}:table/UserWallets`,
+          `arn:aws:dynamodb:${this.region}:${this.account}:table/${userProfilesTableName}`,
+          `arn:aws:dynamodb:${this.region}:${this.account}:table/nasun-nft-ownership`,
+        ],
+      })
+    );
 
     // 3.3 Authorizer Lambda (Cognito JWT verification)
     const authorizerLambda = new NodejsFunction(this, "AuthorizerLambda", {
