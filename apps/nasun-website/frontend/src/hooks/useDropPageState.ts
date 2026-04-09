@@ -17,6 +17,7 @@ export interface EligibilityData {
   registered: boolean;
   eligibleStage: number | null;
   eligibleStageLabel: string | null;
+  currentStage: number;
   currentStageLabel: string | null;
 }
 
@@ -202,6 +203,7 @@ export function useDropPageState({
         registered: isRegistered,
         eligibleStage: eligibleStage ?? null,
         eligibleStageLabel: eligibleStageLabel ?? null,
+        currentStage,
         currentStageLabel: currentStageLabel ?? null,
       };
 
