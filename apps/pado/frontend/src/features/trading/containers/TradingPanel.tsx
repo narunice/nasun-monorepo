@@ -13,7 +13,8 @@ import { useTradeCap } from '../hooks/useTradeCap';
 import { useTPSLMonitor } from '../hooks/useTPSLMonitor';
 import { useOrderForm, useMarket } from '../context';
 import { calcLockedAmounts } from '../types';
-import { OrderForm, OrderConfirmModal, SwapOrderForm, TPSLKeeperBadge } from '../components';
+import { OrderForm, OrderConfirmModal, SwapOrderForm, TPSLKeeperBadge, TradingBalanceBar } from '../components';
+import { TransferModal } from '../components/TransferModal';
 import { TPSLKeeperModal, isKeeperModalSeen } from '../components/TPSLKeeperModal';
 import type { ScaleOrderItem } from '../components/ScaleOrderForm';
 import type { PriceLevel } from '../../../lib/deepbook';
@@ -175,6 +176,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     handleLimitOrder,
     handleMarketOrder,
     handleCreateBalanceManager,
+    handleWithdrawToken,
   } = useOrderActions();
 
   console.log('[TradingPanel] balanceManagerId:', balanceManagerId, 'isConnected:', isConnected, 'disabled:', !isConnected || !balanceManagerId);
@@ -187,6 +189,29 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
   // In-orders locked amounts (buy orders lock quote, sell orders lock base)
   const { lockedQuote, lockedBase } = calcLockedAmounts(openOrders);
+
+  // Withdraw modal state for TransferModal
+  const [withdrawModal, setWithdrawModal] = useState<{
+    tokenSymbol: string;
+    tokenType: string;
+    tokenDecimals: number;
+    availableBalance: number;
+  } | null>(null);
+
+  const bmBalanceRef = useRef(bmBalance);
+  bmBalanceRef.current = bmBalance;
+
+  const handleOpenWithdraw = useCallback((tokenSymbol: string) => {
+    const isBase = tokenSymbol !== 'NUSDC';
+    const token = isBase ? currentPool.baseToken : currentPool.quoteToken;
+    if (!token.type) return;
+    setWithdrawModal({
+      tokenSymbol,
+      tokenType: token.type,
+      tokenDecimals: token.decimals,
+      availableBalance: isBase ? bmBalanceRef.current.base : bmBalanceRef.current.quote,
+    });
+  }, [currentPool]);
 
   // Wallet balances for unified available balance
   const { data: multiBalance } = useMultiBalance();
@@ -490,9 +515,48 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
               isLoading={isLoading}
               quoteBalance={availableQuote}
               baseBalance={availableBase}
+              onWithdraw={handleOpenWithdraw}
             />
           </div>
+
+          {/* Balance breakdown with withdraw */}
+          {balanceManagerId && (
+            <div className="mt-2 shrink-0">
+              <TradingBalanceBar
+                baseSymbol={baseSymbol}
+                tradingBase={bmBalance.base}
+                tradingQuote={bmBalance.quote}
+                mode="simple"
+                onWithdraw={() => {
+                  // Open withdraw for the token with larger BM balance
+                  const baseValue = bmBalance.base;
+                  const quoteValue = bmBalance.quote;
+                  if (baseValue > 0 || quoteValue > 0) {
+                    handleOpenWithdraw(quoteValue > 0 ? 'NUSDC' : baseSymbol);
+                  }
+                }}
+              />
+            </div>
+          )}
         </div>
+
+        {/* Withdraw TransferModal */}
+        {withdrawModal && (
+          <TransferModal
+            onClose={() => setWithdrawModal(null)}
+            action="withdraw"
+            tokenSymbol={withdrawModal.tokenSymbol}
+            tokenType={withdrawModal.tokenType}
+            tokenDecimals={withdrawModal.tokenDecimals}
+            availableBalance={withdrawModal.availableBalance}
+            isLoading={isLoading}
+            onConfirm={async (amount, coinType, decimals, symbol) => {
+              const result = await handleWithdrawToken(amount, coinType, decimals, symbol);
+              if (result.success) setWithdrawModal(null);
+              return result;
+            }}
+          />
+        )}
       </div>
     );
   }
