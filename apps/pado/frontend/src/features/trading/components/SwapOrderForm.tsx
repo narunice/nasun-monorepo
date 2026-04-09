@@ -31,6 +31,7 @@ interface SwapOrderFormProps {
   isLoading: boolean;
   quoteBalance?: number;
   baseBalance?: number;
+  onWithdraw?: (token: string) => void;
 }
 
 interface LastTrade {
@@ -51,6 +52,7 @@ export function SwapOrderForm({
   isLoading,
   quoteBalance = 0,
   baseBalance = 0,
+  onWithdraw,
 }: SwapOrderFormProps) {
   const { currentPool, setMarket, markets } = useMarket();
   const { slippage, setSlippage } = useOrderForm();
@@ -341,6 +343,7 @@ export function SwapOrderForm({
         receiveAmount={lastTrade.receiveAmount}
         isBuying={lastTrade.isBuying}
         onNewSwap={handleNewSwap}
+        onWithdraw={onWithdraw}
       />
     );
   }

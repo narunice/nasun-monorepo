@@ -40,6 +40,8 @@ export interface TokenValue {
   change24h: number;  // 24h change percentage
   pnl24h: number;     // 24h P&L in USD
   source?: 'wallet' | 'trading' | 'margin' | 'combined';
+  walletBalance?: number;
+  tradingBalance?: number;
 }
 
 export interface UseTotalValueResult {
@@ -158,6 +160,8 @@ export function useTotalValue(): UseTotalValueResult {
         change24h: getPriceChange24h('NBTC'),
         pnl24h: nbtcPnl,
         source: getNbtcSource(),
+        walletBalance: nbtcWallet,
+        tradingBalance: nbtcTrading,
       });
     }
 
@@ -170,6 +174,8 @@ export function useTotalValue(): UseTotalValueResult {
         change24h: getPriceChange24h('NUSDC'),
         pnl24h: nusdcPnl,
         source: getNusdcSource(),
+        walletBalance: nusdcWallet,
+        tradingBalance: nusdcTrading,
       });
     }
 

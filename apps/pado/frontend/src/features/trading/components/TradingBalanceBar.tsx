@@ -27,6 +27,8 @@ interface TradingBalanceBarProps {
   lockedQuote?: number;
   /** Display mode - affects In Orders visibility */
   mode?: 'simple' | 'pro';
+  /** Callback to open withdraw modal */
+  onWithdraw?: () => void;
 }
 
 export function TradingBalanceBar({
@@ -36,6 +38,7 @@ export function TradingBalanceBar({
   lockedBase = 0,
   lockedQuote = 0,
   mode = 'simple',
+  onWithdraw,
 }: TradingBalanceBarProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -138,11 +141,21 @@ export function TradingBalanceBar({
           {/* Trading Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span className="text-theme-text-muted">Trading:</span>
-            <span className="font-mono text-pd3">
-              {tradingBase.toFixed(4)} {baseSymbol}
-              <span className="text-theme-text-muted mx-2">|</span>
-              {tradingQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-pd3">
+                {tradingBase.toFixed(4)} {baseSymbol}
+                <span className="text-theme-text-muted mx-2">|</span>
+                {tradingQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
+              </span>
+              {onWithdraw && (tradingBase > 0 || tradingQuote > 0) && (
+                <button
+                  onClick={onWithdraw}
+                  className="text-orange-400 hover:text-orange-300 text-[10px] xl:text-xs font-medium transition-colors shrink-0"
+                >
+                  Withdraw
+                </button>
+              )}
+            </div>
           </div>
 
           {/* In Orders Row (Pro mode only) */}
