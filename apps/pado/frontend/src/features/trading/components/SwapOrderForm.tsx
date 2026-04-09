@@ -222,14 +222,11 @@ export function SwapOrderForm({
   }, [baseAmount, midPrice, isBuying, asks, bids]);
 
   // Balance and validation
-  // When auto deposit is enabled, only block if total available is zero.
-  // Auto deposit handles the shortfall at execution time.
-  const { autoDepositEnabled } = useOrderForm();
+  // quoteBalance/baseBalance already include wallet + BM combined total.
+  // Auto deposit moves wallet funds to BM but cannot create funds, so validate against full balance.
   const payBalance = isBuying ? quoteBalance : baseBalance;
   const maxPayAmount = isBuying ? quoteBalance / (1 + feeRate) : baseBalance;
-  const isInsufficientBalance = autoDepositEnabled
-    ? (payAmount > 0 && payBalance <= 0)
-    : (payAmount > 0 && payAmount > maxPayAmount);
+  const isInsufficientBalance = payAmount > 0 && payAmount > maxPayAmount;
 
   // Percent quick buttons
   const getPercentAmount = useCallback((pct: number) => {
