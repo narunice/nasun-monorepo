@@ -214,6 +214,7 @@ export function useFollowedTraders(): UseFollowedTradersResult {
           setLocalFollows(updated);
           setFollowedAddresses(updated);
         }
+        notifyListeners();
       }
     },
     [isConnected, chatService],
