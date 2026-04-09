@@ -60,7 +60,10 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     eligibleStage: serverEligibleStage,
   } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
-  // Derive eligibleStage from mintType if server doesn't provide it
+  // Derive eligibleStage from mintType if server doesn't provide it.
+  // Only use mintType for derivation; do NOT fall back to FCFS(3) just because
+  // the user is registered, as that can falsely match currentStage during FCFS
+  // and show "Mint now" for GTD/Free Mint users whose mintType is temporarily null.
   const MINT_TYPE_TO_STAGE: Record<string, number> = {
     FREE_MINT: 1,
     GUARANTEED: 2,
@@ -68,8 +71,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
   };
   const eligibleStage: number | null =
     serverEligibleStage
-    ?? (genesisPassMintType ? (MINT_TYPE_TO_STAGE[genesisPassMintType] ?? 3) : null)
-    ?? (isGenesisPassRegistered ? 3 : null);
+    ?? (genesisPassMintType ? (MINT_TYPE_TO_STAGE[genesisPassMintType] ?? 3) : null);
 
   // Direct on-chain ownership check
   const { hasMinted: hasGenesisPassNft, ownedEditionId } =
@@ -157,9 +159,10 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             ? "FCFS"
             : null;
 
-  // Determine if user's eligible stage is live or upcoming
+  // Determine if user's eligible stage is live, upcoming, or already ended
   const stageIsLive = eligibleStage != null && eligibleStage === currentStage;
   const stageUpcoming = eligibleStage != null && eligibleStage > currentStage;
+  const stageEnded = eligibleStage != null && eligibleStage < currentStage;
 
   // Public stage is live
   const publicIsLive = currentStage >= 4;
@@ -261,6 +264,18 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
                 <div className="flex flex-col items-center gap-1 px-4 pt-4 text-center">
                   <h6 className="text-emerald-400 font-bold animate-pulse drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
                     Mint now.
+                  </h6>
+                  {timeLeft && !timeLeft.isExpired && (
+                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
+                  )}
+                </div>
+              ) : isGenesisPassRegistered && mintTypeLabel && stageEnded ? (
+                /* User's allowlist stage has ended, guide to public */
+                <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
+                  <h6 className="font-bold">
+                    <span className="text-nasun-white/70">{mintTypeLabel} stage ended.</span>
+                    <br />
+                    <span className="text-amber-400">You can mint in public stage.</span>
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
                     <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
