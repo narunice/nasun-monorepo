@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '../hooks/useChat';
 import { useActivityFeed } from '../hooks/useActivityFeed';
@@ -17,22 +17,40 @@ function getDateLabel(timestamp: number): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-interface DateGroup {
-  label: string;
+/** A run of consecutive activities from the same trader within a date group */
+interface TraderRun {
+  traderAddress: string;
   activities: FeedActivity[];
 }
 
-function groupByDate(activities: FeedActivity[]): DateGroup[] {
+interface DateGroup {
+  label: string;
+  runs: TraderRun[];
+}
+
+/**
+ * Group activities by date, then by consecutive same-trader runs.
+ * Consecutive trades from the same wallet become a single collapsible group.
+ */
+function groupByDateAndTrader(activities: FeedActivity[]): DateGroup[] {
   const groups: DateGroup[] = [];
   let currentLabel = '';
+  let currentGroup: DateGroup | null = null;
 
   for (const activity of activities) {
     const label = getDateLabel(activity.timestamp);
+
     if (label !== currentLabel) {
       currentLabel = label;
-      groups.push({ label, activities: [activity] });
+      currentGroup = { label, runs: [{ traderAddress: activity.traderAddress, activities: [activity] }] };
+      groups.push(currentGroup);
     } else {
-      groups[groups.length - 1].activities.push(activity);
+      const lastRun = currentGroup!.runs[currentGroup!.runs.length - 1];
+      if (lastRun.traderAddress === activity.traderAddress) {
+        lastRun.activities.push(activity);
+      } else {
+        currentGroup!.runs.push({ traderAddress: activity.traderAddress, activities: [activity] });
+      }
     }
   }
 
@@ -63,7 +81,17 @@ export function ActivityFeed({ onBrowseLeaderboard }: ActivityFeedProps) {
     return [...allActivities, ...newItems];
   }, [data, beforeTs, allActivities]);
 
-  const groups = useMemo(() => groupByDate(activities), [activities]);
+  const groups = useMemo(() => groupByDateAndTrader(activities), [activities]);
+  // Track which trader runs are expanded (key: "dateLabel-runIndex")
+  const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
+  const toggleRun = useCallback((key: string) => {
+    setExpandedRuns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const handleLoadMore = () => {
     if (!data?.hasMore || activities.length === 0) return;
@@ -103,12 +131,57 @@ export function ActivityFeed({ onBrowseLeaderboard }: ActivityFeedProps) {
             <div className="flex-1 h-px bg-theme-border" />
           </div>
           <div className="space-y-1.5">
-            {group.activities.map((activity) => (
-              <ActivityCard
-                key={`${activity.data.txDigest}-${activity.traderAddress}`}
-                activity={activity}
-              />
-            ))}
+            {group.runs.map((run, runIdx) => {
+              if (run.activities.length === 1) {
+                const a = run.activities[0];
+                return (
+                  <ActivityCard
+                    key={`${a.data.txDigest}-${a.traderAddress}`}
+                    activity={a}
+                  />
+                );
+              }
+
+              // Collapsible group for 2+ activities from the same trader
+              const runKey = `${group.label}-${runIdx}`;
+              const isExpanded = expandedRuns.has(runKey);
+              const first = run.activities[0];
+              const displayName = first.traderNickname ?? `${first.traderAddress.slice(0, 6)}...${first.traderAddress.slice(-4)}`;
+
+              return (
+                <div key={runKey}>
+                  <button
+                    onClick={() => toggleRun(runKey)}
+                    className="w-full text-left bg-theme-bg-secondary rounded-lg border border-theme-border p-3 min-h-[44px] flex items-center justify-between hover:bg-theme-bg-tertiary transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-theme-text-primary truncate max-w-[120px]">
+                        {displayName}
+                      </span>
+                      <span className="text-xs text-theme-text-muted">
+                        {run.activities.length} trades
+                      </span>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-theme-text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {isExpanded && (
+                    <div className="space-y-1 mt-1 ml-3 border-l-2 border-theme-border pl-2">
+                      {run.activities.map((a) => (
+                        <ActivityCard
+                          key={`${a.data.txDigest}-${a.traderAddress}`}
+                          activity={a}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}

@@ -84,22 +84,23 @@ const ENV_VARS: EnvConfig[] = [
 // ========================================
 
 function validateFormat(env: EnvConfig): string | null {
-  if (!env.value || !env.format) return null;
+  const trimmed = env.value?.trim();
+  if (!trimmed || !env.format) return null;
 
   switch (env.format) {
     case 'object_id':
-      if (!isValidObjectId(env.value)) {
-        return `${env.name}: invalid Object ID format (expected 0x + 64 hex chars, got "${env.value.slice(0, 20)}...")`;
+      if (!isValidObjectId(trimmed)) {
+        return `${env.name}: invalid Object ID format (expected 0x + 64 hex chars, got "${trimmed.slice(0, 20)}...")`;
       }
       break;
     case 'url':
-      if (!isValidUrl(env.value)) {
-        return `${env.name}: invalid URL format (got "${env.value}")`;
+      if (!isValidUrl(trimmed)) {
+        return `${env.name}: invalid URL format (got "${trimmed}")`;
       }
       break;
     case 'sui_type':
-      if (!isValidSuiType(env.value)) {
-        return `${env.name}: invalid Sui type format (expected 0x<hex>::module::Type, got "${env.value.slice(0, 30)}...")`;
+      if (!isValidSuiType(trimmed)) {
+        return `${env.name}: invalid Sui type format (expected 0x<hex>::module::Type, got "${trimmed.slice(0, 30)}...")`;
       }
       break;
   }
