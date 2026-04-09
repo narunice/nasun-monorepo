@@ -44,7 +44,6 @@ export interface MetricsRecord {
   newAddresses: number;
   cumulativeAddresses: number;
   transactionCount?: number; // Daily TX count (snapshot diff, null on first run)
-  activeAddresses: string[];
   collectedAt: string;
   executionDurationMs: number;
 }

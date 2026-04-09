@@ -225,7 +225,6 @@ export async function handler(event: CollectMetricsEvent): Promise<void> {
       newAddresses: 0,
       cumulativeAddresses: 0,
       transactionCount: txCount ?? undefined,
-      activeAddresses: [],
       collectedAt: new Date().toISOString(),
       executionDurationMs: Date.now() - startTime,
     });
@@ -244,9 +243,7 @@ export async function handler(event: CollectMetricsEvent): Promise<void> {
   }
 
   // Step 4: Compute metrics
-  const activeAddresses = results
-    .filter((r) => r.active)
-    .map((r) => r.address);
+  const dauCount = results.filter((r) => r.active).length;
 
   // Count new addresses: addresses whose firstSeenDate matches targetDate
   // (we need to check each address record)
@@ -273,11 +270,10 @@ export async function handler(event: CollectMetricsEvent): Promise<void> {
   const metricsRecord: MetricsRecord = {
     pk: `METRICS#${targetDate}`,
     sk: 'DAILY',
-    dau: activeAddresses.length,
+    dau: dauCount,
     newAddresses: newAddressCount,
     cumulativeAddresses: allAddresses.length,
     transactionCount: transactionCount ?? undefined,
-    activeAddresses,
     collectedAt: new Date().toISOString(),
     executionDurationMs: Date.now() - startTime,
   };
