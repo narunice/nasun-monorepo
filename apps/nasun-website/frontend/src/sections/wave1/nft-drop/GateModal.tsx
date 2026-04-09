@@ -172,6 +172,15 @@ function IneligibleGate({
             </p>
           )}
 
+          {eligibility.registered && !eligibility.eligible
+            && eligibility.eligibleStage != null
+            && eligibility.currentStageLabel
+            && eligibility.eligibleStageLabel !== eligibility.currentStageLabel && (
+            <p className="text-amber-300/90 text-sm leading-relaxed mt-1">
+              You can still mint during Public Mint.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-3 w-full mt-2">
             <button
               className="py-3 rounded-xl text-sm font-semibold border border-amber-400/40 text-amber-300 hover:bg-amber-400/10 transition-colors"
