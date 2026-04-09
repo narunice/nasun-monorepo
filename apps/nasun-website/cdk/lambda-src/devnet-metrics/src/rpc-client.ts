@@ -79,8 +79,14 @@ export async function discoverAddressesFromFaucet(
   startCursor: string | null = null,
 ): Promise<DiscoveryResult> {
   const addresses = new Set<string>();
-  let cursor = startCursor;
-  let lastCursor: string | null = startCursor;
+  // Validate cursor length: Sui TX digest cursors are 44-char base64 strings.
+  // Discard invalid cursors to avoid RPC -32602 errors.
+  const validCursor = startCursor && startCursor.length >= 32 ? startCursor : null;
+  if (startCursor && !validCursor) {
+    console.warn(`[discovery] Discarding invalid cursor (length ${startCursor.length}): ${startCursor}`);
+  }
+  let cursor = validCursor;
+  let lastCursor: string | null = validCursor;
 
   for (let page = 0; page < MAX_DISCOVERY_PAGES; page++) {
     const result = await rpcCall<TxQueryResult>('suix_queryTransactionBlocks', [

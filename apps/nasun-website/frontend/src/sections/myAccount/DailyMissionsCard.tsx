@@ -51,7 +51,7 @@ const MISSIONS: Mission[] = [
     label: "Spot Trade",
     description: "Place a trade on the DEX orderbook",
     points: 2,
-    comingSoon: true,
+    externalUrl: "https://pado.finance/trade",
   },
   {
     id: "pado-lottery",
