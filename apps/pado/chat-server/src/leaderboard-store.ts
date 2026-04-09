@@ -480,6 +480,7 @@ export function replaceTraderStats(
 export function getLeaderboard(
   period: string,
   limit: number = 50,
+  offset: number = 0,
 ): TraderStatsRow[] {
   return getLeaderboardDb()
     .prepare(
@@ -488,9 +489,9 @@ export function getLeaderboard(
        FROM trader_stats
        WHERE period = ?
        ORDER BY rank ASC
-       LIMIT ?`
+       LIMIT ? OFFSET ?`
     )
-    .all(period, limit) as TraderStatsRow[];
+    .all(period, limit, offset) as TraderStatsRow[];
 }
 
 export function getTraderAllPeriodStats(address: string): TraderStatsRow[] {
@@ -782,10 +783,17 @@ export function computeCostBasis(
   return entries;
 }
 
-export function getTotalTradersCount(): number {
+export function getTotalTradersCount(period: string = 'all'): number {
   const row = getLeaderboardDb()
-    .prepare("SELECT COUNT(DISTINCT address) as count FROM trader_stats WHERE period = 'all'")
-    .get() as { count: number } | undefined;
+    .prepare('SELECT COUNT(DISTINCT address) as count FROM trader_stats WHERE period = ?')
+    .get(period) as { count: number } | undefined;
+  return row?.count ?? 0;
+}
+
+export function getTotalPnlTradersCount(period: string = 'all'): number {
+  const row = getLeaderboardDb()
+    .prepare('SELECT COUNT(DISTINCT address) as count FROM trader_pnl WHERE period = ?')
+    .get(period) as { count: number } | undefined;
   return row?.count ?? 0;
 }
 
@@ -1120,6 +1128,7 @@ export function replaceTraderPnlStats(
 export function getLeaderboardPnl(
   period: string,
   limit: number = 50,
+  offset: number = 0,
 ): TraderPnlStatsRow[] {
   return getLeaderboardDb()
     .prepare(
@@ -1127,9 +1136,9 @@ export function getLeaderboardPnl(
        FROM trader_pnl
        WHERE period = ?
        ORDER BY rank ASC
-       LIMIT ?`
+       LIMIT ? OFFSET ?`
     )
-    .all(period, limit) as TraderPnlStatsRow[];
+    .all(period, limit, offset) as TraderPnlStatsRow[];
 }
 
 // ===== Points System =====
@@ -1209,16 +1218,16 @@ export function replaceTraderPoints(
 /**
  * Get points leaderboard.
  */
-export function getPointsLeaderboard(limit: number = 50): TraderPointsRow[] {
+export function getPointsLeaderboard(limit: number = 50, offset: number = 0): TraderPointsRow[] {
   return getLeaderboardDb()
     .prepare(
       `SELECT address, total_points, points_from_trades, points_from_volume,
               points_from_diversity, trade_count, volume_quote, rank, prev_rank, updated_at
        FROM trader_points
        ORDER BY rank ASC
-       LIMIT ?`
+       LIMIT ? OFFSET ?`
     )
-    .all(limit) as TraderPointsRow[];
+    .all(limit, offset) as TraderPointsRow[];
 }
 
 /**

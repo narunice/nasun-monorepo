@@ -69,6 +69,7 @@ export interface FeedActivity {
 export interface FeedResponse {
   activities: FeedActivity[];
   hasMore: boolean;
+  followCount?: number;
 }
 
 const TRADE_SHARE_PREFIX = '[TRADE]';
