@@ -3,13 +3,13 @@ import { NETWORK_CONFIG } from '../../../config/network';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { Period, LeaderboardMode, LeaderboardResponse, PnlLeaderboardResponse, PointsLeaderboardResponse, TraderPointsResponse } from '../types';
 
-async function fetchLeaderboard(period: Period, limit: number, mode: LeaderboardMode = 'volume'): Promise<LeaderboardResponse> {
+async function fetchLeaderboard(period: Period, limit: number, offset: number, mode: LeaderboardMode = 'volume'): Promise<LeaderboardResponse> {
   const baseUrl = NETWORK_CONFIG.chatHttpUrl;
   if (!baseUrl) {
     return { period, traders: [], updatedAt: 0, totalTraders: 0 };
   }
 
-  const params = new URLSearchParams({ period, limit: String(limit), mode });
+  const params = new URLSearchParams({ period, limit: String(limit), offset: String(offset), mode });
   const url = `${baseUrl}/api/leaderboard?${params}`;
   const res = await fetch(url);
 
@@ -20,13 +20,13 @@ async function fetchLeaderboard(period: Period, limit: number, mode: Leaderboard
   return res.json();
 }
 
-async function fetchPnlLeaderboard(period: Period, limit: number): Promise<PnlLeaderboardResponse> {
+async function fetchPnlLeaderboard(period: Period, limit: number, offset: number): Promise<PnlLeaderboardResponse> {
   const baseUrl = NETWORK_CONFIG.chatHttpUrl;
   if (!baseUrl) {
     return { mode: 'pnl', period, traders: [], updatedAt: 0, totalTraders: 0 };
   }
 
-  const params = new URLSearchParams({ period, limit: String(limit), mode: 'pnl' });
+  const params = new URLSearchParams({ period, limit: String(limit), offset: String(offset), mode: 'pnl' });
   const url = `${baseUrl}/api/leaderboard?${params}`;
   const res = await fetch(url);
 
@@ -37,37 +37,39 @@ async function fetchPnlLeaderboard(period: Period, limit: number): Promise<PnlLe
   return res.json();
 }
 
-export function useLeaderboard(period: Period, limit: number = 50) {
+export function useLeaderboard(period: Period, limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
   return useQuery<LeaderboardResponse>({
-    queryKey: ['leaderboard', 'volume', period, limit],
-    queryFn: () => fetchLeaderboard(period, limit, 'volume'),
+    queryKey: ['leaderboard', 'volume', period, limit, offset],
+    queryFn: () => fetchLeaderboard(period, limit, offset, 'volume'),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
+    placeholderData: (prev) => prev,
   });
 }
 
-export function usePnlLeaderboard(period: Period, limit: number = 50) {
+export function usePnlLeaderboard(period: Period, limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
   return useQuery<PnlLeaderboardResponse>({
-    queryKey: ['leaderboard', 'pnl', period, limit],
-    queryFn: () => fetchPnlLeaderboard(period, limit),
+    queryKey: ['leaderboard', 'pnl', period, limit, offset],
+    queryFn: () => fetchPnlLeaderboard(period, limit, offset),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
+    placeholderData: (prev) => prev,
   });
 }
 
-async function fetchPointsLeaderboard(limit: number): Promise<PointsLeaderboardResponse> {
+async function fetchPointsLeaderboard(limit: number, offset: number): Promise<PointsLeaderboardResponse> {
   const baseUrl = NETWORK_CONFIG.chatHttpUrl;
   if (!baseUrl) {
     return { traders: [], updatedAt: 0, totalTraders: 0 };
   }
 
-  const params = new URLSearchParams({ limit: String(limit) });
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   const url = `${baseUrl}/api/leaderboard/points?${params}`;
   const res = await fetch(url);
 
@@ -78,15 +80,16 @@ async function fetchPointsLeaderboard(limit: number): Promise<PointsLeaderboardR
   return res.json();
 }
 
-export function usePointsLeaderboard(limit: number = 50) {
+export function usePointsLeaderboard(limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
   return useQuery<PointsLeaderboardResponse>({
-    queryKey: ['leaderboard', 'points', limit],
-    queryFn: () => fetchPointsLeaderboard(limit),
+    queryKey: ['leaderboard', 'points', limit, offset],
+    queryFn: () => fetchPointsLeaderboard(limit, offset),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
+    placeholderData: (prev) => prev,
   });
 }
 

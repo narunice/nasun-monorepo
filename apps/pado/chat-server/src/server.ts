@@ -20,7 +20,7 @@ import type {
 import { DEFAULT_CONFIG as CONFIG, VALID_REACTION_CODES } from './types.js';
 import {
   initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents, getLeaderboardDb,
-  getLeaderboard, getLeaderboardPnl, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount,
+  getLeaderboard, getLeaderboardPnl, getTraderAllPeriodStats, getTraderFills, getTotalFillsCount, getTotalTradersCount, getTotalPnlTradersCount,
   getIndexerState,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
@@ -738,7 +738,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       const following = getFollowing(address);
       if (following.length === 0) {
         res.writeHead(200, corsHeaders);
-        res.end(JSON.stringify({ activities: [], hasMore: false }));
+        res.end(JSON.stringify({ activities: [], hasMore: false, followCount: 0 }));
         return;
       }
 
@@ -775,7 +775,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       });
 
       res.writeHead(200, corsHeaders);
-      res.end(JSON.stringify({ activities, hasMore }));
+      res.end(JSON.stringify({ activities, hasMore, followCount: following.length }));
     } catch (err) {
       console.error('[Feed] API error:', (err as Error).message);
       res.writeHead(500, corsHeaders);
@@ -800,7 +800,8 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
   if (url.pathname === '/api/leaderboard' && req.method === 'GET') {
     const period = url.searchParams.get('period') || '24h';
     const mode = url.searchParams.get('mode') || 'volume';
-    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 100);
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
 
     if (!VALID_PERIODS.has(period)) {
       res.writeHead(400, corsHeaders);
@@ -817,7 +818,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     try {
       if (mode === 'pnl') {
         // PnL leaderboard
-        const rows = getLeaderboardPnl(period, limit);
+        const rows = getLeaderboardPnl(period, limit, offset);
         const addresses = rows.map((r) => r.address);
         const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
         const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
@@ -834,13 +835,13 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         }));
 
         const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
-        const totalTraders = getTotalTradersCount();
+        const totalTraders = getTotalPnlTradersCount(period);
 
         res.writeHead(200, corsHeaders);
         res.end(JSON.stringify({ mode: 'pnl', period, traders, updatedAt, totalTraders }));
       } else {
         // Volume leaderboard (existing)
-        const rows = getLeaderboard(period, limit);
+        const rows = getLeaderboard(period, limit, offset);
         const addresses = rows.map((r) => r.address);
         const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
         const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
@@ -858,7 +859,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         }));
 
         const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
-        const totalTraders = getTotalTradersCount();
+        const totalTraders = getTotalTradersCount(period);
 
         res.writeHead(200, corsHeaders);
         res.end(JSON.stringify({ mode: 'volume', period, traders, updatedAt, totalTraders }));
@@ -968,8 +969,9 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
   // GET /api/leaderboard/points - points leaderboard
   if (url.pathname === '/api/leaderboard/points' && req.method === 'GET') {
     try {
-      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 1000);
-      const rows = getPointsLeaderboard(limit);
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+      const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+      const rows = getPointsLeaderboard(limit, offset);
       const totalTraders = getTotalPointsTraders();
       const addresses = rows.map((r) => r.address);
       const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map<string, string>();

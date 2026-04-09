@@ -26,6 +26,7 @@ EC2_HOST=""
 
 # --- 옵션 파싱 ---
 DRY_RUN=false
+NO_RESTART=false
 
 for arg in "$@"; do
   case $arg in
@@ -47,6 +48,10 @@ for arg in "$@"; do
       DRY_RUN=true
       shift
       ;;
+    --no-restart)
+      NO_RESTART=true
+      shift
+      ;;
     --help|-h)
       echo "사용법: ./scripts/deploy-pado-chat-server.sh --env=<staging|production> [옵션]"
       echo ""
@@ -54,6 +59,7 @@ for arg in "$@"; do
       echo "  --env=staging      스테이징 서버에 배포"
       echo "  --env=production   프로덕션 서버에 배포"
       echo "  --dry-run          빌드만 수행 (배포 안함)"
+      echo "  --no-restart       파일 배포만 수행 (서비스 재시작 안함)"
       echo "  --help, -h         도움말 표시"
       exit 0
       ;;
@@ -67,6 +73,8 @@ fi
 TOTAL_STEPS=5
 if [ "$DRY_RUN" = true ]; then
   TOTAL_STEPS=2
+elif [ "$NO_RESTART" = true ]; then
+  TOTAL_STEPS=4
 fi
 
 START_TIME=$(date +%s)
@@ -158,31 +166,35 @@ fi
 log_success "npm install 완료"
 
 # --- Phase 5: 서비스 재시작 & 헬스 체크 ---
-log_step 5 $TOTAL_STEPS "서비스 재시작 & 헬스 체크"
-
-log_info "pado-chat 서비스 재시작 중..."
-ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
-  "sudo systemctl restart ${SERVICE_NAME}"
-
-sleep 2
-
-SERVICE_STATUS=$(ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
-  "systemctl is-active ${SERVICE_NAME} 2>/dev/null || echo 'inactive'")
-
-if [ "$SERVICE_STATUS" = "active" ]; then
-  log_success "pado-chat 서비스 활성화됨"
+if [ "$NO_RESTART" = true ]; then
+  log_warning "서비스 재시작 건너뜀 (--no-restart)"
 else
-  log_error "pado-chat 서비스 시작 실패 (status: $SERVICE_STATUS)"
-fi
+  log_step 5 $TOTAL_STEPS "PM2 재시작 & 헬스 체크"
 
-log_info "헬스 체크 (localhost:3100)..."
-CHAT_STATUS=$(ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
-  "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/ 2>/dev/null || echo '000'")
+  log_info "pado-chat-server (PM2) 재시작 중..."
+  ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
+    "pm2 restart pado-chat-server --update-env 2>&1 | tail -3"
 
-if [ "$CHAT_STATUS" != "000" ]; then
-  log_success "Chat server 응답 확인 (HTTP $CHAT_STATUS)"
-else
-  log_warning "Chat server 응답 없음 (포트 3100 대기 중일 수 있음)"
+  sleep 3
+
+  PM2_STATUS=$(ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
+    "pm2 show pado-chat-server 2>/dev/null | grep status | head -1 | awk '{print \$4}'" || echo 'unknown')
+
+  if [ "$PM2_STATUS" = "online" ]; then
+    log_success "pado-chat-server (PM2) 활성화됨"
+  else
+    log_error "pado-chat-server (PM2) 시작 실패 (status: $PM2_STATUS)"
+  fi
+
+  log_info "헬스 체크 (localhost:3100)..."
+  CHAT_STATUS=$(ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
+    "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/api/status 2>/dev/null || echo '000'")
+
+  if [ "$CHAT_STATUS" != "000" ]; then
+    log_success "Chat server 응답 확인 (HTTP $CHAT_STATUS)"
+  else
+    log_warning "Chat server 응답 없음 (포트 3100 대기 중일 수 있음)"
+  fi
 fi
 
 # --- 완료 ---
