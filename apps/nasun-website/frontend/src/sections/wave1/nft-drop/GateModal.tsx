@@ -174,8 +174,7 @@ function IneligibleGate({
 
           {eligibility.registered && !eligibility.eligible
             && eligibility.eligibleStage != null
-            && eligibility.currentStageLabel
-            && eligibility.eligibleStageLabel !== eligibility.currentStageLabel && (
+            && eligibility.eligibleStage < eligibility.currentStage && (
             <p className="text-amber-300/90 text-sm leading-relaxed mt-1">
               You can still mint during Public Mint.
             </p>
