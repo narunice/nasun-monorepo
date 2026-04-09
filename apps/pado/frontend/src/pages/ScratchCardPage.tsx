@@ -3,6 +3,7 @@
  * Instant lottery with on-chain VRF randomness
  */
 
+import { useState, useCallback, useMemo } from 'react';
 import {
   ScratchCardArea,
   PrizeTableDisplay,
@@ -12,6 +13,17 @@ import {
 } from '../features/scratchcard';
 
 export function ScratchCardPage() {
+  const [pendingCardId, setPendingCardId] = useState<number | null>(null);
+
+  const handlePendingCardChange = useCallback((cardId: number | null) => {
+    setPendingCardId(cardId);
+  }, []);
+
+  const pendingCardIds = useMemo(
+    () => (pendingCardId !== null ? new Set([pendingCardId]) : new Set<number>()),
+    [pendingCardId],
+  );
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -31,7 +43,7 @@ export function ScratchCardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Scratch Card */}
         <div className="bg-theme-bg-secondary rounded-xl p-6">
-          <ScratchCardArea />
+          <ScratchCardArea onPendingCardChange={handlePendingCardChange} />
         </div>
 
         {/* Right: Prize Table */}
@@ -45,7 +57,7 @@ export function ScratchCardPage() {
         <h2 className="text-lg font-semibold text-theme-text-primary mb-3">
           My Winning Cards
         </h2>
-        <MyWinningCards />
+        <MyWinningCards pendingCardIds={pendingCardIds} />
       </div>
 
       {/* Purchase History (all, compact) */}

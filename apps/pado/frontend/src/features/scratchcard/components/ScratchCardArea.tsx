@@ -43,10 +43,14 @@ function phaseReducer(state: Phase, action: PhaseAction): Phase {
 const isCardVisible = (p: Phase) =>
   p === 'scratching' || p === 'revealing' || p === 'animating' || p === 'settled';
 
-export function ScratchCardArea() {
+interface ScratchCardAreaProps {
+  onPendingCardChange?: (cardId: number | null) => void;
+}
+
+export function ScratchCardArea({ onPendingCardChange }: ScratchCardAreaProps) {
   const { buyCard, isBuying, error } = useScratchCardActions();
   const { pool } = useScratchCardPool();
-  const { refetch: refetchHistory } = useMyScratchCards();
+  const { refetch: refetchHistory, refetchNfts } = useMyScratchCards();
   const { showToast } = useToast();
 
   const [phase, dispatch] = useReducer(phaseReducer, 'idle');
@@ -74,6 +78,7 @@ export function ScratchCardArea() {
 
     if (scratchResult) {
       resultRef.current = scratchResult;
+      onPendingCardChange?.(scratchResult.cardId);
       dispatch({ type: 'CARD_READY' });
     } else {
       dispatch({ type: 'BUY_FAILED' });
@@ -102,6 +107,7 @@ export function ScratchCardArea() {
     }
 
     refetchHistory();
+    refetchNfts();
 
     clearTimer();
     if (tier === 'loss') {
@@ -135,8 +141,9 @@ export function ScratchCardArea() {
     clearFallback();
     resultRef.current = null;
     lossTextRef.current = null;
+    onPendingCardChange?.(null);
     dispatch({ type: 'RESET' });
-  }, [clearTimer, clearFallback]);
+  }, [clearTimer, clearFallback, onPendingCardChange]);
 
   const result = resultRef.current;
   const tier = result ? getAnimationTier(result.multiplier) : 'loss';
