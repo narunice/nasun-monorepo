@@ -421,12 +421,12 @@ describe('ModeSelector', () => {
     render(<ModeSelector selected="volume" onSelect={vi.fn()} />);
     expect(screen.getByText('Volume')).toBeTruthy();
     expect(screen.getByText('PnL')).toBeTruthy();
-    expect(screen.getByText('Points')).toBeTruthy();
+    expect(screen.getByText('Pado')).toBeTruthy();
   });
 
   it('highlights selected mode', () => {
     render(<ModeSelector selected="points" onSelect={vi.fn()} />);
-    const pointsBtn = screen.getByText('Points');
+    const pointsBtn = screen.getByText('Pado');
     expect(pointsBtn.className).toContain('bg-theme-bg-secondary');
     expect(pointsBtn.className).toContain('text-theme-text-primary');
   });
@@ -442,7 +442,7 @@ describe('ModeSelector', () => {
     const onSelect = vi.fn();
     render(<ModeSelector selected="volume" onSelect={onSelect} />);
 
-    fireEvent.click(screen.getByText('Points'));
+    fireEvent.click(screen.getByText('Pado'));
     expect(onSelect).toHaveBeenCalledWith('points');
 
     fireEvent.click(screen.getByText('PnL'));
@@ -455,7 +455,7 @@ describe('ModeSelector', () => {
   it('calls onSelect even when clicking already selected mode', () => {
     const onSelect = vi.fn();
     render(<ModeSelector selected="points" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText('Points'));
+    fireEvent.click(screen.getByText('Pado'));
     expect(onSelect).toHaveBeenCalledWith('points');
   });
 
@@ -466,7 +466,7 @@ describe('ModeSelector', () => {
       const labels: Record<LeaderboardMode, string> = {
         volume: 'Volume',
         pnl: 'PnL',
-        points: 'Points',
+        points: 'Pado',
       };
       const selectedBtn = screen.getByText(labels[mode]);
       expect(selectedBtn.className).toContain('bg-theme-bg-secondary');
