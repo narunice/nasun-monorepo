@@ -167,12 +167,16 @@ export function TradingViewChart({ currentPrice = 95000, className = '' }: Tradi
     if (!widgetRef.current || !libraryReady) return;
 
     try {
+      // Clear stale bar cache before switching symbol
+      if (datafeedRef.current) {
+        datafeedRef.current.clearBarCache();
+      }
       widgetRef.current.setSymbol(
         getMarketLabel(),
         getSavedResolution(),
       );
     } catch {
-      // Widget might not be ready yet
+      console.warn('[TradingView] setSymbol failed for', getMarketLabel());
     }
   }, [currentPool, libraryReady, getMarketLabel, getSavedResolution]);
 
