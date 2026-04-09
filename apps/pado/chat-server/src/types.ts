@@ -81,6 +81,7 @@ export interface AuthSuccessMessage {
   type: 'auth_success';
   address: string;
   nickname: string | null;
+  nasunDisplayName?: string | null;
   rateLimit?: NicknameRateLimit;
   sessionToken?: string;
 }
@@ -239,6 +240,8 @@ export interface ChatServerConfig {
   competitionAdminKey: string;
   // Large trade broadcast
   largeTradeThresholdNusdc: number;
+  // Nasun ecosystem profile API
+  nasunProfileApiUrl: string;
 }
 
 export const DEFAULT_CONFIG: ChatServerConfig = {
@@ -264,4 +267,5 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   // Competitions
   competitionAdminKey: process.env.COMPETITION_ADMIN_KEY || '',
   largeTradeThresholdNusdc: Math.max(parseInt(process.env.LARGE_TRADE_THRESHOLD_NUSDC || '1000', 10), 100),
+  nasunProfileApiUrl: process.env.NASUN_PROFILE_API_URL || '',
 };
