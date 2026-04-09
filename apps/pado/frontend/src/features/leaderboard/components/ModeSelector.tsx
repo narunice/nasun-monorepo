@@ -4,7 +4,7 @@ const MODES: { id: LeaderboardMode; label: string }[] = [
   { id: 'activity', label: 'Activity' },
   { id: 'volume', label: 'Volume' },
   { id: 'pnl', label: 'PnL' },
-  { id: 'points', label: 'Points' },
+  { id: 'points', label: 'Pado' },
 ];
 
 interface ModeSelectorProps {

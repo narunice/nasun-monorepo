@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useChat } from '../hooks/useChat';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { ActivityCard } from './ActivityCard';
 import type { FeedActivity } from '../types';
@@ -38,7 +39,14 @@ function groupByDate(activities: FeedActivity[]): DateGroup[] {
   return groups;
 }
 
-export function ActivityFeed() {
+interface ActivityFeedProps {
+  onBrowseLeaderboard?: () => void;
+}
+
+export function ActivityFeed({ onBrowseLeaderboard }: ActivityFeedProps) {
+  // Ensure WebSocket is connected for session token (needed by feed API)
+  useChat();
+
   const navigate = useNavigate();
   const [beforeTs, setBeforeTs] = useState<number | undefined>();
   const [allActivities, setAllActivities] = useState<FeedActivity[]>([]);
@@ -64,15 +72,18 @@ export function ActivityFeed() {
     setBeforeTs(lastTs);
   };
 
-  // Empty state: no follows
+  // Empty state
   if (!isLoading && activities.length === 0) {
+    const hasFollows = (data?.followCount ?? 0) > 0;
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
         <p className="text-theme-text-muted mb-4">
-          Follow traders to see their activity
+          {hasFollows
+            ? 'No recent trades from traders you follow'
+            : 'Follow traders to see their activity'}
         </p>
         <button
-          onClick={() => navigate('/leaderboard')}
+          onClick={() => onBrowseLeaderboard ? onBrowseLeaderboard() : navigate('/leaderboard')}
           className="px-4 py-2.5 bg-theme-accent text-white rounded-lg text-sm font-medium hover:bg-theme-accent/80 transition-colors min-h-[44px] w-full sm:w-auto"
         >
           Browse Leaderboard
