@@ -35,6 +35,7 @@ const ACTIONS: ActionItem[] = [
     ),
     color: 'blue',
     enabled: hasAccess('spot'),
+    badge: 'LIVE',
   },
   {
     id: 'perp',
