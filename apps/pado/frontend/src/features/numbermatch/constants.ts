@@ -39,7 +39,6 @@ export const MAX_PAYOUT = 18_000_000n;       // 18 NUSDC (3 picks win)
 
 // Pool
 export const POOL_MIN_BALANCE = 500_000_000n; // 500 NUSDC
-export const MAX_DAILY_PLAYS = 1000;
 export const PER_ADDRESS_SOFT_LIMIT = 20; // Frontend-only advisory limit
 
 // Payout table for UI display

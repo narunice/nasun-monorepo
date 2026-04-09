@@ -214,7 +214,7 @@ export function ScratchCardArea({ onPendingCardChange }: ScratchCardAreaProps) {
 
       {/* Buy button with skeleton card preview */}
       {(phase === 'idle' || phase === 'buying') && (
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center">
           <div
             className="w-[320px] h-[200px] rounded-lg bg-gradient-to-br from-[#1a8cbc] to-[#3bb9d8]
               flex items-center justify-center animate-pulse"
@@ -223,11 +223,13 @@ export function ScratchCardArea({ onPendingCardChange }: ScratchCardAreaProps) {
               Scratch here!
             </p>
           </div>
-          <BuyCardButton
-            onClick={handleBuy}
-            isBuying={isBuying || phase === 'buying'}
-            disabled={!canBuy}
-          />
+          <div className="w-[320px] mt-5">
+            <BuyCardButton
+              onClick={handleBuy}
+              isBuying={isBuying || phase === 'buying'}
+              disabled={!canBuy}
+            />
+          </div>
         </div>
       )}
 
