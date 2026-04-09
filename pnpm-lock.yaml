@@ -22,6 +22,9 @@ importers:
 
   .:
     devDependencies:
+      html-encoding-sniffer:
+        specifier: 4.0.0
+        version: 4.0.0
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -919,9 +922,9 @@ importers:
       globals:
         specifier: ^16.5.0
         version: 16.5.0
-      jsdom:
-        specifier: ^27.0.0
-        version: 27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      happy-dom:
+        specifier: 17.4.6
+        version: 17.4.6
       postcss:
         specifier: ^8.5.6
         version: 8.5.6
@@ -942,7 +945,7 @@ importers:
         version: 1.2.0(vite@7.3.1(@types/node@24.11.0)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0))(workbox-build@7.4.0(@types/babel__core@7.20.5))(workbox-window@7.4.0)
       vitest:
         specifier: ^4.0.18
-        version: 4.0.18(@types/node@24.11.0)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(terser@5.46.0)(tsx@4.21.0)
+        version: 4.0.18(@types/node@24.11.0)(@vitest/ui@4.0.18)(happy-dom@17.4.6)(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
 
   apps/pado/scripts:
     dependencies:
@@ -6115,6 +6118,7 @@ packages:
   basic-ftp@5.2.0:
     resolution: {integrity: sha512-VoMINM2rqJwJgfdHq6RiUudKt2BV+FY5ZFezP/ypmwayk68+NzzAQy4XXLlqsGD4MCzq3DrmNFD/uUmBJuGoXw==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
 
   batch-processor@1.0.0:
     resolution: {integrity: sha512-xoLQD8gmmR32MeuBHgH0Tzd5PuSZx71ZsbhVxOCRbgktZEPe4SQy7s9Z50uPp0F/f7iw2XmkHN2xkgbMfckMDA==}
@@ -7781,6 +7785,10 @@ packages:
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
 
+  happy-dom@17.4.6:
+    resolution: {integrity: sha512-OEV1hDe9i2rFr66+WZNiwy1S8rAJy6bRXmXql68YJDjdfHBRbN76om+qVh68vQACf6y5Bcr90e/oK53RQxsDdg==}
+    engines: {node: '>=18.0.0'}
+
   happy-dom@20.7.0:
     resolution: {integrity: sha512-hR/uLYQdngTyEfxnOoa+e6KTcfBFyc1hgFj/Cc144A5JJUuHFYqIEBDcD4FeGqUeKLRZqJ9eN9u7/GDjYEgS1g==}
     engines: {node: '>=20.0.0'}
@@ -7867,6 +7875,10 @@ packages:
   hono@4.12.3:
     resolution: {integrity: sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg==}
     engines: {node: '>=16.9.0'}
+
+  html-encoding-sniffer@4.0.0:
+    resolution: {integrity: sha512-Y22oTqIU4uuPgEemfz7NDJz6OeKf12Lsu+QC+s3BVpda64lTiMYCyGwg5ki4vFxkMwQdeZDl2adZoqUgdFuTgQ==}
+    engines: {node: '>=18'}
 
   html-encoding-sniffer@6.0.0:
     resolution: {integrity: sha512-CV9TW3Y3f8/wT0BRFc1/KAVQ3TUHiXmaAb6VW9vtiMFf7SLoMd1PdAc4W3KFOFETBJUb90KatHqlsZMWV+R9Gg==}
@@ -11422,9 +11434,18 @@ packages:
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
 
+  webidl-conversions@7.0.0:
+    resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
+    engines: {node: '>=12'}
+
   webidl-conversions@8.0.1:
     resolution: {integrity: sha512-BMhLD/Sw+GbJC21C/UgyaZX41nPt8bUTg+jWyDeg7e7YN4xOM05YPSIXceACnXVtqyEw/LMClUQMtMZ+PGGpqQ==}
     engines: {node: '>=20'}
+
+  whatwg-encoding@3.1.1:
+    resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
+    engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@3.0.0:
     resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
@@ -11864,9 +11885,9 @@ snapshots:
     dependencies:
       '@asamuzakjp/nwsapi': 2.3.9
       bidi-js: 1.0.3
-      css-tree: 3.1.0
+      css-tree: 3.2.1
       is-potential-custom-element-name: 1.0.1
-      lru-cache: 11.2.6
+      lru-cache: 11.2.7
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
@@ -13704,11 +13725,6 @@ snapshots:
       '@ethersproject/properties': 5.8.0
       '@ethersproject/strings': 5.8.0
 
-  '@exodus/bytes@1.14.1(@noble/hashes@1.8.0)':
-    optionalDependencies:
-      '@noble/hashes': 1.8.0
-    optional: true
-
   '@exodus/bytes@1.14.1(@noble/hashes@2.0.1)':
     optionalDependencies:
       '@noble/hashes': 2.0.1
@@ -13721,7 +13737,6 @@ snapshots:
   '@exodus/bytes@1.15.0(@noble/hashes@2.0.1)':
     optionalDependencies:
       '@noble/hashes': 2.0.1
-    optional: true
 
   '@fastify/busboy@2.1.1': {}
 
@@ -17406,7 +17421,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 22.19.15
+      '@types/node': 24.11.0
 
   '@types/yauzl@2.10.3':
     dependencies:
@@ -17644,7 +17659,7 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.2
       tinyrainbow: 1.2.0
-      vitest: 4.0.18(@types/node@22.19.13)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@24.11.0)(@vitest/ui@4.0.18)(happy-dom@17.4.6)(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -17796,7 +17811,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vitest: 4.0.18(@types/node@22.19.13)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@24.11.0)(@vitest/ui@4.0.18)(happy-dom@17.4.6)(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
     optional: true
 
   '@vitest/utils@2.1.9':
@@ -19626,7 +19641,6 @@ snapshots:
     dependencies:
       mdn-data: 2.27.1
       source-map-js: 1.2.1
-    optional: true
 
   css-what@6.2.2: {}
 
@@ -20963,6 +20977,11 @@ snapshots:
 
   hachure-fill@0.5.2: {}
 
+  happy-dom@17.4.6:
+    dependencies:
+      webidl-conversions: 7.0.0
+      whatwg-mimetype: 3.0.0
+
   happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@5.0.10):
     dependencies:
       '@types/node': 22.19.15
@@ -21127,16 +21146,20 @@ snapshots:
 
   hono@4.12.3: {}
 
+  html-encoding-sniffer@4.0.0:
+    dependencies:
+      whatwg-encoding: 3.1.1
+
   html-encoding-sniffer@6.0.0(@noble/hashes@1.8.0):
     dependencies:
-      '@exodus/bytes': 1.14.1(@noble/hashes@1.8.0)
+      '@exodus/bytes': 1.15.0(@noble/hashes@1.8.0)
     transitivePeerDependencies:
       - '@noble/hashes'
     optional: true
 
   html-encoding-sniffer@6.0.0(@noble/hashes@2.0.1):
     dependencies:
-      '@exodus/bytes': 1.14.1(@noble/hashes@2.0.1)
+      '@exodus/bytes': 1.15.0(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -22060,8 +22083,7 @@ snapshots:
 
   mdn-data@2.12.2: {}
 
-  mdn-data@2.27.1:
-    optional: true
+  mdn-data@2.27.1: {}
 
   media-query-parser@2.0.2:
     dependencies:
@@ -25555,7 +25577,7 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@4.0.18(@types/node@24.11.0)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(terser@5.46.0)(tsx@4.21.0):
+  vitest@4.0.18(@types/node@24.11.0)(@vitest/ui@4.0.18)(happy-dom@17.4.6)(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0):
     dependencies:
       '@vitest/expect': 4.0.18
       '@vitest/mocker': 4.0.18(vite@7.3.0(@types/node@24.11.0)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0))
@@ -25580,8 +25602,8 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.11.0
       '@vitest/ui': 4.0.18(vitest@4.0.18)
-      happy-dom: 20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      jsdom: 27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      happy-dom: 17.4.6
+      jsdom: 28.1.0(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - jiti
       - less
@@ -25713,7 +25735,13 @@ snapshots:
 
   webidl-conversions@4.0.2: {}
 
+  webidl-conversions@7.0.0: {}
+
   webidl-conversions@8.0.1: {}
+
+  whatwg-encoding@3.1.1:
+    dependencies:
+      iconv-lite: 0.6.3
 
   whatwg-mimetype@3.0.0: {}
 
