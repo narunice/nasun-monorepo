@@ -487,6 +487,12 @@ export class PadoDatafeed implements IDatafeedChartApi {
   }
 
   // ---- Cleanup ----
+
+  /** Clear cached bars for clean symbol switch. Subscriptions are managed by TradingView. */
+  clearBarCache(): void {
+    this.lastBarCache.clear();
+  }
+
   destroy(): void {
     for (const timer of this.subscriptions.values()) {
       clearInterval(timer);
