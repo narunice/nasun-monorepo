@@ -379,6 +379,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // Confirm modal order execution
   const handleConfirmOrder = async () => {
     if (!price || !amount) return;
+    if (isLoading) return; // Prevent double-click duplicate orders
 
     const priceNum = parseFloat(price);
     const amountNum = parseFloat(amount);
@@ -386,12 +387,12 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
 
     const result = await handleLimitOrder(pendingOrderType, priceNum, amountNum, orderType);
 
-    closeConfirmModal();
-
     if (result.success) {
+      closeConfirmModal();
       await createTPSLOrdersIfEnabled(pendingOrderType, amountNum);
       resetForm();
     }
+    // On failure: modal stays open, error toast is shown by useOrderActions
   };
 
   // Unified market order handler
