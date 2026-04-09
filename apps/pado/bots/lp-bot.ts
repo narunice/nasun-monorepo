@@ -60,6 +60,7 @@ import {
   depositAllToBalanceManager,
 } from './lib/balance-manager.js';
 import { requestTokens, requestGas } from './lib/faucet.js';
+import { withRetry } from './lib/retry.js';
 
 // ========================================
 // Main Bot Logic
@@ -74,7 +75,10 @@ async function runBot(
   const address = keypair.getPublicKey().toSuiAddress();
 
   // Step 0: Ensure sufficient gas
-  const gasBalance = await getGasBalance(client, address);
+  const gasBalance = await withRetry(
+    () => getGasBalance(client, address),
+    { label: 'getGasBalance', maxRetries: 4, baseDelayMs: 2000 },
+  );
   if (gasBalance < config.gasRefillThreshold) {
     console.log(`[${timestamp()}] Low gas: ${gasBalance.toFixed(4)} NASUN, requesting from faucet...`);
     const gasSuccess = await requestGas(address);
@@ -130,7 +134,10 @@ async function runBot(
   }
 
   // Step 4: Check inventory and refill if needed
-  let inventory = await getBalanceManagerBalances(client, state.balanceManagerId);
+  let inventory = await withRetry(
+    () => getBalanceManagerBalances(client, state.balanceManagerId!),
+    { label: 'getBalanceManagerBalances', maxRetries: 3, baseDelayMs: 2000 },
+  );
   console.log(`[${timestamp()}] Inventory: ${inventory.base.toFixed(4)} ${MARKET.name}, ${inventory.quote.toLocaleString()} NUSDC`);
 
   if (state.justInitialized) {
@@ -149,13 +156,19 @@ async function runBot(
     // (tokens may come from faucet above OR from external watchdog/prefund script)
     await depositAllToBalanceManager(client, keypair, state.balanceManagerId);
 
-    const newInventory = await getBalanceManagerBalances(client, state.balanceManagerId);
+    const newInventory = await withRetry(
+      () => getBalanceManagerBalances(client, state.balanceManagerId!),
+      { label: 'getBalanceManagerBalances', maxRetries: 2, baseDelayMs: 1000 },
+    );
     console.log(`[${timestamp()}] New inventory: ${newInventory.base.toFixed(4)} ${MARKET.name}, ${newInventory.quote.toLocaleString()} NUSDC`);
     Object.assign(inventory, newInventory);
   }
 
   // Step 5: Query orderbook
-  const fullOrderbook = await getFullOrderbookState(client);
+  const fullOrderbook = await withRetry(
+    () => getFullOrderbookState(client),
+    { label: 'getFullOrderbookState', maxRetries: 3, baseDelayMs: 2000 },
+  );
   if (fullOrderbook.hasBids || fullOrderbook.hasAsks) {
     console.log(`[${timestamp()}] Orderbook: ${fullOrderbook.bids.length} bids, ${fullOrderbook.asks.length} asks`);
   }
@@ -183,7 +196,10 @@ async function runBot(
 
       if (arbResult.success) {
         console.log(`[${timestamp()}] Arbitrage executed: ${opportunities.length} trades (tx: ${arbResult.digest?.slice(0, 10)}...)`);
-        inventory = await getBalanceManagerBalances(client, state.balanceManagerId);
+        inventory = await withRetry(
+          () => getBalanceManagerBalances(client, state.balanceManagerId!),
+          { label: 'getBalanceManagerBalances', maxRetries: 2, baseDelayMs: 1000 },
+        );
         console.log(`[${timestamp()}] Inventory after arb: ${inventory.base.toFixed(4)} ${MARKET.name}, ${inventory.quote.toLocaleString()} NUSDC`);
       } else {
         console.error(`[${timestamp()}] Arbitrage failed: ${arbResult.error}`);
@@ -281,7 +297,10 @@ async function initialize(
 
   console.log(`[${timestamp()}] Checking initial state...`);
 
-  const gasBalance = await getGasBalance(client, address);
+  const gasBalance = await withRetry(
+    () => getGasBalance(client, address),
+    { label: 'getGasBalance', maxRetries: 4, baseDelayMs: 2000 },
+  );
   console.log(`[${timestamp()}] Gas: ${gasBalance.toFixed(4)} NASUN`);
 
   if (gasBalance < config.gasRefillThreshold) {
@@ -291,11 +310,17 @@ async function initialize(
       console.error(`[${timestamp()}] Gas faucet failed`);
       return false;
     }
-    const newGas = await getGasBalance(client, address);
+    const newGas = await withRetry(
+      () => getGasBalance(client, address),
+      { label: 'getGasBalance', maxRetries: 3, baseDelayMs: 2000 },
+    );
     console.log(`[${timestamp()}] Gas after faucet: ${newGas.toFixed(4)} NASUN`);
   }
 
-  const walletBalance = await getWalletBalances(client, address);
+  const walletBalance = await withRetry(
+    () => getWalletBalances(client, address),
+    { label: 'getWalletBalances', maxRetries: 3, baseDelayMs: 2000 },
+  );
   console.log(`[${timestamp()}] Wallet: ${walletBalance.base.toFixed(4)} ${MARKET.name}, ${walletBalance.quote.toLocaleString()} NUSDC`);
 
   state.balanceManagerId = await findBalanceManager(client, address);
@@ -323,7 +348,10 @@ async function initialize(
     console.log(`[${timestamp()}] Found BalanceManager: ${state.balanceManagerId.slice(0, 16)}...`);
   }
 
-  const bmBalance = await getBalanceManagerBalances(client, state.balanceManagerId);
+  const bmBalance = await withRetry(
+    () => getBalanceManagerBalances(client, state.balanceManagerId!),
+    { label: 'getBalanceManagerBalances', maxRetries: 3, baseDelayMs: 2000 },
+  );
   console.log(`[${timestamp()}] BalanceManager: ${bmBalance.base.toFixed(4)} ${MARKET.name}, ${bmBalance.quote.toLocaleString()} NUSDC`);
 
   const totalBase = walletBalance.base + bmBalance.base;
@@ -354,7 +382,10 @@ async function initialize(
       faucetFailures = 0;
     }
 
-    const newWalletBalance = await getWalletBalances(client, address);
+    const newWalletBalance = await withRetry(
+      () => getWalletBalances(client, address),
+      { label: 'getWalletBalances', maxRetries: 3, baseDelayMs: 2000 },
+    );
     console.log(`[${timestamp()}] Wallet after faucet: ${newWalletBalance.base.toFixed(4)} ${MARKET.name}, ${newWalletBalance.quote.toLocaleString()} NUSDC`);
 
     if (newWalletBalance.base > 0 || newWalletBalance.quote > 0) {
@@ -514,15 +545,20 @@ async function main() {
     console.log('');
     console.log(`[${timestamp()}] Received ${signal}, shutting down...`);
 
+    // Best-effort cancel with 3s timeout. If RPC is down or slow, exit anyway.
+    // Orders have 30min expiry so stale orders self-expire quickly.
     if (state.balanceManagerId) {
-      console.log(`[${timestamp()}] Canceling all orders...`);
       try {
         const tx = buildCancelAllOrders(state.balanceManagerId);
-        await executeTransaction(client, keypair, tx);
-        console.log(`[${timestamp()}] Orders canceled`);
-      } catch (error) {
-        console.error(`[${timestamp()}] Failed to cancel orders:`, error instanceof Error ? error.message : error);
-      }
+        const cancelPromise = executeTransaction(client, keypair, tx).then(
+          (r) => r.success ? 'canceled' : 'failed',
+        ).catch(() => 'failed');
+        const result = await Promise.race([
+          cancelPromise,
+          new Promise<string>((r) => setTimeout(() => r('timeout'), 3000)),
+        ]);
+        console.log(`[${timestamp()}] Order cleanup: ${result}`);
+      } catch { /* best-effort */ }
     }
 
     console.log(`[${timestamp()}] Shutdown complete`);

@@ -139,8 +139,7 @@ export async function getFullOrderbookState(client: SuiClient): Promise<FullOrde
 
     return { bestBid, bestAsk, midPrice, spread, hasBids, hasAsks, bids, asks };
   } catch (error) {
-    console.error(`[${timestamp()}] Failed to query full orderbook:`, error instanceof Error ? error.message : error);
-    return emptyFullOrderbookState();
+    throw error;
   }
 }
 
