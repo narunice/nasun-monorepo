@@ -1,5 +1,5 @@
 // App.tsx
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter as Router, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,9 @@ import { HomePageLoadingProvider, useHomePageLoading } from "./contexts/PageLoad
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import { Button } from "./components/ui/button";
 import { useReferralCapture } from "./hooks/useReferralCapture";
+
+const ChatWidget = lazy(() => import("./features/chat/components/ChatWidget"));
+const BugReportButton = lazy(() => import("./features/bug-report/components/BugReportButton"));
 
 /**
  * Error fallback component with i18n support
@@ -63,6 +66,12 @@ function AppContent() {
       {!isClaimPage && <Navbar />}
       <AppRoutes />
       {isPageReady && !isAdminPage && !isClaimPage && <Footer />}
+      {!isClaimPage && (
+        <Suspense fallback={null}>
+          <ChatWidget />
+          <BugReportButton />
+        </Suspense>
+      )}
     </>
   );
 }
