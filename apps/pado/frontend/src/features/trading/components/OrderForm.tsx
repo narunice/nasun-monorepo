@@ -109,14 +109,11 @@ export function OrderForm({
   const feePercent = `${(feeBps / 100).toFixed(2)}%`;
 
   // Balance check for the active side (includes fee for buy side)
-  // When auto deposit is enabled, only block if total available (wallet + BM) is zero.
-  // Auto deposit handles the shortfall at execution time and shows its own error if it fails.
+  // availableQuote/availableBase already include wallet + BM combined total.
+  // Auto deposit moves wallet funds to BM but cannot create funds, so validate against full balance.
   const insufficientForBuy = total > 0 && (total + fee) > availableQuote;
   const insufficientForSell = amountNum > 0 && amountNum > availableBase;
-  const rawInsufficient = isBuy ? insufficientForBuy : insufficientForSell;
-  const isInsufficient = autoDepositEnabled
-    ? (isBuy ? (total > 0 && availableQuote <= 0) : (amountNum > 0 && availableBase <= 0))
-    : rawInsufficient;
+  const isInsufficient = isBuy ? insufficientForBuy : insufficientForSell;
 
   // Validation
   const priceValidation = useMemo(
