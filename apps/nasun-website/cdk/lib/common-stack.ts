@@ -189,6 +189,7 @@ export class CommonStack extends cdk.Stack {
           if (!poolId) throw new Error('VITE_COGNITO_IDENTITY_POOL_ID is required for user-profile JWT auth');
           return poolId;
         })(),
+        USER_WALLETS_TABLE: userWalletsTable.tableName,
       },
       logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-profile",
@@ -197,11 +198,16 @@ export class CommonStack extends cdk.Stack {
     });
     this.userProfilesTable.grantReadWriteData(getUserProfileLambda);
     userIdentityMapTable.grantReadData(getUserProfileLambda);
+    userWalletsTable.grantReadData(getUserProfileLambda);
 
     const userProfileApi = new apigw.LambdaRestApi(this, "UserProfileApi", {
       handler: getUserProfileLambda,
       restApiName: "NASUN User Profile API (Common)",
       proxy: true,
+      deployOptions: {
+        throttlingBurstLimit: 50,
+        throttlingRateLimit: 20,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
