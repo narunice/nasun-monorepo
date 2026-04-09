@@ -576,8 +576,11 @@ function TradePageContent() {
 }
 
 export function TradePage() {
+  const params = new URLSearchParams(window.location.search);
+  const marketParam = params.get('market') as import('../features/trading/context').MarketKey | null;
+
   return (
-    <MarketProvider>
+    <MarketProvider defaultMarket={marketParam ?? undefined}>
       <OrderFormProvider>
         <TradePageContent />
       </OrderFormProvider>
