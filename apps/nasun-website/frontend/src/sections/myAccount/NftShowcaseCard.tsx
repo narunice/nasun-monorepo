@@ -52,13 +52,16 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     isConfigured: isAllianceConfigured,
   } = useAllianceMintStatus(cognitoToken);
 
+  // Prefer public mode (check lambda) when EVM wallet is available because it
+  // returns eligibleStage + eligible + currentStage. Auth mode (register GET)
+  // only returns registered + mintType, forcing unreliable client-side derivation.
   const {
     isRegistered: isGenesisPassRegistered,
     isLoading: isGenesisPassLoading,
     isConfigured: isGenesisPassConfigured,
     mintType: genesisPassMintType,
     eligibleStage: serverEligibleStage,
-  } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
+  } = useGenesisPassStatus(evmWalletAddress, evmWalletAddress ? null : cognitoToken);
 
   // Derive eligibleStage from mintType if server doesn't provide it.
   // Only use mintType for derivation; do NOT fall back to FCFS(3) just because
