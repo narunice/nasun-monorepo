@@ -37,8 +37,8 @@ export function ActivityCard({ activity }: ActivityCardProps) {
   const isBuy = data.side === 'buy';
 
   return (
-    <div className="w-full text-left bg-theme-bg-secondary rounded-lg border border-theme-border p-3 min-h-[56px]">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+    <div className="w-full text-left bg-theme-bg-secondary rounded-lg border border-theme-border p-3 min-h-[56px] flex items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 w-full">
         <div className="flex items-center gap-2">
           <Link
             to={`/leaderboard/trader/${activity.traderAddress}`}
