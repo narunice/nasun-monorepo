@@ -12,14 +12,14 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PageSpinner } from '../components/common/PageSpinner';
-import { NETWORK_CONFIG } from '../config/network';
+import { hasAccess, type AccessMode } from '../config/network';
 import { useAppAdmin } from '../hooks/useAppAdmin';
 
-// Games-only mode: block non-games routes, redirect to games
-// Platform admins bypass this gate
-function GatedRoute({ children }: { children: React.ReactNode }) {
+// Progressive feature gate: block routes below the required access level
+// Platform admins bypass all gates
+function GatedRoute({ requires, children }: { requires: AccessMode; children: React.ReactNode }) {
   const isAppAdmin = useAppAdmin();
-  if (NETWORK_CONFIG.gamesOnlyMode && !isAppAdmin) {
+  if (!isAppAdmin && !hasAccess(requires)) {
     return <Navigate to="/games/lottery" replace />;
   }
   return <>{children}</>;
@@ -57,15 +57,15 @@ export function AppRoutes() {
 
         {/* Markets */}
         <Route path="/markets" element={<Navigate to="/markets/spot" replace />} />
-        <Route path="/markets/spot" element={<GatedRoute><TradePage /></GatedRoute>} />
-        <Route path="/markets/perp" element={<GatedRoute><PerpTradePage /></GatedRoute>} />
+        <Route path="/markets/spot" element={<GatedRoute requires="spot"><TradePage /></GatedRoute>} />
+        <Route path="/markets/perp" element={<GatedRoute requires="full"><PerpTradePage /></GatedRoute>} />
 
         {/* Wallet (Send/Receive) */}
-        <Route path="/wallet" element={<GatedRoute><WalletPage /></GatedRoute>} />
+        <Route path="/wallet" element={<GatedRoute requires="spot"><WalletPage /></GatedRoute>} />
 
         {/* Prediction Markets */}
-        <Route path="/predict" element={<GatedRoute><PredictPage /></GatedRoute>} />
-        <Route path="/predict/:marketId" element={<GatedRoute><PredictMarketPage /></GatedRoute>} />
+        <Route path="/predict" element={<GatedRoute requires="full"><PredictPage /></GatedRoute>} />
+        <Route path="/predict/:marketId" element={<GatedRoute requires="full"><PredictMarketPage /></GatedRoute>} />
 
         {/* Games (Lottery + Scratch Cards + Number Match) - always public */}
         <Route path="/games/lottery" element={<LotteryPage />} />
@@ -83,24 +83,24 @@ export function AppRoutes() {
         <Route path="/admin" element={<AdminPage />} />
 
         {/* Leaderboard */}
-        <Route path="/leaderboard" element={<GatedRoute><LeaderboardPage /></GatedRoute>} />
-        <Route path="/leaderboard/trader/:address" element={<GatedRoute><TraderProfilePage /></GatedRoute>} />
+        <Route path="/leaderboard" element={<GatedRoute requires="spot"><LeaderboardPage /></GatedRoute>} />
+        <Route path="/leaderboard/trader/:address" element={<GatedRoute requires="spot"><TraderProfilePage /></GatedRoute>} />
 
         {/* Competitions */}
-        <Route path="/competitions" element={<GatedRoute><CompetitionsPage /></GatedRoute>} />
-        <Route path="/competitions/:id" element={<GatedRoute><CompetitionDetailPage /></GatedRoute>} />
+        <Route path="/competitions" element={<GatedRoute requires="full"><CompetitionsPage /></GatedRoute>} />
+        <Route path="/competitions/:id" element={<GatedRoute requires="full"><CompetitionDetailPage /></GatedRoute>} />
 
         {/* Earn (Staking + Lending) */}
-        <Route path="/earn" element={<GatedRoute><EarnPage /></GatedRoute>} />
+        <Route path="/earn" element={<GatedRoute requires="full"><EarnPage /></GatedRoute>} />
 
         {/* Portfolio */}
-        <Route path="/portfolio" element={<GatedRoute><PortfolioPage /></GatedRoute>} />
+        <Route path="/portfolio" element={<GatedRoute requires="spot"><PortfolioPage /></GatedRoute>} />
 
         {/* Auth (zkLogin callback) - whitelisted */}
         <Route path="/callback" element={<AuthCallbackPage />} />
 
         {/* Fallback */}
-        <Route path="*" element={<GatedRoute><Navigate to="/" replace /></GatedRoute>} />
+        <Route path="*" element={<GatedRoute requires="spot"><Navigate to="/" replace /></GatedRoute>} />
       </Routes>
     </Suspense>
   );

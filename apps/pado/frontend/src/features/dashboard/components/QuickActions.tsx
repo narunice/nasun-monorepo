@@ -7,10 +7,8 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { NETWORK_CONFIG } from '../../../config/network';
+import { hasAccess } from '../../../config/network';
 import { useAppAdmin } from '../../../hooks/useAppAdmin';
-
-const gated = NETWORK_CONFIG.gamesOnlyMode;
 
 interface ActionItem {
   id: string;
@@ -36,7 +34,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'blue',
-    enabled: !gated,
+    enabled: hasAccess('spot'),
   },
   {
     id: 'perp',
@@ -49,7 +47,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'purple',
-    enabled: !gated,
+    enabled: hasAccess('full'),
   },
   {
     id: 'predict',
@@ -62,7 +60,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'indigo',
-    enabled: !gated,
+    enabled: hasAccess('full'),
   },
   // Games card is rendered separately via GamesCard component (slot 4)
   {
@@ -76,7 +74,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'green',
-    enabled: !gated,
+    enabled: hasAccess('full'),
   },
   {
     id: 'send',

@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAdminAccess } from '../../features/admin';
-import { NETWORK_CONFIG } from '../../config/network';
+import { hasAccess } from '../../config/network';
 import { useAppAdmin } from '../../hooks/useAppAdmin';
 
 interface NavTab {
@@ -22,8 +22,7 @@ interface NavTab {
   enabled?: boolean;
 }
 
-// TEMPORARY: gated flag controls mobile nav (Remove after 2026-07-01)
-const gated = NETWORK_CONFIG.gamesOnlyMode;
+// TEMPORARY: access-level gating (Remove after 2026-07-01)
 
 // Shared icon functions to avoid duplication between gated/ungated arrays
 const homeIcon = (active: boolean) => (
@@ -59,9 +58,9 @@ const socialIcon = (active: boolean) => (
 
 const TABS: NavTab[] = [
   { label: 'Home', path: '/', matchPaths: ['/'], icon: homeIcon, enabled: true },
-  { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon, enabled: !gated },
+  { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon, enabled: hasAccess('spot') },
   { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon, enabled: true },
-  { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon, enabled: !gated },
+  { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon, enabled: hasAccess('spot') },
 ];
 
 interface MoreItem {
@@ -72,12 +71,12 @@ interface MoreItem {
 }
 
 const MORE_ITEMS: MoreItem[] = [
-  { label: 'Earn', path: '/earn', icon: '💰', enabled: !gated },
-  { label: 'Perpetuals', path: '/markets/perp', icon: '📈', enabled: !gated },
-  { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: !gated },
-  { label: 'Wallet', path: '/wallet', icon: '👛', enabled: !gated },
+  { label: 'Earn', path: '/earn', icon: '💰', enabled: hasAccess('full') },
+  { label: 'Perpetuals', path: '/markets/perp', icon: '📈', enabled: hasAccess('full') },
+  { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: hasAccess('spot') },
+  { label: 'Wallet', path: '/wallet', icon: '👛', enabled: hasAccess('spot') },
   { label: 'Game History', path: '/games/history', icon: '🎲', enabled: true },
-  { label: 'Predict', path: '/predict', icon: '🔮', enabled: !gated },
+  { label: 'Predict', path: '/predict', icon: '🔮', enabled: hasAccess('full') },
 ];
 
 export function MobileBottomNav() {
