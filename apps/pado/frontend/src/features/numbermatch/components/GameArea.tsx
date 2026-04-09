@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { FC } from 'react';
 import { MAX_PICKS, PRICE_PER_PICK_DISPLAY } from '../constants';
 import { NumberGrid } from './NumberGrid';
+import { NumberMatchWinCelebration } from './NumberMatchWinCelebration';
 import { useNumberMatchActions } from '../hooks/useNumberMatchActions';
 import { useNumberMatchPool } from '../hooks/useNumberMatchPool';
 import { formatNusdc } from '../types';
@@ -19,6 +20,7 @@ export const GameArea: FC<GameAreaProps> = ({ onResultRevealed }) => {
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [phase, setPhase] = useState<GamePhase>('idle');
   const [result, setResult] = useState<NumberMatchResult | null>(null);
+  const [isCelebrating, setIsCelebrating] = useState(false);
   const { playGame, isPlaying, error } = useNumberMatchActions();
   const { pool } = useNumberMatchPool();
   const revealTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -51,6 +53,9 @@ export const GameArea: FC<GameAreaProps> = ({ onResultRevealed }) => {
       revealTimerRef.current = setTimeout(() => {
         setPhase('revealed');
         onResultRevealed?.();
+        if (gameResult.isWin) {
+          setIsCelebrating(true);
+        }
       }, 1500);
     } else {
       setPhase('idle');
@@ -61,6 +66,7 @@ export const GameArea: FC<GameAreaProps> = ({ onResultRevealed }) => {
     setSelectedNumbers([]);
     setResult(null);
     setPhase('idle');
+    setIsCelebrating(false);
   }, []);
 
   const isIdle = phase === 'idle';
@@ -107,14 +113,21 @@ export const GameArea: FC<GameAreaProps> = ({ onResultRevealed }) => {
                 Winning Number: <span className="text-yellow-400">{result.winningNumber}</span>
               </div>
               {result.isWin ? (
-                <div className="space-y-1">
-                  <div className="text-2xl font-bold text-green-400">
-                    YOU WON!
+                isCelebrating ? (
+                  <NumberMatchWinCelebration
+                    payout={result.payout}
+                    onComplete={() => setIsCelebrating(false)}
+                  />
+                ) : (
+                  <div className="space-y-1">
+                    <div className="text-2xl font-bold text-green-400">
+                      YOU WON!
+                    </div>
+                    <div className="text-green-300">
+                      +{formatNusdc(result.payout)} NUSDC
+                    </div>
                   </div>
-                  <div className="text-green-300">
-                    +{formatNusdc(result.payout)} NUSDC
-                  </div>
-                </div>
+                )
               ) : (
                 <div className="space-y-1">
                   <div className="text-xl font-medium text-red-400">

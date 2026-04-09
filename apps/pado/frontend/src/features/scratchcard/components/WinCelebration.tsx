@@ -3,7 +3,7 @@ import type { ScratchResult } from '../types';
 import type { AnimationTier } from '../types';
 import { formatNusdc, getTierLabel, getTierColorClass } from '../types';
 import { CelebrationOverlay } from '../../../components/common';
-import { CELEBRATION_COLORS, type CelebrationPreset } from '../../../lib/celebration';
+import { CELEBRATION_COLORS, fireConfettiRain, type CelebrationPreset } from '../../../lib/celebration';
 import { playGameSound } from '../../../lib/sounds';
 import { useReducedMotion } from '../../../hooks/useReducedMotion';
 
@@ -163,6 +163,7 @@ export function WinCelebration({ result, tier, onComplete }: WinCelebrationProps
       timers.push(setTimeout(() => {
         setPhase('confetti');
         playGameSound('winSmall');
+        fireConfettiRain('medium', CELEBRATION_COLORS.mint);
       }, 400));
       timers.push(setTimeout(onComplete, 2000));
     } else if (tier === 'big') {
@@ -172,6 +173,7 @@ export function WinCelebration({ result, tier, onComplete }: WinCelebrationProps
         setPhase('confetti');
         setShowCelebration(true);
         playGameSound(tierToSound(tier));
+        fireConfettiRain('medium', CELEBRATION_COLORS.brand);
       }, 1400));
       timers.push(setTimeout(onComplete, 2500));
     } else if (tier === 'jackpot') {
@@ -184,6 +186,7 @@ export function WinCelebration({ result, tier, onComplete }: WinCelebrationProps
         setPhase('confetti');
         setShowCelebration(true);
         playGameSound(tierToSound(tier));
+        fireConfettiRain('large', CELEBRATION_COLORS.gold);
       }, 2200));
       timers.push(setTimeout(onComplete, 4000));
     }
