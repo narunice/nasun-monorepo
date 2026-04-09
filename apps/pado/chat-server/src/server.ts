@@ -25,6 +25,7 @@ import {
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
   getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
+  getPointsSnapshot, getPointsRankHistory, getSnapshotDates, getSnapshotTotalTraders, generatePointsSnapshot,
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
   getFollowedTraderFills,
@@ -964,6 +965,123 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     return;
   }
 
+  // ===== Snapshots API =====
+
+  // GET /api/leaderboard/snapshots - get snapshot for a date
+  if (url.pathname === '/api/leaderboard/snapshots' && req.method === 'GET') {
+    try {
+      const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+      const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid date format. Use: YYYY-MM-DD' }));
+        return;
+      }
+
+      const rows = getPointsSnapshot(date, limit, offset);
+      const totalTraders = getSnapshotTotalTraders(date);
+      const addresses = rows.map((r) => r.address);
+      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map<string, string>();
+
+      const traders = rows.map((row) => ({
+        rank: row.rank,
+        address: row.address,
+        nickname: nicknames.get(row.address) ?? null,
+        totalPoints: row.total_points,
+        breakdown: {
+          trades: row.points_from_trades,
+          volume: row.points_from_volume,
+          diversity: row.points_from_diversity,
+          pnl: row.points_from_pnl,
+        },
+        tradeCount: row.trade_count,
+        volumeUsd: formatQuoteVolume(row.volume_quote),
+      }));
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ date, traders, totalTraders }));
+    } catch (err) {
+      console.error('[Snapshot] API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // GET /api/leaderboard/snapshots/dates - available snapshot dates
+  if (url.pathname === '/api/leaderboard/snapshots/dates' && req.method === 'GET') {
+    try {
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10), 1), 365);
+      const dates = getSnapshotDates(limit);
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({ dates }));
+    } catch (err) {
+      console.error('[Snapshot] Dates API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // GET /api/leaderboard/snapshots/history/:address - rank history for an address
+  const snapshotHistoryMatch = url.pathname.match(/^\/api\/leaderboard\/snapshots\/history\/(0x[a-fA-F0-9]{64})$/);
+  if (snapshotHistoryMatch && req.method === 'GET') {
+    try {
+      const address = snapshotHistoryMatch[1];
+      const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '30', 10), 1), 365);
+      const history = getPointsRankHistory(address, days);
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({
+        address,
+        history: history.map((h) => ({
+          date: h.snapshot_date,
+          rank: h.rank,
+          totalPoints: h.total_points,
+        })),
+      }));
+    } catch (err) {
+      console.error('[Snapshot] History API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // POST /api/leaderboard/snapshots/generate?date=YYYY-MM-DD - manually trigger snapshot (admin)
+  if (url.pathname === '/api/leaderboard/snapshots/generate' && req.method === 'POST') {
+    if (!checkAdminAuth(req)) {
+      res.writeHead(401, corsHeaders);
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+    try {
+      const snapshotDate = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(snapshotDate)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid date format. Use: YYYY-MM-DD' }));
+        return;
+      }
+
+      const count = generatePointsSnapshot(snapshotDate);
+      if (count === 0) {
+        res.writeHead(409, corsHeaders);
+        res.end(JSON.stringify({ error: 'Snapshot already exists for this date', date: snapshotDate }));
+      } else {
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({ date: snapshotDate, tradersSnapshotted: count }));
+      }
+    } catch (err) {
+      console.error('[Snapshot] Generate API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
   // ===== Points API =====
 
   // GET /api/leaderboard/points - points leaderboard
@@ -1015,7 +1133,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
           address,
           nickname: getNickname(address),
           totalPoints: 0,
-          breakdown: { trades: 0, volume: 0, diversity: 0 },
+          breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 },
           rank: 0,
         }));
         return;
@@ -1030,6 +1148,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
           trades: points.points_from_trades,
           volume: points.points_from_volume,
           diversity: points.points_from_diversity,
+          pnl: points.points_from_pnl ?? 0,
         },
         rank: points.rank,
       }));

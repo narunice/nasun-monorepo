@@ -64,6 +64,7 @@ export interface TraderPointsResponse {
     trades: number;
     volume: number;
     diversity: number;
+    pnl: number;
   };
   rank: number;
 }
