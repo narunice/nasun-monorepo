@@ -29,7 +29,9 @@ import type {
   SnapshotMeta,
 } from './types';
 
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const client = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+  marshallOptions: { removeUndefinedValues: true },
+});
 
 const OWNERSHIP_TABLE = process.env.OWNERSHIP_TABLE!;
 const COLLECTIONS_TABLE = process.env.COLLECTIONS_TABLE!;
