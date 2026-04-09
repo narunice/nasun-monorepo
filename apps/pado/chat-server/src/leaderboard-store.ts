@@ -140,6 +140,7 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
       points_from_trades INTEGER NOT NULL DEFAULT 0,
       points_from_volume INTEGER NOT NULL DEFAULT 0,
       points_from_diversity INTEGER NOT NULL DEFAULT 0,
+      points_from_pnl INTEGER NOT NULL DEFAULT 0,
       trade_count INTEGER NOT NULL DEFAULT 0,
       volume_quote TEXT NOT NULL DEFAULT '0',
       rank INTEGER NOT NULL DEFAULT 0,
@@ -149,6 +150,27 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
 
     CREATE INDEX IF NOT EXISTS idx_points_rank
       ON trader_points(rank ASC);
+
+    CREATE TABLE IF NOT EXISTS points_snapshots (
+      snapshot_date TEXT NOT NULL,
+      address TEXT NOT NULL,
+      total_points INTEGER NOT NULL,
+      points_from_trades INTEGER NOT NULL,
+      points_from_volume INTEGER NOT NULL,
+      points_from_diversity INTEGER NOT NULL,
+      points_from_pnl INTEGER NOT NULL,
+      trade_count INTEGER NOT NULL,
+      volume_quote TEXT NOT NULL,
+      rank INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY (snapshot_date, address)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_snapshots_address
+      ON points_snapshots(address, snapshot_date DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_snapshots_date_rank
+      ON points_snapshots(snapshot_date, rank ASC);
 
     CREATE TABLE IF NOT EXISTS order_events (
       tx_digest TEXT NOT NULL,
@@ -181,6 +203,13 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
   }
   if (!columnNames.has('taker_order_id')) {
     db.exec('ALTER TABLE trade_fills ADD COLUMN taker_order_id TEXT');
+  }
+
+  // Migration: add points_from_pnl to trader_points
+  const pointsCols = db.prepare("PRAGMA table_info('trader_points')").all() as Array<{ name: string }>;
+  const pointsColNames = new Set(pointsCols.map(c => c.name));
+  if (!pointsColNames.has('points_from_pnl')) {
+    db.exec('ALTER TABLE trader_points ADD COLUMN points_from_pnl INTEGER NOT NULL DEFAULT 0');
   }
 }
 
@@ -1167,6 +1196,7 @@ export function replaceTraderPoints(
     pointsFromTrades: number;
     pointsFromVolume: number;
     pointsFromDiversity: number;
+    pointsFromPnl: number;
     tradeCount: number;
     volumeQuote: string;
     rank: number;
@@ -1177,13 +1207,14 @@ export function replaceTraderPoints(
   const now = Date.now();
 
   const replaceStmt = ldb.prepare(
-    `INSERT INTO trader_points (address, total_points, points_from_trades, points_from_volume, points_from_diversity, trade_count, volume_quote, rank, prev_rank, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO trader_points (address, total_points, points_from_trades, points_from_volume, points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(address) DO UPDATE SET
        total_points = excluded.total_points,
        points_from_trades = excluded.points_from_trades,
        points_from_volume = excluded.points_from_volume,
        points_from_diversity = excluded.points_from_diversity,
+       points_from_pnl = excluded.points_from_pnl,
        trade_count = excluded.trade_count,
        volume_quote = excluded.volume_quote,
        rank = excluded.rank,
@@ -1205,7 +1236,7 @@ export function replaceTraderPoints(
     for (const t of traders) {
       replaceStmt.run(
         t.address, t.totalPoints, t.pointsFromTrades,
-        t.pointsFromVolume, t.pointsFromDiversity,
+        t.pointsFromVolume, t.pointsFromDiversity, t.pointsFromPnl,
         t.tradeCount, t.volumeQuote,
         t.rank, t.prevRank, now,
       );
@@ -1222,7 +1253,7 @@ export function getPointsLeaderboard(limit: number = 50, offset: number = 0): Tr
   return getLeaderboardDb()
     .prepare(
       `SELECT address, total_points, points_from_trades, points_from_volume,
-              points_from_diversity, trade_count, volume_quote, rank, prev_rank, updated_at
+              points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at
        FROM trader_points
        ORDER BY rank ASC
        LIMIT ? OFFSET ?`
@@ -1237,7 +1268,7 @@ export function getTraderPoints(address: string): TraderPointsRow | null {
   return (getLeaderboardDb()
     .prepare(
       `SELECT address, total_points, points_from_trades, points_from_volume,
-              points_from_diversity, trade_count, volume_quote, rank, prev_rank, updated_at
+              points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at
        FROM trader_points
        WHERE address = ?`
     )
@@ -1249,4 +1280,139 @@ export function getTotalPointsTraders(): number {
     .prepare('SELECT COUNT(*) as count FROM trader_points')
     .get() as { count: number } | undefined;
   return row?.count ?? 0;
+}
+
+// ===== Points Snapshots =====
+
+export interface PointsSnapshotRow {
+  snapshot_date: string;
+  address: string;
+  total_points: number;
+  points_from_trades: number;
+  points_from_volume: number;
+  points_from_diversity: number;
+  points_from_pnl: number;
+  trade_count: number;
+  volume_quote: string;
+  rank: number;
+  created_at: number;
+}
+
+/**
+ * Generate a daily snapshot from current trader_points data.
+ * Idempotent: skips if snapshot for the date already exists.
+ * Returns number of rows written (0 if already exists).
+ */
+export function generatePointsSnapshot(date: string): number {
+  const ldb = getLeaderboardDb();
+
+  // Idempotency check
+  const existing = ldb.prepare(
+    'SELECT COUNT(*) as count FROM points_snapshots WHERE snapshot_date = ?'
+  ).get(date) as { count: number };
+  if (existing.count > 0) return 0;
+
+  const now = Date.now();
+  const rows = ldb.prepare(
+    `SELECT address, total_points, points_from_trades, points_from_volume,
+            points_from_diversity, points_from_pnl, trade_count, volume_quote, rank
+     FROM trader_points
+     ORDER BY rank ASC`
+  ).all() as Array<{
+    address: string; total_points: number; points_from_trades: number;
+    points_from_volume: number; points_from_diversity: number; points_from_pnl: number;
+    trade_count: number; volume_quote: string; rank: number;
+  }>;
+
+  if (rows.length === 0) return 0;
+
+  const insertStmt = ldb.prepare(
+    `INSERT INTO points_snapshots
+       (snapshot_date, address, total_points, points_from_trades, points_from_volume,
+        points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  const tx = ldb.transaction(() => {
+    for (const r of rows) {
+      insertStmt.run(
+        date, r.address, r.total_points, r.points_from_trades, r.points_from_volume,
+        r.points_from_diversity, r.points_from_pnl, r.trade_count, r.volume_quote,
+        r.rank, now,
+      );
+    }
+  });
+
+  tx();
+  return rows.length;
+}
+
+/**
+ * Get snapshot for a specific date (paginated).
+ */
+export function getPointsSnapshot(date: string, limit: number = 50, offset: number = 0): PointsSnapshotRow[] {
+  return getLeaderboardDb()
+    .prepare(
+      `SELECT snapshot_date, address, total_points, points_from_trades, points_from_volume,
+              points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, created_at
+       FROM points_snapshots
+       WHERE snapshot_date = ?
+       ORDER BY rank ASC
+       LIMIT ? OFFSET ?`
+    )
+    .all(date, limit, offset) as PointsSnapshotRow[];
+}
+
+/**
+ * Get rank history for a specific address over last N days.
+ */
+export function getPointsRankHistory(
+  address: string,
+  days: number = 30,
+): Array<{ snapshot_date: string; rank: number; total_points: number }> {
+  return getLeaderboardDb()
+    .prepare(
+      `SELECT snapshot_date, rank, total_points
+       FROM points_snapshots
+       WHERE address = ?
+       ORDER BY snapshot_date DESC
+       LIMIT ?`
+    )
+    .all(address, days) as Array<{ snapshot_date: string; rank: number; total_points: number }>;
+}
+
+/**
+ * Get available snapshot dates (most recent first).
+ */
+export function getSnapshotDates(limit: number = 30): string[] {
+  const rows = getLeaderboardDb()
+    .prepare(
+      `SELECT DISTINCT snapshot_date FROM points_snapshots
+       ORDER BY snapshot_date DESC LIMIT ?`
+    )
+    .all(limit) as Array<{ snapshot_date: string }>;
+  return rows.map(r => r.snapshot_date);
+}
+
+/**
+ * Get total traders in a snapshot.
+ */
+export function getSnapshotTotalTraders(date: string): number {
+  const row = getLeaderboardDb()
+    .prepare('SELECT COUNT(*) as count FROM points_snapshots WHERE snapshot_date = ?')
+    .get(date) as { count: number } | undefined;
+  return row?.count ?? 0;
+}
+
+/**
+ * Purge snapshots older than retentionDays.
+ * Returns number of deleted rows.
+ */
+export function purgeOldSnapshots(retentionDays: number = 180): number {
+  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000)
+    .toISOString().slice(0, 10);
+  const result = getLeaderboardDb()
+    .prepare('DELETE FROM points_snapshots WHERE snapshot_date < ?')
+    .run(cutoffDate);
+  return result.changes;
 }

@@ -237,6 +237,7 @@ describe('Points Store', () => {
           pointsFromTrades: 200,
           pointsFromVolume: 250,
           pointsFromDiversity: 50,
+          pointsFromPnl: 0,
           tradeCount: 10,
           volumeQuote: '50000000000',
           rank: 1,
@@ -259,11 +260,11 @@ describe('Points Store', () => {
       const addr = '0x' + 'b'.repeat(64);
 
       replaceTraderPoints([
-        { address: addr, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, tradeCount: 5, volumeQuote: '5000000000', rank: 1, prevRank: 1 },
+        { address: addr, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 5, volumeQuote: '5000000000', rank: 1, prevRank: 1 },
       ]);
 
       replaceTraderPoints([
-        { address: addr, totalPoints: 300, pointsFromTrades: 150, pointsFromVolume: 100, pointsFromDiversity: 50, tradeCount: 15, volumeQuote: '20000000000', rank: 1, prevRank: 1 },
+        { address: addr, totalPoints: 300, pointsFromTrades: 150, pointsFromVolume: 100, pointsFromDiversity: 50, pointsFromPnl: 0, tradeCount: 15, volumeQuote: '20000000000', rank: 1, prevRank: 1 },
       ]);
 
       const result = getTraderPoints(addr);
@@ -276,13 +277,13 @@ describe('Points Store', () => {
       const addr2 = '0x' + 'd'.repeat(64);
 
       replaceTraderPoints([
-        { address: addr1, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, tradeCount: 5, volumeQuote: '0', rank: 1, prevRank: 1 },
-        { address: addr2, totalPoints: 50, pointsFromTrades: 25, pointsFromVolume: 10, pointsFromDiversity: 15, tradeCount: 2, volumeQuote: '0', rank: 2, prevRank: 2 },
+        { address: addr1, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 5, volumeQuote: '0', rank: 1, prevRank: 1 },
+        { address: addr2, totalPoints: 50, pointsFromTrades: 25, pointsFromVolume: 10, pointsFromDiversity: 15, pointsFromPnl: 0, tradeCount: 2, volumeQuote: '0', rank: 2, prevRank: 2 },
       ]);
 
       // Replace with only addr1 — addr2 should be deleted
       replaceTraderPoints([
-        { address: addr1, totalPoints: 150, pointsFromTrades: 75, pointsFromVolume: 50, pointsFromDiversity: 25, tradeCount: 7, volumeQuote: '0', rank: 1, prevRank: 1 },
+        { address: addr1, totalPoints: 150, pointsFromTrades: 75, pointsFromVolume: 50, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 7, volumeQuote: '0', rank: 1, prevRank: 1 },
       ]);
 
       expect(getTraderPoints(addr1)).not.toBeNull();
@@ -292,7 +293,7 @@ describe('Points Store', () => {
     it('handles empty array (clears all)', () => {
       const addr = '0x' + 'e'.repeat(64);
       replaceTraderPoints([
-        { address: addr, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, tradeCount: 5, volumeQuote: '0', rank: 1, prevRank: 1 },
+        { address: addr, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 5, volumeQuote: '0', rank: 1, prevRank: 1 },
       ]);
 
       replaceTraderPoints([]);
@@ -310,6 +311,7 @@ describe('Points Store', () => {
         pointsFromTrades: (5 - i) * 50,
         pointsFromVolume: (5 - i) * 30,
         pointsFromDiversity: (5 - i) * 20,
+        pointsFromPnl: 0,
         tradeCount: (5 - i) * 10,
         volumeQuote: String((5 - i) * 1_000_000_000),
         rank: i + 1,
@@ -333,6 +335,7 @@ describe('Points Store', () => {
         pointsFromTrades: 50,
         pointsFromVolume: 25,
         pointsFromDiversity: 25,
+        pointsFromPnl: 0,
         tradeCount: 5,
         volumeQuote: '0',
         rank: i + 1,
@@ -367,6 +370,7 @@ describe('Points Store', () => {
         pointsFromTrades: 500,
         pointsFromVolume: 300,
         pointsFromDiversity: 200,
+        pointsFromPnl: 0,
         tradeCount: 42,
         volumeQuote: '60000000000',
         rank: 7,
@@ -399,8 +403,8 @@ describe('Points Store', () => {
       const addr2 = '0x' + 'b'.repeat(64);
 
       replaceTraderPoints([
-        { address: addr1, totalPoints: 200, pointsFromTrades: 100, pointsFromVolume: 50, pointsFromDiversity: 50, tradeCount: 10, volumeQuote: '0', rank: 1, prevRank: 2 },
-        { address: addr2, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, tradeCount: 5, volumeQuote: '0', rank: 2, prevRank: 1 },
+        { address: addr1, totalPoints: 200, pointsFromTrades: 100, pointsFromVolume: 50, pointsFromDiversity: 50, pointsFromPnl: 0, tradeCount: 10, volumeQuote: '0', rank: 1, prevRank: 2 },
+        { address: addr2, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 5, volumeQuote: '0', rank: 2, prevRank: 1 },
       ]);
 
       const ranks = getPointsCurrentRanks();
@@ -417,9 +421,9 @@ describe('Points Store', () => {
 
     it('returns correct count', () => {
       replaceTraderPoints([
-        { address: '0x' + 'a'.repeat(64), totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, tradeCount: 5, volumeQuote: '0', rank: 1, prevRank: 1 },
-        { address: '0x' + 'b'.repeat(64), totalPoints: 50, pointsFromTrades: 25, pointsFromVolume: 10, pointsFromDiversity: 15, tradeCount: 2, volumeQuote: '0', rank: 2, prevRank: 2 },
-        { address: '0x' + 'c'.repeat(64), totalPoints: 25, pointsFromTrades: 10, pointsFromVolume: 5, pointsFromDiversity: 10, tradeCount: 1, volumeQuote: '0', rank: 3, prevRank: 3 },
+        { address: '0x' + 'a'.repeat(64), totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 5, volumeQuote: '0', rank: 1, prevRank: 1 },
+        { address: '0x' + 'b'.repeat(64), totalPoints: 50, pointsFromTrades: 25, pointsFromVolume: 10, pointsFromDiversity: 15, pointsFromPnl: 0, tradeCount: 2, volumeQuote: '0', rank: 2, prevRank: 2 },
+        { address: '0x' + 'c'.repeat(64), totalPoints: 25, pointsFromTrades: 10, pointsFromVolume: 5, pointsFromDiversity: 10, pointsFromPnl: 0, tradeCount: 1, volumeQuote: '0', rank: 3, prevRank: 3 },
       ]);
       expect(getTotalPointsTraders()).toBe(3);
     });
@@ -434,6 +438,7 @@ describe('Points Store', () => {
         pointsFromTrades: 50,
         pointsFromVolume: 25,
         pointsFromDiversity: 25,
+        pointsFromPnl: 0,
         tradeCount: 42,
         volumeQuote: '0',
         rank: 1,
@@ -452,6 +457,7 @@ describe('Points Store', () => {
         pointsFromTrades: 50,
         pointsFromVolume: 25,
         pointsFromDiversity: 25,
+        pointsFromPnl: 0,
         tradeCount: 10,
         volumeQuote: '123456789012345',
         rank: 1,
@@ -470,6 +476,7 @@ describe('Points Store', () => {
         pointsFromTrades: 0,
         pointsFromVolume: 0,
         pointsFromDiversity: 0,
+        pointsFromPnl: 0,
         tradeCount: 0,
         volumeQuote: '0',
         rank: 1,
@@ -603,8 +610,8 @@ describe('Points Aggregation Integration', () => {
 
       // First aggregation: addr1 rank 1, addr2 rank 2
       replaceTraderPoints([
-        { address: addr1, totalPoints: 200, pointsFromTrades: 100, pointsFromVolume: 50, pointsFromDiversity: 50, tradeCount: 10, volumeQuote: '0', rank: 1, prevRank: 1 },
-        { address: addr2, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, tradeCount: 5, volumeQuote: '0', rank: 2, prevRank: 2 },
+        { address: addr1, totalPoints: 200, pointsFromTrades: 100, pointsFromVolume: 50, pointsFromDiversity: 50, pointsFromPnl: 0, tradeCount: 10, volumeQuote: '0', rank: 1, prevRank: 1 },
+        { address: addr2, totalPoints: 100, pointsFromTrades: 50, pointsFromVolume: 25, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 5, volumeQuote: '0', rank: 2, prevRank: 2 },
       ]);
 
       // Get current ranks for next aggregation
@@ -614,8 +621,8 @@ describe('Points Aggregation Integration', () => {
 
       // Second aggregation: addr2 overtakes addr1
       replaceTraderPoints([
-        { address: addr2, totalPoints: 300, pointsFromTrades: 150, pointsFromVolume: 100, pointsFromDiversity: 50, tradeCount: 15, volumeQuote: '0', rank: 1, prevRank: ranks.get(addr2) ?? 0 },
-        { address: addr1, totalPoints: 200, pointsFromTrades: 100, pointsFromVolume: 50, pointsFromDiversity: 50, tradeCount: 10, volumeQuote: '0', rank: 2, prevRank: ranks.get(addr1) ?? 0 },
+        { address: addr2, totalPoints: 300, pointsFromTrades: 150, pointsFromVolume: 100, pointsFromDiversity: 50, pointsFromPnl: 0, tradeCount: 15, volumeQuote: '0', rank: 1, prevRank: ranks.get(addr2) ?? 0 },
+        { address: addr1, totalPoints: 200, pointsFromTrades: 100, pointsFromVolume: 50, pointsFromDiversity: 50, pointsFromPnl: 0, tradeCount: 10, volumeQuote: '0', rank: 2, prevRank: ranks.get(addr1) ?? 0 },
       ]);
 
       const result1 = getTraderPoints(addr1);
@@ -630,9 +637,9 @@ describe('Points Aggregation Integration', () => {
   describe('sorting by total points', () => {
     it('leaderboard returns traders sorted by points descending', () => {
       replaceTraderPoints([
-        { address: '0x' + 'c'.repeat(64), totalPoints: 50, pointsFromTrades: 25, pointsFromVolume: 10, pointsFromDiversity: 15, tradeCount: 2, volumeQuote: '0', rank: 3, prevRank: 3 },
-        { address: '0x' + 'a'.repeat(64), totalPoints: 300, pointsFromTrades: 150, pointsFromVolume: 100, pointsFromDiversity: 50, tradeCount: 15, volumeQuote: '0', rank: 1, prevRank: 1 },
-        { address: '0x' + 'b'.repeat(64), totalPoints: 150, pointsFromTrades: 75, pointsFromVolume: 50, pointsFromDiversity: 25, tradeCount: 7, volumeQuote: '0', rank: 2, prevRank: 2 },
+        { address: '0x' + 'c'.repeat(64), totalPoints: 50, pointsFromTrades: 25, pointsFromVolume: 10, pointsFromDiversity: 15, pointsFromPnl: 0, tradeCount: 2, volumeQuote: '0', rank: 3, prevRank: 3 },
+        { address: '0x' + 'a'.repeat(64), totalPoints: 300, pointsFromTrades: 150, pointsFromVolume: 100, pointsFromDiversity: 50, pointsFromPnl: 0, tradeCount: 15, volumeQuote: '0', rank: 1, prevRank: 1 },
+        { address: '0x' + 'b'.repeat(64), totalPoints: 150, pointsFromTrades: 75, pointsFromVolume: 50, pointsFromDiversity: 25, pointsFromPnl: 0, tradeCount: 7, volumeQuote: '0', rank: 2, prevRank: 2 },
       ]);
 
       const leaderboard = getPointsLeaderboard(50);
@@ -650,6 +657,7 @@ describe('Points Aggregation Integration', () => {
         pointsFromTrades: (200 - i) * 5,
         pointsFromVolume: (200 - i) * 3,
         pointsFromDiversity: (200 - i) * 2,
+        pointsFromPnl: 0,
         tradeCount: 200 - i,
         volumeQuote: String((200 - i) * 1_000_000_000),
         rank: i + 1,
@@ -672,6 +680,7 @@ describe('Points Aggregation Integration', () => {
         pointsFromTrades: 0,
         pointsFromVolume: 0,
         pointsFromDiversity: 0,
+        pointsFromPnl: 0,
         tradeCount: 0,
         volumeQuote: '0',
         rank: 1,
@@ -691,6 +700,7 @@ describe('Points Aggregation Integration', () => {
         pointsFromTrades: 1000,
         pointsFromVolume: 4999000,
         pointsFromDiversity: 0,
+        pointsFromPnl: 0,
         tradeCount: 100,
         volumeQuote: hugeVolume,
         rank: 1,

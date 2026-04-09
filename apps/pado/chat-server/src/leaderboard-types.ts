@@ -170,6 +170,7 @@ export interface TraderPointsRow {
   points_from_trades: number;
   points_from_volume: number;
   points_from_diversity: number;
+  points_from_pnl: number;
   trade_count: number;
   volume_quote: string;
   rank: number;
@@ -201,6 +202,7 @@ export interface TraderPointsResponse {
     trades: number;
     volume: number;
     diversity: number;
+    pnl: number;
   };
   rank: number;
 }
@@ -208,9 +210,11 @@ export interface TraderPointsResponse {
 // Points formula constants
 export const POINTS = {
   PER_TRADE: 10,
-  PER_1K_VOLUME: 5,       // per $1000 NUSDC volume
-  PER_UNIQUE_POOL: 25,    // per unique pool traded
-  FIRST_TRADE_BONUS: 100, // one-time bonus for first trade
+  PER_1K_VOLUME: 5,        // per $1000 NUSDC volume
+  PER_UNIQUE_POOL: 25,     // per unique pool traded
+  FIRST_TRADE_BONUS: 100,  // one-time bonus for first trade
+  PER_1K_PNL: 20,          // per $1000 realized profit (losses = 0)
+  PER_10PCT_RETURN: 15,    // per 10% return rate (negative = 0)
 } as const;
 
 // ===== RPC Event Types =====
