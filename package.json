@@ -35,6 +35,7 @@
     "check:x-tokens": "./scripts/check-x-tokens.sh"
   },
   "devDependencies": {
+    "html-encoding-sniffer": "4.0.0",
     "sharp": "^0.34.5",
     "typescript": "^5.9.3"
   },
