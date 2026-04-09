@@ -22,8 +22,8 @@ import {
   Wind,
   Orbit,
 } from "lucide-react";
-import naruImg from "@/assets/images/naru-profile.webp";
-import overclockedImg from "@/assets/images/overclocked-profile.webp";
+import naruImg from "@/assets/images/profile-naru.png";
+import overclockedImg from "@/assets/images/profile-overclocked.png";
 
 // ---------------------------------------------------------------------------
 // PDF helpers (same pattern as InvestorsPage)
