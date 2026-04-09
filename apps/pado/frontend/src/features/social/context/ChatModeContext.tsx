@@ -59,7 +59,7 @@ export function ChatModeProvider({ children }: { children: ReactNode }) {
     if (!isOnTradePage && chatMode !== 'closed') {
       // On initial load: close persisted docked/floating mode on non-trade pages
       // On navigation: close when leaving TradePage
-      if (initialRef.current || chatMode === 'docked') {
+      if (initialRef.current || chatMode === 'docked' || chatMode === 'floating') {
         setChatMode('closed');
       }
     }

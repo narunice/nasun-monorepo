@@ -4,7 +4,6 @@
 import type { FC } from 'react';
 import { useNumberMatchPool } from '../hooks/useNumberMatchPool';
 import { formatNusdc } from '../types';
-import { MAX_DAILY_PLAYS } from '../constants';
 
 export const PoolStatusBar: FC = () => {
   const { pool, isLoading } = useNumberMatchPool();
@@ -26,7 +25,7 @@ export const PoolStatusBar: FC = () => {
         </div>
         <div>
           <span className="text-theme-text-muted">Today: </span>
-          <span className="font-mono text-theme-text">{pool.dailyPlayCount}/{MAX_DAILY_PLAYS}</span>
+          <span className="font-mono text-theme-text">{pool.dailyPlayCount.toLocaleString()}</span>
         </div>
         <div>
           <span className="text-theme-text-muted">Total Plays: </span>
