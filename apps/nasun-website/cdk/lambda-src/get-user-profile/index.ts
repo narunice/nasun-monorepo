@@ -48,6 +48,33 @@ function getCorsOrigin(origin?: string): string {
   return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
 }
 
+// Resolve display name from a DynamoDB profile item using the ecosystem-wide fallback chain.
+// Priority: customDisplayName > Twitter username > Google email prefix > null
+function resolveDisplayName(item: Record<string, any>): string | null {
+  // 1. User-set custom display name
+  const customName = item.customDisplayName?.S;
+  if (customName) return customName;
+
+  // 2. Twitter display name (username field for Twitter-primary, or from linkedAccounts)
+  const provider = item.provider?.S;
+  if (provider === 'Twitter' && item.username?.S) return item.username.S;
+  const linkedTwitterUsername = item.linkedAccounts?.M?.twitter?.M?.username?.S;
+  if (linkedTwitterUsername) return linkedTwitterUsername;
+
+  // 3. Google email prefix
+  if (provider === 'Google' && item.email?.S) return item.email.S.split('@')[0];
+  const linkedGoogleEmail = item.linkedAccounts?.M?.google?.M?.email?.S;
+  if (linkedGoogleEmail) return linkedGoogleEmail.split('@')[0];
+
+  // 4. Consumer app applies shortenAddress as final fallback
+  return null;
+}
+
+// Display name validation patterns
+const DISPLAY_NAME_BLOCKLIST = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/;
+const WALLET_SPOOFING = /^0x[0-9a-f]/i;
+const MENTION_SPOOFING = /^@/;
+
 export const handler: APIGatewayProxyHandler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin;
   const corsHeaders = {
@@ -71,16 +98,89 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     let identityId: string | undefined;
 
     if (event.httpMethod === 'GET') {
-      // For GET requests, read identityId from query parameters
       const queryParams = event.queryStringParameters || {};
+
+      // Public Profile lookup by wallet address (ecosystem-wide profile API)
+      if (queryParams.walletAddress) {
+        const walletsTable = process.env.USER_WALLETS_TABLE || 'UserWallets';
+        const normalizedAddr = queryParams.walletAddress.toLowerCase();
+
+        // Validate wallet address format (Sui: 0x + 64 hex chars)
+        if (!/^0x[0-9a-f]{64}$/.test(normalizedAddr)) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'Invalid wallet address format' }),
+          };
+        }
+
+        // Hop 1: WALLET_OWNER sentinel -> ownerIdentityId
+        const walletResult = await dynamoClient.send(new GetItemCommand({
+          TableName: walletsTable,
+          Key: {
+            identityId: { S: 'WALLET_OWNER' },
+            walletAddress: { S: normalizedAddr },
+          },
+        }));
+        const ownerIdentityId = walletResult.Item?.ownerIdentityId?.S;
+        if (!ownerIdentityId) {
+          return {
+            statusCode: 404,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'Wallet not registered' }),
+          };
+        }
+
+        // Hop 2: UserProfiles -> profile
+        const profileResult = await dynamoClient.send(new GetItemCommand({
+          TableName: tableName,
+          Key: { identityId: { S: ownerIdentityId } },
+        }));
+        if (!profileResult.Item) {
+          return {
+            statusCode: 404,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'User profile not found' }),
+          };
+        }
+
+        // Hop 3 (conditional): resolve to primary profile if this is a secondary account
+        let profileItem = profileResult.Item;
+        const linkedToPrimaryId = profileItem.linkedToPrimaryId?.S;
+        if (linkedToPrimaryId) {
+          const primaryResult = await dynamoClient.send(new GetItemCommand({
+            TableName: tableName,
+            Key: { identityId: { S: linkedToPrimaryId } },
+          }));
+          if (primaryResult.Item) {
+            profileItem = primaryResult.Item;
+          }
+        }
+
+        // Return Public Profile only (no sensitive fields)
+        const resolvedDisplayName = resolveDisplayName(profileItem);
+        const profileImageUrl = profileItem.profileImageUrl?.S || null;
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            resolvedDisplayName,
+            profileImageUrl,
+            walletAddress: normalizedAddr,
+          }),
+        };
+      }
+
+      // Full Profile lookup by identityId (existing behavior, unchanged)
       identityId = queryParams.identityId;
 
       if (!identityId) {
-        console.error('Missing identityId parameter in GET request');
+        console.error('Missing identityId or walletAddress parameter in GET request');
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ message: 'identityId is required' }),
+          body: JSON.stringify({ message: 'identityId or walletAddress is required' }),
         };
       }
 
@@ -326,13 +426,30 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         };
       }
 
-      // Validate displayName length
+      // Validate displayName
       if (updateFields.displayName !== undefined) {
+        // Normalize consecutive whitespace
+        updateFields.displayName = updateFields.displayName.replace(/\s{2,}/g, ' ');
+
         if (updateFields.displayName.length < 2 || updateFields.displayName.length > 30) {
           return {
             statusCode: 400,
             headers: corsHeaders,
             body: JSON.stringify({ message: 'Display name must be 2-30 characters' }),
+          };
+        }
+        if (DISPLAY_NAME_BLOCKLIST.test(updateFields.displayName)) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'Display name contains invalid characters' }),
+          };
+        }
+        if (WALLET_SPOOFING.test(updateFields.displayName) || MENTION_SPOOFING.test(updateFields.displayName)) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: 'Display name cannot start with @ or 0x' }),
           };
         }
       }
