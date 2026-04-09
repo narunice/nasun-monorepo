@@ -67,31 +67,43 @@ export async function fetchUserScratchCards(
  *  Uses originalPackageId for event type query (Sui events use the original defining package). */
 export async function fetchPurchaseHistory(
   userAddress: string,
-  limit = 50,
 ): Promise<ScratchResult[]> {
   const client = getSuiClient();
   const eventType = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
 
-  const response = await client.queryEvents({
-    query: { MoveEventType: eventType },
-    limit,
-    order: 'descending',
-  });
+  // Paginate through events to collect all user purchases.
+  // Events are global (all users), so we fetch in batches and filter.
+  const allResults: ScratchResult[] = [];
+  let cursor: { txDigest: string; eventSeq: string } | null | undefined = undefined;
+  const MAX_PAGES = 10; // Safety limit: 10 pages x 50 = 500 events max
 
-  return response.data
-    .map((event) => {
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const response = await client.queryEvents({
+      query: { MoveEventType: eventType },
+      limit: 50,
+      order: 'descending',
+      cursor: cursor ?? undefined,
+    });
+
+    for (const event of response.data) {
       const data = event.parsedJson as Record<string, string>;
+      if (data.buyer !== userAddress) continue;
       const multiplier = Number(data.multiplier);
-      return {
+      allResults.push({
         cardId: Number(data.card_id),
         buyer: data.buyer,
         multiplier,
         prizeAmount: BigInt(data.prize_amount),
         isWinner: multiplier > 0,
         timestampMs: Number(event.timestampMs ?? 0),
-      };
-    })
-    .filter((r) => r.buyer === userAddress);
+      });
+    }
+
+    if (!response.hasNextPage || !response.nextCursor) break;
+    cursor = response.nextCursor;
+  }
+
+  return allResults;
 }
 
 /** Parse ScratchCardPurchased event from transaction result.

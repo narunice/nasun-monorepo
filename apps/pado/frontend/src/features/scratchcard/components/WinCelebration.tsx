@@ -1,52 +1,12 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ScratchResult } from '../types';
 import type { AnimationTier } from '../types';
 import { formatNusdc, getTierLabel, getTierColorClass } from '../types';
 import { CelebrationOverlay } from '../../../components/common';
 import { CELEBRATION_COLORS, fireConfettiRain, type CelebrationPreset } from '../../../lib/celebration';
 import { playGameSound } from '../../../lib/sounds';
-import { useReducedMotion } from '../../../hooks/useReducedMotion';
-
-// Confetti colors per tier (used only for normal tier DOM confetti)
-const CONFETTI_COLORS: Record<Exclude<AnimationTier, 'loss'>, string[]> = {
-  normal: ['#4ECDC4', '#45B7D1', '#96CEB4', '#98D8C8', '#3bb9d8'],
-  big: ['#FFEAA7', '#FF9F43', '#4ECDC4', '#45B7D1', '#FF6B6B', '#DDA0DD'],
-  jackpot: ['#FFD700', '#FFA500', '#FFEAA7', '#FFE066', '#F5C842', '#E6AC00'],
-};
-
-const PARTICLE_COUNTS: Record<Exclude<AnimationTier, 'loss'>, number> = {
-  normal: 30,
-  big: 60,
-  jackpot: 100,
-};
-
-interface Particle {
-  id: number;
-  left: number;
-  delay: number;
-  duration: number;
-  color: string;
-  width: number;
-  height: number;
-  borderRadius: string;
-}
-
-function generateParticles(count: number, colors: string[]): Particle[] {
-  return Array.from({ length: count }, (_, i) => {
-    const shape = Math.floor(Math.random() * 3);
-    const size = 4 + Math.random() * 8;
-    return {
-      id: i,
-      left: Math.random() * 100,
-      delay: Math.random() * 2,
-      duration: 1.5 + Math.random() * 2.5,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      width: shape === 2 ? size * 0.4 : size,
-      height: shape === 2 ? size * 2 : size,
-      borderRadius: shape === 1 ? '50%' : '2px',
-    };
-  });
-}
+// Confetti colors kept for reference but unused (canvas-confetti uses CELEBRATION_COLORS)
+// const CONFETTI_COLORS: Record<Exclude<AnimationTier, 'loss'>, string[]> = { ... };
 
 // rAF-based number counter hook
 function useCountUp(target: bigint, durationMs: number, active: boolean): bigint {
@@ -121,19 +81,11 @@ export function WinCelebration({ result, tier, onComplete }: WinCelebrationProps
   const { multiplier, prizeAmount } = result;
   const label = getTierLabel(multiplier);
   const colorClass = getTierColorClass(multiplier);
-  const reducedMotion = useReducedMotion();
-
   const [phase, setPhase] = useState<'enter' | 'counting' | 'confetti'>('enter');
   const [showFlash, setShowFlash] = useState(tier === 'big');
   const [showBlackout, setShowBlackout] = useState(tier === 'jackpot');
   const [typewriterIndex, setTypewriterIndex] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
-
-  // Normal tier: DOM confetti particles (card-internal only)
-  const particles = useMemo(
-    () => tier === 'normal' ? generateParticles(PARTICLE_COUNTS[tier], CONFETTI_COLORS[tier]) : [],
-    [tier],
-  );
 
   // Count-up active for BIG/JACKPOT during counting phase
   const counterDuration = tier === 'jackpot' ? 1000 : 800;
@@ -162,6 +114,7 @@ export function WinCelebration({ result, tier, onComplete }: WinCelebrationProps
     if (tier === 'normal') {
       timers.push(setTimeout(() => {
         setPhase('confetti');
+        setShowCelebration(true);
         playGameSound('winSmall');
         fireConfettiRain('medium', CELEBRATION_COLORS.mint);
       }, 400));
@@ -251,40 +204,8 @@ export function WinCelebration({ result, tier, onComplete }: WinCelebrationProps
     );
   };
 
-  // DOM confetti particles renderer (normal tier only)
-  const renderConfetti = (particleList: Particle[], keyPrefix = '') => (
-    <>
-      {particleList.map((p) => (
-        <div
-          key={`${keyPrefix}${p.id}`}
-          style={{
-            position: 'absolute',
-            left: `${p.left}%`,
-            top: '-10px',
-            width: `${p.width}px`,
-            height: `${p.height}px`,
-            backgroundColor: p.color,
-            borderRadius: p.borderRadius,
-            animation: `scratch-confetti-fall ${p.duration}s ${p.delay}s ease-in forwards`,
-            pointerEvents: 'none' as const,
-          }}
-        />
-      ))}
-    </>
-  );
-
   return (
     <div className="relative text-center py-6 overflow-hidden">
-      {/* Confetti keyframe for normal tier DOM confetti */}
-      {tier === 'normal' && (
-        <style>{`
-          @keyframes scratch-confetti-fall {
-            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(220px) rotate(720deg); opacity: 0; }
-          }
-        `}</style>
-      )}
-
       {/* BIG tier: white flash overlay */}
       {tier === 'big' && showFlash && (
         <div className="absolute inset-0 bg-white/80 dark:bg-white/60 animate-scratch-flash z-10" />
@@ -303,11 +224,8 @@ export function WinCelebration({ result, tier, onComplete }: WinCelebrationProps
         {renderPrize()}
       </div>
 
-      {/* Normal tier: card-internal DOM confetti (skip if reduced motion) */}
-      {phase === 'confetti' && tier === 'normal' && !reducedMotion && renderConfetti(particles)}
-
-      {/* Big/Jackpot: full-screen canvas-confetti via Portal */}
-      {showCelebration && (tier === 'big' || tier === 'jackpot') && (
+      {/* Full-screen canvas-confetti via Portal (all winning tiers) */}
+      {showCelebration && (
         <CelebrationOverlay
           preset={tierToPreset(tier)}
           trigger={true}

@@ -186,21 +186,21 @@ export async function fireConfettiRain(
       confetti({
         particleCount: particlesPerBurst,
         angle: 270,
-        spread: 80,
-        origin: { x, y: -0.05 },
+        spread: 120,
+        origin: { x, y: 0 },
         colors: resolvedColors,
         shapes,
-        startVelocity: 40,
-        gravity: 0.6,
-        decay: 0.92,
-        ticks: 350,
+        startVelocity: 8,
+        gravity: 0.8,
+        decay: 0.96,
+        ticks: 400,
         zIndex: Z_INDEX,
-        scalar: isLarge ? 1.1 : 0.9,
+        scalar: isLarge ? 1.2 : 1.0,
         disableForReducedMotion: true,
       });
     }
     if (wave < waveCount - 1) {
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
 }
