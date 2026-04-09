@@ -77,6 +77,16 @@ function TokenRow({ token }: TokenRowProps) {
               </span>
             )}
           </div>
+          {token.source === 'combined' && token.walletBalance != null && token.tradingBalance != null && (
+            <div className="text-[10px] xl:text-xs text-theme-text-muted">
+              {formatBalance(token.symbol, String(token.walletBalance))} Wallet + {formatBalance(token.symbol, String(token.tradingBalance))} Trading
+            </div>
+          )}
+          {token.source === 'trading' && (
+            <div className="text-[10px] xl:text-xs text-pd3">
+              In Trading Balance
+            </div>
+          )}
         </div>
       </div>
     </div>

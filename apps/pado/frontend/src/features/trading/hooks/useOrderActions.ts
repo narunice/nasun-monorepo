@@ -102,12 +102,12 @@ function formatOrderResult(result: TradeResult, isBid: boolean, feeBps?: number)
     let msg = `${action} FILLED ${exec.executedQuantity.toFixed(4)} @ $${priceStr}`;
     if (feeBps && exec.executedQuote > 0) {
       const fee = exec.executedQuote * feeBps / 10000;
-      msg += ` — Fee: ~$${fee.toFixed(2)}`;
+      msg += ` // Fee: ~$${fee.toFixed(2)}`;
     }
-    return msg;
+    return msg + ' (in Trading Balance)';
   } else if (exec.status === "partial") {
     const totalQty = exec.executedQuantity + exec.remainingQuantity;
-    return `${action} PARTIAL ${exec.executedQuantity.toFixed(4)}/${totalQty.toFixed(4)} @ $${priceStr}`;
+    return `${action} PARTIAL ${exec.executedQuantity.toFixed(4)}/${totalQty.toFixed(4)} @ $${priceStr} (in Trading Balance)`;
   }
 
   return `${action} Limit placed — Tx: ${result.digest?.slice(0, 10)}...`;
@@ -316,7 +316,7 @@ export function useOrderActions(): UseOrderActionsResult {
         const baseSymbol = currentPool.baseToken.symbol;
         const msg = result.executionInfo
           ? formatOrderResult(result, type === "buy", currentPool.takerFeeBps)
-          : `Market ${type === "buy" ? "Buy" : "Sell"} ${amount.toFixed(4)} ${baseSymbol} executed!`;
+          : `Market ${type === "buy" ? "Buy" : "Sell"} ${amount.toFixed(4)} ${baseSymbol} executed! (in Trading Balance)`;
         showToast(msg, "success");
         refreshData();
       } else {
