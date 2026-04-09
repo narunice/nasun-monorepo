@@ -12,10 +12,9 @@ import { ClaimAllButton } from '@nasun/wallet-ui';
 import { FIRST_TRADE_STORAGE_KEY } from '../../trading/hooks/useFirstTradeCelebration';
 import { ORDER_FILL_EVENT } from '../../trading/hooks/useOrderFillNotifier';
 import { LOTTERY_PURCHASED_KEY, LOTTERY_PURCHASE_EVENT } from '../../lottery/hooks/useLotteryActions';
-import { NETWORK_CONFIG } from '../../../config/network';
+import { hasAccess } from '../../../config/network';
 
 const DISMISS_KEY = 'pado:gettingStartedDismissed';
-const gated = NETWORK_CONFIG.gamesOnlyMode;
 
 interface Step {
   id: string;
@@ -92,7 +91,7 @@ export function GettingStartedCard() {
     ];
 
     // Add spot trading step when not in games-only mode
-    if (!gated) {
+    if (hasAccess('spot')) {
       base.push({
         id: 'trade',
         label: 'Make Your First Trade',

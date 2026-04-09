@@ -52,9 +52,20 @@ export const NETWORK_CONFIG = {
 
   // Feature Flags
   useTradingView: import.meta.env.VITE_USE_TRADINGVIEW === 'true',
-  gamesOnlyMode: import.meta.env.VITE_GAMES_ONLY_MODE === 'true',       // TEMPORARY: Remove after 2026-07-01
-  spotAccessCode: import.meta.env.VITE_SPOT_ACCESS_CODE || '',           // TEMPORARY: Remove after 2026-07-01
+  accessMode: (import.meta.env.VITE_ACCESS_MODE || 'full') as AccessMode, // TEMPORARY: Remove after 2026-07-01
+  spotAccessCode: import.meta.env.VITE_SPOT_ACCESS_CODE || '',             // TEMPORARY: Remove after 2026-07-01
 } as const;
+
+// Access mode: progressive feature unlock
+// games-only -> spot -> full
+export type AccessMode = 'games-only' | 'spot' | 'full';
+
+const ACCESS_LEVEL: Record<AccessMode, number> = { 'games-only': 0, 'spot': 1, 'full': 2 };
+
+/** Check if the current access mode meets the required level */
+export function hasAccess(required: AccessMode): boolean {
+  return ACCESS_LEVEL[NETWORK_CONFIG.accessMode] >= ACCESS_LEVEL[required];
+}
 
 // Token Metadata
 export const TOKENS = {

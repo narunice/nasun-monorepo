@@ -4,10 +4,11 @@ import { WalletConnect } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { HeaderNetValue } from './HeaderNetValue';
 import { EcoPointsBadge } from './EcoPointsBadge';
+import { GenesisPassBadge } from './GenesisPassBadge';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { useAdminAccess } from '../../features/admin';
 import { useTradeMode } from '../../features/trading/hooks';
-import { NETWORK_CONFIG } from '../../config/network';
+import { hasAccess } from '../../config/network';
 import { useAppAdmin } from '../../hooks/useAppAdmin';
 
 interface NavItem {
@@ -22,12 +23,10 @@ interface DropdownItem {
   enabled: boolean;
 }
 
-// TEMPORARY: gated flag controls nav visibility (Remove after 2026-07-01)
-const gated = NETWORK_CONFIG.gamesOnlyMode;
-
+// TEMPORARY: access-level gating (Remove after 2026-07-01)
 const TRADE_ITEMS: DropdownItem[] = [
-  { label: 'Spot', path: '/markets/spot', enabled: !gated },
-  { label: 'Perpetuals', path: '/markets/perp', enabled: !gated },
+  { label: 'Spot', path: '/markets/spot', enabled: hasAccess('spot') },
+  { label: 'Perpetuals', path: '/markets/perp', enabled: hasAccess('full') },
 ];
 
 const GAMES_ITEMS: DropdownItem[] = [
@@ -38,13 +37,13 @@ const GAMES_ITEMS: DropdownItem[] = [
 ];
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Predict', path: '/predict', enabled: !gated },
-  { label: 'Earn', path: '/earn', enabled: !gated },
+  { label: 'Predict', path: '/predict', enabled: hasAccess('full') },
+  { label: 'Earn', path: '/earn', enabled: hasAccess('full') },
 ];
 
 const SOCIAL_ITEMS: DropdownItem[] = [
-  { label: 'Leaderboard', path: '/leaderboard', enabled: !gated },
-  { label: 'Competitions', path: '/competitions', enabled: !gated },
+  { label: 'Leaderboard', path: '/leaderboard', enabled: hasAccess('spot') },
+  { label: 'Competitions', path: '/competitions', enabled: hasAccess('full') },
 ];
 
 export function Header() {
@@ -74,8 +73,8 @@ export function Header() {
   const { isAdmin } = useAdminAccess();
   const isAppAdmin = useAppAdmin();
 
-  // Platform admins bypass games-only gate
-  const isEffectivelyGated = gated && !isAppAdmin;
+  // Platform admins bypass all access gates
+  const hasSpotAccess = isAppAdmin || hasAccess('spot');
 
   // Trade mode for header max-width in Simple mode
   const { isSimple } = useTradeMode();
@@ -184,7 +183,7 @@ export function Header() {
         <nav className="hidden md:flex items-center gap-1">
           {/* Trade Dropdown */}
           <div className="relative" ref={tradeRef}>
-            {TRADE_ITEMS.some(item => item.enabled || isAppAdmin) ? (
+            {TRADE_ITEMS.length > 0 ? (
               <>
                 <button
                   onClick={toggleTrade}
@@ -207,23 +206,39 @@ export function Header() {
 
                 {isTradeOpen && (
                   <div className="absolute left-0 top-full mt-1 w-40 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                    {TRADE_ITEMS.filter(item => item.enabled || isAppAdmin).map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={(e) => {
-                          handleNavClick(e, item.path);
-                          setIsTradeOpen(false);
-                        }}
-                        className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                          isActive(item.path)
-                            ? 'text-pd3 bg-pd3/10'
-                            : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                        }`}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
+                    {TRADE_ITEMS.map((item) => {
+                      const enabled = item.enabled || isAppAdmin;
+                      if (enabled) {
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            onClick={(e) => {
+                              handleNavClick(e, item.path);
+                              setIsTradeOpen(false);
+                            }}
+                            className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                              isActive(item.path)
+                                ? 'text-pd3 bg-pd3/10'
+                                : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                            }`}
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      }
+                      return (
+                        <span
+                          key={item.path}
+                          className="flex items-center justify-between px-4 py-2.5 text-sm font-medium text-theme-text-muted/40 cursor-not-allowed"
+                        >
+                          {item.label}
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                          </svg>
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </>
@@ -312,7 +327,7 @@ export function Header() {
 
           {/* Social Dropdown */}
           <div className="relative" ref={socialRef}>
-            {SOCIAL_ITEMS.some(item => item.enabled || isAppAdmin) ? (
+            {SOCIAL_ITEMS.length > 0 ? (
               <button
                 onClick={toggleSocial}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
@@ -340,31 +355,47 @@ export function Header() {
               </span>
             )}
 
-            {isSocialOpen && SOCIAL_ITEMS.some(item => item.enabled || isAppAdmin) && (
+            {isSocialOpen && (
               <div className="absolute left-0 top-full mt-1 w-44 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-lg z-50 overflow-hidden">
-                {SOCIAL_ITEMS.filter(item => item.enabled || isAppAdmin).map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={(e) => {
-                      handleNavClick(e, item.path);
-                      setIsSocialOpen(false);
-                    }}
-                    className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                      isActive(item.path)
-                        ? 'text-pd3 bg-pd3/10'
-                        : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {SOCIAL_ITEMS.map((item) => {
+                  const enabled = item.enabled || isAppAdmin;
+                  if (enabled) {
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={(e) => {
+                          handleNavClick(e, item.path);
+                          setIsSocialOpen(false);
+                        }}
+                        className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                          isActive(item.path)
+                            ? 'text-pd3 bg-pd3/10'
+                            : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  }
+                  return (
+                    <span
+                      key={item.path}
+                      className="flex items-center justify-between px-4 py-2.5 text-sm font-medium text-theme-text-muted/40 cursor-not-allowed"
+                    >
+                      {item.label}
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                      </svg>
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Portfolio */}
-          {!isEffectivelyGated ? (
+          {hasSpotAccess ? (
             <Link
               to="/portfolio"
               onClick={(e) => handleNavClick(e, '/portfolio')}
@@ -405,7 +436,8 @@ export function Header() {
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
           <EcoPointsBadge />
-          {!isEffectivelyGated && <HeaderNetValue />}
+          <GenesisPassBadge />
+          {hasSpotAccess && <HeaderNetValue />}
           {showWalletButton && (
             <WalletConnect
               addressStartChars={isMobile ? 0 : 2}
