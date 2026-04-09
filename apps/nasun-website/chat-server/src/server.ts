@@ -1,10 +1,10 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { verifyCognitoJwt } from './auth.js';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
-import { DEFAULT_CONFIG as CONFIG } from './types.js';
+import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
 
 // ===== State =====
 
@@ -13,6 +13,8 @@ const authenticatedClients = new Map<WebSocket, AuthenticatedClient>();
 const lastMessageTime = new Map<string, number>();
 const lastHistoryTime = new Map<string, number>();
 const connectionsPerIp = new Map<string, number>();
+const lastReactionTime = new Map<string, number>();
+const lastReactionMessageMap = new Map<string, { messageId: number; at: number }>();
 
 // ===== Helpers =====
 
@@ -39,6 +41,7 @@ function storedToPayload(msg: StoredMessage): ChatMessagePayload {
   return {
     type: 'chat_message',
     id: msg.id,
+    roomId: msg.roomId,
     sender: msg.senderId,
     senderName: msg.senderName,
     content: msg.content,
@@ -137,6 +140,12 @@ wss.on('connection', (ws, req) => {
         case 'load_history':
           handleLoadHistory(client, data);
           break;
+        case 'toggle_reaction':
+          handleToggleReaction(client, data);
+          break;
+        case 'list_rooms':
+          send(ws, { type: 'rooms_list', rooms: ROOMS });
+          break;
         default:
           send(ws, { type: 'error', code: 'UNKNOWN_TYPE', message: 'Unknown message type' });
       }
@@ -217,6 +226,7 @@ async function handleAuth(ws: WebSocket, msg: { type: 'auth'; token: string; dis
   }
 
   send(ws, { type: 'auth_success', userId: result.userId, displayName: safeName });
+  send(ws, { type: 'rooms_list', rooms: ROOMS });
   broadcastOnlineCount();
 
   console.log(`Authenticated: ${result.userId} as "${safeName}"`);
@@ -226,7 +236,7 @@ async function handleAuth(ws: WebSocket, msg: { type: 'auth'; token: string; dis
 
 function handleSendMessage(
   client: AuthenticatedClient,
-  msg: { type: 'send_message'; content: string; replyToId?: number }
+  msg: { type: 'send_message'; content: string; roomId?: number; replyToId?: number }
 ): void {
   const now = Date.now();
 
@@ -262,6 +272,13 @@ function handleSendMessage(
     return;
   }
 
+  // Validate roomId
+  const roomId = msg.roomId ?? 0;
+  if (!VALID_ROOM_IDS.has(roomId)) {
+    send(client.ws, { type: 'error', code: 'INVALID_ROOM', message: 'Invalid room' });
+    return;
+  }
+
   // Validate replyToId
   const replyToId = msg.replyToId;
   if (replyToId !== undefined && replyToId !== null) {
@@ -274,6 +291,7 @@ function handleSendMessage(
   // Store message
   try {
     const stored = insertMessage({
+      roomId,
       senderId: client.userId,
       senderName: client.displayName,
       content,
@@ -295,11 +313,66 @@ function handleSendMessage(
   }
 }
 
+// ===== Reaction Handler =====
+
+function handleToggleReaction(
+  client: AuthenticatedClient,
+  msg: { type: 'toggle_reaction'; messageId: number; emojiCode: string }
+): void {
+  const { messageId, emojiCode } = msg;
+
+  // Whitelist validation
+  if (!emojiCode || !VALID_REACTION_CODES.has(emojiCode)) {
+    send(client.ws, { type: 'error', code: 'INVALID_REACTION', message: 'Invalid reaction code' });
+    return;
+  }
+
+  // Validate messageId
+  if (typeof messageId !== 'number' || !Number.isInteger(messageId) || messageId <= 0) {
+    send(client.ws, { type: 'error', code: 'INVALID_MESSAGE', message: 'Invalid messageId' });
+    return;
+  }
+
+  // Rate limit: 500ms global
+  const now = Date.now();
+  const lastTime = lastReactionTime.get(client.userId);
+  if (lastTime && now - lastTime < 500) {
+    send(client.ws, { type: 'error', code: 'RATE_LIMITED', message: 'Reaction rate limited' });
+    return;
+  }
+
+  // Rate limit: 3s per-message cooldown
+  const lastMsgReaction = lastReactionMessageMap.get(client.userId);
+  if (lastMsgReaction && lastMsgReaction.messageId === messageId && now - lastMsgReaction.at < 3000) {
+    send(client.ws, { type: 'error', code: 'RATE_LIMITED', message: 'Per-message cooldown' });
+    return;
+  }
+
+  // Message existence + roomId
+  const roomId = getMessageRoomId(messageId);
+  if (roomId === null) {
+    send(client.ws, { type: 'error', code: 'MESSAGE_NOT_FOUND', message: 'Message not found' });
+    return;
+  }
+
+  try {
+    const reactions = toggleReaction(messageId, client.userId, emojiCode);
+    lastReactionTime.set(client.userId, now);
+    lastReactionMessageMap.set(client.userId, { messageId, at: now });
+
+    // Broadcast to all clients (they filter by roomId client-side)
+    broadcast({ type: 'reaction_update', messageId, roomId, reactions });
+  } catch (err) {
+    console.error('Failed to toggle reaction:', err);
+    send(client.ws, { type: 'error', code: 'INTERNAL_ERROR', message: 'Failed to toggle reaction' });
+  }
+}
+
 // ===== History Handler =====
 
 function handleLoadHistory(
   client: AuthenticatedClient,
-  msg: { type: 'load_history'; before?: number; limit?: number }
+  msg: { type: 'load_history'; roomId?: number; before?: number; limit?: number }
 ): void {
   const now = Date.now();
 
@@ -311,12 +384,31 @@ function handleLoadHistory(
   }
   lastHistoryTime.set(client.userId, now);
 
+  const roomId = msg.roomId ?? 0;
+  if (!VALID_ROOM_IDS.has(roomId)) {
+    send(client.ws, { type: 'error', code: 'INVALID_ROOM', message: 'Invalid room' });
+    return;
+  }
+
   const limit = Math.min(msg.limit || 50, 100);
-  const messages = getRecentMessages(limit, msg.before);
+  const messages = getRecentMessages(roomId, limit, msg.before);
+
+  // Batch fetch reactions for all messages
+  const messageIds = messages.map((m) => m.id);
+  const reactionMap = getReactionSummaries(messageIds, client.userId);
 
   send(client.ws, {
     type: 'history',
-    messages: messages.map(storedToPayload),
+    roomId,
+    messages: messages.map((m) => {
+      const payload = storedToPayload(m);
+      const reactionData = reactionMap.get(m.id);
+      if (reactionData) {
+        payload.reactions = reactionData.reactions;
+        payload.myReaction = reactionData.myReaction;
+      }
+      return payload;
+    }),
     hasMore: messages.length === limit,
   });
 }
@@ -354,6 +446,12 @@ const cleanupTimer = setInterval(() => {
   }
   for (const [key, ts] of lastHistoryTime) {
     if (ts < threshold) lastHistoryTime.delete(key);
+  }
+  for (const [key, ts] of lastReactionTime) {
+    if (ts < threshold) lastReactionTime.delete(key);
+  }
+  for (const [key, val] of lastReactionMessageMap) {
+    if (val.at < threshold) lastReactionMessageMap.delete(key);
   }
 }, CLEANUP_INTERVAL);
 

@@ -13,7 +13,6 @@ export function initStore(config: ChatServerConfig): void {
   db.pragma('synchronous = NORMAL');
   db.pragma('foreign_keys = ON');
 
-  // Verify FK enforcement
   const fkStatus = db.pragma('foreign_keys') as Array<{ foreign_keys: number }>;
   if (!fkStatus[0]?.foreign_keys) {
     throw new Error('FATAL: foreign_keys pragma failed to enable');
@@ -22,6 +21,7 @@ export function initStore(config: ChatServerConfig): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_id INTEGER NOT NULL DEFAULT 0,
       sender_id TEXT NOT NULL,
       sender_name TEXT NOT NULL,
       content TEXT NOT NULL,
@@ -30,11 +30,23 @@ export function initStore(config: ChatServerConfig): void {
       timestamp INTEGER NOT NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_messages_ts
-      ON messages(timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_messages_room_ts
+      ON messages(room_id, timestamp DESC);
 
-    CREATE INDEX IF NOT EXISTS idx_messages_id_desc
-      ON messages(id DESC);
+    CREATE INDEX IF NOT EXISTS idx_messages_room_id_desc
+      ON messages(room_id, id DESC);
+
+    CREATE TABLE IF NOT EXISTS reactions (
+      message_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      emoji_code TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      PRIMARY KEY (message_id, user_id),
+      FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_reactions_message
+      ON reactions(message_id, emoji_code);
 
     CREATE TABLE IF NOT EXISTS users (
       identity_id TEXT PRIMARY KEY,
@@ -44,7 +56,9 @@ export function initStore(config: ChatServerConfig): void {
     );
   `);
 
-  // Purge old messages on startup
+  // Migration: add room_id column if upgrading from v1 schema
+  try { db.exec('ALTER TABLE messages ADD COLUMN room_id INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
+
   purgeOldMessages(config.messageRetentionDays);
 }
 
@@ -56,30 +70,30 @@ export function getDb(): Database.Database {
 export function insertMessage(msg: Omit<StoredMessage, 'id'>): StoredMessage {
   const result = getDb()
     .prepare(
-      `INSERT INTO messages (sender_id, sender_name, content, message_type, reply_to_id, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO messages (room_id, sender_id, sender_name, content, message_type, reply_to_id, timestamp)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(msg.senderId, msg.senderName, msg.content, msg.messageType, msg.replyToId, msg.timestamp);
+    .run(msg.roomId, msg.senderId, msg.senderName, msg.content, msg.messageType, msg.replyToId, msg.timestamp);
 
   return { ...msg, id: result.lastInsertRowid as number };
 }
 
 export function getRecentMessages(
+  roomId: number,
   limit: number = 50,
   beforeId?: number
 ): StoredMessage[] {
   const query = beforeId
-    ? `SELECT id, sender_id as senderId, sender_name as senderName, content,
+    ? `SELECT id, room_id as roomId, sender_id as senderId, sender_name as senderName, content,
          message_type as messageType, reply_to_id as replyToId, timestamp
-       FROM messages WHERE id < ? ORDER BY id DESC LIMIT ?`
-    : `SELECT id, sender_id as senderId, sender_name as senderName, content,
+       FROM messages WHERE room_id = ? AND id < ? ORDER BY id DESC LIMIT ?`
+    : `SELECT id, room_id as roomId, sender_id as senderId, sender_name as senderName, content,
          message_type as messageType, reply_to_id as replyToId, timestamp
-       FROM messages ORDER BY id DESC LIMIT ?`;
+       FROM messages WHERE room_id = ? ORDER BY id DESC LIMIT ?`;
 
-  const params = beforeId ? [beforeId, limit] : [limit];
+  const params = beforeId ? [roomId, beforeId, limit] : [roomId, limit];
   const rows = getDb().prepare(query).all(...params) as StoredMessage[];
 
-  // Return in ascending order (oldest first)
   return rows.reverse();
 }
 
@@ -101,6 +115,96 @@ export function upsertUser(identityId: string, displayName: string, provider?: s
          last_seen_at = excluded.last_seen_at`
     )
     .run(identityId, displayName, provider ?? null, Date.now());
+}
+
+// ===== Reactions =====
+
+export function toggleReaction(
+  messageId: number,
+  userId: string,
+  emojiCode: string
+): Record<string, number> {
+  const d = getDb();
+  return d.transaction(() => {
+    // Try to remove same emoji (toggle off)
+    const deleted = d
+      .prepare('DELETE FROM reactions WHERE message_id=? AND user_id=? AND emoji_code=?')
+      .run(messageId, userId, emojiCode);
+
+    if (deleted.changes === 0) {
+      // Not removed = different emoji or none -> insert or replace
+      d.prepare(
+        'INSERT OR REPLACE INTO reactions (message_id, user_id, emoji_code, created_at) VALUES (?, ?, ?, ?)'
+      ).run(messageId, userId, emojiCode, Date.now());
+    }
+
+    return getReactionSummaryForMessage(messageId);
+  })();
+}
+
+export function getReactionSummaryForMessage(messageId: number): Record<string, number> {
+  const rows = getDb()
+    .prepare('SELECT emoji_code, COUNT(*) as cnt FROM reactions WHERE message_id=? GROUP BY emoji_code')
+    .all(messageId) as Array<{ emoji_code: string; cnt: number }>;
+
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.emoji_code] = row.cnt;
+  }
+  return result;
+}
+
+export function getReactionSummaries(
+  messageIds: number[],
+  viewerUserId?: string
+): Map<number, { reactions: Record<string, number>; myReaction: string | null }> {
+  if (messageIds.length === 0) return new Map();
+
+  const placeholders = messageIds.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(
+      `SELECT message_id, emoji_code, COUNT(*) as cnt
+       FROM reactions WHERE message_id IN (${placeholders})
+       GROUP BY message_id, emoji_code`
+    )
+    .all(...messageIds) as Array<{ message_id: number; emoji_code: string; cnt: number }>;
+
+  const result = new Map<number, { reactions: Record<string, number>; myReaction: string | null }>();
+  for (const row of rows) {
+    let entry = result.get(row.message_id);
+    if (!entry) {
+      entry = { reactions: {}, myReaction: null };
+      result.set(row.message_id, entry);
+    }
+    entry.reactions[row.emoji_code] = row.cnt;
+  }
+
+  if (viewerUserId) {
+    const myRows = getDb()
+      .prepare(
+        `SELECT message_id, emoji_code FROM reactions
+         WHERE message_id IN (${placeholders}) AND user_id = ?`
+      )
+      .all(...messageIds, viewerUserId) as Array<{ message_id: number; emoji_code: string }>;
+
+    for (const row of myRows) {
+      let entry = result.get(row.message_id);
+      if (!entry) {
+        entry = { reactions: {}, myReaction: null };
+        result.set(row.message_id, entry);
+      }
+      entry.myReaction = row.emoji_code;
+    }
+  }
+
+  return result;
+}
+
+export function getMessageRoomId(messageId: number): number | null {
+  const row = getDb()
+    .prepare('SELECT room_id FROM messages WHERE id = ?')
+    .get(messageId) as { room_id: number } | undefined;
+  return row?.room_id ?? null;
 }
 
 export function closeStore(): void {

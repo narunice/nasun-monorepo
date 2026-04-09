@@ -171,23 +171,26 @@ function setupServer(): void {
             }
           }
 
+          const roomId = data.roomId ?? 0;
           const stored = insertMessage({
-            senderId: client.userId, senderName: client.displayName,
+            roomId, senderId: client.userId, senderName: client.displayName,
             content, messageType: 'text', replyToId: replyToId ?? null, timestamp: now,
           });
           const payload = {
-            type: 'chat_message', id: stored.id, sender: stored.senderId,
+            type: 'chat_message', id: stored.id, roomId: stored.roomId, sender: stored.senderId,
             senderName: stored.senderName, content: stored.content,
             messageType: stored.messageType, replyToId: stored.replyToId, timestamp: stored.timestamp,
           };
           for (const [w] of authenticatedClients) { send(w, payload); }
         } else if (data.type === 'load_history') {
+          const histRoomId = data.roomId ?? 0;
           const limit = Math.min(data.limit || 50, 100);
-          const messages = getRecentMessages(limit, data.before);
+          const messages = getRecentMessages(histRoomId, limit, data.before);
           send(ws, {
             type: 'history',
+            roomId: histRoomId,
             messages: messages.map((m) => ({
-              type: 'chat_message', id: m.id, sender: m.senderId,
+              type: 'chat_message', id: m.id, roomId: m.roomId, sender: m.senderId,
               senderName: m.senderName, content: m.content,
               messageType: m.messageType, replyToId: m.replyToId, timestamp: m.timestamp,
             })),
@@ -638,7 +641,7 @@ describe('History', () => {
     // Insert some messages directly
     for (let i = 0; i < 5; i++) {
       insertMessage({
-        senderId: 'user-pre', senderName: 'Seeder', content: `Seeded ${i}`,
+        roomId: 0, senderId: 'user-pre', senderName: 'Seeder', content: `Seeded ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }

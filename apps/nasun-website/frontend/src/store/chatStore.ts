@@ -1,55 +1,138 @@
 import { create } from 'zustand';
-import type { ChatMessage, ChatConnectionStatus } from '../lib/chat-service';
+import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../lib/chat-service';
+
+interface RoomState {
+  messages: ChatMessage[];
+  hasMore: boolean;
+  loaded: boolean;
+}
 
 interface ChatState {
-  messages: ChatMessage[];
+  rooms: RoomInfo[];
+  activeRoomId: number;
+  roomStates: Map<number, RoomState>;
   status: ChatConnectionStatus;
   onlineCount: number;
   isOpen: boolean;
-  hasMore: boolean;
+
+  // Widget geometry (persisted feel)
+  position: { x: number; y: number } | null; // null = default bottom-right
+  size: { width: number; height: number };
 
   // Actions
+  setRooms: (rooms: RoomInfo[]) => void;
+  setActiveRoomId: (id: number) => void;
   addMessage: (msg: ChatMessage) => void;
-  setHistory: (messages: ChatMessage[], hasMore: boolean) => void;
-  prependHistory: (messages: ChatMessage[], hasMore: boolean) => void;
+  setHistory: (roomId: number, messages: ChatMessage[], hasMore: boolean) => void;
+  prependHistory: (roomId: number, messages: ChatMessage[], hasMore: boolean) => void;
   setStatus: (status: ChatConnectionStatus) => void;
   setOnlineCount: (count: number) => void;
+  updateReaction: (roomId: number, messageId: number, reactions: Record<string, number>) => void;
   setIsOpen: (open: boolean) => void;
   toggleOpen: () => void;
-  clearMessages: () => void;
+  setPosition: (pos: { x: number; y: number } | null) => void;
+  setSize: (size: { width: number; height: number }) => void;
+
+  // Derived
+  activeMessages: () => ChatMessage[];
+  activeHasMore: () => boolean;
+  activeLoaded: () => boolean;
 }
 
-const MAX_MESSAGES = 500;
+const MAX_MESSAGES_PER_ROOM = 500;
+const DEFAULT_SIZE = { width: 384, height: 480 };
+const MIN_SIZE = { width: 300, height: 320 };
+const MAX_SIZE = { width: 600, height: 800 };
 
-export const useChatStore = create<ChatState>((set) => ({
-  messages: [],
+export { MIN_SIZE, MAX_SIZE, DEFAULT_SIZE };
+
+function getOrCreateRoomState(map: Map<number, RoomState>, roomId: number): RoomState {
+  let state = map.get(roomId);
+  if (!state) {
+    state = { messages: [], hasMore: false, loaded: false };
+    map.set(roomId, state);
+  }
+  return state;
+}
+
+export const useChatStore = create<ChatState>((set, get) => ({
+  rooms: [{ id: 0, name: 'Global' }, { id: 1, name: 'Korean' }],
+  activeRoomId: 0,
+  roomStates: new Map(),
   status: 'disconnected',
   onlineCount: 0,
   isOpen: false,
-  hasMore: false,
+  position: null,
+  size: DEFAULT_SIZE,
+
+  setRooms: (rooms) => set({ rooms }),
+
+  setActiveRoomId: (id) => set({ activeRoomId: id }),
 
   addMessage: (msg) =>
     set((state) => {
-      const messages = [...state.messages, msg];
-      // Cap messages to prevent memory bloat
-      if (messages.length > MAX_MESSAGES) {
-        return { messages: messages.slice(-MAX_MESSAGES), hasMore: true };
+      const newMap = new Map(state.roomStates);
+      const room = { ...getOrCreateRoomState(newMap, msg.roomId) };
+      room.messages = [...room.messages, msg];
+      if (room.messages.length > MAX_MESSAGES_PER_ROOM) {
+        room.messages = room.messages.slice(-MAX_MESSAGES_PER_ROOM);
+        room.hasMore = true;
       }
-      return { messages };
+      newMap.set(msg.roomId, room);
+      return { roomStates: newMap };
     }),
 
-  setHistory: (messages, hasMore) =>
-    set({ messages, hasMore }),
+  setHistory: (roomId, messages, hasMore) =>
+    set((state) => {
+      const newMap = new Map(state.roomStates);
+      newMap.set(roomId, { messages, hasMore, loaded: true });
+      return { roomStates: newMap };
+    }),
 
-  prependHistory: (older, hasMore) =>
-    set((state) => ({
-      messages: [...older, ...state.messages],
-      hasMore,
-    })),
+  prependHistory: (roomId, older, hasMore) =>
+    set((state) => {
+      const newMap = new Map(state.roomStates);
+      const room = { ...getOrCreateRoomState(newMap, roomId) };
+      room.messages = [...older, ...room.messages];
+      room.hasMore = hasMore;
+      newMap.set(roomId, room);
+      return { roomStates: newMap };
+    }),
+
+  updateReaction: (roomId, messageId, reactions) =>
+    set((state) => {
+      const newMap = new Map(state.roomStates);
+      const room = newMap.get(roomId);
+      if (!room) return state;
+      const updatedMessages = room.messages.map((msg) =>
+        msg.id === messageId ? { ...msg, reactions } : msg
+      );
+      newMap.set(roomId, { ...room, messages: updatedMessages });
+      return { roomStates: newMap };
+    }),
 
   setStatus: (status) => set({ status }),
   setOnlineCount: (onlineCount) => set({ onlineCount }),
   setIsOpen: (isOpen) => set({ isOpen }),
   toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
-  clearMessages: () => set({ messages: [], hasMore: false }),
+  setPosition: (position) => set({ position }),
+  setSize: (size) => set({
+    size: {
+      width: Math.max(MIN_SIZE.width, Math.min(MAX_SIZE.width, size.width)),
+      height: Math.max(MIN_SIZE.height, Math.min(MAX_SIZE.height, size.height)),
+    },
+  }),
+
+  activeMessages: () => {
+    const { activeRoomId, roomStates } = get();
+    return roomStates.get(activeRoomId)?.messages ?? [];
+  },
+  activeHasMore: () => {
+    const { activeRoomId, roomStates } = get();
+    return roomStates.get(activeRoomId)?.hasMore ?? false;
+  },
+  activeLoaded: () => {
+    const { activeRoomId, roomStates } = get();
+    return roomStates.get(activeRoomId)?.loaded ?? false;
+  },
 }));

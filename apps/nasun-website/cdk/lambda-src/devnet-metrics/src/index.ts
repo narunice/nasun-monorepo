@@ -243,12 +243,16 @@ export async function handler(event: CollectMetricsEvent): Promise<void> {
   }
 
   // Step 4: Compute metrics
-  const dauCount = results.filter((r) => r.active).length;
+  const activeSet = new Set(
+    results.filter((r) => r.active).map((r) => r.address),
+  );
+  const dauCount = activeSet.size;
 
-  // Count new addresses: addresses whose firstSeenDate matches targetDate
-  // (we need to check each address record)
+  // Count new addresses: active addresses whose firstSeenDate matches targetDate.
+  // Only count addresses that are both newly discovered AND active on that day,
+  // so that newAddresses is always a subset of DAU.
   let newAddressCount = 0;
-  for (const addr of allAddresses) {
+  for (const addr of activeSet) {
     const result = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
       Key: { pk: `ADDRESS#${addr}`, sk: 'META' },
