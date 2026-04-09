@@ -158,6 +158,53 @@ export async function fireCelebration(
   }
 }
 
+export type ConfettiRainIntensity = 'medium' | 'large';
+
+/**
+ * Fire confetti rain falling from the top of the viewport downward.
+ * Multiple origin points across the top edge, staggered waves for sustained effect.
+ */
+export async function fireConfettiRain(
+  intensity: ConfettiRainIntensity = 'medium',
+  colors?: string[],
+): Promise<void> {
+  if (prefersReducedMotion()) return;
+
+  const confetti = await loadConfetti();
+  const resolvedColors = colors ?? BRAND_COLORS;
+
+  const isLarge = intensity === 'large';
+  const origins = isLarge ? [0.1, 0.3, 0.5, 0.7, 0.9] : [0.2, 0.5, 0.8];
+  const waveCount = isLarge ? 4 : 2;
+  const particlesPerBurst = scale(isLarge ? 20 : 18);
+  const shapes: ('star' | 'circle' | 'square')[] = isLarge
+    ? ['star', 'circle', 'square']
+    : ['circle', 'square'];
+
+  for (let wave = 0; wave < waveCount; wave++) {
+    for (const x of origins) {
+      confetti({
+        particleCount: particlesPerBurst,
+        angle: 270,
+        spread: 80,
+        origin: { x, y: -0.05 },
+        colors: resolvedColors,
+        shapes,
+        startVelocity: 40,
+        gravity: 0.6,
+        decay: 0.92,
+        ticks: 350,
+        zIndex: Z_INDEX,
+        scalar: isLarge ? 1.1 : 0.9,
+        disableForReducedMotion: true,
+      });
+    }
+    if (wave < waveCount - 1) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+}
+
 /** Predefined color sets for convenience */
 export const CELEBRATION_COLORS = {
   gold: GOLD_COLORS,

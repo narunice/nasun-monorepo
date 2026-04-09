@@ -103,6 +103,21 @@ module.exports = {
           '25%': { transform: 'translateX(-3px)' },
           '75%': { transform: 'translateX(3px)' },
         },
+        // Number Match win animations
+        'nm-win-slam': {
+          '0%': { transform: 'scale(3) translateY(-10px)', opacity: '0' },
+          '50%': { transform: 'scale(0.9) translateY(2px)', opacity: '1' },
+          '70%': { transform: 'scale(1.05)' },
+          '100%': { transform: 'scale(1) translateY(0)' },
+        },
+        'nm-win-glow': {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(78, 205, 196, 0.4), 0 0 40px rgba(78, 205, 196, 0.1)' },
+          '50%': { boxShadow: '0 0 30px rgba(78, 205, 196, 0.7), 0 0 60px rgba(78, 205, 196, 0.3)' },
+        },
+        'nm-win-flash': {
+          '0%': { opacity: '0.7' },
+          '100%': { opacity: '0' },
+        },
       },
       animation: {
         'flash-buy': 'flash-buy 1s ease-out',
@@ -121,6 +136,10 @@ module.exports = {
         'scratch-typewriter-char': 'scratch-typewriter-char 0.1s ease-out forwards',
         'scratch-text-fade': 'scratch-text-fade 0.4s ease-out forwards',
         'scratch-card-shake': 'scratch-card-shake 0.1s ease-out 3',
+        // Number Match animations
+        'nm-win-slam': 'nm-win-slam 0.5s ease-out forwards',
+        'nm-win-glow': 'nm-win-glow 1.5s ease-in-out infinite',
+        'nm-win-flash': 'nm-win-flash 0.2s ease-out forwards',
       },
       colors: {
         // Theme-aware colors using CSS variables
