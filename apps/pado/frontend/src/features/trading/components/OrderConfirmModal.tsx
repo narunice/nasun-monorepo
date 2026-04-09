@@ -73,7 +73,7 @@ export function OrderConfirmModal({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70"
-        onClick={onClose}
+        onClick={isLoading ? undefined : onClose}
       />
 
       {/* Modal */}
