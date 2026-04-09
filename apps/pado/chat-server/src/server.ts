@@ -5,6 +5,8 @@ import {
   initStore, insertMessage, getRecentMessages, purgeOldMessages, closeStore,
   getNickname, setNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
   getNicknameRateLimit,
+  getDisplayName, getDisplayNamesBatch, getNasunDisplayName,
+  fetchAndCacheProfile, ensureProfilesCached, getStaleProfiles,
   toggleReaction, getReactionSummaries, getMessageRoomId,
   toggleFollow, getFollowing, getFollowerCounts, getFollowingCount,
 } from './store.js';
@@ -291,7 +293,7 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
     timestamp: now,
   });
 
-  const senderNickname = getNickname(client.address);
+  const senderNickname = getDisplayName(client.address);
 
   const chatMsg: ChatMessagePayload = {
     type: 'chat_message',
@@ -307,6 +309,9 @@ function handleSendMessage(ws: WebSocket, client: AuthenticatedClient, msg: Clie
 
   // Broadcast to all authenticated clients (including sender for confirmation)
   broadcast(chatMsg);
+
+  // Async: ensure nasun profile is cached for next message
+  fetchAndCacheProfile(client.address).catch(() => {});
 
   // Check for AI chatbot mention (non-blocking)
   onUserMessage(content, senderNickname, client.address, roomId).catch((err) => {
@@ -338,9 +343,11 @@ function handleLoadHistory(ws: WebSocket, msg: ClientMessage & { type: 'load_his
   const hasMore = messages.length > limit;
   const result = hasMore ? messages.slice(1) : messages; // Remove oldest if we got extra
 
-  // Batch-fetch nicknames for all senders in this history page
+  // Batch-fetch display names (pado nickname > nasun profile) for all senders
   const uniqueSenders = [...new Set(result.map((m) => m.sender))];
-  const nicknames = getNicknamesBatch(uniqueSenders);
+  const nicknames = getDisplayNamesBatch(uniqueSenders);
+  // Async: warm cache for next request
+  ensureProfilesCached(uniqueSenders).catch(() => {});
 
   // Batch-fetch reactions for all messages in this page
   const messageIds = result.map((m) => m.id);
@@ -462,7 +469,10 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
       const existingNickname = getNickname(verifiedAddress);
       const rateLimit = existingNickname ? getNicknameRateLimit(verifiedAddress) : undefined;
       const sessionToken = issueSessionToken(verifiedAddress);
-      send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname, rateLimit, sessionToken });
+      const nasunDisplayName = getNasunDisplayName(verifiedAddress);
+      send(ws, { type: 'auth_success', address: verifiedAddress, nickname: existingNickname, nasunDisplayName, rateLimit, sessionToken });
+      // Async: warm nasun profile cache on connection
+      fetchAndCacheProfile(verifiedAddress).catch(() => {});
 
       // Send available rooms list
       send(ws, { type: 'rooms_list', rooms: getAllRooms() });
@@ -746,9 +756,10 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       // Step 2: Query trade fills from leaderboard DB
       const { fills, hasMore } = getFollowedTraderFills(following, limit, beforeTs);
 
-      // Step 3: Enrich with nicknames from chat DB
+      // Step 3: Enrich with display names from chat DB + nasun profile cache
       const traderAddresses = [...new Set(fills.map((f) => f.address))];
-      const nicknames = traderAddresses.length > 0 ? getNicknamesBatch(traderAddresses) : new Map();
+      ensureProfilesCached(traderAddresses).catch(() => {});
+      const nicknames = traderAddresses.length > 0 ? getDisplayNamesBatch(traderAddresses) : new Map();
 
       // Step 4: Build activity feed response
       const activities = fills.map((fill) => {
@@ -821,7 +832,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         // PnL leaderboard
         const rows = getLeaderboardPnl(period, limit, offset);
         const addresses = rows.map((r) => r.address);
-        const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+        const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map();
         const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
 
         const traders = rows.map((r) => ({
@@ -844,7 +855,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         // Volume leaderboard (existing)
         const rows = getLeaderboard(period, limit, offset);
         const addresses = rows.map((r) => r.address);
-        const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+        const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map();
         const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
 
         const traders = rows.map((r) => ({
@@ -880,7 +891,8 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
 
     try {
       const rows = getTraderAllPeriodStats(address);
-      const nickname = getNickname(address);
+      const nickname = getDisplayName(address);
+      fetchAndCacheProfile(address).catch(() => {});
 
       const stats: Record<string, { rank: number; volume: string; tradeCount: number; uniquePools: number; rankChange: number } | null> = {
         '24h': null, '7d': null, '30d': null, 'all': null,
@@ -983,7 +995,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       const rows = getPointsSnapshot(date, limit, offset);
       const totalTraders = getSnapshotTotalTraders(date);
       const addresses = rows.map((r) => r.address);
-      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map<string, string>();
+      const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
 
       const traders = rows.map((row) => ({
         rank: row.rank,
@@ -1092,7 +1104,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       const rows = getPointsLeaderboard(limit, offset);
       const totalTraders = getTotalPointsTraders();
       const addresses = rows.map((r) => r.address);
-      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map<string, string>();
+      const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
       const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
 
       const traders = rows.map((row) => ({
@@ -1127,11 +1139,14 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       const address = pointsMatch[1];
       const points = getTraderPoints(address);
 
+      const traderDisplayName = getDisplayName(address);
+      fetchAndCacheProfile(address).catch(() => {});
+
       if (!points) {
         res.writeHead(200, corsHeaders);
         res.end(JSON.stringify({
           address,
-          nickname: getNickname(address),
+          nickname: traderDisplayName,
           totalPoints: 0,
           breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 },
           rank: 0,
@@ -1142,7 +1157,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       res.writeHead(200, corsHeaders);
       res.end(JSON.stringify({
         address,
-        nickname: getNickname(address),
+        nickname: traderDisplayName,
         totalPoints: points.total_points,
         breakdown: {
           trades: points.points_from_trades,
@@ -1363,7 +1378,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
 
       const results = getCompetitionResults(compId, limit);
       const addresses = results.map((r) => r.address);
-      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+      const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map();
 
       const traders = results.map((r) => ({
         rank: r.rank,
@@ -1399,7 +1414,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       // Include top 10 results
       const results = getCompetitionResults(compId, 10);
       const addresses = results.map((r) => r.address);
-      const nicknames = addresses.length > 0 ? getNicknamesBatch(addresses) : new Map();
+      const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map();
 
       const topTraders = results.map((r) => ({
         rank: r.rank,

@@ -95,6 +95,24 @@ export function initStore(config: ChatServerConfig): void {
   try { db.exec('ALTER TABLE users ADD COLUMN nickname_window_start INTEGER'); } catch { /* already exists */ }
   try { db.exec('ALTER TABLE users ADD COLUMN nickname_change_count INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
+  // Nasun ecosystem profile cache table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS nasun_profiles (
+      address TEXT PRIMARY KEY,
+      identity_id TEXT,
+      resolved_display_name TEXT,
+      profile_image_url TEXT,
+      fetched_at INTEGER NOT NULL
+    );
+  `);
+
+  nasunProfileApiUrl = config.nasunProfileApiUrl;
+  if (nasunProfileApiUrl) {
+    console.log(`[nasun-profile] API URL: ${nasunProfileApiUrl}`);
+  } else {
+    console.log('[nasun-profile] API URL: NOT SET (display name sync disabled)');
+  }
+
   // Purge old messages on startup
   purgeOldMessages(config.messageRetentionDays);
 }
@@ -448,6 +466,170 @@ export function getFollowingCount(address: string): number {
     .prepare('SELECT COUNT(*) as c FROM follows WHERE follower=?')
     .pluck()
     .get(address.toLowerCase()) as number;
+}
+
+// ===== Nasun Ecosystem Profile Cache =====
+
+let nasunProfileApiUrl = '';
+const PROFILE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes for failed lookups
+const FETCH_TIMEOUT_MS = 5000;
+const inFlightRequests = new Map<string, Promise<void>>();
+
+export interface NasunProfile {
+  displayName: string | null;
+  profileImageUrl: string | null;
+}
+
+export function getNasunDisplayName(address: string): string | null {
+  const row = getDb()
+    .prepare('SELECT resolved_display_name FROM nasun_profiles WHERE address = ?')
+    .get(address) as { resolved_display_name: string | null } | undefined;
+  return row?.resolved_display_name || null; // Ensure never "" -> null
+}
+
+export function getNasunProfilesBatch(addresses: string[]): Map<string, NasunProfile> {
+  if (addresses.length === 0) return new Map();
+
+  const placeholders = addresses.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(`SELECT address, resolved_display_name, profile_image_url FROM nasun_profiles WHERE address IN (${placeholders})`)
+    .all(...addresses) as Array<{ address: string; resolved_display_name: string | null; profile_image_url: string | null }>;
+
+  const result = new Map<string, NasunProfile>();
+  for (const row of rows) {
+    result.set(row.address, {
+      displayName: row.resolved_display_name || null,
+      profileImageUrl: row.profile_image_url || null,
+    });
+  }
+  return result;
+}
+
+export function upsertNasunProfile(address: string, displayName: string | null, imageUrl: string | null): void {
+  getDb()
+    .prepare(
+      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, fetched_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(address) DO UPDATE SET
+         resolved_display_name = excluded.resolved_display_name,
+         profile_image_url = excluded.profile_image_url,
+         fetched_at = excluded.fetched_at`
+    )
+    .run(address, displayName, imageUrl, Date.now());
+}
+
+/**
+ * Unified display name: pado nickname (priority 1) > nasun resolved name (priority 2) > null.
+ * Returns string | null. Never returns "" or undefined.
+ */
+export function getDisplayName(address: string): string | null {
+  return getNickname(address) ?? getNasunDisplayName(address) ?? null;
+}
+
+/**
+ * Batch display name lookup using SQLite LEFT JOIN.
+ * Returns Map that may be missing keys for unknown addresses (same contract as getNicknamesBatch).
+ */
+export function getDisplayNamesBatch(addresses: string[]): Map<string, string> {
+  if (addresses.length === 0) return new Map();
+
+  const placeholders = addresses.map(() => '?').join(',');
+  // Query both tables with a UNION approach: addresses that have either a nickname or nasun profile
+  const rows = getDb()
+    .prepare(
+      `SELECT addr, COALESCE(u.nickname, np.resolved_display_name) as display_name
+       FROM (SELECT value as addr FROM json_each(?)) AS input
+       LEFT JOIN users u ON u.address = input.addr
+       LEFT JOIN nasun_profiles np ON np.address = input.addr
+       WHERE u.nickname IS NOT NULL OR np.resolved_display_name IS NOT NULL`
+    )
+    .all(JSON.stringify(addresses)) as Array<{ addr: string; display_name: string }>;
+
+  const result = new Map<string, string>();
+  for (const row of rows) {
+    if (row.display_name) result.set(row.addr, row.display_name);
+  }
+  return result;
+}
+
+/**
+ * Get addresses with stale or missing profiles from the cache.
+ */
+export function getStaleProfiles(addresses: string[], ttlMs: number): string[] {
+  if (addresses.length === 0) return [];
+
+  const cutoff = Date.now() - ttlMs;
+  const negativeCutoff = Date.now() - NEGATIVE_CACHE_TTL_MS;
+  const placeholders = addresses.map(() => '?').join(',');
+
+  // Find addresses that are cached and fresh
+  const freshRows = getDb()
+    .prepare(
+      `SELECT address, resolved_display_name, fetched_at FROM nasun_profiles
+       WHERE address IN (${placeholders})`
+    )
+    .all(...addresses) as Array<{ address: string; resolved_display_name: string | null; fetched_at: number }>;
+
+  const freshSet = new Set<string>();
+  for (const row of freshRows) {
+    // Positive cache: use normal TTL; Negative cache (null name): use shorter TTL
+    const effectiveCutoff = row.resolved_display_name ? cutoff : negativeCutoff;
+    if (row.fetched_at > effectiveCutoff) {
+      freshSet.add(row.address);
+    }
+  }
+
+  return addresses.filter((a) => !freshSet.has(a));
+}
+
+/**
+ * Fetch a single profile from the nasun-website API and cache it.
+ * Uses dedup Map to prevent concurrent requests for the same address.
+ * Never throws -- errors are caught and logged at warn level.
+ */
+export async function fetchAndCacheProfile(address: string): Promise<void> {
+  if (!nasunProfileApiUrl) return;
+
+  const normalized = address.toLowerCase();
+  if (inFlightRequests.has(normalized)) return inFlightRequests.get(normalized);
+
+  const promise = (async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const res = await fetch(`${nasunProfileApiUrl}?walletAddress=${encodeURIComponent(normalized)}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json() as { resolvedDisplayName?: string | null; profileImageUrl?: string | null };
+        upsertNasunProfile(normalized, data.resolvedDisplayName ?? null, data.profileImageUrl ?? null);
+      } else {
+        // 404, 400, 5xx: negative cache to prevent repeated failed requests
+        upsertNasunProfile(normalized, null, null);
+      }
+    } catch {
+      // Network error, timeout, abort: keep stale cache if exists
+      console.warn(`[nasun-profile] Failed to fetch profile for ${normalized}`);
+    } finally {
+      inFlightRequests.delete(normalized);
+    }
+  })();
+
+  inFlightRequests.set(normalized, promise);
+  return promise;
+}
+
+/**
+ * Ensure profiles are cached for a batch of addresses.
+ * Only fetches stale/missing entries. Max concurrency = number of stale addresses.
+ */
+export async function ensureProfilesCached(addresses: string[]): Promise<void> {
+  const stale = getStaleProfiles(addresses, PROFILE_TTL_MS);
+  if (stale.length === 0) return;
+  await Promise.allSettled(stale.map((a) => fetchAndCacheProfile(a)));
 }
 
 export function closeStore(): void {
