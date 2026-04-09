@@ -217,8 +217,10 @@ export async function getBalanceManagerBalances(
       quote: quoteBalance / Math.pow(10, MARKET.quoteDecimals),
     };
   } catch (error) {
-    console.error(`[${timestamp()}] Error getting BalanceManager balances:`, error);
-    return { base: 0, quote: 0 };
+    // Throw instead of returning zero -- let callers use withRetry to handle transient RPC errors.
+    // Returning { base: 0, quote: 0 } disguises RPC 502 as "empty inventory" and triggers
+    // unnecessary faucet/refill cascades.
+    throw error;
   }
 }
 
@@ -249,8 +251,7 @@ export async function getWalletBalances(
       quote: Number(quoteTotal) / Math.pow(10, MARKET.quoteDecimals),
     };
   } catch (error) {
-    console.error(`[${timestamp()}] Error getting wallet balances:`, error);
-    return { base: 0, quote: 0 };
+    throw error;
   }
 }
 
@@ -261,13 +262,8 @@ export async function getGasBalance(
   client: SuiClient,
   address: string,
 ): Promise<number> {
-  try {
-    const balance = await client.getBalance({ owner: address });
-    return Number(balance.totalBalance) / 1e9;
-  } catch (error) {
-    console.error(`[${timestamp()}] Error getting gas balance:`, error);
-    return 0;
-  }
+  const balance = await client.getBalance({ owner: address });
+  return Number(balance.totalBalance) / 1e9;
 }
 
 // ========================================
