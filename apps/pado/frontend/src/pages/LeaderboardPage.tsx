@@ -1,25 +1,33 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useWallet, useZkLogin, useSignerAddress, usePasskeyStore } from '@nasun/wallet';
 import { useLeaderboard, usePnlLeaderboard, usePointsLeaderboard, LeaderboardTable, PnlLeaderboardTable, PointsLeaderboardTable, PeriodSelector, ModeSelector, MyRankCard } from '../features/leaderboard';
+import { Pagination } from '../features/leaderboard/components/Pagination';
 import { CompetitionBanner } from '../features/competitions';
 import { ActivityFeed } from '../features/social/components/ActivityFeed';
 import type { Period, LeaderboardMode } from '../features/leaderboard';
+
+const PAGE_SIZE = 50;
+const MAX_RANK = 500;
+const MAX_PAGES = Math.ceil(MAX_RANK / PAGE_SIZE); // 10
 
 const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {
   activity: 'Recent trades from traders you follow',
   volume: 'Top traders ranked by volume',
   pnl: 'Top traders ranked by realized PnL',
-  points: 'Earn points from trades, volume, and pool diversity',
+  points: 'Pado score from trades, volume, and pool diversity',
 };
 
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
   const [mode, setMode] = useState<LeaderboardMode>('volume');
   const [showFollowing, setShowFollowing] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const volumeQuery = useLeaderboard(period, 100);
-  const pnlQuery = usePnlLeaderboard(period, 100);
-  const pointsQuery = usePointsLeaderboard(100);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const volumeQuery = useLeaderboard(period, PAGE_SIZE, offset);
+  const pnlQuery = usePnlLeaderboard(period, PAGE_SIZE, offset);
+  const pointsQuery = usePointsLeaderboard(PAGE_SIZE, offset);
 
   const activeData = mode === 'pnl'
     ? pnlQuery.data
@@ -33,12 +41,32 @@ export function LeaderboardPage() {
     ? pointsQuery.isLoading
     : volumeQuery.isLoading;
 
+  const totalTraders = activeData?.totalTraders ?? 0;
+  const totalPages = Math.min(Math.ceil(totalTraders / PAGE_SIZE), MAX_PAGES);
+
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const signerAddress = useSignerAddress();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
   const userAddress = signerAddress || null;
+
+  // Reset page to 1 when mode or period changes
+  const handleModeChange = useCallback((m: LeaderboardMode) => {
+    setMode(m);
+    setPage(1);
+  }, []);
+
+  const handlePeriodChange = useCallback((p: Period) => {
+    setPeriod(p);
+    setPage(1);
+  }, []);
+
+  const handlePageChange = useCallback((p: number) => {
+    setPage(p);
+    // Scroll to top of leaderboard
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
@@ -66,10 +94,7 @@ export function LeaderboardPage() {
               Following
             </button>
           )}
-          <ModeSelector selected={mode} onSelect={setMode} />
-          {mode !== 'points' && mode !== 'activity' && (
-            <PeriodSelector selected={period} onSelect={setPeriod} />
-          )}
+          <ModeSelector selected={mode} onSelect={handleModeChange} />
         </div>
       </div>
 
@@ -79,7 +104,7 @@ export function LeaderboardPage() {
       {mode === 'activity' ? (
         // Activity Feed mode
         isConnected ? (
-          <ActivityFeed />
+          <ActivityFeed onBrowseLeaderboard={() => handleModeChange('volume')} />
         ) : (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-theme-bg-secondary rounded-lg border border-theme-border">
             <p className="text-theme-text-muted mb-2">
@@ -92,24 +117,33 @@ export function LeaderboardPage() {
         )
       ) : (
         <>
-          {/* My Rank Card (only when connected) */}
-          {isConnected && userAddress && (
+          {/* My Rank Card (only when connected, page 1) */}
+          {isConnected && userAddress && page === 1 && (
             <MyRankCard address={userAddress} />
           )}
 
           {/* Stats Bar */}
-          {activeData && activeData.totalTraders > 0 && (
-            <div className="flex items-center gap-4 text-xs text-theme-text-muted">
-              <span>{activeData.totalTraders} active traders</span>
-              {activeData.updatedAt > 0 && (
+          {/* Stats Bar + Period Selector */}
+          <div className="flex items-center justify-between">
+            {activeData && activeData.totalTraders > 0 ? (
+              <div className="flex items-center gap-4 text-xs text-theme-text-muted">
+                <span>{activeData.totalTraders} active traders</span>
                 <span>
-                  Updated {new Date(activeData.updatedAt).toLocaleTimeString('en-US', {
-                    hour: '2-digit', minute: '2-digit', hour12: false,
-                  })}
+                  Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, Math.min(totalTraders, MAX_RANK))}
                 </span>
-              )}
-            </div>
-          )}
+                {activeData.updatedAt > 0 && (
+                  <span>
+                    Updated {new Date(activeData.updatedAt).toLocaleTimeString('en-US', {
+                      hour: '2-digit', minute: '2-digit', hour12: false,
+                    })}
+                  </span>
+                )}
+              </div>
+            ) : <div />}
+            {mode !== 'points' && mode !== 'activity' && (
+              <PeriodSelector selected={period} onSelect={handlePeriodChange} />
+            )}
+          </div>
 
           {/* Leaderboard Table */}
           <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
@@ -133,6 +167,15 @@ export function LeaderboardPage() {
                 isLoading={activeLoading}
                 currentUserAddress={userAddress}
                 followFilter={showFollowing}
+              />
+            )}
+
+            {/* Pagination */}
+            {!showFollowing && (
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
               />
             )}
           </div>
