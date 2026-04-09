@@ -175,8 +175,11 @@ export function Header() {
             : ''
       }`}>
         {/* Logo Wordmark - Click to go Home */}
-        <Link to="/" className="hover:opacity-80 transition-opacity">
+        <Link to="/" className="hover:opacity-80 transition-opacity flex items-center gap-2">
           <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">PADO</h1>
+          <span className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-pd3/15 text-pd3 border border-pd3/30 rounded">
+            Nasun Devnet
+          </span>
         </Link>
 
         {/* Desktop Navigation Menu */}
