@@ -163,6 +163,15 @@ export function useTradeCap(
         return;
       }
 
+      // Skip on-chain verification when keeper address is not configured
+      if (!KEEPER_ADDRESS) {
+        if (!cancelled) {
+          setStatus('delegated');
+          setState(stored);
+        }
+        return;
+      }
+
       // Verify TradeCap ownership on-chain
       const result = await verifyTradeCapOnChain(stored.tradeCapId, KEEPER_ADDRESS);
       if (cancelled) return;
