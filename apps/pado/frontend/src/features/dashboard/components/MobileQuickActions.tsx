@@ -6,10 +6,8 @@
  */
 
 import { Link } from 'react-router-dom';
-import { NETWORK_CONFIG } from '../../../config/network';
+import { hasAccess } from '../../../config/network';
 import { useAppAdmin } from '../../../hooks/useAppAdmin';
-
-const gated = NETWORK_CONFIG.gamesOnlyMode;
 
 interface QuickAction {
   label: string;
@@ -40,7 +38,7 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-purple-500',
-    enabled: !gated,
+    enabled: hasAccess('full'),
   },
   {
     label: 'Predict',
@@ -51,7 +49,7 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-indigo-500',
-    enabled: !gated,
+    enabled: hasAccess('full'),
   },
   {
     label: 'Lottery',
@@ -95,7 +93,7 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-green-500',
-    enabled: !gated,
+    enabled: hasAccess('full'),
   },
   {
     label: 'Send',
