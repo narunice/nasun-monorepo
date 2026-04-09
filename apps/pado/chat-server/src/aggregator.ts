@@ -19,6 +19,7 @@ let config: LeaderboardConfig | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
+const AGGREGATION_LIMIT = 500;
 
 /**
  * Run aggregation for all periods.
@@ -36,7 +37,7 @@ function runAggregation(): void {
     const currentRanks = getCurrentRanks(period);
 
     // Aggregate trader volumes
-    const traders = aggregateTraderVolume(cutoff, config.excludedAddresses, 100);
+    const traders = aggregateTraderVolume(cutoff, config.excludedAddresses, AGGREGATION_LIMIT);
 
     // Build ranked entries
     const ranked = traders.map((t, index) => {
@@ -82,7 +83,7 @@ function runPnlAggregation(): void {
     const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
 
     const currentRanks = getPnlCurrentRanks(period);
-    const traders = computeTraderPnl(cutoff, config.excludedAddresses, 100);
+    const traders = computeTraderPnl(cutoff, config.excludedAddresses, AGGREGATION_LIMIT);
 
     const ranked = traders.map((t, index) => {
       const rank = index + 1;
@@ -114,7 +115,7 @@ function runPointsAggregation(): void {
   if (!config) return;
 
   // Use the "all" period volume data (already aggregated above)
-  const traders = aggregateTraderVolume(0, config.excludedAddresses, 200);
+  const traders = aggregateTraderVolume(0, config.excludedAddresses, AGGREGATION_LIMIT);
   if (traders.length === 0) return;
 
   const currentRanks = getPointsCurrentRanks();
@@ -189,7 +190,7 @@ function runCompetitionAggregation(): void {
         comp.start_ms,
         Math.min(now, comp.end_ms),
         config.excludedAddresses,
-        100,
+        AGGREGATION_LIMIT,
       );
 
       const ranked = traders.map((t, index) => ({

@@ -19,6 +19,7 @@ export { TraderAvatar } from './components/TraderAvatar';
 export { PerformanceSummary } from './components/PerformanceSummary';
 export { TraderFillsTable } from './components/TraderFillsTable';
 export { BadgeDisplay } from './components/BadgeDisplay';
+export { Pagination } from './components/Pagination';
 export { computeBadges, computeBadgesFromLeaderboard } from './lib/badges';
 export type { Period, LeaderboardMode, LeaderboardTrader, PnlLeaderboardTrader, PointsLeaderboardTrader, LeaderboardResponse, PnlLeaderboardResponse, PointsLeaderboardResponse, TraderPointsResponse, TraderStatsResponse, TraderFill, TraderFillsResponse } from './types';
 export type { TradingStyle, TraderClassification } from './hooks/useTraderClassification';
