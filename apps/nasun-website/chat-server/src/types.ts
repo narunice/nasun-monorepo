@@ -6,6 +6,8 @@ export interface AuthResponseMessage {
   type: 'auth_response';
   signature: string;
   address: string;
+  authMethod?: 'personal_sign' | 'ephemeral';
+  ephemeralPubKey?: string;
 }
 
 export interface SendMessagePayload {
@@ -76,6 +78,7 @@ export interface ReactionUpdatePayload {
   messageId: number;
   roomId: number;
   reactions: Record<string, number>;
+  myReaction: string | null;
 }
 
 export interface HistoryPayload {
@@ -152,7 +155,7 @@ export const ROOMS: RoomInfo[] = [
 export const VALID_ROOM_IDS = new Set(ROOMS.map((r) => r.id));
 
 // Reaction whitelist
-export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'chart_down', 'laugh'] as const;
+export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'heart', 'smile', 'grin', 'laugh', 'sob', 'clap', 'eyes', 'hundred', 'thinking', 'whale'] as const;
 export type ReactionCode = typeof REACTION_CODES[number];
 export const VALID_REACTION_CODES = new Set<string>(REACTION_CODES);
 

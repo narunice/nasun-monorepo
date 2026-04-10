@@ -3,7 +3,7 @@ import { getChatService } from '../../../lib/chat-service';
 import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn } from '../../../lib/chat-service';
 import { useChatStore } from '../../../store/chatStore';
 import { useUserStore } from '../../../store/userStore';
-import { SignerManager } from '@nasun/wallet';
+import { SignerManager, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
 
 const WS_URL = import.meta.env.VITE_NASUN_CHAT_WS_URL || 'ws://localhost:3101';
 
@@ -55,7 +55,24 @@ export function useChat() {
       const signer = SignerManager.getCurrent();
       if (!signer) throw new Error('No wallet signer available');
       const messageBytes = new TextEncoder().encode(challenge);
-      const { signature } = await signer.signPersonal(messageBytes);
+
+      // Unwrap NsaSigner to access the underlying signing implementation
+      const effectiveSigner = signer instanceof NsaSigner
+        ? signer.getUnderlyingSigner()
+        : signer;
+
+      if (effectiveSigner instanceof ZkLoginSigner) {
+        // zkLogin cannot sign personal messages; use ephemeral key instead
+        const { signature } = await effectiveSigner.signWithEphemeralKey(messageBytes);
+        return {
+          signature,
+          address: walletAddress,
+          authMethod: 'ephemeral' as const,
+          ephemeralPubKey: effectiveSigner.getEphemeralPublicKey(),
+        };
+      }
+
+      const { signature } = await effectiveSigner.signPersonal(messageBytes);
       return { signature, address: walletAddress };
     };
 
@@ -93,8 +110,8 @@ export function useChat() {
     const onRoomsList = (roomsList: RoomInfo[]) => {
       useChatStore.getState().setRooms(roomsList);
     };
-    const onReactionUpdate = (data: { messageId: number; roomId: number; reactions: Record<string, number> }) => {
-      useChatStore.getState().updateReaction(data.roomId, data.messageId, data.reactions);
+    const onReactionUpdate = (data: { messageId: number; roomId: number; reactions: Record<string, number>; myReaction: string | null }) => {
+      useChatStore.getState().updateReaction(data.roomId, data.messageId, data.reactions, data.myReaction);
     };
 
     service.on('message', onMessage);
@@ -143,6 +160,31 @@ export function useChat() {
   }, []);
 
   const toggleReaction = useCallback((messageId: number, emojiCode: string) => {
+    // Optimistic update: set myReaction immediately so pill style reflects it
+    const store = useChatStore.getState();
+    const roomId = store.activeRoomId;
+    const room = store.roomStates.get(roomId);
+    const msg = room?.messages.find((m) => m.id === messageId);
+    if (msg) {
+      const wasMyReaction = msg.myReaction === emojiCode;
+      const newMyReaction = wasMyReaction ? null : emojiCode;
+      const newReactions = { ...(msg.reactions ?? {}) };
+
+      // Decrement old reaction if switching
+      if (msg.myReaction && msg.myReaction !== emojiCode && newReactions[msg.myReaction]) {
+        newReactions[msg.myReaction] = Math.max(0, newReactions[msg.myReaction] - 1);
+        if (newReactions[msg.myReaction] === 0) delete newReactions[msg.myReaction];
+      }
+      // Toggle current
+      if (wasMyReaction) {
+        newReactions[emojiCode] = Math.max(0, (newReactions[emojiCode] ?? 0) - 1);
+        if (newReactions[emojiCode] === 0) delete newReactions[emojiCode];
+      } else {
+        newReactions[emojiCode] = (newReactions[emojiCode] ?? 0) + 1;
+      }
+
+      store.updateReaction(roomId, messageId, newReactions, newMyReaction);
+    }
     getChatService().toggleReaction(messageId, emojiCode);
   }, []);
 
