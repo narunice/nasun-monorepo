@@ -58,7 +58,7 @@ export default function ChatWidget() {
   const mentionSoundEnabled = useChatStore((s) => s.mentionSoundEnabled);
   const clearMentions = useChatStore((s) => s.clearMentions);
   const toggleMentionSound = useChatStore((s) => s.toggleMentionSound);
-  const currentUserId = useUserStore((s) => s.user?.identityId);
+  const currentUserId = useUserStore((s) => s.user?.walletAddress);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -169,12 +169,31 @@ export default function ChatWidget() {
     if (isOpen && mentionCount > 0) clearMentions();
   }, [isOpen, mentionCount, clearMentions]);
 
-  if (!canChat) return null;
-
   return (
     <>
+      {/* Login prompt panel */}
+      {!canChat && isOpen && (
+        <div
+          className="fixed z-50 bg-nasun-black border-2 border-nasun-c4/40 rounded-xl shadow-2xl flex flex-col items-center justify-center p-8 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          style={{ bottom: 80, right: 24, width: 320, height: 200 }}
+        >
+          <button
+            onClick={toggleOpen}
+            className="absolute top-3 right-3 text-white/40 hover:text-white/70 transition-colors text-lg leading-none p-1"
+            aria-label="Close"
+          >
+            &times;
+          </button>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8 text-white/30 mb-3">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <p className="text-white/70 text-sm text-center mb-1">Connect your wallet to chat</p>
+          <p className="text-white/30 text-xs text-center">Sign in to join the conversation</p>
+        </div>
+      )}
+
       {/* Chat Panel */}
-      {isOpen && (
+      {canChat && isOpen && (
         <div
           ref={panelRef}
           className="fixed z-50 bg-nasun-black border-2 border-nasun-c4/40 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"

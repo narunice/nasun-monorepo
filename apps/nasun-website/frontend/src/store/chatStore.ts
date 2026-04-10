@@ -31,7 +31,7 @@ interface ChatState {
   prependHistory: (roomId: number, messages: ChatMessage[], hasMore: boolean) => void;
   setStatus: (status: ChatConnectionStatus) => void;
   setOnlineCount: (count: number) => void;
-  updateReaction: (roomId: number, messageId: number, reactions: Record<string, number>) => void;
+  updateReaction: (roomId: number, messageId: number, reactions: Record<string, number>, myReaction?: string | null) => void;
   setIsOpen: (open: boolean) => void;
   toggleOpen: () => void;
   setPosition: (pos: { x: number; y: number } | null) => void;
@@ -108,14 +108,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return { roomStates: newMap };
     }),
 
-  updateReaction: (roomId, messageId, reactions) =>
+  updateReaction: (roomId, messageId, reactions, myReaction) =>
     set((state) => {
       const newMap = new Map(state.roomStates);
       const room = newMap.get(roomId);
       if (!room) return state;
-      const updatedMessages = room.messages.map((msg) =>
-        msg.id === messageId ? { ...msg, reactions } : msg
-      );
+      const updatedMessages = room.messages.map((msg) => {
+        if (msg.id !== messageId) return msg;
+        // If myReaction is explicitly provided, use it; otherwise preserve existing
+        return myReaction !== undefined
+          ? { ...msg, reactions, myReaction }
+          : { ...msg, reactions };
+      });
       newMap.set(roomId, { ...room, messages: updatedMessages });
       return { roomStates: newMap };
     }),
