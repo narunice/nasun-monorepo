@@ -1,7 +1,18 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { StoredMessage, ChatServerConfig } from './types.js';
+import type { StoredMessage, ChatServerConfig, NicknameRateLimit } from './types.js';
+
+// Nickname validation
+const NICKNAME_REGEX = /^[a-zA-Z0-9_-]{2,16}$/;
+const RESERVED_NICKNAMES = new Set([
+  'admin', 'system', 'bot', 'pado', 'nasun', 'mod', 'moderator',
+]);
+
+// Nickname rate limit constants
+const GRACE_WINDOW_MS = 60 * 60 * 1000;           // 1 hour
+const LOCK_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const MAX_CHANGES_IN_WINDOW = 10;
 
 let db: Database.Database | null = null;
 
@@ -53,7 +64,25 @@ export function initStore(config: ChatServerConfig): void {
       display_name TEXT NOT NULL,
       last_seen_at INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS follows (
+      follower TEXT NOT NULL,
+      followed TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      PRIMARY KEY (follower, followed)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower);
+    CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed);
   `);
+
+  // Migration: add nickname columns to users table (safe to re-run)
+  try { db.exec('ALTER TABLE users ADD COLUMN nickname TEXT COLLATE NOCASE'); } catch { /* already exists */ }
+  try { db.exec('ALTER TABLE users ADD COLUMN nickname_window_start INTEGER'); } catch { /* already exists */ }
+  try { db.exec('ALTER TABLE users ADD COLUMN nickname_change_count INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
+
+  // Case-insensitive unique index for nickname (CREATE IF NOT EXISTS is safe to re-run)
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname COLLATE NOCASE) WHERE nickname IS NOT NULL');
 
   purgeOldMessages(config.messageRetentionDays);
 }
@@ -208,6 +237,230 @@ export function getMessageRoomId(messageId: number): number | null {
     .prepare('SELECT room_id FROM messages WHERE id = ?')
     .get(messageId) as { room_id: number } | undefined;
   return row?.room_id ?? null;
+}
+
+// ===== Nickname API =====
+
+export function validateNickname(nickname: string): { ok: boolean; error?: string } {
+  if (!NICKNAME_REGEX.test(nickname)) {
+    return { ok: false, error: 'invalid_format' };
+  }
+  if (RESERVED_NICKNAMES.has(nickname.toLowerCase())) {
+    return { ok: false, error: 'reserved' };
+  }
+  return { ok: true };
+}
+
+export function getNicknameRateLimit(address: string): NicknameRateLimit {
+  const row = getDb()
+    .prepare('SELECT nickname_window_start, nickname_change_count FROM users WHERE address = ?')
+    .get(address) as { nickname_window_start: number | null; nickname_change_count: number } | undefined;
+
+  if (!row || !row.nickname_window_start) {
+    return { canChange: true, changesRemaining: MAX_CHANGES_IN_WINDOW, lockedUntil: null };
+  }
+
+  const now = Date.now();
+  const windowStart = row.nickname_window_start;
+  const changeCount = row.nickname_change_count;
+
+  if (now - windowStart < GRACE_WINDOW_MS) {
+    const remaining = MAX_CHANGES_IN_WINDOW - changeCount;
+    if (remaining <= 0) {
+      const lockedUntil = windowStart + GRACE_WINDOW_MS + LOCK_DURATION_MS;
+      return { canChange: false, changesRemaining: 0, lockedUntil };
+    }
+    return { canChange: true, changesRemaining: remaining, lockedUntil: null };
+  }
+
+  const lockEnd = windowStart + GRACE_WINDOW_MS + LOCK_DURATION_MS;
+  if (now < lockEnd) {
+    return { canChange: false, changesRemaining: 0, lockedUntil: lockEnd };
+  }
+
+  return { canChange: true, changesRemaining: MAX_CHANGES_IN_WINDOW, lockedUntil: null };
+}
+
+export function getNickname(address: string): string | null {
+  const row = getDb()
+    .prepare('SELECT nickname FROM users WHERE address = ?')
+    .get(address) as { nickname: string | null } | undefined;
+  return row?.nickname ?? null;
+}
+
+export function isNicknameAvailable(nickname: string): boolean {
+  const row = getDb()
+    .prepare('SELECT 1 FROM users WHERE nickname = ? COLLATE NOCASE')
+    .get(nickname);
+  return !row;
+}
+
+export function setNickname(
+  address: string,
+  nickname: string
+): { ok: boolean; error?: string; rateLimit?: NicknameRateLimit } {
+  const validation = validateNickname(nickname);
+  if (!validation.ok) return validation;
+
+  const d = getDb();
+
+  const txn = d.transaction(() => {
+    // Check rate limit (skip for first-time set)
+    const existingNickname = getNickname(address);
+    if (existingNickname !== null) {
+      const rateLimit = getNicknameRateLimit(address);
+      if (!rateLimit.canChange) {
+        return { ok: false as const, error: 'rate_limited', rateLimit };
+      }
+    }
+
+    const now = Date.now();
+
+    const row = d
+      .prepare('SELECT nickname_window_start, nickname_change_count FROM users WHERE address = ?')
+      .get(address) as { nickname_window_start: number | null; nickname_change_count: number } | undefined;
+
+    let windowStart = now;
+    let changeCount = 1;
+
+    if (row && row.nickname_window_start) {
+      const elapsed = now - row.nickname_window_start;
+      const lockEnd = row.nickname_window_start + GRACE_WINDOW_MS + LOCK_DURATION_MS;
+
+      if (elapsed < GRACE_WINDOW_MS) {
+        windowStart = row.nickname_window_start;
+        changeCount = row.nickname_change_count + 1;
+      } else if (now >= lockEnd) {
+        windowStart = now;
+        changeCount = 1;
+      }
+    }
+
+    // Upsert: user row may already exist from upsertUser()
+    d.prepare(
+      `UPDATE users SET nickname = ?, nickname_window_start = ?, nickname_change_count = ?
+       WHERE address = ?`
+    ).run(nickname, windowStart, changeCount, address);
+
+    const rateLimit = getNicknameRateLimit(address);
+    return { ok: true as const, rateLimit };
+  });
+
+  try {
+    return txn();
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes('UNIQUE')) {
+      return { ok: false, error: 'already_taken' };
+    }
+    throw err;
+  }
+}
+
+export function clearNickname(address: string): { ok: boolean; error?: string; rateLimit?: NicknameRateLimit } {
+  const d = getDb();
+  const existing = getNickname(address);
+  if (existing === null) return { ok: false, error: 'no_nickname' };
+
+  const rateLimit = getNicknameRateLimit(address);
+  if (!rateLimit.canChange) return { ok: false, error: 'rate_limited', rateLimit };
+
+  d.prepare('UPDATE users SET nickname = NULL WHERE address = ?').run(address);
+  return { ok: true, rateLimit: getNicknameRateLimit(address) };
+}
+
+export function getNicknamesBatch(addresses: string[]): Map<string, string> {
+  if (addresses.length === 0) return new Map();
+
+  const placeholders = addresses.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(`SELECT address, nickname FROM users WHERE address IN (${placeholders}) AND nickname IS NOT NULL`)
+    .all(...addresses) as Array<{ address: string; nickname: string }>;
+
+  const result = new Map<string, string>();
+  for (const row of rows) {
+    result.set(row.address, row.nickname);
+  }
+  return result;
+}
+
+// ===== Follows API =====
+
+const MAX_FOLLOWED = 50;
+
+export function toggleFollow(
+  follower: string,
+  followed: string
+): { following: boolean; followerCount: number } {
+  const d = getDb();
+
+  const nFollower = follower.toLowerCase();
+  const nFollowed = followed.toLowerCase();
+
+  if (nFollower === nFollowed) throw new Error('SELF_FOLLOW');
+
+  return d.transaction(() => {
+    const existing = d
+      .prepare('SELECT 1 FROM follows WHERE follower=? AND followed=?')
+      .get(nFollower, nFollowed);
+
+    if (existing) {
+      d.prepare('DELETE FROM follows WHERE follower=? AND followed=?').run(nFollower, nFollowed);
+      const count = d.prepare('SELECT COUNT(*) as c FROM follows WHERE followed=?').pluck().get(nFollowed) as number;
+      return { following: false, followerCount: count };
+    }
+
+    const currentCount = d.prepare('SELECT COUNT(*) as c FROM follows WHERE follower=?').pluck().get(nFollower) as number;
+    if (currentCount >= MAX_FOLLOWED) throw new Error('MAX_FOLLOWED_EXCEEDED');
+
+    d.prepare('INSERT INTO follows (follower, followed) VALUES (?, ?)').run(nFollower, nFollowed);
+    const count = d.prepare('SELECT COUNT(*) as c FROM follows WHERE followed=?').pluck().get(nFollowed) as number;
+    return { following: true, followerCount: count };
+  })();
+}
+
+export function getFollowing(address: string): string[] {
+  const rows = getDb()
+    .prepare('SELECT followed FROM follows WHERE follower=? ORDER BY created_at DESC')
+    .all(address.toLowerCase()) as Array<{ followed: string }>;
+  return rows.map((r) => r.followed);
+}
+
+export function getFollowerCounts(addresses: string[]): Map<string, number> {
+  if (addresses.length === 0) return new Map();
+
+  const normalized = addresses.map((a) => a.toLowerCase());
+  const placeholders = normalized.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(`SELECT followed, COUNT(*) as cnt FROM follows WHERE followed IN (${placeholders}) GROUP BY followed`)
+    .all(...normalized) as Array<{ followed: string; cnt: number }>;
+
+  const result = new Map<string, number>();
+  for (const row of rows) {
+    result.set(row.followed, row.cnt);
+  }
+  return result;
+}
+
+export function getFollowingCount(address: string): number {
+  return getDb()
+    .prepare('SELECT COUNT(*) as c FROM follows WHERE follower=?')
+    .pluck()
+    .get(address.toLowerCase()) as number;
+}
+
+// Returns distinct sender addresses that participated in chat on the given UTC date.
+// Used by the ecosystem points scanner to detect chat participation.
+export function getChatParticipants(dateStr: string): string[] {
+  const dayStartMs = new Date(`${dateStr}T00:00:00.000Z`).getTime();
+  const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+  const rows = getDb()
+    .prepare(
+      `SELECT DISTINCT sender FROM messages
+       WHERE timestamp >= ? AND timestamp < ?
+         AND message_type != 'system'`
+    )
+    .all(dayStartMs, dayEndMs) as Array<{ sender: string }>;
+  return rows.map((r) => r.sender);
 }
 
 export function closeStore(): void {

@@ -2,7 +2,8 @@ import './env.js'; // Must be first: loads .env before any module reads process.
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction } from './store.js';
+import { randomBytes } from 'node:crypto';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -16,6 +17,19 @@ const lastHistoryTime = new Map<string, number>();
 const connectionsPerIp = new Map<string, number>();
 const lastReactionTime = new Map<string, number>();
 const lastReactionMessageMap = new Map<string, { messageId: number; at: number }>();
+
+// Follow rate limiting: address -> timestamps (sliding window)
+const lastFollowToggleTime = new Map<string, number[]>();
+
+// Session tokens for REST API authentication (issued on WS auth_success)
+const sessionTokens = new Map<string, { address: string; expiresAt: number }>();
+const addressToToken = new Map<string, string>(); // reverse lookup: address -> token
+const SESSION_TOKEN_TTL = 60 * 60 * 1000; // 1 hour
+const MAX_SESSION_TOKENS = 10_000;
+
+// Follower count cache (30s TTL)
+const followerCountCache = { data: new Map<string, number>(), expiresAt: 0 };
+const FOLLOWER_CACHE_TTL = 30_000;
 
 // ===== Helpers =====
 
@@ -38,13 +52,86 @@ function broadcastOnlineCount(): void {
   broadcast({ type: 'online_count', count });
 }
 
-function storedToPayload(msg: StoredMessage): ChatMessagePayload {
+function issueSessionToken(address: string): string {
+  const existingToken = addressToToken.get(address);
+  if (existingToken) {
+    sessionTokens.delete(existingToken);
+  }
+
+  if (sessionTokens.size >= MAX_SESSION_TOKENS) {
+    const oldestKey = sessionTokens.keys().next().value;
+    if (oldestKey) {
+      const oldSession = sessionTokens.get(oldestKey);
+      if (oldSession) addressToToken.delete(oldSession.address);
+      sessionTokens.delete(oldestKey);
+    }
+  }
+
+  const token = randomBytes(32).toString('hex');
+  sessionTokens.set(token, { address, expiresAt: Date.now() + SESSION_TOKEN_TTL });
+  addressToToken.set(address, token);
+  return token;
+}
+
+function cleanupSessionTokens(): void {
+  const now = Date.now();
+  for (const [token, session] of sessionTokens) {
+    if (session.expiresAt < now) {
+      addressToToken.delete(session.address);
+      sessionTokens.delete(token);
+    }
+  }
+}
+
+function getCachedFollowerCounts(addresses: string[]): Map<string, number> {
+  if (followerCountCache.expiresAt > Date.now()) {
+    const result = new Map<string, number>();
+    for (const addr of addresses) {
+      result.set(addr, followerCountCache.data.get(addr) ?? 0);
+    }
+    return result;
+  }
+  followerCountCache.data = new Map<string, number>();
+  const counts = getFollowerCounts(addresses);
+  for (const [addr, count] of counts) {
+    followerCountCache.data.set(addr, count);
+  }
+  followerCountCache.expiresAt = Date.now() + FOLLOWER_CACHE_TTL;
+  return counts;
+}
+
+function updateFollowerCountCache(targetAddress: string, newCount: number): void {
+  followerCountCache.data.set(targetAddress, newCount);
+}
+
+function checkFollowRateLimit(address: string): boolean {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const maxPerWindow = 20;
+
+  let timestamps = lastFollowToggleTime.get(address);
+  if (!timestamps) {
+    timestamps = [];
+    lastFollowToggleTime.set(address, timestamps);
+  }
+
+  while (timestamps.length > 0 && now - timestamps[0] > windowMs) {
+    timestamps.shift();
+  }
+
+  if (timestamps.length >= maxPerWindow) return false;
+  timestamps.push(now);
+  return true;
+}
+
+function storedToPayload(msg: StoredMessage, nicknameMap?: Map<string, string>): ChatMessagePayload {
   return {
     type: 'chat_message',
     id: msg.id,
     roomId: msg.roomId,
     sender: msg.sender,
     senderName: msg.senderName,
+    senderNickname: nicknameMap?.get(msg.sender) ?? null,
     content: msg.content,
     messageType: msg.messageType,
     replyToId: msg.replyToId,
@@ -52,17 +139,68 @@ function storedToPayload(msg: StoredMessage): ChatMessagePayload {
   };
 }
 
-// ===== WebSocket Server =====
+// ===== HTTP Server =====
 
-const httpServer = createServer((req, res) => {
+function getCorsOrigin(reqOrigin: string | undefined): string | null {
+  if (!reqOrigin) return null;
+  return CONFIG.allowedOrigins.includes(reqOrigin) ? reqOrigin : null;
+}
+
+function handleHttpRequest(
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+): void {
+  const origin = getCorsOrigin(req.headers.origin);
+  const corsHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+  if (origin) {
+    corsHeaders['Access-Control-Allow-Origin'] = origin;
+    corsHeaders['Vary'] = 'Origin';
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, corsHeaders);
+    res.end();
+    return;
+  }
+
   if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ status: 'ok' }));
     return;
   }
-  res.writeHead(404);
-  res.end();
-});
+
+  const url = new URL(req.url || '/', `http://localhost:${CONFIG.port}`);
+
+  if (url.pathname === '/api/chat-participation' && req.method === 'GET') {
+    const dateParam = url.searchParams.get('date');
+    if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      res.writeHead(400, corsHeaders);
+      res.end(JSON.stringify({ error: 'Invalid date (YYYY-MM-DD)' }));
+      return;
+    }
+    try {
+      const participants = getChatParticipants(dateParam);
+      res.writeHead(200, { ...corsHeaders, 'Cache-Control': 'public, max-age=30' });
+      res.end(JSON.stringify({ date: dateParam, participants }));
+    } catch (err) {
+      console.error('[HTTP] Chat participation query error:', err);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  res.writeHead(404, corsHeaders);
+  res.end(JSON.stringify({ error: 'Not found' }));
+}
+
+const httpServer = createServer(handleHttpRequest);
+
+// ===== WebSocket Server =====
 
 const wss = new WebSocketServer({ server: httpServer, maxPayload: CONFIG.maxWsMessageBytes });
 
@@ -149,16 +287,20 @@ wss.on('connection', (ws, req) => {
         }
 
         // Successfully authenticated
+        // Use client-provided displayName if valid, otherwise fall back to shortened address
+        const clientDisplayName = typeof data.displayName === 'string' && data.displayName.trim().length > 0
+          ? stripControlChars(data.displayName).slice(0, 32).trim()
+          : verifiedAddress.slice(0, 6) + '...' + verifiedAddress.slice(-4);
         const client: AuthenticatedClient = {
           ws,
           address: verifiedAddress,
-          displayName: verifiedAddress.slice(0, 6) + '...' + verifiedAddress.slice(-4),
+          displayName: clientDisplayName,
           connectedAt: Date.now(),
           lastMessageAt: 0,
         };
         authenticatedClients.set(ws, client);
 
-        // Fetch display name before sending auth_success (non-blocking on failure)
+        // Try profile API override (may upgrade client-provided name)
         await fetchDisplayName(verifiedAddress, client);
 
         // Upsert user in DB
@@ -168,7 +310,10 @@ wss.on('connection', (ws, req) => {
           console.error('Failed to upsert user:', err);
         }
 
-        send(ws, { type: 'auth_success', address: verifiedAddress, displayName: client.displayName });
+        const nickname = getNickname(verifiedAddress);
+        const rateLimit = getNicknameRateLimit(verifiedAddress);
+        const sessionToken = issueSessionToken(verifiedAddress);
+        send(ws, { type: 'auth_success', address: verifiedAddress, displayName: client.displayName, nickname, rateLimit, sessionToken });
         send(ws, { type: 'rooms_list', rooms: ROOMS });
         broadcastOnlineCount();
 
@@ -199,6 +344,23 @@ wss.on('connection', (ws, req) => {
           break;
         case 'toggle_reaction':
           handleToggleReaction(client, data);
+          break;
+        case 'set_nickname':
+          handleSetNickname(client, data);
+          break;
+        case 'check_nickname':
+          handleCheckNickname(client, data);
+          break;
+        case 'clear_nickname': {
+          const result = clearNickname(client.address);
+          send(client.ws, { type: 'nickname_result', ok: result.ok, nickname: undefined, error: result.error, rateLimit: result.rateLimit });
+          break;
+        }
+        case 'toggle_follow':
+          handleToggleFollow(client, data);
+          break;
+        case 'get_following':
+          send(client.ws, { type: 'following_list', addresses: getFollowing(client.address) });
           break;
         case 'list_rooms':
           send(ws, { type: 'rooms_list', rooms: ROOMS });
@@ -328,7 +490,8 @@ function handleSendMessage(
     client.lastMessageAt = now;
 
     // Broadcast to all (including sender for confirmation)
-    const payload = storedToPayload(stored);
+    const nicknameMap = getNicknamesBatch([stored.sender]);
+    const payload = storedToPayload(stored, nicknameMap);
     for (const [ws] of authenticatedClients) {
       send(ws, payload);
     }
@@ -421,15 +584,17 @@ function handleLoadHistory(
   const limit = Math.min(msg.limit || 50, 100);
   const messages = getRecentMessages(roomId, limit, msg.before);
 
-  // Batch fetch reactions for all messages
+  // Batch fetch reactions and nicknames for all messages
   const messageIds = messages.map((m) => m.id);
   const reactionMap = getReactionSummaries(messageIds, client.address);
+  const senderAddresses = [...new Set(messages.map((m) => m.sender))];
+  const nicknameMap = getNicknamesBatch(senderAddresses);
 
   send(client.ws, {
     type: 'history',
     roomId,
     messages: messages.map((m) => {
-      const payload = storedToPayload(m);
+      const payload = storedToPayload(m, nicknameMap);
       const reactionData = reactionMap.get(m.id);
       if (reactionData) {
         payload.reactions = reactionData.reactions;
@@ -439,6 +604,68 @@ function handleLoadHistory(
     }),
     hasMore: messages.length === limit,
   });
+}
+
+// ===== Nickname Handler =====
+
+function handleSetNickname(
+  client: AuthenticatedClient,
+  msg: { type: 'set_nickname'; nickname: string }
+): void {
+  const nickname = typeof msg.nickname === 'string' ? msg.nickname.trim() : '';
+  const validation = validateNickname(nickname);
+  if (!validation.ok) {
+    send(client.ws, { type: 'nickname_result', ok: false, error: validation.error });
+    return;
+  }
+  const result = setNickname(client.address, nickname);
+  if (result.ok) {
+    send(client.ws, { type: 'nickname_result', ok: true, nickname, rateLimit: result.rateLimit });
+  } else {
+    send(client.ws, { type: 'nickname_result', ok: false, error: result.error, rateLimit: result.rateLimit });
+  }
+}
+
+function handleCheckNickname(
+  client: AuthenticatedClient,
+  msg: { type: 'check_nickname'; nickname: string }
+): void {
+  const nickname = typeof msg.nickname === 'string' ? msg.nickname.trim() : '';
+  const validation = validateNickname(nickname);
+  if (!validation.ok) {
+    send(client.ws, { type: 'nickname_check', available: false, nickname });
+    return;
+  }
+  const available = isNicknameAvailable(nickname);
+  send(client.ws, { type: 'nickname_check', available, nickname });
+}
+
+// ===== Follow Handler =====
+
+function handleToggleFollow(
+  client: AuthenticatedClient,
+  msg: { type: 'toggle_follow'; target: string }
+): void {
+  const { target } = msg;
+
+  if (!target || !isValidSuiAddress(target)) {
+    send(client.ws, { type: 'follow_result', target: target || '', following: false, followerCount: 0, error: 'INVALID_ADDRESS' });
+    return;
+  }
+
+  if (!checkFollowRateLimit(client.address)) {
+    send(client.ws, { type: 'follow_result', target, following: false, followerCount: 0, error: 'RATE_LIMITED' });
+    return;
+  }
+
+  try {
+    const result = toggleFollow(client.address, target);
+    updateFollowerCountCache(target.toLowerCase(), result.followerCount);
+    send(client.ws, { type: 'follow_result', target, following: result.following, followerCount: result.followerCount });
+  } catch (err) {
+    const code = (err as Error).message;
+    send(client.ws, { type: 'follow_result', target, following: false, followerCount: 0, error: code });
+  }
 }
 
 // ===== Keepalive + Dead Connection Detection =====
@@ -481,6 +708,11 @@ const cleanupTimer = setInterval(() => {
   for (const [key, val] of lastReactionMessageMap) {
     if (val.at < threshold) lastReactionMessageMap.delete(key);
   }
+  for (const [key, timestamps] of lastFollowToggleTime) {
+    while (timestamps.length > 0 && timestamps[0] < threshold) timestamps.shift();
+    if (timestamps.length === 0) lastFollowToggleTime.delete(key);
+  }
+  cleanupSessionTokens();
 }, CLEANUP_INTERVAL);
 
 // ===== Retention Cleanup =====
