@@ -18,6 +18,8 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
   }, [value, disabled, onSend]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Prevent parent components or browser extensions from intercepting key events
+    e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();

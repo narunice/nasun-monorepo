@@ -51,11 +51,7 @@ export default function ReactionBar({ reactions, myReaction, onToggle }: Reactio
       <div className="relative">
         <button
           onClick={(e) => { e.stopPropagation(); setPickerOpen(!pickerOpen); }}
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] transition-colors ${
-            hasReactions
-              ? 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/50'
-              : 'opacity-0 group-hover:opacity-100 bg-white/5 text-white/20 hover:bg-white/10 hover:text-white/40'
-          }`}
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] transition-colors bg-white/15 text-white/60 hover:bg-white/25 hover:text-white/80"
           aria-label="Add reaction"
         >
           +
