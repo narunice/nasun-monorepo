@@ -54,6 +54,10 @@ export default function ChatWidget() {
   const size = useChatStore((s) => s.size);
   const setPosition = useChatStore((s) => s.setPosition);
   const setSize = useChatStore((s) => s.setSize);
+  const mentionCount = useChatStore((s) => s.mentionCount);
+  const mentionSoundEnabled = useChatStore((s) => s.mentionSoundEnabled);
+  const clearMentions = useChatStore((s) => s.clearMentions);
+  const toggleMentionSound = useChatStore((s) => s.toggleMentionSound);
   const currentUserId = useUserStore((s) => s.user?.identityId);
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -160,6 +164,11 @@ export default function ChatWidget() {
     return () => window.removeEventListener('resize', onResize);
   }, [setPosition]);
 
+  // Clear mention badge when chat opens
+  useEffect(() => {
+    if (isOpen && mentionCount > 0) clearMentions();
+  }, [isOpen, mentionCount, clearMentions]);
+
   if (!canChat) return null;
 
   return (
@@ -194,6 +203,28 @@ export default function ChatWidget() {
               )}
             </div>
             <div className="flex items-center gap-1">
+              {/* Mention sound toggle */}
+              <button
+                onClick={toggleMentionSound}
+                className={`p-1 transition-colors ${mentionSoundEnabled ? 'text-white/50 hover:text-white/70' : 'text-white/20 hover:text-white/40'}`}
+                aria-label={mentionSoundEnabled ? 'Mute mention alerts' : 'Unmute mention alerts'}
+                title={mentionSoundEnabled ? 'Mention alerts ON' : 'Mention alerts OFF'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                  {mentionSoundEnabled ? (
+                    <>
+                      <path d="M8 1.5C6.5 1.5 5.5 2.5 5.5 4v3c0 2 -2 3 -2 3h9s-2-1-2-3V4c0-1.5-1-2.5-2.5-2.5z" />
+                      <path d="M6.5 13a1.5 1.5 0 0 0 3 0" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M8 1.5C6.5 1.5 5.5 2.5 5.5 4v3c0 2 -2 3 -2 3h9s-2-1-2-3V4c0-1.5-1-2.5-2.5-2.5z" />
+                      <path d="M6.5 13a1.5 1.5 0 0 0 3 0" />
+                      <line x1="2" y1="2" x2="14" y2="14" />
+                    </>
+                  )}
+                </svg>
+              </button>
               {/* Reset position button */}
               {position && (
                 <button
@@ -202,8 +233,9 @@ export default function ChatWidget() {
                   aria-label="Reset position"
                   title="Reset position"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
-                    <path d="M3.5 2A1.5 1.5 0 002 3.5v9A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V9h-1v3.5a.5.5 0 01-.5.5h-9a.5.5 0 01-.5-.5v-9a.5.5 0 01.5-.5H7V2H3.5z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
+                    <rect x="2" y="2" width="12" height="12" rx="2" />
+                    <path d="M6 2v4H2" />
                   </svg>
                 </button>
               )}
@@ -256,6 +288,12 @@ export default function ChatWidget() {
         className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-nasun-c4 hover:bg-nasun-c4/80 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105"
         aria-label={isOpen ? 'Close chat' : 'Open chat'}
       >
+        {/* Mention badge */}
+        {!isOpen && mentionCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 animate-bounce">
+            {mentionCount > 99 ? '99+' : mentionCount}
+          </span>
+        )}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"

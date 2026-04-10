@@ -6,6 +6,24 @@ import { useUserStore } from '../../../store/userStore';
 
 const WS_URL = import.meta.env.VITE_NASUN_CHAT_WS_URL || 'ws://localhost:3101';
 
+// Short notification beep via Web Audio API (no external file needed)
+let audioCtx: AudioContext | null = null;
+function playMentionSound() {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  } catch { /* audio not available */ }
+}
+
 export function useChat() {
   const user = useUserStore((s) => s.user);
   const status = useChatStore((s) => s.status);
@@ -32,11 +50,30 @@ export function useChat() {
       return;
     }
 
-    const displayName = user.customDisplayName || user.username || 'Anonymous';
+    // Resolve display name using the same priority as useProfileDisplay:
+    // customDisplayName > Twitter username > Google email prefix > wallet address
+    const tw = user.linkedAccounts?.twitter;
+    const gl = user.linkedAccounts?.google;
+    const displayName =
+      user.customDisplayName ||
+      (user.provider === 'Twitter' ? user.username : tw?.username) ||
+      ((user.provider === 'Google' ? user.email : gl?.email)?.split('@')[0]) ||
+      user.username ||
+      'Anonymous';
     const service = getChatService();
 
     const onMessage = (msg: ChatMessage) => {
       useChatStore.getState().addMessage(msg);
+
+      // Mention detection: check if my displayName is @mentioned
+      if (msg.sender !== user.identityId && displayName) {
+        const mentionPattern = new RegExp(`@${displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        if (mentionPattern.test(msg.content)) {
+          const store = useChatStore.getState();
+          store.addMention();
+          if (store.mentionSoundEnabled) playMentionSound();
+        }
+      }
     };
     const onHistory = (data: { roomId: number; messages: ChatMessage[]; hasMore: boolean }) => {
       const store = useChatStore.getState();
@@ -78,7 +115,7 @@ export function useChat() {
       service.off('rooms_list', onRoomsList);
       service.off('reaction_update', onReactionUpdate);
     };
-  }, [user?.cognitoToken, user?.customDisplayName, user?.username]);
+  }, [user?.cognitoToken, user?.customDisplayName, user?.username, user?.linkedAccounts, user?.provider, user?.email]);
 
   // Load history for active room when switching
   useEffect(() => {
