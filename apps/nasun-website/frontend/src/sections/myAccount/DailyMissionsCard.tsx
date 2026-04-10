@@ -74,6 +74,12 @@ const MISSIONS: Mission[] = [
     points: 1,
     externalUrl: "https://pado.finance/games/numbermatch",
   },
+  {
+    id: "chat",
+    label: "Chat",
+    description: "Send a message in nasun or pado chat",
+    points: 1,
+  },
 ];
 
 export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({

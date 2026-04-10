@@ -25,6 +25,7 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   faucet: { claim: 1 },
   'pado-scratchcard': { 'scratchcard-purchase': 1 },
   'pado-games': { 'numbermatch-play': 1 },
+  chat: { participation: 1 },
 
   // Score categories (final_points used in ecosystem score)
   governance: { vote: 10, delegate: 5 },
