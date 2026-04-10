@@ -96,7 +96,7 @@ export function usePointsLeaderboard(limit: number = 50, offset: number = 0) {
 async function fetchTraderPoints(address: string): Promise<TraderPointsResponse> {
   const baseUrl = NETWORK_CONFIG.chatHttpUrl;
   if (!baseUrl) {
-    return { address, nickname: null, totalPoints: 0, breakdown: { trades: 0, volume: 0, diversity: 0 }, rank: 0 };
+    return { address, nickname: null, totalPoints: 0, breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 }, rank: 0 };
   }
 
   const url = `${baseUrl}/api/leaderboard/trader/${encodeURIComponent(address)}/points`;

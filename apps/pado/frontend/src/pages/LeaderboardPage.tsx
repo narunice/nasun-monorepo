@@ -140,7 +140,7 @@ export function LeaderboardPage() {
                 )}
               </div>
             ) : <div />}
-            {mode !== 'points' && mode !== 'activity' && (
+            {mode !== 'points' && (
               <PeriodSelector selected={period} onSelect={handlePeriodChange} />
             )}
           </div>

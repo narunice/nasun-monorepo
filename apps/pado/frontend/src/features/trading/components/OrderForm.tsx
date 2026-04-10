@@ -79,7 +79,7 @@ export function OrderForm({
   onScaleOrder,
 }: OrderFormProps) {
   const { currentPool } = useMarket();
-  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice, trailValue, setTrailValue, trailMode, setTrailMode, ocoEnabled, setOcoEnabled, setFocusedPriceField, autoDepositEnabled } = useOrderForm();
+  const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice, trailValue, setTrailValue, trailMode, setTrailMode, ocoEnabled, setOcoEnabled, setFocusedPriceField, autoDepositEnabled: _autoDepositEnabled } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
   const quoteSymbol = currentPool.quoteToken.symbol;
 
