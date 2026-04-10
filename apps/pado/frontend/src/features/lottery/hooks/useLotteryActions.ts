@@ -147,6 +147,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         // Also invalidate inactive queries so they refetch on mount
         queryClient.invalidateQueries({ queryKey: ['lottery-rounds'] });
         queryClient.invalidateQueries({ queryKey: ['lottery-round'] });
+        queryClient.invalidateQueries({ queryKey: ['game-history'] });
 
         // Mark lottery ticket purchased for Getting Started checklist
         try { localStorage.setItem(LOTTERY_PURCHASED_KEY, String(Date.now())); } catch { /* noop */ }
@@ -199,6 +200,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         // Also invalidate inactive queries so they refetch on mount
         queryClient.invalidateQueries({ queryKey: ['lottery-rounds'] });
         queryClient.invalidateQueries({ queryKey: ['lottery-round'] });
+        queryClient.invalidateQueries({ queryKey: ['game-history'] });
 
         return true;
       } catch (err) {
