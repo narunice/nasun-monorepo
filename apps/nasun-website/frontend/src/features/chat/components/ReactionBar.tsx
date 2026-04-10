@@ -13,6 +13,7 @@ export const REACTION_EMOJI: Record<string, string> = {
   hundred: '\u{1F4AF}',
   thinking: '\u{1F914}',
   whale: '\u{1F433}',
+  wave: '\u{1F44B}',
 };
 
 export const REACTION_CODES = Object.keys(REACTION_EMOJI);

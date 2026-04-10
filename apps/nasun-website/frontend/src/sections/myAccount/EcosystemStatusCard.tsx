@@ -69,9 +69,15 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
             <div className="flex items-center justify-between">
               <span className="text-base text-nasun-white/60">Multiplier</span>
               <span className={`text-xl font-bold ${
-                disabled ? "text-amber-400/60" : multiplier > 1 ? "text-nasun-c3" : "text-nasun-white/60"
+                disabled && activeCount === 0 ? "text-amber-400/60"
+                  : disabled && activeCount > 0 ? "text-nasun-white/40"
+                  : multiplier > 1 ? "text-nasun-c3" : "text-nasun-white/60"
               }`}>
-                {disabled ? "0x" : `${multiplier.toFixed(1)}x`}
+                {disabled && activeCount === 0
+                  ? "0x"
+                  : disabled && activeCount > 0
+                    ? <span className="text-nasun-white/40">Pending...</span>
+                    : `${multiplier.toFixed(1)}x`}
               </span>
             </div>
             {/* NFT breakdown */}
@@ -80,7 +86,12 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
               <NftBadge label="Genesis" active={genesisActive} bonus={genesisBonusStr} />
               <NftBadge label="Battalion" active={battalionActive} bonus={battalionBonusStr} />
             </div>
-            {disabled && (
+            {disabled && activeCount > 0 && (
+              <p className="mt-2 text-sm text-nasun-c3/80">
+                Your NFT is activated! Multiplier will be reflected in tomorrow's snapshot.
+              </p>
+            )}
+            {disabled && activeCount === 0 && (
               <p className="mt-2 text-sm text-amber-400/80">
                 Get any Nasun NFT to activate your ecosystem score.
                 Your activity is being recorded and will count retroactively.
