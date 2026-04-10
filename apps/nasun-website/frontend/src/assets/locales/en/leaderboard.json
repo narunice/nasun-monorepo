@@ -1,6 +1,6 @@
 {
   "v3": {
-    "title": "Nasun Leaderboard",
+    "title": "Creators Leaderboard",
     "searchPlaceholder": "Search user...",
     "loadError": "Failed to load leaderboard. Please try again later.",
     "noSeason": "No active season at the moment.",
@@ -25,6 +25,7 @@
     },
     "season": {
       "live": "Live",
+      "paused": "Paused",
       "soon": "Soon",
       "ended": "Ended"
     },

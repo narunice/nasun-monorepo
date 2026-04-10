@@ -8,7 +8,7 @@ export function useRankedActions(seasonId: string | undefined, data: MyRankData 
   // Generate share URL
   const getShareUrl = (): string => {
     const baseUrl = window.location.origin;
-    const path = "/wave1/leaderboard";
+    const path = "/wave1/creators-leaderboard";
     const params = new URLSearchParams();
     if (seasonId) params.append("seasonId", seasonId);
     if (data?.originalUsername || data?.username) {

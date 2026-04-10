@@ -27,6 +27,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   const { data: seasons } = useSeasons();
   const [selectedDays, setSelectedDays] = useState<DateRangeOptionV3>(7);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>(undefined);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Initialize with active season
   useEffect(() => {
@@ -37,7 +38,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
 
   // Only show active + ended seasons (exclude upcoming/archived)
   const selectableSeasons = (seasons ?? []).filter(
-    (s) => s.status === 'active' || s.status === 'ended'
+    (s) => s.status === 'active' || s.status === 'paused' || s.status === 'ended'
   );
   const selectedSeason = selectableSeasons.find((s) => s.seasonId === selectedSeasonId);
   const isSeasonEnded = selectedSeason?.status === 'ended';
@@ -50,18 +51,40 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
     enabled: !!twitterUsername && !!selectedSeasonId,
   });
 
+  const sectionHeader = (
+    <div className="flex items-center justify-between">
+      <h5 className="font-medium uppercase text-nasun-white">
+        {t('rankHistory.title')}
+      </h5>
+      <button
+        onClick={() => setIsExpanded((prev) => !prev)}
+        className="text-nasun-white/60 hover:text-nasun-white transition-colors text-sm flex items-center gap-1"
+      >
+        {isExpanded ? 'Collapse' : 'Expand'}
+        <svg
+          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+    </div>
+  );
+
   // Not authenticated
   if (!isAuthenticated) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4">
-          {t('rankHistory.title')}
-        </h5>
-        <div className="flex flex-col items-center justify-center py-8 gap-3">
-          <p className="text-nasun-white/50 text-center">
-            {t('rankHistory.loginRequired')}
-          </p>
-        </div>
+        {sectionHeader}
+        {isExpanded && (
+          <div className="flex flex-col items-center justify-center py-8 gap-3 mt-4">
+            <p className="text-nasun-white/50 text-center">
+              {t('rankHistory.loginRequired')}
+            </p>
+          </div>
+        )}
       </OuterBox>
     );
   }
@@ -70,14 +93,14 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   if (!twitterUsername) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <h5 className="font-medium uppercase text-nasun-white mb-4">
-          {t('rankHistory.title')}
-        </h5>
-        <div className="flex flex-col items-center justify-center py-8 gap-3">
-          <p className="text-nasun-white/50 text-center">
-            {t('rankHistory.twitterRequired')}
-          </p>
-        </div>
+        {sectionHeader}
+        {isExpanded && (
+          <div className="flex flex-col items-center justify-center py-8 gap-3 mt-4">
+            <p className="text-nasun-white/50 text-center">
+              {t('rankHistory.twitterRequired')}
+            </p>
+          </div>
+        )}
       </OuterBox>
     );
   }
@@ -101,15 +124,17 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   if (isLoading) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <div className="flex items-center justify-between mb-4">
-          <h5 className="font-medium uppercase text-nasun-white">
-            {t('rankHistory.title')}
-          </h5>
-          {seasonSelector}
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <Spinner />
-        </div>
+        {sectionHeader}
+        {isExpanded && (
+          <div className="mt-4">
+            <div className="flex items-center justify-end mb-4">
+              {seasonSelector}
+            </div>
+            <div className="flex items-center justify-center py-12">
+              <Spinner />
+            </div>
+          </div>
+        )}
       </OuterBox>
     );
   }
@@ -118,30 +143,32 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   if (isError || !data || data.history.length === 0) {
     return (
       <OuterBox color="c5" padding="sm" className={className}>
-        <div className="flex items-center justify-between mb-4">
-          <h5 className="font-medium uppercase text-nasun-white">
-            {t('rankHistory.title')}
-          </h5>
-          {seasonSelector}
-        </div>
-        <div className="flex flex-col items-center justify-center py-8 gap-3">
-          <p className="text-nasun-white/50 text-center">
-            {isSeasonEnded
-              ? t('rankHistory.noDataEnded')
-              : t('rankHistory.noData')}
-          </p>
-          {!isSeasonEnded && (
-            <p className="text-nasun-white/30 text-sm text-center">
-              {t('rankHistory.noDataDescription')}
-            </p>
-          )}
-          <Link
-            to="/wave1/leaderboard"
-            className="text-nasun-c4 hover:text-nasun-white transition-colors text-sm"
-          >
-            {t('rankHistory.viewLeaderboard')}
-          </Link>
-        </div>
+        {sectionHeader}
+        {isExpanded && (
+          <div className="mt-4">
+            <div className="flex items-center justify-end mb-4">
+              {seasonSelector}
+            </div>
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <p className="text-nasun-white/50 text-center">
+                {isSeasonEnded
+                  ? t('rankHistory.noDataEnded')
+                  : t('rankHistory.noData')}
+              </p>
+              {!isSeasonEnded && (
+                <p className="text-nasun-white/30 text-sm text-center">
+                  {t('rankHistory.noDataDescription')}
+                </p>
+              )}
+              <Link
+                to="/wave1/creators-leaderboard"
+                className="text-nasun-c4 hover:text-nasun-white transition-colors text-sm"
+              >
+                {t('rankHistory.viewLeaderboard')}
+              </Link>
+            </div>
+          </div>
+        )}
       </OuterBox>
     );
   }
@@ -157,83 +184,86 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
 
   return (
     <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
-      {/* Header with season selector and date range */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h5 className="font-medium uppercase text-nasun-white">
-          {t('rankHistory.title')}
-        </h5>
-        <div className="flex items-center gap-2">
-          {seasonSelector}
-          <div className="flex gap-1">
-            {(Object.entries(DATE_RANGE_LABELS) as [string, string][]).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => setSelectedDays(Number(val) as DateRangeOptionV3)}
-                className={`px-2 py-1 text-sm rounded transition-colors ${
-                  selectedDays === Number(val)
-                    ? 'bg-nasun-c4 text-nasun-white'
-                    : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+      {sectionHeader}
+
+      {isExpanded && (
+        <div className="mt-4">
+          {/* Season selector and date range */}
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              {seasonSelector}
+              <div className="flex gap-1">
+                {(Object.entries(DATE_RANGE_LABELS) as [string, string][]).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setSelectedDays(Number(val) as DateRangeOptionV3)}
+                    className={`px-2 py-1 text-sm rounded transition-colors ${
+                      selectedDays === Number(val)
+                        ? 'bg-nasun-c4 text-nasun-white'
+                        : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
+
+          {/* Chart */}
+          <div className="mb-4">
+            <RankHistoryChartV3 history={history} height={160} />
+          </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            <StatCard
+              label={isSeasonEnded ? t('rankHistory.stats.final') : t('rankHistory.stats.current')}
+              value={isCurrentlyUnranked ? 'Chart Out' : `#${stats.currentRank}`}
+              className="!p-2"
+            />
+            <StatCard
+              label={t('rankHistory.stats.best')}
+              value={`#${stats.bestRank}`}
+              className="!p-2"
+            />
+            <StatCard
+              label={t('rankHistory.stats.worst')}
+              value={`#${stats.worstRank}`}
+              className="!p-2"
+            />
+            <StatCard
+              label={t('rankHistory.stats.change')}
+              value={
+                stats.rankImprovement > 0
+                  ? `+${stats.rankImprovement}`
+                  : stats.rankImprovement < 0
+                    ? `${stats.rankImprovement}`
+                    : '-'
+              }
+              className="!p-2"
+              valueClassName={
+                stats.rankImprovement > 0
+                  ? 'text-green-400'
+                  : stats.rankImprovement < 0
+                    ? 'text-red-400'
+                    : 'text-nasun-white'
+              }
+            />
+          </div>
+
+          {/* View Full Leaderboard Link */}
+          <Link
+            to="/wave1/creators-leaderboard"
+            className="flex items-center justify-center gap-2 pt-3 border-t border-nasun-c5/30 text-nasun-c4 hover:text-nasun-white transition-colors"
+          >
+            {t('rankHistory.viewLeaderboard')}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         </div>
-      </div>
-
-      {/* Chart */}
-      <div className="mb-4">
-        <RankHistoryChartV3 history={history} height={160} />
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        <StatCard
-          label={isSeasonEnded ? t('rankHistory.stats.final') : t('rankHistory.stats.current')}
-          value={isCurrentlyUnranked ? 'Chart Out' : `#${stats.currentRank}`}
-          className="!p-2"
-        />
-        <StatCard
-          label={t('rankHistory.stats.best')}
-          value={`#${stats.bestRank}`}
-          className="!p-2"
-        />
-        <StatCard
-          label={t('rankHistory.stats.worst')}
-          value={`#${stats.worstRank}`}
-          className="!p-2"
-        />
-        <StatCard
-          label={t('rankHistory.stats.change')}
-          value={
-            stats.rankImprovement > 0
-              ? `+${stats.rankImprovement}`
-              : stats.rankImprovement < 0
-                ? `${stats.rankImprovement}`
-                : '-'
-          }
-          className="!p-2"
-          valueClassName={
-            stats.rankImprovement > 0
-              ? 'text-green-400'
-              : stats.rankImprovement < 0
-                ? 'text-red-400'
-                : 'text-nasun-white'
-          }
-        />
-      </div>
-
-      {/* View Full Leaderboard Link */}
-      <Link
-        to="/wave1/leaderboard"
-        className="flex items-center justify-center gap-2 pt-3 border-t border-nasun-c5/30 text-nasun-c4 hover:text-nasun-white transition-colors"
-      >
-        {t('rankHistory.viewLeaderboard')}
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </Link>
+      )}
     </OuterBox>
   );
 };
