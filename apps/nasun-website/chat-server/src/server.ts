@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
 import { randomBytes } from 'node:crypto';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassBatch } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassBatch, getProfileImagesBatch } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -124,15 +124,22 @@ function checkFollowRateLimit(address: string): boolean {
   return true;
 }
 
-function storedToPayload(msg: StoredMessage, nicknameMap?: Map<string, string>, gpSet?: Set<string>): ChatMessagePayload {
+interface PayloadOptions {
+  nicknameMap?: Map<string, string>;
+  gpSet?: Set<string>;
+  profileImageMap?: Map<string, string>;
+}
+
+function storedToPayload(msg: StoredMessage, opts: PayloadOptions = {}): ChatMessagePayload {
   return {
     type: 'chat_message',
     id: msg.id,
     roomId: msg.roomId,
     sender: msg.sender,
     senderName: msg.senderName,
-    senderNickname: nicknameMap?.get(msg.sender) ?? null,
-    senderBadge: gpSet?.has(msg.sender) ? 'GP' : null,
+    senderNickname: opts.nicknameMap?.get(msg.sender) ?? null,
+    senderBadge: opts.gpSet?.has(msg.sender) ? 'GP' : null,
+    senderProfileImageUrl: opts.profileImageMap?.get(msg.sender) ?? null,
     content: msg.content,
     messageType: msg.messageType,
     replyToId: msg.replyToId,
@@ -296,6 +303,7 @@ wss.on('connection', (ws, req) => {
           ws,
           address: verifiedAddress,
           displayName: clientDisplayName,
+          profileImageUrl: null,
           connectedAt: Date.now(),
           lastMessageAt: 0,
           hasGenesisPass: false,
@@ -413,12 +421,20 @@ async function fetchDisplayName(address: string, client: AuthenticatedClient): P
   try {
     const res = await fetch(`${apiUrl}/v3/user-profile?walletAddress=${encodeURIComponent(address)}`);
     if (!res.ok) return;
-    const data = await res.json() as { customDisplayName?: string; twitterHandle?: string; username?: string };
+    const data = await res.json() as {
+      customDisplayName?: string; twitterHandle?: string; username?: string;
+      profileImageUrl?: string;
+    };
     const name = data.customDisplayName || data.twitterHandle || data.username;
     if (name) {
       client.displayName = stripControlChars(name).slice(0, 32).trim();
-      upsertUser(address, client.displayName);
     }
+    // Validate and store profile image URL (https only)
+    const imgUrl = data.profileImageUrl;
+    if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('https://')) {
+      client.profileImageUrl = imgUrl;
+    }
+    upsertUser(address, client.displayName, client.profileImageUrl ?? undefined);
   } catch {
     // Non-critical: keep shortened address as display name
   }
@@ -431,8 +447,8 @@ async function checkGenesisPass(address: string, client: AuthenticatedClient): P
   try {
     const res = await fetch(`${apiUrl}/genesis-pass/check?nasunAddress=${encodeURIComponent(address)}`);
     if (!res.ok) return;
-    const data = await res.json() as { success?: boolean; data?: { registered?: boolean; status?: string } };
-    const hasPass = data.success === true && data.data?.registered === true && data.data?.status === 'ACTIVE';
+    const data = await res.json() as { success?: boolean; data?: { hasGenesisPass?: boolean } };
+    const hasPass = data.success === true && data.data?.hasGenesisPass === true;
     client.hasGenesisPass = hasPass;
     setGenesisPassStatus(address, hasPass);
   } catch {
@@ -513,7 +529,9 @@ function handleSendMessage(
     // Broadcast to all (including sender for confirmation)
     const nicknameMap = getNicknamesBatch([stored.sender]);
     const gpSet = getGenesisPassBatch([stored.sender]);
-    const payload = storedToPayload(stored, nicknameMap, gpSet);
+    const profileImageMap = new Map<string, string>();
+    if (client.profileImageUrl) profileImageMap.set(stored.sender, client.profileImageUrl);
+    const payload = storedToPayload(stored, { nicknameMap, gpSet, profileImageMap });
     for (const [ws] of authenticatedClients) {
       send(ws, payload);
     }
@@ -612,12 +630,13 @@ function handleLoadHistory(
   const senderAddresses = [...new Set(messages.map((m) => m.sender))];
   const nicknameMap = getNicknamesBatch(senderAddresses);
   const gpSet = getGenesisPassBatch(senderAddresses);
+  const profileImageMap = getProfileImagesBatch(senderAddresses);
 
   send(client.ws, {
     type: 'history',
     roomId,
     messages: messages.map((m) => {
-      const payload = storedToPayload(m, nicknameMap, gpSet);
+      const payload = storedToPayload(m, { nicknameMap, gpSet, profileImageMap });
       const reactionData = reactionMap.get(m.id);
       if (reactionData) {
         payload.reactions = reactionData.reactions;
