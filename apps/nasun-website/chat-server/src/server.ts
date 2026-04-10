@@ -1,7 +1,7 @@
 import './env.js'; // Must be first: loads .env before any module reads process.env
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
-import { generateChallenge, verifySignature, isValidSuiAddress } from './auth.js';
+import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
 import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
@@ -490,6 +490,7 @@ const retentionTimer = setInterval(() => {
 
 try {
   initStore(CONFIG);
+  setProfileApiUrl(CONFIG.nasunProfileApiUrl);
 } catch (err) {
   console.error('FATAL: Failed to initialize database:', err);
   process.exit(1);

@@ -108,9 +108,36 @@ export async function verifySignature(
   }
 }
 
+// Profile API URL injected from config at startup
+let profileApiUrl = '';
+export function setProfileApiUrl(url: string): void {
+  profileApiUrl = url;
+}
+
+/**
+ * Verify that a wallet address exists as a registered user in the nasun profile system.
+ * This prevents attackers from claiming arbitrary addresses during ephemeral auth,
+ * since only addresses with existing profiles (created during the real auth flow) are accepted.
+ */
+async function verifyAddressExists(address: string): Promise<boolean> {
+  if (!profileApiUrl) return false;
+  try {
+    const res = await fetch(`${profileApiUrl}/v3/user-profile?walletAddress=${address}`);
+    if (!res.ok) return false;
+    const data = await res.json() as { walletAddress?: string };
+    return !!data.walletAddress;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Verify an ephemeral Ed25519 signature for zkLogin users.
- * Uses TOFU (Trust On First Use) binding model for devnet.
+ *
+ * Security: new ephemeral key bindings require the claimed address to exist
+ * in the nasun profile database (populated during the real zkLogin auth flow).
+ * This prevents address spoofing where an attacker generates a random keypair
+ * and claims an arbitrary victim address.
  */
 async function verifyEphemeralSignature(
   challenge: string,
@@ -139,8 +166,12 @@ async function verifyEphemeralSignature(
       return null;
     }
 
-    // Self-register binding on first successful auth (TOFU)
+    // New binding: verify address exists in profile system before accepting
     if (!boundAddress) {
+      const exists = await verifyAddressExists(claimedAddress);
+      if (!exists) {
+        return null;
+      }
       registerEphemeralBinding(ephemeralPubKey, claimedAddress);
     }
 
