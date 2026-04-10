@@ -8,7 +8,7 @@ interface Props {
   addressSuffix: string;
   currentNickname?: string; // Present in edit mode
   rateLimit?: NicknameRateLimit;
-  onSuccess: (nickname: string) => void;
+  onSuccess: (nickname: string | null) => void;
   onClose: () => void;
 }
 
@@ -31,6 +31,7 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
   const [value, setValue] = useState(currentNickname ?? '');
   const [checkState, setCheckState] = useState<CheckState>('idle');
   const [submitting, setSubmitting] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,19 +53,21 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
 
     const unsubResult = chatService.on('nickname', ({ ok, nickname, error, rateLimit: rl }) => {
       setSubmitting(false);
-      if (ok && nickname) {
-        onSuccess(nickname);
-      } else {
-        setServerError(
-          error === 'already_taken' ? 'Nickname is already taken' :
-          error === 'invalid_format' ? 'Invalid format (2-16 chars, letters/numbers/_/-)' :
-          error === 'reserved' ? 'This nickname is reserved' :
-          error === 'rate_limited' && rl?.lockedUntil
-            ? `Nickname is locked for ${formatLockedUntil(rl.lockedUntil)}. You can change it again after the lock expires.`
-            : error === 'rate_limited' ? 'Too many changes. Try again later.'
-            : error ?? 'Failed to set nickname'
-        );
+      setResetting(false);
+      if (ok) {
+        onSuccess(nickname ?? null);
+        return;
       }
+      setServerError(
+        error === 'already_taken' ? 'Nickname is already taken' :
+        error === 'invalid_format' ? 'Invalid format (2-16 chars, letters/numbers/_/-)' :
+        error === 'reserved' ? 'This nickname is reserved' :
+        error === 'no_nickname' ? 'No nickname to reset' :
+        error === 'rate_limited' && rl?.lockedUntil
+          ? `Nickname is locked for ${formatLockedUntil(rl.lockedUntil)}. You can change it again after the lock expires.`
+          : error === 'rate_limited' ? 'Too many changes. Try again later.'
+          : error ?? 'Failed to set nickname'
+      );
     });
 
     return () => {
@@ -115,8 +118,15 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
     getChatService().setNickname(trimmed);
   }, [value, checkState]);
 
+  const handleReset = useCallback(() => {
+    if (submitting) return;
+    setResetting(true);
+    setServerError(null);
+    getChatService().clearNickname();
+  }, [submitting]);
+
   const isSameAsCurrentName = isEditMode && value.trim().toLowerCase() === currentNickname!.toLowerCase();
-  const canSubmit = checkState === 'available' && !submitting && !isSameAsCurrentName;
+  const canSubmit = checkState === 'available' && !submitting && !resetting && !isSameAsCurrentName;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -192,8 +202,20 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
               bg-theme-bg-tertiary text-theme-text-secondary
               hover:text-theme-text-primary transition-colors"
           >
-            {isEditMode ? 'Cancel' : 'Later'}
+            Cancel
           </button>
+          {isEditMode && (
+            <button
+              onClick={handleReset}
+              disabled={resetting || submitting}
+              className="flex-1 py-2 text-xs font-medium rounded-lg
+                border border-theme-border text-theme-text-muted
+                hover:text-theme-text-primary hover:border-theme-text-muted transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {resetting ? 'Resetting...' : 'Reset'}
+            </button>
+          )}
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}

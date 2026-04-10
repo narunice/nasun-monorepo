@@ -226,6 +226,11 @@ export class ChatService {
     this.ws.send(JSON.stringify({ type: 'check_nickname', nickname }));
   }
 
+  clearNickname(): void {
+    if (!this.ws || this.status !== 'connected') return;
+    this.ws.send(JSON.stringify({ type: 'clear_nickname' }));
+  }
+
   /**
    * Toggle reaction on a message
    */
@@ -378,7 +383,7 @@ export class ChatService {
         break;
 
       case 'nickname_result':
-        if (msg.ok && msg.nickname !== undefined) {
+        if (msg.ok) {
           this.currentNickname = msg.nickname ?? null;
         }
         this.emit('nickname', { ok: msg.ok, nickname: msg.nickname, error: msg.error, rateLimit: msg.rateLimit });

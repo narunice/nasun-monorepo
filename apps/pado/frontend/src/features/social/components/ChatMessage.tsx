@@ -19,6 +19,7 @@ interface Props {
   isOwnMessage: boolean;
   textSize?: ChatTextSize;
   onToggleReaction?: (messageId: number, emojiCode: string) => void;
+  onMention?: (name: string) => void;
 }
 
 function formatTime(timestamp: number): string {
@@ -59,6 +60,20 @@ function formatSender(message: ChatMessageType): string {
     return `${message.senderNickname}#${suffix}`;
   }
   return shortenAddress(message.sender);
+}
+
+// Highlight @mentions: @[Display Name] or @nickname#suffix
+function renderContent(content: string, sizes: typeof SIZE_PRESETS[0]) {
+  const parts = content.split(/(@\[[^\]]+\]|@[a-zA-Z0-9_#-]{2,32})/g);
+  return parts.map((part, i) =>
+    part.startsWith('@') ? (
+      <span key={i} className="text-theme-accent font-medium">
+        {part.startsWith('@[') ? `@${part.slice(2, -1)}` : part}
+      </span>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
 }
 
 function TradeShareCard({ content, sizes }: { content: string; sizes: typeof SIZE_PRESETS[0] }) {
@@ -119,7 +134,7 @@ function TradeShareCard({ content, sizes }: { content: string; sizes: typeof SIZ
   );
 }
 
-export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReaction }: Props) {
+export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReaction, onMention }: Props) {
   const sizes = SIZE_PRESETS[textSize];
 
   // Long-press for mobile reaction picker
@@ -186,8 +201,9 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReact
         <Avatar name={message.sender} variant="beam" size={sizes.avatar} />
         <span
           className={`${sizes.sender} font-medium shrink-0 ${
-            isOwnMessage ? 'text-theme-text-secondary' : 'text-theme-accent'
+            isOwnMessage ? 'text-theme-text-secondary' : 'text-theme-accent hover:underline cursor-pointer'
           }`}
+          onClick={!isOwnMessage && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(message)); } : undefined}
         >
           {formatSender(message)}
         </span>
@@ -201,7 +217,7 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReact
         <p className={`${sizes.content} text-theme-text-primary break-words leading-relaxed ${
           isOwnMessage ? 'text-right' : ''
         }`}>
-          {message.content}
+          {renderContent(message.content, sizes)}
         </p>
       )}
       {onToggleReaction && (message.reactions || showMobilePicker) && (
