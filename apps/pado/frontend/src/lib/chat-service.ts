@@ -10,14 +10,17 @@ import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../features/so
 // ===== Protocol types (mirror server types) =====
 
 interface AuthChallengeMsg { type: 'auth_challenge'; challenge: string }
-interface AuthSuccessMsg { type: 'auth_success'; address: string; nickname: string | null; rateLimit?: NicknameRateLimit; sessionToken?: string }
+interface AuthSuccessMsg { type: 'auth_success'; address: string; displayName?: string | null; nickname: string | null; rateLimit?: NicknameRateLimit; sessionToken?: string }
 interface AuthErrorMsg { type: 'auth_error'; reason: string }
 interface ChatMessageMsg {
   type: 'chat_message';
   id: number;
   roomId: number;
   sender: string;
+  senderName?: string;
   senderNickname: string | null;
+  senderBadge?: string | null;
+  senderProfileImageUrl?: string | null;
   content: string;
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
@@ -35,7 +38,7 @@ interface ErrorMsg { type: 'error'; code: string; message: string }
 interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string; rateLimit?: NicknameRateLimit }
 interface NicknameCheckMsg { type: 'nickname_check'; available: boolean; nickname: string }
 interface HeartbeatMsg { type: 'heartbeat' }
-interface ReactionUpdateMsg { type: 'reaction_update'; messageId: number; roomId: number; reactions: Record<string, number> }
+interface ReactionUpdateMsg { type: 'reaction_update'; messageId: number; roomId: number; reactions: Record<string, number>; myReaction?: string | null }
 interface FollowResultMsg { type: 'follow_result'; target: string; following: boolean; followerCount: number; error?: string }
 interface FollowingListMsg { type: 'following_list'; addresses: string[] }
 
@@ -58,7 +61,7 @@ export interface ChatEventMap {
   nickname: { ok: boolean; nickname?: string | null; error?: string; rateLimit?: NicknameRateLimit };
   nickname_check: { available: boolean; nickname: string };
   rooms_list: RoomInfo[];
-  reaction_update: { messageId: number; roomId: number; reactions: Record<string, number> };
+  reaction_update: { messageId: number; roomId: number; reactions: Record<string, number>; myReaction?: string | null };
   follow_result: { target: string; following: boolean; followerCount: number; error?: string };
   following_list: { addresses: string[] };
 }
@@ -398,7 +401,7 @@ export class ChatService {
         break;
 
       case 'reaction_update':
-        this.emit('reaction_update', { messageId: msg.messageId, roomId: msg.roomId, reactions: msg.reactions });
+        this.emit('reaction_update', { messageId: msg.messageId, roomId: msg.roomId, reactions: msg.reactions, myReaction: msg.myReaction });
         break;
 
       case 'follow_result':
@@ -468,7 +471,10 @@ export class ChatService {
       id: msg.id,
       roomId: msg.roomId,
       sender: msg.sender,
+      senderName: msg.senderName,
       senderNickname: msg.senderNickname ?? undefined,
+      senderBadge: msg.senderBadge,
+      senderProfileImageUrl: msg.senderProfileImageUrl,
       content: msg.content,
       messageType: msg.messageType,
       replyToId: msg.replyToId,
@@ -485,7 +491,10 @@ export class ChatService {
         id: m.id,
         roomId: m.roomId,
         sender: m.sender,
+        senderName: m.senderName,
         senderNickname: m.senderNickname ?? undefined,
+        senderBadge: m.senderBadge,
+        senderProfileImageUrl: m.senderProfileImageUrl,
         content: m.content,
         messageType: m.messageType,
         replyToId: m.replyToId,
