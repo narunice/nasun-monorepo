@@ -55,7 +55,8 @@ export function filterByDateRange<T extends { date: string }>(
 
 interface MetricChartProps {
   title: string;
-  data: Record<string, unknown>[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any[];
   dataKey: string;
   color: string;
   type?: "line" | "area";

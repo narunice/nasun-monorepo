@@ -111,12 +111,33 @@ export function DevnetMetrics() {
 
             {/* Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <MetricChart
-                title="Daily Active Addresses (DAU)"
-                data={filtered}
-                dataKey="dau"
-                color={CHART_COLORS.dau}
-              />
+              <OuterBox className="p-4">
+                <h3 className="text-nasun-white text-sm font-medium mb-4">Daily Active Addresses (DAU)</h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={chartDataWithRepeat}>
+                    <defs>
+                      <linearGradient id="grad-dau-main" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.dau} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={CHART_COLORS.dau} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
+                    <XAxis dataKey="date" tickFormatter={formatChartDate} stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
+                    <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} tickLine={false} />
+                    <Tooltip
+                      labelFormatter={(v) => formatChartDate(String(v))}
+                      {...TOOLTIP_STYLE}
+                      formatter={((_v: unknown, name: string | undefined, props: { payload: { dau: number; repeatWallets: number } }) => {
+                        if (name !== "dau") return [String(_v), name ?? ""];
+                        const { dau, repeatWallets } = props.payload;
+                        const pct = dau ? Math.round((repeatWallets / dau) * 100) : 0;
+                        return [`${dau.toLocaleString()}  (${pct}% repeat, ${repeatWallets.toLocaleString()} returning)`, "DAU"];
+                      }) as never}
+                    />
+                    <Area type="monotone" dataKey="dau" stroke={CHART_COLORS.dau} fill="url(#grad-dau-main)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </OuterBox>
               <MetricChart
                 title="New Addresses"
                 data={filtered}
