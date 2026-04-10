@@ -127,12 +127,26 @@ export function useTrading(): UseTrading {
         }
       } else {
         // No stored ID -- attempt on-chain recovery via event query
-        const recoveredId = await findUserBalanceManager(walletAddress);
+        const { primaryId, orphans } = await findUserBalanceManager(walletAddress);
         if (cancelled) return;
-        if (recoveredId) {
-          storeBalanceManagerId(walletAddress, recoveredId);
-          setBalanceManagerId(recoveredId);
-          console.info('[useTrading] Recovered BalanceManager from on-chain:', recoveredId.slice(0, 16));
+        if (primaryId) {
+          storeBalanceManagerId(walletAddress, primaryId);
+          setBalanceManagerId(primaryId);
+          console.info('[useTrading] Recovered BalanceManager from on-chain:', primaryId.slice(0, 16));
+
+          // Drain orphan BMs (funds stuck in duplicate BMs) back to wallet
+          if (orphans.length > 0) {
+            for (const orphan of orphans) {
+              try {
+                console.info(`[useTrading] Draining orphan BM ${orphan.id.slice(0, 16)}... (base=${orphan.base}, quote=${orphan.quote})`);
+                const tx = buildWithdrawAll(orphan.id, walletAddress);
+                await executeTransaction(tx);
+                await new Promise((r) => setTimeout(r, RPC_SYNC_DELAY_MS));
+              } catch (err) {
+                console.error(`[useTrading] Failed to drain orphan BM ${orphan.id.slice(0, 16)}:`, err);
+              }
+            }
+          }
         }
       }
       setIsValidatingBalanceManager(false);
