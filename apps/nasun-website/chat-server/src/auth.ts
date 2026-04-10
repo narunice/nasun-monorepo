@@ -35,7 +35,14 @@ export async function verifyCognitoJwt(token: string): Promise<AuthResult | null
     return { userId };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.warn('JWT verification failed:', msg);
+    // Debug: log token header to diagnose auth failures
+    try {
+      const [headerB64] = token.split('.');
+      const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
+      console.warn('JWT verification failed:', msg, '| token header:', JSON.stringify(header));
+    } catch {
+      console.warn('JWT verification failed:', msg, '| token is not a valid JWT format');
+    }
     return null;
   }
 }
