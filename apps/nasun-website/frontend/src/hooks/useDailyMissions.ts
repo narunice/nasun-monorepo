@@ -22,7 +22,7 @@ const POLL_INTERVAL_MS = 60_000;
 const MAX_PAGES = 10; // Cap pagination (10 * 50 = 500 results max per wallet)
 
 // Mission IDs matching DailyMissionsCard
-type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lottery" | "pado-scratchcard" | "pado-games";
+type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lottery" | "pado-scratchcard" | "pado-games" | "chat";
 
 // Event type suffixes for Sender-based event query
 const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
@@ -36,7 +36,7 @@ const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
 const FAUCET_MODULES = new Set(["faucet", "faucet_v2"]);
 
 // All possible mission IDs for early exit optimization
-const ALL_MISSION_IDS: Set<MissionId> = new Set(["faucet", "wallet-transfer", "pado-dex", "pado-lottery", "pado-scratchcard", "pado-games"]);
+const ALL_MISSION_IDS: Set<MissionId> = new Set(["faucet", "wallet-transfer", "pado-dex", "pado-lottery", "pado-scratchcard", "pado-games", "chat"]);
 
 function getTodayUtcStart(): number {
   const now = new Date();
@@ -230,6 +230,7 @@ async function detectAllWallets(
   walletAddresses: string[],
   todayStart: number,
   existingMissions: Set<MissionId>,
+  identityId?: string,
 ): Promise<Set<MissionId>> {
   const allDetected = new Set<MissionId>(existingMissions);
 
@@ -245,6 +246,21 @@ async function detectAllWallets(
 
     for (const id of eventMissions) allDetected.add(id);
     for (const id of txMissions) allDetected.add(id);
+  }
+
+  // Chat detection via explorer API (scanner is source of truth for off-chain activity)
+  if (!allDetected.has("chat") && identityId) {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_EXPLORER_API_URL}/ecosystem/score/${identityId}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.todayCategories?.includes("chat")) {
+          allDetected.add("chat");
+        }
+      }
+    } catch { /* non-critical: chat mission just stays unchecked */ }
   }
 
   return allDetected;
@@ -320,7 +336,7 @@ export function useDailyMissions(
     if (!identityId || walletAddresses.length === 0) return;
 
     const todayStart = getTodayUtcStart();
-    const detected = await detectAllWallets(walletAddresses, todayStart, new Set());
+    const detected = await detectAllWallets(walletAddresses, todayStart, new Set(), identityId);
 
     // Replace: RPC result is the source of truth for today
     setCompletedMissions(detected);

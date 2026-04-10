@@ -632,6 +632,22 @@ export async function ensureProfilesCached(addresses: string[]): Promise<void> {
   await Promise.allSettled(stale.map((a) => fetchAndCacheProfile(a)));
 }
 
+// Returns distinct sender addresses that participated in chat on the given UTC date.
+// Used by the ecosystem points scanner to detect chat participation.
+export function getChatParticipants(dateStr: string): string[] {
+  const dayStartMs = new Date(`${dateStr}T00:00:00.000Z`).getTime();
+  const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
+  const rows = getDb()
+    .prepare(
+      `SELECT DISTINCT sender FROM messages
+       WHERE timestamp >= ? AND timestamp < ?
+         AND message_type != 'system'
+         AND sender != 'SYSTEM'`
+    )
+    .all(dayStartMs, dayEndMs) as Array<{ sender: string }>;
+  return rows.map((r) => r.sender);
+}
+
 export function closeStore(): void {
   if (db) {
     db.close();
