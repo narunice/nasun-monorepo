@@ -316,12 +316,16 @@ export function useChat(): UseChatResult {
     });
 
     const unsubReaction = chatService.on('reaction_update', (data) => {
-      // Update reaction counts on the matching message in all rooms
+      // Update reaction counts and myReaction on the matching message in all rooms
       for (const [rid, msgs] of roomMessages) {
         const idx = msgs.findIndex((m) => m.id === data.messageId);
         if (idx !== -1) {
           const updated = [...msgs];
-          updated[idx] = { ...updated[idx], reactions: data.reactions };
+          updated[idx] = {
+            ...updated[idx],
+            reactions: data.reactions,
+            ...(data.myReaction !== undefined && { myReaction: data.myReaction }),
+          };
           roomMessages.set(rid, updated);
           if (rid === activeRoomIdRef.current) {
             setMessages(updated);
