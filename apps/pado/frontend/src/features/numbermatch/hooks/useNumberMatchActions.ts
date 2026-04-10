@@ -150,6 +150,7 @@ export function useNumberMatchActions(): UseNumberMatchActionsResult {
         queryKey: ['numbermatch-pool'],
         type: 'active',
       });
+      queryClient.invalidateQueries({ queryKey: ['game-history'] });
 
       return gameResult;
     } catch (err) {

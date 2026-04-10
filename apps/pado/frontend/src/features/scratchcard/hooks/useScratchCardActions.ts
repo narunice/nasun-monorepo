@@ -154,6 +154,7 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
         queryKey: ['scratchcard-pool'],
         type: 'active',
       });
+      queryClient.invalidateQueries({ queryKey: ['game-history'] });
 
       return scratchResult;
     } catch (err) {

@@ -1,7 +1,7 @@
 /**
  * Game History Client
- * Fetches game history for lottery, scratchcard, and numbermatch
- * using MoveEventType queries with cursor-based pagination.
+ * Fetches game history using Sender-based event query.
+ * Queries the user's own events and filters by game event types client-side.
  */
 import type { SuiEvent, EventId } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
@@ -17,37 +17,56 @@ import { PRIZE_TIER } from '../../lottery/constants';
 import type { LotteryRound } from '../../lottery/types';
 import type { GameActivity, ActivityResult } from '../types';
 
-// -- Generic cursor-paginated event fetcher --
+// -- Event type constants --
 
-interface FetchResult<T> {
-  items: T[];
+const SCRATCH_EVENT_TYPE = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
+const NUMBERMATCH_EVENT_TYPE = `${NUMBERMATCH_ORIGINAL_PACKAGE_ID}::numbermatch::NumberMatchPlayed`;
+const LOTTERY_EVENT_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::TicketPurchased`;
+
+const GAME_EVENT_TYPES = new Set([SCRATCH_EVENT_TYPE, NUMBERMATCH_EVENT_TYPE, LOTTERY_EVENT_TYPE]);
+
+// -- Sender-based event fetcher --
+
+interface RawGameEvents {
+  scratch: SuiEvent[];
+  numbermatch: SuiEvent[];
+  lottery: SuiEvent[];
   isTruncated: boolean;
 }
 
-async function fetchUserEventsForType<T>(
-  eventType: string,
+/**
+ * Fetch all game-related events for a user using Sender filter.
+ * This queries only the user's transactions, avoiding the scaling issue
+ * where MoveEventType queries miss user events due to high global volume.
+ */
+async function fetchUserGameEvents(
   userAddress: string,
-  addressField: string,
-  mapEvent: (event: SuiEvent) => T,
-  maxPages = 5,
-): Promise<FetchResult<T>> {
+  maxPages = 20,
+): Promise<RawGameEvents> {
   const client = getSuiClient();
-  const allItems: T[] = [];
+  const scratch: SuiEvent[] = [];
+  const numbermatch: SuiEvent[] = [];
+  const lottery: SuiEvent[] = [];
   let cursor: EventId | null = null;
   let exhausted = false;
 
   for (let page = 0; page < maxPages; page++) {
     const result = await client.queryEvents({
-      query: { MoveEventType: eventType },
+      query: { Sender: userAddress },
       limit: 50,
       order: 'descending',
       cursor: cursor ?? undefined,
     });
 
     for (const event of result.data) {
-      const json = event.parsedJson as Record<string, unknown>;
-      if (json[addressField] === userAddress) {
-        allItems.push(mapEvent(event));
+      if (!GAME_EVENT_TYPES.has(event.type)) continue;
+
+      if (event.type === SCRATCH_EVENT_TYPE) {
+        scratch.push(event);
+      } else if (event.type === NUMBERMATCH_EVENT_TYPE) {
+        numbermatch.push(event);
+      } else if (event.type === LOTTERY_EVENT_TYPE) {
+        lottery.push(event);
       }
     }
 
@@ -58,12 +77,10 @@ async function fetchUserEventsForType<T>(
     cursor = result.nextCursor!;
   }
 
-  return { items: allItems, isTruncated: !exhausted };
+  return { scratch, numbermatch, lottery, isTruncated: !exhausted };
 }
 
-// -- Scratch Card --
-
-const SCRATCH_EVENT_TYPE = `${SCRATCHCARD_ORIGINAL_PACKAGE_ID}::scratchcard::ScratchCardPurchased`;
+// -- Scratch Card mapper --
 
 function mapScratchEvent(event: SuiEvent): GameActivity {
   const data = event.parsedJson as Record<string, string>;
@@ -74,21 +91,15 @@ function mapScratchEvent(event: SuiEvent): GameActivity {
     gameId: Number(data.card_id),
     timestampMs: Number(event.timestampMs),
     // ScratchCardPurchased event does not include cost; use constant.
-    // If CARD_PRICE changes in the future, historical entries will reflect the new price.
     spent: CARD_PRICE,
     payout: BigInt(data.prize_amount),
     result: multiplier > 0 ? 'win' : 'loss',
     detail: multiplier > 0 ? `${multiplier}x` : 'Miss',
+    txDigest: event.id.txDigest,
   };
 }
 
-export function fetchScratchHistory(userAddress: string): Promise<FetchResult<GameActivity>> {
-  return fetchUserEventsForType(SCRATCH_EVENT_TYPE, userAddress, 'buyer', mapScratchEvent);
-}
-
-// -- Number Match --
-
-const NUMBERMATCH_EVENT_TYPE = `${NUMBERMATCH_ORIGINAL_PACKAGE_ID}::numbermatch::NumberMatchPlayed`;
+// -- Number Match mapper --
 
 function mapNumberMatchEvent(event: SuiEvent): GameActivity {
   const data = event.parsedJson as Record<string, unknown>;
@@ -98,20 +109,14 @@ function mapNumberMatchEvent(event: SuiEvent): GameActivity {
     gameId: Number(data.game_id),
     timestampMs: Number(event.timestampMs),
     spent: BigInt(data.cost as string),
-    // payout includes consolation refund for losses (1 NUSDC per pick)
     payout: BigInt(data.payout as string),
     result: (data.is_win as boolean) ? 'win' : 'loss',
     detail: `Picks: [${(data.picks as number[]).join(',')}] -> ${data.winning_number}`,
+    txDigest: event.id.txDigest,
   };
 }
 
-export function fetchNumberMatchHistory(userAddress: string): Promise<FetchResult<GameActivity>> {
-  return fetchUserEventsForType(NUMBERMATCH_EVENT_TYPE, userAddress, 'player', mapNumberMatchEvent);
-}
-
-// -- Lottery --
-
-const LOTTERY_EVENT_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::TicketPurchased`;
+// -- Lottery helpers --
 
 interface ParsedTicketEvent {
   ticketId: number;
@@ -120,6 +125,7 @@ interface ParsedTicketEvent {
   numbers: number[];
   amount: bigint;
   timestampMs: number;
+  txDigest: string;
 }
 
 function parseTicketEvent(event: SuiEvent): ParsedTicketEvent {
@@ -131,10 +137,10 @@ function parseTicketEvent(event: SuiEvent): ParsedTicketEvent {
     numbers: (data.numbers as number[]).map(Number),
     amount: BigInt(data.amount as string),
     timestampMs: Number(event.timestampMs),
+    txDigest: event.id.txDigest,
   };
 }
 
-/** Batch-fetch lottery round objects, chunked at 50 per RPC call. */
 async function fetchRoundsByIds(roundIds: string[]): Promise<Map<string, LotteryRound>> {
   const cache = new Map<string, LotteryRound>();
   if (roundIds.length === 0) return cache;
@@ -196,8 +202,16 @@ function resolveTicketResults(
       payout,
       result,
       detail: `R${ticket.roundNumber} #${ticket.ticketId}${tierLabel}`,
+      txDigest: ticket.txDigest,
     };
   });
+}
+
+// -- Public API --
+
+export interface FetchResult<T> {
+  items: T[];
+  isTruncated: boolean;
 }
 
 export interface LotteryHistoryResult {
@@ -205,19 +219,47 @@ export interface LotteryHistoryResult {
   isTruncated: boolean;
 }
 
-export async function fetchLotteryHistory(userAddress: string): Promise<LotteryHistoryResult> {
-  const { items: tickets, isTruncated } = await fetchUserEventsForType(
-    LOTTERY_EVENT_TYPE,
-    userAddress,
-    'buyer',
-    parseTicketEvent,
-  );
+export interface AllGameHistoryResult {
+  scratch: FetchResult<GameActivity>;
+  numbermatch: FetchResult<GameActivity>;
+  lottery: LotteryHistoryResult;
+}
 
+/**
+ * Fetch all game history for a user in a single pass using Sender filter.
+ * Returns categorized results for each game type.
+ */
+export async function fetchAllGameHistory(userAddress: string): Promise<AllGameHistoryResult> {
+  const raw = await fetchUserGameEvents(userAddress);
+
+  const scratchItems = raw.scratch.map(mapScratchEvent);
+  const numbermatchItems = raw.numbermatch.map(mapNumberMatchEvent);
+
+  // Lottery needs round data to resolve win/loss
+  const tickets = raw.lottery.map(parseTicketEvent);
   const roundIds = [...new Set(tickets.map((t) => t.roundId))];
   const rounds = await fetchRoundsByIds(roundIds);
+  const lotteryActivities = resolveTicketResults(tickets, rounds);
 
   return {
-    activities: resolveTicketResults(tickets, rounds),
-    isTruncated,
+    scratch: { items: scratchItems, isTruncated: raw.isTruncated },
+    numbermatch: { items: numbermatchItems, isTruncated: raw.isTruncated },
+    lottery: { activities: lotteryActivities, isTruncated: raw.isTruncated },
   };
+}
+
+// Keep individual fetchers for backward compatibility (used by cache invalidation)
+export async function fetchScratchHistory(userAddress: string): Promise<FetchResult<GameActivity>> {
+  const result = await fetchAllGameHistory(userAddress);
+  return result.scratch;
+}
+
+export async function fetchNumberMatchHistory(userAddress: string): Promise<FetchResult<GameActivity>> {
+  const result = await fetchAllGameHistory(userAddress);
+  return result.numbermatch;
+}
+
+export async function fetchLotteryHistory(userAddress: string): Promise<LotteryHistoryResult> {
+  const result = await fetchAllGameHistory(userAddress);
+  return result.lottery;
 }
