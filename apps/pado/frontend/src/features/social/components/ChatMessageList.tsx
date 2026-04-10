@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { ChatMessage, getDateKey, formatDateLabel } from './ChatMessage';
 import type { ChatMessage as ChatMessageType } from '../types';
+import { REACTION_CODES, REACTION_EMOJI } from '../types';
 import type { ChatTextSize } from '../hooks/useChatTextSize';
 
 interface Props {
@@ -16,6 +17,18 @@ interface Props {
 export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore, textSize = 0, onToggleReaction, onMention }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
+  const [pickerMsgId, setPickerMsgId] = useState<number | null>(null);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number; right: number; isMine: boolean } | null>(null);
+
+  // Close reaction picker on scroll
+  useEffect(() => {
+    if (pickerMsgId === null) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const close = () => { setPickerMsgId(null); setPickerPos(null); };
+    el.addEventListener('scroll', close, { passive: true });
+    return () => el.removeEventListener('scroll', close);
+  }, [pickerMsgId]);
 
   // Track if user is at bottom
   const handleScroll = () => {
@@ -88,7 +101,44 @@ export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore,
               textSize={textSize}
               onToggleReaction={onToggleReaction}
               onMention={onMention}
+              onContentClick={onToggleReaction ? (e) => {
+                if (pickerMsgId === msg.id) { setPickerMsgId(null); setPickerPos(null); return; }
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const isMine = !!currentAddress && msg.sender.toLowerCase() === currentAddress.toLowerCase();
+                setPickerPos({ top: rect.top, left: rect.left, right: window.innerWidth - rect.right, isMine });
+                setPickerMsgId(msg.id);
+              } : undefined}
             />
+            {pickerMsgId === msg.id && pickerPos && onToggleReaction && (
+              <>
+                <div className="fixed inset-0 z-[55]" onClick={() => { setPickerMsgId(null); setPickerPos(null); }} />
+                <div
+                  className="fixed z-[56] p-1.5 bg-theme-bg-secondary border border-theme-border rounded-lg shadow-xl"
+                  style={{
+                    bottom: window.innerHeight - pickerPos.top + 4,
+                    ...(pickerPos.isMine ? { right: pickerPos.right } : { left: pickerPos.left }),
+                    display: 'grid', gridTemplateColumns: 'repeat(7, 1.75rem)', gap: '0.25rem',
+                  }}
+                >
+                  {REACTION_CODES.map((code) => (
+                    <button
+                      key={code}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleReaction(msg.id, code);
+                        setPickerMsgId(null);
+                        setPickerPos(null);
+                      }}
+                      className={`w-7 h-7 flex items-center justify-center rounded hover:bg-theme-bg-tertiary transition-colors text-base ${
+                        msg.myReaction === code ? 'bg-theme-accent/20' : ''
+                      }`}
+                    >
+                      {REACTION_EMOJI[code]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </Fragment>
         );
       })}

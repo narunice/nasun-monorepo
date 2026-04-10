@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import { shortenAddress } from '@nasun/wallet';
 import Avatar from 'boring-avatars';
 import type { ChatMessage as ChatMessageType } from '../types';
@@ -43,6 +43,7 @@ interface Props {
   textSize?: ChatTextSize;
   onToggleReaction?: (messageId: number, emojiCode: string) => void;
   onMention?: (name: string) => void;
+  onContentClick?: (e: React.MouseEvent) => void;
 }
 
 function formatTime(timestamp: number): string {
@@ -160,24 +161,8 @@ function TradeShareCard({ content, sizes }: { content: string; sizes: typeof SIZ
   );
 }
 
-export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReaction, onMention }: Props) {
+export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReaction, onMention, onContentClick }: Props) {
   const sizes = SIZE_PRESETS[textSize];
-
-  // Long-press for mobile reaction picker
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showMobilePicker, setShowMobilePicker] = useState(false);
-
-  const handleTouchStart = useCallback(() => {
-    longPressTimer.current = setTimeout(() => setShowMobilePicker(true), 500);
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-  }, []);
-
-  const handleTouchMove = useCallback(() => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-  }, []);
 
   if (message.messageType === 'system') {
     const isBot = message.content.startsWith('[BOT] ');
@@ -213,55 +198,66 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReact
 
   const tradeShare = isTradeShare(message.content);
 
+  const hasReactions = message.reactions && Object.keys(message.reactions).length > 0;
+
   return (
     <div
-      className={`group ${message.pending ? 'opacity-60' : ''} ${
-        isOwnMessage ? 'flex flex-col items-end' : ''
+      className={`group py-0.5 flex gap-2 ${message.pending ? 'opacity-60' : ''} ${
+        isOwnMessage ? 'flex-row-reverse' : ''
       }`}
-      style={{ WebkitTouchCallout: 'none', userSelect: 'none' }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
     >
-      <div className={`flex items-center gap-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
+      <div className="shrink-0 mt-0.5">
         <ChatAvatar address={message.sender} imageUrl={message.senderProfileImageUrl} size={sizes.avatar} />
-        <span className={`inline-flex items-center gap-1 shrink-0`}>
-          {message.senderBadge === 'GP' && (
-            <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[8px] font-bold leading-none bg-amber-500/15 text-amber-400 border border-amber-500/30" title="Genesis Pass Holder">
-              <span className="text-[7px]">{'\u{1F451}'}</span>GP
-            </span>
-          )}
-          <span
-            className={`${sizes.sender} font-medium ${
-              isOwnMessage ? 'text-theme-text-secondary' : 'text-theme-accent hover:underline cursor-pointer'
-            }`}
-            onClick={!isOwnMessage && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(message)); } : undefined}
-          >
-            {formatSender(message)}
-          </span>
-        </span>
-        <span className={`${sizes.system} text-theme-text-muted shrink-0`}>
-          {formatTime(message.timestamp)}
-        </span>
       </div>
-      {tradeShare ? (
-        <TradeShareCard content={message.content} sizes={sizes} />
-      ) : (
-        <p className={`${sizes.content} text-theme-text-primary break-words leading-relaxed ${
-          isOwnMessage ? 'text-right' : ''
-        }`}>
-          {renderContent(message.content, sizes)}
-        </p>
-      )}
-      {onToggleReaction && (message.reactions || showMobilePicker) && (
-        <ReactionBar
-          messageId={message.id}
-          reactions={message.reactions ?? {}}
-          myReaction={message.myReaction ?? null}
-          onToggle={(code) => { onToggleReaction(message.id, code); setShowMobilePicker(false); }}
-          compact={textSize === 0}
-        />
-      )}
+      <div className={`flex-1 min-w-0 ${isOwnMessage ? 'text-right' : ''}`}>
+        <div className={`flex items-baseline gap-2 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
+          <span className={`inline-flex items-center gap-1 shrink-0`}>
+            {message.senderBadge === 'GP' && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none bg-amber-500/15 text-amber-400 border border-amber-500/30" title="Genesis Pass Holder">
+                <span className="text-[8px]">{'\u{1F451}'}</span>GP
+              </span>
+            )}
+            <span
+              className={`${sizes.sender} font-medium ${
+                isOwnMessage ? 'text-theme-accent' : 'text-theme-text-muted hover:text-theme-text-primary hover:underline cursor-pointer'
+              }`}
+              onClick={!isOwnMessage && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(message)); } : undefined}
+            >
+              {formatSender(message)}
+            </span>
+          </span>
+          <span className={`${sizes.system} text-theme-text-muted/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity`}>
+            {formatTime(message.timestamp)}
+          </span>
+        </div>
+        <div className={`relative max-w-[85%] ${isOwnMessage ? 'ml-auto flex flex-col items-end' : ''}`}>
+          {tradeShare ? (
+            <TradeShareCard content={message.content} sizes={sizes} />
+          ) : (
+            <div
+              onClick={onContentClick}
+              className={`${sizes.content} break-words leading-relaxed cursor-pointer rounded-lg transition-colors ${
+                isOwnMessage
+                  ? 'w-fit text-theme-text-primary bg-theme-accent/20 hover:bg-theme-accent/30 px-2.5 py-1'
+                  : 'text-theme-text-primary/90 hover:bg-theme-text-primary/[0.06] px-1.5 py-0.5 -mx-1.5'
+              }`}
+              title={onContentClick ? 'Click to react' : undefined}
+            >
+              {renderContent(message.content, sizes)}
+            </div>
+          )}
+          {hasReactions && onToggleReaction && (
+            <div className={`mt-0.5 ${isOwnMessage ? 'flex justify-end' : ''}`}>
+              <ReactionBar
+                reactions={message.reactions!}
+                myReaction={message.myReaction ?? null}
+                onToggle={(code) => onToggleReaction(message.id, code)}
+                compact={textSize === 0}
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
