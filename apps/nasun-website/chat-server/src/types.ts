@@ -222,6 +222,7 @@ export interface StoredMessage {
 export const ROOMS: RoomInfo[] = [
   { id: 0, name: 'Global' },
   { id: 1, name: 'Korean' },
+  { id: 2, name: 'Vietnamese' },
 ];
 
 export const VALID_ROOM_IDS = new Set(ROOMS.map((r) => r.id));

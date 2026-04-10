@@ -256,7 +256,7 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   messageRetentionDays: 5,
   orderEventRetentionDays: parseInt(process.env.ORDER_EVENT_RETENTION_DAYS || '3', 10),
   retentionCleanupIntervalMs: 24 * 60 * 60 * 1000, // Daily
-  allowedOrigins: (process.env.CHAT_ALLOWED_ORIGINS || 'https://pado.finance,https://staging.pado.finance,http://localhost:5176').split(','),
+  allowedOrigins: (process.env.CHAT_ALLOWED_ORIGINS || 'https://pado.finance,https://www.pado.finance,https://staging.pado.finance,http://localhost:5176').split(','),
   // Leaderboard indexer
   leaderboardDbPath: process.env.LEADERBOARD_DB_PATH || './data/leaderboard.db',
   deepbookPackage: process.env.DEEPBOOK_PACKAGE || '',
