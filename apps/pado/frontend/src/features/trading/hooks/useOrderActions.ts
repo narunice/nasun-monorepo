@@ -3,7 +3,7 @@
  * 주문 실행 래퍼 (useTrading + Toast 통합)
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useQueryClient } from "@tanstack/react-query";
 import { useTrading } from "../useTrading";
 import { useMarket } from "../context/MarketContext";
@@ -131,6 +131,8 @@ export function useOrderActions(): UseOrderActionsResult {
     depositToken,
     withdrawToken,
   } = useTrading();
+
+  const [isEnabling, setIsEnabling] = useState(false);
 
   // Auto deposit setting from context
   const { autoDepositEnabled } = useOrderForm();
@@ -394,36 +396,41 @@ export function useOrderActions(): UseOrderActionsResult {
 
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
   const handleCreateBalanceManager = useCallback(async (): Promise<TradeResult> => {
-    // Step 1: Create BalanceManager
-    const result = await createBalanceManager();
+    setIsEnabling(true);
+    try {
+      // Step 1: Create BalanceManager
+      const result = await createBalanceManager();
 
-    if (!result.success) {
-      const friendlyError = formatUserFriendlyError(result.error);
-      showToast(friendlyError, "error");
-      return result;
-    }
-
-    // Step 2: Create MarginAccount if not exists (unified onboarding)
-    if (!hasMarginAccount) {
-      try {
-        // Wait for RPC to sync after BalanceManager creation
-        await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
-        await createMarginAccount();
-        showToast("Pado enabled!", "success");
-      } catch (error) {
-        // BM succeeded but MA failed - show warning but don't fail
-        const errorMsg = error instanceof Error ? error.message : "Unknown error";
-        console.warn("[UnifiedOnboarding] MarginAccount creation failed:", errorMsg);
-        showToast("Trading enabled. Pado Balance setup failed.", "warning");
+      if (!result.success) {
+        const friendlyError = formatUserFriendlyError(result.error);
+        showToast(friendlyError, "error");
+        return result;
       }
-    } else {
-      showToast("Pado enabled!", "success");
+
+      // Step 2: Create MarginAccount if not exists (unified onboarding)
+      if (!hasMarginAccount) {
+        try {
+          // Wait for RPC to sync after BalanceManager creation
+          await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
+          await createMarginAccount();
+          showToast("Pado enabled!", "success");
+        } catch (error) {
+          // BM succeeded but MA failed - show warning but don't fail
+          const errorMsg = error instanceof Error ? error.message : "Unknown error";
+          console.warn("[UnifiedOnboarding] MarginAccount creation failed:", errorMsg);
+          showToast("Trading enabled. Pado Balance setup failed.", "warning");
+        }
+      } else {
+        showToast("Pado enabled!", "success");
+      }
+
+      // Refresh balance queries so the order form picks up wallet balances immediately
+      refreshData();
+
+      return result;
+    } finally {
+      setIsEnabling(false);
     }
-
-    // Refresh balance queries so the order form picks up wallet balances immediately
-    refreshData();
-
-    return result;
   }, [createBalanceManager, hasMarginAccount, createMarginAccount, showToast, refreshData]);
 
   // Trading 잔고로 추가
@@ -499,7 +506,7 @@ export function useOrderActions(): UseOrderActionsResult {
   }, [withdrawToken, showToast, refreshData, formatUserFriendlyError]);
 
   return {
-    isLoading,
+    isLoading: isLoading || isEnabling,
     balanceManagerId,
     isAutoDepositing,
     lastAutoDepositError,
