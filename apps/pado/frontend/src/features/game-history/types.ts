@@ -17,6 +17,8 @@ export interface GameActivity {
   result: ActivityResult;
   /** Human-readable summary, e.g. "2x", "Picks: [1,3] -> 3", "R5 #7 (Jackpot)" */
   detail: string;
+  /** Transaction digest for explorer link */
+  txDigest: string;
 }
 
 export interface GameSummary {

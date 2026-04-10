@@ -4,10 +4,12 @@
  */
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { FiExternalLink } from 'react-icons/fi';
 import { formatNusdc } from '../../../lib/format';
+import { getExplorerTxUrl } from '../../../lib/explorer';
 import type { GameActivity, GameType } from '../types';
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 
 // -- Badge styles --
 
@@ -59,6 +61,20 @@ function formatTime(timestampMs: number): string {
 
 // -- Mobile card --
 
+function ExplorerLink({ txDigest }: { txDigest: string }) {
+  return (
+    <a
+      href={getExplorerTxUrl(txDigest)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-theme-text-muted hover:text-theme-accent transition-colors"
+      title="View on Explorer"
+    >
+      <FiExternalLink className="w-3.5 h-3.5" />
+    </a>
+  );
+}
+
 function ActivityCard({ activity }: { activity: GameActivity }) {
   const badge = GAME_BADGE[activity.gameType];
 
@@ -71,7 +87,10 @@ function ActivityCard({ activity }: { activity: GameActivity }) {
           </span>
           <span className="text-sm text-theme-text-secondary">{activity.detail}</span>
         </div>
-        <span className="text-xs text-theme-text-muted">{formatTime(activity.timestampMs)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-theme-text-muted">{formatTime(activity.timestampMs)}</span>
+          <ExplorerLink txDigest={activity.txDigest} />
+        </div>
       </div>
       <div className="flex justify-between items-center text-sm">
         <span className="text-theme-text-muted">-{formatNusdc(activity.spent)} NUSDC</span>
@@ -102,6 +121,9 @@ function ActivityRow({ activity }: { activity: GameActivity }) {
       </td>
       <td className="py-3 px-3 text-right">
         <ResultBadge result={activity.result} payout={activity.payout} />
+      </td>
+      <td className="py-3 px-3 text-center">
+        <ExplorerLink txDigest={activity.txDigest} />
       </td>
     </tr>
   );
@@ -204,6 +226,7 @@ export function GameActivityList({ activities, isLoading, error }: Props) {
               <th className="py-2 px-3 text-left font-medium">Detail</th>
               <th className="py-2 px-3 text-right font-medium">Spent</th>
               <th className="py-2 px-3 text-right font-medium">Payout</th>
+              <th className="py-2 px-3 text-center font-medium w-10">Tx</th>
             </tr>
           </thead>
           <tbody>
