@@ -77,7 +77,7 @@ const MISSIONS: Mission[] = [
   {
     id: "chat",
     label: "Chat",
-    description: "Send a message in Nasun or Pado chat",
+    description: "Say something in Nasun or Pado chat room",
     points: 1,
   },
 ];
