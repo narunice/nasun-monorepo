@@ -2,10 +2,10 @@ import type { WebSocket } from 'ws';
 
 // ===== Protocol Messages (Client -> Server) =====
 
-export interface AuthMessage {
-  type: 'auth';
-  token: string;
-  displayName: string;
+export interface AuthResponseMessage {
+  type: 'auth_response';
+  signature: string;
+  address: string;
 }
 
 export interface SendMessagePayload {
@@ -33,7 +33,7 @@ export interface ToggleReactionPayload {
 }
 
 export type ClientMessage =
-  | AuthMessage
+  | AuthResponseMessage
   | SendMessagePayload
   | LoadHistoryPayload
   | ListRoomsPayload
@@ -41,14 +41,15 @@ export type ClientMessage =
 
 // ===== Protocol Messages (Server -> Client) =====
 
-export interface AuthRequiredMessage {
-  type: 'auth_required';
+export interface AuthChallengeMessage {
+  type: 'auth_challenge';
+  challenge: string;
 }
 
 export interface AuthSuccessMessage {
   type: 'auth_success';
-  userId: string;
-  displayName: string;
+  address: string;
+  displayName: string | null;
 }
 
 export interface AuthErrorMessage {
@@ -60,8 +61,8 @@ export interface ChatMessagePayload {
   type: 'chat_message';
   id: number;
   roomId: number;
-  sender: string;       // identityId
-  senderName: string;   // display name
+  sender: string;       // walletAddress
+  senderName: string;   // display name or shortened address
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
@@ -110,7 +111,7 @@ export interface HeartbeatMessage {
 }
 
 export type ServerMessage =
-  | AuthRequiredMessage
+  | AuthChallengeMessage
   | AuthSuccessMessage
   | AuthErrorMessage
   | ChatMessagePayload
@@ -125,8 +126,8 @@ export type ServerMessage =
 
 export interface AuthenticatedClient {
   ws: WebSocket;
-  userId: string;       // Cognito identityId
-  displayName: string;
+  address: string;       // walletAddress
+  displayName: string;   // resolved or shortened address
   connectedAt: number;
   lastMessageAt: number;
 }
@@ -134,7 +135,7 @@ export interface AuthenticatedClient {
 export interface StoredMessage {
   id: number;
   roomId: number;
-  senderId: string;
+  sender: string;        // walletAddress
   senderName: string;
   content: string;
   messageType: 'text' | 'system';
@@ -170,6 +171,7 @@ export interface ChatServerConfig {
   messageRetentionDays: number;
   retentionCleanupIntervalMs: number;
   allowedOrigins: string[];
+  nasunProfileApiUrl: string;
 }
 
 export const DEFAULT_CONFIG: ChatServerConfig = {
@@ -185,4 +187,5 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   messageRetentionDays: 30,
   retentionCleanupIntervalMs: 24 * 60 * 60 * 1000, // Daily
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5174').split(','),
+  nasunProfileApiUrl: process.env.NASUN_PROFILE_API_URL || '',
 };

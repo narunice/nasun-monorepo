@@ -1,7 +1,7 @@
 import './env.js'; // Must be first: loads .env before any module reads process.env
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
-import { verifyCognitoJwt } from './auth.js';
+import { generateChallenge, verifySignature, isValidSuiAddress } from './auth.js';
 import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
@@ -9,7 +9,7 @@ import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES }
 
 // ===== State =====
 
-const pendingAuth = new Map<WebSocket, { timeout: ReturnType<typeof setTimeout> }>();
+const pendingAuth = new Map<WebSocket, { challenge: string; timeout: ReturnType<typeof setTimeout> }>();
 const authenticatedClients = new Map<WebSocket, AuthenticatedClient>();
 const lastMessageTime = new Map<string, number>();
 const lastHistoryTime = new Map<string, number>();
@@ -43,7 +43,7 @@ function storedToPayload(msg: StoredMessage): ChatMessagePayload {
     type: 'chat_message',
     id: msg.id,
     roomId: msg.roomId,
-    sender: msg.senderId,
+    sender: msg.sender,
     senderName: msg.senderName,
     content: msg.content,
     messageType: msg.messageType,
@@ -85,16 +85,15 @@ wss.on('connection', (ws, req) => {
   }
   connectionsPerIp.set(ip, ipCount);
 
-  // Send auth_required prompt
-  send(ws, { type: 'auth_required' });
-
-  // Auth timeout
+  // Generate challenge and send
+  const challenge = generateChallenge();
   const authTimeout = setTimeout(() => {
     if (!authenticatedClients.has(ws)) {
       ws.close(4408, 'Auth timeout');
     }
   }, CONFIG.authTimeoutMs);
-  pendingAuth.set(ws, { timeout: authTimeout });
+  pendingAuth.set(ws, { challenge, timeout: authTimeout });
+  send(ws, { type: 'auth_challenge', challenge });
 
   // Pong handler for dead connection detection
   (ws as any)._isAlive = true;
@@ -110,18 +109,66 @@ wss.on('connection', (ws, req) => {
         return;
       }
 
-      // If not yet authenticated, only accept auth messages
+      // If not yet authenticated, only accept auth_response
       if (!authenticatedClients.has(ws)) {
-        if (data.type !== 'auth') {
-          send(ws, { type: 'auth_error', reason: 'Not authenticated' });
+        if (data.type !== 'auth_response') {
+          send(ws, { type: 'error', code: 'NOT_AUTHENTICATED', message: 'Please authenticate first' });
           return;
         }
-        await handleAuth(ws, data);
+
+        const pending = pendingAuth.get(ws);
+        if (!pending) {
+          send(ws, { type: 'auth_error', reason: 'No pending challenge' });
+          ws.close(4401, 'No pending challenge');
+          return;
+        }
+
+        if (!data.address || !isValidSuiAddress(data.address)) {
+          send(ws, { type: 'auth_error', reason: 'Invalid address' });
+          ws.close(4401, 'Invalid address');
+          return;
+        }
+
+        const verifiedAddress = await verifySignature(pending.challenge, data.signature, data.address);
+        clearTimeout(pending.timeout);
+        pendingAuth.delete(ws);
+
+        if (!verifiedAddress) {
+          send(ws, { type: 'auth_error', reason: 'Invalid signature' });
+          ws.close(4401, 'Auth failed');
+          return;
+        }
+
+        // Successfully authenticated
+        const client: AuthenticatedClient = {
+          ws,
+          address: verifiedAddress,
+          displayName: verifiedAddress.slice(0, 6) + '...' + verifiedAddress.slice(-4),
+          connectedAt: Date.now(),
+          lastMessageAt: 0,
+        };
+        authenticatedClients.set(ws, client);
+
+        // Upsert user in DB
+        try {
+          upsertUser(verifiedAddress, client.displayName);
+        } catch (err) {
+          console.error('Failed to upsert user:', err);
+        }
+
+        // Async: fetch nasun profile for display name
+        fetchDisplayName(verifiedAddress, client);
+
+        send(ws, { type: 'auth_success', address: verifiedAddress, displayName: null });
+        send(ws, { type: 'rooms_list', rooms: ROOMS });
+        broadcastOnlineCount();
+
+        console.log(`Authenticated: ${verifiedAddress.slice(0, 10)}... (${authenticatedClients.size} online)`);
         return;
       }
 
       // Reject duplicate auth attempts
-      if (data.type === 'auth') {
+      if (data.type === 'auth_response') {
         send(ws, { type: 'error', code: 'ALREADY_AUTHENTICATED', message: 'Already authenticated' });
         return;
       }
@@ -181,56 +228,24 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// ===== Auth Handler =====
+// ===== Profile Fetch =====
 
-async function handleAuth(ws: WebSocket, msg: { type: 'auth'; token: string; displayName: string }): Promise<void> {
-  const { token, displayName } = msg;
+async function fetchDisplayName(address: string, client: AuthenticatedClient): Promise<void> {
+  const apiUrl = CONFIG.nasunProfileApiUrl;
+  if (!apiUrl) return;
 
-  if (!token || typeof token !== 'string') {
-    send(ws, { type: 'auth_error', reason: 'Missing token' });
-    ws.close(4401, 'Missing token');
-    return;
-  }
-
-  const result = await verifyCognitoJwt(token);
-  if (!result) {
-    send(ws, { type: 'auth_error', reason: 'Invalid token' });
-    ws.close(4401, 'Invalid token');
-    return;
-  }
-
-  // Clear auth timeout
-  const pending = pendingAuth.get(ws);
-  if (pending) {
-    clearTimeout(pending.timeout);
-    pendingAuth.delete(ws);
-  }
-
-  // Sanitize display name
-  const safeName = stripControlChars((displayName || 'Anonymous')).slice(0, 32).trim() || 'Anonymous';
-
-  // Register authenticated client
-  const client: AuthenticatedClient = {
-    ws,
-    userId: result.userId,
-    displayName: safeName,
-    connectedAt: Date.now(),
-    lastMessageAt: 0,
-  };
-  authenticatedClients.set(ws, client);
-
-  // Upsert user in DB
   try {
-    upsertUser(result.userId, safeName);
-  } catch (err) {
-    console.error('Failed to upsert user:', err);
+    const res = await fetch(`${apiUrl}/v3/user-profile?walletAddress=${address}`);
+    if (!res.ok) return;
+    const data = await res.json() as { customDisplayName?: string; twitterHandle?: string; username?: string };
+    const name = data.customDisplayName || data.twitterHandle || data.username;
+    if (name) {
+      client.displayName = stripControlChars(name).slice(0, 32).trim();
+      upsertUser(address, client.displayName);
+    }
+  } catch {
+    // Non-critical: keep shortened address as display name
   }
-
-  send(ws, { type: 'auth_success', userId: result.userId, displayName: safeName });
-  send(ws, { type: 'rooms_list', rooms: ROOMS });
-  broadcastOnlineCount();
-
-  console.log(`Authenticated: ${result.userId} as "${safeName}"`);
 }
 
 // ===== Message Handler =====
@@ -242,12 +257,12 @@ function handleSendMessage(
   const now = Date.now();
 
   // Rate limit
-  const lastTime = lastMessageTime.get(client.userId) || 0;
+  const lastTime = lastMessageTime.get(client.address) || 0;
   if (now - lastTime < CONFIG.rateLimitMs) {
     send(client.ws, { type: 'error', code: 'RATE_LIMITED', message: 'Too fast' });
     return;
   }
-  lastMessageTime.set(client.userId, now);
+  lastMessageTime.set(client.address, now);
 
   // Validate content
   let content = msg.content;
@@ -293,7 +308,7 @@ function handleSendMessage(
   try {
     const stored = insertMessage({
       roomId,
-      senderId: client.userId,
+      sender: client.address,
       senderName: client.displayName,
       content,
       messageType: 'text',
@@ -336,14 +351,14 @@ function handleToggleReaction(
 
   // Rate limit: 500ms global
   const now = Date.now();
-  const lastTime = lastReactionTime.get(client.userId);
+  const lastTime = lastReactionTime.get(client.address);
   if (lastTime && now - lastTime < 500) {
     send(client.ws, { type: 'error', code: 'RATE_LIMITED', message: 'Reaction rate limited' });
     return;
   }
 
   // Rate limit: 3s per-message cooldown
-  const lastMsgReaction = lastReactionMessageMap.get(client.userId);
+  const lastMsgReaction = lastReactionMessageMap.get(client.address);
   if (lastMsgReaction && lastMsgReaction.messageId === messageId && now - lastMsgReaction.at < 3000) {
     send(client.ws, { type: 'error', code: 'RATE_LIMITED', message: 'Per-message cooldown' });
     return;
@@ -357,9 +372,9 @@ function handleToggleReaction(
   }
 
   try {
-    const reactions = toggleReaction(messageId, client.userId, emojiCode);
-    lastReactionTime.set(client.userId, now);
-    lastReactionMessageMap.set(client.userId, { messageId, at: now });
+    const reactions = toggleReaction(messageId, client.address, emojiCode);
+    lastReactionTime.set(client.address, now);
+    lastReactionMessageMap.set(client.address, { messageId, at: now });
 
     // Broadcast to all clients (they filter by roomId client-side)
     broadcast({ type: 'reaction_update', messageId, roomId, reactions });
@@ -378,12 +393,12 @@ function handleLoadHistory(
   const now = Date.now();
 
   // Rate limit
-  const lastTime = lastHistoryTime.get(client.userId) || 0;
+  const lastTime = lastHistoryTime.get(client.address) || 0;
   if (now - lastTime < CONFIG.historyRateLimitMs) {
     send(client.ws, { type: 'error', code: 'RATE_LIMITED', message: 'Too fast' });
     return;
   }
-  lastHistoryTime.set(client.userId, now);
+  lastHistoryTime.set(client.address, now);
 
   const roomId = msg.roomId ?? 0;
   if (!VALID_ROOM_IDS.has(roomId)) {
@@ -396,7 +411,7 @@ function handleLoadHistory(
 
   // Batch fetch reactions for all messages
   const messageIds = messages.map((m) => m.id);
-  const reactionMap = getReactionSummaries(messageIds, client.userId);
+  const reactionMap = getReactionSummaries(messageIds, client.address);
 
   send(client.ws, {
     type: 'history',
@@ -421,7 +436,7 @@ const heartbeatTimer = setInterval(() => {
   for (const [ws, client] of authenticatedClients) {
     if ((ws as any)._isAlive === false) {
       // Did not respond to previous ping, terminate
-      console.log(`Terminating dead connection: ${client.userId}`);
+      console.log(`Terminating dead connection: ${client.address}`);
       ws.terminate();
       continue;
     }

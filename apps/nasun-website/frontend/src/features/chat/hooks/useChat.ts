@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { getChatService } from '../../../lib/chat-service';
-import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../../../lib/chat-service';
+import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn } from '../../../lib/chat-service';
 import { useChatStore } from '../../../store/chatStore';
 import { useUserStore } from '../../../store/userStore';
+import { SignerManager } from '@nasun/wallet';
 
 const WS_URL = import.meta.env.VITE_NASUN_CHAT_WS_URL || 'ws://localhost:3101';
 
@@ -41,8 +42,8 @@ export function useChat() {
   const loaded = activeRoom?.loaded ?? false;
 
   useEffect(() => {
-    const token = user?.cognitoToken;
-    if (!token) {
+    const walletAddress = user?.walletAddress;
+    if (!walletAddress) {
       if (connectedRef.current) {
         getChatService().disconnect();
         connectedRef.current = false;
@@ -50,23 +51,22 @@ export function useChat() {
       return;
     }
 
-    // Resolve display name using the same priority as useProfileDisplay:
-    // customDisplayName > Twitter username > Google email prefix > wallet address
-    const tw = user.linkedAccounts?.twitter;
-    const gl = user.linkedAccounts?.google;
-    const displayName =
-      user.customDisplayName ||
-      (user.provider === 'Twitter' ? user.username : tw?.username) ||
-      ((user.provider === 'Google' ? user.email : gl?.email)?.split('@')[0]) ||
-      user.username ||
-      'Anonymous';
+    const signFn: ChatSignFn = async (challenge: string) => {
+      const signer = SignerManager.getCurrent();
+      if (!signer) throw new Error('No wallet signer available');
+      const messageBytes = new TextEncoder().encode(challenge);
+      const { signature } = await signer.signPersonal(messageBytes);
+      return { signature, address: walletAddress };
+    };
+
+    const displayName = user.customDisplayName || user.username || walletAddress;
     const service = getChatService();
 
     const onMessage = (msg: ChatMessage) => {
       useChatStore.getState().addMessage(msg);
 
       // Mention detection: check if my displayName is @mentioned
-      if (msg.sender !== user.identityId && displayName) {
+      if (msg.sender !== walletAddress && displayName) {
         const mentionPattern = new RegExp(`@${displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
         if (mentionPattern.test(msg.content)) {
           const store = useChatStore.getState();
@@ -104,7 +104,7 @@ export function useChat() {
     service.on('rooms_list', onRoomsList);
     service.on('reaction_update', onReactionUpdate);
 
-    service.connect(WS_URL, token, displayName);
+    service.connect(WS_URL, signFn);
     connectedRef.current = true;
 
     return () => {
@@ -115,7 +115,7 @@ export function useChat() {
       service.off('rooms_list', onRoomsList);
       service.off('reaction_update', onReactionUpdate);
     };
-  }, [user?.cognitoToken, user?.customDisplayName, user?.username, user?.linkedAccounts, user?.provider, user?.email]);
+  }, [user?.walletAddress]);
 
   // Load history for active room when switching
   useEffect(() => {
@@ -163,6 +163,6 @@ export function useChat() {
     loadMore,
     switchRoom,
     toggleReaction,
-    canChat: !!user?.cognitoToken,
+    canChat: !!user?.walletAddress,
   };
 }

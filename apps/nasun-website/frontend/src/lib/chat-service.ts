@@ -1,14 +1,17 @@
 /**
  * ChatService - WebSocket chat client for nasun-website
  *
- * Singleton pattern. Manages connection, Cognito JWT auth, message handling.
+ * Singleton pattern. Manages connection, wallet signature auth, message handling.
  * Pushes events to Zustand chatStore via listeners.
  */
 
+// Callback that signs a challenge message and returns { signature, address }
+export type ChatSignFn = (challenge: string) => Promise<{ signature: string; address: string }>;
+
 // ===== Protocol types (mirror server types) =====
 
-interface AuthRequiredMsg { type: 'auth_required' }
-interface AuthSuccessMsg { type: 'auth_success'; userId: string; displayName: string }
+interface AuthChallengeMsg { type: 'auth_challenge'; challenge: string }
+interface AuthSuccessMsg { type: 'auth_success'; address: string; displayName: string | null }
 interface AuthErrorMsg { type: 'auth_error'; reason: string }
 interface ChatMessageMsg {
   type: 'chat_message';
@@ -41,7 +44,7 @@ interface ErrorMsg { type: 'error'; code: string; message: string }
 interface HeartbeatMsg { type: 'heartbeat' }
 
 type ServerMessage =
-  | AuthRequiredMsg | AuthSuccessMsg | AuthErrorMsg
+  | AuthChallengeMsg | AuthSuccessMsg | AuthErrorMsg
   | ChatMessageMsg | HistoryMsg | RoomsListMsg | ReactionUpdateMsg | OnlineCountMsg | ErrorMsg | HeartbeatMsg;
 
 // ===== Public types =====
@@ -99,8 +102,7 @@ export function getChatService(): ChatService {
 export class ChatService {
   private ws: WebSocket | null = null;
   private status: ChatConnectionStatus = 'disconnected';
-  private token: string = '';
-  private displayName: string = '';
+  private signFn: ChatSignFn | null = null;
   private wsUrl: string = '';
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -137,13 +139,12 @@ export class ChatService {
     return this.status;
   }
 
-  connect(wsUrl: string, token: string, displayName: string): void {
-    if (this.ws && this.status === 'connected' && this.token === token) {
+  connect(wsUrl: string, signFn: ChatSignFn): void {
+    if (this.ws && this.status === 'connected' && this.signFn === signFn) {
       return;
     }
     this.wsUrl = wsUrl;
-    this.token = token;
-    this.displayName = displayName;
+    this.signFn = signFn;
     this.reconnectAttempts = 0;
     this.doConnect();
   }
@@ -219,12 +220,21 @@ export class ChatService {
 
   private handleMessage(msg: ServerMessage): void {
     switch (msg.type) {
-      case 'auth_required':
-        this.sendRaw({
-          type: 'auth',
-          token: this.token,
-          displayName: this.displayName,
-        });
+      case 'auth_challenge':
+        if (!this.signFn) {
+          this.emit('error', { code: 'NO_SIGNER', message: 'No wallet signer available' });
+          this.ws?.close();
+          break;
+        }
+        this.signFn(msg.challenge)
+          .then(({ signature, address }) => {
+            this.sendRaw({ type: 'auth_response', signature, address });
+          })
+          .catch((err) => {
+            console.error('Chat sign error:', err);
+            this.emit('error', { code: 'SIGN_ERROR', message: 'Failed to sign challenge' });
+            this.ws?.close();
+          });
         break;
 
       case 'auth_success':
@@ -330,7 +340,7 @@ export class ChatService {
     this.reconnectAttempts++;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      if (this.token) {
+      if (this.signFn) {
         this.doConnect();
       }
     }, delay);
