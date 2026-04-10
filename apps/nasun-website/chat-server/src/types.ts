@@ -8,6 +8,7 @@ export interface AuthResponseMessage {
   address: string;
   authMethod?: 'personal_sign' | 'ephemeral';
   ephemeralPubKey?: string;
+  displayName?: string;
 }
 
 export interface SendMessagePayload {
@@ -34,12 +35,40 @@ export interface ToggleReactionPayload {
   emojiCode: string;
 }
 
+export interface SetNicknamePayload {
+  type: 'set_nickname';
+  nickname: string;
+}
+
+export interface CheckNicknamePayload {
+  type: 'check_nickname';
+  nickname: string;
+}
+
+export interface ClearNicknamePayload {
+  type: 'clear_nickname';
+}
+
+export interface ToggleFollowPayload {
+  type: 'toggle_follow';
+  target: string;
+}
+
+export interface GetFollowingPayload {
+  type: 'get_following';
+}
+
 export type ClientMessage =
   | AuthResponseMessage
   | SendMessagePayload
   | LoadHistoryPayload
   | ListRoomsPayload
-  | ToggleReactionPayload;
+  | ToggleReactionPayload
+  | SetNicknamePayload
+  | CheckNicknamePayload
+  | ClearNicknamePayload
+  | ToggleFollowPayload
+  | GetFollowingPayload;
 
 // ===== Protocol Messages (Server -> Client) =====
 
@@ -48,10 +77,19 @@ export interface AuthChallengeMessage {
   challenge: string;
 }
 
+export interface NicknameRateLimit {
+  canChange: boolean;
+  changesRemaining: number;
+  lockedUntil: number | null; // epoch ms
+}
+
 export interface AuthSuccessMessage {
   type: 'auth_success';
   address: string;
   displayName: string | null;
+  nickname: string | null;
+  rateLimit?: NicknameRateLimit;
+  sessionToken?: string;
 }
 
 export interface AuthErrorMessage {
@@ -65,6 +103,8 @@ export interface ChatMessagePayload {
   roomId: number;
   sender: string;       // walletAddress
   senderName: string;   // display name or shortened address
+  senderNickname: string | null;
+  senderBadge?: string | null;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
@@ -113,6 +153,33 @@ export interface HeartbeatMessage {
   type: 'heartbeat';
 }
 
+export interface NicknameResultMessage {
+  type: 'nickname_result';
+  ok: boolean;
+  nickname?: string;
+  error?: string;
+  rateLimit?: NicknameRateLimit;
+}
+
+export interface NicknameCheckMessage {
+  type: 'nickname_check';
+  available: boolean;
+  nickname: string;
+}
+
+export interface FollowResultPayload {
+  type: 'follow_result';
+  target: string;
+  following: boolean;
+  followerCount: number;
+  error?: string;
+}
+
+export interface FollowingListPayload {
+  type: 'following_list';
+  addresses: string[];
+}
+
 export type ServerMessage =
   | AuthChallengeMessage
   | AuthSuccessMessage
@@ -123,7 +190,11 @@ export type ServerMessage =
   | ErrorPayload
   | HeartbeatMessage
   | RoomsListPayload
-  | ReactionUpdatePayload;
+  | ReactionUpdatePayload
+  | NicknameResultMessage
+  | NicknameCheckMessage
+  | FollowResultPayload
+  | FollowingListPayload;
 
 // ===== Internal Types =====
 
@@ -133,6 +204,7 @@ export interface AuthenticatedClient {
   displayName: string;   // resolved or shortened address
   connectedAt: number;
   lastMessageAt: number;
+  hasGenesisPass: boolean;
 }
 
 export interface StoredMessage {
@@ -175,6 +247,7 @@ export interface ChatServerConfig {
   retentionCleanupIntervalMs: number;
   allowedOrigins: string[];
   nasunProfileApiUrl: string;
+  genesisPassApiUrl: string;
   trustProxy: boolean;
 }
 
@@ -192,5 +265,6 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   retentionCleanupIntervalMs: 24 * 60 * 60 * 1000, // Daily
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5174').split(','),
   nasunProfileApiUrl: process.env.NASUN_PROFILE_API_URL || '',
+  genesisPassApiUrl: process.env.GENESIS_PASS_API_URL || '',
   trustProxy: process.env.TRUST_PROXY === 'true',
 };

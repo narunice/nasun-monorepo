@@ -21,6 +21,7 @@ function makeConfig(overrides?: Partial<ChatServerConfig>): ChatServerConfig {
     retentionCleanupIntervalMs: 86400000,
     allowedOrigins: ['http://localhost:5174'],
     nasunProfileApiUrl: '',
+    genesisPassApiUrl: '',
     trustProxy: false,
     ...overrides,
   };

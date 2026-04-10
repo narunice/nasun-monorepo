@@ -84,6 +84,9 @@ export function initStore(config: ChatServerConfig): void {
   // Case-insensitive unique index for nickname (CREATE IF NOT EXISTS is safe to re-run)
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname COLLATE NOCASE) WHERE nickname IS NOT NULL');
 
+  // Migration: genesis pass badge
+  try { db.exec('ALTER TABLE users ADD COLUMN has_genesis_pass INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
+
   purgeOldMessages(config.messageRetentionDays);
 }
 
@@ -461,6 +464,21 @@ export function getChatParticipants(dateStr: string): string[] {
     )
     .all(dayStartMs, dayEndMs) as Array<{ sender: string }>;
   return rows.map((r) => r.sender);
+}
+
+// ===== Genesis Pass Badge =====
+
+export function setGenesisPassStatus(address: string, hasPass: boolean): void {
+  getDb().prepare('UPDATE users SET has_genesis_pass = ? WHERE address = ?').run(hasPass ? 1 : 0, address);
+}
+
+export function getGenesisPassBatch(addresses: string[]): Set<string> {
+  if (addresses.length === 0) return new Set();
+  const placeholders = addresses.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(`SELECT address FROM users WHERE address IN (${placeholders}) AND has_genesis_pass = 1`)
+    .all(...addresses) as Array<{ address: string }>;
+  return new Set(rows.map((r) => r.address));
 }
 
 export function closeStore(): void {
