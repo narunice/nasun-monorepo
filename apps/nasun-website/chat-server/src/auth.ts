@@ -1,8 +1,42 @@
 import { randomBytes } from 'node:crypto';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
+import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 
 // Active challenges: challenge string -> expiresAt timestamp
 const pendingChallenges = new Map<string, { expiresAt: number }>();
+
+// Ephemeral key bindings: ephemeralPubKey (base64) -> { address, createdAt }
+// Prevents address spoofing: once an ephemeral key is bound to an address,
+// it cannot be used to claim a different address.
+const ephemeralBindings = new Map<string, { address: string; createdAt: number }>();
+const MAX_BINDINGS = 10_000;
+const BINDING_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+function registerEphemeralBinding(ephemeralPubKey: string, walletAddress: string): void {
+  if (ephemeralBindings.size >= MAX_BINDINGS) {
+    const now = Date.now();
+    for (const [key, val] of ephemeralBindings) {
+      if (now - val.createdAt > BINDING_TTL_MS) {
+        ephemeralBindings.delete(key);
+      }
+    }
+  }
+  if (ephemeralBindings.size >= MAX_BINDINGS) {
+    const firstKey = ephemeralBindings.keys().next().value;
+    if (firstKey) ephemeralBindings.delete(firstKey);
+  }
+  ephemeralBindings.set(ephemeralPubKey, { address: walletAddress, createdAt: Date.now() });
+}
+
+function getEphemeralBinding(ephemeralPubKey: string): string | undefined {
+  const entry = ephemeralBindings.get(ephemeralPubKey);
+  if (!entry) return undefined;
+  if (Date.now() - entry.createdAt > BINDING_TTL_MS) {
+    ephemeralBindings.delete(ephemeralPubKey);
+    return undefined;
+  }
+  return entry.address;
+}
 
 // Cleanup stale challenges every 60 seconds
 setInterval(() => {
@@ -31,13 +65,16 @@ export function generateChallenge(): string {
 }
 
 /**
- * Verify a wallet signature (personal_sign) against a challenge.
+ * Verify a wallet signature against a challenge.
+ * Supports both personal_sign (local/passkey wallets) and ephemeral key auth (zkLogin).
  * Returns the verified wallet address or null if invalid.
  */
 export async function verifySignature(
   challenge: string,
   signature: string,
   claimedAddress: string,
+  authMethod?: 'personal_sign' | 'ephemeral',
+  ephemeralPubKey?: string,
 ): Promise<string | null> {
   // Check challenge exists and is not expired
   const challengeData = pendingChallenges.get(challenge);
@@ -52,16 +89,62 @@ export async function verifySignature(
   pendingChallenges.delete(challenge);
 
   try {
+    if (authMethod === 'ephemeral') {
+      return verifyEphemeralSignature(challenge, signature, claimedAddress, ephemeralPubKey);
+    }
+
+    // Default: personal_sign verification (local wallets, passkey)
     const messageBytes = new TextEncoder().encode(challenge);
     const publicKey = await verifyPersonalMessageSignature(messageBytes, signature);
     const recoveredAddress = publicKey.toSuiAddress();
 
-    // Verify the recovered address matches the claimed address
     if (normalizeAddress(recoveredAddress) !== normalizeAddress(claimedAddress)) {
       return null;
     }
 
     return recoveredAddress;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verify an ephemeral Ed25519 signature for zkLogin users.
+ * Uses TOFU (Trust On First Use) binding model for devnet.
+ */
+async function verifyEphemeralSignature(
+  challenge: string,
+  signature: string,
+  claimedAddress: string,
+  ephemeralPubKey?: string,
+): Promise<string | null> {
+  if (!ephemeralPubKey || typeof ephemeralPubKey !== 'string') return null;
+  if (!isValidSuiAddress(claimedAddress)) return null;
+
+  const keyBytes = Buffer.from(ephemeralPubKey, 'base64');
+  if (keyBytes.length !== 32) return null;
+
+  // Binding check: reject if key is bound to a different address
+  const boundAddress = getEphemeralBinding(ephemeralPubKey);
+  if (boundAddress && normalizeAddress(boundAddress) !== normalizeAddress(claimedAddress)) {
+    return null;
+  }
+
+  try {
+    const messageBytes = new TextEncoder().encode(challenge);
+    const recoveredKey = await verifyPersonalMessageSignature(messageBytes, signature);
+
+    const claimedKey = new Ed25519PublicKey(keyBytes);
+    if (recoveredKey.toBase64() !== claimedKey.toBase64()) {
+      return null;
+    }
+
+    // Self-register binding on first successful auth (TOFU)
+    if (!boundAddress) {
+      registerEphemeralBinding(ephemeralPubKey, claimedAddress);
+    }
+
+    return claimedAddress;
   } catch {
     return null;
   }

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage } from '../../../lib/chat-service';
-import ReactionBar from './ReactionBar';
+import ReactionBar, { REACTION_CODES, REACTION_EMOJI } from './ReactionBar';
 
 // Highlight @mentions in message content
 function renderContent(content: string) {
@@ -34,6 +34,7 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+  const [pickerMsgId, setPickerMsgId] = useState<number | null>(null);
 
   useEffect(() => {
     if (isNearBottomRef.current) {
@@ -84,6 +85,8 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
           );
         }
 
+        const showPicker = pickerMsgId === msg.id;
+
         return (
           <div key={msg.id} className={`group py-0.5 ${isMine ? 'flex flex-col items-end' : ''}`}>
             <div className={`flex items-baseline gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
@@ -94,17 +97,44 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
                 {formatTime(msg.timestamp)}
               </span>
             </div>
-            <div className="flex items-end gap-1">
-              <div className="shrink-0 pb-0.5">
-                <ReactionBar
-                  reactions={msg.reactions ?? {}}
-                  myReaction={msg.myReaction}
-                  onToggle={(code) => onToggleReaction(msg.id, code)}
-                />
-              </div>
-              <div className={`text-sm break-words leading-relaxed max-w-[85%] ${isMine ? 'text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90'}`}>
+            <div className={`relative max-w-[85%] ${isMine ? 'ml-auto' : ''}`}>
+              <div
+                onClick={() => setPickerMsgId(showPicker ? null : msg.id)}
+                className={`text-sm break-words leading-relaxed cursor-pointer ${isMine ? 'text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90 hover:bg-white/5 rounded-lg px-1 -mx-1'}`}
+              >
                 {renderContent(msg.content)}
               </div>
+              {showPicker && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setPickerMsgId(null)} />
+                  <div className={`absolute z-20 flex gap-1 p-1.5 bg-nasun-black border border-white/15 rounded-lg shadow-xl mt-1 ${isMine ? 'right-0' : 'left-0'}`}>
+                    {REACTION_CODES.map((code) => (
+                      <button
+                        key={code}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleReaction(msg.id, code);
+                          setPickerMsgId(null);
+                        }}
+                        className={`w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 transition-colors text-base ${
+                          msg.myReaction === code ? 'bg-nasun-c4/20' : ''
+                        }`}
+                      >
+                        {REACTION_EMOJI[code]}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {hasReactions && (
+                <div className={`mt-0.5 ${isMine ? 'flex justify-end' : ''}`}>
+                  <ReactionBar
+                    reactions={msg.reactions!}
+                    myReaction={msg.myReaction}
+                    onToggle={(code) => onToggleReaction(msg.id, code)}
+                  />
+                </div>
+              )}
             </div>
           </div>
         );

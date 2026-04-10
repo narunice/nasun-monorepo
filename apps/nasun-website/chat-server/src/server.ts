@@ -2,7 +2,7 @@ import './env.js'; // Must be first: loads .env before any module reads process.
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress } from './auth.js';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -129,7 +129,10 @@ wss.on('connection', (ws, req) => {
           return;
         }
 
-        const verifiedAddress = await verifySignature(pending.challenge, data.signature, data.address);
+        const verifiedAddress = await verifySignature(
+          pending.challenge, data.signature, data.address,
+          data.authMethod, data.ephemeralPubKey,
+        );
         clearTimeout(pending.timeout);
         pendingAuth.delete(ws);
 
@@ -149,6 +152,9 @@ wss.on('connection', (ws, req) => {
         };
         authenticatedClients.set(ws, client);
 
+        // Fetch display name before sending auth_success (non-blocking on failure)
+        await fetchDisplayName(verifiedAddress, client);
+
         // Upsert user in DB
         try {
           upsertUser(verifiedAddress, client.displayName);
@@ -156,10 +162,7 @@ wss.on('connection', (ws, req) => {
           console.error('Failed to upsert user:', err);
         }
 
-        // Async: fetch nasun profile for display name
-        fetchDisplayName(verifiedAddress, client);
-
-        send(ws, { type: 'auth_success', address: verifiedAddress, displayName: null });
+        send(ws, { type: 'auth_success', address: verifiedAddress, displayName: client.displayName });
         send(ws, { type: 'rooms_list', rooms: ROOMS });
         broadcastOnlineCount();
 
@@ -376,8 +379,11 @@ function handleToggleReaction(
     lastReactionTime.set(client.address, now);
     lastReactionMessageMap.set(client.address, { messageId, at: now });
 
-    // Broadcast to all clients (they filter by roomId client-side)
-    broadcast({ type: 'reaction_update', messageId, roomId, reactions });
+    // Send per-client reaction_update with each client's myReaction
+    for (const [ws, c] of authenticatedClients) {
+      const myReaction = getUserReaction(messageId, c.address);
+      send(ws, { type: 'reaction_update', messageId, roomId, reactions, myReaction });
+    }
   } catch (err) {
     console.error('Failed to toggle reaction:', err);
     send(client.ws, { type: 'error', code: 'INTERNAL_ERROR', message: 'Failed to toggle reaction' });

@@ -138,6 +138,13 @@ export function toggleReaction(
   })();
 }
 
+export function getUserReaction(messageId: number, address: string): string | null {
+  const row = getDb()
+    .prepare('SELECT emoji_code FROM reactions WHERE message_id=? AND address=?')
+    .get(messageId, address) as { emoji_code: string } | undefined;
+  return row?.emoji_code ?? null;
+}
+
 export function getReactionSummaryForMessage(messageId: number): Record<string, number> {
   const rows = getDb()
     .prepare('SELECT emoji_code, COUNT(*) as cnt FROM reactions WHERE message_id=? GROUP BY emoji_code')

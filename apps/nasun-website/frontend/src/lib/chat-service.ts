@@ -5,8 +5,14 @@
  * Pushes events to Zustand chatStore via listeners.
  */
 
-// Callback that signs a challenge message and returns { signature, address }
-export type ChatSignFn = (challenge: string) => Promise<{ signature: string; address: string }>;
+// Callback that signs a challenge message and returns signature data
+export type ChatSignResult = {
+  signature: string;
+  address: string;
+  authMethod?: 'personal_sign' | 'ephemeral';
+  ephemeralPubKey?: string;
+};
+export type ChatSignFn = (challenge: string) => Promise<ChatSignResult>;
 
 // ===== Protocol types (mirror server types) =====
 
@@ -31,6 +37,7 @@ interface ReactionUpdateMsg {
   messageId: number;
   roomId: number;
   reactions: Record<string, number>;
+  myReaction: string | null;
 }
 interface HistoryMsg {
   type: 'history';
@@ -78,7 +85,7 @@ export interface ChatEventMap {
   online_count: number;
   error: { code: string; message: string };
   rooms_list: RoomInfo[];
-  reaction_update: { messageId: number; roomId: number; reactions: Record<string, number> };
+  reaction_update: { messageId: number; roomId: number; reactions: Record<string, number>; myReaction: string | null };
 }
 
 type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
@@ -227,8 +234,8 @@ export class ChatService {
           break;
         }
         this.signFn(msg.challenge)
-          .then(({ signature, address }) => {
-            this.sendRaw({ type: 'auth_response', signature, address });
+          .then(({ signature, address, authMethod, ephemeralPubKey }) => {
+            this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey });
           })
           .catch((err) => {
             console.error('Chat sign error:', err);
@@ -255,7 +262,7 @@ export class ChatService {
         break;
 
       case 'reaction_update':
-        this.emit('reaction_update', { messageId: msg.messageId, roomId: msg.roomId, reactions: msg.reactions });
+        this.emit('reaction_update', { messageId: msg.messageId, roomId: msg.roomId, reactions: msg.reactions, myReaction: msg.myReaction });
         break;
 
       case 'chat_message': {
