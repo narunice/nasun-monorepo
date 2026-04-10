@@ -118,10 +118,11 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
   }, [value, checkState]);
 
   const handleReset = useCallback(() => {
+    if (submitting) return;
     setResetting(true);
     setServerError(null);
     getChatService().clearNickname();
-  }, []);
+  }, [submitting]);
 
   const isSameAsCurrentName = isEditMode && value.trim().toLowerCase() === currentNickname!.toLowerCase();
   const canSubmit = checkState === 'available' && !submitting && !resetting && !isSameAsCurrentName;

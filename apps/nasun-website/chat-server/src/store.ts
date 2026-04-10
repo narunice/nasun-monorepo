@@ -361,14 +361,38 @@ export function setNickname(
 
 export function clearNickname(address: string): { ok: boolean; error?: string; rateLimit?: NicknameRateLimit } {
   const d = getDb();
-  const existing = getNickname(address);
-  if (existing === null) return { ok: false, error: 'no_nickname' };
+  return d.transaction(() => {
+    const existing = getNickname(address);
+    if (existing === null) return { ok: false as const, error: 'no_nickname' };
 
-  const rateLimit = getNicknameRateLimit(address);
-  if (!rateLimit.canChange) return { ok: false, error: 'rate_limited', rateLimit };
+    const rateLimit = getNicknameRateLimit(address);
+    if (!rateLimit.canChange) return { ok: false as const, error: 'rate_limited', rateLimit };
 
-  d.prepare('UPDATE users SET nickname = NULL WHERE address = ?').run(address);
-  return { ok: true, rateLimit: getNicknameRateLimit(address) };
+    const now = Date.now();
+    const row = d
+      .prepare('SELECT nickname_window_start, nickname_change_count FROM users WHERE address = ?')
+      .get(address) as { nickname_window_start: number | null; nickname_change_count: number } | undefined;
+
+    let windowStart = now;
+    let changeCount = 1;
+    if (row && row.nickname_window_start) {
+      const elapsed = now - row.nickname_window_start;
+      const lockEnd = row.nickname_window_start + GRACE_WINDOW_MS + LOCK_DURATION_MS;
+      if (elapsed < GRACE_WINDOW_MS) {
+        windowStart = row.nickname_window_start;
+        changeCount = row.nickname_change_count + 1;
+      } else if (now >= lockEnd) {
+        windowStart = now;
+        changeCount = 1;
+      }
+    }
+
+    d.prepare(
+      'UPDATE users SET nickname = NULL, nickname_window_start = ?, nickname_change_count = ? WHERE address = ?'
+    ).run(windowStart, changeCount, address);
+
+    return { ok: true as const, rateLimit: getNicknameRateLimit(address) };
+  })();
 }
 
 export function getNicknamesBatch(addresses: string[]): Map<string, string> {
