@@ -63,7 +63,7 @@ function formatSender(message: ChatMessageType): string {
 }
 
 // Highlight @mentions: @[Display Name] or @nickname#suffix
-function renderContent(content: string, sizes: typeof SIZE_PRESETS[0]) {
+function renderContent(content: string, _sizes: typeof SIZE_PRESETS[0]) {
   const parts = content.split(/(@\[[^\]]+\]|@[a-zA-Z0-9_#-]{2,32})/g);
   return parts.map((part, i) =>
     part.startsWith('@') ? (
