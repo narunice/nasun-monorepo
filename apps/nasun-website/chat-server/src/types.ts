@@ -175,6 +175,7 @@ export interface ChatServerConfig {
   retentionCleanupIntervalMs: number;
   allowedOrigins: string[];
   nasunProfileApiUrl: string;
+  trustProxy: boolean;
 }
 
 export const DEFAULT_CONFIG: ChatServerConfig = {
@@ -191,4 +192,5 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   retentionCleanupIntervalMs: 24 * 60 * 60 * 1000, // Daily
   allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5174').split(','),
   nasunProfileApiUrl: process.env.NASUN_PROFILE_API_URL || '',
+  trustProxy: process.env.TRUST_PROXY === 'true',
 };

@@ -76,8 +76,9 @@ wss.on('connection', (ws, req) => {
   }
 
   // IP-based connection limit
-  const ip = req.headers['x-forwarded-for']?.toString().split(',')[0].trim()
-    || req.socket.remoteAddress || 'unknown';
+  const ip = CONFIG.trustProxy
+    ? (req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket.remoteAddress || 'unknown')
+    : (req.socket.remoteAddress || 'unknown');
   const ipCount = (connectionsPerIp.get(ip) || 0) + 1;
   if (ipCount > CONFIG.maxConnectionsPerIp) {
     ws.close(4429, 'Too many connections');
@@ -87,6 +88,11 @@ wss.on('connection', (ws, req) => {
 
   // Generate challenge and send
   const challenge = generateChallenge();
+  if (!challenge) {
+    ws.close(4503, 'Server busy');
+    connectionsPerIp.set(ip, ipCount - 1);
+    return;
+  }
   const authTimeout = setTimeout(() => {
     if (!authenticatedClients.has(ws)) {
       ws.close(4408, 'Auth timeout');
@@ -238,7 +244,7 @@ async function fetchDisplayName(address: string, client: AuthenticatedClient): P
   if (!apiUrl) return;
 
   try {
-    const res = await fetch(`${apiUrl}/v3/user-profile?walletAddress=${address}`);
+    const res = await fetch(`${apiUrl}/v3/user-profile?walletAddress=${encodeURIComponent(address)}`);
     if (!res.ok) return;
     const data = await res.json() as { customDisplayName?: string; twitterHandle?: string; username?: string };
     const name = data.customDisplayName || data.twitterHandle || data.username;

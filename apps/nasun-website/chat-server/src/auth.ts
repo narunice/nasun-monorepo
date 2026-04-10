@@ -4,6 +4,7 @@ import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 
 // Active challenges: challenge string -> expiresAt timestamp
 const pendingChallenges = new Map<string, { expiresAt: number }>();
+const MAX_PENDING_CHALLENGES = 10_000;
 
 // Ephemeral key bindings: ephemeralPubKey (base64) -> { address, createdAt }
 // Prevents address spoofing: once an ephemeral key is bound to an address,
@@ -52,7 +53,11 @@ setInterval(() => {
  * Generate a random challenge for wallet signature verification.
  * Includes origin to prevent cross-site relay attacks.
  */
-export function generateChallenge(): string {
+export function generateChallenge(): string | null {
+  if (pendingChallenges.size >= MAX_PENDING_CHALLENGES) {
+    return null;
+  }
+
   const nonce = randomBytes(32).toString('hex');
   const timestamp = Date.now();
   const challenge = `Nasun Chat Authentication\nOrigin: nasun.io\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
@@ -122,7 +127,7 @@ export function setProfileApiUrl(url: string): void {
 async function verifyAddressExists(address: string): Promise<boolean> {
   if (!profileApiUrl) return false;
   try {
-    const res = await fetch(`${profileApiUrl}/v3/user-profile?walletAddress=${address}`);
+    const res = await fetch(`${profileApiUrl}/v3/user-profile?walletAddress=${encodeURIComponent(address)}`);
     if (!res.ok) return false;
     const data = await res.json() as { walletAddress?: string };
     return !!data.walletAddress;
