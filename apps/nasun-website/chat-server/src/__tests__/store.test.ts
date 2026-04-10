@@ -20,6 +20,7 @@ function makeConfig(overrides?: Partial<ChatServerConfig>): ChatServerConfig {
     messageRetentionDays: 30,
     retentionCleanupIntervalMs: 86400000,
     allowedOrigins: ['http://localhost:5174'],
+    nasunProfileApiUrl: '',
     ...overrides,
   };
 }
@@ -69,7 +70,7 @@ describe('insertMessage', () => {
   it('inserts a message and returns it with an id', () => {
     const msg = insertMessage({
       roomId: 0,
-      senderId: 'user-1',
+      sender: 'user-1',
       senderName: 'Alice',
       content: 'Hello world',
       messageType: 'text',
@@ -78,14 +79,14 @@ describe('insertMessage', () => {
     });
 
     expect(msg.id).toBeGreaterThan(0);
-    expect(msg.senderId).toBe('user-1');
+    expect(msg.sender).toBe('user-1');
     expect(msg.content).toBe('Hello world');
   });
 
   it('stores content as-is (no HTML encoding)', () => {
     const msg = insertMessage({
       roomId: 0,
-      senderId: 'user-1',
+      sender: 'user-1',
       senderName: 'Alice',
       content: '<script>alert("xss")</script>',
       messageType: 'text',
@@ -104,7 +105,7 @@ describe('insertMessage', () => {
   it('handles special characters in content', () => {
     const msg = insertMessage({
       roomId: 0,
-      senderId: 'user-1',
+      sender: 'user-1',
       senderName: 'Alice',
       content: 'Price: $10 & 20% off < today > "special"',
       messageType: 'text',
@@ -118,7 +119,7 @@ describe('insertMessage', () => {
   it('handles emoji in content', () => {
     const msg = insertMessage({
       roomId: 0,
-      senderId: 'user-1',
+      sender: 'user-1',
       senderName: 'Alice',
       content: 'Hello 🌍🚀 World',
       messageType: 'text',
@@ -133,7 +134,7 @@ describe('insertMessage', () => {
   it('handles unicode content (Korean, Japanese)', () => {
     const msg = insertMessage({
       roomId: 0,
-      senderId: 'user-1',
+      sender: 'user-1',
       senderName: 'Alice',
       content: '안녕하세요 こんにちは',
       messageType: 'text',
@@ -148,7 +149,7 @@ describe('insertMessage', () => {
   it('handles replyToId', () => {
     const first = insertMessage({
       roomId: 0,
-      senderId: 'user-1',
+      sender: 'user-1',
       senderName: 'Alice',
       content: 'First message',
       messageType: 'text',
@@ -158,7 +159,7 @@ describe('insertMessage', () => {
 
     const reply = insertMessage({
       roomId: 0,
-      senderId: 'user-2',
+      sender: 'user-2',
       senderName: 'Bob',
       content: 'Reply to first',
       messageType: 'text',
@@ -172,7 +173,7 @@ describe('insertMessage', () => {
   it('allows replyToId pointing to non-existent message (no FK constraint)', () => {
     const msg = insertMessage({
       roomId: 0,
-      senderId: 'user-1',
+      sender: 'user-1',
       senderName: 'Alice',
       content: 'Reply to nothing',
       messageType: 'text',
@@ -185,11 +186,11 @@ describe('insertMessage', () => {
 
   it('auto-increments ids', () => {
     const msg1 = insertMessage({
-      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'First',
+      roomId: 0, sender: 'user-1', senderName: 'Alice', content: 'First',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
     const msg2 = insertMessage({
-      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Second',
+      roomId: 0, sender: 'user-1', senderName: 'Alice', content: 'Second',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 
@@ -199,7 +200,7 @@ describe('insertMessage', () => {
   it('handles maximum length content (500 chars)', () => {
     const longContent = 'A'.repeat(500);
     const msg = insertMessage({
-      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: longContent,
+      roomId: 0, sender: 'user-1', senderName: 'Alice', content: longContent,
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 
@@ -211,7 +212,7 @@ describe('getRecentMessages', () => {
   it('returns messages in ascending order (oldest first)', () => {
     for (let i = 0; i < 5; i++) {
       insertMessage({
-        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, sender: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }
@@ -225,7 +226,7 @@ describe('getRecentMessages', () => {
   it('respects limit parameter', () => {
     for (let i = 0; i < 10; i++) {
       insertMessage({
-        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, sender: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }
@@ -241,7 +242,7 @@ describe('getRecentMessages', () => {
     const ids: number[] = [];
     for (let i = 0; i < 10; i++) {
       const msg = insertMessage({
-        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, sender: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
       ids.push(msg.id);
@@ -261,7 +262,7 @@ describe('getRecentMessages', () => {
 
   it('handles beforeId that is less than all message ids', () => {
     insertMessage({
-      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Only message',
+      roomId: 0, sender: 'user-1', senderName: 'Alice', content: 'Only message',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 
@@ -274,7 +275,7 @@ describe('getRecentMessages', () => {
   it('returns correct hasMore signal via length comparison', () => {
     for (let i = 0; i < 5; i++) {
       insertMessage({
-        roomId: 0, senderId: 'user-1', senderName: 'Alice', content: `Message ${i}`,
+        roomId: 0, sender: 'user-1', senderName: 'Alice', content: `Message ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }
@@ -294,12 +295,12 @@ describe('purgeOldMessages', () => {
     const now = Date.now();
     // Old message (31 days ago)
     insertMessage({
-      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Old message',
+      roomId: 0, sender: 'user-1', senderName: 'Alice', content: 'Old message',
       messageType: 'text', replyToId: null, timestamp: now - 31 * 24 * 60 * 60 * 1000,
     });
     // Recent message
     insertMessage({
-      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'New message',
+      roomId: 0, sender: 'user-1', senderName: 'Alice', content: 'New message',
       messageType: 'text', replyToId: null, timestamp: now,
     });
 
@@ -313,7 +314,7 @@ describe('purgeOldMessages', () => {
 
   it('returns 0 when no messages to purge', () => {
     insertMessage({
-      roomId: 0, senderId: 'user-1', senderName: 'Alice', content: 'Recent',
+      roomId: 0, sender: 'user-1', senderName: 'Alice', content: 'Recent',
       messageType: 'text', replyToId: null, timestamp: Date.now(),
     });
 
@@ -331,7 +332,7 @@ describe('upsertUser', () => {
   it('inserts a new user', () => {
     upsertUser('user-1', 'Alice');
     const db = getDb();
-    const row = db.prepare('SELECT * FROM users WHERE identity_id = ?').get('user-1') as any;
+    const row = db.prepare('SELECT * FROM users WHERE address = ?').get('user-1') as any;
     expect(row.display_name).toBe('Alice');
   });
 
@@ -340,34 +341,28 @@ describe('upsertUser', () => {
     upsertUser('user-1', 'Alice Updated');
 
     const db = getDb();
-    const row = db.prepare('SELECT * FROM users WHERE identity_id = ?').get('user-1') as any;
+    const row = db.prepare('SELECT * FROM users WHERE address = ?').get('user-1') as any;
     expect(row.display_name).toBe('Alice Updated');
   });
 
   it('updates last_seen_at on upsert', () => {
     upsertUser('user-1', 'Alice');
     const db = getDb();
-    const row1 = db.prepare('SELECT last_seen_at FROM users WHERE identity_id = ?').get('user-1') as any;
+    const row1 = db.prepare('SELECT last_seen_at FROM users WHERE address = ?').get('user-1') as any;
 
     // Small delay to ensure timestamp differs
     const before = row1.last_seen_at;
     upsertUser('user-1', 'Alice');
-    const row2 = db.prepare('SELECT last_seen_at FROM users WHERE identity_id = ?').get('user-1') as any;
+    const row2 = db.prepare('SELECT last_seen_at FROM users WHERE address = ?').get('user-1') as any;
 
     expect(row2.last_seen_at).toBeGreaterThanOrEqual(before);
   });
 
-  it('handles provider field', () => {
-    upsertUser('user-1', 'Alice', 'Google');
-    const db = getDb();
-    const row = db.prepare('SELECT provider FROM users WHERE identity_id = ?').get('user-1') as any;
-    expect(row.provider).toBe('Google');
-  });
-
-  it('handles null provider', () => {
+  it('handles multiple upserts without error', () => {
     upsertUser('user-1', 'Alice');
+    upsertUser('user-2', 'Bob');
     const db = getDb();
-    const row = db.prepare('SELECT provider FROM users WHERE identity_id = ?').get('user-1') as any;
-    expect(row.provider).toBeNull();
+    const count = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as any;
+    expect(count.cnt).toBe(2);
   });
 });
