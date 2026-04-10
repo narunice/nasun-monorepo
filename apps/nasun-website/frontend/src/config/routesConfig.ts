@@ -406,12 +406,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         // },
         {
           name: "navigation.leaderboard",
-          path: "/wave1/leaderboard",
+          path: "/wave1/creators-leaderboard",
           element: Pages.LeaderboardV3,
         },
         {
           name: "navigation.leaderboardGuide",
-          path: "/wave1/leaderboard-guide",
+          path: "/wave1/creators-leaderboard-guide",
           element: Pages.LeaderboardInfo,
         },
         // {
@@ -477,16 +477,16 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   },
 
   leaderboard: {
-    path: "/wave1/leaderboard",
+    path: "/wave1/creators-leaderboard",
     component: Pages.LeaderboardV3,
     navItem: {
       name: "navigation.leaderboard",
-      path: "/wave1/leaderboard",
+      path: "/wave1/creators-leaderboard",
       hidden: true,
     },
     meta: {
-      title: "Nasun Leaderboard — NASUN Wave 1",
-      description: "Climb the Nasun community leaderboard. Track your participation, compete with other members, and earn ecosystem rewards.",
+      title: "Creators Leaderboard — NASUN Wave 1",
+      description: "Climb the Nasun Creators Leaderboard. Track your participation, compete with other members, and earn ecosystem rewards.",
     },
   },
 
@@ -690,8 +690,8 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.genesisPassDrop": "Genesis Pass Drop",
     "navigation.battalion": "Battalion",
     "navigation.earlyContributors": "Early Contributors",
-    "navigation.leaderboard": "Leaderboard",
-    "navigation.leaderboardGuide": "Leaderboard Guide",
+    "navigation.leaderboard": "Creators Leaderboard",
+    "navigation.leaderboardGuide": "Creators Leaderboard Guide",
     "navigation.genesisEvent": "Frontiers Event",
     "navigation.contests": "Contests",
   },

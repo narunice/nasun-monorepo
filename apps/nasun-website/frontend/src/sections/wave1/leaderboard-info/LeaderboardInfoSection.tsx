@@ -166,7 +166,7 @@ const LeaderboardInfoSection: React.FC = () => {
       setShowEligibleModal(true);
     } else if (isAuthenticated) {
       // Logged in but no X connected — start OAuth linking directly
-      localStorage.setItem("auth_return_to", "/wave1/leaderboard-guide?x_linked=1");
+      localStorage.setItem("auth_return_to", "/wave1/creators-leaderboard-guide?x_linked=1");
       handleLinkTwitter();
     } else {
       // Not logged in — show wallet login modal
@@ -373,7 +373,7 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- CTA Buttons --- */}
         <div className="flex justify-center">
           <ButtonV3 asChild variant="nw2" size="md">
-            <Link to="/wave1/leaderboard">View Live Leaderboard</Link>
+            <Link to="/wave1/creators-leaderboard">View Live Leaderboard</Link>
           </ButtonV3>
         </div>
       </div>
@@ -399,7 +399,7 @@ const LeaderboardInfoSection: React.FC = () => {
           </DialogHeader>
           <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
             <ButtonV3 asChild variant="nw2" size="sm">
-              <Link to="/wave1/leaderboard">View Leaderboard</Link>
+              <Link to="/wave1/creators-leaderboard">View Leaderboard</Link>
             </ButtonV3>
             <ButtonV3 asChild variant="nw2" size="sm" outline>
               <Link to="/my-account">Go to My Account</Link>
