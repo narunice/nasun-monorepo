@@ -11,8 +11,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@mysten/sui": "^1.45.0",
     "better-sqlite3": "^11.7.0",
-    "jose": "^6.0.11",
     "ws": "^8.18.0"
   },
   "devDependencies": {

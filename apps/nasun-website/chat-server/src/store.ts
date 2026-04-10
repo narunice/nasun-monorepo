@@ -22,7 +22,7 @@ export function initStore(config: ChatServerConfig): void {
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       room_id INTEGER NOT NULL DEFAULT 0,
-      sender_id TEXT NOT NULL,
+      sender TEXT NOT NULL,
       sender_name TEXT NOT NULL,
       content TEXT NOT NULL,
       message_type TEXT NOT NULL DEFAULT 'text',
@@ -38,10 +38,10 @@ export function initStore(config: ChatServerConfig): void {
 
     CREATE TABLE IF NOT EXISTS reactions (
       message_id INTEGER NOT NULL,
-      user_id TEXT NOT NULL,
+      address TEXT NOT NULL,
       emoji_code TEXT NOT NULL,
       created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
-      PRIMARY KEY (message_id, user_id),
+      PRIMARY KEY (message_id, address),
       FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
     );
 
@@ -49,15 +49,11 @@ export function initStore(config: ChatServerConfig): void {
       ON reactions(message_id, emoji_code);
 
     CREATE TABLE IF NOT EXISTS users (
-      identity_id TEXT PRIMARY KEY,
+      address TEXT PRIMARY KEY,
       display_name TEXT NOT NULL,
-      provider TEXT,
       last_seen_at INTEGER
     );
   `);
-
-  // Migration: add room_id column if upgrading from v1 schema
-  try { db.exec('ALTER TABLE messages ADD COLUMN room_id INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
   purgeOldMessages(config.messageRetentionDays);
 }
@@ -70,10 +66,10 @@ export function getDb(): Database.Database {
 export function insertMessage(msg: Omit<StoredMessage, 'id'>): StoredMessage {
   const result = getDb()
     .prepare(
-      `INSERT INTO messages (room_id, sender_id, sender_name, content, message_type, reply_to_id, timestamp)
+      `INSERT INTO messages (room_id, sender, sender_name, content, message_type, reply_to_id, timestamp)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(msg.roomId, msg.senderId, msg.senderName, msg.content, msg.messageType, msg.replyToId, msg.timestamp);
+    .run(msg.roomId, msg.sender, msg.senderName, msg.content, msg.messageType, msg.replyToId, msg.timestamp);
 
   return { ...msg, id: result.lastInsertRowid as number };
 }
@@ -84,10 +80,10 @@ export function getRecentMessages(
   beforeId?: number
 ): StoredMessage[] {
   const query = beforeId
-    ? `SELECT id, room_id as roomId, sender_id as senderId, sender_name as senderName, content,
+    ? `SELECT id, room_id as roomId, sender, sender_name as senderName, content,
          message_type as messageType, reply_to_id as replyToId, timestamp
        FROM messages WHERE room_id = ? AND id < ? ORDER BY id DESC LIMIT ?`
-    : `SELECT id, room_id as roomId, sender_id as senderId, sender_name as senderName, content,
+    : `SELECT id, room_id as roomId, sender, sender_name as senderName, content,
          message_type as messageType, reply_to_id as replyToId, timestamp
        FROM messages WHERE room_id = ? ORDER BY id DESC LIMIT ?`;
 
@@ -105,37 +101,37 @@ export function purgeOldMessages(retentionDays: number): number {
   return result.changes;
 }
 
-export function upsertUser(identityId: string, displayName: string, provider?: string): void {
+export function upsertUser(address: string, displayName: string): void {
   getDb()
     .prepare(
-      `INSERT INTO users (identity_id, display_name, provider, last_seen_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(identity_id) DO UPDATE SET
+      `INSERT INTO users (address, display_name, last_seen_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(address) DO UPDATE SET
          display_name = excluded.display_name,
          last_seen_at = excluded.last_seen_at`
     )
-    .run(identityId, displayName, provider ?? null, Date.now());
+    .run(address, displayName, Date.now());
 }
 
 // ===== Reactions =====
 
 export function toggleReaction(
   messageId: number,
-  userId: string,
+  address: string,
   emojiCode: string
 ): Record<string, number> {
   const d = getDb();
   return d.transaction(() => {
     // Try to remove same emoji (toggle off)
     const deleted = d
-      .prepare('DELETE FROM reactions WHERE message_id=? AND user_id=? AND emoji_code=?')
-      .run(messageId, userId, emojiCode);
+      .prepare('DELETE FROM reactions WHERE message_id=? AND address=? AND emoji_code=?')
+      .run(messageId, address, emojiCode);
 
     if (deleted.changes === 0) {
       // Not removed = different emoji or none -> insert or replace
       d.prepare(
-        'INSERT OR REPLACE INTO reactions (message_id, user_id, emoji_code, created_at) VALUES (?, ?, ?, ?)'
-      ).run(messageId, userId, emojiCode, Date.now());
+        'INSERT OR REPLACE INTO reactions (message_id, address, emoji_code, created_at) VALUES (?, ?, ?, ?)'
+      ).run(messageId, address, emojiCode, Date.now());
     }
 
     return getReactionSummaryForMessage(messageId);
@@ -156,7 +152,7 @@ export function getReactionSummaryForMessage(messageId: number): Record<string, 
 
 export function getReactionSummaries(
   messageIds: number[],
-  viewerUserId?: string
+  viewerAddress?: string
 ): Map<number, { reactions: Record<string, number>; myReaction: string | null }> {
   if (messageIds.length === 0) return new Map();
 
@@ -179,13 +175,13 @@ export function getReactionSummaries(
     entry.reactions[row.emoji_code] = row.cnt;
   }
 
-  if (viewerUserId) {
+  if (viewerAddress) {
     const myRows = getDb()
       .prepare(
         `SELECT message_id, emoji_code FROM reactions
-         WHERE message_id IN (${placeholders}) AND user_id = ?`
+         WHERE message_id IN (${placeholders}) AND address = ?`
       )
-      .all(...messageIds, viewerUserId) as Array<{ message_id: number; emoji_code: string }>;
+      .all(...messageIds, viewerAddress) as Array<{ message_id: number; emoji_code: string }>;
 
     for (const row of myRows) {
       let entry = result.get(row.message_id);

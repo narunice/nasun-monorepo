@@ -1,48 +1,76 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { randomBytes } from 'node:crypto';
+import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 
-// JWKS is cached automatically by jose (module scope)
-const JWKS = createRemoteJWKSet(
-  new URL('https://cognito-identity.amazonaws.com/.well-known/jwks_uri')
-);
+// Active challenges: challenge string -> expiresAt timestamp
+const pendingChallenges = new Map<string, { expiresAt: number }>();
 
-const IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
+// Cleanup stale challenges every 60 seconds
+setInterval(() => {
+  const now = Date.now();
+  for (const [challenge, data] of pendingChallenges) {
+    if (now > data.expiresAt) {
+      pendingChallenges.delete(challenge);
+    }
+  }
+}, 60_000);
 
-if (!IDENTITY_POOL_ID) {
-  throw new Error('FATAL: COGNITO_IDENTITY_POOL_ID environment variable is required');
-}
+/**
+ * Generate a random challenge for wallet signature verification.
+ * Includes origin to prevent cross-site relay attacks.
+ */
+export function generateChallenge(): string {
+  const nonce = randomBytes(32).toString('hex');
+  const timestamp = Date.now();
+  const challenge = `Nasun Chat Authentication\nOrigin: nasun.io\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
 
-export interface AuthResult {
-  userId: string;  // Cognito identityId (sub claim)
+  pendingChallenges.set(challenge, {
+    expiresAt: timestamp + 30_000, // 30 second expiry
+  });
+
+  return challenge;
 }
 
 /**
- * Verify a Cognito Identity Pool OIDC JWT token.
- * Returns the identityId on success, null on failure.
+ * Verify a wallet signature (personal_sign) against a challenge.
+ * Returns the verified wallet address or null if invalid.
  */
-export async function verifyCognitoJwt(token: string): Promise<AuthResult | null> {
-  try {
-    const { payload } = await jwtVerify(token, JWKS, {
-      issuer: 'https://cognito-identity.amazonaws.com',
-      audience: IDENTITY_POOL_ID,
-    });
+export async function verifySignature(
+  challenge: string,
+  signature: string,
+  claimedAddress: string,
+): Promise<string | null> {
+  // Check challenge exists and is not expired
+  const challengeData = pendingChallenges.get(challenge);
+  if (!challengeData) return null;
 
-    const userId = payload.sub;
-    if (!userId) {
-      console.warn('Token missing sub claim');
+  if (Date.now() > challengeData.expiresAt) {
+    pendingChallenges.delete(challenge);
+    return null;
+  }
+
+  // Remove the challenge (one-time use)
+  pendingChallenges.delete(challenge);
+
+  try {
+    const messageBytes = new TextEncoder().encode(challenge);
+    const publicKey = await verifyPersonalMessageSignature(messageBytes, signature);
+    const recoveredAddress = publicKey.toSuiAddress();
+
+    // Verify the recovered address matches the claimed address
+    if (normalizeAddress(recoveredAddress) !== normalizeAddress(claimedAddress)) {
       return null;
     }
 
-    return { userId };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    // Debug: log token header to diagnose auth failures
-    try {
-      const [headerB64] = token.split('.');
-      const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
-      console.warn('JWT verification failed:', msg, '| token header:', JSON.stringify(header));
-    } catch {
-      console.warn('JWT verification failed:', msg, '| token is not a valid JWT format');
-    }
+    return recoveredAddress;
+  } catch {
     return null;
   }
+}
+
+function normalizeAddress(addr: string): string {
+  return addr.toLowerCase().replace(/^0x/, '');
+}
+
+export function isValidSuiAddress(addr: string): boolean {
+  return /^0x[0-9a-fA-F]{64}$/.test(addr);
 }

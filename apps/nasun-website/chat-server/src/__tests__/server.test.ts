@@ -7,15 +7,17 @@ import { tmpdir } from 'node:os';
 
 // Mock auth module before importing server logic
 vi.mock('../auth.js', () => ({
-  verifyCognitoJwt: vi.fn(async (token: string) => {
-    if (token === 'valid-token-user1') return { userId: 'user-1' };
-    if (token === 'valid-token-user2') return { userId: 'user-2' };
-    if (token === 'slow-token') {
+  generateChallenge: vi.fn(() => 'test-challenge-' + Math.random().toString(36).slice(2)),
+  verifySignature: vi.fn(async (challenge: string, signature: string, address: string) => {
+    if (signature === 'valid-sig-user1') return '0x' + '1'.repeat(64);
+    if (signature === 'valid-sig-user2') return '0x' + '2'.repeat(64);
+    if (signature === 'slow-sig') {
       await new Promise((r) => setTimeout(r, 100));
-      return { userId: 'user-slow' };
+      return '0x' + '3'.repeat(64);
     }
     return null;
   }),
+  isValidSuiAddress: vi.fn((addr: string) => /^0x[0-9a-fA-F]{64}$/.test(addr)),
 }));
 
 // We cannot import the actual server.ts (it starts listening on import),
@@ -23,7 +25,7 @@ vi.mock('../auth.js', () => ({
 import { initStore, insertMessage, getRecentMessages, closeStore } from '../store.js';
 import { stripControlChars, hasReservedPrefix } from '../sanitize.js';
 import type { ChatServerConfig } from '../types.js';
-import { verifyCognitoJwt } from '../auth.js';
+import { generateChallenge, verifySignature, isValidSuiAddress } from '../auth.js';
 
 // ===== Test Server Setup =====
 
@@ -35,10 +37,10 @@ let config: ChatServerConfig;
 
 // Simplified server logic for testing (mirrors server.ts)
 const authenticatedClients = new Map<WebSocket, {
-  ws: WebSocket; userId: string; displayName: string;
+  ws: WebSocket; address: string; displayName: string;
   connectedAt: number; lastMessageAt: number;
 }>();
-const pendingAuth = new Map<WebSocket, { timeout: ReturnType<typeof setTimeout> }>();
+const pendingAuth = new Map<WebSocket, { challenge: string; timeout: ReturnType<typeof setTimeout> }>();
 const lastMessageTime = new Map<string, number>();
 const connectionsPerIp = new Map<string, number>();
 
@@ -78,14 +80,14 @@ function setupServer(): void {
     }
     connectionsPerIp.set(ip, ipCount);
 
-    send(ws, { type: 'auth_required' });
-
+    const challenge = generateChallenge();
     const authTimeout = setTimeout(() => {
       if (!authenticatedClients.has(ws)) {
         ws.close(4408, 'Auth timeout');
       }
     }, config.authTimeoutMs);
-    pendingAuth.set(ws, { timeout: authTimeout });
+    pendingAuth.set(ws, { challenge, timeout: authTimeout });
+    send(ws, { type: 'auth_challenge', challenge });
 
     (ws as any)._isAlive = true;
     ws.on('pong', () => { (ws as any)._isAlive = true; });
@@ -95,32 +97,35 @@ function setupServer(): void {
         const data = JSON.parse(raw.toString());
 
         if (!authenticatedClients.has(ws)) {
-          if (data.type !== 'auth') {
-            send(ws, { type: 'auth_error', reason: 'Not authenticated' });
-            return;
-          }
-          // Auth
-          const { token, displayName } = data;
-          if (!token || typeof token !== 'string') {
-            send(ws, { type: 'auth_error', reason: 'Missing token' });
-            ws.close(4401, 'Missing token');
-            return;
-          }
-          const result = await verifyCognitoJwt(token);
-          if (!result) {
-            send(ws, { type: 'auth_error', reason: 'Invalid token' });
-            ws.close(4401, 'Invalid token');
+          if (data.type !== 'auth_response') {
+            send(ws, { type: 'error', code: 'NOT_AUTHENTICATED', message: 'Please authenticate first' });
             return;
           }
           const pending = pendingAuth.get(ws);
-          if (pending) { clearTimeout(pending.timeout); pendingAuth.delete(ws); }
-          const safeName = stripControlChars((displayName || 'Anonymous')).slice(0, 32).trim() || 'Anonymous';
+          if (!pending) {
+            send(ws, { type: 'auth_error', reason: 'No pending challenge' });
+            ws.close(4401, 'No pending challenge');
+            return;
+          }
+          if (!data.address || !isValidSuiAddress(data.address)) {
+            send(ws, { type: 'auth_error', reason: 'Invalid address' });
+            ws.close(4401, 'Invalid address');
+            return;
+          }
+          const verifiedAddress = await verifySignature(pending.challenge, data.signature, data.address);
+          clearTimeout(pending.timeout);
+          pendingAuth.delete(ws);
+          if (!verifiedAddress) {
+            send(ws, { type: 'auth_error', reason: 'Invalid signature' });
+            ws.close(4401, 'Auth failed');
+            return;
+          }
+          const shortName = verifiedAddress.slice(0, 6) + '...' + verifiedAddress.slice(-4);
           authenticatedClients.set(ws, {
-            ws, userId: result.userId, displayName: safeName,
+            ws, address: verifiedAddress, displayName: shortName,
             connectedAt: Date.now(), lastMessageAt: 0,
           });
-          send(ws, { type: 'auth_success', userId: result.userId, displayName: safeName });
-          // Broadcast online count
+          send(ws, { type: 'auth_success', address: verifiedAddress, displayName: null });
           for (const [w] of authenticatedClients) {
             send(w, { type: 'online_count', count: authenticatedClients.size });
           }
@@ -128,7 +133,7 @@ function setupServer(): void {
         }
 
         // Already authenticated
-        if (data.type === 'auth') {
+        if (data.type === 'auth_response') {
           send(ws, { type: 'error', code: 'ALREADY_AUTHENTICATED', message: 'Already authenticated' });
           return;
         }
@@ -137,12 +142,12 @@ function setupServer(): void {
 
         if (data.type === 'send_message') {
           const now = Date.now();
-          const lastTime = lastMessageTime.get(client.userId) || 0;
+          const lastTime = lastMessageTime.get(client.address) || 0;
           if (now - lastTime < config.rateLimitMs) {
             send(ws, { type: 'error', code: 'RATE_LIMITED', message: 'Too fast' });
             return;
           }
-          lastMessageTime.set(client.userId, now);
+          lastMessageTime.set(client.address, now);
 
           let content = data.content;
           if (typeof content !== 'string' || content.trim().length === 0) {
@@ -173,11 +178,11 @@ function setupServer(): void {
 
           const roomId = data.roomId ?? 0;
           const stored = insertMessage({
-            roomId, senderId: client.userId, senderName: client.displayName,
+            roomId, sender: client.address, senderName: client.displayName,
             content, messageType: 'text', replyToId: replyToId ?? null, timestamp: now,
           });
           const payload = {
-            type: 'chat_message', id: stored.id, roomId: stored.roomId, sender: stored.senderId,
+            type: 'chat_message', id: stored.id, roomId: stored.roomId, sender: stored.sender,
             senderName: stored.senderName, content: stored.content,
             messageType: stored.messageType, replyToId: stored.replyToId, timestamp: stored.timestamp,
           };
@@ -190,7 +195,7 @@ function setupServer(): void {
             type: 'history',
             roomId: histRoomId,
             messages: messages.map((m) => ({
-              type: 'chat_message', id: m.id, roomId: m.roomId, sender: m.senderId,
+              type: 'chat_message', id: m.id, roomId: m.roomId, sender: m.sender,
               senderName: m.senderName, content: m.content,
               messageType: m.messageType, replyToId: m.replyToId, timestamp: m.timestamp,
             })),
@@ -260,13 +265,13 @@ function waitForMessage(ws: WebSocket, filter?: (msg: any) => boolean): Promise<
   });
 }
 
-async function authenticateWs(ws: WebSocket, token: string, displayName: string): Promise<any> {
-  // Wait for auth_required
-  const authReq = await waitForMessage(ws, (m) => m.type === 'auth_required');
-  expect(authReq.type).toBe('auth_required');
+async function authenticateWs(ws: WebSocket, signature: string, address: string): Promise<any> {
+  // Wait for auth_challenge
+  const authChallenge = await waitForMessage(ws, (m) => m.type === 'auth_challenge');
+  expect(authChallenge.type).toBe('auth_challenge');
 
-  // Send auth
-  ws.send(JSON.stringify({ type: 'auth', token, displayName }));
+  // Send auth_response
+  ws.send(JSON.stringify({ type: 'auth_response', signature, address }));
 
   // Wait for auth_success
   return waitForMessage(ws, (m) => m.type === 'auth_success' || m.type === 'auth_error');
@@ -297,6 +302,7 @@ beforeAll(async () => {
     messageRetentionDays: 30,
     retentionCleanupIntervalMs: 86400000,
     allowedOrigins: ['http://localhost:5174'],
+    nasunProfileApiUrl: '',
   };
 
   initStore(config);
@@ -328,10 +334,11 @@ beforeEach(() => {
 });
 
 describe('Connection', () => {
-  it('sends auth_required on connect', async () => {
+  it('sends auth_challenge on connect', async () => {
     const ws = await connectWs();
     const msg = await waitForMessage(ws);
-    expect(msg.type).toBe('auth_required');
+    expect(msg.type).toBe('auth_challenge');
+    expect(msg.challenge).toBeDefined();
     await closeWs(ws);
   });
 
@@ -375,19 +382,18 @@ describe('Connection', () => {
 });
 
 describe('Authentication', () => {
-  it('authenticates with valid token', async () => {
+  it('authenticates with valid signature', async () => {
     const ws = await connectWs();
-    const result = await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    const result = await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     expect(result.type).toBe('auth_success');
-    expect(result.userId).toBe('user-1');
-    expect(result.displayName).toBe('Alice');
+    expect(result.address).toBe('0x' + '1'.repeat(64));
     await closeWs(ws);
   });
 
-  it('rejects invalid token', async () => {
+  it('rejects invalid signature', async () => {
     const ws = await connectWs();
-    await waitForMessage(ws, (m) => m.type === 'auth_required');
-    ws.send(JSON.stringify({ type: 'auth', token: 'invalid-token', displayName: 'Hacker' }));
+    await waitForMessage(ws, (m) => m.type === 'auth_challenge');
+    ws.send(JSON.stringify({ type: 'auth_response', signature: 'invalid-sig', address: '0x' + '1'.repeat(64) }));
 
     const code = await new Promise<number>((resolve) => {
       ws.on('close', (code) => resolve(code));
@@ -395,10 +401,10 @@ describe('Authentication', () => {
     expect(code).toBe(4401);
   });
 
-  it('rejects missing token', async () => {
+  it('rejects invalid address format', async () => {
     const ws = await connectWs();
-    await waitForMessage(ws, (m) => m.type === 'auth_required');
-    ws.send(JSON.stringify({ type: 'auth', token: '', displayName: 'Hacker' }));
+    await waitForMessage(ws, (m) => m.type === 'auth_challenge');
+    ws.send(JSON.stringify({ type: 'auth_response', signature: 'valid-sig-user1', address: 'not-an-address' }));
 
     const code = await new Promise<number>((resolve) => {
       ws.on('close', (code) => resolve(code));
@@ -408,49 +414,27 @@ describe('Authentication', () => {
 
   it('rejects non-auth messages before authentication', async () => {
     const ws = await connectWs();
-    await waitForMessage(ws, (m) => m.type === 'auth_required');
+    await waitForMessage(ws, (m) => m.type === 'auth_challenge');
     ws.send(JSON.stringify({ type: 'send_message', content: 'sneaky' }));
 
-    const msg = await waitForMessage(ws, (m) => m.type === 'auth_error');
-    expect(msg.reason).toBe('Not authenticated');
+    const msg = await waitForMessage(ws, (m) => m.type === 'error');
+    expect(msg.code).toBe('NOT_AUTHENTICATED');
     await closeWs(ws);
   });
 
   it('rejects duplicate auth attempts', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
 
-    ws.send(JSON.stringify({ type: 'auth', token: 'valid-token-user2', displayName: 'Bob' }));
+    ws.send(JSON.stringify({ type: 'auth_response', signature: 'valid-sig-user2', address: '0x' + '2'.repeat(64) }));
     const msg = await waitForMessage(ws, (m) => m.type === 'error');
     expect(msg.code).toBe('ALREADY_AUTHENTICATED');
     await closeWs(ws);
   });
 
-  it('sanitizes display name (strips control chars)', async () => {
-    const ws = await connectWs();
-    const result = await authenticateWs(ws, 'valid-token-user1', 'Ali\u0000ce\u200B');
-    expect(result.displayName).toBe('Alice');
-    await closeWs(ws);
-  });
-
-  it('truncates display name to 32 chars', async () => {
-    const ws = await connectWs();
-    const longName = 'A'.repeat(50);
-    const result = await authenticateWs(ws, 'valid-token-user1', longName);
-    expect(result.displayName.length).toBeLessThanOrEqual(32);
-    await closeWs(ws);
-  });
-
-  it('defaults to Anonymous when displayName is empty', async () => {
-    const ws = await connectWs();
-    const result = await authenticateWs(ws, 'valid-token-user1', '');
-    expect(result.displayName).toBe('Anonymous');
-    await closeWs(ws);
-  });
-
   it('broadcasts online count after auth', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
 
     const countMsg = await waitForMessage(ws, (m) => m.type === 'online_count');
     expect(countMsg.count).toBeGreaterThanOrEqual(1);
@@ -461,7 +445,7 @@ describe('Authentication', () => {
 describe('Messaging', () => {
   it('sends and receives a message', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     // Drain online_count
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
@@ -469,8 +453,7 @@ describe('Messaging', () => {
     const msg = await waitForMessage(ws, (m) => m.type === 'chat_message');
 
     expect(msg.content).toBe('Hello world');
-    expect(msg.sender).toBe('user-1');
-    expect(msg.senderName).toBe('Alice');
+    expect(msg.sender).toBe('0x' + '1'.repeat(64));
     expect(msg.id).toBeGreaterThan(0);
     expect(msg.messageType).toBe('text');
     await closeWs(ws);
@@ -479,8 +462,8 @@ describe('Messaging', () => {
   it('broadcasts message to all connected clients', async () => {
     const ws1 = await connectWs();
     const ws2 = await connectWs();
-    await authenticateWs(ws1, 'valid-token-user1', 'Alice');
-    await authenticateWs(ws2, 'valid-token-user2', 'Bob');
+    await authenticateWs(ws1, 'valid-sig-user1', '0x' + '1'.repeat(64));
+    await authenticateWs(ws2, 'valid-sig-user2', '0x' + '2'.repeat(64));
 
     // Drain online_count messages
     await waitForMessage(ws1, (m) => m.type === 'online_count');
@@ -490,7 +473,6 @@ describe('Messaging', () => {
 
     const msg2 = await waitForMessage(ws2, (m) => m.type === 'chat_message');
     expect(msg2.content).toBe('Hello from Alice');
-    expect(msg2.senderName).toBe('Alice');
 
     await closeWs(ws1);
     await closeWs(ws2);
@@ -498,7 +480,7 @@ describe('Messaging', () => {
 
   it('rejects empty messages', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: '' }));
@@ -509,7 +491,7 @@ describe('Messaging', () => {
 
   it('rejects whitespace-only messages', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: '   \t\n  ' }));
@@ -520,7 +502,7 @@ describe('Messaging', () => {
 
   it('rejects messages exceeding max length', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: 'A'.repeat(501) }));
@@ -531,7 +513,7 @@ describe('Messaging', () => {
 
   it('rejects messages with reserved prefix [SYSTEM]', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: '[SYSTEM] Fake system message' }));
@@ -542,7 +524,7 @@ describe('Messaging', () => {
 
   it('rejects messages with reserved prefix [BOT]', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: '[bot] pretending to be a bot' }));
@@ -553,7 +535,7 @@ describe('Messaging', () => {
 
   it('strips control characters from content', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: 'Hello\u0000\u200BWorld' }));
@@ -564,7 +546,7 @@ describe('Messaging', () => {
 
   it('preserves special characters (no double encoding)', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: 'Price: $10 & <b>bold</b>' }));
@@ -576,7 +558,7 @@ describe('Messaging', () => {
 
   it('validates replyToId is a positive integer', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     // Negative replyToId
@@ -597,7 +579,7 @@ describe('Messaging', () => {
 
   it('enforces rate limiting', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     // First message should succeed
@@ -614,7 +596,7 @@ describe('Messaging', () => {
 
   it('handles invalid JSON gracefully', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send('not valid json {{{');
@@ -626,7 +608,7 @@ describe('Messaging', () => {
 
   it('handles unknown message types', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'unknown_type' }));
@@ -641,13 +623,13 @@ describe('History', () => {
     // Insert some messages directly
     for (let i = 0; i < 5; i++) {
       insertMessage({
-        roomId: 0, senderId: 'user-pre', senderName: 'Seeder', content: `Seeded ${i}`,
+        roomId: 0, sender: '0x' + 'a'.repeat(64), senderName: 'Seeder', content: `Seeded ${i}`,
         messageType: 'text', replyToId: null, timestamp: Date.now() + i,
       });
     }
 
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'load_history', limit: 3 }));
@@ -660,7 +642,7 @@ describe('History', () => {
 
   it('supports cursor-based pagination', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'load_history', limit: 50 }));
@@ -686,7 +668,7 @@ describe('History', () => {
 
   it('caps limit to 100', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'load_history', limit: 9999 }));
@@ -714,7 +696,7 @@ describe('Health Check', () => {
 describe('Edge Cases', () => {
   it('handles message with only control characters (becomes empty after strip)', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: '\u0000\u0001\u0002' }));
@@ -725,7 +707,7 @@ describe('Edge Cases', () => {
 
   it('handles exactly max-length message', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     const content = 'A'.repeat(500);
@@ -737,7 +719,7 @@ describe('Edge Cases', () => {
 
   it('handles message with non-string content field', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: 12345 }));
@@ -748,7 +730,7 @@ describe('Edge Cases', () => {
 
   it('handles message with null content', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: null }));
@@ -759,7 +741,7 @@ describe('Edge Cases', () => {
 
   it('handles emoji-heavy messages', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     const content = '🚀🌍💎🔥'.repeat(50);
@@ -771,7 +753,7 @@ describe('Edge Cases', () => {
 
   it('handles @mention in messages', async () => {
     const ws = await connectWs();
-    await authenticateWs(ws, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await waitForMessage(ws, (m) => m.type === 'online_count');
 
     ws.send(JSON.stringify({ type: 'send_message', content: 'Hey @Bob check this out' }));
@@ -782,7 +764,7 @@ describe('Edge Cases', () => {
 
   it('handles rapid disconnect and reconnect', async () => {
     const ws1 = await connectWs();
-    await authenticateWs(ws1, 'valid-token-user1', 'Alice');
+    await authenticateWs(ws1, 'valid-sig-user1', '0x' + '1'.repeat(64));
     await closeWs(ws1);
 
     // Immediate reconnect
