@@ -57,29 +57,16 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
       {/* Top row: title + button */}
       <div className="flex items-center justify-between gap-4">
         <h5 className="font-medium text-nasun-white text-sm md:text-base">
-          Register for April 16th Airdrop
+          April 16th Airdrop
         </h5>
 
-        {!user ? (
-          <span className="text-nasun-white/40 text-xs whitespace-nowrap">
-            Sign in to register
-          </span>
-        ) : isLoading ? (
-          <Spinner />
-        ) : status === "approved" ? null : (
-          <ButtonV3
-            variant="nw2"
-            size="sm"
-            disabled={status === "pending" || isRegistering}
-            onClick={() => setShowConfirm(true)}
-          >
-            {isRegistering
-              ? "Registering..."
-              : status === "pending"
-                ? "Registered"
-                : "Register"}
-          </ButtonV3>
-        )}
+        <ButtonV3
+          variant="nw2"
+          size="sm"
+          disabled
+        >
+          Registration Closed
+        </ButtonV3>
       </div>
 
       {/* Bottom row: status */}

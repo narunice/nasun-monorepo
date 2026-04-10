@@ -691,7 +691,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.battalion": "Battalion",
     "navigation.earlyContributors": "Early Contributors",
     "navigation.leaderboard": "Creators Leaderboard",
-    "navigation.leaderboardGuide": "Creators Leaderboard Guide",
+    "navigation.leaderboardGuide": "Creators Guide",
     "navigation.genesisEvent": "Frontiers Event",
     "navigation.contests": "Contests",
   },
