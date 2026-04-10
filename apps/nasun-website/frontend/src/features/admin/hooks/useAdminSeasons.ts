@@ -122,6 +122,38 @@ async function endSeasonApi(token: string, seasonId: string): Promise<Season> {
   return data.season;
 }
 
+async function pauseSeasonApi(token: string, seasonId: string): Promise<Season> {
+  const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/seasons/${seasonId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ status: 'paused' }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to pause season: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.season;
+}
+
+async function resumeSeasonApi(token: string, seasonId: string): Promise<Season> {
+  const response = await fetch(`${LEADERBOARD_V3_API_URL}/v3/admin/seasons/${seasonId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ status: 'active' }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to resume season: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.season;
+}
+
 // ============================================
 // React Query Hooks
 // ============================================
@@ -193,6 +225,28 @@ export function useAdminSeasons() {
     },
   });
 
+  // Mutation: Pause season
+  const pauseMutation = useMutation({
+    mutationFn: (seasonId: string) => pauseSeasonApi(cognitoToken!, seasonId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard-v3'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+    },
+  });
+
+  // Mutation: Resume season
+  const resumeMutation = useMutation({
+    mutationFn: (seasonId: string) => resumeSeasonApi(cognitoToken!, seasonId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard-v3'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+    },
+  });
+
   return {
     // Data
     seasons,
@@ -206,6 +260,8 @@ export function useAdminSeasons() {
     deleteSeason: deleteMutation.mutateAsync,
     activateSeason: activateMutation.mutateAsync,
     endSeason: endMutation.mutateAsync,
+    pauseSeason: pauseMutation.mutateAsync,
+    resumeSeason: resumeMutation.mutateAsync,
 
     // Mutation states
     isCreating: createMutation.isPending,
@@ -213,5 +269,7 @@ export function useAdminSeasons() {
     isDeleting: deleteMutation.isPending,
     isActivating: activateMutation.isPending,
     isEnding: endMutation.isPending,
+    isPausing: pauseMutation.isPending,
+    isResuming: resumeMutation.isPending,
   };
 }

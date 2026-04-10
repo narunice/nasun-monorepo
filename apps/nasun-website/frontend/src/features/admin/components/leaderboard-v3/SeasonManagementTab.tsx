@@ -13,10 +13,11 @@ import { previewSnapshot, triggerSnapshot } from '../../services/leaderboardV3Ap
 import type { SnapshotPreviewEntry, SnapshotPreviewResponse } from '../../services/leaderboardV3Api';
 import type { Season, CreateSeasonRequest } from '../../types/leaderboard-v3';
 
-type SeasonStatus = 'active' | 'upcoming' | 'ended' | 'archived';
+type SeasonStatus = 'active' | 'paused' | 'upcoming' | 'ended' | 'archived';
 
 const STATUS_STYLES: Record<SeasonStatus, { bg: string; text: string; label: string }> = {
   active: { bg: 'bg-green-900/30', text: 'text-green-400', label: '🟢 Active' },
+  paused: { bg: 'bg-yellow-900/30', text: 'text-yellow-400', label: '⏸ Paused' },
   upcoming: { bg: 'bg-blue-900/30', text: 'text-blue-400', label: '🔵 Upcoming' },
   ended: { bg: 'bg-red-900/30', text: 'text-red-400', label: '🔴 Ended' },
   archived: { bg: 'bg-gray-900/30', text: 'text-gray-400', label: '⚫ Archived' },
@@ -60,11 +61,15 @@ export function SeasonManagementTab() {
     deleteSeason,
     activateSeason,
     endSeason,
+    pauseSeason,
+    resumeSeason,
     isCreating,
     isUpdating,
     isDeleting,
     isActivating,
     isEnding,
+    isPausing,
+    isResuming,
   } = useAdminSeasons();
 
   const handleCreateClick = () => {
@@ -102,6 +107,18 @@ export function SeasonManagementTab() {
   const handleEnd = async (seasonId: string) => {
     if (confirm(`End season "${seasonId}"? This will generate a final snapshot.`)) {
       await endSeason(seasonId);
+    }
+  };
+
+  const handlePause = async (seasonId: string) => {
+    if (confirm(`Pause season "${seasonId}"? The leaderboard will show as paused.`)) {
+      await pauseSeason(seasonId);
+    }
+  };
+
+  const handleResume = async (seasonId: string) => {
+    if (confirm(`Resume season "${seasonId}"? This will reactivate the season.`)) {
+      await resumeSeason(seasonId);
     }
   };
 
@@ -287,13 +304,35 @@ export function SeasonManagementTab() {
                           )}
 
                           {season.status === 'active' && (
+                            <>
+                              <Button
+                                onClick={() => handlePause(season.seasonId)}
+                                variant="outlineC5"
+                                size="sm"
+                                disabled={isPausing}
+                                className="text-yellow-400 hover:text-yellow-300"
+                              >
+                                Pause
+                              </Button>
+                              <Button
+                                onClick={() => handleEnd(season.seasonId)}
+                                variant="outlineC5"
+                                size="sm"
+                                disabled={isEnding}
+                              >
+                                End
+                              </Button>
+                            </>
+                          )}
+
+                          {season.status === 'paused' && (
                             <Button
-                              onClick={() => handleEnd(season.seasonId)}
-                              variant="outlineC5"
+                              onClick={() => handleResume(season.seasonId)}
+                              variant="c4"
                               size="sm"
-                              disabled={isEnding}
+                              disabled={isResuming}
                             >
-                              End
+                              Resume
                             </Button>
                           )}
 

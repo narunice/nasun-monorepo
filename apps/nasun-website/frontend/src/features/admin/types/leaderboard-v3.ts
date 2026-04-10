@@ -281,7 +281,7 @@ export interface AdjustScoreResponse {
 // Season Types (Phase 5)
 // ============================================
 
-export type SeasonStatus = 'upcoming' | 'active' | 'ended' | 'archived';
+export type SeasonStatus = 'upcoming' | 'active' | 'paused' | 'ended' | 'archived';
 
 export interface Season {
   seasonId: string;
