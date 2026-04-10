@@ -14,7 +14,10 @@ export interface ChatMessage {
   id: number;
   roomId: number;
   sender: string;
+  senderName?: string;
   senderNickname?: string;
+  senderBadge?: string | null;
+  senderProfileImageUrl?: string | null;
   content: string;
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
@@ -30,7 +33,7 @@ export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'authenticati
 export interface RoomInfo {
   id: number;
   name: string;
-  description: string;
+  description?: string;
 }
 
 export interface ChatState {

@@ -2,6 +2,29 @@ import { useState, useRef, useCallback } from 'react';
 import { shortenAddress } from '@nasun/wallet';
 import Avatar from 'boring-avatars';
 import type { ChatMessage as ChatMessageType } from '../types';
+
+function ChatAvatar({ address, imageUrl, size = 18 }: {
+  address: string; imageUrl?: string | null; size?: number;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  if (imageUrl && !imgError) {
+    return (
+      <img
+        src={imageUrl}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+  return <Avatar name={address} variant="beam" size={size} />;
+}
 import { isTradeShare, parseTradeShare } from '../types';
 import type { ChatTextSize } from '../hooks/useChatTextSize';
 import { NETWORK_CONFIG } from '../../../config/network';
@@ -58,6 +81,9 @@ function formatSender(message: ChatMessageType): string {
   const suffix = message.sender.slice(-4);
   if (message.senderNickname) {
     return `${message.senderNickname}#${suffix}`;
+  }
+  if (message.senderName) {
+    return message.senderName;
   }
   return shortenAddress(message.sender);
 }
@@ -198,14 +224,21 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReact
       onTouchMove={handleTouchMove}
     >
       <div className={`flex items-center gap-1.5 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>
-        <Avatar name={message.sender} variant="beam" size={sizes.avatar} />
-        <span
-          className={`${sizes.sender} font-medium shrink-0 ${
-            isOwnMessage ? 'text-theme-text-secondary' : 'text-theme-accent hover:underline cursor-pointer'
-          }`}
-          onClick={!isOwnMessage && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(message)); } : undefined}
-        >
-          {formatSender(message)}
+        <ChatAvatar address={message.sender} imageUrl={message.senderProfileImageUrl} size={sizes.avatar} />
+        <span className={`inline-flex items-center gap-1 shrink-0`}>
+          {message.senderBadge === 'GP' && (
+            <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[8px] font-bold leading-none bg-amber-500/15 text-amber-400 border border-amber-500/30" title="Genesis Pass Holder">
+              <span className="text-[7px]">{'\u{1F451}'}</span>GP
+            </span>
+          )}
+          <span
+            className={`${sizes.sender} font-medium ${
+              isOwnMessage ? 'text-theme-text-secondary' : 'text-theme-accent hover:underline cursor-pointer'
+            }`}
+            onClick={!isOwnMessage && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(message)); } : undefined}
+          >
+            {formatSender(message)}
+          </span>
         </span>
         <span className={`${sizes.system} text-theme-text-muted shrink-0`}>
           {formatTime(message.timestamp)}
