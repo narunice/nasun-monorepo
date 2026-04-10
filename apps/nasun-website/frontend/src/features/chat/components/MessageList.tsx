@@ -1,6 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
+import Avatar from 'boring-avatars';
 import type { ChatMessage } from '../../../lib/chat-service';
 import ReactionBar, { REACTION_CODES, REACTION_EMOJI } from './ReactionBar';
+
+function ChatAvatar({ address, imageUrl, size = 24 }: {
+  address: string; imageUrl?: string | null; size?: number;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  if (imageUrl && !imgError) {
+    return (
+      <img
+        src={imageUrl}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+  return (
+    <div className="shrink-0" style={{ width: size, height: size }}>
+      <Avatar name={address} variant="beam" size={size} />
+    </div>
+  );
+}
 
 // Highlight @mentions in message content
 // Format: @[Display Name] for names with spaces, @nickname for simple names
@@ -101,11 +129,17 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
         const showPicker = pickerMsgId === msg.id;
 
         return (
-          <div key={msg.id} className={`group py-0.5 ${isMine ? 'flex flex-col items-end' : ''}`}>
+          <div key={msg.id} className={`group py-0.5 flex gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
+            <div className="shrink-0 mt-0.5">
+              <ChatAvatar address={msg.sender} imageUrl={msg.senderProfileImageUrl} size={24} />
+            </div>
+            <div className={`flex-1 min-w-0 ${isMine ? 'text-right' : ''}`}>
             <div className={`flex items-baseline gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
               <span className={`inline-flex items-center gap-1 shrink-0 ${isMine ? '' : 'cursor-pointer'}`}>
                 {msg.senderBadge === 'GP' && (
-                  <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold leading-none bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30" title="Genesis Pass Holder">GP</span>
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none bg-amber-500/15 text-amber-400 border border-amber-500/30" title="Genesis Pass Holder">
+                    <span className="text-[8px]">{'\u{1F451}'}</span>GP
+                  </span>
                 )}
                 <span
                   className={`text-xs font-medium ${isMine ? 'text-nasun-c4' : 'text-white/70 hover:text-white hover:underline'}`}
@@ -118,7 +152,7 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
                 {formatTime(msg.timestamp)}
               </span>
             </div>
-            <div className={`relative max-w-[85%] ${isMine ? 'ml-auto' : ''}`}>
+            <div className={`relative max-w-[85%] ${isMine ? 'ml-auto flex flex-col items-end' : ''}`}>
               <div
                 onClick={(e) => {
                   if (showPicker) { setPickerMsgId(null); setPickerPos(null); return; }
@@ -126,7 +160,7 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
                   setPickerPos({ top: rect.top, left: rect.left, right: window.innerWidth - rect.right, isMine });
                   setPickerMsgId(msg.id);
                 }}
-                className={`text-sm break-words leading-relaxed cursor-pointer ${isMine ? 'text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90 hover:bg-white/5 rounded-lg px-1 -mx-1'}`}
+                className={`text-sm break-words leading-relaxed cursor-pointer ${isMine ? 'w-fit text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90 hover:bg-white/5 rounded-lg px-1 -mx-1'}`}
               >
                 {renderContent(msg.content)}
               </div>
@@ -168,6 +202,7 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
                   />
                 </div>
               )}
+            </div>
             </div>
           </div>
         );

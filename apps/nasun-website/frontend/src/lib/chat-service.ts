@@ -33,6 +33,7 @@ interface ChatMessageMsg {
   senderName: string;
   senderNickname: string | null;
   senderBadge?: string | null;
+  senderProfileImageUrl?: string | null;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
@@ -76,6 +77,7 @@ export interface ChatMessage {
   senderName: string;
   senderNickname?: string | null;
   senderBadge?: string | null;
+  senderProfileImageUrl?: string | null;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
@@ -303,6 +305,7 @@ export class ChatService {
           senderName: msg.senderName,
           senderNickname: msg.senderNickname,
           senderBadge: msg.senderBadge,
+          senderProfileImageUrl: msg.senderProfileImageUrl,
           content: msg.content,
           messageType: msg.messageType,
           replyToId: msg.replyToId,
@@ -321,6 +324,7 @@ export class ChatService {
             senderName: m.senderName,
             senderNickname: m.senderNickname,
             senderBadge: m.senderBadge,
+            senderProfileImageUrl: m.senderProfileImageUrl,
             content: m.content,
             messageType: m.messageType,
             replyToId: m.replyToId,
