@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef, type FormEvent, type KeyboardEvent } from 'react';
 import { CHAT_DRAFT_EVENT } from '@/features/trading/components/TradeHistory';
 
 interface Props {
@@ -8,9 +8,25 @@ interface Props {
   disabledPlaceholder?: string;
 }
 
-export function ChatInput({ onSend, disabled, maxLength = 500, disabledPlaceholder }: Props) {
+export interface ChatInputHandle {
+  insertMention: (name: string) => void;
+}
+
+export const ChatInput = forwardRef<ChatInputHandle, Props>(({ onSend, disabled, maxLength = 500, disabledPlaceholder }, ref) => {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    insertMention(name: string) {
+      const needsBrackets = /[^a-zA-Z0-9_#-]/.test(name);
+      const mention = needsBrackets ? `@[${name}] ` : `@${name} `;
+      setText((prev) => {
+        const next = prev ? `${prev}${mention}` : mention;
+        return next.slice(0, maxLength);
+      });
+      setTimeout(() => inputRef.current?.focus(), 0);
+    },
+  }));
 
   // Listen for draft messages from TradeHistory share-to-chat
   useEffect(() => {
@@ -72,4 +88,6 @@ export function ChatInput({ onSend, disabled, maxLength = 500, disabledPlacehold
       </button>
     </form>
   );
-}
+});
+
+ChatInput.displayName = 'ChatInput';
