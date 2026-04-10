@@ -376,7 +376,7 @@ export const DYNAMO_KEYS = {
 // Season System Types (Phase 5)
 // ============================================
 
-export type SeasonStatus = 'upcoming' | 'active' | 'ended' | 'archived';
+export type SeasonStatus = 'upcoming' | 'active' | 'paused' | 'ended' | 'archived';
 
 /**
  * Season record stored in DynamoDB
