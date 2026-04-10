@@ -25,9 +25,11 @@ export function SeasonSelector({
   const { t } = useTranslation("leaderboard");
   // Sort seasons: active first, then by startDate desc
   const sortedSeasons = [...seasons].sort((a, b) => {
-    // Active/default first
+    // Active first, then paused
     if (a.status === 'active' && b.status !== 'active') return -1;
     if (b.status === 'active' && a.status !== 'active') return 1;
+    if (a.status === 'paused' && b.status !== 'paused') return -1;
+    if (b.status === 'paused' && a.status !== 'paused') return 1;
     if (a.isDefault && !b.isDefault) return -1;
     if (b.isDefault && !a.isDefault) return 1;
     // Then by start date desc
@@ -40,6 +42,13 @@ export function SeasonSelector({
       return (
         <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c7/20 text-nasun-c7">
           {t("v3.season.live")}
+        </span>
+      );
+    }
+    if (status === 'paused') {
+      return (
+        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-500/20 text-amber-400">
+          {t("v3.season.paused")}
         </span>
       );
     }
@@ -64,9 +73,10 @@ export function SeasonSelector({
   const DateRange = () => {
     if (!selectedSeason) return null;
     const isOngoing = selectedSeason.status === 'active' || selectedSeason.status === 'upcoming';
+    const isPaused = selectedSeason.status === 'paused';
     return (
       <span className="text-sm text-nasun-white/50">
-        {selectedSeason.startDate}{isOngoing ? ' - Ongoing' : ` - ${selectedSeason.endDate}`}
+        {selectedSeason.startDate}{isPaused ? ' - Paused' : isOngoing ? ' - Ongoing' : ` - ${selectedSeason.endDate}`}
       </span>
     );
   };
@@ -136,11 +146,13 @@ export function SeasonSelector({
             const statusLabel =
               season.status === 'active'
                 ? ` (${t("v3.season.live")})`
-                : season.status === 'upcoming'
-                  ? ` (${t("v3.season.soon")})`
-                  : season.status === 'ended' || season.status === 'archived'
-                    ? ` (${t("v3.season.ended")})`
-                    : '';
+                : season.status === 'paused'
+                  ? ` (${t("v3.season.paused")})`
+                  : season.status === 'upcoming'
+                    ? ` (${t("v3.season.soon")})`
+                    : season.status === 'ended' || season.status === 'archived'
+                      ? ` (${t("v3.season.ended")})`
+                      : '';
             return (
               <option key={season.seasonId} value={season.seasonId} className="bg-gray-800">
                 {season.name}

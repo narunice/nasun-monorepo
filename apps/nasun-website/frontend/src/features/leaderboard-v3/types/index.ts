@@ -8,7 +8,7 @@
 export type Platform = 'twitter' | 'discord' | 'farcaster';
 
 // Season status
-export type SeasonStatus = 'upcoming' | 'active' | 'ended' | 'archived';
+export type SeasonStatus = 'upcoming' | 'active' | 'paused' | 'ended' | 'archived';
 
 // Rank change direction
 export type RankChangeDirection = 'up' | 'down' | 'same' | 'new';
