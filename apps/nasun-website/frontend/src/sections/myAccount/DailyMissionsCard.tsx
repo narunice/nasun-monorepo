@@ -77,7 +77,7 @@ const MISSIONS: Mission[] = [
   {
     id: "chat",
     label: "Chat",
-    description: "Send a message in nasun or pado chat",
+    description: "Send a message in Nasun or Pado chat",
     points: 1,
   },
 ];
@@ -110,8 +110,11 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
     allWalletAddresses,
   );
 
-  const { hasUnvotedProposal, unvotedCount, isLoading: isGovLoading } =
-    useGovernanceMission();
+  const {
+    hasUnvotedProposal,
+    unvotedCount,
+    isLoading: isGovLoading,
+  } = useGovernanceMission();
 
   const isCompleted = useCallback(
     (id: string) => completedMissions.has(id as any) || localCompleted.has(id),

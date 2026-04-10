@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { getChatService } from '../../../lib/chat-service';
-import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn } from '../../../lib/chat-service';
+import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn, NicknameRateLimit } from '../../../lib/chat-service';
 import { useChatStore } from '../../../store/chatStore';
 import { useUserStore } from '../../../store/userStore';
 import { SignerManager, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
@@ -35,6 +35,9 @@ export function useChat() {
   const roomStates = useChatStore((s) => s.roomStates);
   const connectedRef = useRef(false);
 
+  const [nickname, setNicknameState] = useState<string | null>(null);
+  const [nicknameRateLimit, setNicknameRateLimit] = useState<NicknameRateLimit | null>(null);
+
   // Derived from roomStates
   const activeRoom = roomStates.get(activeRoomId);
   const messages = activeRoom?.messages ?? [];
@@ -50,6 +53,10 @@ export function useChat() {
       }
       return;
     }
+
+    // Display name priority: custom > X display name > primary username > wallet address
+    const xDisplayName = user.provider === 'Twitter' ? user.username : user.linkedAccounts?.twitter?.username;
+    const userDisplayName = user.customDisplayName || xDisplayName || user.username || walletAddress;
 
     const signFn: ChatSignFn = async (challenge: string) => {
       const signer = SignerManager.getCurrent();
@@ -69,22 +76,22 @@ export function useChat() {
           address: walletAddress,
           authMethod: 'ephemeral' as const,
           ephemeralPubKey: effectiveSigner.getEphemeralPublicKey(),
+          displayName: userDisplayName,
         };
       }
 
       const { signature } = await effectiveSigner.signPersonal(messageBytes);
-      return { signature, address: walletAddress };
+      return { signature, address: walletAddress, displayName: userDisplayName };
     };
-
-    const displayName = user.customDisplayName || user.username || walletAddress;
     const service = getChatService();
 
     const onMessage = (msg: ChatMessage) => {
       useChatStore.getState().addMessage(msg);
 
       // Mention detection: check if my displayName is @mentioned
-      if (msg.sender !== walletAddress && displayName) {
-        const mentionPattern = new RegExp(`@${displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (msg.sender !== walletAddress && userDisplayName) {
+        const escaped = userDisplayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const mentionPattern = new RegExp(`@(?:\\[${escaped}\\]|${escaped})(?:\\b|\\s|$)`, 'i');
         if (mentionPattern.test(msg.content)) {
           const store = useChatStore.getState();
           store.addMention();
@@ -114,15 +121,27 @@ export function useChat() {
       useChatStore.getState().updateReaction(data.roomId, data.messageId, data.reactions, data.myReaction);
     };
 
+    const onNickname = (data: { ok: boolean; nickname?: string; rateLimit?: NicknameRateLimit }) => {
+      if (data.ok) setNicknameState(data.nickname ?? null);
+      if (data.rateLimit) setNicknameRateLimit(data.rateLimit);
+    };
+
     service.on('message', onMessage);
     service.on('history', onHistory);
     service.on('status', onStatus);
     service.on('online_count', onCount);
     service.on('rooms_list', onRoomsList);
     service.on('reaction_update', onReactionUpdate);
+    service.on('nickname', onNickname);
 
     service.connect(WS_URL, signFn);
     connectedRef.current = true;
+
+    // Initialize from cached values (in case of HMR / re-render)
+    const cachedNickname = service.getNickname();
+    if (cachedNickname) setNicknameState(cachedNickname);
+    const cachedRateLimit = service.getRateLimit();
+    if (cachedRateLimit) setNicknameRateLimit(cachedRateLimit);
 
     return () => {
       service.off('message', onMessage);
@@ -131,8 +150,9 @@ export function useChat() {
       service.off('online_count', onCount);
       service.off('rooms_list', onRoomsList);
       service.off('reaction_update', onReactionUpdate);
+      service.off('nickname', onNickname);
     };
-  }, [user?.walletAddress]);
+  }, [user?.walletAddress, user?.customDisplayName, user?.twitterHandle, user?.username]);
 
   // Load history for active room when switching
   useEffect(() => {
@@ -192,6 +212,8 @@ export function useChat() {
     useChatStore.getState().setActiveRoomId(roomId);
   }, []);
 
+  const needsNickname = status === 'connected' && nickname === null;
+
   return {
     messages,
     status,
@@ -206,5 +228,8 @@ export function useChat() {
     switchRoom,
     toggleReaction,
     canChat: !!user?.walletAddress,
+    nickname,
+    needsNickname,
+    nicknameRateLimit,
   };
 }
