@@ -256,7 +256,7 @@ async function detectAllWallets(
       );
       if (res.ok) {
         const data = await res.json();
-        if (data.todayCategories?.includes("chat")) {
+        if (data.data?.todayCategories?.includes("chat")) {
           allDetected.add("chat");
         }
       }

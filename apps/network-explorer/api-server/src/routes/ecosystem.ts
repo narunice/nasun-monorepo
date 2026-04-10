@@ -312,6 +312,7 @@ app.get('/score/:identityId', async (c) => {
       nftCount: a.nftCount,
       bonus: roundTo2(getActivationBonus(a)),
     })),
+    todayCategories: scores.todayCategories,
     daily: {
       baseScore: scores.todayBaseScore,
       bonusTotal: roundTo2(scores.bonusToday),
