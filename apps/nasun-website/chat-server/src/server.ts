@@ -1,3 +1,4 @@
+import './env.js'; // Must be first: loads .env before any module reads process.env
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { verifyCognitoJwt } from './auth.js';
@@ -480,17 +481,21 @@ httpServer.listen(CONFIG.port, () => {
 
 // ===== Graceful Shutdown =====
 
+let shuttingDown = false;
 function shutdown(): void {
+  if (shuttingDown) return; // Prevent double invocation
+  shuttingDown = true;
   console.log('Shutting down...');
   clearInterval(heartbeatTimer);
   clearInterval(cleanupTimer);
   clearInterval(retentionTimer);
 
+  // Terminate all WebSocket connections immediately
   for (const [ws] of authenticatedClients) {
-    ws.close(1001, 'Server shutting down');
+    try { ws.terminate(); } catch {}
   }
   for (const [ws] of pendingAuth) {
-    ws.close(1001, 'Server shutting down');
+    try { ws.terminate(); } catch {}
   }
 
   wss.close();
@@ -499,8 +504,8 @@ function shutdown(): void {
     process.exit(0);
   });
 
-  // Force exit after 5s if graceful close hangs
-  setTimeout(() => process.exit(1), 5000).unref();
+  // Force exit after 3s if graceful close hangs
+  setTimeout(() => process.exit(0), 3000).unref();
 }
 
 process.on('SIGTERM', shutdown);

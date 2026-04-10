@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "set -a && . ./.env && set +a && tsx watch src/server.ts",
+    "dev": "tsc && node --env-file=.env dist/server.js",
     "start": "node dist/server.js",
     "build": "tsc",
     "test": "vitest run",
