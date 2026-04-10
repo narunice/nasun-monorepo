@@ -105,6 +105,7 @@ export interface ChatMessagePayload {
   senderName: string;   // display name or shortened address
   senderNickname: string | null;
   senderBadge?: string | null;
+  senderProfileImageUrl?: string | null;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
@@ -202,6 +203,7 @@ export interface AuthenticatedClient {
   ws: WebSocket;
   address: string;       // walletAddress
   displayName: string;   // resolved or shortened address
+  profileImageUrl: string | null;
   connectedAt: number;
   lastMessageAt: number;
   hasGenesisPass: boolean;
