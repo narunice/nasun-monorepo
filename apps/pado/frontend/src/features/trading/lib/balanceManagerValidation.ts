@@ -30,13 +30,17 @@ export async function findUserBalanceManager(
     const client = getSuiClient();
     const eventType = `${NETWORK_CONFIG.deepbookPackage}::balance_manager::BalanceManagerEvent`;
 
+    // Query by sender, then filter for BalanceManagerEvent client-side.
+    // Sender-scoped query ensures we find this user's events regardless of
+    // how many total BalanceManagerEvents exist globally.
     const result = await client.queryEvents({
-      query: { MoveEventType: eventType },
+      query: { Sender: userAddress },
       limit: 50,
       order: 'descending',
     });
 
     for (const event of result.data) {
+      if (event.type !== eventType) continue;
       const json = event.parsedJson as {
         balance_manager_id: string;
         owner: string;
