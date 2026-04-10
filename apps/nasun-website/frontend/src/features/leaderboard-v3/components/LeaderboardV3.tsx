@@ -44,7 +44,7 @@ export function LeaderboardV3() {
       {/* Important Update Notice */}
       <div className="mb-10 p-6 md:p-8 bg-nasun-white/[0.04] border border-nasun-white/[0.1] rounded-sm">
         <h3 className="text-xl md:text-2xl font-semibold text-nasun-white mb-6">
-          An Important Update on the Nasun Leaderboard
+          An Important Update on the Creators Leaderboard
         </h3>
 
         <div className="space-y-4 text-nasun-white/80 leading-relaxed text-sm md:text-base">

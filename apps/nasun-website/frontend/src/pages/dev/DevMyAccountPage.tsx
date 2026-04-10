@@ -266,7 +266,7 @@ const DevMyAccountPage = () => {
                   setShowLinkXGuidance(false);
                   localStorage.setItem(
                     "auth_return_to",
-                    "/wave1/leaderboard-guide?x_linked=1",
+                    "/wave1/creators-leaderboard-guide?x_linked=1",
                   );
                   handleLinkTwitter();
                 }}

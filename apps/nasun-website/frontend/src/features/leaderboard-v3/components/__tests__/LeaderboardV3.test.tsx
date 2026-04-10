@@ -58,7 +58,7 @@ describe("LeaderboardV3", () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText("Nasun Leaderboard")).toBeInTheDocument();
+    expect(screen.getByText("Creators Leaderboard")).toBeInTheDocument();
     expect(screen.getByTestId("sidebar")).toBeInTheDocument();
     expect(screen.getByTestId("main-content")).toBeInTheDocument();
   });

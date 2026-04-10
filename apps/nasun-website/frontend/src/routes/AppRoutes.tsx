@@ -138,6 +138,8 @@ const AppRoutes = () => {
         <Route path="/vision/strategy" element={<Navigate to="/about/strategy" replace />} />
         <Route path="/grants" element={<Navigate to="/updates/awards" replace />} />
         <Route path="/updates/grants" element={<Navigate to="/updates/awards" replace />} />
+        <Route path="/wave1/leaderboard" element={<Navigate to="/wave1/creators-leaderboard" replace />} />
+        <Route path="/wave1/leaderboard-guide" element={<Navigate to="/wave1/creators-leaderboard-guide" replace />} />
 
         {/* Headless WordPress Post Detail Page */}
         <Route path="/awards-grants/:slug" element={<Pages.PostDetailPage />} />
