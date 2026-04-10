@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useSignerAddress } from '@nasun/wallet';
 import { useChat } from '../hooks/useChat';
 import { ChatMessageList } from './ChatMessageList';
-import { ChatInput } from './ChatInput';
+import { ChatInput, type ChatInputHandle } from './ChatInput';
 import { SetNicknameModal } from './SetNicknameModal';
 import { ChatRoomTabs } from './ChatRoomTabs';
 import { useChatTextSize } from '../hooks/useChatTextSize';
@@ -33,6 +33,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
   // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
   const [nicknameModalMode, setNicknameModalMode] = useState<false | 'first' | 'edit'>(false);
   const pendingMessageRef = useRef<string | null>(null);
+  const chatInputRef = useRef<ChatInputHandle>(null);
 
   // Wrap sendMessage to prompt nickname modal on first attempt if needed
   const handleSend = useCallback((content: string) => {
@@ -163,10 +164,12 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
         onLoadMore={loadMore}
         textSize={textSize}
         onToggleReaction={toggleReaction}
+        onMention={(name) => chatInputRef.current?.insertMention(name)}
       />
 
       {/* Input */}
       <ChatInput
+        ref={chatInputRef}
         onSend={handleSend}
         disabled={!isConnected}
         disabledPlaceholder={address ? 'Connecting...' : undefined}

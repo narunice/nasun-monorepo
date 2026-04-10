@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress } from './auth.js';
 import {
   initStore, insertMessage, getRecentMessages, purgeOldMessages, closeStore,
-  getNickname, setNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
+  getNickname, setNickname, clearNickname, isNicknameAvailable, validateNickname, getNicknamesBatch,
   getNicknameRateLimit,
   getDisplayName, getDisplayNamesBatch, getNasunDisplayName,
   fetchAndCacheProfile, ensureProfilesCached, getStaleProfiles,
@@ -522,6 +522,11 @@ function handleConnection(ws: WebSocket, req: { socket: { remoteAddress?: string
         }
         const available = isNicknameAvailable(nickname);
         send(ws, { type: 'nickname_check', available, nickname });
+        break;
+      }
+      case 'clear_nickname': {
+        const result = clearNickname(client.address);
+        send(ws, { type: 'nickname_result', ok: result.ok, nickname: undefined, error: result.error, rateLimit: result.rateLimit });
         break;
       }
       case 'list_rooms':

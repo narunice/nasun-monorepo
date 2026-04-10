@@ -1,9 +1,13 @@
-export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'chart_down', 'laugh'] as const;
+export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'heart', 'smile', 'grin', 'laugh', 'sob', 'clap', 'eyes', 'hundred', 'thinking', 'whale', 'wave'] as const;
 export type ReactionCode = typeof REACTION_CODES[number];
 
 export const REACTION_EMOJI: Record<ReactionCode, string> = {
   thumbsup: '\u{1F44D}', fire: '\u{1F525}', rocket: '\u{1F680}',
-  gem: '\u{1F48E}', chart_down: '\u{1F4C9}', laugh: '\u{1F602}',
+  gem: '\u{1F48E}', heart: '\u{2764}\u{FE0F}', smile: '\u{1F642}',
+  grin: '\u{1F604}', laugh: '\u{1F602}', sob: '\u{1F62D}',
+  clap: '\u{1F44F}', eyes: '\u{1F440}', hundred: '\u{1F4AF}',
+  thinking: '\u{1F914}', whale: '\u{1F433}',
+  wave: '\u{1F44B}',
 };
 
 export interface ChatMessage {

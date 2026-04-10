@@ -53,12 +53,17 @@ export interface GetFollowingPayload {
   type: 'get_following';
 }
 
+export interface ClearNicknamePayload {
+  type: 'clear_nickname';
+}
+
 export type ClientMessage =
   | AuthResponseMessage
   | SendMessagePayload
   | LoadHistoryPayload
   | SetNicknamePayload
   | CheckNicknamePayload
+  | ClearNicknamePayload
   | ListRoomsPayload
   | ToggleReactionPayload
   | ToggleFollowPayload
@@ -184,7 +189,7 @@ export type ServerMessage =
 
 // ===== Reaction Constants =====
 
-export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'chart_down', 'laugh'] as const;
+export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'heart', 'smile', 'grin', 'laugh', 'sob', 'clap', 'eyes', 'hundred', 'thinking', 'whale', 'wave'] as const;
 export type ReactionCode = typeof REACTION_CODES[number];
 export const VALID_REACTION_CODES = new Set<string>(REACTION_CODES);
 

@@ -10,9 +10,10 @@ interface Props {
   onLoadMore: () => void;
   textSize?: ChatTextSize;
   onToggleReaction?: (messageId: number, emojiCode: string) => void;
+  onMention?: (name: string) => void;
 }
 
-export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore, textSize = 0, onToggleReaction }: Props) {
+export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore, textSize = 0, onToggleReaction, onMention }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
 
@@ -86,6 +87,7 @@ export function ChatMessageList({ messages, currentAddress, hasMore, onLoadMore,
               }
               textSize={textSize}
               onToggleReaction={onToggleReaction}
+              onMention={onMention}
             />
           </Fragment>
         );
