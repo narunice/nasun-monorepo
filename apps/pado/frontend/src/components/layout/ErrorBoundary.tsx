@@ -13,21 +13,38 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
+  isChunkError: boolean;
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, isChunkError: false };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    const msg = error.message || '';
+    const isChunkError =
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Loading chunk') ||
+      msg.includes('Loading CSS chunk');
+    return { hasError: true, error, isChunkError };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    // 향후 에러 로깅 서비스 연동 가능
+
+    // Auto-reload on stale chunk errors (happens after deployments)
+    if (this.state.isChunkError) {
+      const key = 'chunk-reload-ts';
+      const lastReload = Number(sessionStorage.getItem(key) || 0);
+      // Prevent reload loop: only auto-reload once per 30 seconds
+      if (Date.now() - lastReload > 30_000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        return;
+      }
+    }
   }
 
   handleReload = () => {
@@ -36,6 +53,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render() {
     if (this.state.hasError) {
+      // Chunk load error: show spinner while auto-reloading
+      if (this.state.isChunkError) {
+        return (
+          <div className="flex items-center justify-center min-h-screen bg-theme-bg-primary">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-pd1 border-t-transparent" />
+          </div>
+        );
+      }
+
       if (this.props.fallback) {
         return this.props.fallback;
       }

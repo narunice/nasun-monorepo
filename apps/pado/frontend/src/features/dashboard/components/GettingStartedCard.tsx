@@ -1,7 +1,7 @@
 /**
  * GettingStartedCard
  *
- * 3-step onboarding checklist: Create Wallet -> Get Tokens -> First Trade.
+ * 3-step onboarding checklist: Create Wallet -> Get Tokens -> Buy Lottery Ticket.
  * Auto-hides when all steps are complete. Manually dismissible via localStorage.
  */
 
@@ -9,10 +9,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet, useBalance, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { ClaimAllButton } from '@nasun/wallet-ui';
-import { FIRST_TRADE_STORAGE_KEY } from '../../trading/hooks/useFirstTradeCelebration';
-import { ORDER_FILL_EVENT } from '../../trading/hooks/useOrderFillNotifier';
 import { LOTTERY_PURCHASED_KEY, LOTTERY_PURCHASE_EVENT } from '../../lottery/hooks/useLotteryActions';
-import { hasAccess } from '../../../config/network';
 
 const DISMISS_KEY = 'pado:gettingStartedDismissed';
 
@@ -39,21 +36,9 @@ export function GettingStartedCard() {
     try { return localStorage.getItem(DISMISS_KEY) === 'true'; } catch { return false; }
   });
 
-  const [hasTraded, setHasTraded] = useState(() => {
-    try { return !!localStorage.getItem(FIRST_TRADE_STORAGE_KEY); } catch { return false; }
-  });
-
   const [hasLotteryTicket, setHasLotteryTicket] = useState(() => {
     try { return !!localStorage.getItem(LOTTERY_PURCHASED_KEY); } catch { return false; }
   });
-
-  // Listen for first trade event to update reactively
-  useEffect(() => {
-    if (hasTraded) return;
-    const handler = () => setHasTraded(true);
-    document.addEventListener(ORDER_FILL_EVENT, handler);
-    return () => document.removeEventListener(ORDER_FILL_EVENT, handler);
-  }, [hasTraded]);
 
   // Listen for lottery purchase event to update reactively
   useEffect(() => {
@@ -90,21 +75,8 @@ export function GettingStartedCard() {
       },
     ];
 
-    // Add spot trading step when not in games-only mode
-    if (hasAccess('spot')) {
-      base.push({
-        id: 'trade',
-        label: 'Make Your First Trade',
-        description: 'Place a spot order on the orderbook',
-        completed: hasTraded,
-        action: isWalletConnected && hasBalance
-          ? { label: 'Go to Spot', to: '/markets/spot' }
-          : undefined,
-      });
-    }
-
     return base;
-  }, [isWalletConnected, hasBalance, hasLotteryTicket, hasTraded]);
+  }, [isWalletConnected, hasBalance, hasLotteryTicket]);
 
   const completedCount = steps.filter((s) => s.completed).length;
   const allComplete = completedCount === steps.length;
