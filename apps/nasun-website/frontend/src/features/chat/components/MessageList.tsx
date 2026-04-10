@@ -3,15 +3,26 @@ import type { ChatMessage } from '../../../lib/chat-service';
 import ReactionBar, { REACTION_CODES, REACTION_EMOJI } from './ReactionBar';
 
 // Highlight @mentions in message content
+// Format: @[Display Name] for names with spaces, @nickname for simple names
 function renderContent(content: string) {
-  const parts = content.split(/(@[a-zA-Z0-9_]{2,16})/g);
+  const parts = content.split(/(@\[[^\]]+\]|@[a-zA-Z0-9_#-]{2,32})/g);
   return parts.map((part, i) =>
     part.startsWith('@') ? (
-      <span key={i} className="text-nasun-c4 font-medium">{part}</span>
+      <span key={i} className="text-nasun-c4 font-medium">
+        {part.startsWith('@[') ? `@${part.slice(2, -1)}` : part}
+      </span>
     ) : (
       <span key={i}>{part}</span>
     )
   );
+}
+
+function formatSender(msg: ChatMessage): string {
+  const suffix = msg.sender.slice(-4);
+  if (msg.senderNickname) {
+    return `${msg.senderNickname}#${suffix}`;
+  }
+  return msg.senderName;
 }
 
 function formatTime(ts: number): string {
@@ -27,14 +38,16 @@ interface MessageListProps {
   hasMore: boolean;
   onLoadMore: () => void;
   onToggleReaction: (messageId: number, emojiCode: string) => void;
+  onMention?: (name: string) => void;
   currentUserId?: string;
 }
 
-export default function MessageList({ messages, hasMore, onLoadMore, onToggleReaction, currentUserId }: MessageListProps) {
+export default function MessageList({ messages, hasMore, onLoadMore, onToggleReaction, onMention, currentUserId }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
   const [pickerMsgId, setPickerMsgId] = useState<number | null>(null);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number; right: number; isMine: boolean } | null>(null);
 
   useEffect(() => {
     if (isNearBottomRef.current) {
@@ -90,8 +103,16 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
         return (
           <div key={msg.id} className={`group py-0.5 ${isMine ? 'flex flex-col items-end' : ''}`}>
             <div className={`flex items-baseline gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
-              <span className={`text-xs font-medium shrink-0 ${isMine ? 'text-nasun-c4' : 'text-white/70'}`}>
-                {msg.senderName}
+              <span className={`inline-flex items-center gap-1 shrink-0 ${isMine ? '' : 'cursor-pointer'}`}>
+                {msg.senderBadge === 'GP' && (
+                  <span className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold leading-none bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30" title="Genesis Pass Holder">GP</span>
+                )}
+                <span
+                  className={`text-xs font-medium ${isMine ? 'text-nasun-c4' : 'text-white/70 hover:text-white hover:underline'}`}
+                  onClick={!isMine && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(msg)); } : undefined}
+                >
+                  {formatSender(msg)}
+                </span>
               </span>
               <span className="text-[10px] text-white/20 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {formatTime(msg.timestamp)}
@@ -99,15 +120,27 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
             </div>
             <div className={`relative max-w-[85%] ${isMine ? 'ml-auto' : ''}`}>
               <div
-                onClick={() => setPickerMsgId(showPicker ? null : msg.id)}
+                onClick={(e) => {
+                  if (showPicker) { setPickerMsgId(null); setPickerPos(null); return; }
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setPickerPos({ top: rect.top, left: rect.left, right: window.innerWidth - rect.right, isMine });
+                  setPickerMsgId(msg.id);
+                }}
                 className={`text-sm break-words leading-relaxed cursor-pointer ${isMine ? 'text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90 hover:bg-white/5 rounded-lg px-1 -mx-1'}`}
               >
                 {renderContent(msg.content)}
               </div>
-              {showPicker && (
+              {showPicker && pickerPos && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setPickerMsgId(null)} />
-                  <div className={`absolute z-20 flex gap-1 p-1.5 bg-nasun-black border border-white/15 rounded-lg shadow-xl mt-1 ${isMine ? 'right-0' : 'left-0'}`}>
+                  <div className="fixed inset-0 z-[55]" onClick={() => { setPickerMsgId(null); setPickerPos(null); }} />
+                  <div
+                    className="fixed z-[56] p-1.5 bg-nasun-black border border-white/15 rounded-lg shadow-xl"
+                    style={{
+                      bottom: window.innerHeight - pickerPos.top + 4,
+                      ...(pickerPos.isMine ? { right: pickerPos.right } : { left: pickerPos.left }),
+                      display: 'grid', gridTemplateColumns: 'repeat(7, 1.75rem)', gap: '0.25rem',
+                    }}
+                  >
                     {REACTION_CODES.map((code) => (
                       <button
                         key={code}
