@@ -87,6 +87,9 @@ export function initStore(config: ChatServerConfig): void {
   // Migration: genesis pass badge
   try { db.exec('ALTER TABLE users ADD COLUMN has_genesis_pass INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
+  // Migration: profile image URL
+  try { db.exec('ALTER TABLE users ADD COLUMN profile_image_url TEXT'); } catch { /* already exists */ }
+
   purgeOldMessages(config.messageRetentionDays);
 }
 
@@ -133,16 +136,17 @@ export function purgeOldMessages(retentionDays: number): number {
   return result.changes;
 }
 
-export function upsertUser(address: string, displayName: string): void {
+export function upsertUser(address: string, displayName: string, profileImageUrl?: string): void {
   getDb()
     .prepare(
-      `INSERT INTO users (address, display_name, last_seen_at)
-       VALUES (?, ?, ?)
+      `INSERT INTO users (address, display_name, profile_image_url, last_seen_at)
+       VALUES (?, ?, ?, ?)
        ON CONFLICT(address) DO UPDATE SET
          display_name = excluded.display_name,
+         profile_image_url = COALESCE(excluded.profile_image_url, profile_image_url),
          last_seen_at = excluded.last_seen_at`
     )
-    .run(address, displayName, Date.now());
+    .run(address, displayName, profileImageUrl ?? null, Date.now());
 }
 
 // ===== Reactions =====
@@ -503,6 +507,17 @@ export function getGenesisPassBatch(addresses: string[]): Set<string> {
     .prepare(`SELECT address FROM users WHERE address IN (${placeholders}) AND has_genesis_pass = 1`)
     .all(...addresses) as Array<{ address: string }>;
   return new Set(rows.map((r) => r.address));
+}
+
+export function getProfileImagesBatch(addresses: string[]): Map<string, string> {
+  if (addresses.length === 0) return new Map();
+  const placeholders = addresses.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(`SELECT address, profile_image_url FROM users WHERE address IN (${placeholders}) AND profile_image_url IS NOT NULL`)
+    .all(...addresses) as Array<{ address: string; profile_image_url: string }>;
+  const result = new Map<string, string>();
+  for (const row of rows) result.set(row.address, row.profile_image_url);
+  return result;
 }
 
 export function closeStore(): void {
