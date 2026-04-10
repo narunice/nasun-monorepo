@@ -65,7 +65,11 @@ export default function ChatWidget() {
     nicknameRateLimit,
   } = useChat();
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const sortedRooms = useMemo(() => sortRoomsByPreference(rooms), [rooms]);
+  const languageRooms = useMemo(
+    () => rooms.filter((r) => r.category === 'language' || !r.category),
+    [rooms],
+  );
+  const sortedRooms = useMemo(() => sortRoomsByPreference(languageRooms), [languageRooms]);
   const isOpen = useChatStore((s) => s.isOpen);
   const toggleOpen = useChatStore((s) => s.toggleOpen);
   const position = useChatStore((s) => s.position);
