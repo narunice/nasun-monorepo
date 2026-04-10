@@ -228,7 +228,7 @@ export const ROOMS: RoomInfo[] = [
 export const VALID_ROOM_IDS = new Set(ROOMS.map((r) => r.id));
 
 // Reaction whitelist
-export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'heart', 'smile', 'grin', 'laugh', 'sob', 'clap', 'eyes', 'hundred', 'thinking', 'whale'] as const;
+export const REACTION_CODES = ['thumbsup', 'fire', 'rocket', 'gem', 'heart', 'smile', 'grin', 'laugh', 'sob', 'clap', 'eyes', 'hundred', 'thinking', 'whale', 'wave'] as const;
 export type ReactionCode = typeof REACTION_CODES[number];
 export const VALID_REACTION_CODES = new Set<string>(REACTION_CODES);
 
