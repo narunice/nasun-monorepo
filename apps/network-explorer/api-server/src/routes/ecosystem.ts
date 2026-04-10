@@ -64,6 +64,7 @@ app.get('/score/:identityId', async (c) => {
         bonusRow, bonusTodayRow, bonusWeeklyRow, bonusCategoryRows,
         govAllTimeRow, govTodayRow, govWeeklyRow,
         refAllTimeRow, refTodayRow, refWeeklyRow,
+        todayCategoryRows,
       ] = await Promise.all([
         pointsDb!`
           SELECT base_score::int as base_score
@@ -191,6 +192,18 @@ app.get('/score/:identityId', async (c) => {
             AND NOT flagged
             AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
         `.then(r => r[0]),
+        // Today's distinct base categories (for daily mission checklist)
+        pointsDb!`
+          SELECT DISTINCT category
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND tx_timestamp >= CURRENT_DATE AT TIME ZONE 'UTC'
+            AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
+            AND base_points > 0
+            AND NOT flagged
+            AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily')
+            AND category NOT LIKE 'ecosystem-bonus-%'
+        `.then(rows => rows.map((r: any) => r.category as string)),
       ]);
 
       // Alliance penalty check (PK lookup, <1ms)
@@ -274,6 +287,7 @@ app.get('/score/:identityId', async (c) => {
         multiplier,
         activations,
         isPenalized,
+        todayCategories: todayCategoryRows,
       };
     },
   );

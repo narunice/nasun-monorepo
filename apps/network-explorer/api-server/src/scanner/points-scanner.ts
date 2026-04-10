@@ -26,6 +26,7 @@ import {
 import { getIdentityToWalletMap } from './referral-bonus.js';
 import { runDailyNftChecks } from './daily-nft-check.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
+import { scanChatParticipation } from './chat-scanner.js';
 import { takeDailySnapshot } from './daily-snapshot.js';
 import { rpcCall } from '../rpc.js';
 import { fetchWithOffload } from './fetch-with-offload.js';
@@ -127,6 +128,16 @@ async function scanLoop(): Promise<void> {
       totalProcessed += faucetCount;
     } catch (err) {
       console.error('[Faucet] Scan error (non-fatal):', (err as Error).message);
+    }
+
+    // Chat participation detection: query chat server REST APIs (off-chain)
+    try {
+      const chatCount = await scanChatParticipation(
+        registeredWallets, genesisPassHolders, dailyCategorySeen,
+      );
+      totalProcessed += chatCount;
+    } catch (err) {
+      console.error('[Chat] Scan error (non-fatal):', (err as Error).message);
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

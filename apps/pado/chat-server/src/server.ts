@@ -9,6 +9,7 @@ import {
   fetchAndCacheProfile, ensureProfilesCached, getStaleProfiles,
   toggleReaction, getReactionSummaries, getMessageRoomId,
   toggleFollow, getFollowing, getFollowerCounts, getFollowingCount,
+  getChatParticipants,
 } from './store.js';
 import { roomExists, getAllRooms, getPoolRoom, setPoolRoomMapping, getPoolSymbol } from './rooms.js';
 import type {
@@ -705,6 +706,25 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
 
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ messages: result, hasMore }));
+    return;
+  }
+
+  if (url.pathname === '/api/chat-participation' && req.method === 'GET') {
+    const dateParam = url.searchParams.get('date');
+    if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      res.writeHead(400, corsHeaders);
+      res.end(JSON.stringify({ error: 'Invalid date (YYYY-MM-DD)' }));
+      return;
+    }
+    try {
+      const participants = getChatParticipants(dateParam);
+      res.writeHead(200, { ...corsHeaders, 'Cache-Control': 'public, max-age=30' });
+      res.end(JSON.stringify({ date: dateParam, participants }));
+    } catch (err) {
+      console.error('[HTTP] Chat participation query error:', err);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
     return;
   }
 
