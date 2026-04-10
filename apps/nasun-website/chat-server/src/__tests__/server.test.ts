@@ -81,6 +81,11 @@ function setupServer(): void {
     connectionsPerIp.set(ip, ipCount);
 
     const challenge = generateChallenge();
+    if (!challenge) {
+      ws.close(4503, 'Server busy');
+      connectionsPerIp.set(ip, ipCount - 1);
+      return;
+    }
     const authTimeout = setTimeout(() => {
       if (!authenticatedClients.has(ws)) {
         ws.close(4408, 'Auth timeout');
@@ -303,6 +308,7 @@ beforeAll(async () => {
     retentionCleanupIntervalMs: 86400000,
     allowedOrigins: ['http://localhost:5174'],
     nasunProfileApiUrl: '',
+    genesisPassApiUrl: '',
     trustProxy: false,
   };
 
