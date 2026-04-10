@@ -89,6 +89,7 @@ export interface ChatMessage {
 export interface RoomInfo {
   id: number;
   name: string;
+  category?: 'language' | 'market';
 }
 
 export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'connected';

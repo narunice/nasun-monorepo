@@ -48,8 +48,11 @@ function broadcast(msg: ServerMessage, excludeWs?: WebSocket): void {
 }
 
 function broadcastOnlineCount(): void {
-  const count = authenticatedClients.size;
-  broadcast({ type: 'online_count', count });
+  const uniqueAddresses = new Set<string>();
+  for (const client of authenticatedClients.values()) {
+    uniqueAddresses.add(client.address);
+  }
+  broadcast({ type: 'online_count', count: uniqueAddresses.size });
 }
 
 function issueSessionToken(address: string): string {
@@ -330,7 +333,8 @@ wss.on('connection', (ws, req) => {
         send(ws, { type: 'rooms_list', rooms: ROOMS });
         broadcastOnlineCount();
 
-        console.log(`Authenticated: ${verifiedAddress.slice(0, 10)}... (${authenticatedClients.size} online)`);
+        const uniqueCount = new Set(Array.from(authenticatedClients.values(), c => c.address)).size;
+        console.log(`Authenticated: ${verifiedAddress.slice(0, 10)}... (${uniqueCount} users, ${authenticatedClients.size} connections)`);
         return;
       }
 

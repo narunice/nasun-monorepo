@@ -132,6 +132,7 @@ export interface HistoryPayload {
 export interface RoomInfo {
   id: number;
   name: string;
+  category: 'language' | 'market';
 }
 
 export interface RoomsListPayload {
@@ -221,10 +222,16 @@ export interface StoredMessage {
 }
 
 // Room definitions
+// Language rooms: 0-99, Market rooms: 100+
 export const ROOMS: RoomInfo[] = [
-  { id: 0, name: 'Global' },
-  { id: 1, name: 'Korean' },
-  { id: 2, name: 'Vietnamese' },
+  { id: 0, name: 'Global', category: 'language' },
+  { id: 1, name: 'Korean', category: 'language' },
+  { id: 2, name: 'Vietnamese', category: 'language' },
+  { id: 100, name: 'Pado', category: 'market' },
+  { id: 101, name: 'NBTC', category: 'market' },
+  { id: 102, name: 'NSN', category: 'market' },
+  { id: 103, name: 'NETH', category: 'market' },
+  { id: 104, name: 'NSOL', category: 'market' },
 ];
 
 export const VALID_ROOM_IDS = new Set(ROOMS.map((r) => r.id));
