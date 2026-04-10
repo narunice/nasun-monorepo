@@ -1,4 +1,4 @@
-import { useState, useCallback, type KeyboardEvent } from 'react';
+import { useState, useCallback, useImperativeHandle, useRef, forwardRef, type KeyboardEvent } from 'react';
 
 const MAX_LENGTH = 500;
 
@@ -7,8 +7,27 @@ interface MessageInputProps {
   disabled?: boolean;
 }
 
-export default function MessageInput({ onSend, disabled }: MessageInputProps) {
+export interface MessageInputHandle {
+  insertMention: (name: string) => void;
+}
+
+const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(({ onSend, disabled }, ref) => {
   const [value, setValue] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    insertMention(name: string) {
+      // Use bracket format for names with spaces/special chars, plain for simple names
+      const needsBrackets = /[^a-zA-Z0-9_#-]/.test(name);
+      const mention = needsBrackets ? `@[${name}] ` : `@${name} `;
+      setValue((prev) => {
+        const next = prev ? `${prev}${mention}` : mention;
+        return next.slice(0, MAX_LENGTH);
+      });
+      // Focus the textarea after inserting
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    },
+  }));
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim();
@@ -29,6 +48,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
   return (
     <div className="flex gap-2 p-3 border-t border-white/10">
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={(e) => setValue(e.target.value.slice(0, MAX_LENGTH))}
         onKeyDown={handleKeyDown}
@@ -46,4 +66,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
       </button>
     </div>
   );
-}
+});
+
+MessageInput.displayName = 'MessageInput';
+export default MessageInput;

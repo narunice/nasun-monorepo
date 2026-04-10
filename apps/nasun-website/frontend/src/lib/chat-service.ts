@@ -11,13 +11,19 @@ export type ChatSignResult = {
   address: string;
   authMethod?: 'personal_sign' | 'ephemeral';
   ephemeralPubKey?: string;
+  displayName?: string;
 };
 export type ChatSignFn = (challenge: string) => Promise<ChatSignResult>;
 
 // ===== Protocol types (mirror server types) =====
 
 interface AuthChallengeMsg { type: 'auth_challenge'; challenge: string }
-interface AuthSuccessMsg { type: 'auth_success'; address: string; displayName: string | null }
+export interface NicknameRateLimit {
+  canChange: boolean;
+  changesRemaining: number;
+  lockedUntil: number | null; // epoch ms
+}
+interface AuthSuccessMsg { type: 'auth_success'; address: string; displayName: string | null; nickname: string | null; rateLimit?: NicknameRateLimit; sessionToken?: string }
 interface AuthErrorMsg { type: 'auth_error'; reason: string }
 interface ChatMessageMsg {
   type: 'chat_message';
@@ -25,6 +31,8 @@ interface ChatMessageMsg {
   roomId: number;
   sender: string;
   senderName: string;
+  senderNickname: string | null;
+  senderBadge?: string | null;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
@@ -49,10 +57,15 @@ interface RoomsListMsg { type: 'rooms_list'; rooms: { id: number; name: string }
 interface OnlineCountMsg { type: 'online_count'; count: number }
 interface ErrorMsg { type: 'error'; code: string; message: string }
 interface HeartbeatMsg { type: 'heartbeat' }
+interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string; rateLimit?: NicknameRateLimit }
+interface NicknameCheckMsg { type: 'nickname_check'; available: boolean; nickname: string }
+interface FollowResultMsg { type: 'follow_result'; target: string; following: boolean; followerCount: number; error?: string }
+interface FollowingListMsg { type: 'following_list'; addresses: string[] }
 
 type ServerMessage =
   | AuthChallengeMsg | AuthSuccessMsg | AuthErrorMsg
-  | ChatMessageMsg | HistoryMsg | RoomsListMsg | ReactionUpdateMsg | OnlineCountMsg | ErrorMsg | HeartbeatMsg;
+  | ChatMessageMsg | HistoryMsg | RoomsListMsg | ReactionUpdateMsg | OnlineCountMsg | ErrorMsg | HeartbeatMsg
+  | NicknameResultMsg | NicknameCheckMsg | FollowResultMsg | FollowingListMsg;
 
 // ===== Public types =====
 
@@ -61,6 +74,8 @@ export interface ChatMessage {
   roomId: number;
   sender: string;
   senderName: string;
+  senderNickname?: string | null;
+  senderBadge?: string | null;
   content: string;
   messageType: 'text' | 'system';
   replyToId: number | null;
@@ -76,7 +91,7 @@ export interface RoomInfo {
 
 export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update' | 'nickname' | 'nickname_check' | 'follow_result' | 'following_list';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -86,6 +101,10 @@ export interface ChatEventMap {
   error: { code: string; message: string };
   rooms_list: RoomInfo[];
   reaction_update: { messageId: number; roomId: number; reactions: Record<string, number>; myReaction: string | null };
+  nickname: { ok: boolean; nickname?: string; error?: string; rateLimit?: NicknameRateLimit };
+  nickname_check: { available: boolean; nickname: string };
+  follow_result: { target: string; following: boolean; followerCount: number; error?: string };
+  following_list: { addresses: string[] };
 }
 
 type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
@@ -116,6 +135,8 @@ export class ChatService {
   private connectionTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Map<ChatEventType, Set<ChatListener<ChatEventType>>>();
   private seenMessageIds = new Set<number>();
+  private currentNickname: string | null = null;
+  private currentRateLimit: NicknameRateLimit | null = null;
 
   on<T extends ChatEventType>(event: T, listener: ChatListener<T>): void {
     if (!this.listeners.has(event)) {
@@ -234,8 +255,8 @@ export class ChatService {
           break;
         }
         this.signFn(msg.challenge)
-          .then(({ signature, address, authMethod, ephemeralPubKey }) => {
-            this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey });
+          .then(({ signature, address, authMethod, ephemeralPubKey, displayName }) => {
+            this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey, displayName });
           })
           .catch((err) => {
             console.error('Chat sign error:', err);
@@ -246,7 +267,10 @@ export class ChatService {
 
       case 'auth_success':
         this.reconnectAttempts = 0;
+        this.currentNickname = msg.nickname ?? null;
+        if (msg.rateLimit) this.currentRateLimit = msg.rateLimit;
         this.setStatus('connected');
+        this.emit('nickname', { ok: true, nickname: msg.nickname ?? undefined, rateLimit: msg.rateLimit });
         break;
 
       case 'auth_error':
@@ -277,6 +301,8 @@ export class ChatService {
           roomId: msg.roomId,
           sender: msg.sender,
           senderName: msg.senderName,
+          senderNickname: msg.senderNickname,
+          senderBadge: msg.senderBadge,
           content: msg.content,
           messageType: msg.messageType,
           replyToId: msg.replyToId,
@@ -293,6 +319,8 @@ export class ChatService {
             roomId: m.roomId,
             sender: m.sender,
             senderName: m.senderName,
+            senderNickname: m.senderNickname,
+            senderBadge: m.senderBadge,
             content: m.content,
             messageType: m.messageType,
             replyToId: m.replyToId,
@@ -315,6 +343,24 @@ export class ChatService {
         this.emit('error', { code: msg.code, message: msg.message });
         break;
 
+      case 'nickname_result':
+        if (msg.ok) this.currentNickname = msg.nickname ?? null;
+        if (msg.rateLimit) this.currentRateLimit = msg.rateLimit;
+        this.emit('nickname', { ok: msg.ok, nickname: msg.nickname, error: msg.error, rateLimit: msg.rateLimit });
+        break;
+
+      case 'nickname_check':
+        this.emit('nickname_check', { available: msg.available, nickname: msg.nickname });
+        break;
+
+      case 'follow_result':
+        this.emit('follow_result', { target: msg.target, following: msg.following, followerCount: msg.followerCount, error: msg.error });
+        break;
+
+      case 'following_list':
+        this.emit('following_list', { addresses: msg.addresses });
+        break;
+
       case 'heartbeat':
         break;
     }
@@ -326,6 +372,9 @@ export class ChatService {
     }
   }
 
+  getNickname(): string | null { return this.currentNickname; }
+  getRateLimit(): NicknameRateLimit | null { return this.currentRateLimit; }
+
   toggleReaction(messageId: number, emojiCode: string): void {
     this.sendRaw({ type: 'toggle_reaction', messageId, emojiCode });
   }
@@ -336,6 +385,26 @@ export class ChatService {
 
   loadHistory(roomId: number = 0, beforeId?: number, limit?: number): void {
     this.sendRaw({ type: 'load_history', roomId, before: beforeId, limit });
+  }
+
+  setNickname(nickname: string): void {
+    this.sendRaw({ type: 'set_nickname', nickname });
+  }
+
+  checkNickname(nickname: string): void {
+    this.sendRaw({ type: 'check_nickname', nickname });
+  }
+
+  clearNickname(): void {
+    this.sendRaw({ type: 'clear_nickname' });
+  }
+
+  toggleFollow(target: string): void {
+    this.sendRaw({ type: 'toggle_follow', target });
+  }
+
+  getFollowing(): void {
+    this.sendRaw({ type: 'get_following' });
   }
 
   private scheduleReconnect(): void {
