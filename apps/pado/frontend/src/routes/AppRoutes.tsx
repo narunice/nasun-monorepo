@@ -9,11 +9,30 @@
  * - Admin (/admin) - conditional, admin-only
  */
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ComponentType } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PageSpinner } from '../components/common/PageSpinner';
 import { hasAccess, type AccessMode } from '../config/network';
 import { useAppAdmin } from '../hooks/useAppAdmin';
+
+// Retry dynamic import once on chunk load failure (stale cache after deploy).
+// On failure, reload the page to fetch the new index.html + chunks.
+function lazyWithRetry<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    factory().catch(() => {
+      // Prevent infinite reload loops: only reload once per session
+      const key = 'chunk-reload';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+      // Return a never-resolving promise to prevent React from rendering stale module
+      return new Promise(() => {});
+    }),
+  );
+}
 
 // Progressive feature gate: block routes below the required access level
 // Platform admins bypass all gates
@@ -30,23 +49,23 @@ import { HomePage } from '../pages/HomePage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 
 // Lazy: all other pages loaded on demand
-const TradePage = lazy(() => import('../pages/TradePage').then(m => ({ default: m.TradePage })));
-const PerpTradePage = lazy(() => import('../pages/PerpTradePage').then(m => ({ default: m.PerpTradePage })));
-const WalletPage = lazy(() => import('../pages/WalletPage').then(m => ({ default: m.WalletPage })));
-const PredictPage = lazy(() => import('../pages/PredictPage').then(m => ({ default: m.PredictPage })));
-const PredictMarketPage = lazy(() => import('../pages/PredictMarketPage').then(m => ({ default: m.PredictMarketPage })));
-const LotteryPage = lazy(() => import('../pages/LotteryPage').then(m => ({ default: m.LotteryPage })));
-const LotteryRoundPage = lazy(() => import('../pages/LotteryRoundPage').then(m => ({ default: m.LotteryRoundPage })));
-const AdminPage = lazy(() => import('../pages/AdminPage').then(m => ({ default: m.AdminPage })));
-const LeaderboardPage = lazy(() => import('../pages/LeaderboardPage').then(m => ({ default: m.LeaderboardPage })));
-const TraderProfilePage = lazy(() => import('../pages/TraderProfilePage').then(m => ({ default: m.TraderProfilePage })));
-const CompetitionsPage = lazy(() => import('../pages/CompetitionsPage').then(m => ({ default: m.CompetitionsPage })));
-const CompetitionDetailPage = lazy(() => import('../pages/CompetitionDetailPage').then(m => ({ default: m.CompetitionDetailPage })));
-const ScratchCardPage = lazy(() => import('../pages/ScratchCardPage').then(m => ({ default: m.ScratchCardPage })));
-const NumberMatchPage = lazy(() => import('../pages/NumberMatchPage').then(m => ({ default: m.NumberMatchPage })));
-const GameHistoryPage = lazy(() => import('../pages/GameHistoryPage').then(m => ({ default: m.GameHistoryPage })));
-const EarnPage = lazy(() => import('../pages/EarnPage').then(m => ({ default: m.EarnPage })));
-const PortfolioPage = lazy(() => import('../pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
+const TradePage = lazyWithRetry(() => import('../pages/TradePage').then(m => ({ default: m.TradePage })));
+const PerpTradePage = lazyWithRetry(() => import('../pages/PerpTradePage').then(m => ({ default: m.PerpTradePage })));
+const WalletPage = lazyWithRetry(() => import('../pages/WalletPage').then(m => ({ default: m.WalletPage })));
+const PredictPage = lazyWithRetry(() => import('../pages/PredictPage').then(m => ({ default: m.PredictPage })));
+const PredictMarketPage = lazyWithRetry(() => import('../pages/PredictMarketPage').then(m => ({ default: m.PredictMarketPage })));
+const LotteryPage = lazyWithRetry(() => import('../pages/LotteryPage').then(m => ({ default: m.LotteryPage })));
+const LotteryRoundPage = lazyWithRetry(() => import('../pages/LotteryRoundPage').then(m => ({ default: m.LotteryRoundPage })));
+const AdminPage = lazyWithRetry(() => import('../pages/AdminPage').then(m => ({ default: m.AdminPage })));
+const LeaderboardPage = lazyWithRetry(() => import('../pages/LeaderboardPage').then(m => ({ default: m.LeaderboardPage })));
+const TraderProfilePage = lazyWithRetry(() => import('../pages/TraderProfilePage').then(m => ({ default: m.TraderProfilePage })));
+const CompetitionsPage = lazyWithRetry(() => import('../pages/CompetitionsPage').then(m => ({ default: m.CompetitionsPage })));
+const CompetitionDetailPage = lazyWithRetry(() => import('../pages/CompetitionDetailPage').then(m => ({ default: m.CompetitionDetailPage })));
+const ScratchCardPage = lazyWithRetry(() => import('../pages/ScratchCardPage').then(m => ({ default: m.ScratchCardPage })));
+const NumberMatchPage = lazyWithRetry(() => import('../pages/NumberMatchPage').then(m => ({ default: m.NumberMatchPage })));
+const GameHistoryPage = lazyWithRetry(() => import('../pages/GameHistoryPage').then(m => ({ default: m.GameHistoryPage })));
+const EarnPage = lazyWithRetry(() => import('../pages/EarnPage').then(m => ({ default: m.EarnPage })));
+const PortfolioPage = lazyWithRetry(() => import('../pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 
 export function AppRoutes() {
   return (
