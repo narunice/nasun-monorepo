@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getChatService } from '../../../lib/chat-service';
 import type { ChatSigner, NicknameRateLimit } from '../../../lib/chat-service';
 import { useSigner, ZkLoginSigner } from '@nasun/wallet';
@@ -23,6 +23,7 @@ let cachedRooms: RoomInfo[] = [];
 const MAX_ROOM_MESSAGES = 500;
 
 const ACTIVE_ROOM_KEY = 'pado:chat:activeRoom';
+const LANGUAGE_ROOM_KEY = 'pado:chat:languageRoom';
 
 function getStoredActiveRoom(): number {
   try {
@@ -32,6 +33,24 @@ function getStoredActiveRoom(): number {
     return 0;
   }
 }
+
+function getStoredLanguageRoom(): number {
+  try {
+    const stored = localStorage.getItem(LANGUAGE_ROOM_KEY);
+    if (stored) return parseInt(stored, 10) || 0;
+    // Fallback: if active room is a language room, use it
+    const active = getStoredActiveRoom();
+    return active < 100 ? active : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function isLanguageRoom(roomId: number): boolean {
+  return roomId < 100;
+}
+
+let selectedLanguageRoomId = getStoredLanguageRoom();
 
 export interface UseChatResult {
   messages: ChatMessage[];
@@ -49,15 +68,15 @@ export interface UseChatResult {
   checkNickname: (name: string) => void;
   toggleReaction: (messageId: number, emojiCode: string) => void;
   rooms: RoomInfo[];
+  marketRooms: RoomInfo[];
+  languageRooms: RoomInfo[];
   activeRoomId: number;
   setActiveRoom: (roomId: number) => void;
+  selectedLanguageRoomId: number;
+  setLanguageRoom: (roomId: number) => void;
   unreadCounts: Record<number, number>;
 }
 
-/** Derive HTTP base URL from WebSocket URL (ws:// → http://, wss:// → https://) */
-function wsToHttpUrl(wsUrl: string): string {
-  return wsUrl.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/ws\/?$/, '/chat');
-}
 
 export function useChat(): UseChatResult {
   const { signer, address: signerAddress } = useSigner();
@@ -76,7 +95,11 @@ export function useChat(): UseChatResult {
   );
   const [nicknameRateLimit, setNicknameRateLimit] = useState<NicknameRateLimit | null>(null);
   const [rooms, setRooms] = useState<RoomInfo[]>(cachedRooms);
+  const [languageRoomId, setLanguageRoomIdState] = useState(selectedLanguageRoomId);
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
+
+  const marketRooms = useMemo(() => rooms.filter((r) => r.category === 'market'), [rooms]);
+  const languageRooms = useMemo(() => rooms.filter((r) => r.category === 'language' || (!r.category && r.id < 100)), [rooms]);
 
   // Keep a stable ref to the signer so async callbacks always read the latest
   const signerRef = useRef(signer);
@@ -180,43 +203,9 @@ export function useChat(): UseChatResult {
     return () => clearInterval(checkInterval);
   }, [signerAddress, signerType]);
 
-  // Poll chat history via HTTP when not authenticated (e.g. wallet locked)
-  // so users can still read messages without a WebSocket connection.
-  useEffect(() => {
-    const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
-    if (!wsUrl || signerAddress) return;
-
-    const httpBase = wsToHttpUrl(wsUrl);
-    const currentRoom = activeRoomIdRef.current;
-    const url = `${httpBase}/api/messages?roomId=${currentRoom}&limit=50`;
-
-    const fetchMessages = () => {
-      fetch(url)
-        .then((res) => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.json();
-        })
-        .then((data: { messages: ChatMessage[]; hasMore: boolean }) => {
-          roomMessages.set(currentRoom, data.messages);
-          roomHasMore.set(currentRoom, data.hasMore);
-          if (activeRoomIdRef.current === currentRoom) {
-            setMessages(data.messages);
-            setHasMore(data.hasMore);
-          }
-        })
-        .catch(() => {
-          // Silent fail — chat is non-critical
-        });
-    };
-
-    // Initial fetch immediately
-    fetchMessages();
-
-    // Poll every 10 seconds for new messages
-    const intervalId = setInterval(fetchMessages, 10_000);
-
-    return () => clearInterval(intervalId);
-  }, [signerAddress, activeRoomId]);
+  // HTTP polling for unauthenticated users is disabled.
+  // Chat uses nasun-chat-server (WebSocket only), which does not expose a REST /api/messages endpoint.
+  // Unauthenticated users see an empty chat with "Connect wallet to chat" prompt.
 
   // Subscribe to events.
   // When re-mounting (e.g. docked↔floating switch), request history
@@ -275,7 +264,11 @@ export function useChat(): UseChatResult {
 
     const unsubStatus = chatService.on('status', (s) => {
       setStatus(s);
-      if (s === 'connected') setError(null);
+      if (s === 'connected') {
+        setError(null);
+        // Load history for the active room on (re)connect
+        chatService.loadHistory(activeRoomIdRef.current);
+      }
       if (s === 'disconnected') {
         setNicknameRateLimit(null);
         // Clear all room state on disconnect to prevent stale data
@@ -373,6 +366,17 @@ export function useChat(): UseChatResult {
     }
   }, []);
 
+  const setLanguageRoom = useCallback((roomId: number) => {
+    if (!languageRooms.some((r) => r.id === roomId)) return;
+    selectedLanguageRoomId = roomId;
+    setLanguageRoomIdState(roomId);
+    try { localStorage.setItem(LANGUAGE_ROOM_KEY, String(roomId)); } catch { /* ignore */ }
+    // If currently viewing a language room, switch to the new one
+    if (isLanguageRoom(activeRoomIdRef.current)) {
+      setActiveRoom(roomId);
+    }
+  }, [languageRooms, setActiveRoom]);
+
   const sendMessage = useCallback((content: string) => {
     const trimmed = content.trim();
     if (!trimmed) return;
@@ -454,8 +458,12 @@ export function useChat(): UseChatResult {
     checkNickname,
     toggleReaction,
     rooms,
+    marketRooms,
+    languageRooms,
     activeRoomId,
     setActiveRoom,
+    selectedLanguageRoomId: languageRoomId,
+    setLanguageRoom,
     unreadCounts,
   };
 }
