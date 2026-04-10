@@ -303,6 +303,7 @@ beforeAll(async () => {
     retentionCleanupIntervalMs: 86400000,
     allowedOrigins: ['http://localhost:5174'],
     nasunProfileApiUrl: '',
+    trustProxy: false,
   };
 
   initStore(config);
@@ -769,7 +770,7 @@ describe('Edge Cases', () => {
 
     // Immediate reconnect
     const ws2 = await connectWs();
-    const result = await authenticateWs(ws2, 'valid-token-user1', 'Alice');
+    const result = await authenticateWs(ws2, 'valid-sig-user1', '0x' + '1'.repeat(64));
     expect(result.type).toBe('auth_success');
     await closeWs(ws2);
   });
