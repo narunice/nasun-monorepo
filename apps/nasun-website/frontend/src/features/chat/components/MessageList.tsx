@@ -85,8 +85,8 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
         }
 
         return (
-          <div key={msg.id} className="group py-0.5">
-            <div className="flex items-baseline gap-2">
+          <div key={msg.id} className={`group py-0.5 ${isMine ? 'flex flex-col items-end' : ''}`}>
+            <div className={`flex items-baseline gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
               <span className={`text-xs font-medium shrink-0 ${isMine ? 'text-nasun-c4' : 'text-white/70'}`}>
                 {msg.senderName}
               </span>
@@ -94,16 +94,17 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
                 {formatTime(msg.timestamp)}
               </span>
             </div>
-            <div className="text-sm text-white/90 break-words leading-relaxed">
-              {renderContent(msg.content)}
-            </div>
-            {/* Reactions: show if reactions exist, or show add button on hover */}
-            <div className={`mt-0.5 ${hasReactions ? '' : 'h-0 group-hover:h-auto'}`}>
-              <ReactionBar
-                reactions={msg.reactions ?? {}}
-                myReaction={msg.myReaction}
-                onToggle={(code) => onToggleReaction(msg.id, code)}
-              />
+            <div className="flex items-end gap-1">
+              <div className="shrink-0 pb-0.5">
+                <ReactionBar
+                  reactions={msg.reactions ?? {}}
+                  myReaction={msg.myReaction}
+                  onToggle={(code) => onToggleReaction(msg.id, code)}
+                />
+              </div>
+              <div className={`text-sm break-words leading-relaxed max-w-[85%] ${isMine ? 'text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90'}`}>
+                {renderContent(msg.content)}
+              </div>
             </div>
           </div>
         );

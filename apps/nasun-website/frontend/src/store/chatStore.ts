@@ -15,6 +15,10 @@ interface ChatState {
   onlineCount: number;
   isOpen: boolean;
 
+  // Mention notifications
+  mentionCount: number;
+  mentionSoundEnabled: boolean;
+
   // Widget geometry (persisted feel)
   position: { x: number; y: number } | null; // null = default bottom-right
   size: { width: number; height: number };
@@ -32,6 +36,9 @@ interface ChatState {
   toggleOpen: () => void;
   setPosition: (pos: { x: number; y: number } | null) => void;
   setSize: (size: { width: number; height: number }) => void;
+  addMention: () => void;
+  clearMentions: () => void;
+  toggleMentionSound: () => void;
 
   // Derived
   activeMessages: () => ChatMessage[];
@@ -62,6 +69,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   status: 'disconnected',
   onlineCount: 0,
   isOpen: false,
+  mentionCount: 0,
+  mentionSoundEnabled: true,
   position: null,
   size: DEFAULT_SIZE,
 
@@ -115,6 +124,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setOnlineCount: (onlineCount) => set({ onlineCount }),
   setIsOpen: (isOpen) => set({ isOpen }),
   toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
+  addMention: () => set((state) => ({ mentionCount: state.mentionCount + 1 })),
+  clearMentions: () => set({ mentionCount: 0 }),
+  toggleMentionSound: () => set((state) => ({ mentionSoundEnabled: !state.mentionSoundEnabled })),
   setPosition: (position) => set({ position }),
   setSize: (size) => set({
     size: {

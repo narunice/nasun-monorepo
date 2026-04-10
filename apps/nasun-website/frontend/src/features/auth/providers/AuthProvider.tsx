@@ -351,6 +351,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         provider,
         walletAddress: walletAddress.toLowerCase(),
         cognitoToken,
+        customDisplayName: profileData.customDisplayName,
         profileImageUrl: profileData.profileImageUrl,
         linkedAccounts: profileData.linkedAccounts || {},
       };
