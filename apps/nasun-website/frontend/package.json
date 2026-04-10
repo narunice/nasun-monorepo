@@ -39,6 +39,7 @@
     "@tanstack/react-query": "^5.79.0",
     "aws-amplify": "^6.14.4",
     "axios": "^1.12.2",
+    "boring-avatars": "^2.0.4",
     "chart.js": "^4.5.1",
     "chartjs-plugin-datalabels": "^2.2.0",
     "class-variance-authority": "^0.7.1",

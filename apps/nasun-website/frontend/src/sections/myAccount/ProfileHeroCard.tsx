@@ -9,6 +9,7 @@
  */
 
 import { FC, useState, useCallback, useMemo, useEffect, useRef } from "react";
+import Avatar from "boring-avatars";
 import { useAuth } from "@/features/auth";
 import { OuterBox, Spinner } from "@/components/ui";
 import { GenesisPassBadge } from "./components/StatusBadges";
@@ -50,34 +51,7 @@ const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 
 // ---- Helpers ----
 
-/** Generate a deterministic GitHub-style identicon SVG for a wallet address. */
-function generateWalletIdenticon(address: string): string {
-  const clean = address.replace("0x", "").toLowerCase().padEnd(62, "0");
-  const hue = parseInt(clean.slice(0, 6), 16) % 360;
-  const sat = 50 + (parseInt(clean.slice(6, 8), 16) % 30);
-  const light = 40 + (parseInt(clean.slice(8, 10), 16) % 20);
-  const fgColor = `hsl(${hue},${sat}%,${light}%)`;
-  const bgColor = `hsl(${hue},15%,12%)`;
-
-  const cells: boolean[] = [];
-  for (let i = 0; i < 15; i++) {
-    cells.push(parseInt(clean.slice(10 + i * 2, 12 + i * 2), 16) % 2 === 0);
-  }
-
-  const CELL = 10;
-  let rects = "";
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 5; col++) {
-      const idx = row * 3 + (col <= 2 ? col : 4 - col);
-      if (cells[idx]) {
-        rects += `<rect x="${col * CELL}" y="${row * CELL}" width="${CELL}" height="${CELL}" fill="${fgColor}"/>`;
-      }
-    }
-  }
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="64" height="64"><rect width="50" height="50" fill="${bgColor}"/>${rects}</svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
+// Identicon removed: boring-avatars used for all fallback avatars
 
 interface LoginIdentifier {
   label: string;
@@ -191,12 +165,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
 
   const profileImageUrl = user?.profileImageUrl;
 
-  const walletIdenticonUrl = useMemo(() => {
-    if (user?.provider === "Nasun Wallet" && user.walletAddress) {
-      return generateWalletIdenticon(user.walletAddress);
-    }
-    return null;
-  }, [user?.provider, user?.walletAddress]);
+  const walletAddress = user?.walletAddress ?? null;
 
   // ---- Category bar (all-time points breakdown by category) ----
   // scoreBreakdown includes base + all non-base categories directly from API.
@@ -225,24 +194,20 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
         {/* Header: Avatar + Name */}
         <div className="flex items-center gap-4">
           <div className="relative">
-            {(profileImageUrl && !imageError) || walletIdenticonUrl ? (
+            {profileImageUrl && !imageError ? (
               <img
-                src={
-                  profileImageUrl && !imageError
-                    ? profileImageUrl
-                    : walletIdenticonUrl!
-                }
+                src={profileImageUrl}
                 alt={displayName}
                 className={`w-16 h-16 rounded-2xl object-cover bg-gray-800 ${
-                  profileImageUrl && !imageError
-                    ? imageLoaded
-                      ? "opacity-100"
-                      : "opacity-0"
-                    : "opacity-100"
+                  imageLoaded ? "opacity-100" : "opacity-0"
                 }`}
                 onError={handleImageError}
                 onLoad={handleImageLoad}
               />
+            ) : walletAddress ? (
+              <div className="w-16 h-16 rounded-2xl overflow-hidden">
+                <Avatar name={walletAddress} variant="beam" size={64} />
+              </div>
             ) : (
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-nasun-c4 to-nasun-c5 flex items-center justify-center text-white text-2xl font-bold">
                 {displayName.charAt(0).toUpperCase()}

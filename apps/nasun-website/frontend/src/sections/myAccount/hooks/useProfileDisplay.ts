@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import type { UserData } from "@/store/userStore";
-import { generateWalletIdenticon } from "../utils/identicon";
 
 interface LoginIdentifier {
   label: string;
@@ -39,7 +38,7 @@ function getLoginIdentifier(
 export interface ProfileDisplay {
   displayName: string;
   avatarUrl: string | null;
-  identiconUrl: string | null;
+  walletAddress: string | null;
   fallbackLetter: string;
   loginIdentifier: LoginIdentifier | null;
 }
@@ -68,16 +67,10 @@ export function useProfileDisplay(user: UserData | null): ProfileDisplay {
     return "User";
   }, [user]);
 
-  const identiconUrl = useMemo(() => {
-    if (user?.provider === "Nasun Wallet" && user.walletAddress) {
-      return generateWalletIdenticon(user.walletAddress);
-    }
-    return null;
-  }, [user?.provider, user?.walletAddress]);
-
   const avatarUrl = user?.profileImageUrl ?? null;
+  const walletAddress = user?.walletAddress ?? null;
   const fallbackLetter = displayName.charAt(0).toUpperCase();
   const loginIdentifier = useMemo(() => getLoginIdentifier(user), [user]);
 
-  return { displayName, avatarUrl, identiconUrl, fallbackLetter, loginIdentifier };
+  return { displayName, avatarUrl, walletAddress, fallbackLetter, loginIdentifier };
 }
