@@ -203,10 +203,11 @@ export async function handler(event: CollectMetricsEvent): Promise<void> {
     previousCursor,
   );
 
-  // Save newly discovered addresses
+  // Save newly discovered addresses with their actual faucet TX date
   let newlySaved = 0;
   for (const addr of discovery.addresses) {
-    await saveAddress(addr, targetDate);
+    const firstSeenDate = discovery.addressDates.get(addr) ?? targetDate;
+    await saveAddress(addr, firstSeenDate);
     newlySaved++;
   }
   console.log(`Discovery: ${discovery.addresses.length} addresses found, ${newlySaved} save attempts`);
@@ -234,7 +235,7 @@ export async function handler(event: CollectMetricsEvent): Promise<void> {
 
   // Step 3: Check activity with concurrency + circuit breaker
   const { startMs, endMs } = dateToDayBounds(targetDate);
-  const { results, failureCount } = await checkBatchActivity(allAddresses, startMs, endMs, 10);
+  const { results, failureCount } = await checkBatchActivity(allAddresses, startMs, endMs, 50);
 
   const failureRate = failureCount / allAddresses.length;
   if (failureRate > 0.5) {

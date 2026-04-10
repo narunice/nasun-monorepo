@@ -11,7 +11,7 @@ import type { TxQueryResult, TxBlockResponse, CheckpointResponse } from './types
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const RPC_TIMEOUT_MS = 15_000;
 const SUI_ADDRESS_RE = /^0x[0-9a-f]{1,64}$/i;
-const MAX_DISCOVERY_PAGES = 200;
+const MAX_DISCOVERY_PAGES = 3000;
 
 // -- Generic RPC caller --
 
@@ -65,6 +65,8 @@ export async function getCheckpoint(seq: string): Promise<CheckpointResponse> {
 
 export interface DiscoveryResult {
   addresses: string[];
+  /** Map of address -> YYYY-MM-DD (earliest TX date from faucet) */
+  addressDates: Map<string, string>;
   lastCursor: string | null;
 }
 
@@ -78,7 +80,7 @@ export async function discoverAddressesFromFaucet(
   excludedAddresses: Set<string>,
   startCursor: string | null = null,
 ): Promise<DiscoveryResult> {
-  const addresses = new Set<string>();
+  const addressDates = new Map<string, string>();
   // Validate cursor length: Sui TX digest cursors are 44-char base64 strings.
   // Discard invalid cursors to avoid RPC -32602 errors.
   const validCursor = startCursor && startCursor.length >= 32 ? startCursor : null;
@@ -99,10 +101,19 @@ export async function discoverAddressesFromFaucet(
     for (const tx of result.data) {
       const effects = tx.effects;
       if (!effects) continue;
+
+      // Extract date from TX timestamp (YYYY-MM-DD UTC)
+      const txDate = tx.timestampMs
+        ? new Date(Number(tx.timestampMs)).toISOString().slice(0, 10)
+        : null;
+
       for (const obj of [...(effects.created ?? []), ...(effects.mutated ?? [])]) {
         const owner = obj.owner?.AddressOwner;
         if (owner && SUI_ADDRESS_RE.test(owner) && !excludedAddresses.has(owner)) {
-          addresses.add(owner);
+          // Keep earliest date (ascending order, so first occurrence wins)
+          if (!addressDates.has(owner) && txDate) {
+            addressDates.set(owner, txDate);
+          }
         }
       }
     }
@@ -113,7 +124,8 @@ export async function discoverAddressesFromFaucet(
   }
 
   return {
-    addresses: [...addresses],
+    addresses: [...addressDates.keys()],
+    addressDates,
     lastCursor,
   };
 }
