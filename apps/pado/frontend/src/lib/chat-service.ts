@@ -32,7 +32,7 @@ interface HistoryMsg {
   messages: ChatMessageMsg[];
   hasMore: boolean;
 }
-interface RoomsListMsg { type: 'rooms_list'; rooms: { id: number; name: string; description: string }[] }
+interface RoomsListMsg { type: 'rooms_list'; rooms: { id: number; name: string; description?: string; category?: 'language' | 'market' }[] }
 interface OnlineCountMsg { type: 'online_count'; count: number }
 interface ErrorMsg { type: 'error'; code: string; message: string }
 interface NicknameResultMsg { type: 'nickname_result'; ok: boolean; nickname?: string; error?: string; rateLimit?: NicknameRateLimit }

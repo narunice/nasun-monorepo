@@ -34,6 +34,7 @@ export interface RoomInfo {
   id: number;
   name: string;
   description?: string;
+  category?: 'language' | 'market';
 }
 
 export interface ChatState {

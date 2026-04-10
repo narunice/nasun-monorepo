@@ -27,7 +27,8 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
     messages, sendMessage, loadMore, isConnected, status, onlineCount, hasMore,
     nickname, needsNickname, nicknameRateLimit,
     toggleReaction,
-    rooms, activeRoomId, setActiveRoom, unreadCounts,
+    marketRooms, languageRooms, activeRoomId, setActiveRoom,
+    selectedLanguageRoomId, setLanguageRoom, unreadCounts,
   } = useChat();
 
   // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
@@ -147,12 +148,15 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
       )}
 
       {/* Room tabs */}
-      {rooms.length > 1 && (
+      {(marketRooms.length > 0 || languageRooms.length > 1) && (
         <ChatRoomTabs
-          rooms={rooms}
+          marketRooms={marketRooms}
+          languageRooms={languageRooms}
           activeRoomId={activeRoomId}
+          selectedLanguageRoomId={selectedLanguageRoomId}
           unreadCounts={unreadCounts}
           onSelectRoom={setActiveRoom}
+          onSelectLanguage={setLanguageRoom}
         />
       )}
 
