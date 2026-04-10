@@ -239,7 +239,7 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReact
               className={`${sizes.content} break-words leading-relaxed cursor-pointer rounded-lg transition-colors ${
                 isOwnMessage
                   ? 'w-fit text-theme-text-primary bg-theme-accent/20 hover:bg-theme-accent/30 px-2.5 py-1'
-                  : 'text-theme-text-primary/90 hover:bg-theme-text-primary/[0.06] px-1.5 py-0.5 -mx-1.5'
+                  : 'text-theme-text-primary/90 hover:bg-theme-text-primary/[0.06] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] px-1.5 py-0.5 -mx-1.5'
               }`}
               title={onContentClick ? 'Click to react' : undefined}
             >
