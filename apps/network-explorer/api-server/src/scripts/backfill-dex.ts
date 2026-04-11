@@ -101,6 +101,7 @@ const PKG_DEEPBOOK = '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee
 
 const DEX_QUERIES: DexQuery[] = [
   { moveEventType: `${PKG_DEEPBOOK}::order_info::OrderPlaced`, category: 'pado-dex', activityType: 'limit-order' },
+  { moveEventType: `${PKG_DEEPBOOK}::order_info::OrderFilled`, category: 'pado-dex', activityType: 'market-order' },
   { moveEventType: `${PKG_DEEPBOOK}::order::OrderCanceled`, category: 'pado-dex', activityType: 'cancel-order' },
 ];
 
