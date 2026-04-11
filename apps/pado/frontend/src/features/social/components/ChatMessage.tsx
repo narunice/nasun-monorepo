@@ -251,7 +251,6 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReact
                 reactions={message.reactions!}
                 myReaction={message.myReaction ?? null}
                 onToggle={(code) => onToggleReaction(message.id, code)}
-                compact={textSize === 0}
               />
             </div>
           )}

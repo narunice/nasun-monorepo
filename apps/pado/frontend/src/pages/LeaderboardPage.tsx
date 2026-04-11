@@ -146,9 +146,9 @@ export function LeaderboardPage() {
             ) : <div />}
             {mode === 'score' ? (
               <ScopeSelector selected={scope} onSelect={handleScopeChange} />
-            ) : mode !== 'activity' ? (
+            ) : (
               <PeriodSelector selected={period} onSelect={handlePeriodChange} />
-            ) : null}
+            )}
           </div>
 
           {/* Leaderboard Table */}
