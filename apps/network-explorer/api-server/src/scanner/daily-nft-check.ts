@@ -30,6 +30,7 @@ const EXCLUDED_CATEGORIES = [
   'ecosystem-bonus-game',
   'ecosystem-bonus-diversity',
   'ecosystem-bonus-admin',
+  'ecosystem-bonus-bugreport',
 ];
 
 export async function runDailyNftChecks(

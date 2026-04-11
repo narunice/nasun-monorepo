@@ -3,6 +3,8 @@ import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { rpcCall } from '../rpc.js';
 import { getScannerHealth } from '../scanner/points-scanner.js';
+import { getActivationsForUser } from '../scanner/ecosystem-cache.js';
+import { MULTIPLIER_CONFIG } from '../config/ecosystem.js';
 
 const app = new Hono();
 
@@ -253,6 +255,97 @@ app.get('/referral-stats', async (c) => {
   const data = await getReferralStats();
   c.header('Cache-Control', 'public, max-age=300');
   return c.json(data);
+});
+
+// POST /api/v1/points/bug-report-reward
+// Internal endpoint for admin Lambda to grant bug report bonus points.
+// Uses ecosystem-bonus-bugreport category to integrate with existing bonus pipeline.
+app.post('/bug-report-reward', async (c) => {
+  if (!pointsDb) {
+    return c.json({ error: 'points_not_configured' }, 503);
+  }
+
+  // API key auth
+  const apiKey = process.env.BUG_REPORT_API_KEY;
+  const requestKey = c.req.header('x-api-key');
+  if (!apiKey || !requestKey || requestKey !== apiKey) {
+    return c.json({ error: 'unauthorized' }, 401);
+  }
+
+  const body = await c.req.json<{
+    walletAddress?: string;
+    identityId?: string;
+    reportId?: string;
+    points?: number;
+    reason?: string;
+  }>();
+
+  // Validate required fields
+  if (!body.walletAddress || typeof body.walletAddress !== 'string') {
+    return c.json({ error: 'walletAddress is required' }, 400);
+  }
+  // Validate Sui address format (0x + 64 hex chars)
+  if (!/^0x[a-fA-F0-9]{64}$/.test(body.walletAddress)) {
+    return c.json({ error: 'Invalid walletAddress format (expected 0x + 64 hex chars)' }, 400);
+  }
+  if (!body.identityId || typeof body.identityId !== 'string') {
+    return c.json({ error: 'identityId is required' }, 400);
+  }
+  // Validate Cognito identityId format (region:uuid)
+  if (!/^[\w-]+:[\w-]{36}$/.test(body.identityId)) {
+    return c.json({ error: 'Invalid identityId format' }, 400);
+  }
+  if (!body.reportId || typeof body.reportId !== 'string') {
+    return c.json({ error: 'reportId is required' }, 400);
+  }
+  if (!body.points || typeof body.points !== 'number' || body.points <= 0 || body.points > 100) {
+    return c.json({ error: 'points must be 1-100' }, 400);
+  }
+
+  // Check Genesis Pass for multiplier
+  const activations = getActivationsForUser(body.identityId);
+  const hasGenesisPass = activations.some(
+    (a) => a.nftType === 'genesis-pass' && a.status === 'ACTIVE',
+  );
+  const genesisMultiplier = hasGenesisPass ? MULTIPLIER_CONFIG.genesisPass : 1.0;
+  const finalPoints = parseFloat((body.points * genesisMultiplier).toFixed(2));
+
+  const txDigest = `bugreport:${body.reportId}`;
+  const walletAddress = body.walletAddress.toLowerCase();
+
+  // INSERT with ON CONFLICT DO NOTHING for idempotency
+  const result = await pointsDb`
+    INSERT INTO activity_points (
+      tx_digest, tx_sequence_number, tx_timestamp,
+      wallet_address, identity_id,
+      category, activity_type,
+      base_points, volume_tier, genesis_multiplier, final_points,
+      event_seq
+    ) VALUES (
+      ${txDigest}, 0, NOW(),
+      ${walletAddress}, ${body.identityId},
+      'ecosystem-bonus-bugreport', 'report-accepted',
+      ${body.points}, 1.0, ${genesisMultiplier}, ${finalPoints},
+      0
+    )
+    ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+  `;
+
+  const created = result.count > 0;
+
+  console.log(
+    `[BugReport] Reward: ${body.reportId} -> ${walletAddress} ${finalPoints}pts` +
+    `${hasGenesisPass ? ' (GP 2x)' : ''}${created ? '' : ' (duplicate, skipped)'}` +
+    ` reason: ${body.reason || 'N/A'}`,
+  );
+
+  return c.json({
+    success: true,
+    created,
+    finalPoints,
+    genesisMultiplier,
+    reportId: body.reportId,
+  });
 });
 
 // GET /api/v1/points/health
