@@ -201,7 +201,7 @@ app.get('/score/:identityId', async (c) => {
             AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
             AND base_points > 0
             AND NOT flagged
-            AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily')
+            AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking')
             AND category NOT LIKE 'ecosystem-bonus-%'
         `.then(rows => rows.map((r: any) => r.category as string)),
       ]);

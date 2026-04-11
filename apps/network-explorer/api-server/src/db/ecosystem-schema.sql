@@ -7,8 +7,9 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
   ON activity_points(identity_id, tx_timestamp);
 
 -- 2. Materialized view: daily ecosystem base scores per identity
--- base_score = number of distinct activity categories per day
--- (e.g., if a user does DEX + lottery + governance in one day, base_score = 3)
+-- base_score = weighted sum of distinct activity categories per day
+-- Most categories count as 1; pado-dex counts as 2 (higher commitment).
+-- (e.g., if a user does DEX + lottery + governance in one day, base_score = 4)
 --
 -- Excluded categories (unified with daily-nft-check.ts EXCLUDED_CATEGORIES):
 --   referral-bonus, daily-mission (system-generated bonuses)
@@ -21,17 +22,26 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
 --   wallet-transfer (user-initiated token transfers)
 --   faucet, pado-*, baram-* (on-chain actions)
 --   staking: excluded from base_score, planned for independent scoring system
+--
+-- Weight override: pado-dex = 2 (matches DailyMissionsCard UI points)
 CREATE MATERIALIZED VIEW IF NOT EXISTS ecosystem_daily_scores AS
+WITH distinct_cats AS (
+  SELECT DISTINCT
+    identity_id,
+    date_trunc('day', tx_timestamp)::date AS day,
+    category
+  FROM activity_points
+  WHERE NOT flagged
+    AND identity_id IS NOT NULL
+    AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking')
+    AND category NOT LIKE 'ecosystem-bonus-%'
+)
 SELECT
   identity_id,
-  date_trunc('day', tx_timestamp)::date AS day,
-  COUNT(DISTINCT category) AS base_score
-FROM activity_points
-WHERE NOT flagged
-  AND identity_id IS NOT NULL
-  AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking')
-  AND category NOT LIKE 'ecosystem-bonus-%'
-GROUP BY identity_id, date_trunc('day', tx_timestamp)::date;
+  day,
+  SUM(CASE WHEN category = 'pado-dex' THEN 2 ELSE 1 END)::int AS base_score
+FROM distinct_cats
+GROUP BY identity_id, day;
 
 -- 3. Unique index required for REFRESH MATERIALIZED VIEW CONCURRENTLY
 CREATE UNIQUE INDEX IF NOT EXISTS idx_eco_daily_identity_day
