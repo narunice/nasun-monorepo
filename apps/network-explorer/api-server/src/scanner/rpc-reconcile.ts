@@ -58,6 +58,7 @@ const PKG = {
 const RECONCILE_QUERIES: ReconcileQuery[] = [
   // Pado DEX (DeepBook v2) - descending pagination only touches recent pages
   { moveEventType: `${PKG.deepbook}::order_info::OrderPlaced`, category: 'pado-dex', activityType: 'limit-order' },
+  { moveEventType: `${PKG.deepbook}::order_info::OrderFilled`, category: 'pado-dex', activityType: 'market-order' },
   { moveEventType: `${PKG.deepbook}::order::OrderCanceled`, category: 'pado-dex', activityType: 'cancel-order' },
   // Governance
   { moveEventType: `${PKG.governance}::proposal::VoteRegistered`, category: 'governance', activityType: 'vote' },
