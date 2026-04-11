@@ -6,10 +6,13 @@
 import { GameArea } from '../features/numbermatch/components/GameArea';
 import { PayoutTable } from '../features/numbermatch/components/PayoutTable';
 import { PoolStatusBar } from '../features/numbermatch/components/PoolStatusBar';
+import { GamesNav } from '../components/common';
 
 export function NumberMatchPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      <GamesNav />
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-theme-text-primary">

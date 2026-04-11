@@ -8,6 +8,7 @@ import { useGameHistory } from '../features/game-history/hooks/useGameHistory';
 import { GameSummaryCards } from '../features/game-history/components/GameSummaryCards';
 import { GameActivityList } from '../features/game-history/components/GameActivityList';
 import type { GameType } from '../features/game-history/types';
+import { GamesNav } from '../components/common';
 
 const FILTER_OPTIONS: { value: GameType | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -23,16 +24,20 @@ export function GameHistoryPage() {
 
   if (!address) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <p className="text-theme-text-muted text-lg">
-          Connect wallet to view your game history
-        </p>
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        <GamesNav />
+        <div className="text-center py-10">
+          <p className="text-theme-text-muted text-lg">
+            Connect wallet to view your game history
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <GamesNav />
       <h1 className="text-2xl font-bold text-theme-text">Game History</h1>
 
       <GameSummaryCards summary={summary} isLoading={isLoading} />
