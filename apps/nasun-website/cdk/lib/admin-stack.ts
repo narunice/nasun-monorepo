@@ -139,9 +139,22 @@ export class AdminStack extends cdk.Stack {
           expiration: cdk.Duration.days(1),
           prefix: "internal/",
         },
+        {
+          // Bug report screenshots: keep 90 days
+          expiration: cdk.Duration.days(90),
+          prefix: "bug-screenshots/",
+        },
       ],
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
+      cors: [
+        {
+          allowedOrigins: ALLOWED_ORIGINS,
+          allowedMethods: [s3.HttpMethods.POST],
+          allowedHeaders: ["*"],
+          maxAge: 3600,
+        },
+      ],
     });
 
     // Admin Export Lambda

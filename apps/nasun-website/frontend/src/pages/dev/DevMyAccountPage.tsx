@@ -33,6 +33,7 @@ import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking"
 // Dashboard Card Components
 import { ProfileHeroCard } from "../../sections/myAccount/ProfileHeroCard";
 import { GovernanceCard } from "../../sections/myAccount/GovernanceCard";
+import { BugReportsCard } from "../../sections/myAccount/BugReportsCard";
 import { CompactNftStatus } from "../../sections/myAccount/CompactNftStatus";
 import { AssetsCard } from "../../sections/myAccount/AssetsCard";
 import { DangerZoneCard } from "../../sections/myAccount/DangerZoneCard";
@@ -218,7 +219,7 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
-          {/* ConnectedAccounts(2col) + DangerZone(1col) */}
+          {/* ConnectedAccounts(2col) + BugReports(1col) */}
           <ErrorBoundary
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
@@ -227,11 +228,14 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
+          <BugReportsCard className="order-8 lg:order-none col-span-1" />
+
+          {/* DangerZone (full width) */}
           <ErrorBoundary
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-8 lg:order-none col-span-1" />
+              <DangerZoneCard className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>

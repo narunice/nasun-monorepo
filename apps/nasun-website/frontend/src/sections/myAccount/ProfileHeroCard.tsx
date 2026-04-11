@@ -19,7 +19,6 @@ import { HealthStatusBar } from "./HealthStatusBar";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import { AirdropRegistrationCard } from "./AirdropRegistrationCard";
-import { BugReportsCard } from "./BugReportsCard";
 import { useProfileDisplay } from "./hooks/useProfileDisplay";
 import { updateDisplayName } from "@/services/userProfileApi";
 import { useUserStore } from "@/store/userStore";
@@ -331,8 +330,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
         {/* Connected Accounts (production layout, when showPoints is off) */}
         {!showPoints && <ConnectedAccountsCard bare />}
 
-        {/* Bug Reports (always visible) */}
-        <BugReportsCard />
 
         {/* Activity Points Summary + Ecosystem Placeholder (only in dev/renewed layout) */}
         {showPoints && (
