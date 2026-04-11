@@ -452,22 +452,23 @@ describe('PointsLeaderboardTable', () => {
 // ========================================
 
 describe('ModeSelector', () => {
-  it('renders all three mode buttons', () => {
+  it('renders all four mode buttons', () => {
     render(<ModeSelector selected="volume" onSelect={vi.fn()} />);
+    expect(screen.getByText('Activity')).toBeTruthy();
     expect(screen.getByText('Volume')).toBeTruthy();
     expect(screen.getByText('PnL')).toBeTruthy();
-    expect(screen.getByText('Pado')).toBeTruthy();
+    expect(screen.getByText('Score')).toBeTruthy();
   });
 
   it('highlights selected mode', () => {
-    render(<ModeSelector selected="points" onSelect={vi.fn()} />);
-    const pointsBtn = screen.getByText('Pado');
-    expect(pointsBtn.className).toContain('bg-theme-bg-secondary');
-    expect(pointsBtn.className).toContain('text-theme-text-primary');
+    render(<ModeSelector selected="score" onSelect={vi.fn()} />);
+    const scoreBtn = screen.getByText('Score');
+    expect(scoreBtn.className).toContain('bg-theme-bg-secondary');
+    expect(scoreBtn.className).toContain('text-theme-text-primary');
   });
 
   it('does not highlight non-selected modes', () => {
-    render(<ModeSelector selected="points" onSelect={vi.fn()} />);
+    render(<ModeSelector selected="score" onSelect={vi.fn()} />);
     const volumeBtn = screen.getByText('Volume');
     expect(volumeBtn.className).toContain('text-theme-text-muted');
     expect(volumeBtn.className).not.toContain('bg-theme-bg-secondary');
@@ -477,11 +478,14 @@ describe('ModeSelector', () => {
     const onSelect = vi.fn();
     render(<ModeSelector selected="volume" onSelect={onSelect} />);
 
-    fireEvent.click(screen.getByText('Pado'));
-    expect(onSelect).toHaveBeenCalledWith('points');
+    fireEvent.click(screen.getByText('Activity'));
+    expect(onSelect).toHaveBeenCalledWith('activity');
 
     fireEvent.click(screen.getByText('PnL'));
     expect(onSelect).toHaveBeenCalledWith('pnl');
+
+    fireEvent.click(screen.getByText('Score'));
+    expect(onSelect).toHaveBeenCalledWith('score');
 
     fireEvent.click(screen.getByText('Volume'));
     expect(onSelect).toHaveBeenCalledWith('volume');
@@ -489,19 +493,20 @@ describe('ModeSelector', () => {
 
   it('calls onSelect even when clicking already selected mode', () => {
     const onSelect = vi.fn();
-    render(<ModeSelector selected="points" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText('Pado'));
-    expect(onSelect).toHaveBeenCalledWith('points');
+    render(<ModeSelector selected="score" onSelect={onSelect} />);
+    fireEvent.click(screen.getByText('Score'));
+    expect(onSelect).toHaveBeenCalledWith('score');
   });
 
-  it.each(['volume', 'pnl', 'points'] as LeaderboardMode[])(
+  it.each(['activity', 'volume', 'pnl', 'score'] as LeaderboardMode[])(
     'correctly highlights %s mode',
     (mode) => {
       render(<ModeSelector selected={mode} onSelect={vi.fn()} />);
       const labels: Record<LeaderboardMode, string> = {
+        activity: 'Activity',
         volume: 'Volume',
         pnl: 'PnL',
-        points: 'Pado',
+        score: 'Score',
       };
       const selectedBtn = screen.getByText(labels[mode]);
       expect(selectedBtn.className).toContain('bg-theme-bg-secondary');
