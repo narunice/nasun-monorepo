@@ -206,8 +206,14 @@ app.get('/score/:identityId', async (c) => {
         `.then(rows => rows.map((r: any) => r.category as string)),
       ]);
 
-      // Alliance penalty check (PK lookup, <1ms)
-      const activations = getActivationsForUser(identityId);
+      // NFT activations: try cache first, auto-sync on miss
+      let activations = getActivationsForUser(identityId);
+      if (activations.length === 0) {
+        const synced = await updateActivationsForUser(identityId);
+        if (synced && synced.length > 0) {
+          activations = synced;
+        }
+      }
       const hasAlliance = activations.some(a => a.nftType === 'alliance');
       const hasGenesis = activations.some(a => a.nftType === 'genesis-pass');
 
@@ -294,7 +300,8 @@ app.get('/score/:identityId', async (c) => {
 
   const scores = await getData();
 
-  const disabled = scores.multiplier === 0;
+  // disabled = no active NFT at all (not penalized with alliance)
+  const disabled = !scores.isPenalized && scores.multiplier === 0;
 
   const bt = scores.bonusTotal;
 

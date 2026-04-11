@@ -104,9 +104,10 @@ export async function runDailyNftChecks(
 async function checkAlliancePenalties(
   allianceOnlyIds: string[],
 ): Promise<{ applied: number; recovered: number }> {
-  // Grace period: penalty enforcement starts 7 days after system launch.
-  // Before this date, all users are treated as healthy.
-  const PENALTY_ENFORCEMENT_START = '2026-04-11';
+  // Grace period: penalty enforcement starts after Genesis Pass activation opens.
+  // Genesis Pass holders need a chance to activate for penalty immunity.
+  // Genesis Pass activation: April 15th midnight -> enforce from April 16th.
+  const PENALTY_ENFORCEMENT_START = '2026-04-16';
   if (new Date().toISOString().slice(0, 10) < PENALTY_ENFORCEMENT_START) {
     const cleared = await pointsDb!`DELETE FROM alliance_penalties`;
     if (cleared.count > 0) {
