@@ -256,10 +256,13 @@ const SAFE_DATA_PREFIXES = [
   'data:image/avif',
 ];
 
+// Regex to detect Pinata dedicated gateway URLs and extract the IPFS path
+const PINATA_GATEWAY_RE = /^https?:\/\/[^/]+\.mypinata\.cloud\/ipfs\/(.+)$/i;
+
 /**
  * Resolve a media URL to a safe, displayable URL.
- * Converts ipfs:// to HTTPS gateway, validates data: URIs,
- * and blocks dangerous schemes (javascript:, vbscript:, etc.)
+ * Converts ipfs:// to HTTPS gateway, rewrites dead Pinata gateway URLs,
+ * validates data: URIs, and blocks dangerous schemes (javascript:, vbscript:, etc.)
  */
 export function resolveMediaUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
@@ -279,6 +282,11 @@ export function resolveMediaUrl(url: string | undefined): string | undefined {
   }
 
   if (lower.startsWith('https://') || lower.startsWith('http://')) {
+    // Rewrite dead Pinata dedicated gateway URLs to public IPFS gateway
+    const pinataMatch = url.match(PINATA_GATEWAY_RE);
+    if (pinataMatch) {
+      return `https://ipfs.io/ipfs/${pinataMatch[1]}`;
+    }
     return url;
   }
 
