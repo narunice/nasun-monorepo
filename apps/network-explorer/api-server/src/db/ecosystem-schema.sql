@@ -19,7 +19,8 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
 -- NOT excluded (counts as real user activity):
 --   governance (voting/delegation is active participation)
 --   wallet-transfer (user-initiated token transfers)
---   faucet, staking, pado-*, baram-* (on-chain actions)
+--   faucet, pado-*, baram-* (on-chain actions)
+--   staking: excluded from base_score, planned for independent scoring system
 CREATE MATERIALIZED VIEW IF NOT EXISTS ecosystem_daily_scores AS
 SELECT
   identity_id,
@@ -28,7 +29,7 @@ SELECT
 FROM activity_points
 WHERE NOT flagged
   AND identity_id IS NOT NULL
-  AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily')
+  AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking')
   AND category NOT LIKE 'ecosystem-bonus-%'
 GROUP BY identity_id, date_trunc('day', tx_timestamp)::date;
 
