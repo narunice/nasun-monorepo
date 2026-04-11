@@ -1,24 +1,28 @@
-import type { LeaderboardConfig, Period } from './leaderboard-types.js';
-import { PERIOD_MS, POINTS } from './leaderboard-types.js';
+import type { LeaderboardConfig, Period, ScoreScope } from './leaderboard-types.js';
+import { PERIOD_MS, SCORE } from './leaderboard-types.js';
 import {
   aggregateTraderVolume,
-  getCurrentRanks,
   replaceTraderStats,
   getActiveCompetitions,
   aggregateCompetitionVolume,
   replaceCompetitionResults,
   updateCompetition,
   computeTraderPnl,
-  getPnlCurrentRanks,
   replaceTraderPnlStats,
-  getPointsCurrentRanks,
-  replaceTraderPoints,
-  generatePointsSnapshot,
-  purgeOldSnapshots,
+  replaceTraderScores,
+  aggregateDailyTraderStats,
+  aggregateUniquePools,
+  clearTraderScores,
+  rotatePrevRanks,
+  getIndexerState,
+  setIndexerState,
+  generateScoreSnapshot,
+  purgeOldScoreSnapshots,
 } from './leaderboard-store.js';
 
-// PnL data cached during PnL aggregation, consumed by points aggregation
+// PnL data cached during PnL aggregation, consumed by score aggregation
 let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
+let cachedWeeklyPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
 
 let config: LeaderboardConfig | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -42,26 +46,16 @@ function runAggregation(): void {
   for (const period of PERIODS) {
     const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
 
-    // Get current ranks for prev_rank tracking
-    const currentRanks = getCurrentRanks(period);
-
-    // Aggregate trader volumes
     const traders = aggregateTraderVolume(cutoff, config.excludedAddresses, AGGREGATION_LIMIT);
 
-    // Build ranked entries
-    const ranked = traders.map((t, index) => {
-      const rank = index + 1;
-      const prevRank = currentRanks.get(t.address) ?? 0;
-      return {
-        address: t.address,
-        volumeQuote: t.volume_quote,
-        tradeCount: t.trade_count,
-        uniquePools: t.unique_pools,
-        lastTradeAt: t.last_trade_at,
-        rank,
-        prevRank: prevRank > 0 ? prevRank : rank, // First appearance = no change
-      };
-    });
+    const ranked = traders.map((t, index) => ({
+      address: t.address,
+      volumeQuote: t.volume_quote,
+      tradeCount: t.trade_count,
+      uniquePools: t.unique_pools,
+      lastTradeAt: t.last_trade_at,
+      rank: index + 1,
+    }));
 
     replaceTraderStats(period, ranked);
   }
@@ -69,8 +63,8 @@ function runAggregation(): void {
   // Aggregate PnL rankings
   runPnlAggregation();
 
-  // Aggregate points
-  runPointsAggregation();
+  // Aggregate scores (weekly + alltime)
+  runScoreAggregation();
 
   // Aggregate active competitions
   runCompetitionAggregation();
@@ -91,10 +85,9 @@ function runPnlAggregation(): void {
   for (const period of PERIODS) {
     const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
 
-    const currentRanks = getPnlCurrentRanks(period);
     const traders = computeTraderPnl(cutoff, config.excludedAddresses, AGGREGATION_LIMIT);
 
-    // Cache "all" period PnL data for points aggregation
+    // Cache "all" period PnL data for score aggregation
     if (period === 'all') {
       cachedPnlByAddress = new Map();
       for (const t of traders) {
@@ -105,95 +98,131 @@ function runPnlAggregation(): void {
       }
     }
 
-    const ranked = traders.map((t, index) => {
-      const rank = index + 1;
-      const prevRank = currentRanks.get(t.address) ?? 0;
-      return {
-        address: t.address,
-        realizedPnlRaw: t.realizedPnlRaw,
-        pnlPercent: t.pnlPercent,
-        tradeCount: t.tradeCount,
-        rank,
-        prevRank: prevRank > 0 ? prevRank : rank,
-      };
-    });
+    const ranked = traders.map((t, index) => ({
+      address: t.address,
+      realizedPnlRaw: t.realizedPnlRaw,
+      pnlPercent: t.pnlPercent,
+      tradeCount: t.tradeCount,
+      rank: index + 1,
+    }));
 
     replaceTraderPnlStats(period, ranked);
+  }
+
+  // Cache weekly PnL for score aggregation
+  const weekStartMs = getCurrentWeekStartMs();
+  const weeklyPnlTraders = computeTraderPnl(weekStartMs, config.excludedAddresses, AGGREGATION_LIMIT);
+  cachedWeeklyPnlByAddress = new Map();
+  for (const t of weeklyPnlTraders) {
+    cachedWeeklyPnlByAddress.set(t.address, {
+      realizedPnlRaw: t.realizedPnlRaw,
+      pnlPercent: t.pnlPercent,
+    });
   }
 }
 
 /**
- * Compute points for all traders based on lifetime ("all" period) volume stats.
- *
- * Formula:
- *   trade_points   = FIRST_TRADE_BONUS (if any trades) + trade_count * PER_TRADE
- *   volume_points  = floor(volume_nusdc / 1_000_000_000) * PER_1K_VOLUME   (NUSDC has 6 decimals → raw/1e6 = USD, so 1K USD = 1e9 raw)
- *   diversity_pts  = unique_pools * PER_UNIQUE_POOL
- *   total          = trade_points + volume_points + diversity_pts
+ * Compute scores for all traders with daily caps.
+ * Runs for both 'weekly' and 'alltime' scopes.
  */
-function runPointsAggregation(): void {
+function runScoreAggregation(): void {
   if (!config) return;
 
-  // Use the "all" period volume data (already aggregated above)
-  const traders = aggregateTraderVolume(0, config.excludedAddresses, AGGREGATION_LIMIT);
-  if (traders.length === 0) return;
+  const weekStartMs = getCurrentWeekStartMs();
 
-  const currentRanks = getPointsCurrentRanks();
+  // Weekly boundary check + reset
+  const savedWeekStart = getIndexerState('current_week_start');
+  if (!savedWeekStart || parseInt(savedWeekStart) < weekStartMs) {
+    clearTraderScores('weekly');
+    setIndexerState('current_week_start', String(weekStartMs));
+  }
 
-  // Compute points for each trader
-  const pointsData = traders.map((t) => {
-    const tradeCount = t.trade_count;
-    const volumeRaw = BigInt(t.volume_quote);
-    const uniquePools = t.unique_pools;
+  // prev_rank 24h rotation
+  const lastRotation = getIndexerState('last_rank_rotation');
+  const ROTATION_INTERVAL = 24 * 60 * 60 * 1000;
+  if (!lastRotation || (Date.now() - parseInt(lastRotation)) >= ROTATION_INTERVAL) {
+    rotatePrevRanks();
+    setIndexerState('last_rank_rotation', String(Date.now()));
+  }
 
-    // Points calculation
-    const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
-    const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
-    // volumeRaw is in NUSDC raw units (6 decimals). 1K USD = 1_000 * 1e6 = 1e9 raw
-    const volumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
-    const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
+  computeAndStoreScores('weekly', weekStartMs);
+  computeAndStoreScores('alltime', 0);
+}
 
-    // PnL points: realized profit amount + return rate (losses floored at 0)
-    const pnlData = cachedPnlByAddress.get(t.address);
-    let pnlPoints = 0;
-    if (pnlData) {
-      // Amount: per $1K profit. realizedPnlRaw is in NUSDC raw (6 decimals)
-      if (pnlData.realizedPnlRaw > 0) {
-        pnlPoints += Math.floor(pnlData.realizedPnlRaw / 1_000_000_000) * POINTS.PER_1K_PNL;
-      }
-      // Return rate: per 10% profit
-      if (pnlData.pnlPercent > 0) {
-        pnlPoints += Math.floor(pnlData.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
-      }
+function computeAndStoreScores(scope: ScoreScope, cutoffMs: number): void {
+  if (!config) return;
+
+  const dailyStatsMap = aggregateDailyTraderStats(cutoffMs, config.excludedAddresses);
+  const uniquePoolsMap = aggregateUniquePools(cutoffMs, config.excludedAddresses);
+  const pnlMap = scope === 'weekly' ? cachedWeeklyPnlByAddress : cachedPnlByAddress;
+
+  const allAddresses = new Set([...dailyStatsMap.keys(), ...uniquePoolsMap.keys(), ...pnlMap.keys()]);
+  if (allAddresses.size === 0) return;
+
+  const scoreData: Array<{
+    address: string; totalScore: number; scoreFromTrades: number;
+    scoreFromVolume: number; scoreFromDiversity: number; scoreFromPnl: number;
+    tradeCount: number; volumeQuote: string;
+  }> = [];
+
+  for (const address of allAddresses) {
+    const days = dailyStatsMap.get(address) ?? [];
+    let tradeScore = 0, volumeScore = 0, totalTrades = 0, totalVolume = 0n;
+
+    for (const day of days) {
+      const cappedTrades = Math.min(day.trade_count, SCORE.DAILY_TRADE_CAP);
+      tradeScore += cappedTrades * SCORE.PER_TRADE;
+
+      const volumeUsd = Number(BigInt(day.volume_raw) / BigInt(1_000_000));
+      const cappedVolumeUsd = Math.min(volumeUsd, SCORE.DAILY_VOLUME_CAP_USD);
+      volumeScore += Math.floor(cappedVolumeUsd / 2000) * SCORE.PER_2K_VOLUME;
+
+      totalTrades += day.trade_count;
+      totalVolume += BigInt(day.volume_raw);
     }
 
-    return {
-      address: t.address,
-      totalPoints: tradePoints + volumePoints + diversityPoints + pnlPoints,
-      pointsFromTrades: tradePoints,
-      pointsFromVolume: volumePoints,
-      pointsFromDiversity: diversityPoints,
-      pointsFromPnl: pnlPoints,
-      tradeCount,
-      volumeQuote: t.volume_quote,
-    };
-  });
+    const diversityScore = (uniquePoolsMap.get(address) ?? 0) * SCORE.PER_UNIQUE_POOL;
 
-  // Sort by total points descending
-  pointsData.sort((a, b) => b.totalPoints - a.totalPoints);
+    let pnlScore = 0;
+    const pnlData = pnlMap.get(address);
+    if (pnlData) {
+      if (pnlData.realizedPnlRaw > 0) {
+        pnlScore += Math.floor(pnlData.realizedPnlRaw / 1_000_000_000) * SCORE.PER_1K_PROFIT;
+      }
+      const returnScore = Math.floor(pnlData.pnlPercent / 5) * SCORE.PER_5PCT_RETURN;
+      pnlScore += Math.max(0, returnScore);
+    }
 
-  // Assign ranks
-  const ranked = pointsData.map((t, index) => {
-    const rank = index + 1;
-    const prevRank = currentRanks.get(t.address) ?? 0;
-    return {
-      ...t,
-      rank,
-      prevRank: prevRank > 0 ? prevRank : rank,
-    };
-  });
+    scoreData.push({
+      address,
+      totalScore: tradeScore + volumeScore + diversityScore + pnlScore,
+      scoreFromTrades: tradeScore,
+      scoreFromVolume: volumeScore,
+      scoreFromDiversity: diversityScore,
+      scoreFromPnl: pnlScore,
+      tradeCount: totalTrades,
+      volumeQuote: String(totalVolume),
+    });
+  }
 
-  replaceTraderPoints(ranked);
+  scoreData.sort((a, b) => b.totalScore - a.totalScore);
+  const ranked = scoreData.slice(0, AGGREGATION_LIMIT).map((t, i) => ({
+    ...t,
+    rank: i + 1,
+  }));
+
+  replaceTraderScores(scope, ranked);
+}
+
+/** Get current week's Monday UTC 00:00 timestamp */
+function getCurrentWeekStartMs(): number {
+  const now = new Date();
+  const day = now.getUTCDay();
+  const diff = day === 0 ? 6 : day - 1;
+  const monday = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diff, 0, 0, 0, 0
+  ));
+  return monday.getTime();
 }
 
 /**
@@ -257,14 +286,14 @@ function checkDailySnapshot(): void {
   if (lastSnapshotDate === today) return;
 
   try {
-    const count = generatePointsSnapshot(today);
+    const count = generateScoreSnapshot(today);
     lastSnapshotDate = today;
 
     if (count > 0) {
       console.log(`[Snapshot] Generated daily points snapshot for ${today}: ${count} traders`);
 
       // Purge old snapshots periodically (only when a new snapshot is created)
-      const purged = purgeOldSnapshots(SNAPSHOT_RETENTION_DAYS);
+      const purged = purgeOldScoreSnapshots(SNAPSHOT_RETENTION_DAYS);
       if (purged > 0) {
         console.log(`[Snapshot] Purged ${purged} old snapshot entries (>${SNAPSHOT_RETENTION_DAYS} days)`);
       }
