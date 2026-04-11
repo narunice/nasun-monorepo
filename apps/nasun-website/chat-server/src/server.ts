@@ -255,7 +255,7 @@ function handleHttpRequest(
     return;
   }
 
-  if (url.pathname === '/api/chat-participation' && req.method === 'GET') {
+  if (url.pathname === '/api/chat-participation' && (req.method === 'GET' || req.method === 'HEAD')) {
     const dateParam = url.searchParams.get('date');
     if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
       res.writeHead(400, corsHeaders);
