@@ -16,7 +16,7 @@ import { calcLockedAmounts } from '../types';
 import { UnderlineTabs, type TabItem } from '@/components/common';
 import { TransferModal } from './TransferModal';
 import { getActiveTPSLOrders, getTPSLOrders, cancelTPSLOrder, removeTPSLOrder, clearTPSLHistory } from '../lib/tpsl-storage';
-import { TPSL_POLL_INTERVAL_MS } from '../lib/tpsl-types';
+import { TPSL_POLL_INTERVAL_MS, MAX_TPSL_ORDERS } from '../lib/tpsl-types';
 import type { TPSLOrder } from '../lib/tpsl-types';
 import { MiniPortfolioWidget } from '../../portfolio/components/MiniPortfolioWidget';
 
@@ -223,6 +223,16 @@ function TPSLTab() {
       {/* Active TP/SL Orders */}
       {activeOrders.length > 0 ? (
         <>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-trading-xs text-theme-text-muted">
+              {activeOrders.length}/{MAX_TPSL_ORDERS} active
+            </span>
+            {activeOrders.length >= MAX_TPSL_ORDERS * 0.8 && (
+              <span className={`text-trading-xs ${activeOrders.length >= MAX_TPSL_ORDERS ? 'text-red-400' : 'text-yellow-400'}`}>
+                {activeOrders.length >= MAX_TPSL_ORDERS ? 'Limit reached' : 'Approaching limit'}
+              </span>
+            )}
+          </div>
           <div className="text-trading-xs xl:text-trading-sm text-theme-text-muted grid grid-cols-5 xl:grid-cols-6 gap-2 mb-2 pb-1 border-b border-theme-border">
             <span>Type</span>
             <span>Side</span>

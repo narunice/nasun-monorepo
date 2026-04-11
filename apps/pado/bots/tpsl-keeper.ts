@@ -511,7 +511,11 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
         // Per-user order limit
         const userOrders = store.getByUser(userAddress);
         if (userOrders.length >= MAX_ORDERS_PER_USER) {
-          sendJson(res, 429, { error: `Maximum ${MAX_ORDERS_PER_USER} active orders per user` });
+          sendJson(res, 429, {
+            error: `Maximum ${MAX_ORDERS_PER_USER} active TP/SL orders per user. Cancel existing TP/SL orders to register new ones.`,
+            activeCount: userOrders.length,
+            maxCount: MAX_ORDERS_PER_USER,
+          });
           return;
         }
 
