@@ -39,6 +39,7 @@ import { ReferralStack } from '../lib/referral-stack';
 import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
 import { EcosystemStack } from '../lib/ecosystem-stack';
 import { AirdropStack } from '../lib/airdrop-stack';
+import { BugReportStack } from '../lib/bug-report-stack';
 
 const app = new cdk.App();
 
@@ -118,6 +119,15 @@ const airdropStack = new AirdropStack(app, 'AirdropStack', {
   cognitoIdentityPoolId,
 });
 // No dependencies - references tables by name
+
+// Bug Report stack (user-submitted bug reports with Telegram notification)
+const bugReportStack = new BugReportStack(app, 'BugReportStack', {
+  env: cdkEnv,
+  environmentName: 'prod',
+  cognitoIdentityPoolId,
+  naruTelegramChatId: process.env.NARU_TELEGRAM_CHAT_ID || '',
+});
+// No dependencies - standalone stack
 
 // Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {

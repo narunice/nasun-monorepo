@@ -1,8 +1,13 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useUserStore } from '../../../store/userStore';
-import type { BugReportData, BugReportResponse } from '../types';
+import { useWalletAccount } from '@nasun/wallet';
+import type { BugReportData, BugReportResponse, BugReport, PresignedPostData } from '../types';
 
 const BUG_REPORT_API_URL = import.meta.env.VITE_BUG_REPORT_API_URL;
+
+// ============================================
+// Submit bug report
+// ============================================
 
 async function submitBugReport(
   data: BugReportData,
@@ -27,16 +32,101 @@ async function submitBugReport(
 
 export function useBugReport() {
   const user = useUserStore((s) => s.user);
+  const account = useWalletAccount();
+  const walletConnected = !!account?.address;
 
-  return useMutation({
-    mutationFn: (data: Omit<BugReportData, 'displayName'>) => {
+  const mutation = useMutation({
+    mutationFn: (data: Omit<BugReportData, 'displayName' | 'walletAddress'>) => {
       if (!user?.cognitoToken) {
         throw new Error('Not authenticated');
       }
+      if (!account?.address) {
+        throw new Error('Wallet not connected');
+      }
       return submitBugReport(
-        { ...data, displayName: user.customDisplayName || user.username },
+        {
+          ...data,
+          displayName: user.customDisplayName || user.username,
+          walletAddress: account.address,
+        },
         user.cognitoToken
       );
     },
   });
+
+  return { ...mutation, walletConnected };
+}
+
+// ============================================
+// Get my reports
+// ============================================
+
+async function fetchMyReports(token: string): Promise<BugReport[]> {
+  const res = await fetch(`${BUG_REPORT_API_URL}/bug-report/my-reports`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.reports || [];
+}
+
+export function useMyBugReports() {
+  const user = useUserStore((s) => s.user);
+
+  return useQuery({
+    queryKey: ['bug-reports', 'my-reports'],
+    queryFn: () => fetchMyReports(user!.cognitoToken!),
+    enabled: !!user?.cognitoToken,
+    staleTime: 60_000,
+  });
+}
+
+// ============================================
+// Get presigned upload URL
+// ============================================
+
+async function getUploadUrl(
+  contentType: string,
+  token: string
+): Promise<PresignedPostData> {
+  const res = await fetch(
+    `${BUG_REPORT_API_URL}/bug-report/upload-url?contentType=${encodeURIComponent(contentType)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function uploadScreenshot(
+  file: File,
+  token: string,
+): Promise<string> {
+  const presigned = await getUploadUrl(file.type, token);
+
+  // Upload to S3 using presigned POST
+  const formData = new FormData();
+  Object.entries(presigned.fields).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+  formData.append('file', file);
+
+  const uploadRes = await fetch(presigned.url, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!uploadRes.ok) {
+    throw new Error('Screenshot upload failed');
+  }
+
+  return presigned.key;
 }
