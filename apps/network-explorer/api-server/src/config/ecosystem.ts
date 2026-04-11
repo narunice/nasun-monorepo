@@ -45,7 +45,7 @@ export const ACTIVATIONS_ERROR_RETRY_MS = Math.max(30_000, safeInt(process.env.E
 
 // Excluded categories (authoritative source: ecosystem-schema.sql matview definition)
 // Kept as reference. If modifying, update the SQL matview and recreate.
-// 'referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily',
+// 'referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking',
 // 'ecosystem-bonus-*' (all bonus subcategories)
 
 // Activation types
