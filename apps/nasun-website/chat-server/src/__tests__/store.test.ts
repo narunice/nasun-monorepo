@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, getDb } from '../store.js';
-import type { ChatServerConfig } from '../types.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, getDb, setGenesisPassStatus, getGenesisPassBatch } from '../store.js';
+import { type ChatServerConfig, DEFAULT_CONFIG } from '../types.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -8,21 +8,10 @@ import { tmpdir } from 'node:os';
 function makeConfig(overrides?: Partial<ChatServerConfig>): ChatServerConfig {
   const tempDir = mkdtempSync(join(tmpdir(), 'chat-test-'));
   return {
+    ...DEFAULT_CONFIG,
     port: 0,
-    maxMessageLength: 500,
-    maxWsMessageBytes: 10240,
-    rateLimitMs: 500,
-    historyRateLimitMs: 2000,
-    maxConnectionsPerIp: 5,
-    authTimeoutMs: 30000,
-    maxSessionMs: 86400000,
     dbPath: join(tempDir, 'test.db'),
-    messageRetentionDays: 30,
-    retentionCleanupIntervalMs: 86400000,
     allowedOrigins: ['http://localhost:5174'],
-    nasunProfileApiUrl: '',
-    genesisPassApiUrl: '',
-    trustProxy: false,
     ...overrides,
   };
 }
@@ -366,5 +355,75 @@ describe('upsertUser', () => {
     const db = getDb();
     const count = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as any;
     expect(count.cnt).toBe(2);
+  });
+});
+
+describe('genesis pass badge', () => {
+  it('setGenesisPassStatus marks a user as GP holder', () => {
+    upsertUser('0x' + 'a'.repeat(64), 'Alice');
+    setGenesisPassStatus('0x' + 'a'.repeat(64), true);
+    const gpSet = getGenesisPassBatch(['0x' + 'a'.repeat(64)]);
+    expect(gpSet.has('0x' + 'a'.repeat(64))).toBe(true);
+  });
+
+  it('setGenesisPassStatus can revoke GP status', () => {
+    upsertUser('0x' + 'a'.repeat(64), 'Alice');
+    setGenesisPassStatus('0x' + 'a'.repeat(64), true);
+    setGenesisPassStatus('0x' + 'a'.repeat(64), false);
+    const gpSet = getGenesisPassBatch(['0x' + 'a'.repeat(64)]);
+    expect(gpSet.has('0x' + 'a'.repeat(64))).toBe(false);
+  });
+
+  it('getGenesisPassBatch returns empty set for empty input', () => {
+    const gpSet = getGenesisPassBatch([]);
+    expect(gpSet.size).toBe(0);
+  });
+
+  it('getGenesisPassBatch returns only GP holders from mixed list', () => {
+    const addrA = '0x' + 'a'.repeat(64);
+    const addrB = '0x' + 'b'.repeat(64);
+    const addrC = '0x' + 'c'.repeat(64);
+    upsertUser(addrA, 'Alice');
+    upsertUser(addrB, 'Bob');
+    upsertUser(addrC, 'Carol');
+    setGenesisPassStatus(addrA, true);
+    setGenesisPassStatus(addrB, false);
+    setGenesisPassStatus(addrC, true);
+
+    const gpSet = getGenesisPassBatch([addrA, addrB, addrC]);
+    expect(gpSet.size).toBe(2);
+    expect(gpSet.has(addrA)).toBe(true);
+    expect(gpSet.has(addrB)).toBe(false);
+    expect(gpSet.has(addrC)).toBe(true);
+  });
+
+  it('getGenesisPassBatch excludes addresses not in users table', () => {
+    const unknownAddr = '0x' + 'f'.repeat(64);
+    const gpSet = getGenesisPassBatch([unknownAddr]);
+    expect(gpSet.size).toBe(0);
+    expect(gpSet.has(unknownAddr)).toBe(false);
+  });
+
+  it('getGenesisPassBatch handles large batch correctly', () => {
+    const addresses: string[] = [];
+    for (let i = 0; i < 50; i++) {
+      const addr = '0x' + i.toString(16).padStart(64, '0');
+      upsertUser(addr, `User${i}`);
+      if (i % 3 === 0) setGenesisPassStatus(addr, true);
+      addresses.push(addr);
+    }
+
+    const gpSet = getGenesisPassBatch(addresses);
+    // 0, 3, 6, 9, ..., 48 -> 17 holders
+    expect(gpSet.size).toBe(17);
+    expect(gpSet.has('0x' + (0).toString(16).padStart(64, '0'))).toBe(true);
+    expect(gpSet.has('0x' + (1).toString(16).padStart(64, '0'))).toBe(false);
+    expect(gpSet.has('0x' + (3).toString(16).padStart(64, '0'))).toBe(true);
+  });
+
+  it('default has_genesis_pass is 0 for new users', () => {
+    upsertUser('0x' + 'd'.repeat(64), 'Dave');
+    const gpSet = getGenesisPassBatch(['0x' + 'd'.repeat(64)]);
+    expect(gpSet.has('0x' + 'd'.repeat(64))).toBe(false);
   });
 });
