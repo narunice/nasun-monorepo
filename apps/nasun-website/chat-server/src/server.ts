@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
 import { randomBytes } from 'node:crypto';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, getAddressesWithProfileName } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -194,18 +194,24 @@ function checkFollowRateLimit(address: string): boolean {
 
 interface PayloadOptions {
   nicknameMap?: Map<string, string>;
+  displayNameMap?: Map<string, string>;
+  profileNameSet?: Set<string>;
   gpSet?: Set<string>;
   profileImageMap?: Map<string, string>;
 }
 
 function storedToPayload(msg: StoredMessage, opts: PayloadOptions = {}): ChatMessagePayload {
+  const resolvedName = opts.displayNameMap?.get(msg.sender);
+  // Suppress chat nickname when profile name exists (profile name takes precedence)
+  const hasProfileName = opts.profileNameSet?.has(msg.sender) ?? false;
+  const nickname = hasProfileName ? null : (opts.nicknameMap?.get(msg.sender) ?? null);
   return {
     type: 'chat_message',
     id: msg.id,
     roomId: msg.roomId,
     sender: msg.sender,
-    senderName: msg.senderName,
-    senderNickname: opts.nicknameMap?.get(msg.sender) ?? null,
+    senderName: resolvedName ?? msg.senderName,
+    senderNickname: nickname,
     senderBadge: opts.gpSet?.has(msg.sender) ? 'GP' : null,
     senderProfileImageUrl: opts.profileImageMap?.get(msg.sender) ?? null,
     content: msg.content,
@@ -508,6 +514,10 @@ async function fetchDisplayName(address: string, client: AuthenticatedClient): P
       client.profileImageUrl = imgUrl;
     }
     upsertUser(address, client.displayName, client.profileImageUrl ?? undefined);
+
+    // Cache resolved display name in nasun_profiles for getDisplayName priority
+    const resolvedName = name ? stripControlChars(name).slice(0, 32).trim() : null;
+    upsertNasunProfile(address, resolvedName, client.profileImageUrl);
   } catch {
     // Non-critical: keep shortened address as display name
   }
@@ -601,10 +611,12 @@ function handleSendMessage(
 
     // Broadcast to all (including sender for confirmation)
     const nicknameMap = getNicknamesBatch([stored.sender]);
+    const displayNameMap = getDisplayNamesBatch([stored.sender]);
+    const profileNameSet = getAddressesWithProfileName([stored.sender]);
     const gpSet = getGenesisPassBatch([stored.sender]);
     const profileImageMap = new Map<string, string>();
     if (client.profileImageUrl) profileImageMap.set(stored.sender, client.profileImageUrl);
-    const payload = storedToPayload(stored, { nicknameMap, gpSet, profileImageMap });
+    const payload = storedToPayload(stored, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap });
     for (const [ws] of authenticatedClients) {
       send(ws, payload);
     }
@@ -708,6 +720,8 @@ function handleLoadHistory(
   const reactionMap = getReactionSummaries(messageIds, client.address);
   const senderAddresses = [...new Set(messages.map((m) => m.sender))];
   const nicknameMap = getNicknamesBatch(senderAddresses);
+  const displayNameMap = getDisplayNamesBatch(senderAddresses);
+  const profileNameSet = getAddressesWithProfileName(senderAddresses);
   const gpSet = getGenesisPassBatch(senderAddresses);
   const profileImageMap = getProfileImagesBatch(senderAddresses);
 
@@ -715,7 +729,7 @@ function handleLoadHistory(
     type: 'history',
     roomId,
     messages: messages.map((m) => {
-      const payload = storedToPayload(m, { nicknameMap, gpSet, profileImageMap });
+      const payload = storedToPayload(m, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap });
       const reactionData = reactionMap.get(m.id);
       if (reactionData) {
         payload.reactions = reactionData.reactions;

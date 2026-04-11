@@ -46,8 +46,12 @@ function renderContent(content: string) {
 }
 
 function formatSender(msg: ChatMessage): string {
-  const suffix = msg.sender.slice(-4);
+  // If senderName differs from nickname, profile name was resolved by server
+  if (msg.senderNickname && msg.senderName !== msg.senderNickname) {
+    return msg.senderName;
+  }
   if (msg.senderNickname) {
+    const suffix = msg.sender.slice(-4);
     return `${msg.senderNickname}#${suffix}`;
   }
   return msg.senderName;
