@@ -19,6 +19,10 @@ import { HealthStatusBar } from "./HealthStatusBar";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import { AirdropRegistrationCard } from "./AirdropRegistrationCard";
+import { BugReportsCard } from "./BugReportsCard";
+import { useProfileDisplay } from "./hooks/useProfileDisplay";
+import { updateDisplayName } from "@/services/userProfileApi";
+import { useUserStore } from "@/store/userStore";
 
 
 // ---- Category display config ----
@@ -143,29 +147,77 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   const displayTodayScore = ecosystemScore?.daily.ecosystemScore ?? 0;
 
   // ---- Display Name & Avatar ----
+  const { displayName, avatarUrl: profileImageUrl, walletAddress, fallbackLetter } = useProfileDisplay(user);
   const handleImageError = useCallback(() => setImageError(true), []);
   const handleImageLoad = useCallback(() => setImageLoaded(true), []);
 
-  const displayName = (() => {
-    if (!user) return "User";
-    const tw = user.linkedAccounts?.twitter;
-    const xDisplayName =
-      user.provider === "Twitter" ? user.username : tw?.username;
-    if (xDisplayName) return xDisplayName;
+  // ---- Display Name Editing ----
+  const updateUserProfile = useUserStore((s) => s.updateUserProfile);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
-    const gl = user.linkedAccounts?.google;
-    const email = user.provider === "Google" ? user.email : gl?.email;
-    if (email) return email.split("@")[0];
+  const hasCustomName = !!user?.customDisplayName;
 
-    if (user.walletAddress) {
-      return `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`;
+  const startEditing = useCallback(() => {
+    setEditValue(user?.customDisplayName ?? "");
+    setSaveError(null);
+    setIsEditingName(true);
+    setTimeout(() => editInputRef.current?.focus(), 0);
+  }, [user?.customDisplayName]);
+
+  const cancelEditing = useCallback(() => {
+    setIsEditingName(false);
+    setSaveError(null);
+  }, []);
+
+  const validateName = (name: string): string | null => {
+    if (name.length > 0 && name.length < 2) return "At least 2 characters";
+    if (name.length > 30) return "Max 30 characters";
+    if (name.startsWith("@")) return "Cannot start with @";
+    if (name.startsWith("0x")) return "Cannot start with 0x";
+    return null;
+  };
+
+  const saveName = useCallback(async () => {
+    const trimmed = editValue.trim().replace(/\s+/g, " ");
+    const error = validateName(trimmed);
+    if (error) { setSaveError(error); return; }
+
+    const token = user?.cognitoToken;
+    if (!token) { setSaveError("Session expired, please refresh"); return; }
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await updateDisplayName(token, trimmed);
+      updateUserProfile({ customDisplayName: trimmed || undefined });
+      setIsEditingName(false);
+    } catch (err) {
+      setSaveError((err as Error).message || "Failed to update");
+    } finally {
+      setIsSaving(false);
     }
-    return "User";
-  })();
+  }, [editValue, user?.cognitoToken, updateUserProfile]);
 
-  const profileImageUrl = user?.profileImageUrl;
+  const resetName = useCallback(async () => {
+    const token = user?.cognitoToken;
+    if (!token) { setSaveError("Session expired, please refresh"); return; }
 
-  const walletAddress = user?.walletAddress ?? null;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await updateDisplayName(token, "");
+      updateUserProfile({ customDisplayName: undefined });
+      setIsEditingName(false);
+    } catch (err) {
+      setSaveError((err as Error).message || "Failed to reset");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [user?.cognitoToken, updateUserProfile]);
 
   // ---- Category bar (all-time points breakdown by category) ----
   // scoreBreakdown includes base + all non-base categories directly from API.
@@ -210,30 +262,77 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
               </div>
             ) : (
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-nasun-c4 to-nasun-c5 flex items-center justify-center text-white text-2xl font-bold">
-                {displayName.charAt(0).toUpperCase()}
+                {fallbackLetter}
               </div>
             )}
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h6 className="font-semibold truncate">{displayName}</h6>
-              <GenesisPassBadge />
-            </div>
-            {(() => {
-              const loginId = getLoginIdentifier(user);
-              return loginId ? (
-                <p className="text-nasun-white/60">
-                  <span className="text-slate-400 font-medium text-sm lg:text-base">
-                    {loginId.value}
-                  </span>
-                </p>
-              ) : null;
-            })()}
+          <div className="min-w-0 flex-1">
+            {isEditingName ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={editInputRef}
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => { setEditValue(e.target.value); setSaveError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveName(); if (e.key === "Escape") cancelEditing(); }}
+                    disabled={isSaving}
+                    maxLength={30}
+                    placeholder="Display name"
+                    className="bg-nasun-c6 border border-nasun-white/20 rounded-lg px-2.5 py-1 text-sm text-nasun-white w-full max-w-[200px] focus:outline-none focus:border-cyan-500 disabled:opacity-50"
+                  />
+                  <button onClick={saveName} disabled={isSaving || editValue.trim().length === 0} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-40 transition-colors">
+                    {isSaving ? "..." : "Save"}
+                  </button>
+                  <button onClick={cancelEditing} disabled={isSaving} className="text-xs font-medium px-2 py-1 text-nasun-white/50 hover:text-nasun-white/80 transition-colors">
+                    Cancel
+                  </button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-nasun-white/30 tabular-nums">{editValue.length}/30</span>
+                  {hasCustomName && (
+                    <button onClick={resetName} disabled={isSaving} className="text-[10px] text-amber-400/70 hover:text-amber-400 transition-colors">
+                      Reset to default
+                    </button>
+                  )}
+                </div>
+                {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <h6 className="font-semibold truncate">{displayName}</h6>
+                  <GenesisPassBadge />
+                  <button
+                    onClick={startEditing}
+                    className="flex-shrink-0 text-nasun-white/30 hover:text-nasun-white/70 transition-colors"
+                    title="Edit display name"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                </div>
+                {(() => {
+                  const loginId = getLoginIdentifier(user);
+                  return loginId ? (
+                    <p className="text-nasun-white/60">
+                      <span className="text-slate-400 font-medium text-sm lg:text-base">
+                        {loginId.value}
+                      </span>
+                    </p>
+                  ) : null;
+                })()}
+              </>
+            )}
           </div>
         </div>
 
         {/* Connected Accounts (production layout, when showPoints is off) */}
         {!showPoints && <ConnectedAccountsCard bare />}
+
+        {/* Bug Reports (always visible) */}
+        <BugReportsCard />
 
         {/* Activity Points Summary + Ecosystem Placeholder (only in dev/renewed layout) */}
         {showPoints && (

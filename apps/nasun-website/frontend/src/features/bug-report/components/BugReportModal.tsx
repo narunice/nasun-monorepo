@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { useBugReport } from '../hooks/useBugReport';
+import { useBugReport, uploadScreenshot } from '../hooks/useBugReport';
 import { BUG_CATEGORIES } from '../types';
+import { useUserStore } from '../../../store/userStore';
 import { toast } from 'react-toastify';
 
 interface BugReportModalProps {
@@ -9,18 +10,28 @@ interface BugReportModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const MAX_SCREENSHOTS = 3;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
 export default function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Other');
   const [description, setDescription] = useState('');
   const [reproSteps, setReproSteps] = useState('');
-  const { mutate, isPending } = useBugReport();
+  const [screenshots, setScreenshots] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { mutate, isPending, walletConnected } = useBugReport();
+  const user = useUserStore((s) => s.user);
 
   const resetForm = () => {
     setTitle('');
     setCategory('Other');
     setDescription('');
     setReproSteps('');
+    setScreenshots([]);
+    setIsUploading(false);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -28,30 +39,107 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
     onOpenChange(nextOpen);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !description.trim()) return;
-
-    mutate(
-      { title: title.trim(), category, description: description.trim(), reproSteps: reproSteps.trim() || undefined },
-      {
-        onSuccess: () => {
-          toast.success('Bug report submitted. Thank you!');
-          resetForm();
-          onOpenChange(false);
-        },
-        onError: (err) => {
-          toast.error(`Failed to submit: ${err.message}`);
-        },
+  const addFiles = useCallback((files: FileList | File[]) => {
+    const newFiles = Array.from(files).filter((f) => {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        toast.error('Only PNG, JPEG, and WebP images are allowed');
+        return false;
       }
-    );
+      if (f.size > MAX_FILE_SIZE) {
+        toast.error('File size must be under 5MB');
+        return false;
+      }
+      return true;
+    });
+
+    setScreenshots((prev) => {
+      const combined = [...prev, ...newFiles];
+      if (combined.length > MAX_SCREENSHOTS) {
+        toast.error(`Maximum ${MAX_SCREENSHOTS} screenshots`);
+        return combined.slice(0, MAX_SCREENSHOTS);
+      }
+      return combined;
+    });
+  }, []);
+
+  // Generate preview URLs and revoke on cleanup
+  const previewUrls = useMemo(() => screenshots.map((f) => URL.createObjectURL(f)), [screenshots]);
+  useEffect(() => {
+    return () => { previewUrls.forEach((url) => URL.revokeObjectURL(url)); };
+  }, [previewUrls]);
+
+  const removeScreenshot = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setScreenshots((prev) => prev.filter((_, i) => i !== index));
   };
+
+  // Handle clipboard paste
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    const imageFiles: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addFiles(imageFiles);
+    }
+  }, [addFiles]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim() || !user?.cognitoToken) return;
+
+    try {
+      // Upload screenshots first
+      let screenshotKeys: string[] = [];
+      if (screenshots.length > 0) {
+        setIsUploading(true);
+        screenshotKeys = await Promise.all(
+          screenshots.map((file) => uploadScreenshot(file, user.cognitoToken!)),
+        );
+        setIsUploading(false);
+      }
+
+      mutate(
+        {
+          title: title.trim(),
+          category,
+          description: description.trim(),
+          reproSteps: reproSteps.trim() || undefined,
+          screenshotKeys: screenshotKeys.length > 0 ? screenshotKeys : undefined,
+          pageUrl: window.location.href,
+        },
+        {
+          onSuccess: () => {
+            toast.success('Bug report submitted. Thank you!');
+            resetForm();
+            onOpenChange(false);
+          },
+          onError: (err) => {
+            toast.error(`Failed to submit: ${err.message}`);
+          },
+        },
+      );
+    } catch (err) {
+      setIsUploading(false);
+      toast.error(`Screenshot upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
+
+  const isSubmitting = isPending || isUploading;
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 z-50 animate-in fade-in" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-md bg-nasun-black border border-white/10 rounded-xl p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+        <Dialog.Content
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[90vw] max-w-lg bg-nasun-black border border-white/10 rounded-xl p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-2 max-h-[85vh] overflow-y-auto"
+          onPaste={handlePaste}
+        >
           <Dialog.Title className="text-lg font-semibold text-white mb-4">
             Report a Bug
           </Dialog.Title>
@@ -108,11 +196,67 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
               <textarea
                 value={reproSteps}
                 onChange={(e) => setReproSteps(e.target.value.slice(0, 2000))}
-                placeholder="1. Go to...&#10;2. Click on...&#10;3. See error"
+                placeholder={"1. Go to...\n2. Click on...\n3. See error"}
                 rows={3}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50 resize-none"
               />
             </div>
+
+            {/* Screenshots */}
+            <div>
+              <label className="block text-sm text-white/60 mb-1">
+                Screenshots (optional, max {MAX_SCREENSHOTS})
+              </label>
+              <div className="space-y-2">
+                {screenshots.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {screenshots.map((file, i) => (
+                      <div key={i} className="relative group">
+                        <img
+                          src={previewUrls[i]}
+                          alt={`Screenshot ${i + 1}`}
+                          className="w-20 h-20 object-cover rounded-lg border border-white/10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeScreenshot(i)}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          x
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {screenshots.length < MAX_SCREENSHOTS && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-2 border border-dashed border-white/20 rounded-lg text-sm text-white/40 hover:text-white/60 hover:border-white/30 transition-colors"
+                  >
+                    Click to add or paste (Ctrl+V) a screenshot
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files) addFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Wallet warning */}
+            {!walletConnected && (
+              <p className="text-xs text-yellow-400/80">
+                Connect your Nasun wallet to submit bug reports and earn rewards.
+              </p>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
@@ -126,10 +270,10 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
               </Dialog.Close>
               <button
                 type="submit"
-                disabled={isPending || !title.trim() || !description.trim()}
+                disabled={isSubmitting || !title.trim() || !description.trim() || !walletConnected}
                 className="flex-1 px-4 py-2 bg-nasun-c4 text-white rounded-lg text-sm font-medium hover:bg-nasun-c4/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                {isPending ? 'Submitting...' : 'Submit Report'}
+                {isUploading ? 'Uploading...' : isPending ? 'Submitting...' : 'Submit Report'}
               </button>
             </div>
           </form>
