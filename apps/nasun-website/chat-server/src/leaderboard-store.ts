@@ -1416,3 +1416,16 @@ export function purgeOldSnapshots(retentionDays: number = 180): number {
     .run(cutoffDate);
   return result.changes;
 }
+
+/**
+ * Get distinct trader addresses from the 'all' period leaderboard (top N by rank).
+ * Used by the profile sync job to pre-cache display names.
+ */
+export function getActiveTraderAddresses(limit: number = 500): string[] {
+  const rows = getLeaderboardDb()
+    .prepare(
+      `SELECT address FROM trader_stats WHERE period = 'all' ORDER BY rank ASC LIMIT ?`
+    )
+    .all(limit) as Array<{ address: string }>;
+  return rows.map((r) => r.address);
+}
