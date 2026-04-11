@@ -95,8 +95,14 @@ export class BugReportStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(10),
       memorySize: 128,
+      depsLockFilePath: path.join(__dirname, '../pnpm-lock.yaml'),
       environment: {
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
+      },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: 'node22',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
@@ -117,12 +123,18 @@ export class BugReportStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(15),
       memorySize: 256,
+      depsLockFilePath: path.join(__dirname, '../pnpm-lock.yaml'),
       environment: {
         BUG_REPORTS_TABLE: bugReportsTable.tableName,
         TELEGRAM_BOT_TOKEN_SECRET_NAME: 'nasun-telegram-bot-token',
         NARU_TELEGRAM_CHAT_ID: naruTelegramChatId,
         INTERNAL_CACHE_BUCKET: screenshotBucket.bucketName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: 'node22',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
@@ -154,6 +166,7 @@ export class BugReportStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      depsLockFilePath: path.join(__dirname, '../pnpm-lock.yaml'),
       environment: {
         BUG_REPORTS_TABLE: bugReportsTable.tableName,
         USER_PROFILES_TABLE: 'UserProfiles',
@@ -162,6 +175,11 @@ export class BugReportStack extends cdk.Stack {
         EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
         BUG_REPORT_API_KEY: process.env.BUG_REPORT_API_KEY || '',
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+      },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: 'node22',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
