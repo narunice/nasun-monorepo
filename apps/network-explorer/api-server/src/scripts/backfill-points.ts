@@ -108,51 +108,21 @@ const fromSender = (e: RpcEvent) => {
 };
 
 const EVENT_QUERIES: EventQuery[] = [
-  // Governance
-  {
-    moveEventType: `${PKG.governance}::proposal::VoteRegistered`,
-    category: 'governance',
-    activityType: 'vote',
-    extractWallet: fromParsedVoter,
-  },
-  {
-    moveEventType: `${PKG.governanceMultiChoice}::multi_choice_proposal::MultiChoiceVoteRegistered`,
-    category: 'governance',
-    activityType: 'vote',
-    extractWallet: fromParsedVoter,
-  },
-  {
-    moveEventType: `${PKG.governance}::delegation::DelegationCreated`,
-    category: 'governance',
-    activityType: 'delegate',
-    extractWallet: fromSender,
-  },
-  // Staking
-  {
-    moveEventType: `${PKG.sui}::validator::StakingRequestEvent`,
-    category: 'staking',
-    activityType: 'delegate',
-    extractWallet: fromParsedStaker,
-  },
-  {
-    moveEventType: `${PKG.sui}::validator::UnstakingRequestEvent`,
-    category: 'staking',
-    activityType: 'unstake',
-    extractWallet: fromParsedStaker,
-  },
-  // DEX
-  {
-    moveEventType: `${PKG.deepbook}::order_info::OrderPlaced`,
-    category: 'pado-dex',
-    activityType: 'limit-order',
-    extractWallet: fromSender,
-  },
-  {
-    moveEventType: `${PKG.deepbook}::order::OrderCanceled`,
-    category: 'pado-dex',
-    activityType: 'cancel-order',
-    extractWallet: fromSender,
-  },
+  // Governance -- already complete from previous RPC run
+  // Staking -- already complete from previous RPC run (16,943 inserted)
+  // DEX -- skipped: 13M events, only 1 missing. Already complete from indexer backfill.
+  // {
+  //   moveEventType: `${PKG.deepbook}::order_info::OrderPlaced`,
+  //   category: 'pado-dex',
+  //   activityType: 'limit-order',
+  //   extractWallet: fromSender,
+  // },
+  // {
+  //   moveEventType: `${PKG.deepbook}::order::OrderCanceled`,
+  //   category: 'pado-dex',
+  //   activityType: 'cancel-order',
+  //   extractWallet: fromSender,
+  // },
   // Prediction
   {
     moveEventType: `${PKG.prediction}::prediction::TokensMinted`,
