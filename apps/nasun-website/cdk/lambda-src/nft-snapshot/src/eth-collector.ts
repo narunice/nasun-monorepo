@@ -40,9 +40,9 @@ const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY!;
 const ALCHEMY_BASE_URL = process.env.ALCHEMY_BASE_URL || 'https://eth-mainnet.g.alchemy.com/v2';
 
 const ALCHEMY_TIMEOUT_MS = 10_000;
-const MAX_WALLETS_PER_RUN = 500;
 const BATCH_WRITE_SIZE = 25;
 const MAX_ALCHEMY_PAGES = 10;
+const CONCURRENCY = 20;
 
 export async function handler(event: EthCollectorEvent) {
   if (!ALCHEMY_API_KEY) {
@@ -71,37 +71,42 @@ export async function handler(event: EthCollectorEvent) {
   }
   console.log(`[eth-collector] Found ${wallets.length} wallets to check`);
 
-  // 3. Query Alchemy for each wallet
+  // 3. Query Alchemy for each wallet (parallel with concurrency limit)
+  console.log(`[eth-collector] Processing ${wallets.length} wallets (concurrency: ${CONCURRENCY})`);
   const records: EthOwnershipRecord[] = [];
   let errorCount = 0;
 
-  for (const wallet of wallets.slice(0, MAX_WALLETS_PER_RUN)) {
-    try {
-      const holdings = await queryAlchemyNfts(wallet, contractAddresses, collections);
-      const totalNftCount = holdings.reduce((sum, h) => sum + h.tokenCount, 0);
+  for (let i = 0; i < wallets.length; i += CONCURRENCY) {
+    const batch = wallets.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map(async (wallet) => {
+        const holdings = await queryAlchemyNfts(wallet, contractAddresses, collections);
+        const totalNftCount = holdings.reduce((sum, h) => sum + h.tokenCount, 0);
+        if (totalNftCount > 0) {
+          return {
+            pk: `ETH#${today}`,
+            sk: `WALLET#${wallet}`,
+            walletAddress: wallet,
+            snapshotDate: today,
+            holdings,
+            totalNftCount,
+            source: 'alchemy' as const,
+          };
+        }
+        return null;
+      }),
+    );
 
-      // Only record wallets that hold at least one tracked NFT
-      if (totalNftCount > 0) {
-        records.push({
-          pk: `ETH#${today}`,
-          sk: `WALLET#${wallet}`,
-          walletAddress: wallet,
-          snapshotDate: today,
-          holdings,
-          totalNftCount,
-          source: 'alchemy',
-        });
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        records.push(result.value);
+      } else if (result.status === 'rejected') {
+        errorCount++;
       }
-    } catch (err) {
-      errorCount++;
-      console.warn(
-        `[eth-collector] Failed for ${wallet.slice(0, 10)}...:`,
-        err instanceof Error ? err.message : 'Unknown',
-      );
     }
   }
 
-  console.log(`[eth-collector] Collected ${records.length} wallets with NFTs (${errorCount} errors)`);
+  console.log(`[eth-collector] Collected ${records.length} wallets with NFTs (${errorCount} errors out of ${wallets.length})`);
 
   // 4. Write to DynamoDB (dated + LATEST records)
   const todayWalletSks = new Set(records.map((r) => r.sk));
@@ -213,7 +218,7 @@ async function queryAlchemyNfts(
     for (const nft of data.ownedNfts) {
       const addr = nft.contract.address.toLowerCase();
       if (!byContract.has(addr)) byContract.set(addr, []);
-      byContract.get(addr)!.push(nft.tokenId);
+      byContract.get(addr)!.push(nft.id.tokenId);
     }
 
     pageKey = data.pageKey;
