@@ -9,12 +9,11 @@
  * the blockchain fullnode, which is the source of truth.
  *
  * Excluded from reconciliation:
- *   - pado-dex: 13M+ events, indexer captures reliably (1 miss / 13M)
  *   - staking: excluded from base_score (separate scoring planned)
  *   - chat: off-chain, not on blockchain
  *   - faucet: handled separately via tx_calls_fun (indexer-based, reliable)
  *
- * Performance: ~10-15 event types x ~100 pages each = ~5-10 min per day.
+ * Performance: ~15-20 event types x ~100 pages each = ~5-10 min per day.
  * Runs in the scanner process, non-blocking (async), with isolated error handling.
  */
 
@@ -51,11 +50,15 @@ const PKG = {
   baramExecutor: '0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd',
   governance: '0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3',
   governanceMultiChoice: '0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a',
+  deepbook: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
   sui: '0x0000000000000000000000000000000000000000000000000000000000000003',
 };
 
-// All event types to reconcile (excludes pado-dex, staking, chat, faucet)
+// All event types to reconcile (excludes staking, chat, faucet)
 const RECONCILE_QUERIES: ReconcileQuery[] = [
+  // Pado DEX (DeepBook v2) - descending pagination only touches recent pages
+  { moveEventType: `${PKG.deepbook}::order_info::OrderPlaced`, category: 'pado-dex', activityType: 'limit-order' },
+  { moveEventType: `${PKG.deepbook}::order::OrderCanceled`, category: 'pado-dex', activityType: 'cancel-order' },
   // Governance
   { moveEventType: `${PKG.governance}::proposal::VoteRegistered`, category: 'governance', activityType: 'vote' },
   { moveEventType: `${PKG.governanceMultiChoice}::multi_choice_proposal::MultiChoiceVoteRegistered`, category: 'governance', activityType: 'vote' },
