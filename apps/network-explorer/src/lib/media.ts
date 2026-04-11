@@ -14,6 +14,20 @@ const SAFE_DATA_PREFIXES = [
   'data:video/webm',
 ];
 
+// IPFS CID -> Arweave TX ID mapping for on-chain NFT images migrated from Pinata
+const IPFS_TO_ARWEAVE: Record<string, string> = {
+  // Alliance NFT images (webp thumbnails)
+  'bafybeieehzagjrl5sitgywnxx3fjbuxg7kson3da4z3ljmeupporveyqeu': 'CtgNNjdahKdO_k6Yvox1THB-Lsg52tgGKmnvEg2-ogs',   // Taroka
+  'bafkreignsezz4o23lnbdrwmtsv6ycgsrv4tdpnywanny7pwrnblph3u22y': 'rYlsqCyvDRGUEffMSLDOTtT0K8FifHd8QKfkI9e4pTc',   // Princess Kaebo
+  'bafkreig6fenrv23z375xjifz3wadvwrh4plrtpb7pebx6yc2b4gxmm5mc4': 'MK7eY-qf1YQ2mdqY1_A26WMU0uXpdulFL7dxQeBrIzE',   // The Contractor
+  'bafkreigoirws7dj4uupljzbmc4zcpa3qqgkrd4juvlgfxr4nyslr2sjcri': '_Qz21XVGIbHaR4_OCYLNE_YNsm-sWT8Iqu0156rxZQw',   // Young Josen
+  // Governance Vote Proof NFT image
+  'bafkreidvwd65472yxlhr4vhoqxqugccpy6xgsat2mdb6vjznltodkxw4tu': 'PeICdNym7MWjAvEqbPURGo21Mq-bo97sMghdK8CrqRQ',
+};
+
+// Regex to extract IPFS CID from gateway URLs
+const IPFS_GATEWAY_RE = /^https?:\/\/[^/]+\/ipfs\/([a-zA-Z0-9]+)$/i;
+
 // IPFS gateways with fallback (primary → secondary → tertiary)
 const IPFS_GATEWAYS = [
   'https://ipfs.io/ipfs/',
@@ -23,6 +37,7 @@ const IPFS_GATEWAYS = [
 
 /**
  * IPFS URL을 HTTP 게이트웨이로 변환 + 프로토콜 allowlist 적용
+ * Known IPFS CIDs are rewritten to permanent Arweave URLs.
  * @param url - 원본 URL (ipfs://, data:, https:// 등)
  * @param gatewayIndex - IPFS gateway index for fallback (0 = primary)
  * @returns 변환된 안전한 URL, 또는 undefined (차단된 scheme)
@@ -40,19 +55,33 @@ export function resolveMediaUrl(url: string | undefined, gatewayIndex = 0): stri
     return undefined;
   }
 
-  // IPFS URL 변환 → https (with gateway fallback)
+  // IPFS URL 변환 → Arweave (known CIDs) or HTTPS gateway
   if (lower.startsWith('ipfs://')) {
     const hash = url.slice(7); // preserve original casing
     // Reject path traversal, query injection, and suspicious characters
     if (!hash || /[?#\s]/.test(hash) || hash.includes('..')) {
       return undefined;
     }
+    const arweaveTxId = IPFS_TO_ARWEAVE[hash];
+    if (arweaveTxId) return `https://arweave.net/${arweaveTxId}`;
     const gw = IPFS_GATEWAYS[gatewayIndex] ?? IPFS_GATEWAYS[0];
     return `${gw}${hash}`;
   }
 
   // Only allow http(s) schemes
   if (lower.startsWith('https://') || lower.startsWith('http://')) {
+    // Rewrite known IPFS CIDs (from Pinata or any gateway) to Arweave
+    const gatewayMatch = url.match(IPFS_GATEWAY_RE);
+    if (gatewayMatch) {
+      const cid = gatewayMatch[1];
+      const arweaveTxId = IPFS_TO_ARWEAVE[cid];
+      if (arweaveTxId) return `https://arweave.net/${arweaveTxId}`;
+      // Dead Pinata gateway: fallback to public IPFS gateway
+      if (lower.includes('.mypinata.cloud')) {
+        const gw = IPFS_GATEWAYS[gatewayIndex] ?? IPFS_GATEWAYS[0];
+        return `${gw}${cid}`;
+      }
+    }
     return url;
   }
 

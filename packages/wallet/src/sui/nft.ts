@@ -256,13 +256,25 @@ const SAFE_DATA_PREFIXES = [
   'data:image/avif',
 ];
 
-// Regex to detect Pinata dedicated gateway URLs and extract the IPFS path
-const PINATA_GATEWAY_RE = /^https?:\/\/[^/]+\.mypinata\.cloud\/ipfs\/(.+)$/i;
+// IPFS CID -> Arweave TX ID mapping for on-chain NFT images migrated from Pinata
+const IPFS_TO_ARWEAVE: Record<string, string> = {
+  // Alliance NFT images (webp thumbnails)
+  'bafybeieehzagjrl5sitgywnxx3fjbuxg7kson3da4z3ljmeupporveyqeu': 'CtgNNjdahKdO_k6Yvox1THB-Lsg52tgGKmnvEg2-ogs',   // Taroka
+  'bafkreignsezz4o23lnbdrwmtsv6ycgsrv4tdpnywanny7pwrnblph3u22y': 'rYlsqCyvDRGUEffMSLDOTtT0K8FifHd8QKfkI9e4pTc',   // Princess Kaebo
+  'bafkreig6fenrv23z375xjifz3wadvwrh4plrtpb7pebx6yc2b4gxmm5mc4': 'MK7eY-qf1YQ2mdqY1_A26WMU0uXpdulFL7dxQeBrIzE',   // The Contractor
+  'bafkreigoirws7dj4uupljzbmc4zcpa3qqgkrd4juvlgfxr4nyslr2sjcri': '_Qz21XVGIbHaR4_OCYLNE_YNsm-sWT8Iqu0156rxZQw',   // Young Josen
+  // Governance Vote Proof NFT image
+  'bafkreidvwd65472yxlhr4vhoqxqugccpy6xgsat2mdb6vjznltodkxw4tu': 'PeICdNym7MWjAvEqbPURGo21Mq-bo97sMghdK8CrqRQ',
+};
+
+// Regex to extract IPFS CID from Pinata gateway or public gateway URLs
+const IPFS_GATEWAY_RE = /^https?:\/\/[^/]+\/ipfs\/([a-zA-Z0-9]+)$/i;
 
 /**
  * Resolve a media URL to a safe, displayable URL.
- * Converts ipfs:// to HTTPS gateway, rewrites dead Pinata gateway URLs,
- * validates data: URIs, and blocks dangerous schemes (javascript:, vbscript:, etc.)
+ * Rewrites known IPFS CIDs to permanent Arweave URLs,
+ * converts ipfs:// to HTTPS gateway, validates data: URIs,
+ * and blocks dangerous schemes (javascript:, vbscript:, etc.)
  */
 export function resolveMediaUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
@@ -277,15 +289,23 @@ export function resolveMediaUrl(url: string | undefined): string | undefined {
   }
 
   if (lower.startsWith('ipfs://')) {
-    const hash = url.slice(7);
-    return `https://ipfs.io/ipfs/${hash}`;
+    const cid = url.slice(7);
+    const arweaveTxId = IPFS_TO_ARWEAVE[cid];
+    if (arweaveTxId) return `https://arweave.net/${arweaveTxId}`;
+    return `https://ipfs.io/ipfs/${cid}`;
   }
 
   if (lower.startsWith('https://') || lower.startsWith('http://')) {
-    // Rewrite dead Pinata dedicated gateway URLs to public IPFS gateway
-    const pinataMatch = url.match(PINATA_GATEWAY_RE);
-    if (pinataMatch) {
-      return `https://ipfs.io/ipfs/${pinataMatch[1]}`;
+    // Rewrite known IPFS CIDs (from Pinata or any gateway) to Arweave
+    const gatewayMatch = url.match(IPFS_GATEWAY_RE);
+    if (gatewayMatch) {
+      const cid = gatewayMatch[1];
+      const arweaveTxId = IPFS_TO_ARWEAVE[cid];
+      if (arweaveTxId) return `https://arweave.net/${arweaveTxId}`;
+      // Unknown CID on Pinata gateway: fallback to public IPFS gateway
+      if (lower.includes('.mypinata.cloud')) {
+        return `https://ipfs.io/ipfs/${cid}`;
+      }
     }
     return url;
   }
