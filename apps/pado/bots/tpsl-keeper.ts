@@ -34,6 +34,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { TPSLStore, type TPSLOrder } from './lib/tpsl-store.js';
 import { executeMarketOrder, type ExecuteParams } from './lib/tpsl-executor.js';
 import { withRetry } from './lib/retry.js';
+import { MARKETS } from './lib/config.js';
 
 // ========================================
 // Configuration
@@ -119,7 +120,9 @@ async function fetchOraclePrices(client: SuiClient): Promise<Map<string, OracleP
         const feedContent = feed.data?.content;
         if (feedContent?.dataType === 'moveObject') {
           const feedFields = (feedContent.fields as Record<string, unknown>);
-          const value = feedFields['value'] as Record<string, unknown>;
+          const valueWrapper = feedFields['value'] as Record<string, unknown>;
+          // SDK wraps nested Move structs: value = { type, fields: { price, timestamp, ... } }
+          const value = (valueWrapper?.['fields'] as Record<string, unknown>) || valueWrapper;
           if (value) {
             const rawPrice = BigInt(String(value['price'] || 0));
             const price = Number(rawPrice) / Math.pow(10, DECIMALS);
@@ -244,17 +247,16 @@ function checkTriggerCondition(order: TPSLOrder, currentPrice: number): boolean 
 
 // Type helpers (will be populated from env or config)
 function getBaseType(symbol: string): string {
-  const types: Record<string, string> = {
-    NBTC: process.env.NBTC_TYPE || '',
-    NETH: process.env.NETH_TYPE || '',
-    NSOL: process.env.NSOL_TYPE || '',
-    NASUN: '0x2::sui::SUI',
-  };
-  return types[symbol] || '';
+  const market = MARKETS[symbol];
+  if (market) return market.baseType;
+  if (symbol === 'NASUN') return '0x2::sui::SUI';
+  return '';
 }
 
 function getQuoteType(): string {
-  return process.env.NUSDC_TYPE || '';
+  // All markets use NUSDC as quote
+  const anyMarket = Object.values(MARKETS)[0];
+  return anyMarket?.quoteType || '';
 }
 
 function getBaseMultiplier(symbol: string): number {
@@ -439,6 +441,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
     // Rate limiting (H-4)
     const clientIp = getClientIp(req);
     if (!rateLimiter.isAllowed(clientIp)) {
+      console.warn(`[keeper] Rate limited: ${method} ${url.pathname} ip=${clientIp}`);
       sendJson(res, 429, { error: 'Too many requests. Try again later.' });
       return;
     }
@@ -490,6 +493,21 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
           sendJson(res, 400, { error: 'Invalid balanceManagerId' }); return;
         }
 
+        // Trigger price sanity check: reject orders with trigger price wildly different from current oracle price
+        // Prevents cross-market data contamination (e.g. BTC price entered for ETH market)
+        const baseSymbol = marketSymbol.split('/')[0];
+        const currentPrice = getCurrentPrice(baseSymbol);
+        if (currentPrice && currentPrice > 0) {
+          const ratio = triggerPrice / currentPrice;
+          // Allow 0.01x to 100x of current price (generous range for volatile assets)
+          if (ratio < 0.01 || ratio > 100) {
+            sendJson(res, 400, {
+              error: `Trigger price $${triggerPrice.toLocaleString()} is unreasonable for ${marketSymbol} (current: $${currentPrice.toLocaleString()}). Please check the price.`,
+            });
+            return;
+          }
+        }
+
         // Per-user order limit
         const userOrders = store.getByUser(userAddress);
         if (userOrders.length >= MAX_ORDERS_PER_USER) {
@@ -498,8 +516,10 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
         }
 
         // Verify TradeCap is owned by keeper on-chain (H-3)
+        console.log(`[keeper] Register request: user=${userAddress.slice(0, 16)}... market=${marketSymbol} ${side} ${triggerType} price=${triggerPrice} qty=${quantity}`);
         const tradeCapCheck = await verifyTradeCapOwnership(client, tradeCapId, keeperAddress);
         if (!tradeCapCheck.valid) {
+          console.warn(`[keeper] Register rejected: ${tradeCapCheck.error} (user=${userAddress.slice(0, 16)}... tradeCap=${tradeCapId.slice(0, 16)}...)`);
           sendJson(res, 403, { error: tradeCapCheck.error || 'TradeCap verification failed' });
           return;
         }
@@ -516,6 +536,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
           balanceManagerId,
         });
 
+        console.log(`[keeper] Order registered: id=${order.id} user=${userAddress.slice(0, 16)}... ${marketSymbol} ${side} ${triggerType} @${triggerPrice}`);
         sendJson(res, 201, { order });
         return;
       }
@@ -565,6 +586,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
           sendJson(res, 409, { error: 'Order already completed or cancelled' });
           return;
         }
+        console.log(`[keeper] Order cancelled: id=${id} user=${claimedAddress.slice(0, 16)}...`);
         sendJson(res, 200, { success: true });
         return;
       }
