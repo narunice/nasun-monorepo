@@ -5,6 +5,7 @@ export interface LeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
+  hasGenesisPass?: boolean;
   volumeUsd: string;
   tradeCount: number;
   uniquePools: number;
@@ -24,6 +25,7 @@ export interface PnlLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
+  hasGenesisPass?: boolean;
   pnlUsd: string;
   pnlPercent: number;
   tradeCount: number;
@@ -43,6 +45,7 @@ export interface PointsLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
+  hasGenesisPass?: boolean;
   totalPoints: number;
   tradeCount: number;
   volumeUsd: string;
@@ -80,6 +83,7 @@ export interface TraderPeriodStats {
 export interface TraderStatsResponse {
   address: string;
   nickname: string | null;
+  hasGenesisPass?: boolean;
   lastTradeAt?: number | null;
   stats: Record<Period, TraderPeriodStats | null>;
 }
