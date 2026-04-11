@@ -11,6 +11,7 @@ import {
   MyWinningCards,
   MyPurchaseHistory,
 } from '../features/scratchcard';
+import { GamesNav } from '../components/common';
 
 export function ScratchCardPage() {
   const [pendingCardId, setPendingCardId] = useState<number | null>(null);
@@ -26,6 +27,8 @@ export function ScratchCardPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      <GamesNav />
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-theme-text-primary">

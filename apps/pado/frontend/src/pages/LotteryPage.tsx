@@ -14,7 +14,7 @@ import {
   ROUND_STATUS,
   formatNusdc,
 } from '../features/lottery';
-import { Spinner } from '../components/common';
+import { Spinner, GamesNav } from '../components/common';
 
 const PAST_ROUNDS_PAGE_SIZE = 5;
 
@@ -48,25 +48,32 @@ export function LotteryPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner size="lg" />
+      <div className="space-y-6">
+        <GamesNav />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Spinner size="lg" />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-500">Failed to load lottery</p>
-        <p className="text-sm text-theme-text-muted mt-2">
-          {error.message}
-        </p>
+      <div className="space-y-6">
+        <GamesNav />
+        <div className="text-center py-12">
+          <p className="text-red-500">Failed to load lottery</p>
+          <p className="text-sm text-theme-text-muted mt-2">
+            {error.message}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <GamesNav />
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-theme-text-primary">
