@@ -118,6 +118,31 @@ export async function takeDailySnapshot(
     isPenalized: boolean;
   }
 
+  // Fallback multiplier: for users with base activity but not in activationsCache,
+  // use their most recent snapshot's multiplier to prevent incorrect 0-multiplier snapshots
+  const cacheMissIds = allIdsArr.filter(
+    id => baseMap.has(id) && !activationsCache.has(id),
+  );
+  const lastMultiplierMap = new Map<string, number>();
+  if (cacheMissIds.length > 0) {
+    const fallbackRows = await pointsDb`
+      SELECT DISTINCT ON (identity_id) identity_id, multiplier::numeric as multiplier
+      FROM ecosystem_score_snapshots
+      WHERE identity_id = ANY(${cacheMissIds})
+        AND multiplier > 0
+      ORDER BY identity_id, snapshot_date DESC
+    `;
+    for (const row of fallbackRows) {
+      lastMultiplierMap.set(row.identity_id as string, parseFloat(row.multiplier as string));
+    }
+    if (cacheMissIds.length > 0) {
+      console.log(
+        `[Snapshot] ${cacheMissIds.length} users with activity but no cache entry, ` +
+        `${lastMultiplierMap.size} recovered from last known multiplier`,
+      );
+    }
+  }
+
   const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
   const entries: SnapshotRow[] = [];
 
@@ -130,7 +155,12 @@ export async function takeDailySnapshot(
       activations = activations.filter(a => a.nftType !== 'alliance');
     }
 
-    const multiplier = calculateMultiplier(activations);
+    let multiplier = calculateMultiplier(activations);
+
+    // Cache miss protection: use last known multiplier if available
+    if (activations.length === 0 && !isPenalized && lastMultiplierMap.has(identityId)) {
+      multiplier = lastMultiplierMap.get(identityId)!;
+    }
     const bonusTotal = bonusMap.get(identityId) ?? 0;
     const referralBonus = referralMap.get(identityId) ?? 0;
     const governanceBonus = govMap.get(identityId) ?? 0;
