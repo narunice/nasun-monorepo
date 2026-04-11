@@ -162,15 +162,19 @@ export interface CompetitionResultRow {
   updated_at: number;
 }
 
-// ===== Points Types =====
+// ===== Score Types =====
 
-export interface TraderPointsRow {
+export type ScoreScope = 'weekly' | 'alltime';
+export const VALID_SCOPES = new Set<string>(['weekly', 'alltime']);
+
+export interface TraderScoreRow {
   address: string;
-  total_points: number;
-  points_from_trades: number;
-  points_from_volume: number;
-  points_from_diversity: number;
-  points_from_pnl: number;
+  scope: string;
+  total_score: number;
+  score_from_trades: number;
+  score_from_volume: number;
+  score_from_diversity: number;
+  score_from_pnl: number;
   trade_count: number;
   volume_quote: string;
   rank: number;
@@ -178,26 +182,28 @@ export interface TraderPointsRow {
   updated_at: number;
 }
 
-export interface PointsLeaderboardTrader {
+export interface ScoreLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
-  totalPoints: number;
+  totalScore: number;
   tradeCount: number;
   volumeUsd: string;
   rankChange: number;
 }
 
-export interface PointsLeaderboardResponse {
-  traders: PointsLeaderboardTrader[];
+export interface ScoreLeaderboardResponse {
+  scope: ScoreScope;
+  weekStartDate?: string;
+  traders: ScoreLeaderboardTrader[];
   updatedAt: number;
   totalTraders: number;
 }
 
-export interface TraderPointsResponse {
+export interface TraderScoreResponse {
   address: string;
   nickname: string | null;
-  totalPoints: number;
+  totalScore: number;
   breakdown: {
     trades: number;
     volume: number;
@@ -205,16 +211,18 @@ export interface TraderPointsResponse {
     pnl: number;
   };
   rank: number;
+  scope: ScoreScope;
 }
 
-// Points formula constants
-export const POINTS = {
-  PER_TRADE: 10,
-  PER_1K_VOLUME: 5,        // per $1000 NUSDC volume
-  PER_UNIQUE_POOL: 25,     // per unique pool traded
-  FIRST_TRADE_BONUS: 100,  // one-time bonus for first trade
-  PER_1K_PNL: 20,          // per $1000 realized profit (losses = 0)
-  PER_10PCT_RETURN: 15,    // per 10% return rate (negative = 0)
+// Score formula constants
+export const SCORE = {
+  PER_TRADE: 1,
+  DAILY_TRADE_CAP: 50,          // 50 trades/day
+  PER_2K_VOLUME: 1,              // per $2,000 USD volume
+  DAILY_VOLUME_CAP_USD: 100_000, // $100K/day
+  PER_UNIQUE_POOL: 3,
+  PER_1K_PROFIT: 1,              // per $1,000 realized profit (loss=0)
+  PER_5PCT_RETURN: 10,           // per 5% return rate (negative reflected, floor 0)
 } as const;
 
 // ===== RPC Event Types =====

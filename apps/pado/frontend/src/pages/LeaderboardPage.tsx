@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useWallet, useZkLogin, useSignerAddress, usePasskeyStore } from '@nasun/wallet';
-import { useLeaderboard, usePnlLeaderboard, usePointsLeaderboard, LeaderboardTable, PnlLeaderboardTable, PointsLeaderboardTable, PeriodSelector, ModeSelector, MyRankCard } from '../features/leaderboard';
+import { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, LeaderboardTable, PnlLeaderboardTable, ScoreLeaderboardTable, PeriodSelector, ModeSelector, ScopeSelector, MyRankCard } from '../features/leaderboard';
 import { Pagination } from '../features/leaderboard/components/Pagination';
 import { CompetitionBanner } from '../features/competitions';
 import { ActivityFeed } from '../features/social/components/ActivityFeed';
-import type { Period, LeaderboardMode } from '../features/leaderboard';
+import type { Period, LeaderboardMode, ScoreScope } from '../features/leaderboard';
 
 const PAGE_SIZE = 50;
 const MAX_RANK = 500;
@@ -14,12 +14,13 @@ const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {
   activity: 'Recent trades from traders you follow',
   volume: 'Top traders ranked by volume',
   pnl: 'Top traders ranked by realized PnL',
-  points: 'Pado score from trades, volume, and pool diversity',
+  score: 'Weekly Pado Score from trades, volume, and performance',
 };
 
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
   const [mode, setMode] = useState<LeaderboardMode>('volume');
+  const [scope, setScope] = useState<ScoreScope>('weekly');
   const [showFollowing, setShowFollowing] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -27,18 +28,18 @@ export function LeaderboardPage() {
 
   const volumeQuery = useLeaderboard(period, PAGE_SIZE, offset);
   const pnlQuery = usePnlLeaderboard(period, PAGE_SIZE, offset);
-  const pointsQuery = usePointsLeaderboard(PAGE_SIZE, offset);
+  const scoreQuery = useScoreLeaderboard(scope, PAGE_SIZE, offset);
 
   const activeData = mode === 'pnl'
     ? pnlQuery.data
-    : mode === 'points'
-    ? pointsQuery.data
+    : mode === 'score'
+    ? scoreQuery.data
     : volumeQuery.data;
 
   const activeLoading = mode === 'pnl'
     ? pnlQuery.isLoading
-    : mode === 'points'
-    ? pointsQuery.isLoading
+    : mode === 'score'
+    ? scoreQuery.isLoading
     : volumeQuery.isLoading;
 
   const totalTraders = activeData?.totalTraders ?? 0;
@@ -62,9 +63,13 @@ export function LeaderboardPage() {
     setPage(1);
   }, []);
 
+  const handleScopeChange = useCallback((s: ScoreScope) => {
+    setScope(s);
+    setPage(1);
+  }, []);
+
   const handlePageChange = useCallback((p: number) => {
     setPage(p);
-    // Scroll to top of leaderboard
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -122,8 +127,7 @@ export function LeaderboardPage() {
             <MyRankCard address={userAddress} />
           )}
 
-          {/* Stats Bar */}
-          {/* Stats Bar + Period Selector */}
+          {/* Stats Bar + Period/Scope Selector */}
           <div className="flex items-center justify-between">
             {activeData && activeData.totalTraders > 0 ? (
               <div className="flex items-center gap-4 text-xs text-theme-text-muted">
@@ -140,16 +144,18 @@ export function LeaderboardPage() {
                 )}
               </div>
             ) : <div />}
-            {mode !== 'points' && (
+            {mode === 'score' ? (
+              <ScopeSelector selected={scope} onSelect={handleScopeChange} />
+            ) : mode !== 'activity' ? (
               <PeriodSelector selected={period} onSelect={handlePeriodChange} />
-            )}
+            ) : null}
           </div>
 
           {/* Leaderboard Table */}
           <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
-            {mode === 'points' ? (
-              <PointsLeaderboardTable
-                traders={pointsQuery.data?.traders ?? []}
+            {mode === 'score' ? (
+              <ScoreLeaderboardTable
+                traders={scoreQuery.data?.traders ?? []}
                 isLoading={activeLoading}
                 currentUserAddress={userAddress}
                 followFilter={showFollowing}

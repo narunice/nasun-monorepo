@@ -1,5 +1,6 @@
 export type Period = '24h' | '7d' | '30d' | 'all';
-export type LeaderboardMode = 'activity' | 'volume' | 'pnl' | 'points';
+export type LeaderboardMode = 'activity' | 'volume' | 'pnl' | 'score';
+export type ScoreScope = 'weekly' | 'alltime';
 
 export interface LeaderboardTrader {
   rank: number;
@@ -41,28 +42,30 @@ export interface PnlLeaderboardResponse {
   totalTraders: number;
 }
 
-export interface PointsLeaderboardTrader {
+export interface ScoreLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
   hasGenesisPass?: boolean;
-  totalPoints: number;
+  totalScore: number;
   tradeCount: number;
   volumeUsd: string;
   rankChange: number;
   followerCount?: number;
 }
 
-export interface PointsLeaderboardResponse {
-  traders: PointsLeaderboardTrader[];
+export interface ScoreLeaderboardResponse {
+  scope: ScoreScope;
+  weekStartDate?: string;
+  traders: ScoreLeaderboardTrader[];
   updatedAt: number;
   totalTraders: number;
 }
 
-export interface TraderPointsResponse {
+export interface TraderScoreResponse {
   address: string;
   nickname: string | null;
-  totalPoints: number;
+  totalScore: number;
   breakdown: {
     trades: number;
     volume: number;
@@ -70,6 +73,7 @@ export interface TraderPointsResponse {
     pnl: number;
   };
   rank: number;
+  scope: ScoreScope;
 }
 
 export interface TraderPeriodStats {
