@@ -26,6 +26,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/points', label: 'Ecosystem Points', icon: '🎯' },
   { path: '/admin/nft-collections', label: 'Nasun NFT on ETH', icon: '🖼️' },
   { path: '/admin/genesis-pass-drop', label: 'Genesis Pass Drop', icon: '🎫' },
+  { path: '/admin/bug-reports', label: 'Bug Reports', icon: '🐛' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
@@ -98,5 +99,12 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     icon: '🛡️',
     link: '/admin/alliance-nft',
     linkText: 'View Alliance NFT',
+  },
+  {
+    title: 'Bug Reports',
+    description: 'Review user-submitted bug reports, update status, and reward ecosystem points for valid reports.',
+    icon: '🐛',
+    link: '/admin/bug-reports',
+    linkText: 'Manage Bug Reports',
   },
 ];

@@ -23,6 +23,7 @@ const ActivityPointsAdmin = lazy(() => import("../features/admin/pages/ActivityP
 const AirdropAdmin = lazy(() => import("../features/admin/pages/AirdropAdmin").then(m => ({ default: m.AirdropAdmin })));
 const AllianceNftAdmin = lazy(() => import("../features/admin/pages/AllianceNftAdmin").then(m => ({ default: m.AllianceNftAdmin })));
 const GenesisPassDropAdmin = lazy(() => import("../features/admin/pages/GenesisPassDropAdmin").then(m => ({ default: m.GenesisPassDropAdmin })));
+const BugReportAdmin = lazy(() => import("../features/admin/pages/BugReportAdmin").then(m => ({ default: m.BugReportAdmin })));
 
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
@@ -52,6 +53,7 @@ const adminRoutes = [
   { path: "/admin/airdrop", title: "Airdrop Management", component: AirdropAdmin },
   { path: "/admin/alliance-nft", title: "Alliance NFT", component: AllianceNftAdmin },
   { path: "/admin/genesis-pass-drop", title: "Genesis Pass Drop", component: GenesisPassDropAdmin },
+  { path: "/admin/bug-reports", title: "Bug Reports", component: BugReportAdmin },
 ];
 
 const AppRoutes = () => {

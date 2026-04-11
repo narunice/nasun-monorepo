@@ -1,38 +1,48 @@
 /**
- * POST /bug-report
+ * Bug Report Lambda
  *
- * Accepts bug report form submissions.
- * Primary: stores in DynamoDB.
- * Best-effort: sends Telegram notification to naru.
+ * User-facing endpoints:
+ * - POST /bug-report       - Submit a bug report (with Telegram notification)
+ * - GET  /bug-report/my-reports  - List own reports (identityId-index GSI)
+ * - GET  /bug-report/upload-url  - Get S3 presigned POST URL for screenshot
  *
- * Auth: Cognito JWT (tokenAuthorizer)
+ * Auth: Cognito JWT (tokenAuthorizer -> identityId in authorizer context)
  */
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import {
   SecretsManagerClient,
   GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import { S3Client } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
 
-// DynamoDB
-const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const BUG_REPORTS_TABLE = process.env.BUG_REPORTS_TABLE || 'nasun-bug-reports';
+// ============================================
+// Clients & Config
+// ============================================
 
-// Secrets Manager
+const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const s3Client = new S3Client({});
 const smClient = new SecretsManagerClient({});
+
+const BUG_REPORTS_TABLE = process.env.BUG_REPORTS_TABLE || 'nasun-bug-reports';
+const INTERNAL_CACHE_BUCKET = process.env.INTERNAL_CACHE_BUCKET || '';
 const TELEGRAM_BOT_TOKEN_SECRET_NAME =
   process.env.TELEGRAM_BOT_TOKEN_SECRET_NAME || 'nasun-telegram-bot-token';
 const NARU_TELEGRAM_CHAT_ID = process.env.NARU_TELEGRAM_CHAT_ID || '';
 
+const ALLOWED_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Other'];
+const MAX_SCREENSHOTS = 3;
+const SCREENSHOT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const COOLDOWN_MINUTES = 5;
+
 // Module-scope cache for bot token
 let cachedBotToken: string | null = null;
 
-const ALLOWED_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Feature Request', 'Other'];
-
-// CORS: reflect matching origin from allowed list
+// CORS
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io,https://staging.nasun.io').split(',');
 
 function getCorsHeaders(event: APIGatewayProxyEvent): Record<string, string> {
@@ -41,56 +51,274 @@ function getCorsHeaders(event: APIGatewayProxyEvent): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
   };
 }
 
-function response(statusCode: number, body: unknown, headers: Record<string, string>): APIGatewayProxyResult {
-  return {
-    statusCode,
-    headers,
-    body: JSON.stringify(body),
-  };
+function respond(statusCode: number, body: unknown, headers: Record<string, string>): APIGatewayProxyResult {
+  return { statusCode, headers, body: JSON.stringify(body) };
 }
+
+// ============================================
+// Router
+// ============================================
+
+export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+  const cors = getCorsHeaders(event);
+
+  if (event.httpMethod === 'OPTIONS') {
+    return respond(200, {}, cors);
+  }
+
+  const identityId = event.requestContext.authorizer?.identityId;
+  if (!identityId) {
+    return respond(401, { error: 'Unauthorized' }, cors);
+  }
+
+  const path = event.path.replace(/\/prod\/?/, '/').replace(/\/$/, '');
+
+  try {
+    // POST /bug-report
+    if (event.httpMethod === 'POST' && path.endsWith('/bug-report')) {
+      return await handleSubmit(event, identityId, cors);
+    }
+
+    // GET /bug-report/my-reports
+    if (event.httpMethod === 'GET' && path.endsWith('/my-reports')) {
+      return await handleMyReports(identityId, cors);
+    }
+
+    // GET /bug-report/upload-url
+    if (event.httpMethod === 'GET' && path.endsWith('/upload-url')) {
+      return await handleUploadUrl(event, identityId, cors);
+    }
+
+    return respond(404, { error: 'Not found' }, cors);
+  } catch (err) {
+    console.error('Unhandled error:', err);
+    return respond(500, { error: 'Internal server error' }, cors);
+  }
+}
+
+// ============================================
+// POST /bug-report - Submit a bug report
+// ============================================
+
+async function handleSubmit(
+  event: APIGatewayProxyEvent,
+  identityId: string,
+  cors: Record<string, string>,
+): Promise<APIGatewayProxyResult> {
+  // Parse body
+  let body: {
+    title?: string;
+    category?: string;
+    description?: string;
+    reproSteps?: string;
+    displayName?: string;
+    screenshotKeys?: string[];
+    pageUrl?: string;
+    walletAddress?: string;
+  };
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch {
+    return respond(400, { error: 'Invalid JSON' }, cors);
+  }
+
+  const { title, category, description, reproSteps, displayName, screenshotKeys, pageUrl, walletAddress } = body;
+
+  // Validate required fields
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return respond(400, { error: 'Title is required' }, cors);
+  }
+  if (title.length > 100) {
+    return respond(400, { error: 'Title too long (max 100 characters)' }, cors);
+  }
+  if (!description || typeof description !== 'string' || description.trim().length === 0) {
+    return respond(400, { error: 'Description is required' }, cors);
+  }
+  if (description.length > 2000) {
+    return respond(400, { error: 'Description too long (max 2000 characters)' }, cors);
+  }
+  if (category && (typeof category !== 'string' || !ALLOWED_CATEGORIES.includes(category))) {
+    return respond(400, { error: `Invalid category. Allowed: ${ALLOWED_CATEGORIES.join(', ')}` }, cors);
+  }
+  if (reproSteps && (typeof reproSteps !== 'string' || reproSteps.length > 2000)) {
+    return respond(400, { error: 'Repro steps too long (max 2000 characters)' }, cors);
+  }
+
+  // Validate walletAddress (required for points reward)
+  if (!walletAddress || typeof walletAddress !== 'string' || walletAddress.trim().length === 0) {
+    return respond(400, { error: 'Wallet address is required' }, cors);
+  }
+
+  // Validate screenshot keys
+  if (screenshotKeys) {
+    if (!Array.isArray(screenshotKeys) || screenshotKeys.length > MAX_SCREENSHOTS) {
+      return respond(400, { error: `Maximum ${MAX_SCREENSHOTS} screenshots allowed` }, cors);
+    }
+    if (screenshotKeys.some(k =>
+      typeof k !== 'string' ||
+      !k.startsWith('bug-screenshots/') ||
+      k.includes('..') ||
+      k.includes('//'),
+    )) {
+      return respond(400, { error: 'Invalid screenshot key format' }, cors);
+    }
+  }
+
+  // Per-user cooldown check
+  const cooldownResult = await ddbClient.send(new QueryCommand({
+    TableName: BUG_REPORTS_TABLE,
+    IndexName: 'identityId-index',
+    KeyConditionExpression: 'identityId = :id AND #ts > :since',
+    ExpressionAttributeNames: { '#ts': 'timestamp' },
+    ExpressionAttributeValues: {
+      ':id': identityId,
+      ':since': new Date(Date.now() - COOLDOWN_MINUTES * 60 * 1000).toISOString(),
+    },
+    Limit: 1,
+    ScanIndexForward: false,
+  }));
+
+  if (cooldownResult.Items && cooldownResult.Items.length > 0) {
+    return respond(429, { error: `Please wait ${COOLDOWN_MINUTES} minutes between submissions` }, cors);
+  }
+
+  const reportId = randomUUID();
+  const timestamp = new Date().toISOString();
+
+  // Store in DynamoDB
+  await ddbClient.send(new PutCommand({
+    TableName: BUG_REPORTS_TABLE,
+    Item: {
+      reportId,
+      timestamp,
+      identityId,
+      title: title.trim(),
+      category: category || 'Other',
+      description: description.trim(),
+      reproSteps: reproSteps?.trim() || null,
+      screenshotKeys: screenshotKeys || [],
+      walletAddress: walletAddress.trim(),
+      pageUrl: pageUrl && typeof pageUrl === 'string' ? pageUrl.trim().slice(0, 500) : null,
+      status: 'new',
+    },
+  }));
+
+  // Send Telegram notification (best-effort)
+  await sendTelegramNotification({
+    reportId,
+    title: title.trim(),
+    category: category || 'Other',
+    description: description.trim(),
+    identityId,
+    displayName: typeof displayName === 'string' ? displayName : 'Unknown',
+    screenshotCount: screenshotKeys?.length || 0,
+  });
+
+  return respond(200, { reportId, message: 'Bug report submitted successfully' }, cors);
+}
+
+// ============================================
+// GET /bug-report/my-reports - List own reports
+// ============================================
+
+async function handleMyReports(
+  identityId: string,
+  cors: Record<string, string>,
+): Promise<APIGatewayProxyResult> {
+  const result = await ddbClient.send(new QueryCommand({
+    TableName: BUG_REPORTS_TABLE,
+    IndexName: 'identityId-index',
+    KeyConditionExpression: 'identityId = :id',
+    ExpressionAttributeValues: { ':id': identityId },
+    ScanIndexForward: false, // newest first
+    Limit: 50,
+  }));
+
+  return respond(200, { reports: result.Items || [] }, cors);
+}
+
+// ============================================
+// GET /bug-report/upload-url - Presigned POST URL for screenshot
+// ============================================
+
+async function handleUploadUrl(
+  event: APIGatewayProxyEvent,
+  identityId: string,
+  cors: Record<string, string>,
+): Promise<APIGatewayProxyResult> {
+  if (!INTERNAL_CACHE_BUCKET) {
+    return respond(500, { error: 'Screenshot upload not configured' }, cors);
+  }
+
+  const contentType = event.queryStringParameters?.contentType;
+  if (!contentType || !['image/png', 'image/jpeg', 'image/webp'].includes(contentType)) {
+    return respond(400, { error: 'contentType must be image/png, image/jpeg, or image/webp' }, cors);
+  }
+
+  const ext = contentType === 'image/png' ? 'png' : contentType === 'image/jpeg' ? 'jpg' : 'webp';
+  const key = `bug-screenshots/${identityId}/${randomUUID()}.${ext}`;
+
+  const presigned = await createPresignedPost(s3Client, {
+    Bucket: INTERNAL_CACHE_BUCKET,
+    Key: key,
+    Conditions: [
+      ['content-length-range', 0, SCREENSHOT_MAX_SIZE],
+      ['eq', '$Content-Type', contentType],
+    ],
+    Fields: {
+      'Content-Type': contentType,
+    },
+    Expires: 300, // 5 minutes
+  });
+
+  return respond(200, { ...presigned, key }, cors);
+}
+
+// ============================================
+// Telegram Notification
+// ============================================
 
 async function getBotToken(): Promise<string> {
   if (cachedBotToken) return cachedBotToken;
   const secret = await smClient.send(
-    new GetSecretValueCommand({ SecretId: TELEGRAM_BOT_TOKEN_SECRET_NAME })
+    new GetSecretValueCommand({ SecretId: TELEGRAM_BOT_TOKEN_SECRET_NAME }),
   );
   cachedBotToken = secret.SecretString || '';
   return cachedBotToken;
 }
 
 async function sendTelegramNotification(report: {
+  reportId: string;
   title: string;
   category: string;
   description: string;
-  reproSteps?: string;
   identityId: string;
   displayName: string;
+  screenshotCount: number;
 }): Promise<void> {
-  if (!NARU_TELEGRAM_CHAT_ID) {
-    console.warn('NARU_TELEGRAM_CHAT_ID not configured, skipping Telegram notification');
-    return;
-  }
+  if (!NARU_TELEGRAM_CHAT_ID) return;
 
   try {
     const botToken = await getBotToken();
     const text = [
-      `[Bug Report] ${report.category}`,
-      `From: ${report.displayName} (${report.identityId.slice(0, 30)}...)`,
+      `[Bug Report] #${report.reportId.slice(0, 8)}`,
+      `Category: ${report.category}`,
+      `From: ${report.displayName}`,
       '---',
       `Title: ${report.title}`,
       `Description: ${report.description.slice(0, 500)}`,
-      report.reproSteps ? `Steps: ${report.reproSteps.slice(0, 300)}` : '',
+      report.screenshotCount > 0 ? `Screenshots: ${report.screenshotCount}` : '',
     ].filter(Boolean).join('\n');
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,107 +328,10 @@ async function sendTelegramNotification(report: {
         }),
         signal: controller.signal,
       });
-
-      if (!res.ok) {
-        console.warn('Telegram API error:', res.status, await res.text());
-      }
     } finally {
       clearTimeout(timeout);
     }
   } catch (err) {
     console.warn('Telegram notification failed (best-effort):', err);
   }
-}
-
-export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-  const cors = getCorsHeaders(event);
-
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return response(200, {}, cors);
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return response(405, { error: 'Method not allowed' }, cors);
-  }
-
-  // Extract identityId from authorizer context (set by tokenAuthorizer)
-  const identityId = event.requestContext.authorizer?.identityId;
-  if (!identityId) {
-    return response(401, { error: 'Unauthorized' }, cors);
-  }
-
-  // Parse body
-  let body: {
-    title?: string;
-    category?: string;
-    description?: string;
-    reproSteps?: string;
-    displayName?: string;
-  };
-  try {
-    body = JSON.parse(event.body || '{}');
-  } catch {
-    return response(400, { error: 'Invalid JSON' }, cors);
-  }
-
-  // Validate
-  const { title, category, description, reproSteps, displayName } = body;
-
-  if (!title || typeof title !== 'string' || title.trim().length === 0) {
-    return response(400, { error: 'Title is required' }, cors);
-  }
-  if (title.length > 100) {
-    return response(400, { error: 'Title too long (max 100 characters)' }, cors);
-  }
-  if (!description || typeof description !== 'string' || description.trim().length === 0) {
-    return response(400, { error: 'Description is required' }, cors);
-  }
-  if (description.length > 2000) {
-    return response(400, { error: 'Description too long (max 2000 characters)' }, cors);
-  }
-  if (category && (typeof category !== 'string' || !ALLOWED_CATEGORIES.includes(category))) {
-    return response(400, { error: `Invalid category. Allowed: ${ALLOWED_CATEGORIES.join(', ')}` }, cors);
-  }
-  if (reproSteps && (typeof reproSteps !== 'string' || reproSteps.length > 2000)) {
-    return response(400, { error: 'Repro steps too long (max 2000 characters)' }, cors);
-  }
-  if (displayName && typeof displayName !== 'string') {
-    return response(400, { error: 'Invalid displayName' }, cors);
-  }
-
-  const reportId = randomUUID();
-  const timestamp = new Date().toISOString();
-
-  // Store in DynamoDB (primary)
-  try {
-    await ddbClient.send(new PutCommand({
-      TableName: BUG_REPORTS_TABLE,
-      Item: {
-        reportId,
-        timestamp,
-        identityId,
-        title: title.trim(),
-        category: category || 'Other',
-        description: description.trim(),
-        reproSteps: reproSteps?.trim() || null,
-        status: 'new',
-      },
-    }));
-  } catch (err) {
-    console.error('DynamoDB write failed:', err);
-    return response(500, { error: 'Failed to save bug report. Please try again.' }, cors);
-  }
-
-  // Send Telegram notification (best-effort with 5s timeout)
-  await sendTelegramNotification({
-    title: title.trim(),
-    category: category || 'Other',
-    description: description.trim(),
-    reproSteps: reproSteps?.trim(),
-    identityId,
-    displayName: typeof displayName === 'string' ? displayName : 'Unknown',
-  });
-
-  return response(200, { reportId, message: 'Bug report submitted successfully' }, cors);
 }

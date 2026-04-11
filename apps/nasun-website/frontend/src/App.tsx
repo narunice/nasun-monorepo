@@ -12,8 +12,7 @@ import { Button } from "./components/ui/button";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
 const ChatWidget = lazy(() => import("./features/chat/components/ChatWidget"));
-// TODO: enable after screenshot paste support is added
-// const BugReportButton = lazy(() => import("./features/bug-report/components/BugReportButton"));
+const BugReportButton = lazy(() => import("./features/bug-report/components/BugReportButton"));
 
 /**
  * Error fallback component with i18n support
@@ -70,8 +69,7 @@ function AppContent() {
       {!isClaimPage && (
         <Suspense fallback={null}>
           <ChatWidget />
-          {/* TODO: enable after screenshot paste support is added */}
-          {/* <BugReportButton /> */}
+          <BugReportButton />
         </Suspense>
       )}
     </>
