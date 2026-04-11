@@ -32,6 +32,7 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
   const [checkState, setCheckState] = useState<CheckState>('idle');
   const [submitting, setSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,19 +128,21 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
   const isSameAsCurrentName = isEditMode && value.trim().toLowerCase() === currentNickname!.toLowerCase();
   const canSubmit = checkState === 'available' && !submitting && !resetting && !isSameAsCurrentName;
 
+  const isLocked = isEditMode && rateLimit && rateLimit.changesRemaining <= 0 && !!rateLimit.lockedUntil;
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-nasun-black rounded-lg p-5 max-w-sm w-full mx-4 border border-white/20"
+        className="bg-nasun-black rounded-xl p-5 w-[340px] mx-4 border border-white/20"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-sm font-semibold text-white mb-2">
-          {isEditMode ? 'Change your nickname' : 'Set your chat nickname'}
+        <h3 className="text-sm font-semibold text-white mb-1">
+          {isEditMode ? 'Change nickname' : 'Set chat nickname'}
         </h3>
-        <p className="text-xs text-white/40 mb-3 leading-relaxed">
+        <p className="text-[11px] text-white/40 mb-3">
           {isEditMode
-            ? 'Your nickname overrides your default display name in chat. Reset to go back to your account name.'
-            : 'By default, your account display name is shown in chat. Set a nickname to customize how you appear.'}
+            ? 'Reset to use your account display name instead.'
+            : 'Customize how you appear in chat.'}
         </p>
 
         <input
@@ -150,84 +153,54 @@ export function SetNicknameModal({ addressSuffix, currentNickname, rateLimit, on
           placeholder="e.g. alice"
           maxLength={16}
           autoFocus
+          disabled={!!isLocked}
           className="w-full px-3 py-2 text-sm bg-white/5 border border-white/15 rounded-lg
             text-white placeholder:text-white/30
-            focus:outline-none focus:border-nasun-c4 transition-colors"
+            focus:outline-none focus:border-nasun-c4 transition-colors
+            disabled:opacity-40"
         />
 
-        {/* Status line */}
-        <div className="h-5 mt-1.5 flex items-center">
-          {checkState === 'checking' && (
-            <span className="text-xs text-white/50">Checking...</span>
-          )}
-          {checkState === 'available' && (
-            <span className="text-xs text-green-500">Available</span>
-          )}
-          {checkState === 'taken' && (
-            <span className="text-xs text-red-500">Already taken</span>
-          )}
-          {checkState === 'invalid' && (
-            <span className="text-xs text-orange-500">2-16 chars, letters/numbers/_/- only</span>
-          )}
-          {isSameAsCurrentName && (
-            <span className="text-xs text-white/40">Same as current nickname</span>
-          )}
-          {serverError && (
-            <span className="text-xs text-red-500">{serverError}</span>
+        {/* Status + preview row */}
+        <div className="mt-1.5 min-h-[18px] flex items-center justify-between gap-2">
+          <span className="text-[11px]">
+            {checkState === 'checking' && <span className="text-white/50">Checking...</span>}
+            {checkState === 'available' && <span className="text-green-500">Available</span>}
+            {checkState === 'taken' && <span className="text-red-500">Taken</span>}
+            {checkState === 'invalid' && <span className="text-orange-500">2-16 chars, a-z/0-9/_/- only</span>}
+            {isSameAsCurrentName && <span className="text-white/40">Same as current</span>}
+            {serverError && <span className="text-red-500">{serverError}</span>}
+          </span>
+          {value.trim().length >= 2 && NICKNAME_REGEX.test(value.trim()) && !isSameAsCurrentName && (
+            <span className="text-[11px] text-white/40 whitespace-nowrap">
+              {value.trim()}#{addressSuffix}
+            </span>
           )}
         </div>
 
-        {/* Preview */}
-        {value.trim().length >= 2 && NICKNAME_REGEX.test(value.trim()) && (
-          <div className="mt-2 text-xs text-white/50">
-            You'll appear as:{' '}
-            <span className="text-white font-medium">
-              {value.trim()}#{addressSuffix}
-            </span>
-          </div>
-        )}
-
-        {/* Rate limit info (edit mode only) */}
-        {isEditMode && rateLimit && (
-          <div className="mt-2 text-xs text-white/40">
-            {rateLimit.changesRemaining > 0
-              ? `You can change your nickname ${rateLimit.changesRemaining} more time${rateLimit.changesRemaining === 1 ? '' : 's'} within the first hour. After that, it will be locked for 30 days.`
-              : rateLimit.lockedUntil
-                ? `Nickname is locked for ${formatLockedUntil(rateLimit.lockedUntil)}.`
-                : 'No changes remaining.'}
-          </div>
+        {/* Lock info */}
+        {isLocked && (
+          <p className="mt-1 text-[11px] text-amber-400/70">
+            Locked for {formatLockedUntil(rateLimit!.lockedUntil!)}. You can still reset.
+          </p>
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 text-xs font-medium rounded-lg
-              bg-white/10 text-white/60
-              hover:text-white/80 transition-colors"
-          >
+        <div className="flex gap-2 mt-3">
+          <button onClick={onClose} className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-white/10 text-white/60 hover:text-white/80 transition-colors">
             Cancel
           </button>
-          {isEditMode && (
-            <button
-              onClick={handleReset}
-              disabled={resetting || submitting}
-              className="flex-1 py-2 text-xs font-medium rounded-lg
-                border border-white/15 text-white/50
-                hover:text-white/80 hover:border-white/30 transition-colors
-                disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {resetting ? 'Resetting...' : 'Reset'}
+          {isEditMode && !confirmReset && (
+            <button onClick={() => setConfirmReset(true)} disabled={resetting || submitting} className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-white/15 text-white/50 hover:text-white/80 hover:border-white/30 transition-colors disabled:opacity-50">
+              Reset
             </button>
           )}
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="flex-1 py-2 text-xs font-medium rounded-lg
-              bg-nasun-c4 hover:bg-nasun-c4/80 text-white transition-colors
-              disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Saving...' : isEditMode ? 'Change' : 'Set Nickname'}
+          {isEditMode && confirmReset && (
+            <button onClick={handleReset} disabled={resetting || submitting} className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50">
+              {resetting ? '...' : 'Confirm'}
+            </button>
+          )}
+          <button onClick={handleSubmit} disabled={!canSubmit || !!isLocked} className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-nasun-c4 hover:bg-nasun-c4/80 text-white transition-colors disabled:opacity-50">
+            {submitting ? '...' : isEditMode ? 'Change' : 'Set'}
           </button>
         </div>
       </div>
