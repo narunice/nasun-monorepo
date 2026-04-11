@@ -50,9 +50,9 @@
     "upgradeCap": "0x9fbd9eefdc61bd54b4fd824c788ca31feab04d9a6e195de283db58671f1d8acf"
   },
   "governance": {
-    "packageId": "0xad7e5138001d316c4ffb22a07b35e24ff46309ddb077ab9c19c3cb38ba106de1",
+    "packageId": "0x78a6cac2022aa05e4c3bf1461f892f49d2d9d3d1a4770c266c4c5d2c347a9af3",
     "originalPackageId": "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3",
-    "multiChoicePackageId": "0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a",
+    "multiChoicePackageId": "0x78a6cac2022aa05e4c3bf1461f892f49d2d9d3d1a4770c266c4c5d2c347a9af3",
     "upgradeCap": "0xc1c5b2401331b881d5716ab2cd91010e9916ff15932f6a8ad60c8cbfc9a13fee",
     "dashboard": "0xc6eff35e83378d77e1ef7214cac1b447b6e486c5ba1daa0ae0ca88bef2d1f0f2",
     "adminCap": "0x615b0f04636d7a98d8590480c6be1a11fe3df757a5db86fdf9987c37a51ca6d4",
