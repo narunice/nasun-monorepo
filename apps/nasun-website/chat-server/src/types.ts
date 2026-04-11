@@ -107,7 +107,7 @@ export interface ChatMessagePayload {
   senderBadge?: string | null;
   senderProfileImageUrl?: string | null;
   content: string;
-  messageType: 'text' | 'system';
+  messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
   timestamp: number;
   reactions?: Record<string, number>;
@@ -216,7 +216,7 @@ export interface StoredMessage {
   sender: string;        // walletAddress
   senderName: string;
   content: string;
-  messageType: 'text' | 'system';
+  messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;
   timestamp: number;
 }
@@ -259,6 +259,19 @@ export interface ChatServerConfig {
   nasunProfileApiUrl: string;
   genesisPassApiUrl: string;
   trustProxy: boolean;
+  // Leaderboard indexer (enabled when deepbookPackage is set)
+  leaderboardDbPath: string;
+  deepbookPackage: string;
+  rpcUrl: string;
+  indexerPollIntervalMs: number;
+  aggregationIntervalMs: number;
+  excludedAddresses: string[];
+  // Competition admin
+  competitionAdminKey: string;
+  // Large trade broadcast threshold (NUSDC, min 100)
+  largeTradeThresholdNusdc: number;
+  // Order event retention
+  orderEventRetentionDays: number;
 }
 
 export const DEFAULT_CONFIG: ChatServerConfig = {
@@ -277,4 +290,15 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   nasunProfileApiUrl: process.env.NASUN_PROFILE_API_URL || '',
   genesisPassApiUrl: process.env.GENESIS_PASS_API_URL || '',
   trustProxy: process.env.TRUST_PROXY === 'true',
+  // Leaderboard indexer
+  leaderboardDbPath: process.env.LEADERBOARD_DB_PATH || './data/leaderboard.db',
+  deepbookPackage: process.env.DEEPBOOK_PACKAGE || '',
+  rpcUrl: process.env.RPC_URL || 'https://rpc.devnet.nasun.io',
+  indexerPollIntervalMs: parseInt(process.env.INDEXER_POLL_INTERVAL_MS || '5000', 10),
+  aggregationIntervalMs: parseInt(process.env.AGGREGATION_INTERVAL_MS || '60000', 10),
+  excludedAddresses: (process.env.INDEXER_EXCLUDED_ADDRESSES || '').split(',').filter(Boolean),
+  // Competition admin
+  competitionAdminKey: process.env.COMPETITION_ADMIN_KEY || '',
+  largeTradeThresholdNusdc: Math.max(parseInt(process.env.LARGE_TRADE_THRESHOLD_NUSDC || '1000', 10), 100),
+  orderEventRetentionDays: parseInt(process.env.ORDER_EVENT_RETENTION_DAYS || '3', 10),
 };
