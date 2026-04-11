@@ -393,8 +393,8 @@ export function clearNickname(address: string): { ok: boolean; error?: string; r
     const existing = getNickname(address);
     if (existing === null) return { ok: false as const, error: 'no_nickname' };
 
-    const rateLimit = getNicknameRateLimit(address);
-    if (!rateLimit.canChange) return { ok: false as const, error: 'rate_limited', rateLimit };
+    // Clearing (reset) is always allowed regardless of rate limit.
+    // Rate limit only applies to setting/changing nicknames.
 
     const now = Date.now();
     const row = d
@@ -553,6 +553,18 @@ function getNasunDisplayName(address: string): string | null {
   return row?.resolved_display_name || null;
 }
 
+export function getAddressesWithProfileName(addresses: string[]): Set<string> {
+  if (addresses.length === 0) return new Set();
+  const rows = getDb()
+    .prepare(
+      `SELECT address FROM nasun_profiles
+       WHERE address IN (${addresses.map(() => '?').join(',')})
+       AND resolved_display_name IS NOT NULL AND resolved_display_name != ''`
+    )
+    .all(...addresses) as Array<{ address: string }>;
+  return new Set(rows.map((r) => r.address));
+}
+
 export function upsertNasunProfile(address: string, displayName: string | null, imageUrl: string | null): void {
   getDb()
     .prepare(
@@ -628,14 +640,15 @@ export async function ensureProfilesCached(addresses: string[]): Promise<void> {
   await Promise.allSettled(stale.map((a) => fetchAndCacheProfile(a)));
 }
 
-// Unified display name: nickname (priority 1) > nasun_profiles (priority 2) > users.display_name (priority 3)
+// Unified display name: nasun_profiles (priority 1) > nickname (priority 2) > users.display_name (priority 3)
+// Profile customDisplayName (via My Account) takes precedence over chat nickname.
 export function getDisplayName(address: string): string | null {
+  const nasunName = getNasunDisplayName(address);
+  if (nasunName) return nasunName;
   const row = getDb()
     .prepare('SELECT nickname, display_name FROM users WHERE address = ?')
     .get(address) as { nickname: string | null; display_name: string } | undefined;
   if (row?.nickname) return row.nickname;
-  const nasunName = getNasunDisplayName(address);
-  if (nasunName) return nasunName;
   return row?.display_name ?? null;
 }
 
@@ -646,11 +659,11 @@ export function getDisplayNamesBatch(addresses: string[]): Map<string, string> {
   const rows = d
     .prepare(
       `SELECT addr,
-              COALESCE(u.nickname, np.resolved_display_name, u.display_name) as display_name
+              COALESCE(np.resolved_display_name, u.nickname, u.display_name) as display_name
        FROM (SELECT value as addr FROM json_each(?)) AS input
        LEFT JOIN users u ON u.address = input.addr
        LEFT JOIN nasun_profiles np ON np.address = input.addr
-       WHERE u.nickname IS NOT NULL OR np.resolved_display_name IS NOT NULL OR u.display_name IS NOT NULL`
+       WHERE np.resolved_display_name IS NOT NULL OR u.nickname IS NOT NULL OR u.display_name IS NOT NULL`
     )
     .all(JSON.stringify(addresses)) as Array<{ addr: string; display_name: string }>;
 
