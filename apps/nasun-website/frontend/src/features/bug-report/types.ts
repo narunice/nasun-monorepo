@@ -30,6 +30,9 @@ export interface BugReport {
   adminNote?: string;
   bonusPoints?: number;
   rewardStatus?: string;
+  twitterHandle?: string;
+  profileImageUrl?: string;
+  displayName?: string;
   updatedAt?: string;
 }
 
