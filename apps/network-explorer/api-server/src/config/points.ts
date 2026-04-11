@@ -132,6 +132,7 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   // Pado DEX (DeepBook v2)
   // Actual modules: order_info (OrderPlaced, OrderInfo), order (OrderCanceled)
   [PKG.deepbook, 'order_info', 'OrderPlaced', { category: 'pado-dex', activityType: 'limit-order' }],
+  [PKG.deepbook, 'order_info', 'OrderFilled', { category: 'pado-dex', activityType: 'market-order' }],
   [PKG.deepbook, 'order', 'OrderCanceled', { category: 'pado-dex', activityType: 'cancel-order' }],
   // OrderInfo is a companion event emitted with OrderPlaced, skip to avoid double-counting
 
