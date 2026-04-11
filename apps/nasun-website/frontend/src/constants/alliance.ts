@@ -1,9 +1,9 @@
-// Alliance NFT on-chain metadata image URLs (IPFS-pinned, immutable)
+// Alliance NFT on-chain metadata image URLs (Arweave-stored, permanent)
 export const ALLIANCE_IMAGES = [
-  "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafybeieehzagjrl5sitgywnxx3fjbuxg7kson3da4z3ljmeupporveyqeu",   // Taroka
-  "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreignsezz4o23lnbdrwmtsv6ycgsrv4tdpnywanny7pwrnblph3u22y",   // Princess Kaebo
-  "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreig6fenrv23z375xjifz3wadvwrh4plrtpb7pebx6yc2b4gxmm5mc4",   // The Contractor
-  "https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreigoirws7dj4uupljzbmc4zcpa3qqgkrd4juvlgfxr4nyslr2sjcri",   // Young Josen
+  "https://arweave.net/pfz8DTmXICEZSjz24V4iom1mv3Hzed-Qboui4tOg3IM",   // Taroka (PNG)
+  "https://arweave.net/D73jyh2mNFxn-6j8YwrvrvXlMXkX1K6j2NvTUkNXqZc",   // Princess Kaebo (PNG)
+  "https://arweave.net/xyZk-yKetgdeWZpt_HM-Lv_eH3OGBaRu6WnZmjDKz-Y",   // The Contractor (PNG)
+  "https://arweave.net/lKpSmCSSYhmBgFlFNi-qdIsqw60CS9fFDzQWvBtfjmA",   // Young Josen (PNG)
 ] as const;
 
 // Local preview images (Vite-bundled, fast loading)
