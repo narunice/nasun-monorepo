@@ -28,6 +28,7 @@ import { runDailyNftChecks } from './daily-nft-check.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
 import { scanChatParticipation } from './chat-scanner.js';
 import { takeDailySnapshot } from './daily-snapshot.js';
+import { reconcileFromRpc } from './rpc-reconcile.js';
 import { rpcCall } from '../rpc.js';
 import { fetchWithOffload } from './fetch-with-offload.js';
 import { saveCache, loadCache } from './cache-persist.js';
@@ -42,6 +43,7 @@ let isScanning = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
 let lastDailyNftCheckDate = '';
 let lastSnapshotDate = '';
+let lastReconcileDate = '';
 
 // Daily category cap: only one base_points insert per (identity, category) per day.
 // Key format: "identityId::category". Cleared on date rollover and chain reset.
@@ -199,10 +201,29 @@ async function scanLoop(): Promise<void> {
             yesterday.toISOString().slice(0, 10),
             cacheMap,
           );
-          lastSnapshotDate = todayStr;
         } catch (err) {
           console.error('[Snapshot] Error (non-fatal):', (err as Error).message);
         }
+      }
+      // Mark snapshot as attempted regardless of outcome (idempotent via ON CONFLICT)
+      lastSnapshotDate = todayStr;
+    }
+
+    // RPC reconciliation: verify yesterday's data against blockchain (once per day, after snapshot)
+    if (todayStr !== lastReconcileDate && lastSnapshotDate === todayStr) {
+      try {
+        const yesterday = new Date();
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        const gapsFilled = await reconcileFromRpc(yesterdayStr, registeredWallets, genesisPassHolders);
+        lastReconcileDate = todayStr;
+        if (gapsFilled > 0) {
+          console.log(`[Reconcile] ${yesterdayStr}: ${gapsFilled} gaps filled from RPC`);
+        } else {
+          console.log(`[Reconcile] ${yesterdayStr}: no gaps found`);
+        }
+      } catch (err) {
+        console.error('[Reconcile] Error (non-fatal):', (err as Error).message);
       }
     }
   } catch (err) {
