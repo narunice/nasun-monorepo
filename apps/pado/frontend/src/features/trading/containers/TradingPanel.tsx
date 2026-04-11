@@ -283,6 +283,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     openConfirmModal,
     closeConfirmModal,
     resetForm,
+    resetPriceFields,
     tpslEnabled,
     tpPrice,
     slPrice: slPriceValue,
@@ -292,6 +293,22 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     ocoEnabled,
   } = useOrderForm();
 
+  // Reset price fields (preserves amount) when market changes
+  const prevBaseSymbolRef = useRef(baseSymbol);
+  useEffect(() => {
+    if (prevBaseSymbolRef.current !== baseSymbol) {
+      prevBaseSymbolRef.current = baseSymbol;
+      resetPriceFields();
+    }
+  }, [baseSymbol, resetPriceFields]);
+
+  // Sanity check: trigger price should be within reasonable range of current market price
+  const isTriggerPriceReasonable = useCallback((triggerPrice: number): boolean => {
+    if (!midPrice || midPrice <= 0) return true; // skip check if no price data
+    const ratio = triggerPrice / midPrice;
+    return ratio >= 0.01 && ratio <= 100;
+  }, [midPrice]);
+
   // Create TP/SL orders after successful main order (with optional OCO linking)
   const createTPSLOrdersIfEnabled = useCallback(async (orderSide: 'buy' | 'sell', qty: number) => {
     if (!tpslEnabled) return;
@@ -300,6 +317,17 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     const closeSide = orderSide === 'buy' ? 'sell' : 'buy';
     const hasTP = tpValue > 0 && Number.isFinite(tpValue);
     const hasSL = slValue > 0 && Number.isFinite(slValue);
+
+    // Reject trigger prices that look like they belong to a different market
+    const priceRef = midPrice > 0 ? ` (current: $${midPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })})` : '';
+    if (hasTP && !isTriggerPriceReasonable(tpValue)) {
+      showToast(`TP/SL not created: TP price $${tpValue.toLocaleString()} looks incorrect for ${baseSymbol}${priceRef}. Your order was placed without TP/SL protection.`, 'error');
+      return;
+    }
+    if (hasSL && !isTriggerPriceReasonable(slValue)) {
+      showToast(`TP/SL not created: SL price $${slValue.toLocaleString()} looks incorrect for ${baseSymbol}${priceRef}. Your order was placed without TP/SL protection.`, 'error');
+      return;
+    }
 
     // Generate shared OCO group ID if OCO enabled and both TP+SL are set
     const ocoGroupId = ocoEnabled && hasTP && hasSL ? crypto.randomUUID() : undefined;
@@ -318,7 +346,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
         hasShownKeeperModalRef.current = true;
       }
     }
-  }, [tpslEnabled, tpPrice, slPriceValue, ocoEnabled, addTPSLOrderAsync, baseSymbol, walletAddress, tradeCap.isKeeperAvailable, tradeCap.status]);
+  }, [tpslEnabled, tpPrice, slPriceValue, ocoEnabled, addTPSLOrderAsync, baseSymbol, walletAddress, tradeCap.isKeeperAvailable, tradeCap.status, isTriggerPriceReasonable, showToast, midPrice]);
 
   // Stop-Limit order handler — creates a conditional order in TP/SL storage
   const handleStopLimitOrder = useCallback(async (orderSide: 'buy' | 'sell') => {
@@ -330,6 +358,12 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     if (!Number.isFinite(limitPriceNum) || limitPriceNum <= 0) return;
     if (!Number.isFinite(amountNum) || amountNum <= 0) return;
 
+    if (!isTriggerPriceReasonable(stopPriceNum)) {
+      const priceRef = midPrice > 0 ? ` (current: $${midPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })})` : '';
+      showToast(`Stop price $${stopPriceNum.toLocaleString()} looks incorrect for ${baseSymbol}${priceRef}.`, 'error');
+      return;
+    }
+
     await addTPSLOrderAsync({
       side: orderSide,
       quantity: amountNum,
@@ -339,7 +373,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       marketSymbol: baseSymbol,
     });
     resetForm();
-  }, [stopPrice, price, amount, addTPSLOrderAsync, resetForm, baseSymbol]);
+  }, [stopPrice, price, amount, addTPSLOrderAsync, resetForm, baseSymbol, isTriggerPriceReasonable, showToast, midPrice]);
 
   // Trailing Stop order handler — creates a trailing-stop conditional order
   const handleTrailingStopOrder = useCallback(async (orderSide: 'buy' | 'sell') => {

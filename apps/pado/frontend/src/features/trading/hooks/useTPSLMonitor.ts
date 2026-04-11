@@ -326,7 +326,10 @@ export function useTPSLMonitor({
 
         return localOrder;
       } catch (err) {
-        showToast(`Failed to register TP/SL: ${formatErrorMessage(err)}`, 'error');
+        // Keeper API errors are already user-friendly; don't run through parseError
+        // which would replace them with generic "Transaction failed" fallback
+        const msg = err instanceof Error ? err.message : formatErrorMessage(err);
+        showToast(`Failed to register TP/SL: ${msg}`, 'error');
         return null;
       }
     },
@@ -341,7 +344,8 @@ export function useTPSLMonitor({
           showToast('TP/SL order cancelled (server)', 'info');
           queryClient.invalidateQueries({ queryKey: ['keeperTPSLOrders'] });
         } catch (err) {
-          showToast(`Cancel failed: ${formatErrorMessage(err)}`, 'error');
+          const msg = err instanceof Error ? err.message : formatErrorMessage(err);
+          showToast(`Cancel failed: ${msg}`, 'error');
         }
       } else {
         cancelTPSLOrderLocal(id);

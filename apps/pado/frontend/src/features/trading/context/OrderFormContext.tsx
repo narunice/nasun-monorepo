@@ -87,6 +87,8 @@ export interface OrderFormContextType {
 
   // 유틸리티
   resetForm: () => void;
+  /** Reset price-related fields only (preserves amount). Used on market switch. */
+  resetPriceFields: () => void;
 }
 
 const OrderFormContext = createContext<OrderFormContextType | null>(null);
@@ -190,6 +192,15 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
     setTrailValue('');
   }, []);
 
+  // Reset price fields only (preserves amount) - used on market switch
+  const resetPriceFields = useCallback(() => {
+    setPrice('');
+    setTpPrice('');
+    setSlPrice('');
+    setStopPrice('');
+    setTrailValue('');
+  }, []);
+
   return (
     <OrderFormContext.Provider
       value={{
@@ -231,6 +242,7 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
         openConfirmModal,
         closeConfirmModal,
         resetForm,
+        resetPriceFields,
       }}
     >
       {children}
