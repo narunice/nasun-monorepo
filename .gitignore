@@ -11,9 +11,9 @@ out/
 
 # Environment
 .env
-.env.local
-.env.*.local
-.env.e2e*
+.env.*
+!.env.example
+!.env.*.example
 
 # IDE
 .vscode/
