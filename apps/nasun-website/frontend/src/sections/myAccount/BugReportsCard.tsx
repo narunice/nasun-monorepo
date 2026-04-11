@@ -1,14 +1,17 @@
 /**
  * BugReportsCard Component
  *
- * Shows user's submitted bug reports and their status in My Account.
+ * Bug report section in My Account page.
+ * Shows "Report a Bug" button + list of user's submitted reports with status tracking.
  */
 
-import { FC, useState } from "react";
+import { FC, useState, lazy, Suspense } from "react";
 import { OuterBox, Spinner } from "@/components/ui";
 import { useMyBugReports } from "@/features/bug-report/hooks/useBugReport";
 import type { BugReport } from "@/features/bug-report/types";
 import { STATUS_LABELS, STATUS_COLORS } from "@/features/bug-report/types";
+
+const BugReportModal = lazy(() => import("@/features/bug-report/components/BugReportModal"));
 
 interface BugReportsCardProps {
   className?: string;
@@ -17,15 +20,23 @@ interface BugReportsCardProps {
 export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
   const { data: reports, isLoading, error } = useMyBugReports();
   const [selectedReport, setSelectedReport] = useState<BugReport | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (!import.meta.env.VITE_BUG_REPORT_API_URL) return null;
 
   return (
-    <OuterBox className={className}>
-      <div className="p-5">
-        <h3 className="text-base font-semibold text-nasun-white mb-3">
-          My Bug Reports
-        </h3>
+    <OuterBox color="c5" padding="sm" className={className}>
+      <div className="flex items-center justify-between mb-3">
+        <h5 className="font-medium uppercase text-nasun-white">
+          Bug Reports
+        </h5>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="px-3 py-1.5 text-xs font-medium bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30 rounded-lg hover:bg-nasun-c4/30 transition-colors"
+          >
+            Report a Bug
+          </button>
+        </div>
 
         {isLoading ? (
           <div className="flex justify-center py-6">
@@ -34,7 +45,7 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
         ) : error ? (
           <p className="text-sm text-red-400">Failed to load reports</p>
         ) : !reports || reports.length === 0 ? (
-          <p className="text-sm text-white/40">No bug reports yet</p>
+          <p className="text-sm text-white/40">No bug reports yet. Found an issue? Report it and earn rewards!</p>
         ) : (
           <div className="space-y-2">
             {reports.map((report) => (
@@ -93,7 +104,13 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
             ))}
           </div>
         )}
-      </div>
+
+      {/* Bug Report Modal */}
+      <Suspense fallback={null}>
+        {modalOpen && (
+          <BugReportModal open={modalOpen} onOpenChange={setModalOpen} />
+        )}
+      </Suspense>
     </OuterBox>
   );
 };
