@@ -66,8 +66,8 @@ export interface NFTTypeConfig {
 
 export interface AlchemyNft {
   contract: { address: string };
-  tokenId: string;
-  tokenType: string;
+  id: { tokenId: string };
+  tokenType?: string;
   title?: string;
   balance?: string;
 }
