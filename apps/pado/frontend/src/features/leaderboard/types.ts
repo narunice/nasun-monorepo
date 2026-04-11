@@ -42,6 +42,18 @@ export interface PnlLeaderboardResponse {
   totalTraders: number;
 }
 
+export interface PointsLeaderboardTrader {
+  rank: number;
+  address: string;
+  nickname: string | null;
+  hasGenesisPass?: boolean;
+  totalPoints: number;
+  volumeUsd: string;
+  tradeCount: number;
+  rankChange: number;
+  followerCount?: number;
+}
+
 export interface ScoreLeaderboardTrader {
   rank: number;
   address: string;
