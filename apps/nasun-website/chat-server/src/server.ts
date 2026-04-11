@@ -7,6 +7,15 @@ import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUs
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
+// Leaderboard modules (conditionally activated via DEEPBOOK_PACKAGE)
+import { initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents, getLeaderboardDb } from './leaderboard-store.js';
+import { startIndexer, stopIndexer } from './indexer.js';
+import { startAggregator, stopAggregator } from './aggregator.js';
+import { initNarrator, onTradeFill, stopNarrator } from './market-narrator.js';
+import { setPoolRoomMapping, getPoolRoom } from './rooms.js';
+import { handleLeaderboardRequest, cleanupApiRateLimits } from './leaderboard-api.js';
+import type { LeaderboardApiDeps } from './leaderboard-api.js';
+import type { LeaderboardConfig } from './leaderboard-types.js';
 
 // ===== State =====
 
@@ -85,6 +94,61 @@ function cleanupSessionTokens(): void {
     }
   }
 }
+
+function resolveSessionToken(authHeader: string | undefined): string | null {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  const session = sessionTokens.get(token);
+  if (!session || session.expiresAt < Date.now()) return null;
+  return session.address;
+}
+
+// Leaderboard state (conditionally enabled)
+const leaderboardEnabled = !!CONFIG.deepbookPackage;
+
+function broadcastSystemMessage(content: string, roomId: number = 0): void {
+  const now = Date.now();
+  const stored = insertMessage({
+    roomId,
+    sender: 'SYSTEM',
+    senderName: 'System',
+    content,
+    messageType: 'system',
+    replyToId: null,
+    timestamp: now,
+  });
+
+  const chatMsg: ChatMessagePayload = {
+    type: 'chat_message',
+    id: stored.id,
+    roomId: stored.roomId,
+    sender: 'SYSTEM',
+    senderName: 'System',
+    senderNickname: null,
+    senderBadge: null,
+    senderProfileImageUrl: null,
+    content: stored.content,
+    messageType: 'system',
+    replyToId: null,
+    timestamp: stored.timestamp,
+  };
+
+  for (const [ws] of authenticatedClients) {
+    send(ws, chatMsg);
+  }
+}
+
+function broadcastSystemMessageMultiRoom(content: string, poolRoomId: number): void {
+  broadcastSystemMessage(content, poolRoomId);
+  if (poolRoomId !== 0) {
+    broadcastSystemMessage(content, 0);
+  }
+}
+
+// Leaderboard API deps (injected into leaderboard-api.ts)
+const leaderboardDeps: LeaderboardApiDeps = {
+  resolveSessionToken: (authHeader) => resolveSessionToken(authHeader),
+};
 
 function getCachedFollowerCounts(addresses: string[]): Map<string, number> {
   if (followerCountCache.expiresAt > Date.now()) {
@@ -172,6 +236,12 @@ function handleHttpRequest(
     corsHeaders['Vary'] = 'Origin';
   }
 
+  // Delegate to leaderboard API handler first (handles its own OPTIONS with POST/PATCH)
+  const url = new URL(req.url || '/', `http://localhost:${CONFIG.port}`);
+  if (leaderboardEnabled && handleLeaderboardRequest(req, res, url, corsHeaders, CONFIG, leaderboardDeps)) {
+    return;
+  }
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);
     res.end();
@@ -183,8 +253,6 @@ function handleHttpRequest(
     res.end(JSON.stringify({ status: 'ok' }));
     return;
   }
-
-  const url = new URL(req.url || '/', `http://localhost:${CONFIG.port}`);
 
   if (url.pathname === '/api/chat-participation' && req.method === 'GET') {
     const dateParam = url.searchParams.get('date');
@@ -759,6 +827,7 @@ const cleanupTimer = setInterval(() => {
     if (timestamps.length === 0) lastFollowToggleTime.delete(key);
   }
   cleanupSessionTokens();
+  cleanupApiRateLimits();
 }, CLEANUP_INTERVAL);
 
 // ===== Retention Cleanup =====
@@ -780,6 +849,91 @@ try {
   process.exit(1);
 }
 
+// ===== Leaderboard Initialization (conditional) =====
+
+let orderEventRetentionTimer: ReturnType<typeof setInterval> | null = null;
+
+if (leaderboardEnabled) {
+  try {
+    initLeaderboardStore({
+      leaderboardDbPath: CONFIG.leaderboardDbPath,
+      deepbookPackage: CONFIG.deepbookPackage,
+      rpcUrl: CONFIG.rpcUrl,
+      indexerPollIntervalMs: CONFIG.indexerPollIntervalMs,
+      aggregationIntervalMs: CONFIG.aggregationIntervalMs,
+      excludedAddresses: new Set(CONFIG.excludedAddresses),
+    });
+    console.log(`[Leaderboard] Store initialized at ${CONFIG.leaderboardDbPath}`);
+
+    // Purge old order events on startup
+    const purged = purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
+    if (purged > 0) console.log(`[Leaderboard] Purged ${purged} expired order events`);
+
+    // WAL checkpoint to reclaim disk
+    try { getLeaderboardDb().pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
+
+    // Admin key length validation
+    if (CONFIG.competitionAdminKey && CONFIG.competitionAdminKey.length < 32) {
+      console.warn('[Security] competitionAdminKey is too short (< 32 chars). Competition admin API disabled.');
+    }
+
+    // Pool-to-room mapping (nasun 100+ room IDs)
+    const poolMappings: [string | undefined, number][] = [
+      [process.env.POOL_NBTC_NUSDC, 101],
+      [process.env.POOL_NASUN_NUSDC, 100],
+      [process.env.POOL_NETH_NUSDC, 103],
+      [process.env.POOL_NSOL_NUSDC, 104],
+    ];
+    for (const [poolId, roomId] of poolMappings) {
+      if (poolId) setPoolRoomMapping(poolId, roomId);
+    }
+
+    // Market narrator (rule-based + optional AI)
+    initNarrator({
+      broadcast: (content: string) => broadcastSystemMessage(content),
+      broadcastToRoom: broadcastSystemMessageMultiRoom,
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    // Indexer + aggregator
+    const lbConfig: LeaderboardConfig = {
+      leaderboardDbPath: CONFIG.leaderboardDbPath,
+      deepbookPackage: CONFIG.deepbookPackage,
+      rpcUrl: CONFIG.rpcUrl,
+      indexerPollIntervalMs: CONFIG.indexerPollIntervalMs,
+      aggregationIntervalMs: CONFIG.aggregationIntervalMs,
+      excludedAddresses: new Set(CONFIG.excludedAddresses),
+    };
+    const largeTradeThresholdRaw = BigInt(CONFIG.largeTradeThresholdNusdc) * 1_000_000n;
+
+    startIndexer(lbConfig, {
+      thresholdRaw: largeTradeThresholdRaw,
+      onLargeTrade: (msg: string, poolId?: string) => {
+        const poolRoomId = poolId ? getPoolRoom(poolId) : null;
+        if (poolRoomId !== null) {
+          broadcastSystemMessageMultiRoom(msg, poolRoomId);
+        } else {
+          broadcastSystemMessage(msg);
+        }
+      },
+      onTradeFill,
+    });
+    startAggregator(lbConfig);
+
+    // Periodic order event cleanup
+    orderEventRetentionTimer = setInterval(() => {
+      purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
+    }, 60 * 60 * 1000); // 1 hour
+
+    console.log('[Leaderboard] Indexer + aggregator + narrator started');
+  } catch (err) {
+    console.error('[Leaderboard] FATAL: Failed to initialize:', err);
+    process.exit(1);
+  }
+} else {
+  console.log('[Leaderboard] Disabled (DEEPBOOK_PACKAGE not set)');
+}
+
 httpServer.listen(CONFIG.port, () => {
   console.log(`Nasun Chat Server listening on port ${CONFIG.port}`);
   console.log(`Allowed origins: ${CONFIG.allowedOrigins.join(', ')}`);
@@ -795,8 +949,16 @@ function shutdown(): void {
   clearInterval(heartbeatTimer);
   clearInterval(cleanupTimer);
   clearInterval(retentionTimer);
+  if (orderEventRetentionTimer) clearInterval(orderEventRetentionTimer);
 
-  // Terminate all WebSocket connections immediately
+  // Stop leaderboard modules first (DB writes cease)
+  if (leaderboardEnabled) {
+    stopIndexer();
+    stopAggregator();
+    stopNarrator();
+  }
+
+  // Terminate all WebSocket connections
   for (const [ws] of authenticatedClients) {
     try { ws.terminate(); } catch {}
   }
@@ -806,12 +968,14 @@ function shutdown(): void {
 
   wss.close();
   httpServer.close(() => {
+    if (leaderboardEnabled) closeLeaderboardStore(); // WAL checkpoint + close
     closeStore();
+    console.log('[Chat] Shutdown complete');
     process.exit(0);
   });
 
-  // Force exit after 3s if graceful close hangs
-  setTimeout(() => process.exit(0), 3000).unref();
+  // Force exit after 5s if graceful close hangs
+  setTimeout(() => process.exit(0), 5000).unref();
 }
 
 process.on('SIGTERM', shutdown);

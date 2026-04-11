@@ -520,6 +520,29 @@ export function getProfileImagesBatch(addresses: string[]): Map<string, string> 
   return result;
 }
 
+// Unified display name for leaderboard API: nickname (priority 1) > display_name (priority 2) > null
+export function getDisplayName(address: string): string | null {
+  const row = getDb()
+    .prepare('SELECT nickname, display_name FROM users WHERE address = ?')
+    .get(address) as { nickname: string | null; display_name: string } | undefined;
+  if (!row) return null;
+  return row.nickname ?? row.display_name ?? null;
+}
+
+export function getDisplayNamesBatch(addresses: string[]): Map<string, string> {
+  if (addresses.length === 0) return new Map();
+  const placeholders = addresses.map(() => '?').join(',');
+  const rows = getDb()
+    .prepare(`SELECT address, nickname, display_name FROM users WHERE address IN (${placeholders})`)
+    .all(...addresses) as Array<{ address: string; nickname: string | null; display_name: string }>;
+  const result = new Map<string, string>();
+  for (const row of rows) {
+    const name = row.nickname ?? row.display_name;
+    if (name) result.set(row.address, name);
+  }
+  return result;
+}
+
 export function closeStore(): void {
   if (db) {
     db.close();

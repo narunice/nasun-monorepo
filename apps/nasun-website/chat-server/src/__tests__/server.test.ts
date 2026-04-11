@@ -24,7 +24,7 @@ vi.mock('../auth.js', () => ({
 // so we rebuild a minimal version using the same components
 import { initStore, insertMessage, getRecentMessages, closeStore } from '../store.js';
 import { stripControlChars, hasReservedPrefix } from '../sanitize.js';
-import type { ChatServerConfig } from '../types.js';
+import { type ChatServerConfig, DEFAULT_CONFIG } from '../types.js';
 import { generateChallenge, verifySignature, isValidSuiAddress } from '../auth.js';
 
 // ===== Test Server Setup =====
@@ -295,21 +295,14 @@ function closeWs(ws: WebSocket): Promise<void> {
 beforeAll(async () => {
   tempDir = mkdtempSync(join(tmpdir(), 'chat-server-test-'));
   config = {
+    ...DEFAULT_CONFIG,
     port: 0,
-    maxMessageLength: 500,
-    maxWsMessageBytes: 10240,
     rateLimitMs: 100, // Faster for tests
     historyRateLimitMs: 100,
     maxConnectionsPerIp: 3,
     authTimeoutMs: 2000,
-    maxSessionMs: 86400000,
     dbPath: join(tempDir, 'test.db'),
-    messageRetentionDays: 30,
-    retentionCleanupIntervalMs: 86400000,
     allowedOrigins: ['http://localhost:5174'],
-    nasunProfileApiUrl: '',
-    genesisPassApiUrl: '',
-    trustProxy: false,
   };
 
   initStore(config);

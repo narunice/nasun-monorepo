@@ -4,7 +4,7 @@ import {
   validateNickname, getNickname, setNickname, isNicknameAvailable,
   getNicknamesBatch, getNicknameRateLimit,
 } from '../store.js';
-import type { ChatServerConfig } from '../types.js';
+import { type ChatServerConfig, DEFAULT_CONFIG } from '../types.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -12,13 +12,10 @@ import { tmpdir } from 'node:os';
 function makeConfig(): ChatServerConfig {
   const tempDir = mkdtempSync(join(tmpdir(), 'chat-nick-'));
   return {
-    port: 0, maxMessageLength: 500, maxWsMessageBytes: 10240,
-    rateLimitMs: 500, historyRateLimitMs: 2000, maxConnectionsPerIp: 5,
-    authTimeoutMs: 30000, maxSessionMs: 86400000,
+    ...DEFAULT_CONFIG,
+    port: 0,
     dbPath: join(tempDir, 'test.db'),
-    messageRetentionDays: 30, retentionCleanupIntervalMs: 86400000,
-    allowedOrigins: ['http://localhost'], nasunProfileApiUrl: '',
-    genesisPassApiUrl: '', trustProxy: false,
+    allowedOrigins: ['http://localhost'],
   };
 }
 
