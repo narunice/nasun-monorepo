@@ -6,7 +6,7 @@ import type {
   TradeFillRow,
   TraderStatsRow,
   TraderPnlStatsRow,
-  TraderPointsRow,
+  TraderScoreRow,
   BalanceManagerRow,
   CompetitionRow,
   CompetitionResultRow,
@@ -210,6 +210,60 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
   const pointsColNames = new Set(pointsCols.map(c => c.name));
   if (!pointsColNames.has('points_from_pnl')) {
     db.exec('ALTER TABLE trader_points ADD COLUMN points_from_pnl INTEGER NOT NULL DEFAULT 0');
+  }
+
+  // Migration: create trader_scores table (replaces trader_points)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS trader_scores (
+      address TEXT NOT NULL,
+      scope TEXT NOT NULL CHECK(scope IN ('weekly', 'alltime')),
+      total_score INTEGER NOT NULL DEFAULT 0,
+      score_from_trades INTEGER NOT NULL DEFAULT 0,
+      score_from_volume INTEGER NOT NULL DEFAULT 0,
+      score_from_diversity INTEGER NOT NULL DEFAULT 0,
+      score_from_pnl INTEGER NOT NULL DEFAULT 0,
+      trade_count INTEGER NOT NULL DEFAULT 0,
+      volume_quote TEXT NOT NULL DEFAULT '0',
+      rank INTEGER NOT NULL DEFAULT 0,
+      prev_rank INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (address, scope)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_scores_scope_rank
+      ON trader_scores(scope, rank ASC);
+  `);
+
+  // Migration: rename points_snapshots -> score_snapshots
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='points_snapshots'").all();
+  if (tables.length > 0) {
+    const scoreSnapExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='score_snapshots'").all();
+    if (scoreSnapExists.length === 0) {
+      db.exec('ALTER TABLE points_snapshots RENAME TO score_snapshots');
+    }
+  } else {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS score_snapshots (
+        snapshot_date TEXT NOT NULL,
+        address TEXT NOT NULL,
+        total_points INTEGER NOT NULL,
+        points_from_trades INTEGER NOT NULL,
+        points_from_volume INTEGER NOT NULL,
+        points_from_diversity INTEGER NOT NULL,
+        points_from_pnl INTEGER NOT NULL,
+        trade_count INTEGER NOT NULL,
+        volume_quote TEXT NOT NULL,
+        rank INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (snapshot_date, address)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_snapshots_address
+        ON score_snapshots(address, snapshot_date DESC);
+
+      CREATE INDEX IF NOT EXISTS idx_snapshots_date_rank
+        ON score_snapshots(snapshot_date, rank ASC);
+    `);
   }
 }
 
@@ -436,21 +490,6 @@ export function aggregateTraderVolume(
 }
 
 /**
- * Get current ranks for a period (for prev_rank tracking).
- */
-export function getCurrentRanks(period: string): Map<string, number> {
-  const rows = getLeaderboardDb()
-    .prepare('SELECT address, rank FROM trader_stats WHERE period = ?')
-    .all(period) as Array<{ address: string; rank: number }>;
-
-  const map = new Map<string, number>();
-  for (const row of rows) {
-    map.set(row.address, row.rank);
-  }
-  return map;
-}
-
-/**
  * Replace trader stats for a period with new aggregated data.
  */
 export function replaceTraderStats(
@@ -462,7 +501,6 @@ export function replaceTraderStats(
     uniquePools: number;
     lastTradeAt: number;
     rank: number;
-    prevRank: number;
   }>,
 ): void {
   const ldb = getLeaderboardDb();
@@ -477,12 +515,10 @@ export function replaceTraderStats(
        unique_pools = excluded.unique_pools,
        last_trade_at = excluded.last_trade_at,
        rank = excluded.rank,
-       prev_rank = excluded.prev_rank,
        updated_at = excluded.updated_at`
   );
 
   const tx = ldb.transaction(() => {
-    // Remove entries not in new top list for this period
     const addresses = traders.map((t) => t.address);
     if (addresses.length > 0) {
       const placeholders = addresses.map(() => '?').join(',');
@@ -496,7 +532,8 @@ export function replaceTraderStats(
     for (const t of traders) {
       replaceStmt.run(
         t.address, period, t.volumeQuote, t.tradeCount,
-        t.uniquePools, t.lastTradeAt, t.rank, t.prevRank, now,
+        t.uniquePools, t.lastTradeAt, t.rank, t.rank, // prev_rank = rank for INSERT only
+        now,
       );
     }
   });
@@ -1086,21 +1123,6 @@ export function computeTraderPnl(
 }
 
 /**
- * Get current PnL ranks for a period.
- */
-export function getPnlCurrentRanks(period: string): Map<string, number> {
-  const rows = getLeaderboardDb()
-    .prepare('SELECT address, rank FROM trader_pnl WHERE period = ?')
-    .all(period) as Array<{ address: string; rank: number }>;
-
-  const map = new Map<string, number>();
-  for (const row of rows) {
-    map.set(row.address, row.rank);
-  }
-  return map;
-}
-
-/**
  * Replace PnL stats for a period.
  */
 export function replaceTraderPnlStats(
@@ -1111,7 +1133,6 @@ export function replaceTraderPnlStats(
     pnlPercent: number;
     tradeCount: number;
     rank: number;
-    prevRank: number;
   }>,
 ): void {
   const ldb = getLeaderboardDb();
@@ -1125,7 +1146,6 @@ export function replaceTraderPnlStats(
        pnl_percent = excluded.pnl_percent,
        trade_count = excluded.trade_count,
        rank = excluded.rank,
-       prev_rank = excluded.prev_rank,
        updated_at = excluded.updated_at`
   );
 
@@ -1143,7 +1163,8 @@ export function replaceTraderPnlStats(
     for (const t of traders) {
       replaceStmt.run(
         t.address, period, String(t.realizedPnlRaw), t.pnlPercent,
-        t.tradeCount, t.rank, t.prevRank, now,
+        t.tradeCount, t.rank, t.rank, // prev_rank = rank for INSERT only
+        now,
       );
     }
   });
@@ -1172,53 +1193,129 @@ export function getLeaderboardPnl(
 
 // ===== Points System =====
 
+// ===== Score System =====
+
+interface DailyTraderStats {
+  address: string;
+  trade_date: string;
+  trade_count: number;
+  volume_raw: string;
+}
+
 /**
- * Get current points ranks (for prev_rank tracking).
+ * Aggregate trade stats per trader per day (for daily cap enforcement).
+ * Returns Map<address, DailyTraderStats[]>.
  */
-export function getPointsCurrentRanks(): Map<string, number> {
-  const rows = getLeaderboardDb()
-    .prepare('SELECT address, rank FROM trader_points')
-    .all() as Array<{ address: string; rank: number }>;
-  const map = new Map<string, number>();
+export function aggregateDailyTraderStats(
+  cutoffMs: number,
+  excludedAddresses: Set<string>,
+): Map<string, DailyTraderStats[]> {
+  const ldb = getLeaderboardDb();
+  const excludeList = [...excludedAddresses];
+  const excludePlaceholders = excludeList.length > 0
+    ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
+
+  const query = `
+    SELECT
+      address,
+      DATE(timestamp_ms / 1000, 'unixepoch') as trade_date,
+      COUNT(*) as trade_count,
+      CAST(SUM(CAST(quote_volume AS INTEGER)) AS TEXT) as volume_raw
+    FROM (
+      SELECT maker_address as address, quote_quantity as quote_volume, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+      UNION ALL
+      SELECT taker_address as address, quote_quantity as quote_volume, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+    )
+    WHERE 1=1 ${excludePlaceholders}
+    GROUP BY address, trade_date
+    ORDER BY address, trade_date
+  `;
+
+  const params = [cutoffMs, cutoffMs, ...excludeList];
+  const rows = ldb.prepare(query).all(...params) as DailyTraderStats[];
+
+  const map = new Map<string, DailyTraderStats[]>();
   for (const row of rows) {
-    map.set(row.address, row.rank);
+    const existing = map.get(row.address);
+    if (existing) {
+      existing.push(row);
+    } else {
+      map.set(row.address, [row]);
+    }
   }
   return map;
 }
 
 /**
- * Replace all points data with newly computed values.
+ * Aggregate unique pool count per trader.
  */
-export function replaceTraderPoints(
+export function aggregateUniquePools(
+  cutoffMs: number,
+  excludedAddresses: Set<string>,
+): Map<string, number> {
+  const ldb = getLeaderboardDb();
+  const excludeList = [...excludedAddresses];
+  const excludePlaceholders = excludeList.length > 0
+    ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
+
+  const query = `
+    SELECT address, COUNT(DISTINCT pool_id) as unique_pools
+    FROM (
+      SELECT maker_address as address, pool_id FROM trade_fills WHERE timestamp_ms >= ?
+      UNION ALL
+      SELECT taker_address as address, pool_id FROM trade_fills WHERE timestamp_ms >= ?
+    )
+    WHERE 1=1 ${excludePlaceholders}
+    GROUP BY address
+  `;
+
+  const params = [cutoffMs, cutoffMs, ...excludeList];
+  const rows = ldb.prepare(query).all(...params) as Array<{ address: string; unique_pools: number }>;
+
+  const map = new Map<string, number>();
+  for (const row of rows) {
+    map.set(row.address, row.unique_pools);
+  }
+  return map;
+}
+
+/**
+ * Replace score data for a scope. prev_rank is preserved on conflict (only rotatePrevRanks updates it).
+ */
+export function replaceTraderScores(
+  scope: string,
   traders: Array<{
     address: string;
-    totalPoints: number;
-    pointsFromTrades: number;
-    pointsFromVolume: number;
-    pointsFromDiversity: number;
-    pointsFromPnl: number;
+    totalScore: number;
+    scoreFromTrades: number;
+    scoreFromVolume: number;
+    scoreFromDiversity: number;
+    scoreFromPnl: number;
     tradeCount: number;
     volumeQuote: string;
     rank: number;
-    prevRank: number;
   }>,
 ): void {
   const ldb = getLeaderboardDb();
   const now = Date.now();
 
   const replaceStmt = ldb.prepare(
-    `INSERT INTO trader_points (address, total_points, points_from_trades, points_from_volume, points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(address) DO UPDATE SET
-       total_points = excluded.total_points,
-       points_from_trades = excluded.points_from_trades,
-       points_from_volume = excluded.points_from_volume,
-       points_from_diversity = excluded.points_from_diversity,
-       points_from_pnl = excluded.points_from_pnl,
+    `INSERT INTO trader_scores (address, scope, total_score, score_from_trades, score_from_volume,
+       score_from_diversity, score_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(address, scope) DO UPDATE SET
+       total_score = excluded.total_score,
+       score_from_trades = excluded.score_from_trades,
+       score_from_volume = excluded.score_from_volume,
+       score_from_diversity = excluded.score_from_diversity,
+       score_from_pnl = excluded.score_from_pnl,
        trade_count = excluded.trade_count,
        volume_quote = excluded.volume_quote,
        rank = excluded.rank,
-       prev_rank = excluded.prev_rank,
        updated_at = excluded.updated_at`
   );
 
@@ -1227,18 +1324,19 @@ export function replaceTraderPoints(
     if (addresses.length > 0) {
       const placeholders = addresses.map(() => '?').join(',');
       ldb.prepare(
-        `DELETE FROM trader_points WHERE address NOT IN (${placeholders})`
-      ).run(...addresses);
+        `DELETE FROM trader_scores WHERE scope = ? AND address NOT IN (${placeholders})`
+      ).run(scope, ...addresses);
     } else {
-      ldb.prepare('DELETE FROM trader_points').run();
+      ldb.prepare('DELETE FROM trader_scores WHERE scope = ?').run(scope);
     }
 
     for (const t of traders) {
       replaceStmt.run(
-        t.address, t.totalPoints, t.pointsFromTrades,
-        t.pointsFromVolume, t.pointsFromDiversity, t.pointsFromPnl,
+        t.address, scope, t.totalScore, t.scoreFromTrades,
+        t.scoreFromVolume, t.scoreFromDiversity, t.scoreFromPnl,
         t.tradeCount, t.volumeQuote,
-        t.rank, t.prevRank, now,
+        t.rank, t.rank, // prev_rank = rank for INSERT (new traders show no change)
+        now,
       );
     }
   });
@@ -1246,48 +1344,66 @@ export function replaceTraderPoints(
   tx();
 }
 
-/**
- * Get points leaderboard.
- */
-export function getPointsLeaderboard(limit: number = 50, offset: number = 0): TraderPointsRow[] {
+export function getScoreLeaderboard(scope: string, limit: number = 50, offset: number = 0): TraderScoreRow[] {
   return getLeaderboardDb()
     .prepare(
-      `SELECT address, total_points, points_from_trades, points_from_volume,
-              points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at
-       FROM trader_points
+      `SELECT address, scope, total_score, score_from_trades, score_from_volume,
+              score_from_diversity, score_from_pnl, trade_count, volume_quote,
+              rank, prev_rank, updated_at
+       FROM trader_scores
+       WHERE scope = ?
        ORDER BY rank ASC
        LIMIT ? OFFSET ?`
     )
-    .all(limit, offset) as TraderPointsRow[];
+    .all(scope, limit, offset) as TraderScoreRow[];
+}
+
+export function getTotalScoreTraders(scope: string): number {
+  const row = getLeaderboardDb()
+    .prepare('SELECT COUNT(*) as cnt FROM trader_scores WHERE scope = ?')
+    .get(scope) as { cnt: number };
+  return row.cnt;
+}
+
+export function getTraderScore(address: string, scope: string): TraderScoreRow | null {
+  const row = getLeaderboardDb()
+    .prepare(
+      `SELECT address, scope, total_score, score_from_trades, score_from_volume,
+              score_from_diversity, score_from_pnl, trade_count, volume_quote,
+              rank, prev_rank, updated_at
+       FROM trader_scores
+       WHERE address = ? AND scope = ?`
+    )
+    .get(address, scope) as TraderScoreRow | undefined;
+  return row ?? null;
+}
+
+export function clearTraderScores(scope: string): void {
+  getLeaderboardDb()
+    .prepare('DELETE FROM trader_scores WHERE scope = ?')
+    .run(scope);
 }
 
 /**
- * Get individual trader's points.
+ * Rotate prev_rank = rank for all leaderboard tables (24h cycle).
+ * Single transaction across trader_scores, trader_stats, trader_pnl.
  */
-export function getTraderPoints(address: string): TraderPointsRow | null {
-  return (getLeaderboardDb()
-    .prepare(
-      `SELECT address, total_points, points_from_trades, points_from_volume,
-              points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at
-       FROM trader_points
-       WHERE address = ?`
-    )
-    .get(address) as TraderPointsRow | undefined) ?? null;
+export function rotatePrevRanks(): void {
+  const ldb = getLeaderboardDb();
+  const tx = ldb.transaction(() => {
+    ldb.prepare('UPDATE trader_scores SET prev_rank = rank').run();
+    ldb.prepare('UPDATE trader_stats SET prev_rank = rank').run();
+    ldb.prepare('UPDATE trader_pnl SET prev_rank = rank').run();
+  });
+  tx();
 }
 
-export function getTotalPointsTraders(): number {
-  const row = getLeaderboardDb()
-    .prepare('SELECT COUNT(*) as count FROM trader_points')
-    .get() as { count: number } | undefined;
-  return row?.count ?? 0;
-}
+// ===== Score Snapshots =====
 
-// ===== Points Snapshots =====
-
-export interface PointsSnapshotRow {
+interface ScoreSnapshotRow {
   snapshot_date: string;
   address: string;
-  total_points: number;
+  total_points: number; // column name kept for backward compat, stores score
   points_from_trades: number;
   points_from_volume: number;
   points_from_diversity: number;
@@ -1299,46 +1415,43 @@ export interface PointsSnapshotRow {
 }
 
 /**
- * Generate a daily snapshot from current trader_points data.
- * Idempotent: skips if snapshot for the date already exists.
- * Returns number of rows written (0 if already exists).
+ * Generate a daily score snapshot from all-time scope.
+ * Returns 0 if snapshot already exists for the date.
  */
-export function generatePointsSnapshot(date: string): number {
+export function generateScoreSnapshot(date: string): number {
   const ldb = getLeaderboardDb();
 
-  // Idempotency check
   const existing = ldb.prepare(
-    'SELECT COUNT(*) as count FROM points_snapshots WHERE snapshot_date = ?'
-  ).get(date) as { count: number };
-  if (existing.count > 0) return 0;
+    'SELECT COUNT(*) as cnt FROM score_snapshots WHERE snapshot_date = ?'
+  ).get(date) as { cnt: number };
+  if (existing.cnt > 0) return 0;
 
   const now = Date.now();
   const rows = ldb.prepare(
-    `SELECT address, total_points, points_from_trades, points_from_volume,
-            points_from_diversity, points_from_pnl, trade_count, volume_quote, rank
-     FROM trader_points
-     ORDER BY rank ASC`
+    `SELECT address, total_score, score_from_trades, score_from_volume,
+            score_from_diversity, score_from_pnl, trade_count, volume_quote, rank
+     FROM trader_scores WHERE scope = 'alltime' ORDER BY rank ASC`
   ).all() as Array<{
-    address: string; total_points: number; points_from_trades: number;
-    points_from_volume: number; points_from_diversity: number; points_from_pnl: number;
+    address: string; total_score: number; score_from_trades: number;
+    score_from_volume: number; score_from_diversity: number; score_from_pnl: number;
     trade_count: number; volume_quote: string; rank: number;
   }>;
 
   if (rows.length === 0) return 0;
 
   const insertStmt = ldb.prepare(
-    `INSERT INTO points_snapshots
-       (snapshot_date, address, total_points, points_from_trades, points_from_volume,
-        points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, created_at)
+    `INSERT INTO score_snapshots (snapshot_date, address, total_points, points_from_trades,
+       points_from_volume, points_from_diversity, points_from_pnl, trade_count,
+       volume_quote, rank, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   const tx = ldb.transaction(() => {
     for (const r of rows) {
       insertStmt.run(
-        date, r.address, r.total_points, r.points_from_trades, r.points_from_volume,
-        r.points_from_diversity, r.points_from_pnl, r.trade_count, r.volume_quote,
-        r.rank, now,
+        date, r.address, r.total_score, r.score_from_trades,
+        r.score_from_volume, r.score_from_diversity, r.score_from_pnl,
+        r.trade_count, r.volume_quote, r.rank, now,
       );
     }
   });
@@ -1347,33 +1460,25 @@ export function generatePointsSnapshot(date: string): number {
   return rows.length;
 }
 
-/**
- * Get snapshot for a specific date (paginated).
- */
-export function getPointsSnapshot(date: string, limit: number = 50, offset: number = 0): PointsSnapshotRow[] {
+export function getScoreSnapshot(date: string, limit: number = 50, offset: number = 0): ScoreSnapshotRow[] {
   return getLeaderboardDb()
     .prepare(
-      `SELECT snapshot_date, address, total_points, points_from_trades, points_from_volume,
-              points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, created_at
-       FROM points_snapshots
+      `SELECT * FROM score_snapshots
        WHERE snapshot_date = ?
        ORDER BY rank ASC
        LIMIT ? OFFSET ?`
     )
-    .all(date, limit, offset) as PointsSnapshotRow[];
+    .all(date, limit, offset) as ScoreSnapshotRow[];
 }
 
-/**
- * Get rank history for a specific address over last N days.
- */
-export function getPointsRankHistory(
+export function getScoreRankHistory(
   address: string,
   days: number = 30,
 ): Array<{ snapshot_date: string; rank: number; total_points: number }> {
   return getLeaderboardDb()
     .prepare(
       `SELECT snapshot_date, rank, total_points
-       FROM points_snapshots
+       FROM score_snapshots
        WHERE address = ?
        ORDER BY snapshot_date DESC
        LIMIT ?`
@@ -1381,38 +1486,28 @@ export function getPointsRankHistory(
     .all(address, days) as Array<{ snapshot_date: string; rank: number; total_points: number }>;
 }
 
-/**
- * Get available snapshot dates (most recent first).
- */
-export function getSnapshotDates(limit: number = 30): string[] {
+export function getScoreSnapshotDates(limit: number = 30): string[] {
   const rows = getLeaderboardDb()
     .prepare(
-      `SELECT DISTINCT snapshot_date FROM points_snapshots
+      `SELECT DISTINCT snapshot_date FROM score_snapshots
        ORDER BY snapshot_date DESC LIMIT ?`
     )
     .all(limit) as Array<{ snapshot_date: string }>;
   return rows.map(r => r.snapshot_date);
 }
 
-/**
- * Get total traders in a snapshot.
- */
-export function getSnapshotTotalTraders(date: string): number {
+export function getScoreSnapshotTotalTraders(date: string): number {
   const row = getLeaderboardDb()
-    .prepare('SELECT COUNT(*) as count FROM points_snapshots WHERE snapshot_date = ?')
-    .get(date) as { count: number } | undefined;
-  return row?.count ?? 0;
+    .prepare('SELECT COUNT(*) as cnt FROM score_snapshots WHERE snapshot_date = ?')
+    .get(date) as { cnt: number };
+  return row.cnt;
 }
 
-/**
- * Purge snapshots older than retentionDays.
- * Returns number of deleted rows.
- */
-export function purgeOldSnapshots(retentionDays: number = 180): number {
+export function purgeOldScoreSnapshots(retentionDays: number = 180): number {
   const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000)
     .toISOString().slice(0, 10);
   const result = getLeaderboardDb()
-    .prepare('DELETE FROM points_snapshots WHERE snapshot_date < ?')
+    .prepare('DELETE FROM score_snapshots WHERE snapshot_date < ?')
     .run(cutoffDate);
   return result.changes;
 }

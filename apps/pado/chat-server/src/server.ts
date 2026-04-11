@@ -27,8 +27,8 @@ import {
   getIndexerState,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
-  getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
-  getPointsSnapshot, getPointsRankHistory, getSnapshotDates, getSnapshotTotalTraders, generatePointsSnapshot,
+  getScoreLeaderboard, getTraderScore, getTotalScoreTraders,
+  getScoreSnapshot, getScoreRankHistory, getScoreSnapshotDates, getScoreSnapshotTotalTraders, generateScoreSnapshot,
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
   getFollowedTraderFills,
@@ -38,7 +38,7 @@ import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
 import { initNarrator, onTradeFill, stopNarrator } from './market-narrator.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
-import { VALID_PERIODS, VALID_MODES } from './leaderboard-types.js';
+import { VALID_PERIODS, VALID_MODES, VALID_SCOPES } from './leaderboard-types.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { LeaderboardConfig, Period, CompetitionStatus } from './leaderboard-types.js';
 
@@ -1017,8 +1017,8 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         return;
       }
 
-      const rows = getPointsSnapshot(date, limit, offset);
-      const totalTraders = getSnapshotTotalTraders(date);
+      const rows = getScoreSnapshot(date, limit, offset);
+      const totalTraders = getScoreSnapshotTotalTraders(date);
       const addresses = rows.map((r) => r.address);
       const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
 
@@ -1051,7 +1051,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
   if (url.pathname === '/api/leaderboard/snapshots/dates' && req.method === 'GET') {
     try {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10), 1), 365);
-      const dates = getSnapshotDates(limit);
+      const dates = getScoreSnapshotDates(limit);
       res.writeHead(200, corsHeaders);
       res.end(JSON.stringify({ dates }));
     } catch (err) {
@@ -1068,7 +1068,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     try {
       const address = snapshotHistoryMatch[1];
       const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '30', 10), 1), 365);
-      const history = getPointsRankHistory(address, days);
+      const history = getScoreRankHistory(address, days);
 
       res.writeHead(200, corsHeaders);
       res.end(JSON.stringify({
@@ -1103,7 +1103,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         return;
       }
 
-      const count = generatePointsSnapshot(snapshotDate);
+      const count = generateScoreSnapshot(snapshotDate);
       if (count === 0) {
         res.writeHead(409, corsHeaders);
         res.end(JSON.stringify({ error: 'Snapshot already exists for this date', date: snapshotDate }));
@@ -1121,13 +1121,13 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
 
   // ===== Points API =====
 
-  // GET /api/leaderboard/points - points leaderboard
+  // GET /api/leaderboard/points - backward compat (internally uses score alltime)
   if (url.pathname === '/api/leaderboard/points' && req.method === 'GET') {
     try {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
       const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
-      const rows = getPointsLeaderboard(limit, offset);
-      const totalTraders = getTotalPointsTraders();
+      const rows = getScoreLeaderboard('alltime', limit, offset);
+      const totalTraders = getTotalScoreTraders('alltime');
       const addresses = rows.map((r) => r.address);
       const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
       const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
@@ -1136,7 +1136,7 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
         rank: row.rank,
         address: row.address,
         nickname: nicknames.get(row.address) ?? null,
-        totalPoints: row.total_points,
+        totalPoints: row.total_score,
         tradeCount: row.trade_count,
         volumeUsd: formatQuoteVolume(row.volume_quote),
         rankChange: row.prev_rank > 0 ? row.prev_rank - row.rank : 0,
@@ -1157,17 +1157,17 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
     return;
   }
 
-  // GET /api/leaderboard/trader/:address/points - individual trader points
+  // GET /api/leaderboard/trader/:address/points - backward compat
   const pointsMatch = url.pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/points$/);
   if (pointsMatch && req.method === 'GET') {
     try {
       const address = pointsMatch[1];
-      const points = getTraderPoints(address);
+      const score = getTraderScore(address, 'alltime');
 
       const traderDisplayName = getDisplayName(address);
       fetchAndCacheProfile(address).catch(() => {});
 
-      if (!points) {
+      if (!score) {
         res.writeHead(200, corsHeaders);
         res.end(JSON.stringify({
           address,
@@ -1183,17 +1183,121 @@ function handleHttpRequest(req: { method?: string; url?: string; headers?: Recor
       res.end(JSON.stringify({
         address,
         nickname: traderDisplayName,
-        totalPoints: points.total_points,
+        totalPoints: score.total_score,
         breakdown: {
-          trades: points.points_from_trades,
-          volume: points.points_from_volume,
-          diversity: points.points_from_diversity,
-          pnl: points.points_from_pnl ?? 0,
+          trades: score.score_from_trades,
+          volume: score.score_from_volume,
+          diversity: score.score_from_diversity,
+          pnl: score.score_from_pnl,
         },
-        rank: points.rank,
+        rank: score.rank,
       }));
     } catch (err) {
       console.error('[Points] Trader points API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // ===== Score API =====
+
+  // GET /api/leaderboard/score - score leaderboard (weekly/alltime)
+  if (url.pathname === '/api/leaderboard/score' && req.method === 'GET') {
+    try {
+      const scope = url.searchParams.get('scope') || 'weekly';
+      if (!VALID_SCOPES.has(scope)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid scope. Use: weekly, alltime' }));
+        return;
+      }
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+      const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+      const rows = getScoreLeaderboard(scope, limit, offset);
+      const totalTraders = getTotalScoreTraders(scope);
+      const addresses = rows.map((r) => r.address);
+      const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
+      const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
+
+      const traders = rows.map((row) => ({
+        rank: row.rank,
+        address: row.address,
+        nickname: nicknames.get(row.address) ?? null,
+        totalScore: row.total_score,
+        tradeCount: row.trade_count,
+        volumeUsd: formatQuoteVolume(row.volume_quote),
+        rankChange: row.prev_rank > 0 ? row.prev_rank - row.rank : 0,
+        followerCount: followerCounts.get(row.address) ?? 0,
+      }));
+
+      const response: Record<string, unknown> = {
+        scope,
+        traders,
+        updatedAt: rows[0]?.updated_at ?? 0,
+        totalTraders,
+      };
+      if (scope === 'weekly') {
+        const now = new Date();
+        const day = now.getUTCDay();
+        const diff = day === 0 ? 6 : day - 1;
+        const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diff, 0, 0, 0, 0));
+        response.weekStartDate = monday.toISOString().slice(0, 10);
+      }
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify(response));
+    } catch (err) {
+      console.error('[Score] Leaderboard API error:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'Internal server error' }));
+    }
+    return;
+  }
+
+  // GET /api/leaderboard/trader/:address/score - individual trader score
+  const scoreMatch = url.pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/score$/);
+  if (scoreMatch && req.method === 'GET') {
+    try {
+      const address = scoreMatch[1];
+      const scope = url.searchParams.get('scope') || 'weekly';
+      if (!VALID_SCOPES.has(scope)) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid scope' }));
+        return;
+      }
+      const score = getTraderScore(address, scope);
+      const traderDisplayName = getDisplayName(address);
+      fetchAndCacheProfile(address).catch(() => {});
+
+      if (!score) {
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({
+          address,
+          nickname: traderDisplayName,
+          totalScore: 0,
+          breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 },
+          rank: 0,
+          scope,
+        }));
+        return;
+      }
+
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({
+        address,
+        nickname: traderDisplayName,
+        totalScore: score.total_score,
+        breakdown: {
+          trades: score.score_from_trades,
+          volume: score.score_from_volume,
+          diversity: score.score_from_diversity,
+          pnl: score.score_from_pnl,
+        },
+        rank: score.rank,
+        scope,
+      }));
+    } catch (err) {
+      console.error('[Score] Trader score API error:', (err as Error).message);
       res.writeHead(500, corsHeaders);
       res.end(JSON.stringify({ error: 'Internal server error' }));
     }
