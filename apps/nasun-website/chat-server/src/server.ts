@@ -3,12 +3,12 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
 import { randomBytes } from 'node:crypto';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassBatch, getProfileImagesBatch } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
 // Leaderboard modules (conditionally activated via DEEPBOOK_PACKAGE)
-import { initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents, getLeaderboardDb } from './leaderboard-store.js';
+import { initLeaderboardStore, closeLeaderboardStore, purgeOldOrderEvents, getLeaderboardDb, getActiveTraderAddresses } from './leaderboard-store.js';
 import { startIndexer, stopIndexer } from './indexer.js';
 import { startAggregator, stopAggregator } from './aggregator.js';
 import { initNarrator, onTradeFill, stopNarrator } from './market-narrator.js';
@@ -852,6 +852,7 @@ try {
 // ===== Leaderboard Initialization (conditional) =====
 
 let orderEventRetentionTimer: ReturnType<typeof setInterval> | null = null;
+let profileSyncTimer: ReturnType<typeof setInterval> | null = null;
 
 if (leaderboardEnabled) {
   try {
@@ -925,7 +926,24 @@ if (leaderboardEnabled) {
       purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
     }, 60 * 60 * 1000); // 1 hour
 
-    console.log('[Leaderboard] Indexer + aggregator + narrator started');
+    // Background profile sync: cache display names for active traders
+    const PROFILE_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+    const syncActiveTraderProfiles = async () => {
+      try {
+        const addresses = getActiveTraderAddresses(500);
+        if (addresses.length > 0) {
+          await ensureProfilesCached(addresses);
+          console.log(`[ProfileSync] Synced profiles for ${addresses.length} active traders`);
+        }
+      } catch (err) {
+        console.warn('[ProfileSync] Error:', err);
+      }
+    };
+    // Run once after 10s startup delay, then every 10 minutes
+    setTimeout(syncActiveTraderProfiles, 10_000);
+    profileSyncTimer = setInterval(syncActiveTraderProfiles, PROFILE_SYNC_INTERVAL_MS);
+
+    console.log('[Leaderboard] Indexer + aggregator + narrator + profile sync started');
   } catch (err) {
     console.error('[Leaderboard] FATAL: Failed to initialize:', err);
     process.exit(1);
@@ -950,6 +968,7 @@ function shutdown(): void {
   clearInterval(cleanupTimer);
   clearInterval(retentionTimer);
   if (orderEventRetentionTimer) clearInterval(orderEventRetentionTimer);
+  if (profileSyncTimer) clearInterval(profileSyncTimer);
 
   // Stop leaderboard modules first (DB writes cease)
   if (leaderboardEnabled) {

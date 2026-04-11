@@ -14,7 +14,14 @@ const GRACE_WINDOW_MS = 60 * 60 * 1000;           // 1 hour
 const LOCK_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MAX_CHANGES_IN_WINDOW = 10;
 
+// Profile cache constants
+const PROFILE_TTL_MS = 30 * 60 * 1000;           // 30 minutes
+const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;     // 5 minutes for failed lookups
+const FETCH_TIMEOUT_MS = 5000;
+const inFlightRequests = new Map<string, Promise<void>>();
+
 let db: Database.Database | null = null;
+let nasunProfileApiUrl = '';
 
 export function initStore(config: ChatServerConfig): void {
   mkdirSync(dirname(config.dbPath), { recursive: true });
@@ -89,6 +96,23 @@ export function initStore(config: ChatServerConfig): void {
 
   // Migration: profile image URL
   try { db.exec('ALTER TABLE users ADD COLUMN profile_image_url TEXT'); } catch { /* already exists */ }
+
+  // Nasun ecosystem profile cache table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS nasun_profiles (
+      address TEXT PRIMARY KEY,
+      resolved_display_name TEXT,
+      profile_image_url TEXT,
+      fetched_at INTEGER NOT NULL
+    );
+  `);
+
+  nasunProfileApiUrl = config.nasunProfileApiUrl;
+  if (nasunProfileApiUrl) {
+    console.log(`[nasun-profile] API URL: ${nasunProfileApiUrl}`);
+  } else {
+    console.log('[nasun-profile] API URL: NOT SET (display name sync disabled)');
+  }
 
   purgeOldMessages(config.messageRetentionDays);
 }
@@ -520,25 +544,119 @@ export function getProfileImagesBatch(addresses: string[]): Map<string, string> 
   return result;
 }
 
-// Unified display name for leaderboard API: nickname (priority 1) > display_name (priority 2) > null
+// ===== Nasun Profile Cache =====
+
+function getNasunDisplayName(address: string): string | null {
+  const row = getDb()
+    .prepare('SELECT resolved_display_name FROM nasun_profiles WHERE address = ?')
+    .get(address) as { resolved_display_name: string | null } | undefined;
+  return row?.resolved_display_name || null;
+}
+
+export function upsertNasunProfile(address: string, displayName: string | null, imageUrl: string | null): void {
+  getDb()
+    .prepare(
+      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, fetched_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(address) DO UPDATE SET
+         resolved_display_name = excluded.resolved_display_name,
+         profile_image_url = excluded.profile_image_url,
+         fetched_at = excluded.fetched_at`
+    )
+    .run(address, displayName, imageUrl, Date.now());
+}
+
+export function getStaleProfiles(addresses: string[], ttlMs: number): string[] {
+  if (addresses.length === 0) return [];
+
+  const cutoff = Date.now() - ttlMs;
+  const negativeCutoff = Date.now() - NEGATIVE_CACHE_TTL_MS;
+
+  const freshRows = getDb()
+    .prepare(
+      `SELECT address, resolved_display_name, fetched_at FROM nasun_profiles
+       WHERE address IN (${addresses.map(() => '?').join(',')})`
+    )
+    .all(...addresses) as Array<{ address: string; resolved_display_name: string | null; fetched_at: number }>;
+
+  const freshSet = new Set<string>();
+  for (const row of freshRows) {
+    const effectiveCutoff = row.resolved_display_name ? cutoff : negativeCutoff;
+    if (row.fetched_at > effectiveCutoff) {
+      freshSet.add(row.address);
+    }
+  }
+
+  return addresses.filter((a) => !freshSet.has(a));
+}
+
+export async function fetchAndCacheProfile(address: string): Promise<void> {
+  if (!nasunProfileApiUrl) return;
+
+  const normalized = address.toLowerCase();
+  if (inFlightRequests.has(normalized)) return inFlightRequests.get(normalized);
+
+  const promise = (async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const res = await fetch(`${nasunProfileApiUrl}?walletAddress=${encodeURIComponent(normalized)}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const data = await res.json() as { resolvedDisplayName?: string | null; profileImageUrl?: string | null };
+        upsertNasunProfile(normalized, data.resolvedDisplayName ?? null, data.profileImageUrl ?? null);
+      } else {
+        upsertNasunProfile(normalized, null, null);
+      }
+    } catch {
+      console.warn(`[nasun-profile] Failed to fetch profile for ${normalized}`);
+    } finally {
+      inFlightRequests.delete(normalized);
+    }
+  })();
+
+  inFlightRequests.set(normalized, promise);
+  return promise;
+}
+
+export async function ensureProfilesCached(addresses: string[]): Promise<void> {
+  const stale = getStaleProfiles(addresses, PROFILE_TTL_MS);
+  if (stale.length === 0) return;
+  await Promise.allSettled(stale.map((a) => fetchAndCacheProfile(a)));
+}
+
+// Unified display name: nickname (priority 1) > nasun_profiles (priority 2) > users.display_name (priority 3)
 export function getDisplayName(address: string): string | null {
   const row = getDb()
     .prepare('SELECT nickname, display_name FROM users WHERE address = ?')
     .get(address) as { nickname: string | null; display_name: string } | undefined;
-  if (!row) return null;
-  return row.nickname ?? row.display_name ?? null;
+  if (row?.nickname) return row.nickname;
+  const nasunName = getNasunDisplayName(address);
+  if (nasunName) return nasunName;
+  return row?.display_name ?? null;
 }
 
 export function getDisplayNamesBatch(addresses: string[]): Map<string, string> {
   if (addresses.length === 0) return new Map();
-  const placeholders = addresses.map(() => '?').join(',');
-  const rows = getDb()
-    .prepare(`SELECT address, nickname, display_name FROM users WHERE address IN (${placeholders})`)
-    .all(...addresses) as Array<{ address: string; nickname: string | null; display_name: string }>;
+  const d = getDb();
+
+  const rows = d
+    .prepare(
+      `SELECT addr,
+              COALESCE(u.nickname, np.resolved_display_name, u.display_name) as display_name
+       FROM (SELECT value as addr FROM json_each(?)) AS input
+       LEFT JOIN users u ON u.address = input.addr
+       LEFT JOIN nasun_profiles np ON np.address = input.addr
+       WHERE u.nickname IS NOT NULL OR np.resolved_display_name IS NOT NULL OR u.display_name IS NOT NULL`
+    )
+    .all(JSON.stringify(addresses)) as Array<{ addr: string; display_name: string }>;
+
   const result = new Map<string, string>();
   for (const row of rows) {
-    const name = row.nickname ?? row.display_name;
-    if (name) result.set(row.address, name);
+    if (row.display_name) result.set(row.addr, row.display_name);
   }
   return result;
 }
