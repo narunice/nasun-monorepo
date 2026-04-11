@@ -4,8 +4,8 @@
 
 [published.devnet]
 chain-id = "272218f1"
-published-at = "0xad7e5138001d316c4ffb22a07b35e24ff46309ddb077ab9c19c3cb38ba106de1"
+published-at = "0x78a6cac2022aa05e4c3bf1461f892f49d2d9d3d1a4770c266c4c5d2c347a9af3"
 original-id = "0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3"
-version = 9
+version = 10
 toolchain-version = "1.63.3"
 build-config = { flavor = "sui", edition = "2024" }
