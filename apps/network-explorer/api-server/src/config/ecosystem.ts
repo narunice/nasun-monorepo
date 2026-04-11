@@ -45,8 +45,8 @@ export const ACTIVATIONS_ERROR_RETRY_MS = Math.max(30_000, safeInt(process.env.E
 
 // Excluded categories (authoritative source: ecosystem-schema.sql matview definition)
 // Kept as reference. If modifying, update the SQL matview and recreate.
-// 'referral-bonus', 'daily-mission', 'wallet-transfer',
-// 'ecosystem-bonus-pnl', 'ecosystem-bonus-rank', 'ecosystem-bonus-game', 'ecosystem-bonus-diversity'
+// 'referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily',
+// 'ecosystem-bonus-*' (all bonus subcategories)
 
 // Activation types
 export interface NftActivation {

@@ -35,8 +35,8 @@ const EXCLUDED_CATEGORIES = [
 export async function runDailyNftChecks(
   activationsCache: Map<string, NftActivation[]>,
   identityToWallet: Map<string, string>,
-): Promise<void> {
-  if (!pointsDb) return;
+): Promise<number> {
+  if (!pointsDb) return 0;
 
   // Partition users by NFT type in a single traversal
   const allianceOnlyIds: string[] = [];
@@ -86,12 +86,16 @@ export async function runDailyNftChecks(
     console.error('[DailyNftCheck] Wallet transfer detection error (non-fatal):', err);
   }
 
-  if (penaltiesApplied > 0 || penaltiesRecovered > 0 || passiveAwarded > 0 || stakingAwarded > 0 || transfersDetected > 0) {
+  const totalInserts = passiveAwarded + stakingAwarded + transfersDetected;
+
+  if (penaltiesApplied > 0 || penaltiesRecovered > 0 || totalInserts > 0) {
     console.log(
       `[DailyNftCheck] penalties: ${penaltiesApplied} applied, ${penaltiesRecovered} recovered, ` +
       `${passiveAwarded} passive, ${stakingAwarded} staking, ${transfersDetected} transfers`,
     );
   }
+
+  return totalInserts;
 }
 
 // --- Alliance Penalty ---
@@ -361,13 +365,13 @@ async function detectWalletTransfers(
       const digest = `wt:${identityId}:${dateStr}`;
 
       try {
-        // Query recent transactions from this wallet (descending, limit 10)
+        // Query recent transactions from this wallet (descending, limit 50)
         const result = await rpcCall<TxQueryResponse>(
           'suix_queryTransactionBlocks',
           [
             { filter: { FromAddress: wallet }, options: { showInput: true } },
             null,
-            10,
+            50,
             true,
           ],
         );
