@@ -140,38 +140,27 @@ async function scanLoop(): Promise<void> {
       console.error('[Chat] Scan error (non-fatal):', (err as Error).message);
     }
 
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    if (totalProcessed > 0) {
-      // Daily mission bonus: DISABLED in Ecosystem Points V1.
-      // base_score (distinct categories per day) already rewards category diversity.
-      // Keeping the code for reference; remove entirely after V1 stabilizes.
-      // try {
-      //   const missionCount = await calculateDailyMissions(registeredWallets);
-      //   if (missionCount > 0) {
-      //     totalProcessed += missionCount;
-      //     console.log(`[DailyMission] Awarded ${missionCount} mission points`);
-      //   }
-      // } catch (err) {
-      //   console.error('[DailyMission] Error (non-fatal):', (err as Error).message);
-      // }
-
-      console.log(
-        `[Points] Scan complete: ${totalProcessed} points recorded in ${elapsed}s`,
-      );
-    }
-
-    // Daily NFT checks: alliance penalty + genesis passive (once per day)
+    // Daily NFT checks: alliance penalty + genesis passive + wallet-transfer (once per day)
+    // Runs BEFORE matview refresh so its inserts are reflected in the matview
     const todayStr = new Date().toISOString().slice(0, 10);
     if (todayStr !== lastDailyNftCheckDate) {
       try {
-        await runDailyNftChecks(
+        const nftCheckInserts = await runDailyNftChecks(
           getActivationsCacheMap(),
           getIdentityToWalletMap(),
         );
+        totalProcessed += nftCheckInserts;
         lastDailyNftCheckDate = todayStr;
       } catch (err) {
         console.error('[DailyNftCheck] Error (non-fatal):', (err as Error).message);
       }
+    }
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    if (totalProcessed > 0) {
+      console.log(
+        `[Points] Scan complete: ${totalProcessed} points recorded in ${elapsed}s`,
+      );
     }
 
     if (totalProcessed > 0) {
@@ -193,6 +182,12 @@ async function scanLoop(): Promise<void> {
     // Daily ecosystem snapshot (after matview is fresh, 5min grace after UTC midnight)
     const utcMinutes = new Date().getUTCMinutes();
     if (todayStr !== lastSnapshotDate && utcMinutes >= 5) {
+      // Ensure matview is fresh before snapshot to capture all yesterday's data
+      try {
+        await maybeRefreshMatview();
+      } catch (err) {
+        console.error('[Ecosystem] Pre-snapshot matview refresh error (non-fatal):', (err as Error).message);
+      }
       const cacheMap = getActivationsCacheMap();
       if (cacheMap.size === 0) {
         console.warn('[Snapshot] Skipped: activation cache is empty (would record multiplier=0 for all users)');
