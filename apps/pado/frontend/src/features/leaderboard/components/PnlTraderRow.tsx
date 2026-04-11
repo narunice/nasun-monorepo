@@ -3,7 +3,7 @@ import type { PnlLeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
-import { GenesisPassInlineBadge } from './GenesisPassInlineBadge';
+import { GenesisPassBadge } from '@nasun/wallet-ui';
 
 interface PnlTraderRowProps {
   trader: PnlLeaderboardTrader;
@@ -70,7 +70,7 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
             <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
               {displayName}
             </span>
-            {trader.hasGenesisPass && <GenesisPassInlineBadge />}
+            {trader.hasGenesisPass && <GenesisPassBadge />}
           </div>
           {trader.nickname && (
             <span className="text-xs text-theme-text-muted font-mono">

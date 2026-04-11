@@ -3,7 +3,7 @@ import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
 import { TraderAvatar } from './TraderAvatar';
 import { BadgeDisplay } from './BadgeDisplay';
-import { GenesisPassInlineBadge } from './GenesisPassInlineBadge';
+import { GenesisPassBadge } from '@nasun/wallet-ui';
 import { computeBadges } from '../lib/badges';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import type { TraderStatsResponse } from '../types';
@@ -66,7 +66,7 @@ export function TraderProfileHeader({ address, stats, classification, isLoading,
                   <h2 className="text-lg font-semibold text-theme-text-primary">
                     {nickname}
                   </h2>
-                  {stats?.hasGenesisPass && <GenesisPassInlineBadge />}
+                  {stats?.hasGenesisPass && <GenesisPassBadge />}
                   {isActive && <span className="hidden sm:inline text-xs text-green-400">Active</span>}
                   {classification && (
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STYLE_COLORS[classification.style] ?? 'text-theme-text-muted bg-theme-bg-tertiary'}`}>
@@ -84,7 +84,7 @@ export function TraderProfileHeader({ address, stats, classification, isLoading,
                 <h2 className="text-lg font-semibold text-theme-text-primary font-mono">
                   {shortenAddress(address)}
                 </h2>
-                {stats?.hasGenesisPass && <GenesisPassInlineBadge />}
+                {stats?.hasGenesisPass && <GenesisPassBadge />}
                 {isActive && <span className="hidden sm:inline text-xs text-green-400">Active</span>}
                 {classification && (
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${STYLE_COLORS[classification.style] ?? 'text-theme-text-muted bg-theme-bg-tertiary'}`}>

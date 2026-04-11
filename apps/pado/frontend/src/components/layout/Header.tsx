@@ -4,7 +4,8 @@ import { WalletConnect } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { HeaderNetValue } from './HeaderNetValue';
 import { EcoPointsBadge } from './EcoPointsBadge';
-import { GenesisPassBadge } from './GenesisPassBadge';
+import { GenesisPassBadge } from '@nasun/wallet-ui';
+import { useGenesisPass } from '../../hooks/useGenesisPass';
 import { ThemeToggle } from '../theme/ThemeToggle';
 import { useAdminAccess } from '../../features/admin';
 import { useTradeMode } from '../../features/trading/hooks';
@@ -72,6 +73,9 @@ export function Header() {
   // Admin access check
   const { isAdmin } = useAdminAccess();
   const isAppAdmin = useAppAdmin();
+
+  // Genesis Pass ownership
+  const hasGenesisPass = useGenesisPass();
 
   // Platform admins bypass all access gates
   const hasSpotAccess = isAppAdmin || hasAccess('spot');
@@ -439,7 +443,7 @@ export function Header() {
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
           <EcoPointsBadge />
-          <GenesisPassBadge />
+          {hasGenesisPass && <GenesisPassBadge className="hidden sm:inline-flex" />}
           {hasSpotAccess && <HeaderNetValue />}
           {showWalletButton && (
             <WalletConnect
