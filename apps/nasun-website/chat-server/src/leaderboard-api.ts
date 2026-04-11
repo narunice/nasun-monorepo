@@ -145,7 +145,9 @@ export function handleLeaderboardRequest(
   deps: LeaderboardApiDeps,
 ): boolean {
   const { pathname } = url;
-  const method = req.method || 'GET';
+  // Treat HEAD as GET (same response, no body per HTTP spec)
+  const rawMethod = req.method || 'GET';
+  const method = rawMethod === 'HEAD' ? 'GET' : rawMethod;
 
   // Only handle known API prefixes
   if (!pathname.startsWith('/api/leaderboard') &&
