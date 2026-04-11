@@ -1,9 +1,21 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useUserStore } from '../../../store/userStore';
-import { useWalletAccount } from '@nasun/wallet';
 import type { BugReportData, BugReportResponse, BugReport, PresignedPostData } from '../types';
 
 const BUG_REPORT_API_URL = import.meta.env.VITE_BUG_REPORT_API_URL;
+
+// ============================================
+// Resolve wallet address from user store (nasun wallet login)
+// ============================================
+
+function getWalletAddress(user: ReturnType<typeof useUserStore.getState>['user']): string | undefined {
+  if (!user) return undefined;
+  // Primary: nasun wallet linked account
+  const nasunWallet = user.linkedAccounts?.['nasun wallet']?.walletAddress;
+  if (nasunWallet) return nasunWallet;
+  // Fallback: direct walletAddress on user object
+  return user.walletAddress;
+}
 
 // ============================================
 // Submit bug report
@@ -32,22 +44,22 @@ async function submitBugReport(
 
 export function useBugReport() {
   const user = useUserStore((s) => s.user);
-  const account = useWalletAccount();
-  const walletConnected = !!account?.address;
+  const walletAddress = getWalletAddress(user);
+  const walletConnected = !!walletAddress;
 
   const mutation = useMutation({
     mutationFn: (data: Omit<BugReportData, 'displayName' | 'walletAddress'>) => {
       if (!user?.cognitoToken) {
         throw new Error('Not authenticated');
       }
-      if (!account?.address) {
+      if (!walletAddress) {
         throw new Error('Wallet not connected');
       }
       return submitBugReport(
         {
           ...data,
           displayName: user.customDisplayName || user.username,
-          walletAddress: account.address,
+          walletAddress,
         },
         user.cognitoToken
       );
