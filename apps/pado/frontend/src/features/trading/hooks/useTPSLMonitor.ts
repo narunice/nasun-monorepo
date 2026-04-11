@@ -21,8 +21,9 @@ import { sendBrowserNotification } from '../../../lib/browser-notify';
 import { useToast } from '@/components/common';
 import { formatErrorMessage } from '../utils/errorParser';
 import type { TPSLOrder } from '../lib/tpsl-types';
-import { shouldTrigger, TPSL_POLL_INTERVAL_MS } from '../lib/tpsl-types';
+import { shouldTrigger, TPSL_POLL_INTERVAL_MS, MAX_TPSL_ORDERS } from '../lib/tpsl-types';
 import {
+  getActiveTPSLOrders,
   getActiveTPSLOrdersByMarket,
   updateTPSLStatus,
   claimTPSLOrder,
@@ -275,7 +276,12 @@ export function useTPSLMonitor({
         const modeTag = options?.isServerFallback ? ' (browser-only)' : '';
         showToast(`${typeLabel} set at $${priceStr}${limitInfo}${trailInfo}${modeTag}`, 'success');
       } else {
-        showToast('Invalid order or max limit reached (50)', 'warning');
+        const activeCount = getActiveTPSLOrders().length;
+        if (activeCount >= MAX_TPSL_ORDERS) {
+          showToast(`Maximum ${MAX_TPSL_ORDERS} active TP/SL orders reached. Cancel existing orders to add new ones.`, 'warning');
+        } else {
+          showToast('Invalid TP/SL order parameters. Please check your inputs.', 'warning');
+        }
       }
       return result;
     },
