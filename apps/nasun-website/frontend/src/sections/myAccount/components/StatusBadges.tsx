@@ -1,5 +1,6 @@
 import { FC, useMemo } from "react";
-import { Check, Link2, Bookmark, Gift, ShieldCheck, Users, Crown } from "lucide-react";
+import { Check, Link2, Bookmark, Gift, ShieldCheck, Users } from "lucide-react";
+import { GenesisPassBadge as GenesisPassBadgeUI } from "@nasun/wallet-ui";
 import { useAuth } from "@/features/auth";
 import { useMultiChainNFTs } from "@/features/wallet";
 import { useEnabledNftCollections } from "@/features/admin/hooks/useNftCollections";
@@ -123,18 +124,5 @@ export const GenesisPassBadge: FC = () => {
 
   if (!isHolder) return null;
 
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full
-                 bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15
-                 text-amber-300 text-sm font-semibold tracking-wide
-                 border border-amber-400/25
-                 shadow-[0_0_6px_rgba(249,168,36,0.12)]"
-      aria-label="Genesis Pass NFT holder"
-    >
-      <Crown className="w-3 h-3 flex-shrink-0" />
-      <span className="hidden sm:inline">Genesis Pass</span>
-      <span className="sm:hidden">Genesis</span>
-    </span>
-  );
+  return <GenesisPassBadgeUI variant="full" />;
 };

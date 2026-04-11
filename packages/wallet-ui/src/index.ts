@@ -92,6 +92,10 @@ export type { PasskeyButtonProps } from './social/PasskeyButton';
 export { ZKIDManager } from './social/ZKIDManager';
 export type { ZKIDManagerProps } from './social/ZKIDManager';
 
+// Badge components
+export { GenesisPassBadge } from './badges';
+export type { GenesisPassBadgeProps } from './badges';
+
 // Network components
 export { NetworkBadge } from './network/NetworkBadge';
 export type { NetworkBadgeProps } from './network/NetworkBadge';
