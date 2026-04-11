@@ -36,6 +36,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ecosystem-bonus-pado": "bg-lime-500",
   "ecosystem-bonus-game": "bg-orange-500",
   "ecosystem-bonus-airdrop": "bg-fuchsia-500",
+  "ecosystem-bonus-bugreport": "bg-rose-500",
   "ecosystem-bonus-admin": "bg-teal-500",
 };
 
@@ -47,6 +48,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "ecosystem-bonus-pado": "Pado Bonus",
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
+  "ecosystem-bonus-bugreport": "Bug Report",
   "ecosystem-bonus-admin": "Bonus",
 };
 
@@ -406,6 +408,16 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       </span>
                     </div>
                   )}
+                  {hasActiveNft && ecosystemScore?.isPenalized && (
+                    <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-center">
+                      <p className="text-sm font-semibold text-red-400">
+                        Multiplier reduced to 0x due to low activity
+                      </p>
+                      <p className="text-xs text-red-400/70 mt-0.5">
+                        Stay active for 2 consecutive days to recover. Base score still accrues normally.
+                      </p>
+                    </div>
+                  )}
                   {/* All time score: baseline-aligned */}
                   <div className="flex items-baseline justify-center gap-3 mb-3">
                     <span className="text-lg font-semibold text-nasun-white uppercase tracking-wider">
@@ -442,10 +454,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       </span>{" "}
                       base
                       <span className="text-nasun-white/40"> x </span>
-                      <span className="font-mono text-nasun-white/80">
-                        {displayMultiplier.toFixed(1)}
+                      <span className={`font-mono ${ecosystemScore?.isPenalized ? "text-red-400" : "text-nasun-white/80"}`}>
+                        {displayMultiplier.toFixed(1)}x
                       </span>{" "}
                       mult
+                      {ecosystemScore?.isPenalized && (
+                        <span className="text-red-400/70 text-xs ml-0.5">(penalized)</span>
+                      )}
                       <span className="text-nasun-white/40"> + </span>
                       <span className="font-mono text-nasun-white/80">
                         {Math.max(0, displayTodayScore - Math.round(displayBaseScore * displayMultiplier))}
