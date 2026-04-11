@@ -229,13 +229,18 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
                   </div>
                 )}
                 {screenshots.length < MAX_SCREENSHOTS && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-2 border border-dashed border-white/20 rounded-lg text-sm text-white/40 hover:text-white/60 hover:border-white/30 transition-colors"
-                  >
-                    Click to add or paste (Ctrl+V) a screenshot
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 py-2 border border-dashed border-white/20 rounded-lg text-sm text-white/40 text-center">
+                      Paste screenshot here (Ctrl+V)
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-2 text-sm font-medium bg-white/5 text-white/60 border border-white/10 rounded-lg hover:bg-white/10 hover:text-white/80 transition-colors whitespace-nowrap"
+                    >
+                      Upload File
+                    </button>
+                  </div>
                 )}
                 <input
                   ref={fileInputRef}
