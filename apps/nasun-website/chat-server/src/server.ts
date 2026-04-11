@@ -16,6 +16,7 @@ import { setPoolRoomMapping, getPoolRoom } from './rooms.js';
 import { handleLeaderboardRequest, cleanupApiRateLimits } from './leaderboard-api.js';
 import type { LeaderboardApiDeps } from './leaderboard-api.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
+import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 
 // ===== State =====
 
@@ -607,6 +608,12 @@ function handleSendMessage(
     for (const [ws] of authenticatedClients) {
       send(ws, payload);
     }
+
+    // Check for AI chatbot mention (non-blocking)
+    const senderNickname = nicknameMap.get(stored.sender) ?? null;
+    onUserMessage(content, senderNickname, client.address, roomId).catch((err) => {
+      console.warn('[Chatbot] Error:', (err as Error).message);
+    });
   } catch (err) {
     console.error('Failed to insert message:', err);
     send(client.ws, { type: 'error', code: 'INTERNAL_ERROR', message: 'Failed to send message' });
@@ -952,6 +959,17 @@ if (leaderboardEnabled) {
   console.log('[Leaderboard] Disabled (DEEPBOOK_PACKAGE not set)');
 }
 
+// ===== AI Chatbot (mention-based @nasun/@wavi responses) =====
+
+if (process.env.ANTHROPIC_API_KEY) {
+  initChatbot({
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    broadcastToRoom: broadcastSystemMessage,
+  });
+} else {
+  console.log('[Chatbot] Disabled (ANTHROPIC_API_KEY not set)');
+}
+
 httpServer.listen(CONFIG.port, () => {
   console.log(`Nasun Chat Server listening on port ${CONFIG.port}`);
   console.log(`Allowed origins: ${CONFIG.allowedOrigins.join(', ')}`);
@@ -970,7 +988,8 @@ function shutdown(): void {
   if (orderEventRetentionTimer) clearInterval(orderEventRetentionTimer);
   if (profileSyncTimer) clearInterval(profileSyncTimer);
 
-  // Stop leaderboard modules first (DB writes cease)
+  // Stop chatbot + leaderboard modules (DB writes cease)
+  stopChatbot();
   if (leaderboardEnabled) {
     stopIndexer();
     stopAggregator();
