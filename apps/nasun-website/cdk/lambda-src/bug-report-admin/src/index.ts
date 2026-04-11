@@ -139,7 +139,8 @@ async function handleList(
     Limit: 100,
   }));
 
-  const reports = await attachScreenshotUrls(result.Items || []);
+  let reports = await attachScreenshotUrls(result.Items || []);
+  reports = await attachUserProfiles(reports);
   return respond(200, { reports, filter: queryStatus }, cors);
 }
 
@@ -342,6 +343,49 @@ async function sendRewardToExplorer(payload: {
 // ============================================
 // Helpers
 // ============================================
+
+async function attachUserProfiles(
+  reports: Record<string, unknown>[],
+): Promise<Record<string, unknown>[]> {
+  // Collect unique identityIds
+  const ids = [...new Set(
+    reports.map(r => r.identityId as string).filter(Boolean),
+  )];
+  if (ids.length === 0) return reports;
+
+  const profileMap = new Map<string, { twitterHandle?: string; profileImageUrl?: string; customDisplayName?: string }>();
+
+  // Individual lookups (sufficient for <100 reports per page)
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const result = await ddbClient.send(new GetCommand({
+          TableName: USER_PROFILES_TABLE,
+          Key: { identityId: id },
+          ProjectionExpression: 'twitterHandle, profileImageUrl, customDisplayName',
+        }));
+        if (result.Item) {
+          profileMap.set(id, {
+            twitterHandle: result.Item.twitterHandle as string | undefined,
+            profileImageUrl: result.Item.profileImageUrl as string | undefined,
+            customDisplayName: result.Item.customDisplayName as string | undefined,
+          });
+        }
+      } catch { /* ignore */ }
+    }),
+  );
+
+  return reports.map((report) => {
+    const profile = profileMap.get(report.identityId as string);
+    if (!profile) return report;
+    return {
+      ...report,
+      twitterHandle: profile.twitterHandle,
+      profileImageUrl: profile.profileImageUrl,
+      displayName: profile.customDisplayName,
+    };
+  });
+}
 
 async function attachScreenshotUrls(
   reports: Record<string, unknown>[],

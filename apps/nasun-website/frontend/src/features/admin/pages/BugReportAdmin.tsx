@@ -172,16 +172,21 @@ export function BugReportAdmin() {
                       : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-sm text-nasun-white font-medium truncate">{report.title}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${STATUS_COLORS[report.status]}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    {report.profileImageUrl && (
+                      <img src={report.profileImageUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                    )}
+                    <span className="text-sm text-nasun-white font-medium truncate flex-1">{report.title}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[report.status]}`}>
                       {STATUS_LABELS[report.status]}
                     </span>
                   </div>
-                  <div className="flex gap-2 text-[10px] text-white/30">
+                  <div className="flex gap-2 text-xs text-white/50 flex-wrap">
+                    {report.twitterHandle && (
+                      <span className="text-nasun-c4">@{report.twitterHandle}</span>
+                    )}
                     <span>{report.category}</span>
                     <span>{new Date(report.timestamp).toLocaleDateString('en-US')}</span>
-                    <span>#{report.reportId.slice(0, 8)}</span>
                     {report.screenshotKeys && report.screenshotKeys.length > 0 && (
                       <span>{report.screenshotKeys.length} img</span>
                     )}
@@ -196,26 +201,68 @@ export function BugReportAdmin() {
             {selectedReport ? (
               <OuterBox>
                 <div className="p-5 space-y-4">
-                  <h3 className="text-base font-semibold text-nasun-white">{selectedReport.title}</h3>
+                  {/* Title + Reporter profile */}
+                  <div className="flex items-center gap-3">
+                    {selectedReport.profileImageUrl && (
+                      <img
+                        src={selectedReport.profileImageUrl}
+                        alt=""
+                        className="w-10 h-10 rounded-full border border-white/10 flex-shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="text-base font-semibold text-nasun-white">{selectedReport.title}</h3>
+                      {selectedReport.twitterHandle && (
+                        <a
+                          href={`https://x.com/${selectedReport.twitterHandle}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-nasun-c4 hover:underline"
+                        >
+                          @{selectedReport.twitterHandle}
+                        </a>
+                      )}
+                      {!selectedReport.twitterHandle && selectedReport.displayName && (
+                        <span className="text-sm text-white/60">{selectedReport.displayName}</span>
+                      )}
+                    </div>
+                  </div>
 
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-3 text-sm">
+                    {/* Description */}
                     <div>
-                      <span className="text-white/40 text-xs">Description</span>
+                      <span className="text-white/50 text-xs block mb-0.5">Description</span>
                       <p className="text-white/80 whitespace-pre-wrap">{selectedReport.description}</p>
                     </div>
                     {selectedReport.reproSteps && (
                       <div>
-                        <span className="text-white/40 text-xs">Steps to Reproduce</span>
+                        <span className="text-white/50 text-xs block mb-0.5">Steps to Reproduce</span>
                         <p className="text-white/80 whitespace-pre-wrap">{selectedReport.reproSteps}</p>
                       </div>
                     )}
-                    <div className="flex gap-4 text-xs text-white/40">
-                      <span>Category: {selectedReport.category}</span>
-                      <span>Identity: {selectedReport.identityId?.slice(0, 20)}...</span>
+
+                    {/* User Info (copyable) */}
+                    <div className="bg-white/[0.03] rounded-lg p-3 space-y-1.5">
+                      <span className="text-white/50 text-xs block">Reporter Info</span>
+                      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                        <span className="text-white/50">Report ID</span>
+                        <span className="text-white/70 font-mono break-all select-all">{selectedReport.reportId}</span>
+                        <span className="text-white/50">Identity ID</span>
+                        <span className="text-white/70 font-mono break-all select-all">{selectedReport.identityId}</span>
+                        <span className="text-white/50">Wallet</span>
+                        <span className="text-white/70 font-mono break-all select-all">{selectedReport.walletAddress || 'N/A'}</span>
+                        <span className="text-white/50">Category</span>
+                        <span className="text-white/70">{selectedReport.category}</span>
+                        <span className="text-white/50">Submitted</span>
+                        <span className="text-white/70">{new Date(selectedReport.timestamp).toLocaleString('en-US')}</span>
+                        {selectedReport.pageUrl && (
+                          <>
+                            <span className="text-white/50">Page</span>
+                            <span className="text-white/70 break-all">{selectedReport.pageUrl}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    {selectedReport.pageUrl && (
-                      <div className="text-xs text-white/30 break-all">Page: {selectedReport.pageUrl}</div>
-                    )}
                   </div>
 
                   {/* Screenshots */}

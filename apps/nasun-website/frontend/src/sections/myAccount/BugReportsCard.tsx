@@ -26,17 +26,9 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
 
   return (
     <OuterBox color="c5" padding="sm" className={className}>
-      <div className="flex items-center justify-between mb-3">
-        <h5 className="font-medium uppercase text-nasun-white">
-          Bug Reports
-        </h5>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="px-3 py-1.5 text-xs font-medium bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30 rounded-lg hover:bg-nasun-c4/30 transition-colors"
-          >
-            Report a Bug
-          </button>
-        </div>
+      <h5 className="font-medium uppercase text-nasun-white mb-3">
+        Bug Reports
+      </h5>
 
         {isLoading ? (
           <div className="flex justify-center py-6">
@@ -45,8 +37,17 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
         ) : error ? (
           <p className="text-sm text-red-400">Failed to load reports</p>
         ) : !reports || reports.length === 0 ? (
-          <p className="text-sm text-white/40">No bug reports yet. Found an issue? Report it and earn rewards!</p>
+          <div className="flex flex-col items-center py-4 gap-3">
+            <p className="text-base text-white/70 text-center">No bug reports yet. Found an issue? Report it and earn rewards!</p>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-4 py-2 text-sm font-medium bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30 rounded-lg hover:bg-nasun-c4/30 transition-colors"
+            >
+              Report a Bug
+            </button>
+          </div>
         ) : (
+          <>
           <div className="space-y-2">
             {reports.map((report) => (
               <button
@@ -60,17 +61,17 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
                   <span className="text-sm text-nasun-white truncate flex-1">
                     {report.title}
                   </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[report.status]}`}>
+                  <span className={`text-sm px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[report.status]}`}>
                     {STATUS_LABELS[report.status]}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] text-white/30">
+                  <span className="text-sm text-white/60">
                     {new Date(report.timestamp).toLocaleDateString('en-US')}
                   </span>
-                  <span className="text-[10px] text-white/20">{report.category}</span>
+                  <span className="text-sm text-white/60">{report.category}</span>
                   {report.bonusPoints != null && report.bonusPoints > 0 && (
-                    <span className="text-[10px] text-green-400">
+                    <span className="text-sm text-green-400">
                       +{report.bonusPoints} pts
                     </span>
                   )}
@@ -80,20 +81,20 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
                 {selectedReport?.reportId === report.reportId && (
                   <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
                     <div>
-                      <span className="text-[10px] text-white/40 block">Description</span>
-                      <p className="text-xs text-white/70 whitespace-pre-wrap">
+                      <span className="text-sm text-white/60 block">Description</span>
+                      <p className="text-sm text-white/80 whitespace-pre-wrap">
                         {report.description}
                       </p>
                     </div>
                     {report.adminNote && (
                       <div>
-                        <span className="text-[10px] text-white/40 block">Admin Response</span>
-                        <p className="text-xs text-nasun-c4/80">{report.adminNote}</p>
+                        <span className="text-sm text-white/60 block">Admin Response</span>
+                        <p className="text-sm text-nasun-c4/80">{report.adminNote}</p>
                       </div>
                     )}
                     {report.rewardStatus === 'rewarded' && report.bonusPoints != null && (
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-green-400">
+                        <span className="text-sm text-green-400">
                           Rewarded: +{report.bonusPoints} ecosystem points
                         </span>
                       </div>
@@ -103,6 +104,15 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
               </button>
             ))}
           </div>
+          <div className="flex justify-center mt-3">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-4 py-2 text-sm font-medium bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30 rounded-lg hover:bg-nasun-c4/30 transition-colors"
+            >
+              Report a Bug
+            </button>
+          </div>
+          </>
         )}
 
       {/* Bug Report Modal */}
