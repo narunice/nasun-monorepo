@@ -6,6 +6,7 @@ import { RankChangeIndicator } from './RankChangeIndicator';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import { computeBadgesFromLeaderboard } from '../lib/badges';
 import { BadgeDisplay } from './BadgeDisplay';
+import { GenesisPassInlineBadge } from './GenesisPassInlineBadge';
 
 interface TraderRowProps {
   trader: LeaderboardTrader;
@@ -71,6 +72,7 @@ export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
             <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
               {displayName}
             </span>
+            {trader.hasGenesisPass && <GenesisPassInlineBadge />}
             {badges.length > 0 && <BadgeDisplay badges={badges} compact />}
           </div>
           {trader.nickname && (

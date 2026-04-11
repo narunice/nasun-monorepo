@@ -225,4 +225,45 @@ describe('LeaderboardTable', () => {
       expect(container.querySelectorAll('tbody tr').length).toBe(2);
     });
   });
+
+  // ========================================
+  // Genesis Pass Badge
+  // ========================================
+
+  describe('genesis pass badge', () => {
+    it('shows GP badge for genesis pass holder', () => {
+      const traders = [makeTrader({ rank: 1, address: ADDR_A, hasGenesisPass: true })];
+      render(<LeaderboardTable traders={traders} isLoading={false} />);
+      expect(screen.getByTitle('Genesis Pass Holder')).toBeTruthy();
+    });
+
+    it('does not show GP badge when hasGenesisPass is false', () => {
+      const traders = [makeTrader({ rank: 1, address: ADDR_A, hasGenesisPass: false })];
+      render(<LeaderboardTable traders={traders} isLoading={false} />);
+      expect(screen.queryByTitle('Genesis Pass Holder')).toBeNull();
+    });
+
+    it('does not show GP badge when hasGenesisPass is undefined', () => {
+      const traders = [makeTrader({ rank: 1, address: ADDR_A })];
+      render(<LeaderboardTable traders={traders} isLoading={false} />);
+      expect(screen.queryByTitle('Genesis Pass Holder')).toBeNull();
+    });
+
+    it('shows GP badge only for holders in a mixed list', () => {
+      const traders = [
+        makeTrader({ rank: 1, address: ADDR_A, hasGenesisPass: true }),
+        makeTrader({ rank: 2, address: ADDR_B, hasGenesisPass: false }),
+        makeTrader({ rank: 3, address: ADDR_C, hasGenesisPass: true }),
+      ];
+      render(<LeaderboardTable traders={traders} isLoading={false} />);
+      expect(screen.getAllByTitle('Genesis Pass Holder').length).toBe(2);
+    });
+
+    it('shows GP badge alongside nickname', () => {
+      const traders = [makeTrader({ rank: 1, address: ADDR_A, nickname: 'Whale', hasGenesisPass: true })];
+      render(<LeaderboardTable traders={traders} isLoading={false} />);
+      expect(screen.getByText('Whale')).toBeTruthy();
+      expect(screen.getByTitle('Genesis Pass Holder')).toBeTruthy();
+    });
+  });
 });

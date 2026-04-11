@@ -3,6 +3,7 @@ import type { PointsLeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
+import { GenesisPassInlineBadge } from './GenesisPassInlineBadge';
 
 interface PointsTraderRowProps {
   trader: PointsLeaderboardTrader;
@@ -64,9 +65,12 @@ export function PointsTraderRow({ trader, isCurrentUser }: PointsTraderRowProps)
       </td>
       <td className="py-2.5 px-3">
         <div className="flex flex-col">
-          <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
-            {displayName}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
+              {displayName}
+            </span>
+            {trader.hasGenesisPass && <GenesisPassInlineBadge />}
+          </div>
           {trader.nickname && (
             <span className="text-xs text-theme-text-muted font-mono">
               {shortenAddress(trader.address)}

@@ -384,6 +384,70 @@ describe('TraderProfileHeader', () => {
   });
 
   // ========================================
+  // Genesis Pass Badge
+  // ========================================
+
+  describe('genesis pass badge', () => {
+    it('shows GP badge when hasGenesisPass is true (with nickname)', () => {
+      const stats = makeStatsResponse({ nickname: 'GPWhale' });
+      (stats as any).hasGenesisPass = true;
+      render(
+        <TraderProfileHeader address={ADDR} stats={stats} isLoading={false} />,
+      );
+      expect(screen.getByTitle('Genesis Pass Holder')).toBeTruthy();
+      expect(screen.getByText('GPWhale')).toBeTruthy();
+    });
+
+    it('shows GP badge when hasGenesisPass is true (without nickname)', () => {
+      const stats = makeStatsResponse({ nickname: null });
+      (stats as any).hasGenesisPass = true;
+      render(
+        <TraderProfileHeader address={ADDR} stats={stats} isLoading={false} />,
+      );
+      expect(screen.getByTitle('Genesis Pass Holder')).toBeTruthy();
+    });
+
+    it('does not show GP badge when hasGenesisPass is false', () => {
+      const stats = makeStatsResponse({ nickname: 'NoGP' });
+      (stats as any).hasGenesisPass = false;
+      render(
+        <TraderProfileHeader address={ADDR} stats={stats} isLoading={false} />,
+      );
+      expect(screen.queryByTitle('Genesis Pass Holder')).toBeNull();
+    });
+
+    it('does not show GP badge when hasGenesisPass is undefined', () => {
+      const stats = makeStatsResponse({ nickname: 'Regular' });
+      render(
+        <TraderProfileHeader address={ADDR} stats={stats} isLoading={false} />,
+      );
+      expect(screen.queryByTitle('Genesis Pass Holder')).toBeNull();
+    });
+
+    it('does not show GP badge when stats is undefined (loading)', () => {
+      render(
+        <TraderProfileHeader address={ADDR} stats={undefined} isLoading={true} />,
+      );
+      expect(screen.queryByTitle('Genesis Pass Holder')).toBeNull();
+    });
+
+    it('shows GP badge alongside classification badge', () => {
+      const stats = makeStatsResponse({ nickname: 'GPTrader' });
+      (stats as any).hasGenesisPass = true;
+      render(
+        <TraderProfileHeader
+          address={ADDR}
+          stats={stats}
+          classification={defaultClassification}
+          isLoading={false}
+        />,
+      );
+      expect(screen.getByTitle('Genesis Pass Holder')).toBeTruthy();
+      expect(screen.getByText('Day Trader')).toBeTruthy();
+    });
+  });
+
+  // ========================================
   // Badges
   // ========================================
 

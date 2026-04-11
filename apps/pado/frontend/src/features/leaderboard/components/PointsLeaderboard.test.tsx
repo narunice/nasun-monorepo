@@ -216,6 +216,41 @@ describe('PointsTraderRow', () => {
     });
   });
 
+  describe('genesis pass badge', () => {
+    it('shows GP badge when hasGenesisPass is true', () => {
+      const trader = makeTrader({ hasGenesisPass: true });
+      render(
+        <table><tbody><PointsTraderRow trader={trader} /></tbody></table>
+      );
+      expect(screen.getByTitle('Genesis Pass Holder')).toBeTruthy();
+    });
+
+    it('does not show GP badge when hasGenesisPass is false', () => {
+      const trader = makeTrader({ hasGenesisPass: false });
+      render(
+        <table><tbody><PointsTraderRow trader={trader} /></tbody></table>
+      );
+      expect(screen.queryByTitle('Genesis Pass Holder')).toBeNull();
+    });
+
+    it('does not show GP badge when hasGenesisPass is undefined', () => {
+      const trader = makeTrader();
+      render(
+        <table><tbody><PointsTraderRow trader={trader} /></tbody></table>
+      );
+      expect(screen.queryByTitle('Genesis Pass Holder')).toBeNull();
+    });
+
+    it('shows GP badge alongside nickname', () => {
+      const trader = makeTrader({ nickname: 'GPHolder', hasGenesisPass: true });
+      render(
+        <table><tbody><PointsTraderRow trader={trader} /></tbody></table>
+      );
+      expect(screen.getByText('GPHolder')).toBeTruthy();
+      expect(screen.getByTitle('Genesis Pass Holder')).toBeTruthy();
+    });
+  });
+
   describe('rank change', () => {
     it('shows positive rank change', () => {
       const trader = makeTrader({ rankChange: 3 });
