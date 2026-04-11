@@ -12,7 +12,9 @@ import postgres from 'postgres';
 import {
   getBasePoints,
   GENESIS_PASS_MULTIPLIER,
+  SCORE_CATEGORIES,
 } from '../config/points.js';
+import { fetchWithOffload } from '../scanner/fetch-with-offload.js';
 
 // --- Config ---
 
@@ -79,6 +81,15 @@ const PKG = {
   governanceMultiChoice: '0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a',
   deepbook: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
   sui: '0x0000000000000000000000000000000000000000000000000000000000000003',
+  prediction: '0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895',
+  lottery: '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
+  perp: '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',
+  scratchcard: '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
+  numbermatch: '0xf1087293200f23afdcce3415fcf025943bb22708b6b29588be671629dcb92758',
+  lending: '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
+  baram: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
+  baramAer: '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
+  baramExecutor: '0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd',
 };
 
 const fromParsedVoter = (e: RpcEvent) => {
@@ -142,6 +153,170 @@ const EVENT_QUERIES: EventQuery[] = [
     activityType: 'cancel-order',
     extractWallet: fromSender,
   },
+  // Prediction
+  {
+    moveEventType: `${PKG.prediction}::prediction::TokensMinted`,
+    category: 'pado-prediction',
+    activityType: 'mint-tokens',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.prediction}::prediction::BidPlaced`,
+    category: 'pado-prediction',
+    activityType: 'place-bid',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.prediction}::prediction::AskPlaced`,
+    category: 'pado-prediction',
+    activityType: 'place-ask',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.prediction}::prediction::WinningsClaimed`,
+    category: 'pado-prediction',
+    activityType: 'claim-winnings',
+    extractWallet: fromSender,
+  },
+  // Lottery
+  {
+    moveEventType: `${PKG.lottery}::lottery::TicketPurchased`,
+    category: 'pado-lottery',
+    activityType: 'buy-ticket',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.lottery}::lottery::PrizeClaimed`,
+    category: 'pado-lottery',
+    activityType: 'claim-prize',
+    extractWallet: fromSender,
+  },
+  // Perp
+  {
+    moveEventType: `${PKG.perp}::perp::PositionOpened`,
+    category: 'pado-perp',
+    activityType: 'open-position',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.perp}::perp::PositionClosed`,
+    category: 'pado-perp',
+    activityType: 'close-position',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.perp}::perp::MarginAdded`,
+    category: 'pado-perp',
+    activityType: 'add-margin',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.perp}::perp::MarginRemoved`,
+    category: 'pado-perp',
+    activityType: 'remove-margin',
+    extractWallet: fromSender,
+  },
+  // Scratchcard
+  {
+    moveEventType: `${PKG.scratchcard}::scratchcard::ScratchCardPurchased`,
+    category: 'pado-scratchcard',
+    activityType: 'scratchcard-purchase',
+    extractWallet: fromSender,
+  },
+  // NumberMatch (Games)
+  {
+    moveEventType: `${PKG.numbermatch}::numbermatch::NumberMatchPlayed`,
+    category: 'pado-games',
+    activityType: 'numbermatch-play',
+    extractWallet: fromSender,
+  },
+  // Lending
+  {
+    moveEventType: `${PKG.lending}::lending::DepositEvent`,
+    category: 'pado-lending',
+    activityType: 'deposit',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.lending}::lending::WithdrawEvent`,
+    category: 'pado-lending',
+    activityType: 'withdraw',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.lending}::lending::BorrowEvent`,
+    category: 'pado-lending',
+    activityType: 'borrow',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.lending}::lending::RepayEvent`,
+    category: 'pado-lending',
+    activityType: 'repay',
+    extractWallet: fromSender,
+  },
+  // Baram AI
+  {
+    moveEventType: `${PKG.baram}::aer::RequestCreated`,
+    category: 'baram-ai',
+    activityType: 'create-request',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baram}::aer::RequestSettled`,
+    category: 'baram-ai',
+    activityType: 'settle',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baram}::aer::RequestCanceled`,
+    category: 'baram-ai',
+    activityType: 'cancel',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baramAer}::aer::RequestCreated`,
+    category: 'baram-ai',
+    activityType: 'create-request',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baramAer}::aer::RequestSettled`,
+    category: 'baram-ai',
+    activityType: 'settle',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baramAer}::aer::RequestCanceled`,
+    category: 'baram-ai',
+    activityType: 'cancel',
+    extractWallet: fromSender,
+  },
+  // Baram Executor
+  {
+    moveEventType: `${PKG.baramExecutor}::executor::ExecutorRegistered`,
+    category: 'baram-executor',
+    activityType: 'register',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baramExecutor}::staking::StakeAdded`,
+    category: 'baram-executor',
+    activityType: 'stake',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baramExecutor}::staking::StakeRemoved`,
+    category: 'baram-executor',
+    activityType: 'unstake',
+    extractWallet: fromSender,
+  },
+  {
+    moveEventType: `${PKG.baramExecutor}::executor::ExecutorUpdated`,
+    category: 'baram-executor',
+    activityType: 'update',
+    extractWallet: fromSender,
+  },
 ];
 
 // --- Wallet mappings ---
@@ -158,16 +333,17 @@ async function fetchWalletMappings(): Promise<{
     return { walletMap, genesisPassSet };
   }
 
-  const headers: Record<string, string> = {};
-  if (WALLET_MAPPINGS_KEY) headers['x-api-key'] = WALLET_MAPPINGS_KEY;
-
-  const res = await fetch(WALLET_MAPPINGS_URL, {
-    headers,
-    signal: AbortSignal.timeout(30_000),
+  // Use fetchWithOffload to handle S3 presigned URL + gzip (same as live scanner)
+  const data = await fetchWithOffload<{
+    wallets: Record<string, string>;
+    genesisPass: string[];
+  }>({
+    url: WALLET_MAPPINGS_URL,
+    apiKey: WALLET_MAPPINGS_KEY,
+    label: 'Backfill',
   });
-  if (!res.ok) throw new Error(`Wallet mappings fetch failed: ${res.status}`);
 
-  const data = await res.json();
+  if (!data) throw new Error('Failed to fetch wallet mappings');
   if (data.wallets && typeof data.wallets === 'object') {
     for (const [addr, id] of Object.entries(data.wallets)) {
       if (typeof addr === 'string' && typeof id === 'string') {
@@ -278,10 +454,15 @@ async function main() {
           continue;
         }
 
-        const genesisMult = genesisPassSet.has(identityId)
+        // Score categories (governance etc) use actual basePoints * genesisMult.
+        // Base categories (everything else) always use final_points = 1.00.
+        const isScoreCat = SCORE_CATEGORIES.has(eq.category);
+        const genesisMult = isScoreCat && genesisPassSet.has(identityId)
           ? GENESIS_PASS_MULTIPLIER
           : 1.0;
-        const finalPoints = (basePoints * genesisMult).toFixed(2);
+        const finalPoints = isScoreCat
+          ? (basePoints * genesisMult).toFixed(2)
+          : '1.00';
 
         let txDigest: string;
         try {
