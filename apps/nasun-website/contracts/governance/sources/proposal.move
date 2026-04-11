@@ -17,7 +17,7 @@ const EInvalidProposalType: u64 = 4;
 const EInvalidImageUrl: u64 = 5;
 
 const VOTE_PROOF_IMAGE_KEY: vector<u8> = b"vote_proof_image";
-const DEFAULT_VOTE_PROOF_IMAGE: vector<u8> = b"https://red-active-guanaco-484.mypinata.cloud/ipfs/bafkreidvwd65472yxlhr4vhoqxqugccpy6xgsat2mdb6vjznltodkxw4tu";
+const DEFAULT_VOTE_PROOF_IMAGE: vector<u8> = b"https://arweave.net/PeICdNym7MWjAvEqbPURGo21Mq-bo97sMghdK8CrqRQ";
 const MAX_URL_BYTES: u64 = 2048;
 
 public enum ProposalStatus has store, drop {
