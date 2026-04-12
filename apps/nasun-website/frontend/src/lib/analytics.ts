@@ -35,9 +35,15 @@ export const AnalyticsEvent = {
   // Engagement events
   GOVERNANCE_VOTE: "governance_vote",
   LEADERBOARD_VIEW: "leaderboard_view",
+
+  // Cross-app navigation (ecosystem traversal: nasun <-> pado)
+  CROSS_APP_NAV: "cross_app_nav",
+  CROSS_APP_ARRIVAL: "cross_app_arrival",
 } as const;
 
 type EventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];
+
+export type EcosystemApp = "nasun" | "pado";
 
 /**
  * Track a custom event. No-op if Umami is not loaded.
@@ -51,4 +57,29 @@ export function trackEvent(
   } catch {
     // Analytics should never break the app
   }
+}
+
+/**
+ * Append the cross-app source param so the destination site can record
+ * an arrival event and stop counting the visit as cold traffic.
+ */
+export function withCrossAppParam(url: string, from: EcosystemApp): string {
+  try {
+    const u = new URL(url, window.location.origin);
+    u.searchParams.set("from", from);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Fire a cross-app navigation event. Call from the click handler of any
+ * outbound link that leaves the current ecosystem app.
+ */
+export function trackCrossAppNav(
+  to: EcosystemApp,
+  targetPath: string,
+): void {
+  trackEvent(AnalyticsEvent.CROSS_APP_NAV, { to, target_path: targetPath });
 }

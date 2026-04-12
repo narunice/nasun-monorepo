@@ -1,12 +1,15 @@
+import { trackCrossAppNav, withCrossAppParam } from "../../lib/analytics";
+
 export function Footer() {
   return (
     <footer className="hidden md:flex items-center justify-center gap-3 py-3 text-xs text-theme-text-muted border-t border-theme-border">
       <span>Powered by</span>
       <a
-        href="https://nasun.io"
+        href={withCrossAppParam("https://nasun.io", "pado")}
         target="_blank"
         rel="noopener noreferrer"
         className="hover:text-theme-text-primary transition-colors"
+        onClick={() => trackCrossAppNav("nasun", "/")}
       >
         Nasun Network
       </a>
