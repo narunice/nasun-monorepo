@@ -24,7 +24,8 @@ import {
   getActivationsCacheMap,
 } from './ecosystem-cache.js';
 import { getIdentityToWalletMap } from './referral-bonus.js';
-import { runDailyNftChecks } from './daily-nft-check.js';
+import { runDailyNftChecks, scanTodayWalletTransfers } from './daily-nft-check.js';
+import { checkEcosystemMatviewVersion } from '../db/ecosystem-matview-migration.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
 import { scanChatParticipation } from './chat-scanner.js';
 import { takeDailySnapshot } from './daily-snapshot.js';
@@ -42,6 +43,47 @@ let walletCacheLastRefresh = 0;
 let isScanning = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
 let lastDailyNftCheckDate = '';
+
+// Hard ceiling for a single scanLoop iteration. If it doesn't return within
+// this window we assume something hung (RPC, DB, cache refresh) and start
+// a fresh iteration. Any in-flight work from the abandoned loop is fenced
+// off by currentGeneration so it can't rewind state.
+const SCAN_LOOP_TIMEOUT_MS = 3 * 60 * 1000;
+
+// Generation counter: incremented each time we start a fresh scanLoop after
+// a timeout. The active loop captures its own generation on entry; after
+// every await boundary it checks against currentGeneration and bails if the
+// timeout wrapper already moved on. This prevents an old, zombie loop from
+// overwriting last_tx_sequence backward or double-counting referral bonuses.
+let currentGeneration = 0;
+
+function isCurrentGen(myGen: number): boolean {
+  return myGen === currentGeneration;
+}
+
+async function runScanLoopSafely(): Promise<void> {
+  const myGen = ++currentGeneration;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    await Promise.race([
+      scanLoop(myGen),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`scanLoop exceeded ${SCAN_LOOP_TIMEOUT_MS}ms`)),
+          SCAN_LOOP_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } catch (err) {
+    console.error('[Points] scanLoop failed:', (err as Error).message);
+    // Release the re-entry guard so the next iteration can run. The abandoned
+    // scanLoop, if still alive, is fenced by isCurrentGen() at every await
+    // boundary and will self-exit on its next check.
+    isScanning = false;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 let lastSnapshotDate = '';
 let lastReconcileDate = '';
 
@@ -69,9 +111,18 @@ export function startPointsScanner(): void {
   console.log('[Points] Scanner starting...');
   // Initial scan after 5s delay (let API server warm up)
   scanTimerId = setTimeout(async () => {
-    await warmUpDailyBonusAccumulator();
-    await warmUpDailyCategoryCap();
-    await scanLoop();
+    try {
+      await checkEcosystemMatviewVersion();
+    } catch (err) {
+      console.error('[Points] Matview version check failed:', (err as Error).message);
+    }
+    try {
+      await warmUpDailyBonusAccumulator();
+      await warmUpDailyCategoryCap();
+    } catch (err) {
+      console.error('[Points] Warm-up failed:', (err as Error).message);
+    }
+    await runScanLoopSafely();
     scheduleNext();
   }, 5000);
 }
@@ -147,12 +198,12 @@ function flushUnmappedSummary(): void {
 
 function scheduleNext(): void {
   scanTimerId = setTimeout(async () => {
-    await scanLoop();
+    await runScanLoopSafely();
     scheduleNext();
   }, SCAN_INTERVAL_MS);
 }
 
-async function scanLoop(): Promise<void> {
+async function scanLoop(myGen: number): Promise<void> {
   if (isScanning || !pointsDb) return;
   isScanning = true;
   const startTime = Date.now();
@@ -160,16 +211,20 @@ async function scanLoop(): Promise<void> {
 
   try {
     await detectChainReset();
+    if (!isCurrentGen(myGen)) return;
     await maybeRefreshWalletCache();
+    if (!isCurrentGen(myGen)) return;
     // Referral: refresh cache and build reverse wallet map
     await maybeRefreshReferralCache();
     updateIdentityToWalletMap(registeredWallets);
     // Ecosystem: refresh NFT activations cache (for multiplier calculation)
     await maybeRefreshActivationsCache();
+    if (!isCurrentGen(myGen)) return;
 
     let lastSeq = await getLastProcessedSequence();
 
     while (true) {
+      if (!isCurrentGen(myGen)) return;
       const batch = await fetchEventBatch(lastSeq, BATCH_SIZE);
       if (batch.length === 0) break;
 
@@ -185,6 +240,9 @@ async function scanLoop(): Promise<void> {
       }
 
       lastSeq = batch[batch.length - 1].tx_sequence_number;
+      // Final gate before persisting cursor: prevents a zombie loop from
+      // rewinding last_tx_sequence if the fresh loop has already advanced it.
+      if (!isCurrentGen(myGen)) return;
       await updateProcessingState(lastSeq, inserted);
 
       // Yield to event loop between batches
@@ -211,7 +269,18 @@ async function scanLoop(): Promise<void> {
       console.error('[Chat] Scan error (non-fatal):', (err as Error).message);
     }
 
-    // Daily NFT checks: alliance penalty + genesis passive + wallet-transfer (once per day)
+    // Today-only wallet transfer detection: runs every loop (skips users
+    // already credited). Keeps same-day base_score accurate for late transfers.
+    try {
+      const walletTransferCount = await scanTodayWalletTransfers(
+        getIdentityToWalletMap(),
+      );
+      totalProcessed += walletTransferCount;
+    } catch (err) {
+      console.error('[WalletTransfer] Scan error (non-fatal):', (err as Error).message);
+    }
+
+    // Daily NFT checks: alliance penalty + genesis passive + yesterday/-2 wallet-transfer catch-up
     // Runs BEFORE matview refresh so its inserts are reflected in the matview
     const todayStr = new Date().toISOString().slice(0, 10);
     if (todayStr !== lastDailyNftCheckDate) {
