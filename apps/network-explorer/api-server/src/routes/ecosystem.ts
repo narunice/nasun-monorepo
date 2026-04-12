@@ -105,6 +105,9 @@ app.get('/score/:identityId', async (c) => {
               WHERE s.identity_id = ${identityId} AND s.snapshot_date = CURRENT_DATE - 1
             )
         `.then(r => r[0]),
+        // bonus_total: synthetic INCLUDED intentionally — allTime must reflect
+        // the user-visible score including restoration rows (never-reduce-score principle).
+        // See fc4b0e72 recovery plan (v10) and scripts/restore-staking-recovery.sql.
         pointsDb!`
           SELECT COALESCE(SUM(final_points), 0)::numeric as bonus_total
           FROM activity_points
@@ -117,6 +120,7 @@ app.get('/score/:identityId', async (c) => {
           FROM activity_points
           WHERE identity_id = ${identityId}
             AND category LIKE 'ecosystem-bonus-%'
+            AND (metadata->>'synthetic') IS DISTINCT FROM 'true'
             AND NOT flagged
             AND tx_timestamp >= CURRENT_DATE AT TIME ZONE 'UTC'
             AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
@@ -126,15 +130,18 @@ app.get('/score/:identityId', async (c) => {
           FROM activity_points
           WHERE identity_id = ${identityId}
             AND category LIKE 'ecosystem-bonus-%'
+            AND (metadata->>'synthetic') IS DISTINCT FROM 'true'
             AND NOT flagged
             AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
         `.then(r => r[0]),
         // Category breakdown for composition bar (bonus + governance + referral)
+        // synthetic rows (e.g., restoration) excluded to avoid exposing internal categories in UI
         pointsDb!`
           SELECT category, COALESCE(SUM(final_points), 0)::numeric as points
           FROM activity_points
           WHERE identity_id = ${identityId}
             AND NOT flagged
+            AND (metadata->>'synthetic') IS DISTINCT FROM 'true'
             AND (
               category LIKE 'ecosystem-bonus-%'
               OR category IN ('governance', 'referral-bonus')
@@ -422,7 +429,9 @@ app.get('/leaderboard', async (c) => {
         penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
       }
 
-      // Batch bonus + referral queries for all leaderboard users
+      // Batch bonus + referral queries for all leaderboard users.
+      // bonus: synthetic INCLUDED intentionally — leaderboard ranking reflects
+      // allTime bonus including recovery (never-reduce-score principle).
       let bonusMap = new Map<string, number>();
       let referralMap = new Map<string, number>();
       if (leaderboardIds.length > 0) {
@@ -612,6 +621,7 @@ app.get('/bonus-history/:identityId', async (c) => {
     FROM activity_points
     WHERE identity_id = ${identityId}
       AND NOT flagged
+      AND (metadata->>'synthetic') IS DISTINCT FROM 'true'
       AND (category LIKE 'ecosystem-bonus-%' OR category = 'referral-bonus')
       AND tx_timestamp >= CURRENT_DATE - make_interval(days => ${days})
     GROUP BY day, category, activity_type
