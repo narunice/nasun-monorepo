@@ -327,6 +327,7 @@ export {
   createZkLoginSession,
   getZkLoginSession,
   clearZkLoginSession,
+  clearPendingZkLoginFlow,
   getZkLoginState,
   saveZkLoginState,
   clearZkLoginState,
