@@ -512,7 +512,8 @@ export function getChatParticipants(dateStr: string): string[] {
     .prepare(
       `SELECT DISTINCT sender FROM messages
        WHERE timestamp >= ? AND timestamp < ?
-         AND message_type != 'system'`
+         AND message_type != 'system'
+         AND sender != 'SYSTEM'`
     )
     .all(dayStartMs, dayEndMs) as Array<{ sender: string }>;
   return rows.map((r) => r.sender);

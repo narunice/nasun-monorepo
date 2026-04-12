@@ -218,3 +218,37 @@ Ecosystem points 시스템 무결성 audit + 안정화 작업 완료. 2026-04-01
 - `ad7f902c` docs(handoff): add points audit follow-up + ignore claude lock file
 
 브랜치 상태: `main` up to date with `origin/main`.
+
+---
+
+## 추가 세션 (2026-04-12 14:00 KST, 04:00 UTC~)
+
+### Follow-up 2건 재조사 — 모두 사용자 영향 없음으로 확정
+
+**조사 범위**: 핸드오프 L68-75의 "pado chat-server REST 빈 응답" + "nasun 4/10 retention 경계" 2건.
+
+**확정된 사실**:
+
+1. **pado-chat-server (port 3100)**: PM2 STOPPED (의도됨, Phase 2c 완료). Production EC2(43.200.67.52)에서 확인.
+2. **nasun-chat-server (port 3101)**: 정상 서빙. node-3(54.180.61.196)에서 cross-host curl로 4/10, 4/11, 4/12 모두 participants 정상 반환 확인.
+3. **DB는 여전히 독립**: 3101과 3100은 각자 별도 SQLite DB 사용 (`apps/nasun-website/chat-server/src/store.ts`, `apps/pado/chat-server/src/store.ts`). "unified"는 **프론트엔드 WS/HTTP endpoint 전환**만 의미하며, 과거 pado DB 데이터는 3100에 freeze. `apps/pado/.env.production:68-69`에서 `VITE_CHAT_WS_URL=wss://nasun.io/ws/chat` 확인됨.
+4. **scanner는 today만 fetch** (`chat-scanner.ts:99`). 과거 날짜 REST 불일치는 포인트 지급에 영향 없음.
+5. **chat-scanner는 Set union + lowercase 정규화**로 중복 방지 (`chat-scanner.ts:58`). 3100 dead entry는 매 scan마다 connection refused WARN만 발생, 기능 무해.
+
+**핸드오프 L68-75 재평가**:
+
+- "pado REST 빈 응답" → 3100 PM2 STOPPED에 따른 예상 동작. **사용자 영향 0**.
+- "nasun 4/10 불일치" → migration 시점(4/10 21:34 KST) 이전 pado 몫이 pado DB에 freeze됨. 3101 단독 조회로는 영구적으로 당시 pado 참여자 조회 불가이나, **포인트 DB에는 이미 적재 완료**되어 사용자 영향 0.
+
+### 수정 사항 (commit 대기)
+
+1. **nasun chat-server `getChatParticipants` SQL 일관성 수정** — `AND sender != 'SYSTEM'` 가드 추가 (pado와 일치).
+   - 파일: [apps/nasun-website/chat-server/src/store.ts:508-518](apps/nasun-website/chat-server/src/store.ts#L508)
+   - 실영향 미미 (message_type='system' 필터로 이미 대부분 차단되나, 방어적 일관성 개선).
+
+### 미해결 리스크 (별도 follow-up)
+
+- **자정 경계 fail-open**: chat-scanner는 today만 1회 fetch, 실패 시 retry 없음. 3101이 단일 장애점이 된 지금 더 중요해짐. 핸드오프 L93에서 이미 인지된 약점. 향후 alert/retry 도입 검토.
+- **CHAT_SERVER_URLS에서 3100 제거** (prod env 변경): `/home/ubuntu/explorer-api/.env`의 `CHAT_SERVER_URLS`를 `http://43.200.67.52:3101`만 남기고 restart. dead entry cleanup, 기능 영향 0, WARN 로그 noise 제거.
+- **pm2 delete pado-chat-server**: `project_unified_chat_server` 메모리에 기록된 정리 작업 (prod ec2-user, staging ubuntu).
+- **pado.finance.conf nginx cleanup**: `location /chat/`, `location /ws` 블록이 port 3100 가리킴. 실트래픽 없으나 정리 대상.
