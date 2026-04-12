@@ -151,8 +151,29 @@ function TPSLTab() {
   const formatTime = (ts: number) =>
     new Date(ts).toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
 
-  const statusColor = (status: string) => {
-    switch (status) {
+  // Balance-depleted failures happen when the user withdrew or the position was
+  // otherwise closed outside TP/SL flow. Render them as a neutral "Position closed"
+  // instead of a red "Failed" — nothing went wrong from the user's perspective.
+  const isBalanceClosedError = (order: TPSLOrder) =>
+    order.status === 'failed' &&
+    !!order.error &&
+    order.error.includes('balance_manager') &&
+    order.error.includes('withdraw_with_proof');
+
+  const statusLabel = (order: TPSLOrder) => {
+    if (isBalanceClosedError(order)) return 'Position closed';
+    switch (order.status) {
+      case 'triggered': return 'Filled';
+      case 'cancelled': return 'Cancelled';
+      case 'executing': return 'Executing';
+      case 'failed': return 'Failed';
+      default: return order.status.charAt(0).toUpperCase() + order.status.slice(1);
+    }
+  };
+
+  const statusColor = (order: TPSLOrder) => {
+    if (isBalanceClosedError(order)) return 'text-theme-text-muted';
+    switch (order.status) {
       case 'triggered': return 'text-green-400';
       case 'failed': return 'text-red-400';
       case 'cancelled': return 'text-theme-text-muted';
@@ -290,8 +311,11 @@ function TPSLTab() {
               <span>{order.side === 'buy' ? 'Buy' : 'Sell'}</span>
               <span className="text-right font-mono">{formatPrice(order.triggerPrice)}</span>
               <span className="text-right font-mono">{order.quantity.toFixed(4)}</span>
-              <span className={`text-right ${statusColor(order.status)}`}>
-                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+              <span
+                className={`text-right ${statusColor(order)}`}
+                title={order.error || undefined}
+              >
+                {statusLabel(order)}
               </span>
               <div className="text-right">
                 <button
