@@ -19,6 +19,7 @@ import { HealthStatusBar } from "./HealthStatusBar";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import { AirdropRegistrationCard } from "./AirdropRegistrationCard";
+import { CreatorsAppreciationBonusCard } from "./CreatorsAppreciationBonusCard";
 import { useProfileDisplay } from "./hooks/useProfileDisplay";
 import { updateDisplayName } from "@/services/userProfileApi";
 import { useUserStore } from "@/store/userStore";
@@ -504,6 +505,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Creators Appreciation Bonus — one-time self-claim bonus for
+                Top 500 creators of Community Leaderboard Season 1. Bare
+                variant so it sits between the Ecosystem Points block and
+                the April 16th Airdrop bar. Self-hides when the user is not
+                eligible, so ineligible users see no gap. */}
+            <CreatorsAppreciationBonusCard bare />
 
             {/* Airdrop Registration Bar */}
             <AirdropRegistrationCard bare />
