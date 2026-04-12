@@ -24,9 +24,18 @@ const MAX_PAGES = 10; // Cap pagination (10 * 50 = 500 results max per wallet)
 // Mission IDs matching DailyMissionsCard
 type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lottery" | "pado-scratchcard" | "pado-games" | "chat";
 
-// Event type suffixes for Sender-based event query
+// Event type suffixes for Sender-based event query.
+// Spot Trade: OrderPlaced fires only when order is injected into the book (maker).
+// Taker/IOC orders that fill immediately emit OrderFilled instead. Include both
+// so market-order traders also get the daily mission credit.
+//
+// IMPORTANT: Mirror of backend EVENT_MAP_ENTRIES in
+// apps/network-explorer/api-server/src/config/points.ts. Out-of-sync entries
+// cause UI checkbox drift even when points are credited correctly.
+// Precedent: commit aa3e7a7b (OrderFilled added backend-only, UI drift followed).
 const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
   { suffix: "::order_info::OrderPlaced", missionId: "pado-dex" },
+  { suffix: "::order_info::OrderFilled", missionId: "pado-dex" },
   { suffix: "::lottery::TicketPurchased", missionId: "pado-lottery" },
   { suffix: "::scratchcard::ScratchCardPurchased", missionId: "pado-scratchcard" },
   { suffix: "::numbermatch::NumberMatchPlayed", missionId: "pado-games" },
@@ -78,7 +87,7 @@ function readCache(identityId: string): Set<MissionId> {
  * Detect event-based missions (DEX, lottery, scratchcard, quick pick).
  * Paginated RPC calls: queryEvents({Sender}) with cursor.
  */
-async function detectEventMissions(
+export async function detectEventMissions(
   walletAddress: string,
   todayStart: number,
   alreadyFound: Set<MissionId>,
@@ -132,7 +141,7 @@ async function detectEventMissions(
  * Detect TX-based missions (faucet, token transfer).
  * Paginated RPC calls: queryTransactionBlocks({FromAddress}) with cursor.
  */
-async function detectTxMissions(
+export async function detectTxMissions(
   walletAddress: string,
   todayStart: number,
   alreadyFound: Set<MissionId>,
@@ -226,7 +235,7 @@ function getCommands(tx: SuiTransactionBlockResponse): ParsedCommand[] {
  * Detect missions across multiple wallet addresses.
  * Queries wallets sequentially, skipping already-found missions.
  */
-async function detectAllWallets(
+export async function detectAllWallets(
   walletAddresses: string[],
   todayStart: number,
   existingMissions: Set<MissionId>,
