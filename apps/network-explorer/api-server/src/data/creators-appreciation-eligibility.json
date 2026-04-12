@@ -4875,6 +4875,16 @@
       "targetIdentityId": "ap-northeast-2:6cb1e654-ba03-cec1-b6fc-68e7c2ac9d35",
       "targetWalletAddress": "0x815f1da48cbca92eb4c9e4ccf1d058cb6ce37e5885dbd2d96387ee4c79543f1b",
       "walletSource": "top-level"
+    },
+    {
+      "rank": 43,
+      "handle": "thienadc",
+      "originalHandle": "thienadc",
+      "accountId": "06792d83-9e9d-4ef7-8d21-89bab113aacf",
+      "primaryIdentityId": "ap-northeast-2:6cb1e654-baa2-c298-d9d2-c571b39c21ab",
+      "targetIdentityId": "ap-northeast-2:6cb1e654-ba3d-c1a2-6957-fa8a7353bd76",
+      "targetWalletAddress": "0xb1dda648dd469f7273726eb297707c863d8d527a3691a7aaa3f4c4b6fa6b40e5",
+      "walletSource": "linked-nasun-wallet"
     }
   ]
 }
