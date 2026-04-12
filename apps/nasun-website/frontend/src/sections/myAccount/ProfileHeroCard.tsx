@@ -38,6 +38,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ecosystem-bonus-game": "bg-orange-500",
   "ecosystem-bonus-airdrop": "bg-fuchsia-500",
   "ecosystem-bonus-bugreport": "bg-rose-500",
+  "ecosystem-bonus-creators-appreciation": "bg-indigo-500",
   "ecosystem-bonus-admin": "bg-teal-500",
 };
 
@@ -50,6 +51,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
   "ecosystem-bonus-bugreport": "Bug Report",
+  "ecosystem-bonus-creators-appreciation": "Creators Appreciation",
   "ecosystem-bonus-admin": "Bonus",
 };
 
