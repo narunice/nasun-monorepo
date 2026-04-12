@@ -237,7 +237,7 @@ async function handleUpdate(
   }));
 
   // If status is "fixed" and bonusPoints > 0, trigger points reward
-  let rewardResult: { success: boolean; created?: boolean; finalPoints?: number; genesisMultiplier?: number; error?: string } | null = null;
+  let rewardResult: { success: boolean; created?: boolean; finalPoints?: number; error?: string } | null = null;
 
   if (body.status === 'fixed' && body.bonusPoints && body.bonusPoints > 0) {
     // Prevent double reward: check if already rewarded
@@ -293,7 +293,7 @@ async function sendRewardToExplorer(payload: {
   reportId: string;
   points: number;
   reason: string;
-}): Promise<{ success: boolean; created?: boolean; finalPoints?: number; genesisMultiplier?: number; error?: string }> {
+}): Promise<{ success: boolean; created?: boolean; finalPoints?: number; error?: string }> {
   if (!EXPLORER_API_URL || !BUG_REPORT_API_KEY) {
     console.warn('EXPLORER_API_URL or BUG_REPORT_API_KEY not configured');
     return { success: false, error: 'Points reward not configured' };
@@ -320,7 +320,7 @@ async function sendRewardToExplorer(payload: {
       clearTimeout(timeout);
 
       if (res.ok) {
-        const data = await res.json() as { success: boolean; created?: boolean; finalPoints?: number; genesisMultiplier?: number };
+        const data = await res.json() as { success: boolean; created?: boolean; finalPoints?: number };
         console.log(`Points reward sent: ${payload.reportId} -> ${data.finalPoints} points (created: ${data.created})`);
         return data;
       }
