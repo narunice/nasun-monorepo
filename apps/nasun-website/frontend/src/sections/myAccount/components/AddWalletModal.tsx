@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef, useState } from "react";
 import { useWallet, useZkLogin } from "@nasun/wallet";
-import { SocialLoginButtons, WalletConnect } from "@nasun/wallet-ui";
+import { WalletConnect } from "@nasun/wallet-ui";
 
 type SubView = "menu" | "import" | "create";
 
@@ -14,11 +14,11 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
   onClose,
 }) => {
   const [subView, setSubView] = useState<SubView>("menu");
-  const { login: zkLogin } = useZkLogin();
   const { account, setIdentityChangeReason } = useWallet();
+  // zkState.address is read below for currentAddress snapshot; keep the subscription.
   const { state: zkState } = useZkLogin();
   const currentAddress = account?.address ?? zkState?.address;
-  const openAddressRef = useRef<string | undefined>();
+  const openAddressRef = useRef<string | undefined>(undefined);
 
   // Set identity change reason to "add" while modal is open so that
   // wallet create/import preserves the current auth session.
@@ -88,24 +88,21 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
         </div>
 
         <p className="text-sm text-nasun-white/50 mb-4 text-center">
-          Register your wallet to participate in on-chain events and earn activity-based rewards on Nasun Network.
+          Link multiple Nasun wallets to one account so on-chain activity across all of them consolidates into a single Nasun Points balance.
         </p>
 
         {subView === "menu" ? (
           <div className="flex flex-col gap-3">
-            {/* Google zkLogin */}
-            <SocialLoginButtons
-              providers={["google"]}
-              onLogin={(provider) => zkLogin(provider)}
-              size="sm"
-            />
-
-            {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 border-t border-nasun-white/10" />
-              <span className="text-sm text-nasun-white/30">or</span>
-              <div className="flex-1 border-t border-nasun-white/10" />
-            </div>
+            {/* Google zkLogin entry removed — it was wired as a primary sign-in and
+                replaced the existing Nasun session instead of adding a wallet.
+                No wallet was ever registered to an account through this path.
+                Re-add only after a register-to-primary flow is wired.
+                See ~/.claude/plans/serene-jumping-locket.md. */}
+            <p className="text-xs text-nasun-white/40 text-center">
+              Use <span className="text-nasun-white/60">Create New</span> or{" "}
+              <span className="text-nasun-white/60">Import</span> below to add a
+              wallet to your current account.
+            </p>
 
             {/* Create New Wallet */}
             <button
