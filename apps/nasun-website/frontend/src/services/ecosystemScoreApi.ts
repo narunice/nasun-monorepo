@@ -77,7 +77,15 @@ export async function getEcosystemScore(
   if (!IDENTITY_ID_RE.test(identityId)) return null;
 
   const encoded = encodeURIComponent(identityId);
-  const res = await fetch(`${API_BASE}/ecosystem/score/${encoded}`);
+  // cache: 'no-store' bypasses the browser HTTP cache. The endpoint ships
+  // `Cache-Control: public, max-age=30`, which otherwise serves a stale
+  // response for 30 s even when react-query explicitly refetches (e.g.
+  // right after the user claims their Creators Appreciation bonus). Per-
+  // user data shouldn't be browser-cached anyway; react-query's own cache
+  // is the single source of truth on the client.
+  const res = await fetch(`${API_BASE}/ecosystem/score/${encoded}`, {
+    cache: "no-store",
+  });
 
   if (res.status === 404) return null;
   if (!res.ok) {
