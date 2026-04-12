@@ -11,7 +11,7 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import {
   SecretsManagerClient,
   GetSecretValueCommand,
@@ -91,6 +91,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // GET /bug-report/upload-url
     if (event.httpMethod === 'GET' && path.endsWith('/upload-url')) {
       return await handleUploadUrl(event, identityId, cors);
+    }
+
+    // POST /bug-report/{reportId}/reply
+    if (event.httpMethod === 'POST' && path.endsWith('/reply')) {
+      return await handleReply(event, identityId, cors);
     }
 
     return respond(404, { error: 'Not found' }, cors);
@@ -276,6 +281,117 @@ async function handleUploadUrl(
   });
 
   return respond(200, { ...presigned, key }, cors);
+}
+
+// ============================================
+// POST /bug-report/{reportId}/reply - Follow-up on a closed ticket
+// ============================================
+
+const REPLY_MAX_LENGTH = 1000;
+
+async function handleReply(
+  event: APIGatewayProxyEvent,
+  identityId: string,
+  cors: Record<string, string>,
+): Promise<APIGatewayProxyResult> {
+  const reportId =
+    event.pathParameters?.reportId ||
+    event.path.split('/').slice(-2, -1)[0];
+
+  if (!reportId || typeof reportId !== 'string') {
+    return respond(400, { error: 'reportId is required' }, cors);
+  }
+
+  let body: { timestamp?: string; text?: string };
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch {
+    return respond(400, { error: 'Invalid JSON' }, cors);
+  }
+
+  const { timestamp, text } = body;
+  if (!timestamp || typeof timestamp !== 'string') {
+    return respond(400, { error: 'timestamp is required' }, cors);
+  }
+  if (!text || typeof text !== 'string') {
+    return respond(400, { error: 'text is required' }, cors);
+  }
+  const trimmed = text.trim();
+  if (trimmed.length === 0 || trimmed.length > REPLY_MAX_LENGTH) {
+    return respond(400, { error: `text must be 1-${REPLY_MAX_LENGTH} characters` }, cors);
+  }
+
+  const now = new Date().toISOString();
+
+  try {
+    await ddbClient.send(new UpdateCommand({
+      TableName: BUG_REPORTS_TABLE,
+      Key: { reportId, timestamp },
+      UpdateExpression: 'SET userReply = :text, #status = :new, updatedAt = :now',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: {
+        ':text': trimmed,
+        ':new': 'new',
+        ':now': now,
+        ':me': identityId,
+        ':fixed': 'fixed',
+        ':wontfix': 'wont-fix',
+      },
+      ConditionExpression: 'identityId = :me AND #status IN (:fixed, :wontfix)',
+    }));
+  } catch (err) {
+    const name = (err as { name?: string })?.name;
+    if (name === 'ConditionalCheckFailedException') {
+      const existing = await ddbClient.send(new GetCommand({
+        TableName: BUG_REPORTS_TABLE,
+        Key: { reportId, timestamp },
+      }));
+      if (!existing.Item) {
+        return respond(404, { error: 'Report not found' }, cors);
+      }
+      if (existing.Item.identityId !== identityId) {
+        console.warn(`Reply forgery attempt: identity=${identityId} tried to reply on report owned by=${existing.Item.identityId} reportId=${reportId}`);
+        return respond(403, { error: 'Forbidden' }, cors);
+      }
+      return respond(409, { error: 'This ticket is not open for reply' }, cors);
+    }
+    throw err;
+  }
+
+  // Telegram notification (inline, best-effort)
+  if (NARU_TELEGRAM_CHAT_ID) {
+    try {
+      const botToken = await getBotToken();
+      const preview = trimmed.length > 120 ? `${trimmed.slice(0, 120)}...` : trimmed;
+      const notifyText = [
+        `[Bug Report Reopened] #${reportId.slice(0, 8)}`,
+        `From: identity=${identityId.slice(0, 16)}...`,
+        '---',
+        `Reply: ${preview}`,
+      ].join('\n').slice(0, 4096);
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      try {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: NARU_TELEGRAM_CHAT_ID,
+            text: notifyText,
+            disable_web_page_preview: true,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    } catch (err) {
+      console.warn('Telegram reopen notification failed (best-effort):', err);
+    }
+  }
+
+  return respond(200, { ok: true, updatedAt: now }, cors);
 }
 
 // ============================================

@@ -34,6 +34,7 @@ export interface BugReport {
   profileImageUrl?: string;
   displayName?: string;
   updatedAt?: string;
+  userReply?: string;
 }
 
 export type BugReportStatus = 'new' | 'investigating' | 'in-progress' | 'fixed' | 'wont-fix' | 'duplicate';
