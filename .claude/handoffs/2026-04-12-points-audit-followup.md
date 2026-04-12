@@ -249,6 +249,50 @@ Ecosystem points 시스템 무결성 audit + 안정화 작업 완료. 2026-04-01
 ### 미해결 리스크 (별도 follow-up)
 
 - **자정 경계 fail-open**: chat-scanner는 today만 1회 fetch, 실패 시 retry 없음. 3101이 단일 장애점이 된 지금 더 중요해짐. 핸드오프 L93에서 이미 인지된 약점. 향후 alert/retry 도입 검토.
-- **CHAT_SERVER_URLS에서 3100 제거** (prod env 변경): `/home/ubuntu/explorer-api/.env`의 `CHAT_SERVER_URLS`를 `http://43.200.67.52:3101`만 남기고 restart. dead entry cleanup, 기능 영향 0, WARN 로그 noise 제거.
-- **pm2 delete pado-chat-server**: `project_unified_chat_server` 메모리에 기록된 정리 작업 (prod ec2-user, staging ubuntu).
-- **pado.finance.conf nginx cleanup**: `location /chat/`, `location /ws` 블록이 port 3100 가리킴. 실트래픽 없으나 정리 대상.
+- **CHAT_SERVER_URLS에서 3100 제거** (prod env 변경): ✅ 완료 (node-3 `.env` 수정 + PM2 restart, WARN 로그 0 확인).
+- **pm2 delete pado-chat-server**: 보류 (retention 창 ~2026-05-10 이후 재평가). 현재 stopped 유지.
+- **pado.finance.conf nginx cleanup**: 보류 (retention 창 이후).
+
+---
+
+## 추가 세션 (2026-04-12 15:00 KST~, 06:00 UTC~) — TPSL-keeper orphan 조사 및 수정
+
+### 현상
+prod pado bots 헬스체크 중 tpsl-keeper에서 1시간 983건, 하루 67,288건 실패 발견. 2026-04-11 05:30 UTC부터 시작된 `withdraw_with_proof` MoveAbort 3 (`EBalanceManagerBalanceTooLow`) 무한 retry 루프. 46개 주문이 stuck 상태.
+
+### 원인
+
+1. **코드 버그**: `MoveAbort balance_manager::withdraw_with_proof` 패턴이 permanent failure 분류에 없어 매 cycle 재시도 ([tpsl-keeper.ts:215-225](apps/pado/bots/tpsl-keeper.ts#L215))
+2. **Orphan 생성 경로**: 사용자가 BalanceManager 잔액을 withdraw해도 TPSL 주문 자동 cancel 로직 없음. TradeCap revoke 경로만 cancel 수행 중 ([useTradeCap.ts:294-307](apps/pado/frontend/src/features/trading/hooks/useTradeCap.ts#L294)).
+3. **스코프 확인**: tpsl-keeper는 DeepBook **spot** 전용 (perp 무관). 46 orphan은 19명 유저, NBTC/NETH/NSOL 분포.
+
+### 수정 완료
+
+**P1 (commit `a057ac25`, prod 배포 완료)**
+- `isPermanentFailure()` 헬퍼 추출, 양쪽 경로(dry-run fail + catch) 일관 적용
+- `balance_manager` + `withdraw_with_proof` 패턴을 permanent 분류에 추가
+- 46개 stuck 주문을 `tpsl-orders.json`에서 `active` → `failed`로 전환 (backup: `tpsl-orders.json.bak.1775979197`)
+- keeper restart 후 error log 0 bytes 유지 확인
+
+**Option 8 — UI copy 개선 (local, commit 대기)**
+- [BottomTabPanel.tsx:154-183](apps/pado/frontend/src/features/trading/components/BottomTabPanel.tsx#L154) — balance-depleted failures는 muted gray "Position closed"로 표시, 일반 실패는 red "Failed" 유지
+- `title` attribute로 error detail hover tooltip
+- UX 의미: TPSL이 "실패"가 아닌 "포지션 청산 후 자연 종료"임을 명시
+
+### 폐기된 대안 (/review 만장일치 BLOCK)
+
+**Option 2a (frontend withdraw auto-cancel)**
+- ① `handleWithdraw:455` 타겟 잘못 (실제는 line 489/238)
+- ② 판정 공식 오류 (coin unit/side/cumulative 미고려)
+- ③ self-custodial 아키텍처와 충돌 (외부 지갑 withdraw 미커버)
+- ④ 2-phase race window 새로 도입 (withdraw 성공 + cancel 실패 시 orphan 재발)
+
+**Option 2b (liquidation-keeper auto-cancel)** — N/A
+- tpsl-keeper는 spot 전용, liquidation-keeper는 perp 전용. 시스템 분리로 orphan 원인과 무관.
+
+### 보류된 개선
+
+**Option 3 (keeper server-side balance pre-check)**
+- `checkAndExecuteOrders` trigger 직전 BalanceManager 잔액 조회 → 0이면 즉시 permanent
+- frontend 변경 0, 모든 경로 커버
+- 현 시점 P1만으로 bleeding 차단 완료이므로 log noise 재발 시 재평가
