@@ -3,8 +3,6 @@ import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { rpcCall } from '../rpc.js';
 import { getScannerHealth } from '../scanner/points-scanner.js';
-import { getActivationsForUser } from '../scanner/ecosystem-cache.js';
-import { MULTIPLIER_CONFIG } from '../config/ecosystem.js';
 
 const app = new Hono();
 
@@ -302,14 +300,7 @@ app.post('/bug-report-reward', async (c) => {
     return c.json({ error: 'points must be 1-100' }, 400);
   }
 
-  // Check Genesis Pass for multiplier
-  const activations = getActivationsForUser(body.identityId);
-  const hasGenesisPass = activations.some(
-    (a) => a.nftType === 'genesis-pass' && a.status === 'ACTIVE',
-  );
-  const genesisMultiplier = hasGenesisPass ? MULTIPLIER_CONFIG.genesisPass : 1.0;
-  const finalPoints = parseFloat((body.points * genesisMultiplier).toFixed(2));
-
+  const finalPoints = body.points;
   const txDigest = `bugreport:${body.reportId}`;
   const walletAddress = body.walletAddress.toLowerCase();
 
@@ -325,7 +316,7 @@ app.post('/bug-report-reward', async (c) => {
       ${txDigest}, 0, NOW(),
       ${walletAddress}, ${body.identityId},
       'ecosystem-bonus-bugreport', 'report-accepted',
-      ${body.points}, 1.0, ${genesisMultiplier}, ${finalPoints},
+      ${finalPoints}, 1.0, 1.0, ${finalPoints},
       0
     )
     ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
@@ -335,15 +326,13 @@ app.post('/bug-report-reward', async (c) => {
 
   console.log(
     `[BugReport] Reward: ${body.reportId} -> ${walletAddress} ${finalPoints}pts` +
-    `${hasGenesisPass ? ' (GP 2x)' : ''}${created ? '' : ' (duplicate, skipped)'}` +
-    ` reason: ${body.reason || 'N/A'}`,
+    `${created ? '' : ' (duplicate, skipped)'} reason: ${body.reason || 'N/A'}`,
   );
 
   return c.json({
     success: true,
     created,
     finalPoints,
-    genesisMultiplier,
     reportId: body.reportId,
   });
 });
