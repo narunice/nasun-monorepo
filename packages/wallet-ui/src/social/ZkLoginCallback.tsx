@@ -61,6 +61,11 @@ export function ZkLoginCallback({
   const [usedFallback, setUsedFallback] = useState(false);
   const isProcessingRef = useRef(false);
 
+  // OAuth-level failures (user canceled, provider denied) arrive without a JWT,
+  // so retrying the callback is a no-op. Fall back to sending the user home
+  // instead of leaving them stuck on the error screen.
+  const oauthAborted = !jwt && !!callbackError;
+
   const processCallback = async () => {
     if (!jwt || isProcessingRef.current) return;
 
@@ -106,6 +111,24 @@ export function ZkLoginCallback({
     }
   };
 
+  const handleRetry = () => {
+    if (oauthAborted) {
+      window.history.replaceState({}, '', window.location.pathname);
+      window.location.href = redirectUrl;
+      return;
+    }
+    processCallback();
+  };
+
+  const friendlyError = (raw: string | null): string => {
+    if (!raw) return 'Login failed';
+    if (raw === 'access_denied') return 'Sign-in was canceled. Please try again.';
+    if (raw === 'server_error' || raw === 'temporarily_unavailable') {
+      return 'The sign-in provider is temporarily unavailable. Please try again.';
+    }
+    return raw;
+  };
+
   useEffect(() => {
     if (isCallback && jwt && !isProcessingRef.current) {
       processCallback();
@@ -136,8 +159,10 @@ export function ZkLoginCallback({
 
   // Error state
   if (step === 'error' && error) {
+    const displayError = friendlyError(error);
+    const retryLabel = oauthAborted ? 'Back to Login' : 'Try Again';
     if (errorComponent) {
-      return <>{errorComponent(error, processCallback)}</>;
+      return <>{errorComponent(displayError, handleRetry)}</>;
     }
 
     return (
@@ -161,13 +186,13 @@ export function ZkLoginCallback({
           Login Failed
         </h2>
         <p className="text-gray-500 dark:text-gray-400 text-center mb-6 max-w-sm">
-          {error}
+          {displayError}
         </p>
         <button
-          onClick={processCallback}
+          onClick={handleRetry}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
         >
-          Try Again
+          {retryLabel}
         </button>
       </div>
     );
