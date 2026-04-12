@@ -211,6 +211,45 @@ export interface TraderPointsResponse {
   rank: number;
 }
 
+// ===== Score (pado-specific, /api/pado/leaderboard/score) =====
+// Table trader_points is historical name; functional score. DB rename is follow-up.
+
+export type ScoreScope = 'alltime';
+export const VALID_SCORE_SCOPES = new Set<string>(['alltime']);
+
+export interface ScoreLeaderboardTrader {
+  rank: number;
+  address: string;
+  nickname: string | null;
+  hasGenesisPass: boolean;
+  totalScore: number;
+  tradeCount: number;
+  volumeUsd: string;
+  rankChange: number;
+  followerCount: number;
+}
+
+export interface ScoreLeaderboardResponse {
+  scope: ScoreScope;
+  traders: ScoreLeaderboardTrader[];
+  updatedAt: number;
+  totalTraders: number;
+}
+
+export interface TraderScoreResponse {
+  address: string;
+  nickname: string | null;
+  totalScore: number;
+  breakdown: {
+    trades: number;
+    volume: number;
+    diversity: number;
+    pnl: number;
+  };
+  rank: number;
+  scope: ScoreScope;
+}
+
 // Points formula constants
 export const POINTS = {
   PER_TRADE: 10,

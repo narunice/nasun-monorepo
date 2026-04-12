@@ -20,7 +20,7 @@ const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
   const [mode, setMode] = useState<LeaderboardMode>('volume');
-  const [scope, setScope] = useState<ScoreScope>('weekly');
+  const [scope, setScope] = useState<ScoreScope>('alltime');
   const [showFollowing, setShowFollowing] = useState(false);
   const [page, setPage] = useState(1);
 
