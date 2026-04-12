@@ -354,6 +354,61 @@ let todayCursor: { date: string; offset: number } = { date: '', offset: 0 };
 // coverage across loops.
 const TODAY_WALLETS_PER_LOOP = 500;
 
+// Parallel RPC concurrency. Observed sequential latency was high enough to
+// push 500 serial probes past the 3-min scanLoop timeout; parallelism pulls
+// that back well under 30s. Kept modest to avoid swamping the fullnode.
+const RPC_CONCURRENCY = 10;
+
+async function probeWalletForTransfer(
+  identityId: string,
+  wallet: string,
+  dateStr: string,
+  dayStartMs: number,
+  dayEndMs: number,
+): Promise<boolean> {
+  const digest = `wt:${identityId}:${dateStr}`;
+  try {
+    const result = await rpcCall<TxQueryResponse>(
+      'suix_queryTransactionBlocks',
+      [
+        { filter: { FromAddress: wallet }, options: { showInput: true } },
+        null,
+        50,
+        true,
+      ],
+    );
+    let hasTransfer = false;
+    for (const tx of result.data) {
+      const ts = Number(tx.timestampMs ?? 0);
+      if (ts < dayStartMs || ts >= dayEndMs) continue;
+      const txData = tx.transaction?.data?.transaction as Record<string, unknown> | undefined;
+      const commands = (txData?.commands ?? txData?.transactions ?? []) as Record<string, unknown>[];
+      if (commands.some((c: Record<string, unknown>) => 'TransferObjects' in c)) {
+        hasTransfer = true;
+        break;
+      }
+    }
+    if (!hasTransfer) return false;
+
+    const txTimestamp = `${dateStr}T12:00:00Z`;
+    const insertResult = await pointsDb!`
+      INSERT INTO activity_points
+        (wallet_address, identity_id, tx_digest, category, activity_type,
+         base_points, volume_tier, genesis_multiplier, final_points,
+         tx_timestamp, event_seq, tx_sequence_number)
+      VALUES
+        (${wallet}, ${identityId}, ${digest}, 'wallet-transfer', 'transfer',
+         1, 1.0, 1.0, ${'1.00'},
+         ${txTimestamp}::timestamptz, 0, 0)
+      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+    `;
+    return insertResult.count > 0;
+  } catch {
+    // Per-wallet RPC/insert error is non-fatal; next round will retry.
+    return false;
+  }
+}
+
 /**
  * Detect wallet transfers (native coin transfers) for registered users.
  * Uses suix_queryTransactionBlocks RPC to find TransferObjects commands.
@@ -405,60 +460,26 @@ async function detectWalletTransfers(
       ordered = entries.slice(o).concat(entries.slice(0, o));
     }
 
-    let probed = 0;
+    // Collect the wallets we want to probe this pass (bounded by maxPerDay,
+    // skipping already-credited), then fan out with RPC_CONCURRENCY workers.
+    const toProbe: Array<{ identityId: string; wallet: string; origIdx: number }> = [];
     let lastProbedIdx = 0;
     for (let i = 0; i < ordered.length; i++) {
       const [identityId, wallet] = ordered[i];
       if (alreadyCredited.has(identityId)) continue;
-      if (maxPerDay !== undefined && probed >= maxPerDay) break;
-      probed++;
+      if (maxPerDay !== undefined && toProbe.length >= maxPerDay) break;
+      toProbe.push({ identityId, wallet, origIdx: i });
       lastProbedIdx = i + 1;
-      const digest = `wt:${identityId}:${dateStr}`;
+    }
 
-      try {
-        // Query recent transactions from this wallet (descending, limit 50)
-        const result = await rpcCall<TxQueryResponse>(
-          'suix_queryTransactionBlocks',
-          [
-            { filter: { FromAddress: wallet }, options: { showInput: true } },
-            null,
-            50,
-            true,
-          ],
-        );
-
-        // Check if any transaction on target day has TransferObjects command
-        let hasTransfer = false;
-        for (const tx of result.data) {
-          const ts = Number(tx.timestampMs ?? 0);
-          if (ts < dayStartMs || ts >= dayEndMs) continue;
-
-          const txData = tx.transaction?.data?.transaction as Record<string, unknown> | undefined;
-          const commands = (txData?.commands ?? txData?.transactions ?? []) as Record<string, unknown>[];
-          if (commands.some((c: Record<string, unknown>) => 'TransferObjects' in c)) {
-            hasTransfer = true;
-            break;
-          }
-        }
-
-        if (!hasTransfer) continue;
-
-        const txTimestamp = `${dateStr}T12:00:00Z`;
-        const insertResult = await pointsDb`
-          INSERT INTO activity_points
-            (wallet_address, identity_id, tx_digest, category, activity_type,
-             base_points, volume_tier, genesis_multiplier, final_points,
-             tx_timestamp, event_seq, tx_sequence_number)
-          VALUES
-            (${wallet}, ${identityId}, ${digest}, 'wallet-transfer', 'transfer',
-             1, 1.0, 1.0, ${'1.00'},
-             ${txTimestamp}::timestamptz, 0, 0)
-          ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-        `;
-        if (insertResult.count > 0) totalDetected++;
-      } catch {
-        // Skip user on RPC error (non-fatal)
-      }
+    for (let start = 0; start < toProbe.length; start += RPC_CONCURRENCY) {
+      const chunk = toProbe.slice(start, start + RPC_CONCURRENCY);
+      const results = await Promise.all(
+        chunk.map(c =>
+          probeWalletForTransfer(c.identityId, c.wallet, dateStr, dayStartMs, dayEndMs),
+        ),
+      );
+      for (const inserted of results) if (inserted) totalDetected++;
     }
 
     if (isTodayFastPath) {
