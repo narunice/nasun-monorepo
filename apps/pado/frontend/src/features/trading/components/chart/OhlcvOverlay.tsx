@@ -51,7 +51,7 @@ export function OhlcvOverlay({ data, baseSymbol, interval, isRealData, indicator
 
   return (
     <>
-      <div className="flex items-center gap-3 px-3 py-1 text-xs xl:text-sm font-mono border-b border-theme-border/50">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 text-xs xl:text-sm font-mono border-b border-theme-border/50">
         <span className="text-theme-text-muted">{baseSymbol} · {interval} · {isRealData ? 'Lighter' : 'Sim'}</span>
         <span className="text-theme-text-muted">O<span className={colorClass}>{fmt(data.open)}</span></span>
         <span className="text-theme-text-muted">H<span className={colorClass}>{fmt(data.high)}</span></span>
@@ -62,7 +62,7 @@ export function OhlcvOverlay({ data, baseSymbol, interval, isRealData, indicator
 
       {/* Dynamic Indicator Legends */}
       {activeIds.length > 0 && (
-        <div className="flex items-center gap-4 px-3 py-1 text-xs xl:text-sm border-b border-theme-border/50">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1 text-xs xl:text-sm border-b border-theme-border/50">
           {activeIds.map((id) =>
             INDICATOR_LEGENDS[id].map((entry) => (
               <span key={`${id}-${entry.label}`} className="flex items-center gap-1">
