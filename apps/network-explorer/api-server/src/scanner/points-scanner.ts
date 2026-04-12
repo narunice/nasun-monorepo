@@ -48,6 +48,15 @@ let lastReconcileDate = '';
 // Daily category cap: only one base_points insert per (identity, category) per day.
 // Key format: "identityId::category". Cleared on date rollover and chain reset.
 let dailyCategorySeen = new Set<string>();
+
+// Unmapped event detection (Phase 2 of points-audit plan).
+// Single-instance scanner (PM2 fork mode) — no cross-worker sync needed.
+const UNMAPPED_MAX = 1000;                          // cardinality safety cap
+const UNMAPPED_TTL_MS = 24 * 60 * 60 * 1000;        // 24h reset (re-confirm daily)
+const UNMAPPED_RESET_GRACE_MS = 60_000;             // 60s after reset, suppress to avoid restart spam
+const unmappedSeen = new Map<string, number>();     // key -> lastSeenMs (insertion order = LRU FIFO via delete+set)
+let unmappedResetAt = Date.now();
+let unmappedSuppressedSinceReset = 0;
 let dailyCategoryDate = '';
 
 // --- Public API ---
@@ -75,6 +84,66 @@ export function stopPointsScanner(): void {
 }
 
 // --- Internals ---
+
+// Records an unmapped event signature for operator visibility.
+// First-seen WARN suppressed during 60s post-reset grace window.
+function recordUnmappedEvent(
+  packageHex: string,
+  module: string,
+  typeName: string,
+  sampleTxDigest: string,
+): void {
+  const now = Date.now();
+
+  // 24h TTL reset (re-confirm daily; cap-eviction handled separately below)
+  if (now - unmappedResetAt > UNMAPPED_TTL_MS) {
+    unmappedSeen.clear();
+    unmappedResetAt = now;
+    unmappedSuppressedSinceReset = 0;
+  }
+
+  const key = `${packageHex}::${module}::${typeName}`;
+
+  if (unmappedSeen.has(key)) {
+    // LRU: V8 Map.set on existing key keeps order — delete + set moves to most-recent
+    unmappedSeen.delete(key);
+    unmappedSeen.set(key, now);
+    return;
+  }
+
+  // FIFO eviction when at capacity (silent-drop guarded — eviction itself logs)
+  if (unmappedSeen.size >= UNMAPPED_MAX) {
+    const oldest = unmappedSeen.keys().next().value;
+    if (oldest !== undefined) unmappedSeen.delete(oldest);
+    console.warn(
+      `[Points] UNMAPPED CACHE EVICTION (cap=${UNMAPPED_MAX}): evicted=${oldest}, new mappings rediscovered next cycle`,
+    );
+  }
+
+  unmappedSeen.set(key, now);
+
+  if (now - unmappedResetAt > UNMAPPED_RESET_GRACE_MS) {
+    console.warn(
+      `[Points] UNMAPPED EVENT FIRST SEEN: ${key} sample_tx=0x${sampleTxDigest}`,
+    );
+  } else {
+    unmappedSuppressedSinceReset++;
+  }
+}
+
+// Emits a single trailing summary if the reset grace window has expired
+// and signatures were suppressed during it. Called once per scan loop end.
+function flushUnmappedSummary(): void {
+  if (
+    unmappedSuppressedSinceReset > 0 &&
+    Date.now() - unmappedResetAt > UNMAPPED_RESET_GRACE_MS
+  ) {
+    console.warn(
+      `[Points] UNMAPPED reset-grace summary: ${unmappedSuppressedSinceReset} signatures suppressed in first 60s after reset`,
+    );
+    unmappedSuppressedSinceReset = 0;
+  }
+}
 
 function scheduleNext(): void {
   scanTimerId = setTimeout(async () => {
@@ -157,6 +226,8 @@ async function scanLoop(): Promise<void> {
         console.error('[DailyNftCheck] Error (non-fatal):', (err as Error).message);
       }
     }
+
+    flushUnmappedSummary();
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     if (totalProcessed > 0) {
@@ -430,8 +501,12 @@ async function processBatch(
     );
 
     if (!mapping) {
-      // Uncomment to discover unmapped events during initial scan:
-      // console.log(`[Points] Unmatched event: ${event.package_hex}::${event.module}::${event.type_name}`);
+      recordUnmappedEvent(
+        event.package_hex,
+        event.module,
+        event.type_name,
+        event.tx_digest_hex,
+      );
       continue;
     }
 
