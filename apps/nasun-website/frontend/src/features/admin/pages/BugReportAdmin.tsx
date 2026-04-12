@@ -5,7 +5,7 @@
  * and bonus points rewards.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
@@ -70,6 +70,15 @@ export function BugReportAdmin() {
   const [newStatus, setNewStatus] = useState<BugReportStatus>('new');
   const [bonusPoints, setBonusPoints] = useState<number>(0);
   const [showConfirm, setShowConfirm] = useState(false);
+  const adminNoteRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-grow the Admin Note textarea so long feedback stays fully visible
+  useEffect(() => {
+    const el = adminNoteRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [adminNote, selectedReport]);
 
   const token = user?.cognitoToken;
 
@@ -299,10 +308,11 @@ export function BugReportAdmin() {
                   <div>
                     <label className="text-xs text-white/50 block mb-1">Admin Note</label>
                     <textarea
+                      ref={adminNoteRef}
                       value={adminNote}
                       onChange={(e) => setAdminNote(e.target.value.slice(0, 1000))}
                       rows={3}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50 resize-none"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50 resize-y overflow-hidden min-h-[4.5rem]"
                       placeholder="Response visible to the reporter"
                     />
                   </div>
