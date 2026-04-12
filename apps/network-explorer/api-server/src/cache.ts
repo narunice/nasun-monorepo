@@ -6,6 +6,17 @@ interface CacheEntry<T> {
 const store = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
 
+/**
+ * Evict a cached entry by key. Safe to call even when the key is absent.
+ * Use when an upstream write (e.g. POST /claim) should make the cached
+ * read of the affected resource stale immediately instead of waiting for
+ * TTL expiry.
+ */
+export function invalidate(key: string): void {
+  store.delete(key);
+  inflight.delete(key);
+}
+
 export function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): () => Promise<T> {
   return async () => {
     const now = Date.now();
