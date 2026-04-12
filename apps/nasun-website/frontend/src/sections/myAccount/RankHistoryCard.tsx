@@ -175,13 +175,6 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
 
   const { history, stats } = data;
 
-  // Detect if user is currently unranked (last snapshot date is before yesterday)
-  const lastEntryDate = history[history.length - 1]?.date;
-  const now = new Date();
-  const yesterdayStr = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1))
-    .toISOString().split('T')[0];
-  const isCurrentlyUnranked = !isSeasonEnded && !!lastEntryDate && lastEntryDate < yesterdayStr;
-
   return (
     <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
       {sectionHeader}
@@ -219,7 +212,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
           <div className="grid grid-cols-4 gap-2 mb-4">
             <StatCard
               label={isSeasonEnded ? t('rankHistory.stats.final') : t('rankHistory.stats.current')}
-              value={isCurrentlyUnranked ? 'Chart Out' : `#${stats.currentRank}`}
+              value={`#${stats.currentRank}`}
               className="!p-2"
             />
             <StatCard
