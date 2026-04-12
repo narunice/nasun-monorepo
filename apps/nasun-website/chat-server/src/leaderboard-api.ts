@@ -163,6 +163,7 @@ export function handleLeaderboardRequest(
 
   // Only handle known API prefixes
   if (!pathname.startsWith('/api/leaderboard') &&
+      !pathname.startsWith('/api/pado/') &&
       !pathname.startsWith('/api/trades') &&
       !pathname.startsWith('/api/orders') &&
       !pathname.startsWith('/api/competitions') &&
