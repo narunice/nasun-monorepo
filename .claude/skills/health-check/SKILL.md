@@ -241,28 +241,32 @@ curl -s -m 10 -o /dev/null -w "%{http_code}" https://analytics.nasun.io
 - HTTP 200 = OK
 - timeout/5xx = **WARNING** (분석 데이터 수집 중단)
 
-#### 1h. Pado Chat Server & APIs
+#### 1h. Unified Chat Server (nasun-chat-server)
 
-Pado chat server는 nginx 뒤에서 port 3100으로 동작합니다. 외부에서 HTTP API로 점검합니다:
+nasun과 pado는 **nasun-chat-server를 공동 사용**합니다 (port 3101, nasun.io 도메인에서 서빙).
+pado 프론트엔드는 `VITE_CHAT_HTTP_URL=https://nasun.io/chat` / `VITE_CHAT_WS_URL=wss://nasun.io/ws/chat`를 호출하므로
+`pado.finance/chat/*`와 `pado.finance/ws`는 **레거시 데드 엔드포인트** (점검하지 않음).
 
-**Prod (pado.finance):**
+**Prod:**
 ```bash
-curl -s -m 10 https://pado.finance/chat/api/status
-curl -s -m 10 -o /dev/null -w "%{http_code}|%{time_total}" "https://pado.finance/chat/api/leaderboard?period=24h&mode=volume&limit=3"
+curl -s -m 10 -o /dev/null -w "HTTP:%{http_code}|TIME:%{time_total}" https://nasun.io/chat/health
+curl -s -m 10 -o /dev/null -w "HTTP:%{http_code}|TIME:%{time_total}" "https://nasun.io/chat/api/leaderboard?period=24h&mode=volume&limit=3"
 ```
 
-**Staging (staging.pado.finance):**
+**Staging:**
 ```bash
-curl -s -m 10 https://staging.pado.finance/chat/api/status
-curl -s -m 10 -o /dev/null -w "%{http_code}|%{time_total}" "https://staging.pado.finance/chat/api/leaderboard?period=24h&mode=volume&limit=3"
+curl -s -m 10 -o /dev/null -w "HTTP:%{http_code}|TIME:%{time_total}" https://staging.nasun.io/chat/health
 ```
 
 판정:
-- `/chat/api/status` 응답에 `uptime` 필드 존재 = **OK** (chat server 정상)
-- HTTP 502 = **CRITICAL** (chat server 다운, nginx는 살아있지만 upstream 3100 연결 불가)
+- `/chat/health` HTTP 200 = **OK** (nasun-chat-server 정상)
+- HTTP 502 = **CRITICAL** (nasun-chat-server 다운, upstream 3101 연결 불가)
 - timeout = **CRITICAL**
-- `/chat/api/leaderboard` HTTP 200 = **OK** (indexer 정상 동작)
-- `/chat/api/leaderboard` HTTP 502 = **CRITICAL** (chat server 다운)
+- `/chat/api/leaderboard` HTTP 200 = **OK** (leaderboard indexer 정상)
+
+> **레거시 확인(선택):** `curl -s -m 5 -o /dev/null -w "%{http_code}" https://pado.finance/chat/health` 가 502면
+> pado.finance.conf에 남은 `location /chat/`, `location /ws` 블록이 아직 3100 포트(죽은 pado-chat-server)를 가리킨다는 뜻.
+> 실사용자 트래픽은 nasun.io로 가므로 장애는 아니지만, 정리 대상.
 
 ---
 
@@ -342,8 +346,9 @@ HEALTH_EOF
 - explorer asset 파일 수: 0 = **CRITICAL**
 - `/var/www/pado.finance/index.html` 존재: missing = **CRITICAL** (pado 배포 깨짐)
 - pado asset 파일 수: 0 = **CRITICAL**
-- `pado-chat-server` PM2 상태: stopped = **CRITICAL** (chat/leaderboard/trade API 다운)
-- port 3100 리스닝: 없음 = **CRITICAL** (chat server 프로세스 다운)
+- `nasun-chat-server` PM2 상태: stopped = **CRITICAL** (chat/leaderboard/trade API 다운 — nasun/pado 공용)
+- port 3101 리스닝: 없음 = **CRITICAL** (nasun-chat-server 프로세스 다운)
+- `pado-chat-server` PM2 상태: **무시/레거시** (stopped여도 정상. 실트래픽은 nasun-chat-server가 처리). 존재 자체가 정리 대상
 - `lp-bot-nbtc/neth/nsol` PM2 상태: stopped = **WARNING** (LP 호가 제공 중단)
 - `price-updater` PM2 상태: stopped = **CRITICAL** (오라클 가격 갱신 중단, 단일 인스턴스 필수)
 - `tpsl-keeper` PM2 상태: stopped/errored = **WARNING** (TP/SL 주문 실행 중단)
@@ -404,7 +409,8 @@ HEALTH_EOF
 - nginx 상태: inactive = **WARNING**
 - `staging.nasun.io/index.html` 존재: missing = **WARNING**
 - `staging.pado.finance/index.html` 존재: missing = **WARNING**
-- staging `pado-chat-server` PM2 상태: stopped = **WARNING**
+- staging `nasun-chat-server` PM2 상태: stopped = **WARNING** (chat/leaderboard API 다운)
+- staging `pado-chat-server` PM2 상태: **무시/레거시** (stopped 정상, 실트래픽은 nasun-chat-server가 처리)
 - staging LP bots / tpsl-keeper / balance-watchdog PM2 상태 확인
 - `price-updater` 부재는 정상 (staging은 DISABLE_PRICE_UPDATER=true, prod oracle 참조)
 - Umami + PostgreSQL Docker 컨테이너: Exited = **WARNING** (분석 수집 중단)
@@ -760,12 +766,12 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 
 | ID | 패턴 | 감지 조건 | 심각도 | 권장 조치 |
 |----|------|-----------|--------|-----------|
-| P1 | Pado Chat Server 다운 (prod) | `/chat/api/status` HTTP 502 또는 PM2 stopped | CRITICAL | `ssh ec2-user@43.200.67.52 "pm2 restart pado-chat-server"`. env 유실 시 `cd /var/www/pado-chat-server && pm2 delete pado-chat-server && pm2 start ecosystem.config.cjs` |
-| P2 | Pado Chat Server 다운 (staging) | staging `/chat/api/status` HTTP 502 또는 PM2 stopped | CRITICAL | `ssh ubuntu@15.165.19.180 "pm2 restart pado-chat-server"`. env 유실 시 cwd `/home/ubuntu/pado-chat-server`에서 동일 패턴 |
+| P1 | Unified Chat Server 다운 (prod) | `https://nasun.io/chat/health` HTTP != 200 또는 `nasun-chat-server` PM2 stopped/port 3101 미리스닝 | CRITICAL | `ssh ec2-user@43.200.67.52 "pm2 restart nasun-chat-server"`. env 유실 시 `cd /home/ec2-user/nasun-chat-server && pm2 delete nasun-chat-server && pm2 start ecosystem.config.cjs`. nasun/pado 공용 서버이므로 양쪽 모두 영향 |
+| P2 | Unified Chat Server 다운 (staging) | `https://staging.nasun.io/chat/health` HTTP != 200 또는 staging `nasun-chat-server` PM2 stopped | CRITICAL | `ssh ubuntu@15.165.19.180 "pm2 restart nasun-chat-server"` |
 | P3 | Pado 정적 파일 누락 (prod) | `/var/www/pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ec2-user@43.200.67.52:/var/www/pado.finance/` |
 | P4 | Pado 정적 파일 누락 (staging) | `/var/www/staging.pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ubuntu@15.165.19.180:/var/www/staging.pado.finance/` |
-| P5 | Chat Server crash-loop | PM2 restart > 10 | WARNING | `pm2 logs pado-chat-server --lines 50` -- better-sqlite3 native module 불일치 또는 DB 손상 가능성 |
-| P6 | Chat Server 메모리 과다 | PM2 메모리 > 200MB (W), > 300MB (C, auto-restart) | W/C | 200MB 초과 시 주시, 300MB 초과 시 PM2가 자동 재시작 (max_memory_restart 300M) |
+| P5 | Chat Server crash-loop | `nasun-chat-server` PM2 restart > 10 | WARNING | `pm2 logs nasun-chat-server --lines 50` -- better-sqlite3 native module 불일치 또는 DB 손상 가능성 |
+| P6 | Chat Server 메모리 과다 | `nasun-chat-server` PM2 메모리 > 200MB (W), > 256MB (C, auto-restart) | W/C | 256MB 초과 시 PM2가 자동 재시작 (max_memory_restart 256M) |
 | P7 | Price Updater 다운 | PM2 status != online | CRITICAL | 오라클 가격 미갱신으로 DEX 거래 불가. 단일 인스턴스 필수 (prod에서만 실행) |
 | P8 | LP Bot 다운 | lp-bot-nbtc/neth/nsol 중 하나 이상 stopped | WARNING | LP 호가 제공 중단. `pm2 restart lp-bot-nbtc` |
 | P9 | TP/SL Keeper 다운 | tpsl-keeper stopped 또는 port 4001 미리스닝 | WARNING | 사용자 TP/SL 주문 미실행. restart 횟수 > 6000은 알려진 이슈 (waiting restart) |
@@ -884,16 +890,16 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | network-summary | OK/CRIT | totalTx: 1234567 |
 | API response time | OK/WARN | health: 0.05s, stats: 0.12s |
 
-### 8. Pado Chat Server
+### 8. Unified Chat Server (nasun-chat-server, nasun/pado 공용)
 
 | Item | Status | Notes |
 |------|--------|-------|
-| pado.finance /chat/api/status | OK/CRIT | uptime: 1234s, online: 0 |
-| pado.finance /chat/api/leaderboard | OK/CRIT | HTTP 200, traders: 13 |
-| staging /chat/api/status | OK/CRIT | uptime: 5678s, online: 0 |
-| staging /chat/api/leaderboard | OK/CRIT | HTTP 200, traders: 13 |
-| PM2 pado-chat-server (prod) | online/stopped | restarts: 0, mem: 70MB |
-| PM2 pado-chat-server (staging) | online/stopped | restarts: 0, mem: 65MB |
+| nasun.io /chat/health | OK/CRIT | HTTP 200 |
+| nasun.io /chat/api/leaderboard | OK/CRIT | HTTP 200 |
+| staging.nasun.io /chat/health | OK/CRIT | HTTP 200 |
+| PM2 nasun-chat-server (prod) | online/stopped | restarts: 17, mem: 199MB, port 3101 |
+| PM2 nasun-chat-server (staging) | online/stopped | restarts: 34, mem: 160MB, port 3101 |
+| PM2 pado-chat-server (legacy) | N/A | **레거시** (stopped여도 무시. 정리 대상) |
 | PM2 lp-bot-nbtc (prod) | online/stopped | restarts: 0, mem: 50MB |
 | PM2 lp-bot-neth (prod) | online/stopped | restarts: 0, mem: 50MB |
 | PM2 lp-bot-nsol (prod) | online/stopped | restarts: 0, mem: 50MB |
@@ -954,8 +960,8 @@ All systems operational. No issues detected.
 | Lambda 에러 (1시간) | 0 | 1-5 | 5+ |
 | nginx 5xx 비율 | < 1% | 5%+ | 10%+ |
 | Explorer API 응답시간 | < 0.5s | 1s+ | 5s+ |
-| PM2 restart (chat-server) | < 5 | 10+ | 50+ |
-| PM2 메모리 (chat-server) | < 150MB | 200MB+ | 300MB+ (auto-restart) |
+| PM2 restart (nasun-chat-server) | < 5 | 10+ | 50+ |
+| PM2 메모리 (nasun-chat-server) | < 150MB | 200MB+ | 256MB+ (auto-restart) |
 
 ---
 
@@ -994,11 +1000,12 @@ All systems operational. No issues detected.
 |------|------|---------|
 | Frontend URL | pado.finance (CloudFront -> EC2 43.200.67.52) | staging.pado.finance (EC2 15.165.19.180 직접) |
 | Static files | `/var/www/pado.finance/` | `/var/www/staging.pado.finance/` |
-| Chat server | `/var/www/pado-chat-server/` (PM2: pado-chat-server, port 3100) | `/home/ubuntu/pado-chat-server/` (PM2: pado-chat-server, port 3100) |
-| Chat API | `https://pado.finance/chat/api/*` | `https://staging.pado.finance/chat/api/*` |
-| WebSocket | `wss://pado.finance/ws` | `wss://staging.pado.finance/ws` |
+| Chat server (**공용**) | `/home/ec2-user/nasun-chat-server/` (PM2: nasun-chat-server, port **3101**) | `/home/ubuntu/nasun-chat-server/` (PM2: nasun-chat-server, port 3101) |
+| Chat API | `https://nasun.io/chat/*` (pado frontend가 호출) | `https://staging.nasun.io/chat/*` |
+| WebSocket | `wss://nasun.io/ws/chat` | `wss://staging.nasun.io/ws/chat` |
 | TP/SL Keeper | port 4001 (`/api/tpsl/*`) | port 4001 (`/api/tpsl/*`) |
-| nginx config | `/etc/nginx/conf.d/pado.finance.conf` | `/etc/nginx/sites-enabled/staging.pado.finance` |
+| nginx config (chat 라우팅) | `/etc/nginx/conf.d/nasun.conf` | `/etc/nginx/sites-enabled/staging.nasun.io` (또는 nasun 관련 conf) |
+| **레거시 (정리 대상)** | `pado-chat-server` PM2, `/var/www/pado-chat-server/`, `pado.finance.conf`의 `location /chat/` / `location /ws` 블록 | 동일 |
 
 ## 확장성
 
