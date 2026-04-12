@@ -249,6 +249,12 @@ export function BugReportAdmin() {
                         <p className="text-white/80 whitespace-pre-wrap">{selectedReport.reproSteps}</p>
                       </div>
                     )}
+                    {selectedReport.userReply && (
+                      <div className="rounded-lg border border-amber-400/40 bg-amber-400/5 p-3">
+                        <span className="text-amber-300 text-xs font-medium block mb-0.5">User Reply (follow-up)</span>
+                        <p className="text-amber-100/90 whitespace-pre-wrap">{selectedReport.userReply}</p>
+                      </div>
+                    )}
 
                     {/* User Info (copyable) */}
                     <div className="bg-white/[0.03] rounded-lg p-3 space-y-1.5">
@@ -317,8 +323,8 @@ export function BugReportAdmin() {
                     />
                   </div>
 
-                  {/* Bonus Points (only when fixing) */}
-                  {newStatus === 'fixed' && (
+                  {/* Bonus Points (only when fixing and not already rewarded) */}
+                  {newStatus === 'fixed' && selectedReport.rewardStatus !== 'rewarded' && (
                     <div>
                       <label className="text-xs text-white/50 block mb-1">
                         Bonus Points (0-100)
@@ -361,13 +367,29 @@ export function BugReportAdmin() {
                   )}
 
                   {/* Submit */}
-                  <Button
-                    onClick={() => setShowConfirm(true)}
-                    disabled={updateMutation.isPending}
-                    className="w-full bg-nasun-c4 hover:bg-nasun-c4/80 text-nasun-white disabled:opacity-50"
-                  >
-                    {updateMutation.isPending ? 'Updating...' : newStatus === 'fixed' && bonusPoints > 0 ? 'Resolve & Reward' : 'Update Report'}
-                  </Button>
+                  {(() => {
+                    const alreadyRewarded = selectedReport.rewardStatus === 'rewarded';
+                    const statusUnchanged = newStatus === selectedReport.status;
+                    const adminNoteUnchanged = adminNote === (selectedReport.adminNote || '');
+                    const noopReReward = alreadyRewarded && newStatus === 'fixed' && statusUnchanged && adminNoteUnchanged;
+                    const disabled = updateMutation.isPending || noopReReward;
+                    const label = updateMutation.isPending
+                      ? 'Updating...'
+                      : noopReReward
+                        ? 'Already Rewarded'
+                        : newStatus === 'fixed' && bonusPoints > 0 && !alreadyRewarded
+                          ? 'Resolve & Reward'
+                          : 'Update Report';
+                    return (
+                      <Button
+                        onClick={() => setShowConfirm(true)}
+                        disabled={disabled}
+                        className="w-full bg-nasun-c4 hover:bg-nasun-c4/80 text-nasun-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })()}
 
                   {/* Reward status */}
                   {selectedReport.rewardStatus && (
