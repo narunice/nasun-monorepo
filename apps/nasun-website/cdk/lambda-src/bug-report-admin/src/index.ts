@@ -19,6 +19,12 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import {
+  handleList as handleCreatorPostsList,
+  handleScore as handleCreatorPostScore,
+  handleReject as handleCreatorPostReject,
+  handleGrant as handleCreatorPostGrant,
+} from './creator-posts-admin.js';
 
 // ============================================
 // Clients & Config
@@ -45,7 +51,7 @@ function getCorsHeaders(event: APIGatewayProxyEvent): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,PATCH,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
   };
 }
 
@@ -101,6 +107,24 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // PATCH /admin/bug-reports/{reportId}
     if (event.httpMethod === 'PATCH' && event.pathParameters?.reportId) {
       return await handleUpdate(event, cors);
+    }
+
+    // Creator Posts admin
+    // GET /admin/creator-posts
+    if (event.httpMethod === 'GET' && path.endsWith('/creator-posts')) {
+      return await handleCreatorPostsList(event, cors);
+    }
+    // PATCH /admin/creator-posts/{postId}/score
+    if (event.httpMethod === 'PATCH' && path.endsWith('/score') && event.pathParameters?.postId) {
+      return await handleCreatorPostScore(event, adminId, cors);
+    }
+    // PATCH /admin/creator-posts/{postId}/reject
+    if (event.httpMethod === 'PATCH' && path.endsWith('/reject') && event.pathParameters?.postId) {
+      return await handleCreatorPostReject(event, adminId, cors);
+    }
+    // POST /admin/creator-posts/{postId}/grant
+    if (event.httpMethod === 'POST' && path.endsWith('/grant') && event.pathParameters?.postId) {
+      return await handleCreatorPostGrant(event, adminId, cors);
     }
 
     return respond(404, { error: 'Not found' }, cors);
