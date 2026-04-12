@@ -56,3 +56,6 @@ scripts/.credentials
 # Chat server data (contains plaintext messages)
 apps/pado/chat-server/data/
 apps/nasun-website/chat-server/data/
+
+# Claude Code runtime state (per-session, pid-bound)
+.claude/scheduled_tasks.lock
