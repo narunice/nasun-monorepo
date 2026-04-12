@@ -157,12 +157,12 @@ export const CreatorsAppreciationBonusCard: FC<CreatorsAppreciationBonusCardProp
           </p>
         </div>
 
-        <div className="flex items-baseline gap-3 shrink-0 flex-wrap justify-end">
-          <span className="font-mono text-2xl md:text-3xl font-semibold text-teal-300">
+        <div className="flex items-baseline gap-3 flex-wrap justify-end min-w-0">
+          <span className="font-mono text-2xl md:text-3xl font-semibold text-teal-300 shrink-0">
             +60 pts
           </span>
           {status!.rank != null && (
-            <span className="text-sm text-nasun-white/60 whitespace-nowrap">
+            <span className="text-sm text-nasun-white/60 break-words min-w-0">
               Season 1 rank at pause: #{status!.rank}
               {status!.handle ? ` · @${status!.handle}` : ""}
             </span>
