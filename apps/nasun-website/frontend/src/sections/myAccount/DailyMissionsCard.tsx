@@ -14,6 +14,7 @@ import { ClaimAllButton } from "@nasun/wallet-ui";
 import { useDailyMissions } from "@/hooks/useDailyMissions";
 import { useGovernanceMission } from "@/hooks/useGovernanceMission";
 import { useWalletRegistration } from "./hooks/useWalletRegistration";
+import { trackCrossAppNav, withCrossAppParam } from "@/lib/analytics";
 
 interface DailyMissionsCardProps {
   className?: string;
@@ -244,10 +245,20 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                   {i + 1}.{" "}
                   {mission.externalUrl ? (
                     <a
-                      href={mission.externalUrl}
+                      href={
+                        mission.externalUrl.startsWith("https://pado.finance")
+                          ? withCrossAppParam(mission.externalUrl, "nasun")
+                          : mission.externalUrl
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:underline inline-flex items-center gap-1"
+                      onClick={() => {
+                        if (mission.externalUrl?.startsWith("https://pado.finance")) {
+                          const path = new URL(mission.externalUrl).pathname;
+                          trackCrossAppNav("pado", path);
+                        }
+                      }}
                     >
                       {mission.label}
                       <svg

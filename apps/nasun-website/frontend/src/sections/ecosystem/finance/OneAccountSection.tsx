@@ -2,6 +2,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import { trackCrossAppNav, withCrossAppParam } from "@/lib/analytics";
 
 export default function OneAccountSection() {
   return (
@@ -25,7 +26,12 @@ export default function OneAccountSection() {
             className="mt-6 mx-auto gap-1.5"
             asChild
           >
-            <a href="https://pado.finance/" target="_blank" rel="noopener noreferrer">
+            <a
+              href={withCrossAppParam("https://pado.finance/", "nasun")}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackCrossAppNav("pado", "/")}
+            >
               Go to Pado
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="size-4">
                 <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 1 0-1.06l7.22-7.22H8.75a.75.75 0 0 1 0-1.5h5.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0V7.28l-7.22 7.22a.75.75 0 0 1-1.06 0Z" clipRule="evenodd" />
