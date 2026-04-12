@@ -1,6 +1,6 @@
 export type Period = '24h' | '7d' | '30d' | 'all';
 export type LeaderboardMode = 'activity' | 'volume' | 'pnl' | 'score';
-export type ScoreScope = 'weekly' | 'alltime';
+export type ScoreScope = 'alltime';
 
 export interface LeaderboardTrader {
   rank: number;

@@ -70,7 +70,7 @@ async function fetchScoreLeaderboard(scope: ScoreScope, limit: number, offset: n
   }
 
   const params = new URLSearchParams({ scope, limit: String(limit), offset: String(offset) });
-  const url = `${baseUrl}/api/leaderboard/score?${params}`;
+  const url = `${baseUrl}/api/pado/leaderboard/score?${params}`;
   const res = await fetch(url);
 
   if (!res.ok) {
@@ -80,7 +80,7 @@ async function fetchScoreLeaderboard(scope: ScoreScope, limit: number, offset: n
   return res.json();
 }
 
-export function useScoreLeaderboard(scope: ScoreScope = 'weekly', limit: number = 50, offset: number = 0) {
+export function useScoreLeaderboard(scope: ScoreScope = 'alltime', limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
   return useQuery<ScoreLeaderboardResponse>({
@@ -99,7 +99,7 @@ async function fetchTraderScore(address: string, scope: ScoreScope): Promise<Tra
     return { address, nickname: null, totalScore: 0, breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 }, rank: 0, scope };
   }
 
-  const url = `${baseUrl}/api/leaderboard/trader/${encodeURIComponent(address)}/score?scope=${scope}`;
+  const url = `${baseUrl}/api/pado/leaderboard/trader/${encodeURIComponent(address)}/score?scope=${scope}`;
   const res = await fetch(url);
 
   if (!res.ok) {
@@ -109,7 +109,7 @@ async function fetchTraderScore(address: string, scope: ScoreScope): Promise<Tra
   return res.json();
 }
 
-export function useTraderScore(address: string | null, scope: ScoreScope = 'weekly') {
+export function useTraderScore(address: string | null, scope: ScoreScope = 'alltime') {
   return useQuery<TraderScoreResponse>({
     queryKey: ['trader-score', address, scope],
     queryFn: () => fetchTraderScore(address!, scope),
