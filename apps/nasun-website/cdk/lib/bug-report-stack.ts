@@ -252,6 +252,11 @@ export class BugReportStack extends cdk.Stack {
     const uploadUrlResource = bugReportResource.addResource('upload-url');
     uploadUrlResource.addMethod('GET', lambdaIntegration, authOptions);
 
+    // POST /bug-report/{reportId}/reply - follow-up on a closed ticket
+    const userReportIdResource = bugReportResource.addResource('{reportId}');
+    const replyResource = userReportIdResource.addResource('reply');
+    replyResource.addMethod('POST', lambdaIntegration, authOptions);
+
     // Admin endpoints (admin authorization checked inside Lambda)
     const adminIntegration = new apigw.LambdaIntegration(bugReportAdminFn);
     const adminResource = this.api.root.addResource('admin');

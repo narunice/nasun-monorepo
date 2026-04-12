@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUserStore } from '../../../store/userStore';
 import type { BugReportData, BugReportResponse, BugReport, PresignedPostData } from '../types';
 
@@ -116,6 +116,59 @@ async function getUploadUrl(
   }
 
   return res.json();
+}
+
+// ============================================
+// Reply to a closed ticket
+// ============================================
+
+export class BugReportReplyError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function postReply(
+  reportId: string,
+  timestamp: string,
+  text: string,
+  token: string,
+): Promise<void> {
+  const res = await fetch(
+    `${BUG_REPORT_API_URL}/bug-report/${encodeURIComponent(reportId)}/reply`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ timestamp, text }),
+    },
+  );
+
+  if (!res.ok) {
+    const payload = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new BugReportReplyError(res.status, payload.error || `HTTP ${res.status}`);
+  }
+}
+
+export function useReplyToBugReport() {
+  const user = useUserStore((s) => s.user);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { reportId: string; timestamp: string; text: string }) => {
+      if (!user?.cognitoToken) {
+        throw new Error('Not authenticated');
+      }
+      await postReply(params.reportId, params.timestamp, params.text, user.cognitoToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bug-reports', 'my-reports'] });
+    },
+  });
 }
 
 export async function uploadScreenshot(
