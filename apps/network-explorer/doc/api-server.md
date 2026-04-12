@@ -54,6 +54,19 @@ curl http://localhost:3200/api/v1/health
 
 ```env
 DATABASE_URL=postgresql://sui_indexer:<password>@localhost:5432/sui_indexer
+POINTS_DATABASE_URL=postgresql://<user>:<password>@localhost:5432/nasun_points
+
+# Cognito Identity Pool JWT validation (required for auth-gated endpoints
+# such as /api/v1/creators-appreciation/*). Module import fails fast if
+# unset, so the server will not boot without this.
+# Accepts a comma-separated list so the shared prod api-server can verify
+# tokens from both the staging (dev pool) and production frontends.
+COGNITO_IDENTITY_POOL_ID=<region>:<staging-pool-uuid>,<region>:<prod-pool-uuid>
+
+# Creators Appreciation Bonus feature flag + claim window. Defaults to
+# disabled so new deploys never write to activity_points until flipped.
+CREATORS_APPRECIATION_ENABLED=true
+CREATORS_APPRECIATION_DEADLINE_ISO=2026-04-19T00:00:00Z
 ```
 
 > **보안**: `.env` 파일은 `chmod 600`, `ecosystem.config.cjs`에는 DB 자격 증명 미포함
