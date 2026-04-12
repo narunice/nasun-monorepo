@@ -68,10 +68,17 @@ console.log(
   `entries=${ELIGIBILITY.entries.length}`,
 );
 
-// Index by primaryIdentityId (the JWT-bound identity).
-const BY_PRIMARY = new Map<string, EligibilityEntry>();
+// Index by both primaryIdentityId (the X-linked Cognito identity) and
+// targetIdentityId (the linked Nasun-wallet identity, when different).
+// nasun-website signs users in via their Nasun wallet, so the JWT `sub`
+// will be the target identity for anyone whose X handle is linked to a
+// separate wallet. Those users would otherwise miss lookup entirely.
+const BY_IDENTITY = new Map<string, EligibilityEntry>();
 for (const e of ELIGIBILITY.entries) {
-  BY_PRIMARY.set(e.primaryIdentityId, e);
+  BY_IDENTITY.set(e.primaryIdentityId, e);
+  if (e.targetIdentityId !== e.primaryIdentityId) {
+    BY_IDENTITY.set(e.targetIdentityId, e);
+  }
 }
 
 function txDigestFor(entry: EligibilityEntry): string {
@@ -97,7 +104,7 @@ app.get('/status', async (c) => {
     return c.json({ error: 'points_not_configured' }, 503);
   }
 
-  const entry = BY_PRIMARY.get(auth.identityId);
+  const entry = BY_IDENTITY.get(auth.identityId);
   const baseResponse = {
     bonusName: ELIGIBILITY.bonusName,
     bonusPoints: ELIGIBILITY.bonusPoints,
@@ -146,7 +153,7 @@ app.post('/claim', async (c) => {
     return c.json({ error: 'feature_disabled' }, 503);
   }
 
-  const entry = BY_PRIMARY.get(auth.identityId);
+  const entry = BY_IDENTITY.get(auth.identityId);
   if (!entry) {
     return c.json({ error: 'not_eligible' }, 403);
   }
