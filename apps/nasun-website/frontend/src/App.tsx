@@ -10,6 +10,7 @@ import { HomePageLoadingProvider, useHomePageLoading } from "./contexts/PageLoad
 import ErrorBoundary from "./components/layout/ErrorBoundary";
 import { Button } from "./components/ui/button";
 import { useReferralCapture } from "./hooks/useReferralCapture";
+import { useCrossAppArrival } from "./hooks/useCrossAppArrival";
 
 const ChatWidget = lazy(() => import("./features/chat/components/ChatWidget"));
 
@@ -41,6 +42,7 @@ function AppContent() {
   const { isPageReady } = useHomePageLoading();
   const location = useLocation();
   useReferralCapture();
+  useCrossAppArrival();
   const isAdminPage = location.pathname.startsWith('/admin');
   const isClaimPage = location.pathname === '/claim' || location.pathname.startsWith('/claim/');
 

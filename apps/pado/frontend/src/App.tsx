@@ -7,6 +7,7 @@ import { Header, Footer, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { useChatMode, FloatingChatPopup, MobileChatDrawer } from './features/social';
+import { useCrossAppArrival } from './hooks/useCrossAppArrival';
 
 function ChatLayer() {
   const { chatMode, setChatMode, isOnTradePage } = useChatMode();
@@ -45,6 +46,7 @@ function ChatLayer() {
 }
 
 export default function App() {
+  useCrossAppArrival();
   return (
     <div className="min-h-screen flex flex-col bg-theme-bg-primary text-theme-text-primary">
       <OfflineBanner />
