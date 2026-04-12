@@ -30,8 +30,17 @@ const POINTS_DB_URL = process.env.POINTS_DATABASE_URL;
 const WALLET_MAPPINGS_URL = process.env.WALLET_MAPPINGS_URL;
 const WALLET_MAPPINGS_KEY = process.env.WALLET_MAPPINGS_API_KEY;
 
-// Pado chat-server points API (accessible from node-3 via localhost or pado.finance)
-const PADO_POINTS_URL = process.env.PADO_POINTS_URL || 'https://pado.finance/chat/api/leaderboard/points';
+// Pado DEX score API (nasun-chat-server hosts pado-specific endpoints under /api/pado/).
+// env fallback preserves backward compatibility with PADO_POINTS_URL during the rename window.
+// Response field is `totalScore` (new) or `totalPoints` (legacy /points endpoint).
+const PADO_SCORE_URL =
+  process.env.PADO_SCORE_URL
+  ?? process.env.PADO_POINTS_URL
+  ?? 'https://nasun.io/chat/api/pado/leaderboard/score';
+
+// Staleness guard: abort if aggregator hasn't run in STALENESS_MAX_MS.
+// Aggregator cycle is ~60s; 5min gives 5 cycles of slack.
+const STALENESS_MAX_MS = 5 * 60 * 1000;
 
 const DEFAULT_POOLS = {
   weekly: { size: 5_000, topN: 100, maxRank: 300, topShare: 0.5 },
@@ -73,8 +82,13 @@ if (!period || (period !== 'weekly' && period !== 'monthly')) {
 
 interface PadoTrader {
   address: string;
-  totalPoints: number;
+  totalScore?: number; // new /api/pado/leaderboard/score endpoint
+  totalPoints?: number; // legacy /api/leaderboard/points endpoint (fallback)
   rank: number;
+}
+
+function traderScore(t: PadoTrader): number {
+  return t.totalScore ?? t.totalPoints ?? 0;
 }
 
 interface Snapshot {
@@ -84,11 +98,24 @@ interface Snapshot {
 }
 
 async function fetchPadoLeaderboard(): Promise<PadoTrader[]> {
-  const res = await fetch(`${PADO_POINTS_URL}?limit=1000`, {
+  const url = PADO_SCORE_URL.includes('?')
+    ? `${PADO_SCORE_URL}&limit=1000`
+    : `${PADO_SCORE_URL}?limit=1000`;
+  const res = await fetch(url, {
     signal: AbortSignal.timeout(15_000),
   });
-  if (!res.ok) throw new Error(`Pado API error: ${res.status}`);
-  const json = await res.json() as { traders: PadoTrader[] };
+  if (!res.ok) throw new Error(`Pado API error: ${res.status} (url: ${url})`);
+  const json = await res.json() as { traders: PadoTrader[]; updatedAt?: number };
+
+  // Staleness guard: ensure aggregator has populated recently.
+  // updatedAt=0 → never populated; > STALENESS_MAX_MS → aggregator stalled.
+  const updatedAt = json.updatedAt ?? 0;
+  const ageMs = Date.now() - updatedAt;
+  if (updatedAt === 0 || ageMs > STALENESS_MAX_MS) {
+    console.error(`[settle-pado] Aborting: stale leaderboard (updatedAt=${updatedAt}, ageMs=${ageMs}, max=${STALENESS_MAX_MS})`);
+    process.exit(1);
+  }
+
   return json.traders || [];
 }
 
@@ -131,7 +158,7 @@ function saveSnapshot(snapshotPeriod: string, traders: PadoTrader[]): void {
   const snapshot: Snapshot = {
     date,
     period: snapshotPeriod,
-    traders: traders.map(t => ({ address: t.address, points: t.totalPoints })),
+    traders: traders.map(t => ({ address: t.address, points: traderScore(t) })),
   };
   const filename = `pado-${snapshotPeriod}-${date}.json`;
   fs.writeFileSync(path.join(SNAPSHOT_DIR, filename), JSON.stringify(snapshot, null, 2));
@@ -163,13 +190,13 @@ async function main() {
     deltas = new Map();
     for (const t of traders) {
       const prevPts = prevMap.get(t.address.toLowerCase()) ?? 0;
-      const delta = t.totalPoints - prevPts;
+      const delta = traderScore(t) - prevPts;
       if (delta > 0) deltas.set(t.address.toLowerCase(), delta);
     }
     console.log(`  ${deltas.size} traders with positive delta`);
   } else {
     console.log('No previous snapshot found. Using absolute points for first settlement.');
-    deltas = new Map(traders.map(t => [t.address.toLowerCase(), t.totalPoints]));
+    deltas = new Map(traders.map(t => [t.address.toLowerCase(), traderScore(t)]));
   }
 
   // 3. Rank by delta and distribute
