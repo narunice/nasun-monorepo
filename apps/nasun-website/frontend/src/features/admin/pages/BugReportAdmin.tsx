@@ -41,7 +41,7 @@ async function updateBugReport(
   reportId: string,
   timestamp: string,
   updates: { status?: string; adminNote?: string; bonusPoints?: number },
-): Promise<{ success: boolean; reward?: { success: boolean; finalPoints?: number; genesisMultiplier?: number; error?: string } }> {
+): Promise<{ success: boolean; reward?: { success: boolean; finalPoints?: number; error?: string } }> {
   const res = await fetch(`${BUG_REPORT_API_URL}/admin/bug-reports/${reportId}`, {
     method: 'PATCH',
     headers: {
@@ -86,7 +86,7 @@ export function BugReportAdmin() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-bug-reports'] });
       if (data.reward?.success) {
-        toast.success(`Updated. Reward: ${data.reward.finalPoints} pts (${data.reward.genesisMultiplier}x GP)`);
+        toast.success(`Updated. Reward: ${data.reward.finalPoints} pts`);
       } else if (data.reward?.error) {
         toast.warn(`Updated, but reward failed: ${data.reward.error}`);
       } else {
@@ -311,7 +311,7 @@ export function BugReportAdmin() {
                   {newStatus === 'fixed' && (
                     <div>
                       <label className="text-xs text-white/50 block mb-1">
-                        Bonus Points (0-100, before GP multiplier)
+                        Bonus Points (0-100)
                       </label>
                       <div className="flex items-center gap-3">
                         <input
@@ -389,7 +389,7 @@ export function BugReportAdmin() {
                   <p>Status: <span className="text-nasun-white">{STATUS_LABELS[selectedReport.status]} -&gt; {STATUS_LABELS[newStatus]}</span></p>
                 )}
                 {newStatus === 'fixed' && bonusPoints > 0 && (
-                  <p>Bonus: <span className="text-green-400">+{bonusPoints} pts (x2 for GP holders)</span></p>
+                  <p>Bonus: <span className="text-green-400">+{bonusPoints} pts</span></p>
                 )}
               </div>
               <div className="flex gap-3 justify-end pt-2">
