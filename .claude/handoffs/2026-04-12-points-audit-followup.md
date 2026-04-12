@@ -169,3 +169,52 @@ Ecosystem points 시스템 무결성 audit + 안정화 작업 완료. 2026-04-01
 
 4. **백업 자동 무결성 검증 cron 추가 검토** (선택)
    - 후보: cron 끝에 size + gzip 인라인 체크, 또는 별도 verify-backups.ts 신규
+
+---
+
+## 추가 작업 (세션 말미, 03:40~04:00 UTC)
+
+### 추가 검증: Indexer 전체 이벤트 타입 vs EVENT_MAP_ENTRIES 대조
+
+**목적**: 과거 silent drop된 이벤트 타입이 있는지 확인 (매핑 누락 탐지).
+
+**쿼리**: Last 30일 `events` 테이블의 distinct event type 22종 vs `EVENT_MAP_ENTRIES` 비교.
+
+**결과**:
+
+- ✅ 매핑되어 점수 반영 중 (8종, 43k+ 이벤트 볼륨 99%+)
+- ✅ 의도적 제외 (9종): OrderInfo, EWMAUpdate, BalanceEvent, history::*, governance::TradeParamsUpdateEvent, validator epoch, system epoch — 모두 내부/시스템/동기화 이벤트
+- ⚠️ 잠재 gap (5종):
+  - `OrderFullyFilled` (1,259건) — `OrderFilled`와 같은 TX에 동반 emit, daily cap으로 중복 방지됨, 영향 없음
+  - **`alliance_nft::AllianceMinted` (110건)** — **사용자 결정으로 점수 대상 아님 확정**
+  - `unified_margin::AccountCreated` (7), `NusdcDeposited` (1), `smart_account::AccountCreated` (1) — 사용량 극소수, 현재 점수 대상 아님
+
+### 결론
+
+**사용자가 보는 all-time 포인트는 현재 누락 없이 반영 완료**:
+- 4/1~4/13 backfill 5,554건 + snapshot 17,456건 보정 모두 API 응답에 반영됨
+- Sample 검증 (thejediworld77): allTime ecosystemScore=151, 7개 UI mission 모두 체크 ✓
+- alliance_nft mint는 의도적 제외로 확정
+
+### Working tree 정리 (commit `ad7f902c`)
+
+- `.claude/handoffs/2026-04-12-points-audit-followup.md` — 본 handoff 문서 commit
+- `.gitignore`에 `.claude/scheduled_tasks.lock` 추가 (세션별 PID-bound lock, commit 금지)
+
+### 남은 working tree (본 세션과 무관, 건드리지 않음)
+
+다음 변경은 다른 작업 (Cross-app analytics + Creators Appreciation Bonus 기능)의 in-progress:
+
+- nasun-website/frontend: App.tsx, analytics.ts, DevMyAccountPage, OneAccountSection, DailyMissionsCard, CreatorsAppreciationBonusCard (신규), useCreatorsAppreciationBonus (신규), creatorsAppreciationApi (신규), useCrossAppArrival (신규)
+- pado/frontend: App.tsx, Footer.tsx, useCrossAppArrival (신규), analytics.ts (신규)
+- api-server: package.json, src/index.ts, doc/api-server.md, src/auth/ (신규), src/data/ (신규), src/routes/creators-appreciation.ts (신규), src/scripts/grant-creators-appreciation-bonus.ts (신규)
+- pnpm-lock.yaml
+
+→ 원래 작업자가 해당 기능 완성 시 별도 commit할 것. 본 handoff 세션에서 commit 안 함.
+
+### 최종 세션 commits (push 완료)
+
+- `9c08825f` feat(explorer): add unmapped event WARN + audit/triage runbooks
+- `ad7f902c` docs(handoff): add points audit follow-up + ignore claude lock file
+
+브랜치 상태: `main` up to date with `origin/main`.
