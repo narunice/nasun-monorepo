@@ -126,6 +126,14 @@ const PKG = {
 // NOTE: Event type names must match exactly what the Move contracts emit.
 // After first scan, check logs for "[Points] Unmatched event" to discover
 // missing mappings and update this table.
+//
+// SYNC WARNING: The Mission UI keeps an independent RPC-based detection list
+// at apps/nasun-website/frontend/src/hooks/useDailyMissions.ts
+// (EVENT_MISSION_MAP). When adding or renaming an event that maps to a
+// mission category (pado-dex, pado-lottery, pado-scratchcard, pado-games),
+// mirror the change there. Out-of-sync entries cause points to be credited
+// correctly while the daily-mission checkbox stays empty.
+// Precedent: commit aa3e7a7b added OrderFilled here only, UI drift followed.
 const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   // [packageHex, module, typeName, mapping]
 
