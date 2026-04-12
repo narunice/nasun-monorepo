@@ -27,6 +27,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/nft-collections', label: 'Nasun NFT on ETH', icon: '🖼️' },
   { path: '/admin/genesis-pass-drop', label: 'Genesis Pass Drop', icon: '🎫' },
   { path: '/admin/bug-reports', label: 'Bug Reports', icon: '🐛' },
+  { path: '/admin/creator-posts', label: 'Creator Posts', icon: '✍️' },
 ];
 
 export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
@@ -106,5 +107,12 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     icon: '🐛',
     link: '/admin/bug-reports',
     linkText: 'Manage Bug Reports',
+  },
+  {
+    title: 'Creator Posts',
+    description: 'Review user-submitted X posts about Nasun, score 1-30 ecosystem points, and grant (irrevocable) per post.',
+    icon: '✍️',
+    link: '/admin/creator-posts',
+    linkText: 'Manage Creator Posts',
   },
 ];

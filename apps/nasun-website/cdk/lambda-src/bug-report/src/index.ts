@@ -19,6 +19,7 @@ import {
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { S3Client } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
+import { handleSubmit as handleCreatorPostSubmit, handleMyList as handleCreatorPostMyList } from './creator-posts.js';
 
 // ============================================
 // Clients & Config
@@ -96,6 +97,16 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // POST /bug-report/{reportId}/reply
     if (event.httpMethod === 'POST' && path.endsWith('/reply')) {
       return await handleReply(event, identityId, cors);
+    }
+
+    // POST /v1/creator-posts
+    if (event.httpMethod === 'POST' && path.endsWith('/v1/creator-posts')) {
+      return await handleCreatorPostSubmit(event, identityId, cors);
+    }
+
+    // GET /v1/creator-posts/my
+    if (event.httpMethod === 'GET' && path.endsWith('/v1/creator-posts/my')) {
+      return await handleCreatorPostMyList(event, identityId, cors);
     }
 
     return respond(404, { error: 'Not found' }, cors);

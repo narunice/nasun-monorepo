@@ -337,6 +337,84 @@ app.post('/bug-report-reward', async (c) => {
   });
 });
 
+// POST /api/v1/points/creator-post-reward
+// Internal endpoint for admin Lambda to grant creator-post bonus points.
+// Uses ecosystem-bonus-creator-posts category. identityId-based grant; wallet optional.
+app.post('/creator-post-reward', async (c) => {
+  if (!pointsDb) {
+    return c.json({ error: 'points_not_configured' }, 503);
+  }
+
+  // API key auth (reuses BUG_REPORT_API_KEY per plan v6)
+  const apiKey = process.env.BUG_REPORT_API_KEY;
+  const requestKey = c.req.header('x-api-key');
+  if (!apiKey || !requestKey || requestKey !== apiKey) {
+    return c.json({ error: 'unauthorized' }, 401);
+  }
+
+  const body = await c.req.json<{
+    identityId?: string;
+    walletAddress?: string;
+    postId?: string;
+    points?: number;
+  }>();
+
+  if (!body.identityId || typeof body.identityId !== 'string') {
+    return c.json({ error: 'identityId is required' }, 400);
+  }
+  if (!/^[\w-]+:[\w-]{36}$/.test(body.identityId)) {
+    return c.json({ error: 'Invalid identityId format' }, 400);
+  }
+  if (!body.postId || typeof body.postId !== 'string' || !/^\d{5,25}$/.test(body.postId)) {
+    return c.json({ error: 'postId must be a numeric tweet id' }, 400);
+  }
+  if (!body.points || typeof body.points !== 'number' || body.points < 1 || body.points > 30) {
+    return c.json({ error: 'points must be 1-30' }, 400);
+  }
+  // walletAddress is optional; if present, validate Sui format
+  let walletAddress: string | null = null;
+  if (body.walletAddress !== undefined && body.walletAddress !== null && body.walletAddress !== '') {
+    if (typeof body.walletAddress !== 'string' || !/^0x[a-fA-F0-9]{64}$/.test(body.walletAddress)) {
+      return c.json({ error: 'Invalid walletAddress format (expected 0x + 64 hex chars)' }, 400);
+    }
+    walletAddress = body.walletAddress.toLowerCase();
+  }
+
+  const finalPoints = body.points;
+  const txDigest = `creatorpost:${body.postId}`;
+
+  const result = await pointsDb`
+    INSERT INTO activity_points (
+      tx_digest, tx_sequence_number, tx_timestamp,
+      wallet_address, identity_id,
+      category, activity_type,
+      base_points, volume_tier, genesis_multiplier, final_points,
+      event_seq
+    ) VALUES (
+      ${txDigest}, 0, NOW(),
+      ${walletAddress}, ${body.identityId},
+      'ecosystem-bonus-creator-posts', 'creator-post-reward',
+      ${finalPoints}, 1.0, 1.0, ${finalPoints},
+      0
+    )
+    ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+  `;
+
+  const created = result.count > 0;
+
+  console.log(
+    `[CreatorPost] Reward: ${body.postId} -> identity=${body.identityId.slice(0, 16)}... ${finalPoints}pts` +
+    `${created ? '' : ' (duplicate, skipped)'}`,
+  );
+
+  return c.json({
+    created,
+    txDigest,
+    finalPoints,
+    postId: body.postId,
+  });
+});
+
 // GET /api/v1/points/health
 app.get('/health', async (c) => {
   const health = await getScannerHealth();

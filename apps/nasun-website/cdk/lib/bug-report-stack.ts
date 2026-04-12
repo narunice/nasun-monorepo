@@ -6,10 +6,12 @@
  *
  * Resources:
  * - DynamoDB table: nasun-bug-reports (with identityId-index, status-index GSIs)
- * - Lambda: bug-report (user-facing: submit, my-reports, upload-url)
- * - Lambda: bug-report-admin (admin: list, status change, reward)
+ * - DynamoDB table: nasun-creator-posts (Creator Posts Program)
+ * - Lambda: bug-report (user-facing: submit, my-reports, upload-url, creator-posts)
+ * - Lambda: bug-report-admin (admin: list, status change, reward, creator-posts admin)
  * - API Gateway: /bug-report (POST, GET my-reports, GET upload-url)
  * - API Gateway: /admin/bug-reports (GET list, PATCH status/reward)
+ * - API Gateway: /v1/creator-posts (POST, GET my) + /admin/creator-posts/* (admin)
  */
 
 import * as cdk from 'aws-cdk-lib';
@@ -76,6 +78,39 @@ export class BugReportStack extends cdk.Stack {
     });
 
     // ============================================
+    // DynamoDB Table: Creator Posts
+    // ============================================
+
+    const creatorPostsTable = new dynamodb.Table(this, 'CreatorPostsTable', {
+      tableName: `${envPrefix}nasun-creator-posts`,
+      partitionKey: { name: 'postId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      pointInTimeRecovery: true,
+      removalPolicy:
+        environmentName === 'prod'
+          ? cdk.RemovalPolicy.RETAIN
+          : cdk.RemovalPolicy.DESTROY,
+    });
+
+    // GSI: user's own submissions + rate-limit counting.
+    // Projection INCLUDE (status) keeps rate-limit queries single-GSI.
+    creatorPostsTable.addGlobalSecondaryIndex({
+      indexName: 'identityId-createdAt-index',
+      partitionKey: { name: 'identityId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.INCLUDE,
+      nonKeyAttributes: ['status'],
+    });
+
+    // GSI: admin list by status.
+    creatorPostsTable.addGlobalSecondaryIndex({
+      indexName: 'status-createdAt-index',
+      partitionKey: { name: 'status', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'createdAt', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.KEYS_ONLY,
+    });
+
+    // ============================================
     // S3 Bucket Reference (screenshots stored in nasun-internal-cache)
     // ============================================
 
@@ -126,6 +161,9 @@ export class BugReportStack extends cdk.Stack {
       depsLockFilePath: path.join(__dirname, '../pnpm-lock.yaml'),
       environment: {
         BUG_REPORTS_TABLE: bugReportsTable.tableName,
+        CREATOR_POSTS_TABLE: creatorPostsTable.tableName,
+        CREATOR_POSTS_DAILY_LIMIT: process.env.CREATOR_POSTS_DAILY_LIMIT || '20',
+        USER_PROFILES_TABLE: 'UserProfiles',
         TELEGRAM_BOT_TOKEN_SECRET_NAME: 'nasun-telegram-bot-token',
         NARU_TELEGRAM_CHAT_ID: naruTelegramChatId,
         INTERNAL_CACHE_BUCKET: screenshotBucket.bucketName,
@@ -141,6 +179,11 @@ export class BugReportStack extends cdk.Stack {
 
     // Grant DynamoDB read/write access (read for my-reports + cooldown check)
     bugReportsTable.grantReadWriteData(bugReportFn);
+    // Creator Posts table: read/write for submit + my list
+    creatorPostsTable.grantReadWriteData(bugReportFn);
+    // Read UserProfiles for twitter handle/profile image at submit time
+    const userProfilesTableForUser = dynamodb.Table.fromTableName(this, 'UserProfilesRefForUser', 'UserProfiles');
+    userProfilesTableForUser.grantReadData(bugReportFn);
 
     // Grant Secrets Manager read access for Telegram bot token
     bugReportFn.addToRolePolicy(new iam.PolicyStatement({
@@ -169,6 +212,7 @@ export class BugReportStack extends cdk.Stack {
       depsLockFilePath: path.join(__dirname, '../pnpm-lock.yaml'),
       environment: {
         BUG_REPORTS_TABLE: bugReportsTable.tableName,
+        CREATOR_POSTS_TABLE: creatorPostsTable.tableName,
         USER_PROFILES_TABLE: 'UserProfiles',
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
         INTERNAL_CACHE_BUCKET: screenshotBucket.bucketName,
@@ -186,6 +230,8 @@ export class BugReportStack extends cdk.Stack {
 
     // Admin Lambda: full read/write on bug reports table
     bugReportsTable.grantReadWriteData(bugReportAdminFn);
+    // Admin Lambda: full read/write on creator-posts table
+    creatorPostsTable.grantReadWriteData(bugReportAdminFn);
 
     // Admin Lambda: read UserProfiles for admin role check
     const userProfilesTable = dynamodb.Table.fromTableName(this, 'UserProfilesRef', 'UserProfiles');
@@ -268,6 +314,29 @@ export class BugReportStack extends cdk.Stack {
     // PATCH /admin/bug-reports/{reportId} (update status, reward points)
     const adminReportIdResource = adminBugReportsResource.addResource('{reportId}');
     adminReportIdResource.addMethod('PATCH', adminIntegration, authOptions);
+
+    // ============================================
+    // Creator Posts API routes
+    // ============================================
+
+    // User-facing: POST /v1/creator-posts, GET /v1/creator-posts/my
+    const v1Resource = this.api.root.addResource('v1');
+    const creatorPostsResource = v1Resource.addResource('creator-posts');
+    creatorPostsResource.addMethod('POST', lambdaIntegration, authOptions);
+    const myCreatorPostsResource = creatorPostsResource.addResource('my');
+    myCreatorPostsResource.addMethod('GET', lambdaIntegration, authOptions);
+
+    // Admin: GET /admin/creator-posts, PATCH /admin/creator-posts/{postId}/score,
+    //        PATCH /admin/creator-posts/{postId}/reject, POST /admin/creator-posts/{postId}/grant
+    const adminCreatorPostsResource = adminResource.addResource('creator-posts');
+    adminCreatorPostsResource.addMethod('GET', adminIntegration, authOptions);
+    const adminPostIdResource = adminCreatorPostsResource.addResource('{postId}');
+    const adminScoreResource = adminPostIdResource.addResource('score');
+    adminScoreResource.addMethod('PATCH', adminIntegration, authOptions);
+    const adminRejectResource = adminPostIdResource.addResource('reject');
+    adminRejectResource.addMethod('PATCH', adminIntegration, authOptions);
+    const adminGrantResource = adminPostIdResource.addResource('grant');
+    adminGrantResource.addMethod('POST', adminIntegration, authOptions);
 
     // ============================================
     // Outputs
