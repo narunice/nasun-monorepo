@@ -34,6 +34,7 @@ import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking"
 import { ProfileHeroCard } from "../../sections/myAccount/ProfileHeroCard";
 import { GovernanceCard } from "../../sections/myAccount/GovernanceCard";
 import { BugReportsCard } from "../../sections/myAccount/BugReportsCard";
+// import { CreatorPostsCard } from "../../sections/myAccount/CreatorPostsCard";
 import { CompactNftStatus } from "../../sections/myAccount/CompactNftStatus";
 import { AssetsCard } from "../../sections/myAccount/AssetsCard";
 import { DangerZoneCard } from "../../sections/myAccount/DangerZoneCard";
@@ -230,12 +231,16 @@ const DevMyAccountPage = () => {
 
           <BugReportsCard className="order-8 lg:order-none col-span-1" />
 
+          {/* Creator Posts: hidden for now, re-enable when ready
+          <CreatorPostsCard className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+          */}
+
           {/* DangerZone (full width) */}
           <ErrorBoundary
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <DangerZoneCard className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>
