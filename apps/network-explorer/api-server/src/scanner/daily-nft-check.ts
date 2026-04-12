@@ -31,6 +31,7 @@ const EXCLUDED_CATEGORIES = [
   'ecosystem-bonus-diversity',
   'ecosystem-bonus-admin',
   'ecosystem-bonus-bugreport',
+  'ecosystem-bonus-restoration',
 ];
 
 export async function runDailyNftChecks(

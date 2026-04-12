@@ -67,6 +67,7 @@ export async function takeDailySnapshot(
       FROM activity_points
       WHERE identity_id = ANY(${allIdsArr})
         AND category LIKE 'ecosystem-bonus-%'
+        AND (metadata->>'synthetic') IS DISTINCT FROM 'true'
         AND NOT flagged
         AND tx_timestamp >= ${snapshotDate}::date
         AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
