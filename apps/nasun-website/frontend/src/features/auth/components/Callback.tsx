@@ -19,11 +19,24 @@ export default function Callback() {
   const { signFlow } = useNasunWalletAuth();
   const hasHandledRef = useRef(false);
 
-  // Check if this is a zkLogin callback (Implicit Flow uses URL hash)
-  // Both Cognito auth and zkLogin use Google Implicit Flow with id_token in hash,
-  // so we also check for the zkLogin session key to distinguish between them.
+  // Check if this is a zkLogin callback (Implicit Flow uses URL hash).
+  // Both Cognito auth and zkLogin use Google Implicit Flow with id_token in hash.
+  //
+  // Belt to `clearPendingZkLoginFlow()`'s suspenders in useAccountLinking:
+  // if a linking session is active, never route the callback to
+  // <ZkLoginCallback>. Only session-scoped keys are trusted here;
+  // `auth_provider_preference` (localStorage) can survive abandoned linking
+  // flows and would cause a symmetric mis-routing regression for a future
+  // genuine zkLogin attempt.
+  const isCognitoLinking =
+    !!sessionStorage.getItem("google_link_session") ||
+    !!localStorage.getItem("google_link_session") ||
+    !!sessionStorage.getItem("twitter_link_session") ||
+    !!localStorage.getItem("twitter_link_session");
   const isZkLogin =
-    window.location.hash.includes("id_token=") && !!sessionStorage.getItem("nasun:zklogin:session");
+    window.location.hash.includes("id_token=") &&
+    !isCognitoLinking &&
+    !!sessionStorage.getItem("nasun:zklogin:session");
 
   useEffect(() => {
     // Prevent double execution in React StrictMode
