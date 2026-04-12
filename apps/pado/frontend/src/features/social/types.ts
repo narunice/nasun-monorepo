@@ -28,7 +28,7 @@ export interface ChatMessage {
   pending?: boolean;
 }
 
-export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'authenticating' | 'connected';
+export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'authenticating' | 'connected' | 'reconnecting';
 
 export interface RoomInfo {
   id: number;

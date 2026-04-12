@@ -16,7 +16,7 @@ interface Props {
 function StatusDot({ status }: { status: string }) {
   const color =
     status === 'connected' ? 'bg-green-500' :
-    status === 'connecting' || status === 'authenticating' ? 'bg-yellow-500' :
+    status === 'connecting' || status === 'authenticating' || status === 'reconnecting' ? 'bg-yellow-500' :
     'bg-red-500';
   return <span className={`inline-block w-1.5 h-1.5 rounded-full ${color}`} />;
 }
@@ -75,6 +75,8 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
             <StatusDot status={status} />
             {status === 'connecting' || status === 'authenticating' ? (
               <span className="text-trading-xs text-yellow-500">Connecting...</span>
+            ) : status === 'reconnecting' ? (
+              <span className="text-trading-xs text-yellow-500">Reconnecting...</span>
             ) : status !== 'connected' ? (
               <span className="text-trading-xs text-red-400">Offline</span>
             ) : null}
