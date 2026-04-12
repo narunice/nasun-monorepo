@@ -15,6 +15,7 @@ import {
   replaceTraderPoints,
   generatePointsSnapshot,
   purgeOldSnapshots,
+  setIndexerState,
 } from './leaderboard-store.js';
 
 // PnL data cached during PnL aggregation, consumed by points aggregation
@@ -74,6 +75,10 @@ function runAggregation(): void {
 
   // Aggregate active competitions
   runCompetitionAggregation();
+
+  // Mark cycle completion for pado score staleness guard (settle-pado consumer).
+  // Key is app-prefixed to avoid collision with future per-app aggregators.
+  setIndexerState('pado_aggregator_last_run_ms', String(Date.now()));
 
   const elapsed = Date.now() - start;
   if (elapsed > 1000) {

@@ -1248,13 +1248,15 @@ export function replaceTraderPoints(
 
 /**
  * Get points leaderboard.
+ * Note: trader_points is the historical table name; values are DEX trading scores.
+ * DB rename to pado_trader_scores is follow-up.
  */
 export function getPointsLeaderboard(limit: number = 50, offset: number = 0): TraderPointsRow[] {
   return getLeaderboardDb()
     .prepare(
       `SELECT address, total_points, points_from_trades, points_from_volume,
               points_from_diversity, points_from_pnl, trade_count, volume_quote, rank, prev_rank, updated_at
-       FROM trader_points
+       FROM trader_points -- historical table name; functional score
        ORDER BY rank ASC
        LIMIT ? OFFSET ?`
     )
@@ -1280,6 +1282,31 @@ export function getTotalPointsTraders(): number {
     .prepare('SELECT COUNT(*) as count FROM trader_points')
     .get() as { count: number } | undefined;
   return row?.count ?? 0;
+}
+
+// ===== Score aliases (same table, different API surface) =====
+// trader_points table is historical name; values are DEX trading scores.
+// DB rename to pado_trader_scores is follow-up (SQLite ALTER TABLE O(1)).
+// See .claude/handoffs/2026-04-12-chat-server-role-clarification.md
+
+/** Score leaderboard (alltime). Reads trader_points; functional score. */
+export function getScoreLeaderboard(limit: number = 50, offset: number = 0): TraderPointsRow[] {
+  return getPointsLeaderboard(limit, offset);
+}
+
+/** Individual trader score. Reads trader_points; functional score. */
+export function getTraderScore(address: string): TraderPointsRow | null {
+  return getTraderPoints(address);
+}
+
+export function getTotalScoreTraders(): number {
+  return getTotalPointsTraders();
+}
+
+/** Aggregator last-run timestamp for pado score aggregation. 0 if never run. */
+export function getPadoAggregatorLastRun(): number {
+  const v = getIndexerState('pado_aggregator_last_run_ms');
+  return v ? Number(v) : 0;
 }
 
 // ===== Points Snapshots =====

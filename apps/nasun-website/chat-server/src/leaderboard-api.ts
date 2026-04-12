@@ -2,6 +2,16 @@
  * Leaderboard REST API handler module.
  * Separated from server.ts for maintainability and extensibility.
  * All endpoints are conditionally enabled via DEEPBOOK_PACKAGE env var.
+ *
+ * Currently hosts pado-specific endpoints under /api/pado/* (Score API) alongside
+ * legacy unprefixed routes. Table trader_points is historical name; values are
+ * DEX trading scores. Pado-specific logic is scheduled to migrate to
+ * apps/pado/data-server/ when trigger conditions met.
+ *
+ * Route convention: pado-specific = /api/pado/*, future apps = /api/{app}/*.
+ * Legacy unprefixed routes (/api/leaderboard/*, /api/trades/*, /api/orders/*,
+ * /api/competitions/*, /api/feed) pending follow-up migration.
+ * See .claude/handoffs/2026-04-12-chat-server-role-clarification.md
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
@@ -14,6 +24,7 @@ import {
   getTotalFillsCount, getTotalTradersCount, getTotalPnlTradersCount,
   getIndexerState,
   getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
+  getScoreLeaderboard, getTraderScore, getTotalScoreTraders, getPadoAggregatorLastRun,
   getPointsSnapshot, getPointsRankHistory, getSnapshotDates, getSnapshotTotalTraders,
   generatePointsSnapshot,
   getTraderFillsByAddress, computeCostBasis,
@@ -22,8 +33,9 @@ import {
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
 } from './leaderboard-store.js';
-import { VALID_PERIODS, VALID_MODES } from './leaderboard-types.js';
+import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
+import { mapRowToListItem } from './leaderboard-mapper.js';
 
 // ===== Dependency injection interface =====
 
@@ -195,6 +207,9 @@ export function handleLeaderboardRequest(
     if (pathname === '/api/leaderboard/points' && method === 'GET') {
       return handlePointsLeaderboard(res, url, corsHeaders);
     }
+    if (pathname === '/api/pado/leaderboard/score' && method === 'GET') {
+      return handleScoreLeaderboard(res, url, corsHeaders);
+    }
     if (pathname === '/api/leaderboard/snapshots' && method === 'GET') {
       return handleSnapshots(res, url, corsHeaders);
     }
@@ -219,6 +234,11 @@ export function handleLeaderboardRequest(
     const pointsMatch = pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/points$/);
     if (pointsMatch && method === 'GET') {
       return handleTraderPoints(res, corsHeaders, pointsMatch[1]);
+    }
+
+    const scoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/score$/);
+    if (scoreMatch && method === 'GET') {
+      return handleTraderScore(res, url, corsHeaders, scoreMatch[1]);
     }
 
     const snapshotHistoryMatch = pathname.match(/^\/api\/leaderboard\/snapshots\/history\/(0x[a-fA-F0-9]{64})$/);
@@ -490,19 +510,102 @@ function handlePointsLeaderboard(
   const totalTraders = getTotalPointsTraders();
   const addresses = rows.map((r) => r.address);
   const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
-  const followerCnts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
-  const gpSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+  const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
+  const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+  const extras = { nicknames, followerCounts, genesisPassSet };
   const traders = rows.map((row) => ({
-    rank: row.rank, address: row.address,
-    nickname: nicknames.get(row.address) ?? null,
-    hasGenesisPass: gpSet.has(row.address),
-    totalPoints: row.total_points, tradeCount: row.trade_count,
-    volumeUsd: formatQuoteVolume(row.volume_quote),
-    rankChange: row.prev_rank > 0 ? row.prev_rank - row.rank : 0,
-    followerCount: followerCnts.get(row.address) ?? 0,
+    ...mapRowToListItem(row, extras, formatQuoteVolume),
+    totalPoints: row.total_points,
   }));
   res.writeHead(200, corsHeaders);
   res.end(JSON.stringify({ traders, updatedAt: rows[0]?.updated_at ?? 0, totalTraders }));
+  return true;
+}
+
+// ===== Score (pado-specific) =====
+// Reads same trader_points table as points endpoint; renames field to totalScore.
+// Includes aggregator cycle-level updatedAt via getPadoAggregatorLastRun() for
+// settle-pado staleness guard. Response Cache-Control max-age=30 relies on
+// CloudFront /chat/* CachingDisabled — CDN bypass, browser caches 30s.
+
+function handleScoreLeaderboard(
+  res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
+): boolean {
+  const scope = url.searchParams.get('scope') || 'alltime';
+  if (!VALID_SCORE_SCOPES.has(scope)) {
+    res.writeHead(400, corsHeaders);
+    res.end(JSON.stringify({
+      error: `scope '${scope}' not supported`,
+      supported: Array.from(VALID_SCORE_SCOPES),
+    }));
+    return true;
+  }
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+  const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+  const rows = getScoreLeaderboard(limit, offset);
+  const totalTraders = getTotalScoreTraders();
+  const addresses = rows.map((r) => r.address);
+  const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
+  const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
+  const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+  const extras = { nicknames, followerCounts, genesisPassSet };
+  const traders = rows.map((row) => ({
+    ...mapRowToListItem(row, extras, formatQuoteVolume),
+    totalScore: row.total_points,
+  }));
+  res.writeHead(200, {
+    ...corsHeaders,
+    'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
+  });
+  res.end(JSON.stringify({
+    scope,
+    traders,
+    updatedAt: getPadoAggregatorLastRun(),
+    totalTraders,
+  }));
+  return true;
+}
+
+function handleTraderScore(
+  res: ServerResponse, url: URL, corsHeaders: Record<string, string>, address: string,
+): boolean {
+  const scope = url.searchParams.get('scope') || 'alltime';
+  if (!VALID_SCORE_SCOPES.has(scope)) {
+    res.writeHead(400, corsHeaders);
+    res.end(JSON.stringify({
+      error: `scope '${scope}' not supported`,
+      supported: Array.from(VALID_SCORE_SCOPES),
+    }));
+    return true;
+  }
+  const row = getTraderScore(address);
+  const nickname = getDisplayName(address);
+  const responseHeaders = {
+    ...corsHeaders,
+    'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
+  };
+  if (!row) {
+    res.writeHead(200, responseHeaders);
+    res.end(JSON.stringify({
+      address, nickname, totalScore: 0,
+      breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 },
+      rank: 0, scope,
+    }));
+    return true;
+  }
+  res.writeHead(200, responseHeaders);
+  res.end(JSON.stringify({
+    address, nickname,
+    totalScore: row.total_points,
+    breakdown: {
+      trades: row.points_from_trades,
+      volume: row.points_from_volume,
+      diversity: row.points_from_diversity,
+      pnl: row.points_from_pnl ?? 0,
+    },
+    rank: row.rank,
+    scope,
+  }));
   return true;
 }
 
