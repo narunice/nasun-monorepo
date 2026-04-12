@@ -175,6 +175,26 @@ export function clearZkLoginState(): void {
   localStorage.removeItem(ZKLOGIN_STATE_KEY);
 }
 
+/**
+ * Clear pending (in-flight) zkLogin OAuth artifacts: session, CSRF state,
+ * return URL. Call this when starting a DIFFERENT auth flow (e.g. Cognito
+ * account linking) so stale zkLogin keys don't misroute the OAuth callback
+ * back to <ZkLoginCallback>.
+ *
+ * Does NOT touch the persisted logged-in state (ZKLOGIN_STATE_KEY).
+ *
+ * Call-site wins: a concurrent zkLogin in another tab would be invalidated,
+ * which is acceptable because sessionStorage is per-tab anyway and the
+ * stale-session scenario is precisely the bug this function addresses.
+ *
+ * @internal intended for OAuth linking entry points only.
+ */
+export function clearPendingZkLoginFlow(): void {
+  clearZkLoginSession();
+  clearOAuthCsrfState();
+  clearZkLoginReturnUrl();
+}
+
 // ============================================
 // OAuth CSRF State Management
 // ============================================

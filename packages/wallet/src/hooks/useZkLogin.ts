@@ -12,6 +12,7 @@ import { ZkLoginError } from '../types/zklogin';
 import {
   configureZkLogin,
   getZkLoginState,
+  getZkLoginSession,
   clearZkLoginState,
   startZkLogin,
   completeZkLogin,
@@ -242,17 +243,36 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
  * Hook to check if we're in an OAuth callback
  * Useful for detecting redirect from OAuth provider
  * Includes CSRF state validation for security
+ *
+ * Non-reactive by design: reads directly from storage rather than the
+ * Zustand store to avoid a render-order race with the store hydration
+ * useEffect. Re-renders of <ZkLoginCallback> come from its own internal
+ * setState (setStep), which re-invokes this hook and re-reads storage.
  */
 export function useZkLoginCallback(): {
   isCallback: boolean;
   jwt: string | null;
   error: string | null;
 } {
-  // Use Zustand store to check if we should parse callback
-  const { state } = useZkLoginStore();
+  // Read from source of truth directly to avoid the render-order race with
+  // the store hydration useEffect in useZkLogin.
+  const persistedState =
+    typeof window !== 'undefined' ? getZkLoginState() : null;
+  const hasPendingSession =
+    typeof window !== 'undefined' && !!getZkLoginSession();
 
-  // If already logged in, not a callback
-  if (state?.proof) {
+  // Implicit Flow returns OAuth errors in the URL hash (`#error=...`).
+  // Callback.tsx only checks query-string errors, so hash errors must flow
+  // into the error branch below even when a prior login is persisted.
+  const hasErrorInHash =
+    typeof window !== 'undefined' &&
+    window.location.hash.includes('error=');
+
+  // If already logged in AND no in-flight OAuth session AND URL has no
+  // OAuth error, not a callback. completeZkLogin() clears the session on
+  // success, so "persisted state + no pending session" means we already
+  // finished processing.
+  if (persistedState?.proof && !hasPendingSession && !hasErrorInHash) {
     return {
       isCallback: false,
       jwt: null,
