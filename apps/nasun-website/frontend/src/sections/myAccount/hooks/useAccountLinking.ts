@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { clearPendingZkLoginFlow } from "@nasun/wallet";
 import logger from "@/lib/logger";
 import { User } from "@/types/user";
 import { buildGoogleAuthUrl } from "@/features/auth/utils/googleAuthUrl";
@@ -17,6 +18,9 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
   const queryClient = useQueryClient();
 
   const handleLinkGoogle = async () => {
+    // Drop any in-flight zkLogin artifacts so the Google OAuth callback
+    // is not mis-routed to <ZkLoginCallback>. Persisted login state is preserved.
+    clearPendingZkLoginFlow();
     setIsLinking(true);
     setError(null);
     try {
@@ -38,6 +42,9 @@ export const useAccountLinking = ({ user }: UseAccountLinkingProps) => {
   };
 
   const handleLinkTwitter = async () => {
+    // Drop any in-flight zkLogin artifacts so the Twitter OAuth callback
+    // is not mis-routed to <ZkLoginCallback>. Persisted login state is preserved.
+    clearPendingZkLoginFlow();
     setIsLinking(true);
     setError(null);
     try {
