@@ -73,9 +73,13 @@ function recordMessageSent(): void {
 
 // ===== Message Formatting =====
 
+function toDisplayTicker(symbol: string): string {
+  return symbol === 'NASUN' ? 'NSN' : symbol;
+}
+
 function formatAlert(alert: PriceAlert): string {
   const { type, poolId, data } = alert;
-  const symbol = getPoolSymbol(poolId) ?? 'tokens';
+  const symbol = toDisplayTicker(getPoolSymbol(poolId) ?? 'tokens');
   const pair = `${symbol}/NUSDC`;
 
   switch (type) {
@@ -111,7 +115,7 @@ function buildSummaryPrompt(states: Map<string, PoolState>): string {
 
   for (const [poolId, state] of states) {
     if (state.fillCount === 0) continue;
-    const symbol = getPoolSymbol(poolId) ?? 'Unknown';
+    const symbol = toDisplayTicker(getPoolSymbol(poolId) ?? 'Unknown');
     lines.push(
       `\n[${symbol}/NUSDC pool]`,
       `- Last price: $${state.lastPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
