@@ -89,7 +89,7 @@ export interface ChatSigner {
 // ===== ChatService =====
 
 const RECONNECT_BASE_MS = 1000;
-const RECONNECT_MAX_MS = 30_000;
+const RECONNECT_MAX_MS = 15_000;
 const RECONNECT_MULTIPLIER = 2;
 const CONNECTION_TIMEOUT_MS = 10_000;
 
@@ -551,6 +551,10 @@ export class ChatService {
       RECONNECT_MAX_MS,
     );
     this.reconnectAttempts++;
+
+    // Surface the in-progress retry so the UI can distinguish a transient
+    // reconnect from a permanent "Offline" state during backoff wait.
+    this.setStatus('reconnecting');
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
