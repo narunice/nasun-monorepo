@@ -817,6 +817,9 @@ const heartbeatTimer = setInterval(() => {
     (ws as any)._isAlive = false;
     if (ws.readyState === WebSocket.OPEN) {
       ws.ping();
+      // Also send a data-level heartbeat: browsers do not expose WS protocol
+      // pings to JavaScript, so clients rely on this frame to detect activity.
+      send(ws, { type: 'heartbeat' });
     }
 
     // Also check session expiry during heartbeat
