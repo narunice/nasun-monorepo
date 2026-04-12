@@ -8,6 +8,7 @@ import healthRoutes from './routes/health.js';
 import statsRoutes from './routes/stats.js';
 import pointsRoutes from './routes/points.js';
 import ecosystemRoutes from './routes/ecosystem.js';
+import creatorsAppreciationRoutes from './routes/creators-appreciation.js';
 import { startPointsScanner, stopPointsScanner } from './scanner/points-scanner.js';
 
 const PORT = Number(process.env.PORT ?? 3200);
@@ -38,12 +39,14 @@ app.use(
 app.use('/api/v1/stats/*', rateLimiter({ windowMs: 60_000, max: 120 }));
 app.use('/api/v1/points/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 app.use('/api/v1/ecosystem/*', rateLimiter({ windowMs: 60_000, max: 60 }));
+app.use('/api/v1/creators-appreciation/*', rateLimiter({ windowMs: 60_000, max: 30 }));
 
 // Routes
 app.route('/api/v1/health', healthRoutes);
 app.route('/api/v1/stats', statsRoutes);
 app.route('/api/v1/points', pointsRoutes);
 app.route('/api/v1/ecosystem', ecosystemRoutes);
+app.route('/api/v1/creators-appreciation', creatorsAppreciationRoutes);
 
 // Root
 app.get('/', (c) => c.json({ service: 'explorer-api', version: '0.1.0' }));

@@ -12,10 +12,13 @@
   "dependencies": {
     "@hono/node-server": "^1.13.8",
     "hono": "^4.7.5",
+    "jose": "^5.2.0",
     "postgres": "^3.4.5",
     "tsx": "^4.19.4"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.400.0",
+    "@aws-sdk/lib-dynamodb": "^3.400.0",
     "@types/node": "^22.16.0",
     "typescript": "~5.9.3"
   }
