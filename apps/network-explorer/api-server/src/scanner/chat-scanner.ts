@@ -20,6 +20,8 @@
 import { pointsDb } from '../db.js';
 import type { PointsInsert } from './referral-bonus.js';
 
+// Array parser retained for future multi-app expansion; current policy is single URL
+// (nasun-chat-server hub). See .claude/handoffs/2026-04-12-chat-server-role-clarification.md
 const CHAT_SERVER_URLS = (process.env.CHAT_SERVER_URLS || '')
   .split(',')
   .map((u) => u.trim())
