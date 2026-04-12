@@ -209,22 +209,42 @@ async function checkAndExecuteOrders(
         store.markFilled(order.id, result.txDigest);
         console.log(`[keeper] Order ${order.id} filled: ${result.txDigest}`);
       } else {
-        store.markFailed(order.id, result.error || 'Unknown error');
-        console.error(`[keeper] Order ${order.id} execution failed: ${result.error}`);
+        const msg = result.error || 'Unknown error';
+        const permanent = isPermanentFailure(msg);
+        store.markFailed(order.id, msg, permanent);
+        console.error(`[keeper] Order ${order.id} execution failed (permanent=${permanent}): ${msg}`);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      // TradeCap deleted, ownership mismatch, or signer issues are permanent failures
-      const permanent = msg.includes('ObjectNotFound')
-        || msg.includes('ObjectDeleted')
-        || msg.includes('Object is not owned')
-        || msg.includes('not owned by the keeper')
-        || msg.includes('OwnerMismatch')
-        || msg.includes('InvalidSigner');
+      const permanent = isPermanentFailure(msg);
       store.markFailed(order.id, msg, permanent);
       console.error(`[keeper] Order ${order.id} error (permanent=${permanent}): ${msg}`);
     }
   }
+}
+
+// Classify execution error as permanent (position no longer executable) vs transient (retry).
+// Permanent: TradeCap/BalanceManager ownership loss, signer mismatch, insufficient BM balance
+// (EBalanceManagerBalanceTooLow = MoveAbort code 3 on balance_manager::withdraw_with_proof;
+// position was closed via other path — retrying forever produces no value).
+function isPermanentFailure(msg: string): boolean {
+  if (
+    msg.includes('ObjectNotFound') ||
+    msg.includes('ObjectDeleted') ||
+    msg.includes('Object is not owned') ||
+    msg.includes('not owned by the keeper') ||
+    msg.includes('OwnerMismatch') ||
+    msg.includes('InvalidSigner')
+  ) {
+    return true;
+  }
+  // MoveAbort in balance_manager::withdraw_with_proof — position balance empty or proof invalid;
+  // the function can only abort with EBalanceManagerBalanceTooLow (3) or EInvalidProof (2),
+  // both unrecoverable from the keeper's perspective.
+  if (msg.includes('balance_manager') && msg.includes('withdraw_with_proof')) {
+    return true;
+  }
+  return false;
 }
 
 function checkTriggerCondition(order: TPSLOrder, currentPrice: number): boolean {
