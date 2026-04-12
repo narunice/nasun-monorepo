@@ -81,11 +81,12 @@ export async function runDailyNftChecks(
     console.error('[DailyNftCheck] Staking daily points error (non-fatal):', err);
   }
 
-  // --- Wallet Transfer Detection (RPC-based) ---
+  // Yesterday/-2 wallet-transfer catch-up (PM2 downtime recovery).
+  // Today's detection is handled by scanTodayWalletTransfers on every loop.
   try {
-    transfersDetected = await detectWalletTransfers(identityToWallet);
+    transfersDetected = await detectWalletTransfers(identityToWallet, [1, 2]);
   } catch (err) {
-    console.error('[DailyNftCheck] Wallet transfer detection error (non-fatal):', err);
+    console.error('[DailyNftCheck] Wallet transfer catch-up error (non-fatal):', err);
   }
 
   const totalInserts = passiveAwarded + stakingAwarded + transfersDetected;
@@ -343,28 +344,75 @@ interface TxQueryResponse {
   hasNextPage: boolean;
 }
 
+// Persistent round-robin cursor for the per-loop today-only path.
+// Scoped per UTC date so it resets cleanly at midnight without extra code.
+let todayCursor: { date: string; offset: number } = { date: '', offset: 0 };
+
+// Max wallets to RPC-probe per single scanTodayWalletTransfers() call.
+// With ~100k wallets and ~50ms per RPC, an uncapped pass easily exceeds the
+// 3-min scanLoop timeout. Cap keeps each loop bounded; the cursor ensures
+// coverage across loops.
+const TODAY_WALLETS_PER_LOOP = 500;
+
 /**
  * Detect wallet transfers (native coin transfers) for registered users.
  * Uses suix_queryTransactionBlocks RPC to find TransferObjects commands.
- * Runs once per day, lookback 2 days for PM2 downtime recovery.
  * Inserts 1 point per user per day (category: wallet-transfer, type: transfer).
+ *
+ * @param daysRange   [0, 2] for the daily catch-up, [0, 0] for the per-loop
+ *                    fast path. Narrowing to today keeps RPC load in check.
+ * @param maxPerDay   Optional cap on wallets to probe per date. Undefined =
+ *                    process all uncredited wallets (used by the once-a-day
+ *                    catch-up path; daily budget is amortized there).
  */
 async function detectWalletTransfers(
   identityToWallet: Map<string, string>,
+  daysRange: [number, number] = [0, 2],
+  maxPerDay?: number,
 ): Promise<number> {
   if (!pointsDb || identityToWallet.size === 0) return 0;
 
   const now = new Date();
   let totalDetected = 0;
+  const [dayFrom, dayTo] = daysRange;
 
-  for (let daysAgo = 0; daysAgo <= 2; daysAgo++) {
+  for (let daysAgo = dayFrom; daysAgo <= dayTo; daysAgo++) {
     const targetDate = new Date(now);
     targetDate.setUTCDate(targetDate.getUTCDate() - daysAgo);
     const dateStr = targetDate.toISOString().slice(0, 10);
     const dayStartMs = new Date(`${dateStr}T00:00:00Z`).getTime();
     const dayEndMs = dayStartMs + 86_400_000;
 
-    for (const [identityId, wallet] of identityToWallet) {
+    // Fetch already-credited identities via a single indexed scan (no ANY()
+    // with 100k elements — that forced a seq scan on activity_points).
+    const credited = await pointsDb`
+      SELECT identity_id
+      FROM activity_points
+      WHERE category = 'wallet-transfer'
+        AND tx_timestamp >= ${dateStr}::date
+        AND tx_timestamp < (${dateStr}::date + interval '1 day')
+    `;
+    const alreadyCredited = new Set(credited.map(r => r.identity_id as string));
+
+    // Build iteration order. For per-loop path (maxPerDay set and date == today),
+    // round-robin via a persistent cursor so successive loops cover new ground.
+    const entries = [...identityToWallet.entries()];
+    const isTodayFastPath = maxPerDay !== undefined && daysAgo === 0;
+    let ordered = entries;
+    if (isTodayFastPath) {
+      if (todayCursor.date !== dateStr) todayCursor = { date: dateStr, offset: 0 };
+      const o = todayCursor.offset % entries.length;
+      ordered = entries.slice(o).concat(entries.slice(0, o));
+    }
+
+    let probed = 0;
+    let lastProbedIdx = 0;
+    for (let i = 0; i < ordered.length; i++) {
+      const [identityId, wallet] = ordered[i];
+      if (alreadyCredited.has(identityId)) continue;
+      if (maxPerDay !== undefined && probed >= maxPerDay) break;
+      probed++;
+      lastProbedIdx = i + 1;
       const digest = `wt:${identityId}:${dateStr}`;
 
       try {
@@ -412,7 +460,32 @@ async function detectWalletTransfers(
         // Skip user on RPC error (non-fatal)
       }
     }
+
+    if (isTodayFastPath) {
+      const base = todayCursor.offset % entries.length;
+      todayCursor = {
+        date: dateStr,
+        offset: (base + lastProbedIdx) % entries.length,
+      };
+    }
   }
 
   return totalDetected;
+}
+
+/**
+ * Per-scan-loop entry point: detect TODAY's wallet transfers only.
+ * Yesterday/day-before-yesterday are handled by the daily-once path in
+ * runDailyNftChecks so a late-hour transfer still credits same-day
+ * base_score without DOS'ing the fullnode every minute.
+ */
+export async function scanTodayWalletTransfers(
+  identityToWallet: Map<string, string>,
+): Promise<number> {
+  try {
+    return await detectWalletTransfers(identityToWallet, [0, 0], TODAY_WALLETS_PER_LOOP);
+  } catch (err) {
+    console.error('[DailyNftCheck] Today wallet transfer scan error:', (err as Error).message);
+    return 0;
+  }
 }

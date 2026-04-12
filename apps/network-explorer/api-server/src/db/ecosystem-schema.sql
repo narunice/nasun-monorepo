@@ -6,6 +6,17 @@
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
   ON activity_points(identity_id, tx_timestamp);
 
+-- ⚠ SCHEMA CHANGES TO THE MATVIEW BELOW DO NOT AUTO-APPLY ⚠
+-- CREATE MATERIALIZED VIEW has no OR REPLACE form and the IF NOT EXISTS
+-- clause short-circuits when the view already exists. The scanner's DB role
+-- also lacks CREATE privilege on schema public, so runtime DDL from the
+-- application is not an option. To change the formula:
+--   1. Update ecosystem-matview-migration.ts (MATVIEW_SQL + bump MATVIEW_VERSION)
+--   2. Update this file to match (canonical source for humans)
+--   3. Deploy code. Scanner logs a version-mismatch WARN on boot.
+--   4. A DB superuser runs the migration CLI (pnpm build &&
+--      node dist/db/ecosystem-matview-migration.js) or equivalent psql.
+--
 -- 2. Materialized view: daily ecosystem base scores per identity
 -- base_score = weighted sum of distinct activity categories per day
 -- Most categories count as 1; pado-dex counts as 2 (higher commitment).
