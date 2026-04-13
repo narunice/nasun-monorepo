@@ -27,6 +27,10 @@ export interface UserProfile {
   };
   googleEmail?: string;
   linkedProviders?: string[];
+  isAccountFlagged?: boolean;
+  flagReason?: string;
+  flaggedAt?: string;
+  flaggedBy?: string;
 }
 
 export interface LinkedAccountInfo {
@@ -139,8 +143,11 @@ export interface ListUsersResponse {
   totalPages: number;
   stats?: {
     totalRegistered: number;
+    totalRegisteredExBot?: number;
+    botCount?: number;
     telegramMembers: number;
     xConnected: number;
+    flagged?: number;
   };
 }
 

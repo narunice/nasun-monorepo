@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { useUserList, useUserDetail } from "../../hooks/useUserManagement";
 import { useAdminAuth } from "../../hooks/useAdminAuth";
 import { truncateAddress } from "@/utils/addressUtils";
 import type { UserProfile } from "../../types";
+import { getAccountFlag, setAccountFlag } from "../../services/accountFlagApi";
 
 const FILTERS = [
   { label: "All", value: "" },
@@ -12,6 +15,7 @@ const FILTERS = [
   { label: "Google", value: "google_connected" },
   { label: "TG", value: "tg_connected" },
   { label: "No Connections", value: "no_connections" },
+  { label: "Flagged", value: "flagged" },
 ] as const;
 const PAGE_SIZE = 50;
 
@@ -74,6 +78,178 @@ function RoleBadge({ role }: { role?: string }) {
     <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-300">
       ADMIN
     </span>
+  );
+}
+
+function RowFlagButton({ user }: { user: UserProfile }) {
+  const { cognitoToken } = useAdminAuth();
+  const queryClient = useQueryClient();
+  const isAdmin = user.role === "ADMIN";
+
+  const mutation = useMutation({
+    mutationFn: (params: { flagged: boolean; reason?: string }) =>
+      setAccountFlag(cognitoToken!, user.identityId, params.flagged, params.reason),
+    onSuccess: (data) => {
+      toast.success(data.isAccountFlagged ? "Account flagged" : "Account unflagged");
+      queryClient.invalidateQueries({ queryKey: ["admin-account-flag", user.identityId] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err: Error) => {
+      toast.error(`Flag update failed: ${err.message}`);
+    },
+  });
+
+  if (isAdmin) {
+    return <span className="text-xs text-nasun-white/30">—</span>;
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (user.isAccountFlagged) {
+      mutation.mutate({ flagged: false });
+      return;
+    }
+    const reason = window.prompt("Reason for flagging (visible to admins only):", "");
+    if (reason === null) return;
+    if (!window.confirm(
+      `Flag @${user.originalTwitterHandle || user.twitterHandle || user.username}? ` +
+      "They will be blocked from airdrop registration. Existing points are not modified.",
+    )) return;
+    mutation.mutate({ flagged: true, reason: reason.trim() });
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={mutation.isPending}
+      className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
+        user.isAccountFlagged
+          ? "bg-nasun-white/10 hover:bg-nasun-white/15 text-nasun-white/80"
+          : "bg-red-500/15 hover:bg-red-500/25 text-red-300"
+      } disabled:opacity-50`}
+      title={user.isAccountFlagged ? "Unflag this account" : "Flag this account (excludes from airdrops)"}
+    >
+      {mutation.isPending ? "..." : user.isAccountFlagged ? "Unflag" : "Flag"}
+    </button>
+  );
+}
+
+function FlaggedBadge({ flagged }: { flagged?: boolean }) {
+  if (!flagged) return null;
+  return (
+    <span
+      className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-300"
+      title="Account flagged: excluded from airdrops"
+    >
+      FLAGGED
+    </span>
+  );
+}
+
+function AccountFlagPanel({ user }: { user: UserProfile }) {
+  const { cognitoToken } = useAdminAuth();
+  const queryClient = useQueryClient();
+  const isSelf = false; // Backend also enforces; UI just hides the action below.
+
+  const { data: flagStatus } = useQuery({
+    queryKey: ["admin-account-flag", user.identityId],
+    queryFn: () => getAccountFlag(cognitoToken!, user.identityId),
+    enabled: !!cognitoToken && !!user.identityId,
+    staleTime: 30_000,
+    initialData: user.isAccountFlagged !== undefined
+      ? {
+          identityId: user.identityId,
+          isAccountFlagged: user.isAccountFlagged ?? false,
+          flagReason: user.flagReason ?? null,
+          flaggedAt: user.flaggedAt ?? null,
+          flaggedBy: user.flaggedBy ?? null,
+        }
+      : undefined,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (params: { flagged: boolean; reason?: string }) =>
+      setAccountFlag(cognitoToken!, user.identityId, params.flagged, params.reason),
+    onSuccess: (data) => {
+      toast.success(data.isAccountFlagged ? "Account flagged" : "Account unflagged");
+      queryClient.invalidateQueries({ queryKey: ["admin-account-flag", user.identityId] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err: Error) => {
+      toast.error(`Flag update failed: ${err.message}`);
+    },
+  });
+
+  const flagged = flagStatus?.isAccountFlagged ?? false;
+  const isAdmin = user.role === "ADMIN";
+
+  return (
+    <div
+      className={`mt-2 rounded p-3 border ${
+        flagged ? "bg-red-500/5 border-red-400/30" : "bg-nasun-white/[0.03] border-nasun-white/10"
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs uppercase tracking-widest text-nasun-white/60">Account Flag</span>
+        <span className={`text-xs font-medium ${flagged ? "text-red-300" : "text-nasun-white/40"}`}>
+          {flagged ? "FLAGGED" : "Not flagged"}
+        </span>
+      </div>
+
+      {flagged && flagStatus && (
+        <div className="text-xs text-nasun-white/70 space-y-0.5 mb-3">
+          {flagStatus.flagReason && (
+            <div className="text-red-200/80">Reason: {flagStatus.flagReason}</div>
+          )}
+          {flagStatus.flaggedAt && (
+            <div>
+              At: {new Date(flagStatus.flaggedAt).toLocaleString("en-US")}
+            </div>
+          )}
+          {flagStatus.flaggedBy && (
+            <div className="font-mono break-all">By: {flagStatus.flaggedBy}</div>
+          )}
+        </div>
+      )}
+
+      {isAdmin ? (
+        <p className="text-xs text-nasun-white/40">Admin accounts cannot be flagged.</p>
+      ) : flagged ? (
+        <Button
+          variant="outlineC5"
+          size="sm"
+          onClick={() => mutation.mutate({ flagged: false })}
+          disabled={mutation.isPending || isSelf}
+          className="w-full"
+        >
+          {mutation.isPending ? "Updating..." : "Unflag account"}
+        </Button>
+      ) : (
+        <Button
+          variant="c4"
+          size="sm"
+          onClick={() => {
+            const reason = window.prompt("Reason for flagging (visible to admins only):", "");
+            if (reason === null) return;
+            if (
+              !window.confirm(
+                "Flag this account? They will be blocked from airdrop registration. " +
+                "Existing points are not modified.",
+              )
+            ) return;
+            mutation.mutate({ flagged: true, reason: reason.trim() });
+          }}
+          disabled={mutation.isPending}
+          className="w-full bg-red-600/80 hover:bg-red-600 text-white"
+        >
+          {mutation.isPending ? "Updating..." : "Flag account (excludes from airdrops)"}
+        </Button>
+      )}
+
+      <p className="text-[10px] text-nasun-white/40 mt-2">
+        Flag persists in UserProfiles. Existing ecosystem points are never modified.
+      </p>
+    </div>
   );
 }
 
@@ -152,6 +328,11 @@ function UserDetailModal({
             This account has been deactivated.
           </div>
         )}
+
+        {/* Account Flag controls */}
+        <div className="mb-6">
+          <AccountFlagPanel user={user} />
+        </div>
 
         {/* Fields grid */}
         <dl className="grid grid-cols-2 gap-4 mb-6">
@@ -328,6 +509,7 @@ export function UsersTab() {
                     <th className="text-left py-3 px-2 font-medium">TG</th>
                     <th className="text-left py-3 px-2 font-medium">Role</th>
                     <th className="text-left py-3 px-2 font-medium">Joined</th>
+                    <th className="text-right py-3 px-2 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-nasun-white/5">
@@ -335,7 +517,11 @@ export function UsersTab() {
                     <tr
                       key={user.identityId}
                       onClick={() => setSelectedUserId(user.identityId)}
-                      className="hover:bg-nasun-white/5 cursor-pointer transition-colors"
+                      className={`cursor-pointer transition-colors ${
+                        user.isAccountFlagged
+                          ? "bg-red-500/10 hover:bg-red-500/15 border-l-2 border-red-400/60"
+                          : "hover:bg-nasun-white/5"
+                      }`}
                     >
                       <td className="py-3 px-2">
                         {user.profileImageUrl ? (
@@ -387,7 +573,10 @@ export function UsersTab() {
                         )}
                       </td>
                       <td className="py-3 px-2">
-                        <RoleBadge role={user.role} />
+                        <div className="flex flex-wrap gap-1">
+                          <RoleBadge role={user.role} />
+                          <FlaggedBadge flagged={user.isAccountFlagged} />
+                        </div>
                       </td>
                       <td className="py-3 px-2 text-nasun-white/60 whitespace-nowrap">
                         {user.createdAt
@@ -400,6 +589,9 @@ export function UsersTab() {
                               second: "2-digit",
                             })
                           : "-"}
+                      </td>
+                      <td className="py-3 px-2 text-right whitespace-nowrap">
+                        <RowFlagButton user={user} />
                       </td>
                     </tr>
                   ))}
