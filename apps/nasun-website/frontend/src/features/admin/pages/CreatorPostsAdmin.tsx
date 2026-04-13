@@ -26,11 +26,11 @@ import {
   POINTS_MAX,
   safeImageUrl,
   isSafeHandle,
-  openPostUrlSafely,
   formatDate,
   ApiError,
 } from '@/features/creator-posts';
 import type { CreatorPost, CreatorPostStatus } from '@/features/creator-posts';
+import { TweetEmbed } from '../components/TweetEmbed';
 
 const FALLBACK_AVATAR =
   'data:image/svg+xml;utf8,' +
@@ -202,8 +202,8 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
   const [savedPoints, setSavedPoints] = useState<number | undefined>(post.scoredPoints);
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [showGrant, setShowGrant] = useState(false);
-  const [grantConfirmed, setGrantConfirmed] = useState(false);
+  const [grantPoints, setGrantPoints] = useState<number | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const avatarUrl = useMemo(
     () => safeImageUrl(post.twitterProfileImageUrl),
@@ -214,22 +214,29 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
     ? `https://x.com/${encodeURIComponent(post.twitterHandle)}`
     : null;
 
+  // Safe post URL — validated host+scheme before binding to anchor.
+  const safePostHref = useMemo(() => {
+    try {
+      const u = new URL(post.postUrl);
+      if (u.protocol !== 'https:') return null;
+      if (!['x.com', 'twitter.com'].includes(u.host)) return null;
+      return u.toString();
+    } catch {
+      return null;
+    }
+  }, [post.postUrl]);
+
   const canEditPoints = post.status === 'PENDING' || post.status === 'SCORED';
-  const canGrant = post.status === 'SCORED' && savedPoints != null;
   const canReject = canEditPoints;
 
-  const handleSavePoints = async () => {
+  // Save click: validate and open Grant confirmation modal directly.
+  const handleSaveClick = () => {
     const n = parseInt(pointsInput, 10);
     if (!Number.isInteger(n) || n < POINTS_MIN || n > POINTS_MAX) {
       toast.error(`Points must be ${POINTS_MIN}-${POINTS_MAX}`);
       return;
     }
-    try {
-      await onScore(n);
-      setSavedPoints(n);
-    } catch {
-      /* toast handled in mutation */
-    }
+    setGrantPoints(n);
   };
 
   const handleReject = async () => {
@@ -242,11 +249,18 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
     setShowReject(false);
   };
 
-  const handleGrant = async () => {
-    if (!grantConfirmed) return;
-    await onGrant();
-    setShowGrant(false);
-    setGrantConfirmed(false);
+  // Grant confirm: score (if needed) then grant, chained.
+  const handleGrantConfirm = async () => {
+    if (grantPoints == null) return;
+    try {
+      if (post.status === 'PENDING' || savedPoints !== grantPoints) {
+        await onScore(grantPoints);
+        setSavedPoints(grantPoints);
+      }
+      await onGrant();
+    } finally {
+      setGrantPoints(null);
+    }
   };
 
   return (
@@ -291,17 +305,31 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
             <span className="text-xs text-white/40">{formatDate(post.createdAt)}</span>
           </div>
           <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-white/70 break-all">{post.postUrl}</span>
+            {safePostHref ? (
+              <a
+                href={safePostHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-nasun-c4 hover:underline break-all"
+              >
+                {post.postUrl}
+              </a>
+            ) : (
+              <span className="text-xs text-white/70 break-all">{post.postUrl}</span>
+            )}
             <button
               type="button"
-              onClick={() => openPostUrlSafely(post.postUrl)}
+              onClick={() => setShowPreview((v) => !v)}
               className="text-xs text-nasun-c4 hover:underline shrink-0"
             >
-              Open
+              {showPreview ? 'Hide preview' : 'Preview'}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Tweet preview (X widgets.js embed) */}
+      {showPreview && <TweetEmbed tweetId={post.postId} />}
 
       {/* Rejection reason (when rejected) */}
       {post.status === 'REJECTED' && post.rejectionReason && (
@@ -311,44 +339,35 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
       )}
 
       {/* Row 2: Actions (hidden when terminal) */}
-      {(canEditPoints || canGrant) && (
+      {canEditPoints && (
         <div className="flex items-center gap-2 flex-wrap pt-1">
-          {canEditPoints && (
-            <>
-              <input
-                type="number"
-                min={POINTS_MIN}
-                max={POINTS_MAX}
-                value={pointsInput}
-                onChange={(e) => setPointsInput(e.target.value)}
-                placeholder={`${POINTS_MIN}-${POINTS_MAX}`}
-                disabled={disabled}
-                className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50"
-              />
-              <Button
-                variant="outlineC5" size="sm"
-                onClick={handleSavePoints}
-                disabled={disabled || !pointsInput}
-              >
-                Save
-              </Button>
-              <Button
-                variant="outlineC5" size="sm"
-                onClick={() => setShowReject(true)}
-                disabled={disabled || !canReject}
-              >
-                Reject
-              </Button>
-            </>
-          )}
-          {canGrant && (
-            <Button
-              variant="c4" size="sm"
-              onClick={() => setShowGrant(true)}
+          <input
+            type="number"
+            min={POINTS_MIN}
+            max={POINTS_MAX}
+            value={pointsInput}
+            onChange={(e) => setPointsInput(e.target.value)}
+            placeholder={`${POINTS_MIN}-${POINTS_MAX}`}
+            disabled={disabled}
+            className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50"
+          />
+          <Button
+            variant="c4" size="sm"
+            onClick={handleSaveClick}
+            disabled={disabled || !pointsInput}
+          >
+            Save
+          </Button>
+          {canReject && (
+            <button
+              type="button"
+              onClick={() => setShowReject(true)}
               disabled={disabled}
+              className="ml-auto text-xs text-white/40 hover:text-red-400 disabled:opacity-30 disabled:hover:text-white/40"
+              title="Reject this post"
             >
-              Grant
-            </Button>
+              Reject
+            </button>
           )}
         </div>
       )}
@@ -386,7 +405,7 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
       )}
 
       {/* Grant confirm modal (inline) */}
-      {showGrant && savedPoints != null && (
+      {grantPoints != null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-slate-800 rounded-lg p-4 w-[90%] max-w-md space-y-3">
             <h4 className="text-nasun-white font-medium">Confirm grant</h4>
@@ -405,36 +424,26 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
                 <p className="text-xs text-white/60 break-all">{post.postUrl}</p>
               </div>
               <span className="text-base font-mono text-green-400 shrink-0">
-                +{savedPoints} pts
+                +{grantPoints} pts
               </span>
             </div>
             <p className="text-xs text-red-300">
               Grant is irrevocable. Points cannot be taken back.
             </p>
-            <label className="flex items-center gap-2 text-sm text-white/80">
-              <input
-                type="checkbox"
-                checked={grantConfirmed}
-                onChange={(e) => setGrantConfirmed(e.target.checked)}
-              />
-              I understand this is irrevocable.
-            </label>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outlineC5" size="sm"
-                onClick={() => {
-                  setShowGrant(false);
-                  setGrantConfirmed(false);
-                }}
+                onClick={() => setGrantPoints(null)}
+                disabled={disabled}
               >
                 Cancel
               </Button>
               <Button
                 variant="c4" size="sm"
-                onClick={handleGrant}
-                disabled={disabled || !grantConfirmed}
+                onClick={handleGrantConfirm}
+                disabled={disabled}
               >
-                Confirm Grant
+                Grant
               </Button>
             </div>
           </div>
