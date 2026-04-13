@@ -48,7 +48,7 @@ export const NFTCard: FC<NFTCardProps> = ({
                 href={explorerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-300"
+                className="text-gray-300 hover:text-gray-300"
                 title={`View on ${explorerLabel}`}
               >
                 <ExternalLink className="w-4 h-4" />
@@ -82,7 +82,7 @@ export const renderFieldIfExists = (label: string, value?: string | number) => {
           target="_blank"
           rel="noopener noreferrer"
           title={`Open ${label} in new tab`}
-          className="text-gray-500 hover:text-gray-300"
+          className="text-gray-300 hover:text-gray-300"
         >
           <ExternalLink className="w-4 h-4" />
         </a>

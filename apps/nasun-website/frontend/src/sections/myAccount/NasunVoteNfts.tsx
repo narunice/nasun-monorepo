@@ -171,22 +171,22 @@ export const NasunVoteNfts: FC<{ children?: React.ReactNode }> = ({ children }) 
                 thumbnailClassName="w-full h-full object-cover"
               >
                 <div className="space-y-1 text-nasun-white/70">
-                  <p><span className="text-nasun-white/40">Proposal:</span> {nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}</p>
+                  <p><span className="text-nasun-white/80">Proposal:</span> {nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}</p>
                   <p className="font-mono text-sm">
-                    <span className="text-nasun-white/40">Proposal ID:</span> {nft.proposalId.slice(0, 10)}...{nft.proposalId.slice(-6)}
-                    <a href={`${explorerUrl}/object/${nft.proposalId}`} target="_blank" rel="noopener noreferrer" className="inline-flex align-middle ml-1 text-nasun-white/40 hover:text-nasun-nw1 transition-colors">
+                    <span className="text-nasun-white/80">Proposal ID:</span> {nft.proposalId.slice(0, 10)}...{nft.proposalId.slice(-6)}
+                    <a href={`${explorerUrl}/object/${nft.proposalId}`} target="_blank" rel="noopener noreferrer" className="inline-flex align-middle ml-1 text-nasun-white/80 hover:text-nasun-nw1 transition-colors">
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </p>
                   <p className="font-mono text-sm">
-                    <span className="text-nasun-white/40">Object ID:</span> {nft.id.slice(0, 10)}...{nft.id.slice(-6)}
-                    <a href={`${explorerUrl}/object/${nft.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex align-middle ml-1 text-nasun-white/40 hover:text-nasun-nw1 transition-colors">
+                    <span className="text-nasun-white/80">Object ID:</span> {nft.id.slice(0, 10)}...{nft.id.slice(-6)}
+                    <a href={`${explorerUrl}/object/${nft.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex align-middle ml-1 text-nasun-white/80 hover:text-nasun-nw1 transition-colors">
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </p>
                   <p className="font-mono text-sm">
-                    <span className="text-nasun-white/40">Wallet:</span> {nft.owner.slice(0, 10)}...{nft.owner.slice(-6)}
-                    <a href={`${explorerUrl}/address/${nft.owner}`} target="_blank" rel="noopener noreferrer" className="inline-flex align-middle ml-1 text-nasun-white/40 hover:text-nasun-nw1 transition-colors">
+                    <span className="text-nasun-white/80">Wallet:</span> {nft.owner.slice(0, 10)}...{nft.owner.slice(-6)}
+                    <a href={`${explorerUrl}/address/${nft.owner}`} target="_blank" rel="noopener noreferrer" className="inline-flex align-middle ml-1 text-nasun-white/80 hover:text-nasun-nw1 transition-colors">
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </p>
@@ -194,14 +194,14 @@ export const NasunVoteNfts: FC<{ children?: React.ReactNode }> = ({ children }) 
               </NftImageModal>
             </div>
             <div className="p-2">
-              <p className="text-sm text-nasun-white/40 uppercase tracking-wider">
+              <p className="text-sm text-nasun-white/80 uppercase tracking-wider">
                 Vote Proof
               </p>
-              <p className="text-sm text-nasun-white/60 font-mono truncate" title={nft.id}>
+              <p className="text-sm text-nasun-white/80 font-mono truncate" title={nft.id}>
                 {nft.id.slice(0, 6)}...{nft.id.slice(-4)}
               </p>
               {nft.name && (
-                <p className="text-sm text-nasun-white/50 truncate mt-0.5"
+                <p className="text-sm text-nasun-white/80 truncate mt-0.5"
                    title={nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}>
                   {nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}
                 </p>

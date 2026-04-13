@@ -96,7 +96,7 @@ export const HealthStatusBar: FC<HealthStatusBarProps> = ({
   if (!hasActiveNft) {
     return (
       <div className="flex flex-col h-full py-2 opacity-50">
-        <h5 className="font-medium text-nasun-white/30 text-sm mb-3 px-3">
+        <h5 className="font-medium text-nasun-white/80 text-sm mb-3 px-3">
           Health Status
         </h5>
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
@@ -105,7 +105,7 @@ export const HealthStatusBar: FC<HealthStatusBarProps> = ({
             strokeClass="stroke-nasun-white/10"
             trackClass="stroke-nasun-white/5"
           />
-          <p className="text-nasun-white/20 text-sm">Activate NFT to unlock</p>
+          <p className="text-nasun-white/80 text-sm">Activate NFT to unlock</p>
         </div>
       </div>
     );
@@ -129,7 +129,7 @@ export const HealthStatusBar: FC<HealthStatusBarProps> = ({
           label={`${activeDays}/7`}
         />
         <div className="text-center">
-          <p className={`text-xs font-semibold ${cfg.textColor}`}>
+          <p className={`text-sm font-semibold ${cfg.textColor}`}>
             {cfg.label}
           </p>
           {hasGenesisPass && (
@@ -149,7 +149,7 @@ export const HealthStatusBar: FC<HealthStatusBarProps> = ({
           )}
         </div>
       </div>
-      <p className="text-nasun-white/60 text-sm leading-relaxed text-left px-3 mt-auto pt-2">
+      <p className="text-nasun-white/80 text-sm leading-relaxed text-left px-3 mt-auto pt-2">
         {hasGenesisPass
           ? "Genesis Pass holders are immune to inactivity penalties."
           : "Without Genesis Pass, 2+ inactive days in the last 7 will pause point earnings until you recover."}

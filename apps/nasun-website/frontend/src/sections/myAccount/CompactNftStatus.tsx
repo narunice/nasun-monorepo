@@ -177,9 +177,9 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
   // No accounts linked and not authenticated
   if (!effectiveXUserId && !evmWalletAddress && !cognitoToken) {
     return (
-      <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+      <OuterBox color="w2" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
-        <p className="text-nasun-white/50">
+        <p className="text-nasun-white/80">
           Link your X account or EVM wallet to participate in events
         </p>
       </OuterBox>
@@ -188,12 +188,12 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
 
   return (
     <>
-      <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+      <OuterBox color="w2" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">STATUS</h5>
         <div className="flex flex-col gap-3">
           {/* Leaderboard Event CTA (requires X account) */}
           {effectiveXUserId && (
-            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+            <div className="flex flex-col gap-2 p-4 bg-slate-700/60 rounded-sm">
               <h6 className="text-nasun-white">Leaderboard Event</h6>
               <p className="text-nasun-white/70 text-base">
                 You're in! Share content about Nasun and get recognized.
@@ -206,7 +206,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
 
           {/* Alliance NFT */}
           {showAllSections && isAllianceConfigured && (
-            <div className="relative flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+            <div className="relative flex flex-col gap-2 p-4 bg-slate-700/60 rounded-sm">
               {/* NFT image badge (overlapping top-right) */}
               <div className="absolute -top-3 -right-3">
                 <div className="relative">
@@ -240,13 +240,13 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                       {ecosystem.getActivation("alliance") ? "Activated" : "Minted"}
                     </span>
                     {allianceData?.walletAddress && (
-                      <span className="text-nasun-white/50 text-sm font-mono">
+                      <span className="text-nasun-white/80 text-sm font-mono">
                         {shortenAddress(allianceData.walletAddress)}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <span className="text-nasun-white/50 text-sm">Not Minted</span>
+                  <span className="text-nasun-white/80 text-sm">Not Minted</span>
                 )}
                 <div className="flex gap-2">
                   {!isAllianceLoading && !isAllianceMinted && (
@@ -272,7 +272,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                     <div className="relative">
                       <button
                         onClick={() => setShowAllianceMenu((v) => !v)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/80 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
                           <circle cx="8" cy="3" r="1.5" />
@@ -306,7 +306,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
 
           {/* Genesis Pass Allowlist */}
           {isGenesisPassConfigured && (
-            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+            <div className="flex flex-col gap-2 p-4 bg-slate-700/60 rounded-sm">
               <div className="flex items-center justify-between">
                 <h6 className="text-nasun-white">Genesis Pass</h6>
                 {showAllSections && ecosystem.getActivation("genesis-pass") && (
@@ -327,7 +327,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                       {genesisPassMintType && genesisPassMintType !== "FREE_MINT" && genesisPassMintType !== "GUARANTEED" && <FcfsBadge />}
                     </div>
                     {(genesisPassWallet || evmWalletAddress) && (
-                      <span className="text-nasun-white/50 text-sm font-mono">
+                      <span className="text-nasun-white/80 text-sm font-mono">
                         {shortenAddress((genesisPassWallet || evmWalletAddress)!)}
                       </span>
                     )}
@@ -341,7 +341,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                       {genesisPassMintType && genesisPassMintType !== "FREE_MINT" && genesisPassMintType !== "GUARANTEED" && <FcfsBadge />}
                     </div>
                     {genesisPassWallet && (
-                      <span className="text-nasun-white/50 text-sm font-mono">
+                      <span className="text-nasun-white/80 text-sm font-mono">
                         {shortenAddress(genesisPassWallet)}
                       </span>
                     )}
@@ -358,13 +358,13 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                   <div className="flex flex-col gap-0.5">
                     <span className="text-yellow-400 text-sm">&#9679; Applied</span>
                     {genesisPassWallet && (
-                      <span className="text-nasun-white/50 text-sm font-mono">
+                      <span className="text-nasun-white/80 text-sm font-mono">
                         {shortenAddress(genesisPassWallet)}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <span className="text-nasun-white/50 text-sm">Not Applied</span>
+                  <span className="text-nasun-white/80 text-sm">Not Applied</span>
                 )}
                 {!isGenesisPassLoading && !showMintedState && !isGenesisPassRegistered && !isGenesisPassApplied && (
                   <Button onClick={() => navigate("/wave1/genesis-pass")} variant="filledOutlineC7" size="sm">
@@ -392,7 +392,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                     <div className="relative">
                       <button
                         onClick={() => setShowGenesisMenu((v) => !v)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/80 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
                           <circle cx="8" cy="3" r="1.5" />
@@ -435,7 +435,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
 
           {/* Battalion NFT Allowlist */}
           {showAllSections && (
-            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+            <div className="flex flex-col gap-2 p-4 bg-slate-700/60 rounded-sm">
               <h6 className="text-nasun-white">Battalion</h6>
               <div className="flex items-center justify-between">
                 {isBattalionLoading ? (
@@ -444,13 +444,13 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                   <div className="flex flex-col gap-0.5">
                     <span className="text-green-400 text-sm">&#10003; Registered</span>
                     {battalionStatus?.walletAddress && (
-                      <span className="text-nasun-white/50 text-sm font-mono">
+                      <span className="text-nasun-white/80 text-sm font-mono">
                         {shortenAddress(battalionStatus.walletAddress)}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <span className="text-nasun-white/50 text-sm">Not Registered</span>
+                  <span className="text-nasun-white/80 text-sm">Not Registered</span>
                 )}
                 <div className="flex gap-2">
                   {!isBattalionLoading && !isBattalionRegistered && (
@@ -472,7 +472,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                     <div className="relative">
                       <button
                         onClick={() => setShowBattalionMenu((v) => !v)}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/80 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
                           <circle cx="8" cy="3" r="1.5" />
@@ -506,7 +506,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
 
           {/* Frontiers */}
           {showAllSections && (
-            <div className="flex flex-col gap-2 p-4 bg-gray-800/80 rounded-sm">
+            <div className="flex flex-col gap-2 p-4 bg-slate-700/60 rounded-sm">
               <h6 className="text-nasun-white">Frontiers</h6>
               <p className="text-nasun-white/70 text-base">
                 Details coming soon.

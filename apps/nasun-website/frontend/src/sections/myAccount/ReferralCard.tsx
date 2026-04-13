@@ -101,9 +101,9 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
   // Not logged in
   if (!token) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {title}
-        <p className="text-nasun-white/50 text-center text-base py-4">
+        <p className="text-nasun-white/80 text-center text-base py-4">
           Sign in to access the referral program
         </p>
       </OuterBox>
@@ -113,9 +113,9 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
   // API not configured
   if (!isConfigured) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {title}
-        <p className="text-nasun-white/50 text-center text-base py-4">
+        <p className="text-nasun-white/80 text-center text-base py-4">
           Referral program coming soon
         </p>
       </OuterBox>
@@ -125,7 +125,7 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
   // Loading
   if (isLoading) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {title}
         <div className="flex items-center justify-center py-8">
           <Spinner />
@@ -137,7 +137,7 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
   // Error
   if (error) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {title}
         <p className="text-red-400 text-base text-center py-4">
           Failed to load referral data
@@ -147,13 +147,13 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="w2" padding="sm" className={className}>
       {title}
 
       {/* Referral Code + Copy */}
       {referralCode && (
         <div className="mb-4">
-          <p className="text-sm text-nasun-white/50 mb-1.5">
+          <p className="text-sm text-nasun-white/80 mb-1.5">
             Your referral code
           </p>
           <div className="flex items-center gap-2">
@@ -192,26 +192,26 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
               <p className="text-xl font-bold text-nasun-white">
                 {stats.totalReferrals}
               </p>
-              <p className="text-sm text-nasun-white/40 uppercase">Invited</p>
+              <p className="text-sm text-nasun-white/80 uppercase">Invited</p>
             </div>
             <div>
               <p className="text-xl font-bold text-emerald-400">
                 {stats.activatedCount}
               </p>
-              <p className="text-sm text-nasun-white/40 uppercase">Active</p>
+              <p className="text-sm text-nasun-white/80 uppercase">Active</p>
             </div>
             <div>
               <p className="text-xl font-bold text-amber-400">
                 {stats.bonusStats?.totalBonusPoints?.toLocaleString("en-US") ??
                   "0"}
               </p>
-              <p className="text-sm text-nasun-white/40 uppercase">Bonus Pts</p>
+              <p className="text-sm text-nasun-white/80 uppercase">Bonus Pts</p>
             </div>
           </div>
 
           {/* Referred by info */}
           {stats.referredBy && (
-            <div className="text-sm text-nasun-white/40 text-center pt-1 border-t border-nasun-white/10">
+            <div className="text-sm text-nasun-white/80 text-center pt-1 border-t border-nasun-white/10">
               Referred on{" "}
               {new Date(stats.referredBy.appliedAt).toLocaleDateString(
                 "en-US",
@@ -224,7 +224,7 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
           )}
 
           {/* How it works */}
-          <div className=" text-nasun-white/30 pt-2 border-t border-nasun-white/10 space-y-1">
+          <div className=" text-nasun-white/80 pt-2 border-t border-nasun-white/10 space-y-1">
             <p className="text-sm">
               Earn 10% of your referrals' on-chain activity as ecosystem points
               (scaled at 50%). Referred users also earn a 5% bonus.

@@ -46,7 +46,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   if (!user) {
     if (bare) return <div className={className}>Loading...</div>;
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         Loading...
       </OuterBox>
     );
@@ -132,7 +132,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                 </button>,
               ] : showAsConnected && !walletReg.isCurrentWalletRegistered && !walletReg.isLoading ? [
                 walletReg.isRegistering ? (
-                  <span key="registering" className="text-sm text-nasun-white/40">Registering...</span>
+                  <span key="registering" className="text-sm text-nasun-white/80">Registering...</span>
                 ) : (
                   <Button
                     key="register"
@@ -171,7 +171,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
               </div>
             )}
             {/* Collapsible devnet disclaimer */}
-            <div className="text-sm text-nasun-white/50">
+            <div className="text-sm text-nasun-white/80">
               <button
                 className="flex items-center gap-1 hover:text-nasun-white/70 transition-colors"
                 onClick={() => setDisclaimerExpanded((v) => !v)}
@@ -187,7 +187,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                 Devnet notice
               </button>
               {disclaimerExpanded && (
-                <ul className="mt-1.5 space-y-1 pl-1 text-sm text-nasun-white/40 leading-relaxed">
+                <ul className="mt-1.5 space-y-1 pl-1 text-sm text-nasun-white/80 leading-relaxed">
                   <li>· Assets on Devnet have no monetary value.</li>
                   <li>· The network may be reset at any time.</li>
                   <li>· After a reset, your existing seedphrase, private key, or backup file will restore the same address - your permanent identity on Nasun Website.</li>
@@ -200,7 +200,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
           {/* Additional Wallets sub-section */}
           {user.cognitoToken && (displayAddress || walletReg.registeredWallets.length > 0) && (
             <div className="pl-2 border-l-2 border-indigo-500/20 space-y-2">
-              <div className="text-sm text-nasun-white/40 uppercase">
+              <div className="text-sm text-nasun-white/80 uppercase">
                 Additional Wallets
                 {walletReg.isLoading && " (loading...)"}
               </div>
@@ -249,7 +249,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
                     <ConnectedBadge />
                   </div>
                   {walletReg.isRegistering ? (
-                    <span className="text-sm text-nasun-white/40">Registering...</span>
+                    <span className="text-sm text-nasun-white/80">Registering...</span>
                   ) : (
                     <Button
                       size="sm"
@@ -434,7 +434,7 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   if (bare) return <div className={className}>{content}</div>;
 
   return (
-    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+    <OuterBox color="w2" padding="sm" className={`animate-fade-slide-up ${className}`}>
       {content}
     </OuterBox>
   );

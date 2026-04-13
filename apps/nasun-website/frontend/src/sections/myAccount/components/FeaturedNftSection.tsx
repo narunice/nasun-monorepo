@@ -98,7 +98,7 @@ const FeaturedNftDetailModal: FC<{
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute -top-2 -right-2 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-gray-900 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 transition-colors"
+          className="absolute -top-2 -right-2 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-gray-900 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-400 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -156,21 +156,21 @@ const FeaturedNftDetailModal: FC<{
 
             {/* Description */}
             {description && (
-              <p className="text-sm text-gray-400 leading-relaxed">{description}</p>
+              <p className="text-sm text-gray-300 leading-relaxed">{description}</p>
             )}
 
             {/* Metadata grid */}
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
-                <p className="text-gray-400 text-sm">Token ID</p>
+                <p className="text-gray-300 text-sm">Token ID</p>
                 <p className="text-gray-200 font-mono">{hasTid ? tid : "Pending"}</p>
               </div>
               <div className="p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
-                <p className="text-gray-400 text-sm">Standard</p>
+                <p className="text-gray-300 text-sm">Standard</p>
                 <p className="text-gray-200">{nft.tokenType || "ERC-1155"}</p>
               </div>
               <div className="col-span-2 p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
-                <p className="text-gray-400 text-sm">Contract</p>
+                <p className="text-gray-300 text-sm">Contract</p>
                 <p className="text-gray-200 font-mono">{shortAddress}</p>
               </div>
             </div>
@@ -266,7 +266,7 @@ const FeaturedNftCard: FC<{
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                <span className="text-gray-500 text-sm">No preview</span>
+                <span className="text-gray-300 text-sm">No preview</span>
               </div>
             )}
           </div>
@@ -280,7 +280,7 @@ const FeaturedNftCard: FC<{
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-sm font-medium leading-none bg-emerald-500/20 text-emerald-300">
               Featured
             </span>
-            <span className="text-sm text-gray-400 truncate">
+            <span className="text-sm text-gray-300 truncate">
               {collectionName}
             </span>
           </div>
@@ -323,7 +323,7 @@ const AllianceDetailModal: FC<{
       >
         <button
           onClick={onClose}
-          className="absolute -top-2 -right-2 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-gray-900 border border-gray-600 text-gray-400 hover:text-white hover:border-gray-400 transition-colors"
+          className="absolute -top-2 -right-2 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-gray-900 border border-gray-600 text-gray-300 hover:text-white hover:border-gray-400 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -353,21 +353,21 @@ const AllianceDetailModal: FC<{
               <h3 className="text-xl font-semibold text-white">{name}</h3>
               <p className="text-sm text-emerald-300/80 mt-1">Alliance NFT</p>
             </div>
-            <p className="text-sm text-gray-400 leading-relaxed">
+            <p className="text-sm text-gray-300 leading-relaxed">
               A unique character from the Nasun Alliance collection, minted on Nasun Devnet.
             </p>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
-                <p className="text-gray-400 text-sm">Network</p>
+                <p className="text-gray-300 text-sm">Network</p>
                 <p className="text-gray-200">Nasun Devnet</p>
               </div>
               <div className="p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
-                <p className="text-gray-400 text-sm">Standard</p>
+                <p className="text-gray-300 text-sm">Standard</p>
                 <p className="text-gray-200">Nasun Object</p>
               </div>
               <div className="col-span-2 p-3 rounded-lg bg-gray-800/80 border border-gray-700/50">
-                <p className="text-gray-400 text-sm">Object ID</p>
+                <p className="text-gray-300 text-sm">Object ID</p>
                 <p className="text-gray-200 font-mono">{shortObj}</p>
               </div>
             </div>
@@ -428,7 +428,7 @@ const AllianceNftCard: FC<{ data: AllianceData }> = ({ data }) => {
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-sm font-medium leading-none bg-emerald-500/20 text-emerald-300">
               Featured
             </span>
-            <span className="text-sm text-gray-400 truncate">Alliance</span>
+            <span className="text-sm text-gray-300 truncate">Alliance</span>
           </div>
         </div>
       </button>
