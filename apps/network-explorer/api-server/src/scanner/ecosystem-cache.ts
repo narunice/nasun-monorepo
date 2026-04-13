@@ -236,7 +236,13 @@ export async function maybeRefreshMatview(force = false): Promise<void> {
     await conn`SET statement_timeout = '5min'`;
     await conn`REFRESH MATERIALIZED VIEW CONCURRENTLY ecosystem_daily_scores`;
     const ms = Date.now() - started;
-    console.log(`[Ecosystem] Materialized view refreshed in ${ms}ms`);
+    if (ms > 60_000) {
+      // Early warning: REFRESH approaching the 5min reserved-connection ceiling.
+      // Investigate matview size growth, lock contention, or pg_dump overlap.
+      console.warn(`[Ecosystem] SLOW matview refresh: ${ms}ms (budget 300000ms)`);
+    } else {
+      console.log(`[Ecosystem] Materialized view refreshed in ${ms}ms`);
+    }
   } catch (err) {
     const ms = started > 0 ? Date.now() - started : 0;
     console.error(`[Ecosystem] Matview refresh error after ${ms}ms:`, err);
