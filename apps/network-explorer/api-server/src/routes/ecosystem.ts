@@ -18,6 +18,7 @@ import {
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
+import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
 import { getIdentityByWallet } from '../scanner/points-scanner.js';
 
 const app = new Hono();
@@ -65,6 +66,7 @@ app.get('/score/:identityId', async (c) => {
         govAllTimeRow, govTodayRow, govWeeklyRow,
         refAllTimeRow, refTodayRow, refWeeklyRow,
         todayCategoryRows,
+        stakingTodayRow, stakingWeeklyRow, stakingAllTimeRow,
       ] = await Promise.all([
         pointsDb!`
           SELECT base_score::int as base_score
@@ -211,6 +213,35 @@ app.get('/score/:identityId', async (c) => {
             AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking')
             AND category NOT LIKE 'ecosystem-bonus-%'
         `.then(rows => rows.map((r: any) => r.category as string)),
+        // Staking-v2: tier-based stake_score, post-cutoff only (forward-only).
+        // staking-daily row stores tier pts in base_points (v2 scanner).
+        pointsDb!`
+          SELECT COALESCE(SUM(base_points), 0)::int as staking_score
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'staking-daily'
+            AND NOT flagged
+            AND tx_timestamp >= ${STAKING_V2_CUTOFF_DATE}::timestamptz
+            AND tx_timestamp >= CURRENT_DATE AT TIME ZONE 'UTC'
+            AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(base_points), 0)::int as staking_score
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'staking-daily'
+            AND NOT flagged
+            AND tx_timestamp >= ${STAKING_V2_CUTOFF_DATE}::timestamptz
+            AND tx_timestamp >= (CURRENT_DATE - 6) AT TIME ZONE 'UTC'
+        `.then(r => r[0]),
+        pointsDb!`
+          SELECT COALESCE(SUM(base_points), 0)::int as staking_score
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'staking-daily'
+            AND NOT flagged
+            AND tx_timestamp >= ${STAKING_V2_CUTOFF_DATE}::timestamptz
+        `.then(r => r[0]),
       ]);
 
       // NFT activations: try cache first, auto-sync on miss
@@ -251,16 +282,24 @@ app.get('/score/:identityId', async (c) => {
       const refWeekly = parseFloat(refWeeklyRow?.referral_weekly ?? '0');
       const scalingFactor = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
 
+      // Staking-v2 score (pre-cutoff always zero, monotonic-increase-safe).
+      const stakingToday = stakingTodayRow?.staking_score ?? 0;
+      const stakingWeekly = stakingWeeklyRow?.staking_score ?? 0;
+      const stakingAllTime = stakingAllTimeRow?.staking_score ?? 0;
+
       // allTime = SUM(base*mult from past snapshots)
       //         + yesterday's base*mult if snapshot not yet created (midnight gap)
       //         + today's base*mult
+      //         + allTime staking*mult (v2: tier pts, post-cutoff only)
       //         + allTime bonus + allTime governance + allTime referral*sf
+      // Staking uses current multiplier across all days (same approximation as weekly).
       // No compounding: bonus/gov/referral are from activity_points (raw totals)
       const todayBase = todayRow?.base_score ?? 0;
       const unsnapshottedBase = unsnapshottedRow?.base_score ?? 0;
       const todayBaseContribution = (todayBase + unsnapshottedBase) * multiplier;
       const totalBasePoints = baseCumulative + todayBaseContribution;
-      const allTimeCumulative = totalBasePoints
+      const stakingAllTimeContribution = stakingAllTime * multiplier;
+      const allTimeCumulative = totalBasePoints + stakingAllTimeContribution
         + bonusTotal + govTotal + refTotal * scalingFactor;
 
       // Score breakdown for composition bar (base included, no reverse calculation)
@@ -301,6 +340,9 @@ app.get('/score/:identityId', async (c) => {
         activations,
         isPenalized,
         todayCategories: todayCategoryRows,
+        stakingToday,
+        stakingWeekly,
+        stakingAllTime,
       };
     },
   );
@@ -329,27 +371,32 @@ app.get('/score/:identityId', async (c) => {
     todayCategories: scores.todayCategories,
     daily: {
       baseScore: scores.todayBaseScore,
+      stakingScore: scores.stakingToday,
       bonusTotal: roundTo2(scores.bonusToday),
       referralBonus: roundTo2(scores.refToday),
       governancePoints: roundTo2(scores.govToday),
       ecosystemScore: roundTo2(
-        scores.todayBaseScore * scores.multiplier + scores.bonusToday + scores.govToday + scores.refToday * sf,
+        (scores.todayBaseScore + scores.stakingToday) * scores.multiplier
+          + scores.bonusToday + scores.govToday + scores.refToday * sf,
       ),
     },
     weekly: {
       baseScore: scores.weeklyBaseScore,
+      stakingScore: scores.stakingWeekly,
       bonusTotal: roundTo2(scores.bonusWeekly),
       referralBonus: roundTo2(scores.refWeekly),
       governancePoints: roundTo2(scores.govWeekly),
       // Note: uses current multiplier for entire week (approximation).
       // Accurate per-day multipliers would require snapshot lookback.
       ecosystemScore: roundTo2(
-        scores.weeklyBaseScore * scores.multiplier + scores.bonusWeekly + scores.govWeekly + scores.refWeekly * sf,
+        (scores.weeklyBaseScore + scores.stakingWeekly) * scores.multiplier
+          + scores.bonusWeekly + scores.govWeekly + scores.refWeekly * sf,
       ),
       activeDays: scores.weeklyActiveDays,
     },
     allTime: {
       baseScore: scores.allTimeBaseScore,
+      stakingScore: scores.stakingAllTime,
       bonusTotal: roundTo2(bt),
       referralBonus: roundTo2(scores.refTotal),
       governancePoints: roundTo2(scores.govTotal),

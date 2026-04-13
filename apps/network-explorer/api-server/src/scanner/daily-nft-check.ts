@@ -18,6 +18,7 @@
 import { pointsDb } from '../db.js';
 import { rpcCall } from '../rpc.js';
 import type { NftActivation } from '../config/ecosystem.js';
+import { STAKING_V2_CUTOFF_DATE, calcStakingTierPts } from '../config/points.js';
 
 // Categories excluded from "real activity" checks
 const EXCLUDED_CATEGORIES = [
@@ -37,6 +38,7 @@ const EXCLUDED_CATEGORIES = [
 export async function runDailyNftChecks(
   activationsCache: Map<string, NftActivation[]>,
   identityToWallet: Map<string, string>,
+  registeredWallets: Map<string, string>,
 ): Promise<number> {
   if (!pointsDb) return 0;
 
@@ -73,10 +75,10 @@ export async function runDailyNftChecks(
     passiveAwarded = await awardGenesisPassivePoints(genesisIds, identityToWallet);
   }
 
-  // --- Staking Daily Points ---
+  // --- Staking Daily Points (v2) ---
   let stakingAwarded = 0;
   try {
-    stakingAwarded = await awardStakingDailyPoints(identityToWallet);
+    stakingAwarded = await awardStakingDailyPoints(registeredWallets);
   } catch (err) {
     console.error('[DailyNftCheck] Staking daily points error (non-fatal):', err);
   }
@@ -241,22 +243,28 @@ async function awardGenesisPassivePoints(
   return totalAwarded;
 }
 
-// --- Staking Daily Points ---
+// --- Staking Daily Points (v2) ---
 
 interface StakeInfo {
-  stakes: Array<{ status: string }>;
+  stakes: Array<{ status: string; principal: string }>;
 }
 
+const MIST_PER_NSN = 10n ** 9n;
+
 /**
- * Award 1 staking-daily point per user per day if they have active stakes.
- * Uses suix_getStakes RPC. Only queries users who have a StakingRequestEvent
- * record in activity_points (optimization: ~50-100 instead of all 1400).
+ * Award tier-based staking-daily points per user per day, aggregating across
+ * all wallets registered to the identity (suix_getStakes is Sui-native so
+ * identity-level EVM cache cannot help here).
+ *
+ * Tiers: 1~500 NSN -> 1pt, 501~5,000 -> 2pt, >=5,001 -> 3pt.
+ *
+ * Pre-cutoff dates are skipped (v1 semantics frozen; forward-only).
  * Lookback 2 days for PM2 downtime recovery.
  */
 async function awardStakingDailyPoints(
-  identityToWallet: Map<string, string>,
+  registeredWallets: Map<string, string>,
 ): Promise<number> {
-  if (!pointsDb || identityToWallet.size === 0) return 0;
+  if (!pointsDb || registeredWallets.size === 0) return 0;
 
   // Only check users who have ever staked (optimization)
   const stakingUsers = await pointsDb`
@@ -267,32 +275,64 @@ async function awardStakingDailyPoints(
   const stakingIdentityIds = new Set(stakingUsers.map(r => r.identity_id as string));
   if (stakingIdentityIds.size === 0) return 0;
 
+  // Build identityId -> all Sui wallets map for multi-wallet aggregation.
+  const identityToAllWallets = new Map<string, string[]>();
+  for (const [addr, id] of registeredWallets) {
+    if (!stakingIdentityIds.has(id)) continue;
+    const list = identityToAllWallets.get(id);
+    if (list) list.push(addr);
+    else identityToAllWallets.set(id, [addr]);
+  }
+
   const now = new Date();
   let totalAwarded = 0;
 
-  for (let daysAgo = 1; daysAgo <= 2; daysAgo++) {
+  // daysAgo=0 (today) keeps `daily.stakingScore` in the user-facing formula
+  // populated within one scan cycle after delegation. ON CONFLICT DO NOTHING
+  // locks today's tier at first sight (monotonic per-day; tier upgrades show
+  // up tomorrow). 1,2 stays for PM2 downtime recovery.
+  for (let daysAgo = 0; daysAgo <= 2; daysAgo++) {
     const targetDate = new Date(now);
     targetDate.setUTCDate(targetDate.getUTCDate() - daysAgo);
     const dateStr = targetDate.toISOString().slice(0, 10);
 
+    // Scanner-side forward-only guard: pre-cutoff dates never get v2 rows.
+    if (dateStr < STAKING_V2_CUTOFF_DATE) continue;
+
     for (const identityId of stakingIdentityIds) {
-      const wallet = identityToWallet.get(identityId);
-      if (!wallet) continue;
+      const wallets = identityToAllWallets.get(identityId);
+      if (!wallets || wallets.length === 0) continue;
 
       const digest = `stk:${identityId}:${dateStr}`;
 
       try {
-        const stakeResult = await rpcCall<StakeInfo[]>(
-          'suix_getStakes',
-          [wallet],
+        // allSettled: a single bad wallet RPC must not block the whole identity.
+        // Partial sums are forward-only (monotonic) so fulfilled results alone
+        // are safe to credit; rejected wallets simply contribute zero this cycle.
+        const stakeResults = await Promise.allSettled(
+          wallets.map((w) => rpcCall<StakeInfo[]>('suix_getStakes', [w])),
         );
 
-        // Check if any stake is active
-        const hasActiveStake = stakeResult.some(
-          (v) => v.stakes?.some((s) => s.status === 'Active'),
-        );
-        if (!hasActiveStake) continue;
+        // Sum active principal across every wallet the identity owns.
+        let totalMist = 0n;
+        for (const r of stakeResults) {
+          if (r.status !== 'fulfilled') continue;
+          for (const v of r.value) {
+            for (const s of v.stakes ?? []) {
+              if (s.status !== 'Active') continue;
+              totalMist += BigInt(String(s.principal));
+            }
+          }
+        }
+        if (totalMist === 0n) continue;
 
+        // Integer division: tier boundaries are whole-NSN-safe (500/5000).
+        const totalNsn = Number(totalMist / MIST_PER_NSN);
+        const pts = calcStakingTierPts(totalNsn);
+        if (pts === 0) continue;
+
+        // Record row keyed on the identity's first wallet for activity_points.wallet_address.
+        const primaryWallet = wallets[0];
         const txTimestamp = `${dateStr}T00:00:00Z`;
         const result = await pointsDb`
           INSERT INTO activity_points
@@ -300,8 +340,8 @@ async function awardStakingDailyPoints(
              base_points, volume_tier, genesis_multiplier, final_points,
              tx_timestamp, event_seq, tx_sequence_number)
           VALUES
-            (${wallet}, ${identityId}, ${digest}, 'staking-daily', 'staking-active',
-             1, 1.0, 1.0, ${'1.00'},
+            (${primaryWallet}, ${identityId}, ${digest}, 'staking-daily', 'staking-active',
+             ${pts}, 1.0, 1.0, ${pts.toFixed(2)},
              ${txTimestamp}::timestamptz, 0, 0)
           ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
         `;
