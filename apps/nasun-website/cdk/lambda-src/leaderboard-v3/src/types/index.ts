@@ -182,6 +182,11 @@ export interface Account {
   banReason?: string;
   bannedAt?: string; // ISO 8601
   bannedBy?: string; // Admin username
+
+  // Merge tombstone: when set, this account has been merged into another.
+  // from-account becomes inert; posts/scores flow through to-account.
+  mergedInto?: string; // winner accountId
+  mergedAt?: string; // ISO 8601
 }
 
 /**
