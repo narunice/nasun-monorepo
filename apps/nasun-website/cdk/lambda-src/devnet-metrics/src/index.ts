@@ -249,17 +249,37 @@ export async function handler(event: CollectMetricsEvent): Promise<void> {
   );
   const dauCount = activeSet.size;
 
-  // Count new addresses: active addresses whose firstSeenDate matches targetDate.
-  // Only count addresses that are both newly discovered AND active on that day,
-  // so that newAddresses is always a subset of DAU.
+  // Count new addresses by firstActiveDate (first day the address appeared in DAU).
+  // For each active address: set firstActiveDate = min(existing ?? targetDate, targetDate).
+  // This is forward-only correct and also handles out-of-order backfill runs.
+  // Fallback for legacy records without firstActiveDate: use firstSeenDate (faucet drip date).
   let newAddressCount = 0;
   for (const addr of activeSet) {
     const result = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
       Key: { pk: `ADDRESS#${addr}`, sk: 'META' },
-      ProjectionExpression: 'firstSeenDate',
+      ProjectionExpression: 'firstActiveDate, firstSeenDate',
     }));
-    if ((result.Item as AddressRecord)?.firstSeenDate === targetDate) {
+    const item = result.Item as AddressRecord | undefined;
+    const existing = item?.firstActiveDate;
+    const nextFirstActive = existing && existing < targetDate ? existing : targetDate;
+
+    if (nextFirstActive !== existing) {
+      await docClient.send(new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `ADDRESS#${addr}`, sk: 'META' },
+        UpdateExpression: 'SET firstActiveDate = :d',
+        ExpressionAttributeValues: { ':d': nextFirstActive },
+      }));
+    }
+
+    // "New on targetDate" = targetDate is the earliest known active day.
+    // - If firstActiveDate was already tracked: new iff min(existing, targetDate) == targetDate.
+    // - Legacy fallback (firstActiveDate unset before this run): use firstSeenDate.
+    const isNew = existing !== undefined
+      ? nextFirstActive === targetDate
+      : (item?.firstSeenDate ?? targetDate) === targetDate;
+    if (isNew) {
       newAddressCount++;
     }
   }
