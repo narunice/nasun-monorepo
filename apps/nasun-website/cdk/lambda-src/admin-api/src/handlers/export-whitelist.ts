@@ -89,6 +89,10 @@ interface UserProfileItem {
   linkedProviders: string[];
   probableBot?: boolean;
   botTier?: number;
+  isAccountFlagged?: boolean;
+  flagReason?: string;
+  flaggedAt?: string;
+  flaggedBy?: string;
 }
 
 function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
@@ -152,6 +156,10 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
     linkedProviders,
     probableBot: item.probableBot?.BOOL ?? false,
     botTier: item.botTier?.N ? Number(item.botTier.N) : undefined,
+    isAccountFlagged: item.isAccountFlagged?.BOOL ?? false,
+    flagReason: item.flagReason?.S,
+    flaggedAt: item.flaggedAt?.S,
+    flaggedBy: item.flaggedBy?.S,
   };
 }
 
@@ -234,6 +242,9 @@ function filterAndPaginateUsers(
         break;
       case "no_connections":
         filtered = filtered.filter((u) => u.linkedProviders.length === 0);
+        break;
+      case "flagged":
+        filtered = filtered.filter((u) => u.isAccountFlagged === true);
         break;
       // Ignore unrecognized values (safe fallback: show all)
     }
@@ -1177,6 +1188,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       const telegramCount = primaryUsers.filter(u => u.isTelegramMember === true).length;
       const xConnectedCount = primaryUsers.filter(u => !!u.twitterHandle).length;
       const botCount = primaryUsers.filter(u => u.probableBot).length;
+      const flaggedCount = primaryUsers.filter(u => u.isAccountFlagged === true).length;
 
       return jsonResponse(200, {
         success: true,
@@ -1187,6 +1199,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           botCount,
           telegramMembers: telegramCount,
           xConnected: xConnectedCount,
+          flagged: flaggedCount,
         },
       }, requestOrigin);
     }
