@@ -23,6 +23,7 @@
 import postgres from 'postgres';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fetchWithOffload } from '../scanner/fetch-with-offload.js';
 
 // --- Config ---
 
@@ -121,19 +122,20 @@ async function fetchPadoLeaderboard(): Promise<PadoTrader[]> {
 
 async function fetchWalletMappings(): Promise<Map<string, string>> {
   if (!WALLET_MAPPINGS_URL) return new Map();
-  const headers: Record<string, string> = {};
-  if (WALLET_MAPPINGS_KEY) headers['x-api-key'] = WALLET_MAPPINGS_KEY;
 
-  const res = await fetch(WALLET_MAPPINGS_URL, {
-    headers,
-    signal: AbortSignal.timeout(15_000),
+  // Internal API returns either { wallets } directly or { url: <s3-presigned> } for
+  // large payloads (>6MB Lambda limit). fetchWithOffload transparently handles both.
+  const data = await fetchWithOffload<{ wallets?: Record<string, string> }>({
+    url: WALLET_MAPPINGS_URL,
+    apiKey: WALLET_MAPPINGS_KEY,
+    timeoutMs: 15_000,
+    label: 'settle-pado:wallet-mappings',
   });
-  if (!res.ok) throw new Error(`Wallet mappings error: ${res.status}`);
-  const json = await res.json() as { wallets: Record<string, string> };
+  if (!data) throw new Error('Wallet mappings fetch failed (see above)');
 
   // Reverse: walletAddress -> identityId
   const map = new Map<string, string>();
-  for (const [addr, id] of Object.entries(json.wallets || {})) {
+  for (const [addr, id] of Object.entries(data.wallets || {})) {
     map.set(addr.toLowerCase(), id);
   }
   return map;
