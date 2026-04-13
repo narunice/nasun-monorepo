@@ -222,18 +222,31 @@ export async function maybeRefreshMatview(force = false): Promise<void> {
 
   refreshInFlight = true;
   let started = 0;
+  // Reserve a dedicated connection so we can raise statement_timeout above
+  // the pool default (30s) without affecting other queries. REFRESH MATERIALIZED
+  // VIEW CONCURRENTLY occasionally exceeds 30s under contention with the
+  // hourly indexer-db-reinit / 18:00 UTC pg_dump windows, which previously
+  // surfaced as "canceling statement due to statement timeout" and caused
+  // the matview to fall behind. RESET on the same connection before release
+  // so subsequent users of the pooled connection inherit defaults.
+  const conn = await pointsDb.reserve();
   try {
     started = Date.now();
     lastMatviewRefresh = started;
-    await pointsDb`
-      REFRESH MATERIALIZED VIEW CONCURRENTLY ecosystem_daily_scores
-    `;
+    await conn`SET statement_timeout = '5min'`;
+    await conn`REFRESH MATERIALIZED VIEW CONCURRENTLY ecosystem_daily_scores`;
     const ms = Date.now() - started;
     console.log(`[Ecosystem] Materialized view refreshed in ${ms}ms`);
   } catch (err) {
     const ms = started > 0 ? Date.now() - started : 0;
     console.error(`[Ecosystem] Matview refresh error after ${ms}ms:`, err);
   } finally {
+    try {
+      await conn`RESET statement_timeout`;
+    } catch {
+      // best-effort; if the connection is dead the pool will discard it
+    }
+    conn.release();
     refreshInFlight = false;
   }
 }
