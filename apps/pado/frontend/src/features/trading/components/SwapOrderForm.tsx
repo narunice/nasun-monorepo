@@ -32,6 +32,8 @@ interface SwapOrderFormProps {
   quoteBalance?: number;
   baseBalance?: number;
   onWithdraw?: (token: string) => void;
+  /** When null, trading is not enabled (no BalanceManager). Buy/Sell will be blocked. */
+  balanceManagerId?: string | null;
 }
 
 interface LastTrade {
@@ -53,7 +55,9 @@ export function SwapOrderForm({
   quoteBalance = 0,
   baseBalance = 0,
   onWithdraw,
+  balanceManagerId = null,
 }: SwapOrderFormProps) {
+  const tradingDisabled = balanceManagerId === null;
   const { currentPool, setMarket, markets } = useMarket();
   const { slippage, setSlippage } = useOrderForm();
 
@@ -294,6 +298,7 @@ export function SwapOrderForm({
   // Button state
   const directionVariant = isBuying ? 'buy' : 'sell';
   const getPreviewButtonState = (): { text: string; disabled: boolean; variant: 'buy' | 'sell' | 'error' } => {
+    if (tradingDisabled) return { text: 'Enable Trading first', disabled: true, variant: 'error' };
     if (isLoading) return { text: 'Processing...', disabled: true, variant: directionVariant };
     if (midPrice <= 0) return { text: 'No Market Liquidity', disabled: true, variant: directionVariant };
     if (payAmount <= 0) return { text: 'Enter Amount', disabled: true, variant: directionVariant };
