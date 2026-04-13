@@ -160,25 +160,25 @@ export async function takeDailySnapshot(
       AND all_time_score IS NOT NULL
     ORDER BY identity_id, snapshot_date DESC
   `;
+  // Keep raw numeric strings (not parseFloat) so SQL can do exact-precision
+  // arithmetic during INSERT — avoids JS float drift on prev+delta accumulation.
   interface PrevCum {
     prevDate: string;
-    score: number;
-    base: number;
-    bonus: number;
-    gov: number;
-    ref: number;
-    staking: number;
+    baseStr: string;
+    bonusStr: string;
+    govStr: string;
+    refStr: string;
+    stakingStr: string;
   }
   const prevMap = new Map<string, PrevCum>();
   for (const r of prevCumRows) {
     prevMap.set(r.identity_id as string, {
       prevDate: r.prev_date as string,
-      score: parseFloat(r.prev_score as string),
-      base: parseFloat(r.prev_base as string),
-      bonus: parseFloat(r.prev_bonus as string),
-      gov: parseFloat(r.prev_gov as string),
-      ref: parseFloat(r.prev_ref as string),
-      staking: parseFloat(r.prev_staking as string),
+      baseStr: r.prev_base as string,
+      bonusStr: r.prev_bonus as string,
+      govStr: r.prev_gov as string,
+      refStr: r.prev_ref as string,
+      stakingStr: r.prev_staking as string,
     });
   }
 
@@ -188,17 +188,18 @@ export async function takeDailySnapshot(
     baseScore: number;
     multiplier: number;
     bonusTotal: number;
+    bonusTotalInclSynthetic: number;
     referralBonus: number;
     governanceBonus: number;
+    stakingDelta: number;
     ecosystemScore: number;
     isPenalized: boolean;
-    // Cumulative (ledger) fields — prev + today's delta.
-    allTimeBase: number;
-    allTimeBonus: number;
-    allTimeGov: number;
-    allTimeReferralScaled: number;
-    allTimeStakingScaled: number;
-    allTimeScore: number;
+    // Prev cumulative as raw numeric strings — passed to SQL for exact addition.
+    prevBaseStr: string;
+    prevBonusStr: string;
+    prevGovStr: string;
+    prevRefStr: string;
+    prevStakingStr: string;
   }
 
   // Fallback multiplier: for users with base activity but not in activationsCache,
@@ -254,27 +255,20 @@ export async function takeDailySnapshot(
       (baseScore * multiplier + bonusTotal + governanceBonus + referralBonus * sf).toFixed(2),
     );
 
-    // Cumulative (ledger): prev + today's delta.
-    // Bonus uses the synthetic-INCLUSIVE sum so cumulative matches LIVE API semantics.
+    // Cumulative (ledger) is computed in SQL during INSERT (see step 7) using
+    // raw numeric strings from prev — avoids JS float drift.
     const prev = prevMap.get(identityId);
-    const allTimeBase = (prev?.base ?? 0) + baseScore * multiplier;
-    const allTimeBonus = (prev?.bonus ?? 0) + bonusTotalInclSynthetic;
-    const allTimeGov = (prev?.gov ?? 0) + governanceBonus;
-    const allTimeReferralScaled = (prev?.ref ?? 0) + referralBonus * sf;
-    const allTimeStakingScaled = (prev?.staking ?? 0) + stakingDelta * multiplier;
-    const allTimeScore = parseFloat(
-      (allTimeBase + allTimeBonus + allTimeGov + allTimeReferralScaled + allTimeStakingScaled).toFixed(2),
-    );
 
     entries.push({
-      identityId, baseScore, multiplier, bonusTotal, referralBonus,
-      governanceBonus, ecosystemScore, isPenalized,
-      allTimeBase: parseFloat(allTimeBase.toFixed(2)),
-      allTimeBonus: parseFloat(allTimeBonus.toFixed(2)),
-      allTimeGov: parseFloat(allTimeGov.toFixed(2)),
-      allTimeReferralScaled: parseFloat(allTimeReferralScaled.toFixed(2)),
-      allTimeStakingScaled: parseFloat(allTimeStakingScaled.toFixed(2)),
-      allTimeScore,
+      identityId, baseScore, multiplier,
+      bonusTotal, bonusTotalInclSynthetic,
+      referralBonus, governanceBonus, stakingDelta,
+      ecosystemScore, isPenalized,
+      prevBaseStr: prev?.baseStr ?? '0',
+      prevBonusStr: prev?.bonusStr ?? '0',
+      prevGovStr: prev?.govStr ?? '0',
+      prevRefStr: prev?.refStr ?? '0',
+      prevStakingStr: prev?.stakingStr ?? '0',
     });
   }
 
@@ -288,24 +282,36 @@ export async function takeDailySnapshot(
     }
   }
 
-  // 7. Batch INSERT (with cumulative ledger columns)
+  // 7. Batch INSERT — cumulative ledger columns computed in SQL (numeric, exact).
+  // Pre-PR-1(b): prev_*_str come from postgres as numeric strings; SQL adds
+  // today's delta in numeric arithmetic, eliminating JS float drift across
+  // long accumulation chains. all_time_score is the row-level sum of the
+  // five components (computed once, stored).
   let inserted = 0;
   for (const e of entries) {
     const r = (e as SnapshotRow & { rank?: number }).rank ?? null;
     const result = await pointsDb`
+      WITH cum AS (
+        SELECT
+          ${e.prevBaseStr}::numeric    + ${e.baseScore}::numeric * ${e.multiplier}::numeric    AS atb,
+          ${e.prevBonusStr}::numeric   + ${e.bonusTotalInclSynthetic}::numeric                  AS atbo,
+          ${e.prevGovStr}::numeric     + ${e.governanceBonus}::numeric                          AS atg,
+          ${e.prevRefStr}::numeric     + ${e.referralBonus}::numeric * ${sf}::numeric           AS atr,
+          ${e.prevStakingStr}::numeric + ${e.stakingDelta}::numeric * ${e.multiplier}::numeric  AS ats
+      )
       INSERT INTO ecosystem_score_snapshots
         (identity_id, snapshot_date, base_score, multiplier, bonus_total,
          referral_bonus, governance_bonus, ecosystem_score, is_penalized, rank,
          all_time_base, all_time_bonus, all_time_gov,
          all_time_referral_scaled, all_time_staking_scaled, all_time_score)
-      VALUES
-        (${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
-         ${e.multiplier.toFixed(2)}, ${e.bonusTotal.toFixed(2)},
-         ${e.referralBonus.toFixed(2)}, ${e.governanceBonus.toFixed(2)},
-         ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r},
-         ${e.allTimeBase.toFixed(2)}, ${e.allTimeBonus.toFixed(2)},
-         ${e.allTimeGov.toFixed(2)}, ${e.allTimeReferralScaled.toFixed(2)},
-         ${e.allTimeStakingScaled.toFixed(2)}, ${e.allTimeScore.toFixed(2)})
+      SELECT
+        ${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
+        ${e.multiplier.toFixed(2)}, ${e.bonusTotal.toFixed(2)},
+        ${e.referralBonus.toFixed(2)}, ${e.governanceBonus.toFixed(2)},
+        ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r},
+        atb, atbo, atg, atr, ats,
+        atb + atbo + atg + atr + ats
+      FROM cum
       ON CONFLICT (identity_id, snapshot_date) DO NOTHING
     `;
     if (result.count > 0) inserted++;
