@@ -23,7 +23,6 @@ import {
   getTraderAllPeriodStats, getTraderFills,
   getTotalFillsCount, getTotalTradersCount, getTotalPnlTradersCount,
   getIndexerState,
-  getPointsLeaderboard, getTraderPoints, getTotalPointsTraders,
   getScoreLeaderboard, getTraderScore, getTotalScoreTraders, getPadoAggregatorLastRun,
   getPointsSnapshot, getPointsRankHistory, getSnapshotDates, getSnapshotTotalTraders,
   generatePointsSnapshot,
@@ -205,9 +204,6 @@ export function handleLeaderboardRequest(
     if (pathname === '/api/leaderboard/status' && method === 'GET') {
       return handleLeaderboardStatus(res, corsHeaders, config);
     }
-    if (pathname === '/api/leaderboard/points' && method === 'GET') {
-      return handlePointsLeaderboard(res, url, corsHeaders);
-    }
     if (pathname === '/api/pado/leaderboard/score' && method === 'GET') {
       return handleScoreLeaderboard(res, url, corsHeaders);
     }
@@ -230,11 +226,6 @@ export function handleLeaderboardRequest(
     const fillsMatch = pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/fills$/);
     if (fillsMatch && method === 'GET') {
       return handleTraderFills(res, url, corsHeaders, fillsMatch[1]);
-    }
-
-    const pointsMatch = pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/points$/);
-    if (pointsMatch && method === 'GET') {
-      return handleTraderPoints(res, corsHeaders, pointsMatch[1]);
     }
 
     const scoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/score$/);
@@ -463,31 +454,6 @@ function handleTraderFills(
   return true;
 }
 
-function handleTraderPoints(
-  res: ServerResponse, corsHeaders: Record<string, string>, address: string,
-): boolean {
-  const points = getTraderPoints(address);
-  const traderDisplayName = getDisplayName(address);
-  if (!points) {
-    res.writeHead(200, corsHeaders);
-    res.end(JSON.stringify({
-      address, nickname: traderDisplayName, totalPoints: 0,
-      breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 }, rank: 0,
-    }));
-    return true;
-  }
-  res.writeHead(200, corsHeaders);
-  res.end(JSON.stringify({
-    address, nickname: traderDisplayName, totalPoints: points.total_points,
-    breakdown: {
-      trades: points.points_from_trades, volume: points.points_from_volume,
-      diversity: points.points_from_diversity, pnl: points.points_from_pnl ?? 0,
-    },
-    rank: points.rank,
-  }));
-  return true;
-}
-
 function handleLeaderboardStatus(
   res: ServerResponse, corsHeaders: Record<string, string>, config: ChatServerConfig,
 ): boolean {
@@ -499,27 +465,6 @@ function handleLeaderboardStatus(
     totalFillsIndexed: getTotalFillsCount(),
     totalTradersTracked: getTotalTradersCount(),
   }));
-  return true;
-}
-
-function handlePointsLeaderboard(
-  res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
-): boolean {
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
-  const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
-  const rows = getPointsLeaderboard(limit, offset);
-  const totalTraders = getTotalPointsTraders();
-  const addresses = rows.map((r) => r.address);
-  const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
-  const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
-  const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
-  const extras = { nicknames, followerCounts, genesisPassSet };
-  const traders = rows.map((row) => ({
-    ...mapRowToListItem(row, extras, formatQuoteVolume),
-    totalPoints: row.total_points,
-  }));
-  res.writeHead(200, corsHeaders);
-  res.end(JSON.stringify({ traders, updatedAt: rows[0]?.updated_at ?? 0, totalTraders }));
   return true;
 }
 
