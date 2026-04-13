@@ -63,6 +63,20 @@ interface UserProfileRecord {
   profileImageUrl?: string;
 }
 
+/**
+ * Build DynamoDB key for a SeasonAccountScore record.
+ * Extracted to prevent drift between write/delete/read paths.
+ */
+export function buildSeasonAccountKey(
+  seasonId: string,
+  accountId: string
+): { pk: string; sk: 'SCORE' } {
+  return {
+    pk: `SEASON#${seasonId}#ACCOUNT#${accountId}`,
+    sk: 'SCORE',
+  };
+}
+
 // ============================================
 // Posts Operations
 // ============================================
@@ -398,8 +412,7 @@ export async function updatePostAndAdjustScores(params: {
 
     // Adjust season account aggregates
     if (existingPost.seasonId) {
-      const pk = `SEASON#${existingPost.seasonId}#ACCOUNT#${existingPost.accountId}`;
-      const sk = 'SCORE';
+      const { pk, sk } = buildSeasonAccountKey(existingPost.seasonId, existingPost.accountId);
 
       await docClient.send(
         new UpdateCommand({
@@ -449,8 +462,7 @@ export async function updatePostAndAdjustScores(params: {
 
     // Adjust season account aggregates
     if (existingPost.seasonId) {
-      const pk = `SEASON#${existingPost.seasonId}#ACCOUNT#${existingPost.accountId}`;
-      const sk = 'SCORE';
+      const { pk, sk } = buildSeasonAccountKey(existingPost.seasonId, existingPost.accountId);
 
       const perTypeField =
         postType === 'original' ? 'originalTotalScore'
@@ -1025,8 +1037,7 @@ export async function updateSeasonAccountAggregates(params: {
     postType = 'original',
   } = params;
 
-  const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
-  const sk = 'SCORE';
+  const { pk, sk } = buildSeasonAccountKey(seasonId, accountId);
 
   // Try to get existing record
   const existing = await docClient.send(
@@ -1289,8 +1300,7 @@ export async function adjustSeasonAdjustmentScore(
     isTelegramMember?: boolean;
   }
 ): Promise<void> {
-  const pk = `SEASON#${seasonId}#ACCOUNT#${accountId}`;
-  const sk = 'SCORE';
+  const { pk, sk } = buildSeasonAccountKey(seasonId, accountId);
 
   // GET existing record to recalculate userScore
   const result = await docClient.send(

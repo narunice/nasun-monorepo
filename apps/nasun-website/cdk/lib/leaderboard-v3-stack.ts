@@ -463,6 +463,25 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // Admin Merge Accounts Lambda (handle-change / suspension recovery)
+    // Longer timeout + larger memory: recomputes SeasonAccountScore from all posts
+    // after rewriting accountId on up to ~thousands of posts.
+    // 1-year log retention: audit trail for destructive cross-account operation.
+    const adminMergeAccountsLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3AdminMergeAccountsFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-admin-merge-accounts`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'admin-merge-accounts.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.minutes(5),
+        memorySize: 512,
+        logRetention: logs.RetentionDays.ONE_YEAR,
+        description: 'Leaderboard V3: Admin merge two accounts (post reassign + active-season recompute)',
+      }
+    );
+
     // Verify Telegram Lambda (Telegram channel membership verification)
     const verifyTelegramLambda = new NodejsFunction(
       this,
@@ -572,6 +591,12 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonsTable.grantReadData(adjustScoreLambda);
     this.seasonAccountsTable.grantReadWriteData(adjustScoreLambda);
 
+    // Admin Merge Accounts permissions
+    this.postsTable.grantReadWriteData(adminMergeAccountsLambda);
+    this.accountsTable.grantReadWriteData(adminMergeAccountsLambda);
+    this.seasonAccountsTable.grantReadWriteData(adminMergeAccountsLambda);
+    this.seasonsTable.grantReadData(adminMergeAccountsLambda);
+
     // Admin Featured Feed permissions (curated feed management)
     this.seasonsTable.grantReadWriteData(adminFeaturedFeedLambda);
     this.postsTable.grantReadData(adminFeaturedFeedLambda);
@@ -604,6 +629,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
       adminEditPostLambda,
       adminFeaturedFeedLambda,
       adjustScoreLambda,
+      adminMergeAccountsLambda,
       getLeaderboardLambda,  // cumulative view requires admin auth
       generateSnapshotLambda, // API Gateway path requires admin auth via UserProfiles
     ];
@@ -814,6 +840,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
     const adminPostsResource = adminResource.addResource('posts');
     const adminPostIdResource = adminPostsResource.addResource('{postId}');
     adminPostIdResource.addMethod('PATCH', new apigw.LambdaIntegration(adminEditPostLambda));
+
+    // POST /v3/admin/merge-accounts - Merge one account into another (handle-change recovery)
+    const adminMergeAccountsResource = adminResource.addResource('merge-accounts');
+    adminMergeAccountsResource.addMethod('POST', new apigw.LambdaIntegration(adminMergeAccountsLambda));
 
     // ============================================
     // Outputs
