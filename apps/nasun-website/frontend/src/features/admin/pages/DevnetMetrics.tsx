@@ -68,6 +68,10 @@ export function DevnetMetrics() {
 
         {metrics && (
           <>
+            <div className="text-xs text-nasun-white/60 mb-3 leading-relaxed">
+              Scope: faucet-funded addresses only. DAU counts addresses that received a faucet drip at least once and transacted on the given day.
+              "New" = first observed active on that day (tracked from 2026-04-13 onward); earlier dates use faucet-drip date as a proxy and may undercount new users.
+            </div>
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               <StatCard
