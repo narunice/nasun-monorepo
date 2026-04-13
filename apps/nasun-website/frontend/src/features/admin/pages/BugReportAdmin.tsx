@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BugReport, BugReportStatus } from "@/features/bug-report/types";
 import { STATUS_LABELS, STATUS_COLORS } from "@/features/bug-report/types";
 import { toast } from "react-toastify";
+import { getAccountFlag, setAccountFlag } from "../services/accountFlagApi";
 
 const BUG_REPORT_API_URL = import.meta.env.VITE_BUG_REPORT_API_URL;
 
@@ -87,6 +88,27 @@ export function BugReportAdmin() {
     queryFn: () => fetchBugReports(token!, statusFilter),
     enabled: !!token,
     staleTime: 30_000,
+  });
+
+  // Reporter flag status — fetched lazily for the selected report only.
+  const reporterIdentityId = selectedReport?.identityId;
+  const { data: flagStatus, refetch: refetchFlag } = useQuery({
+    queryKey: ['admin-account-flag', reporterIdentityId],
+    queryFn: () => getAccountFlag(token!, reporterIdentityId!),
+    enabled: !!token && !!reporterIdentityId,
+    staleTime: 30_000,
+  });
+
+  const flagMutation = useMutation({
+    mutationFn: (params: { flagged: boolean; reason?: string }) =>
+      setAccountFlag(token!, reporterIdentityId!, params.flagged, params.reason),
+    onSuccess: (data) => {
+      toast.success(data.isAccountFlagged ? 'Reporter flagged' : 'Reporter unflagged');
+      refetchFlag();
+    },
+    onError: (err: Error) => {
+      toast.error(`Flag update failed: ${err.message}`);
+    },
   });
 
   const updateMutation = useMutation({
@@ -277,6 +299,60 @@ export function BugReportAdmin() {
                           </>
                         )}
                       </div>
+                    </div>
+
+                    {/* Account Flag (excludes from airdrops) */}
+                    <div className={`rounded-lg p-3 space-y-2 border ${
+                      flagStatus?.isAccountFlagged
+                        ? 'bg-red-500/5 border-red-400/30'
+                        : 'bg-white/[0.03] border-white/5'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/50 text-xs">Account Flag</span>
+                        <span className={`text-xs font-medium ${
+                          flagStatus?.isAccountFlagged ? 'text-red-300' : 'text-white/40'
+                        }`}>
+                          {flagStatus?.isAccountFlagged ? 'FLAGGED' : 'Not flagged'}
+                        </span>
+                      </div>
+                      {flagStatus?.isAccountFlagged && (
+                        <div className="text-xs text-white/60 space-y-0.5">
+                          {flagStatus.flagReason && (
+                            <div className="text-red-200/80">Reason: {flagStatus.flagReason}</div>
+                          )}
+                          {flagStatus.flaggedAt && (
+                            <div>At: {new Date(flagStatus.flaggedAt).toLocaleString('en-US')}</div>
+                          )}
+                        </div>
+                      )}
+                      {flagStatus?.isAccountFlagged ? (
+                        <Button
+                          onClick={() => flagMutation.mutate({ flagged: false })}
+                          disabled={flagMutation.isPending}
+                          className="w-full text-xs h-8 bg-white/10 hover:bg-white/15"
+                        >
+                          {flagMutation.isPending ? 'Updating...' : 'Unflag account'}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            const reason = window.prompt(
+                              'Reason for flagging (visible to admins only):',
+                              `Abusive bug report ${selectedReport.reportId}`,
+                            );
+                            if (reason === null) return;
+                            if (!window.confirm(
+                              'Flag this account? They will be blocked from airdrop registration. ' +
+                              'Existing points are not modified.',
+                            )) return;
+                            flagMutation.mutate({ flagged: true, reason: reason.trim() });
+                          }}
+                          disabled={flagMutation.isPending}
+                          className="w-full text-xs h-8 bg-red-600/80 hover:bg-red-600 text-white"
+                        >
+                          {flagMutation.isPending ? 'Updating...' : 'Flag account (excludes from airdrops)'}
+                        </Button>
+                      )}
                     </div>
                   </div>
 

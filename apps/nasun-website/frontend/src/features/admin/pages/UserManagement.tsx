@@ -47,7 +47,7 @@ export function UserManagement() {
         </div>
 
         {/* Stats Cards (shared across tabs) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <StatCard
             label="Registered Users"
             value={data?.stats?.totalRegistered ?? "-"}
@@ -64,6 +64,10 @@ export function UserManagement() {
           <StatCard
             label="X Connected"
             value={data?.stats?.xConnected ?? "-"}
+          />
+          <StatCard
+            label="Flagged"
+            value={data?.stats?.flagged ?? "-"}
           />
         </div>
 

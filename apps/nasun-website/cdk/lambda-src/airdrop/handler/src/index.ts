@@ -164,6 +164,18 @@ async function handleRegister(identityId: string, origin?: string): Promise<APIG
   }
 
   const profile = profileResult.Item;
+
+  // Block flagged accounts from registering. Flagged status is set by an
+  // admin via the account-flag endpoint and recorded on UserProfiles.
+  if (profile.isAccountFlagged === true) {
+    console.log(`[airdrop-register] Blocked flagged account: ${identityId}`);
+    return jsonResponse(403, {
+      success: false,
+      error: "ACCOUNT_FLAGGED",
+      message: "This account is not eligible to register for the airdrop. Contact support if you believe this is an error.",
+    }, origin);
+  }
+
   const linkedAccounts = profile.linkedAccounts;
 
   // Resolve wallet address (Nasun wallet from zkLogin or linked wallet)
