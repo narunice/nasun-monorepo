@@ -111,7 +111,7 @@ export const AssetsCard: FC<AssetsCardProps> = ({
   const hasFeaturedNfts = enrichedFeaturedNfts.length > 0 || (isAllianceMinted && !!allianceData);
 
   return (
-    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+    <OuterBox color="w2" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">MY ASSETS</h5>
 
       {/* Featured Collection first (Alliance + Genesis Pass) */}

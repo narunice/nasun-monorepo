@@ -153,7 +153,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
 
   return (
     <>
-      <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+      <OuterBox color="w2" padding="sm" className={`animate-fade-slide-up ${className}`}>
         <h5 className="font-medium uppercase mb-5">{t("accountManagement.title")}</h5>
 
         <div className="flex flex-col gap-4">
@@ -162,7 +162,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
             <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
               <div>
                 <h6 className="font-medium text-nasun-white mb-1">{t("accountManagement.withdraw.title")}</h6>
-                <p className="text-nasun-white/50 text-sm">{t("accountManagement.withdraw.description")}</p>
+                <p className="text-nasun-white/80 text-sm">{t("accountManagement.withdraw.description")}</p>
               </div>
               <Button
                 onClick={() => setShowWithdrawDialog(true)}
@@ -181,7 +181,7 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
           <div className="flex flex-col gap-3 p-4 border border-red-500/20 rounded-sm bg-red-500/[0.04]">
             <div>
               <h6 className="font-medium text-nasun-white mb-1">{t("accountManagement.deleteAccount.title")}</h6>
-              <p className="text-nasun-white/50 text-sm">{t("accountManagement.deleteAccount.description")}</p>
+              <p className="text-nasun-white/80 text-sm">{t("accountManagement.deleteAccount.description")}</p>
             </div>
             <Button
               onClick={handleDeleteAccount}

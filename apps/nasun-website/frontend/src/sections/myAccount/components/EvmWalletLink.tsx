@@ -144,7 +144,7 @@ function MobileMetaMaskLinkButton() {
         <DialogContent className="bg-gray-900 border-nasun-c5/30">
           <DialogHeader>
             <DialogTitle className="text-nasun-white">Link EVM Wallet</DialogTitle>
-            <DialogDescription className="text-nasun-white/60">
+            <DialogDescription className="text-nasun-white/80">
               Connect your MetaMask wallet to register your EVM address.
             </DialogDescription>
           </DialogHeader>
@@ -169,10 +169,10 @@ function MobileMetaMaskLinkButton() {
           {(step === "connecting" || step === "signing") && (
             <div className="flex flex-col items-center gap-3 py-6">
               <Spinner size="md" />
-              <p className="text-nasun-white/60 text-sm">
+              <p className="text-nasun-white/80 text-sm">
                 {step === "connecting" ? "Waiting for MetaMask..." : "Waiting for signature..."}
               </p>
-              <p className="text-nasun-white/40 text-sm">
+              <p className="text-nasun-white/80 text-sm">
                 Complete the request in your MetaMask app, then return here.
               </p>
             </div>
@@ -261,7 +261,7 @@ function ManualEvmAddressForm() {
         onChange={(e) => { setAddress(e.target.value); setError(null); }}
         placeholder="0x..."
         maxLength={42}
-        className={`w-full bg-gray-800 border rounded-sm px-3 py-2 text-sm font-mono text-nasun-white placeholder:text-white/30 outline-none ${
+        className={`w-full bg-gray-800 border rounded-sm px-3 py-2 text-sm font-mono text-nasun-white placeholder:text-white/80 outline-none ${
           showValidation
             ? isValidEvmAddress
               ? "border-green-500/50"

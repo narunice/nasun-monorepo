@@ -288,22 +288,22 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                     placeholder="Display name"
                     className="bg-nasun-c6 border border-nasun-white/20 rounded-lg px-2.5 py-1 text-sm text-nasun-white w-full max-w-[200px] focus:outline-none focus:border-cyan-500 disabled:opacity-50"
                   />
-                  <button onClick={saveName} disabled={isSaving || editValue.trim().length === 0} className="text-xs font-medium px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-40 transition-colors">
+                  <button onClick={saveName} disabled={isSaving || editValue.trim().length === 0} className="text-sm font-medium px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-40 transition-colors">
                     {isSaving ? "..." : "Save"}
                   </button>
-                  <button onClick={cancelEditing} disabled={isSaving} className="text-xs font-medium px-2 py-1 text-nasun-white/50 hover:text-nasun-white/80 transition-colors">
+                  <button onClick={cancelEditing} disabled={isSaving} className="text-sm font-medium px-2 py-1 text-nasun-white/80 hover:text-nasun-white/80 transition-colors">
                     Cancel
                   </button>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-nasun-white/30 tabular-nums">{editValue.length}/30</span>
+                  <span className="text-sm text-nasun-white/80 tabular-nums">{editValue.length}/30</span>
                   {hasCustomName && (
-                    <button onClick={resetName} disabled={isSaving} className="text-[10px] text-amber-400/70 hover:text-amber-400 transition-colors">
+                    <button onClick={resetName} disabled={isSaving} className="text-sm text-amber-400/70 hover:text-amber-400 transition-colors">
                       Reset to default
                     </button>
                   )}
                 </div>
-                {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+                {saveError && <p className="text-sm text-red-400">{saveError}</p>}
               </div>
             ) : (
               <>
@@ -312,7 +312,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                   <GenesisPassBadge />
                   <button
                     onClick={startEditing}
-                    className="flex-shrink-0 text-nasun-white/30 hover:text-nasun-white/70 transition-colors"
+                    className="flex-shrink-0 text-nasun-white/80 hover:text-nasun-white/70 transition-colors"
                     title="Edit display name"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,8 +323,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 {(() => {
                   const loginId = getLoginIdentifier(user);
                   return loginId ? (
-                    <p className="text-nasun-white/60">
-                      <span className="text-slate-400 font-medium text-sm lg:text-base">
+                    <p className="text-nasun-white/80">
+                      <span className="text-slate-300 font-medium text-sm lg:text-base">
                         {loginId.value}
                       </span>
                     </p>
@@ -346,13 +346,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
               {/* Section title */}
               <h6 className="text-nasun-white mb-3 flex items-center gap-2">
                 Ecosystem Points
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
+                <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
                   Experimental
                 </span>
                 {hasActiveNft && (
                   <span className="ml-auto flex items-center gap-1.5">
                     {cooldownSeconds > 0 && (
-                      <span className="text-[10px] text-nasun-white/30 tabular-nums">
+                      <span className="text-sm text-nasun-white/80 tabular-nums">
                         {cooldownSeconds}s
                       </span>
                     )}
@@ -360,7 +360,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       type="button"
                       onClick={refreshEcosystem}
                       disabled={ecosystemRefreshing || cooldownSeconds > 0}
-                      className="text-xs text-nasun-white/40 hover:text-nasun-white/70 transition-colors disabled:opacity-30"
+                      className="text-sm text-nasun-white/80 hover:text-nasun-white/70 transition-colors disabled:opacity-30"
                       title={cooldownSeconds > 0 ? `Cooldown ${cooldownSeconds}s` : "Refresh points"}
                     >
                       <svg
@@ -395,13 +395,13 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
               </h6>
 
               {!hasValidAddress ? (
-                <p className="text-nasun-white/50 text-base">
+                <p className="text-nasun-white/80 text-base">
                   Connect Nasun Wallet to view activity points
                 </p>
               ) : ecosystemLoading ? (
                 <div className="flex items-center gap-2 py-2">
                   <Spinner size="sm" />
-                  <span className="text-nasun-white/50 text-base">
+                  <span className="text-nasun-white/80 text-base">
                     Loading points...
                   </span>
                 </div>
@@ -409,7 +409,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 <div className={!hasActiveNft ? "opacity-40 grayscale pointer-events-none select-none" : ""}>
                   {!hasActiveNft && (
                     <div className="flex justify-center mb-2">
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/10 text-nasun-white/70 tracking-wide uppercase">
+                      <span className="text-sm font-semibold px-2.5 py-1 rounded-full bg-white/10 text-nasun-white/70 tracking-wide uppercase">
                         Paused - Activate an NFT to resume
                       </span>
                     </div>
@@ -419,7 +419,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       <p className="text-sm font-semibold text-red-400">
                         Multiplier reduced to 0x due to low activity
                       </p>
-                      <p className="text-xs text-red-400/70 mt-0.5">
+                      <p className="text-sm text-red-400/70 mt-0.5">
                         Stay active for 2 consecutive days to recover. Base score still accrues normally.
                       </p>
                     </div>
@@ -453,16 +453,16 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                     <span className="text-sm text-nasun-white/70">
                       pts today
                     </span>
-                    <span className="text-sm text-nasun-white/40 ml-1">=</span>
-                    <span className="text-sm text-nasun-white/60 ml-1">
+                    <span className="text-sm text-nasun-white/80 ml-1">=</span>
+                    <span className="text-sm text-nasun-white/80 ml-1">
                       {displayStakingScore > 0 ? (
                         <>
-                          <span className="text-nasun-white/40">(</span>
+                          <span className="text-nasun-white/80">(</span>
                           <span className="font-mono text-nasun-white/80">
                             {displayBaseScore}
                           </span>{" "}
                           base
-                          <span className="text-nasun-white/40"> + </span>
+                          <span className="text-nasun-white/80"> + </span>
                           <span
                             className="font-mono text-nasun-c3"
                             title="Active stake tier: 1~500 NSN = 1pt, 501~5,000 = 2pt, 5,001+ = 3pt. Updates within ~24h of delegation."
@@ -470,7 +470,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                             {displayStakingScore}
                           </span>{" "}
                           staking
-                          <span className="text-nasun-white/40">)</span>
+                          <span className="text-nasun-white/80">)</span>
                         </>
                       ) : (
                         <>
@@ -480,15 +480,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                           base
                         </>
                       )}
-                      <span className="text-nasun-white/40"> x </span>
+                      <span className="text-nasun-white/80"> x </span>
                       <span className={`font-mono ${ecosystemScore?.isPenalized ? "text-red-400" : "text-nasun-white/80"}`}>
                         {displayMultiplier.toFixed(1)}x
                       </span>{" "}
                       mult
                       {ecosystemScore?.isPenalized && (
-                        <span className="text-red-400/70 text-xs ml-0.5">(penalized)</span>
+                        <span className="text-red-400/70 text-sm ml-0.5">(penalized)</span>
                       )}
-                      <span className="text-nasun-white/40"> + </span>
+                      <span className="text-nasun-white/80"> + </span>
                       <span className="font-mono text-nasun-white/80">
                         {Math.max(
                           0,
@@ -521,7 +521,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                         {barSegments.map((seg) => (
                           <span
                             key={seg.category}
-                            className="flex items-center gap-1 text-xs text-nasun-white/40"
+                            className="flex items-center gap-1 text-sm text-nasun-white/80"
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[seg.category] || "bg-gray-400"}`}
@@ -591,7 +591,7 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-4 w-4 items-center justify-center rounded-full border border-nasun-white/50 text-[10px] leading-none text-nasun-white/70 hover:border-nasun-white/80 hover:text-nasun-white transition-colors"
+        className="flex h-4 w-4 items-center justify-center rounded-full border border-nasun-white/50 text-sm leading-none text-nasun-white/70 hover:border-nasun-white/80 hover:text-nasun-white transition-colors"
         aria-label="More info"
       >
         i

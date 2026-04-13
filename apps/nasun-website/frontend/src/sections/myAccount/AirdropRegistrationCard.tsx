@@ -27,7 +27,7 @@ interface AirdropRegistrationCardProps {
 }
 
 const STATUS_CONFIG = {
-  not_applied: { label: "Not registered", color: "text-nasun-white/30" },
+  not_applied: { label: "Not registered", color: "text-nasun-white/80" },
   pending: { label: "Pending", color: "text-yellow-400" },
   approved: { label: "Registered", color: "text-emerald-400" },
   rejected: { label: "Rejected", color: "text-red-400" },
@@ -72,7 +72,7 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
       {/* Bottom row: status */}
       {user && !isLoading && (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-nasun-white/40">Status:</span>
+          <span className="text-nasun-white/80">Status:</span>
           <span className={statusConfig.color}>{statusConfig.label}</span>
         </div>
       )}
@@ -87,7 +87,7 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
       </div>
 
       {/* Error message */}
-      {error && <p className="text-red-400 text-xs">{error}</p>}
+      {error && <p className="text-red-400 text-sm">{error}</p>}
 
       {/* Step 1: Confirm Modal */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
@@ -153,7 +153,7 @@ export const AirdropRegistrationCard: FC<AirdropRegistrationCardProps> = ({
 
   return (
     <OuterBox
-      color="c5"
+      color="w2"
       padding="sm"
       className={`!border-teal-400/60 !bg-teal-900/30 ${className}`}
     >

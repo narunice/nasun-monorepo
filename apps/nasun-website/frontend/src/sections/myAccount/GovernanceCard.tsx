@@ -29,10 +29,10 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   if (!isConnected) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex flex-col items-center justify-center py-4 gap-3">
-          <p className="text-nasun-white/50 text-center">
+          <p className="text-nasun-white/80 text-center">
             Connect Nasun Wallet to view governance activity
           </p>
         </div>
@@ -42,7 +42,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
   if (isLoading) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
         <div className="flex items-center justify-center py-8">
           <Spinner />
@@ -52,7 +52,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+    <OuterBox color="w2" padding="sm" className={`animate-fade-slide-up ${className}`}>
       <h5 className="font-medium uppercase text-nasun-white mb-4">GOVERNANCE</h5>
       {/* Stats Row */}
       <div className="mb-4">
@@ -61,7 +61,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
 
       {/* Recent Votes */}
       <div className="space-y-2">
-        <h6 className="font-medium text-nasun-white/60 uppercase">Recent Votes</h6>
+        <h6 className="font-medium text-nasun-white/80 uppercase">Recent Votes</h6>
         {history.length > 0 ? (
           <div className="space-y-2">
             {history.map((vote) => (
@@ -80,7 +80,7 @@ export const GovernanceCard: FC<GovernanceCardProps> = ({ className = "" }) => {
             ))}
           </div>
         ) : (
-          <p className="text-nasun-white/50">No votes yet</p>
+          <p className="text-nasun-white/80">No votes yet</p>
         )}
       </div>
 

@@ -146,7 +146,7 @@ export const EthereumNFT: FC<EthereumNFTProps> = ({ nft }) => {
 
       {/* Data Source (Development only) */}
       {import.meta.env.DEV && (
-        <p className="text-sm text-gray-400 pt-2">
+        <p className="text-sm text-gray-300 pt-2">
           Data source: {nft.source === 'alchemy' ? 'Alchemy' : 'Etherscan'}
         </p>
       )}

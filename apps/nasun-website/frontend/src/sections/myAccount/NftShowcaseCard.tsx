@@ -203,7 +203,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     <div className={`flex flex-col gap-4 lg:gap-6 ${className}`}>
       {/* === Genesis Pass (priority during drop) === */}
       {isGenesisPassConfigured && (
-        <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
+        <OuterBox color="w2" padding="sm" className="animate-fade-slide-up">
           <div className="flex flex-col gap-2">
             <h6 className="text-nasun-white font-medium uppercase">
               GENESIS PASS
@@ -211,10 +211,10 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             <div
               className={`relative rounded-sm overflow-hidden aspect-square transition-all flex items-center justify-center ${
                 showMintedState
-                  ? "bg-gray-900"
+                  ? "bg-slate-800"
                   : genesisIsActive
-                    ? "bg-gray-700"
-                    : "bg-gray-800"
+                    ? "bg-slate-600"
+                    : "bg-slate-700"
               }`}
             >
               <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
@@ -365,7 +365,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
       {/* === Alliance === */}
       {isAllianceConfigured && (
         <OuterBox
-          color="c5"
+          color="w2"
           padding="sm"
           className="animate-fade-slide-up relative z-10"
         >
@@ -373,15 +373,15 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             <h6 className="text-nasun-white font-medium uppercase">ALLIANCE</h6>
             <div className="relative rounded-sm overflow-hidden aspect-square">
               {isAllianceLoading ? (
-                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
                   <Spinner />
                 </div>
               ) : !isAllianceMinted ? (
-                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
                   <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
-                  <span className="text-nasun-white/60 text-sm font-medium text-center px-4">
+                  <span className="text-nasun-white/80 text-sm font-medium text-center px-4">
                     Mint your Alliance NFT
                   </span>
                 </div>
@@ -418,9 +418,9 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             </div>
             <div className="flex items-center justify-between">
               {isAllianceLoading ? (
-                <span className="text-nasun-white/50 text-sm">Loading...</span>
+                <span className="text-nasun-white/80 text-sm">Loading...</span>
               ) : !isAllianceMinted ? (
-                <span className="text-nasun-white/50 text-sm">Not Minted</span>
+                <span className="text-nasun-white/80 text-sm">Not Minted</span>
               ) : allianceIsActive ? (
                 <span className="text-green-400 text-sm">Activated</span>
               ) : (
@@ -467,9 +467,9 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
       )}
 
       {/* === Battalion === */}
-      <OuterBox color="c5" padding="sm" className="animate-fade-slide-up">
+      <OuterBox color="w2" padding="sm" className="animate-fade-slide-up">
         <h6 className="text-nasun-white font-medium uppercase">BATTALION</h6>
-        <p className="text-nasun-white/40 text-sm mt-1">Coming Soon</p>
+        <p className="text-nasun-white/80 text-sm mt-1">Coming Soon</p>
       </OuterBox>
     </div>
   );
@@ -495,7 +495,7 @@ function CountdownDisplay({
 
   return (
     <div className="flex flex-col items-center mt-4 gap-2">
-      <span className="text-nasun-white/80 text-xs uppercase tracking-widest">
+      <span className="text-nasun-white/80 text-sm uppercase tracking-widest">
         {label}
       </span>
       <div className="flex items-center gap-1.5">
@@ -513,12 +513,12 @@ function CountdownDisplay({
               >
                 {seg.value}
               </span>
-              <span className="text-nasun-white/60 text-xs uppercase tracking-widest mt-1">
+              <span className="text-nasun-white/80 text-sm uppercase tracking-widest mt-1">
                 {seg.unit}
               </span>
             </div>
             {i < segments.length - 1 && (
-              <span className="text-nasun-white/30 text-xl md:text-2xl font-light -mt-2.5">
+              <span className="text-nasun-white/80 text-xl md:text-2xl font-light -mt-2.5">
                 :
               </span>
             )}
@@ -547,7 +547,7 @@ function ThreeDotMenu({
     <div className="relative">
       <button
         onClick={onToggle}
-        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/50 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/80 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
       >
         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
           <circle cx="8" cy="3" r="1.5" />

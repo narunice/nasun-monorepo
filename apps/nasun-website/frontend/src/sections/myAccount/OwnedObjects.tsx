@@ -99,7 +99,7 @@ export const OwnedObjects = ({
   return (
     <div className="flex flex-col space-y-6">
       {hasNoAssets && (
-        <p className="pt-4 text-gray-400">No objects found.</p>
+        <p className="pt-4 text-gray-300">No objects found.</p>
       )}
 
       {/* Ethereum & Polygon NFTs (non-featured) */}
@@ -115,7 +115,7 @@ export const OwnedObjects = ({
       {hasAddresses && (
         <div>
           {isSuiPending ? (
-            <p className="text-gray-400">Loading...</p>
+            <p className="text-gray-300">Loading...</p>
           ) : suiError ? (
             <p className="text-nasun-white">
               Error loading Sui objects: {suiError.message}

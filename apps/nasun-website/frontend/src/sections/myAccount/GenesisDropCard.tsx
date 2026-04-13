@@ -77,7 +77,7 @@ export const GenesisDropCard: FC<GenesisDropCardProps> = ({
     >
       {/* Minted badge - top right */}
       {phase === "MINTED" && (
-        <span className="absolute top-3 right-4 text-[11px] font-semibold uppercase tracking-wide bg-emerald-500 text-white px-2 py-0.5 rounded-full">
+        <span className="absolute top-3 right-4 text-sm font-semibold uppercase tracking-wide bg-emerald-500 text-white px-2 py-0.5 rounded-full">
           Minted
         </span>
       )}

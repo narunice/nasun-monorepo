@@ -162,7 +162,7 @@ export const CreatorsAppreciationBonusCard: FC<CreatorsAppreciationBonusCardProp
             +60 pts
           </span>
           {status!.rank != null && (
-            <span className="text-sm text-nasun-white/60 break-words min-w-0">
+            <span className="text-sm text-nasun-white/80 break-words min-w-0">
               Season 1 rank at pause: #{status!.rank}
               {status!.handle ? ` · @${status!.handle}` : ""}
             </span>
@@ -177,7 +177,7 @@ export const CreatorsAppreciationBonusCard: FC<CreatorsAppreciationBonusCardProp
           ) : (
             <span>
               Closes in <span className="text-teal-300 font-mono">{remaining}</span>
-              <span className="text-nasun-white/50">
+              <span className="text-nasun-white/80">
                 {utcDeadlineLabel ? ` (${utcDeadlineLabel} UTC` : ""}
                 {utcDeadlineLabel && localDeadlineLabel
                   ? ` · ${localDeadlineLabel} local)`
@@ -274,7 +274,7 @@ export const CreatorsAppreciationBonusCard: FC<CreatorsAppreciationBonusCardProp
 
   return (
     <OuterBox
-      color="c5"
+      color="w2"
       padding="md"
       className={`!border-teal-400/60 !bg-teal-900/30 ${className}`}
     >

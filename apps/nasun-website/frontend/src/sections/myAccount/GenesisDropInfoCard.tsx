@@ -130,7 +130,7 @@ export const GenesisDropInfoCard: FC<GenesisDropInfoCardProps> = ({
                   isActive
                     ? "text-emerald-400 font-semibold"
                     : isPast
-                      ? "text-nasun-white/20 line-through"
+                      ? "text-nasun-white/80 line-through"
                       : "text-nasun-white/70"
                 }`}
               >
@@ -144,7 +144,7 @@ export const GenesisDropInfoCard: FC<GenesisDropInfoCardProps> = ({
           {/* Mint close */}
           <div
             className={`text-base leading-relaxed ${
-              allEnded ? "text-nasun-white/40" : "text-nasun-white/70"
+              allEnded ? "text-nasun-white/80" : "text-nasun-white/70"
             }`}
           >
             <span className="font-semibold">Mint closes:</span>
@@ -156,7 +156,7 @@ export const GenesisDropInfoCard: FC<GenesisDropInfoCardProps> = ({
         {/* Right: Countdown */}
         <div className="flex flex-col items-center justify-center">
           {allEnded ? (
-            <p className="text-nasun-white/50 text-base">Minting has ended</p>
+            <p className="text-nasun-white/80 text-base">Minting has ended</p>
           ) : (
             <>
               {remainingLabel && (
@@ -179,21 +179,21 @@ export const GenesisDropInfoCard: FC<GenesisDropInfoCardProps> = ({
                     {timeLeft.days > 0 && (
                       <span>
                         {pad2(timeLeft.days)}
-                        <span className="text-nasun-white/50 text-lg">d </span>
+                        <span className="text-nasun-white/80 text-lg">d </span>
                       </span>
                     )}
                     {pad2(timeLeft.hours)}
-                    <span className="text-nasun-white/50 text-lg">h </span>
+                    <span className="text-nasun-white/80 text-lg">h </span>
                     {pad2(timeLeft.minutes)}
-                    <span className="text-nasun-white/50 text-lg">m </span>
+                    <span className="text-nasun-white/80 text-lg">m </span>
                     {pad2(timeLeft.seconds)}
-                    <span className="text-nasun-white/50 text-lg">s</span>
+                    <span className="text-nasun-white/80 text-lg">s</span>
                   </p>
                 </div>
               )}
               {nextLabel && (
                 <div className="flex items-center gap-2 mt-3">
-                  <span className="text-xs font-bold uppercase tracking-wider bg-orange-500 text-white px-2 py-0.5 rounded-full">
+                  <span className="text-sm font-bold uppercase tracking-wider bg-orange-500 text-white px-2 py-0.5 rounded-full">
                     Next
                   </span>
                   <span className="text-nasun-white font-bold text-lg uppercase tracking-wide">

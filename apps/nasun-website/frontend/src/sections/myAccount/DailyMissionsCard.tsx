@@ -156,7 +156,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
         </div>
       )
     : ({ children }: { children: React.ReactNode }) => (
-        <OuterBox color="c5" padding="sm" className={className}>
+        <OuterBox color="w2" padding="sm" className={className}>
           {children}
         </OuterBox>
       );
@@ -182,7 +182,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
           <h6 className="text-nasun-white text-sm font-medium">
             Daily Missions
           </h6>
-          <p className="text-sm text-nasun-white/40 mt-0.5">
+          <p className="text-sm text-nasun-white/80 mt-0.5">
             {completedCount}/{activeMissions.length} completed
           </p>
         </div>
@@ -236,7 +236,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                 <p
                   className={`text-sm font-medium ${
                     completed
-                      ? "text-nasun-white/60 line-through"
+                      ? "text-nasun-white/80 line-through"
                       : mission.comingSoon
                         ? "text-nasun-white/70"
                         : "text-nasun-white"
@@ -279,11 +279,11 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                     mission.label
                   )}
                   {mission.comingSoon && (
-                    <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-nasun-white/10 text-nasun-white/50">
+                    <span className="ml-2 text-sm font-semibold px-1.5 py-0.5 rounded-full bg-nasun-white/10 text-nasun-white/80">
                       Coming Soon
                     </span>
                   )}
-                  <span className="ml-2 text-sm font-mono text-nasun-white/50">
+                  <span className="ml-2 text-sm font-mono text-nasun-white/80">
                     +{mission.points}
                   </span>
                 </p>

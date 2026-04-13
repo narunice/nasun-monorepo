@@ -119,12 +119,12 @@ const NftThumbnail: FC<NftThumbnailProps> = ({ nft }) => {
           <p className="text-sm text-gray-200 truncate font-medium flex-1">
             {displayName}
           </p>
-          <ExternalLink className="w-3 h-3 text-gray-500 group-hover:text-nasun-c4 flex-shrink-0" />
+          <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-nasun-c4 flex-shrink-0" />
         </div>
         <div className="flex items-center gap-1.5">
           <ChainBadge chain={chain} />
           {nft.collectionName && nft.name !== nft.collectionName && (
-            <span className="text-sm text-gray-500 truncate">
+            <span className="text-sm text-gray-300 truncate">
               {nft.collectionName}
             </span>
           )}
@@ -161,7 +161,7 @@ export const NftThumbnailGallery: FC<NftThumbnailGalleryProps> = ({
 
   if (error) {
     return (
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-300">
         Unable to load NFTs. Please try again later.
       </p>
     );
