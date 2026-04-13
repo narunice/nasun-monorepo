@@ -39,6 +39,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ecosystem-bonus-airdrop": "bg-fuchsia-500",
   "ecosystem-bonus-bugreport": "bg-rose-500",
   "ecosystem-bonus-creators-appreciation": "bg-indigo-500",
+  "ecosystem-bonus-creator-posts": "bg-emerald-500",
   "ecosystem-bonus-admin": "bg-teal-500",
 };
 
@@ -52,6 +53,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "ecosystem-bonus-airdrop": "Airdrop",
   "ecosystem-bonus-bugreport": "Bug Report",
   "ecosystem-bonus-creators-appreciation": "Creators Appreciation",
+  "ecosystem-bonus-creator-posts": "Creator Posts",
   "ecosystem-bonus-admin": "Bonus",
 };
 
@@ -147,6 +149,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
 
   // Ecosystem score values from API (single source of truth)
   const displayBaseScore = ecosystemScore?.daily.baseScore ?? 0;
+  const displayStakingScore = ecosystemScore?.daily.stakingScore ?? 0;
   const displayMultiplier = ecosystemScore?.multiplier ?? 0;
   const displayTodayScore = ecosystemScore?.daily.ecosystemScore ?? 0;
 
@@ -452,10 +455,31 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                     </span>
                     <span className="text-sm text-nasun-white/40 ml-1">=</span>
                     <span className="text-sm text-nasun-white/60 ml-1">
-                      <span className="font-mono text-nasun-white/80">
-                        {displayBaseScore}
-                      </span>{" "}
-                      base
+                      {displayStakingScore > 0 ? (
+                        <>
+                          <span className="text-nasun-white/40">(</span>
+                          <span className="font-mono text-nasun-white/80">
+                            {displayBaseScore}
+                          </span>{" "}
+                          base
+                          <span className="text-nasun-white/40"> + </span>
+                          <span
+                            className="font-mono text-nasun-c3"
+                            title="Active stake tier: 1~500 NSN = 1pt, 501~5,000 = 2pt, 5,001+ = 3pt. Updates within ~24h of delegation."
+                          >
+                            {displayStakingScore}
+                          </span>{" "}
+                          staking
+                          <span className="text-nasun-white/40">)</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-mono text-nasun-white/80">
+                            {displayBaseScore}
+                          </span>{" "}
+                          base
+                        </>
+                      )}
                       <span className="text-nasun-white/40"> x </span>
                       <span className={`font-mono ${ecosystemScore?.isPenalized ? "text-red-400" : "text-nasun-white/80"}`}>
                         {displayMultiplier.toFixed(1)}x
@@ -466,7 +490,11 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       )}
                       <span className="text-nasun-white/40"> + </span>
                       <span className="font-mono text-nasun-white/80">
-                        {Math.max(0, displayTodayScore - Math.round(displayBaseScore * displayMultiplier))}
+                        {Math.max(
+                          0,
+                          displayTodayScore
+                            - Math.round((displayBaseScore + displayStakingScore) * displayMultiplier),
+                        )}
                       </span>{" "}
                       bonus
                     </span>

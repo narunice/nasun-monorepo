@@ -53,6 +53,25 @@ export const SCORE_CATEGORIES = new Set([
 export const GENESIS_PASS_MULTIPLIER = 2.0; // Forward-only: existing 1.5x records remain immutable
 export const VOLUME_TIER_CAP = 3.0;
 
+// --- Staking-v2 ---
+// Active stake principal contributes a tiered per-day score that is summed with base_score
+// inside the frontend formula: today = (base + staking) * mult + bonus.
+// UTC date; compared lexicographically against scanner targetDate (also UTC YYYY-MM-DD).
+export const STAKING_V2_CUTOFF_DATE = '2026-04-14';
+
+export const STAKING_V2_TIERS: Array<{ minNsn: number; pts: number }> = [
+  { minNsn: 5001, pts: 3 },
+  { minNsn: 501, pts: 2 },
+  { minNsn: 1, pts: 1 },
+];
+
+export function calcStakingTierPts(principalNsn: number): number {
+  for (const tier of STAKING_V2_TIERS) {
+    if (principalNsn >= tier.minNsn) return tier.pts;
+  }
+  return 0;
+}
+
 // --- Scanner parameters ---
 
 export const SCAN_INTERVAL_MS = 60 * 1000; // 1 minute (fast detection for daily mission checklist)

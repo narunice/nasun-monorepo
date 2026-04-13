@@ -288,6 +288,7 @@ async function scanLoop(myGen: number): Promise<void> {
         const nftCheckInserts = await runDailyNftChecks(
           getActivationsCacheMap(),
           getIdentityToWalletMap(),
+          registeredWallets,
         );
         totalProcessed += nftCheckInserts;
         lastDailyNftCheckDate = todayStr;
