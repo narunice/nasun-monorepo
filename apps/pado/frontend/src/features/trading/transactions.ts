@@ -299,6 +299,13 @@ export function buildPlaceMarketOrder(
 
   const tx = new Transaction();
 
+  // SDK auto-budget (via dryRun) was hitting InsufficientGas on real market
+  // orders because orderbook state can shift between dryRun and execution,
+  // and the auto-estimate left only ~22% headroom. Observed actual gas usage
+  // up to ~80M MIST when walking deep books; 100M MIST (~0.1 NSN) covers
+  // the worst case while remaining cheap relative to typical trade sizes.
+  tx.setGasBudget(100_000_000);
+
   // Generate trade proof
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
