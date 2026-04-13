@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1029.0",
     "@hono/node-server": "^1.13.8",
     "hono": "^4.7.5",
     "jose": "^5.2.0",
