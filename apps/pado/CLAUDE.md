@@ -96,6 +96,7 @@ cd apps/pado/frontend && pnpm test:coverage
 | [docs/frontend.md](docs/frontend.md) | Routes + feature modules + frontend libraries (lib/) |
 | [docs/contracts.md](docs/contracts.md) | Network config, trading pairs, deployed contract addresses, Move contract specs |
 | [docs/bots.md](docs/bots.md) | LP Bot, Price Updater, Liquidation Keeper, TP/SL Keeper + deployment |
+| [docs/chat-server.md](docs/chat-server.md) | Pado chat-server archive 이력 + 현 구조(nasun-chat-server 통합) |
 | [docs/environment.md](docs/environment.md) | All environment variables (network, DeepBook, tokens, pools, oracle, zkLogin, chat) |
 | [docs/PADO_NEXT_STEPS.md](docs/PADO_NEXT_STEPS.md) | Next feature priorities + post-launch improvements |
 | [docs/COMPETITIVE_ANALYSIS.md](docs/COMPETITIVE_ANALYSIS.md) | Competitive analysis and improvement roadmap |
