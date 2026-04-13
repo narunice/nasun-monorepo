@@ -75,10 +75,11 @@ const RECIPIENTS: readonly Recipient[] = [
   { handle: 'kieu20011', points: 5 },
   { handle: 'Sammysea09', points: 5 },
   { handle: 'Dennis946977517', points: 8 },
+  { handle: '0xsqaud', points: 5 },
 ];
 
 // Integrity check — catches accidental list edits.
-const EXPECTED_COUNT = 27;
+const EXPECTED_COUNT = 28;
 const EXPECTED_TOTAL_POINTS = RECIPIENTS.reduce((s, r) => s + r.points, 0);
 
 if (!POINTS_DB_URL) {
