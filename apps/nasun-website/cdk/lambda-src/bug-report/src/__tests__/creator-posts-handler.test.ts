@@ -345,6 +345,71 @@ describe('POST /v1/creator-posts — submit', () => {
     assert.equal(parseBody(res).error, 'invalid_url');
   });
 
+  test('shortlink /i/status/: resolves author via oEmbed, accepts when match', async (t: TestContext) => {
+    t.mock.method(globalThis, 'fetch', async () =>
+      ({
+        ok: true,
+        json: async () => ({ author_url: 'https://twitter.com/alice' }),
+      }) as unknown as Response,
+    );
+    const res = await handleSubmit(
+      buildEvent('POST', { postUrl: 'https://x.com/i/status/100001' }),
+      USER_A,
+      cors(),
+    );
+    assert.equal(res.statusCode, 200);
+    const stored = state.items.get('100001');
+    assert.ok(stored);
+    assert.equal(stored!.twitterHandle, 'alice');
+    assert.equal(stored!.postUrl, 'https://x.com/alice/status/100001');
+  });
+
+  test('shortlink /i/web/status/: resolves via oEmbed', async (t: TestContext) => {
+    t.mock.method(globalThis, 'fetch', async () =>
+      ({
+        ok: true,
+        json: async () => ({ author_url: 'https://x.com/alice' }),
+      }) as unknown as Response,
+    );
+    const res = await handleSubmit(
+      buildEvent('POST', { postUrl: 'https://x.com/i/web/status/100002' }),
+      USER_A,
+      cors(),
+    );
+    assert.equal(res.statusCode, 200);
+  });
+
+  test('shortlink with author mismatch returns handle_mismatch', async (t: TestContext) => {
+    t.mock.method(globalThis, 'fetch', async () =>
+      ({
+        ok: true,
+        json: async () => ({ author_url: 'https://twitter.com/bob' }),
+      }) as unknown as Response,
+    );
+    const res = await handleSubmit(
+      buildEvent('POST', { postUrl: 'https://x.com/i/status/100003' }),
+      USER_A,
+      cors(),
+    );
+    assert.equal(res.statusCode, 400);
+    assert.equal(parseBody(res).error, 'handle_mismatch');
+    assert.equal(state.items.size, 0);
+  });
+
+  test('shortlink with failed oEmbed returns cannot_resolve_author', async (t: TestContext) => {
+    t.mock.method(globalThis, 'fetch', async () =>
+      ({ ok: false, json: async () => ({}) }) as unknown as Response,
+    );
+    const res = await handleSubmit(
+      buildEvent('POST', { postUrl: 'https://x.com/i/status/100004' }),
+      USER_A,
+      cors(),
+    );
+    assert.equal(res.statusCode, 400);
+    assert.equal(parseBody(res).error, 'cannot_resolve_author');
+    assert.equal(state.items.size, 0);
+  });
+
   test('returns 400 handle_mismatch for another user\'s post', async () => {
     const res = await handleSubmit(
       buildEvent('POST', { postUrl: 'https://x.com/bob/status/100001' }),

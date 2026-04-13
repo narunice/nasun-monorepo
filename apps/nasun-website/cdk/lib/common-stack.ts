@@ -387,9 +387,29 @@ export class CommonStack extends cdk.Stack {
         allowHeaders: ["Content-Type", "Authorization"]
       },
       deployOptions: {
-        throttlingBurstLimit: 10,
-        throttlingRateLimit: 5,
+        throttlingBurstLimit: 100,
+        throttlingRateLimit: 50,
       },
+    });
+
+    // Gateway Responses: ensure CORS headers on throttled / 4xx / 5xx responses.
+    // Without these, browsers surface the real 429 as a generic "no CORS header" error.
+    const governanceGatewayCorsHeaders = {
+      'Access-Control-Allow-Origin': "'https://nasun.io'",
+      'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      'Access-Control-Allow-Methods': "'GET,POST,OPTIONS'",
+    };
+    this.governanceApi.addGatewayResponse("GovernanceApiThrottled", {
+      type: apigw.ResponseType.THROTTLED,
+      responseHeaders: governanceGatewayCorsHeaders,
+    });
+    this.governanceApi.addGatewayResponse("GovernanceApiDefault4xx", {
+      type: apigw.ResponseType.DEFAULT_4XX,
+      responseHeaders: governanceGatewayCorsHeaders,
+    });
+    this.governanceApi.addGatewayResponse("GovernanceApiDefault5xx", {
+      type: apigw.ResponseType.DEFAULT_5XX,
+      responseHeaders: governanceGatewayCorsHeaders,
     });
 
     // ========================================

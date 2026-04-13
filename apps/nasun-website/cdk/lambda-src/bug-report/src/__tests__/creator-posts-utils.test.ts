@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   parseTweetUrl,
   normalizeHandle,
+  resolveTweetAuthor,
   safeImageUrl,
   startOfUtcTodayIso,
   utcNextMidnightIso,
@@ -73,11 +74,37 @@ describe('parseTweetUrl', () => {
     assert.equal(parseTweetUrl('data:text/html,<script>alert(1)</script>'), null);
   });
 
-  test('rejects /i/web/status/... variant (no handle)', () => {
-    assert.equal(
-      parseTweetUrl('https://x.com/i/web/status/1234567890123456789'),
-      null,
-    );
+  test('accepts /i/status/ shortlink (handle is null, canonicalUrl is null)', () => {
+    const r = parseTweetUrl('https://x.com/i/status/1234567890123456789');
+    assert.deepEqual(r, {
+      postId: '1234567890123456789',
+      handle: null,
+      canonicalUrl: null,
+    });
+  });
+
+  test('accepts /i/web/status/ shortlink (handle is null, canonicalUrl is null)', () => {
+    const r = parseTweetUrl('https://x.com/i/web/status/1234567890123456789');
+    assert.deepEqual(r, {
+      postId: '1234567890123456789',
+      handle: null,
+      canonicalUrl: null,
+    });
+  });
+
+  test('shortlink on twitter.com host also accepted', () => {
+    const r = parseTweetUrl('https://twitter.com/i/status/100000');
+    assert.equal(r?.postId, '100000');
+    assert.equal(r?.handle, null);
+  });
+
+  test('shortlink rejects leading-zero id (ambiguity guard)', () => {
+    assert.equal(parseTweetUrl('https://x.com/i/status/0123456'), null);
+  });
+
+  test('shortlink strips query string', () => {
+    const r = parseTweetUrl('https://x.com/i/status/100000?s=20');
+    assert.equal(r?.postId, '100000');
   });
 
   test('rejects handle longer than 15 chars', () => {
@@ -399,6 +426,92 @@ describe('encodeCursor / decodeCursor', () => {
 // =====================================================================
 // handlesMatch — defensive boundary
 // =====================================================================
+
+// =====================================================================
+// resolveTweetAuthor — X oEmbed author lookup for shortlink URLs
+// =====================================================================
+
+describe('resolveTweetAuthor', () => {
+  function okFetch(body: unknown): typeof fetch {
+    return (async () =>
+      ({
+        ok: true,
+        json: async () => body,
+      }) as unknown as Response) as unknown as typeof fetch;
+  }
+
+  test('returns lowercase handle from oEmbed author_url', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: okFetch({ author_url: 'https://twitter.com/HyongGoo93' }),
+    });
+    assert.equal(h, 'hyonggoo93');
+  });
+
+  test('accepts x.com host in author_url', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: okFetch({ author_url: 'https://x.com/alice' }),
+    });
+    assert.equal(h, 'alice');
+  });
+
+  test('returns null when author_url is missing', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: okFetch({}),
+    });
+    assert.equal(h, null);
+  });
+
+  test('returns null on non-OK status', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: (async () => ({ ok: false, json: async () => ({}) })) as unknown as typeof fetch,
+    });
+    assert.equal(h, null);
+  });
+
+  test('returns null on network error', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: (async () => {
+        throw new Error('network');
+      }) as unknown as typeof fetch,
+    });
+    assert.equal(h, null);
+  });
+
+  test('rejects invalid postId (leading zero)', async () => {
+    const h = await resolveTweetAuthor('0123', {
+      fetchImpl: okFetch({ author_url: 'https://x.com/alice' }),
+    });
+    assert.equal(h, null);
+  });
+
+  test('rejects non-numeric postId', async () => {
+    const h = await resolveTweetAuthor('abc', {
+      fetchImpl: okFetch({ author_url: 'https://x.com/alice' }),
+    });
+    assert.equal(h, null);
+  });
+
+  test('rejects author_url with non-twitter host', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: okFetch({ author_url: 'https://evil.com/alice' }),
+    });
+    assert.equal(h, null);
+  });
+
+  test('rejects malformed author_url path', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: okFetch({ author_url: 'https://twitter.com/' }),
+    });
+    assert.equal(h, null);
+  });
+
+  test('rejects non-string author_url (defense)', async () => {
+    const h = await resolveTweetAuthor('1234567890', {
+      fetchImpl: okFetch({ author_url: 42 }),
+    });
+    assert.equal(h, null);
+  });
+});
 
 describe('handlesMatch', () => {
   test('matches case-insensitively', () => {
