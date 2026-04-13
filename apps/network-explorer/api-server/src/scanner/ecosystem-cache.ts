@@ -193,43 +193,48 @@ export async function updateActivationsForUser(
 // --- Materialized View Refresh ---
 
 let lastMatviewRefresh = 0;
-// Advisory lock ID for pg_try_advisory_lock (arbitrary stable number)
-const MATVIEW_ADVISORY_LOCK_ID = 8675309;
+let refreshInFlight = false;
 
+/**
+ * Refresh the ecosystem matview.
+ *
+ * Concurrency: a process-local `refreshInFlight` flag + MIN_INTERVAL time guard
+ * together serialize refresh attempts within the single-fork scanner. A prior
+ * implementation used `pg_try_advisory_lock` across the pool, but postgres.js
+ * would route lock acquire / REFRESH / unlock to three different pooled
+ * connections. Session-level advisory locks can only be released from the
+ * session that took them, so the lock leaked and every subsequent attempt
+ * hit "skipped (lock held)" indefinitely. Dropping the lock is safe because
+ * the scanner runs as PM2 fork with `instances: 1`.
+ *
+ * Throttle-first: `lastMatviewRefresh` is bumped before REFRESH runs so a
+ * failing REFRESH cannot trigger a retry storm.
+ */
 export async function maybeRefreshMatview(force = false): Promise<void> {
   if (!pointsDb) return;
 
   const now = Date.now();
-  const elapsed = now - lastMatviewRefresh;
+  if (!force && now - lastMatviewRefresh < MATVIEW_REFRESH_MIN_INTERVAL_MS) return;
+  if (refreshInFlight) {
+    console.log('[Ecosystem] Matview refresh skipped (in-flight)');
+    return;
+  }
 
-  // Skip if within minimum interval (unless forced)
-  if (!force && elapsed < MATVIEW_REFRESH_MIN_INTERVAL_MS) return;
-
+  refreshInFlight = true;
+  let started = 0;
   try {
-    // Try to acquire advisory lock (non-blocking, prevents concurrent refreshes across PM2 workers)
-    const [lockResult] = await pointsDb`
-      SELECT pg_try_advisory_lock(${MATVIEW_ADVISORY_LOCK_ID}) as acquired
+    started = Date.now();
+    lastMatviewRefresh = started;
+    await pointsDb`
+      REFRESH MATERIALIZED VIEW CONCURRENTLY ecosystem_daily_scores
     `;
-
-    if (!lockResult?.acquired) {
-      // Another worker is refreshing, skip
-      return;
-    }
-
-    try {
-      await pointsDb`
-        REFRESH MATERIALIZED VIEW CONCURRENTLY ecosystem_daily_scores
-      `;
-      lastMatviewRefresh = Date.now();
-      console.log('[Ecosystem] Materialized view refreshed');
-    } finally {
-      // Always release the lock
-      await pointsDb`
-        SELECT pg_advisory_unlock(${MATVIEW_ADVISORY_LOCK_ID})
-      `;
-    }
+    const ms = Date.now() - started;
+    console.log(`[Ecosystem] Materialized view refreshed in ${ms}ms`);
   } catch (err) {
-    console.error('[Ecosystem] Matview refresh error:', err);
+    const ms = started > 0 ? Date.now() - started : 0;
+    console.error(`[Ecosystem] Matview refresh error after ${ms}ms:`, err);
+  } finally {
+    refreshInFlight = false;
   }
 }
 
