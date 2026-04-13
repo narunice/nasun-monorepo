@@ -13,9 +13,10 @@
  */
 
 import postgres from 'postgres';
-import { writeFileSync, mkdirSync, readdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync, readdirSync, existsSync, readFileSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const POINTS_DB_URL = process.env.POINTS_DATABASE_URL;
 if (!POINTS_DB_URL) {
@@ -32,6 +33,26 @@ const BACKUP_DIR = resolve(
 
 const CSV_HEADER =
   'identity_id,snapshot_date,base_score,multiplier,bonus_total,ecosystem_score,is_penalized,rank,is_backfilled,created_at';
+
+// Optional S3 offsite mirror. Disabled if SNAPSHOT_BACKUP_S3_BUCKET is unset
+// so local CSV writing stays the source of truth and S3 is purely additive.
+const S3_BUCKET = process.env.SNAPSHOT_BACKUP_S3_BUCKET;
+const S3_PREFIX = process.env.SNAPSHOT_BACKUP_S3_PREFIX || 'daily';
+const S3_REGION = process.env.SNAPSHOT_BACKUP_S3_REGION || 'ap-northeast-2';
+const s3 = S3_BUCKET ? new S3Client({ region: S3_REGION }) : null;
+
+async function uploadToS3(localPath: string, key: string): Promise<void> {
+  if (!s3 || !S3_BUCKET) return;
+  const body = readFileSync(localPath);
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: S3_BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: key.endsWith('.json') ? 'application/json' : 'text/csv',
+    }),
+  );
+}
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -104,8 +125,19 @@ async function backupDate(date: string): Promise<number> {
   if (rows.length === 0) return 0;
 
   const csv = [CSV_HEADER, ...rows.map(toCsvRow)].join('\n') + '\n';
-  const filePath = join(BACKUP_DIR, `snapshot_${date}.csv`);
+  const filename = `snapshot_${date}.csv`;
+  const filePath = join(BACKUP_DIR, filename);
   writeFileSync(filePath, csv, 'utf-8');
+
+  if (s3) {
+    try {
+      await uploadToS3(filePath, `${S3_PREFIX}/${filename}`);
+    } catch (err) {
+      // Don't fail the whole backup just because S3 hiccuped; local CSV is the
+      // source of truth. Cron will retry next day; manual sync remains possible.
+      console.warn(`  ${date}: S3 upload failed (local kept):`, (err as Error).message);
+    }
+  }
 
   return rows.length;
 }
@@ -163,10 +195,20 @@ async function main() {
     totalRows,
     dates: datesToBackup,
   };
-  writeFileSync(join(BACKUP_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  const manifestPath = join(BACKUP_DIR, 'manifest.json');
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  if (s3) {
+    try {
+      await uploadToS3(manifestPath, `${S3_PREFIX}/manifest.json`);
+    } catch (err) {
+      console.warn('  Manifest S3 upload failed:', (err as Error).message);
+    }
+  }
 
   console.log(`\n  Total: ${totalRows} rows across ${datesToBackup.length} dates`);
-  console.log(`  Manifest: ${join(BACKUP_DIR, 'manifest.json')}\n`);
+  console.log(`  Manifest: ${manifestPath}`);
+  if (S3_BUCKET) console.log(`  S3 mirror: s3://${S3_BUCKET}/${S3_PREFIX}/`);
+  console.log();
 
   await db.end();
 }
