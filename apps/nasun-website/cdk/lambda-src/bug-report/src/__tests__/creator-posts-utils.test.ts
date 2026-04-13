@@ -12,8 +12,8 @@ import {
   parseTweetUrl,
   normalizeHandle,
   safeImageUrl,
-  startOfKstTodayIso,
-  kstNextMidnightIso,
+  startOfUtcTodayIso,
+  utcNextMidnightIso,
   encodeCursor,
   decodeCursor,
   handlesMatch,
@@ -291,60 +291,50 @@ describe('safeImageUrl', () => {
 });
 
 // =====================================================================
-// KST boundary math (Asia/Seoul, UTC+09:00, no DST)
+// UTC midnight boundary math
 // =====================================================================
 
-describe('startOfKstTodayIso', () => {
-  test('KST 00:30 -> same day KST 00:00 = prev UTC 15:00', () => {
-    // 2026-04-12T00:30:00+09:00 = 2026-04-11T15:30:00Z
-    const now = Date.parse('2026-04-11T15:30:00Z');
-    // KST day starts at 2026-04-11T15:00:00Z
-    assert.equal(startOfKstTodayIso(now), '2026-04-11T15:00:00.000Z');
+describe('startOfUtcTodayIso', () => {
+  test('UTC 00:30 -> same day UTC 00:00', () => {
+    const now = Date.parse('2026-04-12T00:30:00Z');
+    assert.equal(startOfUtcTodayIso(now), '2026-04-12T00:00:00.000Z');
   });
 
-  test('KST 14:59 same day boundary', () => {
-    // 2026-04-12T14:59:00+09:00 = 2026-04-12T05:59:00Z
-    const now = Date.parse('2026-04-12T05:59:00Z');
-    // Still in KST day that started at 2026-04-11T15:00:00Z
-    assert.equal(startOfKstTodayIso(now), '2026-04-11T15:00:00.000Z');
+  test('UTC 23:59:59 same day boundary', () => {
+    const now = Date.parse('2026-04-12T23:59:59.999Z');
+    assert.equal(startOfUtcTodayIso(now), '2026-04-12T00:00:00.000Z');
   });
 
-  test('KST 15:00 UTC = new KST day', () => {
-    // 2026-04-12T00:00:00+09:00 = 2026-04-11T15:00:00Z — exactly at boundary
-    const now = Date.parse('2026-04-11T15:00:00Z');
-    assert.equal(startOfKstTodayIso(now), '2026-04-11T15:00:00.000Z');
+  test('UTC 00:00 exact boundary', () => {
+    const now = Date.parse('2026-04-12T00:00:00Z');
+    assert.equal(startOfUtcTodayIso(now), '2026-04-12T00:00:00.000Z');
   });
 
-  test('KST 14:59:59 UTC = previous KST day', () => {
-    // 1 ms before KST midnight
-    const now = Date.parse('2026-04-11T14:59:59.999Z');
-    assert.equal(startOfKstTodayIso(now), '2026-04-10T15:00:00.000Z');
+  test('UTC 00:00 - 1ms = previous day', () => {
+    const now = Date.parse('2026-04-11T23:59:59.999Z');
+    assert.equal(startOfUtcTodayIso(now), '2026-04-11T00:00:00.000Z');
   });
 
   test('monotonic: start < next midnight', () => {
     const now = Date.now();
-    assert.ok(startOfKstTodayIso(now) < kstNextMidnightIso(now));
+    assert.ok(startOfUtcTodayIso(now) < utcNextMidnightIso(now));
   });
 
   test('window is exactly 24h', () => {
     const now = Date.parse('2026-04-12T03:00:00Z');
-    const start = Date.parse(startOfKstTodayIso(now));
-    const next = Date.parse(kstNextMidnightIso(now));
+    const start = Date.parse(startOfUtcTodayIso(now));
+    const next = Date.parse(utcNextMidnightIso(now));
     assert.equal(next - start, 86400000);
   });
 
-  test('leap-second rounding does not break day bucketing', () => {
-    // Spot-check across a year
+  test('day bucketing consistent across a year', () => {
     for (let d = 0; d < 365; d++) {
-      const now = Date.parse('2026-01-01T00:00:00Z') + d * 86400000;
-      const start = startOfKstTodayIso(now);
-      const next = kstNextMidnightIso(now);
-      const sMs = Date.parse(start);
-      const nMs = Date.parse(next);
-      assert.equal(nMs - sMs, 86400000, `day offset at d=${d}`);
-      // Both ISO strings end with T15:00:00.000Z (KST midnight in UTC)
-      assert.ok(start.endsWith('T15:00:00.000Z'), `start fmt d=${d}: ${start}`);
-      assert.ok(next.endsWith('T15:00:00.000Z'), `next fmt d=${d}: ${next}`);
+      const now = Date.parse('2026-01-01T00:00:00Z') + d * 86400000 + 12 * 3600 * 1000;
+      const start = startOfUtcTodayIso(now);
+      const next = utcNextMidnightIso(now);
+      assert.equal(Date.parse(next) - Date.parse(start), 86400000, `d=${d}`);
+      assert.ok(start.endsWith('T00:00:00.000Z'), `start fmt d=${d}: ${start}`);
+      assert.ok(next.endsWith('T00:00:00.000Z'), `next fmt d=${d}: ${next}`);
     }
   });
 });

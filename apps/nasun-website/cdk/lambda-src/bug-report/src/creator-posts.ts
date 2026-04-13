@@ -19,8 +19,8 @@ import {
   parseTweetUrl,
   normalizeHandle,
   safeImageUrl,
-  startOfKstTodayIso,
-  kstNextMidnightIso,
+  startOfUtcTodayIso,
+  utcNextMidnightIso,
   encodeCursor,
   decodeCursor,
 } from './creator-posts-utils.js';
@@ -50,7 +50,7 @@ async function countTodaySubmissions(identityId: string): Promise<number> {
     ExpressionAttributeNames: { '#status': 'status' },
     ExpressionAttributeValues: {
       ':id': identityId,
-      ':start': startOfKstTodayIso(),
+      ':start': startOfUtcTodayIso(),
       ':pending': 'PENDING',
       ':scored': 'SCORED',
       ':granted': 'GRANTED',
@@ -136,7 +136,7 @@ export async function handleSubmit(
     return respond(429, {
       error: 'daily_limit_reached',
       dailyLimit: DAILY_LIMIT,
-      resetAt: kstNextMidnightIso(),
+      resetAt: utcNextMidnightIso(),
     }, cors);
   }
 
