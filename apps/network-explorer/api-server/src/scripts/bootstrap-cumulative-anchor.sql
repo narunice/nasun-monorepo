@@ -61,7 +61,7 @@ bonus_cum AS (
   JOIN anchor_dates a ON ap.identity_id = a.identity_id
   WHERE ap.category LIKE 'ecosystem-bonus-%'
     AND NOT ap.flagged
-    AND ap.tx_timestamp < a.anchor_date + interval '1 day'
+    AND ap.tx_timestamp < (a.anchor_date + interval '1 day') AT TIME ZONE 'UTC'
   GROUP BY ap.identity_id
 ),
 gov_cum AS (
@@ -70,7 +70,7 @@ gov_cum AS (
   JOIN anchor_dates a ON ap.identity_id = a.identity_id
   WHERE ap.category = 'governance'
     AND NOT ap.flagged
-    AND ap.tx_timestamp < a.anchor_date + interval '1 day'
+    AND ap.tx_timestamp < (a.anchor_date + interval '1 day') AT TIME ZONE 'UTC'
   GROUP BY ap.identity_id
 ),
 ref_cum AS (
@@ -79,7 +79,7 @@ ref_cum AS (
   JOIN anchor_dates a ON ap.identity_id = a.identity_id
   WHERE ap.category = 'referral-bonus'
     AND NOT ap.flagged
-    AND ap.tx_timestamp < a.anchor_date + interval '1 day'
+    AND ap.tx_timestamp < (a.anchor_date + interval '1 day') AT TIME ZONE 'UTC'
   GROUP BY ap.identity_id
 )
 -- Pre-2026-04-14 cutoff: staking-v2 has no rows yet; all_time_staking_scaled = 0.
