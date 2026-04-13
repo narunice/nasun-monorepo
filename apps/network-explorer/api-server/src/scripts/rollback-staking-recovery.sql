@@ -16,6 +16,10 @@ BEGIN;
 SET LOCAL timezone = 'UTC';
 SET LOCAL statement_timeout = '5min';
 SET LOCAL lock_timeout = '30s';
+-- Integrity guard override: authorize this admin session to UPDATE
+-- activity_points (see points-integrity-guard.sql). Scoped to this
+-- transaction only.
+SET LOCAL app.allow_points_mutation = 'on';
 
 -- Flag the restoration rows (audit-preserving soft delete; API filters NOT flagged)
 UPDATE activity_points
