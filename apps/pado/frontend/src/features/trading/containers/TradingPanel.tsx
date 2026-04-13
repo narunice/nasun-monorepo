@@ -550,6 +550,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
               quoteBalance={availableQuote}
               baseBalance={availableBase}
               onWithdraw={handleOpenWithdraw}
+              balanceManagerId={balanceManagerId}
             />
           </div>
 
@@ -634,6 +635,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
           bids={bids}
           asks={asks}
           onScaleOrder={handleScaleOrders}
+          balanceManagerId={balanceManagerId}
         />
 
         {/* TP/SL Keeper Badge — execution mode indicator */}
