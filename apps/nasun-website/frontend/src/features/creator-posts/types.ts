@@ -62,12 +62,25 @@ export const STATUS_COLORS: Record<CreatorPostStatus, string> = {
 export const POINTS_MIN = 1;
 export const POINTS_MAX = 30;
 
+// SCORED is a transient internal state (between /score and /grant in the
+// unified Save+Grant admin flow). It is intentionally omitted from the admin
+// filter UI — surface only user-meaningful states. Records stuck in SCORED
+// due to partial failure can still be queried by appending ?status=SCORED
+// directly to the URL.
 export const ADMIN_STATUS_OPTIONS: CreatorPostStatus[] = [
   'PENDING',
-  'SCORED',
   'GRANTED',
   'REJECTED',
 ];
+
+/**
+ * User-facing status mapping. SCORED (a transient backend state) is
+ * folded into PENDING from the user's perspective — the user considers
+ * the post "pending review" until GRANTED or REJECTED.
+ */
+export function displayStatus(status: CreatorPostStatus): CreatorPostStatus {
+  return status === 'SCORED' ? 'PENDING' : status;
+}
 
 // Safe image host allowlist (must match backend)
 export const IMAGE_HOST_ALLOWLIST = ['pbs.twimg.com', 'abs.twimg.com'];

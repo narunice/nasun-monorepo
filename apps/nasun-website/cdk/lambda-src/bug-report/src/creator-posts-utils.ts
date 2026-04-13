@@ -54,16 +54,14 @@ export function safeImageUrl(raw: unknown): string | null {
   }
 }
 
-/** KST (Asia/Seoul, UTC+09:00, no DST) midnight as ISO-8601 UTC string. */
-export function startOfKstTodayIso(nowMs: number = Date.now()): string {
-  const kstMs = nowMs + 9 * 3600 * 1000;
-  const kstMidnight = Math.floor(kstMs / 86400000) * 86400000 - 9 * 3600 * 1000;
-  return new Date(kstMidnight).toISOString();
+/** UTC midnight of the current day as ISO-8601 string. */
+export function startOfUtcTodayIso(nowMs: number = Date.now()): string {
+  const midnight = Math.floor(nowMs / 86400000) * 86400000;
+  return new Date(midnight).toISOString();
 }
 
-export function kstNextMidnightIso(nowMs: number = Date.now()): string {
-  const kstMs = nowMs + 9 * 3600 * 1000;
-  const next = (Math.floor(kstMs / 86400000) + 1) * 86400000 - 9 * 3600 * 1000;
+export function utcNextMidnightIso(nowMs: number = Date.now()): string {
+  const next = (Math.floor(nowMs / 86400000) + 1) * 86400000;
   return new Date(next).toISOString();
 }
 
