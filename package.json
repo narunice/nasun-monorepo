@@ -23,8 +23,6 @@
     "deploy:network-explorer:prod": "./scripts/deploy-network-explorer-production.sh",
     "deploy:pado:staging": "./scripts/deploy-pado-staging.sh",
     "deploy:pado:prod": "./scripts/deploy-pado-production.sh",
-    "deploy:pado:chat:staging": "./scripts/deploy-pado-chat-server.sh --env=staging",
-    "deploy:pado:chat:prod": "./scripts/deploy-pado-chat-server.sh --env=production",
     "deploy:pado:bots:staging": "./scripts/deploy-pado-bots.sh --staging",
     "deploy:pado:bots:prod": "./scripts/deploy-pado-bots.sh --production",
     "deploy:baram:prod": "./scripts/deploy-baram-production.sh",
