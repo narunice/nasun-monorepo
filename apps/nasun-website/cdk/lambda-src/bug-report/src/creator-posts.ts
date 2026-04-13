@@ -18,6 +18,7 @@ import {
 import {
   parseTweetUrl,
   normalizeHandle,
+  resolveTweetAuthor,
   safeImageUrl,
   startOfUtcTodayIso,
   utcNextMidnightIso,
@@ -120,17 +121,34 @@ export async function handleSubmit(
   if (!parsed) {
     return respond(400, { error: 'invalid_url', message: 'Not a valid X post URL.' }, cors);
   }
-
-  // 3. Handle match
-  if (parsed.handle !== myHandle) {
-    return respond(400, { error: 'handle_mismatch', message: 'The URL handle does not match your connected X account.' }, cors);
-  }
   const { postId } = parsed;
 
-  // 4. Image allowlist (result used in PutItem; omit attribute if rejected)
+  // 3. Resolve author for shortlink URLs (x.com/i/status/...), where the URL
+  // path does not carry the real handle. Uses X's public oEmbed endpoint.
+  let urlHandle = parsed.handle;
+  let canonicalUrl = parsed.canonicalUrl;
+  if (urlHandle === null) {
+    const resolved = await resolveTweetAuthor(postId);
+    if (!resolved) {
+      return respond(400, {
+        error: 'cannot_resolve_author',
+        message:
+          'Could not verify the author of this post. Please use the full tweet URL (x.com/yourhandle/status/...).',
+      }, cors);
+    }
+    urlHandle = resolved;
+    canonicalUrl = `https://x.com/${resolved}/status/${postId}`;
+  }
+
+  // 4. Handle match
+  if (urlHandle !== myHandle) {
+    return respond(400, { error: 'handle_mismatch', message: 'The URL handle does not match your connected X account.' }, cors);
+  }
+
+  // 5. Image allowlist (result used in PutItem; omit attribute if rejected)
   const safeImg = safeImageUrl(rawImage);
 
-  // 5. Rate limit (performed LAST so that other validation failures do not consume quota)
+  // 6. Rate limit (performed LAST so that other validation failures do not consume quota)
   const todayCount = await countTodaySubmissions(identityId);
   if (todayCount >= DAILY_LIMIT) {
     return respond(429, {
@@ -140,7 +158,7 @@ export async function handleSubmit(
     }, cors);
   }
 
-  // 6. Conditional Put (permanent uniqueness per tweet)
+  // 7. Conditional Put (permanent uniqueness per tweet)
   const now = new Date().toISOString();
   const item: Record<string, unknown> = {
     postId,
@@ -148,7 +166,7 @@ export async function handleSubmit(
     identityId,
     twitterId,
     twitterHandle: myHandle,
-    postUrl: parsed.canonicalUrl,
+    postUrl: canonicalUrl!,
     status: 'PENDING',
   };
   if (safeImg) {

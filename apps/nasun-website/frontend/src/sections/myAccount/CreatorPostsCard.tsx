@@ -81,6 +81,15 @@ export const CreatorPostsCard: FC<CreatorPostsCardProps> = ({
             return;
           }
           if (
+            err.status === 400 &&
+            err.payload.error === "cannot_resolve_author"
+          ) {
+            setErrorMsg(
+              "Could not verify the author of this post. Please paste the full tweet URL (x.com/yourhandle/status/...) instead of the shortlink.",
+            );
+            return;
+          }
+          if (
             err.status === 429 &&
             err.payload.error === "daily_limit_reached"
           ) {
@@ -128,12 +137,12 @@ export const CreatorPostsCard: FC<CreatorPostsCardProps> = ({
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="px-4 py-2 text-sm font-medium bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30 rounded-lg hover:bg-nasun-c4/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-nasun-c4 text-white border border-nasun-c4 rounded-lg hover:bg-sky-500 hover:border-sky-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {submitMut.isPending ? "Submitting..." : "Submit"}
             </button>
           </div>
-          <p className="text-sm text-white/70">One post a day</p>
+          <p className=" text-white/80">Up to 2 posts per day</p>
           {errorMsg && <p className="text-sm text-red-400">{errorMsg}</p>}
           {successMsg && <p className="text-sm text-green-400">{successMsg}</p>}
         </div>
