@@ -29,12 +29,14 @@ export interface EcosystemScoreData {
   activations: Array<{ nftType: string; nftCount: number; bonus?: number }>;
   daily: {
     baseScore: number;
+    stakingScore?: number;
     bonusTotal?: number;
     referralBonus?: number;
     ecosystemScore: number;
   };
   weekly: {
     baseScore: number;
+    stakingScore?: number;
     bonusTotal?: number;
     referralBonus?: number;
     ecosystemScore: number;
@@ -42,6 +44,7 @@ export interface EcosystemScoreData {
   };
   allTime: {
     baseScore: number;
+    stakingScore?: number;
     bonusTotal?: number;
     referralBonus?: number;
     ecosystemScore: number;
