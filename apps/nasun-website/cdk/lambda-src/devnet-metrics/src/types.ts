@@ -51,7 +51,8 @@ export interface MetricsRecord {
 export interface AddressRecord {
   pk: string; // ADDRESS#0x...
   sk: string; // META
-  firstSeenDate: string;
+  firstSeenDate: string; // Faucet drip date (legacy; kept for backfill compatibility)
+  firstActiveDate?: string; // First date this address appeared in DAU (authoritative for "new")
   discoveredAt: string;
 }
 
