@@ -12,9 +12,6 @@ import {
   buildWithdrawAmountTransaction,
 } from '../lib/lending-client';
 
-// NUSDC token type (from environment config)
-const NUSDC_TYPE = import.meta.env.VITE_NUSDC_TYPE || '';
-
 interface UseLendingActionsResult {
   deposit: (amount: bigint) => Promise<string>;
   withdraw: (positionId: string) => Promise<string>;
@@ -90,25 +87,8 @@ export function useLendingActions(): UseLendingActionsResult {
   }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]);
 
   /**
-   * Find user's NUSDC coins
-   */
-  const findNusdcCoins = useCallback(async (): Promise<{ id: string; balance: bigint }[]> => {
-    if (!walletAddress) return [];
-
-    const client = getSuiClient();
-    const response = await client.getCoins({
-      owner: walletAddress,
-      coinType: NUSDC_TYPE,
-    });
-
-    return response.data.map(coin => ({
-      id: coin.coinObjectId,
-      balance: BigInt(coin.balance),
-    }));
-  }, [walletAddress]);
-
-  /**
-   * Deposit NUSDC into the lending pool
+   * Deposit NUSDC into the lending pool.
+   * SDK's coinWithBalance intent handles coin fetching, merging, and splitting.
    */
   const deposit = useCallback(async (amount: bigint): Promise<string> => {
     if (!walletAddress) {
@@ -119,36 +99,20 @@ export function useLendingActions(): UseLendingActionsResult {
     setError(null);
 
     try {
-      // Find NUSDC coins
-      const coins = await findNusdcCoins();
-      if (coins.length === 0) {
-        throw new Error('No NUSDC balance found');
-      }
-
-      // Find coin with enough balance
-      const coin = coins.find(c => c.balance >= amount);
-      if (!coin) {
-        const totalBalance = coins.reduce((sum, c) => sum + c.balance, 0n);
-        if (totalBalance < amount) {
-          throw new Error(`Insufficient NUSDC balance. Available: ${Number(totalBalance) / 1_000_000}`);
-        }
-        // TODO: Merge coins if total is enough but no single coin has enough
-        throw new Error('Please merge your NUSDC coins first');
-      }
-
-      // Build and execute transaction
-      const tx = buildDepositTransaction(coin.id, amount);
-      const digest = await signAndExecute(tx);
-
-      return digest;
+      const tx = buildDepositTransaction(amount);
+      return await signAndExecute(tx);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Deposit failed';
+      const raw = err instanceof Error ? err.message : 'Deposit failed';
+      // Normalize SDK shortfall message to user-facing text.
+      const message = raw.includes('Not enough coins of type')
+        ? 'Insufficient NUSDC balance.'
+        : raw;
       setError(message);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [walletAddress, findNusdcCoins, signAndExecute]);
+  }, [walletAddress, signAndExecute]);
 
   /**
    * Withdraw full position from the lending pool
