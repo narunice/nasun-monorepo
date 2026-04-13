@@ -12,6 +12,7 @@
 import { pointsDb } from '../db.js';
 import { calculateMultiplier, type NftActivation } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
+import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
 
 export async function takeDailySnapshot(
   snapshotDate: string,
@@ -60,14 +61,27 @@ export async function takeDailySnapshot(
   `;
   const penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
 
-  // 5. Batch bonus + referral + governance queries (date-filtered: today's delta only)
-  const [bonusRows, referralRows, govRows] = await Promise.all([
+  // 5. Batch bonus + referral + governance queries (date-filtered: today's delta only).
+  // bonusRows EXCLUDES synthetic rows (maintains the existing per-day column semantics).
+  // bonusCumRows INCLUDES synthetic — needed for cumulative math to match LIVE.
+  // stakingRows: tier pts from post-cutoff staking-daily (v2).
+  const [bonusRows, bonusCumRows, referralRows, govRows, stakingRows] = await Promise.all([
     pointsDb`
       SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
       FROM activity_points
       WHERE identity_id = ANY(${allIdsArr})
         AND category LIKE 'ecosystem-bonus-%'
         AND (metadata->>'synthetic') IS DISTINCT FROM 'true'
+        AND NOT flagged
+        AND tx_timestamp >= ${snapshotDate}::date
+        AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
+      GROUP BY identity_id
+    `,
+    pointsDb`
+      SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
+      FROM activity_points
+      WHERE identity_id = ANY(${allIdsArr})
+        AND category LIKE 'ecosystem-bonus-%'
         AND NOT flagged
         AND tx_timestamp >= ${snapshotDate}::date
         AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
@@ -93,10 +107,25 @@ export async function takeDailySnapshot(
         AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
       GROUP BY identity_id
     `,
+    pointsDb`
+      SELECT identity_id, COALESCE(SUM(base_points), 0)::int as staking
+      FROM activity_points
+      WHERE identity_id = ANY(${allIdsArr})
+        AND category = 'staking-daily'
+        AND NOT flagged
+        AND tx_timestamp >= ${STAKING_V2_CUTOFF_DATE}::timestamptz
+        AND tx_timestamp >= ${snapshotDate}::date
+        AND tx_timestamp < (${snapshotDate}::date + interval '1 day')
+      GROUP BY identity_id
+    `,
   ]);
   const bonusMap = new Map<string, number>();
   for (const br of bonusRows) {
     bonusMap.set(br.identity_id as string, parseFloat(br.bonus as string));
+  }
+  const bonusCumMap = new Map<string, number>();
+  for (const br of bonusCumRows) {
+    bonusCumMap.set(br.identity_id as string, parseFloat(br.bonus as string));
   }
   const referralMap = new Map<string, number>();
   for (const rr of referralRows) {
@@ -105,6 +134,52 @@ export async function takeDailySnapshot(
   const govMap = new Map<string, number>();
   for (const gr of govRows) {
     govMap.set(gr.identity_id as string, parseFloat(gr.gov as string));
+  }
+  const stakingMap = new Map<string, number>();
+  for (const sr of stakingRows) {
+    stakingMap.set(sr.identity_id as string, sr.staking as number);
+  }
+
+  // 5b. Previous cumulative per identity (anchor propagation).
+  // Uses the latest snapshot row that already has all_time_score filled
+  // (bootstrap anchor or prior cumulative-enabled snapshot).
+  // Users without a prev cumulative start fresh from 0 today.
+  const prevCumRows = await pointsDb`
+    SELECT DISTINCT ON (identity_id)
+      identity_id,
+      snapshot_date AS prev_date,
+      COALESCE(all_time_score, 0)::numeric             AS prev_score,
+      COALESCE(all_time_base, 0)::numeric              AS prev_base,
+      COALESCE(all_time_bonus, 0)::numeric             AS prev_bonus,
+      COALESCE(all_time_gov, 0)::numeric               AS prev_gov,
+      COALESCE(all_time_referral_scaled, 0)::numeric   AS prev_ref,
+      COALESCE(all_time_staking_scaled, 0)::numeric    AS prev_staking
+    FROM ecosystem_score_snapshots
+    WHERE identity_id = ANY(${allIdsArr})
+      AND snapshot_date < ${snapshotDate}::date
+      AND all_time_score IS NOT NULL
+    ORDER BY identity_id, snapshot_date DESC
+  `;
+  interface PrevCum {
+    prevDate: string;
+    score: number;
+    base: number;
+    bonus: number;
+    gov: number;
+    ref: number;
+    staking: number;
+  }
+  const prevMap = new Map<string, PrevCum>();
+  for (const r of prevCumRows) {
+    prevMap.set(r.identity_id as string, {
+      prevDate: r.prev_date as string,
+      score: parseFloat(r.prev_score as string),
+      base: parseFloat(r.prev_base as string),
+      bonus: parseFloat(r.prev_bonus as string),
+      gov: parseFloat(r.prev_gov as string),
+      ref: parseFloat(r.prev_ref as string),
+      staking: parseFloat(r.prev_staking as string),
+    });
   }
 
   // 6. Calculate scores and rank
@@ -117,6 +192,13 @@ export async function takeDailySnapshot(
     governanceBonus: number;
     ecosystemScore: number;
     isPenalized: boolean;
+    // Cumulative (ledger) fields — prev + today's delta.
+    allTimeBase: number;
+    allTimeBonus: number;
+    allTimeGov: number;
+    allTimeReferralScaled: number;
+    allTimeStakingScaled: number;
+    allTimeScore: number;
   }
 
   // Fallback multiplier: for users with base activity but not in activationsCache,
@@ -163,14 +245,37 @@ export async function takeDailySnapshot(
       multiplier = lastMultiplierMap.get(identityId)!;
     }
     const bonusTotal = bonusMap.get(identityId) ?? 0;
+    const bonusTotalInclSynthetic = bonusCumMap.get(identityId) ?? bonusTotal;
     const referralBonus = referralMap.get(identityId) ?? 0;
     const governanceBonus = govMap.get(identityId) ?? 0;
-    // Daily delta: base*mult + today's bonus + today's governance + today's referral*sf
+    const stakingDelta = stakingMap.get(identityId) ?? 0;
+    // Daily delta (delta column semantics: synthetic excluded from bonus_total)
     const ecosystemScore = parseFloat(
       (baseScore * multiplier + bonusTotal + governanceBonus + referralBonus * sf).toFixed(2),
     );
 
-    entries.push({ identityId, baseScore, multiplier, bonusTotal, referralBonus, governanceBonus, ecosystemScore, isPenalized });
+    // Cumulative (ledger): prev + today's delta.
+    // Bonus uses the synthetic-INCLUSIVE sum so cumulative matches LIVE API semantics.
+    const prev = prevMap.get(identityId);
+    const allTimeBase = (prev?.base ?? 0) + baseScore * multiplier;
+    const allTimeBonus = (prev?.bonus ?? 0) + bonusTotalInclSynthetic;
+    const allTimeGov = (prev?.gov ?? 0) + governanceBonus;
+    const allTimeReferralScaled = (prev?.ref ?? 0) + referralBonus * sf;
+    const allTimeStakingScaled = (prev?.staking ?? 0) + stakingDelta * multiplier;
+    const allTimeScore = parseFloat(
+      (allTimeBase + allTimeBonus + allTimeGov + allTimeReferralScaled + allTimeStakingScaled).toFixed(2),
+    );
+
+    entries.push({
+      identityId, baseScore, multiplier, bonusTotal, referralBonus,
+      governanceBonus, ecosystemScore, isPenalized,
+      allTimeBase: parseFloat(allTimeBase.toFixed(2)),
+      allTimeBonus: parseFloat(allTimeBonus.toFixed(2)),
+      allTimeGov: parseFloat(allTimeGov.toFixed(2)),
+      allTimeReferralScaled: parseFloat(allTimeReferralScaled.toFixed(2)),
+      allTimeStakingScaled: parseFloat(allTimeStakingScaled.toFixed(2)),
+      allTimeScore,
+    });
   }
 
   // Sort by ecosystemScore DESC, assign ranks (multiplier > 0 only)
@@ -183,19 +288,24 @@ export async function takeDailySnapshot(
     }
   }
 
-  // 7. Batch INSERT
+  // 7. Batch INSERT (with cumulative ledger columns)
   let inserted = 0;
   for (const e of entries) {
     const r = (e as SnapshotRow & { rank?: number }).rank ?? null;
     const result = await pointsDb`
       INSERT INTO ecosystem_score_snapshots
         (identity_id, snapshot_date, base_score, multiplier, bonus_total,
-         referral_bonus, governance_bonus, ecosystem_score, is_penalized, rank)
+         referral_bonus, governance_bonus, ecosystem_score, is_penalized, rank,
+         all_time_base, all_time_bonus, all_time_gov,
+         all_time_referral_scaled, all_time_staking_scaled, all_time_score)
       VALUES
         (${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
          ${e.multiplier.toFixed(2)}, ${e.bonusTotal.toFixed(2)},
          ${e.referralBonus.toFixed(2)}, ${e.governanceBonus.toFixed(2)},
-         ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r})
+         ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r},
+         ${e.allTimeBase.toFixed(2)}, ${e.allTimeBonus.toFixed(2)},
+         ${e.allTimeGov.toFixed(2)}, ${e.allTimeReferralScaled.toFixed(2)},
+         ${e.allTimeStakingScaled.toFixed(2)}, ${e.allTimeScore.toFixed(2)})
       ON CONFLICT (identity_id, snapshot_date) DO NOTHING
     `;
     if (result.count > 0) inserted++;
