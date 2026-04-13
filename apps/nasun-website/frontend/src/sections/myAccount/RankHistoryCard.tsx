@@ -58,7 +58,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
       </h5>
       <button
         onClick={() => setIsExpanded((prev) => !prev)}
-        className="text-nasun-white/60 hover:text-nasun-white transition-colors text-sm flex items-center gap-1"
+        className="text-nasun-white/80 hover:text-nasun-white transition-colors text-sm flex items-center gap-1"
       >
         {isExpanded ? 'Collapse' : 'Expand'}
         <svg
@@ -76,11 +76,11 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   // Not authenticated
   if (!isAuthenticated) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {sectionHeader}
         {isExpanded && (
           <div className="flex flex-col items-center justify-center py-8 gap-3 mt-4">
-            <p className="text-nasun-white/50 text-center">
+            <p className="text-nasun-white/80 text-center">
               {t('rankHistory.loginRequired')}
             </p>
           </div>
@@ -92,11 +92,11 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   // No Twitter connected
   if (!twitterUsername) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {sectionHeader}
         {isExpanded && (
           <div className="flex flex-col items-center justify-center py-8 gap-3 mt-4">
-            <p className="text-nasun-white/50 text-center">
+            <p className="text-nasun-white/80 text-center">
               {t('rankHistory.twitterRequired')}
             </p>
           </div>
@@ -123,7 +123,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   // Loading
   if (isLoading) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {sectionHeader}
         {isExpanded && (
           <div className="mt-4">
@@ -142,7 +142,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   // Error or no data
   if (isError || !data || data.history.length === 0) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         {sectionHeader}
         {isExpanded && (
           <div className="mt-4">
@@ -150,13 +150,13 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
               {seasonSelector}
             </div>
             <div className="flex flex-col items-center justify-center py-8 gap-3">
-              <p className="text-nasun-white/50 text-center">
+              <p className="text-nasun-white/80 text-center">
                 {isSeasonEnded
                   ? t('rankHistory.noDataEnded')
                   : t('rankHistory.noData')}
               </p>
               {!isSeasonEnded && (
-                <p className="text-nasun-white/30 text-sm text-center">
+                <p className="text-nasun-white/80 text-sm text-center">
                   {t('rankHistory.noDataDescription')}
                 </p>
               )}
@@ -176,7 +176,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
   const { history, stats } = data;
 
   return (
-    <OuterBox color="c5" padding="sm" className={`animate-fade-slide-up ${className}`}>
+    <OuterBox color="w2" padding="sm" className={`animate-fade-slide-up ${className}`}>
       {sectionHeader}
 
       {isExpanded && (
@@ -193,7 +193,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
                     className={`px-2 py-1 text-sm rounded transition-colors ${
                       selectedDays === Number(val)
                         ? 'bg-nasun-c4 text-nasun-white'
-                        : 'bg-nasun-c6 text-nasun-white/60 hover:text-nasun-white'
+                        : 'bg-nasun-c6 text-nasun-white/80 hover:text-nasun-white'
                     }`}
                   >
                     {label}

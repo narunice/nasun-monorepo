@@ -46,13 +46,13 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
         <h3 className="text-lg font-semibold text-nasun-white">
           Ecosystem Score
         </h3>
-        <span className="text-sm text-nasun-white/30 cursor-not-allowed">
+        <span className="text-sm text-nasun-white/80 cursor-not-allowed">
           View Leaderboard
         </span>
       </div>
 
       {loading ? (
-        <div className="flex h-32 items-center justify-center text-nasun-white/40">
+        <div className="flex h-32 items-center justify-center text-nasun-white/80">
           Loading...
         </div>
       ) : (
@@ -67,16 +67,16 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
           {/* Multiplier */}
           <div className="mb-4 rounded-lg bg-nasun-c6/30 p-3">
             <div className="flex items-center justify-between">
-              <span className="text-base text-nasun-white/60">Multiplier</span>
+              <span className="text-base text-nasun-white/80">Multiplier</span>
               <span className={`text-xl font-bold ${
                 disabled && activeCount === 0 ? "text-amber-400/60"
-                  : disabled && activeCount > 0 ? "text-nasun-white/40"
-                  : multiplier > 1 ? "text-nasun-c3" : "text-nasun-white/60"
+                  : disabled && activeCount > 0 ? "text-nasun-white/80"
+                  : multiplier > 1 ? "text-nasun-c3" : "text-nasun-white/80"
               }`}>
                 {disabled && activeCount === 0
                   ? "0x"
                   : disabled && activeCount > 0
-                    ? <span className="text-nasun-white/40">Pending...</span>
+                    ? <span className="text-nasun-white/80">Pending...</span>
                     : `${multiplier.toFixed(1)}x`}
               </span>
             </div>
@@ -98,7 +98,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
               </p>
             )}
             {!disabled && activeCount === 0 && (
-              <p className="mt-2 text-sm text-nasun-white/40">
+              <p className="mt-2 text-sm text-nasun-white/80">
                 Activate NFTs in the NFT Status card to boost your multiplier
               </p>
             )}
@@ -107,7 +107,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
           {/* Weekly Active Days */}
           <div className="rounded-lg bg-nasun-c6/30 p-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-base text-nasun-white/60">Active Days (7d)</span>
+              <span className="text-base text-nasun-white/80">Active Days (7d)</span>
               <span className="text-base font-medium text-nasun-white">
                 {weeklyDays}/7 days
               </span>
@@ -131,7 +131,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
           </div>
 
           {/* Experimental Season Notice */}
-          <p className="mt-3 text-center text-sm text-nasun-white/30">
+          <p className="mt-3 text-center text-sm text-nasun-white/80">
             Experimental Season - scores may be adjusted
           </p>
         </>
@@ -143,7 +143,7 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
 function ScoreBox({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg bg-nasun-c6/40 p-2.5 text-center">
-      <p className="text-sm text-nasun-white/50">{label}</p>
+      <p className="text-sm text-nasun-white/80">{label}</p>
       <p className="text-lg font-bold text-nasun-c3">
         {value > 0 ? value.toFixed(1) : "0"}
       </p>
@@ -176,7 +176,7 @@ function NftBadge({
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm ${
         active
           ? "bg-nasun-c3/20 text-nasun-c3"
-          : "bg-nasun-c6/50 text-nasun-white/30"
+          : "bg-nasun-c6/50 text-nasun-white/80"
       }`}
     >
       {label}

@@ -41,7 +41,7 @@ export const AccountItem: FC<AccountItemProps> = ({
             <span className="text-lg font-medium text-nasun-white">{LABELS[provider]}</span>
             {statusBadge}
           </div>
-          <div className="text-base font-light text-nasun-white/50 truncate">{identifier || "Not linked"}</div>
+          <div className="text-base font-light text-nasun-white/80 truncate">{identifier || "Not linked"}</div>
           {description && (
             <div className="text-sm text-nasun-nw4 mt-0.5">{description}</div>
           )}

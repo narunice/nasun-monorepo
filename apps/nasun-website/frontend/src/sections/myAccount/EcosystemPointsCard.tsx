@@ -60,6 +60,9 @@ const BONUS_LABELS: Record<string, string> = {
   "ecosystem-bonus-pado": "Pado Leaderboard",
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
+  "ecosystem-bonus-bugreport": "Bug Report",
+  "ecosystem-bonus-creators-appreciation": "Creators Appreciation",
+  "ecosystem-bonus-creator-posts": "Creator Posts",
   "referral-bonus": "Referral",
   "ecosystem-bonus-admin": "Bonus",
 };
@@ -94,42 +97,57 @@ function ScoreTooltip({
     <div className="bg-gray-950 border border-gray-700/70 rounded-sm shadow-lg p-3 min-w-[180px]">
       <p className="font-semibold text-nasun-white mb-2">{d.date}</p>
       <div className="space-y-1 text-sm">
-        <p className="text-gray-400">
-          Base: <span className="text-nasun-white font-medium">{d.baseScore}</span>
-          <span className="text-gray-500"> x </span>
-          <span className="text-nasun-white font-medium">{d.multiplier.toFixed(1)}</span>
-          <span className="text-gray-500"> = </span>
-          <span className="text-nasun-white font-medium">{(d.baseScore * d.multiplier).toFixed(0)}</span>
+        <p className="text-gray-300">
+          Base:{" "}
+          <span className="text-nasun-white font-medium">{d.baseScore}</span>
+          <span className="text-gray-300"> x </span>
+          <span className="text-nasun-white font-medium">
+            {d.multiplier.toFixed(1)}
+          </span>
+          <span className="text-gray-300"> = </span>
+          <span className="text-nasun-white font-medium">
+            {(d.baseScore * d.multiplier).toFixed(0)}
+          </span>
         </p>
         {d.bonusTotal > 0 && (
-          <div className="text-gray-400">
-            <span>Bonus: <span className="text-amber-400 font-medium">+{d.bonusTotal}</span></span>
+          <div className="text-gray-300">
+            <span>
+              Bonus:{" "}
+              <span className="text-amber-400 font-medium">
+                +{d.bonusTotal}
+              </span>
+            </span>
             {d.bonusItems && d.bonusItems.length > 0 && (
               <div className="ml-2 mt-0.5 space-y-0.5">
-                {d.bonusItems.filter(i => i.category !== 'referral-bonus').map((item, i) => (
-                  <p key={i} className="text-gray-500">
-                    {BONUS_LABELS[item.category] || item.activityType}: <span className="text-amber-400/80">+{item.points}</span>
-                  </p>
-                ))}
+                {d.bonusItems
+                  .filter((i) => i.category !== "referral-bonus")
+                  .map((item, i) => (
+                    <p key={i} className="text-gray-300">
+                      {BONUS_LABELS[item.category] || item.activityType}:{" "}
+                      <span className="text-amber-400/80">+{item.points}</span>
+                    </p>
+                  ))}
               </div>
             )}
           </div>
         )}
         {d.referralBonus > 0 && (
-          <p className="text-gray-400">
-            Referral: <span className="text-emerald-400 font-medium">+{d.referralBonus}</span>
-            <span className="text-gray-500 text-xs ml-1">(x0.5)</span>
+          <p className="text-gray-300">
+            Referral:{" "}
+            <span className="text-emerald-400 font-medium">
+              +{d.referralBonus}
+            </span>
+            <span className="text-gray-300 text-sm ml-1">(x0.5)</span>
           </p>
         )}
-        <p className="text-gray-400 border-t border-gray-700/50 pt-1 mt-1">
-          Total: <span className="font-bold text-nasun-c3">{d.ecosystemScore}</span>
+        <p className="text-gray-300 border-t border-gray-700/50 pt-1 mt-1">
+          Total:{" "}
+          <span className="font-bold text-nasun-c3">{d.ecosystemScore}</span>
           {d.rank != null && (
-            <span className="text-gray-500 ml-2">#{d.rank}</span>
+            <span className="text-gray-300 ml-2">#{d.rank}</span>
           )}
         </p>
-        {d.isPenalized && (
-          <p className="text-amber-400 text-sm">Penalized</p>
-        )}
+        {d.isPenalized && <p className="text-amber-400 text-sm">Penalized</p>}
       </div>
     </div>
   );
@@ -149,20 +167,27 @@ function RankTooltip({
       <p className="font-semibold text-nasun-white mb-1">{d.date}</p>
       {d.rank != null ? (
         <div className="space-y-1 text-sm">
-          <p className="text-gray-400">
+          <p className="text-gray-300">
             Rank: <span className="font-bold text-blue-400">#{d.rank}</span>
           </p>
-          <p className="text-gray-400">
+          <p className="text-gray-300">
             Score: <span className="text-nasun-white">{d.baseScore}</span>
-            <span className="text-gray-500"> x {d.multiplier.toFixed(1)}</span>
-            {d.bonusTotal > 0 && <span className="text-amber-400"> +{d.bonusTotal}</span>}
-            {d.referralBonus > 0 && <span className="text-emerald-400"> +{(d.referralBonus * 0.5).toFixed(1)}</span>}
-            <span className="text-gray-500"> = </span>
+            <span className="text-gray-300"> x {d.multiplier.toFixed(1)}</span>
+            {d.bonusTotal > 0 && (
+              <span className="text-amber-400"> +{d.bonusTotal}</span>
+            )}
+            {d.referralBonus > 0 && (
+              <span className="text-emerald-400">
+                {" "}
+                +{(d.referralBonus * 0.5).toFixed(1)}
+              </span>
+            )}
+            <span className="text-gray-300"> = </span>
             <span className="font-bold text-nasun-c3">{d.ecosystemScore}</span>
           </p>
         </div>
       ) : (
-        <p className="text-sm text-gray-500">Unranked</p>
+        <p className="text-sm text-gray-300">Unranked</p>
       )}
     </div>
   );
@@ -224,7 +249,8 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
         referralBonus: entry?.referralBonus ?? 0,
         rank: entry?.rank ?? null,
         // Grace period: suppress penalty display before enforcement date
-        isPenalized: date < "2026-04-11" ? false : (entry?.isPenalized ?? false),
+        isPenalized:
+          date < "2026-04-11" ? false : (entry?.isPenalized ?? false),
         bonusItems: bonusByDate.get(date),
       };
     });
@@ -243,7 +269,9 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
 
   // Rank Y-axis domain
   const rankDomain = useMemo(() => {
-    const ranked = chartData.filter((d) => d.rank != null).map((d) => d.rank as number);
+    const ranked = chartData
+      .filter((d) => d.rank != null)
+      .map((d) => d.rank as number);
     if (ranked.length === 0) return [1, 100];
     const min = Math.min(...ranked);
     const max = Math.max(...ranked);
@@ -268,12 +296,14 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
   // Not authenticated
   if (!identityId) {
     return (
-      <OuterBox color="c5" padding="sm" className={className}>
+      <OuterBox color="w2" padding="sm" className={className}>
         <h5 className="font-medium uppercase text-nasun-white mb-4 flex items-center gap-2">
           Nasun Ecosystem Points
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span>
+          <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
+            Experimental
+          </span>
         </h5>
-        <p className="text-sm text-nasun-white/50 text-center py-8">
+        <p className="text-sm text-nasun-white/80 text-center py-8">
           Sign in to view your ecosystem points history
         </p>
       </OuterBox>
@@ -281,12 +311,14 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
   }
 
   return (
-    <OuterBox color="c5" padding="sm" className={className}>
+    <OuterBox color="w2" padding="sm" className={className}>
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <h5 className="font-medium uppercase text-nasun-white flex items-center gap-2">
           Nasun Ecosystem Points
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">Experimental</span>
+          <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 normal-case">
+            Experimental
+          </span>
         </h5>
         <div className="flex gap-1">
           {([7, 14, 30] as DaysOption[]).map((d) => (
@@ -296,7 +328,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
               className={`px-2.5 py-1 rounded-sm text-sm font-medium transition-colors ${
                 days === d
                   ? "bg-nasun-c3/20 text-nasun-c3"
-                  : "text-nasun-white/40 hover:text-nasun-white/60"
+                  : "text-nasun-white/80 hover:text-nasun-white/80"
               }`}
             >
               {d}d
@@ -313,22 +345,28 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
         <>
           {/* Score Overview */}
           <div className="mb-5 grid grid-cols-3 gap-3">
-            <div className="rounded-sm bg-gray-800/30 border border-nasun-c5/40 p-3 text-center">
-              <p className="text-sm text-nasun-white/50">Today</p>
-              <p className="text-lg font-bold text-nasun-c3">
-                {(score?.daily.ecosystemScore ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            <div className="rounded-sm bg-teal-800 border border-teal-700 p-3 text-center">
+              <p className="text-sm text-nasun-white">Today</p>
+              <p className="text-lg font-bold text-emerald-200">
+                {(score?.daily.ecosystemScore ?? 0).toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                })}
               </p>
             </div>
-            <div className="rounded-sm bg-gray-800/30 border border-nasun-c5/40 p-3 text-center">
-              <p className="text-sm text-nasun-white/50">This Week</p>
-              <p className="text-lg font-bold text-nasun-c3">
-                {(score?.weekly.ecosystemScore ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            <div className="rounded-sm bg-teal-800 border border-teal-700 p-3 text-center">
+              <p className="text-sm text-nasun-white">This Week</p>
+              <p className="text-lg font-bold text-emerald-200">
+                {(score?.weekly.ecosystemScore ?? 0).toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                })}
               </p>
             </div>
-            <div className="rounded-sm bg-gray-800/30 border border-nasun-c5/40 p-3 text-center">
-              <p className="text-sm text-nasun-white/50">All Time</p>
-              <p className="text-lg font-bold text-nasun-c3">
-                {(score?.allTime.ecosystemScore ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            <div className="rounded-sm bg-teal-800 border border-teal-700 p-3 text-center">
+              <p className="text-sm text-nasun-white">All Time</p>
+              <p className="text-lg font-bold text-emerald-200">
+                {(score?.allTime.ecosystemScore ?? 0).toLocaleString("en-US", {
+                  maximumFractionDigits: 0,
+                })}
               </p>
             </div>
           </div>
@@ -336,12 +374,19 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
           {/* Score Trend Chart (only show when 3+ days of data) */}
           {chartData.length >= 3 && (
             <div className="mb-5">
-              <p className="text-sm text-nasun-white/40 uppercase tracking-wide mb-3">
+              <p className="text-sm text-nasun-white/80 uppercase tracking-wide mb-3">
                 Score Trend
               </p>
               <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }} style={{ background: 'transparent' }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(59, 130, 246, 0.08)" />
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
+                  style={{ background: "transparent" }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(59, 130, 246, 0.08)"
+                  />
                   <XAxis
                     dataKey="displayDate"
                     tick={{ fill: "#9ca3af", fontSize: 12 }}
@@ -373,25 +418,37 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
           {chartData.filter((d) => d.rank != null).length >= 3 && (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-nasun-white/40 uppercase tracking-wide">
+                <p className="text-sm text-nasun-white/80 uppercase tracking-wide">
                   Ecosystem Rank
                 </p>
                 <div className="flex gap-4 text-sm">
                   {rankStats.best != null && (
-                    <span className="text-nasun-white/50">
-                      Best: <span className="font-bold text-emerald-400">#{rankStats.best}</span>
+                    <span className="text-nasun-white/80">
+                      Best:{" "}
+                      <span className="font-bold text-emerald-400">
+                        #{rankStats.best}
+                      </span>
                     </span>
                   )}
                   {rankStats.current != null && (
-                    <span className="text-nasun-white/50">
-                      Current: <span className="font-bold text-blue-400">#{rankStats.current}</span>
+                    <span className="text-nasun-white/80">
+                      Current:{" "}
+                      <span className="font-bold text-blue-400">
+                        #{rankStats.current}
+                      </span>
                     </span>
                   )}
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={140}>
-                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(59, 130, 246, 0.08)" />
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(59, 130, 246, 0.08)"
+                  />
                   <XAxis
                     dataKey="displayDate"
                     tick={{ fill: "#9ca3af", fontSize: 12 }}
@@ -432,80 +489,101 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
           {/* Daily Log with formula breakdown */}
           {dailyLog.length > 0 && (
             <div>
-              <p className="text-sm text-nasun-white/40 uppercase tracking-wide mb-3">
+              <p className="text-sm text-nasun-white/80 uppercase tracking-wide mb-3">
                 Daily Log
               </p>
               <div className="space-y-1">
-                {dailyLog.filter((entry) => entry.multiplier > 0).map((entry) => (
-                  <div
-                    key={entry.date}
-                    className={`flex items-center justify-between rounded-sm px-3 py-2 text-sm ${
-                      entry.isPenalized
-                        ? "bg-amber-500/5 border border-amber-500/15"
-                        : "bg-gray-800/20 border border-transparent"
-                    }`}
-                  >
-                    {/* Date */}
-                    <span className="text-nasun-white/60 w-16 shrink-0">
-                      {formatDisplayDate(entry.date)}
-                    </span>
+                {dailyLog
+                  .filter((entry) => entry.multiplier > 0)
+                  .map((entry) => (
+                    <div
+                      key={entry.date}
+                      className={`flex items-center justify-between rounded-sm px-3 py-2 text-sm ${
+                        entry.isPenalized
+                          ? "bg-amber-500/5 border border-amber-500/15"
+                          : "bg-slate-700/30 border border-transparent"
+                      }`}
+                    >
+                      {/* Date */}
+                      <span className="text-nasun-white/80 w-16 shrink-0">
+                        {formatDisplayDate(entry.date)}
+                      </span>
 
-                    {/* Formula: (base x mult) + bonus = total */}
-                    <span className="text-nasun-white/40 hidden sm:flex items-center gap-1 flex-wrap">
-                      {entry.multiplier === 0 ? (
-                        <span className="text-amber-400/60">No NFT activated</span>
-                      ) : (
-                        <>
-                          <span className="text-nasun-white/70">{entry.baseScore}</span>
-                          <span>x</span>
-                          <span className="text-nasun-white/70">{entry.multiplier.toFixed(1)}</span>
-                          {entry.bonusTotal > 0 && (
-                            <>
-                              <span>+</span>
-                              <span className="text-amber-400" title={
-                                entry.bonusItems?.filter(i => i.category !== 'referral-bonus').map(i =>
-                                  `${BONUS_LABELS[i.category] || i.activityType}: +${i.points}`
-                                ).join('\n') || `Bonus: +${entry.bonusTotal}`
-                              }>
-                                {entry.bonusTotal}
-                              </span>
-                            </>
-                          )}
-                          {entry.referralBonus > 0 && (
-                            <>
-                              <span>+</span>
-                              <span className="text-emerald-400" title={`Referral: +${entry.referralBonus} (x0.5)`}>
-                                {(entry.referralBonus * 0.5).toFixed(1)}
-                              </span>
-                            </>
-                          )}
-                        </>
-                      )}
-                    </span>
+                      {/* Formula: (base x mult) + bonus = total */}
+                      <span className="text-nasun-white/80 hidden sm:flex items-center gap-1 flex-wrap">
+                        {entry.multiplier === 0 ? (
+                          <span className="text-amber-400/60">
+                            No NFT activated
+                          </span>
+                        ) : (
+                          <>
+                            <span className="text-nasun-white/70">
+                              {entry.baseScore}
+                            </span>
+                            <span>x</span>
+                            <span className="text-nasun-white/70">
+                              {entry.multiplier.toFixed(1)}
+                            </span>
+                            {entry.bonusTotal > 0 && (
+                              <>
+                                <span>+</span>
+                                <span
+                                  className="text-amber-400"
+                                  title={
+                                    entry.bonusItems
+                                      ?.filter(
+                                        (i) => i.category !== "referral-bonus",
+                                      )
+                                      .map(
+                                        (i) =>
+                                          `${BONUS_LABELS[i.category] || i.activityType}: +${i.points}`,
+                                      )
+                                      .join("\n") ||
+                                    `Bonus: +${entry.bonusTotal}`
+                                  }
+                                >
+                                  {entry.bonusTotal}
+                                </span>
+                              </>
+                            )}
+                            {entry.referralBonus > 0 && (
+                              <>
+                                <span>+</span>
+                                <span
+                                  className="text-emerald-400"
+                                  title={`Referral: +${entry.referralBonus} (x0.5)`}
+                                >
+                                  {(entry.referralBonus * 0.5).toFixed(1)}
+                                </span>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </span>
 
-                    {/* Score */}
-                    <span className="font-bold text-nasun-c3 w-14 text-right">
-                      {entry.ecosystemScore}
-                    </span>
+                      {/* Score */}
+                      <span className="font-bold text-nasun-c3 w-14 text-right">
+                        {entry.ecosystemScore}
+                      </span>
 
-                    {/* Rank */}
-                    <span className="w-16 text-right shrink-0">
-                      {entry.rank != null ? (
-                        <span className="text-nasun-white/50">
-                          {entry.rankChange === "up" && (
-                            <span className="text-emerald-400 mr-1">^</span>
-                          )}
-                          {entry.rankChange === "down" && (
-                            <span className="text-red-400 mr-1">v</span>
-                          )}
-                          #{entry.rank}
-                        </span>
-                      ) : (
-                        <span className="text-nasun-white/20">--</span>
-                      )}
-                    </span>
-                  </div>
-                ))}
+                      {/* Rank */}
+                      <span className="w-16 text-right shrink-0">
+                        {entry.rank != null ? (
+                          <span className="text-nasun-white/80">
+                            {entry.rankChange === "up" && (
+                              <span className="text-emerald-400 mr-1">^</span>
+                            )}
+                            {entry.rankChange === "down" && (
+                              <span className="text-red-400 mr-1">v</span>
+                            )}
+                            #{entry.rank}
+                          </span>
+                        ) : (
+                          <span className="text-nasun-white/80">--</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -513,8 +591,10 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
           {/* Empty state */}
           {chartData.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 gap-2">
-              <p className="text-sm text-nasun-white/50">No snapshot history yet</p>
-              <p className="text-sm text-nasun-white/30">
+              <p className="text-sm text-nasun-white/80">
+                No snapshot history yet
+              </p>
+              <p className="text-sm text-nasun-white/80">
                 Points are recorded daily. Check back tomorrow.
               </p>
             </div>

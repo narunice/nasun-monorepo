@@ -34,7 +34,7 @@ import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking"
 import { ProfileHeroCard } from "../../sections/myAccount/ProfileHeroCard";
 import { GovernanceCard } from "../../sections/myAccount/GovernanceCard";
 import { BugReportsCard } from "../../sections/myAccount/BugReportsCard";
-// import { CreatorPostsCard } from "../../sections/myAccount/CreatorPostsCard";
+import { CreatorPostsCard } from "../../sections/myAccount/CreatorPostsCard";
 import { CompactNftStatus } from "../../sections/myAccount/CompactNftStatus";
 import { AssetsCard } from "../../sections/myAccount/AssetsCard";
 import { DangerZoneCard } from "../../sections/myAccount/DangerZoneCard";
@@ -152,7 +152,7 @@ const DevMyAccountPage = () => {
         <div className="mt-16 sm:mt-8 mb-6 md:mb-8">
           {/* <PageTitle wrapperClassName="" align="left">ACCOUNT</PageTitle> */}
           {/* <ErrorBoundary fallback={<div className="text-red-400 text-sm">GenesisDropCard error</div>}>
-            <Suspense fallback={<div className="text-nasun-white/40 text-sm">Loading...</div>}>
+            <Suspense fallback={<div className="text-nasun-white/80 text-sm">Loading...</div>}>
               <GenesisDropCard className="sm:max-w-lg w-full" />
             </Suspense>
           </ErrorBoundary> */}
@@ -174,12 +174,21 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
 
-          {/* Right column: NftShowcaseCard (row-span-2, stacks alongside ProfileHero + RankHistory) */}
+          {/* Right column row 1: NftShowcaseCard (1 row only, so Governance can sit right of EcoPoints) */}
           <ErrorBoundary
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <NftShowcaseCard className="order-2 lg:order-none col-span-1 lg:row-span-2" />
+              <NftShowcaseCard className="order-2 lg:order-none col-span-1" />
+            </Suspense>
+          </ErrorBoundary>
+
+          {/* Row 2: Ecosystem Points(2col) + Governance(1col) */}
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <EcosystemPointsCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
             </Suspense>
           </ErrorBoundary>
 
@@ -187,24 +196,19 @@ const DevMyAccountPage = () => {
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <RankHistoryCard className="order-3 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
+              <GovernanceCard className="order-4 lg:order-none col-span-1" />
             </Suspense>
           </ErrorBoundary>
 
-          {/* Ecosystem Points(2col) + Governance(1col) */}
+          {/* Creator Posts — above MY ASSETS */}
+          <CreatorPostsCard className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+
+          {/* Creators Leaderboard History — below Creator Posts */}
           <ErrorBoundary
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <EcosystemPointsCard className="order-4 lg:order-none col-span-1 md:col-span-2 lg:col-span-2" />
-            </Suspense>
-          </ErrorBoundary>
-
-          <ErrorBoundary
-            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
-          >
-            <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <GovernanceCard className="order-5 lg:order-none col-span-1" />
+              <RankHistoryCard className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
 
@@ -215,7 +219,7 @@ const DevMyAccountPage = () => {
             <Suspense fallback={<SectionLoading showLayout={false} />}>
               <AssetsCard
                 walletAddress={walletAddress}
-                className="order-6 lg:order-none col-span-1 md:col-span-2 lg:col-span-3"
+                className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-3"
               />
             </Suspense>
           </ErrorBoundary>
@@ -225,15 +229,11 @@ const DevMyAccountPage = () => {
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <ConnectedAccountsCard className="order-7 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
+              <ConnectedAccountsCard className="order-8 lg:order-none col-span-1 md:col-span-2 lg:col-span-2 relative z-20" />
             </Suspense>
           </ErrorBoundary>
 
-          <BugReportsCard className="order-8 lg:order-none col-span-1" />
-
-          {/* Creator Posts: hidden for now, re-enable when ready
-          <CreatorPostsCard className="order-9 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
-          */}
+          <BugReportsCard className="order-9 lg:order-none col-span-1" />
 
           {/* DangerZone (full width) */}
           <ErrorBoundary

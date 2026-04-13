@@ -97,7 +97,7 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
             </h4>
           </DialogTitle>
           {mintState === "ready" && (
-            <DialogDescription className="text-nasun-white/60 text-sm mt-1">
+            <DialogDescription className="text-nasun-white/80 text-sm mt-1">
               Mint this character as your Alliance NFT?
             </DialogDescription>
           )}
@@ -139,7 +139,7 @@ export const AllianceMintDialog: FC<AllianceMintDialogProps> = ({
             )}
 
             {wallets.length === 1 && (
-              <p className="text-nasun-white/60 text-sm">
+              <p className="text-nasun-white/80 text-sm">
                 Mint to: <span className="font-mono">{shortenAddress(wallets[0].walletAddress)}</span>
               </p>
             )}

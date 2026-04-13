@@ -78,7 +78,7 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
             Add Nasun Wallet
           </h2>
           <button
-            className="text-nasun-white/30 hover:text-nasun-white/60 transition-colors"
+            className="text-nasun-white/80 hover:text-nasun-white/80 transition-colors"
             onClick={onClose}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +87,7 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
           </button>
         </div>
 
-        <p className="text-sm text-nasun-white/50 mb-4 text-center">
+        <p className="text-sm text-nasun-white/80 mb-4 text-center">
           Link multiple Nasun wallets to one account so on-chain activity across all of them consolidates into a single Nasun Points balance.
         </p>
 
@@ -98,9 +98,9 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
                 No wallet was ever registered to an account through this path.
                 Re-add only after a register-to-primary flow is wired.
                 See ~/.claude/plans/serene-jumping-locket.md. */}
-            <p className="text-xs text-nasun-white/40 text-center">
-              Use <span className="text-nasun-white/60">Create New</span> or{" "}
-              <span className="text-nasun-white/60">Import</span> below to add a
+            <p className="text-sm text-nasun-white/80 text-center">
+              Use <span className="text-nasun-white/80">Create New</span> or{" "}
+              <span className="text-nasun-white/80">Import</span> below to add a
               wallet to your current account.
             </p>
 
@@ -130,7 +130,7 @@ export const AddWalletModal: FC<AddWalletModalProps> = ({
           <div>
             <button
               onClick={() => setSubView("menu")}
-              className="flex items-center gap-1 text-sm text-nasun-white/40 hover:text-nasun-white/60 transition-colors mb-3"
+              className="flex items-center gap-1 text-sm text-nasun-white/80 hover:text-nasun-white/80 transition-colors mb-3"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
