@@ -4,7 +4,7 @@
  */
 
 import { getSuiClient } from '@nasun/wallet';
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
 import {
   LENDING_PACKAGE_ID,
   LENDING_POOL_ID,
@@ -13,6 +13,7 @@ import {
   type PoolStats,
   type DepositPosition,
 } from '../types/lending';
+import { TOKENS } from '../../../config/network';
 
 /**
  * Fetch lending pool state from blockchain
@@ -136,16 +137,25 @@ export function calculatePositionValue(
 }
 
 /**
- * Build deposit transaction
+ * Build deposit transaction.
+ * Uses SDK's coinWithBalance intent to auto-fetch, merge, and split NUSDC coins
+ * across all owned coin objects (handles fragmentation transparently).
+ *
+ * Caller must call tx.setSender(address) before tx.build({client}) — the intent
+ * resolver fetches coins owned by the sender at build time.
  */
-export function buildDepositTransaction(
-  nusdcCoinId: string,
-  amount: bigint
-): Transaction {
+export function buildDepositTransaction(amount: bigint): Transaction {
+  const nusdcType = TOKENS.NUSDC.type;
+  if (!nusdcType) {
+    throw new Error('NUSDC type not configured (VITE_NUSDC_TYPE missing)');
+  }
+
   const tx = new Transaction();
 
-  // Split coin if needed (assuming nusdcCoinId has enough balance)
-  const [depositCoin] = tx.splitCoins(tx.object(nusdcCoinId), [amount]);
+  const depositCoin = coinWithBalance({
+    type: nusdcType,
+    balance: amount,
+  })(tx);
 
   tx.moveCall({
     target: `${LENDING_PACKAGE_ID}::lending_pool::deposit`,
