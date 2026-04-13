@@ -199,7 +199,7 @@ nasun-monorepo/
 │   ├── network-explorer/          # Explorer (단일 레벨 + api-server/)
 │   ├── nasun-website/             # 공식 웹사이트 (frontend/)
 │   ├── gensol-website/            # GenSol (frontend/)
-│   ├── pado/                      # Pado (frontend/ + bots/ + chat-server/)
+│   ├── pado/                      # Pado (frontend/ + bots/)
 │   └── x-leaderboard-v2-legacy/   # Legacy
 ├── packages/
 │   ├── wallet/                    # @nasun/wallet — 지갑 핵심 로직 + hooks
@@ -212,6 +212,12 @@ nasun-monorepo/
 ├── docs/                          # 참조 문서 (아래 "참조 문서" 섹션 참고)
 └── CLAUDE.md
 ```
+
+### Chat Server 규약 (2026-04-13 unified)
+
+- `apps/nasun-website/chat-server/` — **nasun + pado 공용** unified chat server (포트 3101)
+- API prefix: `/api/` = 공용, `/api/pado/` = pado 전용 (Score API 등)
+- Additive-first rename pattern: keep → add → cutover → remove
 
 ### 앱별 구조 차이
 
