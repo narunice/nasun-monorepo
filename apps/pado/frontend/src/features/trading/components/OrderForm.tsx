@@ -49,6 +49,8 @@ interface OrderFormProps {
   bids?: PriceLevel[];
   asks?: PriceLevel[];
   onScaleOrder?: (orders: ScaleOrderItem[], side: 'buy' | 'sell') => void;
+  /** When null, trading is not enabled (no BalanceManager). Buy/Sell will be blocked. */
+  balanceManagerId?: string | null;
 }
 
 export function OrderForm({
@@ -77,7 +79,9 @@ export function OrderForm({
   bids = [],
   asks = [],
   onScaleOrder,
+  balanceManagerId = null,
 }: OrderFormProps) {
+  const tradingDisabled = balanceManagerId === null;
   const { currentPool } = useMarket();
   const { orderMode, setOrderMode, tpslEnabled, setTpslEnabled, tpPrice, setTpPrice, slPrice: slPriceValue, setSlPrice, stopPrice, setStopPrice, trailValue, setTrailValue, trailMode, setTrailMode, ocoEnabled, setOcoEnabled, setFocusedPriceField, autoDepositEnabled: _autoDepositEnabled } = useOrderForm();
   const baseSymbol = currentPool.baseToken.symbol;
@@ -145,11 +149,14 @@ export function OrderForm({
     }
   }, [onPriceChange, currentPool]);
 
-  // Amount change handler with total sync
+  // Amount change handler with total sync.
+  // Strip commas (mobile keyboards may insert thousands separators which
+  // parseFloat would silently truncate, e.g. "20,0000" → 20).
   const handleAmountChange = useCallback((value: string) => {
+    const cleaned = value.replace(/,/g, '');
     setActiveField('amount');
-    onAmountChange(value);
-    const amt = parseFloat(value) || 0;
+    onAmountChange(cleaned);
+    const amt = parseFloat(cleaned) || 0;
     if (amt > 0 && effectivePrice > 0) {
       setTotalInput((amt * effectivePrice).toFixed(2));
     } else {
@@ -159,9 +166,10 @@ export function OrderForm({
 
   // Total change handler with amount reverse-calc (snapped to lot size)
   const handleTotalChange = useCallback((value: string) => {
+    const cleaned = value.replace(/,/g, '');
     setActiveField('total');
-    setTotalInput(value);
-    const tot = parseFloat(value) || 0;
+    setTotalInput(cleaned);
+    const tot = parseFloat(cleaned) || 0;
     if (tot > 0 && effectivePrice > 0) {
       const amt = snapToLot(tot / effectivePrice, currentPool);
       // Guard against astronomical values from tiny prices
@@ -779,13 +787,15 @@ export function OrderForm({
             ? 'bg-gradient-to-b from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 active:from-green-700 active:to-green-800 dark:shadow-[inset_0_1px_0_rgba(134,243,183,0.2)]'
             : 'bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 active:from-red-700 active:to-red-800 dark:shadow-[inset_0_1px_0_rgba(252,165,165,0.2)]'
         }`}
-        disabled={isButtonDisabled || isInsufficient}
+        disabled={tradingDisabled || isButtonDisabled || isInsufficient}
       >
-        {isAutoDepositing
-          ? 'Depositing...'
-          : isLoading
-            ? '...'
-            : `${isMarket ? 'Market ' : isStopLimit ? 'Stop-Limit ' : isTrailingStop ? 'Trail ' : ''}${isBuy ? 'Buy' : 'Sell'} ${baseSymbol}`}
+        {tradingDisabled
+          ? 'Enable Trading first'
+          : isAutoDepositing
+            ? 'Depositing...'
+            : isLoading
+              ? '...'
+              : `${isMarket ? 'Market ' : isStopLimit ? 'Stop-Limit ' : isTrailingStop ? 'Trail ' : ''}${isBuy ? 'Buy' : 'Sell'} ${baseSymbol}`}
       </button>
       </>
       )}
