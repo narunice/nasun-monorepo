@@ -272,8 +272,13 @@ async function scanLoop(myGen: number): Promise<void> {
     // Today-only wallet transfer detection: runs every loop (skips users
     // already credited). Keeps same-day base_score accurate for late transfers.
     try {
+      // Pass registeredWallets (Map<wallet, identity>) directly so every
+      // linked wallet of an identity is probed — honors the "1 identity ↔ N
+      // linked wallets" design. The older identityToWallet (Map<identity,
+      // single wallet>) path missed transfers from non-primary linked
+      // wallets (e.g. admin's trading-only wallet).
       const walletTransferCount = await scanTodayWalletTransfers(
-        getIdentityToWalletMap(),
+        registeredWallets,
       );
       totalProcessed += walletTransferCount;
     } catch (err) {

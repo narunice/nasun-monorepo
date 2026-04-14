@@ -44,6 +44,31 @@ const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
 // Faucet modules (upgrade-safe: match by module+function, not package ID)
 const FAUCET_MODULES = new Set(["faucet", "faucet_v2"]);
 
+// Modules whose MoveCall presence in a PTB disqualifies the tx from the
+// "send tokens" mission — matches the backend scanner's
+// WALLET_TRANSFER_EXCLUDED_PACKAGES rule in
+// apps/network-explorer/api-server/src/config/points.ts. Match by module
+// (not package ID) for upgrade-safety, mirroring the FAUCET_MODULES pattern.
+//
+// Intent: a legitimate peer transfer is a PTB whose substantive command is a
+// TransferObjects to another user. Pado spot auto-deposits, lottery, scratch
+// card, numbermatch etc. also chain TransferObjects with a contract MoveCall;
+// counting them as "send" causes the pts-today / checklist drift this hook
+// was updated to prevent.
+const CONTRACT_MODULES_EXCLUDING_TRANSFER = new Set([
+  "faucet", "faucet_v2",
+  "order_info", "order", "pool", "deep", // deepbook
+  "prediction",
+  "lottery",
+  "scratchcard",
+  "numbermatch",
+  "perpetuals", "position",
+  "lending", "margin",
+  "baram", "executor", "aer",
+  "governance",
+  "staking_pool", "sui_system", // 0x3 staking
+]);
+
 // All possible mission IDs for early exit optimization
 const ALL_MISSION_IDS: Set<MissionId> = new Set(["faucet", "wallet-transfer", "pado-dex", "pado-lottery", "pado-scratchcard", "pado-games", "chat"]);
 
@@ -183,9 +208,18 @@ export async function detectTxMissions(
           detected.add("faucet");
         }
 
-        // Transfer detection: has TransferObjects command and is not a faucet TX
+        // Transfer detection: PTB contains TransferObjects AND no MoveCall
+        // into an excluded contract module. Mirrors the backend scanner rule
+        // so the UI checkbox never diverges from pts-today (Pado auto-deposit,
+        // lottery, scratchcard etc. emit TransferObjects too, but those are
+        // contract interactions — not peer transfers).
         const hasTransfer = commands.some((cmd) => cmd.type === "TransferObjects");
-        if (hasTransfer && !hasFaucetCall) {
+        const hasExcludedCall = commands.some(
+          (cmd) =>
+            cmd.type === "MoveCall" &&
+            CONTRACT_MODULES_EXCLUDING_TRANSFER.has(cmd.module),
+        );
+        if (hasTransfer && !hasExcludedCall) {
           detected.add("wallet-transfer");
         }
 
@@ -257,7 +291,11 @@ export async function detectAllWallets(
     for (const id of txMissions) allDetected.add(id);
   }
 
-  // Chat detection via explorer API (scanner is source of truth for off-chain activity)
+  // Chat detection via explorer API (scanner is the only source of truth
+  // for off-chain activity; client RPC can't see it). All other missions
+  // are authoritative from the client-side scan above — wallet-transfer
+  // mirrors the scanner's exclusion rule via CONTRACT_MODULES_EXCLUDING_TRANSFER
+  // so the UI and pts-today agree without a second API roundtrip.
   if (!allDetected.has("chat") && identityId) {
     try {
       const res = await fetch(
