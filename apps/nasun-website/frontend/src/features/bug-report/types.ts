@@ -39,7 +39,7 @@ export interface BugReport {
 
 export type BugReportStatus = 'new' | 'investigating' | 'in-progress' | 'fixed' | 'wont-fix' | 'duplicate';
 
-export const BUG_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Other'] as const;
+export const BUG_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Feedback', 'Other'] as const;
 export type BugCategory = typeof BUG_CATEGORIES[number];
 
 export const STATUS_LABELS: Record<BugReportStatus, string> = {

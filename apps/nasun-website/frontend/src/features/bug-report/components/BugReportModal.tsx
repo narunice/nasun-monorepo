@@ -141,10 +141,10 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
           onPaste={handlePaste}
         >
           <Dialog.Title className="text-lg font-semibold text-white mb-4">
-            Report a Bug
+            Bug Report & Feedback
           </Dialog.Title>
           <Dialog.Description className="sr-only">
-            Submit a bug report for the Nasun website
+            Submit a bug report or feedback for the Nasun website
           </Dialog.Description>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -259,7 +259,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
             {/* Wallet warning */}
             {!walletConnected && (
               <p className="text-xs text-yellow-400/80">
-                Connect your Nasun wallet to submit bug reports and earn rewards.
+                Connect your Nasun wallet to submit and earn rewards.
               </p>
             )}
 
@@ -278,7 +278,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
                 disabled={isSubmitting || !title.trim() || !description.trim() || !walletConnected}
                 className="flex-1 px-4 py-2 bg-nasun-c4 text-white rounded-lg text-sm font-medium hover:bg-nasun-c4/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                {isUploading ? 'Uploading...' : isPending ? 'Submitting...' : 'Submit Report'}
+                {isUploading ? 'Uploading...' : isPending ? 'Submitting...' : 'Submit'}
               </button>
             </div>
           </form>
