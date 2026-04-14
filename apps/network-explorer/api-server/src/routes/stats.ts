@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { sql } from '../db.js';
+import { sql, pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { getBalance, discoverAddressesViaRpc } from '../rpc.js';
 
@@ -324,6 +324,74 @@ app.get('/daily-transactions', async (c) => {
   const data = await getDailyTx();
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({ data, range: `${days}d` });
+});
+
+// Daily metrics for devnet admin dashboard.
+// Source of truth: nasun_points.activity_points (all point-earning wallet activity).
+// DAU = distinct wallets active on date. new = wallets whose first-ever activity_points
+// row is on date. cumulative = rolling distinct wallet count up to and including date.
+// dailyTx is populated from sui-indexer checkpoints when available (post-indexer-reset
+// 2026-04-14); null when the indexer has no checkpoints covering the date.
+app.get('/daily-metrics', async (c) => {
+  const dateParam = c.req.query('date');
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateParam || !DATE_RE.test(dateParam)) {
+    return c.json({ error: 'date query param required in YYYY-MM-DD format' }, 400);
+  }
+  if (!pointsDb) {
+    return c.json({ error: 'points db not configured' }, 503);
+  }
+
+  const compute = cached(`daily-metrics-${dateParam}`, 30 * 60 * 1000, async () => {
+    const [agg] = await pointsDb!`
+      WITH first_seen AS (
+        SELECT wallet_address, MIN(tx_timestamp::date) AS first_day
+        FROM activity_points
+        GROUP BY wallet_address
+      ),
+      active AS (
+        SELECT DISTINCT wallet_address
+        FROM activity_points
+        WHERE tx_timestamp::date = ${dateParam}::date
+      )
+      SELECT
+        (SELECT COUNT(*) FROM active)::int AS dau,
+        (SELECT COUNT(*) FROM active a JOIN first_seen f USING (wallet_address)
+         WHERE f.first_day = ${dateParam}::date)::int AS new_addresses,
+        (SELECT COUNT(*) FROM first_seen WHERE first_day <= ${dateParam}::date)::int AS cumulative
+    `;
+
+    // dailyTx from sui-indexer checkpoints; null if indexer doesn't cover the date
+    let dailyTx: number | null = null;
+    try {
+      const [tx] = await sql`
+        SELECT SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::bigint AS tx_count
+        FROM checkpoints
+        WHERE timestamp_ms >= EXTRACT(EPOCH FROM ${dateParam}::date) * 1000
+          AND timestamp_ms < EXTRACT(EPOCH FROM (${dateParam}::date + interval '1 day')) * 1000
+      `;
+      if (tx?.tx_count != null) dailyTx = Number(tx.tx_count);
+    } catch (err) {
+      console.warn('daily-metrics: checkpoint tx query failed:', err);
+    }
+
+    return {
+      date: dateParam,
+      dau: Number(agg?.dau ?? 0),
+      newAddresses: Number(agg?.new_addresses ?? 0),
+      cumulativeAddresses: Number(agg?.cumulative ?? 0),
+      dailyTx,
+    };
+  });
+
+  try {
+    const data = await compute();
+    c.header('Cache-Control', 'public, max-age=1800');
+    return c.json(data);
+  } catch (err) {
+    console.error('daily-metrics query failed:', err);
+    return c.json({ error: 'query failed' }, 500);
+  }
 });
 
 export default app;

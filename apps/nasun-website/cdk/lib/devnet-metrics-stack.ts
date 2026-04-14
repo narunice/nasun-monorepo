@@ -53,9 +53,13 @@ export class DevnetMetricsStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(lambdaSrcPath, 'index.ts'),
       handler: 'handler',
-      timeout: cdk.Duration.minutes(10),
-      memorySize: 512,
-      description: 'Devnet daily metrics collector (DAU, new addresses, cumulative)',
+      // v2 collector fetches pre-aggregated metrics from explorer-api over
+      // HTTPS (single ~300ms call), so 1 minute would suffice. Headroom kept
+      // at 15min/1024MB so that occasional API-side cold starts or DB query
+      // spikes never trip the timeout.
+      timeout: cdk.Duration.minutes(15),
+      memorySize: 1024,
+      description: 'Devnet daily metrics collector (fetches from explorer-api /stats/daily-metrics)',
       environment: {
         DEVNET_METRICS_TABLE: metricsTable.tableName,
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
