@@ -35,7 +35,7 @@ const TELEGRAM_BOT_TOKEN_SECRET_NAME =
   process.env.TELEGRAM_BOT_TOKEN_SECRET_NAME || 'nasun-telegram-bot-token';
 const NARU_TELEGRAM_CHAT_ID = process.env.NARU_TELEGRAM_CHAT_ID || '';
 
-const ALLOWED_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Other'];
+const ALLOWED_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Feedback', 'Other'];
 const MAX_SCREENSHOTS = 3;
 const SCREENSHOT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const COOLDOWN_MINUTES = 5;
