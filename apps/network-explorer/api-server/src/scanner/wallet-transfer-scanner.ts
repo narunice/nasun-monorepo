@@ -73,12 +73,16 @@ export async function scanWalletTransfersViaIndexer(
   const maxSeq = Number(maxRow?.max_seq ?? 0);
   if (lastWalletTransferSeq >= maxSeq) return 0;
 
-  // Build bytea array of registered sender addresses for the SQL IN clause.
-  // postgres.js doesn't auto-cast `Buffer[]` to `bytea[]` under the
-  // `ANY()` operator, so use its `sql()` helper (same pattern faucet-scanner
-  // uses at line 90) which materializes a typed array literal.
-  const senderBytea = [...registeredWallets.keys()].map(
-    (w) => Buffer.from(w.replace(/^0x/, ''), 'hex'),
+  // Bind the registered-wallet list as a single text[] parameter (hex,
+  // no 0x prefix) and decode server-side. Why not `IN ${sql(buffers)}`?
+  // That expands to one placeholder per element, so 48k wallets blew
+  // past the Postgres wire-protocol limit of 65534 parameters. A single
+  // text[] parameter is one placeholder regardless of array length.
+  // `= ANY(ARRAY(... unnest ... decode ...))` still uses the
+  // `tx_affected_addresses_sender` index because the RHS resolves to a
+  // bytea array.
+  const senderHex = [...registeredWallets.keys()].map(
+    (w) => w.replace(/^0x/, '').toLowerCase(),
   );
   const excludedModules = [...WALLET_TRANSFER_EXCLUDED_MODULES];
 
@@ -94,14 +98,16 @@ export async function scanWalletTransfersViaIndexer(
       t.timestamp_ms::text AS timestamp_ms
     FROM tx_affected_addresses ta
     JOIN transactions t USING (tx_sequence_number)
-    WHERE ta.sender IN ${sql(senderBytea)}
+    WHERE ta.sender = ANY(ARRAY(
+        SELECT decode(x, 'hex') FROM unnest(${senderHex}::text[]) x
+      ))
       AND ta.affected != ta.sender
       AND ta.tx_sequence_number > ${lastWalletTransferSeq}
       AND ta.tx_sequence_number <= ${maxSeq}
       AND NOT EXISTS (
         SELECT 1 FROM tx_calls_fun tcf
         WHERE tcf.tx_sequence_number = ta.tx_sequence_number
-          AND tcf.module IN ${sql(excludedModules)}
+          AND tcf.module = ANY(${excludedModules}::text[])
       )
     ORDER BY ta.tx_sequence_number
     LIMIT 500
