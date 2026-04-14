@@ -86,6 +86,9 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
       }
 
       if (result.effects.status.status === 'success') {
+        // Block until fullnode has applied effects, so any subsequent tx in the
+        // same flow sees fresh owned-object versions (avoids LockConflict races).
+        await client.waitForTransaction({ digest: result.digest });
         return {
           success: true,
           digest: result.digest,

@@ -15,7 +15,6 @@ import { useMarginAccount } from "./useMarginAccount";
 import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
 import { TOKENS } from "../../../config/network";
-import { RPC_SYNC_DELAY_MS } from "../../../lib/constants";
 
 // Format NUSDC amount (6 decimals)
 function formatNusdc(amount: bigint | undefined): string {
@@ -85,11 +84,11 @@ export function MarginAccountCard() {
       // Step 1: Create MarginAccount
       await createAccount();
 
-      // Step 2: Create BalanceManager if not exists
+      // Step 2: Create BalanceManager if not exists.
+      // signAndExecute / executeTransaction now block on waitForTransaction,
+      // so a fixed sleep between the two txs is unnecessary.
       if (!balanceManagerId) {
         try {
-          // Wait for RPC to sync after MarginAccount creation
-          await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
           await createBalanceManager();
           showToast("Pado enabled!", "success");
         } catch (bmError) {

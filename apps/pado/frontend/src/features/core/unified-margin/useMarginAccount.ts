@@ -177,6 +177,10 @@ export function useMarginAccount(): UseMarginAccountResult {
         throw new Error(result.effects?.status?.error || 'Transaction failed');
       }
 
+      // Block until fullnode has applied effects, so any subsequent tx in the
+      // same flow sees fresh owned-object versions (avoids LockConflict races).
+      await client.waitForTransaction({ digest: result.digest });
+
       return result;
     },
     [activeAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]
