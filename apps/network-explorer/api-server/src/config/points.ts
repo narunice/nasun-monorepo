@@ -141,6 +141,36 @@ const PKG = {
   ),
 } as const;
 
+// Packages whose presence in a PTB disqualifies the tx from counting toward the
+// "send tokens" daily mission. Intent: a legitimate peer transfer is a PTB
+// whose *only* substantive command is a TransferObjects to another user. Any
+// MoveCall into one of these contracts implies a contract interaction (faucet
+// claim, Pado spot trade auto-deposit, staking, etc.) and the TransferObjects
+// present in such PTBs is typically a return-object hand-back, not a send.
+//
+// Also excludes Sui framework 0x2/0x3 to avoid false positives from system
+// helpers like `0x2::pay::split_and_transfer` being chained with staking etc.
+// Pure `0x2::pay::split_and_transfer` sends without Pado/faucet calls are
+// still credited because frontend and scanner both require TransferObjects
+// presence — `pay` helpers that hand the coin to TransferObjects still pass.
+export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
+  PKG.tokens,
+  PKG.tokensV2,
+  PKG.deepbook,
+  PKG.prediction,
+  PKG.lottery,
+  PKG.governance,
+  PKG.governanceMultiChoice,
+  PKG.baram,
+  PKG.baramExecutor,
+  PKG.baramAer,
+  PKG.lending,
+  PKG.perp,
+  PKG.scratchcard,
+  PKG.numbermatch,
+  PKG.sui, // 0x3 Sui system (staking)
+]);
+
 // Build event mapping table
 // NOTE: Event type names must match exactly what the Move contracts emit.
 // After first scan, check logs for "[Points] Unmatched event" to discover
