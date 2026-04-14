@@ -333,7 +333,11 @@ async function scanLoop(myGen: number): Promise<void> {
       }
       const cacheMap = getActivationsCacheMap();
       if (cacheMap.size === 0) {
-        console.warn('[Snapshot] Skipped: activation cache is empty (would record multiplier=0 for all users)');
+        // Don't set lastSnapshotDate -- the activations cache populates on
+        // the first refresh after process start, and a restart that lands
+        // in the 00:05 cache-warmup window would otherwise lose the snapshot
+        // for the entire day. Letting the next scanLoop retry recovers.
+        console.warn('[Snapshot] Skipped: activation cache is empty (would record multiplier=0 for all users); will retry next loop');
       } else {
         try {
           const yesterday = new Date();
@@ -345,9 +349,11 @@ async function scanLoop(myGen: number): Promise<void> {
         } catch (err) {
           console.error('[Snapshot] Error (non-fatal):', (err as Error).message);
         }
+        // Mark snapshot as attempted (idempotent via ON CONFLICT). Only set
+        // when the cache was actually available so we don't pin
+        // lastSnapshotDate to an empty-cache run that skipped everyone.
+        lastSnapshotDate = todayStr;
       }
-      // Mark snapshot as attempted regardless of outcome (idempotent via ON CONFLICT)
-      lastSnapshotDate = todayStr;
     }
 
     // RPC reconciliation: verify yesterday's data against blockchain (once per day, after snapshot)

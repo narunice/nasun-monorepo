@@ -45,18 +45,22 @@ const ADVISORY_LOCK_KEY = 4824671923n;
 const LOOKBACK_DAYS = 3;
 
 async function findMissingDates(): Promise<string[]> {
-  // Any date in [today - LOOKBACK_DAYS, today - 1] where ecosystem_daily_scores
-  // has rows but ecosystem_score_snapshots has none.
+  // Yesterday belongs to the daily-snapshot scanner (fires ~00:05 UTC with
+  // the real activationsCache). Backfill must NOT touch yesterday or it
+  // races scanner with an empty cache and lands a partial snapshot --
+  // dormant users (cache-only, no matview row) get no row, the chain ends
+  // up with ~half the expected count. Backfill targets day-2+ only:
+  // gaps that scanner had a chance to fill but didn't.
   const rows = await pointsDb!`
     WITH active_dates AS (
       SELECT DISTINCT day::text AS d
       FROM ecosystem_daily_scores
-      WHERE day >= CURRENT_DATE - ${LOOKBACK_DAYS}::int AND day < CURRENT_DATE
+      WHERE day >= CURRENT_DATE - ${LOOKBACK_DAYS}::int AND day < CURRENT_DATE - 1
     ),
     snapshotted AS (
       SELECT DISTINCT snapshot_date::text AS d
       FROM ecosystem_score_snapshots
-      WHERE snapshot_date >= CURRENT_DATE - ${LOOKBACK_DAYS}::int AND snapshot_date < CURRENT_DATE
+      WHERE snapshot_date >= CURRENT_DATE - ${LOOKBACK_DAYS}::int AND snapshot_date < CURRENT_DATE - 1
     )
     SELECT d FROM active_dates
     WHERE d NOT IN (SELECT d FROM snapshotted)
