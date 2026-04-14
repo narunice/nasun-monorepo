@@ -39,8 +39,19 @@ const INTERNAL_CACHE_BUCKET = process.env.INTERNAL_CACHE_BUCKET || '';
 const EXPLORER_API_URL = process.env.EXPLORER_API_URL || '';
 const BUG_REPORT_API_KEY = process.env.BUG_REPORT_API_KEY || '';
 
-const VALID_STATUSES = ['new', 'investigating', 'in-progress', 'fixed', 'wont-fix', 'duplicate'];
+// Bug-oriented statuses use `fixed` / `wont-fix`; feedback-oriented statuses
+// (Feedback, Feature Request) use `accepted` / `declined`. The reward pipeline
+// triggers on `fixed` OR `accepted` regardless of category — see handleUpdate.
+const VALID_STATUSES = ['new', 'investigating', 'in-progress', 'fixed', 'wont-fix', 'accepted', 'declined', 'duplicate'];
+
+// Terminal statuses that grant the bonus reward when bonusPoints > 0.
+const REWARD_TRIGGER_STATUSES = new Set(['fixed', 'accepted']);
 const MAX_BONUS_POINTS = 100;
+
+// Categories that map to Explorer `type='feedback'` bonus.
+// All other categories (UI Bug, Wallet Issue, Performance, Security, Other)
+// map to `type='bug-report'`. Forward-only split; past records remain under bug-report.
+const FEEDBACK_CATEGORIES = new Set(['Feedback', 'Feature Request']);
 
 // CORS
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io,https://staging.nasun.io').split(',');
@@ -263,7 +274,7 @@ async function handleUpdate(
   // If status is "fixed" and bonusPoints > 0, trigger points reward
   let rewardResult: { success: boolean; created?: boolean; finalPoints?: number; error?: string } | null = null;
 
-  if (body.status === 'fixed' && body.bonusPoints && body.bonusPoints > 0) {
+  if (body.status && REWARD_TRIGGER_STATUSES.has(body.status) && body.bonusPoints && body.bonusPoints > 0) {
     // Prevent double reward: check if already rewarded
     if (existing.Item.rewardStatus === 'rewarded') {
       rewardResult = { success: true, created: false, error: 'Already rewarded' };
@@ -280,20 +291,25 @@ async function handleUpdate(
         }));
         rewardResult = { success: false, error: 'User has no wallet address. Reward pending.' };
       } else {
+        const rewardType: 'feedback' | 'bug-report' =
+          FEEDBACK_CATEGORIES.has(existing.Item.category as string) ? 'feedback' : 'bug-report';
+
         rewardResult = await sendRewardToExplorer({
           walletAddress,
           identityId,
           reportId,
           points: body.bonusPoints,
-          reason: `Bug report fix: ${(existing.Item.title as string) || reportId}`,
+          reason: `${rewardType === 'feedback' ? 'Feedback' : 'Bug report'} accepted: ${(existing.Item.title as string) || reportId}`,
+          type: rewardType,
         });
 
         await ddbClient.send(new UpdateCommand({
           TableName: BUG_REPORTS_TABLE,
           Key: { reportId, timestamp: body.timestamp },
-          UpdateExpression: 'SET rewardStatus = :rs',
+          UpdateExpression: 'SET rewardStatus = :rs, rewardType = :rt',
           ExpressionAttributeValues: {
             ':rs': rewardResult.success ? 'rewarded' : 'pending',
+            ':rt': rewardType,
           },
         }));
       }
@@ -317,6 +333,7 @@ async function sendRewardToExplorer(payload: {
   reportId: string;
   points: number;
   reason: string;
+  type: 'feedback' | 'bug-report';
 }): Promise<{ success: boolean; created?: boolean; finalPoints?: number; error?: string }> {
   if (!EXPLORER_API_URL || !BUG_REPORT_API_KEY) {
     console.warn('EXPLORER_API_URL or BUG_REPORT_API_KEY not configured');

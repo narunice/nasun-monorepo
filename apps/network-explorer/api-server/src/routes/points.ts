@@ -276,6 +276,7 @@ app.post('/bug-report-reward', async (c) => {
     reportId?: string;
     points?: number;
     reason?: string;
+    type?: 'bug-report' | 'feedback';
   }>();
 
   // Validate required fields
@@ -301,7 +302,9 @@ app.post('/bug-report-reward', async (c) => {
   }
 
   const finalPoints = body.points;
-  const txDigest = `bugreport:${body.reportId}`;
+  const rewardType = body.type === 'feedback' ? 'feedback' : 'bug-report';
+  const txDigest = rewardType === 'feedback' ? `feedback:${body.reportId}` : `bugreport:${body.reportId}`;
+  const category = rewardType === 'feedback' ? 'ecosystem-bonus-feedback' : 'ecosystem-bonus-bugreport';
   const walletAddress = body.walletAddress.toLowerCase();
 
   // INSERT with ON CONFLICT DO NOTHING for idempotency
@@ -315,7 +318,7 @@ app.post('/bug-report-reward', async (c) => {
     ) VALUES (
       ${txDigest}, 0, NOW(),
       ${walletAddress}, ${body.identityId},
-      'ecosystem-bonus-bugreport', 'report-accepted',
+      ${category}, 'report-accepted',
       ${finalPoints}, 1.0, 1.0, ${finalPoints},
       0
     )
@@ -325,7 +328,7 @@ app.post('/bug-report-reward', async (c) => {
   const created = result.count > 0;
 
   console.log(
-    `[BugReport] Reward: ${body.reportId} -> ${walletAddress} ${finalPoints}pts` +
+    `[${rewardType === 'feedback' ? 'Feedback' : 'BugReport'}] Reward: ${body.reportId} -> ${walletAddress} ${finalPoints}pts` +
     `${created ? '' : ' (duplicate, skipped)'} reason: ${body.reason || 'N/A'}`,
   );
 

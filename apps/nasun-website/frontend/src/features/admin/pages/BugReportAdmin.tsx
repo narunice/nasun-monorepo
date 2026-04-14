@@ -15,12 +15,18 @@ import { Spinner } from "@/components/ui";
 import { useAuth } from "@/features/auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { BugReport, BugReportStatus } from "@/features/bug-report/types";
-import { STATUS_LABELS, STATUS_COLORS } from "@/features/bug-report/types";
+import { STATUS_LABELS, STATUS_COLORS, statusOptionsFor, isFeedbackCategory } from "@/features/bug-report/types";
 import { toast } from "react-toastify";
 
 const BUG_REPORT_API_URL = import.meta.env.VITE_BUG_REPORT_API_URL;
 
-const VALID_STATUSES: BugReportStatus[] = ['new', 'investigating', 'in-progress', 'fixed', 'wont-fix', 'duplicate'];
+// Statuses offered in the top-level filter dropdown (shows every possible state).
+const ALL_STATUSES: BugReportStatus[] = ['new', 'investigating', 'in-progress', 'fixed', 'wont-fix', 'accepted', 'declined', 'duplicate'];
+
+// Terminal statuses that trigger the bonus-point reward. Must match the
+// bug-report-admin Lambda's REWARD_TRIGGER_STATUSES.
+const REWARD_STATUSES = new Set<BugReportStatus>(['fixed', 'accepted']);
+const isRewardStatus = (s: BugReportStatus) => REWARD_STATUSES.has(s);
 
 // ============================================
 // API functions
@@ -126,7 +132,7 @@ export function BugReportAdmin() {
       updates: {
         status: newStatus !== selectedReport.status ? newStatus : undefined,
         adminNote: adminNote !== (selectedReport.adminNote || '') ? adminNote : undefined,
-        bonusPoints: newStatus === 'fixed' && bonusPoints > 0 ? bonusPoints : undefined,
+        bonusPoints: isRewardStatus(newStatus) && bonusPoints > 0 ? bonusPoints : undefined,
       },
     });
   };
@@ -148,7 +154,7 @@ export function BugReportAdmin() {
 
         {/* Status Filter */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          {VALID_STATUSES.map((s) => (
+          {ALL_STATUSES.map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -190,7 +196,12 @@ export function BugReportAdmin() {
                       {STATUS_LABELS[report.status]}
                     </span>
                   </div>
-                  <div className="flex gap-2 text-xs text-white/50 flex-wrap">
+                  <div className="flex gap-2 text-xs text-white/50 flex-wrap items-center">
+                    {report.source?.startsWith('pado-') && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-nasun-c4/20 text-nasun-c4 uppercase tracking-wide">
+                        Pado
+                      </span>
+                    )}
                     {report.twitterHandle && (
                       <span className="text-nasun-c4">@{report.twitterHandle}</span>
                     )}
@@ -267,7 +278,20 @@ export function BugReportAdmin() {
                         <span className="text-white/50">Wallet</span>
                         <span className="text-white/70 font-mono break-all select-all">{selectedReport.walletAddress || 'N/A'}</span>
                         <span className="text-white/50">Category</span>
-                        <span className="text-white/70">{selectedReport.category}</span>
+                        <span className="text-white/70">
+                          {selectedReport.category}
+                          {selectedReport.source?.startsWith('pado-') && (
+                            <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-nasun-c4/20 text-nasun-c4 uppercase tracking-wide">
+                              Pado
+                            </span>
+                          )}
+                        </span>
+                        {selectedReport.source && (
+                          <>
+                            <span className="text-white/50">Source</span>
+                            <span className="text-white/70 font-mono text-xs">{selectedReport.source}</span>
+                          </>
+                        )}
                         <span className="text-white/50">Submitted</span>
                         <span className="text-white/70">{new Date(selectedReport.timestamp).toLocaleString('en-US')}</span>
                         {selectedReport.pageUrl && (
@@ -305,7 +329,7 @@ export function BugReportAdmin() {
                       onChange={(e) => setNewStatus(e.target.value as BugReportStatus)}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-nasun-c4/50"
                     >
-                      {VALID_STATUSES.map((s) => (
+                      {statusOptionsFor(selectedReport.category).map((s) => (
                         <option key={s} value={s} className="bg-nasun-black">{STATUS_LABELS[s]}</option>
                       ))}
                     </select>
@@ -325,7 +349,7 @@ export function BugReportAdmin() {
                   </div>
 
                   {/* Bonus Points (only when fixing and not already rewarded) */}
-                  {newStatus === 'fixed' && selectedReport.rewardStatus !== 'rewarded' && (
+                  {isRewardStatus(newStatus) && selectedReport.rewardStatus !== 'rewarded' && (
                     <div>
                       <label className="text-xs text-white/50 block mb-1">
                         Bonus Points (0-100)
@@ -372,14 +396,15 @@ export function BugReportAdmin() {
                     const alreadyRewarded = selectedReport.rewardStatus === 'rewarded';
                     const statusUnchanged = newStatus === selectedReport.status;
                     const adminNoteUnchanged = adminNote === (selectedReport.adminNote || '');
-                    const noopReReward = alreadyRewarded && newStatus === 'fixed' && statusUnchanged && adminNoteUnchanged;
+                    const noopReReward = alreadyRewarded && isRewardStatus(newStatus) && statusUnchanged && adminNoteUnchanged;
                     const disabled = updateMutation.isPending || noopReReward;
+                    const isFeedback = isFeedbackCategory(selectedReport.category);
                     const label = updateMutation.isPending
                       ? 'Updating...'
                       : noopReReward
                         ? 'Already Rewarded'
-                        : newStatus === 'fixed' && bonusPoints > 0 && !alreadyRewarded
-                          ? 'Resolve & Reward'
+                        : isRewardStatus(newStatus) && bonusPoints > 0 && !alreadyRewarded
+                          ? (isFeedback ? 'Accept & Reward' : 'Resolve & Reward')
                           : 'Update Report';
                     return (
                       <Button
@@ -421,7 +446,7 @@ export function BugReportAdmin() {
                 {newStatus !== selectedReport.status && (
                   <p>Status: <span className="text-nasun-white">{STATUS_LABELS[selectedReport.status]} -&gt; {STATUS_LABELS[newStatus]}</span></p>
                 )}
-                {newStatus === 'fixed' && bonusPoints > 0 && (
+                {isRewardStatus(newStatus) && bonusPoints > 0 && (
                   <p>Bonus: <span className="text-green-400">+{bonusPoints} pts</span></p>
                 )}
               </div>
