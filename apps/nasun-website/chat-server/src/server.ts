@@ -15,6 +15,8 @@ import { initNarrator, onTradeFill, stopNarrator } from './market-narrator.js';
 import { setPoolRoomMapping, getPoolRoom } from './rooms.js';
 import { handleLeaderboardRequest, cleanupApiRateLimits } from './leaderboard-api.js';
 import type { LeaderboardApiDeps } from './leaderboard-api.js';
+import { handlePadoIdeaRequest } from './pado-idea-api.js';
+import type { PadoIdeaApiDeps } from './pado-idea-api.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 
@@ -151,6 +153,10 @@ const leaderboardDeps: LeaderboardApiDeps = {
   resolveSessionToken: (authHeader) => resolveSessionToken(authHeader),
 };
 
+const padoIdeaDeps: PadoIdeaApiDeps = {
+  resolveSessionToken: (authHeader) => resolveSessionToken(authHeader),
+};
+
 function getCachedFollowerCounts(addresses: string[]): Map<string, number> {
   if (followerCountCache.expiresAt > Date.now()) {
     const result = new Map<string, number>();
@@ -258,6 +264,23 @@ function handleHttpRequest(
   if (req.url === '/health') {
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ status: 'ok' }));
+    return;
+  }
+
+  // Pado idea/feedback submission (async — writes to DDB)
+  if (url.pathname === '/api/pado/idea-submit') {
+    const padoCors = {
+      ...corsHeaders,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+    handlePadoIdeaRequest(req, res, url, padoCors, padoIdeaDeps).catch((err) => {
+      console.error('[HTTP] pado-idea handler error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, padoCors);
+        res.end(JSON.stringify({ error: 'internal_error' }));
+      }
+    });
     return;
   }
 

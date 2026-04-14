@@ -400,6 +400,12 @@ importers:
 
   apps/nasun-website/chat-server:
     dependencies:
+      '@aws-sdk/client-dynamodb':
+        specifier: ^3.658.0
+        version: 3.1029.0
+      '@aws-sdk/lib-dynamodb':
+        specifier: ^3.658.0
+        version: 3.1029.0(@aws-sdk/client-dynamodb@3.1029.0)
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
@@ -18971,7 +18977,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vitest: 4.0.18(@types/node@22.19.13)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@22.19.15)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
     optional: true
 
   '@vitest/utils@2.1.9':
