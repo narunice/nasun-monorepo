@@ -21,7 +21,6 @@ import type { NftActivation } from '../config/ecosystem.js';
 import {
   STAKING_V2_CUTOFF_DATE,
   calcStakingTierPts,
-  WALLET_TRANSFER_EXCLUDED_PACKAGES,
 } from '../config/points.js';
 
 // Categories excluded from "real activity" checks
@@ -36,6 +35,7 @@ const EXCLUDED_CATEGORIES = [
   'ecosystem-bonus-diversity',
   'ecosystem-bonus-admin',
   'ecosystem-bonus-bugreport',
+  'ecosystem-bonus-feedback',
   'ecosystem-bonus-restoration',
 ];
 
@@ -65,7 +65,6 @@ export async function runDailyNftChecks(
   let penaltiesApplied = 0;
   let penaltiesRecovered = 0;
   let passiveAwarded = 0;
-  let transfersDetected = 0;
 
   // --- Alliance Penalty Check ---
   if (allianceOnlyIds.length > 0) {
@@ -87,27 +86,16 @@ export async function runDailyNftChecks(
     console.error('[DailyNftCheck] Staking daily points error (non-fatal):', err);
   }
 
-  // Yesterday/-2 wallet-transfer catch-up (PM2 downtime recovery).
-  // Today's detection is handled by scanTodayWalletTransfers on every loop.
-  //
-  // Cap per-day probe budget so the catch-up can't balloon into a scanLoop
-  // timeout when many uncredited wallets exist at once (e.g. right after a
-  // deploy that widens the probe surface to all linked wallets). Unprobed
-  // wallets naturally roll over to the next runDailyNftChecks cycle.
-  try {
-    transfersDetected = await detectWalletTransfers(
-      registeredWallets, [1, 2], TODAY_WALLETS_PER_LOOP,
-    );
-  } catch (err) {
-    console.error('[DailyNftCheck] Wallet transfer catch-up error (non-fatal):', err);
-  }
+  // Wallet-transfer detection has moved to wallet-transfer-scanner.ts
+  // (indexer SQL based). Cursor-lag in that scanner naturally absorbs PM2
+  // downtime gaps, so no separate catch-up call is needed here.
 
-  const totalInserts = passiveAwarded + stakingAwarded + transfersDetected;
+  const totalInserts = passiveAwarded + stakingAwarded;
 
   if (penaltiesApplied > 0 || penaltiesRecovered > 0 || totalInserts > 0) {
     console.log(
       `[DailyNftCheck] penalties: ${penaltiesApplied} applied, ${penaltiesRecovered} recovered, ` +
-      `${passiveAwarded} passive, ${stakingAwarded} staking, ${transfersDetected} transfers`,
+      `${passiveAwarded} passive, ${stakingAwarded} staking`,
     );
   }
 
@@ -366,300 +354,3 @@ async function awardStakingDailyPoints(
   return totalAwarded;
 }
 
-// --- Wallet Transfer Detection ---
-
-// RPC response types for suix_queryTransactionBlocks with showInput
-interface MoveCallCommand {
-  package?: string;
-  module?: string;
-  function?: string;
-}
-
-interface TxCommand {
-  TransferObjects?: unknown;
-  MoveCall?: MoveCallCommand;
-  MergeCoins?: unknown;
-  SplitCoins?: unknown;
-  [key: string]: unknown;
-}
-
-function stripHex(addr: string): string {
-  return addr.replace(/^0x/, '').toLowerCase();
-}
-
-/**
- * A tx qualifies as "wallet-transfer" iff it contains a TransferObjects command
- * and no MoveCall into a known contract package (faucet, Pado, staking, etc.).
- * Mirrors the frontend's `hasTransfer && !hasFaucetCall` rule, extended to the
- * full exclusion package set so that Pado spot auto-deposits / lottery /
- * scratchcard PTBs (which chain TransferObjects with a contract call) do not
- * double-credit as a peer transfer.
- */
-function isQualifyingTransfer(commands: TxCommand[]): boolean {
-  let hasTransfer = false;
-  let hasExcludedCall = false;
-  for (const c of commands) {
-    if ('TransferObjects' in c && c.TransferObjects !== undefined) {
-      hasTransfer = true;
-    }
-    const mc = c.MoveCall;
-    if (mc && typeof mc === 'object' && typeof mc.package === 'string') {
-      if (WALLET_TRANSFER_EXCLUDED_PACKAGES.has(stripHex(mc.package))) {
-        hasExcludedCall = true;
-        break;
-      }
-    }
-  }
-  return hasTransfer && !hasExcludedCall;
-}
-
-interface TxBlockResponse {
-  digest: string;
-  timestampMs?: string;
-  transaction?: {
-    data?: {
-      transaction?: {
-        commands?: TxCommand[];
-      };
-    };
-  };
-}
-
-interface TxQueryResponse {
-  data: TxBlockResponse[];
-  nextCursor: string | null;
-  hasNextPage: boolean;
-}
-
-// Persistent round-robin cursor for the per-loop today-only path.
-// Scoped per UTC date so it resets cleanly at midnight without extra code.
-let todayCursor: { date: string; offset: number } = { date: '', offset: 0 };
-
-// Max wallets to RPC-probe per single scanTodayWalletTransfers() call.
-// With ~100k wallets and ~50ms per RPC, an uncapped pass easily exceeds the
-// 3-min scanLoop timeout. Cap keeps each loop bounded; the cursor ensures
-// coverage across loops.
-const TODAY_WALLETS_PER_LOOP = 500;
-
-// Parallel RPC concurrency. Observed sequential latency was high enough to
-// push 500 serial probes past the 3-min scanLoop timeout; parallelism pulls
-// that back well under 30s. Kept modest to avoid swamping the fullnode.
-const RPC_CONCURRENCY = 10;
-
-/**
- * Probe one wallet for qualifying transfers on a given UTC date. Returns true
- * iff a new activity_points row was inserted.
- *
- * The insert is keyed by `wt:{identity}:{date}` so a second wallet of the same
- * identity detecting a transfer on the same day ON CONFLICTs out silently —
- * which is the correct semantics (1 pt per identity per day).
- */
-async function probeWalletForTransfer(
-  identityId: string,
-  wallet: string,
-  dateStr: string,
-  dayStartMs: number,
-  dayEndMs: number,
-): Promise<boolean> {
-  const digest = `wt:${identityId}:${dateStr}`;
-  try {
-    const result = await rpcCall<TxQueryResponse>(
-      'suix_queryTransactionBlocks',
-      [
-        { filter: { FromAddress: wallet }, options: { showInput: true } },
-        null,
-        50,
-        true,
-      ],
-    );
-    let qualifies = false;
-    for (const tx of result.data) {
-      const ts = Number(tx.timestampMs ?? 0);
-      if (ts < dayStartMs || ts >= dayEndMs) continue;
-      const txData = tx.transaction?.data?.transaction as
-        | { commands?: TxCommand[]; transactions?: TxCommand[] }
-        | undefined;
-      const commands = (txData?.commands ?? txData?.transactions ?? []) as TxCommand[];
-      if (isQualifyingTransfer(commands)) {
-        qualifies = true;
-        break;
-      }
-    }
-    if (!qualifies) return false;
-
-    const txTimestamp = `${dateStr}T12:00:00Z`;
-    const insertResult = await pointsDb!`
-      INSERT INTO activity_points
-        (wallet_address, identity_id, tx_digest, category, activity_type,
-         base_points, volume_tier, genesis_multiplier, final_points,
-         tx_timestamp, event_seq, tx_sequence_number)
-      VALUES
-        (${wallet}, ${identityId}, ${digest}, 'wallet-transfer', 'transfer',
-         1, 1.0, 1.0, ${'1.00'},
-         ${txTimestamp}::timestamptz, 0, 0)
-      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-    `;
-    return insertResult.count > 0;
-  } catch (err) {
-    // Per-wallet RPC/insert error is non-fatal; next round will retry.
-    // Log at warn (not silent) so transient fullnode issues don't cause
-    // invisible detection gaps — prior silent catch made it impossible to
-    // distinguish "no transfer" from "RPC failed".
-    console.warn(
-      `[WalletTransfer] probe failed for ${wallet.slice(0, 10)}.. (${dateStr}):`,
-      (err as Error).message,
-    );
-    return false;
-  }
-}
-
-/**
- * Detect wallet transfers (peer coin transfers) for registered users.
- *
- * Iterates `registeredWallets: Map<wallet, identity>` directly — so every
- * linked wallet of an identity gets probed, honoring the "1 identity ↔ N
- * linked wallets" design. This replaces the older `identityToWallet: Map<
- * identity, single wallet>` path which only ever probed the primary wallet
- * and caused multi-wallet users' transfers (e.g. from their trading wallet)
- * to be invisible to the scanner even though the frontend checklist detected
- * them via its own all-wallets scan.
- *
- * Idempotency is identity-scoped via `tx_digest = wt:{identity}:{date}` +
- * the ON CONFLICT clause, so two linked wallets detecting transfers on the
- * same day still credit only 1 pt.
- *
- * @param daysRange   [0, 2] for the daily catch-up, [0, 0] for the per-loop
- *                    fast path.
- * @param maxPerDay   Optional cap on *wallet probes* per date (wallet-unit,
- *                    not identity). Undefined = probe all uncredited wallets.
- */
-async function detectWalletTransfers(
-  registeredWallets: Map<string, string>,
-  daysRange: [number, number] = [0, 2],
-  maxPerDay?: number,
-  priorityIdentities?: Set<string>,
-): Promise<number> {
-  if (!pointsDb || registeredWallets.size === 0) return 0;
-
-  const now = new Date();
-  let totalDetected = 0;
-  const [dayFrom, dayTo] = daysRange;
-
-  for (let daysAgo = dayFrom; daysAgo <= dayTo; daysAgo++) {
-    const targetDate = new Date(now);
-    targetDate.setUTCDate(targetDate.getUTCDate() - daysAgo);
-    const dateStr = targetDate.toISOString().slice(0, 10);
-    const dayStartMs = new Date(`${dateStr}T00:00:00Z`).getTime();
-    const dayEndMs = dayStartMs + 86_400_000;
-
-    // Fetch already-credited identities via a single indexed scan (no ANY()
-    // with 100k elements — that forced a seq scan on activity_points).
-    const credited = await pointsDb`
-      SELECT identity_id
-      FROM activity_points
-      WHERE category = 'wallet-transfer'
-        AND tx_timestamp >= ${dateStr}::date
-        AND tx_timestamp < (${dateStr}::date + interval '1 day')
-    `;
-    const alreadyCredited = new Set(credited.map(r => r.identity_id as string));
-    // In-pass dedup: once a wallet of an identity hits, skip the identity's
-    // remaining wallets this pass. Avoids redundant RPC against the same
-    // identity and is cheaper than querying DB after every hit.
-    const creditedInPass = new Set<string>();
-
-    // Iterate (wallet, identityId) pairs. For per-loop path (maxPerDay set
-    // and date == today), round-robin via a persistent cursor for fairness
-    // across successive loops.
-    //
-    // When priorityIdentities is provided (event-driven active set for today),
-    // partition ordered so identity's wallets whose identity was active this
-    // loop come first. Cursor still advances across the full ordered list —
-    // inactive tail fairness is preserved over successive loops because
-    // priorityIdentities changes every loop (loop-local Set).
-    const entries: [string, string][] = [...registeredWallets.entries()];
-    const isTodayFastPath = maxPerDay !== undefined && daysAgo === 0;
-    let ordered = entries;
-    if (isTodayFastPath) {
-      if (todayCursor.date !== dateStr) todayCursor = { date: dateStr, offset: 0 };
-      const o = todayCursor.offset % entries.length;
-      ordered = entries.slice(o).concat(entries.slice(0, o));
-      if (priorityIdentities && priorityIdentities.size > 0) {
-        const active: [string, string][] = [];
-        const rest: [string, string][] = [];
-        for (const entry of ordered) {
-          if (priorityIdentities.has(entry[1])) active.push(entry);
-          else rest.push(entry);
-        }
-        ordered = active.concat(rest);
-      }
-    }
-
-    const toProbe: Array<{ identityId: string; wallet: string }> = [];
-    let lastProbedIdx = 0;
-    for (let i = 0; i < ordered.length; i++) {
-      const [wallet, identityId] = ordered[i];
-      if (alreadyCredited.has(identityId)) continue;
-      if (creditedInPass.has(identityId)) continue;
-      if (maxPerDay !== undefined && toProbe.length >= maxPerDay) break;
-      toProbe.push({ identityId, wallet });
-      lastProbedIdx = i + 1;
-    }
-
-    for (let start = 0; start < toProbe.length; start += RPC_CONCURRENCY) {
-      const chunk = toProbe.slice(start, start + RPC_CONCURRENCY);
-      // Within a chunk, re-filter on creditedInPass so that if wallet A of
-      // identity X succeeded earlier in the loop, we don't waste an RPC on
-      // wallet B of the same X. Chunks are small (10) so the cost is trivial.
-      const filtered = chunk.filter((c) => !creditedInPass.has(c.identityId));
-      if (filtered.length === 0) continue;
-      const results = await Promise.all(
-        filtered.map((c) =>
-          probeWalletForTransfer(c.identityId, c.wallet, dateStr, dayStartMs, dayEndMs),
-        ),
-      );
-      for (let i = 0; i < results.length; i++) {
-        if (results[i]) {
-          totalDetected++;
-          creditedInPass.add(filtered[i].identityId);
-        }
-      }
-    }
-
-    if (isTodayFastPath) {
-      const base = todayCursor.offset % entries.length;
-      todayCursor = {
-        date: dateStr,
-        offset: (base + lastProbedIdx) % entries.length,
-      };
-    }
-  }
-
-  return totalDetected;
-}
-
-/**
- * Per-scan-loop entry point: detect TODAY's wallet transfers only.
- * Yesterday/day-before-yesterday are handled by the daily-once path in
- * runDailyNftChecks so a late-hour transfer still credits same-day
- * base_score without DOS'ing the fullnode every minute.
- */
-export async function scanTodayWalletTransfers(
-  registeredWallets: Map<string, string>,
-  priorityIdentities?: Set<string>,
-): Promise<number> {
-  try {
-    const credited = await detectWalletTransfers(
-      registeredWallets, [0, 0], TODAY_WALLETS_PER_LOOP, priorityIdentities,
-    );
-    if (credited > 0 || (priorityIdentities && priorityIdentities.size > 0)) {
-      console.log(
-        `[WalletTransfer] today scan: credited=${credited} ` +
-        `priorityIdentities=${priorityIdentities?.size ?? 0}`,
-      );
-    }
-    return credited;
-  } catch (err) {
-    console.error('[DailyNftCheck] Today wallet transfer scan error:', (err as Error).message);
-    return 0;
-  }
-}
