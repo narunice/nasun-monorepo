@@ -37,8 +37,13 @@ const GAMES_ITEMS: DropdownItem[] = [
   { label: 'History', path: '/games/history', enabled: true },
 ];
 
+// /predict is temporarily repurposed as the Ideas & Feedback form (pre-launch).
+// Keep the menu label as "Predict" but force-enable it so the route is reachable
+// regardless of accessMode.
+const IDEA_MODE = import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true';
+
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Predict', path: '/predict', enabled: hasAccess('full') },
+  { label: 'Predict', path: '/predict', enabled: IDEA_MODE || hasAccess('full') },
   { label: 'Earn', path: '/earn', enabled: hasAccess('full') },
 ];
 
