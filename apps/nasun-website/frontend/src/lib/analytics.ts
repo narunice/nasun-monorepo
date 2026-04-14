@@ -4,10 +4,15 @@
  * when Umami is not loaded (development environment).
  */
 
+type UmamiTrack = {
+  (eventName: string, data?: Record<string, string | number | boolean>): void;
+  (payload: (props: Record<string, unknown>) => Record<string, unknown>): void;
+};
+
 declare global {
   interface Window {
     umami?: {
-      track: (eventName: string, data?: Record<string, string | number | boolean>) => void;
+      track: UmamiTrack;
     };
   }
 }
@@ -74,12 +79,35 @@ export function withCrossAppParam(url: string, from: EcosystemApp): string {
 }
 
 /**
- * Fire a cross-app navigation event. Call from the click handler of any
- * outbound link that leaves the current ecosystem app.
+ * Per-session flag: only fire the virtual pageview once per session so a
+ * user who clicks an outbound link multiple times does not inflate nasun
+ * pageview counts.
+ */
+const VIRTUAL_PV_SESSION_KEY = "nasun_cross_app_pv_fired";
+
+/**
+ * Fire a cross-app navigation event AND a session-scoped virtual pageview.
+ *
+ * The virtual pageview (url=`/_cross-app/{to}`) bumps the session pageview
+ * count to 2+, so Umami no longer classifies this session as a bounce.
+ * Without it, users who land on one nasun page and jump to pado are still
+ * counted as bounced even though they actually engaged with the ecosystem.
  */
 export function trackCrossAppNav(
   to: EcosystemApp,
   targetPath: string,
 ): void {
   trackEvent(AnalyticsEvent.CROSS_APP_NAV, { to, target_path: targetPath });
+
+  try {
+    if (sessionStorage.getItem(VIRTUAL_PV_SESSION_KEY)) return;
+    sessionStorage.setItem(VIRTUAL_PV_SESSION_KEY, "1");
+    window.umami?.track((props) => ({
+      ...props,
+      url: `/_cross-app/${to}`,
+      referrer: window.location.href,
+    }));
+  } catch {
+    // sessionStorage blocked (private mode) or umami not loaded — safe no-op
+  }
 }
