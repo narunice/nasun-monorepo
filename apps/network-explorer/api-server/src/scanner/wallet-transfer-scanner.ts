@@ -158,8 +158,9 @@ export async function scanWalletTransfersViaIndexer(
     });
   }
 
+  let insertedRows = 0;
   if (inserts.length > 0) {
-    await pointsDb`
+    const res = await pointsDb`
       INSERT INTO activity_points ${pointsDb(inserts,
         'wallet_address', 'identity_id', 'tx_digest', 'tx_sequence_number',
         'category', 'activity_type', 'base_points', 'volume_tier',
@@ -167,6 +168,7 @@ export async function scanWalletTransfersViaIndexer(
       )}
       ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
     `;
+    insertedRows = res.count;
   }
 
   // Advance cursor only after successful INSERT (ordering matters — if the
@@ -178,13 +180,13 @@ export async function scanWalletTransfersViaIndexer(
 
   if (inserts.length > 0) {
     console.log(
-      `[WalletTransfer] Detected ${inserts.length} wallet-transfers ` +
-      `(candidates=${rows.length} filtered_self=${filteredSelf} ` +
-      `seq=${rows[0].tx_sequence_number}..${newLastSeq})`,
+      `[WalletTransfer] Detected ${insertedRows} new wallet-transfers ` +
+      `(candidates=${rows.length} qualifying=${inserts.length} ` +
+      `filtered_self=${filteredSelf} seq=${rows[0].tx_sequence_number}..${newLastSeq})`,
     );
   }
 
-  return inserts.length;
+  return insertedRows;
 }
 
 /**
