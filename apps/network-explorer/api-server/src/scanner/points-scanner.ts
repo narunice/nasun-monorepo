@@ -24,7 +24,11 @@ import {
   getActivationsCacheMap,
 } from './ecosystem-cache.js';
 import { getIdentityToWalletMap } from './referral-bonus.js';
-import { runDailyNftChecks, scanTodayWalletTransfers } from './daily-nft-check.js';
+import { runDailyNftChecks } from './daily-nft-check.js';
+import {
+  scanWalletTransfersViaIndexer,
+  resetWalletTransferScanner,
+} from './wallet-transfer-scanner.js';
 import { checkEcosystemMatviewVersion } from '../db/ecosystem-matview-migration.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
 import { scanChatParticipation } from './chat-scanner.js';
@@ -223,15 +227,6 @@ async function scanLoop(myGen: number): Promise<void> {
 
     let lastSeq = await getLastProcessedSequence();
 
-    // Identities seen in this loop's event stream. Used to skew the
-    // round-robin wallet-transfer cursor toward *today's active* users so
-    // real peer transfers get probed within one loop (~60s) instead of
-    // waiting an hour for the cursor to wrap. Loop-local: resets each
-    // iteration so stale activity can't hold priority forever.
-    // Single-instance assumption: explorer-api runs PM2 fork mode, so this
-    // in-memory Set doesn't need cross-worker sync.
-    const todayActiveIdentities = new Set<string>();
-
     while (true) {
       if (!isCurrentGen(myGen)) return;
       const batch = await fetchEventBatch(lastSeq, BATCH_SIZE);
@@ -239,10 +234,6 @@ async function scanLoop(myGen: number): Promise<void> {
 
       const { count: inserted, inserts: batchInserts } = await processBatch(batch);
       totalProcessed += inserted;
-
-      for (const ins of batchInserts) {
-        if (ins.identity_id) todayActiveIdentities.add(ins.identity_id);
-      }
 
       // Referral bonus: isolated try-catch to prevent main loop disruption
       try {
@@ -282,30 +273,13 @@ async function scanLoop(myGen: number): Promise<void> {
       console.error('[Chat] Scan error (non-fatal):', (err as Error).message);
     }
 
-    // Today-only wallet transfer detection: runs every loop (skips users
-    // already credited). Keeps same-day base_score accurate for late transfers.
+    // Wallet-transfer detection via indexer SQL (O(delta), not O(registered)).
+    // Replaces the legacy RPC-based cursor probe that scaled linearly with
+    // registered-wallet count. Honors "1 identity ↔ N linked wallets" by
+    // querying tx_affected_addresses where sender ∈ registeredWallets.
     try {
-      // Merge the day's full active-identity set from dailyCategorySeen
-      // ("{identity}::{category}" pairs, populated for every credit today
-      // including pre-restart history via warm-up). todayActiveIdentities
-      // alone only captures *this loop's* events, which misses users whose
-      // only today activity was credited earlier — they'd fall back to
-      // round-robin and wait up to ~96 min. Adding the full-day active set
-      // gets them into the priority partition immediately.
-      for (const key of dailyCategorySeen) {
-        const sep = key.indexOf('::');
-        if (sep > 0) todayActiveIdentities.add(key.slice(0, sep));
-      }
-
-      // Pass registeredWallets (Map<wallet, identity>) directly so every
-      // linked wallet of an identity is probed — honors the "1 identity ↔ N
-      // linked wallets" design. The older identityToWallet (Map<identity,
-      // single wallet>) path missed transfers from non-primary linked
-      // wallets (e.g. admin's trading-only wallet).
-      const walletTransferCount = await scanTodayWalletTransfers(
-        registeredWallets,
-        todayActiveIdentities,
-      );
+      const walletTransferCount =
+        await scanWalletTransfersViaIndexer(registeredWallets);
       totalProcessed += walletTransferCount;
     } catch (err) {
       console.error('[WalletTransfer] Scan error (non-fatal):', (err as Error).message);
@@ -474,11 +448,12 @@ async function detectChainReset(): Promise<void> {
       dailyCategorySeen = new Set();
       dailyCategoryDate = '';
       resetFaucetScanner();
+      resetWalletTransferScanner();
       await pointsDb`
         UPDATE processing_state
         SET last_tx_sequence = 0, chain_genesis_hash = ${currentHash},
             processed_at = NOW(), tx_count = 0
-        WHERE scanner_id IN ('main', 'faucet')
+        WHERE scanner_id IN ('main', 'faucet', 'wallet-transfer')
       `;
     } else if (!state?.chain_genesis_hash) {
       await pointsDb`
@@ -515,8 +490,10 @@ async function detectIndexerRebuild(lastSeq: number): Promise<void> {
   await pointsDb`
     UPDATE processing_state
     SET last_tx_sequence = ${minSeq - 1}, processed_at = NOW()
-    WHERE scanner_id = 'main'
+    WHERE scanner_id IN ('main', 'faucet', 'wallet-transfer')
   `;
+  resetFaucetScanner();
+  resetWalletTransferScanner();
 }
 
 // --- Processing state ---

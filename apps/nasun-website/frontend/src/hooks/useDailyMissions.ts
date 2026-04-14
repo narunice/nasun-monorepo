@@ -45,10 +45,13 @@ const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
 const FAUCET_MODULES = new Set(["faucet", "faucet_v2"]);
 
 // Modules whose MoveCall presence in a PTB disqualifies the tx from the
-// "send tokens" mission — matches the backend scanner's
-// WALLET_TRANSFER_EXCLUDED_PACKAGES rule in
+// "send tokens" mission — mirrors the backend scanner's
+// WALLET_TRANSFER_EXCLUDED_MODULES rule in
 // apps/network-explorer/api-server/src/config/points.ts. Match by module
 // (not package ID) for upgrade-safety, mirroring the FAUCET_MODULES pattern.
+//
+// SYNC WARNING: must stay in lockstep with backend. Drift causes the UI
+// checkbox and pts-today to diverge.
 //
 // Intent: a legitimate peer transfer is a PTB whose substantive command is a
 // TransferObjects to another user. Pado spot auto-deposits, lottery, scratch
@@ -56,17 +59,22 @@ const FAUCET_MODULES = new Set(["faucet", "faucet_v2"]);
 // counting them as "send" causes the pts-today / checklist drift this hook
 // was updated to prevent.
 const CONTRACT_MODULES_EXCLUDING_TRANSFER = new Set([
+  // Faucet (tokens V1 + V2)
   "faucet", "faucet_v2",
-  "order_info", "order", "pool", "deep", // deepbook
-  "prediction",
-  "lottery",
-  "scratchcard",
-  "numbermatch",
-  "perpetuals", "position",
-  "lending", "margin",
-  "baram", "executor", "aer",
+  // Pado DEX / Perp / Margin
+  "order_info", "order", "pool", "deep", "balance_manager",
+  "unified_margin",
+  // Pado games
+  "prediction", "lottery", "scratchcard", "numbermatch",
+  // Nasun website / admin
+  "alliance_nft", "battalion_nft", "smart_account",
+  "dev_oracle",
+  // Governance
   "governance",
-  "staking_pool", "sui_system", // 0x3 staking
+  // Baram AI Settlement
+  "baram", "executor", "aer",
+  // Sui system (0x3)
+  "staking_pool", "sui_system",
 ]);
 
 // All possible mission IDs for early exit optimization

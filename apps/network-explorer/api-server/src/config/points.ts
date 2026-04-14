@@ -153,6 +153,40 @@ const PKG = {
 // Pure `0x2::pay::split_and_transfer` sends without Pado/faucet calls are
 // still credited because frontend and scanner both require TransferObjects
 // presence — `pay` helpers that hand the coin to TransferObjects still pass.
+// Module names whose MoveCall presence in a PTB disqualifies the tx from
+// counting toward the "send tokens" daily mission. Used by the indexer-SQL
+// wallet-transfer scanner (wallet-transfer-scanner.ts) — module-name
+// matching is upgrade-safe (package upgrades change the address but keep
+// module names stable).
+//
+// SYNC WARNING: Must stay in lockstep with frontend's
+// CONTRACT_MODULES_EXCLUDING_TRANSFER in
+// apps/nasun-website/frontend/src/hooks/useDailyMissions.ts. Out-of-sync
+// entries cause the UI checkbox and pts-today to diverge — exactly the
+// drift this PR was written to eliminate.
+//
+// List derived from observed `tx_calls_fun.module` values for Nasun
+// packages on devnet as of 2026-04-14. Add new modules here AND in the
+// frontend when new Nasun contracts ship.
+export const WALLET_TRANSFER_EXCLUDED_MODULES: readonly string[] = [
+  // Faucet (tokens V1 + V2)
+  'faucet', 'faucet_v2',
+  // Pado DEX / Perp / Margin
+  'order_info', 'order', 'pool', 'deep', 'balance_manager',
+  'unified_margin',
+  // Pado games
+  'prediction', 'lottery', 'scratchcard', 'numbermatch',
+  // Nasun website / admin
+  'alliance_nft', 'battalion_nft', 'smart_account',
+  'dev_oracle',
+  // Governance
+  'governance',
+  // Baram AI Settlement
+  'baram', 'executor', 'aer',
+  // Sui system (0x3)
+  'staking_pool', 'sui_system',
+] as const;
+
 export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
   PKG.tokens,
   PKG.tokensV2,
