@@ -73,10 +73,14 @@ export async function scanWalletTransfersViaIndexer(
   const maxSeq = Number(maxRow?.max_seq ?? 0);
   if (lastWalletTransferSeq >= maxSeq) return 0;
 
-  // Build bytea array of registered sender addresses for SQL ANY() filter.
+  // Build bytea array of registered sender addresses for the SQL IN clause.
+  // postgres.js doesn't auto-cast `Buffer[]` to `bytea[]` under the
+  // `ANY()` operator, so use its `sql()` helper (same pattern faucet-scanner
+  // uses at line 90) which materializes a typed array literal.
   const senderBytea = [...registeredWallets.keys()].map(
     (w) => Buffer.from(w.replace(/^0x/, ''), 'hex'),
   );
+  const excludedModules = [...WALLET_TRANSFER_EXCLUDED_MODULES];
 
   // Main query: qualifying (sender, affected, tx) triples.
   // - sender ∈ registered, affected ≠ sender (external address touched)
@@ -90,14 +94,14 @@ export async function scanWalletTransfersViaIndexer(
       t.timestamp_ms::text AS timestamp_ms
     FROM tx_affected_addresses ta
     JOIN transactions t USING (tx_sequence_number)
-    WHERE ta.sender = ANY(${senderBytea})
+    WHERE ta.sender IN ${sql(senderBytea)}
       AND ta.affected != ta.sender
       AND ta.tx_sequence_number > ${lastWalletTransferSeq}
       AND ta.tx_sequence_number <= ${maxSeq}
       AND NOT EXISTS (
         SELECT 1 FROM tx_calls_fun tcf
         WHERE tcf.tx_sequence_number = ta.tx_sequence_number
-          AND tcf.module = ANY(${[...WALLET_TRANSFER_EXCLUDED_MODULES]})
+          AND tcf.module IN ${sql(excludedModules)}
       )
     ORDER BY ta.tx_sequence_number
     LIMIT 500
