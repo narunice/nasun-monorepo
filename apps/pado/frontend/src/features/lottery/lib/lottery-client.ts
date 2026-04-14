@@ -168,6 +168,64 @@ export async function fetchUserTickets(
   }
 }
 
+export interface JackpotWinner {
+  winner: string;
+  ticketId: number;
+  amount: bigint;
+  txDigest: string;
+}
+
+/**
+ * Fetch jackpot (tier=1) winners for a round from PrizeClaimed events.
+ * Only returns winners who have claimed; unclaimed jackpots won't appear.
+ */
+export async function fetchJackpotWinners(
+  roundId: string
+): Promise<JackpotWinner[]> {
+  const client = getSuiClient();
+  const winners: JackpotWinner[] = [];
+
+  try {
+    let cursor: { txDigest: string; eventSeq: string } | null | undefined = undefined;
+    // Cap pagination to bound worst-case scan.
+    for (let page = 0; page < 20; page++) {
+      const res = await client.queryEvents({
+        query: {
+          MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::PrizeClaimed`,
+        },
+        cursor,
+        limit: 50,
+        order: 'descending',
+      });
+
+      for (const ev of res.data) {
+        const p = ev.parsedJson as {
+          round_id: string;
+          ticket_id: string | number;
+          winner: string;
+          tier: number;
+          amount: string | number;
+        };
+        if (p.round_id === roundId && Number(p.tier) === 1) {
+          winners.push({
+            winner: p.winner,
+            ticketId: Number(p.ticket_id),
+            amount: BigInt(p.amount.toString()),
+            txDigest: ev.id.txDigest,
+          });
+        }
+      }
+
+      if (!res.hasNextPage || !res.nextCursor) break;
+      cursor = res.nextCursor;
+    }
+  } catch (error) {
+    console.error('Error fetching jackpot winners:', error);
+  }
+
+  return winners;
+}
+
 /**
  * Check if a ticket is a winner (any tier: 3+ matches)
  */
