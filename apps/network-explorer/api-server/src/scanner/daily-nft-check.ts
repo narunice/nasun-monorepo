@@ -18,7 +18,11 @@
 import { pointsDb } from '../db.js';
 import { rpcCall } from '../rpc.js';
 import type { NftActivation } from '../config/ecosystem.js';
-import { STAKING_V2_CUTOFF_DATE, calcStakingTierPts } from '../config/points.js';
+import {
+  STAKING_V2_CUTOFF_DATE,
+  calcStakingTierPts,
+  WALLET_TRANSFER_EXCLUDED_PACKAGES,
+} from '../config/points.js';
 
 // Categories excluded from "real activity" checks
 const EXCLUDED_CATEGORIES = [
@@ -86,7 +90,7 @@ export async function runDailyNftChecks(
   // Yesterday/-2 wallet-transfer catch-up (PM2 downtime recovery).
   // Today's detection is handled by scanTodayWalletTransfers on every loop.
   try {
-    transfersDetected = await detectWalletTransfers(identityToWallet, [1, 2]);
+    transfersDetected = await detectWalletTransfers(registeredWallets, [1, 2]);
   } catch (err) {
     console.error('[DailyNftCheck] Wallet transfer catch-up error (non-fatal):', err);
   }
@@ -358,12 +362,48 @@ async function awardStakingDailyPoints(
 // --- Wallet Transfer Detection ---
 
 // RPC response types for suix_queryTransactionBlocks with showInput
+interface MoveCallCommand {
+  package?: string;
+  module?: string;
+  function?: string;
+}
+
 interface TxCommand {
   TransferObjects?: unknown;
-  MoveCall?: unknown;
+  MoveCall?: MoveCallCommand;
   MergeCoins?: unknown;
   SplitCoins?: unknown;
   [key: string]: unknown;
+}
+
+function stripHex(addr: string): string {
+  return addr.replace(/^0x/, '').toLowerCase();
+}
+
+/**
+ * A tx qualifies as "wallet-transfer" iff it contains a TransferObjects command
+ * and no MoveCall into a known contract package (faucet, Pado, staking, etc.).
+ * Mirrors the frontend's `hasTransfer && !hasFaucetCall` rule, extended to the
+ * full exclusion package set so that Pado spot auto-deposits / lottery /
+ * scratchcard PTBs (which chain TransferObjects with a contract call) do not
+ * double-credit as a peer transfer.
+ */
+function isQualifyingTransfer(commands: TxCommand[]): boolean {
+  let hasTransfer = false;
+  let hasExcludedCall = false;
+  for (const c of commands) {
+    if ('TransferObjects' in c && c.TransferObjects !== undefined) {
+      hasTransfer = true;
+    }
+    const mc = c.MoveCall;
+    if (mc && typeof mc === 'object' && typeof mc.package === 'string') {
+      if (WALLET_TRANSFER_EXCLUDED_PACKAGES.has(stripHex(mc.package))) {
+        hasExcludedCall = true;
+        break;
+      }
+    }
+  }
+  return hasTransfer && !hasExcludedCall;
 }
 
 interface TxBlockResponse {
@@ -399,6 +439,14 @@ const TODAY_WALLETS_PER_LOOP = 500;
 // that back well under 30s. Kept modest to avoid swamping the fullnode.
 const RPC_CONCURRENCY = 10;
 
+/**
+ * Probe one wallet for qualifying transfers on a given UTC date. Returns true
+ * iff a new activity_points row was inserted.
+ *
+ * The insert is keyed by `wt:{identity}:{date}` so a second wallet of the same
+ * identity detecting a transfer on the same day ON CONFLICTs out silently —
+ * which is the correct semantics (1 pt per identity per day).
+ */
 async function probeWalletForTransfer(
   identityId: string,
   wallet: string,
@@ -417,18 +465,20 @@ async function probeWalletForTransfer(
         true,
       ],
     );
-    let hasTransfer = false;
+    let qualifies = false;
     for (const tx of result.data) {
       const ts = Number(tx.timestampMs ?? 0);
       if (ts < dayStartMs || ts >= dayEndMs) continue;
-      const txData = tx.transaction?.data?.transaction as Record<string, unknown> | undefined;
-      const commands = (txData?.commands ?? txData?.transactions ?? []) as Record<string, unknown>[];
-      if (commands.some((c: Record<string, unknown>) => 'TransferObjects' in c)) {
-        hasTransfer = true;
+      const txData = tx.transaction?.data?.transaction as
+        | { commands?: TxCommand[]; transactions?: TxCommand[] }
+        | undefined;
+      const commands = (txData?.commands ?? txData?.transactions ?? []) as TxCommand[];
+      if (isQualifyingTransfer(commands)) {
+        qualifies = true;
         break;
       }
     }
-    if (!hasTransfer) return false;
+    if (!qualifies) return false;
 
     const txTimestamp = `${dateStr}T12:00:00Z`;
     const insertResult = await pointsDb!`
@@ -443,29 +493,45 @@ async function probeWalletForTransfer(
       ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
     `;
     return insertResult.count > 0;
-  } catch {
+  } catch (err) {
     // Per-wallet RPC/insert error is non-fatal; next round will retry.
+    // Log at warn (not silent) so transient fullnode issues don't cause
+    // invisible detection gaps — prior silent catch made it impossible to
+    // distinguish "no transfer" from "RPC failed".
+    console.warn(
+      `[WalletTransfer] probe failed for ${wallet.slice(0, 10)}.. (${dateStr}):`,
+      (err as Error).message,
+    );
     return false;
   }
 }
 
 /**
- * Detect wallet transfers (native coin transfers) for registered users.
- * Uses suix_queryTransactionBlocks RPC to find TransferObjects commands.
- * Inserts 1 point per user per day (category: wallet-transfer, type: transfer).
+ * Detect wallet transfers (peer coin transfers) for registered users.
+ *
+ * Iterates `registeredWallets: Map<wallet, identity>` directly — so every
+ * linked wallet of an identity gets probed, honoring the "1 identity ↔ N
+ * linked wallets" design. This replaces the older `identityToWallet: Map<
+ * identity, single wallet>` path which only ever probed the primary wallet
+ * and caused multi-wallet users' transfers (e.g. from their trading wallet)
+ * to be invisible to the scanner even though the frontend checklist detected
+ * them via its own all-wallets scan.
+ *
+ * Idempotency is identity-scoped via `tx_digest = wt:{identity}:{date}` +
+ * the ON CONFLICT clause, so two linked wallets detecting transfers on the
+ * same day still credit only 1 pt.
  *
  * @param daysRange   [0, 2] for the daily catch-up, [0, 0] for the per-loop
- *                    fast path. Narrowing to today keeps RPC load in check.
- * @param maxPerDay   Optional cap on wallets to probe per date. Undefined =
- *                    process all uncredited wallets (used by the once-a-day
- *                    catch-up path; daily budget is amortized there).
+ *                    fast path.
+ * @param maxPerDay   Optional cap on *wallet probes* per date (wallet-unit,
+ *                    not identity). Undefined = probe all uncredited wallets.
  */
 async function detectWalletTransfers(
-  identityToWallet: Map<string, string>,
+  registeredWallets: Map<string, string>,
   daysRange: [number, number] = [0, 2],
   maxPerDay?: number,
 ): Promise<number> {
-  if (!pointsDb || identityToWallet.size === 0) return 0;
+  if (!pointsDb || registeredWallets.size === 0) return 0;
 
   const now = new Date();
   let totalDetected = 0;
@@ -488,10 +554,15 @@ async function detectWalletTransfers(
         AND tx_timestamp < (${dateStr}::date + interval '1 day')
     `;
     const alreadyCredited = new Set(credited.map(r => r.identity_id as string));
+    // In-pass dedup: once a wallet of an identity hits, skip the identity's
+    // remaining wallets this pass. Avoids redundant RPC against the same
+    // identity and is cheaper than querying DB after every hit.
+    const creditedInPass = new Set<string>();
 
-    // Build iteration order. For per-loop path (maxPerDay set and date == today),
-    // round-robin via a persistent cursor so successive loops cover new ground.
-    const entries = [...identityToWallet.entries()];
+    // Iterate (wallet, identityId) pairs. For per-loop path (maxPerDay set
+    // and date == today), round-robin via a persistent cursor for fairness
+    // across successive loops.
+    const entries: [string, string][] = [...registeredWallets.entries()];
     const isTodayFastPath = maxPerDay !== undefined && daysAgo === 0;
     let ordered = entries;
     if (isTodayFastPath) {
@@ -500,26 +571,35 @@ async function detectWalletTransfers(
       ordered = entries.slice(o).concat(entries.slice(0, o));
     }
 
-    // Collect the wallets we want to probe this pass (bounded by maxPerDay,
-    // skipping already-credited), then fan out with RPC_CONCURRENCY workers.
-    const toProbe: Array<{ identityId: string; wallet: string; origIdx: number }> = [];
+    const toProbe: Array<{ identityId: string; wallet: string }> = [];
     let lastProbedIdx = 0;
     for (let i = 0; i < ordered.length; i++) {
-      const [identityId, wallet] = ordered[i];
+      const [wallet, identityId] = ordered[i];
       if (alreadyCredited.has(identityId)) continue;
+      if (creditedInPass.has(identityId)) continue;
       if (maxPerDay !== undefined && toProbe.length >= maxPerDay) break;
-      toProbe.push({ identityId, wallet, origIdx: i });
+      toProbe.push({ identityId, wallet });
       lastProbedIdx = i + 1;
     }
 
     for (let start = 0; start < toProbe.length; start += RPC_CONCURRENCY) {
       const chunk = toProbe.slice(start, start + RPC_CONCURRENCY);
+      // Within a chunk, re-filter on creditedInPass so that if wallet A of
+      // identity X succeeded earlier in the loop, we don't waste an RPC on
+      // wallet B of the same X. Chunks are small (10) so the cost is trivial.
+      const filtered = chunk.filter((c) => !creditedInPass.has(c.identityId));
+      if (filtered.length === 0) continue;
       const results = await Promise.all(
-        chunk.map(c =>
+        filtered.map((c) =>
           probeWalletForTransfer(c.identityId, c.wallet, dateStr, dayStartMs, dayEndMs),
         ),
       );
-      for (const inserted of results) if (inserted) totalDetected++;
+      for (let i = 0; i < results.length; i++) {
+        if (results[i]) {
+          totalDetected++;
+          creditedInPass.add(filtered[i].identityId);
+        }
+      }
     }
 
     if (isTodayFastPath) {
@@ -541,10 +621,10 @@ async function detectWalletTransfers(
  * base_score without DOS'ing the fullnode every minute.
  */
 export async function scanTodayWalletTransfers(
-  identityToWallet: Map<string, string>,
+  registeredWallets: Map<string, string>,
 ): Promise<number> {
   try {
-    return await detectWalletTransfers(identityToWallet, [0, 0], TODAY_WALLETS_PER_LOOP);
+    return await detectWalletTransfers(registeredWallets, [0, 0], TODAY_WALLETS_PER_LOOP);
   } catch (err) {
     console.error('[DailyNftCheck] Today wallet transfer scan error:', (err as Error).message);
     return 0;
