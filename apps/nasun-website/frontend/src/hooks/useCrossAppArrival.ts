@@ -1,17 +1,43 @@
 /**
  * useCrossAppArrival Hook
  *
- * Detects ?from=pado on first load, fires a `cross_app_arrival` Umami event,
- * then strips the param from the URL so it does not leak into shares or
- * pollute downstream analytics.
+ * Detects ?from=pado (or ?from=nasun) on first load, fires a
+ * `cross_app_arrival` Umami event, then strips the param from the URL so
+ * it does not leak into shares or pollute downstream analytics.
+ *
+ * Umami loads with `defer`, so `window.umami` may be undefined when this
+ * hook runs. We poll for it briefly so arrival events are not silently
+ * dropped (the main source of "nav > arrival" gap).
  *
  * Mount once at the app root.
  */
 
 import { useEffect } from "react";
-import { trackEvent, AnalyticsEvent, type EcosystemApp } from "@/lib/analytics";
+import { AnalyticsEvent, type EcosystemApp } from "@/lib/analytics";
 
 const VALID_SOURCES: ReadonlySet<EcosystemApp> = new Set(["nasun", "pado"]);
+const POLL_INTERVAL_MS = 100;
+const MAX_WAIT_MS = 5000;
+
+function fireWhenReady(
+  eventName: string,
+  data: Record<string, string | number | boolean>,
+): void {
+  const deadline = Date.now() + MAX_WAIT_MS;
+  const tryFire = () => {
+    if (window.umami?.track) {
+      try {
+        window.umami.track(eventName, data);
+      } catch {
+        // analytics must never break the app
+      }
+      return;
+    }
+    if (Date.now() >= deadline) return;
+    setTimeout(tryFire, POLL_INTERVAL_MS);
+  };
+  tryFire();
+}
 
 export function useCrossAppArrival(): void {
   useEffect(() => {
@@ -19,16 +45,19 @@ export function useCrossAppArrival(): void {
     const from = params.get("from");
     if (!from || !VALID_SOURCES.has(from as EcosystemApp)) return;
 
-    trackEvent(AnalyticsEvent.CROSS_APP_ARRIVAL, {
-      from,
-      landing_path: window.location.pathname,
-    });
-
+    // Strip the param immediately so shares / bookmarks stay clean even
+    // if Umami never loads.
+    const landingPath = window.location.pathname;
     params.delete("from");
     const newUrl =
-      window.location.pathname +
+      landingPath +
       (params.toString() ? `?${params.toString()}` : "") +
       window.location.hash;
     window.history.replaceState({}, "", newUrl);
+
+    fireWhenReady(AnalyticsEvent.CROSS_APP_ARRIVAL, {
+      from,
+      landing_path: landingPath,
+    });
   }, []);
 }
