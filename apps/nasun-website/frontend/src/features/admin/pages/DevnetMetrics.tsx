@@ -69,8 +69,9 @@ export function DevnetMetrics() {
         {metrics && (
           <>
             <div className="text-xs text-nasun-white/60 mb-3 leading-relaxed">
-              Scope: faucet-funded addresses only. DAU counts addresses that received a faucet drip at least once and transacted on the given day.
-              "New" = first observed active on that day (tracked from 2026-04-13 onward); earlier dates use faucet-drip date as a proxy and may undercount new users.
+              Scope: all wallets with any point-earning on-chain activity (faucet, DEX, scratchcard, lottery, transfer, staking, chat, governance, etc.).
+              DAU = distinct wallets active that day. "New" = wallets whose first-ever point-earning activity was that day. "Repeat" = DAU minus New.
+              Data backfilled from 2026-02-05 (pre-launch dev period) through 2026-04-13; daily transaction count uses sui-indexer checkpoints from 2026-04-14 onward.
             </div>
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
