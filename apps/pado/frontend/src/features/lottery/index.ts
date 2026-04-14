@@ -74,6 +74,7 @@ export {
   fetchLotteryRegistry,
   fetchLotteryRound,
   fetchUserTickets,
+  fetchJackpotWinners,
   isWinningTicket,
   isJackpotWinner,
   generateQuickPick,
