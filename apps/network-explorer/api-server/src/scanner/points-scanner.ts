@@ -285,6 +285,18 @@ async function scanLoop(myGen: number): Promise<void> {
     // Today-only wallet transfer detection: runs every loop (skips users
     // already credited). Keeps same-day base_score accurate for late transfers.
     try {
+      // Merge the day's full active-identity set from dailyCategorySeen
+      // ("{identity}::{category}" pairs, populated for every credit today
+      // including pre-restart history via warm-up). todayActiveIdentities
+      // alone only captures *this loop's* events, which misses users whose
+      // only today activity was credited earlier — they'd fall back to
+      // round-robin and wait up to ~96 min. Adding the full-day active set
+      // gets them into the priority partition immediately.
+      for (const key of dailyCategorySeen) {
+        const sep = key.indexOf('::');
+        if (sep > 0) todayActiveIdentities.add(key.slice(0, sep));
+      }
+
       // Pass registeredWallets (Map<wallet, identity>) directly so every
       // linked wallet of an identity is probed — honors the "1 identity ↔ N
       // linked wallets" design. The older identityToWallet (Map<identity,
