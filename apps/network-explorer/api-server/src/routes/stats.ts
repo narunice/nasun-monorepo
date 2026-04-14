@@ -342,17 +342,37 @@ app.get('/daily-metrics', async (c) => {
     return c.json({ error: 'points db not configured' }, 503);
   }
 
+  // DAU scope = wallets with on-chain point-earning activity. Exclude
+  // off-chain (chat) and admin-granted ecosystem bonuses so the metric
+  // reflects actual on-chain engagement.
+  const OFFCHAIN_CATEGORIES = [
+    'chat',
+    'daily-mission',
+    'ecosystem-bonus-restoration',
+    'ecosystem-bonus-earlybird',
+    'ecosystem-bonus-admin',
+    'ecosystem-bonus-game',
+    'ecosystem-bonus-creators-appreciation',
+    'ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts',
+  ];
+
   const compute = cached(`daily-metrics-${dateParam}`, 30 * 60 * 1000, async () => {
     const [agg] = await pointsDb!`
-      WITH first_seen AS (
-        SELECT wallet_address, MIN(tx_timestamp::date) AS first_day
+      WITH onchain AS (
+        SELECT wallet_address, tx_timestamp::date AS day
         FROM activity_points
+        WHERE category NOT IN ${pointsDb!(OFFCHAIN_CATEGORIES)}
+      ),
+      first_seen AS (
+        SELECT wallet_address, MIN(day) AS first_day
+        FROM onchain
         GROUP BY wallet_address
       ),
       active AS (
         SELECT DISTINCT wallet_address
-        FROM activity_points
-        WHERE tx_timestamp::date = ${dateParam}::date
+        FROM onchain
+        WHERE day = ${dateParam}::date
       )
       SELECT
         (SELECT COUNT(*) FROM active)::int AS dau,
