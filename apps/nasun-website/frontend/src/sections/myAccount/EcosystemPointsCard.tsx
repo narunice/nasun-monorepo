@@ -571,10 +571,14 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
                         {entry.rank != null ? (
                           <span className="text-nasun-white/80">
                             {entry.rankChange === "up" && (
-                              <span className="text-emerald-400 mr-1">^</span>
+                              <span className="text-emerald-400 !text-base mr-1">
+                                ⇧
+                              </span>
                             )}
                             {entry.rankChange === "down" && (
-                              <span className="text-red-400 mr-1">v</span>
+                              <span className="text-red-400 !text-base mr-1">
+                                ⇩
+                              </span>
                             )}
                             #{entry.rank}
                           </span>
