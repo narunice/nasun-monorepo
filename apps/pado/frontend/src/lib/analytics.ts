@@ -1,15 +1,17 @@
 /**
  * Lightweight analytics wrapper for Umami (pado).
  * Mirrors apps/nasun-website/frontend/src/lib/analytics.ts.
- *
- * Only ecosystem-level cross-app events are defined here for now.
- * Add product events incrementally as they are needed.
  */
+
+type UmamiTrack = {
+  (eventName: string, data?: Record<string, string | number | boolean>): void;
+  (payload: (props: Record<string, unknown>) => Record<string, unknown>): void;
+};
 
 declare global {
   interface Window {
     umami?: {
-      track: (eventName: string, data?: Record<string, string | number | boolean>) => void;
+      track: UmamiTrack;
     };
   }
 }
@@ -44,9 +46,32 @@ export function withCrossAppParam(url: string, from: EcosystemApp): string {
   }
 }
 
+/**
+ * Per-session flag: only fire the virtual pageview once per session so a
+ * user who clicks an outbound link multiple times does not inflate pado
+ * pageview counts.
+ */
+const VIRTUAL_PV_SESSION_KEY = "nasun_cross_app_pv_fired";
+
+/**
+ * Fire a cross-app navigation event AND a session-scoped virtual pageview
+ * so this session no longer counts as a bounce in Umami.
+ */
 export function trackCrossAppNav(
   to: EcosystemApp,
   targetPath: string,
 ): void {
   trackEvent(AnalyticsEvent.CROSS_APP_NAV, { to, target_path: targetPath });
+
+  try {
+    if (sessionStorage.getItem(VIRTUAL_PV_SESSION_KEY)) return;
+    sessionStorage.setItem(VIRTUAL_PV_SESSION_KEY, "1");
+    window.umami?.track((props) => ({
+      ...props,
+      url: `/_cross-app/${to}`,
+      referrer: window.location.href,
+    }));
+  } catch {
+    // sessionStorage blocked (private mode) or umami not loaded — safe no-op
+  }
 }
