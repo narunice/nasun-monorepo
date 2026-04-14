@@ -89,8 +89,15 @@ export async function runDailyNftChecks(
 
   // Yesterday/-2 wallet-transfer catch-up (PM2 downtime recovery).
   // Today's detection is handled by scanTodayWalletTransfers on every loop.
+  //
+  // Cap per-day probe budget so the catch-up can't balloon into a scanLoop
+  // timeout when many uncredited wallets exist at once (e.g. right after a
+  // deploy that widens the probe surface to all linked wallets). Unprobed
+  // wallets naturally roll over to the next runDailyNftChecks cycle.
   try {
-    transfersDetected = await detectWalletTransfers(registeredWallets, [1, 2]);
+    transfersDetected = await detectWalletTransfers(
+      registeredWallets, [1, 2], TODAY_WALLETS_PER_LOOP,
+    );
   } catch (err) {
     console.error('[DailyNftCheck] Wallet transfer catch-up error (non-fatal):', err);
   }
