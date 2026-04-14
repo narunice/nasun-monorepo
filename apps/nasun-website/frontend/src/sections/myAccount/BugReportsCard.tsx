@@ -39,7 +39,7 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
   return (
     <OuterBox color="w2" padding="sm" className={className}>
       <h5 className="font-medium uppercase text-nasun-white mb-3">
-        Bug Reports
+        Bug Reports & Feedback
       </h5>
 
       {isLoading ? (
@@ -51,13 +51,13 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
       ) : !reports || reports.length === 0 ? (
         <div className="flex flex-col items-center py-4 gap-3">
           <p className="text-base text-white/70 text-center">
-            No bug reports yet. Found an issue? Report it and earn points!
+            No submissions yet. Found a bug or have feedback? Share it and earn points!
           </p>
           <button
             onClick={() => setModalOpen(true)}
             className="px-4 py-2 text-sm font-medium bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30 rounded-lg hover:bg-nasun-c4/30 transition-colors"
           >
-            Report a Bug
+            Submit
           </button>
         </div>
       ) : (
@@ -154,7 +154,7 @@ export const BugReportsCard: FC<BugReportsCardProps> = ({ className = "" }) => {
               onClick={() => setModalOpen(true)}
               className="px-4 py-2 text-sm font-medium bg-nasun-c4/20 text-nasun-c4 border border-nasun-c4/30 rounded-lg hover:bg-nasun-c4/30 transition-colors"
             >
-              Report a Bug
+              Submit
             </button>
           </div>
         </>
