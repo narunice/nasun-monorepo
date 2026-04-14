@@ -61,6 +61,7 @@ const BONUS_LABELS: Record<string, string> = {
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
   "ecosystem-bonus-bugreport": "Bug Report",
+  "ecosystem-bonus-feedback": "Feedback",
   "ecosystem-bonus-creators-appreciation": "Creators Appreciation",
   "ecosystem-bonus-creator-posts": "Creator Posts",
   "referral-bonus": "Referral",

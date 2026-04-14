@@ -35,9 +35,20 @@ export interface BugReport {
   displayName?: string;
   updatedAt?: string;
   userReply?: string;
+  source?: string;
+  submittedVia?: string;
+  rewardType?: 'feedback' | 'bug-report';
 }
 
-export type BugReportStatus = 'new' | 'investigating' | 'in-progress' | 'fixed' | 'wont-fix' | 'duplicate';
+export type BugReportStatus =
+  | 'new'
+  | 'investigating'
+  | 'in-progress'
+  | 'fixed'        // bug-oriented completion
+  | 'wont-fix'     // bug-oriented rejection
+  | 'accepted'     // feedback-oriented completion (triggers reward)
+  | 'declined'     // feedback-oriented rejection
+  | 'duplicate';
 
 export const BUG_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Feedback', 'Other'] as const;
 export type BugCategory = typeof BUG_CATEGORIES[number];
@@ -48,6 +59,8 @@ export const STATUS_LABELS: Record<BugReportStatus, string> = {
   'in-progress': 'In Progress',
   'fixed': 'Fixed',
   'wont-fix': "Won't Fix",
+  'accepted': 'Accepted',
+  'declined': 'Declined',
   'duplicate': 'Duplicate',
 };
 
@@ -57,8 +70,27 @@ export const STATUS_COLORS: Record<BugReportStatus, string> = {
   'in-progress': 'bg-blue-500/20 text-blue-300',
   'fixed': 'bg-green-500/20 text-green-300',
   'wont-fix': 'bg-red-500/20 text-red-300',
+  'accepted': 'bg-green-500/20 text-green-300',
+  'declined': 'bg-red-500/20 text-red-300',
   'duplicate': 'bg-gray-500/20 text-gray-400',
 };
+
+// Categories treated as "feedback-oriented" — their admin UI shows
+// accepted/declined instead of fixed/wont-fix.
+export const FEEDBACK_CATEGORIES = ['Feedback', 'Feature Request'] as const;
+
+export function isFeedbackCategory(category: string | undefined): boolean {
+  return !!category && (FEEDBACK_CATEGORIES as readonly string[]).includes(category);
+}
+
+/** Admin-selectable statuses per category context. */
+export function statusOptionsFor(category: string | undefined): BugReportStatus[] {
+  const shared: BugReportStatus[] = ['new', 'investigating', 'in-progress', 'duplicate'];
+  if (isFeedbackCategory(category)) {
+    return [...shared, 'accepted', 'declined'];
+  }
+  return [...shared, 'fixed', 'wont-fix'];
+}
 
 export interface PresignedPostData {
   url: string;
