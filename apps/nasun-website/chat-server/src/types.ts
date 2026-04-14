@@ -280,7 +280,7 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   maxWsMessageBytes: 10 * 1024, // 10KB
   rateLimitMs: 500,
   historyRateLimitMs: 2000,
-  maxConnectionsPerIp: 5,
+  maxConnectionsPerIp: parseInt(process.env.MAX_CONNECTIONS_PER_IP || '30', 10),
   authTimeoutMs: 30_000,
   maxSessionMs: 24 * 60 * 60 * 1000, // 24 hours
   dbPath: process.env.CHAT_DB_PATH || './data/chat.db',
