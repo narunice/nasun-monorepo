@@ -54,6 +54,7 @@ const PerpTradePage = lazyWithRetry(() => import('../pages/PerpTradePage').then(
 const WalletPage = lazyWithRetry(() => import('../pages/WalletPage').then(m => ({ default: m.WalletPage })));
 const PredictPage = lazyWithRetry(() => import('../pages/PredictPage').then(m => ({ default: m.PredictPage })));
 const PredictMarketPage = lazyWithRetry(() => import('../pages/PredictMarketPage').then(m => ({ default: m.PredictMarketPage })));
+const IdeaSubmissionPage = lazyWithRetry(() => import('../pages/IdeaSubmissionPage').then(m => ({ default: m.IdeaSubmissionPage })));
 const LotteryPage = lazyWithRetry(() => import('../pages/LotteryPage').then(m => ({ default: m.LotteryPage })));
 const LotteryRoundPage = lazyWithRetry(() => import('../pages/LotteryRoundPage').then(m => ({ default: m.LotteryRoundPage })));
 const AdminPage = lazyWithRetry(() => import('../pages/AdminPage').then(m => ({ default: m.AdminPage })));
@@ -82,8 +83,16 @@ export function AppRoutes() {
         {/* Wallet (Send/Receive) */}
         <Route path="/wallet" element={<GatedRoute requires="spot"><WalletPage /></GatedRoute>} />
 
-        {/* Prediction Markets */}
-        <Route path="/predict" element={<GatedRoute requires="full"><PredictPage /></GatedRoute>} />
+        {/* Prediction Markets
+            NOTE: While VITE_IDEA_SUBMISSION_ENABLED is true, /predict is temporarily
+            repurposed as an Ideas & Feedback submission form (pre-launch data
+            collection). The real PredictPage lives behind GatedRoute as before.
+            Flip the env flag back to false to restore the market listing. */}
+        {import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true' ? (
+          <Route path="/predict" element={<IdeaSubmissionPage />} />
+        ) : (
+          <Route path="/predict" element={<GatedRoute requires="full"><PredictPage /></GatedRoute>} />
+        )}
         <Route path="/predict/:marketId" element={<GatedRoute requires="full"><PredictMarketPage /></GatedRoute>} />
 
         {/* Games (Lottery + Scratch Cards + Number Match) - always public */}
