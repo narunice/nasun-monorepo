@@ -223,6 +223,15 @@ async function scanLoop(myGen: number): Promise<void> {
 
     let lastSeq = await getLastProcessedSequence();
 
+    // Identities seen in this loop's event stream. Used to skew the
+    // round-robin wallet-transfer cursor toward *today's active* users so
+    // real peer transfers get probed within one loop (~60s) instead of
+    // waiting an hour for the cursor to wrap. Loop-local: resets each
+    // iteration so stale activity can't hold priority forever.
+    // Single-instance assumption: explorer-api runs PM2 fork mode, so this
+    // in-memory Set doesn't need cross-worker sync.
+    const todayActiveIdentities = new Set<string>();
+
     while (true) {
       if (!isCurrentGen(myGen)) return;
       const batch = await fetchEventBatch(lastSeq, BATCH_SIZE);
@@ -230,6 +239,10 @@ async function scanLoop(myGen: number): Promise<void> {
 
       const { count: inserted, inserts: batchInserts } = await processBatch(batch);
       totalProcessed += inserted;
+
+      for (const ins of batchInserts) {
+        if (ins.identity_id) todayActiveIdentities.add(ins.identity_id);
+      }
 
       // Referral bonus: isolated try-catch to prevent main loop disruption
       try {
@@ -279,6 +292,7 @@ async function scanLoop(myGen: number): Promise<void> {
       // wallets (e.g. admin's trading-only wallet).
       const walletTransferCount = await scanTodayWalletTransfers(
         registeredWallets,
+        todayActiveIdentities,
       );
       totalProcessed += walletTransferCount;
     } catch (err) {

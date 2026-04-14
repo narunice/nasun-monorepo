@@ -537,6 +537,7 @@ async function detectWalletTransfers(
   registeredWallets: Map<string, string>,
   daysRange: [number, number] = [0, 2],
   maxPerDay?: number,
+  priorityIdentities?: Set<string>,
 ): Promise<number> {
   if (!pointsDb || registeredWallets.size === 0) return 0;
 
@@ -569,6 +570,12 @@ async function detectWalletTransfers(
     // Iterate (wallet, identityId) pairs. For per-loop path (maxPerDay set
     // and date == today), round-robin via a persistent cursor for fairness
     // across successive loops.
+    //
+    // When priorityIdentities is provided (event-driven active set for today),
+    // partition ordered so identity's wallets whose identity was active this
+    // loop come first. Cursor still advances across the full ordered list —
+    // inactive tail fairness is preserved over successive loops because
+    // priorityIdentities changes every loop (loop-local Set).
     const entries: [string, string][] = [...registeredWallets.entries()];
     const isTodayFastPath = maxPerDay !== undefined && daysAgo === 0;
     let ordered = entries;
@@ -576,6 +583,15 @@ async function detectWalletTransfers(
       if (todayCursor.date !== dateStr) todayCursor = { date: dateStr, offset: 0 };
       const o = todayCursor.offset % entries.length;
       ordered = entries.slice(o).concat(entries.slice(0, o));
+      if (priorityIdentities && priorityIdentities.size > 0) {
+        const active: [string, string][] = [];
+        const rest: [string, string][] = [];
+        for (const entry of ordered) {
+          if (priorityIdentities.has(entry[1])) active.push(entry);
+          else rest.push(entry);
+        }
+        ordered = active.concat(rest);
+      }
     }
 
     const toProbe: Array<{ identityId: string; wallet: string }> = [];
@@ -629,9 +645,19 @@ async function detectWalletTransfers(
  */
 export async function scanTodayWalletTransfers(
   registeredWallets: Map<string, string>,
+  priorityIdentities?: Set<string>,
 ): Promise<number> {
   try {
-    return await detectWalletTransfers(registeredWallets, [0, 0], TODAY_WALLETS_PER_LOOP);
+    const credited = await detectWalletTransfers(
+      registeredWallets, [0, 0], TODAY_WALLETS_PER_LOOP, priorityIdentities,
+    );
+    if (credited > 0 || (priorityIdentities && priorityIdentities.size > 0)) {
+      console.log(
+        `[WalletTransfer] today scan: credited=${credited} ` +
+        `priorityIdentities=${priorityIdentities?.size ?? 0}`,
+      );
+    }
+    return credited;
   } catch (err) {
     console.error('[DailyNftCheck] Today wallet transfer scan error:', (err as Error).message);
     return 0;
