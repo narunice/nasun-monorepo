@@ -9,14 +9,6 @@ import { truncateAddress } from "@/utils/addressUtils";
 import type { UserProfile } from "../../types";
 import { getAccountFlag, setAccountFlag } from "../../services/accountFlagApi";
 
-const FILTERS = [
-  { label: "All", value: "" },
-  { label: "X", value: "x_connected" },
-  { label: "Google", value: "google_connected" },
-  { label: "TG", value: "tg_connected" },
-  { label: "No Connections", value: "no_connections" },
-  { label: "Flagged", value: "flagged" },
-] as const;
 const PAGE_SIZE = 50;
 
 function ProviderBadge({ provider }: { provider?: string }) {
@@ -418,83 +410,52 @@ function UserDetailModal({
 
 export function UsersTab() {
   const { cognitoToken } = useAdminAuth();
-
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<string>("");
-  const [page, setPage] = useState(1);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [nextToken, setNextToken] = useState<string | undefined>(undefined);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchInput.trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [selectedFilter]);
-
-  const { data, error } = useUserList(cognitoToken, {
-    page,
+  const { data, isLoading, error } = useUserList(cognitoToken, {
     limit: PAGE_SIZE,
-    search: debouncedSearch || undefined,
-    provider: selectedFilter || undefined,
+    nextToken: nextToken,
   });
 
   const { data: detailData } = useUserDetail(cognitoToken, selectedUserId);
 
-  const handleCloseModal = useCallback(() => setSelectedUserId(null), []);
+  useEffect(() => {
+    if (data?.users) {
+      // Append new users to the existing list
+      setAllUsers((prev) => {
+        const existingIds = new Set(prev.map(u => u.identityId));
+        const newUsers = data.users.filter(u => !existingIds.has(u.identityId));
+        return [...prev, ...newUsers];
+      });
+    }
+  }, [data]);
 
-  const users = data?.users || [];
-  const total = data?.total || 0;
-  const totalPages = data?.totalPages || 1;
+  const handleLoadMore = () => {
+    if (data?.nextToken) {
+      setNextToken(data.nextToken);
+    }
+  };
+
+  const handleCloseModal = useCallback(() => setSelectedUserId(null), []);
 
   return (
     <div className="flex flex-col gap-8 w-full">
-      {/* Search & Filter */}
-      <OuterBox color="w1" padding="md">
-        <h3 className="text-nasun-white font-medium text-lg mb-4">Search & Filter</h3>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by username, wallet, twitter, or email..."
-            aria-label="Search users"
-            className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4"
-          />
-          <div className="flex gap-1.5">
-            {FILTERS.map((f) => (
-              <Button
-                key={f.value}
-                variant={selectedFilter === f.value ? "c4" : "outlineC5"}
-                size="sm"
-                onClick={() => setSelectedFilter(f.value)}
-              >
-                {f.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </OuterBox>
-
       {/* Users Table */}
       <OuterBox color="w2" padding="md">
         <h3 className="text-nasun-white font-medium text-lg mb-4">
-          Users ({total})
+          Registered Users (Incremental Load)
         </h3>
 
         {error ? (
           <p className="text-red-400 text-center py-8">
             Failed to load users: {error.message}
           </p>
-        ) : users.length === 0 ? (
-          <p className="text-nasun-white/60 text-center py-8">
-            {debouncedSearch || selectedFilter ? "No users found matching your search." : "No registered users."}
-          </p>
+        ) : allUsers.length === 0 && isLoading ? (
+          <p className="text-nasun-white/60 text-center py-8">Loading users...</p>
+        ) : allUsers.length === 0 ? (
+          <p className="text-nasun-white/60 text-center py-8">No registered users found.</p>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -513,7 +474,7 @@ export function UsersTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-nasun-white/5">
-                  {users.map((user) => (
+                  {allUsers.map((user) => (
                     <tr
                       key={user.identityId}
                       onClick={() => setSelectedUserId(user.identityId)}
@@ -599,51 +560,17 @@ export function UsersTab() {
               </table>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-nasun-white/20">
-                <p className="text-nasun-white/60 text-sm">
-                  Page {page} of {totalPages}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outlineC5"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                  >
-                    Previous
-                  </Button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-                    .map((p, idx, arr) => {
-                      const prev = arr[idx - 1];
-                      const showEllipsis = prev !== undefined && p - prev > 1;
-                      return (
-                        <span key={p} className="flex items-center">
-                          {showEllipsis && (
-                            <span className="text-nasun-white/50 px-1">...</span>
-                          )}
-                          <Button
-                            variant={p === page ? "c4" : "outlineC5"}
-                            size="sm"
-                            onClick={() => setPage(p)}
-                            className="min-w-[36px]"
-                          >
-                            {p}
-                          </Button>
-                        </span>
-                      );
-                    })}
-                  <Button
-                    variant="outlineC5"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
+            {/* Load More Pagination */}
+            {data?.nextToken && (
+              <div className="flex justify-center mt-6 pt-4 border-t border-nasun-white/20">
+                <Button
+                  variant="outlineC5"
+                  onClick={handleLoadMore}
+                  disabled={isLoading}
+                  className="px-8"
+                >
+                  {isLoading ? "Loading..." : "Load More Users"}
+                </Button>
               </div>
             )}
           </>
