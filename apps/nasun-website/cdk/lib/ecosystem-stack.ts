@@ -119,6 +119,8 @@ export class EcosystemStack extends cdk.Stack {
         USER_PROFILES_TABLE_NAME: userProfilesTableName,
         USER_WALLETS_TABLE_NAME: userWalletsTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        GENESIS_PASS_CONTRACT_ADDRESS: process.env.GENESIS_PASS_CONTRACT_ADDRESS || "",
+        ALCHEMY_API_KEY: process.env.VITE_ALCHEMY_API_KEY || "",
         NODE_OPTIONS: "--enable-source-maps",
       },
     });
@@ -126,7 +128,7 @@ export class EcosystemStack extends cdk.Stack {
     // Grant table permissions
     this.activationsTable.grantReadWriteData(handlerLambda);
     allianceMintTable.grantReadData(handlerLambda);
-    nftOwnershipTable.grantReadData(handlerLambda);
+    nftOwnershipTable.grantReadWriteData(handlerLambda);
     nftCollectionsTable.grantReadData(handlerLambda);
     userWalletsTable.grantReadData(handlerLambda);
 
