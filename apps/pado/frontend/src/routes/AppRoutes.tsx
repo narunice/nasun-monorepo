@@ -84,15 +84,10 @@ export function AppRoutes() {
         <Route path="/wallet" element={<GatedRoute requires="spot"><WalletPage /></GatedRoute>} />
 
         {/* Prediction Markets
-            NOTE: While VITE_IDEA_SUBMISSION_ENABLED is true, /predict is temporarily
-            repurposed as an Ideas & Feedback submission form (pre-launch data
-            collection). The real PredictPage lives behind GatedRoute as before.
-            Flip the env flag back to false to restore the market listing. */}
-        {import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true' ? (
-          <Route path="/predict" element={<IdeaSubmissionPage />} />
-        ) : (
-          <Route path="/predict" element={<GatedRoute requires="full"><PredictPage /></GatedRoute>} />
-        )}
+            /predict is temporarily used as an Ideas & Feedback submission form.
+            The real market listing is available at /predict/markets. */}
+        <Route path="/predict" element={<IdeaSubmissionPage />} />
+        <Route path="/predict/markets" element={<GatedRoute requires="full"><PredictPage /></GatedRoute>} />
         <Route path="/predict/:marketId" element={<GatedRoute requires="full"><PredictMarketPage /></GatedRoute>} />
 
         {/* Games (Lottery + Scratch Cards + Number Match) - always public */}

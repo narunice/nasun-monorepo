@@ -57,12 +57,15 @@ export function IdeaSubmissionForm() {
         <h1 className="text-3xl font-bold text-theme-text-primary">
           Ideas for Prediction Markets
         </h1>
-        <p className="">
-          Help shape Pado into the best prediction markets. Tell us what you
-          like and dislike about other prediction markets. What kind of markets
-          you want. Technical ideas are also welcome. Accepted submissions earn
-          Nasun points.
+        <p className="">Help shape Pado into the best prediction markets. </p>
+        <p>
+          {" "}
+          Tell us what you like and dislike about other prediction markets.{" "}
+          <br />
+          What kind of markets you want. <br />
+          Technical ideas are also welcome.
         </p>
+        <p>Accepted submissions earn Nasun points.</p>
       </header>
 
       {!walletAddress && (
@@ -99,7 +102,7 @@ export function IdeaSubmissionForm() {
 
       {state.kind === "error" && state.error.kind !== "not_registered" && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
-          Submission failed. Please try again.
+          Submission failed. One submission per user.
         </div>
       )}
 

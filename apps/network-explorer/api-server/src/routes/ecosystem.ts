@@ -67,6 +67,7 @@ app.get('/score/:identityId', async (c) => {
         refAllTimeRow, refTodayRow, refWeeklyRow,
         todayCategoryRows,
         stakingTodayRow, stakingWeeklyRow, stakingAllTimeRow,
+        weeklySnapshotSumRow,
       ] = await Promise.all([
         pointsDb!`
           SELECT base_score::int as base_score
@@ -242,6 +243,14 @@ app.get('/score/:identityId', async (c) => {
             AND NOT flagged
             AND tx_timestamp >= ${STAKING_V2_CUTOFF_DATE}::timestamptz
         `.then(r => r[0]),
+        // Sum of base contributions from the past 6 days of snapshots
+        pointsDb!`
+          SELECT COALESCE(SUM(base_score * multiplier), 0)::numeric as weekly_snapshot_cumulative
+          FROM ecosystem_score_snapshots
+          WHERE identity_id = ${identityId}
+            AND snapshot_date >= CURRENT_DATE - INTERVAL '6 days'
+            AND snapshot_date < CURRENT_DATE
+        `.then(r => r[0]),
       ]);
 
       // NFT activations: try cache first, auto-sync on miss
@@ -321,6 +330,7 @@ app.get('/score/:identityId', async (c) => {
         todayBaseScore: todayBase,
         weeklyBaseScore: weeklyRow?.base_score ?? 0,
         weeklyActiveDays: weeklyRow?.active_days ?? 0,
+        weeklySnapshotCumulative: parseFloat(weeklySnapshotSumRow?.weekly_snapshot_cumulative ?? '0'),
         allTimeBaseScore: allTimeRow?.base_score ?? 0,
         allTimeActiveDays: allTimeRow?.active_days ?? 0,
         allTimeCumulative,
@@ -386,10 +396,11 @@ app.get('/score/:identityId', async (c) => {
       bonusTotal: roundTo2(scores.bonusWeekly),
       referralBonus: roundTo2(scores.refWeekly),
       governancePoints: roundTo2(scores.govWeekly),
-      // Note: uses current multiplier for entire week (approximation).
-      // Accurate per-day multipliers would require snapshot lookback.
+      // Fix: (Historical snapshots for past 6 days) + (Today contribution with current multiplier)
+      // prevents UI drift when a multiplier (e.g. Genesis Pass) is upgraded mid-week.
       ecosystemScore: roundTo2(
-        (scores.weeklyBaseScore + scores.stakingWeekly) * scores.multiplier
+        scores.weeklySnapshotCumulative
+          + (scores.todayBaseScore + scores.stakingToday) * scores.multiplier
           + scores.bonusWeekly + scores.govWeekly + scores.refWeekly * sf,
       ),
       activeDays: scores.weeklyActiveDays,
