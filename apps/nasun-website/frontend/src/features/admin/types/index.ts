@@ -137,16 +137,20 @@ export interface UpdateNftCollectionRequest {
 export interface ListUsersResponse {
   success: boolean;
   users: UserProfile[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  nextToken?: string;
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
+  lastUpdated?: string;
   stats?: {
     totalRegistered: number;
     totalRegisteredExBot?: number;
     botCount?: number;
     telegramMembers: number;
     xConnected: number;
+    emailConnected?: number;
+    googleConnected?: number;
     flagged?: number;
   };
 }

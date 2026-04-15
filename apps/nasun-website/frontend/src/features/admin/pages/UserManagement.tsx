@@ -22,8 +22,7 @@ export function UserManagement() {
   const { cognitoToken } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<TabId>("users");
 
-  const { data, isPending } = useUserList(cognitoToken, { page: 1, limit: 1 });
-  const { data: dashboardStats } = useAdminDashboard();
+  const { data, isPending } = useUserList(cognitoToken, { limit: 50 });
 
   if (isPending && !data) {
     return (
@@ -37,38 +36,17 @@ export function UserManagement() {
     <AdminLayout>
       <SectionLayout className="!max-w-6xl !pt-0">
         {/* Header */}
-        <div className="mb-10">
-          <PageTitle as="h3" align="left">
-            User Management
-          </PageTitle>
-          <p className="text-nasun-white/80 max-w-2xl -mt-6">
-            Browse and search all registered user accounts. Click on a user row to view detailed information.
-          </p>
-        </div>
-
-        {/* Stats Cards (shared across tabs) */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          <StatCard
-            label="Registered Users"
-            value={data?.stats?.totalRegistered ?? "-"}
-            sub={data?.stats?.botCount ? `${data.stats.totalRegisteredExBot?.toLocaleString()} excl. bots (${data.stats.botCount.toLocaleString()} bots)` : undefined}
-          />
-          <StatCard
-            label="Leaderboard Accounts"
-            value={dashboardStats?.totalAccounts ?? "-"}
-          />
-          <StatCard
-            label="Telegram Members"
-            value={data?.stats?.telegramMembers ?? "-"}
-          />
-          <StatCard
-            label="X Connected"
-            value={data?.stats?.xConnected ?? "-"}
-          />
-          <StatCard
-            label="Flagged"
-            value={data?.stats?.flagged ?? "-"}
-          />
+        <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <PageTitle as="h3" align="left">
+              User Management
+            </PageTitle>
+            <div className="flex flex-col gap-1 -mt-6">
+              <p className="text-nasun-white/80 max-w-2xl">
+                Browse all registered user accounts. Full statistics are available via Gemini request.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Tab Navigation */}

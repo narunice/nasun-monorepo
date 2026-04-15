@@ -12,11 +12,11 @@ import {
 import { verifyAdminRole, extractIdentityIdFromAuthorizer, verifyTokenManually } from "../utils/auth.js";
 import { generateCSV, generateFilename } from "../utils/csv.js";
 import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResponse } from "../utils/response.js";
-import { uploadAndPresign } from "../utils/s3-offload.js";
+import { uploadAndPresign, getS3Object } from "../utils/s3-offload.js";
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
-// Table names
+// Table and Bucket names
 const GENESIS_TABLE = process.env.GENESIS_TABLE || "GenesisNftWhitelist";
 const BATTALION_TABLE = process.env.BATTALION_TABLE || "nasun-nft-whitelist";
 const HIDDEN_PROPOSALS_TABLE = process.env.HIDDEN_PROPOSALS_TABLE || "HiddenProposals";
@@ -28,6 +28,16 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 const REFERRAL_CODES_TABLE = process.env.REFERRAL_CODES_TABLE || "nasun-referral-codes";
 const REFERRALS_TABLE = process.env.REFERRALS_TABLE || "nasun-referrals";
 const ACTIVATIONS_TABLE = process.env.ACTIVATIONS_TABLE || "nasun-ecosystem-activations";
+const INTERNAL_CACHE_BUCKET = process.env.INTERNAL_CACHE_BUCKET || "";
+
+// S3 Cache Configuration
+const USER_LIST_CACHE_KEY = "internal/user-list-full-cache.json.gz";
+
+// Simple in-memory cache fallback for the current execution
+let cachedUsers: UserProfileItem[] | null = null;
+let lastCacheUpdate = 0;
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes in-memory
+
 interface GenesisWhitelistItem {
   walletAddress: string;
   joinedAt: string;
@@ -188,99 +198,6 @@ function toListItem(profile: UserProfileItem): Omit<UserProfileItem, "linkedAcco
   return rest;
 }
 
-const MAX_SCAN_PAGES = 20;
-
-/**
- * Scan all user profiles from DynamoDB into memory
- */
-async function scanAllUserProfiles(): Promise<UserProfileItem[]> {
-  const items: UserProfileItem[] = [];
-  let lastEvaluatedKey: Record<string, any> | undefined;
-  let pageCount = 0;
-
-  do {
-    const command = new ScanCommand({
-      TableName: USER_PROFILES_TABLE,
-      ExclusiveStartKey: lastEvaluatedKey,
-    });
-
-    const result = await dynamoClient.send(command);
-    pageCount++;
-
-    if (result.Items) {
-      for (const item of result.Items) {
-        items.push(parseUserProfileItem(item));
-      }
-    }
-
-    lastEvaluatedKey = result.LastEvaluatedKey;
-  } while (lastEvaluatedKey && pageCount < MAX_SCAN_PAGES);
-
-  return items;
-}
-
-/**
- * Filter and paginate user profiles in memory
- */
-function filterAndPaginateUsers(
-  users: UserProfileItem[],
-  params: { search?: string; provider?: string; page: number; limit: number }
-): { users: Omit<UserProfileItem, "linkedAccounts">[]; total: number; page: number; limit: number; totalPages: number } {
-  let filtered = users;
-
-  // Filter by connection status
-  if (params.provider) {
-    switch (params.provider) {
-      case "x_connected":
-        filtered = filtered.filter((u) => !!u.twitterHandle);
-        break;
-      case "google_connected":
-        filtered = filtered.filter((u) => !!u.googleEmail);
-        break;
-      case "tg_connected":
-        filtered = filtered.filter((u) => u.isTelegramMember === true);
-        break;
-      case "no_connections":
-        filtered = filtered.filter((u) => u.linkedProviders.length === 0);
-        break;
-      case "flagged":
-        filtered = filtered.filter((u) => u.isAccountFlagged === true);
-        break;
-      // Ignore unrecognized values (safe fallback: show all)
-    }
-  }
-
-  // Filter by search term (case-insensitive)
-  if (params.search) {
-    const searchLower = params.search.toLowerCase();
-    filtered = filtered.filter((u) =>
-      (u.username?.toLowerCase().includes(searchLower)) ||
-      (u.email?.toLowerCase().includes(searchLower)) ||
-      (u.twitterHandle?.toLowerCase().includes(searchLower)) ||
-      (u.originalTwitterHandle?.toLowerCase().includes(searchLower)) ||
-      (u.walletAddress?.toLowerCase().includes(searchLower)) ||
-      (u.googleEmail?.toLowerCase().includes(searchLower))
-    );
-  }
-
-  // Sort by createdAt descending (newest first)
-  filtered.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / params.limit));
-  const page = Math.min(params.page, totalPages);
-  const offset = (page - 1) * params.limit;
-  const paged = filtered.slice(offset, offset + params.limit);
-
-  return {
-    users: paged.map(toListItem),
-    total,
-    page,
-    limit: params.limit,
-    totalPages,
-  };
-}
-
 /**
  * Scan all hidden proposal IDs from DynamoDB
  */
@@ -434,7 +351,6 @@ async function scanGenesisPassAllowlist(status?: string): Promise<GenesisPassIte
 async function scanTwitterHandleMap(): Promise<Map<string, string>> {
   const handleMap = new Map<string, string>();
   let lastEvaluatedKey: Record<string, any> | undefined;
-  let pageCount = 0;
 
   do {
     const result = await dynamoClient.send(new ScanCommand({
@@ -442,7 +358,6 @@ async function scanTwitterHandleMap(): Promise<Map<string, string>> {
       ProjectionExpression: "identityId, twitterHandle",
       ExclusiveStartKey: lastEvaluatedKey,
     }));
-    pageCount++;
 
     if (result.Items) {
       for (const item of result.Items) {
@@ -452,11 +367,7 @@ async function scanTwitterHandleMap(): Promise<Map<string, string>> {
       }
     }
     lastEvaluatedKey = result.LastEvaluatedKey;
-  } while (lastEvaluatedKey && pageCount < MAX_SCAN_PAGES);
-
-  if (lastEvaluatedKey) {
-    console.warn(`[scanTwitterHandleMap] Truncated at ${MAX_SCAN_PAGES} pages, some handles may be missing`);
-  }
+  } while (lastEvaluatedKey);
 
   return handleMap;
 }
@@ -1173,34 +1084,39 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
     // GET /users - List users with search, filter, pagination
     if (path.endsWith("/users") && event.httpMethod === "GET") {
-      const page = Math.max(1, parseInt(queryParams.page || "1", 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(queryParams.limit || "50", 10) || 50));
-      const search = queryParams.search?.trim();
-      const provider = queryParams.provider?.trim();
+      const nextToken = queryParams.nextToken;
+      
+      console.log(`Listing users (limit: ${limit}, nextToken: ${!!nextToken})`);
 
-      console.log(`Listing users (page: ${page}, limit: ${limit}, search: ${search || "none"}, provider: ${provider || "all"})`);
+      const scanParams: any = {
+        TableName: USER_PROFILES_TABLE,
+        Limit: limit,
+        FilterExpression: "attribute_not_exists(linkedToPrimaryId)", // Only primary accounts
+      };
 
-      const allUsers = await scanAllUserProfiles();
-      // Filter out secondary profiles (linked to a primary)
-      const primaryUsers = allUsers.filter(u => !u.linkedToPrimaryId);
-      const result = filterAndPaginateUsers(primaryUsers, { search, provider, page, limit });
+      if (nextToken) {
+        try {
+          scanParams.ExclusiveStartKey = JSON.parse(Buffer.from(nextToken, "base64").toString("utf-8"));
+        } catch (err) {
+          return errorResponse(400, "Invalid nextToken", requestOrigin);
+        }
+      }
 
-      const telegramCount = primaryUsers.filter(u => u.isTelegramMember === true).length;
-      const xConnectedCount = primaryUsers.filter(u => !!u.twitterHandle).length;
-      const botCount = primaryUsers.filter(u => u.probableBot).length;
-      const flaggedCount = primaryUsers.filter(u => u.isAccountFlagged === true).length;
+      const result = await dynamoClient.send(new ScanCommand(scanParams));
+      const users = (result.Items || []).map(parseUserProfileItem).map(toListItem);
+      
+      let encodedNextToken: string | undefined;
+      if (result.LastEvaluatedKey) {
+        encodedNextToken = Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString("base64");
+      }
 
       return jsonResponse(200, {
         success: true,
-        ...result,
-        stats: {
-          totalRegistered: primaryUsers.length,
-          totalRegisteredExBot: primaryUsers.length - botCount,
-          botCount,
-          telegramMembers: telegramCount,
-          xConnected: xConnectedCount,
-          flagged: flaggedCount,
-        },
+        users,
+        nextToken: encodedNextToken,
+        // Stats removed to prevent full table scans and timeouts. 
+        // Admin can request stats via Gemini.
       }, requestOrigin);
     }
 

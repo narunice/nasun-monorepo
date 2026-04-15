@@ -162,8 +162,8 @@ export class AdminStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "handler",
       entry: path.join(__dirname, "../lambda-src/admin-api/src/handlers/export-whitelist.ts"),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 1024,
       depsLockFilePath: path.join(__dirname, "../pnpm-lock.yaml"),
       environment: {
         USER_PROFILES_TABLE: userProfilesTableName,
