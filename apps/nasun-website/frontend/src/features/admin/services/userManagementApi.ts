@@ -4,10 +4,8 @@ import { authHeaders } from '../utils';
 const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL;
 
 export interface ListUsersParams {
-  page?: number;
   limit?: number;
-  search?: string;
-  provider?: string;
+  nextToken?: string;
 }
 
 export async function listUsers(
@@ -15,10 +13,8 @@ export async function listUsers(
   params: ListUsersParams = {},
 ): Promise<ListUsersResponse> {
   const searchParams = new URLSearchParams();
-  if (params.page) searchParams.append('page', params.page.toString());
   if (params.limit) searchParams.append('limit', params.limit.toString());
-  if (params.search) searchParams.append('search', params.search);
-  if (params.provider) searchParams.append('provider', params.provider);
+  if (params.nextToken) searchParams.append('nextToken', params.nextToken);
 
   const query = searchParams.toString();
   const url = `${ADMIN_API_URL}/users${query ? `?${query}` : ''}`;
