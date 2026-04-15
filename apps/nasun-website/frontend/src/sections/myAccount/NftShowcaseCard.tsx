@@ -114,7 +114,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
 
   const isMintClosed = now >= MINT_CLOSE_TIME.getTime();
 
-  const ecosystem = useEcosystemStatus(cognitoToken);
+  const ecosystem = useEcosystemStatus(cognitoToken, user?.identityId);
 
   const [showAllianceMenu, setShowAllianceMenu] = useState(false);
   const [showGenesisMenu, setShowGenesisMenu] = useState(false);
@@ -224,36 +224,50 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
               {isGenesisPassLoading ? (
                 <Spinner />
               ) : showMintedState ? (
-                /* Minted: grayscale poster + "Your {name} is ready." */
+                /* Minted: poster (color when active, grayscale when not) */
                 <>
                   {ownedEdition && (
                     <img
                       src={getEditionPosterUrl(ownedEdition.name)}
                       alt={ownedEdition.name}
-                      className="absolute inset-0 w-full h-full object-cover grayscale brightness-50"
+                      className={`absolute inset-0 w-full h-full object-cover transition-all ${
+                        genesisIsActive ? "" : "grayscale brightness-50"
+                      }`}
                       loading="lazy"
                     />
                   )}
-                  <div className="relative z-10 flex flex-col items-center gap-1 px-4 text-center">
-                    {justMinted && !hasGenesisPassNft ? (
-                      <h6 className="text-nasun-white animate-pulse font-semibold">
-                        Confirming on chain...
-                      </h6>
-                    ) : (
-                      <h6 className="text-emerald-400 font-bold drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
-                        Your{" "}
-                        <span className="text-nasun-white">
-                          {ownedEdition?.name ?? "Genesis Pass"}
-                        </span>{" "}
-                        is ready.
-                      </h6>
-                    )}
-                    {!isMintClosed && (
-                      <p className="text-nasun-white/70 text-sm mt-1">
-                        Activate after the drop ends.
-                      </p>
-                    )}
-                  </div>
+                  {genesisIsActive ? (
+                    <>
+                      {ownedEdition && (
+                        <div className="absolute bottom-[10%] inset-x-0 flex justify-center pointer-events-none">
+                          <span className="text-white text-lg font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            {ownedEdition.name}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="relative z-10 flex flex-col items-center gap-1 px-4 text-center">
+                      {justMinted && !hasGenesisPassNft ? (
+                        <h6 className="text-nasun-white animate-pulse font-semibold">
+                          Confirming on chain...
+                        </h6>
+                      ) : (
+                        <h6 className="text-emerald-400 font-bold drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
+                          Your{" "}
+                          <span className="text-nasun-white">
+                            {ownedEdition?.name ?? "Genesis Pass"}
+                          </span>{" "}
+                          is ready.
+                        </h6>
+                      )}
+                      {!isMintClosed && (
+                        <p className="text-nasun-white/70 text-sm mt-1">
+                          Activate after the drop ends.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : isMintClosed ? (
                 /* Mint period ended: activate guidance for secondary market */

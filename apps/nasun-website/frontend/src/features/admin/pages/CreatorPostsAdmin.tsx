@@ -6,6 +6,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AdminLayout } from '../components/AdminLayout';
 import { SectionLayout } from '@/components/layout/SectionLayout';
 import { OuterBox } from '@/components/ui/OuterBox';
@@ -373,7 +374,7 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
       )}
 
       {/* Reject modal (inline) */}
-      {showReject && (
+      {showReject && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-slate-800 rounded-lg p-4 w-[90%] max-w-md space-y-3">
             <h4 className="text-nasun-white font-medium">Reject post</h4>
@@ -401,13 +402,14 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Grant confirm modal (inline) */}
-      {grantPoints != null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-slate-800 rounded-lg p-4 w-[90%] max-w-md space-y-3">
+      {grantPoints != null && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-slate-800 rounded-lg p-4 w-[90%] max-w-md space-y-3 max-h-[90vh] overflow-y-auto">
             <h4 className="text-nasun-white font-medium">Confirm grant</h4>
             <div className="flex items-center gap-3 border border-white/10 rounded-lg p-2">
               <img
@@ -426,6 +428,9 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
               <span className="text-base font-mono text-green-400 shrink-0">
                 +{grantPoints} pts
               </span>
+            </div>
+            <div className="max-h-64 overflow-y-auto rounded-lg border border-white/10">
+              <TweetEmbed tweetId={post.postId} />
             </div>
             <p className="text-xs text-red-300">
               Grant is irrevocable. Points cannot be taken back.
@@ -447,7 +452,8 @@ function AdminPostRow({ post, onScore, onReject, onGrant, disabled }: RowProps) 
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
