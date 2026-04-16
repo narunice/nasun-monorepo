@@ -45,7 +45,6 @@ import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
 import { NftShowcaseCard } from "../../sections/myAccount/NftShowcaseCard";
 // import { GenesisDropCard } from "../../sections/myAccount/GenesisDropCard";
-import { GenesisDropInfoCard } from "../../sections/myAccount/GenesisDropInfoCard";
 // import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
 
 const DevMyAccountPage = () => {
@@ -148,15 +147,9 @@ const DevMyAccountPage = () => {
           </div>
         )}
 
-        {/* Page Title (hidden during drop period) + Genesis Drop Card */}
+        {/* Page Title */}
         <div className="mt-16 sm:mt-8 mb-6 md:mb-8">
-          {/* <PageTitle wrapperClassName="" align="left">ACCOUNT</PageTitle> */}
-          {/* <ErrorBoundary fallback={<div className="text-red-400 text-sm">GenesisDropCard error</div>}>
-            <Suspense fallback={<div className="text-nasun-white/80 text-sm">Loading...</div>}>
-              <GenesisDropCard className="sm:max-w-lg w-full" />
-            </Suspense>
-          </ErrorBoundary> */}
-          <GenesisDropInfoCard className="w-full" />
+          <PageTitle wrapperClassName="">ACCOUNT</PageTitle>
         </div>
 
         {/* Bento Grid Dashboard Layout */}

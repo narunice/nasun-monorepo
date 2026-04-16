@@ -18,7 +18,6 @@ import { DailyMissionsCard } from "./DailyMissionsCard";
 import { HealthStatusBar } from "./HealthStatusBar";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
-import { AirdropRegistrationCard } from "./AirdropRegistrationCard";
 import { CreatorsAppreciationBonusCard } from "./CreatorsAppreciationBonusCard";
 import { useProfileDisplay } from "./hooks/useProfileDisplay";
 import { updateDisplayName } from "@/services/userProfileApi";
@@ -42,6 +41,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ecosystem-bonus-creators-appreciation": "bg-indigo-500",
   "ecosystem-bonus-creator-posts": "bg-emerald-500",
   "ecosystem-bonus-admin": "bg-teal-500",
+  "ecosystem-bonus-genesis-pass-airdrop": "bg-sky-500",
+  "ecosystem-bonus-alliance-airdrop": "bg-blue-500",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -57,6 +58,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   "ecosystem-bonus-creators-appreciation": "Creators Appreciation",
   "ecosystem-bonus-creator-posts": "Creator Posts",
   "ecosystem-bonus-admin": "Bonus",
+  "ecosystem-bonus-genesis-pass-airdrop": "Genesis Pass Airdrop",
+  "ecosystem-bonus-alliance-airdrop": "Alliance Airdrop",
 };
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -544,9 +547,6 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 the April 16th Airdrop bar. Self-hides when the user is not
                 eligible, so ineligible users see no gap. */}
             <CreatorsAppreciationBonusCard bare />
-
-            {/* Airdrop Registration Bar */}
-            <AirdropRegistrationCard bare />
 
             {/* Daily Missions + Health Donut */}
             <div className="flex flex-col sm:flex-row gap-4">

@@ -66,6 +66,8 @@ const BONUS_LABELS: Record<string, string> = {
   "ecosystem-bonus-creator-posts": "Creator Posts",
   "referral-bonus": "Referral",
   "ecosystem-bonus-admin": "Bonus",
+  "ecosystem-bonus-genesis-pass-airdrop": "Genesis Pass Airdrop",
+  "ecosystem-bonus-alliance-airdrop": "Alliance Airdrop",
 };
 
 // -- Chart data type --
