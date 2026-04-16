@@ -71,6 +71,13 @@ Nasun is a **bootstrapped web3 project with zero external funding**. All product
 - For non-trivial changes, diff behavior between main and your changes
 - Ask yourself: "Would a staff engineer approve this?"
 
+**Token Efficiency (CRITICAL):**
+
+- Responses must be concise. No verbose summaries, no restating what was just done.
+- Before reading code, identify the exact target file/function. No broad codebase exploration without clear justification.
+- If a task will require large-scale exploration (5+ files) or many tool calls, estimate the scope first and get user approval before proceeding.
+- Use Grep/Glob with precise patterns. Never scan entire directories speculatively.
+
 **Autonomous Bug Fixing:**
 
 - When given a bug report: investigate and fix it directly — don't ask for hand-holding
