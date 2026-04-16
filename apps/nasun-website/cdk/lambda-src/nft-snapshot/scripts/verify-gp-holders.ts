@@ -22,7 +22,8 @@ import * as path from 'path';
 // ========== Config ==========
 
 const GP_CONTRACT_ADDRESS = '0x561D4A687e9D13925AD7BEf0209c9eCaEC9858E1';
-const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY || 'HdUtMFoqa825aXsSunC0D';
+const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
+if (!ALCHEMY_API_KEY) throw new Error('ALCHEMY_API_KEY env var is required');
 const ALCHEMY_NFT_BASE_URL = 'https://eth-mainnet.g.alchemy.com/nft/v3';
 
 const PROFILES_TABLE = process.env.PROFILES_TABLE || 'UserProfiles';
