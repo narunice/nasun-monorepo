@@ -343,36 +343,6 @@ describe('TraderRow', () => {
     });
   });
 
-  // ========================================
-  // Rank Change
-  // ========================================
-
-  describe('rank change', () => {
-    it('shows positive rank change in green', () => {
-      const trader = makeTrader({ rankChange: 5 });
-      const { container } = render(
-        <table><tbody><TraderRow trader={trader} /></tbody></table>,
-      );
-      expect(container.querySelector('.text-green-400')).toBeTruthy();
-    });
-
-    it('shows negative rank change in red', () => {
-      const trader = makeTrader({ rankChange: -3 });
-      const { container } = render(
-        <table><tbody><TraderRow trader={trader} /></tbody></table>,
-      );
-      expect(container.querySelector('.text-red-400')).toBeTruthy();
-    });
-
-    it('shows dash for zero rank change', () => {
-      const trader = makeTrader({ rankChange: 0 });
-      const { container } = render(
-        <table><tbody><TraderRow trader={trader} /></tbody></table>,
-      );
-      const lastCell = container.querySelectorAll('td')[4];
-      expect(lastCell.textContent).toBe('-');
-    });
-  });
 
   // ========================================
   // Trade Count Formatting

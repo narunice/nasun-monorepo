@@ -109,6 +109,46 @@ async function fetchTraderScore(address: string, scope: ScoreScope): Promise<Tra
   return res.json();
 }
 
+// Returns the ISO week ID for the week that is `weeksAgo` weeks before the current week.
+function getPreviousWeekId(weeksAgo = 1): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 7 * weeksAgo);
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+async function fetchWeeklyScoreLeaderboard(weekId: string, limit: number, offset: number): Promise<ScoreLeaderboardResponse> {
+  const baseUrl = NETWORK_CONFIG.chatHttpUrl;
+  if (!baseUrl) {
+    return { scope: 'weekly', weekId, traders: [], updatedAt: 0, totalTraders: 0 };
+  }
+
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const url = `${baseUrl}/api/pado/leaderboard/score/weekly/${weekId}?${params}`;
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(`Score API error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export function usePreviousWeekScoreLeaderboard(enabled: boolean, limit: number = 50, offset: number = 0) {
+  const weekId = getPreviousWeekId(1);
+
+  return useQuery<ScoreLeaderboardResponse>({
+    queryKey: ['leaderboard', 'score', 'weekly', weekId, limit, offset],
+    queryFn: () => fetchWeeklyScoreLeaderboard(weekId, limit, offset),
+    enabled: enabled && !!NETWORK_CONFIG.chatHttpUrl,
+    staleTime: 5 * 60_000,
+    placeholderData: (prev) => prev,
+  });
+}
+
 export function useTraderScore(address: string | null, scope: ScoreScope = 'alltime') {
   return useQuery<TraderScoreResponse>({
     queryKey: ['trader-score', address, scope],

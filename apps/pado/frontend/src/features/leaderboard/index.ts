@@ -1,4 +1,4 @@
-export { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, useTraderScore } from './hooks/useLeaderboard';
+export { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, usePreviousWeekScoreLeaderboard, useTraderScore } from './hooks/useLeaderboard';
 export { useTraderStats } from './hooks/useTraderStats';
 export { useTraderFills } from './hooks/useTraderFills';
 export { useTraderClassification } from './hooks/useTraderClassification';

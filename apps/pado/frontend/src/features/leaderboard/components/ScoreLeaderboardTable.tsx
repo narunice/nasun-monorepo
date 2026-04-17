@@ -31,12 +31,12 @@ export function ScoreLeaderboardTable({ traders, isLoading, currentUserAddress, 
         {followFilter ? (
           <>
             <p className="text-sm">Not following any traders yet</p>
-            <p className="text-xs mt-1">Star traders to track them here</p>
+            <p className="text-sm mt-1 opacity-70">Star traders to track them here</p>
           </>
         ) : (
           <>
             <p className="text-sm">No score data yet</p>
-            <p className="text-xs mt-1">Trade on any pool to start earning score</p>
+            <p className="text-sm mt-1 opacity-70">Trade on any pool to start earning score</p>
           </>
         )}
       </div>
@@ -47,7 +47,7 @@ export function ScoreLeaderboardTable({ traders, isLoading, currentUserAddress, 
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="text-xs text-theme-text-muted border-b border-theme-border">
+          <tr className="text-sm text-theme-text-muted border-b border-theme-border">
             <th className="py-3 px-3 text-left font-medium w-20">Rank</th>
             <th className="py-3 px-3 text-left font-medium">Trader</th>
             <th className="py-3 px-3 text-right font-medium">Score</th>

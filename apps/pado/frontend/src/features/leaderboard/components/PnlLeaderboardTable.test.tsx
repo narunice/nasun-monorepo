@@ -83,14 +83,13 @@ describe('PnlLeaderboardTable', () => {
   });
 
   describe('table headers', () => {
-    it('renders all 6 column headers', () => {
+    it('renders all 5 column headers', () => {
       render(<PnlLeaderboardTable traders={[makeTrader()]} isLoading={false} />);
       expect(screen.getByText('Rank')).toBeTruthy();
       expect(screen.getByText('Trader')).toBeTruthy();
       expect(screen.getByText('PnL')).toBeTruthy();
       expect(screen.getByText('PnL %')).toBeTruthy();
       expect(screen.getByText('Trades')).toBeTruthy();
-      expect(screen.getByText('Change')).toBeTruthy();
     });
   });
 
