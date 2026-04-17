@@ -14,8 +14,11 @@
  *
  * Environment:
  *   LP_PRIVATE_KEY (or LP_PRIVATE_KEY_NBTC/NETH/NSOL)
- *   WATCHDOG_INTERVAL_MS  - check interval (default: 600000 = 10 min)
+ *   ORACLE_ADMIN_KEY       - Admin keypair used to transfer gas to bot wallets (required for gas refill)
+ *   WATCHDOG_INTERVAL_MS   - check interval (default: 600000 = 10 min)
  *   WATCHDOG_REFILL_ROUNDS - faucet rounds per refill (default: 50)
+ *   WATCHDOG_GAS_THRESHOLD - refill when gas drops below this (NASUN, default: 5)
+ *   WATCHDOG_GAS_AMOUNT    - how much NASUN to transfer per top-up (default: 50)
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -29,6 +32,8 @@ const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '600000', 10); // 10 min
 const REFILL_ROUNDS = parseInt(process.env.WATCHDOG_REFILL_ROUNDS || '50', 10);
 const FAUCET_URL = process.env.FAUCET_URL || 'https://faucet.devnet.nasun.io';
+const GAS_LOW_THRESHOLD = parseFloat(process.env.WATCHDOG_GAS_THRESHOLD || '5'); // NASUN
+const GAS_REFILL_AMOUNT = parseFloat(process.env.WATCHDOG_GAS_AMOUNT || '50');   // NASUN
 
 // Contract addresses
 const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
@@ -100,6 +105,17 @@ function loadKeypair(market: string): Ed25519Keypair {
   }
 }
 
+function loadAdminKeypair(): Ed25519Keypair | null {
+  const keyStr = process.env.ORACLE_ADMIN_KEY;
+  if (!keyStr) return null;
+  try {
+    const { secretKey } = decodeSuiPrivateKey(keyStr);
+    return Ed25519Keypair.fromSecretKey(secretKey);
+  } catch {
+    return Ed25519Keypair.fromSecretKey(Buffer.from(keyStr, 'hex'));
+  }
+}
+
 async function getTokenBalance(
   client: SuiClient,
   owner: string,
@@ -116,34 +132,55 @@ async function getGasBalance(client: SuiClient, owner: string): Promise<number> 
 }
 
 /**
- * Request gas via faucet V1 API (no rate limit, gives 100 NASUN per call).
- * Falls back to legacy /gas endpoint if V1 fails.
+ * Transfer gas from admin wallet to bot wallet.
+ * Bypasses faucet rate limits entirely -- admin holds sufficient NASUN for long-term ops.
+ * Falls back to HTTP faucet if ORACLE_ADMIN_KEY is not configured.
  */
-async function requestGas(_client: SuiClient, address: string): Promise<boolean> {
+async function transferGas(client: SuiClient, address: string): Promise<boolean> {
+  const adminKeypair = loadAdminKeypair();
+
+  if (adminKeypair) {
+    // Primary: admin direct transfer (no rate limit)
+    try {
+      const amountMist = BigInt(Math.round(GAS_REFILL_AMOUNT * 1e9));
+      const tx = new Transaction();
+      const [coin] = tx.splitCoins(tx.gas, [amountMist]);
+      tx.transferObjects([coin], address);
+      tx.setGasBudget(10_000_000);
+
+      const result = await client.signAndExecuteTransaction({
+        signer: adminKeypair,
+        transaction: tx,
+        options: { showEffects: true },
+      });
+
+      if (result.effects?.status?.status === 'success') {
+        console.log(`[${timestamp()}] Gas refilled: ${GAS_REFILL_AMOUNT} NASUN -> ${address.slice(0, 10)}... (admin transfer, tx: ${result.digest.slice(0, 12)}...)`);
+        await client.waitForTransaction({ digest: result.digest });
+        return true;
+      }
+      console.error(`[${timestamp()}] Admin gas transfer failed:`, result.effects?.status?.error);
+    } catch (err) {
+      console.error(`[${timestamp()}] Admin gas transfer error:`, err instanceof Error ? err.message : err);
+    }
+  } else {
+    console.warn(`[${timestamp()}] ORACLE_ADMIN_KEY not set — falling back to faucet for ${address.slice(0, 10)}...`);
+  }
+
+  // Fallback: HTTP faucet (subject to rate limits)
   const body = JSON.stringify({ FixedAmountRequest: { recipient: address } });
   const headers = { 'Content-Type': 'application/json' };
-
-  // Try V1 faucet first (no rate limit)
   try {
     const res = await fetch(`${FAUCET_URL}/v1/gas`, { method: 'POST', headers, body });
     if (res.ok) {
       const data = await res.json() as { coins_sent?: { amount: number }[] };
       const total = (data.coins_sent ?? []).reduce((s: number, c: { amount: number }) => s + c.amount, 0);
-      console.log(`[${timestamp()}] Gas refilled: ${(total / 1e9).toFixed(0)} NASUN -> ${address.slice(0, 10)}... (v1 faucet)`);
+      console.log(`[${timestamp()}] Gas refilled: ${(total / 1e9).toFixed(0)} NASUN -> ${address.slice(0, 10)}... (faucet)`);
       await new Promise((r) => setTimeout(r, 3000));
       return true;
     }
-  } catch { /* fall through */ }
-
-  // Fallback: legacy /gas endpoint (has rate limit)
-  try {
-    const res = await fetch(`${FAUCET_URL}/gas`, { method: 'POST', headers, body });
-    if (res.ok) {
-      console.log(`[${timestamp()}] Gas refilled from legacy faucet -> ${address.slice(0, 10)}...`);
-      await new Promise((r) => setTimeout(r, 3000));
-      return true;
-    }
-    console.warn(`[${timestamp()}] Gas faucet rate-limited for ${address.slice(0, 10)}...`);
+    const text = await res.text();
+    console.warn(`[${timestamp()}] Gas faucet failed for ${address.slice(0, 10)}...: ${text.slice(0, 100)}`);
   } catch (err) {
     console.error(`[${timestamp()}] Gas faucet error:`, err instanceof Error ? err.message : err);
   }
@@ -202,9 +239,9 @@ async function checkAndRefill(client: SuiClient): Promise<void> {
   for (const [address, { keypair, markets }] of keypairsByAddress) {
     // Check gas first
     const gas = await getGasBalance(client, address);
-    if (gas < 1) {
-      console.log(`[${timestamp()}] Low gas (${gas.toFixed(2)} NASUN) for ${address.slice(0, 10)}..., requesting...`);
-      await requestGas(client, address);
+    if (gas < GAS_LOW_THRESHOLD) {
+      console.log(`[${timestamp()}] Low gas (${gas.toFixed(2)} NASUN) for ${address.slice(0, 10)}..., topping up...`);
+      await transferGas(client, address);
     }
 
     // Check NUSDC (shared across all markets for this address)
