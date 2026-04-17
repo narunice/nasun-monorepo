@@ -7,7 +7,7 @@
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { DailySnapshot, DYNAMO_KEYS } from '../types';
 import { getTodayDateString } from './date';
 
@@ -21,6 +21,47 @@ const SNAPSHOTS_TABLE =
 
 const MAX_FALLBACK_DAYS = 7;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * Find the absolute latest snapshot date available in the table for a season.
+ * This is used when the 7-day fallback fails.
+ */
+async function findAbsoluteLatestDate(seasonId: string): Promise<string | null> {
+  const dates = new Set<string>();
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+  try {
+    do {
+      // Light scan to get only PKs to identify available dates
+      const result = await docClient.send(
+        new ScanCommand({
+          TableName: SNAPSHOTS_TABLE,
+          ProjectionExpression: 'pk',
+          FilterExpression: 'begins_with(pk, :prefix)',
+          ExpressionAttributeValues: { ':prefix': `${seasonId}#` },
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+
+      if (result.Items) {
+        for (const item of result.Items) {
+          const pk = item.pk as string;
+          const datePart = pk.split('#')[1];
+          if (datePart) dates.add(datePart);
+        }
+      }
+      lastEvaluatedKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastEvaluatedKey);
+
+    if (dates.size === 0) return null;
+
+    // Return the lexicographically largest date (newest YYYY-MM-DD)
+    return Array.from(dates).sort().reverse()[0];
+  } catch (error) {
+    console.error('Error finding absolute latest date:', error);
+    return null;
+  }
+}
 
 /**
  * Query a snapshot for a specific date.
@@ -54,6 +95,7 @@ export async function querySnapshot(
 
 /**
  * Query the most recent snapshot for a season, with up to 7-day fallback.
+ * If no snapshot found within 7 days, it searches for the absolute latest available in the table.
  * For active seasons: falls back from today (KST).
  * For ended seasons: pass endDate as referenceDate to fall back from season end.
  * Returns all entries sorted by rank (DynamoDB SK order).
@@ -62,6 +104,7 @@ export async function getLatestSnapshot(
   seasonId: string,
   referenceDate?: string
 ): Promise<{ entries: DailySnapshot[]; date: string }> {
+  // 1. Try efficient 7-day fallback first (fast path)
   for (let daysBack = 0; daysBack <= MAX_FALLBACK_DAYS; daysBack++) {
     let dateStr: string;
     if (referenceDate) {
@@ -81,6 +124,17 @@ export async function getLatestSnapshot(
     }
   }
 
+  // 2. If 7-day fallback fails, find the absolute latest date available (robust path)
+  console.log(`No snapshot found for ${seasonId} within ${MAX_FALLBACK_DAYS} days. Searching for absolute latest snapshot...`);
+  const absoluteLatestDate = await findAbsoluteLatestDate(seasonId);
+  
+  if (absoluteLatestDate) {
+    console.log(`Found absolute latest snapshot for ${seasonId} on ${absoluteLatestDate}`);
+    const items = await querySnapshot(seasonId, absoluteLatestDate);
+    return { entries: items, date: absoluteLatestDate };
+  }
+
+  // Fallback to today empty state
   return { entries: [], date: getTodayDateString() };
 }
 
