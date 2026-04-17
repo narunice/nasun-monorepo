@@ -182,7 +182,7 @@ async function reconcileDate(
     try {
       // Descending order: most recent first, page back to target date
       while (pages < MAX_PAGES) {
-        const result = await rpcCall<RpcQueryResult>('suix_queryEvents', [
+        const result: RpcQueryResult = await rpcCall<RpcQueryResult>('suix_queryEvents', [
           { MoveEventType: eq.moveEventType },
           cursor,
           PAGE_SIZE,

@@ -115,9 +115,9 @@ async function createFresh(): Promise<void> {
   if (!pointsDb) return;
   await pointsDb.begin(async (tx) => {
     await tx.unsafe(MATVIEW_SQL);
-    await tx`CREATE UNIQUE INDEX idx_eco_daily_identity_day ON ecosystem_daily_scores(identity_id, day)`;
-    await tx`CREATE INDEX idx_eco_daily_day_score ON ecosystem_daily_scores(day, base_score DESC)`;
-    await tx`ALTER MATERIALIZED VIEW ecosystem_daily_scores OWNER TO sui_indexer`;
+    await tx.unsafe(`CREATE UNIQUE INDEX idx_eco_daily_identity_day ON ecosystem_daily_scores(identity_id, day)`);
+    await tx.unsafe(`CREATE INDEX idx_eco_daily_day_score ON ecosystem_daily_scores(day, base_score DESC)`);
+    await tx.unsafe(`ALTER MATERIALIZED VIEW ecosystem_daily_scores OWNER TO sui_indexer`);
     await tx.unsafe(
       `COMMENT ON MATERIALIZED VIEW ecosystem_daily_scores IS '${VERSION_MARKER}'`,
     );
@@ -151,7 +151,7 @@ async function rebuildViaSwap(): Promise<void> {
 
     // Atomic swap: both renames commit together or not at all.
     await pointsDb.begin(async (tx) => {
-      await tx`SET LOCAL lock_timeout = '5s'`;
+      await tx.unsafe(`SET LOCAL lock_timeout = '5s'`);
       await tx.unsafe(
         `ALTER MATERIALIZED VIEW ecosystem_daily_scores RENAME TO ${retiredName}`,
       );
@@ -188,17 +188,14 @@ async function rebuildViaSwap(): Promise<void> {
 // Runs with whatever role POINTS_DATABASE_URL provides; an operator should
 // set the URL to a superuser (or run via psql) if the scanner's role lacks
 // CREATE privilege on schema public.
-// @ts-expect-error - process exists at runtime in Node
 if (typeof process !== 'undefined' && process.argv?.[1]?.endsWith('ecosystem-matview-migration.js')) {
   rebuildEcosystemMatview()
     .then(() => {
       console.log('[Matview] Done');
-      // @ts-expect-error - process exists at runtime
       process.exit(0);
     })
     .catch((err) => {
       console.error('[Matview] Failed:', err);
-      // @ts-expect-error - process exists at runtime
       process.exit(1);
     });
 }

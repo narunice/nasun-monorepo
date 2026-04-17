@@ -1,67 +1,97 @@
 /**
- * Pado Leaderboard -> Ecosystem Bonus Points Settlement Script
+ * Pado Weekly Leaderboard -> Ecosystem Points Settlement Script
  *
- * Fetches the Pado points leaderboard, calculates delta from previous snapshot,
- * and distributes bonus points to top performers.
+ * Fetches the weekly score snapshot from chat-server's internal API,
+ * awards ranked Ecosystem Points, and records settlement state in PostgreSQL.
  *
- * Distribution (2-tier, rank 1-300):
- *   Top 100:  50% of pool, equally split
- *   Rest 200: 50% of pool, equally split
+ * All state (weekly_score_snapshots + activity_points) lives in the same
+ * PostgreSQL DB (nasun_points), enabling fully atomic settlement per trader.
  *
- * Default pools:
- *   Weekly:  5,000 pts
- *   Monthly: 10,000 pts
- * Override with --pool flag (e.g. --pool 25000)
+ * Reward table (rank-based, Genesis Pass holders receive 2x at settlement):
+ *   Rank 1:       50 pts
+ *   Rank 2:       40 pts
+ *   Rank 3:       30 pts
+ *   Rank 4-50:    15 pts
+ *   Rank 51-100:  10 pts
+ *   Rank 101-200:  6 pts
+ *   Rank 201-300:  5 pts
+ *   Rank 301-400:  2 pts
+ *   Rank 401-500:  1 pt
+ *
+ * Safety:
+ *   - chat-server API refuses requests for the current (in-progress) week.
+ *   - Each award uses ON CONFLICT DO NOTHING (idempotent re-runs).
+ *   - weekly_score_snapshots.settled flag is set in the same PG transaction.
+ *   - Traders without an identityId are skipped.
  *
  * Usage:
  *   cd ~/explorer-api && set -a && source .env && set +a
- *   npx tsx src/scripts/settle-pado.ts --period weekly
- *   npx tsx src/scripts/settle-pado.ts --period weekly --pool 25000
- *   npx tsx src/scripts/settle-pado.ts --period weekly --dry-run
+ *   npx tsx src/scripts/settle-pado.ts --week 2026-W17
+ *   npx tsx src/scripts/settle-pado.ts --week 2026-W17 --dry-run
+ *   npx tsx src/scripts/settle-pado.ts --week auto        # auto-detect last completed week
  */
 
 import postgres from 'postgres';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fetchWithOffload } from '../scanner/fetch-with-offload.js';
 
-// --- Config ---
+// ===== Config =====
 
 const POINTS_DB_URL = process.env.POINTS_DATABASE_URL;
-const WALLET_MAPPINGS_URL = process.env.WALLET_MAPPINGS_URL;
-const WALLET_MAPPINGS_KEY = process.env.WALLET_MAPPINGS_API_KEY;
-
-// Pado DEX score API (nasun-chat-server hosts pado-specific endpoints under /api/pado/).
-// env fallback preserves backward compatibility with PADO_POINTS_URL during the rename window.
-// Response field is `totalScore` (new) or `totalPoints` (legacy /points endpoint).
-const PADO_SCORE_URL =
-  process.env.PADO_SCORE_URL
-  ?? process.env.PADO_POINTS_URL
-  ?? 'https://nasun.io/chat/api/pado/leaderboard/score';
-
-// Staleness guard: abort if aggregator hasn't run in STALENESS_MAX_MS.
-// Aggregator cycle is ~60s; 5min gives 5 cycles of slack.
-const STALENESS_MAX_MS = 5 * 60 * 1000;
-
-const DEFAULT_POOLS = {
-  weekly: { size: 5_000, topN: 100, maxRank: 300, topShare: 0.5 },
-  monthly: { size: 10_000, topN: 100, maxRank: 300, topShare: 0.5 },
-};
-
-const SNAPSHOT_DIR = path.join(process.cwd(), 'data', 'pado-snapshots');
+const CHAT_SERVER_URL = process.env.CHAT_SERVER_URL;
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 if (!POINTS_DB_URL) {
   console.error('POINTS_DATABASE_URL not set');
   process.exit(1);
 }
+if (!CHAT_SERVER_URL) {
+  console.error('CHAT_SERVER_URL not set (e.g. http://__PROD_EC2_HOST__:3101)');
+  process.exit(1);
+}
+if (!INTERNAL_API_KEY) {
+  console.error('INTERNAL_API_KEY not set');
+  process.exit(1);
+}
 
-const db = postgres(POINTS_DB_URL, {
-  max: 3,
-  idle_timeout: 30,
-  connect_timeout: 10,
-});
+// ===== Reward table =====
 
-// --- Args ---
+const REWARD_TABLE: Array<{ maxRank: number; pts: number }> = [
+  { maxRank: 1,   pts: 50 },
+  { maxRank: 2,   pts: 40 },
+  { maxRank: 3,   pts: 30 },
+  { maxRank: 50,  pts: 15 },
+  { maxRank: 100, pts: 10 },
+  { maxRank: 200, pts: 6  },
+  { maxRank: 300, pts: 5  },
+  { maxRank: 400, pts: 2  },
+  { maxRank: 500, pts: 1  },
+];
+
+function getRewardPts(rank: number): number {
+  for (const tier of REWARD_TABLE) {
+    if (rank <= tier.maxRank) return tier.pts;
+  }
+  return 0;
+}
+
+// ===== ISO week helpers =====
+
+function getISOWeek(date: Date): { year: number; week: number } {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return { year: d.getUTCFullYear(), week };
+}
+
+function getPreviousWeekId(): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - 7);
+  const { year, week } = getISOWeek(d);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+// ===== Args =====
 
 const args = process.argv.slice(2);
 
@@ -70,225 +100,202 @@ function getArg(name: string): string | undefined {
   return idx >= 0 ? args[idx + 1] : undefined;
 }
 
-const period = getArg('period');
+const weekArg = getArg('week') || 'auto';
 const dryRun = args.includes('--dry-run');
-const poolOverride = getArg('pool');
 
-if (!period || (period !== 'weekly' && period !== 'monthly')) {
-  console.error('Usage: npx tsx src/scripts/settle-pado.ts --period weekly|monthly [--pool N] [--dry-run]');
-  process.exit(1);
-}
+// ===== Types =====
 
-// --- Helpers ---
-
-interface PadoTrader {
-  address: string;
-  totalScore?: number; // new /api/pado/leaderboard/score endpoint
-  totalPoints?: number; // legacy /api/leaderboard/points endpoint (fallback)
+interface WeeklyTrader {
   rank: number;
+  address: string;
+  identityId: string | null;
+  hasGenesisPass: boolean;
+  totalScore: number;
 }
 
-function traderScore(t: PadoTrader): number {
-  return t.totalScore ?? t.totalPoints ?? 0;
+interface WeeklyScoresResponse {
+  weekId: string;
+  traders: WeeklyTrader[];
+  totalTraders: number;
+  generatedAt: number;
 }
 
-interface Snapshot {
-  date: string;
-  period: string;
-  traders: Array<{ address: string; points: number }>;
-}
+// ===== API fetch =====
 
-async function fetchPadoLeaderboard(): Promise<PadoTrader[]> {
-  const url = PADO_SCORE_URL.includes('?')
-    ? `${PADO_SCORE_URL}&limit=1000`
-    : `${PADO_SCORE_URL}?limit=1000`;
+async function fetchWeeklyScores(weekId: string): Promise<WeeklyScoresResponse> {
+  const url = `${CHAT_SERVER_URL}/api/pado/internal/weekly-scores/${weekId}`;
   const res = await fetch(url, {
-    signal: AbortSignal.timeout(15_000),
+    headers: { Authorization: `Bearer ${INTERNAL_API_KEY}` },
+    signal: AbortSignal.timeout(30_000),
   });
-  if (!res.ok) throw new Error(`Pado API error: ${res.status} (url: ${url})`);
-  const json = await res.json() as { traders: PadoTrader[]; updatedAt?: number };
 
-  // Staleness guard: ensure aggregator has populated recently.
-  // updatedAt=0 → never populated; > STALENESS_MAX_MS → aggregator stalled.
-  const updatedAt = json.updatedAt ?? 0;
-  const ageMs = Date.now() - updatedAt;
-  if (updatedAt === 0 || ageMs > STALENESS_MAX_MS) {
-    console.error(`[settle-pado] Aborting: stale leaderboard (updatedAt=${updatedAt}, ageMs=${ageMs}, max=${STALENESS_MAX_MS})`);
+  if (res.status === 403) {
+    const body = await res.json() as { error: string; message?: string };
+    throw new Error(`Chat-server refused: ${body.message ?? body.error}`);
+  }
+  if (!res.ok) {
+    throw new Error(`Chat-server API error: ${res.status}`);
+  }
+
+  return res.json() as Promise<WeeklyScoresResponse>;
+}
+
+// ===== Main =====
+
+async function main() {
+  // Resolve week
+  let weekId: string;
+  if (weekArg === 'auto') {
+    weekId = getPreviousWeekId();
+    console.log(`[settle-pado] Auto-detected week: ${weekId}`);
+  } else {
+    weekId = weekArg;
+  }
+
+  if (!/^\d{4}-W\d{2}$/.test(weekId)) {
+    console.error(`Invalid week format: ${weekId} (expected YYYY-Www e.g. 2026-W17)`);
     process.exit(1);
   }
 
-  return json.traders || [];
-}
+  console.log(`\n=== Pado Weekly Settlement ${weekId} (${dryRun ? 'DRY RUN' : 'LIVE'}) ===\n`);
 
-async function fetchWalletMappings(): Promise<Map<string, string>> {
-  if (!WALLET_MAPPINGS_URL) return new Map();
+  // 1. Fetch weekly scores from chat-server
+  console.log('Fetching weekly scores from chat-server...');
+  const data = await fetchWeeklyScores(weekId);
+  console.log(`  ${data.traders.length} traders in week ${weekId}`);
 
-  // Internal API returns either { wallets } directly or { url: <s3-presigned> } for
-  // large payloads (>6MB Lambda limit). fetchWithOffload transparently handles both.
-  const data = await fetchWithOffload<{ wallets?: Record<string, string> }>({
-    url: WALLET_MAPPINGS_URL,
-    apiKey: WALLET_MAPPINGS_KEY,
-    timeoutMs: 15_000,
-    label: 'settle-pado:wallet-mappings',
-  });
-  if (!data) throw new Error('Wallet mappings fetch failed (see above)');
-
-  // Reverse: walletAddress -> identityId
-  const map = new Map<string, string>();
-  for (const [addr, id] of Object.entries(data.wallets || {})) {
-    map.set(addr.toLowerCase(), id);
-  }
-  return map;
-}
-
-function loadPreviousSnapshot(snapshotPeriod: string): Snapshot | null {
-  if (!fs.existsSync(SNAPSHOT_DIR)) return null;
-  const files = fs.readdirSync(SNAPSHOT_DIR)
-    .filter(f => f.startsWith(`pado-${snapshotPeriod}-`) && f.endsWith('.json'))
-    .sort()
-    .reverse();
-  if (files.length === 0) return null;
-  const data = JSON.parse(fs.readFileSync(path.join(SNAPSHOT_DIR, files[0]), 'utf-8'));
-  return data as Snapshot;
-}
-
-function saveSnapshot(snapshotPeriod: string, traders: PadoTrader[]): void {
-  if (!fs.existsSync(SNAPSHOT_DIR)) {
-    fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
-  }
-  const date = new Date().toISOString().slice(0, 10);
-  const snapshot: Snapshot = {
-    date,
-    period: snapshotPeriod,
-    traders: traders.map(t => ({ address: t.address, points: traderScore(t) })),
-  };
-  const filename = `pado-${snapshotPeriod}-${date}.json`;
-  fs.writeFileSync(path.join(SNAPSHOT_DIR, filename), JSON.stringify(snapshot, null, 2));
-  console.log(`Snapshot saved: ${filename}`);
-}
-
-// --- Main ---
-
-async function main() {
-  console.log(`\n=== Pado Leaderboard Settlement (${period}, ${dryRun ? 'DRY RUN' : 'LIVE'}) ===\n`);
-
-  // 1. Fetch current Pado leaderboard
-  console.log('Fetching Pado points leaderboard...');
-  const traders = await fetchPadoLeaderboard();
-  console.log(`  ${traders.length} traders found`);
-
-  if (traders.length === 0) {
-    console.log('No traders found. Exiting.');
+  if (data.traders.length === 0) {
+    console.log('No traders found for this week. Has aggregation run?');
     process.exit(0);
   }
 
-  // 2. Load previous snapshot and compute deltas
-  const prev = loadPreviousSnapshot(period!);
-  let deltas: Map<string, number>;
+  // 2. Connect to PostgreSQL
+  const pgDb = postgres(POINTS_DB_URL!, { max: 3, idle_timeout: 30, connect_timeout: 10 });
 
-  if (prev) {
-    console.log(`Previous snapshot: ${prev.date} (${prev.traders.length} traders)`);
-    const prevMap = new Map(prev.traders.map(t => [t.address.toLowerCase(), t.points]));
-    deltas = new Map();
-    for (const t of traders) {
-      const prevPts = prevMap.get(t.address.toLowerCase()) ?? 0;
-      const delta = traderScore(t) - prevPts;
-      if (delta > 0) deltas.set(t.address.toLowerCase(), delta);
+  // 3. Ensure weekly_score_snapshots table exists (idempotent DDL)
+  await pgDb`
+    CREATE TABLE IF NOT EXISTS weekly_score_snapshots (
+      week_id     TEXT NOT NULL,
+      address     TEXT NOT NULL,
+      total_score INTEGER NOT NULL,
+      rank        INTEGER NOT NULL,
+      settled     INTEGER NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (week_id, address)
+    )
+  `;
+  await pgDb`
+    CREATE INDEX IF NOT EXISTS idx_wss_unsettled
+      ON weekly_score_snapshots (week_id, settled)
+  `;
+
+  // 4. Upsert snapshot rows (idempotent: existing rows are not overwritten)
+  console.log('\nUpserting snapshot rows...');
+  for (const trader of data.traders) {
+    await pgDb`
+      INSERT INTO weekly_score_snapshots (week_id, address, total_score, rank, settled)
+      VALUES (${weekId}, ${trader.address}, ${trader.totalScore}, ${trader.rank}, 0)
+      ON CONFLICT (week_id, address) DO NOTHING
+    `;
+  }
+
+  // 5. Fetch unsettled rows (re-runnable: skip already-settled)
+  const unsettled = await pgDb<Array<{ address: string; rank: number; total_score: number }>>`
+    SELECT address, rank, total_score
+    FROM weekly_score_snapshots
+    WHERE week_id = ${weekId} AND settled = 0
+    ORDER BY rank ASC
+  `;
+  console.log(`  ${unsettled.length} unsettled traders`);
+
+  if (unsettled.length === 0) {
+    console.log('All traders already settled for this week. Exiting.');
+    await pgDb.end();
+    process.exit(0);
+  }
+
+  // Build lookup from address -> trader data (from chat-server response)
+  const traderMap = new Map<string, WeeklyTrader>(
+    data.traders.map((t) => [t.address.toLowerCase(), t])
+  );
+
+  // 6. Settle each trader
+  let awarded = 0;
+  let skippedUnregistered = 0;
+  let skippedNoReward = 0;
+
+  console.log('\n--- Settlement Results ---\n');
+
+  for (const row of unsettled) {
+    const addr = row.address.toLowerCase();
+    const rank = row.rank;
+    const basePts = getRewardPts(rank);
+
+    if (basePts === 0) {
+      skippedNoReward++;
+      continue;
     }
-    console.log(`  ${deltas.size} traders with positive delta`);
-  } else {
-    console.log('No previous snapshot found. Using absolute points for first settlement.');
-    deltas = new Map(traders.map(t => [t.address.toLowerCase(), traderScore(t)]));
-  }
 
-  // 3. Rank by delta and distribute
-  const allRanked = [...deltas.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .filter(([, d]) => d > 0);
-
-  if (allRanked.length === 0) {
-    console.log('No positive deltas. Saving snapshot and exiting.');
-    if (!dryRun) saveSnapshot(period!, traders);
-    process.exit(0);
-  }
-
-  const pool = DEFAULT_POOLS[period as keyof typeof DEFAULT_POOLS];
-  const poolSize = poolOverride ? parseInt(poolOverride, 10) : pool.size;
-
-  // Cap eligible traders at maxRank
-  const ranked = allRanked.slice(0, pool.maxRank);
-  const topN = Math.min(pool.topN, ranked.length);
-  const restCount = Math.max(ranked.length - topN, 0);
-
-  // If everyone fits in top tier, use full pool for them
-  const topPool = restCount > 0 ? poolSize * pool.topShare : poolSize;
-  const restPool = restCount > 0 ? poolSize * (1 - pool.topShare) : 0;
-  const topPerTrader = topN > 0 ? Math.round(topPool / topN) : 0;
-  const restPerTrader = restCount > 0 ? Math.round(restPool / restCount) : 0;
-
-  console.log(`\nDistribution (pool: ${poolSize.toLocaleString()} pts, eligible: ${ranked.length}/${allRanked.length}):`);
-  console.log(`  Top ${topN}: ${topPerTrader.toLocaleString()} pts each (${topPool.toLocaleString()} total)`);
-  console.log(`  Rest ${restCount}: ${restPerTrader.toLocaleString()} pts each (${restPool.toLocaleString()} total)`);
-
-  // 4. Map wallet -> identityId
-  console.log('\nFetching wallet mappings...');
-  const walletMap = await fetchWalletMappings();
-  console.log(`  ${walletMap.size} registered wallets`);
-
-  // 5. Build inserts
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const periodLabel = `${period}-${dateStr}`;
-  let inserted = 0;
-  let skipped = 0;
-
-  console.log(`\n--- Settlement Results ---\n`);
-
-  for (let i = 0; i < ranked.length; i++) {
-    const [addr, delta] = ranked[i];
-    const identityId = walletMap.get(addr);
-    const pts = i < topN ? topPerTrader : restPerTrader;
-    const rank = i + 1;
+    const trader = traderMap.get(addr);
+    const identityId = trader?.identityId ?? null;
 
     if (!identityId) {
-      skipped++;
+      skippedUnregistered++;
+      if (dryRun) {
+        console.log(`  #${rank} ${addr.slice(0, 10)}... -> SKIP (not registered)`);
+      }
       continue;
     }
 
-    const digest = `bonus-pado:${identityId}:${periodLabel}`;
-    const tag = rank <= topN ? `[TOP ${topN}]` : '';
+    const isGP = trader?.hasGenesisPass ?? false;
+    const finalPts = isGP ? basePts * 2 : basePts;
+    const digest = `bonus-pado-weekly:${identityId}:${weekId}`;
 
     if (dryRun) {
-      console.log(`  #${rank} ${addr.slice(0, 10)}... -> ${pts} pts ${tag} (delta: ${delta})`);
-      inserted++;
+      const gpTag = isGP ? ' [GP 2x]' : '';
+      console.log(`  #${rank} ${addr.slice(0, 10)}... -> ${finalPts} pts${gpTag} (base: ${basePts})`);
+      awarded++;
       continue;
     }
 
-    const result = await db`
-      INSERT INTO activity_points
-        (wallet_address, identity_id, tx_digest, category, activity_type,
-         base_points, volume_tier, genesis_multiplier, final_points,
-         tx_timestamp, event_seq, tx_sequence_number)
-      VALUES
-        (${addr}, ${identityId}, ${digest}, 'ecosystem-bonus-pado', ${period!},
-         ${pts}, 1.0, 1.0, ${pts.toFixed(2)},
-         NOW()::timestamptz, 0, 0)
-      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-    `;
-    if (result.count > 0) {
-      inserted++;
-      console.log(`  #${rank} ${addr.slice(0, 10)}... -> ${pts} pts ${tag}`);
+    // Atomic: INSERT activity_points + UPDATE settled in one PG transaction.
+    // ON CONFLICT DO NOTHING ensures idempotency on re-runs.
+    try {
+      await pgDb.begin(async (tx) => {
+        const sql = tx as unknown as typeof pgDb;
+        await sql`
+          INSERT INTO activity_points
+            (wallet_address, identity_id, tx_digest, category, activity_type,
+             base_points, volume_tier, genesis_multiplier, final_points,
+             tx_timestamp, event_seq, tx_sequence_number)
+          VALUES
+            (${addr}, ${identityId}, ${digest}, 'ecosystem-bonus-pado', ${'weekly-' + weekId},
+             ${basePts}, 1.0, ${isGP ? 2.0 : 1.0}, ${finalPts.toFixed(2)},
+             NOW()::timestamptz, 0, 0)
+          ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+        `;
+
+        await sql`
+          UPDATE weekly_score_snapshots
+          SET settled = 1
+          WHERE week_id = ${weekId} AND address = ${row.address}
+        `;
+      });
+
+      const gpTag = isGP ? ' [GP 2x]' : '';
+      console.log(`  #${rank} ${addr.slice(0, 10)}... -> ${finalPts} pts${gpTag}`);
+      awarded++;
+    } catch (err) {
+      console.error(`  #${rank} ${addr.slice(0, 10)}... ERROR:`, (err as Error).message);
     }
   }
 
-  console.log(`\n--- Summary ---`);
-  console.log(`  Inserted: ${inserted}, Skipped (unregistered): ${skipped}`);
+  console.log('\n--- Summary ---');
+  console.log(`  Awarded: ${awarded}`);
+  console.log(`  Skipped (unregistered): ${skippedUnregistered}`);
+  console.log(`  Skipped (rank > 500): ${skippedNoReward}`);
 
-  // 6. Save snapshot
-  if (!dryRun) {
-    saveSnapshot(period!, traders);
-  }
-
-  await db.end();
+  await pgDb.end();
   console.log('\nDone.');
 }
 
