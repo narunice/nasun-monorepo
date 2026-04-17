@@ -4,6 +4,7 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { buildBuyScratchCard } from '../transactions';
 import { getSuiClient } from '../../../lib/sui-client';
+import { withTxRetry } from '../../../lib/tx-helpers';
 import { parseScratchCardEvent } from '../lib/scratchcard-client';
 import { NUSDC_TYPE, CARD_PRICE } from '../constants';
 import type { ScratchResult } from '../types';
@@ -128,14 +129,12 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
         return null;
       }
 
-      const nusdcCoinId = await findNusdcCoin();
-      if (!nusdcCoinId) {
-        setError('Insufficient NUSDC balance');
-        return null;
-      }
-
-      const tx = buildBuyScratchCard(nusdcCoinId);
-      const result = await signAndExecute(tx);
+      const result = await withTxRetry(async () => {
+        const nusdcCoinId = await findNusdcCoin();
+        if (!nusdcCoinId) throw new Error('Insufficient NUSDC balance');
+        const tx = buildBuyScratchCard(nusdcCoinId);
+        return signAndExecute(tx);
+      });
 
       // Parse result from events (showEvents: true)
       const events = (result.events ?? []) as Array<{
@@ -160,8 +159,8 @@ export function useScratchCardActions(): UseScratchCardActionsResult {
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Failed to buy card';
       let msg = raw;
-      if (/ObjectVersionUnavailableForConsumption/i.test(raw)) {
-        msg = 'Transaction still processing. Please wait a moment and try again.';
+      if (/ObjectVersionUnavailableForConsumption|not available for consumption/i.test(raw)) {
+        msg = 'Network is busy. Please try again in a moment.';
       } else if (/InsufficientGas|No valid gas/i.test(raw)) {
         msg = 'Not enough NASUN for gas. Request from the faucet first.';
       }

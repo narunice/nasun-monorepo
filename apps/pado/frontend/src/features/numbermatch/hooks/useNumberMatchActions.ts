@@ -4,6 +4,7 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { buildPlayGame } from '../transactions';
 import { getSuiClient } from '../../../lib/sui-client';
+import { withTxRetry } from '../../../lib/tx-helpers';
 import { parseNumberMatchEvent } from '../lib/numbermatch-client';
 import { NUSDC_TYPE, PRICE_PER_PICK } from '../constants';
 import type { NumberMatchResult } from '../types';
@@ -128,14 +129,13 @@ export function useNumberMatchActions(): UseNumberMatchActionsResult {
       }
 
       const cost = BigInt(picks.length) * PRICE_PER_PICK;
-      const nusdcCoinId = await findNusdcCoin(cost);
-      if (!nusdcCoinId) {
-        setError(`Insufficient NUSDC balance (need ${Number(cost) / 1_000_000} NUSDC)`);
-        return null;
-      }
 
-      const tx = buildPlayGame(nusdcCoinId, picks);
-      const result = await signAndExecute(tx);
+      const result = await withTxRetry(async () => {
+        const nusdcCoinId = await findNusdcCoin(cost);
+        if (!nusdcCoinId) throw new Error(`Insufficient NUSDC balance (need ${Number(cost) / 1_000_000} NUSDC)`);
+        const tx = buildPlayGame(nusdcCoinId, picks);
+        return signAndExecute(tx);
+      });
 
       const events = (result.events ?? []) as Array<{
         type: string;
@@ -156,8 +156,8 @@ export function useNumberMatchActions(): UseNumberMatchActionsResult {
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Failed to play game';
       let msg = raw;
-      if (/ObjectVersionUnavailableForConsumption/i.test(raw)) {
-        msg = 'Transaction still processing. Please wait a moment and try again.';
+      if (/ObjectVersionUnavailableForConsumption|not available for consumption/i.test(raw)) {
+        msg = 'Network is busy. Please try again in a moment.';
       } else if (/InsufficientGas|No valid gas/i.test(raw)) {
         msg = 'Not enough NASUN for gas. Request from the faucet first.';
       }
