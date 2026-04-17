@@ -1,6 +1,6 @@
 export type Period = '24h' | '7d' | '30d' | 'all';
 export type LeaderboardMode = 'activity' | 'volume' | 'pnl' | 'score';
-export type ScoreScope = 'alltime';
+export type ScoreScope = 'alltime' | 'weekly';
 
 export interface LeaderboardTrader {
   rank: number;
@@ -68,7 +68,8 @@ export interface ScoreLeaderboardTrader {
 
 export interface ScoreLeaderboardResponse {
   scope: ScoreScope;
-  weekStartDate?: string;
+  weekId?: string;    // present when scope === 'weekly'
+  weekStart?: number; // ms timestamp of week start
   traders: ScoreLeaderboardTrader[];
   updatedAt: number;
   totalTraders: number;

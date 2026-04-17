@@ -20,7 +20,7 @@ const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {
 export function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>('7d');
   const [mode, setMode] = useState<LeaderboardMode>('volume');
-  const [scope, setScope] = useState<ScoreScope>('alltime');
+  const [scope, setScope] = useState<ScoreScope>('weekly');
   const [showFollowing, setShowFollowing] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -154,12 +154,30 @@ export function LeaderboardPage() {
           {/* Leaderboard Table */}
           <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
             {mode === 'score' ? (
-              <ScoreLeaderboardTable
-                traders={scoreQuery.data?.traders ?? []}
-                isLoading={activeLoading}
-                currentUserAddress={userAddress}
-                followFilter={showFollowing}
-              />
+              (() => {
+                const scoreData = scoreQuery.data;
+                const RESET_GRACE_MS = 10 * 60 * 1000;
+                const isResetGap = !activeLoading
+                  && scoreData !== undefined
+                  && scoreData.traders.length === 0
+                  && scoreData.weekStart !== undefined
+                  && Date.now() - scoreData.weekStart < RESET_GRACE_MS;
+                if (isResetGap) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-16 text-theme-text-secondary">
+                      <p className="text-sm">Week just started - check back soon</p>
+                    </div>
+                  );
+                }
+                return (
+                  <ScoreLeaderboardTable
+                    traders={scoreData?.traders ?? []}
+                    isLoading={activeLoading}
+                    currentUserAddress={userAddress}
+                    followFilter={showFollowing}
+                  />
+                );
+              })()
             ) : mode === 'pnl' ? (
               <PnlLeaderboardTable
                 traders={pnlQuery.data?.traders ?? []}

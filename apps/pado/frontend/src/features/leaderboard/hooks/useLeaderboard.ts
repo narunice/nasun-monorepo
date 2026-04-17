@@ -80,7 +80,7 @@ async function fetchScoreLeaderboard(scope: ScoreScope, limit: number, offset: n
   return res.json();
 }
 
-export function useScoreLeaderboard(scope: ScoreScope = 'alltime', limit: number = 50, offset: number = 0) {
+export function useScoreLeaderboard(scope: ScoreScope = 'weekly', limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
 
   return useQuery<ScoreLeaderboardResponse>({
