@@ -72,7 +72,7 @@ export function buildCancelAndPlaceOrders(
         tx.pure.u64(order.quantity),
         tx.pure.bool(order.isBid),
         tx.pure.bool(false), // pay_with_deep = false
-        tx.pure.u64(Date.now() + 1800000), // 30min expiry
+        tx.pure.u64(Date.now() + 600000), // 10min expiry — auto-expire if bot goes down
         tx.object(CLOCK_ID),
       ],
     });
@@ -114,7 +114,7 @@ export function buildPlaceOrders(
         tx.pure.u64(order.quantity),
         tx.pure.bool(order.isBid),
         tx.pure.bool(false),
-        tx.pure.u64(Date.now() + 86400000),
+        tx.pure.u64(Date.now() + 600000), // 10min expiry — consistent with cancel+place path
         tx.object(CLOCK_ID),
       ],
     });
@@ -214,6 +214,27 @@ export async function syncOrders(
     result = await executeTransaction(client, keypair, retryTx);
     if (result.success) {
       console.log(`[${timestamp()}] Version conflict self-healed`);
+    }
+  }
+
+  // Self-heal on POST_ONLY crossing (assert_execution code 5): the combined
+  // cancel+place TX is atomic — if any order crosses the book, cancel also
+  // rolls back and stale orders accumulate. Fix: run cancel-only first, then
+  // place-only separately so that the cancel always succeeds.
+  if (!result.success && result.error?.includes('assert_execution')) {
+    console.log(`[${timestamp()}] POST_ONLY crossing detected, splitting cancel+place...`);
+    const cancelTx = buildCancelAllOrders(balanceManagerId);
+    const cancelResult = await executeTransaction(client, keypair, cancelTx);
+    if (cancelResult.success) {
+      console.log(`[${timestamp()}] Cancel succeeded, placing ${orders.length} orders...`);
+      await new Promise((r) => setTimeout(r, 1000));
+      const placeTx = buildPlaceOrders(balanceManagerId, orders, state);
+      result = await executeTransaction(client, keypair, placeTx);
+      if (result.success) {
+        console.log(`[${timestamp()}] Split cancel+place succeeded`);
+      }
+    } else {
+      console.log(`[${timestamp()}] Cancel failed: ${cancelResult.error}`);
     }
   }
 
