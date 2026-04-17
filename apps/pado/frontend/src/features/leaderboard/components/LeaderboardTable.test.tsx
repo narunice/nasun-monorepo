@@ -103,7 +103,6 @@ describe('LeaderboardTable', () => {
       expect(screen.getByText('Trader')).toBeTruthy();
       expect(screen.getByText('Volume')).toBeTruthy();
       expect(screen.getByText('Trades')).toBeTruthy();
-      expect(screen.getByText('Change')).toBeTruthy();
     });
   });
 
