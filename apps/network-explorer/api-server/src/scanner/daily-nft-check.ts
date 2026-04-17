@@ -148,8 +148,8 @@ async function checkAlliancePenalties(
     const today = new Date().toISOString().slice(0, 10);
     for (const id of shouldPenalize) {
       const result = await pointsDb!`
-        INSERT INTO alliance_penalties (identity_id, penalty_start)
-        VALUES (${id}, ${today}::date)
+        INSERT INTO alliance_penalties (identity_id, penalty_start, first_seen)
+        VALUES (${id}, ${today}::date, ${today}::date)
         ON CONFLICT (identity_id) DO NOTHING
       `;
       if (result.count > 0) applied++;

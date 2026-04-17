@@ -73,6 +73,14 @@ async function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
+// Safety net: log unhandled rejections from background tasks (scanner timers,
+// cron callbacks) that escaped all try-catch blocks. Log and exit so PM2
+// can restart with a clean state and the crash is visible in the error log.
+process.on('unhandledRejection', (err) => {
+  console.error('[FATAL] UnhandledRejection:', err);
+  process.exit(1);
+});
+
 console.log(`Explorer API starting on port ${PORT}`);
 serve({ fetch: app.fetch, port: PORT });
 
