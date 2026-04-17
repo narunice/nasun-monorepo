@@ -4,6 +4,7 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { buildBuyTicket, buildClaimPrize, buildBurnTicket } from '../transactions';
 import { getSuiClient } from '../../../lib/sui-client';
+import { withTxRetry } from '../../../lib/tx-helpers';
 import { NUSDC_TYPE, TICKET_PRICE } from '../constants';
 import { TX_SYNC_DELAY_MS } from '../../../lib/constants';
 
@@ -126,14 +127,12 @@ export function useLotteryActions(): UseLotteryActionsResult {
       setError(null);
 
       try {
-        const nusdcCoinId = await findNusdcCoin();
-        if (!nusdcCoinId) {
-          setError('Insufficient NUSDC balance');
-          return false;
-        }
-
-        const tx = buildBuyTicket(roundId, nusdcCoinId, numbers);
-        await signAndExecute(tx);
+        await withTxRetry(async () => {
+          const nusdcCoinId = await findNusdcCoin();
+          if (!nusdcCoinId) throw new Error('Insufficient NUSDC balance');
+          const tx = buildBuyTicket(roundId, nusdcCoinId, numbers);
+          await signAndExecute(tx);
+        });
 
         // Wait for RPC node to update its state after transaction
         await new Promise((resolve) => setTimeout(resolve, TX_SYNC_DELAY_MS));
@@ -156,7 +155,11 @@ export function useLotteryActions(): UseLotteryActionsResult {
         return true;
       } catch (err) {
         console.error('Error buying ticket:', err);
-        setError(err instanceof Error ? err.message : 'Failed to buy ticket');
+        const raw = err instanceof Error ? err.message : 'Failed to buy ticket';
+        const msg = /ObjectVersionUnavailableForConsumption|not available for consumption/i.test(raw)
+          ? 'Network is busy. Please try again in a moment.'
+          : raw;
+        setError(msg);
         return false;
       } finally {
         pendingOperationRef.current = null;
