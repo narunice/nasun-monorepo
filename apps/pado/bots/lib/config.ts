@@ -199,24 +199,32 @@ export interface LPConfig {
 
   // Faucet control
   disableTokenFaucet: boolean;
+
+  // Divergence detection
+  divergenceForceRequoteBps: number;
 }
 
 export function loadConfig(): LPConfig {
+  const spreadBps = parseInt(process.env.LP_SPREAD_BPS || String(MARKET.defaultSpreadBps), 10);
+  const minSpreadBps = parseInt(process.env.LP_MIN_SPREAD_BPS || '10', 10);
+
+  console.log(`[DEBUG] spreadBps: ${spreadBps}, minSpreadBps: ${minSpreadBps}`);
+
   const config = {
-    spreadBps: parseInt(process.env.LP_SPREAD_BPS || String(MARKET.defaultSpreadBps), 10),
+    spreadBps,
     levelSpacingBps: parseInt(process.env.LP_LEVEL_SPACING_BPS || String(MARKET.defaultLevelSpacing), 10),
     orderLevels: parseInt(process.env.LP_ORDER_LEVELS || '30', 10),
 
     orderSize: parseFloat(process.env.LP_ORDER_SIZE || String(MARKET.defaultOrderSize)),
 
     updateIntervalMs: parseInt(process.env.LP_UPDATE_INTERVAL || '10000', 10),
-    requoteThresholdBps: parseInt(process.env.LP_REQUOTE_THRESHOLD || '50', 10),
+    requoteThresholdBps: parseInt(process.env.LP_REQUOTE_THRESHOLD || '20', 10),
 
     refillThresholdBase: parseFloat(process.env.LP_REFILL_THRESHOLD_BASE || '5'),
     refillThresholdQuote: parseFloat(process.env.LP_REFILL_THRESHOLD_QUOTE || '200000'),
 
     maxOrderSize: parseFloat(process.env.LP_MAX_ORDER_SIZE || String(MARKET.defaultMaxOrderSize)),
-    minSpreadBps: parseInt(process.env.LP_MIN_SPREAD_BPS || '10', 10),
+    minSpreadBps,
     maxConsecutiveFailures: parseInt(process.env.LP_MAX_FAILURES || '5', 10),
     minPriceUsd: parseFloat(process.env.LP_MIN_PRICE || String(MARKET.defaultMinPrice)),
     maxPriceUsd: parseFloat(process.env.LP_MAX_PRICE || String(MARKET.defaultMaxPrice)),
@@ -228,8 +236,9 @@ export function loadConfig(): LPConfig {
     maxArbitrageQuantity: parseFloat(process.env.LP_MAX_ARB_QUANTITY || String(MARKET.defaultMaxArbQuantity)),
 
     disableTokenFaucet: process.env.LP_DISABLE_TOKEN_FAUCET === 'true',
-  };
 
+    divergenceForceRequoteBps: parseInt(process.env.LP_DIVERGENCE_THRESHOLD_BPS || '30', 10),
+  };
   // Validate configuration bounds
   for (const [key, value] of Object.entries(config)) {
     if (typeof value === 'number' && isNaN(value)) {
@@ -263,6 +272,12 @@ export function loadConfig(): LPConfig {
   }
   if (config.maxArbitrageQuantity <= 0) {
     throw new Error('LP_MAX_ARB_QUANTITY must be positive');
+  }
+  if (config.divergenceForceRequoteBps < 1 || config.divergenceForceRequoteBps > 1000) {
+    throw new Error('LP_DIVERGENCE_THRESHOLD_BPS must be between 1 and 1000');
+  }
+  if (config.divergenceForceRequoteBps <= config.requoteThresholdBps) {
+    throw new Error('LP_DIVERGENCE_THRESHOLD_BPS must be greater than LP_REQUOTE_THRESHOLD to avoid false positives');
   }
 
   return config;

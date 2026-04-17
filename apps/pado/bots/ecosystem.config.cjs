@@ -69,7 +69,8 @@ module.exports = {
         LP_LEVEL_SPACING_BPS: '6',
         LP_ORDER_SIZE: '0.1',
         LP_MAX_ORDER_SIZE: '0.5',
-        LP_MAX_ARB_QUANTITY: '0.1',
+        LP_MAX_ARB_QUANTITY: '10',
+        LP_DIVERGENCE_THRESHOLD_BPS: '30',   // 1.5x spread(20bps); must be > LP_REQUOTE_THRESHOLD(20)
         LP_REFILL_THRESHOLD_BASE: '6',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '50000',
@@ -92,6 +93,7 @@ module.exports = {
         LP_ORDER_SIZE: '4',
         LP_MAX_ORDER_SIZE: '20',
         LP_MAX_ARB_QUANTITY: '5',
+        LP_DIVERGENCE_THRESHOLD_BPS: '45',   // 1.5x spread(30bps); must be > LP_REQUOTE_THRESHOLD(25)
         LP_REFILL_THRESHOLD_BASE: '250',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '1000',
@@ -114,6 +116,7 @@ module.exports = {
         LP_ORDER_SIZE: '50',
         LP_MAX_ORDER_SIZE: '300',
         LP_MAX_ARB_QUANTITY: '100',
+        LP_DIVERGENCE_THRESHOLD_BPS: '60',   // 1.5x spread(40bps); must be > LP_REQUOTE_THRESHOLD(30)
         LP_REFILL_THRESHOLD_BASE: '3500',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '10',

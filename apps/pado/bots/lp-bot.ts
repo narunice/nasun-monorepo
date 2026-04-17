@@ -104,18 +104,6 @@ async function runBot(
 
   console.log(`[${timestamp()}] ${MARKET.name} price: $${price.toLocaleString()}`);
 
-  // Step 2.5: Skip cycle if price hasn't moved beyond requote threshold
-  // Force refresh every 30 cycles (~5min at 10s interval) to prevent stale orderbooks
-  const MAX_SKIP_CYCLES = 30;
-  if (state.lastQuotedPrice > 0 && state.skipCount < MAX_SKIP_CYCLES) {
-    const priceDeltaBps = Math.abs(price - state.lastQuotedPrice) / state.lastQuotedPrice * 10000;
-    if (priceDeltaBps < config.requoteThresholdBps) {
-      state.skipCount++;
-      state.consecutiveFailures = 0;
-      return;
-    }
-  }
-
   // Step 3: Ensure BalanceManager exists
   if (!state.balanceManagerId) {
     console.log(`[${timestamp()}] Looking for BalanceManager...`);
@@ -173,7 +161,10 @@ async function runBot(
     console.log(`[${timestamp()}] Orderbook: ${fullOrderbook.bids.length} bids, ${fullOrderbook.asks.length} asks`);
   }
 
-  // Step 6: Arbitrage
+  // Step 6: Arbitrage — runs every cycle regardless of requote threshold.
+  // External bids above market must be cleared continuously; skipping arb during
+  // price-stable periods leaves the book inflated for up to MAX_SKIP_CYCLES * interval.
+  let arbExecuted = false;
   if (config.enableArbitrage) {
     const arbConfig: ArbitrageConfig = {
       enabled: config.enableArbitrage,
@@ -195,14 +186,53 @@ async function runBot(
       const arbResult = await executeTransaction(client, keypair, arbTx);
 
       if (arbResult.success) {
+        arbExecuted = true;
         console.log(`[${timestamp()}] Arbitrage executed: ${opportunities.length} trades (tx: ${arbResult.digest?.slice(0, 10)}...)`);
         inventory = await withRetry(
           () => getBalanceManagerBalances(client, state.balanceManagerId!),
           { label: 'getBalanceManagerBalances', maxRetries: 2, baseDelayMs: 1000 },
         );
         console.log(`[${timestamp()}] Inventory after arb: ${inventory.base.toFixed(4)} ${MARKET.name}, ${inventory.quote.toLocaleString()} NUSDC`);
+
+        // Re-fetch orderbook after arb: wait 3s for RPC to index the arb TX
+        // before querying. Without this delay, consumed bids still appear in
+        // the snapshot, causing minAskPrice to reflect pre-arb state and
+        // pushing all asks far above market price.
+        await new Promise((r) => setTimeout(r, 3000));
+        const postArbOrderbook = await withRetry(
+          () => getFullOrderbookState(client),
+          { label: 'getFullOrderbookState (post-arb)', maxRetries: 2, baseDelayMs: 1000 },
+        ).catch(() => fullOrderbook); // fall back to pre-arb snapshot on error
+        Object.assign(fullOrderbook, postArbOrderbook);
       } else {
         console.error(`[${timestamp()}] Arbitrage failed: ${arbResult.error}`);
+      }
+    }
+  }
+
+  // Step 6.5: Skip grid update if price is stable AND no arb ran this cycle.
+  // Arb always runs (above) to keep the book clean. Only the expensive
+  // cancel+place is skipped to avoid unnecessary TX churn.
+  // Force full refresh every MAX_SKIP_CYCLES to prevent stale grids.
+  const MAX_SKIP_CYCLES = 3;
+  if (!arbExecuted && state.lastQuotedPrice > 0 && state.skipCount < MAX_SKIP_CYCLES) {
+    const priceDeltaBps = Math.abs(price - state.lastQuotedPrice) / state.lastQuotedPrice * 10000;
+    if (priceDeltaBps < config.requoteThresholdBps) {
+      // Divergence check: fires only when Binance price is stable (< requoteThreshold) but
+      // orderbook mid has drifted — i.e. external contamination (fat-finger bid, stale order).
+      // divergenceForceRequoteBps > requoteThresholdBps by design to avoid false positives
+      // on normal bid fluctuations. midPrice=0 (empty book) skips this check.
+      const midDivergenceBps = fullOrderbook.midPrice > 0
+        ? Math.abs(fullOrderbook.midPrice - price) / price * 10000
+        : 0;
+      if (midDivergenceBps > config.divergenceForceRequoteBps) {
+        console.log(`[${timestamp()}] Orderbook divergence ${midDivergenceBps.toFixed(1)}bps > ${config.divergenceForceRequoteBps}bps (mid=$${fullOrderbook.midPrice.toFixed(2)}, ref=$${price.toFixed(2)}), forcing requote`);
+        state.skipCount = 0;
+        state.consecutiveFailures = 0;
+      } else {
+        state.skipCount++;
+        state.consecutiveFailures = 0;
+        return;
       }
     }
   }
@@ -363,9 +393,11 @@ async function initialize(
 
   if (totalBase < minBaseNeeded || totalQuote < minQuoteNeeded) {
     const deficit = Math.max(0, minBaseNeeded - totalBase);
+    // Cap startup rounds at 5 to avoid RPC object-version conflicts from rapid-fire TX.
+    // Per-cycle refills (1 call per 10s) handle the rest without contention.
     const faucetRounds = Math.min(
       Math.max(1, Math.ceil(deficit / MARKET.faucetBaseAmount)),
-      30, // Max 30 faucet calls for 10x liquidity accumulation
+      5,
     );
     console.log(`[${timestamp()}] Insufficient funds (have ${totalBase.toFixed(4)}, need ~${minBaseNeeded.toFixed(4)} ${MARKET.name}), accumulating via faucet (${faucetRounds} rounds)...`);
 
@@ -380,6 +412,8 @@ async function initialize(
         continue;
       }
       faucetFailures = 0;
+      // Allow RPC to index before next call to avoid object-version conflicts
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
 
     const newWalletBalance = await withRetry(
