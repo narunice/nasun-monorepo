@@ -16,7 +16,7 @@ export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress, fo
   if (isLoading) {
     return (
       <div className="py-4 px-2">
-        <SkeletonTable rows={10} cols={6} />
+        <SkeletonTable rows={10} cols={5} />
       </div>
     );
   }
@@ -31,12 +31,12 @@ export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress, fo
         {followFilter ? (
           <>
             <p className="text-sm">Not following any traders yet</p>
-            <p className="text-xs mt-1">Star traders to track them here</p>
+            <p className="text-sm mt-1 opacity-70">Star traders to track them here</p>
           </>
         ) : (
           <>
             <p className="text-sm">No PnL data yet</p>
-            <p className="text-xs mt-1">Complete round-trip trades (buy + sell) to appear on the PnL leaderboard</p>
+            <p className="text-sm mt-1 opacity-70">Complete round-trip trades (buy + sell) to appear on the PnL leaderboard</p>
           </>
         )}
       </div>
@@ -47,13 +47,12 @@ export function PnlLeaderboardTable({ traders, isLoading, currentUserAddress, fo
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="text-xs text-theme-text-muted border-b border-theme-border">
+          <tr className="text-sm text-theme-text-muted border-b border-theme-border">
             <th className="py-3 px-3 text-left font-medium w-20">Rank</th>
             <th className="py-3 px-3 text-left font-medium">Trader</th>
             <th className="py-3 px-3 text-right font-medium">PnL</th>
             <th className="py-3 px-3 text-right font-medium">PnL %</th>
             <th className="py-3 px-3 text-right font-medium">Trades</th>
-            <th className="py-3 px-3 text-center font-medium w-16">Change</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-theme-border/50">

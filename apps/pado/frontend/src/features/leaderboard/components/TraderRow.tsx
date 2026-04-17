@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
-import { RankChangeIndicator } from './RankChangeIndicator';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import { computeBadgesFromLeaderboard } from '../lib/badges';
 import { BadgeDisplay } from './BadgeDisplay';
@@ -91,9 +90,6 @@ export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
         <span className="text-sm text-theme-text-secondary">
           {trader.tradeCount.toLocaleString()}
         </span>
-      </td>
-      <td className="py-2.5 px-3 text-center">
-        <RankChangeIndicator change={trader.rankChange} />
       </td>
     </tr>
   );

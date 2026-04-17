@@ -239,12 +239,12 @@ describe('PnlTraderRow', () => {
   // ========================================
 
   describe('edge cases', () => {
-    it('renders with 6 columns (Rank, Trader, PnL, PnL%, Trades, Change)', () => {
+    it('renders with 5 columns (Rank, Trader, PnL, PnL%, Trades)', () => {
       const trader = makeTrader();
       const { container } = render(
         <table><tbody><PnlTraderRow trader={trader} /></tbody></table>,
       );
-      expect(container.querySelectorAll('td').length).toBe(6);
+      expect(container.querySelectorAll('td').length).toBe(5);
     });
 
     it('handles very small negative PnL', () => {

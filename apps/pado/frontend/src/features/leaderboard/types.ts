@@ -6,6 +6,7 @@ export interface LeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
+  twitterHandle?: string;
   hasGenesisPass?: boolean;
   volumeUsd: string;
   tradeCount: number;
@@ -26,6 +27,7 @@ export interface PnlLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
+  twitterHandle?: string;
   hasGenesisPass?: boolean;
   pnlUsd: string;
   pnlPercent: number;
@@ -46,6 +48,7 @@ export interface PointsLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
+  twitterHandle?: string;
   hasGenesisPass?: boolean;
   totalPoints: number;
   volumeUsd: string;
@@ -58,6 +61,7 @@ export interface ScoreLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
+  twitterHandle?: string;
   hasGenesisPass?: boolean;
   totalScore: number;
   tradeCount: number;

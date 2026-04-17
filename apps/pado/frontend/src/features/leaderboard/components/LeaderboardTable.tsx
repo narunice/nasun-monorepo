@@ -16,7 +16,7 @@ export function LeaderboardTable({ traders, isLoading, currentUserAddress, follo
   if (isLoading) {
     return (
       <div className="py-4 px-2">
-        <SkeletonTable rows={10} cols={5} />
+        <SkeletonTable rows={10} cols={4} />
       </div>
     );
   }
@@ -31,12 +31,12 @@ export function LeaderboardTable({ traders, isLoading, currentUserAddress, follo
         {followFilter ? (
           <>
             <p className="text-sm">Not following any traders yet</p>
-            <p className="text-xs mt-1">Star traders to track them here</p>
+            <p className="text-sm mt-1 opacity-70">Star traders to track them here</p>
           </>
         ) : (
           <>
             <p className="text-sm">No traders yet</p>
-            <p className="text-xs mt-1">Start trading to appear on the leaderboard</p>
+            <p className="text-sm mt-1 opacity-70">Start trading to appear on the leaderboard</p>
           </>
         )}
       </div>
@@ -47,12 +47,11 @@ export function LeaderboardTable({ traders, isLoading, currentUserAddress, follo
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="text-xs text-theme-text-muted border-b border-theme-border">
+          <tr className="text-sm text-theme-text-muted border-b border-theme-border">
             <th className="py-3 px-3 text-left font-medium w-20">Rank</th>
             <th className="py-3 px-3 text-left font-medium">Trader</th>
             <th className="py-3 px-3 text-right font-medium">Volume</th>
             <th className="py-3 px-3 text-right font-medium">Trades</th>
-            <th className="py-3 px-3 text-center font-medium w-16">Change</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-theme-border/50">
