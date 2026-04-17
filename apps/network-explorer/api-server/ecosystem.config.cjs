@@ -23,15 +23,19 @@ module.exports = {
   apps: [
     {
       name: 'explorer-api',
-      script: './node_modules/.bin/tsx',
-      args: 'src/index.ts',
+      script: 'node',
+      args: 'dist/index.js',
       env: {
         NODE_ENV: 'production',
         PORT: 3200,
         CHAIN_ID: '272218f1',
         ...loadDotenv(),
       },
-      max_memory_restart: '512M',
+      // 768M gives room for in-memory caches (wallet, referral, activations).
+      // PM2 now directly spawns node (not tsx launcher), so memory tracking works.
+      max_memory_restart: '768M',
+      // sql.end({timeout:5}) needs up to 5s; add 3s buffer before SIGKILL.
+      kill_timeout: 8000,
       exec_mode: 'fork',
       instances: 1,
       autorestart: true,
