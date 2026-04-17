@@ -28,6 +28,8 @@ import {
   generatePointsSnapshot,
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
+  getWeeklyScoreLeaderboard, getWeeklyScoreCount, getTraderWeeklyScore,
+  getCurrentWeekStart, getWeekId,
   getFollowedTraderFills,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
@@ -35,6 +37,7 @@ import {
 import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
 import { mapRowToListItem } from './leaderboard-mapper.js';
+import { resolveIdentityIds } from './identity-resolver.js';
 
 // ===== Dependency injection interface =====
 
@@ -206,6 +209,27 @@ export function handleLeaderboardRequest(
     }
     if (pathname === '/api/pado/leaderboard/score' && method === 'GET') {
       return handleScoreLeaderboard(res, url, corsHeaders);
+    }
+    if (pathname === '/api/pado/leaderboard/score/alltime' && method === 'GET') {
+      return handleScoreLeaderboardAlltime(res, url, corsHeaders);
+    }
+
+    // Internal endpoint: settlement server (settle-pado on node-3) pulls weekly scores
+    const internalWeeklyMatch = pathname.match(/^\/api\/pado\/internal\/weekly-scores\/(\d{4}-W\d{2})$/);
+    if (internalWeeklyMatch && method === 'GET') {
+      handleInternalWeeklyScores(req, res, corsHeaders, internalWeeklyMatch[1]).catch((err) => {
+        console.error('[InternalWeeklyScores] Error:', (err as Error).message);
+        if (!res.writableEnded) {
+          res.writeHead(500, corsHeaders);
+          res.end(JSON.stringify({ error: 'internal_error' }));
+        }
+      });
+      return true;
+    }
+
+    const weeklyScoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/score\/weekly\/(\d{4}-W\d{2})$/);
+    if (weeklyScoreMatch && method === 'GET') {
+      return handleScoreLeaderboardWeekly(res, url, corsHeaders, weeklyScoreMatch[1]);
     }
     if (pathname === '/api/leaderboard/snapshots' && method === 'GET') {
       return handleSnapshots(res, url, corsHeaders);
@@ -474,11 +498,19 @@ function handleLeaderboardStatus(
 // settle-pado staleness guard. Response Cache-Control max-age=30 relies on
 // CloudFront /chat/* CachingDisabled — CDN bypass, browser caches 30s.
 
+/**
+ * GET /api/pado/leaderboard/score
+ * Default: weekly scope (current week).
+ * Legacy ?scope=alltime still supported for backward compatibility.
+ */
 function handleScoreLeaderboard(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
 ): boolean {
-  const scope = url.searchParams.get('scope') || 'alltime';
-  if (!VALID_SCORE_SCOPES.has(scope)) {
+  const scope = url.searchParams.get('scope') || 'weekly';
+  if (scope === 'alltime') {
+    return handleScoreLeaderboardAlltime(res, url, corsHeaders);
+  }
+  if (scope !== 'weekly') {
     res.writeHead(400, corsHeaders);
     res.end(JSON.stringify({
       error: `scope '${scope}' not supported`,
@@ -486,6 +518,18 @@ function handleScoreLeaderboard(
     }));
     return true;
   }
+  const weekStart = getCurrentWeekStart();
+  const weekId = getWeekId(weekStart);
+  return handleScoreLeaderboardWeekly(res, url, corsHeaders, weekId);
+}
+
+/**
+ * GET /api/pado/leaderboard/score/alltime
+ * Backward-compatible all-time score leaderboard (trader_points table).
+ */
+function handleScoreLeaderboardAlltime(
+  res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
+): boolean {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const rows = getScoreLeaderboard(limit, offset);
@@ -504,7 +548,121 @@ function handleScoreLeaderboard(
     'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
   });
   res.end(JSON.stringify({
-    scope,
+    scope: 'alltime',
+    traders,
+    updatedAt: getPadoAggregatorLastRun(),
+    totalTraders,
+  }));
+  return true;
+}
+
+/**
+ * GET /api/pado/leaderboard/score/weekly/:weekId
+ * Weekly score leaderboard for a specific week_id (e.g. '2026-W17').
+ */
+/**
+ * GET /api/pado/internal/weekly-scores/:weekId
+ *
+ * Internal endpoint for the settlement server (settle-pado, running on node-3).
+ * Returns all top-500 traders for a completed week with identityId and hasGenesisPass.
+ *
+ * Auth: Authorization: Bearer <INTERNAL_API_KEY>
+ * Safety: only returns data for weeks that have already ended (not the current week).
+ */
+async function handleInternalWeeklyScores(
+  req: IncomingMessage,
+  res: ServerResponse,
+  corsHeaders: Record<string, string>,
+  weekId: string,
+): Promise<boolean> {
+  // Auth check (timing-safe to prevent key oracle attacks)
+  const internalApiKey = process.env.INTERNAL_API_KEY;
+  if (!checkAdminAuth(req, internalApiKey ?? '')) {
+    res.writeHead(401, corsHeaders);
+    res.end(JSON.stringify({ error: 'unauthorized' }));
+    return true;
+  }
+
+  // Safety: refuse requests for the current (in-progress) week.
+  // The week is identified by its Monday 00:10 UTC start. If weekId matches the current
+  // running week, the data is not final yet.
+  const currentWeekId = getWeekId(getCurrentWeekStart());
+  if (weekId === currentWeekId) {
+    res.writeHead(403, corsHeaders);
+    res.end(JSON.stringify({
+      error: 'week_in_progress',
+      message: `Week ${weekId} is still in progress. Request a past weekId.`,
+    }));
+    return true;
+  }
+
+  // Fetch all traders for this week (top 500 max, rank-ordered)
+  const rows = getWeeklyScoreLeaderboard(weekId, 500, 0);
+  if (rows.length === 0) {
+    res.writeHead(200, corsHeaders);
+    res.end(JSON.stringify({ weekId, traders: [], totalTraders: 0 }));
+    return true;
+  }
+
+  const addresses = rows.map((r) => r.address);
+
+  // Resolve identityIds in bulk (uses in-memory cache from identity-resolver)
+  const identityMap = await resolveIdentityIds(addresses);
+
+  // Resolve Genesis Pass status from SQLite cache
+  const genesisPassSet = getGenesisPassBatch(addresses);
+
+  const traders = rows.map((row) => ({
+    rank: row.rank,
+    address: row.address,
+    identityId: identityMap.get(row.address) ?? null,
+    hasGenesisPass: genesisPassSet.has(row.address),
+    totalScore: row.total_score,
+  }));
+
+  res.writeHead(200, corsHeaders);
+  res.end(JSON.stringify({
+    weekId,
+    traders,
+    totalTraders: rows.length,
+    generatedAt: Date.now(),
+  }));
+  return true;
+}
+
+function handleScoreLeaderboardWeekly(
+  res: ServerResponse, url: URL, corsHeaders: Record<string, string>, weekId: string,
+): boolean {
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+  const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+  const rows = getWeeklyScoreLeaderboard(weekId, limit, offset);
+  const totalTraders = getWeeklyScoreCount(weekId);
+  const addresses = rows.map((r) => r.address);
+  const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
+  const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
+  const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+
+  const traders = rows.map((row) => ({
+    rank: row.rank,
+    address: row.address,
+    nickname: nicknames.get(row.address) ?? null,
+    hasGenesisPass: genesisPassSet.has(row.address),
+    totalScore: row.total_score,
+    tradeCount: row.trade_count,
+    volumeUsd: formatQuoteVolume(row.volume_quote),
+    rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - row.rank,
+    followerCount: followerCounts.get(row.address) ?? 0,
+  }));
+
+  const weekStart = getCurrentWeekStart();
+  res.writeHead(200, {
+    ...corsHeaders,
+    'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
+  });
+  res.end(JSON.stringify({
+    scope: 'weekly',
+    weekId,
+    weekStart,
     traders,
     updatedAt: getPadoAggregatorLastRun(),
     totalTraders,
@@ -515,7 +673,7 @@ function handleScoreLeaderboard(
 function handleTraderScore(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>, address: string,
 ): boolean {
-  const scope = url.searchParams.get('scope') || 'alltime';
+  const scope = url.searchParams.get('scope') || 'weekly';
   if (!VALID_SCORE_SCOPES.has(scope)) {
     res.writeHead(400, corsHeaders);
     res.end(JSON.stringify({
@@ -524,33 +682,65 @@ function handleTraderScore(
     }));
     return true;
   }
-  const row = getTraderScore(address);
+
   const nickname = getDisplayName(address);
   const responseHeaders = {
     ...corsHeaders,
     'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
   };
+
+  if (scope === 'alltime') {
+    const row = getTraderScore(address);
+    if (!row) {
+      res.writeHead(200, responseHeaders);
+      res.end(JSON.stringify({
+        address, nickname, totalScore: 0,
+        breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 },
+        rank: 0, scope,
+      }));
+      return true;
+    }
+    res.writeHead(200, responseHeaders);
+    res.end(JSON.stringify({
+      address, nickname,
+      totalScore: row.total_points,
+      breakdown: {
+        trades: row.points_from_trades,
+        volume: row.points_from_volume,
+        diversity: row.points_from_diversity,
+        pnl: row.points_from_pnl ?? 0,
+      },
+      rank: row.rank,
+      scope,
+    }));
+    return true;
+  }
+
+  // weekly scope
+  const weekId = url.searchParams.get('weekId') || getWeekId(getCurrentWeekStart());
+  const row = getTraderWeeklyScore(weekId, address);
   if (!row) {
     res.writeHead(200, responseHeaders);
     res.end(JSON.stringify({
       address, nickname, totalScore: 0,
       breakdown: { trades: 0, volume: 0, diversity: 0, pnl: 0 },
-      rank: 0, scope,
+      rank: 0, scope, weekId,
     }));
     return true;
   }
   res.writeHead(200, responseHeaders);
   res.end(JSON.stringify({
     address, nickname,
-    totalScore: row.total_points,
+    totalScore: row.total_score,
     breakdown: {
-      trades: row.points_from_trades,
-      volume: row.points_from_volume,
-      diversity: row.points_from_diversity,
-      pnl: row.points_from_pnl ?? 0,
+      trades: row.score_from_trades,
+      volume: row.score_from_volume,
+      diversity: row.score_from_diversity,
+      pnl: row.score_from_pnl,
     },
     rank: row.rank,
     scope,
+    weekId,
   }));
   return true;
 }
@@ -886,3 +1076,4 @@ function handleCompetitionUpdate(
     res.end(JSON.stringify({ error: 'Request body too large or malformed' }));
   });
 }
+

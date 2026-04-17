@@ -94,6 +94,9 @@ export function initStore(config: ChatServerConfig): void {
   // Migration: genesis pass badge
   try { db.exec('ALTER TABLE users ADD COLUMN has_genesis_pass INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
+  // Migration: genesis pass cache timestamp (0 = never checked, triggers immediate refresh)
+  try { db.exec('ALTER TABLE users ADD COLUMN gp_checked_at INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
+
   // Migration: profile image URL
   try { db.exec('ALTER TABLE users ADD COLUMN profile_image_url TEXT'); } catch { /* already exists */ }
 
@@ -522,7 +525,23 @@ export function getChatParticipants(dateStr: string): string[] {
 // ===== Genesis Pass Badge =====
 
 export function setGenesisPassStatus(address: string, hasPass: boolean): void {
-  getDb().prepare('UPDATE users SET has_genesis_pass = ? WHERE address = ?').run(hasPass ? 1 : 0, address);
+  getDb()
+    .prepare('UPDATE users SET has_genesis_pass = ?, gp_checked_at = ? WHERE address = ?')
+    .run(hasPass ? 1 : 0, Date.now(), address);
+}
+
+export function getGenesisPassCheckedAt(address: string): number {
+  const row = getDb()
+    .prepare('SELECT gp_checked_at FROM users WHERE address = ?')
+    .get(address) as { gp_checked_at: number } | undefined;
+  return row?.gp_checked_at ?? 0;
+}
+
+export function getGenesisPassStatus(address: string): boolean {
+  const row = getDb()
+    .prepare('SELECT has_genesis_pass FROM users WHERE address = ?')
+    .get(address) as { has_genesis_pass: number } | undefined;
+  return (row?.has_genesis_pass ?? 0) === 1;
 }
 
 export function getGenesisPassBatch(addresses: string[]): Set<string> {
