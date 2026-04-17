@@ -176,54 +176,72 @@ async function executeRequestTokensV2(
   client: SuiClient,
   keypair: Ed25519Keypair,
 ): Promise<boolean> {
-  const tx = buildRequestTokensV2();
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const tx = buildRequestTokensV2();
 
-  try {
-    const result = await client.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
-      options: { showEffects: true },
-    });
+    try {
+      const result = await client.signAndExecuteTransaction({
+        signer: keypair,
+        transaction: tx,
+        options: { showEffects: true },
+      });
 
-    if (result.effects?.status?.status !== 'success') {
-      console.error(`[${timestamp()}] V2 faucet request failed:`, result.effects?.status?.error);
+      if (result.effects?.status?.status !== 'success') {
+        console.error(`[${timestamp()}] V2 faucet request failed:`, result.effects?.status?.error);
+        return false;
+      }
+
+      console.log(`[${timestamp()}] Received tokens from V2 faucet (${MARKET.name}: ${MARKET.faucetBaseAmount})`);
+      await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (attempt < 3 && msg.includes('not available for consumption')) {
+        console.warn(`[${timestamp()}] V2 faucet version conflict, retrying in 5s... (attempt ${attempt}/3)`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+      console.error(`[${timestamp()}] Error requesting from V2 faucet:`, error);
       return false;
     }
-
-    console.log(`[${timestamp()}] Received tokens from V2 faucet (${MARKET.name}: ${MARKET.faucetBaseAmount})`);
-    await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    return true;
-  } catch (error) {
-    console.error(`[${timestamp()}] Error requesting from V2 faucet:`, error);
-    return false;
   }
+  return false;
 }
 
 async function executeRequestNusdc(
   client: SuiClient,
   keypair: Ed25519Keypair,
 ): Promise<boolean> {
-  const tx = buildRequestNusdcOnly();
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const tx = buildRequestNusdcOnly();
 
-  try {
-    const result = await client.signAndExecuteTransaction({
-      signer: keypair,
-      transaction: tx,
-      options: { showEffects: true },
-    });
+    try {
+      const result = await client.signAndExecuteTransaction({
+        signer: keypair,
+        transaction: tx,
+        options: { showEffects: true },
+      });
 
-    if (result.effects?.status?.status !== 'success') {
-      console.error(`[${timestamp()}] NUSDC faucet request failed:`, result.effects?.status?.error);
+      if (result.effects?.status?.status !== 'success') {
+        console.error(`[${timestamp()}] NUSDC faucet request failed:`, result.effects?.status?.error);
+        return false;
+      }
+
+      console.log(`[${timestamp()}] Received 2k NUSDC from V1 faucet`);
+      await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return true;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (attempt < 3 && msg.includes('not available for consumption')) {
+        console.warn(`[${timestamp()}] NUSDC faucet version conflict, retrying in 5s... (attempt ${attempt}/3)`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+      console.error(`[${timestamp()}] Error requesting NUSDC from faucet:`, error);
       return false;
     }
-
-    console.log(`[${timestamp()}] Received 2k NUSDC from V1 faucet`);
-    await client.waitForTransaction({ digest: result.digest, options: { showEffects: true } });
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    return true;
-  } catch (error) {
-    console.error(`[${timestamp()}] Error requesting NUSDC from faucet:`, error);
-    return false;
   }
+  return false;
 }

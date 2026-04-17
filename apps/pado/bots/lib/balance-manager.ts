@@ -352,7 +352,7 @@ export async function depositAllToBalanceManager(
   client: SuiClient,
   keypair: Ed25519Keypair,
   balanceManagerId: string,
-  maxRetries: number = 3,
+  maxRetries: number = 5,
 ): Promise<boolean> {
   const address = keypair.getPublicKey().toSuiAddress();
 
@@ -387,9 +387,13 @@ export async function depositAllToBalanceManager(
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      if (errorMessage.includes('notExists') && attempt < maxRetries) {
-        console.log(`[${timestamp()}] BalanceManager not yet indexed, retrying in ${attempt * 2}s... (attempt ${attempt}/${maxRetries})`);
-        await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+      if (attempt < maxRetries && (
+        errorMessage.includes('notExists') ||
+        errorMessage.includes('not available for consumption')
+      )) {
+        const delayMs = attempt * 5000; // 5s, 10s, 15s
+        console.log(`[${timestamp()}] Deposit version conflict, waiting ${delayMs / 1000}s for RPC to sync... (attempt ${attempt}/${maxRetries})`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
       }
 
