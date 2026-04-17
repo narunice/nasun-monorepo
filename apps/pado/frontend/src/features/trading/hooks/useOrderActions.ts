@@ -58,6 +58,7 @@ async function performAutoDeposit(
 
 export interface UseOrderActionsResult {
   isLoading: boolean;
+  isValidatingBalanceManager: boolean;
   balanceManagerId: string | null;
 
   // Auto deposit runtime state
@@ -119,6 +120,7 @@ export function useOrderActions(): UseOrderActionsResult {
   const { currentPool } = useMarket();
   const {
     isLoading,
+    isValidatingBalanceManager,
     balanceManagerId,
     placeBuyOrder,
     placeSellOrder,
@@ -507,6 +509,7 @@ export function useOrderActions(): UseOrderActionsResult {
 
   return {
     isLoading: isLoading || isEnabling,
+    isValidatingBalanceManager,
     balanceManagerId,
     isAutoDepositing,
     lastAutoDepositError,

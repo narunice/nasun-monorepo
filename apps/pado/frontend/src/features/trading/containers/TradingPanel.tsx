@@ -112,10 +112,10 @@ export function EnablePadoCard() {
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
-  const { isLoading, balanceManagerId, handleCreateBalanceManager } = useOrderActions();
+  const { isLoading, isValidatingBalanceManager, balanceManagerId, handleCreateBalanceManager } = useOrderActions();
 
-  console.log('[EnablePadoCard] balanceManagerId:', balanceManagerId);
-  if (!isConnected || balanceManagerId) return null;
+  console.log('[EnablePadoCard] balanceManagerId:', balanceManagerId, 'validating:', isValidatingBalanceManager);
+  if (!isConnected || balanceManagerId || isValidatingBalanceManager) return null;
 
   return (
     <div data-tour="enable-pado" className="shrink-0 bg-theme-bg-secondary rounded-lg p-4 border border-[var(--color-panel-border)] shadow-panel">
@@ -171,6 +171,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // 주문 액션
   const {
     isLoading,
+    isValidatingBalanceManager,
     balanceManagerId,
     isAutoDepositing,
     handleLimitOrder,
@@ -520,8 +521,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
             </div>
           )}
 
-          {/* Enable Pado banner when connected but no BM */}
-          {isConnected && !balanceManagerId && (
+          {/* Enable Pado banner when connected but no BM (hide while validating) */}
+          {isConnected && !balanceManagerId && !isValidatingBalanceManager && (
             <div className="mb-3 p-4 bg-theme-bg-tertiary rounded-lg text-center shrink-0">
               <div className="text-sm xl:text-base text-theme-text-secondary mb-2">
                 Enable Pado to start trading
