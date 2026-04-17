@@ -211,6 +211,32 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
   if (!pointsColNames.has('points_from_pnl')) {
     db.exec('ALTER TABLE trader_points ADD COLUMN points_from_pnl INTEGER NOT NULL DEFAULT 0');
   }
+
+  // Weekly leaderboard tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS trader_points_weekly (
+      week_id TEXT NOT NULL,
+      address TEXT NOT NULL,
+      total_score INTEGER NOT NULL DEFAULT 0,
+      score_from_trades INTEGER NOT NULL DEFAULT 0,
+      score_from_volume INTEGER NOT NULL DEFAULT 0,
+      score_from_diversity INTEGER NOT NULL DEFAULT 0,
+      score_from_pnl INTEGER NOT NULL DEFAULT 0,
+      trade_count INTEGER NOT NULL DEFAULT 0,
+      volume_quote TEXT NOT NULL DEFAULT '0',
+      rank INTEGER NOT NULL DEFAULT 0,
+      prev_rank INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (week_id, address)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_weekly_rank
+      ON trader_points_weekly(week_id, rank ASC);
+
+    -- weekly_score_snapshots was removed in 2026-04-17 refactor.
+    -- Settlement state is now tracked in PostgreSQL (nasun_points.weekly_score_snapshots).
+    -- settle-pado reads trader_points_weekly via GET /api/pado/internal/weekly-scores/:weekId.
+  `);
 }
 
 export function getLeaderboardDb(): Database.Database {
@@ -1436,3 +1462,171 @@ export function getActiveTraderAddresses(limit: number = 500): string[] {
     .all(limit) as Array<{ address: string }>;
   return rows.map((r) => r.address);
 }
+
+// ===== ISO Week Utilities =====
+
+/**
+ * Compute ISO week number (1-53) for a given date.
+ * ISO 8601: week 1 is the week containing the first Thursday of the year.
+ * Uses ISO week-numbering year (may differ from calendar year near Jan 1).
+ */
+function getISOWeek(date: Date): { year: number; week: number } {
+  // Thursday of the current week determines the ISO year
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7; // Mon=1 ... Sun=7
+  d.setUTCDate(d.getUTCDate() + 4 - day); // Nearest Thursday
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return { year: d.getUTCFullYear(), week };
+}
+
+/**
+ * Format a timestamp as an ISO week ID string: 'YYYY-Www' (e.g. '2026-W17').
+ * Uses ISO week-numbering year to handle year-boundary edge cases correctly.
+ * e.g. 2026-12-31 (Thu) belongs to 2026-W53, not 2027-W01.
+ */
+export function getWeekId(timestampMs: number): string {
+  const { year, week } = getISOWeek(new Date(timestampMs));
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+/**
+ * Return the start of the current ISO week as a UTC timestamp (ms).
+ * Week start = Monday 00:10 UTC (10-minute offset after snapshot window).
+ */
+export function getCurrentWeekStart(): number {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun, 1=Mon...6=Sat
+  const daysSinceMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setUTCDate(now.getUTCDate() - daysSinceMonday);
+  monday.setUTCHours(0, 10, 0, 0);
+  // If we're before Monday 00:10 UTC this week, step back one more week
+  if (monday.getTime() > now.getTime()) {
+    monday.setUTCDate(monday.getUTCDate() - 7);
+  }
+  return monday.getTime();
+}
+
+// ===== Weekly Score Store =====
+
+export interface WeeklyScoreRow {
+  week_id: string;
+  address: string;
+  total_score: number;
+  score_from_trades: number;
+  score_from_volume: number;
+  score_from_diversity: number;
+  score_from_pnl: number;
+  trade_count: number;
+  volume_quote: string;
+  rank: number;
+  prev_rank: number;
+  updated_at: number;
+}
+
+export function getWeeklyCurrentRanks(weekId: string): Map<string, number> {
+  const rows = getLeaderboardDb()
+    .prepare('SELECT address, rank FROM trader_points_weekly WHERE week_id = ?')
+    .all(weekId) as Array<{ address: string; rank: number }>;
+  return new Map(rows.map((r) => [r.address, r.rank]));
+}
+
+/**
+ * Replace the current week's score leaderboard atomically inside a transaction.
+ * Deletes all rows for this week_id, then bulk-inserts the new ranked entries.
+ * The transaction minimises the window where the leaderboard appears empty.
+ */
+export function replaceWeeklyTraderScores(
+  weekId: string,
+  traders: Array<{
+    address: string;
+    totalScore: number;
+    scoreFromTrades: number;
+    scoreFromVolume: number;
+    scoreFromDiversity: number;
+    scoreFromPnl: number;
+    tradeCount: number;
+    volumeQuote: string;
+    rank: number;
+    prevRank: number;
+  }>,
+): void {
+  const ldb = getLeaderboardDb();
+  const now = Date.now();
+
+  const insertStmt = ldb.prepare(
+    `INSERT INTO trader_points_weekly
+       (week_id, address, total_score, score_from_trades, score_from_volume,
+        score_from_diversity, score_from_pnl, trade_count, volume_quote,
+        rank, prev_rank, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(week_id, address) DO UPDATE SET
+       total_score = excluded.total_score,
+       score_from_trades = excluded.score_from_trades,
+       score_from_volume = excluded.score_from_volume,
+       score_from_diversity = excluded.score_from_diversity,
+       score_from_pnl = excluded.score_from_pnl,
+       trade_count = excluded.trade_count,
+       volume_quote = excluded.volume_quote,
+       rank = excluded.rank,
+       prev_rank = excluded.prev_rank,
+       updated_at = excluded.updated_at`
+  );
+
+  const tx = ldb.transaction(() => {
+    // Remove addresses that are no longer in the top list
+    const addresses = traders.map((t) => t.address);
+    if (addresses.length > 0) {
+      const placeholders = addresses.map(() => '?').join(',');
+      ldb.prepare(
+        `DELETE FROM trader_points_weekly WHERE week_id = ? AND address NOT IN (${placeholders})`
+      ).run(weekId, ...addresses);
+    } else {
+      ldb.prepare('DELETE FROM trader_points_weekly WHERE week_id = ?').run(weekId);
+    }
+
+    for (const t of traders) {
+      insertStmt.run(
+        weekId, t.address, t.totalScore,
+        t.scoreFromTrades, t.scoreFromVolume,
+        t.scoreFromDiversity, t.scoreFromPnl,
+        t.tradeCount, t.volumeQuote,
+        t.rank, t.prevRank, now,
+      );
+    }
+  });
+
+  tx();
+}
+
+/** Weekly score leaderboard for a given week_id. */
+export function getWeeklyScoreLeaderboard(
+  weekId: string,
+  limit: number = 50,
+  offset: number = 0,
+): WeeklyScoreRow[] {
+  return getLeaderboardDb()
+    .prepare(
+      `SELECT * FROM trader_points_weekly
+       WHERE week_id = ?
+       ORDER BY rank ASC
+       LIMIT ? OFFSET ?`
+    )
+    .all(weekId, limit, offset) as WeeklyScoreRow[];
+}
+
+export function getWeeklyScoreCount(weekId: string): number {
+  const row = getLeaderboardDb()
+    .prepare('SELECT COUNT(*) as cnt FROM trader_points_weekly WHERE week_id = ?')
+    .get(weekId) as { cnt: number };
+  return row.cnt;
+}
+
+/** Individual trader weekly score. */
+export function getTraderWeeklyScore(weekId: string, address: string): WeeklyScoreRow | null {
+  return (getLeaderboardDb()
+    .prepare('SELECT * FROM trader_points_weekly WHERE week_id = ? AND address = ?')
+    .get(weekId, address) as WeeklyScoreRow | undefined) ?? null;
+}
+

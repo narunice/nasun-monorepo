@@ -15,9 +15,9 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
   PutCommand,
-  GetCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { stripControlChars } from './sanitize.js';
+import { resolveIdentityId } from './identity-resolver.js';
 
 // ===== DDB client (lazy init) =====
 
@@ -32,8 +32,6 @@ function getDdbClient(): DynamoDBDocumentClient {
 // ===== Config =====
 
 const BUG_REPORTS_TABLE = process.env.PADO_FEEDBACK_TABLE || process.env.BUG_REPORTS_TABLE || 'nasun-bug-reports';
-const USER_WALLETS_TABLE = process.env.USER_WALLETS_TABLE || 'UserWallets';
-const WALLET_OWNER_SENTINEL = 'WALLET_OWNER';
 
 const MAX_TITLE_LEN = 100;
 const MAX_DESCRIPTION_LEN = 2000;
@@ -116,22 +114,6 @@ interface BugReportItem {
   submittedVia: 'wallet';
   createdAt: string;
   pageUrl?: string;
-}
-
-// ===== Wallet -> identityId lookup =====
-
-async function resolveIdentityId(walletAddress: string): Promise<string | null> {
-  try {
-    const result = await getDdbClient().send(new GetCommand({
-      TableName: USER_WALLETS_TABLE,
-      Key: { identityId: WALLET_OWNER_SENTINEL, walletAddress },
-    }));
-    const ownerId = result.Item?.ownerIdentityId;
-    return typeof ownerId === 'string' ? ownerId : null;
-  } catch (err) {
-    console.error('[pado-idea] UserWallets lookup failed:', err);
-    return null;
-  }
 }
 
 // ===== Main handler =====
