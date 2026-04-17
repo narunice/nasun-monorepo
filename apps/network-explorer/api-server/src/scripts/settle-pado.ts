@@ -300,6 +300,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  const msg = err instanceof Error ? err.message : String(err);
+  console.error(`\n[settle-pado] FAILED: ${msg}`);
   process.exit(1);
 });
