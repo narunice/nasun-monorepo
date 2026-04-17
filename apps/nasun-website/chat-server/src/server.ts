@@ -2,8 +2,8 @@ import './env.js'; // Must be first: loads .env before any module reads process.
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
-import { randomBytes } from 'node:crypto';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, getAddressesWithProfileName } from './store.js';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, getAddressesWithProfileName } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -19,6 +19,7 @@ import { handlePadoIdeaRequest } from './pado-idea-api.js';
 import type { PadoIdeaApiDeps } from './pado-idea-api.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
+import { invalidateIdentityCache } from './identity-resolver.js';
 
 // ===== State =====
 
@@ -234,6 +235,18 @@ function getCorsOrigin(reqOrigin: string | undefined): string | null {
   return CONFIG.allowedOrigins.includes(reqOrigin) ? reqOrigin : null;
 }
 
+// Timing-safe auth check for internal server-to-server endpoints.
+function checkInternalAuth(req: import('node:http').IncomingMessage, key: string): boolean {
+  if (!key || key.length < 32) return false;
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  const token = authHeader.slice(7);
+  const tokenBuf = Buffer.from(token);
+  const keyBuf = Buffer.from(key);
+  if (tokenBuf.length !== keyBuf.length) return false;
+  return timingSafeEqual(tokenBuf, keyBuf);
+}
+
 function handleHttpRequest(
   req: import('node:http').IncomingMessage,
   res: import('node:http').ServerResponse,
@@ -264,6 +277,20 @@ function handleHttpRequest(
   if (req.url === '/health') {
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ status: 'ok' }));
+    return;
+  }
+
+  // Internal cache invalidation (called by network-explorer when a user registers a new wallet)
+  if (url.pathname === '/api/internal/cache/invalidate' && req.method === 'POST') {
+    const apiKey = process.env.INTERNAL_API_KEY;
+    if (!checkInternalAuth(req, apiKey ?? '')) {
+      res.writeHead(401, corsHeaders);
+      res.end(JSON.stringify({ error: 'unauthorized' }));
+      return;
+    }
+    invalidateIdentityCache();
+    res.writeHead(200, corsHeaders);
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
@@ -546,7 +573,16 @@ async function fetchDisplayName(address: string, client: AuthenticatedClient): P
   }
 }
 
+const GP_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 async function checkGenesisPass(address: string, client: AuthenticatedClient): Promise<void> {
+  const checkedAt = getGenesisPassCheckedAt(address);
+  if (Date.now() - checkedAt < GP_TTL_MS) {
+    // Cache is fresh: use stored value without hitting the API
+    client.hasGenesisPass = getGenesisPassStatus(address);
+    return;
+  }
+
   const apiUrl = CONFIG.genesisPassApiUrl;
   if (!apiUrl) return;
 
@@ -556,7 +592,7 @@ async function checkGenesisPass(address: string, client: AuthenticatedClient): P
     const data = await res.json() as { success?: boolean; data?: { hasGenesisPass?: boolean } };
     const hasPass = data.success === true && data.data?.hasGenesisPass === true;
     client.hasGenesisPass = hasPass;
-    setGenesisPassStatus(address, hasPass);
+    setGenesisPassStatus(address, hasPass); // also updates gp_checked_at
   } catch {
     // Non-critical: badge just won't show
   }

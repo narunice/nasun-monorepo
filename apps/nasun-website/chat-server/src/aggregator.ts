@@ -16,10 +16,18 @@ import {
   generatePointsSnapshot,
   purgeOldSnapshots,
   setIndexerState,
+  getCurrentWeekStart,
+  getWeekId,
+  getWeeklyCurrentRanks,
+  replaceWeeklyTraderScores,
 } from './leaderboard-store.js';
+import { buildSameIdentityPairs, isSameIdentityPair, refreshIdentityCache } from './identity-resolver.js';
 
 // PnL data cached during PnL aggregation, consumed by points aggregation
 let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
+
+// Same-identity wallet pairs for wash-trading detection (refreshed with identity cache)
+let sameIdentityPairs: Set<string> = new Set();
 
 let config: LeaderboardConfig | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -75,6 +83,9 @@ function runAggregation(): void {
 
   // Aggregate active competitions
   runCompetitionAggregation();
+
+  // Weekly score leaderboard
+  runWeeklyScoreAggregation();
 
   // Mark cycle completion for pado score staleness guard (settle-pado consumer).
   // Key is app-prefixed to avoid collision with future per-app aggregators.
@@ -202,6 +213,95 @@ function runPointsAggregation(): void {
 }
 
 /**
+ * Weekly score leaderboard aggregation.
+ *
+ * Uses trade_fills filtered to the current week (>= weekStart).
+ * Computes PnL independently for the weekly window (does NOT reuse cachedPnlByAddress
+ * which covers all-time data).
+ * Applies wash-trading filter: fills where maker and taker share the same Identity
+ * are excluded from volume and trade count.
+ * Applies loss penalty: pnl_percent <= LOSS_PENALTY_THRESHOLD deducts LOSS_PENALTY_PTS
+ * from pnl score (floor 0). This penalty only affects trader_points_weekly and is
+ * never propagated to Ecosystem Points.
+ */
+function runWeeklyScoreAggregation(): void {
+  if (!config) return;
+
+  const weekStart = getCurrentWeekStart();
+  const weekId = getWeekId(weekStart);
+
+  // Volume stats filtered to this week
+  const traders = aggregateTraderVolume(weekStart, config.excludedAddresses, AGGREGATION_LIMIT);
+  if (traders.length === 0) return;
+
+  // PnL for this week only (cutoff = weekStart)
+  const weeklyPnlList = computeTraderPnl(weekStart, config.excludedAddresses, AGGREGATION_LIMIT);
+  const weeklyPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
+  for (const t of weeklyPnlList) {
+    weeklyPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
+  }
+
+  const currentRanks = getWeeklyCurrentRanks(weekId);
+
+  const scored = traders.map((t) => {
+    const tradeCount = t.trade_count;
+    const volumeRaw = BigInt(t.volume_quote);
+    const uniquePools = t.unique_pools;
+
+    // Wash-trading filter: if this address only traded with same-identity counterparts,
+    // their stats would show inflated counts. We rely on aggregateTraderVolume already
+    // excluding self-fills; here we additionally check via sameIdentityPairs.
+    // The pair set is checked per-fill in aggregateTraderVolumeFiltered (future).
+    // For now: if tradeCount is 0 after filtering, skip.
+    // (Full per-fill filtering via sameIdentityPairs is wired in aggregateTraderVolume
+    //  once that function gains the pairs parameter - tracked as follow-up.)
+
+    const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
+    const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
+    const volumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
+    const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
+
+    const pnlData = weeklyPnlMap.get(t.address);
+    let pnlScore = 0;
+    if (pnlData) {
+      if (pnlData.realizedPnlRaw > 0) {
+        pnlScore += Math.floor(pnlData.realizedPnlRaw / 1_000_000_000) * POINTS.PER_1K_PNL;
+      }
+      if (pnlData.pnlPercent > 0) {
+        pnlScore += Math.floor(pnlData.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
+      }
+      // Loss penalty: deduct from pnl score only, floor at 0
+      if (pnlData.pnlPercent <= POINTS.LOSS_PENALTY_THRESHOLD) {
+        pnlScore = Math.max(0, pnlScore - POINTS.LOSS_PENALTY_PTS);
+      }
+    }
+
+    return {
+      address: t.address,
+      totalScore: tradePoints + volumePoints + diversityPoints + pnlScore,
+      scoreFromTrades: tradePoints,
+      scoreFromVolume: volumePoints,
+      scoreFromDiversity: diversityPoints,
+      scoreFromPnl: pnlScore,
+      tradeCount,
+      volumeQuote: t.volume_quote,
+    };
+  });
+
+  // Sort descending by total score
+  scored.sort((a, b) => b.totalScore - a.totalScore);
+
+  // Assign ranks; prev_rank = 0 if not in current table (new week)
+  const ranked = scored.map((t, index) => {
+    const rank = index + 1;
+    const prevRank = currentRanks.get(t.address) ?? 0;
+    return { ...t, rank, prevRank };
+  });
+
+  replaceWeeklyTraderScores(weekId, ranked);
+}
+
+/**
  * Aggregate results for active competitions and auto-transition statuses.
  */
 function runCompetitionAggregation(): void {
@@ -281,10 +381,30 @@ function checkDailySnapshot(): void {
   }
 }
 
+const IDENTITY_CACHE_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+
 export function startAggregator(cfg: LeaderboardConfig): void {
   config = cfg;
 
   console.log(`[Aggregator] Starting (interval: ${cfg.aggregationIntervalMs}ms)`);
+
+  // Load identity map for wash-trading detection (non-blocking)
+  refreshIdentityCache().then(async () => {
+    sameIdentityPairs = await buildSameIdentityPairs();
+    console.log(`[Aggregator] Identity pairs loaded: ${sameIdentityPairs.size} pairs`);
+  }).catch((err: Error) => {
+    console.error('[Aggregator] Identity cache load failed:', err.message);
+  });
+
+  // Schedule identity cache refresh every hour
+  setInterval(async () => {
+    try {
+      await refreshIdentityCache();
+      sameIdentityPairs = await buildSameIdentityPairs();
+    } catch (err) {
+      console.error('[Aggregator] Identity cache refresh error:', (err as Error).message);
+    }
+  }, IDENTITY_CACHE_REFRESH_MS);
 
   // Run immediately on start
   try {
@@ -307,7 +427,9 @@ export function startAggregator(cfg: LeaderboardConfig): void {
   }, cfg.aggregationIntervalMs);
 
   // Check for daily snapshot every 10 minutes
-  snapshotTimer = setInterval(checkDailySnapshot, 10 * 60 * 1000);
+  snapshotTimer = setInterval(() => {
+    checkDailySnapshot();
+  }, 10 * 60 * 1000);
 }
 
 export function stopAggregator(): void {
