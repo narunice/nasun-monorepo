@@ -373,7 +373,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   // Wave 1 Campaign 섹션 (서브메뉴 있음)
   wave1Campaign: {
     path: "/wave1",
-    component: Pages.BattalionNft, // 기본 서브페이지로 Battalion NFT
+    component: Pages.AllianceNft, // 기본 서브페이지로 Alliance NFT
     navItem: {
       name: "navigation.wave1Campaign",
       path: "/wave1",
@@ -389,16 +389,16 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         //   path: "/wave1/genesis-pass",
         //   element: Pages.GenesisPass,
         // },
-        {
-          name: "Genesis Pass Drop",
-          path: "/wave1/genesis-pass-drop",
-          element: Pages.NftDrop,
-        },
-        {
-          name: "navigation.battalion",
-          path: "/wave1/battalion-nft",
-          element: Pages.BattalionNft,
-        },
+        // {
+        //   name: "Genesis Pass Drop",
+        //   path: "/wave1/genesis-pass-drop",
+        //   element: Pages.NftDrop,
+        // },
+        // {
+        //   name: "navigation.battalion",
+        //   path: "/wave1/battalion-nft",
+        //   element: Pages.BattalionNft,
+        // },
         // {
         //   name: "navigation.earlyContributors",
         //   path: "/wave1/early-contributors",
@@ -431,48 +431,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "Wave 1 — NASUN",
       description: "Nasun Wave 1 campaign — Battalion NFT free mint, community leaderboard, and early contributor rewards.",
-    },
-  },
-
-  genesisPassDrop: {
-    path: "/wave1/genesis-pass-drop",
-    component: Pages.NftDrop,
-    navItem: {
-      name: "navigation.genesisPassDrop",
-      path: "/wave1/genesis-pass-drop",
-      hidden: true,
-    },
-    meta: {
-      title: "Genesis Pass Drop - NASUN",
-      description: "Mint your Nasun Genesis Pass. 8 unique video editions on Ethereum mainnet.",
-    },
-  },
-
-  genesisPassDropLegacy: {
-    path: "/legacy/genesis-pass-drop",
-    component: Pages.GenesisPassDrop,
-    navItem: {
-      name: "Genesis Pass Drop (Legacy)",
-      path: "/legacy/genesis-pass-drop",
-      hidden: true,
-    },
-    meta: {
-      title: "Genesis Pass Drop (Legacy) - NASUN",
-      description: "Nasun Genesis Pass mint schedule. Free mint, allowlist, and public mint phases.",
-    },
-  },
-
-  genesisNft: {
-    path: "/wave1/frontiers-event",
-    component: Pages.GenesisNft,
-    navItem: {
-      name: "navigation.genesisEvent",
-      path: "/wave1/frontiers-event",
-      hidden: true,
-    },
-    meta: {
-      title: "Frontiers Event — NASUN",
-      description: "Nasun Frontiers Event — exclusive early access and community engagement opportunities.",
     },
   },
 
