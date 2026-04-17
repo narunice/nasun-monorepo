@@ -13,8 +13,9 @@ interface Props {
   hideHeader?: boolean;
 }
 
-function StatusDot({ status }: { status: string }) {
+function StatusDot({ status, loggedIn }: { status: string; loggedIn: boolean }) {
   const color =
+    !loggedIn ? 'bg-theme-text-muted/40' :
     status === 'connected' ? 'bg-green-500' :
     status === 'connecting' || status === 'authenticating' || status === 'reconnecting' ? 'bg-yellow-500' :
     'bg-red-500';
@@ -72,14 +73,16 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
         <div className="flex items-center justify-between px-3 py-2 border-b border-theme-border shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-trading-sm font-medium text-theme-text-primary">Chat</span>
-            <StatusDot status={status} />
-            {status === 'connecting' || status === 'authenticating' ? (
-              <span className="text-trading-xs text-yellow-500">Connecting...</span>
-            ) : status === 'reconnecting' ? (
-              <span className="text-trading-xs text-yellow-500">Reconnecting...</span>
-            ) : status !== 'connected' ? (
-              <span className="text-trading-xs text-red-400">Offline</span>
-            ) : null}
+            <StatusDot status={status} loggedIn={!!address} />
+            {!address ? null :
+              status === 'connecting' || status === 'authenticating' ? (
+                <span className="text-trading-xs text-yellow-500">Connecting...</span>
+              ) : status === 'reconnecting' ? (
+                <span className="text-trading-xs text-yellow-500">Reconnecting...</span>
+              ) : status !== 'connected' ? (
+                <span className="text-trading-xs text-red-400">Offline</span>
+              ) : null
+            }
           </div>
           <div className="flex items-center gap-2">
             {isConnected && nickname && (
@@ -162,23 +165,32 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
         />
       )}
 
-      {/* Messages */}
-      <ChatMessageList
-        messages={messages}
-        currentAddress={address}
-        hasMore={hasMore}
-        onLoadMore={loadMore}
-        textSize={textSize}
-        onToggleReaction={toggleReaction}
-        onMention={(name) => chatInputRef.current?.insertMention(name)}
-      />
+      {/* Messages or login prompt */}
+      {!address ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 px-4 text-center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-theme-text-muted/50">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <p className="text-trading-sm text-theme-text-muted">Connect your wallet to join the chat</p>
+        </div>
+      ) : (
+        <ChatMessageList
+          messages={messages}
+          currentAddress={address}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+          textSize={textSize}
+          onToggleReaction={toggleReaction}
+          onMention={(name) => chatInputRef.current?.insertMention(name)}
+        />
+      )}
 
       {/* Input */}
       <ChatInput
         ref={chatInputRef}
         onSend={handleSend}
         disabled={!isConnected}
-        disabledPlaceholder={address ? 'Connecting...' : undefined}
+        disabledPlaceholder={!address ? 'Connect wallet to chat' : 'Connecting...'}
       />
 
       {/* Nickname modal */}
