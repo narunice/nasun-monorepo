@@ -45,6 +45,7 @@ let genesisPassHolders = new Set<string>();
 let walletCacheLastRefresh = 0;
 
 let isScanning = false;
+let isReconciling = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
 let lastDailyNftCheckDate = '';
 
@@ -361,22 +362,34 @@ async function scanLoop(myGen: number): Promise<void> {
       }
     }
 
-    // RPC reconciliation: verify yesterday's data against blockchain (once per day, after snapshot)
-    if (todayStr !== lastReconcileDate && lastSnapshotDate === todayStr) {
-      try {
-        const yesterday = new Date();
-        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-        const yesterdayStr = yesterday.toISOString().slice(0, 10);
-        const gapsFilled = await reconcileFromRpc(yesterdayStr, registeredWallets, genesisPassHolders);
-        lastReconcileDate = todayStr;
-        if (gapsFilled > 0) {
-          console.log(`[Reconcile] ${yesterdayStr}: ${gapsFilled} gaps filled from RPC`);
-        } else {
-          console.log(`[Reconcile] ${yesterdayStr}: no gaps found`);
-        }
-      } catch (err) {
-        console.error('[Reconcile] Error (non-fatal):', (err as Error).message);
-      }
+    // RPC reconciliation: verify yesterday's data against blockchain (once per day, after snapshot).
+    // Runs outside the scanLoop timeout window (reconcile can take up to 10 min; scanLoop is capped
+    // at 3 min). Fire-and-forget: set lastReconcileDate immediately to prevent duplicate launches.
+    if (todayStr !== lastReconcileDate && lastSnapshotDate === todayStr && !isReconciling) {
+      lastReconcileDate = todayStr;
+      const yesterday = new Date();
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      // Capture snapshots of caches at launch time (maps are mutated by reference, clone to freeze)
+      const walletSnapshot = new Map(registeredWallets);
+      const genesisSnapshot = new Set(genesisPassHolders);
+      isReconciling = true;
+      reconcileFromRpc(yesterdayStr, walletSnapshot, genesisSnapshot)
+        .then((gapsFilled) => {
+          if (gapsFilled > 0) {
+            console.log(`[Reconcile] ${yesterdayStr}: ${gapsFilled} gaps filled from RPC`);
+          } else {
+            console.log(`[Reconcile] ${yesterdayStr}: no gaps found`);
+          }
+        })
+        .catch((err: unknown) => {
+          console.error('[Reconcile] Error (non-fatal):', (err as Error).message);
+          // Reset so the next scanLoop can retry (prevents permanent skip on transient errors)
+          lastReconcileDate = '';
+        })
+        .finally(() => {
+          isReconciling = false;
+        });
     }
   } catch (err) {
     console.error('[Points] Scan error:', err);
