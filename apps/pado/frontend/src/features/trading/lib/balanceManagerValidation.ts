@@ -47,25 +47,36 @@ export async function findUserBalanceManager(
     const client = getSuiClient();
     const eventType = `${NETWORK_CONFIG.deepbookPackage}::balance_manager::BalanceManagerEvent`;
 
-    const result = await client.queryEvents({
-      query: { Sender: userAddress },
-      limit: 50,
-      order: 'descending',
-    });
-
-    // Collect all unique BM IDs
+    // Paginate ascending (oldest first) so BM creation events are found
+    // even when the user has hundreds of later transactions.
     const candidateIds: string[] = [];
     const seen = new Set<string>();
-    for (const event of result.data) {
-      if (event.type !== eventType) continue;
-      const json = event.parsedJson as {
-        balance_manager_id: string;
-        owner: string;
-      } | undefined;
-      if (!json || json.owner !== userAddress) continue;
-      if (seen.has(json.balance_manager_id)) continue;
-      seen.add(json.balance_manager_id);
-      candidateIds.push(json.balance_manager_id);
+    let cursor: string | null | undefined = null;
+    let hasMore = true;
+
+    while (hasMore) {
+      const result = await client.queryEvents({
+        query: { Sender: userAddress },
+        cursor: cursor ?? undefined,
+        limit: 50,
+        order: 'ascending',
+      });
+
+      for (const event of result.data) {
+        if (event.type !== eventType) continue;
+        const json = event.parsedJson as {
+          balance_manager_id: string;
+          owner: string;
+        } | undefined;
+        if (!json || json.owner !== userAddress) continue;
+        if (seen.has(json.balance_manager_id)) continue;
+        seen.add(json.balance_manager_id);
+        candidateIds.push(json.balance_manager_id);
+      }
+
+      hasMore = result.hasNextPage;
+      if (!result.nextCursor) break;
+      cursor = result.nextCursor;
     }
 
     if (candidateIds.length === 0) return empty;
