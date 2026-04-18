@@ -15,11 +15,9 @@ import {
   calculateReferralBonuses,
   type PointsInsert,
 } from './referral-bonus.js';
-import { calculateDailyMissions } from './daily-mission.js';
 import {
   maybeRefreshActivationsCache,
   maybeRefreshMatview,
-  isMatviewStale,
   getMatviewStatus,
   getActivationsCacheMap,
 } from './ecosystem-cache.js';
@@ -47,7 +45,13 @@ let walletCacheLastRefresh = 0;
 let isScanning = false;
 let isReconciling = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
+let matviewTimerId: ReturnType<typeof setInterval> | null = null;
 let lastDailyNftCheckDate = '';
+
+// Matview refresh runs on its own timer, independent of scanLoop, so a slow
+// REFRESH MATERIALIZED VIEW CONCURRENTLY (can exceed 3min on large tables)
+// never triggers the scanLoop timeout.
+const MATVIEW_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 // Hard ceiling for a single scanLoop iteration. If it doesn't return within
 // this window we assume something hung (RPC, DB, cache refresh) and start
@@ -114,6 +118,16 @@ export function startPointsScanner(): void {
     return;
   }
   console.log('[Points] Scanner starting...');
+  // Matview refresh runs independently so it never blocks or times out the scanLoop.
+  // Fire immediately on startup to cover the first 5-minute window (setInterval fires after delay).
+  maybeRefreshMatview().catch((err) => {
+    console.error('[Ecosystem] Initial matview refresh error:', (err as Error).message);
+  });
+  matviewTimerId = setInterval(() => {
+    maybeRefreshMatview().catch((err) => {
+      console.error('[Ecosystem] Scheduled matview refresh error:', (err as Error).message);
+    });
+  }, MATVIEW_REFRESH_INTERVAL_MS);
   // Initial scan after 5s delay (let API server warm up)
   scanTimerId = setTimeout(async () => {
     try {
@@ -136,6 +150,10 @@ export function stopPointsScanner(): void {
   if (scanTimerId) {
     clearTimeout(scanTimerId);
     scanTimerId = null;
+  }
+  if (matviewTimerId) {
+    clearInterval(matviewTimerId);
+    matviewTimerId = null;
   }
 }
 
@@ -313,25 +331,20 @@ async function scanLoop(myGen: number): Promise<void> {
     }
 
     if (totalProcessed > 0) {
-      // Refresh ecosystem matview when new data was processed
-      try {
-        await maybeRefreshMatview();
-      } catch (err) {
+      // Trigger matview refresh fire-and-forget so scanLoop is not blocked.
+      // The independent matview timer (startMatviewWorker) also covers staleness.
+      maybeRefreshMatview().catch((err) => {
         console.error('[Ecosystem] Matview refresh error (non-fatal):', (err as Error).message);
-      }
-    } else if (isMatviewStale()) {
-      // Even without new data, refresh if stale beyond max threshold
-      try {
-        await maybeRefreshMatview(true);
-      } catch (err) {
-        console.error('[Ecosystem] Matview stale refresh error (non-fatal):', (err as Error).message);
-      }
+      });
     }
 
-    // Daily ecosystem snapshot (after matview is fresh, 5min grace after UTC midnight)
+    // Daily ecosystem snapshot (after matview is fresh, 5min grace after UTC midnight).
     const utcMinutes = new Date().getUTCMinutes();
     if (todayStr !== lastSnapshotDate && utcMinutes >= 5) {
-      // Ensure matview is fresh before snapshot to capture all yesterday's data
+      // Ensure matview is fresh before snapshot: stale data here produces wrong historical records.
+      // This is the one place we await the refresh — it runs once per day so the latency is acceptable,
+      // and the independent matview timer's MATVIEW_REFRESH_MIN_INTERVAL_MS guard makes it a no-op
+      // if a refresh already completed recently.
       try {
         await maybeRefreshMatview();
       } catch (err) {
