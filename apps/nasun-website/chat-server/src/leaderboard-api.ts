@@ -27,6 +27,7 @@ import {
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
   getWeeklyScoreLeaderboard, getWeeklyScoreCount, getTraderWeeklyScore,
+  getAvailableWeeks,
   getCurrentWeekStart, getWeekId,
   getFollowedTraderFills,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
@@ -209,6 +210,12 @@ export function handleLeaderboardRequest(
     }
     if (pathname === '/api/pado/leaderboard/score/alltime' && method === 'GET') {
       return handleScoreLeaderboardAlltime(res, url, corsHeaders);
+    }
+    if (pathname === '/api/pado/leaderboard/score/weekly' && method === 'GET') {
+      const weeks = getAvailableWeeks();
+      res.writeHead(200, { ...corsHeaders, 'Cache-Control': 'public, max-age=120, stale-while-revalidate=300' });
+      res.end(JSON.stringify({ weeks }));
+      return true;
     }
 
     // Internal endpoint: settlement server (settle-pado on node-3) pulls weekly scores

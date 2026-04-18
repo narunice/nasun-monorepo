@@ -1444,6 +1444,30 @@ export function replaceWeeklyTraderScores(
   tx();
 }
 
+function formatWeekLabel(weekId: string): string {
+  if (!/^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/.test(weekId)) return weekId;
+  const [yearStr, wStr] = weekId.split('-W');
+  const year = parseInt(yearStr, 10);
+  const week = parseInt(wStr, 10);
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const dayOfWeek = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - (dayOfWeek - 1) + (week - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return `W${wStr} (${fmt(monday)} - ${fmt(sunday)})`;
+}
+
+/** List of week IDs with labels, ordered newest first. */
+export function getAvailableWeeks(): Array<{ weekId: string; label: string }> {
+  // idx_weekly_rank (week_id, rank ASC) covers this as an index-only scan
+  const rows = getLeaderboardDb()
+    .prepare('SELECT DISTINCT week_id FROM trader_points_weekly ORDER BY week_id DESC')
+    .all() as Array<{ week_id: string }>;
+  return rows.map(r => ({ weekId: r.week_id, label: formatWeekLabel(r.week_id) }));
+}
+
 /** Weekly score leaderboard for a given week_id. */
 export function getWeeklyScoreLeaderboard(
   weekId: string,

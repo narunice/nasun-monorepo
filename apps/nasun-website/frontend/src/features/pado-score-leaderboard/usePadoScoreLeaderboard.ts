@@ -63,12 +63,33 @@ async function fetchWeeklyScoreLeaderboard(
   return res.json();
 }
 
-export function usePadoScoreLeaderboard(limit = 50, offset = 0) {
-  const weekId = getWeekId(0);
+export interface AvailableWeek { weekId: string; label: string; }
+
+export function useAvailableWeeks() {
+  return useQuery<{ weeks: AvailableWeek[] }>({
+    queryKey: ['pado-score-leaderboard', 'weeks'],
+    queryFn: async () => {
+      const baseUrl = getChatHttpUrl();
+      if (!baseUrl) return { weeks: [] };
+      const res = await fetch(`${baseUrl}/api/pado/leaderboard/score/weekly`);
+      if (!res.ok) throw new Error(`Available weeks API error: ${res.status}`);
+      return res.json();
+    },
+    enabled: !!getChatHttpUrl(),
+    staleTime: 2 * 60_000,
+  });
+}
+
+export function getCurrentWeekId(): string {
+  return getWeekId(0);
+}
+
+export function usePadoScoreLeaderboard(weekId?: string, limit = 50, offset = 0) {
+  const resolvedWeekId = weekId ?? getWeekId(0);
 
   return useQuery<ScoreLeaderboardResponse>({
-    queryKey: ['pado-score-leaderboard', 'current', weekId, limit, offset],
-    queryFn: () => fetchWeeklyScoreLeaderboard(weekId, limit, offset),
+    queryKey: ['pado-score-leaderboard', 'current', resolvedWeekId, limit, offset],
+    queryFn: () => fetchWeeklyScoreLeaderboard(resolvedWeekId, limit, offset),
     enabled: !!getChatHttpUrl(),
     staleTime: 15_000,
     refetchInterval: 30_000,
