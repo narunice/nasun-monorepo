@@ -539,14 +539,14 @@ export function Header() {
           )}
         </nav>
 
-        {/* Right side: Theme Toggle + Wallet */}
+        {/* Right side: Theme Toggle + Net Value + Eco Points + Wallet + nasun.io */}
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
+          {hasSpotAccess && <HeaderNetValue />}
           <EcoPointsBadge />
           {hasGenesisPass && (
             <GenesisPassBadge className="hidden sm:inline-flex" />
           )}
-          {hasSpotAccess && <HeaderNetValue />}
           {showWalletButton && (
             <WalletConnect
               addressStartChars={isMobile ? 0 : 2}
