@@ -15,7 +15,7 @@
  * Environment:
  *   LP_PRIVATE_KEY (or LP_PRIVATE_KEY_NBTC/NETH/NSOL)
  *   ORACLE_ADMIN_KEY       - Admin keypair used to transfer gas to bot wallets (required for gas refill)
- *   WATCHDOG_INTERVAL_MS   - check interval (default: 600000 = 10 min)
+ *   WATCHDOG_INTERVAL_MS   - check interval (default: 300000 = 5 min)
  *   WATCHDOG_REFILL_ROUNDS - faucet rounds per refill (default: 50)
  *   WATCHDOG_GAS_THRESHOLD - refill when gas drops below this (NASUN, default: 5)
  *   WATCHDOG_GAS_AMOUNT    - how much NASUN to transfer per top-up (default: 50)
@@ -29,7 +29,7 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 // ===== Configuration =====
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
-const INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '600000', 10); // 10 min
+const INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '300000', 10); // 5 min
 const REFILL_ROUNDS = parseInt(process.env.WATCHDOG_REFILL_ROUNDS || '50', 10);
 const FAUCET_URL = process.env.FAUCET_URL || 'https://faucet.devnet.nasun.io';
 const GAS_LOW_THRESHOLD = parseFloat(process.env.WATCHDOG_GAS_THRESHOLD || '5'); // NASUN
@@ -305,14 +305,17 @@ async function main() {
   // Initial check
   await checkAndRefill(client);
 
-  // Periodic checks
-  setInterval(async () => {
+  // Periodic checks (sequential setTimeout prevents concurrent invocations on slow RPC)
+  const scheduleNext = () => setTimeout(async () => {
     try {
       await checkAndRefill(client);
     } catch (err) {
       console.error(`[${timestamp()}] Watchdog error:`, err instanceof Error ? err.message : err);
+    } finally {
+      scheduleNext();
     }
   }, INTERVAL_MS);
+  scheduleNext();
 }
 
 main().catch((err) => {

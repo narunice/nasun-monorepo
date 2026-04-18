@@ -59,7 +59,7 @@ import {
   getGasBalance,
   depositAllToBalanceManager,
 } from './lib/balance-manager.js';
-import { requestTokens, requestGas } from './lib/faucet.js';
+import { requestTokens } from './lib/faucet.js';
 import { withRetry } from './lib/retry.js';
 
 // ========================================
@@ -74,22 +74,14 @@ async function runBot(
 ): Promise<void> {
   const address = keypair.getPublicKey().toSuiAddress();
 
-  // Step 0: Ensure sufficient gas
+  // Step 0: Ensure sufficient gas (refill delegated to balance-watchdog via admin transfer)
   const gasBalance = await withRetry(
     () => getGasBalance(client, address),
     { label: 'getGasBalance', maxRetries: 4, baseDelayMs: 2000 },
   );
   if (gasBalance < config.gasRefillThreshold) {
-    console.log(`[${timestamp()}] Low gas: ${gasBalance.toFixed(4)} NASUN, requesting from faucet...`);
-    const gasSuccess = await requestGas(address);
-    if (gasSuccess) {
-      const newGas = await getGasBalance(client, address);
-      console.log(`[${timestamp()}] Gas balance: ${newGas.toFixed(4)} NASUN`);
-    } else {
-      console.error(`[${timestamp()}] Gas faucet request failed, skipping cycle`);
-      state.consecutiveFailures++;
-      return;
-    }
+    console.warn(`[${timestamp()}] Low gas: ${gasBalance.toFixed(4)} NASUN, skipping cycle (watchdog will refill)`);
+    return;
   }
 
   // Step 1: Fetch current price
@@ -299,13 +291,8 @@ async function runBot(
     console.log(`[${timestamp()}] Best bid: $${bestBid.toLocaleString()}, Best ask: $${bestAsk.toLocaleString()}, Spread: ${spread.toFixed(2)}%`);
   } else {
     if (result.error && isGasExhaustedError(result.error)) {
-      console.log(`[${timestamp()}] Gas exhaustion during order sync, requesting refill...`);
-      const gasSuccess = await requestGas(address);
-      if (gasSuccess) {
-        const newGas = await getGasBalance(client, address);
-        console.log(`[${timestamp()}] Gas refilled: ${newGas.toFixed(4)} NASUN, will retry next cycle`);
-        return;
-      }
+      console.warn(`[${timestamp()}] Gas exhaustion during order sync, skipping cycle (watchdog will refill)`);
+      return;
     }
 
     console.error(`[${timestamp()}] Failed to sync orders: ${result.error}`);
@@ -334,17 +321,8 @@ async function initialize(
   console.log(`[${timestamp()}] Gas: ${gasBalance.toFixed(4)} NASUN`);
 
   if (gasBalance < config.gasRefillThreshold) {
-    console.log(`[${timestamp()}] Low gas, requesting from faucet...`);
-    const gasSuccess = await requestGas(address);
-    if (!gasSuccess) {
-      console.error(`[${timestamp()}] Gas faucet failed`);
-      return false;
-    }
-    const newGas = await withRetry(
-      () => getGasBalance(client, address),
-      { label: 'getGasBalance', maxRetries: 3, baseDelayMs: 2000 },
-    );
-    console.log(`[${timestamp()}] Gas after faucet: ${newGas.toFixed(4)} NASUN`);
+    console.warn(`[${timestamp()}] Low gas: ${gasBalance.toFixed(4)} NASUN (watchdog will refill), waiting...`);
+    return false;
   }
 
   const walletBalance = await withRetry(
@@ -553,13 +531,8 @@ async function main() {
       console.error(`[${timestamp()}] Error:`, msg);
 
       if (isGasExhaustedError(msg)) {
-        console.log(`[${timestamp()}] Gas exhaustion detected, requesting refill...`);
-        const gasSuccess = await requestGas(address);
-        if (gasSuccess) {
-          const newGas = await getGasBalance(client, address);
-          console.log(`[${timestamp()}] Gas refilled: ${newGas.toFixed(4)} NASUN, will retry next cycle`);
-          return;
-        }
+        console.warn(`[${timestamp()}] Gas exhaustion detected, skipping cycle (watchdog will refill)`);
+        return;
       }
 
       state.consecutiveFailures++;
