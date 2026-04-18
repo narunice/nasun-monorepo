@@ -431,136 +431,195 @@ app.get('/score/:identityId', async (c) => {
   return c.json({ data });
 });
 
-// GET /api/v1/ecosystem/leaderboard?period=daily|weekly&limit=50&offset=0
+// --- Weekly leaderboard helpers ---
+// ISO 8601 Thursday-anchor week ID (e.g. "2026-W17").
+// Mirrors the algorithm used in chat-server/leaderboard-store.ts.
+function getISOWeek(date: Date): { year: number; week: number } {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return { year: d.getUTCFullYear(), week };
+}
+
+function getCurrentWeekId(): string {
+  const { year, week } = getISOWeek(new Date());
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+// Monday 00:10 UTC is the canonical week reset boundary (matches Pado Score Leaderboard).
+// Returns { start, end } as Date objects for use as SQL parameters.
+function getWeekBounds(weekId: string): { start: Date; end: Date } | null {
+  const match = weekId.match(/^(\d{4})-W(\d{2})$/);
+  if (!match) return null;
+  const year = parseInt(match[1], 10);
+  const week = parseInt(match[2], 10);
+  if (week < 1 || week > 53) return null;
+
+  // Find the Monday of ISO week: Jan 4 is always in week 1.
+  // Approach: compute Jan 4 of the ISO year, go to its Monday, then add (week-1)*7 days.
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7; // Mon=1..Sun=7
+  const week1Monday = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
+  const weekMonday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86_400_000);
+
+  // Offset by 10 minutes to match Pado reset boundary
+  const start = new Date(weekMonday.getTime() + 10 * 60 * 1000);
+  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+  return { start, end };
+}
+
+// Earliest allowed week (floor for /leaderboard/weeks list).
+// Prevents stale test/staging data from inflating the week list.
+const ECOSYSTEM_LEADERBOARD_FLOOR_DATE = new Date('2025-01-01T00:00:00Z');
+
+// GET /api/v1/ecosystem/leaderboard/weeks
+// Returns available week IDs in descending order (current week first).
+app.get('/leaderboard/weeks', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+
+  const getWeeks = cached('eco-leaderboard-weeks', 60 * 60 * 1000, async () => {
+    const [minRow] = await pointsDb!`
+      SELECT MIN(tx_timestamp) as min_ts FROM activity_points
+      WHERE identity_id IS NOT NULL AND NOT flagged
+    `;
+    const rawMin = minRow?.min_ts as Date | null;
+    const flooredMin = rawMin && rawMin > ECOSYSTEM_LEADERBOARD_FLOOR_DATE
+      ? rawMin
+      : ECOSYSTEM_LEADERBOARD_FLOOR_DATE;
+
+    const currentWeekId = getCurrentWeekId();
+    const weeks: Array<{ weekId: string; label: string }> = [];
+    let cursor = new Date();
+    const seen = new Set<string>();
+
+    while (true) {
+      const { year, week } = getISOWeek(cursor);
+      const wId = `${year}-W${String(week).padStart(2, '0')}`;
+      if (seen.has(wId)) break;
+      seen.add(wId);
+
+      const bounds = getWeekBounds(wId);
+      if (!bounds || bounds.start < flooredMin) break;
+
+      const mon = new Date(bounds.start.getTime() - 10 * 60 * 1000); // strip 10min offset for label
+      const sun = new Date(mon.getTime() + 6 * 24 * 60 * 60 * 1000);
+      const fmt = (d: Date) =>
+        d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      const label = wId === currentWeekId
+        ? `${wId} (current)`
+        : `${wId} (${fmt(mon)} - ${fmt(sun)})`;
+
+      weeks.push({ weekId: wId, label });
+
+      // Move to previous week
+      cursor = new Date(cursor.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    return weeks;
+  });
+
+  const weeks = await getWeeks();
+  c.header('Cache-Control', 'public, max-age=3600');
+  return c.json({ weeks });
+});
+
+// GET /api/v1/ecosystem/leaderboard?weekId=2026-W17&limit=50&offset=0
+//
+// Weekly ecosystem leaderboard — no NFT multiplier applied to ranking.
+// Score = activity_diversity_score (distinct non-pado categories per day, summed over week)
+//       + creator_post_score (admin-granted ecosystem-bonus-creator-posts points)
+// All users with any activity in the week appear; NFT ownership is not required.
 app.get('/leaderboard', async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points_not_configured' }, 503);
   }
 
-  const rawPeriod = c.req.query('period');
-  const period = rawPeriod === 'weekly' ? 'weekly' : rawPeriod === 'monthly' ? 'monthly' : rawPeriod === 'all-time' ? 'all-time' : 'daily';
+  const rawWeekId = c.req.query('weekId');
+  const weekId = rawWeekId && /^\d{4}-W\d{2}$/.test(rawWeekId)
+    ? rawWeekId
+    : getCurrentWeekId();
+
   const limit = parseLimit(c.req.query('limit'));
   const offset = parseOffset(c.req.query('offset'));
 
-  // Query only NFT-activated users from matview, then apply multipliers and re-sort.
-  // No LIMIT: every activated user is included regardless of base_score.
+  const bounds = getWeekBounds(weekId);
+  if (!bounds) {
+    return c.json({ error: 'invalid_week_id' }, 400);
+  }
+
   const getScoredLeaderboard = cached(
-    `eco-leaderboard-scored-${period}`,
+    `eco-leaderboard-${weekId}`,
     5 * 60 * 1000,
     async () => {
-      // Snapshot activated IDs inside closure (evaluated on cache miss only)
-      const activatedIds = [...getActivationsCacheMap().keys()];
-      if (activatedIds.length === 0) return [];
+      // Excluded from activity diversity score (same logic as matview, plus all pado-*):
+      //   - system-generated bonuses (referral-bonus, daily-mission, ecosystem-passive, staking-daily, staking)
+      //   - ecosystem-bonus-* (creator-posts counted separately below)
+      //   - pado-* (covered by the dedicated Pado Score Leaderboard)
+      const rows = await pointsDb!`
+        WITH week_activities AS (
+          SELECT DISTINCT identity_id,
+            date_trunc('day', tx_timestamp AT TIME ZONE 'UTC')::date AS day,
+            category
+          FROM activity_points
+          WHERE NOT flagged
+            AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start}
+            AND tx_timestamp < ${bounds.end}
+            AND category NOT IN (
+              'referral-bonus', 'daily-mission', 'ecosystem-passive',
+              'staking-daily', 'staking'
+            )
+            AND category NOT LIKE 'ecosystem-bonus-%'
+            AND category NOT LIKE 'pado-%'
+        ),
+        activity_score AS (
+          SELECT identity_id,
+                 COUNT(*)::int AS activity_score,
+                 COUNT(DISTINCT day)::int AS active_days
+          FROM week_activities
+          GROUP BY identity_id
+        ),
+        creator_post_score AS (
+          SELECT identity_id,
+                 COALESCE(SUM(final_points), 0)::numeric AS post_score
+          FROM activity_points
+          WHERE category = 'ecosystem-bonus-creator-posts'
+            AND NOT flagged
+            AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start}
+            AND tx_timestamp < ${bounds.end}
+          GROUP BY identity_id
+        )
+        SELECT
+          COALESCE(a.identity_id, c.identity_id) AS identity_id,
+          COALESCE(a.activity_score, 0)::int AS activity_score,
+          COALESCE(c.post_score, 0)::numeric AS post_score,
+          (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0))::numeric AS weekly_score,
+          COALESCE(a.active_days, 0)::int AS active_days
+        FROM activity_score a
+        FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
+        ORDER BY weekly_score DESC, identity_id ASC
+      `;
 
-      const rows = period === 'daily'
-        ? await pointsDb!`
-            SELECT identity_id, base_score::int as base_score
-            FROM ecosystem_daily_scores
-            WHERE identity_id = ANY(${activatedIds})
-              AND day = CURRENT_DATE
-            ORDER BY base_score DESC
-          `
-        : period === 'all-time'
-        ? await pointsDb!`
-            SELECT identity_id,
-                   SUM(base_score)::int as base_score,
-                   COUNT(*)::int as active_days
-            FROM ecosystem_daily_scores
-            WHERE identity_id = ANY(${activatedIds})
-            GROUP BY identity_id
-            ORDER BY SUM(base_score) DESC
-          `
-        : await pointsDb!`
-            SELECT identity_id,
-                   SUM(base_score)::int as base_score,
-                   COUNT(*)::int as active_days
-            FROM ecosystem_daily_scores
-            WHERE identity_id = ANY(${activatedIds})
-              AND day >= CURRENT_DATE - make_interval(days => ${period === 'monthly' ? 29 : 6})
-              AND day <= CURRENT_DATE
-            GROUP BY identity_id
-            ORDER BY SUM(base_score) DESC
-          `;
-
-      // Batch penalty check inside cache
-      const leaderboardIds = rows.map(r => r.identity_id as string);
-      let penalizedSet = new Set<string>();
-      if (leaderboardIds.length > 0) {
-        const penalizedRows = await pointsDb!`
-          SELECT ap.identity_id FROM alliance_penalties ap
-          JOIN alliance_first_seen afs ON ap.identity_id = afs.identity_id
-          WHERE ap.identity_id = ANY(${leaderboardIds})
-            AND afs.first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
-        `;
-        penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
-      }
-
-      // Batch bonus + referral queries for all leaderboard users.
-      // bonus: synthetic INCLUDED intentionally — leaderboard ranking reflects
-      // allTime bonus including recovery (never-reduce-score principle).
-      let bonusMap = new Map<string, number>();
-      let referralMap = new Map<string, number>();
-      if (leaderboardIds.length > 0) {
-        const [bonusRows, referralRows] = await Promise.all([
-          pointsDb!`
-            SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
-            FROM activity_points
-            WHERE identity_id = ANY(${leaderboardIds})
-              AND category LIKE 'ecosystem-bonus-%'
-              AND NOT flagged
-            GROUP BY identity_id
-          `,
-          pointsDb!`
-            SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as referral
-            FROM activity_points
-            WHERE identity_id = ANY(${leaderboardIds})
-              AND category = 'referral-bonus'
-              AND NOT flagged
-            GROUP BY identity_id
-          `,
-        ]);
-        for (const br of bonusRows) {
-          bonusMap.set(br.identity_id as string, parseFloat(br.bonus as string));
-        }
-        for (const rr of referralRows) {
-          referralMap.set(rr.identity_id as string, parseFloat(rr.referral as string));
-        }
-      }
-
-      const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
-      return rows.map((r) => {
-        const id = r.identity_id as string;
-        let activations = getActivationsForUser(id);
-        if (penalizedSet.has(id)) {
-          activations = activations.filter(a => a.nftType !== 'alliance');
-        }
-        const multiplier = calculateMultiplier(activations);
-        const baseScore = r.base_score as number;
-        const bonus = bonusMap.get(id) ?? 0;
-        const referral = referralMap.get(id) ?? 0;
-        return {
-          identityId: id,
-          baseScore,
-          multiplier: roundTo2(multiplier),
-          bonusTotal: roundTo2(bonus),
-          referralBonus: roundTo2(referral),
-          ecosystemScore: roundTo2(baseScore * multiplier + bonus + referral * sf),
-          ...(period !== 'daily' ? { activeDays: r.active_days as number } : {}),
-        };
-      });
+      return rows.map((r) => ({
+        identityId: r.identity_id as string,
+        activityScore: r.activity_score as number,
+        creatorPostScore: parseFloat(r.post_score as string),
+        weeklyScore: parseFloat(r.weekly_score as string),
+        activeDays: r.active_days as number,
+      }));
     },
   );
 
-  const scored = await getScoredLeaderboard();
+  const all = await getScoredLeaderboard();
 
-  // Exclude penalized alliance-only users (multiplier=0 after penalty)
-  const active = scored.filter(e => e.multiplier > 0);
-  active.sort((a, b) => b.ecosystemScore - a.ecosystemScore);
-
-  // Apply offset/limit and assign ranks
-  const page = active.slice(offset, offset + limit);
+  const page = all.slice(offset, offset + limit);
   const ranked = page.map((entry, i) => ({
     ...entry,
+    creatorPostScore: roundTo2(entry.creatorPostScore),
+    weeklyScore: roundTo2(entry.weeklyScore),
     rank: offset + i + 1,
   }));
 
@@ -568,10 +627,12 @@ app.get('/leaderboard', async (c) => {
   return c.json({
     data: ranked,
     meta: {
-      period,
+      weekId,
+      weekStart: bounds.start.getTime(),
       limit,
       offset,
-      total: active.length,
+      total: all.length,
+      updatedAt: Date.now(),
     },
   });
 });

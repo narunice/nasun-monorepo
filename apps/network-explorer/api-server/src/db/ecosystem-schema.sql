@@ -6,6 +6,13 @@
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_identity_timestamp
   ON activity_points(identity_id, tx_timestamp);
 
+-- 1b. Composite index for weekly leaderboard direct queries on activity_points.
+-- Covers: tx_timestamp range scan + category filter + flagged exclusion.
+-- Used by: GET /ecosystem/leaderboard (weekly score aggregation, no matview).
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_timestamp_category_flagged
+  ON activity_points(tx_timestamp, category)
+  WHERE NOT flagged AND identity_id IS NOT NULL;
+
 -- ⚠ SCHEMA CHANGES TO THE MATVIEW BELOW DO NOT AUTO-APPLY ⚠
 -- CREATE MATERIALIZED VIEW has no OR REPLACE form and the IF NOT EXISTS
 -- clause short-circuits when the view already exists. The scanner's DB role
