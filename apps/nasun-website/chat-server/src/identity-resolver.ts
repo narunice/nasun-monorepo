@@ -15,7 +15,7 @@
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 
 // ===== DynamoDB client (shared, lazy init) =====
 
@@ -202,6 +202,86 @@ export async function buildSameIdentityPairs(): Promise<Set<string>> {
     }
   }
   return pairs;
+}
+
+const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
+
+// DynamoDB BatchGetItem hard limit per request.
+const BATCH_GET_LIMIT = 100;
+// Max retry attempts for UnprocessedKeys (exponential backoff: 100ms, 200ms, 400ms).
+const BATCH_GET_MAX_RETRIES = 3;
+
+/**
+ * Returns the set of identityIds that have at least one social account connected.
+ * Social accounts: Twitter (primary or linked), Google (primary or linked), Telegram channel member.
+ *
+ * Handles DynamoDB UnprocessedKeys with exponential backoff retries.
+ * On error, throws so the caller can abort rather than silently skipping identities.
+ */
+export async function checkSocialConnectionsBatch(identityIds: string[]): Promise<Set<string>> {
+  if (identityIds.length === 0) return new Set();
+
+  const ddb = getDdbClient();
+  const result = new Set<string>();
+
+  for (let i = 0; i < identityIds.length; i += BATCH_GET_LIMIT) {
+    const chunk = identityIds.slice(i, i + BATCH_GET_LIMIT);
+
+    // Initial request keys; retried if DynamoDB returns UnprocessedKeys.
+    let pendingKeys: Array<Record<string, unknown>> = chunk.map((id) => ({ identityId: id }));
+
+    for (let attempt = 0; pendingKeys.length > 0; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** (attempt - 1)));
+      }
+      if (attempt > BATCH_GET_MAX_RETRIES) {
+        throw new Error(
+          `[identity-resolver] BatchGetItem exceeded ${BATCH_GET_MAX_RETRIES} retries for ${pendingKeys.length} unprocessed keys`,
+        );
+      }
+
+      const response = await ddb.send(new BatchGetCommand({
+        RequestItems: {
+          [USER_PROFILES_TABLE]: {
+            Keys: pendingKeys,
+            ProjectionExpression: 'identityId, #p, linkedAccounts, isTelegramMember, telegramUserId, twitterHandle',
+            ExpressionAttributeNames: { '#p': 'provider' },
+          },
+        },
+      }));
+
+      const items = response.Responses?.[USER_PROFILES_TABLE] ?? [];
+      for (const item of items) {
+        if (hasSocialConnection(item)) {
+          result.add(item.identityId as string);
+        }
+      }
+
+      // Retry any keys DynamoDB could not process (throughput exceeded).
+      pendingKeys = (response.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys ?? []) as Array<Record<string, unknown>>;
+    }
+  }
+
+  return result;
+}
+
+function hasSocialConnection(profile: Record<string, unknown>): boolean {
+  // Twitter: primary auth or linked account or standalone twitterHandle field
+  const provider = (profile.provider as string | undefined)?.toLowerCase();
+  if (provider === 'twitter') return true;
+  if (typeof profile.twitterHandle === 'string' && profile.twitterHandle.length > 0) return true;
+
+  // Google: primary auth (both 'Google' and Cognito Federated 'accounts.google.com') or linked
+  if (provider === 'google' || provider === 'accounts.google.com') return true;
+
+  const linked = profile.linkedAccounts as Record<string, unknown> | undefined;
+  if (linked?.twitter || linked?.google) return true;
+
+  // Telegram: channel membership flag or userId presence
+  if (profile.isTelegramMember === true) return true;
+  if (typeof profile.telegramUserId === 'string' && profile.telegramUserId.length > 0) return true;
+
+  return false;
 }
 
 /**

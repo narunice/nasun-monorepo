@@ -36,7 +36,7 @@ import {
 import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
 import { mapRowToListItem } from './leaderboard-mapper.js';
-import { resolveIdentityIds } from './identity-resolver.js';
+import { resolveIdentityIds, checkSocialConnectionsBatch } from './identity-resolver.js';
 
 // ===== Dependency injection interface =====
 
@@ -601,13 +601,21 @@ async function handleInternalWeeklyScores(
   // Resolve Genesis Pass status from SQLite cache
   const genesisPassSet = getGenesisPassBatch(addresses);
 
-  const traders = rows.map((row) => ({
-    rank: row.rank,
-    address: row.address,
-    identityId: identityMap.get(row.address) ?? null,
-    hasGenesisPass: genesisPassSet.has(row.address),
-    totalScore: row.total_score,
-  }));
+  // Check social connections (Twitter/Google/Telegram) for all registered identities
+  const identityIds = [...identityMap.values()];
+  const socialSet = await checkSocialConnectionsBatch(identityIds);
+
+  const traders = rows.map((row) => {
+    const identityId = identityMap.get(row.address) ?? null;
+    return {
+      rank: row.rank,
+      address: row.address,
+      identityId,
+      hasGenesisPass: genesisPassSet.has(row.address),
+      hasSocialAccount: identityId !== null && socialSet.has(identityId),
+      totalScore: row.total_score,
+    };
+  });
 
   res.writeHead(200, corsHeaders);
   res.end(JSON.stringify({
