@@ -56,21 +56,28 @@ export interface EcosystemScoreData {
 
 export interface EcosystemLeaderboardEntry {
   identityId: string;
-  baseScore: number;
-  multiplier: number;
-  ecosystemScore: number;
-  activeDays?: number;
+  activityScore: number;
+  creatorPostScore: number;
+  weeklyScore: number;
+  activeDays: number;
   rank: number;
 }
 
 export interface EcosystemLeaderboardResponse {
   data: EcosystemLeaderboardEntry[];
   meta: {
-    period: "daily" | "weekly" | "monthly" | "all-time";
+    weekId: string;
+    weekStart: number;
     limit: number;
     offset: number;
     total: number;
+    updatedAt: number;
   };
+}
+
+export interface AvailableEcosystemWeek {
+  weekId: string;
+  label: string;
 }
 
 export async function getEcosystemScore(
@@ -103,17 +110,19 @@ export async function getEcosystemScore(
 }
 
 export async function getEcosystemLeaderboard(
-  period: "daily" | "weekly" | "monthly" | "all-time" = "daily",
+  weekId?: string,
   limit: number = 50,
   offset: number = 0,
 ): Promise<EcosystemLeaderboardResponse> {
-  if (!API_BASE) return { data: [], meta: { period, limit, offset, total: 0 } };
+  if (!API_BASE) {
+    return {
+      data: [],
+      meta: { weekId: weekId ?? "", weekStart: 0, limit, offset, total: 0, updatedAt: 0 },
+    };
+  }
 
-  const params = new URLSearchParams({
-    period,
-    limit: String(limit),
-    offset: String(offset),
-  });
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (weekId) params.set("weekId", weekId);
 
   const res = await fetch(`${API_BASE}/ecosystem/leaderboard?${params}`);
   if (!res.ok) {
@@ -124,6 +133,25 @@ export async function getEcosystemLeaderboard(
   }
 
   return res.json();
+}
+
+export async function getAvailableEcosystemWeeks(): Promise<AvailableEcosystemWeek[]> {
+  if (!API_BASE) return [];
+
+  const res = await fetch(`${API_BASE}/ecosystem/leaderboard/weeks`);
+  if (!res.ok) return [];
+
+  const json = await res.json();
+  return json.weeks ?? [];
+}
+
+export const ECOSYSTEM_WEEK_GRACE_PERIOD_MS = 12 * 60 * 60 * 1000;
+
+export function isEcosystemNewWeekGracePeriod(
+  meta: EcosystemLeaderboardResponse["meta"] | undefined,
+): boolean {
+  if (!meta?.weekStart || !meta?.updatedAt) return false;
+  return meta.updatedAt - meta.weekStart < ECOSYSTEM_WEEK_GRACE_PERIOD_MS;
 }
 
 /**

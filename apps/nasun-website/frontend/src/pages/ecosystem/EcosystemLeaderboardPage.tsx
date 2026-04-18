@@ -1,8 +1,8 @@
 /**
  * Ecosystem Leaderboard Page
  *
- * Displays daily/weekly ecosystem scores with NFT multipliers.
- * "Experimental Season" banner to set user expectations.
+ * Weekly leaderboard: on-chain activity diversity + creator posts.
+ * No NFT multiplier applied to ranking. Resets every Monday 00:10 UTC.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -12,43 +12,66 @@ import { SectionLayout } from "../../components/layout/SectionLayout";
 import { PageTitle } from "../../components/ui/PageTitle";
 import {
   getEcosystemLeaderboard,
+  getAvailableEcosystemWeeks,
+  isEcosystemNewWeekGracePeriod,
   type EcosystemLeaderboardEntry,
+  type EcosystemLeaderboardResponse,
+  type AvailableEcosystemWeek,
 } from "@/services/ecosystemScoreApi";
 
-type Period = "daily" | "weekly" | "monthly";
 const PAGE_SIZE = 50;
 
 const EcosystemLeaderboardPage = () => {
-  const [period, setPeriod] = useState<Period>("daily");
-  const [entries, setEntries] = useState<EcosystemLeaderboardEntry[]>([]);
-  const [total, setTotal] = useState(0);
+  const [viewMode, setViewMode] = useState<"current" | "past">("current");
+  const [selectedWeekId, setSelectedWeekId] = useState<string | undefined>(undefined);
+  const [availableWeeks, setAvailableWeeks] = useState<AvailableEcosystemWeek[]>([]);
+  const [response, setResponse] = useState<EcosystemLeaderboardResponse | null>(null);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Load available weeks on mount
+  useEffect(() => {
+    getAvailableEcosystemWeeks().then(setAvailableWeeks).catch(() => {});
+  }, []);
+
+  const currentWeekId = availableWeeks[0]?.weekId;
+  const pastWeeks = availableWeeks.slice(1);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getEcosystemLeaderboard(period, PAGE_SIZE, offset);
-      setEntries(res.data);
-      setTotal(res.meta.total);
+      const weekId = viewMode === "current" ? undefined : selectedWeekId;
+      const res = await getEcosystemLeaderboard(weekId, PAGE_SIZE, offset);
+      setResponse(res);
     } catch (err) {
       setError("Failed to load leaderboard. Please try again.");
       console.error("[EcosystemLeaderboard]", err);
     } finally {
       setLoading(false);
     }
-  }, [period, offset]);
+  }, [viewMode, selectedWeekId, offset]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handlePeriodChange = (p: Period) => {
-    setPeriod(p);
+  const handleViewModeChange = (mode: "current" | "past") => {
+    setViewMode(mode);
     setOffset(0);
+    if (mode === "past" && pastWeeks.length > 0 && !selectedWeekId) {
+      setSelectedWeekId(pastWeeks[0].weekId);
+    }
   };
+
+  const entries: EcosystemLeaderboardEntry[] = response?.data ?? [];
+  const total = response?.meta.total ?? 0;
+  const inGracePeriod = viewMode === "current" && isEcosystemNewWeekGracePeriod(response?.meta);
+  const weekStart = response?.meta.weekStart;
+  const updatedAt = response?.meta.updatedAt;
+
+  const colSpan = 6;
 
   return (
     <PageLayout>
@@ -56,76 +79,116 @@ const EcosystemLeaderboardPage = () => {
         <title>Ecosystem Leaderboard - NASUN</title>
         <meta
           name="description"
-          content="Nasun Ecosystem Leaderboard. Compete with your on-chain activity score, boosted by NFT multipliers."
+          content="Nasun Ecosystem Leaderboard. Weekly rankings based on on-chain activity diversity and creator contributions."
         />
       </Helmet>
 
       <SectionLayout maxWidth="7xl" className="pt-8 md:pt-12">
-        {/* Page Title */}
         <PageTitle as="h2">Ecosystem Leaderboard</PageTitle>
 
-        {/* Experimental Season Banner */}
-        <div className="mb-6 rounded-sm border border-pado-1/50 bg-pado-1/10 px-4 py-3">
-          <p className="text-sm text-pado-2">
-            <span className="font-semibold">Experimental Season</span> - Scoring
-            rules and multiplier values may change based on community feedback
-            and ecosystem data. Your contributions are tracked from day one.
-          </p>
+        {/* Scoring Info */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
+            <p className="text-sm font-medium text-nasun-c3/90">Activity Score</p>
+            <p className="text-sm text-nasun-white/90">
+              Distinct on-chain categories per day, summed over 7 days
+            </p>
+          </div>
+          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
+            <p className="text-sm font-medium text-nasun-c3/90">Creator Posts</p>
+            <p className="text-sm text-nasun-white/90">
+              Points earned from community content contributions
+            </p>
+          </div>
+          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
+            <p className="text-sm font-medium text-nasun-c3/90">Weekly Score</p>
+            <p className="text-sm text-nasun-white/90">
+              Activity Score + Creator Posts. Resets every Monday 00:10 UTC
+            </p>
+          </div>
         </div>
 
-        {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-nasun-white/80">
-            Earn points through diverse on-chain activity. Activate NFTs for
-            score multipliers.
-          </p>
-
-          {/* Period Toggle */}
-          <div className="flex w-full rounded-sm bg-nasun-c6/50 p-1 sm:w-auto">
-            {(["daily", "weekly", "monthly"] as const).map((p) => (
+        {/* Meta bar */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View mode toggle */}
+            <div className="flex items-center rounded-sm border border-nasun-c3/20 overflow-hidden">
               <button
-                key={p}
-                onClick={() => handlePeriodChange(p)}
-                className={`flex-1 rounded-sm px-4 py-1.5 text-sm font-medium transition-colors sm:flex-none ${
-                  period === p
-                    ? "bg-nasun-c3 text-nasun-black"
-                    : "text-nasun-white/80 hover:text-nasun-white"
+                onClick={() => handleViewModeChange("current")}
+                className={`px-3 py-1.5 text-sm transition-colors ${
+                  viewMode === "current"
+                    ? "bg-nasun-c3/20 text-nasun-c3 font-medium"
+                    : "text-nasun-white/70 hover:text-nasun-white"
                 }`}
               >
-                {p === "daily"
-                  ? "Daily"
-                  : p === "weekly"
-                    ? "Weekly"
-                    : "Monthly"}
+                Current Week
               </button>
-            ))}
+              <button
+                onClick={() => handleViewModeChange("past")}
+                disabled={pastWeeks.length === 0}
+                className={`px-3 py-1.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  viewMode === "past"
+                    ? "bg-nasun-c3/20 text-nasun-c3 font-medium"
+                    : "text-nasun-white/70 hover:text-nasun-white"
+                }`}
+              >
+                Past Weeks
+              </button>
+            </div>
+
+            {/* Past week selector */}
+            {viewMode === "past" && pastWeeks.length > 0 && (
+              <select
+                value={selectedWeekId ?? pastWeeks[0].weekId}
+                onChange={(e) => { setSelectedWeekId(e.target.value); setOffset(0); }}
+                className="text-sm bg-nasun-c6/40 text-nasun-white border border-nasun-c3/20 rounded-sm px-2 py-1.5 focus:outline-none focus:border-nasun-c3/40"
+              >
+                {pastWeeks.map((w) => (
+                  <option key={w.weekId} value={w.weekId}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Current week reset info */}
+            {viewMode === "current" && weekStart && (
+              <span className="text-sm text-nasun-white/60">
+                Resets{" "}
+                {new Date(weekStart + 7 * 24 * 60 * 60 * 1000).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZoneName: "short",
+                })}
+              </span>
+            )}
           </div>
+
+          {updatedAt && updatedAt > 0 && (
+            <span className="text-sm text-nasun-white/50">
+              Updated{" "}
+              {new Date(updatedAt).toLocaleString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              })}
+            </span>
+          )}
         </div>
 
-        {/* Scoring Info */}
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
-            <p className="text-sm font-medium text-nasun-c3/90">Base Score</p>
-            <p className="text-sm text-nasun-white/90">
-              Distinct activity categories per day
+        {/* Grace period notice */}
+        {inGracePeriod && (
+          <div className="mb-4 rounded-sm border border-nasun-c3/20 bg-nasun-c6/30 px-4 py-3">
+            <p className="text-sm font-medium text-nasun-white">
+              Week just reset. Scores are updating...
+            </p>
+            <p className="text-sm text-nasun-white/60 mt-1">
+              New scores will appear within the next 12 hours.
             </p>
           </div>
-          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
-            <p className="text-sm font-medium text-nasun-c3/90">Multiplier</p>
-            <p className="text-sm text-nasun-white/90">
-              Activated NFTs boost your score (Alliance, Genesis Pass,
-              Battalion)
-            </p>
-          </div>
-          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
-            <p className="text-sm font-medium text-nasun-c3/90">
-              Ecosystem Score
-            </p>
-            <p className="text-sm text-nasun-white/90">
-              Base Score x Multiplier = Final ranking score
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* Table */}
         {error ? (
@@ -137,44 +200,30 @@ const EcosystemLeaderboardPage = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-nasun-c3/15 bg-nasun-c3/5">
-                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">
-                    Rank
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">
-                    User
-                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">Rank</th>
+                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">User</th>
                   <th className="px-4 py-3 text-right font-medium text-nasun-white/80">
-                    Base Score
+                    Activity Score
                   </th>
                   <th className="hidden px-4 py-3 text-right font-medium text-nasun-white/80 sm:table-cell">
-                    Multiplier
+                    Creator Posts
                   </th>
-                  {period !== "daily" && (
-                    <th className="px-4 py-3 text-right font-medium text-nasun-white/80">
-                      Active Days
-                    </th>
-                  )}
                   <th className="px-4 py-3 text-right font-medium text-nasun-white/80">
-                    Score
+                    Active Days
                   </th>
+                  <th className="px-4 py-3 text-right font-medium text-nasun-white/80">Score</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan={period !== "daily" ? 6 : 5}
-                      className="px-4 py-12 text-center text-nasun-white/70"
-                    >
+                    <td colSpan={colSpan} className="px-4 py-12 text-center text-nasun-white/70">
                       Loading...
                     </td>
                   </tr>
                 ) : entries.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={period !== "daily" ? 6 : 5}
-                      className="px-4 py-16 text-center"
-                    >
+                    <td colSpan={colSpan} className="px-4 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <svg
                           className="h-10 w-10 text-nasun-c3/40"
@@ -188,8 +237,7 @@ const EcosystemLeaderboardPage = () => {
                           <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                         </svg>
                         <p className="text-sm text-nasun-white/70">
-                          No activity recorded yet. Start using the ecosystem to
-                          appear here!
+                          No activity recorded yet. Start using the ecosystem to appear here!
                         </p>
                       </div>
                     </td>
@@ -209,26 +257,26 @@ const EcosystemLeaderboardPage = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-nasun-white">
-                        {entry.baseScore}
+                        {entry.activityScore}
                       </td>
                       <td className="hidden px-4 py-3 text-right sm:table-cell">
                         <span
                           className={`font-mono ${
-                            entry.multiplier > 1
-                              ? "text-nasun-c3"
-                              : "text-nasun-white/80"
+                            entry.creatorPostScore > 0
+                              ? "text-nasun-c3 font-medium"
+                              : "text-nasun-white/50"
                           }`}
                         >
-                          {entry.multiplier.toFixed(1)}x
+                          {entry.creatorPostScore > 0
+                            ? `+${entry.creatorPostScore.toFixed(1)}`
+                            : "-"}
                         </span>
                       </td>
-                      {period !== "daily" && (
-                        <td className="px-4 py-3 text-right font-mono text-nasun-white/80">
-                          {entry.activeDays}/{period === "weekly" ? 7 : 30}
-                        </td>
-                      )}
+                      <td className="px-4 py-3 text-right font-mono text-nasun-white/80">
+                        {entry.activeDays}/7
+                      </td>
                       <td className="px-4 py-3 text-right font-bold text-nasun-c3">
-                        {entry.ecosystemScore.toFixed(1)}
+                        {entry.weeklyScore.toFixed(1)}
                       </td>
                     </tr>
                   ))
@@ -242,8 +290,7 @@ const EcosystemLeaderboardPage = () => {
         {total > PAGE_SIZE && (
           <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
             <p className="text-sm text-nasun-white/70">
-              Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, total)} of{" "}
-              {total} participants
+              Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, total)} of {total} participants
             </p>
             <div className="flex gap-2">
               <button
@@ -269,7 +316,6 @@ const EcosystemLeaderboardPage = () => {
 };
 
 function truncateId(id: string): string {
-  // Cognito ID format: "region:uuid", show last 8 chars of UUID
   const parts = id.split(":");
   if (parts.length === 2) {
     const uuid = parts[1];
