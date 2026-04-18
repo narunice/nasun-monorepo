@@ -82,10 +82,14 @@ async function fetchScoreLeaderboard(scope: ScoreScope, limit: number, offset: n
 
 export function useScoreLeaderboard(scope: ScoreScope = 'weekly', limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
+  const currentWeekId = getWeekId(0);
 
   return useQuery<ScoreLeaderboardResponse>({
-    queryKey: ['leaderboard', 'score', scope, limit, offset],
-    queryFn: () => fetchScoreLeaderboard(scope, limit, offset),
+    queryKey: ['leaderboard', 'score', scope, scope === 'weekly' ? currentWeekId : null, limit, offset],
+    queryFn: () =>
+      scope === 'weekly'
+        ? fetchWeeklyScoreLeaderboard(currentWeekId, limit, offset)
+        : fetchScoreLeaderboard(scope, limit, offset),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
@@ -109,8 +113,7 @@ async function fetchTraderScore(address: string, scope: ScoreScope): Promise<Tra
   return res.json();
 }
 
-// Returns the ISO week ID for the week that is `weeksAgo` weeks before the current week.
-function getPreviousWeekId(weeksAgo = 1): string {
+function getWeekId(weeksAgo = 0): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 7 * weeksAgo);
   const day = d.getUTCDay() || 7;
@@ -130,6 +133,10 @@ async function fetchWeeklyScoreLeaderboard(weekId: string, limit: number, offset
   const url = `${baseUrl}/api/pado/leaderboard/score/weekly/${weekId}?${params}`;
   const res = await fetch(url);
 
+  if (res.status === 404) {
+    return { scope: 'weekly' as const, weekId, traders: [], updatedAt: 0, totalTraders: 0 };
+  }
+
   if (!res.ok) {
     throw new Error(`Score API error: ${res.status}`);
   }
@@ -138,7 +145,7 @@ async function fetchWeeklyScoreLeaderboard(weekId: string, limit: number, offset
 }
 
 export function usePreviousWeekScoreLeaderboard(enabled: boolean, limit: number = 50, offset: number = 0) {
-  const weekId = getPreviousWeekId(1);
+  const weekId = getWeekId(1);
 
   return useQuery<ScoreLeaderboardResponse>({
     queryKey: ['leaderboard', 'score', 'weekly', weekId, limit, offset],
