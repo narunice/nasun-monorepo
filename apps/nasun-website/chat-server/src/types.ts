@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws';
+import { KNOWN_BOT_ADDRESSES } from './leaderboard-types.js';
 
 // ===== Protocol Messages (Client -> Server) =====
 
@@ -296,7 +297,10 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   rpcUrl: process.env.RPC_URL || 'https://rpc.devnet.nasun.io',
   indexerPollIntervalMs: parseInt(process.env.INDEXER_POLL_INTERVAL_MS || '5000', 10),
   aggregationIntervalMs: parseInt(process.env.AGGREGATION_INTERVAL_MS || '60000', 10),
-  excludedAddresses: (process.env.INDEXER_EXCLUDED_ADDRESSES || '').split(',').filter(Boolean),
+  excludedAddresses: [
+    ...KNOWN_BOT_ADDRESSES,
+    ...(process.env.INDEXER_EXCLUDED_ADDRESSES || '').split(',').filter(Boolean),
+  ],
   // Competition admin
   competitionAdminKey: process.env.COMPETITION_ADMIN_KEY || '',
   largeTradeThresholdNusdc: Math.max(parseInt(process.env.LARGE_TRADE_THRESHOLD_NUSDC || '1000', 10), 100),
