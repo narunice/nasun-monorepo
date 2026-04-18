@@ -38,7 +38,6 @@ const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
 const DevHomePage = lazy(() => import("../pages/dev/DevHomePage"));
 const StatsPage = lazy(() => import("../pages/dev/StatsPage"));
-const PadoScoreLeaderboardPage = lazy(() => import("../pages/dev/PadoScoreLeaderboardPage"));
 const NftDropPage = lazy(() => import("../pages/wave1/NftDropPage"));
 
 // Admin route definitions
@@ -83,7 +82,7 @@ const AppRoutes = () => {
 
         {/* Dynamic Routes from routesV2 (non-nested) */}
         {Object.entries(routesV2)
-          .filter(([key]) => !["home", "ecosystem", "infra", "team", "wave1Campaign", "updates", "network", "about"].includes(key))
+          .filter(([key]) => !["home", "ecosystem", "infra", "team", "wave1Campaign", "updates", "network", "about", "community"].includes(key))
           .map(([key, routeConfig]) => {
             const RouteElement = routeConfig.isProtected ? (
               <PrivateRoute>
@@ -128,6 +127,11 @@ const AppRoutes = () => {
           {renderNestedRoutes("About", routesV2.about, "overview", pageTitleMaps.about)}
         </Route>
 
+        <Route path="/community">
+          {renderNestedRoutes("Community", routesV2.community, "alliance-nft", pageTitleMaps.community)}
+          <Route path="governance/proposal/:proposalId" element={<Pages.ProposalDetail />} />
+        </Route>
+
         {/* Legacy redirects */}
         <Route path="/protocol" element={<Navigate to="/network" replace />} />
         <Route path="/ecosystem/ai-economy" element={<Navigate to="/ecosystem/baram" replace />} />
@@ -144,8 +148,14 @@ const AppRoutes = () => {
         <Route path="/vision/strategy" element={<Navigate to="/about/strategy" replace />} />
         <Route path="/grants" element={<Navigate to="/updates/awards" replace />} />
         <Route path="/updates/grants" element={<Navigate to="/updates/awards" replace />} />
-        <Route path="/wave1/leaderboard" element={<Navigate to="/wave1/creators-leaderboard" replace />} />
-        <Route path="/wave1/leaderboard-guide" element={<Navigate to="/wave1/creators-leaderboard-guide" replace />} />
+        <Route path="/wave1/leaderboard" element={<Navigate to="/community/creators-leaderboard" replace />} />
+        <Route path="/wave1/leaderboard-guide" element={<Navigate to="/community/creators-leaderboard-guide" replace />} />
+        <Route path="/wave1/alliance-nft" element={<Navigate to="/community/alliance-nft" replace />} />
+        <Route path="/wave1/creators-leaderboard" element={<Navigate to="/community/creators-leaderboard" replace />} />
+        <Route path="/wave1/creators-leaderboard-guide" element={<Navigate to="/community/creators-leaderboard-guide" replace />} />
+        <Route path="/network/governance" element={<Navigate to="/community/governance" replace />} />
+        <Route path="/dev/pado-score-leaderboard" element={<Navigate to="/community/pado-score-leaderboard" replace />} />
+        <Route path="/ecosystem/leaderboard" element={<Navigate to="/community/nasun-ecosystem-leaderboard" replace />} />
 
         {/* Headless WordPress Post Detail Page */}
         <Route path="/awards-grants/:slug" element={<Pages.PostDetailPage />} />
@@ -170,7 +180,6 @@ const AppRoutes = () => {
         <Route path="/dev/genesis-pass" element={<DevGenesisPassPage />} />
         {/* /dev/genesis-pass-drop moved to /wave1/genesis-pass-drop */}
         <Route path="/dev/home" element={<DevHomePage />} />
-        <Route path="/dev/pado-score-leaderboard" element={<PadoScoreLeaderboardPage />} />
         <Route path="/dev/my-account" element={<Navigate to="/my-account" replace />} />
         <Route path="/dev/alliance-nft" element={<Navigate to="/wave1/alliance-nft" replace />} />
 

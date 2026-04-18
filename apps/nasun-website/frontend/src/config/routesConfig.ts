@@ -57,6 +57,8 @@ export const Pages = {
   Investors: lazyWithRetry(() => import("../pages/about/InvestorsPage")),
   Litepaper: lazyWithRetry(() => import("../pages/about/LitepaperPage")),
   Partner: lazyWithRetry(() => import("../pages/about/PartnerPage")),
+  // Community Pages
+  PadoScoreLeaderboard: lazyWithRetry(() => import("../pages/dev/PadoScoreLeaderboardPage")),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -100,6 +102,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.governance",
           path: "/network/governance",
           element: Pages.Web3,
+          hidden: true,
         },
       ],
     },
@@ -344,6 +347,53 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
+  // Community 섹션 (Governance, Leaderboards 통합)
+  community: {
+    path: "/community",
+    component: Pages.LeaderboardV3,
+    navItem: {
+      name: "navigation.community",
+      path: "/community",
+      subMenu: [
+        {
+          name: "navigation.alliance",
+          path: "/community/alliance-nft",
+          element: Pages.AllianceNft,
+        },
+        {
+          name: "navigation.governance",
+          path: "/community/governance",
+          element: Pages.Web3,
+        },
+        {
+          name: "navigation.ecosystemLeaderboard",
+          path: "/community/nasun-ecosystem-leaderboard",
+          element: Pages.EcosystemLeaderboard,
+        },
+        {
+          name: "navigation.creatorsLeaderboard",
+          path: "/community/creators-leaderboard",
+          element: Pages.LeaderboardV3,
+        },
+        {
+          name: "navigation.padoScoreLeaderboard",
+          path: "/community/pado-score-leaderboard",
+          element: Pages.PadoScoreLeaderboard,
+        },
+        {
+          name: "navigation.creatorsLeaderboardGuide",
+          path: "/community/creators-leaderboard-guide",
+          element: Pages.LeaderboardInfo,
+          hidden: true,
+        },
+      ],
+    },
+    meta: {
+      title: "Community — NASUN",
+      description: "Nasun community — governance, leaderboards, and ecosystem participation.",
+    },
+  },
+
   team: {
     path: "/team",
     component: Pages.Founders,
@@ -377,11 +427,13 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     navItem: {
       name: "navigation.wave1Campaign",
       path: "/wave1",
+      hidden: true,
       subMenu: [
         {
           name: "navigation.alliance",
           path: "/wave1/alliance-nft",
           element: Pages.AllianceNft,
+          hidden: true,
         },
         // Allowlist closed - page no longer needed
         // {
@@ -408,11 +460,13 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.leaderboard",
           path: "/wave1/creators-leaderboard",
           element: Pages.LeaderboardV3,
+          hidden: true,
         },
         {
           name: "navigation.leaderboardGuide",
           path: "/wave1/creators-leaderboard-guide",
           element: Pages.LeaderboardInfo,
+          hidden: true,
         },
         // {
         //   name: "navigation.genesisEvent",
@@ -602,6 +656,7 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
         "ecosystem",
         "updates",
         "about",
+        "community",
         "wave1",
       ];
       const aIndex = order.findIndex((item) => a.path.includes(item));
@@ -657,6 +712,14 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.news": "News",
     "navigation.awards": "Awards",
     "navigation.roadmap": "Roadmap",
+  },
+  community: {
+    "navigation.alliance": "Alliance",
+    "navigation.governance": "Governance",
+    "navigation.padoScoreLeaderboard": "Pado Score Leaderboard",
+    "navigation.creatorsLeaderboard": "Creators Leaderboard",
+    "navigation.ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",
+    "navigation.creatorsLeaderboardGuide": "Creators Leaderboard Guide",
   },
   about: {
     "navigation.aboutOverview": "Overview",
