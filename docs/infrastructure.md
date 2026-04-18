@@ -18,6 +18,8 @@ nasun-node-1 (3.38.127.23)       nasun-node-2 (3.38.76.85)
 nasun-node-3 (54.180.61.196)
 ┌──────────────────────────────┐
 │ Fullnode (RPC :9000)          │
+│   └─ DB: /home/ubuntu/        │
+│      full_node_db/ (214GB)   │
 │ sui-indexer (systemd)         │
 │   └─ data-ingestion-path     │
 │   └─> PostgreSQL 16 (:5432)  │
@@ -30,6 +32,10 @@ Production EC2 (43.200.67.52)
 ```
 
 **SSH**: `ubuntu@<IP>` + `/home/naru/.ssh/.awskey/nasun-devnet-key.pem` (모든 노드 공통)
+
+> **Fullnode DB 주의**: `/home/ubuntu/full_node_db/` (214GB)는 node-3 Fullnode의 **유일한 원본 DB**입니다.
+> `fullnode.yaml`의 `db-path`가 이 경로를 직접 참조합니다. 백업 없음. 절대 삭제 금지.
+> 디렉토리 자체의 mtime은 Feb 21로 보이지만, RocksDB 내부 파일은 실시간 갱신 중입니다.
 
 ### 구성 요소
 
