@@ -38,6 +38,7 @@ const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
 const DevHomePage = lazy(() => import("../pages/dev/DevHomePage"));
 const StatsPage = lazy(() => import("../pages/dev/StatsPage"));
+const PadoScoreLeaderboardPage = lazy(() => import("../pages/dev/PadoScoreLeaderboardPage"));
 const NftDropPage = lazy(() => import("../pages/wave1/NftDropPage"));
 
 // Admin route definitions
@@ -169,6 +170,7 @@ const AppRoutes = () => {
         <Route path="/dev/genesis-pass" element={<DevGenesisPassPage />} />
         {/* /dev/genesis-pass-drop moved to /wave1/genesis-pass-drop */}
         <Route path="/dev/home" element={<DevHomePage />} />
+        <Route path="/dev/pado-score-leaderboard" element={<PadoScoreLeaderboardPage />} />
         <Route path="/dev/my-account" element={<Navigate to="/my-account" replace />} />
         <Route path="/dev/alliance-nft" element={<Navigate to="/wave1/alliance-nft" replace />} />
 
