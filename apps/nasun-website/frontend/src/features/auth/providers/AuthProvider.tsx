@@ -5,7 +5,7 @@ import { useUserStore } from "@/store/userStore";
 import type { UserData } from "@/store/userStore";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { AuthContextType } from "../types";
-import { linkAccounts, ensureUserProfile } from "../utils/authApi";
+import { linkAccounts } from "../utils/authApi";
 import { isValidReturnUrl } from "../utils/urlValidation";
 import { isTokenExpired } from "../utils/tokenUtils";
 import { refreshAndSaveUserProfile } from "../services/userProfileService";
@@ -176,14 +176,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Dispatch to provider-specific handlers
       let identityId: string;
-      let cognitoToken: string | undefined;
       let userInfo: { name: string; email?: string };
-      let twitterData: { twitterHandle?: string; twitterId?: string; profileImageUrl?: string } | null = null;
+      let twitterData: { twitterHandle?: string; originalTwitterHandle?: string; twitterId?: string; profileImageUrl?: string } | null = null;
 
       if (provider === "Google") {
         const result = await handleGoogleOAuthRedirect(url);
         identityId = result.identityId;
-        cognitoToken = result.cognitoToken;
         userInfo = result.userInfo;
       } else {
         // Primary: parse sessionId from composite state "{randomState}.{sessionId}"
@@ -203,7 +201,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         const result = await handleTwitterOAuthRedirect(url, sessionId);
         identityId = result.identityId;
-        cognitoToken = result.cognitoToken;
         userInfo = result.userInfo;
         twitterData = result;
       }
@@ -222,22 +219,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const primaryCognitoToken = cachedProfile
             ? JSON.parse(cachedProfile).cognitoToken
             : parsed.cognitoToken;
-
-          // Best-effort: link-account Lambda handles secondary profile creation,
-          // but try creating via ensureUserProfile first for backward compatibility
-          // during rolling deployment.
-          const secondaryUserData: UserData = {
-            identityId,
-            provider: provider as "Google" | "Twitter",
-            username: userInfo.name,
-            email: userInfo.email,
-            cognitoToken,
-            ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
-            ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
-            ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
-            ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
-          };
-          await ensureUserProfile(secondaryUserData).catch(() => { /* best-effort */ });
 
           await linkAccounts(
             primaryIdentityId,
