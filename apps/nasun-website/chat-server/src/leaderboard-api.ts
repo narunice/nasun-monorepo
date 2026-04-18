@@ -24,8 +24,6 @@ import {
   getTotalFillsCount, getTotalTradersCount, getTotalPnlTradersCount,
   getIndexerState,
   getScoreLeaderboard, getTraderScore, getTotalScoreTraders, getPadoAggregatorLastRun,
-  getPointsSnapshot, getPointsRankHistory, getSnapshotDates, getSnapshotTotalTraders,
-  generatePointsSnapshot,
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
   getWeeklyScoreLeaderboard, getWeeklyScoreCount, getTraderWeeklyScore,
@@ -175,8 +173,7 @@ export function handleLeaderboardRequest(
 
   // Handle OPTIONS with appropriate methods per route
   if (method === 'OPTIONS') {
-    const needsWrite = pathname.startsWith('/api/competitions') ||
-                       pathname === '/api/leaderboard/snapshots/generate';
+    const needsWrite = pathname.startsWith('/api/competitions');
     const methods = needsWrite
       ? 'GET, POST, PATCH, OPTIONS'
       : 'GET, OPTIONS';
@@ -231,16 +228,6 @@ export function handleLeaderboardRequest(
     if (weeklyScoreMatch && method === 'GET') {
       return handleScoreLeaderboardWeekly(res, url, corsHeaders, weeklyScoreMatch[1]);
     }
-    if (pathname === '/api/leaderboard/snapshots' && method === 'GET') {
-      return handleSnapshots(res, url, corsHeaders);
-    }
-    if (pathname === '/api/leaderboard/snapshots/dates' && method === 'GET') {
-      return handleSnapshotDates(res, url, corsHeaders);
-    }
-    if (pathname === '/api/leaderboard/snapshots/generate' && method === 'POST') {
-      return handleSnapshotGenerate(req, res, url, corsHeaders, config);
-    }
-
     // Pattern-matched routes
     const traderMatch = pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})$/);
     if (traderMatch && method === 'GET') {
@@ -255,11 +242,6 @@ export function handleLeaderboardRequest(
     const scoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})\/score$/);
     if (scoreMatch && method === 'GET') {
       return handleTraderScore(res, url, corsHeaders, scoreMatch[1]);
-    }
-
-    const snapshotHistoryMatch = pathname.match(/^\/api\/leaderboard\/snapshots\/history\/(0x[a-fA-F0-9]{64})$/);
-    if (snapshotHistoryMatch && method === 'GET') {
-      return handleSnapshotHistory(res, url, corsHeaders, snapshotHistoryMatch[1]);
     }
 
     const tradesMatch = pathname.match(/^\/api\/trades\/(0x[a-fA-F0-9]{64})$/);
@@ -742,85 +724,6 @@ function handleTraderScore(
     scope,
     weekId,
   }));
-  return true;
-}
-
-function handleSnapshots(
-  res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
-): boolean {
-  const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
-  const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    res.writeHead(400, corsHeaders);
-    res.end(JSON.stringify({ error: 'Invalid date format. Use: YYYY-MM-DD' }));
-    return true;
-  }
-  const rows = getPointsSnapshot(date, limit, offset);
-  const totalTraders = getSnapshotTotalTraders(date);
-  const addresses = rows.map((r) => r.address);
-  const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
-  const traders = rows.map((row) => ({
-    rank: row.rank, address: row.address,
-    nickname: nicknames.get(row.address) ?? null,
-    totalPoints: row.total_points,
-    breakdown: {
-      trades: row.points_from_trades, volume: row.points_from_volume,
-      diversity: row.points_from_diversity, pnl: row.points_from_pnl,
-    },
-    tradeCount: row.trade_count, volumeUsd: formatQuoteVolume(row.volume_quote),
-  }));
-  res.writeHead(200, corsHeaders);
-  res.end(JSON.stringify({ date, traders, totalTraders }));
-  return true;
-}
-
-function handleSnapshotDates(
-  res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
-): boolean {
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10), 1), 365);
-  const dates = getSnapshotDates(limit);
-  res.writeHead(200, corsHeaders);
-  res.end(JSON.stringify({ dates }));
-  return true;
-}
-
-function handleSnapshotHistory(
-  res: ServerResponse, url: URL, corsHeaders: Record<string, string>, address: string,
-): boolean {
-  const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '30', 10), 1), 365);
-  const history = getPointsRankHistory(address, days);
-  res.writeHead(200, corsHeaders);
-  res.end(JSON.stringify({
-    address,
-    history: history.map((h) => ({ date: h.snapshot_date, rank: h.rank, totalPoints: h.total_points })),
-  }));
-  return true;
-}
-
-function handleSnapshotGenerate(
-  req: IncomingMessage, res: ServerResponse, url: URL,
-  corsHeaders: Record<string, string>, config: ChatServerConfig,
-): boolean {
-  if (!checkAdminAuth(req, config.competitionAdminKey)) {
-    res.writeHead(401, corsHeaders);
-    res.end(JSON.stringify({ error: 'Unauthorized' }));
-    return true;
-  }
-  const snapshotDate = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(snapshotDate)) {
-    res.writeHead(400, corsHeaders);
-    res.end(JSON.stringify({ error: 'Invalid date format. Use: YYYY-MM-DD' }));
-    return true;
-  }
-  const count = generatePointsSnapshot(snapshotDate);
-  if (count === 0) {
-    res.writeHead(409, corsHeaders);
-    res.end(JSON.stringify({ error: 'Snapshot already exists for this date', date: snapshotDate }));
-  } else {
-    res.writeHead(200, corsHeaders);
-    res.end(JSON.stringify({ date: snapshotDate, tradersSnapshotted: count }));
-  }
   return true;
 }
 
