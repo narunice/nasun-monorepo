@@ -201,15 +201,7 @@ export function Header() {
 
   return (
     <header className="border-b border-theme-border px-3 sm:px-4 md:px-6 py-3 md:py-4">
-      <div
-        className={`flex items-center justify-between gap-2 ${
-          isHomePage
-            ? "max-w-7xl mx-auto"
-            : isTradePage && isSimple
-              ? "xl:max-w-[1400px] 2xl:max-w-[1520px] xl:mx-auto"
-              : ""
-        }`}
-      >
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         {/* Logo Wordmark - Click to go Home */}
         <Link
           to="/"
@@ -224,7 +216,7 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation Menu */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden md:flex order-last w-full xl:order-none xl:w-auto items-center justify-center xl:justify-start gap-1 pb-1 xl:pb-0">
           {/* Trade Dropdown */}
           <div className="relative" ref={tradeRef}>
             {TRADE_ITEMS.length > 0 ? (
