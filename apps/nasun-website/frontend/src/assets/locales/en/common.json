@@ -73,7 +73,12 @@
     "earlyContributors": "Early Contributors",
     "leaderboardGuide": "Creators Guide",
     "contests": "Contests",
-    "aboutTeam": "Team"
+    "aboutTeam": "Team",
+    "community": "Community",
+    "padoScoreLeaderboard": "Pado Score Leaderboard",
+    "creatorsLeaderboard": "Creators Leaderboard",
+    "ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",
+    "creatorsLeaderboardGuide": "Creators Leaderboard Guide"
   },
   "auth": {
     "login": "Login/Register",
