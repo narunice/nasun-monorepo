@@ -48,7 +48,7 @@ export function LeaderboardPage() {
 
   const VALID_MODES: LeaderboardMode[] = ["activity", "volume", "pnl", "score"];
   const rawTab = searchParams.get("tab") as LeaderboardMode | null;
-  const mode: LeaderboardMode = rawTab && VALID_MODES.includes(rawTab) ? rawTab : "volume";
+  const mode: LeaderboardMode = rawTab && VALID_MODES.includes(rawTab) ? rawTab : "score";
 
   const [viewMode, setViewMode] = useState<ViewMode>("current");
   const [showFollowing, setShowFollowing] = useState(false);
