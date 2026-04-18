@@ -23,6 +23,8 @@
  *   - Each award uses ON CONFLICT DO NOTHING (idempotent re-runs).
  *   - weekly_score_snapshots.settled flag is set in the same PG transaction.
  *   - Traders without an identityId are skipped.
+ *   - Traders without an active Alliance NFT are skipped.
+ *   - Traders without at least one social account (Twitter/Google/Telegram) are skipped.
  *
  * Usage:
  *   cd ~/explorer-api && set -a && source .env && set +a
@@ -38,6 +40,8 @@ import postgres from 'postgres';
 const POINTS_DB_URL = process.env.POINTS_DATABASE_URL;
 const CHAT_SERVER_URL = process.env.CHAT_SERVER_URL;
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+const ECOSYSTEM_ACTIVATIONS_URL = process.env.ECOSYSTEM_ACTIVATIONS_URL;
+const ECOSYSTEM_ACTIVATIONS_API_KEY = process.env.ECOSYSTEM_ACTIVATIONS_API_KEY || '';
 
 if (!POINTS_DB_URL) {
   console.error('POINTS_DATABASE_URL not set');
@@ -49,6 +53,10 @@ if (!CHAT_SERVER_URL) {
 }
 if (!INTERNAL_API_KEY) {
   console.error('INTERNAL_API_KEY not set');
+  process.exit(1);
+}
+if (!ECOSYSTEM_ACTIVATIONS_URL) {
+  console.error('ECOSYSTEM_ACTIVATIONS_URL not set');
   process.exit(1);
 }
 
@@ -110,6 +118,7 @@ interface WeeklyTrader {
   address: string;
   identityId: string | null;
   hasGenesisPass: boolean;
+  hasSocialAccount: boolean;
   totalScore: number;
 }
 
@@ -118,6 +127,46 @@ interface WeeklyScoresResponse {
   traders: WeeklyTrader[];
   totalTraders: number;
   generatedAt: number;
+}
+
+// ===== Ecosystem activations fetch =====
+
+async function fetchActivationsPayload(): Promise<{
+  activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
+}> {
+  const headers: Record<string, string> = {};
+  if (ECOSYSTEM_ACTIVATIONS_API_KEY) headers['x-api-key'] = ECOSYSTEM_ACTIVATIONS_API_KEY;
+
+  const res = await fetch(ECOSYSTEM_ACTIVATIONS_URL!, {
+    headers,
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) throw new Error(`Ecosystem activations API error: ${res.status}`);
+
+  const data = await res.json() as
+    | { activations: Record<string, Array<{ nftType: string; nftCount: number }>> }
+    | { url: string };
+
+  // Handle S3 presigned offload (same pattern as ecosystem-cache.ts).
+  if ('url' in data) {
+    const s3Res = await fetch(data.url, { signal: AbortSignal.timeout(60_000) });
+    if (!s3Res.ok) throw new Error(`Ecosystem activations S3 offload error: ${s3Res.status}`);
+    return s3Res.json() as Promise<{ activations: Record<string, Array<{ nftType: string; nftCount: number }>> }>;
+  }
+
+  return data;
+}
+
+async function fetchAllianceSet(): Promise<Set<string>> {
+  const payload = await fetchActivationsPayload();
+
+  const allianceSet = new Set<string>();
+  for (const [identityId, activations] of Object.entries(payload.activations)) {
+    if (activations.some((a) => a.nftType === 'alliance')) {
+      allianceSet.add(identityId);
+    }
+  }
+  return allianceSet;
 }
 
 // ===== API fetch =====
@@ -159,7 +208,17 @@ async function main() {
 
   console.log(`\n=== Pado Weekly Settlement ${weekId} (${dryRun ? 'DRY RUN' : 'LIVE'}) ===\n`);
 
-  // 1. Fetch weekly scores from chat-server
+  // 1. Fetch Alliance NFT set from ecosystem API
+  console.log('Fetching Alliance NFT activations...');
+  const allianceSet = await fetchAllianceSet();
+  console.log(`  ${allianceSet.size} identities with active Alliance NFT`);
+
+  if (allianceSet.size === 0) {
+    console.error('ABORT: Alliance NFT set is empty. API may be unavailable or returned no data.');
+    process.exit(1);
+  }
+
+  // 2. Fetch weekly scores from chat-server (includes hasSocialAccount)
   console.log('Fetching weekly scores from chat-server...');
   const data = await fetchWeeklyScores(weekId);
   console.log(`  ${data.traders.length} traders in week ${weekId}`);
@@ -169,10 +228,10 @@ async function main() {
     process.exit(0);
   }
 
-  // 2. Connect to PostgreSQL
+  // 3. Connect to PostgreSQL
   const pgDb = postgres(POINTS_DB_URL!, { max: 3, idle_timeout: 30, connect_timeout: 10 });
 
-  // 3. Ensure weekly_score_snapshots table exists (idempotent DDL)
+  // 4. Ensure weekly_score_snapshots table exists (idempotent DDL)
   await pgDb`
     CREATE TABLE IF NOT EXISTS weekly_score_snapshots (
       week_id     TEXT NOT NULL,
@@ -189,7 +248,7 @@ async function main() {
       ON weekly_score_snapshots (week_id, settled)
   `;
 
-  // 4. Upsert snapshot rows (idempotent: existing rows are not overwritten)
+  // 5. Upsert snapshot rows (idempotent: existing rows are not overwritten)
   console.log('\nUpserting snapshot rows...');
   for (const trader of data.traders) {
     await pgDb`
@@ -199,7 +258,7 @@ async function main() {
     `;
   }
 
-  // 5. Fetch unsettled rows (re-runnable: skip already-settled)
+  // 6. Fetch unsettled rows (re-runnable: skip already-settled)
   const unsettled = await pgDb<Array<{ address: string; rank: number; total_score: number }>>`
     SELECT address, rank, total_score
     FROM weekly_score_snapshots
@@ -219,10 +278,12 @@ async function main() {
     data.traders.map((t) => [t.address.toLowerCase(), t])
   );
 
-  // 6. Settle each trader
+  // 7. Settle each trader
   let awarded = 0;
   let skippedUnregistered = 0;
   let skippedNoReward = 0;
+  let skippedNoAlliance = 0;
+  let skippedNoSocial = 0;
 
   console.log('\n--- Settlement Results ---\n');
 
@@ -247,13 +308,29 @@ async function main() {
       continue;
     }
 
-    const isGP = trader?.hasGenesisPass ?? false;
+    if (!allianceSet.has(identityId)) {
+      skippedNoAlliance++;
+      if (dryRun) {
+        console.log(`  #${rank} ${addr.slice(0, 10)}... -> SKIP (no Alliance NFT)`);
+      }
+      continue;
+    }
+
+    if (!trader?.hasSocialAccount) {
+      skippedNoSocial++;
+      if (dryRun) {
+        console.log(`  #${rank} ${addr.slice(0, 10)}... -> SKIP (no social account)`);
+      }
+      continue;
+    }
+
+    const isGP = trader.hasGenesisPass;
     const finalPts = isGP ? basePts * 2 : basePts;
     const digest = `bonus-pado-weekly:${identityId}:${weekId}`;
 
     if (dryRun) {
       const gpTag = isGP ? ' [GP 2x]' : '';
-      console.log(`  #${rank} ${addr.slice(0, 10)}... -> ${finalPts} pts${gpTag} (base: ${basePts})`);
+      console.log(`  #${rank} ${addr.slice(0, 10)}... -> ${finalPts} pts${gpTag} (base: ${basePts}) [alliance+social OK]`);
       awarded++;
       continue;
     }
@@ -293,6 +370,8 @@ async function main() {
   console.log('\n--- Summary ---');
   console.log(`  Awarded: ${awarded}`);
   console.log(`  Skipped (unregistered): ${skippedUnregistered}`);
+  console.log(`  Skipped (no Alliance NFT): ${skippedNoAlliance}`);
+  console.log(`  Skipped (no social account): ${skippedNoSocial}`);
   console.log(`  Skipped (rank > 500): ${skippedNoReward}`);
 
   await pgDb.end();
