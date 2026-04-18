@@ -71,5 +71,16 @@ ALTER MATERIALIZED VIEW ecosystem_daily_scores OWNER TO sui_indexer;
 CREATE TABLE IF NOT EXISTS alliance_penalties (
   identity_id TEXT PRIMARY KEY,
   penalty_start DATE NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  first_seen DATE NOT NULL DEFAULT CURRENT_DATE
+);
+
+-- 7. Alliance NFT first activation tracking (for grace period logic).
+-- Records the earliest activity_points date for each alliance-only user.
+-- Persists across alliance_penalties DELETE (recovery), so grace is only
+-- applied once: when the user first activates Alliance NFT.
+-- Populated by daily-nft-check.ts via INSERT ... ON CONFLICT DO NOTHING.
+CREATE TABLE IF NOT EXISTS alliance_first_seen (
+  identity_id TEXT PRIMARY KEY,
+  first_seen DATE NOT NULL DEFAULT CURRENT_DATE
 );
