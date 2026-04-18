@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useWallet,
   useZkLogin,
@@ -42,8 +43,13 @@ const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {
 };
 
 export function LeaderboardPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [period, setPeriod] = useState<Period>("7d");
-  const [mode, setMode] = useState<LeaderboardMode>("volume");
+
+  const VALID_MODES: LeaderboardMode[] = ["activity", "volume", "pnl", "score"];
+  const rawTab = searchParams.get("tab") as LeaderboardMode | null;
+  const mode: LeaderboardMode = rawTab && VALID_MODES.includes(rawTab) ? rawTab : "volume";
+
   const [viewMode, setViewMode] = useState<ViewMode>("current");
   const [showFollowing, setShowFollowing] = useState(false);
   const [page, setPage] = useState(1);
@@ -117,9 +123,13 @@ export function LeaderboardPage() {
 
   // Reset page to 1 when mode or period changes
   const handleModeChange = useCallback((m: LeaderboardMode) => {
-    setMode(m);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", m);
+      return next;
+    });
     setPage(1);
-  }, []);
+  }, [setSearchParams]);
 
   const handlePeriodChange = useCallback((p: Period) => {
     setPeriod(p);
