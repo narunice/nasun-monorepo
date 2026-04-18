@@ -24,22 +24,76 @@ const PadoScoreLeaderboardPage: React.FC = () => {
 
         {/* Points payout explanation */}
         <div className="mt-8 space-y-4">
-          <h6 className=" text-nasun-white uppercase tracking-wide">
+          <h6 className="text-nasun-white uppercase tracking-wide">
             How Ecosystem Points Are Awarded
           </h6>
           <p className="text-base text-nasun-white/80">
             At the end of each week, traders are ranked by their Pado Score and
-            receive Ecosystem Points based on their final position. Genesis Pass
-            holders receive a 2x multiplier on all payouts.
+            receive Ecosystem Points based on their final position.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+
+          {/* Genesis Pass 2x banner */}
+          <div className="flex items-center gap-3 ">
+            <span className="text-xl">&#x2728;</span>
+            <div>
+              <span className="text-base font-bold text-pado-4">
+                Genesis Pass Holders
+              </span>
+              <span className="text-base text-nasun-white/80"> receive a </span>
+              <span className="text-base font-bold text-pado-4">
+                2x multiplier
+              </span>
+              <span className="text-base text-nasun-white/80">
+                {" "}
+                on all point payouts.
+              </span>
+            </div>
+          </div>
+
+          {/* Row 1: Top 3 */}
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "1st", pts: 50 },
-              { label: "2nd", pts: 40 },
-              { label: "3rd", pts: 30 },
+              { label: "1st", pts: 50, crown: true },
+              { label: "2nd", pts: 40, crown: false },
+              { label: "3rd", pts: 30, crown: false },
+            ].map(({ label, pts, crown }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between px-3 py-2.5 rounded-sm bg-pado-4/10 border border-pado-4/40"
+              >
+                <span className="text-base font-semibold text-pado-4">
+                  {crown && <span className="mr-1">&#x1F451;</span>}
+                  {label}
+                </span>
+                <span className="text-base font-bold text-pado-4">
+                  {pts} pts
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Row 2: Top 50 / 100 / 200 */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
               { label: "Top 50", pts: 15 },
               { label: "Top 100", pts: 10 },
               { label: "Top 200", pts: 6 },
+            ].map(({ label, pts }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
+              >
+                <span className="text-base text-pado-2">{label}</span>
+                <span className="text-base font-bold text-pado-3">
+                  {pts} pts
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Row 3: Top 300 / 400 / 500 */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
               { label: "Top 300", pts: 5 },
               { label: "Top 400", pts: 2 },
               { label: "Top 500", pts: 1 },
