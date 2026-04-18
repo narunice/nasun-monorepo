@@ -34,6 +34,20 @@ const MAX_OFFSET = 10000;
 // Cognito identityId format: region:uuid
 const IDENTITY_ID_PATTERN = /^[\w-]+:[\w-]{36}$/;
 
+// Must match the allowlist in index.ts. Used for explicit CORS on redirect responses
+// (nginx/CloudFront may strip middleware-set CORS headers on 302).
+const CORS_ALLOWED_ORIGINS = new Set([
+  'https://explorer.nasun.io',
+  'https://nasun.io',
+  'https://staging.nasun.io',
+  'https://pado.finance',
+  'https://staging.pado.finance',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:5176',
+  'http://localhost:4173',
+]);
+
 function parseLimit(raw: string | undefined): number {
   const n = Number(raw ?? 50);
   if (Number.isNaN(n) || n < 1) return 50;
@@ -684,7 +698,7 @@ app.get('/score/wallet/:address', async (c) => {
   const url = new URL(c.req.url);
   url.pathname = url.pathname.replace(`/wallet/${address}`, `/${encodeURIComponent(identityId)}`);
   const origin = c.req.header('origin');
-  if (origin) {
+  if (origin && CORS_ALLOWED_ORIGINS.has(origin)) {
     c.header('Access-Control-Allow-Origin', origin);
   }
   return c.redirect(url.pathname, 302);
