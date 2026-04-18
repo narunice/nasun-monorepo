@@ -1,4 +1,4 @@
-export { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, usePreviousWeekScoreLeaderboard, useTraderScore } from './hooks/useLeaderboard';
+export { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, usePreviousWeekScoreLeaderboard, useAvailableWeeks, useTraderScore, getWeekId } from './hooks/useLeaderboard';
 export { useTraderStats } from './hooks/useTraderStats';
 export { useTraderFills } from './hooks/useTraderFills';
 export { useTraderClassification } from './hooks/useTraderClassification';
@@ -14,6 +14,7 @@ export { RankChangeIndicator } from './components/RankChangeIndicator';
 export { PeriodSelector } from './components/PeriodSelector';
 export { ModeSelector } from './components/ModeSelector';
 export { ScopeSelector } from './components/ScopeSelector';
+export { WeekPicker } from './components/WeekPicker';
 export { MyRankCard } from './components/MyRankCard';
 export { TraderProfileHeader } from './components/TraderProfileHeader';
 export { TraderAvatar } from './components/TraderAvatar';

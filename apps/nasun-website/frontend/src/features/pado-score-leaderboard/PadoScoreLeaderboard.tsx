@@ -3,6 +3,8 @@ import { DashboardCard } from '../../components/ui/DashboardCard';
 import {
   usePadoScoreLeaderboard,
   usePreviousPadoScoreLeaderboard,
+  useAvailableWeeks,
+  getCurrentWeekId,
   isNewWeekGracePeriod,
   type ScoreLeaderboardTrader,
   type ScoreLeaderboardResponse,
@@ -134,11 +136,16 @@ function PrevWeekSection({ data, isLoading }: { data: ScoreLeaderboardResponse |
 }
 
 export function PadoScoreLeaderboard() {
+  const currentWeekId = getCurrentWeekId();
   const [page, setPage] = React.useState(1);
+  const [selectedWeekId, setSelectedWeekId] = React.useState(currentWeekId);
   const offset = (page - 1) * PAGE_SIZE;
 
-  const currentQuery = usePadoScoreLeaderboard(PAGE_SIZE, offset);
-  const inGracePeriod = isNewWeekGracePeriod(currentQuery.data);
+  const availableWeeksQuery = useAvailableWeeks();
+  const isCurrentWeek = selectedWeekId === currentWeekId;
+  const currentQuery = usePadoScoreLeaderboard(selectedWeekId, PAGE_SIZE, offset);
+  const inGracePeriod = isCurrentWeek && isNewWeekGracePeriod(currentQuery.data);
+  const showNoData = !isCurrentWeek && !currentQuery.isLoading && (currentQuery.data?.traders.length ?? 0) === 0;
   const prevQuery = usePreviousPadoScoreLeaderboard(inGracePeriod, PAGE_SIZE, 0);
 
   const data = currentQuery.data;
@@ -149,7 +156,25 @@ export function PadoScoreLeaderboard() {
     <div className="space-y-4">
       {/* Meta bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <WeekBadge weekId={data?.weekId} weekStart={data?.weekStart} />
+        <div className="flex flex-wrap items-center gap-3">
+          <WeekBadge weekId={data?.weekId} weekStart={data?.weekStart} />
+          {(availableWeeksQuery.data?.weeks.length ?? 0) > 0 && (
+            <select
+              value={selectedWeekId}
+              onChange={(e) => { setSelectedWeekId(e.target.value); setPage(1); }}
+              className="text-sm bg-nasun-c6/20 text-nasun-white/80 border border-nasun-nw4/30 rounded-sm px-2 py-1 focus:outline-none focus:border-nasun-c5/50"
+            >
+              {(availableWeeksQuery.data!.weeks.some(w => w.weekId === currentWeekId)
+                ? availableWeeksQuery.data!.weeks
+                : [{ weekId: currentWeekId, label: currentWeekId }, ...availableWeeksQuery.data!.weeks]
+              ).map((w) => (
+                <option key={w.weekId} value={w.weekId}>
+                  {w.weekId === currentWeekId ? `This Week (${w.weekId.split('-')[1]})` : w.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
         {data && data.updatedAt > 0 && (
           <span className="text-sm text-nasun-white/70">
             Updated {new Date(data.updatedAt).toLocaleString('en-US', {
@@ -171,8 +196,15 @@ export function PadoScoreLeaderboard() {
         </DashboardCard>
       )}
 
-      {/* Current week table (hidden during grace period) */}
-      {!inGracePeriod && (
+      {/* Past week with no data */}
+      {showNoData && (
+        <DashboardCard>
+          <p className="text-sm text-nasun-white/70 py-4 text-center">No data for this week.</p>
+        </DashboardCard>
+      )}
+
+      {/* Current week table (hidden during grace period or when no data) */}
+      {!inGracePeriod && !showNoData && (
         <DashboardCard>
           <TableHeader />
           {currentQuery.isLoading
