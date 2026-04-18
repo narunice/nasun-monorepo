@@ -38,28 +38,25 @@ export function LeaderboardV3() {
     <SectionLayout className="!max-w-7xl px-auto">
       {/* Header */}
       <PageTitle as="h2" align="center">
-        {t("v3.title")}
+        Creators Leaderboard
       </PageTitle>
 
       {/* Important Update Notice */}
-      <div className="mb-10 p-6 md:p-8 bg-nasun-white/[0.04] border border-nasun-white/[0.1] rounded-sm">
-        <h3 className="text-xl md:text-2xl font-semibold text-nasun-white mb-6">
+      <div className="mb-10 p-6 md:p-8 bg-nasun-nw3/10 border border-nasun-nw1/30 rounded-sm">
+        <h3 className="text-xl md:text-2xl font-semibold text-nasun-white mb-4">
           An Important Update on the Creators Leaderboard
         </h3>
-
-        <div className="text-nasun-white/80 leading-relaxed text-sm md:text-base">
-          <p>
-            Founder's Note:{" "}
-            <a
-              href="https://x.com/Naru010110/status/2042153784286310640?s=20"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-nasun-white hover:text-white underline break-all transition-colors"
-            >
-              https://x.com/Naru010110/status/2042153784286310640?s=20
-            </a>
-          </p>
-        </div>
+        <p className="text-nasun-nw4 leading-relaxed">
+          Founder's Note:{" "}
+          <a
+            href="https://x.com/Naru010110/status/2042153784286310640?s=20"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-nasun-nw1 hover:text-nasun-nw4 underline underline-offset-2 break-all transition-colors"
+          >
+            https://x.com/Naru010110/status/2042153784286310640?s=20
+          </a>
+        </p>
       </div>
 
       {/* Season Selector */}
@@ -77,7 +74,7 @@ export function LeaderboardV3() {
 
       {/* Top Climbers Spotlight */}
       {selectedSeasonId && (
-        <div className="mb-8">
+        <div className="mb-10">
           <TopClimbersV3 seasonId={selectedSeasonId} />
         </div>
       )}
@@ -85,7 +82,7 @@ export function LeaderboardV3() {
       {/* Loading State */}
       {leaderboardLoading && (
         <div className="flex justify-center py-12">
-          <Spinner size="lg" colorClass="text-white/50" />
+          <Spinner size="lg" colorClass="text-nasun-nw1/70" />
         </div>
       )}
 
@@ -99,7 +96,7 @@ export function LeaderboardV3() {
       {/* No Active Season */}
       {!seasonsLoading && (!seasons || seasons.length === 0) && (
         <div className="text-center py-12">
-          <p className="text-nasun-white/50 text-lg">{t("v3.noSeason")}</p>
+          <p className="text-nasun-nw4 text-lg">{t("v3.noSeason")}</p>
         </div>
       )}
 
@@ -112,7 +109,7 @@ export function LeaderboardV3() {
 
       {/* 2-column grid: column widths shared across rows */}
       {selectedSeasonId && (
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] lg:grid-cols-[1fr_380px] gap-x-8 gap-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr] lg:grid-cols-[1fr_380px] gap-x-8 gap-y-4">
           {/* Row 1, Col 1: Snapshot Viewer */}
           <div>
             {selectedSeason && (
@@ -120,7 +117,11 @@ export function LeaderboardV3() {
                 selectedDate={snapshotDate}
                 onDateChange={setSnapshotDate}
                 minDate={selectedSeason.startDate}
-                maxDate={isSeasonEnded ? selectedSeason.endDate : new Date().toISOString().split('T')[0]}
+                maxDate={
+                  isSeasonEnded
+                    ? selectedSeason.endDate
+                    : new Date().toISOString().split("T")[0]
+                }
                 lastUpdated={leaderboardData?.calculatedAt}
                 isEnded={isSeasonEnded}
               />

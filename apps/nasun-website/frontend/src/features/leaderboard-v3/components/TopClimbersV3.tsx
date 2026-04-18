@@ -45,27 +45,26 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
     limit: 5,
   });
 
-  // Loading skeleton
   if (isLoading) {
     return (
       <div className="w-full">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
           <div className="flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-yellow-500" />
+            <Trophy className="w-5 h-5 text-nasun-nw1" />
             <SectionTitle as="h3" className="uppercase font-medium !mb-0">
               {t("v3.climbers.title")}
             </SectionTitle>
           </div>
-          <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-sm animate-pulse">
+          <div className="inline-flex border border-nasun-nw3/30 bg-nasun-nw3/10 p-1 rounded-sm animate-pulse">
             {TIME_RANGES.map((r) => (
-              <div key={r} className="h-7 w-14 bg-nasun-c4/20 rounded-sm mx-0.5"></div>
+              <div key={r} className="h-7 w-14 bg-nasun-nw3/20 rounded-sm mx-0.5"></div>
             ))}
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className={getVisibilityClass(i)}>
-              <div className="h-64 bg-nasun-c4/10 border border-nasun-c4/50 rounded-xl animate-pulse"></div>
+              <div className="h-56 bg-nasun-nw3/10 border border-nasun-nw3/25 rounded-sm animate-pulse"></div>
             </div>
           ))}
         </div>
@@ -73,22 +72,20 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="w-full text-center py-8 text-nasun-white/50">
+      <div className="w-full text-center py-8 text-nasun-nw4">
         {t("v3.climbers.loadError")}
       </div>
     );
   }
 
-  // No data
   if (!data || data.climbers.length === 0) {
     return (
       <div className="w-full">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
           <div className="flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-yellow-500" />
+            <Trophy className="w-5 h-5 text-nasun-nw1" />
             <SectionTitle as="h3" className="uppercase font-medium !mb-0">
               {t("v3.climbers.title")}
             </SectionTitle>
@@ -99,7 +96,7 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
             ranges={TIME_RANGES}
           />
         </div>
-        <div className="text-center py-8 text-nasun-white/50">
+        <div className="text-center py-8 text-nasun-nw4">
           {t("v3.climbers.noData")}
         </div>
       </div>
@@ -108,10 +105,9 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
 
   return (
     <div className="w-full">
-      {/* Header with time range selector */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
         <div className="flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-yellow-500" />
+          <Trophy className="w-5 h-5 text-nasun-nw1" />
           <SectionTitle as="h3" className="uppercase font-medium !mb-0">
             {t("v3.climbers.title")}
           </SectionTitle>
@@ -123,11 +119,10 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
         />
       </div>
 
-      {/* Climber cards grid (responsive: xl:5 lg:4 md:3 sm:2 mobile:3 cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {data.climbers.slice(0, 5).map((climber, index) => (
           <div key={climber.accountId} className={getVisibilityClass(index)}>
-            <ClimberCardV3 climber={climber} position={index + 1} />
+            <ClimberCardV3 climber={climber} />
           </div>
         ))}
       </div>
@@ -135,7 +130,6 @@ const TopClimbersV3: React.FC<TopClimbersV3Props> = ({ seasonId }) => {
   );
 };
 
-// Inline time range selector (V2 pattern)
 interface TimeRangeSelectorInlineProps {
   selected: TimeRangeV3;
   onSelect: (range: TimeRangeV3) => void;
@@ -144,15 +138,15 @@ interface TimeRangeSelectorInlineProps {
 
 function TimeRangeSelectorInline({ selected, onSelect, ranges }: TimeRangeSelectorInlineProps) {
   return (
-    <div className="inline-flex border border-nasun-c4/50 bg-black/60 p-1 rounded-sm">
+    <div className="inline-flex border border-nasun-nw3/30 bg-nasun-nw3/10 p-1 rounded-sm">
       {ranges.map((range) => (
         <button
           key={range}
           onClick={() => onSelect(range)}
-          className={`px-3 py-1 rounded-sm text-sm font-light transition-all ${
+          className={`px-3 py-1 rounded-sm text-sm transition-all ${
             selected === range
-              ? "bg-nasun-c4/80 text-nasun-white"
-              : "text-nasun-white hover:bg-gray-700"
+              ? "bg-nasun-nw2/60 text-nasun-white font-medium"
+              : "text-nasun-nw4 hover:text-nasun-white hover:bg-nasun-nw3/30"
           }`}
         >
           {TIME_RANGE_LABELS[range]}

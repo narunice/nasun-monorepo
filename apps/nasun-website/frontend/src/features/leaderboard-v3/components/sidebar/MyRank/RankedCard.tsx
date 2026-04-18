@@ -45,15 +45,15 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
     <div>
       <div
         ref={cardRef}
-        className="p-5 bg-gradient-to-br from-nasun-c7/20 via-nasun-c5/20 to-nasun-c4/30 border border-nasun-c7/30 rounded-sm"
+        className="p-5 bg-nasun-nw3/15 border border-nasun-nw1/30 rounded-sm"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-nasun-c7/20 rounded-lg">
-              <Trophy className="w-4 h-4 text-nasun-c7" />
+            <div className="p-1.5 bg-nasun-nw1/15 rounded-sm border border-nasun-nw1/25">
+              <Trophy className="w-4 h-4 text-nasun-nw1" />
             </div>
-            <h4 className="font-bold text-nasun-white text-sm uppercase tracking-tight">{t("v3.myRank.title")}</h4>
+            <h4 className="font-semibold text-nasun-white text-sm uppercase tracking-wide">{t("v3.myRank.title")}</h4>
           </div>
           <RankChangeIndicatorV3
             direction={data.rankChange?.direction ?? "same"}
@@ -63,12 +63,11 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
 
         {/* Rank Display */}
         <div className="flex items-center gap-4 mb-4">
-          {/* Profile Image */}
           {data.profileImageUrl ? (
             <img
               src={data.profileImageUrl}
               alt={data.displayName || data.originalUsername || data.username}
-              className="w-14 h-14 rounded-2xl border-2 border-nasun-c7/50"
+              className="w-14 h-14 rounded-sm border border-nasun-nw1/30 object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
                 const fallback = e.currentTarget.nextElementSibling;
@@ -76,38 +75,34 @@ export function RankedCard({ data, seasonId }: RankedCardProps) {
               }}
             />
           ) : (
-            <div className="w-14 h-14 rounded-full bg-nasun-c4/30 flex items-center justify-center border-2 border-nasun-c7/30">
-              <User className="w-6 h-6 text-nasun-white/40" />
+            <div className="w-14 h-14 rounded-sm bg-nasun-nw3/30 flex items-center justify-center border border-nasun-nw1/25">
+              <User className="w-6 h-6 text-nasun-nw4" />
             </div>
           )}
-          {/* Hidden fallback (shown on image error) */}
           <div className="hidden">
-            <div className="w-14 h-14 rounded-2xl bg-nasun-c4/30 flex items-center justify-center border-2 border-nasun-c7/30">
-              <User className="w-6 h-6 text-nasun-white/40" />
+            <div className="w-14 h-14 rounded-sm bg-nasun-nw3/30 flex items-center justify-center border border-nasun-nw1/25">
+              <User className="w-6 h-6 text-nasun-nw4" />
             </div>
           </div>
 
-          {/* Rank & Score */}
           <div className="flex-1">
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-nasun-c7">#{data.rank}</span>
-            </div>
-            <div className="text-sm text-nasun-white/60">{data.userScore?.toFixed(3)} {t("v3.myRank.score")}</div>
+            <span className="text-3xl font-black text-nasun-nw1">#{data.rank}</span>
+            <p className="text-sm text-nasun-nw4 mt-0.5">{data.userScore?.toFixed(3)} {t("v3.myRank.score")}</p>
           </div>
         </div>
 
         {/* User Info */}
         <div>
-          <div className="font-medium text-nasun-white text-sm">
+          <p className="font-medium text-nasun-white text-sm">
             {data.displayName || data.originalUsername || data.username}
-          </div>
-          <div className="text-xs text-nasun-white/50">
+          </p>
+          <p className="text-sm text-nasun-nw4">
             @{data.originalUsername || data.username}
-          </div>
+          </p>
         </div>
       </div>
 
-      {/* Share Actions - outside cardRef for clean image capture */}
+      {/* Share Actions */}
       <div className="pt-3">
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outlineC1" size="sm" onClick={handleViewRank}>

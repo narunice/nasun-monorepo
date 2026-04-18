@@ -4,13 +4,14 @@
  * Public page displaying the community engagement leaderboard.
  */
 
-import { Suspense } from 'react';
+import { Suspense } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { PageLayout } from '../components/layout/PageLayout';
-import ErrorBoundary from '../components/layout/ErrorBoundary';
-import { SectionLayout } from '../components/layout/SectionLayout';
-import { SectionLoading } from '../components/ui/SectionLoading';
-import { LeaderboardV3 } from '@/features/leaderboard-v3';
+import { PageLayout } from "../components/layout/PageLayout";
+import ErrorBoundary from "../components/layout/ErrorBoundary";
+import { SectionLayout } from "../components/layout/SectionLayout";
+import { SectionLoading } from "../components/ui/SectionLoading";
+import { LeaderboardV3 } from "@/features/leaderboard-v3";
 
 const LeaderboardV3Page = () => {
   const { t } = useTranslation("leaderboard");
@@ -24,9 +25,17 @@ const LeaderboardV3Page = () => {
         }
       >
         <Suspense fallback={<SectionLoading fullScreen />}>
-          <LeaderboardV3 showBreakdown={true} />
+          <LeaderboardV3 />
         </Suspense>
       </ErrorBoundary>
+      <div className="flex justify-center pb-12">
+        <Link
+          to="/community/creators-leaderboard-guide"
+          className="text-base text-nasun-nw1 hover:text-nasun-nw2 underline underline-offset-4 transition-colors"
+        >
+          Creators Leaderboard Guide
+        </Link>
+      </div>
     </PageLayout>
   );
 };
