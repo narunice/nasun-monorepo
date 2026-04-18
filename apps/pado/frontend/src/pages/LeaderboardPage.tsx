@@ -42,12 +42,15 @@ export function LeaderboardPage() {
     ? scoreQuery.isLoading
     : volumeQuery.isLoading;
 
-  const isWeekEmpty = mode === 'score'
-    && !activeLoading
-    && scoreQuery.data !== undefined
-    && scoreQuery.data.traders.length === 0;
+  // Show previous week snapshot for 12h after reset, or when current week has no data yet.
+  const WEEK_GRACE_PERIOD_MS = 12 * 60 * 60 * 1000;
+  const scoreData = scoreQuery.data;
+  const isNewWeek = mode === 'score' && !activeLoading && scoreData !== undefined && (
+    (!!scoreData.weekStart && Date.now() - scoreData.weekStart < WEEK_GRACE_PERIOD_MS)
+    || scoreData.traders.length === 0
+  );
 
-  const prevWeekQuery = usePreviousWeekScoreLeaderboard(isWeekEmpty, PAGE_SIZE, 0);
+  const prevWeekQuery = usePreviousWeekScoreLeaderboard(isNewWeek, PAGE_SIZE, 0);
 
   const totalTraders = activeData?.totalTraders ?? 0;
   const totalPages = Math.min(Math.ceil(totalTraders / PAGE_SIZE), MAX_PAGES);
@@ -162,7 +165,7 @@ export function LeaderboardPage() {
           <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
             {mode === 'score' ? (
               (() => {
-                if (isWeekEmpty) {
+                if (isNewWeek) {
                   const prevWeekId = prevWeekQuery.data?.weekId;
                   const prevTraders = prevWeekQuery.data?.traders ?? [];
                   return (
