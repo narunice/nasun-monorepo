@@ -189,7 +189,7 @@ export function LeaderboardPage() {
                 }
                 return (
                   <ScoreLeaderboardTable
-                    traders={scoreData?.traders ?? []}
+                    traders={scoreQuery.data?.traders ?? []}
                     isLoading={activeLoading}
                     currentUserAddress={userAddress}
                     followFilter={showFollowing}
