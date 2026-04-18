@@ -106,7 +106,7 @@ async function _unlockAndActivate(
     address,
     publicKey: getPublicKeyFromKeypair(keypair),
   };
-  set({ status: 'unlocked', account, isLoading: false });
+  set({ status: 'unlocked', account, isLoading: false, security: refreshActivityOnUnlock() });
 }
 
 async function _importWithMnemonic(
@@ -183,7 +183,7 @@ export const useWallet = create<WalletStore>((set, get) => ({
               address: getAddressFromKeypair(keypair),
               publicKey: getPublicKeyFromKeypair(keypair),
             };
-            set({ status: 'unlocked', account });
+            set({ status: 'unlocked', account, security: refreshActivityOnUnlock() });
             return;
           } catch {
             // Session password invalid, clear it
@@ -220,6 +220,7 @@ export const useWallet = create<WalletStore>((set, get) => ({
         status: 'unlocked',
         account,
         isLoading: false,
+        security: refreshActivityOnUnlock(),
       });
 
       return address;
@@ -249,6 +250,7 @@ export const useWallet = create<WalletStore>((set, get) => ({
         status: 'unlocked',
         account,
         isLoading: false,
+        security: refreshActivityOnUnlock(),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to unlock wallet';
@@ -429,6 +431,12 @@ function saveSecuritySettings(settings: SecuritySettings): void {
   } catch {
     // Ignore storage errors
   }
+}
+
+function refreshActivityOnUnlock(): SecuritySettings {
+  const updated = { ...loadSecuritySettings(), lastActivityAt: Date.now() };
+  saveSecuritySettings(updated);
+  return updated;
 }
 
 // ============================================
