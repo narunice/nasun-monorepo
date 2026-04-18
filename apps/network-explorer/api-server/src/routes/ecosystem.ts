@@ -582,7 +582,14 @@ app.get('/leaderboard', async (c) => {
       const rows = await pointsDb!`
         WITH week_activities AS (
           SELECT DISTINCT identity_id,
-            date_trunc('day', tx_timestamp AT TIME ZONE 'UTC')::date AS day,
+            -- Use epoch-based day slot relative to week start to avoid the 10-minute offset
+            -- artifact: calendar date_trunc can produce 8 distinct days per 7-day window
+            -- because the reset boundary (Mon 00:10 UTC) crosses midnight (Mon 00:00 UTC).
+            -- Slots 0-6 guarantee activeDays <= 7 regardless of the offset.
+            FLOOR(
+              (EXTRACT(EPOCH FROM tx_timestamp) - EXTRACT(EPOCH FROM ${bounds.start}::timestamptz))
+              / 86400
+            )::int AS day_slot,
             category
           FROM activity_points
           WHERE NOT flagged
@@ -599,7 +606,7 @@ app.get('/leaderboard', async (c) => {
         activity_score AS (
           SELECT identity_id,
                  COUNT(*)::int AS activity_score,
-                 COUNT(DISTINCT day)::int AS active_days
+                 COUNT(DISTINCT day_slot)::int AS active_days
           FROM week_activities
           GROUP BY identity_id
         ),
