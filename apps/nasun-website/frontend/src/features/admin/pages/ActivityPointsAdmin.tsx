@@ -173,14 +173,15 @@ function LeaderboardSection() {
               <th className="pb-2 pr-3 text-right">Weekly Score</th>
               <th className="pb-2 pr-3 text-right">Activity</th>
               <th className="pb-2 pr-3 text-right">Creator Posts</th>
+              <th className="pb-2 pr-3 text-right">Bonus</th>
               <th className="pb-2 text-right">Active Days</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-nasun-white/5">
             {isLoading ? (
-              <tr><td colSpan={6} className="py-8 text-center text-nasun-white/70">Loading...</td></tr>
+              <tr><td colSpan={7} className="py-8 text-center text-nasun-white/70">Loading...</td></tr>
             ) : entries.length === 0 ? (
-              <tr><td colSpan={6} className="py-8 text-center text-nasun-white/70">No data</td></tr>
+              <tr><td colSpan={7} className="py-8 text-center text-nasun-white/70">No data</td></tr>
             ) : entries.map((entry) => {
               const profile = profileMap.get(entry.identityId);
               const xHandle = profile?.originalTwitterHandle || profile?.twitterHandle;
@@ -230,6 +231,9 @@ function LeaderboardSection() {
                   </td>
                   <td className="py-2 pr-3 text-right text-nasun-white/85">
                     {entry.creatorPostScore > 0 ? `+${entry.creatorPostScore}` : "-"}
+                  </td>
+                  <td className="py-2 pr-3 text-right text-nasun-white/85">
+                    {entry.bonusScore > 0 ? `+${entry.bonusScore}` : "-"}
                   </td>
                   <td className="py-2 text-right text-nasun-white/85">{entry.activeDays}/7</td>
                 </tr>

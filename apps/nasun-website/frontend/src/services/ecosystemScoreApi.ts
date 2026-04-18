@@ -58,8 +58,13 @@ export interface EcosystemLeaderboardEntry {
   identityId: string;
   activityScore: number;
   creatorPostScore: number;
+  bonusScore: number;
   weeklyScore: number;
   activeDays: number;
+  hasGenesisPass: boolean;
+  displayName: string | null;
+  xHandle: string | null;
+  profileImageUrl: string | null;
   rank: number;
 }
 
