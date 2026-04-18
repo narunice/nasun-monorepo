@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
-import type { Period, LeaderboardMode, LeaderboardResponse, PnlLeaderboardResponse, ScoreLeaderboardResponse, TraderScoreResponse, ScoreScope } from '../types';
+import type { Period, LeaderboardMode, LeaderboardResponse, PnlLeaderboardResponse, ScoreLeaderboardResponse, TraderScoreResponse, ScoreScope, ViewMode } from '../types';
 
 async function fetchLeaderboard(period: Period, limit: number, offset: number, mode: LeaderboardMode = 'volume'): Promise<LeaderboardResponse> {
   const baseUrl = NETWORK_CONFIG.chatHttpUrl;
@@ -63,32 +63,14 @@ export function usePnlLeaderboard(period: Period, limit: number = 50, offset: nu
   });
 }
 
-async function fetchScoreLeaderboard(scope: ScoreScope, limit: number, offset: number): Promise<ScoreLeaderboardResponse> {
-  const baseUrl = NETWORK_CONFIG.chatHttpUrl;
-  if (!baseUrl) {
-    return { scope, traders: [], updatedAt: 0, totalTraders: 0 };
-  }
 
-  const params = new URLSearchParams({ scope, limit: String(limit), offset: String(offset) });
-  const url = `${baseUrl}/api/pado/leaderboard/score?${params}`;
-  const res = await fetch(url);
-
-  if (!res.ok) {
-    throw new Error(`Score API error: ${res.status}`);
-  }
-
-  return res.json();
-}
-
-export function useScoreLeaderboard(scope: ScoreScope = 'weekly', weekId: string = getWeekId(0), limit: number = 50, offset: number = 0) {
+export function useScoreLeaderboard(viewMode: ViewMode = 'current', weekId: string = getWeekId(0), limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
+  const effectiveWeekId = viewMode === 'current' ? getWeekId(0) : weekId;
 
   return useQuery<ScoreLeaderboardResponse>({
-    queryKey: ['leaderboard', 'score', scope, scope === 'weekly' ? weekId : null, limit, offset],
-    queryFn: () =>
-      scope === 'weekly'
-        ? fetchWeeklyScoreLeaderboard(weekId, limit, offset)
-        : fetchScoreLeaderboard(scope, limit, offset),
+    queryKey: ['leaderboard', 'score', viewMode, effectiveWeekId, limit, offset],
+    queryFn: () => fetchWeeklyScoreLeaderboard(effectiveWeekId, limit, offset),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
@@ -170,7 +152,7 @@ export function usePreviousWeekScoreLeaderboard(enabled: boolean, limit: number 
   });
 }
 
-export function useTraderScore(address: string | null, scope: ScoreScope = 'alltime') {
+export function useTraderScore(address: string | null, scope: ScoreScope = 'weekly') {
   return useQuery<TraderScoreResponse>({
     queryKey: ['trader-score', address, scope],
     queryFn: () => fetchTraderScore(address!, scope),

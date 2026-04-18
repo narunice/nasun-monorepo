@@ -1,29 +1,31 @@
-import type { ScoreScope } from '../types';
+import type { ViewMode } from '../types';
 
-const SCOPES: { id: ScoreScope; label: string }[] = [
-  { id: 'weekly', label: 'Weekly' },
-  { id: 'alltime', label: 'All Time' },
+const MODES: { id: ViewMode; label: string }[] = [
+  { id: 'current', label: 'Current Week' },
+  { id: 'past', label: 'Past Weeks' },
 ];
 
 interface ScopeSelectorProps {
-  selected: ScoreScope;
-  onSelect: (scope: ScoreScope) => void;
+  selected: ViewMode;
+  onSelect: (mode: ViewMode) => void;
+  pastDisabled?: boolean;
 }
 
-export function ScopeSelector({ selected, onSelect }: ScopeSelectorProps) {
+export function ScopeSelector({ selected, onSelect, pastDisabled }: ScopeSelectorProps) {
   return (
     <div className="flex items-center bg-theme-bg-tertiary rounded-lg p-0.5">
-      {SCOPES.map((scope) => (
+      {MODES.map((mode) => (
         <button
-          key={scope.id}
-          onClick={() => onSelect(scope.id)}
-          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-            selected === scope.id
+          key={mode.id}
+          onClick={() => onSelect(mode.id)}
+          disabled={mode.id === 'past' && pastDisabled}
+          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            selected === mode.id
               ? 'bg-theme-bg-secondary text-theme-text-primary shadow-sm'
               : 'text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
-          {scope.label}
+          {mode.label}
         </button>
       ))}
     </div>
