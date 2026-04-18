@@ -13,8 +13,6 @@ import {
   replaceTraderPnlStats,
   getPointsCurrentRanks,
   replaceTraderPoints,
-  generatePointsSnapshot,
-  purgeOldSnapshots,
   setIndexerState,
   getCurrentWeekStart,
   getWeekId,
@@ -31,13 +29,9 @@ let sameIdentityPairs: Set<string> = new Set();
 
 let config: LeaderboardConfig | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
-let snapshotTimer: ReturnType<typeof setInterval> | null = null;
-let lastSnapshotDate: string | null = null;
 
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 const AGGREGATION_LIMIT = 500;
-const SNAPSHOT_HOUR_KST = 9; // Generate snapshot at 09:00 KST (00:00 UTC)
-const SNAPSHOT_RETENTION_DAYS = 180;
 
 /**
  * Run aggregation for all periods.
@@ -241,7 +235,9 @@ function runWeeklyScoreAggregation(): void {
     weeklyPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
   }
 
-  const currentRanks = getWeeklyCurrentRanks(weekId);
+  const prevWeekStart = getCurrentWeekStart() - 7 * 24 * 60 * 60 * 1000;
+  const prevWeekId = getWeekId(prevWeekStart);
+  const baselineRanks = getWeeklyCurrentRanks(prevWeekId);
 
   const scored = traders.map((t) => {
     const tradeCount = t.trade_count;
@@ -291,10 +287,10 @@ function runWeeklyScoreAggregation(): void {
   // Sort descending by total score
   scored.sort((a, b) => b.totalScore - a.totalScore);
 
-  // Assign ranks; prev_rank = 0 if not in current table (new week)
+  // Assign ranks; prev_rank from last week's final standings (0 = new entrant this week)
   const ranked = scored.map((t, index) => {
     const rank = index + 1;
-    const prevRank = currentRanks.get(t.address) ?? 0;
+    const prevRank = baselineRanks.get(t.address) ?? 0;
     return { ...t, rank, prevRank };
   });
 
@@ -345,42 +341,6 @@ function runCompetitionAggregation(): void {
   }
 }
 
-/**
- * Check if it's time to generate a daily snapshot and do so if needed.
- * Runs at SNAPSHOT_HOUR_KST (09:00 KST). Idempotent via date key.
- */
-function checkDailySnapshot(): void {
-  // Use KST (UTC+9) for date calculation
-  const now = new Date();
-  const kstOffset = 9 * 60 * 60 * 1000;
-  const kstDate = new Date(now.getTime() + kstOffset);
-  const kstHour = kstDate.getUTCHours();
-  const today = kstDate.toISOString().slice(0, 10); // YYYY-MM-DD in KST
-
-  // Only trigger at or after the snapshot hour, and only once per date
-  if (kstHour < SNAPSHOT_HOUR_KST) return;
-  if (lastSnapshotDate === today) return;
-
-  try {
-    const count = generatePointsSnapshot(today);
-    lastSnapshotDate = today;
-
-    if (count > 0) {
-      console.log(`[Snapshot] Generated daily points snapshot for ${today}: ${count} traders`);
-
-      // Purge old snapshots periodically (only when a new snapshot is created)
-      const purged = purgeOldSnapshots(SNAPSHOT_RETENTION_DAYS);
-      if (purged > 0) {
-        console.log(`[Snapshot] Purged ${purged} old snapshot entries (>${SNAPSHOT_RETENTION_DAYS} days)`);
-      }
-    } else {
-      console.log(`[Snapshot] Snapshot for ${today} already exists, skipped`);
-    }
-  } catch (err) {
-    console.error('[Snapshot] Error generating daily snapshot:', (err as Error).message);
-  }
-}
-
 const IDENTITY_CACHE_REFRESH_MS = 60 * 60 * 1000; // 1 hour
 
 export function startAggregator(cfg: LeaderboardConfig): void {
@@ -414,9 +374,6 @@ export function startAggregator(cfg: LeaderboardConfig): void {
     console.error('[Aggregator] Initial aggregation error:', (err as Error).message);
   }
 
-  // Check for daily snapshot on startup
-  checkDailySnapshot();
-
   // Schedule periodic runs
   timer = setInterval(() => {
     try {
@@ -425,21 +382,12 @@ export function startAggregator(cfg: LeaderboardConfig): void {
       console.error('[Aggregator] Error:', (err as Error).message);
     }
   }, cfg.aggregationIntervalMs);
-
-  // Check for daily snapshot every 10 minutes
-  snapshotTimer = setInterval(() => {
-    checkDailySnapshot();
-  }, 10 * 60 * 1000);
 }
 
 export function stopAggregator(): void {
   if (timer) {
     clearInterval(timer);
     timer = null;
-  }
-  if (snapshotTimer) {
-    clearInterval(snapshotTimer);
-    snapshotTimer = null;
   }
   console.log('[Aggregator] Stopped');
 }
