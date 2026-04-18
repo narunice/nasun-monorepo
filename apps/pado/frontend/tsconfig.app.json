@@ -8,6 +8,7 @@
     "types": ["vite/client"],
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "ignoreDeprecations": "6.0",
 
     /* Bundler mode */
     "moduleResolution": "bundler",
