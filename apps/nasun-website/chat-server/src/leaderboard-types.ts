@@ -264,6 +264,18 @@ export const POINTS = {
   LOSS_PENALTY_PTS: 20,          // deduct 20 pts from pnl score (floor 0)
 } as const;
 
+// Known bot wallet addresses - always excluded from leaderboards and points
+export const KNOWN_BOT_ADDRESSES: readonly string[] = [
+  // Prod LP bot (common wallet, NBTC/NETH/NSOL)
+  '0x9c8ef05cf0ec7a06a5019d01b8cf411ab0c749274182d36f6e714785af92b732',
+  // Prod LP bot (main LP_PRIVATE_KEY wallet)
+  '0x6d33f7d624da24c82ec46ac62a431135dfc4a8c26542a05efcd499890e4e28bc',
+  // Prod TPSL Keeper
+  '0x74a7daf4b88ce870e4c0f05350f6907621a923e728ff027f04cef6fc73de4d24',
+  // Staging LP bot
+  '0x69377697cebb6a6a748b9a5492de51b2d0f67413551d87f62cc17899432952cd',
+];
+
 // ===== RPC Event Types =====
 
 export interface OrderFilledParsedJson {
