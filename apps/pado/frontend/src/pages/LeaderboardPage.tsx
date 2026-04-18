@@ -1,26 +1,50 @@
-import { useState, useCallback } from 'react';
-import { useWallet, useZkLogin, useSignerAddress, usePasskeyStore } from '@nasun/wallet';
-import { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, usePreviousWeekScoreLeaderboard, useAvailableWeeks, getWeekId, LeaderboardTable, PnlLeaderboardTable, ScoreLeaderboardTable, PeriodSelector, ModeSelector, ScopeSelector, WeekPicker, MyRankCard } from '../features/leaderboard';
-import { Pagination } from '../features/leaderboard/components/Pagination';
-import { CompetitionBanner } from '../features/competitions';
-import { ActivityFeed } from '../features/social/components/ActivityFeed';
-import type { Period, LeaderboardMode, ScoreScope } from '../features/leaderboard';
+import { useState, useCallback } from "react";
+import {
+  useWallet,
+  useZkLogin,
+  useSignerAddress,
+  usePasskeyStore,
+} from "@nasun/wallet";
+import {
+  useLeaderboard,
+  usePnlLeaderboard,
+  useScoreLeaderboard,
+  usePreviousWeekScoreLeaderboard,
+  useAvailableWeeks,
+  getWeekId,
+  LeaderboardTable,
+  PnlLeaderboardTable,
+  ScoreLeaderboardTable,
+  PeriodSelector,
+  ModeSelector,
+  ScopeSelector,
+  WeekPicker,
+  MyRankCard,
+} from "../features/leaderboard";
+import { Pagination } from "../features/leaderboard/components/Pagination";
+import { CompetitionBanner } from "../features/competitions";
+import { ActivityFeed } from "../features/social/components/ActivityFeed";
+import type {
+  Period,
+  LeaderboardMode,
+  ViewMode,
+} from "../features/leaderboard";
 
 const PAGE_SIZE = 50;
 const MAX_RANK = 500;
 const MAX_PAGES = Math.ceil(MAX_RANK / PAGE_SIZE); // 10
 
 const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {
-  activity: 'Recent trades from traders you follow',
-  volume: 'Top traders ranked by volume',
-  pnl: 'Top traders ranked by realized PnL',
-  score: 'Weekly Pado Score from trades, volume, and performance',
+  activity: "Recent trades from traders you follow",
+  volume: "Top traders ranked by volume",
+  pnl: "Top traders ranked by realized PnL",
+  score: "Weekly Pado Score from trades, volume, and performance",
 };
 
 export function LeaderboardPage() {
-  const [period, setPeriod] = useState<Period>('7d');
-  const [mode, setMode] = useState<LeaderboardMode>('volume');
-  const [scope, setScope] = useState<ScoreScope>('weekly');
+  const [period, setPeriod] = useState<Period>("7d");
+  const [mode, setMode] = useState<LeaderboardMode>("volume");
+  const [viewMode, setViewMode] = useState<ViewMode>("current");
   const [showFollowing, setShowFollowing] = useState(false);
   const [page, setPage] = useState(1);
   const [selectedWeekId, setSelectedWeekId] = useState(() => getWeekId(0));
@@ -29,33 +53,56 @@ export function LeaderboardPage() {
   const offset = (page - 1) * PAGE_SIZE;
 
   const availableWeeksQuery = useAvailableWeeks();
+  const pastWeeks = (availableWeeksQuery.data?.weeks ?? []).filter(
+    (w) => w.weekId !== currentWeekId,
+  );
+
   const volumeQuery = useLeaderboard(period, PAGE_SIZE, offset);
   const pnlQuery = usePnlLeaderboard(period, PAGE_SIZE, offset);
-  const scoreQuery = useScoreLeaderboard(scope, selectedWeekId, PAGE_SIZE, offset);
+  const scoreQuery = useScoreLeaderboard(
+    viewMode,
+    selectedWeekId,
+    PAGE_SIZE,
+    offset,
+  );
 
-  const activeData = mode === 'pnl'
-    ? pnlQuery.data
-    : mode === 'score'
-    ? scoreQuery.data
-    : volumeQuery.data;
+  const activeData =
+    mode === "pnl"
+      ? pnlQuery.data
+      : mode === "score"
+        ? scoreQuery.data
+        : volumeQuery.data;
 
-  const activeLoading = mode === 'pnl'
-    ? pnlQuery.isLoading
-    : mode === 'score'
-    ? scoreQuery.isLoading
-    : volumeQuery.isLoading;
+  const activeLoading =
+    mode === "pnl"
+      ? pnlQuery.isLoading
+      : mode === "score"
+        ? scoreQuery.isLoading
+        : volumeQuery.isLoading;
 
   // Grace period: only applies when viewing the current week
   const WEEK_GRACE_PERIOD_MS = 12 * 60 * 60 * 1000;
   const scoreData = scoreQuery.data;
-  const isCurrentWeek = selectedWeekId === currentWeekId;
-  const isNewWeek = mode === 'score' && isCurrentWeek && !activeLoading && scoreData !== undefined && (
-    (!!scoreData.weekStart && Date.now() - scoreData.weekStart < WEEK_GRACE_PERIOD_MS)
-    || scoreData.traders.length === 0
-  );
-  const showNoData = mode === 'score' && !isCurrentWeek && !activeLoading && scoreData !== undefined && scoreData.traders.length === 0;
+  const isCurrentWeek = viewMode === "current";
+  const isNewWeek =
+    mode === "score" &&
+    isCurrentWeek &&
+    !activeLoading &&
+    scoreData !== undefined &&
+    !!scoreData.weekStart &&
+    Date.now() - scoreData.weekStart < WEEK_GRACE_PERIOD_MS;
+  const showNoData =
+    mode === "score" &&
+    !isCurrentWeek &&
+    !activeLoading &&
+    scoreData !== undefined &&
+    scoreData.traders.length === 0;
 
-  const prevWeekQuery = usePreviousWeekScoreLeaderboard(isNewWeek, PAGE_SIZE, 0);
+  const prevWeekQuery = usePreviousWeekScoreLeaderboard(
+    isNewWeek,
+    PAGE_SIZE,
+    0,
+  );
 
   const totalTraders = activeData?.totalTraders ?? 0;
   const totalPages = Math.min(Math.ceil(totalTraders / PAGE_SIZE), MAX_PAGES);
@@ -64,7 +111,8 @@ export function LeaderboardPage() {
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const signerAddress = useSignerAddress();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
+  const isConnected =
+    (status === "unlocked" && account) || isZkLoggedIn || isPasskeyUnlocked;
   const userAddress = signerAddress || null;
 
   // Reset page to 1 when mode or period changes
@@ -78,14 +126,22 @@ export function LeaderboardPage() {
     setPage(1);
   }, []);
 
-  const handleScopeChange = useCallback((s: ScoreScope) => {
-    setScope(s);
-    setPage(1);
-  }, []);
+  const handleViewModeChange = useCallback(
+    (newMode: ViewMode) => {
+      setViewMode(newMode);
+      setPage(1);
+      if (newMode === "past") {
+        if (pastWeeks.length > 0) setSelectedWeekId(pastWeeks[0].weekId);
+      } else {
+        setSelectedWeekId(currentWeekId);
+      }
+    },
+    [pastWeeks, currentWeekId],
+  );
 
   const handlePageChange = useCallback((p: number) => {
     setPage(p);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   return (
@@ -94,21 +150,25 @@ export function LeaderboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-theme-text-primary">Leaderboard</h1>
-            <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">FEATURE PREVIEW</span>
+            <h1 className="text-xl font-semibold text-theme-text-primary">
+              Leaderboard
+            </h1>
+            <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">
+              Experimental Phase
+            </span>
           </div>
           <p className="text-sm text-theme-text-muted mt-0.5">
             {MODE_DESCRIPTIONS[mode]}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {mode !== 'activity' && (
+          {mode !== "activity" && (
             <button
               onClick={() => setShowFollowing(!showFollowing)}
               className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                 showFollowing
-                  ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400'
-                  : 'border-theme-border text-theme-text-muted hover:text-theme-text-secondary'
+                  ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-400"
+                  : "border-theme-border text-theme-text-muted hover:text-theme-text-secondary"
               }`}
             >
               Following
@@ -121,10 +181,12 @@ export function LeaderboardPage() {
       {/* Active Competition Banner */}
       <CompetitionBanner />
 
-      {mode === 'activity' ? (
+      {mode === "activity" ? (
         // Activity Feed mode
         isConnected ? (
-          <ActivityFeed onBrowseLeaderboard={() => handleModeChange('volume')} />
+          <ActivityFeed
+            onBrowseLeaderboard={() => handleModeChange("volume")}
+          />
         ) : (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-theme-bg-secondary rounded-lg border border-theme-border">
             <p className="text-theme-text-muted mb-2">
@@ -148,28 +210,46 @@ export function LeaderboardPage() {
               <div className="flex items-center gap-4 text-sm text-theme-text-muted">
                 <span>{activeData.totalTraders} active traders</span>
                 <span>
-                  Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, Math.min(totalTraders, MAX_RANK))}
+                  Showing {offset + 1}-
+                  {Math.min(
+                    offset + PAGE_SIZE,
+                    Math.min(totalTraders, MAX_RANK),
+                  )}
                 </span>
                 {activeData.updatedAt > 0 && (
                   <span>
-                    Updated {new Date(activeData.updatedAt).toLocaleTimeString('en-US', {
-                      hour: '2-digit', minute: '2-digit', hour12: false,
-                    })}
+                    Updated{" "}
+                    {new Date(activeData.updatedAt).toLocaleTimeString(
+                      "en-US",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      },
+                    )}
                   </span>
                 )}
               </div>
-            ) : <div />}
-            {mode === 'score' ? (
+            ) : (
+              <div />
+            )}
+            {mode === "score" ? (
               <div className="flex items-center gap-2">
-                {scope === 'weekly' && (
+                {viewMode === "past" && pastWeeks.length > 0 && (
                   <WeekPicker
-                    weeks={availableWeeksQuery.data?.weeks ?? []}
+                    weeks={pastWeeks}
                     selectedWeekId={selectedWeekId}
-                    currentWeekId={currentWeekId}
-                    onChange={(wId) => { setSelectedWeekId(wId); setPage(1); }}
+                    onChange={(wId) => {
+                      setSelectedWeekId(wId);
+                      setPage(1);
+                    }}
                   />
                 )}
-                <ScopeSelector selected={scope} onSelect={handleScopeChange} />
+                <ScopeSelector
+                  selected={viewMode}
+                  onSelect={handleViewModeChange}
+                  pastDisabled={pastWeeks.length === 0}
+                />
               </div>
             ) : (
               <PeriodSelector selected={period} onSelect={handlePeriodChange} />
@@ -178,7 +258,7 @@ export function LeaderboardPage() {
 
           {/* Leaderboard Table */}
           <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
-            {mode === 'score' ? (
+            {mode === "score" ? (
               (() => {
                 if (showNoData) {
                   return (
@@ -193,13 +273,18 @@ export function LeaderboardPage() {
                   return (
                     <div>
                       <div className="flex flex-col items-center justify-center py-8 text-theme-text-secondary border-b border-theme-border">
-                        <p className="text-sm font-medium">Week just started - check back soon</p>
-                        <p className="text-xs text-theme-text-muted mt-1">New scores will appear as traders compete</p>
+                        <p className="text-sm font-medium">
+                          Week just started - check back soon
+                        </p>
+                        <p className="text-xs text-theme-text-muted mt-1">
+                          New scores will appear as traders compete
+                        </p>
                       </div>
                       {(prevWeekQuery.isLoading || prevTraders.length > 0) && (
                         <div>
                           <div className="px-4 py-3 text-xs font-medium text-theme-text-muted uppercase tracking-wider border-b border-theme-border">
-                            Last week{prevWeekId ? ` (${prevWeekId})` : ''} final standings
+                            Last week{prevWeekId ? ` (${prevWeekId})` : ""}{" "}
+                            final standings
                           </div>
                           <ScoreLeaderboardTable
                             traders={prevTraders}
@@ -221,7 +306,7 @@ export function LeaderboardPage() {
                   />
                 );
               })()
-            ) : mode === 'pnl' ? (
+            ) : mode === "pnl" ? (
               <PnlLeaderboardTable
                 traders={pnlQuery.data?.traders ?? []}
                 isLoading={activeLoading}

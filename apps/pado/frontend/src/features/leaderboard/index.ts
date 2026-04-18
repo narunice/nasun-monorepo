@@ -23,5 +23,5 @@ export { TraderFillsTable } from './components/TraderFillsTable';
 export { BadgeDisplay } from './components/BadgeDisplay';
 export { Pagination } from './components/Pagination';
 export { computeBadges, computeBadgesFromLeaderboard } from './lib/badges';
-export type { Period, LeaderboardMode, ScoreScope, LeaderboardTrader, PnlLeaderboardTrader, ScoreLeaderboardTrader, LeaderboardResponse, PnlLeaderboardResponse, ScoreLeaderboardResponse, TraderScoreResponse, TraderStatsResponse, TraderFill, TraderFillsResponse } from './types';
+export type { Period, LeaderboardMode, ScoreScope, ViewMode, LeaderboardTrader, PnlLeaderboardTrader, ScoreLeaderboardTrader, LeaderboardResponse, PnlLeaderboardResponse, ScoreLeaderboardResponse, TraderScoreResponse, TraderStatsResponse, TraderFill, TraderFillsResponse } from './types';
 export type { TradingStyle, TraderClassification } from './hooks/useTraderClassification';

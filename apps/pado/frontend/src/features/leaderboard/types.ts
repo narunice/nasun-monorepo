@@ -1,6 +1,8 @@
 export type Period = '24h' | '7d' | '30d' | 'all';
 export type LeaderboardMode = 'activity' | 'volume' | 'pnl' | 'score';
 export type ScoreScope = 'alltime' | 'weekly';
+// UI-only view mode for score leaderboard - not sent to API
+export type ViewMode = 'current' | 'past';
 
 export interface LeaderboardTrader {
   rank: number;
