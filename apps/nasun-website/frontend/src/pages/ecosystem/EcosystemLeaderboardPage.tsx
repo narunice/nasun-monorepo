@@ -23,19 +23,26 @@ const PAGE_SIZE = 50;
 
 const EcosystemLeaderboardPage = () => {
   const [viewMode, setViewMode] = useState<"current" | "past">("current");
-  const [selectedWeekId, setSelectedWeekId] = useState<string | undefined>(undefined);
-  const [availableWeeks, setAvailableWeeks] = useState<AvailableEcosystemWeek[]>([]);
-  const [response, setResponse] = useState<EcosystemLeaderboardResponse | null>(null);
+  const [selectedWeekId, setSelectedWeekId] = useState<string | undefined>(
+    undefined,
+  );
+  const [availableWeeks, setAvailableWeeks] = useState<
+    AvailableEcosystemWeek[]
+  >([]);
+  const [response, setResponse] = useState<EcosystemLeaderboardResponse | null>(
+    null,
+  );
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Load available weeks on mount
   useEffect(() => {
-    getAvailableEcosystemWeeks().then(setAvailableWeeks).catch(() => {});
+    getAvailableEcosystemWeeks()
+      .then(setAvailableWeeks)
+      .catch(() => {});
   }, []);
 
-  const currentWeekId = availableWeeks[0]?.weekId;
   const pastWeeks = availableWeeks.slice(1);
 
   const fetchData = useCallback(async () => {
@@ -67,7 +74,8 @@ const EcosystemLeaderboardPage = () => {
 
   const entries: EcosystemLeaderboardEntry[] = response?.data ?? [];
   const total = response?.meta.total ?? 0;
-  const inGracePeriod = viewMode === "current" && isEcosystemNewWeekGracePeriod(response?.meta);
+  const inGracePeriod =
+    viewMode === "current" && isEcosystemNewWeekGracePeriod(response?.meta);
   const weekStart = response?.meta.weekStart;
   const updatedAt = response?.meta.updatedAt;
 
@@ -83,27 +91,15 @@ const EcosystemLeaderboardPage = () => {
         />
       </Helmet>
 
-      <SectionLayout maxWidth="7xl" className="pt-8 md:pt-12">
+      <SectionLayout maxWidth="7xl" className="pt-8 md:pt-12 ">
         <PageTitle as="h2">Ecosystem Leaderboard</PageTitle>
 
         {/* Scoring Info */}
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
-            <p className="text-sm font-medium text-nasun-c3/90">Activity Score</p>
-            <p className="text-sm text-nasun-white/90">
-              Distinct on-chain categories per day, summed over 7 days
-            </p>
-          </div>
-          <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
-            <p className="text-sm font-medium text-nasun-c3/90">Creator Posts</p>
-            <p className="text-sm text-nasun-white/90">
-              Points earned from community content contributions
-            </p>
-          </div>
+        <div className="mb-6  gap-3 ">
           <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
             <p className="text-sm font-medium text-nasun-c3/90">Weekly Score</p>
             <p className="text-sm text-nasun-white/90">
-              Activity Score + Creator Posts. Resets every Monday 00:10 UTC
+              Resets every Monday 00:10 UTC
             </p>
           </div>
         </div>
@@ -140,7 +136,10 @@ const EcosystemLeaderboardPage = () => {
             {viewMode === "past" && pastWeeks.length > 0 && (
               <select
                 value={selectedWeekId ?? pastWeeks[0].weekId}
-                onChange={(e) => { setSelectedWeekId(e.target.value); setOffset(0); }}
+                onChange={(e) => {
+                  setSelectedWeekId(e.target.value);
+                  setOffset(0);
+                }}
                 className="text-sm bg-nasun-c6/40 text-nasun-white border border-nasun-c3/20 rounded-sm px-2 py-1.5 focus:outline-none focus:border-nasun-c3/40"
               >
                 {pastWeeks.map((w) => (
@@ -155,13 +154,16 @@ const EcosystemLeaderboardPage = () => {
             {viewMode === "current" && weekStart && (
               <span className="text-sm text-nasun-white/60">
                 Resets{" "}
-                {new Date(weekStart + 7 * 24 * 60 * 60 * 1000).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  timeZoneName: "short",
-                })}
+                {new Date(weekStart + 7 * 24 * 60 * 60 * 1000).toLocaleString(
+                  "en-US",
+                  {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZoneName: "short",
+                  },
+                )}
               </span>
             )}
           </div>
@@ -200,8 +202,12 @@ const EcosystemLeaderboardPage = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-nasun-c3/15 bg-nasun-c3/5">
-                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">Rank</th>
-                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">User</th>
+                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">
+                    Rank
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-nasun-white/80">
+                    User
+                  </th>
                   <th className="px-4 py-3 text-right font-medium text-nasun-white/80">
                     Activity Score
                   </th>
@@ -211,13 +217,18 @@ const EcosystemLeaderboardPage = () => {
                   <th className="px-4 py-3 text-right font-medium text-nasun-white/80">
                     Active Days
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-nasun-white/80">Score</th>
+                  <th className="px-4 py-3 text-right font-medium text-nasun-white/80">
+                    Score
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={colSpan} className="px-4 py-12 text-center text-nasun-white/70">
+                    <td
+                      colSpan={colSpan}
+                      className="px-4 py-12 text-center text-nasun-white/70"
+                    >
                       Loading...
                     </td>
                   </tr>
@@ -237,7 +248,8 @@ const EcosystemLeaderboardPage = () => {
                           <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                         </svg>
                         <p className="text-sm text-nasun-white/70">
-                          No activity recorded yet. Start using the ecosystem to appear here!
+                          No activity recorded yet. Start using the ecosystem to
+                          appear here!
                         </p>
                       </div>
                     </td>
@@ -290,7 +302,8 @@ const EcosystemLeaderboardPage = () => {
         {total > PAGE_SIZE && (
           <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
             <p className="text-sm text-nasun-white/70">
-              Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, total)} of {total} participants
+              Showing {offset + 1}-{Math.min(offset + PAGE_SIZE, total)} of{" "}
+              {total} participants
             </p>
             <div className="flex gap-2">
               <button
