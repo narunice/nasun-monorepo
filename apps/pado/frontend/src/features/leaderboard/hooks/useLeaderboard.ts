@@ -80,20 +80,34 @@ async function fetchScoreLeaderboard(scope: ScoreScope, limit: number, offset: n
   return res.json();
 }
 
-export function useScoreLeaderboard(scope: ScoreScope = 'weekly', limit: number = 50, offset: number = 0) {
+export function useScoreLeaderboard(scope: ScoreScope = 'weekly', weekId: string = getWeekId(0), limit: number = 50, offset: number = 0) {
   const adaptiveInterval = useAdaptiveInterval(30_000);
-  const currentWeekId = getWeekId(0);
 
   return useQuery<ScoreLeaderboardResponse>({
-    queryKey: ['leaderboard', 'score', scope, scope === 'weekly' ? currentWeekId : null, limit, offset],
+    queryKey: ['leaderboard', 'score', scope, scope === 'weekly' ? weekId : null, limit, offset],
     queryFn: () =>
       scope === 'weekly'
-        ? fetchWeeklyScoreLeaderboard(currentWeekId, limit, offset)
+        ? fetchWeeklyScoreLeaderboard(weekId, limit, offset)
         : fetchScoreLeaderboard(scope, limit, offset),
     enabled: !!NETWORK_CONFIG.chatHttpUrl,
     refetchInterval: adaptiveInterval,
     staleTime: 15_000,
     placeholderData: (prev) => prev,
+  });
+}
+
+export interface AvailableWeek { weekId: string; label: string; }
+
+export function useAvailableWeeks() {
+  return useQuery<{ weeks: AvailableWeek[] }>({
+    queryKey: ['leaderboard', 'score', 'weeks'],
+    queryFn: async () => {
+      const res = await fetch(`${NETWORK_CONFIG.chatHttpUrl}/api/pado/leaderboard/score/weekly`);
+      if (!res.ok) throw new Error(`Available weeks API error: ${res.status}`);
+      return res.json();
+    },
+    enabled: !!NETWORK_CONFIG.chatHttpUrl,
+    staleTime: 2 * 60_000,
   });
 }
 
@@ -113,7 +127,7 @@ async function fetchTraderScore(address: string, scope: ScoreScope): Promise<Tra
   return res.json();
 }
 
-function getWeekId(weeksAgo = 0): string {
+export function getWeekId(weeksAgo = 0): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 7 * weeksAgo);
   const day = d.getUTCDay() || 7;

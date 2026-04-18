@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useWallet, useZkLogin, useSignerAddress, usePasskeyStore } from '@nasun/wallet';
-import { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, usePreviousWeekScoreLeaderboard, LeaderboardTable, PnlLeaderboardTable, ScoreLeaderboardTable, PeriodSelector, ModeSelector, ScopeSelector, MyRankCard } from '../features/leaderboard';
+import { useLeaderboard, usePnlLeaderboard, useScoreLeaderboard, usePreviousWeekScoreLeaderboard, useAvailableWeeks, getWeekId, LeaderboardTable, PnlLeaderboardTable, ScoreLeaderboardTable, PeriodSelector, ModeSelector, ScopeSelector, WeekPicker, MyRankCard } from '../features/leaderboard';
 import { Pagination } from '../features/leaderboard/components/Pagination';
 import { CompetitionBanner } from '../features/competitions';
 import { ActivityFeed } from '../features/social/components/ActivityFeed';
@@ -23,12 +23,15 @@ export function LeaderboardPage() {
   const [scope, setScope] = useState<ScoreScope>('weekly');
   const [showFollowing, setShowFollowing] = useState(false);
   const [page, setPage] = useState(1);
+  const [selectedWeekId, setSelectedWeekId] = useState(() => getWeekId(0));
 
+  const currentWeekId = getWeekId(0);
   const offset = (page - 1) * PAGE_SIZE;
 
+  const availableWeeksQuery = useAvailableWeeks();
   const volumeQuery = useLeaderboard(period, PAGE_SIZE, offset);
   const pnlQuery = usePnlLeaderboard(period, PAGE_SIZE, offset);
-  const scoreQuery = useScoreLeaderboard(scope, PAGE_SIZE, offset);
+  const scoreQuery = useScoreLeaderboard(scope, selectedWeekId, PAGE_SIZE, offset);
 
   const activeData = mode === 'pnl'
     ? pnlQuery.data
@@ -42,13 +45,15 @@ export function LeaderboardPage() {
     ? scoreQuery.isLoading
     : volumeQuery.isLoading;
 
-  // Show previous week snapshot for 12h after reset, or when current week has no data yet.
+  // Grace period: only applies when viewing the current week
   const WEEK_GRACE_PERIOD_MS = 12 * 60 * 60 * 1000;
   const scoreData = scoreQuery.data;
-  const isNewWeek = mode === 'score' && !activeLoading && scoreData !== undefined && (
+  const isCurrentWeek = selectedWeekId === currentWeekId;
+  const isNewWeek = mode === 'score' && isCurrentWeek && !activeLoading && scoreData !== undefined && (
     (!!scoreData.weekStart && Date.now() - scoreData.weekStart < WEEK_GRACE_PERIOD_MS)
     || scoreData.traders.length === 0
   );
+  const showNoData = mode === 'score' && !isCurrentWeek && !activeLoading && scoreData !== undefined && scoreData.traders.length === 0;
 
   const prevWeekQuery = usePreviousWeekScoreLeaderboard(isNewWeek, PAGE_SIZE, 0);
 
@@ -155,7 +160,17 @@ export function LeaderboardPage() {
               </div>
             ) : <div />}
             {mode === 'score' ? (
-              <ScopeSelector selected={scope} onSelect={handleScopeChange} />
+              <div className="flex items-center gap-2">
+                {scope === 'weekly' && (
+                  <WeekPicker
+                    weeks={availableWeeksQuery.data?.weeks ?? []}
+                    selectedWeekId={selectedWeekId}
+                    currentWeekId={currentWeekId}
+                    onChange={(wId) => { setSelectedWeekId(wId); setPage(1); }}
+                  />
+                )}
+                <ScopeSelector selected={scope} onSelect={handleScopeChange} />
+              </div>
             ) : (
               <PeriodSelector selected={period} onSelect={handlePeriodChange} />
             )}
@@ -165,6 +180,13 @@ export function LeaderboardPage() {
           <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
             {mode === 'score' ? (
               (() => {
+                if (showNoData) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-12 text-theme-text-muted">
+                      <p className="text-sm">No data for this week</p>
+                    </div>
+                  );
+                }
                 if (isNewWeek) {
                   const prevWeekId = prevWeekQuery.data?.weekId;
                   const prevTraders = prevWeekQuery.data?.traders ?? [];
