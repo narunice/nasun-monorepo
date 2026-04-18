@@ -19,7 +19,7 @@ import {
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 
-// Grace period before alliance penalty takes effect (days after first_seen)
+// Grace period before alliance penalty takes effect (days after NFT first activation)
 const ALLIANCE_PENALTY_GRACE_DAYS = 7;
 import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
 import { getIdentityByWallet } from '../scanner/points-scanner.js';
@@ -270,9 +270,10 @@ app.get('/score/:identityId', async (c) => {
       let isPenalized = false;
       if (hasAlliance && !hasGenesis) {
         const [penalty] = await pointsDb!`
-          SELECT 1 FROM alliance_penalties
-          WHERE identity_id = ${identityId}
-            AND first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
+          SELECT 1 FROM alliance_penalties ap
+          JOIN alliance_first_seen afs ON ap.identity_id = afs.identity_id
+          WHERE ap.identity_id = ${identityId}
+            AND afs.first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
         `;
         if (penalty) isPenalized = true;
       }
@@ -486,9 +487,10 @@ app.get('/leaderboard', async (c) => {
       let penalizedSet = new Set<string>();
       if (leaderboardIds.length > 0) {
         const penalizedRows = await pointsDb!`
-          SELECT identity_id FROM alliance_penalties
-          WHERE identity_id = ANY(${leaderboardIds})
-            AND first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
+          SELECT ap.identity_id FROM alliance_penalties ap
+          JOIN alliance_first_seen afs ON ap.identity_id = afs.identity_id
+          WHERE ap.identity_id = ANY(${leaderboardIds})
+            AND afs.first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
         `;
         penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
       }
