@@ -36,32 +36,31 @@ export function SeasonSelector({
     return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
   });
 
-  // Status badge component (V2 style - subtle)
   const StatusBadge = ({ status }: { status: string }) => {
     if (status === 'active') {
       return (
-        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c7/20 text-nasun-c7">
+        <span className="ml-2 px-2 py-0.5 text-sm font-medium rounded-sm bg-nasun-nw1/20 text-nasun-nw1 border border-nasun-nw1/30">
           {t("v3.season.live")}
         </span>
       );
     }
     if (status === 'paused') {
       return (
-        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-500/20 text-amber-400">
+        <span className="ml-2 px-2 py-0.5 text-sm font-medium rounded-sm bg-amber-500/15 text-amber-400 border border-amber-500/30">
           {t("v3.season.paused")}
         </span>
       );
     }
     if (status === 'upcoming') {
       return (
-        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-nasun-c4/20 text-nasun-c4">
+        <span className="ml-2 px-2 py-0.5 text-sm font-medium rounded-sm bg-nasun-nw2/15 text-nasun-nw4 border border-nasun-nw2/30">
           {t("v3.season.soon")}
         </span>
       );
     }
     if (status === 'ended' || status === 'archived') {
       return (
-        <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-600/50 text-gray-400">
+        <span className="ml-2 px-2 py-0.5 text-sm font-medium rounded-sm bg-white/10 text-nasun-nw4 border border-white/15">
           {t("v3.season.ended")}
         </span>
       );
@@ -69,13 +68,12 @@ export function SeasonSelector({
     return null;
   };
 
-  // Date range display — hide end date for active/upcoming seasons
   const DateRange = () => {
     if (!selectedSeason) return null;
     const isOngoing = selectedSeason.status === 'active' || selectedSeason.status === 'upcoming';
     const isPaused = selectedSeason.status === 'paused';
     return (
-      <span className="text-sm text-nasun-white/50">
+      <span className="text-sm text-nasun-nw4">
         {selectedSeason.startDate}{isPaused ? ' - Paused' : isOngoing ? ' - Ongoing' : ` - ${selectedSeason.endDate}`}
       </span>
     );
@@ -83,13 +81,13 @@ export function SeasonSelector({
 
   if (isLoading) {
     return (
-      <div className="border-b border-gray-700 animate-pulse">
+      <div className="border-b border-nasun-nw3/30 animate-pulse pb-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="h-8 w-24 bg-gray-700 rounded"></div>
-            <div className="h-8 w-24 bg-gray-700 rounded"></div>
+            <div className="h-8 w-24 bg-nasun-nw3/20 rounded-sm"></div>
+            <div className="h-8 w-24 bg-nasun-nw3/20 rounded-sm"></div>
           </div>
-          <div className="h-5 w-40 bg-gray-700 rounded"></div>
+          <div className="h-5 w-40 bg-nasun-nw3/20 rounded-sm"></div>
         </div>
       </div>
     );
@@ -99,48 +97,43 @@ export function SeasonSelector({
     return null;
   }
 
-  // Use tabs for 3 or fewer seasons, dropdown for more
   if (seasons.length <= 3) {
     return (
-      <div className="border-b border-gray-700">
+      <div className="border-b border-nasun-nw3/30">
         <div className="flex items-center justify-between">
-          {/* Tabs */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1">
             {sortedSeasons.map((season) => {
               const isSelected = season.seasonId === selectedSeasonId;
-
               return (
                 <button
                   key={season.seasonId}
                   onClick={() => onSelect(season.seasonId)}
-                  className={`relative px-1 py-2 font-medium outline-none flex items-center transition-colors ${
-                    isSelected ? 'text-white' : 'text-gray-400 hover:text-white'
+                  className={`relative px-3 py-2.5 font-medium outline-none flex items-center transition-colors ${
+                    isSelected ? 'text-nasun-white' : 'text-nasun-nw4 hover:text-nasun-white'
                   }`}
                 >
                   {season.name}
                   <StatusBadge status={season.status} />
                   {isSelected && (
-                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-white rounded-full" />
+                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-nasun-nw1 rounded-full" />
                   )}
                 </button>
               );
             })}
           </div>
-          {/* Date Range */}
           <DateRange />
         </div>
       </div>
     );
   }
 
-  // Dropdown for many seasons
   return (
-    <div className="border-b border-gray-700 pb-2">
+    <div className="border-b border-nasun-nw3/30 pb-2">
       <div className="flex items-center justify-between">
         <select
           value={selectedSeasonId || ''}
           onChange={(e) => onSelect(e.target.value)}
-          className="bg-transparent text-white text-sm font-medium px-2 py-1.5 rounded focus:outline-none cursor-pointer border border-gray-600 hover:border-gray-500"
+          className="bg-nasun-nw3/10 text-nasun-white text-sm font-medium px-3 py-1.5 rounded-sm focus:outline-none cursor-pointer border border-nasun-nw3/40 hover:border-nasun-nw1/50 transition-colors"
         >
           {sortedSeasons.map((season) => {
             const statusLabel =
@@ -154,14 +147,13 @@ export function SeasonSelector({
                       ? ` (${t("v3.season.ended")})`
                       : '';
             return (
-              <option key={season.seasonId} value={season.seasonId} className="bg-gray-800">
+              <option key={season.seasonId} value={season.seasonId} className="bg-nasun-black">
                 {season.name}
                 {statusLabel}
               </option>
             );
           })}
         </select>
-        {/* Date Range */}
         <DateRange />
       </div>
     </div>

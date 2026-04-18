@@ -22,9 +22,8 @@ interface PaginationControlsV3Props {
   onPageInputSubmit: (e: FormEvent) => void;
 }
 
-const buttonBase = 'px-3 py-1 text-sm rounded-sm transition-all';
-const buttonDisabled = 'disabled:opacity-50 disabled:cursor-not-allowed';
-const buttonStyle = `${buttonBase} ${buttonDisabled} bg-gray-700 hover:bg-gray-600 hover:scale-105 active:scale-95 text-gray-200`;
+const navBtnBase = 'px-4 py-1.5 text-sm rounded-sm transition-all border disabled:opacity-40 disabled:cursor-not-allowed';
+const navBtnStyle = `${navBtnBase} border-nasun-nw3/40 bg-nasun-nw3/10 text-nasun-nw4 hover:bg-nasun-nw2/20 hover:text-nasun-white hover:border-nasun-nw1/40 active:scale-95`;
 
 const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
   ({
@@ -40,28 +39,19 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
   }) => {
     const { t } = useTranslation("leaderboard");
     return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         {/* Left: Page info */}
-        <div className="text-gray-400 text-sm">
+        <p className="text-nasun-nw4 text-sm">
           {t("v3.pagination.page", { current: currentPage, total: totalPages })}
-        </div>
+        </p>
 
         {/* Right: Navigation */}
-        <div className="flex items-center gap-1 flex-wrap justify-center">
-          {/* First */}
-          <button
-            onClick={() => onPageChange(1)}
-            disabled={!hasPrev}
-            className={buttonStyle}
-          >
-            {t("v3.pagination.first")}
-          </button>
-
+        <div className="flex items-center gap-1.5 flex-wrap justify-center">
           {/* Prev */}
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={!hasPrev}
-            className={buttonStyle}
+            className={navBtnStyle}
           >
             {t("v3.pagination.prev")}
           </button>
@@ -72,12 +62,12 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
               key={index}
               onClick={() => typeof page === 'number' && onPageChange(page)}
               disabled={typeof page !== 'number' || page === currentPage}
-              className={`${buttonBase} disabled:cursor-not-allowed ${
+              className={`px-3 py-1.5 text-sm rounded-sm transition-all border disabled:cursor-not-allowed ${
                 page === currentPage
-                  ? 'bg-nasun-c7 text-black font-medium'
+                  ? 'bg-nasun-nw2/50 text-nasun-white font-semibold border-nasun-nw1/50'
                   : typeof page === 'number'
-                    ? 'bg-gray-700 hover:bg-gray-600 hover:scale-105 active:scale-95 text-gray-200'
-                    : 'bg-transparent text-gray-400 cursor-default'
+                    ? 'border-nasun-nw3/40 bg-nasun-nw3/10 text-nasun-nw4 hover:bg-nasun-nw2/20 hover:text-nasun-white hover:border-nasun-nw1/40 active:scale-95'
+                    : 'border-transparent bg-transparent text-nasun-nw4 cursor-default'
               }`}
             >
               {page}
@@ -88,31 +78,22 @@ const PaginationControlsV3: React.FC<PaginationControlsV3Props> = memo(
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={!hasNext}
-            className={buttonStyle}
+            className={navBtnStyle}
           >
             {t("v3.pagination.next")}
           </button>
 
-          {/* Last */}
-          <button
-            onClick={() => onPageChange(totalPages)}
-            disabled={!hasNext}
-            className={buttonStyle}
-          >
-            {t("v3.pagination.last")}
-          </button>
-
           {/* Direct input */}
-          <form onSubmit={onPageInputSubmit} className="flex items-center gap-1 ml-2">
+          <form onSubmit={onPageInputSubmit} className="flex items-center gap-1.5 ml-2 border-l border-nasun-nw3/30 pl-3">
             <input
               type="number"
               value={pageInput}
               onChange={(e) => onPageInputChange(e.target.value)}
-              className="w-14 px-2 py-1 text-sm border border-gray-600 rounded-sm bg-gray-800 text-white focus:border-nasun-c7 focus:outline-none"
+              className="w-14 px-2 py-1.5 text-sm border border-nasun-nw3/40 rounded-sm bg-nasun-nw3/10 text-nasun-white focus:border-nasun-nw1/60 focus:outline-none"
               min="1"
               max={totalPages}
             />
-            <button type="submit" className={buttonStyle}>
+            <button type="submit" className={navBtnStyle}>
               {t("v3.pagination.go")}
             </button>
           </form>

@@ -16,7 +16,6 @@ import {
   faScaleBalanced,
   faCircleCheck,
 } from "@fortawesome/free-solid-svg-icons";
-import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { useAuth } from "@/features/auth";
 import { getTwitterHandle } from "@/utils/getTwitterHandle";
@@ -119,7 +118,8 @@ const LeaderboardInfoSection: React.FC = () => {
   const [signingIn, setSigningIn] = useState(false);
   const signFlowCalledRef = useRef(false);
 
-  const hasXConnected = user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
+  const hasXConnected =
+    user?.provider === "Twitter" || !!user?.linkedAccounts?.twitter;
   const isAnyConnected = status === "unlocked" || isZkConnected;
 
   // Wallet unlock → signFlow → navigate to /my-account
@@ -166,7 +166,10 @@ const LeaderboardInfoSection: React.FC = () => {
       setShowEligibleModal(true);
     } else if (isAuthenticated) {
       // Logged in but no X connected — start OAuth linking directly
-      localStorage.setItem("auth_return_to", "/wave1/creators-leaderboard-guide?x_linked=1");
+      localStorage.setItem(
+        "auth_return_to",
+        "/wave1/creators-leaderboard-guide?x_linked=1",
+      );
       handleLinkTwitter();
     } else {
       // Not logged in — show wallet login modal
@@ -177,18 +180,29 @@ const LeaderboardInfoSection: React.FC = () => {
 
   return (
     <SectionLayout className="!max-w-5xl">
+      {/* --- Back Button --- */}
+      <div>
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-base text-nasun-nw1 hover:text-nasun-nw2 transition-colors my-2 md:my-4"
+        >
+          ← Back
+        </button>
+      </div>
       <div className="flex flex-col gap-10 md:gap-14 lg:gap-16">
         {/* --- Hero Header --- */}
         <header className="flex flex-col items-center text-center gap-4">
-          <PageTitle as="h2" align="center">
-            Nasun Leaderboard
+          <PageTitle as="h2" align="center" wrapperClassName="flex flex-col">
+            Creators Guide
           </PageTitle>
 
-          <p className="max-w-2xl text-lg font-medium">Help shape the Nasun ecosystem.</p>
+          <p className="max-w-2xl text-lg font-medium">
+            Help shape the Nasun ecosystem.
+          </p>
 
           <p className="max-w-2xl whitespace-pre-line text-nasun-white/70">
             {
-              "The Nasun Leaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven."
+              "The Nasun CreatorsLeaderboard recognizes thoughtful, creative contributions that expand understanding of Nasun's live infrastructure and products.\nParticipation is merit-based and content-driven."
             }
           </p>
         </header>
@@ -197,7 +211,9 @@ const LeaderboardInfoSection: React.FC = () => {
         <section>
           <div className="flex items-center gap-3 mb-5 md:mb-6">
             <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-nasun-nw1" />
-            <h5 className="font-medium uppercase tracking-wider">How To Join</h5>
+            <h5 className="font-medium uppercase tracking-wider">
+              How To Join
+            </h5>
             <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
           </div>
 
@@ -215,14 +231,19 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- How It Works --- */}
         <section>
           <div className="flex items-center gap-3 mb-5 md:mb-6">
-            <FontAwesomeIcon icon={faLightbulb} className="w-4 h-4 text-nasun-nw1" />
-            <h5 className="font-medium uppercase tracking-wider">How It Works</h5>
+            <FontAwesomeIcon
+              icon={faLightbulb}
+              className="w-4 h-4 text-nasun-nw1"
+            />
+            <h5 className="font-medium uppercase tracking-wider">
+              How It Works
+            </h5>
             <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
           </div>
 
           <p className="mb-4">
-            Active contributors who create high-quality, original content about Nasun's ecosystem
-            are recognized through:
+            Active contributors who create high-quality, original content about
+            Nasun's ecosystem are recognized through:
           </p>
 
           <ul className="space-y-2.5 mb-5">
@@ -235,8 +256,8 @@ const LeaderboardInfoSection: React.FC = () => {
           </ul>
 
           <p className="">
-            Rewards are based on contribution quality and ecosystem engagement, — not on purchases
-            or sales activity.
+            Rewards are based on contribution quality and ecosystem engagement,
+            — not on purchases or sales activity.
           </p>
           <p className="">Starting Date March 11</p>
         </section>
@@ -244,14 +265,19 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- Ranks & Recognition Table --- */}
         <section>
           <div className="flex items-center gap-3 mb-5 md:mb-6">
-            <FontAwesomeIcon icon={faBullseye} className="w-4 h-4 text-nasun-nw1" />
-            <h5 className="font-medium uppercase tracking-wider">Ranks & Recognition</h5>
+            <FontAwesomeIcon
+              icon={faBullseye}
+              className="w-4 h-4 text-nasun-nw1"
+            />
+            <h5 className="font-medium uppercase tracking-wider">
+              Ranks & Recognition
+            </h5>
             <div className="flex-1 h-px bg-gradient-to-r from-nasun-nw1/30 to-transparent" />
           </div>
 
           <p className="mb-5">
-            Top contributors will be placed into recognition tiers based on contribution quality and
-            consistency.
+            Top contributors will be placed into recognition tiers based on
+            contribution quality and consistency.
           </p>
 
           {/* Desktop Table */}
@@ -275,7 +301,9 @@ const LeaderboardInfoSection: React.FC = () => {
                       key={tier}
                       className={`${config.bgClass} transition-colors hover:bg-nasun-white/[0.03]`}
                     >
-                      <td className={`px-4 py-4 font-medium ${config.accentClass}`}>
+                      <td
+                        className={`px-4 py-4 font-medium ${config.accentClass}`}
+                      >
                         <span className="flex items-center gap-2">
                           {config.icon && (
                             <FontAwesomeIcon
@@ -286,7 +314,9 @@ const LeaderboardInfoSection: React.FC = () => {
                           {config.name}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-nasun-white/80">{config.recognition}</td>
+                      <td className="px-4 py-4 text-nasun-white/80">
+                        {config.recognition}
+                      </td>
                     </tr>
                   );
                 })}
@@ -303,7 +333,9 @@ const LeaderboardInfoSection: React.FC = () => {
                   key={tier}
                   className={`${config.bgClass} border border-nasun-white/[0.08] rounded-sm p-4`}
                 >
-                  <h6 className={`flex items-center gap-2 font-medium mb-2 ${config.accentClass}`}>
+                  <h6
+                    className={`flex items-center gap-2 font-medium mb-2 ${config.accentClass}`}
+                  >
                     {config.icon && (
                       <FontAwesomeIcon
                         icon={config.icon}
@@ -333,7 +365,10 @@ const LeaderboardInfoSection: React.FC = () => {
           {/* How Contributions Are Evaluated */}
           <OuterBox color="noborder" padding="sm" className="bg-nasun-c6">
             <div className="flex items-center gap-2.5 mb-4">
-              <FontAwesomeIcon icon={faCircleDot} className="w-4 h-4 text-nasun-nw1" />
+              <FontAwesomeIcon
+                icon={faCircleDot}
+                className="w-4 h-4 text-nasun-nw1"
+              />
               <h6 className="font-medium uppercase tracking-wider">
                 How Contributions Are Evaluated
               </h6>
@@ -351,16 +386,29 @@ const LeaderboardInfoSection: React.FC = () => {
               Engagement quality matters more than volume.
             </p>
             <p className="flex items-start gap-2 text-red-400/80">
-              <FontAwesomeIcon icon={faTriangleExclamation} className="w-3.5 h-3.5 mt-1 shrink-0" />
-              Automated engagement, spam, or inauthentic amplification will result in removal.
+              <FontAwesomeIcon
+                icon={faTriangleExclamation}
+                className="w-3.5 h-3.5 mt-1 shrink-0"
+              />
+              Automated engagement, spam, or inauthentic amplification will
+              result in removal.
             </p>
           </OuterBox>
 
           {/* Transparency & Compliance */}
-          <OuterBox color="noborder" padding="sm" className="flex flex-col bg-nasun-c6">
+          <OuterBox
+            color="noborder"
+            padding="sm"
+            className="flex flex-col bg-nasun-c6"
+          >
             <div className="flex items-center gap-2.5 mb-4">
-              <FontAwesomeIcon icon={faScaleBalanced} className="w-4 h-4 text-nasun-nw1" />
-              <h6 className="font-medium uppercase tracking-wider">Transparency & Compliance</h6>
+              <FontAwesomeIcon
+                icon={faScaleBalanced}
+                className="w-4 h-4 text-nasun-nw1"
+              />
+              <h6 className="font-medium uppercase tracking-wider">
+                Transparency & Compliance
+              </h6>
             </div>
             <div className="space-y-4 flex-1 text-nasun-white/70 text-sm">
               {COMPLIANCE_PARAGRAPHS.map((paragraph, i) => (
@@ -373,7 +421,9 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- CTA Buttons --- */}
         <div className="flex justify-center">
           <ButtonV3 asChild variant="nw2" size="md">
-            <Link to="/wave1/creators-leaderboard">View Live Leaderboard</Link>
+            <Link to="/community/creators-leaderboard">
+              View Creators Leaderboard
+            </Link>
           </ButtonV3>
         </div>
       </div>
@@ -382,7 +432,10 @@ const LeaderboardInfoSection: React.FC = () => {
       <Dialog open={showEligibleModal} onOpenChange={setShowEligibleModal}>
         <DialogContent className="max-w-md text-center">
           <DialogHeader className="items-center">
-            <FontAwesomeIcon icon={faCircleCheck} className="w-10 h-10 text-green-400 mb-2" />
+            <FontAwesomeIcon
+              icon={faCircleCheck}
+              className="w-10 h-10 text-green-400 mb-2"
+            />
             <DialogTitle>You're Eligible!</DialogTitle>
             <DialogDescription className="text-nasun-white/70">
               Your X account{" "}
@@ -408,44 +461,59 @@ const LeaderboardInfoSection: React.FC = () => {
         </DialogContent>
       </Dialog>
       {/* --- Wallet Login Modal --- */}
-      {showWalletModal && createPortal(
-        <div
-          className="fixed inset-0 z-[9999] flex flex-col overflow-y-auto p-4 bg-nasun-black/60 backdrop-blur-sm animate-in fade-in-0"
-          onClick={() => { if (!signingIn) setShowWalletModal(false); }}
-        >
+      {showWalletModal &&
+        createPortal(
           <div
-            className="relative m-auto bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-sm w-full shrink-0 animate-in fade-in-0 zoom-in-95 border border-gray-200 dark:border-zinc-700"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9999] flex flex-col overflow-y-auto p-4 bg-nasun-black/60 backdrop-blur-sm animate-in fade-in-0"
+            onClick={() => {
+              if (!signingIn) setShowWalletModal(false);
+            }}
           >
-            {!signingIn && (
-              <button
-                className="absolute top-3 right-3 z-10 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors p-1"
-                onClick={() => setShowWalletModal(false)}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
+            <div
+              className="relative m-auto bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-sm w-full shrink-0 animate-in fade-in-0 zoom-in-95 border border-gray-200 dark:border-zinc-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {!signingIn && (
+                <button
+                  className="absolute top-3 right-3 z-10 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors p-1"
+                  onClick={() => setShowWalletModal(false)}
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
 
-            {signingIn ? (
-              <div className="px-5 py-8 text-center space-y-3">
-                <div className="loading-spinner mx-auto" />
-                <p className="text-sm text-gray-500 dark:text-zinc-400">Signing in...</p>
-              </div>
-            ) : (
-              <WalletConnect
-                embedded
-                defaultOpen
-                onWalletUnlocked={handleWalletUnlocked}
-                showPrivacyNotice
-                lockedTitle="Unlock Wallet to Login"
-              />
-            )}
-          </div>
-        </div>,
-        document.body,
-      )}
+              {signingIn ? (
+                <div className="px-5 py-8 text-center space-y-3">
+                  <div className="loading-spinner mx-auto" />
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">
+                    Signing in...
+                  </p>
+                </div>
+              ) : (
+                <WalletConnect
+                  embedded
+                  defaultOpen
+                  onWalletUnlocked={handleWalletUnlocked}
+                  showPrivacyNotice
+                  lockedTitle="Unlock Wallet to Login"
+                />
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </SectionLayout>
   );
 };
