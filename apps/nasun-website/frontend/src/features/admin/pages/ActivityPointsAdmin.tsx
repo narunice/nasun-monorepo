@@ -102,20 +102,11 @@ function ScannerHealthSection() {
 
 // --- Leaderboard ---
 
-type LeaderboardPeriod = "daily" | "weekly" | "monthly" | "all-time";
-const PERIOD_TABS: { value: LeaderboardPeriod; label: string }[] = [
-  { value: "daily", label: "Today" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "all-time", label: "All Time" },
-];
-
 function LeaderboardSection() {
   const { cognitoToken } = useAdminAuth();
   const [entries, setEntries] = useState<EcosystemLeaderboardEntry[]>([]);
   const [profileMap, setProfileMap] = useState<Map<string, UserProfile>>(new Map());
   const [profileStatus, setProfileStatus] = useState<string>("waiting");
-  const [period, setPeriod] = useState<LeaderboardPeriod>("daily");
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -154,7 +145,7 @@ function LeaderboardSection() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    getEcosystemLeaderboard(period, limit, page * limit)
+    getEcosystemLeaderboard(undefined, limit, page * limit)
       .then((res) => {
         if (!cancelled) {
           setEntries(res.data);
@@ -164,28 +155,14 @@ function LeaderboardSection() {
       .catch(() => {})
       .finally(() => { if (!cancelled) setIsLoading(false); });
     return () => { cancelled = true; };
-  }, [period, page]);
+  }, [page]);
 
   return (
     <OuterBox color="c5" padding="sm">
       <div className="flex items-center gap-3 mb-4">
         <h2 className="text-lg font-semibold text-nasun-white">Ecosystem Points Leaderboard</h2>
+        <span className="text-xs text-nasun-white/50 font-medium">Current Week</span>
         <span className="text-xs text-nasun-white/50">[{profileStatus}]</span>
-      </div>
-      <div className="flex gap-1 mb-4">
-        {PERIOD_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => { setPeriod(tab.value); setPage(0); }}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              period === tab.value
-                ? "bg-nasun-c4/40 text-nasun-white"
-                : "bg-nasun-white/5 text-nasun-white/60 hover:bg-nasun-white/10"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
@@ -193,9 +170,9 @@ function LeaderboardSection() {
             <tr className="border-b border-nasun-white/20 text-nasun-white/80 text-left">
               <th className="pb-2 pr-3 w-12">#</th>
               <th className="pb-2 pr-3">User</th>
-              <th className="pb-2 pr-3 text-right">Ecosystem Points</th>
-              <th className="pb-2 pr-3 text-right">Base Score</th>
-              <th className="pb-2 pr-3 text-right">Multiplier</th>
+              <th className="pb-2 pr-3 text-right">Weekly Score</th>
+              <th className="pb-2 pr-3 text-right">Activity</th>
+              <th className="pb-2 pr-3 text-right">Creator Posts</th>
               <th className="pb-2 text-right">Active Days</th>
             </tr>
           </thead>
@@ -246,13 +223,15 @@ function LeaderboardSection() {
                     </div>
                   </td>
                   <td className="py-2 pr-3 text-right text-nasun-white font-medium">
-                    {Number(entry.ecosystemScore).toLocaleString("en-US")}
+                    {entry.weeklyScore.toLocaleString("en-US")}
                   </td>
                   <td className="py-2 pr-3 text-right text-nasun-white/85">
-                    {Number(entry.baseScore).toLocaleString("en-US")}
+                    {entry.activityScore.toLocaleString("en-US")}
                   </td>
-                  <td className="py-2 pr-3 text-right text-nasun-white/85">x{entry.multiplier}</td>
-                  <td className="py-2 text-right text-nasun-white/85">{entry.activeDays ?? "-"}</td>
+                  <td className="py-2 pr-3 text-right text-nasun-white/85">
+                    {entry.creatorPostScore > 0 ? `+${entry.creatorPostScore}` : "-"}
+                  </td>
+                  <td className="py-2 text-right text-nasun-white/85">{entry.activeDays}/7</td>
                 </tr>
               );
             })}
