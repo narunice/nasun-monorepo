@@ -276,7 +276,7 @@ const EcosystemLeaderboardPage = () => {
                         {entry.activeDays}/7
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-nasun-c3">
-                        {entry.weeklyScore.toFixed(1)}
+                        {(entry.weeklyScore ?? 0).toFixed(1)}
                       </td>
                     </tr>
                   ))
