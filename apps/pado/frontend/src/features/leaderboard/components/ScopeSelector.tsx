@@ -1,6 +1,7 @@
 import type { ScoreScope } from '../types';
 
 const SCOPES: { id: ScoreScope; label: string }[] = [
+  { id: 'weekly', label: 'This Week' },
   { id: 'alltime', label: 'All Time' },
 ];
 
