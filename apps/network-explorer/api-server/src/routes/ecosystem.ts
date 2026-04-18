@@ -47,6 +47,7 @@ interface ProfileCacheEntry {
   displayName: string | null;
   xHandle: string | null;
   profileImageUrl: string | null;
+  isTelegramMember: boolean;
 }
 
 const profileCache = {
@@ -85,8 +86,8 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
             RequestItems: {
               [USER_PROFILES_TABLE]: {
                 Keys: pendingKeys,
-                ProjectionExpression: 'identityId, customDisplayName, #pr, username, linkedAccounts, twitterHandle, originalTwitterHandle, profileImageUrl, #em',
-                ExpressionAttributeNames: { '#pr': 'provider', '#em': 'email' },
+                ProjectionExpression: 'identityId, customDisplayName, #pr, username, linkedAccounts, twitterHandle, originalTwitterHandle, profileImageUrl, #em, #tgm',
+                ExpressionAttributeNames: { '#pr': 'provider', '#em': 'email', '#tgm': 'isTelegramMember' },
               },
             },
           }));
@@ -96,20 +97,24 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
               displayName: resolveDisplayName(item as Record<string, unknown>),
               xHandle: sanitizeXHandle(item.originalTwitterHandle ?? item.twitterHandle),
               profileImageUrl: (item.profileImageUrl as string | undefined) ?? null,
+              isTelegramMember: (item.isTelegramMember as boolean | undefined) ?? false,
             });
           }
           pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
         }
       }
+      profileCache.expiresAt = now + PROFILE_CACHE_TTL;
     } catch (err) {
       console.error('[leaderboard] profile batch fetch error:', err);
+      // Reset expiry so the next request retries immediately instead of
+      // serving a stale empty cache for the full TTL window.
+      profileCache.expiresAt = 0;
     }
-    profileCache.expiresAt = now + PROFILE_CACHE_TTL;
   }
 
   const result = new Map<string, ProfileCacheEntry>();
   for (const id of identityIds) {
-    result.set(id, profileCache.data.get(id) ?? { displayName: null, xHandle: null, profileImageUrl: null });
+    result.set(id, profileCache.data.get(id) ?? { displayName: null, xHandle: null, profileImageUrl: null, isTelegramMember: false });
   }
   return result;
 }
@@ -142,6 +147,10 @@ const CORS_ALLOWED_ORIGINS = new Set([
   'http://localhost:5176',
   'http://localhost:4173',
 ]);
+
+// Maximum ranked entries returned by the leaderboard. Raising this increases
+// DynamoDB BatchGet calls (ceil(N/100)) and memory proportionally.
+const LEADERBOARD_TOP_N = 500;
 
 function parseLimit(raw: string | undefined): number {
   const n = Number(raw ?? 50);
@@ -751,7 +760,9 @@ app.get('/leaderboard', async (c) => {
         FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
         FULL OUTER JOIN bonus_score b
           ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
-        ORDER BY weekly_score DESC, identity_id ASC
+        -- Pre-sort by SQL-computable columns. JS applies isTelegramMember/hasGenesisPass tiebreakers after.
+        ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
+        LIMIT ${LEADERBOARD_TOP_N}
       `;
 
       const validRows = (rows as any[]).filter((r) => r.identity_id != null);
@@ -767,7 +778,7 @@ app.get('/leaderboard', async (c) => {
       // displayName / xHandle / profileImageUrl: DynamoDB BatchGet
       const profiles = await fetchProfilesBatch(identityIds);
 
-      return validRows.map((r: any) => ({
+      const entries = validRows.map((r: any) => ({
         identityId: r.identity_id as string,
         activityScore: r.activity_score as number,
         creatorPostScore: r.creator_post_score as number,
@@ -775,20 +786,82 @@ app.get('/leaderboard', async (c) => {
         activeDays: r.active_days as number,
         weeklyScore: r.weekly_score as number,
         hasGenesisPass: genesisPassSet.has(r.identity_id as string),
+        isTelegramMember: profiles.get(r.identity_id as string)?.isTelegramMember ?? false,
         displayName: profiles.get(r.identity_id as string)?.displayName ?? null,
         xHandle: profiles.get(r.identity_id as string)?.xHandle ?? null,
         profileImageUrl: profiles.get(r.identity_id as string)?.profileImageUrl ?? null,
       }));
+
+      // Tiebreaker order: score → activity diversity → Telegram membership → Genesis Pass → stable id.
+      // isTelegramMember and hasGenesisPass are sourced outside SQL so must be applied here.
+      entries.sort((a, b) => {
+        if (b.weeklyScore !== a.weeklyScore) return b.weeklyScore - a.weeklyScore;
+        if (b.activityScore !== a.activityScore) return b.activityScore - a.activityScore;
+        if (a.isTelegramMember !== b.isTelegramMember) return a.isTelegramMember ? -1 : 1;
+        if (a.hasGenesisPass !== b.hasGenesisPass) return a.hasGenesisPass ? -1 : 1;
+        return a.identityId.localeCompare(b.identityId); // stable random tiebreaker
+      });
+
+      return entries;
     },
   );
 
-  const all = await getScoredLeaderboard();
+  const getTotalCount = cached(
+    `eco-leaderboard-count-${weekId}`,
+    5 * 60 * 1000,
+    async () => {
+      const result = await pointsDb!`
+        WITH week_activities AS (
+          SELECT DISTINCT identity_id, category
+          FROM activity_points
+          WHERE NOT flagged
+            AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start}
+            AND tx_timestamp < ${bounds.end}
+            AND category NOT IN (
+              'referral-bonus', 'daily-mission', 'ecosystem-passive',
+              'staking-daily', 'staking'
+            )
+            AND category NOT LIKE 'ecosystem-bonus-%'
+            AND category NOT LIKE 'pado-%'
+        ),
+        activity_score AS (
+          SELECT identity_id FROM week_activities GROUP BY identity_id
+        ),
+        creator_post_score AS (
+          SELECT identity_id FROM activity_points
+          WHERE category = 'ecosystem-bonus-creator-posts'
+            AND NOT flagged AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
+          GROUP BY identity_id
+        ),
+        bonus_score AS (
+          SELECT identity_id FROM activity_points
+          WHERE category IN ('ecosystem-bonus-bugreport', 'ecosystem-bonus-feedback', 'ecosystem-bonus-game')
+            AND NOT flagged AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
+          GROUP BY identity_id
+        )
+        SELECT COUNT(*) AS total FROM (
+          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id
+          FROM activity_score a
+          FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
+          FULL OUTER JOIN bonus_score b
+            ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
+          WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id) IS NOT NULL
+        ) sub
+      `;
+      return Number((result[0] as any).total ?? 0);
+    },
+  );
+
+  const [all, total] = await Promise.all([getScoredLeaderboard(), getTotalCount()]);
 
   const page = all.slice(offset, offset + limit);
-  const ranked = page.map((entry, i) => ({
-    ...entry,
-    rank: offset + i + 1,
-  }));
+  const ranked = page.map((entry, i) => {
+    const { isTelegramMember: _tm, ...rest } = entry;
+    return { ...rest, rank: offset + i + 1 };
+  });
 
   c.header('Cache-Control', 'public, max-age=300');
   return c.json({
@@ -798,7 +871,8 @@ app.get('/leaderboard', async (c) => {
       weekStart: bounds.start.getTime(),
       limit,
       offset,
-      total: all.length,
+      total,
+      cappedAt: LEADERBOARD_TOP_N,
       updatedAt: Date.now(),
     },
   });
