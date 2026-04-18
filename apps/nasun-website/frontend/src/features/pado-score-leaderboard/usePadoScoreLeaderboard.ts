@@ -6,6 +6,8 @@ export interface ScoreLeaderboardTrader {
   address: string;
   nickname: string | null;
   hasGenesisPass?: boolean;
+  profileImageUrl?: string | null;
+  xHandle?: string | null;
   totalScore: number;
   tradeCount: number;
   volumeUsd: string;
