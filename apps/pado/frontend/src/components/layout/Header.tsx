@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { WalletConnect } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
-import { HeaderNetValue } from './HeaderNetValue';
-import { EcoPointsBadge } from './EcoPointsBadge';
-import { GenesisPassBadge } from '@nasun/wallet-ui';
-import { useGenesisPass } from '../../hooks/useGenesisPass';
-import { ThemeToggle } from '../theme/ThemeToggle';
-import { useAdminAccess } from '../../features/admin';
-import { useTradeMode } from '../../features/trading/hooks';
-import { hasAccess } from '../../config/network';
-import { useAppAdmin } from '../../hooks/useAppAdmin';
+import { useState, useEffect, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { WalletConnect } from "@nasun/wallet-ui";
+import { useWallet, useZkLogin, usePasskeyStore } from "@nasun/wallet";
+import { HeaderNetValue } from "./HeaderNetValue";
+import { EcoPointsBadge } from "./EcoPointsBadge";
+import { GenesisPassBadge } from "@nasun/wallet-ui";
+import { useGenesisPass } from "../../hooks/useGenesisPass";
+import { ThemeToggle } from "../theme/ThemeToggle";
+import { useAdminAccess } from "../../features/admin";
+import { useTradeMode } from "../../features/trading/hooks";
+import { hasAccess } from "../../config/network";
+import { useAppAdmin } from "../../hooks/useAppAdmin";
 
 interface NavItem {
   label: string;
@@ -26,30 +26,34 @@ interface DropdownItem {
 
 // TEMPORARY: access-level gating (Remove after 2026-07-01)
 const TRADE_ITEMS: DropdownItem[] = [
-  { label: 'Spot', path: '/markets/spot', enabled: hasAccess('spot') },
-  { label: 'Perpetuals', path: '/markets/perp', enabled: hasAccess('full') },
+  { label: "Spot", path: "/markets/spot", enabled: hasAccess("spot") },
+  { label: "Perpetuals", path: "/markets/perp", enabled: hasAccess("full") },
 ];
 
 const GAMES_ITEMS: DropdownItem[] = [
-  { label: 'Lottery', path: '/games/lottery', enabled: true },
-  { label: 'Scratch Cards', path: '/games/scratch', enabled: true },
-  { label: 'Number Match', path: '/games/numbermatch', enabled: true },
-  { label: 'History', path: '/games/history', enabled: true },
+  { label: "Lottery", path: "/games/lottery", enabled: true },
+  { label: "Scratch Cards", path: "/games/scratch", enabled: true },
+  { label: "Number Match", path: "/games/numbermatch", enabled: true },
+  { label: "History", path: "/games/history", enabled: true },
 ];
 
 // /predict is temporarily repurposed as the Ideas & Feedback form (pre-launch).
 // Keep the menu label as "Predict" but force-enable it so the route is reachable
 // regardless of accessMode.
-const IDEA_MODE = import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true';
+const IDEA_MODE = import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === "true";
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Predict', path: '/predict', enabled: IDEA_MODE || hasAccess('full') },
-  { label: 'Earn', path: '/earn', enabled: hasAccess('full') },
+  {
+    label: "Predict",
+    path: "/predict",
+    enabled: IDEA_MODE || hasAccess("full"),
+  },
+  { label: "Earn", path: "/earn", enabled: hasAccess("full") },
 ];
 
 const SOCIAL_ITEMS: DropdownItem[] = [
-  { label: 'Leaderboard', path: '/leaderboard', enabled: hasAccess('spot') },
-  { label: 'Competitions', path: '/competitions', enabled: hasAccess('full') },
+  { label: "Leaderboard", path: "/leaderboard", enabled: hasAccess("spot") },
+  { label: "Competitions", path: "/competitions", enabled: hasAccess("full") },
 ];
 
 export function Header() {
@@ -67,8 +71,8 @@ export function Header() {
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Wallet connection state
@@ -83,19 +87,23 @@ export function Header() {
   const hasGenesisPass = useGenesisPass();
 
   // Platform admins bypass all access gates
-  const hasSpotAccess = isAppAdmin || hasAccess('spot');
+  const hasSpotAccess = isAppAdmin || hasAccess("spot");
 
   // Trade mode for header max-width in Simple mode
   const { isSimple } = useTradeMode();
-  const isTradePage = location.pathname.startsWith('/markets');
+  const isTradePage = location.pathname.startsWith("/markets");
 
   // Passkey state
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
   // Hide wallet button on homepage only when no wallet exists (WelcomeBanner has "Get Started")
   // Show it when locked (unlock from header) or connected
-  const isHomePage = location.pathname === '/';
-  const showWalletButton = !isHomePage || status !== 'disconnected' || isZkLoggedIn || isPasskeyUnlocked;
+  const isHomePage = location.pathname === "/";
+  const showWalletButton =
+    !isHomePage ||
+    status !== "disconnected" ||
+    isZkLoggedIn ||
+    isPasskeyUnlocked;
 
   // Close dropdowns on route change
   useEffect(() => {
@@ -107,43 +115,60 @@ export function Header() {
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (tradeRef.current && !tradeRef.current.contains(event.target as Node)) {
+      if (
+        tradeRef.current &&
+        !tradeRef.current.contains(event.target as Node)
+      ) {
         setIsTradeOpen(false);
       }
-      if (gamesRef.current && !gamesRef.current.contains(event.target as Node)) {
+      if (
+        gamesRef.current &&
+        !gamesRef.current.contains(event.target as Node)
+      ) {
         setIsGamesOpen(false);
       }
-      if (socialRef.current && !socialRef.current.contains(event.target as Node)) {
+      if (
+        socialRef.current &&
+        !socialRef.current.contains(event.target as Node)
+      ) {
         setIsSocialOpen(false);
       }
     };
 
     if (isTradeOpen || isGamesOpen || isSocialOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isTradeOpen, isGamesOpen, isSocialOpen]);
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
+    if (path === "/") {
+      return location.pathname === "/";
     }
-    if (path === '/predict') {
-      return location.pathname.startsWith('/predict');
+    if (path === "/predict") {
+      return location.pathname.startsWith("/predict");
     }
-    if (path === '/markets') {
-      return location.pathname.startsWith('/markets') || location.pathname === '/trade';
+    if (path === "/markets") {
+      return (
+        location.pathname.startsWith("/markets") ||
+        location.pathname === "/trade"
+      );
     }
-    if (path === '/games') {
-      return location.pathname.startsWith('/games');
+    if (path === "/games") {
+      return location.pathname.startsWith("/games");
     }
-    if (path === '/social') {
-      return location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/competitions');
+    if (path === "/social") {
+      return (
+        location.pathname.startsWith("/leaderboard") ||
+        location.pathname.startsWith("/competitions")
+      );
     }
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
   // Handle nav click - refresh state if same route
@@ -176,16 +201,23 @@ export function Header() {
 
   return (
     <header className="border-b border-theme-border px-3 sm:px-4 md:px-6 py-3 md:py-4">
-      <div className={`flex items-center justify-between gap-2 ${
-        isHomePage
-          ? 'max-w-7xl mx-auto'
-          : isTradePage && isSimple
-            ? 'xl:max-w-[1400px] 2xl:max-w-[1520px] xl:mx-auto'
-            : ''
-      }`}>
+      <div
+        className={`flex items-center justify-between gap-2 ${
+          isHomePage
+            ? "max-w-7xl mx-auto"
+            : isTradePage && isSimple
+              ? "xl:max-w-[1400px] 2xl:max-w-[1520px] xl:mx-auto"
+              : ""
+        }`}
+      >
         {/* Logo Wordmark - Click to go Home */}
-        <Link to="/" className="hover:opacity-80 transition-opacity flex items-center gap-2">
-          <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">PADO</h1>
+        <Link
+          to="/"
+          className="hover:opacity-80 transition-opacity flex items-center gap-2"
+        >
+          <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">
+            PADO
+          </h1>
           <span className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-pd3/15 text-pd3 border border-pd3/30 rounded">
             Nasun Devnet
           </span>
@@ -200,19 +232,24 @@ export function Header() {
                 <button
                   onClick={toggleTrade}
                   className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                    isActive('/markets')
-                      ? 'text-pd3 bg-pd3/10'
-                      : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                    isActive("/markets")
+                      ? "text-pd3 bg-pd3/10"
+                      : "text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary"
                   }`}
                 >
                   Trade
                   <svg
-                    className={`w-3 h-3 transition-transform ${isTradeOpen ? 'rotate-180' : ''}`}
+                    className={`w-3 h-3 transition-transform ${isTradeOpen ? "rotate-180" : ""}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
 
@@ -231,8 +268,8 @@ export function Header() {
                             }}
                             className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                               isActive(item.path)
-                                ? 'text-pd3 bg-pd3/10'
-                                : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                                ? "text-pd3 bg-pd3/10"
+                                : "text-theme-text-primary hover:bg-theme-bg-tertiary"
                             }`}
                           >
                             {item.label}
@@ -245,8 +282,22 @@ export function Header() {
                           className="flex items-center justify-between px-4 py-2.5 text-sm font-medium text-theme-text-muted/40 cursor-not-allowed"
                         >
                           {item.label}
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <rect
+                              x="3"
+                              y="11"
+                              width="18"
+                              height="11"
+                              rx="2"
+                              ry="2"
+                            />
+                            <path d="M7 11V7a5 5 0 0110 0v4" />
                           </svg>
                         </span>
                       );
@@ -257,8 +308,15 @@ export function Header() {
             ) : (
               <span className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed flex items-center gap-1">
                 Trade
-                <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                <svg
+                  className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
                 </svg>
               </span>
             )}
@@ -269,19 +327,24 @@ export function Header() {
             <button
               onClick={toggleGames}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                isActive('/games')
-                  ? 'text-pd3 bg-pd3/10'
-                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                isActive("/games")
+                  ? "text-pd3 bg-pd3/10"
+                  : "text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary"
               }`}
             >
               Games
               <svg
-                className={`w-3 h-3 transition-transform ${isGamesOpen ? 'rotate-180' : ''}`}
+                className={`w-3 h-3 transition-transform ${isGamesOpen ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
 
@@ -297,8 +360,8 @@ export function Header() {
                     }}
                     className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                       isActive(item.path)
-                        ? 'text-pd3 bg-pd3/10'
-                        : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                        ? "text-pd3 bg-pd3/10"
+                        : "text-theme-text-primary hover:bg-theme-bg-tertiary"
                     }`}
                   >
                     {item.label}
@@ -318,8 +381,8 @@ export function Header() {
                 onClick={(e) => handleNavClick(e, item.path)}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                   isActive(item.path)
-                    ? 'text-pd3 bg-pd3/10'
-                    : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                    ? "text-pd3 bg-pd3/10"
+                    : "text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary"
                 }`}
               >
                 {item.label}
@@ -330,8 +393,15 @@ export function Header() {
                 className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed inline-flex items-center gap-1"
               >
                 {item.label}
-                <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                <svg
+                  className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
                 </svg>
               </span>
             );
@@ -343,26 +413,38 @@ export function Header() {
               <button
                 onClick={toggleSocial}
                 className={`px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
-                  isActive('/social')
-                    ? 'text-pd3 bg-pd3/10'
-                    : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                  isActive("/social")
+                    ? "text-pd3 bg-pd3/10"
+                    : "text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary"
                 }`}
               >
                 Social
                 <svg
-                  className={`w-3 h-3 transition-transform ${isSocialOpen ? 'rotate-180' : ''}`}
+                  className={`w-3 h-3 transition-transform ${isSocialOpen ? "rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
             ) : (
               <span className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed flex items-center gap-1">
                 Social
-                <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                <svg
+                  className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
                 </svg>
               </span>
             )}
@@ -382,8 +464,8 @@ export function Header() {
                         }}
                         className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                           isActive(item.path)
-                            ? 'text-pd3 bg-pd3/10'
-                            : 'text-theme-text-primary hover:bg-theme-bg-tertiary'
+                            ? "text-pd3 bg-pd3/10"
+                            : "text-theme-text-primary hover:bg-theme-bg-tertiary"
                         }`}
                       >
                         {item.label}
@@ -396,8 +478,22 @@ export function Header() {
                       className="flex items-center justify-between px-4 py-2.5 text-sm font-medium text-theme-text-muted/40 cursor-not-allowed"
                     >
                       {item.label}
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        viewBox="0 0 24 24"
+                      >
+                        <rect
+                          x="3"
+                          y="11"
+                          width="18"
+                          height="11"
+                          rx="2"
+                          ry="2"
+                        />
+                        <path d="M7 11V7a5 5 0 0110 0v4" />
                       </svg>
                     </span>
                   );
@@ -410,11 +506,11 @@ export function Header() {
           {hasSpotAccess ? (
             <Link
               to="/portfolio"
-              onClick={(e) => handleNavClick(e, '/portfolio')}
+              onClick={(e) => handleNavClick(e, "/portfolio")}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                isActive('/portfolio')
-                  ? 'text-pd3 bg-pd3/10'
-                  : 'text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary'
+                isActive("/portfolio")
+                  ? "text-pd3 bg-pd3/10"
+                  : "text-theme-text-secondary hover:text-theme-text-primary hover:bg-theme-bg-secondary"
               }`}
             >
               Portfolio
@@ -422,8 +518,15 @@ export function Header() {
           ) : (
             <span className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed inline-flex items-center gap-1">
               Portfolio
-              <svg className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
+              <svg
+                className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>
             </span>
           )}
@@ -432,11 +535,11 @@ export function Header() {
           {isAdmin && (
             <Link
               to="/admin"
-              onClick={(e) => handleNavClick(e, '/admin')}
+              onClick={(e) => handleNavClick(e, "/admin")}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                isActive('/admin')
-                  ? 'text-yellow-400 bg-yellow-400/10'
-                  : 'text-yellow-500 hover:text-yellow-400 hover:bg-yellow-400/10'
+                isActive("/admin")
+                  ? "text-yellow-400 bg-yellow-400/10"
+                  : "text-yellow-500 hover:text-yellow-400 hover:bg-yellow-400/10"
               }`}
             >
               Admin
@@ -448,7 +551,9 @@ export function Header() {
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
           <EcoPointsBadge />
-          {hasGenesisPass && <GenesisPassBadge className="hidden sm:inline-flex" />}
+          {hasGenesisPass && (
+            <GenesisPassBadge className="hidden sm:inline-flex" />
+          )}
           {hasSpotAccess && <HeaderNetValue />}
           {showWalletButton && (
             <WalletConnect
@@ -456,6 +561,28 @@ export function Header() {
               addressEndChars={3}
             />
           )}
+          <a
+            href="https://nasun.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md  text-theme-text-secondary hover:text-theme-text-primary hover:border-theme-border-hover transition-colors"
+            title="Go to Nasun Website"
+          >
+            nasun.io
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          </a>
         </div>
       </div>
     </header>
