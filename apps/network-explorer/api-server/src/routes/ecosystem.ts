@@ -539,6 +539,14 @@ app.get('/leaderboard/weeks', async (c) => {
   return c.json({ weeks });
 });
 
+// TODO(security): Leaderboard exposes raw Cognito identityIds (region:uuid) in unauthenticated
+// responses. Any caller can enumerate all active users' identityIds by paging through the
+// leaderboard and then mass-scrape per-user detail data via /score/:identityId.
+// Fix: replace identityId in leaderboard response with SHA256(identityId).slice(0,16).
+// Clients finding "my rank" should hash their own identityId client-side for comparison.
+// Blocked by: EcosystemPointsCard and other components that currently use identityId directly.
+// Tracked: https://github.com/narunice/nasun-monorepo/issues/1
+
 // GET /api/v1/ecosystem/leaderboard?weekId=2026-W17&limit=50&offset=0
 //
 // Weekly ecosystem leaderboard — no NFT multiplier applied to ranking.
