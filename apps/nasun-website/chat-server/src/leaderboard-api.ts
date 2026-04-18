@@ -15,8 +15,14 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+
+const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
+function sanitizeXHandle(raw: string | undefined): string | null {
+  if (!raw) return null;
+  return X_HANDLE_RE.test(raw) ? raw : null;
+}
 import type { ChatServerConfig } from './types.js';
-import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch } from './store.js';
+import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch, getProfileImagesBatch, getXHandlesBatch } from './store.js';
 import { getPoolSymbol, getPoolBaseDecimals } from './rooms.js';
 import {
   getLeaderboard, getLeaderboardPnl,
@@ -638,12 +644,16 @@ function handleScoreLeaderboardWeekly(
   const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
   const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
   const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+  const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
+  const xHandles = addresses.length > 0 ? getXHandlesBatch(addresses) : new Map<string, string>();
 
   const traders = rows.map((row) => ({
     rank: row.rank,
     address: row.address,
     nickname: nicknames.get(row.address) ?? null,
     hasGenesisPass: genesisPassSet.has(row.address),
+    profileImageUrl: profileImages.get(row.address) ?? null,
+    xHandle: sanitizeXHandle(xHandles.get(row.address)),
     totalScore: row.total_score,
     tradeCount: row.trade_count,
     volumeUsd: formatQuoteVolume(row.volume_quote),

@@ -109,6 +109,7 @@ export function initStore(config: ChatServerConfig): void {
       fetched_at INTEGER NOT NULL
     );
   `);
+  try { db.exec('ALTER TABLE nasun_profiles ADD COLUMN twitter_handle TEXT'); } catch { /* already exists */ }
 
   nasunProfileApiUrl = config.nasunProfileApiUrl;
   if (nasunProfileApiUrl) {
@@ -564,6 +565,19 @@ export function getProfileImagesBatch(addresses: string[]): Map<string, string> 
   return result;
 }
 
+export function getXHandlesBatch(addresses: string[]): Map<string, string> {
+  if (addresses.length === 0) return new Map();
+  const rows = getDb()
+    .prepare(
+      `SELECT address, twitter_handle FROM nasun_profiles
+       WHERE address IN (SELECT value FROM json_each(?)) AND twitter_handle IS NOT NULL`
+    )
+    .all(JSON.stringify(addresses)) as Array<{ address: string; twitter_handle: string }>;
+  const result = new Map<string, string>();
+  for (const row of rows) result.set(row.address, row.twitter_handle);
+  return result;
+}
+
 // ===== Nasun Profile Cache =====
 
 function getNasunDisplayName(address: string): string | null {
@@ -585,17 +599,18 @@ export function getAddressesWithProfileName(addresses: string[]): Set<string> {
   return new Set(rows.map((r) => r.address));
 }
 
-export function upsertNasunProfile(address: string, displayName: string | null, imageUrl: string | null): void {
+export function upsertNasunProfile(address: string, displayName: string | null, imageUrl: string | null, twitterHandle: string | null = null): void {
   getDb()
     .prepare(
-      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, fetched_at)
-       VALUES (?, ?, ?, ?)
+      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, twitter_handle, fetched_at)
+       VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(address) DO UPDATE SET
          resolved_display_name = excluded.resolved_display_name,
          profile_image_url = excluded.profile_image_url,
+         twitter_handle = COALESCE(excluded.twitter_handle, twitter_handle),
          fetched_at = excluded.fetched_at`
     )
-    .run(address, displayName, imageUrl, Date.now());
+    .run(address, displayName, imageUrl, twitterHandle, Date.now());
 }
 
 export function getStaleProfiles(addresses: string[], ttlMs: number): string[] {
@@ -638,14 +653,14 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
       clearTimeout(timeout);
 
       if (res.ok) {
-        const data = await res.json() as { resolvedDisplayName?: string | null; profileImageUrl?: string | null };
-        upsertNasunProfile(normalized, data.resolvedDisplayName ?? null, data.profileImageUrl ?? null);
+        const data = await res.json() as { resolvedDisplayName?: string | null; profileImageUrl?: string | null; twitterHandle?: string | null };
+        upsertNasunProfile(normalized, data.resolvedDisplayName ?? null, data.profileImageUrl ?? null, data.twitterHandle ?? null);
       } else {
-        upsertNasunProfile(normalized, null, null);
+        upsertNasunProfile(normalized, null, null, null);
       }
     } catch {
       console.warn(`[nasun-profile] Failed to fetch profile for ${normalized}`);
-      upsertNasunProfile(normalized, null, null);
+      upsertNasunProfile(normalized, null, null, null);
     } finally {
       inFlightRequests.delete(normalized);
     }

@@ -1,4 +1,5 @@
 import React from "react";
+import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { DashboardCard } from "../../components/ui/DashboardCard";
 import {
   usePadoScoreLeaderboard,
@@ -28,9 +29,6 @@ function RankChangeBadge({ change }: { change: number }) {
 }
 
 function TraderRow({ trader }: { trader: ScoreLeaderboardTrader }) {
-  const displayName = trader.nickname || abbreviateAddress(trader.address);
-  const isNickname = !!trader.nickname;
-
   return (
     <div className="grid grid-cols-12 gap-2 items-center px-4 py-3 border-b border-pd2/25 hover:bg-pd1/20 transition-colors">
       {/* Rank [2] */}
@@ -42,26 +40,33 @@ function TraderRow({ trader }: { trader: ScoreLeaderboardTrader }) {
 
       {/* Trader [6] */}
       <div className="col-span-6 flex items-center gap-2 min-w-0">
+        {trader.profileImageUrl ? (
+          <img
+            src={trader.profileImageUrl}
+            alt=""
+            className="w-6 h-6 rounded-full shrink-0 object-cover bg-nasun-dark-500"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+          />
+        ) : (
+          <div className="w-6 h-6 rounded-full shrink-0 bg-pd1/60" />
+        )}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span
-              className={`text-sm font-medium truncate ${isNickname ? "text-nasun-white" : "text-pd3"}`}
-            >
-              {displayName}
+            <span className={`text-sm font-medium truncate ${trader.nickname ? "text-nasun-white" : "text-pd3"}`}>
+              {trader.nickname ?? abbreviateAddress(trader.address)}
             </span>
-            {trader.hasGenesisPass && (
-              <span
-                className="shrink-0 text-sm font-bold text-pado-4 leading-none"
-                title="Genesis Pass"
-              >
-                GP
-              </span>
-            )}
+            {trader.hasGenesisPass && <GenesisPassBadge />}
           </div>
-          {isNickname && (
-            <div className="text-sm text-pd3 truncate">
-              {abbreviateAddress(trader.address)}
-            </div>
+          {trader.xHandle && (
+            <a
+              href={`https://x.com/${trader.xHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-pd3 truncate block hover:text-nasun-white/70 transition-colors"
+            >
+              @{trader.xHandle}
+            </a>
           )}
         </div>
       </div>

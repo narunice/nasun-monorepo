@@ -160,6 +160,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         // Return Public Profile only (no sensitive fields)
         const resolvedDisplayName = resolveDisplayName(profileItem);
         const profileImageUrl = profileItem.profileImageUrl?.S || null;
+        const twitterHandle = profileItem.originalTwitterHandle?.S || profileItem.twitterHandle?.S || null;
 
         return {
           statusCode: 200,
@@ -167,6 +168,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           body: JSON.stringify({
             resolvedDisplayName,
             profileImageUrl,
+            twitterHandle,
             walletAddress: normalizedAddr,
           }),
         };
