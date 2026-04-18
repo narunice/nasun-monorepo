@@ -32,34 +32,34 @@ export function LeaderboardMainContent({
     <div className="min-w-0 w-full">
         {leaderboardData && leaderboardData.entries.length > 0 && (
           <>
-            <div className="w-full border border-nasun-c7/50 bg-gray-900/70 rounded-sm overflow-hidden">
+            <div className="w-full border border-nasun-nw3/30 bg-nasun-nw3/5 rounded-sm overflow-hidden">
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-nasun-c7/20">
-                <span className="col-span-2 text-left font-medium text-nasun-white uppercase">
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-nasun-nw3/20 border-b border-nasun-nw3/30">
+                <span className="col-span-2 text-left font-semibold text-nasun-nw4 uppercase tracking-wide text-sm">
                   {t("v3.table.rank")}
                 </span>
-                <span className="col-span-6 text-left font-medium text-nasun-white uppercase relative group cursor-help">
+                <span className="col-span-6 text-left font-semibold text-nasun-nw4 uppercase tracking-wide text-sm relative group cursor-help">
                   {t("v3.table.user")}
-                  <span className="invisible group-hover:visible absolute left-0 top-full mt-2 px-3 py-1.5 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
+                  <span className="invisible group-hover:visible absolute left-0 top-full mt-2 px-3 py-1.5 bg-nasun-nw3 text-nasun-white text-sm font-normal normal-case rounded-sm whitespace-nowrap z-10 border border-nasun-nw2/40">
                     <span className="text-nasun-c7">{t("v3.table.userTooltipGreen")}</span> &middot; <span className="text-sky-400">{t("v3.table.userTooltipBlue")}</span>
                   </span>
                 </span>
-                <span className="col-span-2 text-right font-medium text-nasun-white uppercase relative group cursor-help">
+                <span className="col-span-2 text-right font-semibold text-nasun-nw4 uppercase tracking-wide text-sm relative group cursor-help">
                   {t("v3.table.score")}
-                  <span className="invisible group-hover:visible absolute right-0 top-full mt-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
+                  <span className="invisible group-hover:visible absolute right-0 top-full mt-2 px-3 py-1.5 bg-nasun-nw3 text-nasun-white text-sm font-normal normal-case rounded-sm whitespace-nowrap z-10 border border-nasun-nw2/40">
                     {t("v3.table.scoreTooltip")}
                   </span>
                 </span>
-                <span className="col-span-2 text-center font-medium text-nasun-white uppercase relative group cursor-help">
+                <span className="col-span-2 text-center font-semibold text-nasun-nw4 uppercase tracking-wide text-sm relative group cursor-help">
                   {t("v3.table.change")}
-                  <span className="invisible group-hover:visible absolute right-0 top-full mt-2 px-2 py-1 bg-gray-800 text-gray-200 text-xs font-normal normal-case rounded whitespace-nowrap z-10">
+                  <span className="invisible group-hover:visible absolute right-0 top-full mt-2 px-3 py-1.5 bg-nasun-nw3 text-nasun-white text-sm font-normal normal-case rounded-sm whitespace-nowrap z-10 border border-nasun-nw2/40">
                     {t("v3.table.changeTooltip")}
                   </span>
                 </span>
               </div>
 
               {/* Table Body */}
-              <div className="divide-y divide-gray-700">
+              <div className="divide-y divide-nasun-nw3/20">
                 {leaderboardData.entries.map((entry) => (
                   <LeaderboardV3Row
                     key={`${entry.platform}-${entry.username}`}
@@ -70,11 +70,11 @@ export function LeaderboardMainContent({
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-3 border-t border-gray-600 flex justify-between items-center">
-                <span className="text-gray-500">
+              <div className="px-6 py-3 border-t border-nasun-nw3/25 flex justify-between items-center bg-nasun-nw3/10">
+                <span className="text-nasun-nw4 text-sm">
                   {t("v3.table.total", { count: leaderboardData.totalCount })}
                 </span>
-                <span className="text-gray-500">
+                <span className="text-nasun-nw4 text-sm">
                   {t("v3.table.lastUpdated", { date: new Date(leaderboardData.calculatedAt).toLocaleString("en-US") })}
                 </span>
               </div>
@@ -82,7 +82,7 @@ export function LeaderboardMainContent({
 
             {/* Pagination */}
             {leaderboardData.totalCount > ITEMS_PER_PAGE && (
-              <div className="mt-6">
+              <div className="mt-5">
                 <PaginationControlsV3
                   currentPage={page}
                   totalPages={pagination.totalPages}
@@ -108,8 +108,8 @@ export function LeaderboardMainContent({
 
         {/* Empty State */}
         {leaderboardData && leaderboardData.entries.length === 0 && (
-          <div className="text-center py-12 bg-black/90 rounded-sm border border-gray-600">
-            <p className="text-gray-100">{t("v3.table.noEntries")}</p>
+          <div className="text-center py-12 bg-nasun-nw3/5 rounded-sm border border-nasun-nw3/25">
+            <p className="text-nasun-nw4">{t("v3.table.noEntries")}</p>
           </div>
         )}
       </div>

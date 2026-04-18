@@ -23,7 +23,7 @@ export function LeaderboardSidebar({ seasonId }: LeaderboardSidebarProps) {
         </div>
         {/* Gradient fade + label (desktop only, where feed is constrained) */}
         <div className="hidden md:block absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-nasun-black from-20% via-nasun-black/95 via-45% to-transparent pointer-events-none z-10" />
-        <div className="hidden md:block absolute bottom-1 left-0 right-0 z-20 px-1 text-[10px] text-nasun-white/40 uppercase tracking-widest text-center">
+        <div className="hidden md:block absolute bottom-1 left-0 right-0 z-20 px-1 text-sm text-nasun-nw4 uppercase tracking-widest text-center">
           {t("v3.feed.subtitle")}
         </div>
       </div>

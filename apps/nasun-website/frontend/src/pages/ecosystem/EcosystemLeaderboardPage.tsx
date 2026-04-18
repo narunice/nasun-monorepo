@@ -62,21 +62,22 @@ const EcosystemLeaderboardPage = () => {
 
       <SectionLayout maxWidth="7xl" className="pt-8 md:pt-12">
         {/* Page Title */}
-        <PageTitle as="h1">Ecosystem Leaderboard</PageTitle>
+        <PageTitle as="h2">Ecosystem Leaderboard</PageTitle>
 
         {/* Experimental Season Banner */}
-        <div className="mb-6 rounded-sm border border-nasun-c3/20 bg-nasun-c3/5 px-4 py-3">
-          <p className="text-sm text-nasun-c3">
-            <span className="font-semibold">Experimental Season</span>
-            {" "}
-            - Scoring rules and multiplier values may change based on community feedback and ecosystem data. Your contributions are tracked from day one.
+        <div className="mb-6 rounded-sm border border-pado-1/50 bg-pado-1/10 px-4 py-3">
+          <p className="text-sm text-pado-2">
+            <span className="font-semibold">Experimental Season</span> - Scoring
+            rules and multiplier values may change based on community feedback
+            and ecosystem data. Your contributions are tracked from day one.
           </p>
         </div>
 
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-nasun-white/80">
-            Earn points through diverse on-chain activity. Activate NFTs for score multipliers.
+            Earn points through diverse on-chain activity. Activate NFTs for
+            score multipliers.
           </p>
 
           {/* Period Toggle */}
@@ -91,7 +92,11 @@ const EcosystemLeaderboardPage = () => {
                     : "text-nasun-white/80 hover:text-nasun-white"
                 }`}
               >
-                {p === "daily" ? "Daily" : p === "weekly" ? "Weekly" : "Monthly"}
+                {p === "daily"
+                  ? "Daily"
+                  : p === "weekly"
+                    ? "Weekly"
+                    : "Monthly"}
               </button>
             ))}
           </div>
@@ -108,11 +113,14 @@ const EcosystemLeaderboardPage = () => {
           <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
             <p className="text-sm font-medium text-nasun-c3/90">Multiplier</p>
             <p className="text-sm text-nasun-white/90">
-              Activated NFTs boost your score (Alliance, Genesis Pass, Battalion)
+              Activated NFTs boost your score (Alliance, Genesis Pass,
+              Battalion)
             </p>
           </div>
           <div className="rounded-sm border border-nasun-c3/10 bg-nasun-c6/25 p-3">
-            <p className="text-sm font-medium text-nasun-c3/90">Ecosystem Score</p>
+            <p className="text-sm font-medium text-nasun-c3/90">
+              Ecosystem Score
+            </p>
             <p className="text-sm text-nasun-white/90">
               Base Score x Multiplier = Final ranking score
             </p>
@@ -180,7 +188,8 @@ const EcosystemLeaderboardPage = () => {
                           <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                         </svg>
                         <p className="text-sm text-nasun-white/70">
-                          No activity recorded yet. Start using the ecosystem to appear here!
+                          No activity recorded yet. Start using the ecosystem to
+                          appear here!
                         </p>
                       </div>
                     </td>
