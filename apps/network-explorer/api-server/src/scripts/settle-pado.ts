@@ -34,6 +34,10 @@
  */
 
 import postgres from 'postgres';
+import { gunzip } from 'node:zlib';
+import { promisify } from 'node:util';
+
+const gunzipAsync = promisify(gunzip);
 
 // ===== Config =====
 
@@ -148,10 +152,15 @@ async function fetchActivationsPayload(): Promise<{
     | { url: string };
 
   // Handle S3 presigned offload (same pattern as ecosystem-cache.ts).
+  // The S3 object is stored as gzip; decompress before parsing.
   if ('url' in data) {
     const s3Res = await fetch(data.url, { signal: AbortSignal.timeout(60_000) });
     if (!s3Res.ok) throw new Error(`Ecosystem activations S3 offload error: ${s3Res.status}`);
-    return s3Res.json() as Promise<{ activations: Record<string, Array<{ nftType: string; nftCount: number }>> }>;
+    const buf = Buffer.from(await s3Res.arrayBuffer());
+    const decompressed = await gunzipAsync(buf);
+    return JSON.parse(decompressed.toString('utf8')) as {
+      activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
+    };
   }
 
   return data;
