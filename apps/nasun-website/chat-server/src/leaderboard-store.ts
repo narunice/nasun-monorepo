@@ -395,6 +395,52 @@ interface AggregatedTrader {
   last_trade_at: number;
 }
 
+// Safety cap: well below SQLite MAX_VARIABLE_NUMBER=32766 (confirmed 32766 on bundled SQLite 3.49.2).
+// Each pair = 1 parameter (canonical key "addrA:addrB"). Expected real-world size: ~100-200 pairs.
+const MAX_WASH_PAIRS_CTE = 2000;
+
+interface WashCte {
+  cte: string;
+  filterClause: string;
+  params: string[];
+}
+
+/**
+ * Build a SQLite CTE for wash-trading pair exclusion.
+ *
+ * Addresses in trade_fills are stored as 0x+lowercase hex (Sui RPC canonical format).
+ * buildSameIdentityPairs() also lowercases all addresses, so no LOWER() is needed.
+ *
+ * The filterClause is placed inside each UNION ALL branch WHERE clause.
+ * Both maker_address and taker_address are accessible there even if not SELECTed,
+ * because WHERE has access to all columns of the FROM table (SQL standard).
+ *
+ * Uses NOT EXISTS (faster than NOT IN for subquery matching in SQLite).
+ */
+function buildWashPairsCte(washPairs?: Set<string>): WashCte | null {
+  if (!washPairs || washPairs.size === 0) return null;
+
+  if (washPairs.size > MAX_WASH_PAIRS_CTE) {
+    console.warn(`[LeaderboardStore] washPairs.size=${washPairs.size} exceeds CTE limit (${MAX_WASH_PAIRS_CTE}), skipping wash filter`);
+    return null;
+  }
+
+  const values = [...washPairs].map(() => '(?)').join(', ');
+  return {
+    cte: `WITH wash_pairs(k) AS (VALUES ${values})`,
+    // Canonical key matches buildSameIdentityPairs(): lexicographically smaller address first.
+    filterClause: `
+      AND NOT EXISTS (
+        SELECT 1 FROM wash_pairs
+        WHERE k = CASE WHEN maker_address < taker_address
+                       THEN maker_address || ':' || taker_address
+                       ELSE taker_address || ':' || maker_address
+                  END
+      )`,
+    params: [...washPairs],
+  };
+}
+
 /**
  * Aggregate trading volume per trader for a given period.
  * Both maker and taker sides count toward a trader's volume.
@@ -404,16 +450,20 @@ export function aggregateTraderVolume(
   cutoffMs: number,
   excludedAddresses: Set<string>,
   limit: number = 100,
+  washPairs?: Set<string>,
 ): AggregatedTrader[] {
   const ldb = getLeaderboardDb();
 
-  // Build exclusion clause
   const excludeList = [...excludedAddresses];
   const excludePlaceholders = excludeList.length > 0
     ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
     : '';
 
+  const wash = buildWashPairsCte(washPairs);
+  const cutoff = cutoffMs > 0 ? cutoffMs : 0;
+
   const query = `
+    ${wash?.cte ?? ''}
     SELECT
       address,
       CAST(SUM(CAST(quote_volume AS INTEGER)) AS TEXT) as volume_quote,
@@ -423,9 +473,11 @@ export function aggregateTraderVolume(
     FROM (
       SELECT maker_address as address, quote_quantity as quote_volume, pool_id, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
+      ${wash?.filterClause ?? ''}
       UNION ALL
       SELECT taker_address as address, quote_quantity as quote_volume, pool_id, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
+      ${wash?.filterClause ?? ''}
     )
     WHERE 1=1 ${excludePlaceholders}
     GROUP BY address
@@ -433,9 +485,14 @@ export function aggregateTraderVolume(
     LIMIT ?
   `;
 
-  const params = cutoffMs > 0
-    ? [cutoffMs, cutoffMs, ...excludeList, limit]
-    : [0, 0, ...excludeList, limit];
+  // CTE params precede all positional params: they appear first in the query string.
+  // wash.params count = washPairs.size (one param per canonical key string).
+  const params = [
+    ...(wash?.params ?? []),
+    cutoff, cutoff,
+    ...excludeList,
+    limit,
+  ];
 
   return ldb.prepare(query).all(...params) as AggregatedTrader[];
 }
@@ -1016,6 +1073,7 @@ interface RawPnlRow {
 export function aggregateTraderPnlRaw(
   cutoffMs: number,
   excludedAddresses: Set<string>,
+  washPairs?: Set<string>,
 ): RawPnlRow[] {
   const ldb = getLeaderboardDb();
 
@@ -1023,8 +1081,10 @@ export function aggregateTraderPnlRaw(
   const excludePlaceholders = excludeList.length > 0
     ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
     : '';
+  const wash = buildWashPairsCte(washPairs);
 
   const query = `
+    ${wash?.cte ?? ''}
     SELECT
       address,
       SUM(CASE WHEN is_buy = 1 THEN CAST(base_qty AS REAL) ELSE 0.0 END) as buy_base,
@@ -1036,17 +1096,23 @@ export function aggregateTraderPnlRaw(
       SELECT taker_address as address, base_quantity as base_qty, quote_quantity as quote_qty,
              taker_is_bid as is_buy, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
+      ${wash?.filterClause ?? ''}
       UNION ALL
       SELECT maker_address as address, base_quantity as base_qty, quote_quantity as quote_qty,
              CASE WHEN taker_is_bid = 1 THEN 0 ELSE 1 END as is_buy, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
+      ${wash?.filterClause ?? ''}
     )
     WHERE 1=1 ${excludePlaceholders}
     GROUP BY address
     HAVING MIN(buy_base, sell_base) > 0
   `;
 
-  const params = [cutoffMs, cutoffMs, ...excludeList];
+  const params = [
+    ...(wash?.params ?? []),
+    cutoffMs, cutoffMs,
+    ...excludeList,
+  ];
   return ldb.prepare(query).all(...params) as RawPnlRow[];
 }
 
@@ -1058,8 +1124,9 @@ export function computeTraderPnl(
   cutoffMs: number,
   excludedAddresses: Set<string>,
   limit: number = 100,
+  washPairs?: Set<string>,
 ): Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> {
-  const rawRows = aggregateTraderPnlRaw(cutoffMs, excludedAddresses);
+  const rawRows = aggregateTraderPnlRaw(cutoffMs, excludedAddresses, washPairs);
 
   const results: Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> = [];
 

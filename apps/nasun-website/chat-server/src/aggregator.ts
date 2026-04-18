@@ -19,7 +19,7 @@ import {
   getWeeklyCurrentRanks,
   replaceWeeklyTraderScores,
 } from './leaderboard-store.js';
-import { buildSameIdentityPairs, isSameIdentityPair, refreshIdentityCache } from './identity-resolver.js';
+import { buildSameIdentityPairs, refreshIdentityCache } from './identity-resolver.js';
 
 // PnL data cached during PnL aggregation, consumed by points aggregation
 let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
@@ -224,12 +224,12 @@ function runWeeklyScoreAggregation(): void {
   const weekStart = getCurrentWeekStart();
   const weekId = getWeekId(weekStart);
 
-  // Volume stats filtered to this week
-  const traders = aggregateTraderVolume(weekStart, config.excludedAddresses, AGGREGATION_LIMIT);
+  // Volume stats filtered to this week (wash pairs excluded)
+  const traders = aggregateTraderVolume(weekStart, config.excludedAddresses, AGGREGATION_LIMIT, sameIdentityPairs);
   if (traders.length === 0) return;
 
-  // PnL for this week only (cutoff = weekStart)
-  const weeklyPnlList = computeTraderPnl(weekStart, config.excludedAddresses, AGGREGATION_LIMIT);
+  // PnL for this week only (wash pairs excluded)
+  const weeklyPnlList = computeTraderPnl(weekStart, config.excludedAddresses, AGGREGATION_LIMIT, sameIdentityPairs);
   const weeklyPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
   for (const t of weeklyPnlList) {
     weeklyPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
@@ -243,14 +243,6 @@ function runWeeklyScoreAggregation(): void {
     const tradeCount = t.trade_count;
     const volumeRaw = BigInt(t.volume_quote);
     const uniquePools = t.unique_pools;
-
-    // Wash-trading filter: if this address only traded with same-identity counterparts,
-    // their stats would show inflated counts. We rely on aggregateTraderVolume already
-    // excluding self-fills; here we additionally check via sameIdentityPairs.
-    // The pair set is checked per-fill in aggregateTraderVolumeFiltered (future).
-    // For now: if tradeCount is 0 after filtering, skip.
-    // (Full per-fill filtering via sameIdentityPairs is wired in aggregateTraderVolume
-    //  once that function gains the pairs parameter - tracked as follow-up.)
 
     const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
     const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
