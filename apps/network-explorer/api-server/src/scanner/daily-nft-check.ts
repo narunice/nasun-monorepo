@@ -107,17 +107,14 @@ export async function runDailyNftChecks(
 async function checkAlliancePenalties(
   allianceOnlyIds: string[],
 ): Promise<{ applied: number; recovered: number }> {
-  // Grace period: penalty enforcement starts after Genesis Pass activation opens.
-  // Genesis Pass holders need a chance to activate for penalty immunity.
-  // Genesis Pass activation: April 15th midnight -> enforce from April 16th.
-  const PENALTY_ENFORCEMENT_START = '2026-04-16';
-  if (new Date().toISOString().slice(0, 10) < PENALTY_ENFORCEMENT_START) {
-    const cleared = await pointsDb!`DELETE FROM alliance_penalties`;
-    if (cleared.count > 0) {
-      console.log(`[DailyNftCheck] Grace period active, cleared ${cleared.count} penalties`);
-    }
-    return { applied: 0, recovered: 0 };
-  }
+  // Record first activation date for all alliance-only users.
+  // Uses ON CONFLICT DO NOTHING so the date is set once and never overwritten,
+  // even after recovery (penalty DELETE). This is the basis for grace period checks.
+  await pointsDb!`
+    INSERT INTO alliance_first_seen (identity_id, first_seen)
+    SELECT unnest(${allianceOnlyIds}::text[]), CURRENT_DATE
+    ON CONFLICT (identity_id) DO NOTHING
+  `;
 
   // Batch query: active days in last 7 for all alliance-only users
   const activityRows = await pointsDb!`
@@ -148,8 +145,8 @@ async function checkAlliancePenalties(
     const today = new Date().toISOString().slice(0, 10);
     for (const id of shouldPenalize) {
       const result = await pointsDb!`
-        INSERT INTO alliance_penalties (identity_id, penalty_start, first_seen)
-        VALUES (${id}, ${today}::date, ${today}::date)
+        INSERT INTO alliance_penalties (identity_id, penalty_start)
+        VALUES (${id}, ${today}::date)
         ON CONFLICT (identity_id) DO NOTHING
       `;
       if (result.count > 0) applied++;
