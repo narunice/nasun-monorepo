@@ -8,6 +8,8 @@
  */
 
 import { Hono } from 'hono';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import {
@@ -18,6 +20,99 @@ import {
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
+
+const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
+const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
+
+let _ddbClient: DynamoDBDocumentClient | null = null;
+function getDdbClient(): DynamoDBDocumentClient {
+  if (!_ddbClient) {
+    _ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
+  }
+  return _ddbClient;
+}
+
+// Same priority chain as get-user-profile Lambda: customDisplayName > Twitter > linkedAccounts > email prefix
+function resolveDisplayName(item: Record<string, unknown>): string | null {
+  if (item.customDisplayName) return item.customDisplayName as string;
+  if (item.provider === 'Twitter' && item.username) return item.username as string;
+  const linked = item.linkedAccounts as Record<string, Record<string, string>> | undefined;
+  if (linked?.twitter?.username) return linked.twitter.username;
+  const email = item.email as string | undefined;
+  if (email) return email.split('@')[0];
+  return null;
+}
+
+interface ProfileCacheEntry {
+  displayName: string | null;
+  xHandle: string | null;
+  profileImageUrl: string | null;
+}
+
+const profileCache = {
+  data: new Map<string, ProfileCacheEntry>(),
+  expiresAt: 0,
+};
+const PROFILE_CACHE_TTL = 5 * 60 * 1000;
+
+// Twitter handle must be alphanumeric + underscore, 1-50 chars
+const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
+
+function sanitizeXHandle(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw) return null;
+  return X_HANDLE_RE.test(raw) ? raw : null;
+}
+
+async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, ProfileCacheEntry>> {
+  if (identityIds.length === 0) return new Map();
+
+  const now = Date.now();
+  const cacheValid = profileCache.expiresAt > now;
+  const missing = cacheValid
+    ? identityIds.filter(id => !profileCache.data.has(id))
+    : identityIds;
+
+  if (!cacheValid) profileCache.data.clear();
+
+  if (missing.length > 0) {
+    try {
+      const ddb = getDdbClient();
+      const CHUNK = 100;
+      for (let i = 0; i < missing.length; i += CHUNK) {
+        let pendingKeys = missing.slice(i, i + CHUNK).map(id => ({ identityId: id }));
+        while (pendingKeys.length > 0) {
+          const res = await ddb.send(new BatchGetCommand({
+            RequestItems: {
+              [USER_PROFILES_TABLE]: {
+                Keys: pendingKeys,
+                ProjectionExpression: 'identityId, customDisplayName, #pr, username, linkedAccounts, twitterHandle, originalTwitterHandle, profileImageUrl, #em',
+                ExpressionAttributeNames: { '#pr': 'provider', '#em': 'email' },
+              },
+            },
+          }));
+          for (const item of res.Responses?.[USER_PROFILES_TABLE] ?? []) {
+            const id = item.identityId as string;
+            profileCache.data.set(id, {
+              displayName: resolveDisplayName(item as Record<string, unknown>),
+              xHandle: sanitizeXHandle(item.originalTwitterHandle ?? item.twitterHandle),
+              profileImageUrl: (item.profileImageUrl as string | undefined) ?? null,
+            });
+          }
+          pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
+        }
+      }
+    } catch (err) {
+      console.error('[leaderboard] profile batch fetch error:', err);
+    }
+    profileCache.expiresAt = now + PROFILE_CACHE_TTL;
+  }
+
+  const result = new Map<string, ProfileCacheEntry>();
+  for (const id of identityIds) {
+    result.set(id, profileCache.data.get(id) ?? { displayName: null, xHandle: null, profileImageUrl: null });
+  }
+  return result;
+}
 
 // Grace period before alliance penalty takes effect (days after NFT first activation)
 const ALLIANCE_PENALTY_GRACE_DAYS = 7;
@@ -550,9 +645,11 @@ app.get('/leaderboard/weeks', async (c) => {
 // GET /api/v1/ecosystem/leaderboard?weekId=2026-W17&limit=50&offset=0
 //
 // Weekly ecosystem leaderboard — no NFT multiplier applied to ranking.
-// Score = activity_diversity_score (distinct non-pado categories per day, summed over week)
-//       + creator_post_score (admin-granted ecosystem-bonus-creator-posts points)
-// All users with any activity in the week appear; NFT ownership is not required.
+// Score = activity_score (distinct non-pado categories per epoch-day slot)
+//       + FLOOR(creator_post_score / 5)
+//       + FLOOR(bugreport+feedback / 2) + FLOOR(game / 3)
+//       + active_days * 2
+// All users with any qualifying activity appear; NFT ownership is not required.
 app.get('/leaderboard', async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points_not_configured' }, 503);
@@ -575,17 +672,14 @@ app.get('/leaderboard', async (c) => {
     `eco-leaderboard-${weekId}`,
     5 * 60 * 1000,
     async () => {
-      // Excluded from activity diversity score (same logic as matview, plus all pado-*):
-      //   - system-generated bonuses (referral-bonus, daily-mission, ecosystem-passive, staking-daily, staking)
-      //   - ecosystem-bonus-* (creator-posts counted separately below)
+      // Excluded from activity diversity score:
+      //   - system-generated: referral-bonus, daily-mission, ecosystem-passive, staking-daily, staking
+      //   - ecosystem-bonus-* (creator-posts counted separately; bugreport/feedback/game in bonus CTE)
       //   - pado-* (covered by the dedicated Pado Score Leaderboard)
       const rows = await pointsDb!`
         WITH week_activities AS (
           SELECT DISTINCT identity_id,
-            -- Use epoch-based day slot relative to week start to avoid the 10-minute offset
-            -- artifact: calendar date_trunc can produce 8 distinct days per 7-day window
-            -- because the reset boundary (Mon 00:10 UTC) crosses midnight (Mon 00:00 UTC).
-            -- Slots 0-6 guarantee activeDays <= 7 regardless of the offset.
+            -- Epoch-based day slot: avoids 10-min offset artifact (date_trunc can yield 8 days/week)
             FLOOR(
               (EXTRACT(EPOCH FROM tx_timestamp) - EXTRACT(EPOCH FROM ${bounds.start}::timestamptz))
               / 86400
@@ -612,7 +706,7 @@ app.get('/leaderboard', async (c) => {
         ),
         creator_post_score AS (
           SELECT identity_id,
-                 COALESCE(SUM(final_points), 0)::numeric AS post_score
+                 COALESCE(SUM(final_points), 0) / 5.0 AS post_score
           FROM activity_points
           WHERE category = 'ecosystem-bonus-creator-posts'
             AND NOT flagged
@@ -620,24 +714,70 @@ app.get('/leaderboard', async (c) => {
             AND tx_timestamp >= ${bounds.start}
             AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
+        ),
+        bonus_score AS (
+          SELECT identity_id,
+            COALESCE(SUM(final_points) FILTER (
+              WHERE category IN ('ecosystem-bonus-bugreport', 'ecosystem-bonus-feedback')
+            ), 0) / 2.0
+            + COALESCE(SUM(final_points) FILTER (
+              WHERE category = 'ecosystem-bonus-game'
+            ), 0) / 3.0 AS bonus_score
+          FROM activity_points
+          WHERE category IN (
+            'ecosystem-bonus-bugreport',
+            'ecosystem-bonus-feedback',
+            'ecosystem-bonus-game'
+          )
+            AND NOT flagged
+            AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start}
+            AND tx_timestamp < ${bounds.end}
+          GROUP BY identity_id
         )
         SELECT
-          COALESCE(a.identity_id, c.identity_id) AS identity_id,
+          COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id,
           COALESCE(a.activity_score, 0)::int AS activity_score,
-          COALESCE(c.post_score, 0)::numeric AS post_score,
-          (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0))::numeric AS weekly_score,
-          COALESCE(a.active_days, 0)::int AS active_days
+          COALESCE(c.post_score, 0) AS creator_post_score,
+          COALESCE(b.bonus_score, 0) AS bonus_score,
+          COALESCE(a.active_days, 0)::int AS active_days,
+          (
+            COALESCE(a.activity_score, 0)
+            + COALESCE(c.post_score, 0)
+            + COALESCE(b.bonus_score, 0)
+            + COALESCE(a.active_days, 0) * 2
+          ) AS weekly_score
         FROM activity_score a
         FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
+        FULL OUTER JOIN bonus_score b
+          ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
         ORDER BY weekly_score DESC, identity_id ASC
       `;
 
-      return rows.map((r) => ({
+      const validRows = (rows as any[]).filter((r) => r.identity_id != null);
+      const identityIds = validRows.map((r) => r.identity_id as string);
+
+      // hasGenesisPass: synchronous in-memory activations cache lookup
+      const genesisPassSet = new Set(
+        identityIds.filter((id: string) =>
+          getActivationsForUser(id).some((a: any) => a.nftType === 'genesis-pass')
+        )
+      );
+
+      // displayName / xHandle / profileImageUrl: DynamoDB BatchGet
+      const profiles = await fetchProfilesBatch(identityIds);
+
+      return validRows.map((r: any) => ({
         identityId: r.identity_id as string,
         activityScore: r.activity_score as number,
-        creatorPostScore: parseFloat(r.post_score as string),
-        weeklyScore: parseFloat(r.weekly_score as string),
+        creatorPostScore: r.creator_post_score as number,
+        bonusScore: r.bonus_score as number,
         activeDays: r.active_days as number,
+        weeklyScore: r.weekly_score as number,
+        hasGenesisPass: genesisPassSet.has(r.identity_id as string),
+        displayName: profiles.get(r.identity_id as string)?.displayName ?? null,
+        xHandle: profiles.get(r.identity_id as string)?.xHandle ?? null,
+        profileImageUrl: profiles.get(r.identity_id as string)?.profileImageUrl ?? null,
       }));
     },
   );
@@ -647,8 +787,6 @@ app.get('/leaderboard', async (c) => {
   const page = all.slice(offset, offset + limit);
   const ranked = page.map((entry, i) => ({
     ...entry,
-    creatorPostScore: roundTo2(entry.creatorPostScore),
-    weeklyScore: roundTo2(entry.weeklyScore),
     rank: offset + i + 1,
   }));
 
