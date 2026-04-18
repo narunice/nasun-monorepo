@@ -161,7 +161,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
-        WATCHDOG_INTERVAL_MS: '600000',   // 10 minutes
+        WATCHDOG_INTERVAL_MS: '300000',   // 5 minutes
         WATCHDOG_REFILL_ROUNDS: '100',    // 100 rounds per refill TX
       },
       max_restarts: 10,
