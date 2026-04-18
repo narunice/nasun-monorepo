@@ -27,9 +27,9 @@ SQLite: trader_points_weekly
     ↓ (API 요청 시)
 REST API: /api/pado/leaderboard/score/weekly/:weekId
     ↓ (15s stale, 30s refetch)
-React: usePadoScoreLeaderboard hook
+React: useScoreLeaderboard hook
     ↓
-UI: PadoScoreLeaderboard.tsx
+UI: ScoreLeaderboardTable.tsx (Pado App)
     ↓ (주간 종료 후 수동 실행)
 Settlement: settle-pado.ts
     ↓
@@ -142,6 +142,7 @@ CREATE TABLE weekly_score_snapshots (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (week_id, address)
 );
+CREATE INDEX idx_wss_unsettled ON weekly_score_snapshots(week_id, settled);
 ```
 
 #### `activity_points`
@@ -198,9 +199,26 @@ CREATE TABLE weekly_score_snapshots (
 
 | Method | Path | 인증 | 설명 |
 |--------|------|------|------|
-| `GET` | `/api/pado/internal/weekly-scores/:weekId` | Bearer token | 상위 500명 + identityId + hasGenesisPass |
+| `GET` | `/api/pado/internal/weekly-scores/:weekId` | Bearer token | 상위 500명 + identityId + hasGenesisPass + hasSocialAccount |
 
-진행 중인 주(current week) 요청은 거부. 완료된 주(past week)만 허용.
+진행 중인 주(current week) 요청은 403 `week_in_progress`로 거부. 완료된 주(past week)만 허용.
+
+**내부 API 응답 필드**:
+```typescript
+{
+  weekId: string;
+  traders: Array<{
+    rank: number;
+    address: string;
+    identityId: string | null;    // null = 미등록 지갑
+    hasGenesisPass: boolean;
+    hasSocialAccount: boolean;    // Twitter/Google/Telegram 중 하나 이상 연결
+    totalScore: number;
+  }>;
+  totalTraders: number;
+  generatedAt: number;            // ms timestamp
+}
+```
 
 ---
 
@@ -243,12 +261,25 @@ npx tsx src/scripts/settle-pado.ts --week 2026-W17 --dry-run
 ```
 
 **정산 프로세스**:
-1. 내부 API에서 상위 500명 데이터 수신 (identityId, hasGenesisPass 포함)
-2. identityId 없는 트레이더 제외 (미등록 지갑)
-3. 순위별 기본 포인트 계산
-4. Genesis Pass 보유자에게 2x 적용
-5. PostgreSQL `activity_points`에 `ON CONFLICT DO NOTHING`으로 멱등 삽입
-6. `weekly_score_snapshots.settled = 1` 업데이트
+1. `ECOSYSTEM_ACTIVATIONS_URL`에서 Alliance NFT 활성화 목록 수신 (S3 gzip offload 지원)
+2. 내부 API에서 상위 500명 데이터 수신 (`identityId`, `hasGenesisPass`, `hasSocialAccount` 포함)
+3. `weekly_score_snapshots`에 스냅샷 upsert (ON CONFLICT DO NOTHING - 멱등)
+4. 미정산(`settled = 0`) 트레이더만 처리
+5. 트레이더별 자격 검사 (아래 조건 모두 충족해야 지급):
+   - `identityId`가 null이 아님 (등록된 지갑)
+   - Alliance NFT 활성화 상태 (`nftType === 'alliance'`)
+   - 소셜 계정 연결 (`hasSocialAccount === true`)
+   - 순위 500위 이내 (보상 존재)
+6. Genesis Pass 보유자에게 2x 적용
+7. PostgreSQL `activity_points`에 `ON CONFLICT DO NOTHING`으로 멱등 삽입 + `settled = 1` 업데이트 (단일 트랜잭션)
+
+**스킵 카운터 (Summary 출력)**:
+| 카운터 | 조건 |
+|--------|------|
+| `skippedUnregistered` | identityId 없음 |
+| `skippedNoAlliance` | identityId 있으나 Alliance NFT 미보유 |
+| `skippedNoSocial` | Alliance NFT 있으나 소셜 계정 미연결 |
+| `skippedNoReward` | 순위 501위 이상 |
 
 **보상 테이블**:
 
@@ -264,21 +295,59 @@ npx tsx src/scripts/settle-pado.ts --week 2026-W17 --dry-run
 | 301-400위 | 2 | 4 |
 | 401-500위 | 1 | 2 |
 
+**Alliance NFT 데이터 수신 흐름**:
+```
+ECOSYSTEM_ACTIVATIONS_URL
+    ↓
+{ url: "https://s3.amazonaws.com/..." }  또는  { activations: {...} }
+    ↓ (S3 presigned URL인 경우)
+fetch → gunzip (node:zlib) → JSON.parse
+    ↓
+activations: Record<identityId, Array<{ nftType, nftCount }>>
+    ↓
+allianceSet = identityId where any nftType === 'alliance'
+```
+
+allianceSet이 빈 경우(API 이상) `process.exit(1)`로 즉시 중단합니다.
+
 ---
 
 ## 9. 프론트엔드 컴포넌트
 
-### Nasun Website
-| 파일 | 역할 |
-|------|------|
-| `apps/nasun-website/frontend/src/pages/dev/PadoScoreLeaderboardPage.tsx` | 페이지 래퍼 (보상 안내, 규칙 설명) |
-| `apps/nasun-website/frontend/src/features/pado-score-leaderboard/PadoScoreLeaderboard.tsx` | 리더보드 테이블 (50행/페이지, 최대 500위) |
-| `apps/nasun-website/frontend/src/features/pado-score-leaderboard/usePadoScoreLeaderboard.ts` | 데이터 훅 (stale 15s, refetch 30s) |
+### Pado App (주요 진입점)
 
-### Pado App
 | 파일 | 역할 |
 |------|------|
-| `apps/pado/frontend/src/pages/LeaderboardPage.tsx` | Pado 앱 내 리더보드 페이지 |
+| `apps/pado/frontend/src/pages/LeaderboardPage.tsx` | 리더보드 페이지 (탭: activity / volume / pnl / score) |
+| `apps/pado/frontend/src/features/leaderboard/components/ScoreLeaderboardTable.tsx` | 점수 리더보드 테이블 |
+| `apps/pado/frontend/src/features/leaderboard/components/ScoreTraderRow.tsx` | 트레이더 행 |
+| `apps/pado/frontend/src/features/leaderboard/hooks/useLeaderboard.ts` | `useScoreLeaderboard` 포함 |
+| `apps/pado/frontend/src/features/leaderboard/components/WeekPicker.tsx` | 과거 주차 선택 드롭다운 |
+| `apps/pado/frontend/src/features/leaderboard/components/ModeSelector.tsx` | 탭 전환 UI |
+| `apps/pado/frontend/src/features/leaderboard/components/ScopeSelector.tsx` | Current / Past 전환 |
+
+**LeaderboardPage 상태 관리**:
+
+```typescript
+// 탭 전환은 URL ?tab= 으로 반영 (Umami analytics 페이지뷰 추적)
+const [searchParams, setSearchParams] = useSearchParams();
+
+const VALID_MODES: LeaderboardMode[] = ['activity', 'volume', 'pnl', 'score'];
+const rawTab = searchParams.get('tab') as LeaderboardMode | null;
+const mode: LeaderboardMode = rawTab && VALID_MODES.includes(rawTab) ? rawTab : 'volume';
+
+// 탭 변경: 기존 쿼리파라미터를 유지하며 tab만 교체
+const handleModeChange = useCallback((m: LeaderboardMode) => {
+  setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    next.set('tab', m);
+    return next;
+  });
+  setPage(1);
+}, [setSearchParams]);
+```
+
+URL 예시: `/leaderboard?tab=score`, `/leaderboard?tab=pnl`
 
 **Grace Period 로직**:
 ```typescript
@@ -296,9 +365,13 @@ const isGracePeriod = Date.now() - weekStart < WEEK_GRACE_PERIOD_MS;
 ```env
 AGGREGATION_INTERVAL_MS=60000       # 집계 주기 (기본 60초)
 DEEPBOOK_PACKAGE=0x<sui-package>    # 인덱싱 대상 패키지
+USER_WALLETS_TABLE=UserWallets      # DynamoDB 테이블명 (기본값)
+USER_PROFILES_TABLE=UserProfiles    # DynamoDB 테이블명 (기본값)
+WALLET_MAPPINGS_URL=...             # 전체 지갑-identityId 맵 엔드포인트 (1시간 캐시)
+WALLET_MAPPINGS_API_KEY=...         # 위 URL의 x-api-key (선택)
 ```
 
-### 프론트엔드 (`apps/nasun-website/frontend/.env`)
+### 프론트엔드 (`apps/pado/frontend/.env`)
 ```env
 VITE_NASUN_CHAT_HTTP_URL=https://nasun.io/chat  # prod
 # staging: https://staging.nasun.io/chat
@@ -307,9 +380,11 @@ VITE_NASUN_CHAT_HTTP_URL=https://nasun.io/chat  # prod
 
 ### Settlement Script (`apps/network-explorer/api-server/.env`)
 ```env
-POINTS_DATABASE_URL=postgres://...         # PostgreSQL 연결
-CHAT_SERVER_URL=http://43.200.67.52:3101   # Chat server 내부 API
-INTERNAL_API_KEY=...                        # Bearer token
+POINTS_DATABASE_URL=postgres://...              # PostgreSQL 연결 (nasun_points DB)
+CHAT_SERVER_URL=http://43.200.67.52:3101        # Chat server 내부 주소
+INTERNAL_API_KEY=...                             # Bearer token (내부 API 인증)
+ECOSYSTEM_ACTIVATIONS_URL=...                    # Alliance NFT 활성화 API (필수)
+ECOSYSTEM_ACTIVATIONS_API_KEY=...               # 위 URL의 x-api-key (선택)
 ```
 
 ---
@@ -319,5 +394,9 @@ INTERNAL_API_KEY=...                        # Bearer token
 - **멱등 정산**: `ON CONFLICT DO NOTHING`으로 중복 실행 안전
 - **현재 주 거부**: 내부 API가 진행 중인 주 데이터 반환 차단 (확정성 보장)
 - **identityId 없는 트레이더 제외**: 미등록 지갑은 Ecosystem Points 미지급
+- **Alliance NFT 미보유 제외**: 활성화된 Alliance NFT가 없으면 지급 제외
+- **소셜 계정 미연결 제외**: Twitter/Google/Telegram 중 하나도 없으면 지급 제외
+- **allianceSet 비어있으면 중단**: API 이상 상황에서 전체 정산 차단 (silent skip 방지)
 - **Loss Penalty 격리**: PnL 패널티는 순위 계산에만 반영, Ecosystem Points 산출 시 제외
 - **Ecosystem Points 단조 증가**: `activity_points` 삽입만 허용, 삭제/수정 금지
+- **소셜 계정 확인 신뢰성**: DynamoDB UserProfiles BatchGetItem 직접 조회 (캐시 우회), UnprocessedKeys 지수 백오프 재시도 (최대 3회)
