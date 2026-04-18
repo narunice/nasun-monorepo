@@ -645,6 +645,7 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
       }
     } catch {
       console.warn(`[nasun-profile] Failed to fetch profile for ${normalized}`);
+      upsertNasunProfile(normalized, null, null);
     } finally {
       inFlightRequests.delete(normalized);
     }
