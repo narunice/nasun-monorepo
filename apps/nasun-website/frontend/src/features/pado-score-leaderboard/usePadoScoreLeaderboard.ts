@@ -113,6 +113,6 @@ export function usePreviousPadoScoreLeaderboard(enabled: boolean, limit = 50, of
 
 export function isNewWeekGracePeriod(data: ScoreLeaderboardResponse | undefined): boolean {
   if (!data) return false;
-  if (data.weekStart && Date.now() - data.weekStart < WEEK_GRACE_PERIOD_MS) return true;
-  return data.traders.length === 0;
+  if (!data.weekStart) return false;
+  return Date.now() - data.weekStart < WEEK_GRACE_PERIOD_MS;
 }
