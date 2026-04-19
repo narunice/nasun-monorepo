@@ -29,7 +29,7 @@ function sanitizeXHandle(raw: string | undefined): string | null {
   return X_HANDLE_RE.test(raw) ? raw : null;
 }
 import type { ChatServerConfig } from './types.js';
-import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch, getProfileImagesBatch } from './store.js';
+import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached } from './store.js';
 import { getPoolSymbol, getPoolBaseDecimals } from './rooms.js';
 import {
   getLeaderboard, getLeaderboardPnl,
@@ -662,6 +662,9 @@ async function handleScoreLeaderboardWeekly(
   const rows = getWeeklyScoreLeaderboard(weekId, limit, offset);
   const totalTraders = getWeeklyScoreCount(weekId);
   const addresses = rows.map((r) => r.address);
+  if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
+    console.error('[ScoreLeaderboardWeekly] ensureProfilesCached error:', (err as Error).message);
+  });
   const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
   const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
   const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
