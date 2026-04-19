@@ -197,7 +197,7 @@ function LeaderboardTable({
               <> (Weekly total participants: {totalParticipants.toLocaleString("en-US")})</>
             )}
           </span>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
@@ -205,6 +205,20 @@ function LeaderboardTable({
             >
               Prev
             </button>
+            <span className="text-sm text-pd3">{page} / {totalPages}</span>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              placeholder="Go"
+              className="w-14 px-2 py-1.5 text-sm rounded-sm border border-pd2/30 bg-transparent text-pd4 text-center focus:outline-none focus:border-pado-1/50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const v = Math.min(Math.max(1, parseInt(e.currentTarget.value, 10)), totalPages);
+                  if (!isNaN(v)) { setPage(v); e.currentTarget.value = ""; }
+                }
+              }}
+            />
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
