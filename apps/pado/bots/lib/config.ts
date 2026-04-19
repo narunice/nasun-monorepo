@@ -229,7 +229,7 @@ export function loadConfig(): LPConfig {
     minPriceUsd: parseFloat(process.env.LP_MIN_PRICE || String(MARKET.defaultMinPrice)),
     maxPriceUsd: parseFloat(process.env.LP_MAX_PRICE || String(MARKET.defaultMaxPrice)),
 
-    gasRefillThreshold: parseFloat(process.env.LP_GAS_REFILL_THRESHOLD || '0.5'),
+    gasRefillThreshold: parseFloat(process.env.LP_GAS_REFILL_THRESHOLD || '1000'),
 
     enableArbitrage: process.env.LP_ENABLE_ARBITRAGE !== 'false',
     minArbitrageProfitBps: parseInt(process.env.LP_MIN_ARB_PROFIT_BPS || '10', 10),
