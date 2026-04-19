@@ -107,8 +107,7 @@ const EcosystemLeaderboardPage = () => {
         <div className="mb-6">
           <div className="">
             <p className="text-base text-nasun-white/90">
-              Nasun Ecosystem Leaderboard reflects the weekly activity and
-              contributions. Resets every Monday 00:10 UTC.
+              Weekly rankings reset every Monday 00:10 UTC.
             </p>
           </div>
         </div>
@@ -380,9 +379,9 @@ const EcosystemLeaderboardPage = () => {
             position.
           </p>
           <p className="text-base text-nasun-white/80">
-            The score is calculated from on-chain activity diversity, creator
-            posts, bug reports, community feedback, and daily active streaks
-            each week. Scores reset every Monday and do not carry over.
+            Nasun Ecosystem Leaderboard reflects the weekly activity and
+            contributions. Weekly rankings reset every Monday and do not carry
+            over.
           </p>
           {/* Row 1: Top 3 */}
           <div className="grid grid-cols-3 gap-3">
