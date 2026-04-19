@@ -82,26 +82,26 @@ function Hero2026Section() {
         <div className="relative z-20 w-full px-6 flex flex-col text-center py-[8%] ">
           <FadeInUp>
             <div className="flex flex-col items-center">
-              <h1 className="text-white !font-changeling font-bold tracking-widest uppercase mb-2">
+              <h1 className="text-white !font-changeling font-bold tracking-widest uppercase mb-2 drop-shadow-lg">
                 NASUN
               </h1>
 
-              <h3 className="text-nasun-white/90 font-medium mb-2">
+              <h3 className="text-nasun-white font-medium mb-2 drop-shadow-lg">
                 Grow the Life You Own
               </h3>
 
-              <div className=" my-4 md:my-5 lg:my-6 space-y-2">
-                <p className="text-nasun-white/70 text-lg md:text-xl">
+              <div className=" my-4 md:my-5 lg:my-6 space-y-2 drop-shadow-lg">
+                <p className="text-nasun-white text-lg md:text-xl">
                   uju (우주) means universe. Your Universe.
                 </p>
-                <p className="text-nasun-white/70 text-lg md:text-xl">
+                <p className="text-nasun-white text-lg md:text-xl drop-shadow-lg">
                   One identity. Every app. Everything you do compounds.
                 </p>
               </div>
 
               <ButtonV3
                 size="lg"
-                className="min-w-[200px] mt-4 md:mt-6 lg:mt-8"
+                className="min-w-[200px] mt-4 md:mt-6 lg:mt-8 drop-shadow-lg"
               >
                 Enter uju
               </ButtonV3>
