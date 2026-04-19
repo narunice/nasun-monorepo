@@ -33,8 +33,11 @@ const COMMON_LP_ENV = {
   // Risk controls
   LP_MIN_SPREAD_BPS: '10',
   LP_MAX_FAILURES: '5',
-  // Gas management
-  LP_GAS_REFILL_THRESHOLD: '0.4',
+  // Gas: warn when below 1000 NASUN (each bot pre-funded with 100k NASUN via refill-gas.ts)
+  LP_GAS_REFILL_THRESHOLD: '1000',
+  // Disable per-cycle faucet calls to avoid shared object contention.
+  // Watchdog handles token replenishment via batched faucet (5-min intervals).
+  LP_DISABLE_TOKEN_FAUCET: 'true',
 };
 
 const COMMON_LP_OPTS = {

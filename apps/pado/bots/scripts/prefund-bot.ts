@@ -82,7 +82,7 @@ function loadKeypair(market: string): Ed25519Keypair {
 function buildBatchedFaucetTx(market: string, rounds: number): Transaction {
   const config = MARKET_CONFIGS[market];
   const tx = new Transaction();
-  tx.setGasBudget(500_000_000); // 0.5 NASUN, enough for 200 MoveCall
+  tx.setGasBudget(10_000_000_000); // 10 NASUN for 200 MoveCall batched
 
   if (config.faucetType === 'v1') {
     // V1: request_tokens gives NBTC + NUSDC per call
