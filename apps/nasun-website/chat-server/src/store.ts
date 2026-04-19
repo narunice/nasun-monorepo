@@ -28,7 +28,7 @@ export function initStore(config: ChatServerConfig): void {
 
   db = new Database(config.dbPath);
   db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
+  db.pragma('synchronous = FULL');
   db.pragma('foreign_keys = ON');
 
   const fkStatus = db.pragma('foreign_keys') as Array<{ foreign_keys: number }>;
