@@ -26,7 +26,7 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
 
   db = new Database(config.leaderboardDbPath);
   db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
+  db.pragma('synchronous = FULL');
   db.pragma('auto_vacuum = INCREMENTAL');
 
   db.exec(`
