@@ -42,7 +42,7 @@ const ALCHEMY_BASE_URL = process.env.ALCHEMY_BASE_URL || 'https://eth-mainnet.g.
 const ALCHEMY_TIMEOUT_MS = 10_000;
 const BATCH_WRITE_SIZE = 25;
 const MAX_ALCHEMY_PAGES = 10;
-const CONCURRENCY = 20;
+const CONCURRENCY = 50;
 
 export async function handler(event: EthCollectorEvent) {
   if (!ALCHEMY_API_KEY) {
