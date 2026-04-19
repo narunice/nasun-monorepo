@@ -12,10 +12,19 @@ import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { PageTitle } from "../../components/ui/PageTitle";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
-import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../components/ui/LeaderboardSearchBox";
+import {
+  LeaderboardSearchBox,
+  type LeaderboardSearchResult,
+} from "../../components/ui/LeaderboardSearchBox";
 import { useHighlightRow } from "../../hooks/useHighlightRow";
-import { isEcosystemNewWeekGracePeriod, type EcosystemLeaderboardEntry } from "@/services/ecosystemScoreApi";
-import { useEcosystemLeaderboard, useAvailableEcosystemWeeks } from "./useEcosystemLeaderboard";
+import {
+  isEcosystemNewWeekGracePeriod,
+  type EcosystemLeaderboardEntry,
+} from "@/services/ecosystemScoreApi";
+import {
+  useEcosystemLeaderboard,
+  useAvailableEcosystemWeeks,
+} from "./useEcosystemLeaderboard";
 
 const PAGE_SIZE = 50;
 const MAX_RANK = 1000;
@@ -27,7 +36,9 @@ function isValidXHandle(h: string | null | undefined): h is string {
 
 const EcosystemLeaderboardPage = () => {
   const [viewMode, setViewMode] = useState<"current" | "past">("current");
-  const [selectedWeekId, setSelectedWeekId] = useState<string | undefined>(undefined);
+  const [selectedWeekId, setSelectedWeekId] = useState<string | undefined>(
+    undefined,
+  );
   const [page, setPage] = useState(1);
 
   const weeksQuery = useAvailableEcosystemWeeks();
@@ -40,12 +51,17 @@ const EcosystemLeaderboardPage = () => {
     viewMode === "current" || !!selectedWeekId,
   );
 
-  const allEntries: EcosystemLeaderboardEntry[] = leaderboardQuery.data?.data ?? [];
+  const allEntries: EcosystemLeaderboardEntry[] =
+    leaderboardQuery.data?.data ?? [];
   const displayedCount = Math.min(allEntries.length, MAX_RANK);
   const totalPages = Math.ceil(displayedCount / PAGE_SIZE);
-  const pagedEntries = allEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pagedEntries = allEntries.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
+  );
   const inGracePeriod =
-    viewMode === "current" && isEcosystemNewWeekGracePeriod(leaderboardQuery.data?.meta);
+    viewMode === "current" &&
+    isEcosystemNewWeekGracePeriod(leaderboardQuery.data?.meta);
   const weekStart = leaderboardQuery.data?.meta.weekStart;
   const updatedAt = leaderboardQuery.data?.meta.updatedAt;
 
@@ -56,31 +72,41 @@ const EcosystemLeaderboardPage = () => {
     setPage,
   });
 
-  const filterFn = useCallback((entry: EcosystemLeaderboardEntry, query: string): boolean => {
-    const q = query.toLowerCase();
-    return (
-      (entry.xHandle ?? "").toLowerCase().includes(q) ||
-      (entry.displayName ?? "").toLowerCase().includes(q)
-    );
-  }, []);
+  const filterFn = useCallback(
+    (entry: EcosystemLeaderboardEntry, query: string): boolean => {
+      const q = query.toLowerCase();
+      return (
+        (entry.xHandle ?? "").toLowerCase().includes(q) ||
+        (entry.displayName ?? "").toLowerCase().includes(q)
+      );
+    },
+    [],
+  );
 
-  const toResult = useCallback((entry: EcosystemLeaderboardEntry): LeaderboardSearchResult => {
-    const primary = entry.displayName ?? entry.xHandle ?? truncateId(entry.identityId);
-    const secondary = entry.xHandle ? `@${entry.xHandle}` : undefined;
-    return {
-      id: entry.identityId,
-      primaryLabel: primary,
-      secondaryLabel: secondary !== primary ? secondary : undefined,
-      rank: entry.rank,
-      profileImageUrl: entry.profileImageUrl,
-    };
-  }, []);
+  const toResult = useCallback(
+    (entry: EcosystemLeaderboardEntry): LeaderboardSearchResult => {
+      const primary =
+        entry.displayName ?? entry.xHandle ?? truncateId(entry.identityId);
+      const secondary = entry.xHandle ? `@${entry.xHandle}` : undefined;
+      return {
+        id: entry.identityId,
+        primaryLabel: primary,
+        secondaryLabel: secondary !== primary ? secondary : undefined,
+        rank: entry.rank,
+        profileImageUrl: entry.profileImageUrl,
+      };
+    },
+    [],
+  );
 
-  const handleUserSelect = useCallback((result: LeaderboardSearchResult) => {
-    if (result.rank != null) {
-      selectRow(result.id, result.rank);
-    }
-  }, [selectRow]);
+  const handleUserSelect = useCallback(
+    (result: LeaderboardSearchResult) => {
+      if (result.rank != null) {
+        selectRow(result.id, result.rank);
+      }
+    },
+    [selectRow],
+  );
 
   const handleViewModeChange = (mode: "current" | "past") => {
     setViewMode(mode);
@@ -167,13 +193,16 @@ const EcosystemLeaderboardPage = () => {
             {viewMode === "current" && weekStart && (
               <span className="text-sm text-nasun-white/60">
                 Resets{" "}
-                {new Date(weekStart + 7 * 24 * 60 * 60 * 1000).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  timeZoneName: "short",
-                })}
+                {new Date(weekStart + 7 * 24 * 60 * 60 * 1000).toLocaleString(
+                  "en-US",
+                  {
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    timeZoneName: "short",
+                  },
+                )}
               </span>
             )}
           </div>
@@ -243,7 +272,10 @@ const EcosystemLeaderboardPage = () => {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={colSpan} className="px-4 py-12 text-center text-nasun-white/70">
+                    <td
+                      colSpan={colSpan}
+                      className="px-4 py-12 text-center text-nasun-white/70"
+                    >
                       Loading...
                     </td>
                   </tr>
@@ -263,7 +295,8 @@ const EcosystemLeaderboardPage = () => {
                           <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                         </svg>
                         <p className="text-sm text-nasun-white/70">
-                          No activity recorded yet. Start using the ecosystem to appear here!
+                          No activity recorded yet. Start using the ecosystem to
+                          appear here!
                         </p>
                       </div>
                     </td>
@@ -276,7 +309,9 @@ const EcosystemLeaderboardPage = () => {
                         key={entry.identityId}
                         data-identity-id={entry.identityId}
                         className={`border-b border-nasun-c3/15 transition-colors hover:bg-nasun-c3/8 ${
-                          isHighlighted ? "bg-nasun-nw2/20 border-l-2 border-nasun-nw1" : ""
+                          isHighlighted
+                            ? "bg-nasun-nw2/20 border-l-2 border-nasun-nw1"
+                            : ""
                         }`}
                       >
                         <td className="px-4 py-3 text-nasun-white/90">
@@ -284,7 +319,11 @@ const EcosystemLeaderboardPage = () => {
                             <span className="font-mono">{entry.rank}</span>
                             {entry.rank <= 3 && (
                               <span className="text-base leading-none">
-                                {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : "🥉"}
+                                {entry.rank === 1
+                                  ? "🥇"
+                                  : entry.rank === 2
+                                    ? "🥈"
+                                    : "🥉"}
                               </span>
                             )}
                           </span>
@@ -312,16 +351,17 @@ const EcosystemLeaderboardPage = () => {
                                 </span>
                                 {entry.hasGenesisPass && <GenesisPassBadge />}
                               </div>
-                              {entry.displayName && isValidXHandle(entry.xHandle) && (
-                                <a
-                                  href={`https://x.com/${entry.xHandle}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-nasun-white/50 hover:text-nasun-white/70 truncate block transition-colors"
-                                >
-                                  @{entry.xHandle}
-                                </a>
-                              )}
+                              {entry.displayName &&
+                                isValidXHandle(entry.xHandle) && (
+                                  <a
+                                    href={`https://x.com/${entry.xHandle}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-nasun-white/50 hover:text-nasun-white/70 truncate block transition-colors"
+                                  >
+                                    @{entry.xHandle}
+                                  </a>
+                                )}
                             </div>
                           </div>
                         </td>
@@ -333,11 +373,17 @@ const EcosystemLeaderboardPage = () => {
                         </td>
                         <td className="px-4 py-3 text-right">
                           {entry.rankChange > 0 ? (
-                            <span className="text-sm text-emerald-400">+{entry.rankChange}</span>
+                            <span className="text-sm text-emerald-400">
+                              +{entry.rankChange}
+                            </span>
                           ) : entry.rankChange < 0 ? (
-                            <span className="text-sm text-red-400">{entry.rankChange}</span>
+                            <span className="text-sm text-red-400">
+                              {entry.rankChange}
+                            </span>
                           ) : (
-                            <span className="text-sm text-nasun-white/40">-</span>
+                            <span className="text-sm text-nasun-white/40">
+                              -
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -352,10 +398,15 @@ const EcosystemLeaderboardPage = () => {
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm text-nasun-white/50">
-              Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, displayedCount)} of top{" "}
+              Showing {(page - 1) * PAGE_SIZE + 1}-
+              {Math.min(page * PAGE_SIZE, displayedCount)} of top{" "}
               {displayedCount.toLocaleString("en-US")}
               {(leaderboardQuery.data?.meta.total ?? 0) > 0 && (
-                <> (Weekly total participants: {(leaderboardQuery.data!.meta.total).toLocaleString("en-US")})</>
+                <>
+                  {" "}
+                  (Weekly total participants:{" "}
+                  {leaderboardQuery.data!.meta.total.toLocaleString("en-US")})
+                </>
               )}
             </p>
             <div className="flex items-center gap-2">
@@ -366,7 +417,9 @@ const EcosystemLeaderboardPage = () => {
               >
                 Prev
               </button>
-              <span className="text-sm text-nasun-white/50">{page} / {totalPages}</span>
+              <span className="text-sm text-nasun-white/50">
+                {page} / {totalPages}
+              </span>
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -382,8 +435,14 @@ const EcosystemLeaderboardPage = () => {
                 className="w-14 px-2 py-1.5 text-sm rounded-sm border border-nasun-c3/20 bg-transparent text-nasun-white/70 text-center focus:outline-none focus:border-nasun-c3/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    const v = Math.min(Math.max(1, parseInt(e.currentTarget.value, 10)), totalPages);
-                    if (!isNaN(v)) { setPage(v); e.currentTarget.value = ""; }
+                    const v = Math.min(
+                      Math.max(1, parseInt(e.currentTarget.value, 10)),
+                      totalPages,
+                    );
+                    if (!isNaN(v)) {
+                      setPage(v);
+                      e.currentTarget.value = "";
+                    }
                   }
                 }}
               />
@@ -397,12 +456,20 @@ const EcosystemLeaderboardPage = () => {
             How Nasun Points Are Awarded
           </h6>
           <p className="text-base text-nasun-white/80">
-            At the end of each week, our contributors are ranked by their ecosystem score and
-            receive Nasun Points based on their final position.
+            At the end of each week, our contributors are ranked by their
+            ecosystem score and receive Nasun Points based on their final
+            position.
           </p>
           <p className="text-base text-nasun-white/80">
-            Nasun Ecosystem Leaderboard reflects the weekly activity and contributions. Weekly
-            rankings reset every Monday and do not carry over.
+            Nasun Ecosystem Leaderboard reflects the weekly activity and
+            contributions. Weekly rankings reset every Monday and do not carry
+            over.
+          </p>
+          <p className="text-base text-nasun-white/80">
+            To be eligible for leaderboard rewards, users must have at least one
+            social account connected to their profile. Users without any linked
+            social account will not receive point payouts, even if they rank
+            within the top 500.
           </p>
           <div className="grid grid-cols-3 gap-3">
             {[
@@ -418,7 +485,9 @@ const EcosystemLeaderboardPage = () => {
                   {crown && <span className="mr-1">&#x1F451;</span>}
                   {label}
                 </span>
-                <span className="text-base font-bold text-pado-4">{pts} pts</span>
+                <span className="text-base font-bold text-pado-4">
+                  {pts} pts
+                </span>
               </div>
             ))}
           </div>
@@ -433,7 +502,9 @@ const EcosystemLeaderboardPage = () => {
                 className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
               >
                 <span className="text-base text-pado-2">{label}</span>
-                <span className="text-base font-bold text-pado-3">{pts} pts</span>
+                <span className="text-base font-bold text-pado-3">
+                  {pts} pts
+                </span>
               </div>
             ))}
           </div>
@@ -448,17 +519,26 @@ const EcosystemLeaderboardPage = () => {
                 className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
               >
                 <span className="text-base text-pado-2">{label}</span>
-                <span className="text-base font-bold text-pado-3">{pts} pts</span>
+                <span className="text-base font-bold text-pado-3">
+                  {pts} pts
+                </span>
               </div>
             ))}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xl">&#x2728;</span>
             <div>
-              <span className="text-base font-semibold text-nasun-white">Genesis Pass Holders</span>
+              <span className="text-base font-semibold text-nasun-white">
+                Genesis Pass Holders
+              </span>
               <span className="text-base text-nasun-white/80"> receive a </span>
-              <span className="text-base font-semibold text-nasun-white">2x multiplier</span>
-              <span className="text-base text-nasun-white/80"> on all point payouts.</span>
+              <span className="text-base font-semibold text-nasun-white">
+                2x multiplier
+              </span>
+              <span className="text-base text-nasun-white/80">
+                {" "}
+                on all point payouts.
+              </span>
             </div>
           </div>
         </div>
@@ -474,7 +554,8 @@ function ExperimentalInfoTooltip() {
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent | TouchEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     document.addEventListener("touchstart", handler);
@@ -496,11 +577,13 @@ function ExperimentalInfoTooltip() {
       </button>
       {open && (
         <div className="absolute top-full right-0 z-50 mt-2 w-80 rounded-lg border border-nasun-c6/60 bg-nasun-c6 p-3 text-left text-sm leading-snug text-nasun-white/70 shadow-lg">
-          <p className="text-amber-400 font-semibold mb-1.5">Experimental Phase</p>
+          <p className="text-amber-400 font-semibold mb-1.5">
+            Experimental Phase
+          </p>
           <p>
-            The leaderboard and points system are currently in an experimental phase and may be
-            buggy. As real user data accumulates, the scoring formula may be rebalanced at any
-            time to ensure fair competition.
+            The leaderboard and points system are currently in an experimental
+            phase and may be buggy. As real user data accumulates, the scoring
+            formula may be rebalanced at any time to ensure fair competition.
           </p>
         </div>
       )}
