@@ -367,6 +367,13 @@ const EcosystemLeaderboardPage = () => {
                 Prev
               </button>
               <span className="text-sm text-nasun-white/50">{page} / {totalPages}</span>
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 text-sm rounded-sm border border-nasun-c3/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c3/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
               <input
                 type="number"
                 min={1}
@@ -380,13 +387,6 @@ const EcosystemLeaderboardPage = () => {
                   }
                 }}
               />
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1.5 text-sm rounded-sm border border-nasun-c3/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c3/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
             </div>
           </div>
         )}
