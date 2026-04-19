@@ -32,7 +32,8 @@ const GAS_WARNING_THRESHOLD = parseFloat(process.env.WATCHDOG_GAS_WARNING || '15
 // Contract addresses
 const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
 const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
-const TOKENS_V2_FAUCET_PACKAGE = '0xd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f';
+// Upgraded package (v7) — adds request_neth (no cooldown)
+const TOKENS_V2_FAUCET_PACKAGE = '0xa26189900ac82fbb581579a346e0557905f1c7c9958e9d4dd460f421a43fc9ae';
 const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
 const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
@@ -60,9 +61,10 @@ const MARKETS = {
     baseThreshold: 500,
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
-    faucetV2Package: NETH_FAUCET_PACKAGE,
-    faucetV2Object: NETH_FAUCET_V2,
-    basePerRound: 2.5,
+    faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
+    faucetV2Object: TOKEN_FAUCET_V2,
+    faucetV2Function: 'request_neth',
+    basePerRound: 0.5,
     quotePerRound: 100_000,
   },
   NSOL: {
