@@ -164,7 +164,7 @@ async function checkAlliancePenalties(
     const recoveredRows = await pointsDb!`
       SELECT identity_id FROM activity_points
       WHERE identity_id = ANY(${penalizedIds}) AND NOT flagged
-        AND tx_timestamp >= CURRENT_DATE - 1
+        AND tx_timestamp >= CURRENT_DATE - 2
         AND category NOT IN ${pointsDb!(EXCLUDED_CATEGORIES)}
       GROUP BY identity_id
       HAVING COUNT(DISTINCT date_trunc('day', tx_timestamp)::date) >= 2
