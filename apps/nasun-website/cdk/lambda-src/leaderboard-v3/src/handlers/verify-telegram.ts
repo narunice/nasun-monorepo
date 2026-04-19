@@ -219,7 +219,7 @@ async function checkChannelMembership(
     throw new TelegramApiError(response.status, errorBody);
   }
 
-  const data = await response.json();
+  const data = await response.json() as { result?: { status?: string } };
   const status = data.result?.status || 'unknown';
   const memberStatuses = ['member', 'administrator', 'creator'];
   return { isMember: memberStatuses.includes(status), status };

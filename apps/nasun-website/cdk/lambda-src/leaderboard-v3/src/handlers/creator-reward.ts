@@ -92,6 +92,16 @@ function resolveEvmAddress(profile: Record<string, unknown>): string | null {
   return null;
 }
 
+// Fallback: extract twitterHandle from linkedAccounts.twitter in UserProfiles.
+// When a user links Twitter as a secondary account, link-account Lambda writes
+// twitterHandle both at top-level AND inside linkedAccounts.twitter.twitterHandle.
+// If top-level twitterHandle is missing (e.g. legacy accounts), check linkedAccounts.
+function resolveTwitterHandleFromLinkedAccounts(profile: Record<string, unknown>): string | null {
+  const linked = profile.linkedAccounts as Record<string, Record<string, string>> | undefined;
+  const handle = linked?.twitter?.twitterHandle;
+  return typeof handle === 'string' ? handle : null;
+}
+
 // ============================================
 // GET handler
 // ============================================
@@ -132,12 +142,13 @@ async function handleGet(
       rewardType: prefRewardType,
       rank: pref.rank,
       ...(prefDestAddr && { destinationAddressMasked: maskAddress(prefDestAddr) }),
-      ...(pref.destinationChain && { destinationChain: pref.destinationChain }),
+      ...(pref.destinationChain ? { destinationChain: pref.destinationChain } : {}),
       ...(prefBinanceUid && { binanceUid: prefBinanceUid }),
     }, requestOrigin);
   }
 
-  const rawHandle = typeof profile.twitterHandle === 'string' ? profile.twitterHandle : null;
+  const rawHandleFromProfile = typeof profile.twitterHandle === 'string' ? profile.twitterHandle : null;
+  const rawHandle = rawHandleFromProfile ?? resolveTwitterHandleFromLinkedAccounts(profile);
   if (!rawHandle) {
     return createResponse(200, { eligible: false }, requestOrigin);
   }
@@ -194,7 +205,8 @@ async function handlePost(
     return createResponse(409, { error: 'Already submitted' }, requestOrigin);
   }
 
-  const rawHandle = typeof profile?.twitterHandle === 'string' ? profile.twitterHandle : null;
+  const rawHandleFromProfile = typeof profile?.twitterHandle === 'string' ? profile.twitterHandle : null;
+  const rawHandle = rawHandleFromProfile ?? (profile ? resolveTwitterHandleFromLinkedAccounts(profile) : null);
   if (!rawHandle) {
     return createResponse(403, { error: 'No Twitter account linked' }, requestOrigin);
   }

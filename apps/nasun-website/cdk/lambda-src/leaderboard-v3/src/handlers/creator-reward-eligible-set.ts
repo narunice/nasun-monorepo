@@ -77,7 +77,7 @@ export const ELIGIBLE_ACCOUNTS = new Map<string, number>([
   ['saera84', 71],
   ['richarduwah2', 72],
   ['chinny2222222', 73],
-  ['mandaringga2', 74],
+  ['mandaringga3', 74],
   ['thatladyhakonke', 75],
   ['prestigesea07', 76],
   ['johnoladipo82', 77],
