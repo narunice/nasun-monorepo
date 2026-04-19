@@ -205,6 +205,13 @@ function LeaderboardTable({
               Prev
             </button>
             <span className="text-sm text-pd3">{page} / {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 text-sm rounded-sm border border-pd2/30 text-pd3 hover:text-nasun-white hover:border-pado-1/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
             <input
               type="number"
               min={1}
@@ -218,13 +225,6 @@ function LeaderboardTable({
                 }
               }}
             />
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-sm border border-pd2/30 text-pd3 hover:text-nasun-white hover:border-pado-1/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
           </div>
         </div>
       )}
