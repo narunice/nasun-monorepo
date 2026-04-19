@@ -86,12 +86,12 @@ export function getCurrentWeekId(): string {
   return getWeekId(0);
 }
 
-export function usePadoScoreLeaderboard(weekId?: string, limit = 50, offset = 0) {
+export function usePadoScoreLeaderboard(weekId?: string) {
   const resolvedWeekId = weekId ?? getWeekId(0);
 
   return useQuery<ScoreLeaderboardResponse>({
-    queryKey: ['pado-score-leaderboard', 'current', resolvedWeekId, limit, offset],
-    queryFn: () => fetchWeeklyScoreLeaderboard(resolvedWeekId, limit, offset),
+    queryKey: ['pado-score-leaderboard', 'current', resolvedWeekId],
+    queryFn: () => fetchWeeklyScoreLeaderboard(resolvedWeekId, 1000, 0),
     enabled: !!getChatHttpUrl(),
     staleTime: 15_000,
     refetchInterval: 30_000,
