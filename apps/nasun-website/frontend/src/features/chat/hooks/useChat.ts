@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { getChatService } from '../../../lib/chat-service';
 import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn, NicknameRateLimit } from '../../../lib/chat-service';
 import { useChatStore } from '../../../store/chatStore';
@@ -214,6 +214,11 @@ export function useChat() {
 
   const needsNickname = status === 'connected' && nickname === null;
 
+  const setTurnstileToken = useMemo(
+    () => (token: string) => getChatService().setTurnstileToken(token),
+    [],
+  );
+
   return {
     messages,
     status,
@@ -231,5 +236,6 @@ export function useChat() {
     nickname,
     needsNickname,
     nicknameRateLimit,
+    setTurnstileToken,
   };
 }

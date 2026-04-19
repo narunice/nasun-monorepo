@@ -140,6 +140,11 @@ export class ChatService {
   private seenMessageIds = new Set<number>();
   private currentNickname: string | null = null;
   private currentRateLimit: NicknameRateLimit | null = null;
+  private pendingTurnstileToken: string | null = null;
+
+  setTurnstileToken(token: string): void {
+    this.pendingTurnstileToken = token;
+  }
 
   on<T extends ChatEventType>(event: T, listener: ChatListener<T>): void {
     if (!this.listeners.has(event)) {
@@ -257,9 +262,11 @@ export class ChatService {
           this.ws?.close();
           break;
         }
+        const turnstileToken = this.pendingTurnstileToken ?? undefined;
+        this.pendingTurnstileToken = null;
         this.signFn(msg.challenge)
           .then(({ signature, address, authMethod, ephemeralPubKey, displayName }) => {
-            this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey, displayName });
+            this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey, displayName, turnstileToken });
           })
           .catch((err) => {
             console.error('Chat sign error:', err);

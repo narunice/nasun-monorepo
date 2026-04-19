@@ -6,6 +6,9 @@ import type { RoomInfo } from "../../../lib/chat-service";
 import MessageList from "./MessageList";
 import MessageInput, { type MessageInputHandle } from "./MessageInput";
 import { SetNicknameModal } from "./SetNicknameModal";
+import { Turnstile } from "@marsidev/react-turnstile";
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 // Map browser language codes to room names for preferred sorting
 const LANG_TO_ROOM: Record<string, string> = {
@@ -63,6 +66,7 @@ export default function ChatWidget() {
     canChat,
     nickname,
     nicknameRateLimit,
+    setTurnstileToken,
   } = useChat();
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const languageRooms = useMemo(
@@ -504,6 +508,16 @@ export default function ChatWidget() {
           )}
         </svg>
       </button>
+
+      {/* Invisible Turnstile widget - pre-fetches token for WebSocket auth */}
+      {TURNSTILE_SITE_KEY && canChat && (
+        <Turnstile
+          siteKey={TURNSTILE_SITE_KEY}
+          options={{ appearance: 'never', size: 'invisible' }}
+          onSuccess={setTurnstileToken}
+          style={{ display: 'none' }}
+        />
+      )}
     </>
   );
 }

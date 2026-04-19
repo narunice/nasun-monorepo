@@ -46,6 +46,27 @@ const FOLLOWER_CACHE_TTL = 30_000;
 
 // ===== Helpers =====
 
+async function verifyTurnstileToken(token: string, secretKey: string): Promise<boolean> {
+  if (token.length > 2048) return false;
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: secretKey, response: token }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      console.warn('[turnstile] siteverify returned', res.status);
+      return false;
+    }
+    const data = await res.json() as { success: boolean };
+    return data.success === true;
+  } catch (err) {
+    console.warn('[turnstile] verification error:', (err as Error).message);
+    return false;
+  }
+}
+
 function send(ws: WebSocket, msg: ServerMessage): void {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
@@ -247,10 +268,10 @@ function checkInternalAuth(req: import('node:http').IncomingMessage, key: string
   return timingSafeEqual(tokenBuf, keyBuf);
 }
 
-function handleHttpRequest(
+async function handleHttpRequest(
   req: import('node:http').IncomingMessage,
   res: import('node:http').ServerResponse,
-): void {
+): Promise<void> {
   const origin = getCorsOrigin(req.headers.origin);
   const corsHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -264,7 +285,7 @@ function handleHttpRequest(
 
   // Delegate to leaderboard API handler first (handles its own OPTIONS with POST/PATCH)
   const url = new URL(req.url || '/', `http://localhost:${CONFIG.port}`);
-  if (leaderboardEnabled && handleLeaderboardRequest(req, res, url, corsHeaders, CONFIG, leaderboardDeps)) {
+  if (leaderboardEnabled && await handleLeaderboardRequest(req, res, url, corsHeaders, CONFIG, leaderboardDeps)) {
     return;
   }
 
@@ -407,6 +428,20 @@ wss.on('connection', (ws, req) => {
           send(ws, { type: 'auth_error', reason: 'Invalid address' });
           ws.close(4401, 'Invalid address');
           return;
+        }
+
+        if (CONFIG.turnstileSecretKey) {
+          if (!data.turnstileToken) {
+            send(ws, { type: 'auth_error', reason: 'Captcha required' });
+            ws.close(4403, 'Captcha required');
+            return;
+          }
+          const turnstileOk = await verifyTurnstileToken(data.turnstileToken, CONFIG.turnstileSecretKey);
+          if (!turnstileOk) {
+            send(ws, { type: 'auth_error', reason: 'Captcha verification failed' });
+            ws.close(4403, 'Captcha failed');
+            return;
+          }
         }
 
         const verifiedAddress = await verifySignature(
@@ -1044,6 +1079,10 @@ if (process.env.ANTHROPIC_API_KEY) {
   });
 } else {
   console.log('[Chatbot] Disabled (ANTHROPIC_API_KEY not set)');
+}
+
+if (!CONFIG.turnstileSecretKey) {
+  console.warn('[turnstile] TURNSTILE_SECRET_KEY not set — WebSocket bot protection is DISABLED');
 }
 
 httpServer.listen(CONFIG.port, () => {

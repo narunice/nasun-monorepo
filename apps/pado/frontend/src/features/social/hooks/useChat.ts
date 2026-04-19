@@ -442,6 +442,11 @@ export function useChat(): UseChatResult {
 
   const needsNickname = status === 'connected' && nickname === null;
 
+  const setTurnstileToken = useMemo(
+    () => (token: string) => getChatService().setTurnstileToken(token),
+    [],
+  );
+
   return {
     messages,
     sendMessage,
@@ -465,5 +470,6 @@ export function useChat(): UseChatResult {
     selectedLanguageRoomId: languageRoomId,
     setLanguageRoom,
     unreadCounts,
+    setTurnstileToken,
   };
 }

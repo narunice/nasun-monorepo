@@ -22,6 +22,7 @@
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
+    "@marsidev/react-turnstile": "^1.5.0",
     "@metamask/sdk": "^0.34.0",
     "@mysten/dapp-kit": "^0.19.11",
     "@mysten/sui": "^1.45.2",
