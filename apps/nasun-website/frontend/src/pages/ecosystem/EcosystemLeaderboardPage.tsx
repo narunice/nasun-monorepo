@@ -6,7 +6,7 @@
  * Score = activity + FLOOR(creator/5) + FLOOR(bugreport+feedback/2) + FLOOR(game/3) + active_days*2
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
@@ -95,10 +95,11 @@ const EcosystemLeaderboardPage = () => {
       </Helmet>
 
       <SectionLayout maxWidth="6xl" className="pt-8 md:pt-12">
-        <div className="flex justify-end mt-2 md:mt-4 mb-2">
+        <div className="flex justify-end mt-2 md:mt-4 mb-2 items-center gap-2">
           <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
             Experimental Phase
           </span>
+          <ExperimentalInfoTooltip />
         </div>
         <PageTitle as="h2">Ecosystem Leaderboard</PageTitle>
 
@@ -465,6 +466,50 @@ const EcosystemLeaderboardPage = () => {
     </PageLayout>
   );
 };
+
+function ExperimentalInfoTooltip() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-4 w-4 items-center justify-center rounded-full border border-nasun-white/50 text-sm leading-none text-nasun-white/70 hover:border-nasun-white/80 hover:text-nasun-white transition-colors"
+        aria-label="More info"
+      >
+        i
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 z-50 mt-2 w-80 rounded-lg border border-nasun-c6/60 bg-nasun-c6 p-3 text-left text-sm leading-snug text-nasun-white/70 shadow-lg">
+          <p className="text-amber-400 font-semibold mb-1.5">
+            Experimental Phase
+          </p>
+          <p>
+            The leaderboard and points system are currently in an experimental
+            phase and may be buggy. As real user data accumulates, the scoring
+            formula may be rebalanced at any time to ensure fair competition.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function truncateId(id: string | null | undefined): string {
   if (!id) return "Unknown";
