@@ -1,24 +1,19 @@
 /**
  * Balance Watchdog
  *
- * Monitors LP bot wallet balances and auto-refills via batched legacy faucet
- * when tokens drop below threshold. Runs as a PM2 process alongside LP bots.
- *
- * This replaces the bot's own faucet calls (LP_DISABLE_TOKEN_FAUCET=true)
- * to avoid shared object contention with user faucet claims.
- * Batched refills (1 TX per market, every ~10 min) have negligible contention
- * compared to the bot's old approach (1 TX per cycle, every 10 seconds).
+ * Monitors LP bot wallet token balances and auto-refills via batched legacy faucet.
+ * Gas management is removed -- each bot wallet is pre-funded with 100k NASUN via
+ * scripts/refill-gas.ts. Watchdog only emits warnings when gas drops below threshold.
  *
  * Usage:
  *   npx tsx scripts/balance-watchdog.ts
  *
  * Environment:
- *   LP_PRIVATE_KEY (or LP_PRIVATE_KEY_NBTC/NETH/NSOL)
- *   ORACLE_ADMIN_KEY       - Admin keypair used to transfer gas to bot wallets (required for gas refill)
- *   WATCHDOG_INTERVAL_MS   - check interval (default: 300000 = 5 min)
- *   WATCHDOG_REFILL_ROUNDS - faucet rounds per refill (default: 50)
- *   WATCHDOG_GAS_THRESHOLD - refill when gas drops below this (NASUN, default: 5)
- *   WATCHDOG_GAS_AMOUNT    - how much NASUN to transfer per top-up (default: 50)
+ *   LP_PRIVATE_KEY_NBTC/NETH/NSOL (required, must be unique addresses)
+ *   LP_PRIVATE_KEY              - fallback if per-market key not set
+ *   WATCHDOG_INTERVAL_MS        - check interval (default: 300000 = 5 min)
+ *   WATCHDOG_REFILL_ROUNDS      - faucet rounds per refill (default: 50)
+ *   WATCHDOG_GAS_WARNING        - warn when gas drops below this (NASUN, default: 1500)
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -29,22 +24,19 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 // ===== Configuration =====
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
-const INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '300000', 10); // 5 min
+const INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '300000', 10);
 const REFILL_ROUNDS = parseInt(process.env.WATCHDOG_REFILL_ROUNDS || '50', 10);
-const FAUCET_URL = process.env.FAUCET_URL || 'https://faucet.devnet.nasun.io';
-const GAS_LOW_THRESHOLD = parseFloat(process.env.WATCHDOG_GAS_THRESHOLD || '5'); // NASUN
-const GAS_REFILL_AMOUNT = parseFloat(process.env.WATCHDOG_GAS_AMOUNT || '50');   // NASUN
+// Warn when gas drops below 1500 NASUN (above bot's 1000 NASUN skip threshold)
+const GAS_WARNING_THRESHOLD = parseFloat(process.env.WATCHDOG_GAS_WARNING || '1500');
 
 // Contract addresses
 const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
 const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
 const TOKENS_V2_FAUCET_PACKAGE = '0xd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f';
 const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
-const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31';
 const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
 const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
 
-// Token type strings for balance queries
 const TOKEN_TYPES = {
   NBTC: `${TOKENS_PACKAGE}::nbtc::NBTC`,
   NUSDC: `${TOKENS_PACKAGE}::nusdc::NUSDC`,
@@ -52,38 +44,37 @@ const TOKEN_TYPES = {
   NSOL: '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2::nsol::NSOL',
 } as const;
 
-// Per-market thresholds and faucet config
 const MARKETS = {
   NBTC: {
     baseType: TOKEN_TYPES.NBTC,
     baseDecimals: 8,
-    baseThreshold: 15,     // Refill when < 15 NBTC in wallet
-    quoteThreshold: 500_000, // Refill when < 500K NUSDC
+    baseThreshold: 15,
+    quoteThreshold: 500_000,
     faucetType: 'v1' as const,
-    basePerRound: 0.01,    // 0.01 NBTC per faucet call
-    quotePerRound: 100_000, // 100K NUSDC per faucet call
+    basePerRound: 0.01,
+    quotePerRound: 100_000,
   },
   NETH: {
     baseType: TOKEN_TYPES.NETH,
     baseDecimals: 8,
-    baseThreshold: 500,     // Refill when < 500 NETH
+    baseThreshold: 500,
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
     faucetV2Package: NETH_FAUCET_PACKAGE,
     faucetV2Object: NETH_FAUCET_V2,
-    basePerRound: 2.5,     // 2.5 NETH per faucet call
+    basePerRound: 2.5,
     quotePerRound: 100_000,
   },
   NSOL: {
     baseType: TOKEN_TYPES.NSOL,
     baseDecimals: 9,
-    baseThreshold: 8000,    // Refill when < 8000 NSOL
+    baseThreshold: 8000,
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
     faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
     faucetV2Object: TOKEN_FAUCET_V2,
     faucetV2Function: 'request_nsol',
-    basePerRound: 50,      // 50 NSOL per faucet call
+    basePerRound: 50,
     quotePerRound: 100_000,
   },
 } as const;
@@ -94,25 +85,18 @@ function timestamp(): string {
   return new Date().toLocaleTimeString('en-US', { hour12: false });
 }
 
-function loadKeypair(market: string): Ed25519Keypair {
+function loadKeypairSafe(market: string): Ed25519Keypair | null {
   const keyStr = process.env[`LP_PRIVATE_KEY_${market}`] || process.env.LP_PRIVATE_KEY;
-  if (!keyStr) throw new Error(`Set LP_PRIVATE_KEY_${market} or LP_PRIVATE_KEY`);
-  try {
-    const { secretKey } = decodeSuiPrivateKey(keyStr);
-    return Ed25519Keypair.fromSecretKey(secretKey);
-  } catch {
-    return Ed25519Keypair.fromSecretKey(Buffer.from(keyStr, 'hex'));
-  }
-}
-
-function loadAdminKeypair(): Ed25519Keypair | null {
-  const keyStr = process.env.ORACLE_ADMIN_KEY;
   if (!keyStr) return null;
   try {
     const { secretKey } = decodeSuiPrivateKey(keyStr);
     return Ed25519Keypair.fromSecretKey(secretKey);
   } catch {
-    return Ed25519Keypair.fromSecretKey(Buffer.from(keyStr, 'hex'));
+    try {
+      return Ed25519Keypair.fromSecretKey(Buffer.from(keyStr, 'hex'));
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -129,62 +113,6 @@ async function getTokenBalance(
 async function getGasBalance(client: SuiClient, owner: string): Promise<number> {
   const balance = await client.getBalance({ owner });
   return Number(balance.totalBalance) / 1e9;
-}
-
-/**
- * Transfer gas from admin wallet to bot wallet.
- * Bypasses faucet rate limits entirely -- admin holds sufficient NASUN for long-term ops.
- * Falls back to HTTP faucet if ORACLE_ADMIN_KEY is not configured.
- */
-async function transferGas(client: SuiClient, address: string): Promise<boolean> {
-  const adminKeypair = loadAdminKeypair();
-
-  if (adminKeypair) {
-    // Primary: admin direct transfer (no rate limit)
-    try {
-      const amountMist = BigInt(Math.round(GAS_REFILL_AMOUNT * 1e9));
-      const tx = new Transaction();
-      const [coin] = tx.splitCoins(tx.gas, [amountMist]);
-      tx.transferObjects([coin], address);
-      tx.setGasBudget(10_000_000);
-
-      const result = await client.signAndExecuteTransaction({
-        signer: adminKeypair,
-        transaction: tx,
-        options: { showEffects: true },
-      });
-
-      if (result.effects?.status?.status === 'success') {
-        console.log(`[${timestamp()}] Gas refilled: ${GAS_REFILL_AMOUNT} NASUN -> ${address.slice(0, 10)}... (admin transfer, tx: ${result.digest.slice(0, 12)}...)`);
-        await client.waitForTransaction({ digest: result.digest });
-        return true;
-      }
-      console.error(`[${timestamp()}] Admin gas transfer failed:`, result.effects?.status?.error);
-    } catch (err) {
-      console.error(`[${timestamp()}] Admin gas transfer error:`, err instanceof Error ? err.message : err);
-    }
-  } else {
-    console.warn(`[${timestamp()}] ORACLE_ADMIN_KEY not set — falling back to faucet for ${address.slice(0, 10)}...`);
-  }
-
-  // Fallback: HTTP faucet (subject to rate limits)
-  const body = JSON.stringify({ FixedAmountRequest: { recipient: address } });
-  const headers = { 'Content-Type': 'application/json' };
-  try {
-    const res = await fetch(`${FAUCET_URL}/v1/gas`, { method: 'POST', headers, body });
-    if (res.ok) {
-      const data = await res.json() as { coins_sent?: { amount: number }[] };
-      const total = (data.coins_sent ?? []).reduce((s: number, c: { amount: number }) => s + c.amount, 0);
-      console.log(`[${timestamp()}] Gas refilled: ${(total / 1e9).toFixed(0)} NASUN -> ${address.slice(0, 10)}... (faucet)`);
-      await new Promise((r) => setTimeout(r, 3000));
-      return true;
-    }
-    const text = await res.text();
-    console.warn(`[${timestamp()}] Gas faucet failed for ${address.slice(0, 10)}...: ${text.slice(0, 100)}`);
-  } catch (err) {
-    console.error(`[${timestamp()}] Gas faucet error:`, err instanceof Error ? err.message : err);
-  }
-  return false;
 }
 
 function buildBatchedRefillTx(market: keyof typeof MARKETS, rounds: number): Transaction {
@@ -219,78 +147,104 @@ function buildBatchedRefillTx(market: keyof typeof MARKETS, rounds: number): Tra
   return tx;
 }
 
+// ===== Market Check =====
+
+async function checkMarket(client: SuiClient, market: keyof typeof MARKETS): Promise<void> {
+  const keypair = loadKeypairSafe(market);
+  if (!keypair) {
+    console.warn(`[${timestamp()}] [${market}] Skipping: LP_PRIVATE_KEY_${market} not set`);
+    return;
+  }
+
+  const address = keypair.getPublicKey().toSuiAddress();
+  const config = MARKETS[market];
+
+  // Gas warning (no auto-refill -- run scripts/refill-gas.ts manually)
+  const gas = await getGasBalance(client, address);
+  if (gas < GAS_WARNING_THRESHOLD) {
+    console.warn(
+      `[${timestamp()}] [${market}] WARNING: Low gas ${gas.toFixed(0)} NASUN ` +
+      `(threshold: ${GAS_WARNING_THRESHOLD}). Run: pnpm tsx scripts/refill-gas.ts`
+    );
+  }
+
+  // Token balance check and refill
+  const [base, nusdc] = await Promise.all([
+    getTokenBalance(client, address, config.baseType, config.baseDecimals),
+    getTokenBalance(client, address, TOKEN_TYPES.NUSDC, 6),
+  ]);
+
+  const needBase = base < config.baseThreshold;
+  const needQuote = nusdc < config.quoteThreshold;
+
+  if (needBase || needQuote) {
+    console.log(
+      `[${timestamp()}] [${market}] LOW: ` +
+      `${base.toFixed(2)} ${market} (threshold: ${config.baseThreshold}), ` +
+      `${nusdc.toLocaleString()} NUSDC (threshold: ${config.quoteThreshold.toLocaleString()})`
+    );
+
+    try {
+      const tx = buildBatchedRefillTx(market, REFILL_ROUNDS);
+      const result = await client.signAndExecuteTransaction({
+        signer: keypair,
+        transaction: tx,
+        options: { showEffects: true },
+      });
+
+      if (result.effects?.status?.status === 'success') {
+        const mintedBase = config.basePerRound * REFILL_ROUNDS;
+        const mintedQuote = config.quotePerRound * REFILL_ROUNDS;
+        console.log(
+          `[${timestamp()}] [${market}] REFILLED: ` +
+          `+${mintedBase.toLocaleString()} ${market}, +${mintedQuote.toLocaleString()} NUSDC ` +
+          `(tx: ${result.digest.slice(0, 12)}...)`
+        );
+        await client.waitForTransaction({ digest: result.digest });
+      } else {
+        console.error(`[${timestamp()}] [${market}] Refill TX failed:`, result.effects?.status?.error);
+      }
+    } catch (err) {
+      console.error(`[${timestamp()}] [${market}] Refill error:`, err instanceof Error ? err.message : err);
+    }
+  } else {
+    console.log(
+      `[${timestamp()}] [${market}] OK: ${base.toFixed(2)} ${market}, ${nusdc.toLocaleString()} NUSDC, ${gas.toFixed(0)} NASUN gas`
+    );
+  }
+}
+
+// ===== Startup Assertion =====
+
+function assertUniqueWallets(): void {
+  const entries = (['NBTC', 'NETH', 'NSOL'] as const).map((market) => {
+    const keypair = loadKeypairSafe(market);
+    return keypair ? keypair.getPublicKey().toSuiAddress() : null;
+  }).filter((addr): addr is string => addr !== null);
+
+  if (new Set(entries).size < entries.length) {
+    console.error('FATAL: LP bot wallets are not unique. Check LP_PRIVATE_KEY_NBTC/NETH/NSOL');
+    process.exit(1);
+  }
+  console.log(`[${timestamp()}] Wallet uniqueness check passed (${entries.length} wallets)`);
+}
+
 // ===== Main Loop =====
 
-async function checkAndRefill(client: SuiClient): Promise<void> {
-  // Deduplicate keypairs (all markets may share the same key)
-  const keypairsByAddress = new Map<string, { keypair: Ed25519Keypair; markets: string[] }>();
-
-  for (const market of Object.keys(MARKETS)) {
-    const keypair = loadKeypair(market);
-    const address = keypair.getPublicKey().toSuiAddress();
-    const existing = keypairsByAddress.get(address);
-    if (existing) {
-      existing.markets.push(market);
-    } else {
-      keypairsByAddress.set(address, { keypair, markets: [market] });
-    }
+async function checkAll(client: SuiClient): Promise<void> {
+  // Check watchdog's own gas (it spends ~0.5 NASUN per batch TX)
+  const selfKeypair = loadKeypairSafe('NBTC') || loadKeypairSafe('NETH') || loadKeypairSafe('NSOL');
+  if (selfKeypair) {
+    // Watchdog runs as one of the bot keypairs; its own gas is the same wallet
+    // The per-market check above covers this. Log separately if needed.
   }
 
-  for (const [address, { keypair, markets }] of keypairsByAddress) {
-    // Check gas first
-    const gas = await getGasBalance(client, address);
-    if (gas < GAS_LOW_THRESHOLD) {
-      console.log(`[${timestamp()}] Low gas (${gas.toFixed(2)} NASUN) for ${address.slice(0, 10)}..., topping up...`);
-      await transferGas(client, address);
-    }
-
-    // Check NUSDC (shared across all markets for this address)
-    const nusdc = await getTokenBalance(client, address, TOKEN_TYPES.NUSDC, 6);
-
-    for (const marketName of markets) {
-      const config = MARKETS[marketName as keyof typeof MARKETS];
-      const base = await getTokenBalance(client, address, config.baseType, config.baseDecimals);
-
-      const needBase = base < config.baseThreshold;
-      const needQuote = nusdc < config.quoteThreshold;
-
-      if (needBase || needQuote) {
-        console.log(
-          `[${timestamp()}] ${marketName} LOW: ` +
-          `${base.toFixed(2)} ${marketName} (threshold: ${config.baseThreshold}), ` +
-          `${nusdc.toLocaleString()} NUSDC (threshold: ${config.quoteThreshold.toLocaleString()})`
-        );
-
-        try {
-          const tx = buildBatchedRefillTx(marketName as keyof typeof MARKETS, REFILL_ROUNDS);
-          const result = await client.signAndExecuteTransaction({
-            signer: keypair,
-            transaction: tx,
-            options: { showEffects: true },
-          });
-
-          if (result.effects?.status?.status === 'success') {
-            const mintedBase = config.basePerRound * REFILL_ROUNDS;
-            const mintedQuote = config.quotePerRound * REFILL_ROUNDS;
-            console.log(
-              `[${timestamp()}] ${marketName} REFILLED: ` +
-              `+${mintedBase.toLocaleString()} ${marketName}, +${mintedQuote.toLocaleString()} NUSDC ` +
-              `(tx: ${result.digest.slice(0, 12)}...)`
-            );
-            await client.waitForTransaction({ digest: result.digest });
-          } else {
-            console.error(`[${timestamp()}] ${marketName} refill TX failed:`, result.effects?.status?.error);
-          }
-        } catch (err) {
-          console.error(`[${timestamp()}] ${marketName} refill error:`, err instanceof Error ? err.message : err);
-        }
-      } else {
-        console.log(
-          `[${timestamp()}] ${marketName} OK: ${base.toFixed(2)} ${marketName}, ${nusdc.toLocaleString()} NUSDC`
-        );
-      }
-    }
-  }
+  // Run all 3 market checks in parallel (safe because wallets are unique per assertion)
+  await Promise.allSettled([
+    checkMarket(client, 'NBTC'),
+    checkMarket(client, 'NETH'),
+    checkMarket(client, 'NSOL'),
+  ]);
 }
 
 async function main() {
@@ -300,15 +254,16 @@ async function main() {
   console.log(`RPC: ${RPC_URL}`);
   console.log(`Check interval: ${INTERVAL_MS / 1000}s`);
   console.log(`Refill rounds: ${REFILL_ROUNDS}`);
+  console.log(`Gas warning threshold: ${GAS_WARNING_THRESHOLD} NASUN`);
   console.log('');
 
-  // Initial check
-  await checkAndRefill(client);
+  assertUniqueWallets();
 
-  // Periodic checks (sequential setTimeout prevents concurrent invocations on slow RPC)
+  await checkAll(client);
+
   const scheduleNext = () => setTimeout(async () => {
     try {
-      await checkAndRefill(client);
+      await checkAll(client);
     } catch (err) {
       console.error(`[${timestamp()}] Watchdog error:`, err instanceof Error ? err.message : err);
     } finally {
