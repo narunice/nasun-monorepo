@@ -18,8 +18,8 @@ const PadoScoreLeaderboardPage: React.FC = () => {
           Pado Leaderboard
         </PageTitle>
         <p className="text-base text-nasun-white/80 mb-6 -mt-2">
-          Weekly rankings reset every Monday 00:10 UTC. Top traders earn
-          Ecosystem Points.
+          Weekly rankings reset every Monday 00:10 UTC. Top traders earn Nasun
+          Points.
         </p>
         <PadoScoreLeaderboard />
 
