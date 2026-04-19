@@ -93,7 +93,7 @@ export function usePadoScoreLeaderboard(weekId?: string) {
     queryKey: ['pado-score-leaderboard', 'current', resolvedWeekId],
     queryFn: () => fetchWeeklyScoreLeaderboard(resolvedWeekId, 1000, 0),
     enabled: !!getChatHttpUrl(),
-    staleTime: 15_000,
+    staleTime: 30_000,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
     placeholderData: (prev) => prev,

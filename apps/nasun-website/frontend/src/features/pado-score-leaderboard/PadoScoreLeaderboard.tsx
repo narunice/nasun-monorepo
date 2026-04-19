@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { DashboardCard } from "../../components/ui/DashboardCard";
 import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../components/ui/LeaderboardSearchBox";
@@ -288,30 +288,32 @@ export function PadoScoreLeaderboard() {
     setPage,
   });
 
-  const filterFn = (entry: ScoreLeaderboardTrader, query: string): boolean => {
+  const filterFn = useCallback((entry: ScoreLeaderboardTrader, query: string): boolean => {
     const q = query.toLowerCase();
     return (
       entry.address.toLowerCase().includes(q) ||
       (entry.xHandle ?? "").toLowerCase().includes(q) ||
       (entry.nickname ?? "").toLowerCase().includes(q)
     );
-  };
+  }, []);
 
-  const toResult = (entry: ScoreLeaderboardTrader): LeaderboardSearchResult => ({
-    id: entry.address,
-    primaryLabel: entry.nickname ?? entry.xHandle ?? abbreviateAddress(entry.address),
-    secondaryLabel: entry.xHandle
-      ? `@${entry.xHandle}`
-      : abbreviateAddress(entry.address),
-    rank: entry.rank,
-    profileImageUrl: entry.profileImageUrl,
-  });
+  const toResult = useCallback((entry: ScoreLeaderboardTrader): LeaderboardSearchResult => {
+    const primary = entry.nickname ?? entry.xHandle ?? abbreviateAddress(entry.address);
+    const secondary = entry.xHandle ? `@${entry.xHandle}` : abbreviateAddress(entry.address);
+    return {
+      id: entry.address,
+      primaryLabel: primary,
+      secondaryLabel: secondary !== primary ? secondary : undefined,
+      rank: entry.rank,
+      profileImageUrl: entry.profileImageUrl,
+    };
+  }, []);
 
-  const handleUserSelect = (result: LeaderboardSearchResult) => {
+  const handleUserSelect = useCallback((result: LeaderboardSearchResult) => {
     if (result.rank != null) {
       selectRow(result.id, result.rank);
     }
-  };
+  }, [selectRow]);
 
   const data = currentQuery.data;
 
@@ -395,7 +397,7 @@ export function PadoScoreLeaderboard() {
             toResult={toResult}
             onSelect={handleUserSelect}
             placeholder="Search by handle, nickname, or address..."
-            disabled={currentQuery.isLoading || allTraders.length === 0}
+            disabled={currentQuery.isLoading}
           />
           {data && data.updatedAt > 0 && (
             <span className="text-sm text-pd3 whitespace-nowrap">
