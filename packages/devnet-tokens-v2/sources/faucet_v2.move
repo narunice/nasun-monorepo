@@ -1,5 +1,6 @@
 /// Token Faucet V2 for NETH and NSOL
 /// Allows anyone to get test NETH/NSOL tokens
+#[allow(lint(self_transfer))]
 module devnet_tokens_v2::faucet_v2 {
     use sui::coin::{Self, TreasuryCap};
     use sui::clock::Clock;

@@ -1,6 +1,7 @@
 /// Token Faucet for Pado Testnet
 /// Allows anyone to get test tokens for trading
 /// TreasuryCaps are stored in shared objects for public access
+#[allow(lint(self_transfer))]
 module pado::faucet {
     use sui::coin::{Self, TreasuryCap};
     use sui::clock::Clock;
