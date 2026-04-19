@@ -29,5 +29,13 @@ export function useAddressObjects(addr: string | undefined) {
     return { nftObjects: nfts, otherObjects: others };
   }, [addressInfo?.ownedObjects]);
 
-  return { addressInfo, nftObjects, otherObjects, isLoading, error };
+  return {
+    addressInfo,
+    nftObjects,
+    otherObjects,
+    isLoading,
+    error,
+    objectsHasMore: addressInfo?.objectsHasMore ?? false,
+    objectsNextCursor: addressInfo?.objectsNextCursor ?? null,
+  };
 }
