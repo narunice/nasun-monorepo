@@ -229,9 +229,6 @@ const DevMyAccountPage = () => {
 
           <BugReportsCard className="order-9 lg:order-none col-span-1" />
 
-          {/* Creator Reward (full width, top-100 creators only) */}
-          <CreatorRewardCard className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
-
           {/* DangerZone (full width) */}
           <ErrorBoundary
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}

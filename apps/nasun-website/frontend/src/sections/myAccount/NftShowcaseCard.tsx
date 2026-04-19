@@ -362,13 +362,13 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
             ) : (
               <div className="flex flex-col gap-2 mt-1">
                 <ButtonV3
-                  onClick={() => navigate("/wave1/genesis-pass-drop")}
+                  onClick={() => window.open("https://opensea.io/collection/0x561d4a687e9d13925ad7bef0209c9ecaec9858e1", "_blank")}
                   variant="nw2"
                   size="sm"
                   outline
                   className="w-full"
                 >
-                  Go to Genesis Pass Drop
+                  View on OpenSea
                 </ButtonV3>
               </div>
             )}

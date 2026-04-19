@@ -19,6 +19,7 @@ import { HealthStatusBar } from "./HealthStatusBar";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import { CreatorsAppreciationBonusCard } from "./CreatorsAppreciationBonusCard";
+import { CreatorRewardCard } from "./CreatorRewardCard";
 import { useProfileDisplay } from "./hooks/useProfileDisplay";
 import { updateDisplayName } from "@/services/userProfileApi";
 import { useUserStore } from "@/store/userStore";
@@ -547,6 +548,8 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                 the April 16th Airdrop bar. Self-hides when the user is not
                 eligible, so ineligible users see no gap. */}
             <CreatorsAppreciationBonusCard bare />
+
+            <CreatorRewardCard />
 
             {/* Daily Missions + Health Donut */}
             <div className="flex flex-col sm:flex-row gap-4">
