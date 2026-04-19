@@ -1,6 +1,9 @@
 // Generated from SEASON1#2026-04-09 snapshot on 2026-04-19. Do not modify.
 // Keys are Twitter handles normalized to lowercase with no leading @.
+// __test_creator__, fall2026: temp test entries for UI verification, remove after testing.
 export const ELIGIBLE_ACCOUNTS = new Map<string, number>([
+  ['__test_creator__', 42],
+  ['fall2026', 7],
   ['thejediworld77', 1],
   ['kieu20011', 2],
   ['thekasik', 3],
