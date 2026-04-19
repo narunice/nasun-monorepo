@@ -17,7 +17,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useCreatorReward } from "./hooks/useCreatorReward";
-import type { RewardType, RewardChain } from "@/features/leaderboard-v3/services/creatorRewardApi";
+import type {
+  RewardType,
+  RewardChain,
+} from "@/features/leaderboard-v3/services/creatorRewardApi";
 
 interface CreatorRewardCardProps {
   className?: string;
@@ -35,11 +38,20 @@ const REWARD_TYPE_LABEL: Record<RewardType, string> = {
   custom: "Custom address",
 };
 
-export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }) => {
+export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({
+  className = "",
+}) => {
   const { user } = useAuth();
   const cognitoToken = user?.cognitoToken;
-  const { status, isLoading, isError, isSubmitting, submitError, submit, refetch } =
-    useCreatorReward(cognitoToken);
+  const {
+    status,
+    isLoading,
+    isError,
+    isSubmitting,
+    submitError,
+    submit,
+    refetch,
+  } = useCreatorReward(cognitoToken);
 
   const [selected, setSelected] = useState<RewardType | null>(null);
   const [binanceUid, setBinanceUid] = useState("");
@@ -48,7 +60,8 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
   const [showConfirm, setShowConfirm] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const shouldRender = !!cognitoToken && (isLoading || isError || (!!status && status.eligible));
+  const shouldRender =
+    !!cognitoToken && (isLoading || isError || (!!status && status.eligible));
   if (!shouldRender) return null;
 
   const handleSubmitClick = () => {
@@ -59,7 +72,9 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
     }
     if (selected === "binance") {
       if (!/^[1-9]\d{0,9}$/.test(binanceUid)) {
-        setValidationError("Enter a valid Binance UID (1-10 digits, no leading zero).");
+        setValidationError(
+          "Enter a valid Binance UID (1-10 digits, no leading zero).",
+        );
         return;
       }
     }
@@ -78,14 +93,22 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
       selected === "binance"
         ? { rewardType: selected as RewardType, binanceUid }
         : selected === "custom"
-          ? { rewardType: selected as RewardType, destinationAddress: customAddress, destinationChain: customChain }
+          ? {
+              rewardType: selected as RewardType,
+              destinationAddress: customAddress,
+              destinationChain: customChain,
+            }
           : { rewardType: selected! as RewardType };
     await submit(body);
   };
 
   if (isLoading) {
     return (
-      <OuterBox color="w2" padding="md" className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}>
+      <OuterBox
+        color="w2"
+        padding="md"
+        className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}
+      >
         <div className="flex items-center gap-2 text-nasun-white/70 text-sm">
           <Spinner className="w-4 h-4" /> Loading reward info...
         </div>
@@ -95,10 +118,18 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
 
   if (isError) {
     return (
-      <OuterBox color="w2" padding="md" className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}>
+      <OuterBox
+        color="w2"
+        padding="md"
+        className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}
+      >
         <div className="flex flex-col gap-3">
-          <p className="text-red-400 text-sm">Failed to load reward status. Please try again.</p>
-          <ButtonV3 variant="nw2" size="sm" onClick={() => refetch()}>Retry</ButtonV3>
+          <p className="text-red-400 text-sm">
+            Failed to load reward status. Please try again.
+          </p>
+          <ButtonV3 variant="nw2" size="sm" onClick={() => refetch()}>
+            Retry
+          </ButtonV3>
         </div>
       </OuterBox>
     );
@@ -118,7 +149,11 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
             : "Submitted";
 
     return (
-      <OuterBox color="w2" padding="md" className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}>
+      <OuterBox
+        color="w2"
+        padding="md"
+        className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}
+      >
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex flex-col gap-1">
             <h5 className="font-medium text-nasun-white text-sm md:text-base">
@@ -129,8 +164,12 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
             </p>
           </div>
           <div className="flex flex-col items-end gap-0.5">
-            <span className="text-sm text-emerald-400 font-medium">Preference submitted</span>
-            <span className="text-nasun-white/60 text-xs font-mono">{submittedDetail}</span>
+            <span className="text-sm text-emerald-400 font-medium">
+              Preference submitted
+            </span>
+            <span className="text-nasun-white/60 text-xs font-mono">
+              {submittedDetail}
+            </span>
           </div>
         </div>
       </OuterBox>
@@ -141,15 +180,22 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
     type === selected && !status.evmAddressMasked;
 
   return (
-    <OuterBox color="w2" padding="md" className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}>
+    <OuterBox
+      color="w2"
+      padding="md"
+      className={`!border-amber-400/60 !bg-amber-900/20 ${className}`}
+    >
       <div className="flex flex-col gap-4">
         <div>
           <h5 className="font-medium text-nasun-white text-sm md:text-base">
             Creator Reward - $3 USDC
           </h5>
           <p className="text-nasun-white/70 text-sm mt-1">
-            Thank you for your Season 1 contributions (rank #{status.rank}). Choose how to receive
-            your $3 USDC reward. This selection is permanent.
+            This is a one-time reward for top-100 creators in the currently
+            paused Season 1. Thank you for your contributions (rank #
+            {status.rank}). Please choose how to receive your $3 USDC reward
+            before April 25, 2026. If no option is selected, the reward will be
+            sent via BNB Chain. Once chosen, your selection cannot be changed.
           </p>
         </div>
 
@@ -166,10 +212,13 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
               className="mt-0.5 accent-amber-400"
             />
             <div className="flex flex-col">
-              <span className="text-nasun-white text-sm font-medium">Polygon (USDC)</span>
+              <span className="text-nasun-white text-sm font-medium">
+                Polygon (USDC)
+              </span>
               {status.evmAddressMasked ? (
                 <span className="text-nasun-white/60 text-xs">
-                  Send to: <span className="font-mono">{status.evmAddressMasked}</span>
+                  Send to:{" "}
+                  <span className="font-mono">{status.evmAddressMasked}</span>
                 </span>
               ) : (
                 <span className="text-amber-400 text-xs">
@@ -190,10 +239,13 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
               className="mt-0.5 accent-amber-400"
             />
             <div className="flex flex-col">
-              <span className="text-nasun-white text-sm font-medium">BNB Chain (USDC)</span>
+              <span className="text-nasun-white text-sm font-medium">
+                BNB Chain (USDC)
+              </span>
               {status.evmAddressMasked ? (
                 <span className="text-nasun-white/60 text-xs">
-                  Send to: <span className="font-mono">{status.evmAddressMasked}</span>
+                  Send to:{" "}
+                  <span className="font-mono">{status.evmAddressMasked}</span>
                 </span>
               ) : (
                 <span className="text-amber-400 text-xs">
@@ -214,14 +266,18 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
               className="mt-0.5 accent-amber-400"
             />
             <div className="flex flex-col gap-1 flex-1">
-              <span className="text-nasun-white text-sm font-medium">Binance (UID)</span>
+              <span className="text-nasun-white text-sm font-medium">
+                Binance (UID)
+              </span>
               {selected === "binance" && (
                 <input
                   type="text"
                   inputMode="numeric"
                   placeholder="Enter your Binance UID"
                   value={binanceUid}
-                  onChange={(e) => setBinanceUid(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) =>
+                    setBinanceUid(e.target.value.replace(/\D/g, ""))
+                  }
                   maxLength={10}
                   className="mt-1 w-full max-w-xs bg-black/30 border border-nasun-white/20 rounded px-3 py-1.5 text-sm text-nasun-white placeholder:text-nasun-white/40 focus:outline-none focus:border-amber-400/60"
                 />
@@ -240,7 +296,9 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
               className="mt-0.5 accent-amber-400"
             />
             <div className="flex flex-col gap-2 flex-1">
-              <span className="text-nasun-white text-sm font-medium">Custom address</span>
+              <span className="text-nasun-white text-sm font-medium">
+                Custom address
+              </span>
               {selected === "custom" && (
                 <div className="flex flex-col gap-2 mt-1">
                   <input
@@ -252,7 +310,10 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
                   />
                   <div className="flex gap-3">
                     {(["polygon", "bnb"] as RewardChain[]).map((chain) => (
-                      <label key={chain} className="flex items-center gap-1.5 cursor-pointer">
+                      <label
+                        key={chain}
+                        className="flex items-center gap-1.5 cursor-pointer"
+                      >
                         <input
                           type="radio"
                           name="customChain"
@@ -261,7 +322,9 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
                           onChange={() => setCustomChain(chain)}
                           className="accent-amber-400"
                         />
-                        <span className="text-nasun-white/80 text-xs">{CHAIN_LABEL[chain]}</span>
+                        <span className="text-nasun-white/80 text-xs">
+                          {CHAIN_LABEL[chain]}
+                        </span>
                       </label>
                     ))}
                   </div>
@@ -276,7 +339,12 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
           <ButtonV3
             variant="nw2"
             size="sm"
-            disabled={isSubmitting || !selected || evmBlocked("polygon") || evmBlocked("bnb")}
+            disabled={
+              isSubmitting ||
+              !selected ||
+              evmBlocked("polygon") ||
+              evmBlocked("bnb")
+            }
             onClick={handleSubmitClick}
           >
             {isSubmitting && <Spinner className="w-3 h-3 mr-1" />}
@@ -288,7 +356,9 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
         </div>
 
         {(validationError || submitError) && (
-          <p className="text-red-400 text-sm">{validationError || submitError}</p>
+          <p className="text-red-400 text-sm">
+            {validationError || submitError}
+          </p>
         )}
       </div>
 
@@ -312,10 +382,20 @@ export const CreatorRewardCard: FC<CreatorRewardCardProps> = ({ className = "" }
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center gap-3 mt-2">
-            <ButtonV3 variant="nw2" size="sm" onClick={handleConfirm} disabled={isSubmitting}>
+            <ButtonV3
+              variant="nw2"
+              size="sm"
+              onClick={handleConfirm}
+              disabled={isSubmitting}
+            >
               {isSubmitting ? "Submitting..." : "Confirm"}
             </ButtonV3>
-            <ButtonV3 variant="nw2" size="sm" outline onClick={() => setShowConfirm(false)}>
+            <ButtonV3
+              variant="nw2"
+              size="sm"
+              outline
+              onClick={() => setShowConfirm(false)}
+            >
               Cancel
             </ButtonV3>
           </div>
