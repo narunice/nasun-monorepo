@@ -77,7 +77,7 @@ export class NftSnapshotStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       entry: path.join(lambdaSrcPath, 'eth-collector.ts'),
       handler: 'handler',
-      timeout: cdk.Duration.minutes(10),
+      timeout: cdk.Duration.minutes(15),
       memorySize: 256,
       description: 'Daily ETH NFT ownership collector via Alchemy API',
       environment: {
