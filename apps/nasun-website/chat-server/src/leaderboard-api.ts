@@ -22,7 +22,7 @@ function sanitizeXHandle(raw: string | undefined): string | null {
   return X_HANDLE_RE.test(raw) ? raw : null;
 }
 import type { ChatServerConfig } from './types.js';
-import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch, getProfileImagesBatch, getXHandlesBatch } from './store.js';
+import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch, getProfileImagesBatch } from './store.js';
 import { getPoolSymbol, getPoolBaseDecimals } from './rooms.js';
 import {
   getLeaderboard, getLeaderboardPnl,
@@ -42,7 +42,7 @@ import {
 import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
 import { mapRowToListItem } from './leaderboard-mapper.js';
-import { resolveIdentityIds, checkSocialConnectionsBatch } from './identity-resolver.js';
+import { resolveIdentityIds, checkSocialConnectionsBatch, getTwitterHandlesBatch } from './identity-resolver.js';
 
 // ===== Dependency injection interface =====
 
@@ -239,7 +239,14 @@ export function handleLeaderboardRequest(
 
     const weeklyScoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/score\/weekly\/(\d{4}-W\d{2})$/);
     if (weeklyScoreMatch && method === 'GET') {
-      return handleScoreLeaderboardWeekly(res, url, corsHeaders, weeklyScoreMatch[1]);
+      handleScoreLeaderboardWeekly(res, url, corsHeaders, weeklyScoreMatch[1]).catch((err) => {
+        console.error('[ScoreLeaderboardWeekly] Error:', (err as Error).message);
+        if (!res.writableEnded) {
+          res.writeHead(500, corsHeaders);
+          res.end(JSON.stringify({ error: 'internal_error' }));
+        }
+      });
+      return true;
     }
     // Pattern-matched routes
     const traderMatch = pathname.match(/^\/api\/leaderboard\/trader\/(0x[a-fA-F0-9]{64})$/);
@@ -515,7 +522,14 @@ function handleScoreLeaderboard(
   }
   const weekStart = getCurrentWeekStart();
   const weekId = getWeekId(weekStart);
-  return handleScoreLeaderboardWeekly(res, url, corsHeaders, weekId);
+  handleScoreLeaderboardWeekly(res, url, corsHeaders, weekId).catch((err) => {
+    console.error('[ScoreLeaderboard] Error:', (err as Error).message);
+    if (!res.writableEnded) {
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'internal_error' }));
+    }
+  });
+  return true;
 }
 
 /**
@@ -633,9 +647,9 @@ async function handleInternalWeeklyScores(
   return true;
 }
 
-function handleScoreLeaderboardWeekly(
+async function handleScoreLeaderboardWeekly(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>, weekId: string,
-): boolean {
+): Promise<void> {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const rows = getWeeklyScoreLeaderboard(weekId, limit, offset);
@@ -645,7 +659,21 @@ function handleScoreLeaderboardWeekly(
   const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
   const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
   const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
-  const xHandles = addresses.length > 0 ? getXHandlesBatch(addresses) : new Map<string, string>();
+
+  // Resolve xHandles from DynamoDB UserProfiles via identity mapping.
+  // SQLite nasun_profiles cache only covers chat-room users; most traders are not in it.
+  let xHandlesByAddress = new Map<string, string>();
+  if (addresses.length > 0) {
+    const identityMap = await resolveIdentityIds(addresses);
+    const identityIds = [...new Set(identityMap.values())];
+    if (identityIds.length > 0) {
+      const handlesByIdentity = await getTwitterHandlesBatch(identityIds);
+      for (const [addr, identityId] of identityMap) {
+        const handle = handlesByIdentity.get(identityId);
+        if (handle) xHandlesByAddress.set(addr, handle);
+      }
+    }
+  }
 
   const traders = rows.map((row) => ({
     rank: row.rank,
@@ -653,7 +681,7 @@ function handleScoreLeaderboardWeekly(
     nickname: nicknames.get(row.address) ?? null,
     hasGenesisPass: genesisPassSet.has(row.address),
     profileImageUrl: profileImages.get(row.address) ?? null,
-    xHandle: sanitizeXHandle(xHandles.get(row.address)),
+    xHandle: sanitizeXHandle(xHandlesByAddress.get(row.address)),
     totalScore: row.total_score,
     tradeCount: row.trade_count,
     volumeUsd: formatQuoteVolume(row.volume_quote),
@@ -674,7 +702,6 @@ function handleScoreLeaderboardWeekly(
     updatedAt: getPadoAggregatorLastRun(),
     totalTraders,
   }));
-  return true;
 }
 
 function handleTraderScore(

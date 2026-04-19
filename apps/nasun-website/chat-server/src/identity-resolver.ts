@@ -157,18 +157,50 @@ export async function resolveIdentityId(walletAddress: string): Promise<string |
 
 /**
  * Resolve multiple wallet addresses to their identityIds in bulk.
- * Uses the in-memory cache (loaded from WALLET_MAPPINGS_URL).
+ * Uses DynamoDB BatchGetItem on UserWallets table directly.
  * Returns a Map of address (lowercase) -> identityId for matched wallets only.
  */
 export async function resolveIdentityIds(
   addresses: string[],
 ): Promise<Map<string, string>> {
-  const map = await getIdentityMap();
+  if (addresses.length === 0) return new Map();
+
+  const ddb = getDdbClient();
   const result = new Map<string, string>();
-  for (const addr of addresses) {
-    const id = map.get(addr.toLowerCase());
-    if (id) result.set(addr.toLowerCase(), id);
+
+  for (let i = 0; i < addresses.length; i += BATCH_GET_LIMIT) {
+    const chunk = addresses.slice(i, i + BATCH_GET_LIMIT);
+    let pendingKeys: Array<Record<string, unknown>> = chunk.map((addr) => ({
+      identityId: WALLET_OWNER_SENTINEL,
+      walletAddress: addr.toLowerCase(),
+    }));
+
+    for (let attempt = 0; pendingKeys.length > 0; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** (attempt - 1)));
+      }
+      if (attempt > BATCH_GET_MAX_RETRIES) break;
+
+      const response = await ddb.send(new BatchGetCommand({
+        RequestItems: {
+          [USER_WALLETS_TABLE]: {
+            Keys: pendingKeys,
+            ProjectionExpression: 'walletAddress, ownerIdentityId',
+          },
+        },
+      }));
+
+      const items = response.Responses?.[USER_WALLETS_TABLE] ?? [];
+      for (const item of items) {
+        if (typeof item.walletAddress === 'string' && typeof item.ownerIdentityId === 'string') {
+          result.set(item.walletAddress.toLowerCase(), item.ownerIdentityId);
+        }
+      }
+
+      pendingKeys = (response.UnprocessedKeys?.[USER_WALLETS_TABLE]?.Keys ?? []) as Array<Record<string, unknown>>;
+    }
   }
+
   return result;
 }
 
@@ -282,6 +314,49 @@ function hasSocialConnection(profile: Record<string, unknown>): boolean {
   if (typeof profile.telegramUserId === 'string' && profile.telegramUserId.length > 0) return true;
 
   return false;
+}
+
+/**
+ * Returns a Map of identityId -> twitterHandle for the given identityIds.
+ * Only includes entries where twitterHandle is a non-empty string.
+ */
+export async function getTwitterHandlesBatch(identityIds: string[]): Promise<Map<string, string>> {
+  if (identityIds.length === 0) return new Map();
+
+  const ddb = getDdbClient();
+  const result = new Map<string, string>();
+
+  for (let i = 0; i < identityIds.length; i += BATCH_GET_LIMIT) {
+    const chunk = identityIds.slice(i, i + BATCH_GET_LIMIT);
+    let pendingKeys: Array<Record<string, unknown>> = chunk.map((id) => ({ identityId: id }));
+
+    for (let attempt = 0; pendingKeys.length > 0; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** (attempt - 1)));
+      }
+      if (attempt > BATCH_GET_MAX_RETRIES) break;
+
+      const response = await ddb.send(new BatchGetCommand({
+        RequestItems: {
+          [USER_PROFILES_TABLE]: {
+            Keys: pendingKeys,
+            ProjectionExpression: 'identityId, twitterHandle',
+          },
+        },
+      }));
+
+      const items = response.Responses?.[USER_PROFILES_TABLE] ?? [];
+      for (const item of items) {
+        if (typeof item.identityId === 'string' && typeof item.twitterHandle === 'string' && item.twitterHandle.length > 0) {
+          result.set(item.identityId, item.twitterHandle);
+        }
+      }
+
+      pendingKeys = (response.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys ?? []) as Array<Record<string, unknown>>;
+    }
+  }
+
+  return result;
 }
 
 /**
