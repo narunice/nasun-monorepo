@@ -153,6 +153,7 @@ function LeaderboardTable({
   traders,
   isLoading,
   displayedCount,
+  totalParticipants,
   totalPages,
   page,
   setPage,
@@ -161,6 +162,7 @@ function LeaderboardTable({
   traders: ScoreLeaderboardTrader[];
   isLoading: boolean;
   displayedCount: number;
+  totalParticipants: number;
   totalPages: number;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
@@ -190,7 +192,10 @@ function LeaderboardTable({
           <span className="text-sm text-pd3">
             Showing {offset + 1}-{end} of{" "}
             {displayedCount.toLocaleString("en-US")}{" "}
-            participants (top {MAX_RANK} shown)
+            participants
+            {totalParticipants > 0 && (
+              <> (Weekly total participants: {totalParticipants.toLocaleString("en-US")})</>
+            )}
           </span>
           <div className="flex gap-2">
             <button
@@ -439,6 +444,7 @@ export function PadoScoreLeaderboard() {
           traders={pagedTraders}
           isLoading={currentQuery.isLoading}
           displayedCount={displayedCount}
+          totalParticipants={currentQuery.data?.totalTraders ?? 0}
           totalPages={totalPages}
           page={page}
           setPage={setPage}
