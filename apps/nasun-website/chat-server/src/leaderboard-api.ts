@@ -17,6 +17,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
 function sanitizeXHandle(raw: string | undefined): string | null {
   if (!raw) return null;
   return X_HANDLE_RE.test(raw) ? raw : null;
@@ -664,10 +671,10 @@ async function handleScoreLeaderboardWeekly(
   // SQLite nasun_profiles cache only covers chat-room users; most traders are not in it.
   let xHandlesByAddress = new Map<string, string>();
   if (addresses.length > 0) {
-    const identityMap = await resolveIdentityIds(addresses);
+    const identityMap = await withTimeout(resolveIdentityIds(addresses), 5000, new Map<string, string>());
     const identityIds = [...new Set(identityMap.values())];
     if (identityIds.length > 0) {
-      const handlesByIdentity = await getTwitterHandlesBatch(identityIds);
+      const handlesByIdentity = await withTimeout(getTwitterHandlesBatch(identityIds), 5000, new Map<string, string>());
       for (const [addr, identityId] of identityMap) {
         const handle = handlesByIdentity.get(identityId);
         if (handle) xHandlesByAddress.set(addr, handle);
