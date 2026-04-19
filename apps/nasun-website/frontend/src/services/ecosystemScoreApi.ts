@@ -66,6 +66,7 @@ export interface EcosystemLeaderboardEntry {
   xHandle: string | null;
   profileImageUrl: string | null;
   rank: number;
+  rankChange: number;
 }
 
 export interface EcosystemLeaderboardResponse {
