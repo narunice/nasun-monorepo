@@ -556,10 +556,17 @@ export function getGenesisPassBatch(addresses: string[]): Set<string> {
 
 export function getProfileImagesBatch(addresses: string[]): Map<string, string> {
   if (addresses.length === 0) return new Map();
-  const placeholders = addresses.map(() => '?').join(',');
   const rows = getDb()
-    .prepare(`SELECT address, profile_image_url FROM users WHERE address IN (${placeholders}) AND profile_image_url IS NOT NULL`)
-    .all(...addresses) as Array<{ address: string; profile_image_url: string }>;
+    .prepare(
+      `SELECT
+        input.address AS address,
+        COALESCE(u.profile_image_url, np.profile_image_url) AS profile_image_url
+       FROM (SELECT value AS address FROM json_each(?)) AS input
+       LEFT JOIN users u ON u.address = input.address
+       LEFT JOIN nasun_profiles np ON np.address = input.address
+       WHERE u.profile_image_url IS NOT NULL OR np.profile_image_url IS NOT NULL`
+    )
+    .all(JSON.stringify(addresses)) as Array<{ address: string; profile_image_url: string }>;
   const result = new Map<string, string>();
   for (const row of rows) result.set(row.address, row.profile_image_url);
   return result;
@@ -647,7 +654,7 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const res = await fetch(`${nasunProfileApiUrl}?walletAddress=${encodeURIComponent(normalized)}`, {
+      const res = await fetch(`${nasunProfileApiUrl}/v3/user-profile?walletAddress=${encodeURIComponent(normalized)}`, {
         signal: controller.signal,
       });
       clearTimeout(timeout);
