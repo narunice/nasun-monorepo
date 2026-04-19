@@ -9,8 +9,6 @@ import type { NFTInfo, NFTDisplay } from '../types/nft';
 
 // Per-page limit for getOwnedObjects calls
 const PAGE_LIMIT = 50;
-// Safety cap: max pages to fetch (50 * 10 = 500 objects)
-const MAX_OBJECT_PAGES = 10;
 
 /**
  * Parse Display data from Sui response
@@ -125,7 +123,7 @@ export async function getOwnedNFTs(address: string): Promise<NFTInfo[]> {
 
     // Fetch remaining pages
     let cursor = firstPage.hasNextPage ? (firstPage.nextCursor ?? undefined) : undefined;
-    for (let page = 1; page < MAX_OBJECT_PAGES && cursor; page++) {
+    while (cursor) {
       const result = await client.getOwnedObjects({
         owner: address,
         options: objectOptions,

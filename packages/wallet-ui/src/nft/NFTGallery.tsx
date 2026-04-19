@@ -3,7 +3,7 @@
  * Grid display of NFTs owned by the connected wallet
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNFTs, DEFAULT_NFT_SORT, type NFTInfo, type NFTSortBy } from '@nasun/wallet';
 import { NFTCard } from './NFTCard';
 import { NFTDetail } from './NFTDetail';
@@ -37,6 +37,8 @@ interface NFTGalleryProps {
   defaultSortBy?: NFTSortBy;
 }
 
+const GALLERY_PAGE_SIZE = 12;
+
 export function NFTGallery({
   columns = 4,
   compact = false,
@@ -49,6 +51,7 @@ export function NFTGallery({
   defaultSortBy = DEFAULT_NFT_SORT,
 }: NFTGalleryProps) {
   const [sortBy, setSortBy] = useState<NFTSortBy>(defaultSortBy);
+  const [galleryPage, setGalleryPage] = useState(1);
   const { data: nfts, isLoading, error, refetch } = useNFTs({
     refetchInterval,
     sortBy,
@@ -111,8 +114,13 @@ export function NFTGallery({
     );
   }
 
-  // Limit displayed NFTs if needed
-  const displayedNFTs = limit > 0 ? nfts.slice(0, limit) : nfts;
+  const displayedNFTs = useMemo(() => {
+    if (limit > 0) return nfts.slice(0, limit);
+    const start = (galleryPage - 1) * GALLERY_PAGE_SIZE;
+    return nfts.slice(start, start + GALLERY_PAGE_SIZE);
+  }, [nfts, limit, galleryPage]);
+
+  const totalPages = limit > 0 ? 1 : Math.ceil(nfts.length / GALLERY_PAGE_SIZE);
 
   // Empty state
   if (displayedNFTs.length === 0) {
@@ -155,7 +163,7 @@ export function NFTGallery({
             {!hideSort && nfts.length > 1 && (
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as NFTSortBy)}
+                onChange={(e) => { setSortBy(e.target.value as NFTSortBy); setGalleryPage(1); }}
                 className="text-xs xl:text-sm px-2 py-1 bg-gray-100 dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 {SORT_OPTIONS.map((option) => (
@@ -196,11 +204,34 @@ export function NFTGallery({
         ))}
       </div>
 
-      {/* Show more indicator */}
+      {/* Show more indicator (preview mode) */}
       {limit > 0 && nfts.length > limit && (
         <p className="text-center text-sm md:text-base text-gray-500 dark:text-zinc-400 mt-3">
           +{nfts.length - limit} more
         </p>
+      )}
+
+      {/* Pagination (full gallery mode) */}
+      {limit === 0 && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <button
+            onClick={() => setGalleryPage(p => Math.max(1, p - 1))}
+            disabled={galleryPage === 1}
+            className="px-3 py-1.5 text-sm rounded border border-gray-200 dark:border-zinc-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300 transition-colors"
+          >
+            Prev
+          </button>
+          <span className="text-sm text-gray-500 dark:text-zinc-400">
+            {galleryPage} / {totalPages}
+          </span>
+          <button
+            onClick={() => setGalleryPage(p => Math.min(totalPages, p + 1))}
+            disabled={galleryPage === totalPages}
+            className="px-3 py-1.5 text-sm rounded border border-gray-200 dark:border-zinc-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-700 dark:text-zinc-300 transition-colors"
+          >
+            Next
+          </button>
+        </div>
       )}
 
       {/* NFT Detail Modal */}
