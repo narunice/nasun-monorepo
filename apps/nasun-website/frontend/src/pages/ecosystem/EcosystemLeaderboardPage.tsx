@@ -179,14 +179,6 @@ const EcosystemLeaderboardPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <LeaderboardSearchBox
-              entries={allEntries}
-              filterFn={filterFn}
-              toResult={toResult}
-              onSelect={handleUserSelect}
-              placeholder="Search by handle or display name..."
-              disabled={isLoading}
-            />
             {updatedAt && updatedAt > 0 && (
               <span className="text-sm text-nasun-white/50 whitespace-nowrap">
                 Last Updated{" "}
@@ -197,6 +189,14 @@ const EcosystemLeaderboardPage = () => {
                 })}
               </span>
             )}
+            <LeaderboardSearchBox
+              entries={allEntries}
+              filterFn={filterFn}
+              toResult={toResult}
+              onSelect={handleUserSelect}
+              placeholder="Search by handle or display name..."
+              disabled={isLoading}
+            />
           </div>
         </div>
 
