@@ -566,6 +566,18 @@ function getCurrentWeekId(): string {
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
+function getPrevWeekId(weekId: string): string | null {
+  const match = weekId.match(/^(\d{4})-W(\d{2})$/);
+  if (!match) return null;
+  const year = parseInt(match[1], 10);
+  const week = parseInt(match[2], 10);
+  const bounds = getWeekBounds(weekId);
+  if (!bounds) return null;
+  const prevMonday = new Date(bounds.start.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const { year: py, week: pw } = getISOWeek(prevMonday);
+  return `${py}-W${String(pw).padStart(2, '0')}`;
+}
+
 // Monday 00:10 UTC is the canonical week reset boundary (matches Pado Score Leaderboard).
 // Returns { start, end } as Date objects for use as SQL parameters.
 function getWeekBounds(weekId: string): { start: Date; end: Date } | null {
@@ -855,12 +867,81 @@ app.get('/leaderboard', async (c) => {
     },
   );
 
+  // Build prev-week rank map for rankChange. Previous week is over so its cache is stable.
+  const prevWeekId = getPrevWeekId(weekId);
+  const prevWeekBounds = prevWeekId ? getWeekBounds(prevWeekId) : null;
+  let prevRankMap = new Map<string, number>();
+  if (prevWeekId && prevWeekBounds) {
+    const getPrevLeaderboard = cached(
+      `eco-leaderboard-prev-ids-${prevWeekId}`,
+      5 * 60 * 1000,
+      async () => {
+        // Minimal re-use: same query as getScoredLeaderboard but for previous week.
+        // We only need identityId order, so we skip profile enrichment.
+        const rows = await pointsDb!`
+          WITH week_activities AS (
+            SELECT DISTINCT identity_id,
+              FLOOR((EXTRACT(EPOCH FROM tx_timestamp) - EXTRACT(EPOCH FROM ${prevWeekBounds.start}::timestamptz)) / 86400)::int AS day_slot,
+              category
+            FROM activity_points
+            WHERE NOT flagged AND identity_id IS NOT NULL
+              AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
+              AND category NOT IN ('referral-bonus','daily-mission','ecosystem-passive','staking-daily','staking')
+              AND category NOT LIKE 'ecosystem-bonus-%' AND category NOT LIKE 'pado-%'
+          ),
+          activity_score AS (
+            SELECT identity_id, COUNT(*)::int AS activity_score, COUNT(DISTINCT day_slot)::int AS active_days
+            FROM week_activities GROUP BY identity_id
+          ),
+          creator_post_score AS (
+            SELECT identity_id, COALESCE(SUM(final_points), 0) / 5.0 AS post_score
+            FROM activity_points
+            WHERE category = 'ecosystem-bonus-creator-posts' AND NOT flagged AND identity_id IS NOT NULL
+              AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
+            GROUP BY identity_id
+          ),
+          bonus_score AS (
+            SELECT identity_id,
+              COALESCE(SUM(final_points) FILTER (WHERE category IN ('ecosystem-bonus-bugreport','ecosystem-bonus-feedback')), 0) / 2.0
+              + COALESCE(SUM(final_points) FILTER (WHERE category = 'ecosystem-bonus-game'), 0) / 3.0 AS bonus_score
+            FROM activity_points
+            WHERE category IN ('ecosystem-bonus-bugreport','ecosystem-bonus-feedback','ecosystem-bonus-game')
+              AND NOT flagged AND identity_id IS NOT NULL
+              AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
+            GROUP BY identity_id
+          )
+          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id,
+            COALESCE(a.activity_score, 0)::int AS activity_score,
+            COALESCE(c.post_score, 0) AS creator_post_score,
+            COALESCE(b.bonus_score, 0) AS bonus_score,
+            COALESCE(a.active_days, 0)::int AS active_days,
+            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + COALESCE(a.active_days, 0) * 2) AS weekly_score
+          FROM activity_score a
+          FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
+          FULL OUTER JOIN bonus_score b ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
+          ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
+          LIMIT ${LEADERBOARD_TOP_N}
+        `;
+        return (rows as any[]).filter((r) => r.identity_id != null).map((r) => r.identity_id as string);
+      },
+    );
+    try {
+      const prevIds = await getPrevLeaderboard();
+      prevIds.forEach((id, i) => prevRankMap.set(id, i + 1));
+    } catch {
+      // Non-fatal: fall back to showing no rank change
+    }
+  }
+
   const [all, total] = await Promise.all([getScoredLeaderboard(), getTotalCount()]);
 
   const page = all.slice(offset, offset + limit);
   const ranked = page.map((entry, i) => {
     const { isTelegramMember: _tm, ...rest } = entry;
-    return { ...rest, rank: offset + i + 1 };
+    const currentRank = offset + i + 1;
+    const prevRank = prevRankMap.get(entry.identityId) ?? 0;
+    const rankChange = prevRank === 0 ? 0 : prevRank - currentRank;
+    return { ...rest, rank: currentRank, rankChange };
   });
 
   c.header('Cache-Control', 'public, max-age=300');
