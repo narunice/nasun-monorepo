@@ -44,6 +44,7 @@ import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
 import { NftShowcaseCard } from "../../sections/myAccount/NftShowcaseCard";
+import { CreatorRewardCard } from "../../sections/myAccount/CreatorRewardCard";
 // import { GenesisDropCard } from "../../sections/myAccount/GenesisDropCard";
 // import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
 
@@ -228,12 +229,15 @@ const DevMyAccountPage = () => {
 
           <BugReportsCard className="order-9 lg:order-none col-span-1" />
 
+          {/* Creator Reward (full width, top-100 creators only) */}
+          <CreatorRewardCard className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+
           {/* DangerZone (full width) */}
           <ErrorBoundary
             fallback={<div>{t("error.generic", { ns: "common" })}</div>}
           >
             <Suspense fallback={<SectionLoading showLayout={false} />}>
-              <DangerZoneCard className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+              <DangerZoneCard className="order-11 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
             </Suspense>
           </ErrorBoundary>
         </div>
