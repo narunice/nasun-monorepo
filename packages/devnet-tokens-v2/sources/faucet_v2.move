@@ -117,6 +117,16 @@ module devnet_tokens_v2::faucet_v2 {
         transfer::public_transfer(nsol_coin, sender);
     }
 
+    /// Request only NETH without cooldown (for LP bot refill)
+    public fun request_neth(
+        faucet: &mut TokenFaucetV2,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        let neth_coin = coin::mint(&mut faucet.neth_cap, NETH_FAUCET_AMOUNT, ctx);
+        transfer::public_transfer(neth_coin, sender);
+    }
+
     /// Request only NSOL without cooldown (for LP bot refill)
     public fun request_nsol(
         faucet: &mut TokenFaucetV2,

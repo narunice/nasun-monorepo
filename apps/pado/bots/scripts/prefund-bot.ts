@@ -21,7 +21,8 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
 const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
-const TOKENS_V2_FAUCET_PACKAGE = '0xd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f';
+// Upgraded package (v7) — adds request_neth (no cooldown)
+const TOKENS_V2_FAUCET_PACKAGE = '0xa26189900ac82fbb581579a346e0557905f1c7c9958e9d4dd460f421a43fc9ae';
 const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31';
 const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
@@ -34,7 +35,7 @@ const MARKET_CONFIGS: Record<string, {
   faucetV2Function?: string;
 }> = {
   NBTC: { faucetType: 'v1' },
-  NETH: { faucetType: 'v2', faucetV2Package: NETH_FAUCET_PACKAGE, faucetV2Object: NETH_FAUCET_V2 },
+  NETH: { faucetType: 'v2', faucetV2Package: TOKENS_V2_FAUCET_PACKAGE, faucetV2Object: TOKEN_FAUCET_V2, faucetV2Function: 'request_neth' },
   NSOL: { faucetType: 'v2', faucetV2Package: TOKENS_V2_FAUCET_PACKAGE, faucetV2Object: TOKEN_FAUCET_V2, faucetV2Function: 'request_nsol' },
 };
 

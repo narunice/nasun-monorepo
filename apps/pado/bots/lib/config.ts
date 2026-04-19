@@ -30,7 +30,8 @@ export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c6
 
 // Tokens V2 - NSOL (original package, 9 decimals)
 export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
-export const TOKENS_V2_FAUCET_PACKAGE = '0xd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f';
+// Upgraded package (v7) — adds request_neth (no cooldown)
+export const TOKENS_V2_FAUCET_PACKAGE = '0xa26189900ac82fbb581579a346e0557905f1c7c9958e9d4dd460f421a43fc9ae';
 export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 
 // Tokens V2 - NETH (re-published, 8 decimals — matches Sui mainnet WETH convention)
@@ -121,8 +122,9 @@ export const MARKETS: Record<string, MarketConfig> = {
     faucetBaseAmount: 0.5,   // V2 faucet: 0.5 NETH per call (NETH_FAUCET_AMOUNT = 50_000_000)
     startupDelayMs: 20000,
     faucetType: 'v2',
-    faucetV2Package: NETH_FAUCET_PACKAGE,
-    faucetV2Object: NETH_FAUCET_V2,
+    faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
+    faucetV2Object: TOKEN_FAUCET_V2,
+    faucetV2Function: 'request_neth',
   },
   NSOL: {
     name: 'NSOL',
