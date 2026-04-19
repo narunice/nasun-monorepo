@@ -222,13 +222,13 @@ curl -s -m 10 -o /dev/null -w "%{http_code}|%{time_total}" <URL>
 |------|-----|
 | Whitelist Join | `https://shx1fpd8qi.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | Whitelist Check | `https://am4awqudsb.execute-api.ap-northeast-2.amazonaws.com/prod/` |
-| Governance | `https://4xf3e5t8zc.execute-api.ap-northeast-2.amazonaws.com/prod/` |
+| Governance | `https://4xf3e5t8zc.execute-api.ap-northeast-2.amazonaws.com/prod/config` |
 | Leaderboard V3 | `https://auzo707xql.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | Battalion NFT | `https://jrrge0lqtk.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 | Admin API | `https://doetwxms5a.execute-api.ap-northeast-2.amazonaws.com/prod/` |
 
 판정 기준:
-- HTTP 200/400/403/405 = **OK** (API Gateway 도달 가능. 403은 "Missing Authentication Token"으로 정상)
+- HTTP 200/400/401/403/405 = **OK** (API Gateway 도달 가능. 403은 "Missing Authentication Token"으로 정상. 401은 인증 필요 응답으로 정상)
 - HTTP 5xx = **WARNING** (Lambda 에러, cold start 문제, 또는 설정 오류)
 - Timeout / connection refused / HTTP 0 = **CRITICAL** (API Gateway 또는 Lambda 접근 불가)
 - `time_total` > 5s = **WARNING** (cold start 또는 성능 이슈)
@@ -409,7 +409,7 @@ HEALTH_EOF
 - nginx 상태: inactive = **WARNING**
 - `staging.nasun.io/index.html` 존재: missing = **WARNING**
 - `staging.pado.finance/index.html` 존재: missing = **WARNING**
-- staging `nasun-chat-server` PM2 상태: stopped = **WARNING** (chat/leaderboard API 다운)
+- staging `nasun-chat-server` PM2 상태: stopped = **OK** (리소스 절약 목적으로 의도적 비활성화)
 - staging `pado-chat-server` PM2 상태: **무시/레거시** (stopped 정상, 실트래픽은 nasun-chat-server가 처리)
 - staging LP bots / tpsl-keeper / balance-watchdog PM2 상태 확인
 - `price-updater` 부재는 정상 (staging은 DISABLE_PRICE_UPDATER=true, prod oracle 참조)
@@ -767,7 +767,7 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | ID | 패턴 | 감지 조건 | 심각도 | 권장 조치 |
 |----|------|-----------|--------|-----------|
 | P1 | Unified Chat Server 다운 (prod) | `https://nasun.io/chat/health` HTTP != 200 또는 `nasun-chat-server` PM2 stopped/port 3101 미리스닝 | CRITICAL | `ssh ec2-user@43.200.67.52 "pm2 restart nasun-chat-server"`. env 유실 시 `cd /home/ec2-user/nasun-chat-server && pm2 delete nasun-chat-server && pm2 start ecosystem.config.cjs`. nasun/pado 공용 서버이므로 양쪽 모두 영향 |
-| P2 | Unified Chat Server 다운 (staging) | `https://staging.nasun.io/chat/health` HTTP != 200 또는 staging `nasun-chat-server` PM2 stopped | CRITICAL | `ssh ubuntu@15.165.19.180 "pm2 restart nasun-chat-server"` |
+| P2 | Unified Chat Server 다운 (staging) | `https://staging.nasun.io/chat/health` HTTP != 200 | WARNING | staging nasun-chat-server는 리소스 절약 목적으로 의도적 stopped 상태 유지. 실제 장애 여부는 prod 기준으로 판단 |
 | P3 | Pado 정적 파일 누락 (prod) | `/var/www/pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ec2-user@43.200.67.52:/var/www/pado.finance/` |
 | P4 | Pado 정적 파일 누락 (staging) | `/var/www/staging.pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ubuntu@15.165.19.180:/var/www/staging.pado.finance/` |
 | P5 | Chat Server crash-loop | `nasun-chat-server` PM2 restart > 10 | WARNING | `pm2 logs nasun-chat-server --lines 50` -- better-sqlite3 native module 불일치 또는 DB 손상 가능성 |
