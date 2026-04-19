@@ -10,6 +10,7 @@ export interface AuthResponseMessage {
   authMethod?: 'personal_sign' | 'ephemeral';
   ephemeralPubKey?: string;
   displayName?: string;
+  turnstileToken?: string;
 }
 
 export interface SendMessagePayload {
@@ -267,6 +268,8 @@ export interface ChatServerConfig {
   indexerPollIntervalMs: number;
   aggregationIntervalMs: number;
   excludedAddresses: string[];
+  // Cloudflare Turnstile (bot protection on WebSocket auth)
+  turnstileSecretKey: string;
   // Competition admin
   competitionAdminKey: string;
   // Large trade broadcast threshold (NUSDC, min 100)
@@ -301,6 +304,8 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
     ...KNOWN_BOT_ADDRESSES,
     ...(process.env.INDEXER_EXCLUDED_ADDRESSES || '').split(',').filter(Boolean),
   ],
+  // Cloudflare Turnstile
+  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || '',
   // Competition admin
   competitionAdminKey: process.env.COMPETITION_ADMIN_KEY || '',
   largeTradeThresholdNusdc: Math.max(parseInt(process.env.LARGE_TRADE_THRESHOLD_NUSDC || '1000', 10), 100),

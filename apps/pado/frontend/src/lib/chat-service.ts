@@ -123,6 +123,12 @@ export class ChatService {
   // Session token for REST API authentication (issued on WS auth_success)
   private sessionToken: string | null = null;
 
+  private pendingTurnstileToken: string | null = null;
+
+  setTurnstileToken(token: string): void {
+    this.pendingTurnstileToken = token;
+  }
+
   constructor() {
     for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list', 'reaction_update', 'follow_result', 'following_list'] as ChatEventType[]) {
       this.listeners.set(type, new Set());
@@ -441,11 +447,14 @@ export class ChatService {
       }
 
       if (this.ws?.readyState === WebSocket.OPEN) {
+        const turnstileToken = this.pendingTurnstileToken ?? undefined;
+        this.pendingTurnstileToken = null;
         this.ws.send(JSON.stringify({
           type: 'auth_response',
           signature,
           address: this.signer.address,
           ...(authMethod === 'ephemeral' && { authMethod, ephemeralPubKey }),
+          ...(turnstileToken && { turnstileToken }),
         }));
       }
     } catch (err) {

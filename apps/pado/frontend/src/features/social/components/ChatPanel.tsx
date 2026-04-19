@@ -6,6 +6,9 @@ import { ChatInput, type ChatInputHandle } from './ChatInput';
 import { SetNicknameModal } from './SetNicknameModal';
 import { ChatRoomTabs } from './ChatRoomTabs';
 import { useChatTextSize } from '../hooks/useChatTextSize';
+import { Turnstile } from '@marsidev/react-turnstile';
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 interface Props {
   onMinimize?: () => void;
@@ -30,6 +33,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
     selectedLanguageRoomId, setLanguageRoom, unreadCounts,
+    setTurnstileToken,
   } = useChat();
 
   // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
@@ -204,6 +208,14 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
             setNicknameModalMode(false);
             pendingMessageRef.current = null;
           }}
+        />
+      )}
+      {TURNSTILE_SITE_KEY && address && (
+        <Turnstile
+          siteKey={TURNSTILE_SITE_KEY}
+          options={{ appearance: 'never', size: 'invisible' }}
+          onSuccess={setTurnstileToken}
+          style={{ display: 'none' }}
         />
       )}
     </div>
