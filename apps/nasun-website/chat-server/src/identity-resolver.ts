@@ -316,15 +316,39 @@ function hasSocialConnection(profile: Record<string, unknown>): boolean {
   return false;
 }
 
+export interface SocialBadges {
+  xHandle: string | null;
+  hasGoogle: boolean;
+  hasTelegram: boolean;
+}
+
+const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
+function sanitizeXHandle(raw: string | undefined): string | null {
+  if (!raw) return null;
+  return X_HANDLE_RE.test(raw) ? raw : null;
+}
+
+function parseSocialBadges(item: Record<string, unknown>): SocialBadges {
+  const provider = ((item.provider as string | undefined) ?? '').toLowerCase();
+  const linked = (item.linkedAccounts as Record<string, unknown> | undefined) ?? {};
+  return {
+    xHandle: sanitizeXHandle(item.twitterHandle as string | undefined),
+    hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
+    hasTelegram: item.isTelegramMember === true,
+  };
+}
+
 /**
- * Returns a Map of identityId -> twitterHandle for the given identityIds.
- * Only includes entries where twitterHandle is a non-empty string.
+ * Returns social badge data (xHandle, hasGoogle, hasTelegram) for the given identityIds.
+ * Replaces getTwitterHandlesBatch — single DDB round-trip covers all badge fields.
+ * On UnprocessedKeys retry exhaustion, breaks gracefully (badges omitted, not thrown).
+ * linkedAccounts raw object is never returned to callers.
  */
-export async function getTwitterHandlesBatch(identityIds: string[]): Promise<Map<string, string>> {
+export async function getSocialBadgesBatch(identityIds: string[]): Promise<Map<string, SocialBadges>> {
   if (identityIds.length === 0) return new Map();
 
   const ddb = getDdbClient();
-  const result = new Map<string, string>();
+  const result = new Map<string, SocialBadges>();
 
   for (let i = 0; i < identityIds.length; i += BATCH_GET_LIMIT) {
     const chunk = identityIds.slice(i, i + BATCH_GET_LIMIT);
@@ -340,15 +364,16 @@ export async function getTwitterHandlesBatch(identityIds: string[]): Promise<Map
         RequestItems: {
           [USER_PROFILES_TABLE]: {
             Keys: pendingKeys,
-            ProjectionExpression: 'identityId, twitterHandle',
+            ProjectionExpression: 'identityId, twitterHandle, #p, isTelegramMember, telegramUserId, linkedAccounts',
+            ExpressionAttributeNames: { '#p': 'provider' },
           },
         },
       }));
 
       const items = response.Responses?.[USER_PROFILES_TABLE] ?? [];
       for (const item of items) {
-        if (typeof item.identityId === 'string' && typeof item.twitterHandle === 'string' && item.twitterHandle.length > 0) {
-          result.set(item.identityId, item.twitterHandle);
+        if (typeof item.identityId === 'string') {
+          result.set(item.identityId, parseSocialBadges(item));
         }
       }
 

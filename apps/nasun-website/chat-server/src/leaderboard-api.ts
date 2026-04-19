@@ -49,7 +49,7 @@ import {
 import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
 import { mapRowToListItem } from './leaderboard-mapper.js';
-import { resolveIdentityIds, checkSocialConnectionsBatch, getTwitterHandlesBatch } from './identity-resolver.js';
+import { resolveIdentityIds, checkSocialConnectionsBatch, getSocialBadgesBatch, type SocialBadges } from './identity-resolver.js';
 
 // ===== Dependency injection interface =====
 
@@ -162,14 +162,14 @@ function getClientIp(req: IncomingMessage): string {
  * Handle leaderboard/trade/feed/competition REST API requests.
  * Returns true if the request was handled, false otherwise.
  */
-export function handleLeaderboardRequest(
+export async function handleLeaderboardRequest(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
   corsHeaders: Record<string, string>,
   config: ChatServerConfig,
   deps: LeaderboardApiDeps,
-): boolean {
+): Promise<boolean> {
   const { pathname } = url;
   // Treat HEAD as GET (same response, no body per HTTP spec)
   const rawMethod = req.method || 'GET';
@@ -219,10 +219,10 @@ export function handleLeaderboardRequest(
       return handleLeaderboardStatus(res, corsHeaders, config);
     }
     if (pathname === '/api/pado/leaderboard/score' && method === 'GET') {
-      return handleScoreLeaderboard(res, url, corsHeaders);
+      return await handleScoreLeaderboard(res, url, corsHeaders);
     }
     if (pathname === '/api/pado/leaderboard/score/alltime' && method === 'GET') {
-      return handleScoreLeaderboardAlltime(res, url, corsHeaders);
+      return await handleScoreLeaderboardAlltime(res, url, corsHeaders);
     }
     if (pathname === '/api/pado/leaderboard/score/weekly' && method === 'GET') {
       const weeks = getAvailableWeeks();
@@ -512,12 +512,12 @@ function handleLeaderboardStatus(
  * Default: weekly scope (current week).
  * Legacy ?scope=alltime still supported for backward compatibility.
  */
-function handleScoreLeaderboard(
+async function handleScoreLeaderboard(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
-): boolean {
+): Promise<boolean> {
   const scope = url.searchParams.get('scope') || 'weekly';
   if (scope === 'alltime') {
-    return handleScoreLeaderboardAlltime(res, url, corsHeaders);
+    return await handleScoreLeaderboardAlltime(res, url, corsHeaders);
   }
   if (scope !== 'weekly') {
     res.writeHead(400, corsHeaders);
@@ -529,7 +529,7 @@ function handleScoreLeaderboard(
   }
   const weekStart = getCurrentWeekStart();
   const weekId = getWeekId(weekStart);
-  handleScoreLeaderboardWeekly(res, url, corsHeaders, weekId).catch((err) => {
+  await handleScoreLeaderboardWeekly(res, url, corsHeaders, weekId).catch((err) => {
     console.error('[ScoreLeaderboard] Error:', (err as Error).message);
     if (!res.writableEnded) {
       res.writeHead(500, corsHeaders);
@@ -543,9 +543,9 @@ function handleScoreLeaderboard(
  * GET /api/pado/leaderboard/score/alltime
  * Backward-compatible all-time score leaderboard (trader_points table).
  */
-function handleScoreLeaderboardAlltime(
+async function handleScoreLeaderboardAlltime(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
-): boolean {
+): Promise<boolean> {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 1000);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const rows = getScoreLeaderboard(limit, offset);
@@ -554,11 +554,36 @@ function handleScoreLeaderboardAlltime(
   const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
   const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
   const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+  const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
+
+  let socialBadgesByAddress = new Map<string, SocialBadges>();
+  if (addresses.length > 0) {
+    const identityMap = await withTimeout(resolveIdentityIds(addresses), 5000, new Map<string, string>());
+    const identityIds = [...new Set(identityMap.values())];
+    if (identityIds.length > 0) {
+      const badgesByIdentity = await withTimeout(getSocialBadgesBatch(identityIds), 5000, new Map<string, SocialBadges>());
+      if (badgesByIdentity.size === 0) {
+        console.warn('[social-badges] timeout or empty, badges hidden for this request');
+      }
+      for (const [addr, identityId] of identityMap) {
+        const badges = badgesByIdentity.get(identityId);
+        if (badges) socialBadgesByAddress.set(addr, badges);
+      }
+    }
+  }
+
   const extras = { nicknames, followerCounts, genesisPassSet };
-  const traders = rows.map((row) => ({
-    ...mapRowToListItem(row, extras, formatQuoteVolume),
-    totalScore: row.total_points,
-  }));
+  const traders = rows.map((row) => {
+    const badges = socialBadgesByAddress.get(row.address);
+    return {
+      ...mapRowToListItem(row, extras, formatQuoteVolume),
+      profileImageUrl: profileImages.get(row.address) ?? null,
+      xHandle: badges?.xHandle ?? null,
+      totalScore: row.total_points,
+      hasGoogle: badges?.hasGoogle ?? false,
+      hasTelegram: badges?.hasTelegram ?? false,
+    };
+  });
   res.writeHead(200, {
     ...corsHeaders,
     'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',
@@ -670,34 +695,42 @@ async function handleScoreLeaderboardWeekly(
   const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
   const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
 
-  // Resolve xHandles from DynamoDB UserProfiles via identity mapping.
+  // Resolve social badges (xHandle, hasGoogle, hasTelegram) from DynamoDB UserProfiles.
   // SQLite nasun_profiles cache only covers chat-room users; most traders are not in it.
-  let xHandlesByAddress = new Map<string, string>();
+  let socialBadgesByAddress = new Map<string, SocialBadges>();
   if (addresses.length > 0) {
     const identityMap = await withTimeout(resolveIdentityIds(addresses), 5000, new Map<string, string>());
     const identityIds = [...new Set(identityMap.values())];
     if (identityIds.length > 0) {
-      const handlesByIdentity = await withTimeout(getTwitterHandlesBatch(identityIds), 5000, new Map<string, string>());
+      const badgesByIdentity = await withTimeout(getSocialBadgesBatch(identityIds), 5000, new Map<string, SocialBadges>());
+      if (badgesByIdentity.size === 0) {
+        console.warn('[social-badges] timeout or empty, badges hidden for this request');
+      }
       for (const [addr, identityId] of identityMap) {
-        const handle = handlesByIdentity.get(identityId);
-        if (handle) xHandlesByAddress.set(addr, handle);
+        const badges = badgesByIdentity.get(identityId);
+        if (badges) socialBadgesByAddress.set(addr, badges);
       }
     }
   }
 
-  const traders = rows.map((row) => ({
-    rank: row.rank,
-    address: row.address,
-    nickname: nicknames.get(row.address) ?? null,
-    hasGenesisPass: genesisPassSet.has(row.address),
-    profileImageUrl: profileImages.get(row.address) ?? null,
-    xHandle: sanitizeXHandle(xHandlesByAddress.get(row.address)),
-    totalScore: row.total_score,
-    tradeCount: row.trade_count,
-    volumeUsd: formatQuoteVolume(row.volume_quote),
-    rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - row.rank,
-    followerCount: followerCounts.get(row.address) ?? 0,
-  }));
+  const traders = rows.map((row) => {
+    const badges = socialBadgesByAddress.get(row.address);
+    return {
+      rank: row.rank,
+      address: row.address,
+      nickname: nicknames.get(row.address) ?? null,
+      hasGenesisPass: genesisPassSet.has(row.address),
+      profileImageUrl: profileImages.get(row.address) ?? null,
+      xHandle: badges?.xHandle ?? null,
+      totalScore: row.total_score,
+      tradeCount: row.trade_count,
+      volumeUsd: formatQuoteVolume(row.volume_quote),
+      rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - row.rank,
+      followerCount: followerCounts.get(row.address) ?? 0,
+      hasGoogle: badges?.hasGoogle ?? false,
+      hasTelegram: badges?.hasTelegram ?? false,
+    };
+  });
 
   const weekStart = getCurrentWeekStart();
   res.writeHead(200, {
