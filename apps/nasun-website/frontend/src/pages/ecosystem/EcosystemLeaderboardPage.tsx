@@ -353,7 +353,10 @@ const EcosystemLeaderboardPage = () => {
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm text-nasun-white/50">
               Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, displayedCount)} of{" "}
-              {displayedCount.toLocaleString("en-US")} participants (top {MAX_RANK} shown)
+              {displayedCount.toLocaleString("en-US")} participants
+              {(leaderboardQuery.data?.meta.total ?? 0) > 0 && (
+                <> (Weekly total participants: {(leaderboardQuery.data!.meta.total).toLocaleString("en-US")})</>
+              )}
             </p>
             <div className="flex gap-2">
               <button
