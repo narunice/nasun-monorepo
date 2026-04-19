@@ -190,9 +190,8 @@ function LeaderboardTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between gap-3 px-4 py-4">
           <span className="text-sm text-pd3">
-            Showing {offset + 1}-{end} of{" "}
-            {displayedCount.toLocaleString("en-US")}{" "}
-            participants
+            Showing {offset + 1}-{end} of top{" "}
+            {displayedCount.toLocaleString("en-US")}
             {totalParticipants > 0 && (
               <> (Weekly total participants: {totalParticipants.toLocaleString("en-US")})</>
             )}

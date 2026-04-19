@@ -352,8 +352,8 @@ const EcosystemLeaderboardPage = () => {
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm text-nasun-white/50">
-              Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, displayedCount)} of{" "}
-              {displayedCount.toLocaleString("en-US")} participants
+              Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, displayedCount)} of top{" "}
+              {displayedCount.toLocaleString("en-US")}
               {(leaderboardQuery.data?.meta.total ?? 0) > 0 && (
                 <> (Weekly total participants: {(leaderboardQuery.data!.meta.total).toLocaleString("en-US")})</>
               )}
