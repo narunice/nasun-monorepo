@@ -66,7 +66,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
   const {
     isRegistered: isGenesisPassRegistered,
     isApplied: isGenesisPassApplied,
-    status: genesisPassStatus,
     registeredWallet: genesisPassWallet,
     isLoading: isGenesisPassLoading,
     isConfigured: isGenesisPassConfigured,
@@ -130,32 +129,6 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
 
   const [showMismatchDialog, setShowMismatchDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isJoining, setIsJoining] = useState(false);
-  const [joinError, setJoinError] = useState<string | null>(null);
-
-  const handleJoin = async () => {
-    if (isJoining || !cognitoToken) return;
-    try {
-      setIsJoining(true);
-      setJoinError(null);
-      await registerGenesisPass(cognitoToken);
-      toast.success("Successfully joined Genesis Pass Allowlist!");
-      invalidateGenesisPassStatus();
-    } catch (err: unknown) {
-      console.error("[CompactNftStatus] Join error:", err);
-      const isAlreadyRegistered = err instanceof GenesisPassApiError && err.statusCode === 409;
-      if (isAlreadyRegistered) {
-        toast.info("Already registered. Refreshing status...");
-        invalidateGenesisPassStatus();
-      } else {
-        const message = err instanceof Error ? err.message : "Failed to join. Please try again.";
-        setJoinError(message);
-        toast.error(message);
-      }
-    } finally {
-      setIsJoining(false);
-    }
-  };
 
   const handleUpdateWallet = async () => {
     if (isUpdating || !cognitoToken) return;
@@ -372,10 +345,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                   </Button>
                 )}
               </div>
-              {joinError && (
-                <p className="text-red-400 text-sm">{joinError}</p>
-              )}
-              {/* Genesis Pass Activate/Deactivate (dev only) */}
+{/* Genesis Pass Activate/Deactivate (dev only) */}
               {showAllSections && (isGenesisPassRegistered || showMintedState) && ecosystem.isConfigured && (
                 <div className="flex gap-2 self-end">
                   {!ecosystem.getActivation("genesis-pass") && (
@@ -422,10 +392,12 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
                 </div>
               )}
               <a
-                href="/wave1/genesis-pass-drop"
+                href="https://opensea.io/collection/0x561d4a687e9d13925ad7bef0209c9ecaec9858e1"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-nasun-white/70 hover:text-nasun-white text-sm self-end mt-1 transition-colors underline underline-offset-2"
               >
-                Go to Genesis Pass Drop
+                View on OpenSea
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                 </svg>
