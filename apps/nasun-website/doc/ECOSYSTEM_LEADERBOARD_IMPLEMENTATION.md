@@ -12,11 +12,11 @@ ownership.
 
 This is distinct from two other leaderboard systems in the same product:
 
-| System | Data source | Reset | Scope |
-|--------|-------------|-------|-------|
-| Ecosystem Leaderboard | PostgreSQL `activity_points` | Weekly (Mon 00:10 UTC) | On-chain diversity + creator posts |
-| Pado Score Leaderboard | SQLite (chat-server) | Weekly (Mon 00:10 UTC) | DEX trading volume/PnL |
-| Community Leaderboard V3 | DynamoDB | Seasonal | X/Twitter social posts |
+| System                   | Data source                  | Reset                  | Scope                              |
+| ------------------------ | ---------------------------- | ---------------------- | ---------------------------------- |
+| Ecosystem Leaderboard    | PostgreSQL `activity_points` | Weekly (Mon 00:10 UTC) | On-chain diversity + creator posts |
+| Pado Leaderboard         | SQLite (chat-server)         | Weekly (Mon 00:10 UTC) | DEX trading volume/PnL             |
+| Community Leaderboard V3 | DynamoDB                     | Seasonal               | X/Twitter social posts             |
 
 ---
 
@@ -36,12 +36,13 @@ creator_post_score =
 ### Included activity categories
 
 All `activity_points` rows that are:
+
 - `NOT flagged`
 - `identity_id IS NOT NULL`
 - Within week bounds (`tx_timestamp >= week_start AND < week_end`)
 - Category NOT IN: `referral-bonus`, `daily-mission`, `ecosystem-passive`, `staking-daily`, `staking`
 - Category NOT LIKE: `ecosystem-bonus-%` (creator-posts handled separately below)
-- Category NOT LIKE: `pado-%` (covered by Pado Score Leaderboard)
+- Category NOT LIKE: `pado-%` (covered by Pado Leaderboard)
 
 Notable inclusions: `governance`, `wallet-transfer`, `faucet`, `baram-*`, `chat`, and any
 future on-chain category not matching the exclusion patterns.
@@ -112,13 +113,13 @@ The leaderboard queries this table directly (no materialized view).
 
 Key columns used:
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| `identity_id` | TEXT | Cognito identity ID (`region:uuid`) |
-| `tx_timestamp` | TIMESTAMPTZ | When the activity occurred |
-| `category` | TEXT | Activity type |
-| `final_points` | NUMERIC | Points awarded (used only for creator-posts score) |
-| `flagged` | BOOLEAN | Excluded from all scoring when true |
+| Column         | Type        | Purpose                                            |
+| -------------- | ----------- | -------------------------------------------------- |
+| `identity_id`  | TEXT        | Cognito identity ID (`region:uuid`)                |
+| `tx_timestamp` | TIMESTAMPTZ | When the activity occurred                         |
+| `category`     | TEXT        | Activity type                                      |
+| `final_points` | NUMERIC     | Points awarded (used only for creator-posts score) |
+| `flagged`      | BOOLEAN     | Excluded from all scoring when true                |
 
 ### Supporting index
 
@@ -151,11 +152,11 @@ Returns the ranked leaderboard for a given week.
 
 **Query parameters:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `weekId` | string | current week | ISO 8601 week ID (`YYYY-Wnn`). Invalid format is silently ignored and falls back to current week. |
-| `limit` | number | 50 | Page size. Snapped to nearest of [25, 50, 100, 200]. |
-| `offset` | number | 0 | Pagination offset. Max 10000. |
+| Parameter | Type   | Default      | Description                                                                                       |
+| --------- | ------ | ------------ | ------------------------------------------------------------------------------------------------- |
+| `weekId`  | string | current week | ISO 8601 week ID (`YYYY-Wnn`). Invalid format is silently ignored and falls back to current week. |
+| `limit`   | number | 50           | Page size. Snapped to nearest of [25, 50, 100, 200].                                              |
+| `offset`  | number | 0            | Pagination offset. Max 10000.                                                                     |
 
 **Response:**
 
@@ -184,10 +185,10 @@ Returns the ranked leaderboard for a given week.
 
 **Error responses:**
 
-| Status | Error | Cause |
-|--------|-------|-------|
-| 400 | `invalid_week_id` | weekId format valid but week number out of range (W00 or W54+) |
-| 503 | `points_not_configured` | `POINTS_DATABASE_URL` env var not set |
+| Status | Error                   | Cause                                                          |
+| ------ | ----------------------- | -------------------------------------------------------------- |
+| 400    | `invalid_week_id`       | weekId format valid but week number out of range (W00 or W54+) |
+| 503    | `points_not_configured` | `POINTS_DATABASE_URL` env var not set                          |
 
 **Caching:** Server-side in-memory cache keyed by `eco-leaderboard-${weekId}`, 5-minute TTL.
 HTTP response: `Cache-Control: public, max-age=300`.
@@ -304,14 +305,14 @@ export function isEcosystemNewWeekGracePeriod(
 
 ### Table columns
 
-| Column | Source field | Notes |
-|--------|-------------|-------|
-| Rank | `rank` | Computed server-side as `offset + i + 1` |
-| User | `identityId` | Truncated: `...{last 8 chars of UUID}` |
-| Activity Score | `activityScore` | Distinct (day_slot, category) pairs |
-| Creator Posts | `creatorPostScore` | Highlighted in teal if > 0, "-" otherwise |
-| Active Days | `activeDays` | `{n}/7` format |
-| Score | `weeklyScore` | `activityScore + creatorPostScore`, 1 decimal place |
+| Column         | Source field       | Notes                                               |
+| -------------- | ------------------ | --------------------------------------------------- |
+| Rank           | `rank`             | Computed server-side as `offset + i + 1`            |
+| User           | `identityId`       | Truncated: `...{last 8 chars of UUID}`              |
+| Activity Score | `activityScore`    | Distinct (day_slot, category) pairs                 |
+| Creator Posts  | `creatorPostScore` | Highlighted in teal if > 0, "-" otherwise           |
+| Active Days    | `activeDays`       | `{n}/7` format                                      |
+| Score          | `weeklyScore`      | `activityScore + creatorPostScore`, 1 decimal place |
 
 ### Admin dashboard
 
@@ -376,12 +377,12 @@ redirects). This is now correctly restricted to the server allowlist after the
 
 ## Related Files
 
-| File | Purpose |
-|------|---------|
-| `apps/network-explorer/api-server/src/routes/ecosystem.ts` | All leaderboard API logic |
-| `apps/network-explorer/api-server/src/db/ecosystem-schema.sql` | DB schema, indexes, matview |
-| `apps/nasun-website/frontend/src/services/ecosystemScoreApi.ts` | Client API types and functions |
-| `apps/nasun-website/frontend/src/pages/ecosystem/EcosystemLeaderboardPage.tsx` | Public leaderboard page |
-| `apps/nasun-website/frontend/src/features/admin/pages/ActivityPointsAdmin.tsx` | Admin dashboard |
-| `apps/network-explorer/api-server/src/config/ecosystem.ts` | NFT multiplier config (not used by leaderboard) |
-| `apps/network-explorer/api-server/src/scanner/ecosystem-cache.ts` | NFT activation cache (not used by leaderboard) |
+| File                                                                           | Purpose                                         |
+| ------------------------------------------------------------------------------ | ----------------------------------------------- |
+| `apps/network-explorer/api-server/src/routes/ecosystem.ts`                     | All leaderboard API logic                       |
+| `apps/network-explorer/api-server/src/db/ecosystem-schema.sql`                 | DB schema, indexes, matview                     |
+| `apps/nasun-website/frontend/src/services/ecosystemScoreApi.ts`                | Client API types and functions                  |
+| `apps/nasun-website/frontend/src/pages/ecosystem/EcosystemLeaderboardPage.tsx` | Public leaderboard page                         |
+| `apps/nasun-website/frontend/src/features/admin/pages/ActivityPointsAdmin.tsx` | Admin dashboard                                 |
+| `apps/network-explorer/api-server/src/config/ecosystem.ts`                     | NFT multiplier config (not used by leaderboard) |
+| `apps/network-explorer/api-server/src/scanner/ecosystem-cache.ts`              | NFT activation cache (not used by leaderboard)  |
