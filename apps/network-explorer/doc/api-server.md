@@ -34,21 +34,14 @@ api-server/
 ## 배포 (EC2 node-3)
 
 ```bash
-# 1. API 서버 코드 rsync (node_modules, .env 제외)
-rsync -avz --exclude node_modules --exclude .env \
-  apps/network-explorer/api-server/ \
-  -e "ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem" \
-  ubuntu@54.180.61.196:~/explorer-api/
-
-# 2. SSH 접속 후 의존성 설치 + PM2 재시작
-ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@54.180.61.196
-cd ~/explorer-api && npm install
-set -a && source .env && set +a
-pm2 restart explorer-api --update-env
-
-# 3. 헬스체크 확인
-curl http://localhost:3200/api/v1/health
+# 모노레포 루트에서 단일 명령으로 실행
+./scripts/deploy-explorer-api.sh
 ```
+
+스크립트 순서: tsc 빌드 -> rsync (node_modules/.env 제외) -> npm install --omit=dev -> pm2 restart -> health check
+
+> **주의**: 과거에는 수동 2단계(rsync + npm install)로 배포했으나, npm install을 빠뜨리면
+> 시작 시 `ERR_MODULE_NOT_FOUND`로 크래시가 반복됩니다. 반드시 스크립트를 사용하세요.
 
 ## 환경 변수 (node-3 .env)
 

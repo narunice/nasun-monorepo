@@ -381,7 +381,7 @@ explorer.nasun.io    CNAME    d3950nhuogw1zy.cloudfront.net
 | ---------------- | ------------ | --------- | -------------------------------- |
 | baram            | EC2 스크립트 | 수동 실행 | https://baram.nasun.io           |
 | network-explorer | 로컬 빌드 + rsync + CF invalidation | 수동 실행 | https://explorer.nasun.io/devnet (CloudFront CDN) |
-| explorer-api     | EC2 + PM2    | 수동 rsync | https://explorer.nasun.io/api/v1 (node-3) |
+| explorer-api     | EC2 + PM2    | `./scripts/deploy-explorer-api.sh` | https://explorer.nasun.io/api/v1 (node-3) |
 | nasun-website    | 로컬 빌드 + rsync + CF invalidation | 수동 실행 | https://nasun.io (prod, CloudFront CDN), https://staging.nasun.io (dev) |
 | gensol-website   | EC2 스크립트 | 수동 실행 | https://gensol.nasun.io          |
 | pado             | EC2 스크립트 | 수동 실행 | https://pado.finance             |

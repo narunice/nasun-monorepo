@@ -25,7 +25,18 @@ pnpm deploy:network-explorer:prod -- --rollback  # 이전 버전으로 롤백
 
 ## API 서버 배포
 
-API 서버 배포 방법은 [api-server.md](api-server.md) 참조.
+```bash
+# 모노레포 루트에서 단일 명령으로 실행
+./scripts/deploy-explorer-api.sh
+
+# 옵션
+./scripts/deploy-explorer-api.sh --dry-run   # 빌드만, 배포 안함
+./scripts/deploy-explorer-api.sh --force     # 확인 프롬프트 건너뜀
+```
+
+스크립트 순서: tsc 빌드 -> rsync -> npm install --omit=dev -> pm2 restart -> health check
+
+상세 내용은 [api-server.md](api-server.md) 참조.
 
 ## RPC 테스트 명령어
 
