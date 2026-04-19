@@ -264,6 +264,7 @@ const EcosystemLeaderboardPage = () => {
                     >
                       <td className="px-4 py-3 text-nasun-white/90">
                         <span className="inline-flex items-center gap-1.5">
+                          <span className="font-mono">{entry.rank}</span>
                           {entry.rank <= 3 && (
                             <span className="text-base leading-none">
                               {entry.rank === 1
@@ -273,7 +274,6 @@ const EcosystemLeaderboardPage = () => {
                                   : "🥉"}
                             </span>
                           )}
-                          <span className="font-mono">{entry.rank}</span>
                         </span>
                       </td>
                       <td className="px-4 py-3">
