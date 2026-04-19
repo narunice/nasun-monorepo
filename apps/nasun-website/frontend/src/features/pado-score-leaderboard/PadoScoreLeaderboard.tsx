@@ -390,15 +390,6 @@ export function PadoScoreLeaderboard() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          {/* Search box */}
-          <LeaderboardSearchBox
-            entries={allTraders}
-            filterFn={filterFn}
-            toResult={toResult}
-            onSelect={handleUserSelect}
-            placeholder="Search by handle, nickname, or address..."
-            disabled={currentQuery.isLoading}
-          />
           {data && data.updatedAt > 0 && (
             <span className="text-sm text-pd3 whitespace-nowrap">
               Last Updated{" "}
@@ -409,6 +400,15 @@ export function PadoScoreLeaderboard() {
               })}
             </span>
           )}
+          {/* Search box */}
+          <LeaderboardSearchBox
+            entries={allTraders}
+            filterFn={filterFn}
+            toResult={toResult}
+            onSelect={handleUserSelect}
+            placeholder="Search by handle, nickname, or address..."
+            disabled={currentQuery.isLoading}
+          />
         </div>
       </div>
 
