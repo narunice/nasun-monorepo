@@ -39,12 +39,12 @@ function formatVolume(usd: string): string {
 function RankCell({ rank }: { rank: number }) {
   return (
     <span className="inline-flex items-center gap-1.5">
+      <span className="font-mono text-sm text-nasun-white">{rank}</span>
       {rank <= 3 && (
         <span className="text-base leading-none">
           {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
         </span>
       )}
-      <span className="font-mono text-sm text-nasun-white">{rank}</span>
     </span>
   );
 }
