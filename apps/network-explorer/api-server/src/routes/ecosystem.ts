@@ -48,6 +48,7 @@ interface ProfileCacheEntry {
   xHandle: string | null;
   profileImageUrl: string | null;
   isTelegramMember: boolean;
+  hasGoogle: boolean;
 }
 
 const profileCache = {
@@ -93,11 +94,14 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
           }));
           for (const item of res.Responses?.[USER_PROFILES_TABLE] ?? []) {
             const id = item.identityId as string;
+            const provider = ((item.provider as string | undefined) ?? '').toLowerCase();
+            const linked = (item.linkedAccounts as Record<string, unknown> | undefined) ?? {};
             profileCache.data.set(id, {
               displayName: resolveDisplayName(item as Record<string, unknown>),
               xHandle: sanitizeXHandle(item.originalTwitterHandle ?? item.twitterHandle),
               profileImageUrl: (item.profileImageUrl as string | undefined) ?? null,
               isTelegramMember: (item.isTelegramMember as boolean | undefined) ?? false,
+              hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
             });
           }
           pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
@@ -799,6 +803,7 @@ app.get('/leaderboard', async (c) => {
         weeklyScore: r.weekly_score as number,
         hasGenesisPass: genesisPassSet.has(r.identity_id as string),
         isTelegramMember: profiles.get(r.identity_id as string)?.isTelegramMember ?? false,
+        hasGoogle: profiles.get(r.identity_id as string)?.hasGoogle ?? false,
         displayName: profiles.get(r.identity_id as string)?.displayName ?? null,
         xHandle: profiles.get(r.identity_id as string)?.xHandle ?? null,
         profileImageUrl: profiles.get(r.identity_id as string)?.profileImageUrl ?? null,
@@ -937,11 +942,10 @@ app.get('/leaderboard', async (c) => {
 
   const page = all.slice(offset, offset + limit);
   const ranked = page.map((entry, i) => {
-    const { isTelegramMember: _tm, ...rest } = entry;
     const currentRank = offset + i + 1;
     const prevRank = prevRankMap.get(entry.identityId) ?? 0;
     const rankChange = prevRank === 0 ? 0 : prevRank - currentRank;
-    return { ...rest, rank: currentRank, rankChange };
+    return { ...entry, rank: currentRank, rankChange };
   });
 
   c.header('Cache-Control', 'public, max-age=300');

@@ -67,6 +67,8 @@ export interface EcosystemLeaderboardEntry {
   profileImageUrl: string | null;
   rank: number;
   rankChange: number;
+  hasGoogle?: boolean;
+  isTelegramMember?: boolean;
 }
 
 export interface EcosystemLeaderboardResponse {

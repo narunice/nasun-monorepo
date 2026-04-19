@@ -12,6 +12,8 @@ export interface ScoreLeaderboardTrader {
   tradeCount: number;
   volumeUsd: string;
   rankChange: number;
+  hasGoogle?: boolean;
+  hasTelegram?: boolean;
 }
 
 export interface ScoreLeaderboardResponse {
