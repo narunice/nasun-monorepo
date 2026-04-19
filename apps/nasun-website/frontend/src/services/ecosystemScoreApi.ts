@@ -152,7 +152,10 @@ export async function getAvailableEcosystemWeeks(): Promise<AvailableEcosystemWe
   if (!API_BASE) return [];
 
   const res = await fetch(`${API_BASE}/ecosystem/leaderboard/weeks`);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`[EcosystemAPI] getAvailableEcosystemWeeks: ${res.status}`);
+    return [];
+  }
 
   const json = await res.json();
   return json.weeks ?? [];

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
 const HIGHLIGHT_DURATION_MS = 6000;
+const DATA_ATTR_RE = /^data-[\w-]+$/;
 
 interface UseHighlightRowOptions {
   dataAttribute: string;
@@ -9,34 +10,59 @@ interface UseHighlightRowOptions {
   setPage: (page: number) => void;
 }
 
+function scrollToRow(dataAttribute: string, id: string): void {
+  const row = document.querySelector(`[${dataAttribute}="${CSS.escape(id)}"]`);
+  if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// Double rAF ensures layout has settled before scrolling.
+function rafScroll(dataAttribute: string, id: string): () => void {
+  let cancelled = false;
+  const raf1 = requestAnimationFrame(() => {
+    if (cancelled) return;
+    requestAnimationFrame(() => {
+      if (cancelled) return;
+      scrollToRow(dataAttribute, id);
+    });
+  });
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(raf1);
+  };
+}
+
 export function useHighlightRow({ dataAttribute, pageSize, page, setPage }: UseHighlightRowOptions) {
+  if (!DATA_ATTR_RE.test(dataAttribute)) {
+    throw new Error(`useHighlightRow: invalid dataAttribute "${dataAttribute}"`);
+  }
+
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [pendingScrollId, setPendingScrollId] = useState<string | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollCancelRef = useRef<(() => void) | null>(null);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      if (scrollCancelRef.current) scrollCancelRef.current();
     };
   }, []);
 
-  // Scroll after page change: triggered by [page, pendingScrollId] - no isLoading dependency
-  // because client-side slicing means the data is already available after page state updates.
+  // Scroll after page change - triggered by page/pendingScrollId state (not isLoading,
+  // since client-side slicing means data is already present after page state updates).
   useEffect(() => {
     if (!pendingScrollId) return;
     const id = pendingScrollId;
-    const timer = setTimeout(() => {
-      const row = document.querySelector(`[${dataAttribute}="${CSS.escape(id)}"]`);
-      if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
-      setPendingScrollId(null);
-    }, 100);
-    return () => clearTimeout(timer);
+    const cancel = rafScroll(dataAttribute, id);
+    scrollCancelRef.current = cancel;
+    setPendingScrollId(null);
+    return cancel;
   }, [page, pendingScrollId, dataAttribute]);
 
   const selectRow = useCallback(
     (id: string, rank: number) => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      if (scrollCancelRef.current) scrollCancelRef.current();
 
       setHighlightedId(id);
 
@@ -45,13 +71,11 @@ export function useHighlightRow({ dataAttribute, pageSize, page, setPage }: UseH
         setPendingScrollId(id);
         setPage(targetPage);
       } else {
-        setTimeout(() => {
-          const row = document.querySelector(`[${dataAttribute}="${CSS.escape(id)}"]`);
-          if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 100);
+        const cancel = rafScroll(dataAttribute, id);
+        scrollCancelRef.current = cancel;
       }
 
-      timeoutRef.current = setTimeout(() => {
+      highlightTimerRef.current = setTimeout(() => {
         setHighlightedId(null);
       }, HIGHLIGHT_DURATION_MS);
     },

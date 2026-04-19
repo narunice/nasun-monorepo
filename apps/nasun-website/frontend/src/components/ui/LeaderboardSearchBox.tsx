@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Search, X, User } from "lucide-react";
 import { Spinner } from "./Spinner";
 
@@ -17,6 +17,10 @@ interface LeaderboardSearchBoxProps<T> {
   onSelect: (result: LeaderboardSearchResult) => void;
   placeholder?: string;
   disabled?: boolean;
+}
+
+function isSafeImageUrl(url: string | null | undefined): url is string {
+  return typeof url === "string" && (url.startsWith("https://") || url.startsWith("http://"));
 }
 
 export function LeaderboardSearchBox<T>({
@@ -39,12 +43,12 @@ export function LeaderboardSearchBox<T>({
     return () => clearTimeout(timer);
   }, [query]);
 
-  const results: LeaderboardSearchResult[] = debouncedQuery.length >= 2
-    ? entries
-        .filter((e) => filterFn(e, debouncedQuery.toLowerCase()))
-        .slice(0, 8)
-        .map(toResult)
-    : [];
+  // Memoize to avoid re-filtering 1000 entries on every render.
+  const results: LeaderboardSearchResult[] = useMemo(() => {
+    if (debouncedQuery.length < 2) return [];
+    const q = debouncedQuery.toLowerCase();
+    return entries.filter((e) => filterFn(e, q)).slice(0, 8).map(toResult);
+  }, [entries, debouncedQuery, filterFn, toResult]);
 
   // Click-outside close
   useEffect(() => {
@@ -87,7 +91,8 @@ export function LeaderboardSearchBox<T>({
     }
   };
 
-  const showDropdown = isOpen && debouncedQuery.length >= 2;
+  // Open dropdown as soon as query reaches 2 chars; show spinner while debounce is pending.
+  const showDropdown = isOpen && query.length >= 2;
   const isSearching = debouncedQuery !== query;
 
   return (
@@ -101,7 +106,7 @@ export function LeaderboardSearchBox<T>({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
-          placeholder={placeholder}
+          placeholder={disabled ? "Loading data..." : placeholder}
           disabled={disabled}
           className="w-full bg-black/60 border border-nasun-c4/50 rounded-sm pl-10 pr-8 py-2 text-sm text-nasun-white placeholder-nasun-white/60 focus:outline-none focus:border-nasun-c7/50 disabled:opacity-50 disabled:cursor-not-allowed"
         />
@@ -125,7 +130,9 @@ export function LeaderboardSearchBox<T>({
           )}
 
           {!isSearching && results.length === 0 && (
-            <div className="px-4 py-3 text-sm text-nasun-white/50">No results found</div>
+            <div className="px-4 py-3 text-sm text-nasun-white/50">
+              No results for &ldquo;{debouncedQuery}&rdquo;
+            </div>
           )}
 
           {!isSearching && results.length > 0 && (
@@ -136,7 +143,7 @@ export function LeaderboardSearchBox<T>({
                     onClick={() => handleSelect(result)}
                     className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-nasun-c5/30 transition-colors text-left"
                   >
-                    {result.profileImageUrl ? (
+                    {isSafeImageUrl(result.profileImageUrl) ? (
                       <img
                         src={result.profileImageUrl}
                         alt=""
@@ -153,7 +160,7 @@ export function LeaderboardSearchBox<T>({
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-nasun-white truncate">{result.primaryLabel}</div>
-                      {result.secondaryLabel && (
+                      {result.secondaryLabel && result.secondaryLabel !== result.primaryLabel && (
                         <div className="text-xs text-nasun-white/50 truncate">{result.secondaryLabel}</div>
                       )}
                     </div>
