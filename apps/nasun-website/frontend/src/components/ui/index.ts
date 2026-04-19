@@ -24,3 +24,4 @@ export * from "./InlineLoading";
 export * from "./Pagination";
 export * from "./CountingNumber";
 export * from "./Spinner";
+export * from "./LeaderboardSearchBox";

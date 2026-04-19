@@ -12,8 +12,10 @@ import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { PageTitle } from "../../components/ui/PageTitle";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
+import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../components/ui/LeaderboardSearchBox";
+import { useHighlightRow } from "../../hooks/useHighlightRow";
 import {
-  getEcosystemLeaderboard,
+  getEcosystemLeaderboardFull,
   getAvailableEcosystemWeeks,
   isEcosystemNewWeekGracePeriod,
   type EcosystemLeaderboardEntry,
@@ -22,19 +24,14 @@ import {
 } from "@/services/ecosystemScoreApi";
 
 const PAGE_SIZE = 50;
+const MAX_RANK = 1000;
 
 const EcosystemLeaderboardPage = () => {
   const [viewMode, setViewMode] = useState<"current" | "past">("current");
-  const [selectedWeekId, setSelectedWeekId] = useState<string | undefined>(
-    undefined,
-  );
-  const [availableWeeks, setAvailableWeeks] = useState<
-    AvailableEcosystemWeek[]
-  >([]);
-  const [response, setResponse] = useState<EcosystemLeaderboardResponse | null>(
-    null,
-  );
-  const [offset, setOffset] = useState(0);
+  const [selectedWeekId, setSelectedWeekId] = useState<string | undefined>(undefined);
+  const [availableWeeks, setAvailableWeeks] = useState<AvailableEcosystemWeek[]>([]);
+  const [response, setResponse] = useState<EcosystemLeaderboardResponse | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +48,7 @@ const EcosystemLeaderboardPage = () => {
     setError(null);
     try {
       const weekId = viewMode === "current" ? undefined : selectedWeekId;
-      const res = await getEcosystemLeaderboard(weekId, PAGE_SIZE, offset);
+      const res = await getEcosystemLeaderboardFull(weekId);
       setResponse(res);
     } catch (err) {
       setError("Failed to load leaderboard. Please try again.");
@@ -59,7 +56,7 @@ const EcosystemLeaderboardPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [viewMode, selectedWeekId, offset]);
+  }, [viewMode, selectedWeekId]);
 
   useEffect(() => {
     fetchData();
@@ -67,20 +64,49 @@ const EcosystemLeaderboardPage = () => {
 
   const handleViewModeChange = (mode: "current" | "past") => {
     setViewMode(mode);
-    setOffset(0);
+    setPage(1);
     if (mode === "past" && pastWeeks.length > 0 && !selectedWeekId) {
       setSelectedWeekId(pastWeeks[0].weekId);
     }
   };
 
-  const entries: EcosystemLeaderboardEntry[] = response?.data ?? [];
-  const total = response?.meta.total ?? 0;
-  const cappedAt = response?.meta.cappedAt ?? total;
-  const displayableTotal = Math.min(total, cappedAt);
+  const allEntries: EcosystemLeaderboardEntry[] = response?.data ?? [];
+  const displayedCount = Math.min(allEntries.length, MAX_RANK);
+  const totalPages = Math.ceil(displayedCount / PAGE_SIZE);
+  const pagedEntries = allEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const inGracePeriod =
     viewMode === "current" && isEcosystemNewWeekGracePeriod(response?.meta);
   const weekStart = response?.meta.weekStart;
   const updatedAt = response?.meta.updatedAt;
+
+  const { highlightedId, selectRow } = useHighlightRow({
+    dataAttribute: "data-identity-id",
+    pageSize: PAGE_SIZE,
+    page,
+    setPage,
+  });
+
+  const filterFn = (entry: EcosystemLeaderboardEntry, query: string): boolean => {
+    const q = query.toLowerCase();
+    return (
+      (entry.xHandle ?? "").toLowerCase().includes(q) ||
+      (entry.displayName ?? "").toLowerCase().includes(q)
+    );
+  };
+
+  const toResult = (entry: EcosystemLeaderboardEntry): LeaderboardSearchResult => ({
+    id: entry.identityId,
+    primaryLabel: entry.displayName ?? entry.xHandle ?? truncateId(entry.identityId),
+    secondaryLabel: entry.xHandle ? `@${entry.xHandle}` : undefined,
+    rank: entry.rank,
+    profileImageUrl: entry.profileImageUrl,
+  });
+
+  const handleUserSelect = (result: LeaderboardSearchResult) => {
+    if (result.rank != null) {
+      selectRow(result.id, result.rank);
+    }
+  };
 
   const colSpan = 4;
 
@@ -146,7 +172,7 @@ const EcosystemLeaderboardPage = () => {
                 value={selectedWeekId ?? pastWeeks[0].weekId}
                 onChange={(e) => {
                   setSelectedWeekId(e.target.value);
-                  setOffset(0);
+                  setPage(1);
                 }}
                 className="text-sm bg-nasun-c6/40 text-nasun-white border border-nasun-c3/20 rounded-sm px-2 py-1.5 focus:outline-none focus:border-nasun-c3/40"
               >
@@ -176,16 +202,27 @@ const EcosystemLeaderboardPage = () => {
             )}
           </div>
 
-          {updatedAt && updatedAt > 0 && (
-            <span className="text-sm text-nasun-white/50">
-              Last Updated{" "}
-              {new Date(updatedAt).toLocaleString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false,
-              })}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Search box */}
+            <LeaderboardSearchBox
+              entries={allEntries}
+              filterFn={filterFn}
+              toResult={toResult}
+              onSelect={handleUserSelect}
+              placeholder="Search by handle or display name..."
+              disabled={loading || allEntries.length === 0}
+            />
+            {updatedAt && updatedAt > 0 && (
+              <span className="text-sm text-nasun-white/50 whitespace-nowrap">
+                Last Updated{" "}
+                {new Date(updatedAt).toLocaleString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Grace period notice */}
@@ -234,7 +271,7 @@ const EcosystemLeaderboardPage = () => {
                       Loading...
                     </td>
                   </tr>
-                ) : entries.length === 0 ? (
+                ) : pagedEntries.length === 0 ? (
                   <tr>
                     <td colSpan={colSpan} className="px-4 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
@@ -257,82 +294,88 @@ const EcosystemLeaderboardPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  entries.map((entry) => (
-                    <tr
-                      key={entry.identityId}
-                      className="border-b border-nasun-c3/15 transition-colors hover:bg-nasun-c3/8"
-                    >
-                      <td className="px-4 py-3 text-nasun-white/90">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className="font-mono">{entry.rank}</span>
-                          {entry.rank <= 3 && (
-                            <span className="text-base leading-none">
-                              {entry.rank === 1
-                                ? "🥇"
-                                : entry.rank === 2
-                                  ? "🥈"
-                                  : "🥉"}
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {entry.profileImageUrl ? (
-                            <img
-                              src={entry.profileImageUrl}
-                              alt=""
-                              className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
-                              referrerPolicy="no-referrer"
-                              crossOrigin="anonymous"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg shrink-0 bg-nasun-c6/60" />
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium text-sm text-nasun-white truncate">
-                                {entry.displayName ??
-                                  (entry.xHandle
-                                    ? `@${entry.xHandle}`
-                                    : truncateId(entry.identityId))}
+                  pagedEntries.map((entry) => {
+                    const isHighlighted = highlightedId === entry.identityId;
+                    return (
+                      <tr
+                        key={entry.identityId}
+                        data-identity-id={entry.identityId}
+                        className={`border-b border-nasun-c3/15 transition-colors hover:bg-nasun-c3/8 ${
+                          isHighlighted ? "bg-nasun-nw2/20 border-l-2 border-nasun-nw1" : ""
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-nasun-white/90">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="font-mono">{entry.rank}</span>
+                            {entry.rank <= 3 && (
+                              <span className="text-base leading-none">
+                                {entry.rank === 1
+                                  ? "🥇"
+                                  : entry.rank === 2
+                                    ? "🥈"
+                                    : "🥉"}
                               </span>
-                              {entry.hasGenesisPass && <GenesisPassBadge />}
-                            </div>
-                            {entry.displayName && entry.xHandle && (
-                              <a
-                                href={`https://x.com/${entry.xHandle}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-nasun-white/50 hover:text-nasun-white/70 truncate block transition-colors"
-                              >
-                                @{entry.xHandle}
-                              </a>
                             )}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {entry.profileImageUrl ? (
+                              <img
+                                src={entry.profileImageUrl}
+                                alt=""
+                                className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
+                                referrerPolicy="no-referrer"
+                                crossOrigin="anonymous"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg shrink-0 bg-nasun-c6/60" />
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium text-sm text-nasun-white truncate">
+                                  {entry.displayName ??
+                                    (entry.xHandle
+                                      ? `@${entry.xHandle}`
+                                      : truncateId(entry.identityId))}
+                                </span>
+                                {entry.hasGenesisPass && <GenesisPassBadge />}
+                              </div>
+                              {entry.displayName && entry.xHandle && (
+                                <a
+                                  href={`https://x.com/${entry.xHandle}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-nasun-white/50 hover:text-nasun-white/70 truncate block transition-colors"
+                                >
+                                  @{entry.xHandle}
+                                </a>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold text-nasun-c3">
-                        {Number(entry.weeklyScore).toLocaleString("en-US", {
-                          minimumFractionDigits: 1,
-                          maximumFractionDigits: 1,
-                        })}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {entry.rankChange > 0 ? (
-                          <span className="text-sm text-emerald-400">
-                            +{entry.rankChange}
-                          </span>
-                        ) : entry.rankChange < 0 ? (
-                          <span className="text-sm text-red-400">
-                            {entry.rankChange}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-nasun-white/40">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-nasun-c3">
+                          {Number(entry.weeklyScore).toLocaleString("en-US", {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1,
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {entry.rankChange > 0 ? (
+                            <span className="text-sm text-emerald-400">
+                              +{entry.rankChange}
+                            </span>
+                          ) : entry.rankChange < 0 ? (
+                            <span className="text-sm text-red-400">
+                              {entry.rankChange}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-nasun-white/40">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -340,26 +383,24 @@ const EcosystemLeaderboardPage = () => {
         )}
 
         {/* Pagination */}
-        {displayableTotal > PAGE_SIZE && (
+        {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm text-nasun-white/50">
-              Showing {offset + 1}-
-              {Math.min(offset + PAGE_SIZE, displayableTotal)} of{" "}
-              {total.toLocaleString("en-US")} participants
-              {cappedAt < total &&
-                ` (top ${cappedAt.toLocaleString("en-US")} shown)`}
+              Showing {(page - 1) * PAGE_SIZE + 1}-
+              {Math.min(page * PAGE_SIZE, displayedCount)} of{" "}
+              {displayedCount.toLocaleString("en-US")} participants (top {MAX_RANK} shown)
             </p>
             <div className="flex gap-2">
               <button
-                disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="px-3 py-1.5 text-sm rounded-sm border border-nasun-c3/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c3/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Prev
               </button>
               <button
-                disabled={offset + PAGE_SIZE >= displayableTotal}
-                onClick={() => setOffset(offset + PAGE_SIZE)}
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 className="px-3 py-1.5 text-sm rounded-sm border border-nasun-c3/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c3/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Next
