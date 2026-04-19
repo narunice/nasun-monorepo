@@ -14,7 +14,7 @@ const PadoScoreLeaderboardPage: React.FC = () => {
           </span>
         </div>
         <PageTitle wrapperClassName="flex flex-col mb-6 md:mb-8 lg:mb-10 xl:mb-12">
-          Pado Score Leaderboard
+          Pado Leaderboard
         </PageTitle>
         <p className="text-base text-nasun-white/80 mb-6 -mt-2">
           Weekly rankings reset every Monday 00:10 UTC. Top traders earn
@@ -25,30 +25,17 @@ const PadoScoreLeaderboardPage: React.FC = () => {
         {/* Points payout explanation */}
         <div className="mt-8 space-y-4">
           <h6 className="text-nasun-white uppercase tracking-wide">
-            How Ecosystem Points Are Awarded
+            How Nasun Points Are Awarded
           </h6>
           <p className="text-base text-nasun-white/80">
             At the end of each week, traders are ranked by their Pado Score and
             receive Ecosystem Points based on their final position.
           </p>
-
-          {/* Genesis Pass 2x banner */}
-          <div className="flex items-center gap-3 ">
-            <span className="text-xl">&#x2728;</span>
-            <div>
-              <span className="text-base font-bold text-pado-4">
-                Genesis Pass Holders
-              </span>
-              <span className="text-base text-nasun-white/80"> receive a </span>
-              <span className="text-base font-bold text-pado-4">
-                2x multiplier
-              </span>
-              <span className="text-base text-nasun-white/80">
-                {" "}
-                on all point payouts.
-              </span>
-            </div>
-          </div>
+          <p className="text-base text-nasun-white/80 mt-4">
+            Pado Score is calculated from trading activity each week: trades,
+            volume, pool diversity, and realized PnL. Scores reset every Monday
+            and do not carry over.
+          </p>
 
           {/* Row 1: Top 3 */}
           <div className="grid grid-cols-3 gap-3">
@@ -109,11 +96,24 @@ const PadoScoreLeaderboardPage: React.FC = () => {
               </div>
             ))}
           </div>
-          <p className="text-base text-nasun-white/80 mt-4">
-            Pado Score is calculated from trading activity each week: trades,
-            volume, pool diversity, and realized PnL. Scores reset every Monday
-            and do not carry over.
-          </p>
+
+          {/* Genesis Pass 2x banner */}
+          <div className="flex items-center gap-3 ">
+            <span className="text-xl">&#x2728;</span>
+            <div>
+              <span className="text-base font-semibold text-nasun-white">
+                Genesis Pass Holders
+              </span>
+              <span className="text-base text-nasun-white/80"> receive a </span>
+              <span className="text-base font-semibold text-nasun-white">
+                2x multiplier
+              </span>
+              <span className="text-base text-nasun-white/80">
+                {" "}
+                on all point payouts.
+              </span>
+            </div>
+          </div>
         </div>
       </SectionLayout>
     </PageLayout>
