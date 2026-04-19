@@ -154,7 +154,8 @@ const AppRoutes = () => {
         <Route path="/wave1/creators-leaderboard" element={<Navigate to="/community/creators-leaderboard" replace />} />
         <Route path="/wave1/creators-leaderboard-guide" element={<Navigate to="/community/creators-leaderboard-guide" replace />} />
         <Route path="/network/governance" element={<Navigate to="/community/governance" replace />} />
-        <Route path="/dev/pado-score-leaderboard" element={<Navigate to="/community/pado-score-leaderboard" replace />} />
+        <Route path="/dev/pado-score-leaderboard" element={<Navigate to="/community/pado-leaderboard" replace />} />
+        <Route path="/community/pado-score-leaderboard" element={<Navigate to="/community/pado-leaderboard" replace />} />
         <Route path="/ecosystem/leaderboard" element={<Navigate to="/community/nasun-ecosystem-leaderboard" replace />} />
 
         {/* Headless WordPress Post Detail Page */}

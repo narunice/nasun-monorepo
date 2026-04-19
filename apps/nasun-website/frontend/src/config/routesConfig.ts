@@ -371,14 +371,14 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.EcosystemLeaderboard,
         },
         {
+          name: "navigation.padoScoreLeaderboard",
+          path: "/community/pado-leaderboard",
+          element: Pages.PadoScoreLeaderboard,
+        },
+        {
           name: "navigation.creatorsLeaderboard",
           path: "/community/creators-leaderboard",
           element: Pages.LeaderboardV3,
-        },
-        {
-          name: "navigation.padoScoreLeaderboard",
-          path: "/community/pado-score-leaderboard",
-          element: Pages.PadoScoreLeaderboard,
         },
         {
           name: "navigation.creatorsLeaderboardGuide",
@@ -716,7 +716,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
   community: {
     "navigation.alliance": "Alliance",
     "navigation.governance": "Governance",
-    "navigation.padoScoreLeaderboard": "Pado Score Leaderboard",
+    "navigation.padoScoreLeaderboard": "Pado Leaderboard",
     "navigation.creatorsLeaderboard": "Creators Leaderboard",
     "navigation.ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",
     "navigation.creatorsLeaderboardGuide": "Creators Leaderboard Guide",
