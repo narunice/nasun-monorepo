@@ -417,6 +417,84 @@ HEALTH_EOF
 - 디스크 (Docker 이미지/볼륨 포함): Threshold 표 참조
 - 메모리/스왑
 
+#### 2d. Pado Bot Wallet Gas Balances (RPC)
+
+봇 지갑은 각 100,000 NASUN으로 pre-funded됩니다. 잔액이 1,500 NASUN 미만이면 보충이 필요합니다.
+private key 없이 주소만으로 RPC 조회합니다.
+
+```bash
+ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+  ec2-user@43.200.67.52 bash -s << 'WALLET_EOF'
+# Locate bots .env (adjust path if deployment location differs)
+BOT_DIR=$(pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+    for a in apps:
+        if a['name'] == 'lp-bot-nbtc':
+            print(a['pm2_env'].get('pm_cwd', ''))
+            break
+except: pass
+" 2>/dev/null)
+
+if [ -z "$BOT_DIR" ]; then
+  echo "BOT_DIR_NOT_FOUND: lp-bot-nbtc not in PM2"
+  exit 0
+fi
+
+# Extract wallet addresses only (no keys printed)
+node --input-type=module << 'NODEEOF'
+import { readFileSync } from 'fs';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
+
+const envFile = process.env.BOT_ENV_FILE || '';
+const markets = ['NBTC', 'NETH', 'NSOL'];
+
+function getAddr(keyStr) {
+  try {
+    const { secretKey } = decodeSuiPrivateKey(keyStr);
+    return Ed25519Keypair.fromSecretKey(secretKey).getPublicKey().toSuiAddress();
+  } catch {
+    try {
+      return Ed25519Keypair.fromSecretKey(Buffer.from(keyStr, 'hex')).getPublicKey().toSuiAddress();
+    } catch { return null; }
+  }
+}
+
+for (const m of markets) {
+  const k = process.env[`LP_PRIVATE_KEY_${m}`] || process.env.LP_PRIVATE_KEY;
+  const addr = k ? getAddr(k) : null;
+  if (addr) console.log(`${m}:${addr}`);
+  else console.log(`${m}:KEY_NOT_SET`);
+}
+NODEEOF
+WALLET_EOF
+```
+
+주소를 얻으면 RPC로 각 잔액을 조회합니다:
+
+```bash
+# For each address obtained above:
+curl -s -m 10 -X POST https://rpc.devnet.nasun.io \
+  -H "Content-Type: application/json" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"suix_getBalance\",\"params\":[\"<ADDRESS>\",\"0x2::sui::SUI\"]}" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); bal=int(d['result']['totalBalance'])/1e9; print(f'{bal:.0f} NASUN')"
+```
+
+판정:
+- >= 5,000 NASUN = OK (충분)
+- 1,500~4,999 NASUN = **WARNING** (보충 권장, watchdog 경고 임박)
+- < 1,500 NASUN = **CRITICAL** (즉시 보충 필요)
+
+잔액 부족 시 조치:
+```bash
+# Prod 서버에서:
+LP_PRIVATE_KEY_SOURCE=<admin_key> pnpm tsx scripts/refill-gas.ts --amount 100000
+```
+
+> Note: Node.js 모듈 경로 오류 시 `cd $BOT_DIR && source .env`로 환경을 직접 로드하거나, PM2에서 실행 중인 봇의 지갑 주소를 수동으로 이 섹션에 기록해두면 이후 체크가 단순해집니다.
+
 #### 2c. Node-3 (54.180.61.196) — Explorer 관련만
 
 Explorer API PM2 프로세스와 nginx만 점검합니다. Fullnode/indexer/PostgreSQL 심층 점검은 devnet health-check에 위임합니다.
@@ -776,6 +854,7 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | P8 | LP Bot 다운 | lp-bot-nbtc/neth/nsol 중 하나 이상 stopped | WARNING | LP 호가 제공 중단. `pm2 restart lp-bot-nbtc` |
 | P9 | TP/SL Keeper 다운 | tpsl-keeper stopped 또는 port 4001 미리스닝 | WARNING | 사용자 TP/SL 주문 미실행. restart 횟수 > 6000은 알려진 이슈 (waiting restart) |
 | P10 | Balance Watchdog 다운 | balance-watchdog stopped | WARNING | 봇 지갑 잔고 자동 충전 중단, 장기적으로 봇 가스 고갈 |
+| P11 | LP Bot 가스 부족 | 봇 지갑 NASUN < 1,500 (WARNING), < 1,000 (봇이 사이클 skip 시작) | WARNING/CRITICAL | `LP_PRIVATE_KEY_SOURCE=<key> pnpm tsx scripts/refill-gas.ts --amount 100000` 실행. 잔액 < 1,000이면 봇이 이미 사이클 건너뜀 |
 
 #### Backup Patterns (B1-B3)
 
@@ -907,7 +986,18 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | PM2 tpsl-keeper (prod) | online/waiting | restarts: 0, mem: 55MB, port 4001 |
 | PM2 balance-watchdog (prod) | online/stopped | restarts: 0, mem: 50MB |
 
-### 9. Daily Local Backups
+### 9. Pado Bot Wallet Gas
+
+| Wallet | Status | Balance | Notes |
+|--------|--------|---------|-------|
+| lp-bot-nbtc | OK/WARN/CRIT | 95,000 NASUN | Address: 0x... |
+| lp-bot-neth | OK/WARN/CRIT | 96,000 NASUN | Address: 0x... |
+| lp-bot-nsol | OK/WARN/CRIT | 97,000 NASUN | Address: 0x... |
+
+Threshold: >= 5,000 OK / 1,500~4,999 WARNING / < 1,500 CRITICAL
+Refill: `LP_PRIVATE_KEY_SOURCE=<key> pnpm tsx scripts/refill-gas.ts --amount 100000`
+
+### 10. Daily Local Backups
 
 | Backup | Status | File | Size | Age |
 |--------|--------|------|------|-----|
@@ -962,6 +1052,7 @@ All systems operational. No issues detected.
 | Explorer API 응답시간 | < 0.5s | 1s+ | 5s+ |
 | PM2 restart (nasun-chat-server) | < 5 | 10+ | 50+ |
 | PM2 메모리 (nasun-chat-server) | < 150MB | 200MB+ | 256MB+ (auto-restart) |
+| LP Bot 지갑 가스 (NASUN) | >= 5,000 | 1,500~4,999 | < 1,500 |
 
 ---
 
