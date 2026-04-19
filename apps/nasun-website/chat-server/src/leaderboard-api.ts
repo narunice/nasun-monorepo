@@ -539,7 +539,7 @@ function handleScoreLeaderboard(
 function handleScoreLeaderboardAlltime(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>,
 ): boolean {
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 1000);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const rows = getScoreLeaderboard(limit, offset);
   const totalTraders = getTotalScoreTraders();
@@ -650,7 +650,7 @@ async function handleInternalWeeklyScores(
 async function handleScoreLeaderboardWeekly(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>, weekId: string,
 ): Promise<void> {
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 500);
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 1000);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const rows = getWeeklyScoreLeaderboard(weekId, limit, offset);
   const totalTraders = getWeeklyScoreCount(weekId);

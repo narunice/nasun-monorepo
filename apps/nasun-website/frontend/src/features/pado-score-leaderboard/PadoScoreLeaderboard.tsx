@@ -1,6 +1,8 @@
 import React from "react";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { DashboardCard } from "../../components/ui/DashboardCard";
+import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../components/ui/LeaderboardSearchBox";
+import { useHighlightRow } from "../../hooks/useHighlightRow";
 import {
   usePadoScoreLeaderboard,
   usePreviousPadoScoreLeaderboard,
@@ -12,7 +14,7 @@ import {
 } from "./usePadoScoreLeaderboard";
 
 const PAGE_SIZE = 50;
-const MAX_RANK = 500;
+const MAX_RANK = 1000;
 
 function abbreviateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -49,9 +51,21 @@ function RankCell({ rank }: { rank: number }) {
   );
 }
 
-function TraderRow({ trader }: { trader: ScoreLeaderboardTrader }) {
+function TraderRow({
+  trader,
+  highlightedId,
+}: {
+  trader: ScoreLeaderboardTrader;
+  highlightedId: string | null;
+}) {
+  const isHighlighted = highlightedId === trader.address;
   return (
-    <tr className="border-b border-pd2/20 transition-colors hover:bg-pd1/25">
+    <tr
+      data-address={trader.address}
+      className={`border-b border-pd2/20 transition-colors hover:bg-pd1/25 ${
+        isHighlighted ? "bg-nasun-nw2/20 border-l-2 border-nasun-nw1" : ""
+      }`}
+    >
       <td className="px-4 py-3 font-mono">
         <RankCell rank={trader.rank} />
       </td>
@@ -138,20 +152,22 @@ function TableHead() {
 function LeaderboardTable({
   traders,
   isLoading,
-  totalTraders,
+  displayedCount,
   totalPages,
   page,
   setPage,
+  highlightedId,
 }: {
   traders: ScoreLeaderboardTrader[];
   isLoading: boolean;
-  totalTraders: number;
+  displayedCount: number;
   totalPages: number;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
+  highlightedId: string | null;
 }) {
   const offset = (page - 1) * PAGE_SIZE;
-  const end = Math.min(offset + PAGE_SIZE, Math.min(totalTraders, MAX_RANK));
+  const end = Math.min(offset + PAGE_SIZE, displayedCount);
 
   return (
     <div className="overflow-x-auto rounded-sm border border-pd2/25 bg-pd1/20">
@@ -164,14 +180,16 @@ function LeaderboardTable({
                   <td colSpan={6} className="h-12 animate-pulse bg-pd1/20" />
                 </tr>
               ))
-            : traders.map((t) => <TraderRow key={t.address} trader={t} />)}
+            : traders.map((t) => (
+                <TraderRow key={t.address} trader={t} highlightedId={highlightedId} />
+              ))}
         </tbody>
       </table>
       {totalPages > 1 && (
         <div className="flex items-center justify-between gap-3 px-4 py-4">
           <span className="text-sm text-pd3">
             Showing {offset + 1}-{end} of{" "}
-            {Math.min(totalTraders, MAX_RANK).toLocaleString("en-US")}{" "}
+            {displayedCount.toLocaleString("en-US")}{" "}
             participants (top {MAX_RANK} shown)
           </span>
           <div className="flex gap-2">
@@ -227,7 +245,9 @@ function PrevWeekSection({
                     <td colSpan={6} className="h-12 animate-pulse bg-pd1/20" />
                   </tr>
                 ))
-              : traders.map((t) => <TraderRow key={t.address} trader={t} />)}
+              : traders.map((t) => (
+                  <TraderRow key={t.address} trader={t} highlightedId={null} />
+                ))}
           </tbody>
         </table>
       </div>
@@ -240,7 +260,6 @@ export function PadoScoreLeaderboard() {
   const [page, setPage] = React.useState(1);
   const [viewMode, setViewMode] = React.useState<"current" | "past">("current");
   const [selectedWeekId, setSelectedWeekId] = React.useState(currentWeekId);
-  const offset = (page - 1) * PAGE_SIZE;
 
   const availableWeeksQuery = useAvailableWeeks();
   const pastWeeks = (availableWeeksQuery.data?.weeks ?? []).filter(
@@ -248,29 +267,53 @@ export function PadoScoreLeaderboard() {
   );
 
   const isCurrentWeek = viewMode === "current";
-  const currentQuery = usePadoScoreLeaderboard(
-    selectedWeekId,
-    PAGE_SIZE,
-    offset,
-  );
-  const inGracePeriod =
-    isCurrentWeek && isNewWeekGracePeriod(currentQuery.data);
+  const currentQuery = usePadoScoreLeaderboard(selectedWeekId);
+  const allTraders = currentQuery.data?.traders ?? [];
+  const inGracePeriod = isCurrentWeek && isNewWeekGracePeriod(currentQuery.data);
   const showNoData =
     !isCurrentWeek &&
     !currentQuery.isLoading &&
-    (currentQuery.data?.traders.length ?? 0) === 0;
-  const prevQuery = usePreviousPadoScoreLeaderboard(
-    inGracePeriod,
-    PAGE_SIZE,
-    0,
-  );
+    allTraders.length === 0;
+
+  const prevQuery = usePreviousPadoScoreLeaderboard(inGracePeriod, PAGE_SIZE, 0);
+
+  const displayedCount = Math.min(allTraders.length, MAX_RANK);
+  const totalPages = Math.ceil(displayedCount / PAGE_SIZE);
+  const pagedTraders = allTraders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const { highlightedId, selectRow } = useHighlightRow({
+    dataAttribute: "data-address",
+    pageSize: PAGE_SIZE,
+    page,
+    setPage,
+  });
+
+  const filterFn = (entry: ScoreLeaderboardTrader, query: string): boolean => {
+    const q = query.toLowerCase();
+    return (
+      entry.address.toLowerCase().includes(q) ||
+      (entry.xHandle ?? "").toLowerCase().includes(q) ||
+      (entry.nickname ?? "").toLowerCase().includes(q)
+    );
+  };
+
+  const toResult = (entry: ScoreLeaderboardTrader): LeaderboardSearchResult => ({
+    id: entry.address,
+    primaryLabel: entry.nickname ?? entry.xHandle ?? abbreviateAddress(entry.address),
+    secondaryLabel: entry.xHandle
+      ? `@${entry.xHandle}`
+      : abbreviateAddress(entry.address),
+    rank: entry.rank,
+    profileImageUrl: entry.profileImageUrl,
+  });
+
+  const handleUserSelect = (result: LeaderboardSearchResult) => {
+    if (result.rank != null) {
+      selectRow(result.id, result.rank);
+    }
+  };
 
   const data = currentQuery.data;
-  const totalTraders = data?.totalTraders ?? 0;
-  const totalPages = Math.min(
-    Math.ceil(totalTraders / PAGE_SIZE),
-    Math.ceil(MAX_RANK / PAGE_SIZE),
-  );
 
   const handleViewModeChange = (mode: "current" | "past") => {
     setViewMode(mode);
@@ -344,16 +387,27 @@ export function PadoScoreLeaderboard() {
             </span>
           )}
         </div>
-        {data && data.updatedAt > 0 && (
-          <span className="text-sm text-pd3">
-            Last Updated{" "}
-            {new Date(data.updatedAt).toLocaleString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            })}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Search box */}
+          <LeaderboardSearchBox
+            entries={allTraders}
+            filterFn={filterFn}
+            toResult={toResult}
+            onSelect={handleUserSelect}
+            placeholder="Search by handle, nickname, or address..."
+            disabled={currentQuery.isLoading || allTraders.length === 0}
+          />
+          {data && data.updatedAt > 0 && (
+            <span className="text-sm text-pd3 whitespace-nowrap">
+              Last Updated{" "}
+              {new Date(data.updatedAt).toLocaleString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              })}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Grace period notice */}
@@ -380,12 +434,13 @@ export function PadoScoreLeaderboard() {
       {/* Current week table (hidden during grace period or when no data) */}
       {!inGracePeriod && !showNoData && (
         <LeaderboardTable
-          traders={data?.traders ?? []}
+          traders={pagedTraders}
           isLoading={currentQuery.isLoading}
-          totalTraders={totalTraders}
+          displayedCount={displayedCount}
           totalPages={totalPages}
           page={page}
           setPage={setPage}
+          highlightedId={highlightedId}
         />
       )}
 
