@@ -51,13 +51,13 @@ export async function findUserBalanceManager(
     // even when the user has hundreds of later transactions.
     const candidateIds: string[] = [];
     const seen = new Set<string>();
-    let cursor: string | null | undefined = null;
+    let cursor: { txDigest: string; eventSeq: string } | null | undefined = null;
     let hasMore = true;
 
     while (hasMore) {
       const result = await client.queryEvents({
         query: { Sender: userAddress },
-        cursor: cursor ?? undefined,
+        cursor: cursor,
         limit: 50,
         order: 'ascending',
       });
