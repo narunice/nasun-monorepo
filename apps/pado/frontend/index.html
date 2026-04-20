@@ -15,7 +15,7 @@
     <!-- Note: X-Frame-Options and frame-ancestors must be set via HTTP headers, not meta tags -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' https://analytics.nasun.io;
+      script-src 'self' https://analytics.nasun.io https://challenges.cloudflare.com;
       worker-src 'self' blob:;
       style-src 'self' 'unsafe-inline' https://use.typekit.net https://p.typekit.net;
       font-src 'self' https://use.typekit.net https://p.typekit.net data:;
@@ -60,7 +60,7 @@
         https://hntjvkuyvk.execute-api.ap-northeast-2.amazonaws.com
         https://prover-dev.mystenlabs.com;
       object-src 'none';
-      frame-src https://accounts.google.com;
+      frame-src https://accounts.google.com https://challenges.cloudflare.com;
       base-uri 'self';
       form-action 'self';
     " />
