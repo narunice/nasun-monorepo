@@ -33,7 +33,8 @@ export function useChat() {
   const isOpen = useChatStore((s) => s.isOpen);
   const rooms = useChatStore((s) => s.rooms);
   const activeRoomId = useChatStore((s) => s.activeRoomId);
-  const roomStates = useChatStore((s) => s.roomStates);
+  // Subscribe only to the active room's state to avoid re-renders when other rooms receive messages
+  const activeRoomState = useChatStore((s) => s.roomStates.get(s.activeRoomId));
   const connectedRef = useRef(false);
 
   const [nickname, setNicknameState] = useState<string | null>(null);
@@ -41,11 +42,9 @@ export function useChat() {
   // If Turnstile is configured, wait for token before connecting
   const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
 
-  // Derived from roomStates
-  const activeRoom = roomStates.get(activeRoomId);
-  const messages = activeRoom?.messages ?? [];
-  const hasMore = activeRoom?.hasMore ?? false;
-  const loaded = activeRoom?.loaded ?? false;
+  const messages = activeRoomState?.messages ?? [];
+  const hasMore = activeRoomState?.hasMore ?? false;
+  const loaded = activeRoomState?.loaded ?? false;
 
   useEffect(() => {
     const walletAddress = user?.walletAddress;
@@ -129,6 +128,13 @@ export function useChat() {
       if (data.rateLimit) setNicknameRateLimit(data.rateLimit);
     };
 
+    const onError = (data: { code: string; message: string }) => {
+      const authCodes = new Set(['AUTH_ERROR', 'SIGN_ERROR', 'NO_SIGNER']);
+      if (authCodes.has(data.code)) {
+        useChatStore.getState().setAuthError(data.message);
+      }
+    };
+
     service.on('message', onMessage);
     service.on('history', onHistory);
     service.on('status', onStatus);
@@ -136,6 +142,7 @@ export function useChat() {
     service.on('rooms_list', onRoomsList);
     service.on('reaction_update', onReactionUpdate);
     service.on('nickname', onNickname);
+    service.on('error', onError);
 
     service.connect(WS_URL, signFn);
     connectedRef.current = true;
@@ -154,6 +161,7 @@ export function useChat() {
       service.off('rooms_list', onRoomsList);
       service.off('reaction_update', onReactionUpdate);
       service.off('nickname', onNickname);
+      service.off('error', onError);
     };
   }, [user?.walletAddress, user?.customDisplayName, user?.twitterHandle, user?.username, turnstileReady]);
 

@@ -84,12 +84,17 @@ export default function ChatWidget() {
   const mentionSoundEnabled = useChatStore((s) => s.mentionSoundEnabled);
   const clearMentions = useChatStore((s) => s.clearMentions);
   const toggleMentionSound = useChatStore((s) => s.toggleMentionSound);
+  const authError = useChatStore((s) => s.authError);
+  const setAuthError = useChatStore((s) => s.setAuthError);
   const currentUserId = useUserStore((s) => s.user?.walletAddress);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<MessageInputHandle>(null);
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+  // Mirror size into ref so drag/resize closures always read the latest value without stale captures
+  const sizeRef = useRef(size);
+  useEffect(() => { sizeRef.current = size; }, [size]);
 
   // Compute panel position (clamp to viewport on small screens)
   const isMobile = typeof window !== "undefined" && window.innerWidth < 480;
@@ -126,38 +131,33 @@ export default function ChatWidget() {
       const panel = panelRef.current;
       if (!panel) return;
       const rect = panel.getBoundingClientRect();
-      dragOffset.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
+      dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const startLeft = rect.left;
+      const startTop = rect.top;
+      const panelW = rect.width;
+      const panelH = rect.height;
+      let finalX = startLeft;
+      let finalY = startTop;
 
       const onMouseMove = (ev: MouseEvent) => {
         if (!isDragging.current) return;
-        const x = Math.max(
-          0,
-          Math.min(
-            window.innerWidth - size.width,
-            ev.clientX - dragOffset.current.x,
-          ),
-        );
-        const y = Math.max(
-          0,
-          Math.min(
-            window.innerHeight - size.height,
-            ev.clientY - dragOffset.current.y,
-          ),
-        );
-        setPosition({ x, y });
+        finalX = Math.max(0, Math.min(window.innerWidth - panelW, ev.clientX - dragOffset.current.x));
+        finalY = Math.max(0, Math.min(window.innerHeight - panelH, ev.clientY - dragOffset.current.y));
+        // Use CSS transform to avoid triggering React re-renders during drag
+        panel.style.transform = `translate(${finalX - startLeft}px, ${finalY - startTop}px)`;
       };
       const onMouseUp = () => {
         isDragging.current = false;
+        panel.style.transform = '';
+        // Commit final position to store only once on release
+        setPosition({ x: finalX, y: finalY });
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
       };
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     },
-    [size.width, size.height, setPosition],
+    [setPosition],
   );
 
   // ===== Resize (all edges and corners) =====
@@ -178,46 +178,49 @@ export default function ChatWidget() {
       const startLeft = rect.left;
       const startTop = rect.top;
 
+      // Switch to explicit left/top positioning so imperative style writes are consistent
+      panel.style.right = '';
+      panel.style.bottom = '';
+      panel.style.left = startLeft + 'px';
+      panel.style.top = startTop + 'px';
+      panel.style.width = startW + 'px';
+      panel.style.height = startH + 'px';
+
+      let finalW = startW, finalH = startH;
+      let finalX = startLeft, finalY = startTop;
+
       const onMouseMove = (ev: MouseEvent) => {
         const dx = ev.clientX - startX;
         const dy = ev.clientY - startY;
 
-        let newW = startW;
-        let newH = startH;
-        let newX = startLeft;
-        let newY = startTop;
+        let newW = startW, newH = startH, newX = startLeft, newY = startTop;
 
-        // Horizontal
         if (edge.includes("e")) newW = startW + dx;
-        if (edge.includes("w")) {
-          newW = startW - dx;
-          newX = startLeft + dx;
-        }
-        // Vertical
+        if (edge.includes("w")) { newW = startW - dx; newX = startLeft + dx; }
         if (edge.includes("s")) newH = startH + dy;
-        if (edge.includes("n")) {
-          newH = startH - dy;
-          newY = startTop + dy;
-        }
+        if (edge.includes("n")) { newH = startH - dy; newY = startTop + dy; }
 
-        // Clamp size
-        const clampedW = Math.max(
-          MIN_SIZE.width,
-          Math.min(MAX_SIZE.width, newW),
-        );
-        const clampedH = Math.max(
-          MIN_SIZE.height,
-          Math.min(MAX_SIZE.height, newH),
-        );
+        const clampedW = Math.max(MIN_SIZE.width, Math.min(MAX_SIZE.width, newW));
+        const clampedH = Math.max(MIN_SIZE.height, Math.min(MAX_SIZE.height, newH));
 
-        // Adjust position if clamped on left/top edges
         if (edge.includes("w")) newX = startLeft + startW - clampedW;
         if (edge.includes("n")) newY = startTop + startH - clampedH;
 
-        setSize({ width: clampedW, height: clampedH });
-        setPosition({ x: Math.max(0, newX), y: Math.max(0, newY) });
+        finalW = clampedW;
+        finalH = clampedH;
+        finalX = Math.max(0, newX);
+        finalY = Math.max(0, newY);
+
+        // Apply directly to DOM to avoid React re-renders during resize
+        panel.style.width = finalW + 'px';
+        panel.style.height = finalH + 'px';
+        panel.style.left = finalX + 'px';
+        panel.style.top = finalY + 'px';
       };
       const onMouseUp = () => {
+        // Commit final size and position to store only once on release
+        setSize({ width: finalW, height: finalH });
+        setPosition({ x: finalX, y: finalY });
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
       };
@@ -455,6 +458,20 @@ export default function ChatWidget() {
             onMention={(name) => inputRef.current?.insertMention(name)}
             currentUserId={currentUserId}
           />
+
+          {/* Auth error banner */}
+          {authError && (
+            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-red-500/10 border-t border-red-500/20 text-xs text-red-400 shrink-0">
+              <span className="truncate">{authError}</span>
+              <button
+                onClick={() => setAuthError(null)}
+                className="shrink-0 text-red-400/60 hover:text-red-400 transition-colors leading-none"
+                aria-label="Dismiss"
+              >
+                &times;
+              </button>
+            </div>
+          )}
 
           {/* Input */}
           <MessageInput

@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Avatar from 'boring-avatars';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
 import type { ChatMessage } from '../../../lib/chat-service';
 import ReactionBar, { REACTION_CODES, REACTION_EMOJI } from './ReactionBar';
 
-function ChatAvatar({ address, imageUrl, size = 24 }: {
+// Session-scoped blacklist for failed avatar URLs. Cleared on page reload.
+const failedUrls = new Set<string>();
+
+const ChatAvatar = memo(function ChatAvatar({ address, imageUrl, size = 24 }: {
   address: string; imageUrl?: string | null; size?: number;
 }) {
   const [imgError, setImgError] = useState(false);
 
-  if (imageUrl && !imgError) {
+  if (imageUrl && !imgError && !failedUrls.has(imageUrl)) {
     return (
       <img
         src={imageUrl}
@@ -20,7 +23,10 @@ function ChatAvatar({ address, imageUrl, size = 24 }: {
         style={{ width: size, height: size }}
         referrerPolicy="no-referrer"
         crossOrigin="anonymous"
-        onError={() => setImgError(true)}
+        onError={() => {
+          failedUrls.add(imageUrl);
+          setImgError(true);
+        }}
       />
     );
   }
@@ -29,7 +35,7 @@ function ChatAvatar({ address, imageUrl, size = 24 }: {
       <Avatar name={address} variant="beam" size={size} />
     </div>
   );
-}
+});
 
 // Highlight @mentions in message content
 // Format: @[Display Name] for names with spaces, @nickname for simple names
@@ -66,6 +72,105 @@ function formatTime(ts: number): string {
   });
 }
 
+interface MessageItemProps {
+  msg: ChatMessage;
+  isMine: boolean;
+  onToggleReaction: (messageId: number, emojiCode: string) => void;
+  onMention?: (name: string) => void;
+}
+
+function areMessageItemPropsEqual(prev: MessageItemProps, next: MessageItemProps): boolean {
+  return (
+    prev.msg.id === next.msg.id &&
+    prev.msg.reactions === next.msg.reactions &&
+    prev.msg.myReaction === next.msg.myReaction &&
+    prev.isMine === next.isMine &&
+    prev.onToggleReaction === next.onToggleReaction &&
+    prev.onMention === next.onMention
+  );
+}
+
+const MessageItem = memo(function MessageItem({ msg, isMine, onToggleReaction, onMention }: MessageItemProps) {
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number; right: number; isMine: boolean } | null>(null);
+  const hasReactions = msg.reactions && Object.keys(msg.reactions).length > 0;
+
+  return (
+    <div className={`group py-0.5 flex gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
+      <div className="shrink-0 mt-0.5">
+        <ChatAvatar address={msg.sender} imageUrl={msg.senderProfileImageUrl} size={24} />
+      </div>
+      <div className={`flex-1 min-w-0 ${isMine ? 'text-right' : ''}`}>
+        <div className={`flex items-baseline gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
+          <span className={`inline-flex items-center gap-1 shrink-0 ${isMine ? '' : 'cursor-pointer'}`}>
+            {msg.senderBadge === 'GP' && <GenesisPassBadge />}
+            <span
+              className={`text-xs font-medium ${isMine ? 'text-nasun-c4' : 'text-white/70 hover:text-white hover:underline'}`}
+              onClick={!isMine && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(msg)); } : undefined}
+            >
+              {formatSender(msg)}
+            </span>
+          </span>
+          <span className="text-[10px] text-white/20 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            {formatTime(msg.timestamp)}
+          </span>
+        </div>
+        <div className={`relative max-w-[85%] ${isMine ? 'ml-auto flex flex-col items-end' : ''}`}>
+          <div
+            onClick={(e) => {
+              if (isPickerOpen) { setIsPickerOpen(false); setPickerPos(null); return; }
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              setPickerPos({ top: rect.top, left: rect.left, right: window.innerWidth - rect.right, isMine });
+              setIsPickerOpen(true);
+            }}
+            className={`text-sm break-words leading-relaxed cursor-pointer ${isMine ? 'w-fit text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90 hover:bg-white/5 rounded-lg px-1 -mx-1'}`}
+          >
+            {renderContent(msg.content)}
+          </div>
+          {isPickerOpen && pickerPos && (
+            <>
+              <div className="fixed inset-0 z-[55]" onClick={() => { setIsPickerOpen(false); setPickerPos(null); }} />
+              <div
+                className="fixed z-[56] p-1.5 bg-nasun-black border border-white/15 rounded-lg shadow-xl"
+                style={{
+                  bottom: window.innerHeight - pickerPos.top + 4,
+                  ...(pickerPos.isMine ? { right: pickerPos.right } : { left: pickerPos.left }),
+                  display: 'grid', gridTemplateColumns: 'repeat(7, 1.75rem)', gap: '0.25rem',
+                }}
+              >
+                {REACTION_CODES.map((code) => (
+                  <button
+                    key={code}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleReaction(msg.id, code);
+                      setIsPickerOpen(false);
+                    }}
+                    className={`w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 transition-colors text-base ${
+                      msg.myReaction === code ? 'bg-nasun-c4/20' : ''
+                    }`}
+                  >
+                    {REACTION_EMOJI[code]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {hasReactions && (
+            <div className={`mt-0.5 ${isMine ? 'flex justify-end' : ''}`}>
+              <ReactionBar
+                reactions={msg.reactions!}
+                myReaction={msg.myReaction}
+                onToggle={(code) => onToggleReaction(msg.id, code)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}, areMessageItemPropsEqual);
+
 interface MessageListProps {
   messages: ChatMessage[];
   hasMore: boolean;
@@ -79,8 +184,9 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
-  const [pickerMsgId, setPickerMsgId] = useState<number | null>(null);
-  const [pickerPos, setPickerPos] = useState<{ top: number; left: number; right: number; isMine: boolean } | null>(null);
+
+  const handleToggleReaction = useCallback(onToggleReaction, [onToggleReaction]);
+  const handleMention = useCallback((name: string) => onMention?.(name), [onMention]);
 
   useEffect(() => {
     if (isNearBottomRef.current) {
@@ -119,93 +225,21 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
       )}
 
       {messages.map((msg) => {
-        const isSystem = msg.messageType === 'system';
-        const isMine = msg.sender === currentUserId;
-        const hasReactions = msg.reactions && Object.keys(msg.reactions).length > 0;
-
-        if (isSystem) {
+        if (msg.messageType === 'system') {
           return (
             <div key={msg.id} className="text-center text-xs text-white/30 py-1">
               {msg.content}
             </div>
           );
         }
-
-        const showPicker = pickerMsgId === msg.id;
-
         return (
-          <div key={msg.id} className={`group py-0.5 flex gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
-            <div className="shrink-0 mt-0.5">
-              <ChatAvatar address={msg.sender} imageUrl={msg.senderProfileImageUrl} size={24} />
-            </div>
-            <div className={`flex-1 min-w-0 ${isMine ? 'text-right' : ''}`}>
-            <div className={`flex items-baseline gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
-              <span className={`inline-flex items-center gap-1 shrink-0 ${isMine ? '' : 'cursor-pointer'}`}>
-                {msg.senderBadge === 'GP' && <GenesisPassBadge />}
-                <span
-                  className={`text-xs font-medium ${isMine ? 'text-nasun-c4' : 'text-white/70 hover:text-white hover:underline'}`}
-                  onClick={!isMine && onMention ? (e) => { e.stopPropagation(); onMention(formatSender(msg)); } : undefined}
-                >
-                  {formatSender(msg)}
-                </span>
-              </span>
-              <span className="text-[10px] text-white/20 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                {formatTime(msg.timestamp)}
-              </span>
-            </div>
-            <div className={`relative max-w-[85%] ${isMine ? 'ml-auto flex flex-col items-end' : ''}`}>
-              <div
-                onClick={(e) => {
-                  if (showPicker) { setPickerMsgId(null); setPickerPos(null); return; }
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  setPickerPos({ top: rect.top, left: rect.left, right: window.innerWidth - rect.right, isMine });
-                  setPickerMsgId(msg.id);
-                }}
-                className={`text-sm break-words leading-relaxed cursor-pointer ${isMine ? 'w-fit text-white bg-nasun-c4/20 rounded-lg px-2.5 py-1' : 'text-white/90 hover:bg-white/5 rounded-lg px-1 -mx-1'}`}
-              >
-                {renderContent(msg.content)}
-              </div>
-              {showPicker && pickerPos && (
-                <>
-                  <div className="fixed inset-0 z-[55]" onClick={() => { setPickerMsgId(null); setPickerPos(null); }} />
-                  <div
-                    className="fixed z-[56] p-1.5 bg-nasun-black border border-white/15 rounded-lg shadow-xl"
-                    style={{
-                      bottom: window.innerHeight - pickerPos.top + 4,
-                      ...(pickerPos.isMine ? { right: pickerPos.right } : { left: pickerPos.left }),
-                      display: 'grid', gridTemplateColumns: 'repeat(7, 1.75rem)', gap: '0.25rem',
-                    }}
-                  >
-                    {REACTION_CODES.map((code) => (
-                      <button
-                        key={code}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleReaction(msg.id, code);
-                          setPickerMsgId(null);
-                        }}
-                        className={`w-7 h-7 flex items-center justify-center rounded hover:bg-white/10 transition-colors text-base ${
-                          msg.myReaction === code ? 'bg-nasun-c4/20' : ''
-                        }`}
-                      >
-                        {REACTION_EMOJI[code]}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              {hasReactions && (
-                <div className={`mt-0.5 ${isMine ? 'flex justify-end' : ''}`}>
-                  <ReactionBar
-                    reactions={msg.reactions!}
-                    myReaction={msg.myReaction}
-                    onToggle={(code) => onToggleReaction(msg.id, code)}
-                  />
-                </div>
-              )}
-            </div>
-            </div>
-          </div>
+          <MessageItem
+            key={msg.id}
+            msg={msg}
+            isMine={msg.sender === currentUserId}
+            onToggleReaction={handleToggleReaction}
+            onMention={handleMention}
+          />
         );
       })}
 

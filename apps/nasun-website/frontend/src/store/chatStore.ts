@@ -23,6 +23,9 @@ interface ChatState {
   position: { x: number; y: number } | null; // null = default bottom-right
   size: { width: number; height: number };
 
+  // Auth error from WebSocket handshake (sign failure, bot detection, etc.)
+  authError: string | null;
+
   // Actions
   setRooms: (rooms: RoomInfo[]) => void;
   setActiveRoomId: (id: number) => void;
@@ -39,6 +42,7 @@ interface ChatState {
   addMention: () => void;
   clearMentions: () => void;
   toggleMentionSound: () => void;
+  setAuthError: (error: string | null) => void;
 
   // Derived
   activeMessages: () => ChatMessage[];
@@ -73,6 +77,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   mentionSoundEnabled: true,
   position: null,
   size: DEFAULT_SIZE,
+  authError: null,
 
   setRooms: (rooms) => set({ rooms }),
 
@@ -131,6 +136,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addMention: () => set((state) => ({ mentionCount: state.mentionCount + 1 })),
   clearMentions: () => set({ mentionCount: 0 }),
   toggleMentionSound: () => set((state) => ({ mentionSoundEnabled: !state.mentionSoundEnabled })),
+  setAuthError: (authError) => set({ authError }),
   setPosition: (position) => set({ position }),
   setSize: (size) => set({
     size: {
