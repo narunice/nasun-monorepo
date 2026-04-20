@@ -25,6 +25,7 @@ import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useSnapshotHistory } from "@/hooks/useSnapshotHistory";
 import { useQuery } from "@tanstack/react-query";
 import { OuterBox, Spinner } from "@/components/ui";
+import { ScoreUnavailableFallback } from "@/sections/myAccount/components/ScoreUnavailableFallback";
 import {
   getBonusHistory,
   type SnapshotHistoryEntry,
@@ -205,7 +206,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
   const identityId = user?.identityId;
   const [days, setDays] = useState<DaysOption>(30);
 
-  const { score, isLoading: scoreLoading } = useEcosystemScore(identityId);
+  const { score, isLoading: scoreLoading, isError: scoreError } = useEcosystemScore(identityId);
   const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
     identityId,
     days,
@@ -344,6 +345,8 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
         <div className="flex h-32 items-center justify-center">
           <Spinner />
         </div>
+      ) : scoreError && !score ? (
+        <ScoreUnavailableFallback />
       ) : (
         <>
           {/* Score Overview */}
