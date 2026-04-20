@@ -1,0 +1,604 @@
+---
+name: nasun-stats
+description: Nasun 전체 현황 통계를 단일 실행으로 추출합니다. DynamoDB 소셜 연결 스냅샷 + 날짜별 DAU/traders/gamers/verified/social-breakdown/mission 시계열 CSV를 생성합니다. Lambda 한도 우회, DB 직접 쿼리 방식. "nasun stats", "전체 통계", "현황 보고", "통합 통계" 등의 요청에 사용합니다.
+argument-hint: "[YYYY-MM-DD to YYYY-MM-DD]"
+---
+
+# Nasun Stats
+
+Nasun 전체 현황을 단일 실행으로 추출합니다.
+
+## 출력 파일 2개
+
+- `stats/nasun-stats-snapshot-YYYY-MM-DD.txt` - 실행 시점 스냅샷 (DAA 요약 + DynamoDB 소셜 현황 + 오늘 신규 유입 품질 + 소셜 유저 top 활동)
+- `stats/nasun-stats-YYYY-MM-DD.csv` - 날짜별 시계열
+
+CSV 컬럼:
+```
+date,
+dau, new_addresses, returning_addresses, returning_pct,
+unique_traders, unique_gamers,
+verified_unique_traders, verified_unique_gamers,
+dau_x_social, dau_google_social, dau_telegram_social, dau_any_social, dau_no_social,
+mission_1, mission_2, mission_3, mission_4, mission_5, mission_6plus
+```
+
+Daily mission 7종: `faucet`, `wallet-transfer`, `pado-dex`, `pado-scratchcard`, `pado-games`, `pado-lottery`, `chat`
+
+`new_verified_rate` 및 소셜 유저 top 활동은 snapshot.txt에만 포함한다.
+
+## $ARGUMENTS 처리
+
+| 입력 | 동작 |
+|------|------|
+| (없음) | 전체 기간 (2026-03-05 ~ 오늘) |
+| `YYYY-MM-DD to YYYY-MM-DD` | 해당 기간만 추출 |
+
+## 실행
+
+```bash
+set -euo pipefail
+
+ARGS="$ARGUMENTS"
+if echo "$ARGS" | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2} to [0-9]{4}-[0-9]{2}-[0-9]{2}'; then
+  DATE_FROM=$(echo "$ARGS" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | head -1)
+  DATE_TO=$(echo "$ARGS" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | tail -1)
+else
+  DATE_FROM="2026-03-05"
+  DATE_TO=$(date +%Y-%m-%d)
+fi
+
+TODAY=$(date +%Y-%m-%d)
+SSH_KEY=~/.ssh/.awskey/nasun-devnet-key.pem
+SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+NODE3="ubuntu@54.180.61.196"
+
+mkdir -p stats
+
+SNAPSHOT_FILE="stats/nasun-stats-snapshot-$TODAY.txt"
+CSV_FILE="stats/nasun-stats-$TODAY.csv"
+
+echo "=== Step 1: DynamoDB scan (24h cache check) ==="
+
+CACHED=$(find /tmp/nasun_wallets_any_*.txt -mmin -1440 2>/dev/null | sort -r | head -1 || true)
+if [[ -n "$CACHED" ]]; then
+  TS=$(echo "$CACHED" | grep -oE '[0-9]+' | tail -1)
+  WALLET_ANY="/tmp/nasun_wallets_any_$TS.txt"
+  WALLET_X="/tmp/nasun_wallets_x_$TS.txt"
+  WALLET_G="/tmp/nasun_wallets_google_$TS.txt"
+  WALLET_TG="/tmp/nasun_wallets_telegram_$TS.txt"
+  echo "Cache hit: TS=$TS"
+else
+  TS=$(date +%s)
+  WALLET_ANY="/tmp/nasun_wallets_any_$TS.txt"
+  WALLET_X="/tmp/nasun_wallets_x_$TS.txt"
+  WALLET_G="/tmp/nasun_wallets_google_$TS.txt"
+  WALLET_TG="/tmp/nasun_wallets_telegram_$TS.txt"
+  echo "Running DynamoDB scan -> TS=$TS"
+fi
+
+python3 << PYEOF
+import subprocess, json, sys, os
+
+TS = "$TS"
+WALLET_ANY  = f"/tmp/nasun_wallets_any_{TS}.txt"
+WALLET_X    = f"/tmp/nasun_wallets_x_{TS}.txt"
+WALLET_G    = f"/tmp/nasun_wallets_google_{TS}.txt"
+WALLET_TG   = f"/tmp/nasun_wallets_telegram_{TS}.txt"
+
+already_cached = os.path.exists(WALLET_ANY)
+
+def scan_all():
+    items, last_key = [], None
+    base = [
+        "aws", "dynamodb", "scan",
+        "--table-name", "UserProfiles",
+        "--profile", "nasun-prod",
+        "--region", "ap-northeast-2",
+        "--projection-expression",
+        "identityId, walletAddress, #p, twitterHandle, linkedAccounts, telegramUserId, isTelegramMember",
+        "--expression-attribute-names", '{"#p":"provider"}',
+        "--output", "json",
+    ]
+    while True:
+        cmd = base + (["--exclusive-start-key", json.dumps(last_key)] if last_key else [])
+        data = json.loads(subprocess.run(cmd, capture_output=True, text=True).stdout)
+        items.extend(data.get("Items", []))
+        last_key = data.get("LastEvaluatedKey")
+        if not last_key:
+            break
+    return items
+
+if already_cached:
+    counts = {}
+    for name, path in [("any", WALLET_ANY), ("x", WALLET_X), ("google", WALLET_G), ("telegram", WALLET_TG)]:
+        with open(path) as f:
+            counts[name] = sum(1 for _ in f)
+    print(f"[Cache] any={counts['any']}  x={counts['x']}  google={counts['google']}  telegram={counts['telegram']}")
+    with open("/tmp/nasun_snapshot_data.txt", "w") as f:
+        f.write(f"CACHED\n{counts['any']}\n")
+    sys.exit(0)
+
+print("Scanning DynamoDB UserProfiles...")
+items = scan_all()
+
+twitter_handles, google_emails, telegram_ids = set(), set(), set()
+wallets_any = set()
+wallets_x = set()
+wallets_google = set()
+wallets_telegram = set()
+multi_social_wallets = set()
+wallet_identities = 0
+
+for item in items:
+    prov = item.get("provider", {}).get("S", "")
+    if prov == "Twitter":
+        continue
+    wallet_identities += 1
+    wallet = item.get("walletAddress", {}).get("S", "")
+    if not wallet:
+        continue
+    th    = item.get("twitterHandle", {}).get("S", "")
+    tg_id = item.get("telegramUserId", {}).get("S", "")
+    tg_member = item.get("isTelegramMember", {}).get("BOOL", False)
+    la    = item.get("linkedAccounts", {}).get("M", {})
+    g_email = la.get("google", {}).get("M", {}).get("email", {}).get("S", "")
+
+    has_x  = bool(th)
+    has_g  = bool(g_email)
+    has_tg = bool(tg_id and tg_member)
+
+    if has_x:
+        twitter_handles.add(th)
+        wallets_x.add(wallet)
+    if has_g:
+        google_emails.add(g_email)
+        wallets_google.add(wallet)
+    if has_tg:
+        telegram_ids.add(tg_id)
+        wallets_telegram.add(wallet)
+    social_count = sum([has_x, has_g, has_tg])
+    if social_count >= 1:
+        wallets_any.add(wallet)
+    if social_count >= 2:
+        multi_social_wallets.add(wallet)
+
+total      = wallet_identities
+x_count    = len(twitter_handles)
+g_count    = len(google_emails)
+tg_count   = len(telegram_ids)
+union_count = len(wallets_any)
+multi_count = len(multi_social_wallets)
+
+def pct(n, d): return f"{n/d*100:.1f}%" if d else "N/A"
+print(f"Total: {total:,}  X: {x_count:,}  Google: {g_count:,}  Telegram: {tg_count:,}  Any: {union_count:,}  Multi2+: {multi_count:,}")
+
+for path, wallet_set in [
+    (WALLET_ANY,  wallets_any),
+    (WALLET_X,    wallets_x),
+    (WALLET_G,    wallets_google),
+    (WALLET_TG,   wallets_telegram),
+]:
+    with open(path, "w") as f:
+        f.write("\n".join(wallet_set) + "\n")
+
+with open("/tmp/nasun_snapshot_data.txt", "w") as f:
+    f.write(f"FRESH\n{total}\n{x_count}\n{g_count}\n{tg_count}\n{union_count}\n{multi_count}\n")
+    f.write(f"{pct(x_count,total)}\n{pct(g_count,total)}\n{pct(tg_count,total)}\n{pct(union_count,total)}\n{pct(multi_count,total)}\n")
+
+print(f"Wallet files written: any={union_count}  x={len(wallets_x)}  google={len(wallets_google)}  telegram={len(wallets_telegram)}")
+PYEOF
+
+echo "=== Step 2: SCP 4 wallet files to node-3 ==="
+
+for WFILE in \
+  "/tmp/nasun_wallets_any_$TS.txt" \
+  "/tmp/nasun_wallets_x_$TS.txt" \
+  "/tmp/nasun_wallets_google_$TS.txt" \
+  "/tmp/nasun_wallets_telegram_$TS.txt"
+do
+  WBASE=$(basename "$WFILE")
+  scp $SSH_OPTS "$WFILE" "$NODE3:/tmp/$WBASE"
+  LOCAL_L=$(wc -l < "$WFILE")
+  REMOTE_L=$(ssh $SSH_OPTS "$NODE3" "wc -l < /tmp/$WBASE")
+  [[ "$LOCAL_L" -lt 1 ]] && { echo "ERROR: $WBASE is empty" >&2; exit 1; }
+  [[ "$LOCAL_L" -ne "$REMOTE_L" ]] && { echo "ERROR: mismatch $WBASE local=$LOCAL_L remote=$REMOTE_L" >&2; exit 1; }
+  echo "  OK $WBASE ($LOCAL_L wallets)"
+done
+
+echo "=== Step 3: psql - main daily stats ==="
+
+# $DATE_FROM / $DATE_TO / $TS 는 로컬 셸 변수로 heredoc에서 확장됨 (의도된 동작)
+# 모든 TEMP TABLE + SELECT 를 단일 psql 세션에서 실행
+ssh $SSH_OPTS "$NODE3" "sudo -u postgres psql -d nasun_points -q -t -A -F','" << SQLEOF > /tmp/nasun_daily_raw.csv
+CREATE TEMP TABLE verified_wallets   (wallet_address TEXT PRIMARY KEY);
+CREATE TEMP TABLE x_wallets          (wallet_address TEXT PRIMARY KEY);
+CREATE TEMP TABLE google_wallets     (wallet_address TEXT PRIMARY KEY);
+CREATE TEMP TABLE telegram_wallets   (wallet_address TEXT PRIMARY KEY);
+COPY verified_wallets  (wallet_address) FROM '/tmp/nasun_wallets_any_$TS.txt';
+COPY x_wallets         (wallet_address) FROM '/tmp/nasun_wallets_x_$TS.txt';
+COPY google_wallets    (wallet_address) FROM '/tmp/nasun_wallets_google_$TS.txt';
+COPY telegram_wallets  (wallet_address) FROM '/tmp/nasun_wallets_telegram_$TS.txt';
+WITH
+date_series AS (
+  SELECT generate_series(
+    '$DATE_FROM'::date, '$DATE_TO'::date, '1 day'::interval
+  )::date AS day
+),
+onchain AS (
+  SELECT wallet_address, tx_timestamp::date AS day
+  FROM activity_points
+  WHERE category NOT IN (
+    'faucet','chat','daily-mission','ecosystem-passive',
+    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
+    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+  )
+  AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+),
+first_seen AS (
+  SELECT wallet_address, MIN(tx_timestamp::date) AS first_day
+  FROM activity_points
+  WHERE category NOT IN (
+    'faucet','chat','daily-mission','ecosystem-passive',
+    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
+    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+  )
+  GROUP BY wallet_address
+),
+daily_dau AS (
+  SELECT day, COUNT(DISTINCT wallet_address) AS dau FROM onchain GROUP BY day
+),
+new_per_day AS (
+  SELECT first_day AS day, COUNT(*) AS new_addresses FROM first_seen
+  WHERE first_day BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY first_day
+),
+traders AS (
+  SELECT tx_timestamp::date AS day, COUNT(DISTINCT wallet_address) AS unique_traders
+  FROM activity_points
+  WHERE category = 'pado-dex'
+  AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+gamers AS (
+  SELECT tx_timestamp::date AS day, COUNT(DISTINCT wallet_address) AS unique_gamers
+  FROM activity_points
+  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard')
+  AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+vtraders AS (
+  SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS verified_unique_traders
+  FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
+  WHERE ap.category = 'pado-dex'
+  AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+vgamers AS (
+  SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS verified_unique_gamers
+  FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
+  WHERE ap.category IN ('pado-lottery','pado-games','pado-scratchcard')
+  AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+dau_x AS (
+  SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_x_social
+  FROM activity_points ap JOIN x_wallets xw ON ap.wallet_address = xw.wallet_address
+  WHERE ap.category NOT IN (
+    'faucet','chat','daily-mission','ecosystem-passive',
+    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
+    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+  )
+  AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+dau_google AS (
+  SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_google_social
+  FROM activity_points ap JOIN google_wallets gw ON ap.wallet_address = gw.wallet_address
+  WHERE ap.category NOT IN (
+    'faucet','chat','daily-mission','ecosystem-passive',
+    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
+    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+  )
+  AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+dau_telegram AS (
+  SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_telegram_social
+  FROM activity_points ap JOIN telegram_wallets tw ON ap.wallet_address = tw.wallet_address
+  WHERE ap.category NOT IN (
+    'faucet','chat','daily-mission','ecosystem-passive',
+    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
+    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+  )
+  AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+dau_any AS (
+  SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_any_social
+  FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
+  WHERE ap.category NOT IN (
+    'faucet','chat','daily-mission','ecosystem-passive',
+    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
+    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+  )
+  AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1
+),
+mission_per_user AS (
+  SELECT ap.wallet_address, ap.tx_timestamp::date AS day,
+    COUNT(DISTINCT ap.category) AS missions_done
+  FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
+  WHERE ap.category IN ('faucet','wallet-transfer','pado-dex','pado-scratchcard','pado-games','pado-lottery','chat')
+  AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY 1, 2
+),
+missions AS (
+  SELECT day,
+    COUNT(*) FILTER (WHERE missions_done = 1) AS mission_1,
+    COUNT(*) FILTER (WHERE missions_done = 2) AS mission_2,
+    COUNT(*) FILTER (WHERE missions_done = 3) AS mission_3,
+    COUNT(*) FILTER (WHERE missions_done = 4) AS mission_4,
+    COUNT(*) FILTER (WHERE missions_done = 5) AS mission_5,
+    COUNT(*) FILTER (WHERE missions_done >= 6) AS mission_6plus
+  FROM mission_per_user GROUP BY day
+)
+SELECT
+  ds.day,
+  COALESCE(d.dau, 0),
+  COALESCE(n.new_addresses, 0),
+  COALESCE(d.dau, 0) - COALESCE(n.new_addresses, 0),
+  ROUND((COALESCE(d.dau,0) - COALESCE(n.new_addresses,0))::numeric / NULLIF(COALESCE(d.dau,0),0) * 100, 1),
+  COALESCE(t.unique_traders, 0),
+  COALESCE(g.unique_gamers, 0),
+  COALESCE(vt.verified_unique_traders, 0),
+  COALESCE(vg.verified_unique_gamers, 0),
+  COALESCE(dx.dau_x_social, 0),
+  COALESCE(dg.dau_google_social, 0),
+  COALESCE(dtg.dau_telegram_social, 0),
+  COALESCE(da.dau_any_social, 0),
+  COALESCE(d.dau, 0) - COALESCE(da.dau_any_social, 0),
+  COALESCE(m.mission_1, 0),
+  COALESCE(m.mission_2, 0),
+  COALESCE(m.mission_3, 0),
+  COALESCE(m.mission_4, 0),
+  COALESCE(m.mission_5, 0),
+  COALESCE(m.mission_6plus, 0)
+FROM date_series ds
+LEFT JOIN daily_dau   d   ON ds.day = d.day
+LEFT JOIN new_per_day n   ON ds.day = n.day
+LEFT JOIN traders     t   ON ds.day = t.day
+LEFT JOIN gamers      g   ON ds.day = g.day
+LEFT JOIN vtraders    vt  ON ds.day = vt.day
+LEFT JOIN vgamers     vg  ON ds.day = vg.day
+LEFT JOIN dau_x       dx  ON ds.day = dx.day
+LEFT JOIN dau_google  dg  ON ds.day = dg.day
+LEFT JOIN dau_telegram dtg ON ds.day = dtg.day
+LEFT JOIN dau_any     da  ON ds.day = da.day
+LEFT JOIN missions    m   ON ds.day = m.day
+ORDER BY ds.day;
+SQLEOF
+
+FIRST_LINE=$(head -1 /tmp/nasun_daily_raw.csv)
+if ! echo "$FIRST_LINE" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2},'; then
+  echo "ERROR: CSV corruption detected. First line: $FIRST_LINE" >&2; exit 1
+fi
+echo "CSV integrity OK  ($(wc -l < /tmp/nasun_daily_raw.csv) rows)"
+
+echo "=== Step 4: psql - new_verified_rate + top activities ==="
+
+TOP_AND_RATE=$(ssh $SSH_OPTS "$NODE3" "sudo -u postgres psql -d nasun_points -q -t -A -F'|'" << SQLEOF3
+CREATE TEMP TABLE verified_wallets (wallet_address TEXT PRIMARY KEY);
+COPY verified_wallets (wallet_address) FROM '/tmp/nasun_wallets_any_$TS.txt';
+-- new_verified_rate for today
+SELECT 'RATE',
+  COUNT(*) AS new_total,
+  SUM(CASE WHEN vw.wallet_address IS NOT NULL THEN 1 ELSE 0 END) AS new_verified
+FROM (
+  SELECT wallet_address FROM activity_points
+  WHERE category NOT IN (
+    'faucet','chat','daily-mission','ecosystem-passive',
+    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
+    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
+    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+  )
+  GROUP BY wallet_address
+  HAVING MIN(tx_timestamp::date) = CURRENT_DATE
+) new_today
+LEFT JOIN verified_wallets vw ON new_today.wallet_address = vw.wallet_address;
+-- top 5 activities of social users (full period)
+SELECT 'TOP', ap.category, COUNT(DISTINCT ap.wallet_address) AS unique_users
+FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
+WHERE ap.category NOT IN (
+  'ecosystem-passive','ecosystem-bonus-restoration','ecosystem-bonus-earlybird',
+  'ecosystem-bonus-admin','ecosystem-bonus-game','ecosystem-bonus-creators-appreciation',
+  'ecosystem-bonus-bugreport','ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
+  'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
+)
+GROUP BY ap.category ORDER BY unique_users DESC LIMIT 8;
+SQLEOF3
+)
+
+NEW_TOTAL=$(echo "$TOP_AND_RATE" | grep '^RATE' | cut -d'|' -f2)
+NEW_VERIFIED=$(echo "$TOP_AND_RATE" | grep '^RATE' | cut -d'|' -f3)
+TOP_ACTIVITIES=$(echo "$TOP_AND_RATE" | grep '^TOP')
+
+echo "new_total=$NEW_TOTAL  new_verified=$NEW_VERIFIED"
+
+echo "=== Step 5: Build output files ==="
+
+echo "date,dau,new_addresses,returning_addresses,returning_pct,unique_traders,unique_gamers,verified_unique_traders,verified_unique_gamers,dau_x_social,dau_google_social,dau_telegram_social,dau_any_social,dau_no_social,mission_1,mission_2,mission_3,mission_4,mission_5,mission_6plus" > "$CSV_FILE"
+cat /tmp/nasun_daily_raw.csv >> "$CSV_FILE"
+
+python3 << PYEOF2
+import csv
+
+lines = open("/tmp/nasun_snapshot_data.txt").read().strip().split("\n")
+mode = lines[0]
+
+new_total   = int("$NEW_TOTAL")   if "$NEW_TOTAL".isdigit()   else 0
+new_verified = int("$NEW_VERIFIED") if "$NEW_VERIFIED".isdigit() else 0
+new_rate = f"{new_verified/new_total*100:.1f}%" if new_total > 0 else "N/A"
+today    = "$TODAY"
+date_from = "$DATE_FROM"
+date_to   = "$DATE_TO"
+
+# DAA stats
+dau_rows = []
+with open("$CSV_FILE") as f:
+    reader = csv.DictReader(f)
+    for r in reader:
+        if int(r['dau']) > 0:
+            dau_rows.append(r)
+
+if dau_rows:
+    # exclude today (partial day) for "latest completed" stats
+    completed_rows = [r for r in dau_rows if r['date'] != today]
+    latest = completed_rows[-1] if completed_rows else dau_rows[-1]
+    peak   = max(dau_rows, key=lambda r: int(r['dau']))
+    active_days = len(dau_rows)
+    avg_ret = sum(float(r['returning_pct']) for r in dau_rows if r['returning_pct']) / active_days
+    avg_dau = sum(int(r['dau']) for r in dau_rows) / active_days
+    v_traders = int(latest.get('verified_unique_traders', 0))
+    v_gamers  = int(latest.get('verified_unique_gamers', 0))
+    daa_section = (
+        f"-- Devnet DAA ({date_from} ~ {date_to}, {active_days} active days) --\n"
+        f"Last completed DAA ({latest['date']}):   {int(latest['dau']):,}\n"
+        f"  Returning:                         {int(latest['returning_addresses']):,}  ({latest['returning_pct']}%)\n"
+        f"  New:                               {int(latest['new_addresses']):,}\n"
+        f"Peak DAA   ({peak['date']}):         {int(peak['dau']):,}\n"
+        f"Avg DAA:                             {avg_dau:,.0f}\n"
+        f"Avg returning rate:                  {avg_ret:.1f}%\n"
+        f"Unique spot traders (social verified): {v_traders:,}\n"
+        f"Unique gamers       (social verified): {v_gamers:,}"
+    )
+else:
+    daa_section = f"-- Devnet DAA ({date_from} ~ {date_to}) --\nNo active days in this period."
+
+# Top activities
+top_lines = [l for l in """$TOP_ACTIVITIES""".strip().split("\n") if l.strip()]
+top_section_lines = ["-- Social Users Top Activities --"]
+for line in top_lines:
+    parts = line.split("|")
+    if len(parts) >= 3:
+        cat, cnt = parts[1], parts[2]
+        top_section_lines.append(f"  {cat:<32} {int(cnt):>8,} unique users")
+top_section = "\n".join(top_section_lines)
+
+if mode == "FRESH":
+    total = int(lines[1])
+    x_count, g_count, tg_count, union_count, multi_count = int(lines[2]), int(lines[3]), int(lines[4]), int(lines[5]), int(lines[6])
+    x_pct, g_pct, tg_pct, union_pct, multi_pct = lines[7], lines[8], lines[9], lines[10], lines[11]
+    users_section = (
+        f"-- Website Users (DynamoDB, live) --\n"
+        f"Total users (excl. legacy):  {total:,}\n"
+        f"  X connected:               {x_count:,}  ({x_pct})\n"
+        f"  Google connected:          {g_count:,}  ({g_pct})\n"
+        f"  Telegram joined:           {tg_count:,}  ({tg_pct})\n"
+        f"  Any social (union):        {union_count:,}  ({union_pct})\n"
+        f"  2+ social connected:       {multi_count:,}  ({multi_pct})\n"
+        f"Verified wallets (for pado): {union_count:,}"
+    )
+else:
+    wallet_count = int(lines[1])
+    users_section = (
+        f"-- Website Users (DynamoDB, 24h cache) --\n"
+        f"Verified wallets (cached):   {wallet_count:,}"
+    )
+
+# Mission distribution for latest completed date
+mission_section = ""
+if dau_rows:
+    completed_rows = [r for r in dau_rows if r['date'] != today]
+    mrow = completed_rows[-1] if completed_rows else dau_rows[-1]
+    m1  = int(mrow.get('mission_1', 0))
+    m2  = int(mrow.get('mission_2', 0))
+    m3  = int(mrow.get('mission_3', 0))
+    m4  = int(mrow.get('mission_4', 0))
+    m5  = int(mrow.get('mission_5', 0))
+    m6p = int(mrow.get('mission_6plus', 0))
+    total_mission = m1 + m2 + m3 + m4 + m5 + m6p
+    def mpct(n): return f"{n/total_mission*100:.1f}%" if total_mission else "N/A"
+    mission_section = (
+        f"-- Mission Distribution by Verified Users ({mrow['date']}) --\n"
+        f"  1 mission:   {m1:>6,}  ({mpct(m1)})\n"
+        f"  2 missions:  {m2:>6,}  ({mpct(m2)})\n"
+        f"  3 missions:  {m3:>6,}  ({mpct(m3)})\n"
+        f"  4 missions:  {m4:>6,}  ({mpct(m4)})\n"
+        f"  5 missions:  {m5:>6,}  ({mpct(m5)})\n"
+        f"  6+ missions: {m6p:>6,}  ({mpct(m6p)})\n"
+        f"  Total active: {total_mission:,}"
+    )
+
+snapshot = f"""==== Nasun Stats Snapshot ({today}) ====
+
+{daa_section}
+
+{users_section}
+
+{top_section}
+
+{mission_section}
+
+-- Today's New User Quality --
+New DAA today:               {new_total:,}
+  Social verified:           {new_verified:,}  ({new_rate})
+"""
+
+with open("$SNAPSHOT_FILE", "w") as f:
+    f.write(snapshot)
+print(snapshot)
+PYEOF2
+
+echo "=== Step 6: Summary ==="
+python3 << PYEOF3
+import csv
+rows = []
+with open("$CSV_FILE") as f:
+    reader = csv.DictReader(f)
+    for r in reader:
+        if int(r['dau']) > 0:
+            rows.append(r)
+
+if not rows:
+    print("No data rows found."); exit()
+
+import datetime
+today_str = datetime.date.today().isoformat()
+daus  = [(r['date'], int(r['dau'])) for r in rows]
+peak  = max(daus, key=lambda x: x[1])
+completed = [(d, v) for d, v in daus if d != today_str]
+latest = completed[-1] if completed else daus[-1]
+avg_ret = sum(float(r['returning_pct']) for r in rows if r['returning_pct']) / len(rows)
+avg_t = sum(int(r['unique_traders'])  for r in rows) / len(rows)
+avg_g = sum(int(r['unique_gamers'])   for r in rows) / len(rows)
+avg_vs = sum(int(r['dau_any_social']) for r in rows) / len(rows)
+
+print(f"Period:             $DATE_FROM ~ $DATE_TO ({len(rows)} days with activity)")
+print(f"Peak DAA:           {peak[1]:,} ({peak[0]})")
+print(f"Last completed DAA: {latest[1]:,} ({latest[0]})")
+print(f"Avg returning:      {avg_ret:.1f}%")
+print(f"Avg traders/day:    {avg_t:.0f}")
+print(f"Avg gamers/day:     {avg_g:.0f}")
+print(f"Avg social DAA/day: {avg_vs:.0f}")
+print(f"\nSaved: $SNAPSHOT_FILE")
+print(f"Saved: $CSV_FILE")
+PYEOF3
+
+echo "=== Step 7: Cleanup remote temp files ==="
+ssh $SSH_OPTS "$NODE3" "rm -f /tmp/nasun_wallets_any_$TS.txt /tmp/nasun_wallets_x_$TS.txt /tmp/nasun_wallets_google_$TS.txt /tmp/nasun_wallets_telegram_$TS.txt" || true
+echo "Done"
+```
