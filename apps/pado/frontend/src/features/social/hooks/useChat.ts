@@ -5,6 +5,8 @@ import { useSigner, ZkLoginSigner } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../../../config/network';
 import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../types';
 
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+
 // Module-level: shared across all useChat instances so mode switching
 // (docked ↔ floating) doesn't trigger disconnect/reconnect cycles.
 let connectedAddress: string | null = null;
@@ -25,12 +27,14 @@ const MAX_ROOM_MESSAGES = 500;
 const ACTIVE_ROOM_KEY = 'pado:chat:activeRoom';
 const LANGUAGE_ROOM_KEY = 'pado:chat:languageRoom';
 
+const PADO_DEFAULT_ROOM = 100; // Pado market room
+
 function getStoredActiveRoom(): number {
   try {
     const stored = localStorage.getItem(ACTIVE_ROOM_KEY);
-    return stored ? parseInt(stored, 10) || 0 : 0;
+    return stored ? parseInt(stored, 10) || PADO_DEFAULT_ROOM : PADO_DEFAULT_ROOM;
   } catch {
-    return 0;
+    return PADO_DEFAULT_ROOM;
   }
 }
 
@@ -75,6 +79,7 @@ export interface UseChatResult {
   selectedLanguageRoomId: number;
   setLanguageRoom: (roomId: number) => void;
   unreadCounts: Record<number, number>;
+  setTurnstileToken: (token: string) => void;
 }
 
 
@@ -97,6 +102,7 @@ export function useChat(): UseChatResult {
   const [rooms, setRooms] = useState<RoomInfo[]>(cachedRooms);
   const [languageRoomId, setLanguageRoomIdState] = useState(selectedLanguageRoomId);
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
+  const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
 
   const marketRooms = useMemo(() => rooms.filter((r) => r.category === 'market'), [rooms]);
   const languageRooms = useMemo(() => rooms.filter((r) => r.category === 'language' || (!r.category && r.id < 100)), [rooms]);
@@ -119,8 +125,8 @@ export function useChat(): UseChatResult {
     const chatService = getChatService();
     const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
 
-    // Should disconnect: no signer or no wsUrl
-    if (!wsUrl || !signerAddress || !signerType) {
+    // Should disconnect: no signer, no wsUrl, or Turnstile not yet ready
+    if (!wsUrl || !signerAddress || !signerType || !turnstileReady) {
       if (connectedAddress) {
         chatService.disconnect();
         connectedAddress = null;
@@ -164,7 +170,7 @@ export function useChat(): UseChatResult {
 
     chatService.connect(wsUrl, chatSigner);
     connectedAddress = signerAddress;
-  }, [signerAddress, signerType]);
+  }, [signerAddress, signerType, turnstileReady]);
 
   // Track active useChat instances. Debounced disconnect prevents brief
   // WebSocket drop during page transitions (old ChatPanel unmounts before
@@ -191,7 +197,7 @@ export function useChat(): UseChatResult {
   // network failures, and race conditions during page load.
   useEffect(() => {
     const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
-    if (!wsUrl || !signerAddress || !signerType) return;
+    if (!wsUrl || !signerAddress || !signerType || !turnstileReady) return;
 
     const checkInterval = setInterval(() => {
       const chatService = getChatService();
@@ -201,7 +207,7 @@ export function useChat(): UseChatResult {
     }, 30_000);
 
     return () => clearInterval(checkInterval);
-  }, [signerAddress, signerType]);
+  }, [signerAddress, signerType, turnstileReady]);
 
   // HTTP polling for unauthenticated users is disabled.
   // Chat uses nasun-chat-server (WebSocket only), which does not expose a REST /api/messages endpoint.
@@ -302,9 +308,9 @@ export function useChat(): UseChatResult {
       // Validate stored active room against server rooms
       const validIds = new Set(serverRooms.map((r) => r.id));
       if (!validIds.has(activeRoomIdRef.current)) {
-        setActiveRoomId(0);
-        activeRoomIdRef.current = 0;
-        try { localStorage.setItem(ACTIVE_ROOM_KEY, '0'); } catch { /* ignore */ }
+        setActiveRoomId(PADO_DEFAULT_ROOM);
+        activeRoomIdRef.current = PADO_DEFAULT_ROOM;
+        try { localStorage.setItem(ACTIVE_ROOM_KEY, String(PADO_DEFAULT_ROOM)); } catch { /* ignore */ }
       }
     });
 
@@ -442,10 +448,10 @@ export function useChat(): UseChatResult {
 
   const needsNickname = status === 'connected' && nickname === null;
 
-  const setTurnstileToken = useMemo(
-    () => (token: string) => getChatService().setTurnstileToken(token),
-    [],
-  );
+  const setTurnstileToken = useCallback((token: string) => {
+    getChatService().setTurnstileToken(token);
+    if (!turnstileReady) setTurnstileReady(true);
+  }, [turnstileReady]);
 
   return {
     messages,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { getChatService } from '../../../lib/chat-service';
 import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn, NicknameRateLimit } from '../../../lib/chat-service';
 import { useChatStore } from '../../../store/chatStore';
@@ -6,6 +6,7 @@ import { useUserStore } from '../../../store/userStore';
 import { SignerManager, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
 
 const WS_URL = import.meta.env.VITE_NASUN_CHAT_WS_URL || 'ws://localhost:3101';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 // Short notification beep via Web Audio API (no external file needed)
 let audioCtx: AudioContext | null = null;
@@ -37,6 +38,8 @@ export function useChat() {
 
   const [nickname, setNicknameState] = useState<string | null>(null);
   const [nicknameRateLimit, setNicknameRateLimit] = useState<NicknameRateLimit | null>(null);
+  // If Turnstile is configured, wait for token before connecting
+  const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
 
   // Derived from roomStates
   const activeRoom = roomStates.get(activeRoomId);
@@ -46,8 +49,8 @@ export function useChat() {
 
   useEffect(() => {
     const walletAddress = user?.walletAddress;
-    if (!walletAddress) {
-      if (connectedRef.current) {
+    if (!walletAddress || !turnstileReady) {
+      if (!walletAddress && connectedRef.current) {
         getChatService().disconnect();
         connectedRef.current = false;
       }
@@ -152,7 +155,7 @@ export function useChat() {
       service.off('reaction_update', onReactionUpdate);
       service.off('nickname', onNickname);
     };
-  }, [user?.walletAddress, user?.customDisplayName, user?.twitterHandle, user?.username]);
+  }, [user?.walletAddress, user?.customDisplayName, user?.twitterHandle, user?.username, turnstileReady]);
 
   // Load history for active room when switching
   useEffect(() => {
@@ -214,10 +217,10 @@ export function useChat() {
 
   const needsNickname = status === 'connected' && nickname === null;
 
-  const setTurnstileToken = useMemo(
-    () => (token: string) => getChatService().setTurnstileToken(token),
-    [],
-  );
+  const setTurnstileToken = useCallback((token: string) => {
+    getChatService().setTurnstileToken(token);
+    if (!turnstileReady) setTurnstileReady(true);
+  }, [turnstileReady]);
 
   return {
     messages,
