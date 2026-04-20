@@ -213,7 +213,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
       {TURNSTILE_SITE_KEY && address && (
         <Turnstile
           siteKey={TURNSTILE_SITE_KEY}
-          options={{ appearance: 'never', size: 'invisible' }}
+          options={{ appearance: 'execute', size: 'invisible' }}
           onSuccess={setTurnstileToken}
           style={{ display: 'none' }}
         />
