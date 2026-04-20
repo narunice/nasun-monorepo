@@ -226,7 +226,7 @@ describe('AddressBookSessionManager', () => {
 
   it('should allow new flow after previous one completes', async () => {
     // First flow succeeds
-    const token1 = setupSuccessfulFlow();
+    setupSuccessfulFlow();
     const manager = createManager();
     await manager.getToken();
 
