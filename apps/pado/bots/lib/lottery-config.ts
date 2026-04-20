@@ -5,7 +5,7 @@
  * Self-contained (no dependency on frontend packages or LP bot config).
  */
 
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, EventId } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { withRetry } from './retry.js';
 
@@ -267,7 +267,7 @@ export async function countWinners(
     tier2 = 0,
     tier3 = 0;
   let totalFetched = 0;
-  let cursor: string | null | undefined = undefined;
+  let cursor: EventId | null | undefined = undefined;
 
   while (true) {
     const response = await withRetry(
