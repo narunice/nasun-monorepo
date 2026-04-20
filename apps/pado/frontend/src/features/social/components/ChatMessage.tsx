@@ -4,10 +4,12 @@ import { GenesisPassBadge } from '@nasun/wallet-ui';
 import Avatar from 'boring-avatars';
 import type { ChatMessage as ChatMessageType } from '../types';
 
+const failedAvatarUrls = new Set<string>();
+
 function ChatAvatar({ address, imageUrl, size = 18 }: {
   address: string; imageUrl?: string | null; size?: number;
 }) {
-  const [imgError, setImgError] = useState(false);
+  const [imgError, setImgError] = useState(() => !!imageUrl && failedAvatarUrls.has(imageUrl));
 
   if (imageUrl && !imgError) {
     return (
@@ -20,7 +22,7 @@ function ChatAvatar({ address, imageUrl, size = 18 }: {
         style={{ width: size, height: size }}
         referrerPolicy="no-referrer"
         crossOrigin="anonymous"
-        onError={() => setImgError(true)}
+        onError={() => { failedAvatarUrls.add(imageUrl); setImgError(true); }}
       />
     );
   }
