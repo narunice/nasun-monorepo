@@ -4,7 +4,7 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import { ButtonV2 } from "@/components/ui/button-v2";
+import { ButtonV3 } from "@/components/ui/button-v3";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 const gensolVideo = "/videos/Color-Trailer-No-Symbol-16x9-web.mp4";
@@ -15,43 +15,12 @@ const padoVideoMobile = "/videos/Pado-Ui-Short-mobile-rf28.mp4";
 const explorerVideo = "/videos/Network-Explorer-Ui-rf28.mp4";
 const explorerVideoMobile = "/videos/Network-Explorer-Ui-mobile-rf28.mp4";
 
-const CustomArrow = ({
-  onClick,
-  direction,
-}: {
-  onClick?: () => void;
-  direction: "left" | "right";
-}) => (
-  <button
-    onClick={onClick}
-    className={`hidden lg:flex absolute top-1/2 z-20 -translate-y-1/2 bg-black/60 backdrop-blur-sm p-3 rounded-full border border-white/20 hover:bg-black/80 hover:border-white/40 transition-all  ${
-      direction === "left" ? "left-6 xl:left-10" : "right-6 xl:right-10"
-    }`}
-    aria-label={direction === "left" ? "Previous slide" : "Next slide"}
-  >
-    {direction === "left" ? (
-      <ChevronLeftIcon className="w-6 h-6 text-white" />
-    ) : (
-      <ChevronRightIcon className="w-6 h-6 text-white" />
-    )}
-  </button>
-);
 
 type SlideData = {
   id: string;
   bgColor: string;
   buttonPrefix: string;
   projectName: string;
-  buttonVariant:
-    | "red"
-    | "blue"
-    | "white"
-    | "purple"
-    | "gensol-red"
-    | "sf-orange"
-    | "baram"
-    | "pado"
-    | "nasun-network";
   link: string;
   video?: string;
   mobileVideo?: string;
@@ -65,7 +34,6 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "GEN SOL",
-    buttonVariant: "sf-orange",
     link: "/ip/gensol",
     video: gensolVideo,
     poster: "/images/posters/Trakker-Flying-rf28.webp",
@@ -75,7 +43,6 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "BARAM",
-    buttonVariant: "baram",
     link: "/ecosystem/baram",
     video: baramVideo,
     mobileVideo: baramVideoMobile,
@@ -86,7 +53,6 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "PADO",
-    buttonVariant: "pado",
     link: "/ecosystem/pado",
     video: padoVideo,
     mobileVideo: padoVideoMobile,
@@ -97,7 +63,6 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "NASUN",
-    buttonVariant: "nasun-network",
     link: "/network/nsn",
     video: explorerVideo,
     mobileVideo: explorerVideoMobile,
@@ -233,9 +198,7 @@ function WhatWeBuild2026Section() {
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
-    arrows: true,
-    prevArrow: <CustomArrow direction="left" />,
-    nextArrow: <CustomArrow direction="right" />,
+    arrows: false,
     beforeChange: syncAndPlayClones,
     afterChange: handleAfterChange,
   };
@@ -291,13 +254,13 @@ function WhatWeBuild2026Section() {
           ))}
         </Slider>
 
-        {/* Overlay: explore button + dots */}
+        {/* Overlay: explore button + nav */}
         <div className="absolute bottom-12 left-0 right-0 z-20 flex flex-col items-center gap-6 pointer-events-none">
-          <ButtonV2
-            variant={activeSlide.buttonVariant}
+          <ButtonV3
             size="md"
+            outline
             asChild
-            className="w-[200px] md:w-[240px] pointer-events-auto"
+            className="w-[200px] md:w-[240px] pointer-events-auto border-white/70 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 uppercase tracking-widest"
           >
             <Link to={activeSlide.link}>
               {activeSlide.buttonPrefix}
@@ -305,21 +268,39 @@ function WhatWeBuild2026Section() {
                 {activeSlide.projectName}
               </span>
             </Link>
-          </ButtonV2>
+          </ButtonV3>
 
-          <div className="flex items-center gap-6 pointer-events-auto">
-            {SLIDES.map((slide, i) => (
-              <button
-                key={slide.id}
-                onClick={() => sliderRef.current?.slickGoTo(i)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  i === activeSlideIndex
-                    ? "bg-nasun-white"
-                    : "bg-nasun-white/40 hover:bg-nasun-white/60"
-                }`}
-                aria-label={`Go to slide ${i + 1}`}
-              />
-            ))}
+          <div className="flex items-center gap-4 pointer-events-auto">
+            <button
+              onClick={() => sliderRef.current?.slickPrev()}
+              className="flex items-center justify-center w-7 h-7 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
+              aria-label="Previous slide"
+            >
+              <ChevronLeftIcon className="w-4 h-4 text-white" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              {SLIDES.map((slide, i) => (
+                <button
+                  key={slide.id}
+                  onClick={() => sliderRef.current?.slickGoTo(i)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    i === activeSlideIndex
+                      ? "bg-nasun-white"
+                      : "bg-nasun-white/40 hover:bg-nasun-white/60"
+                  }`}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
+              ))}
+            </div>
+
+            <button
+              onClick={() => sliderRef.current?.slickNext()}
+              className="flex items-center justify-center w-7 h-7 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
+              aria-label="Next slide"
+            >
+              <ChevronRightIcon className="w-4 h-4 text-white" />
+            </button>
           </div>
         </div>
       </div>
