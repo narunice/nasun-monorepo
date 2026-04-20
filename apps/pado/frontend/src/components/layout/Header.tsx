@@ -8,7 +8,6 @@ import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { useGenesisPass } from "../../hooks/useGenesisPass";
 import { ThemeToggle } from "../theme/ThemeToggle";
 import { useAdminAccess } from "../../features/admin";
-import { useTradeMode } from "../../features/trading/hooks";
 import { hasAccess } from "../../config/network";
 import { useAppAdmin } from "../../hooks/useAppAdmin";
 
@@ -88,10 +87,6 @@ export function Header() {
 
   // Platform admins bypass all access gates
   const hasSpotAccess = isAppAdmin || hasAccess("spot");
-
-  // Trade mode for header max-width in Simple mode
-  const { isSimple } = useTradeMode();
-  const isTradePage = location.pathname.startsWith("/markets");
 
   // Passkey state
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
