@@ -118,7 +118,7 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
 
   const result = new Map<string, ProfileCacheEntry>();
   for (const id of identityIds) {
-    result.set(id, profileCache.data.get(id) ?? { displayName: null, xHandle: null, profileImageUrl: null, isTelegramMember: false });
+    result.set(id, profileCache.data.get(id) ?? { displayName: null, xHandle: null, profileImageUrl: null, isTelegramMember: false, hasGoogle: false });
   }
   return result;
 }
