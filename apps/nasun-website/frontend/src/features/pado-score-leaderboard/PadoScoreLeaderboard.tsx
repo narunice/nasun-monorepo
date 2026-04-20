@@ -195,36 +195,44 @@ function LeaderboardTable({
   const offset = (page - 1) * PAGE_SIZE;
   const end = Math.min(offset + PAGE_SIZE, displayedCount);
 
+  const btnCls = "px-3 py-1.5 text-sm rounded-sm border border-pd2/30 text-pd3 hover:text-nasun-white hover:border-pado-1/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
+
   return (
-    <div className="overflow-x-auto rounded-sm border border-pd2/25 bg-pd1/20">
-      <table className="w-full text-sm">
-        <TableHead />
-        <tbody>
-          {isLoading
-            ? Array.from({ length: 10 }).map((_, i) => (
-                <tr key={i} className="border-b border-pd2/20">
-                  <td colSpan={9} className="h-12 animate-pulse bg-pd1/20" />
-                </tr>
-              ))
-            : traders.map((t) => (
-                <TraderRow key={t.address} trader={t} highlightedId={highlightedId} />
-              ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-sm border border-pd2/25 bg-pd1/20">
+        <table className="w-full text-sm">
+          <TableHead />
+          <tbody>
+            {isLoading
+              ? Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={i} className="border-b border-pd2/20">
+                    <td colSpan={9} className="h-12 animate-pulse bg-pd1/20" />
+                  </tr>
+                ))
+              : traders.map((t) => (
+                  <TraderRow key={t.address} trader={t} highlightedId={highlightedId} />
+                ))}
+          </tbody>
+        </table>
+      </div>
+
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-3 px-4 py-4">
+        <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-pd3">
             Showing {offset + 1}-{end} of top{" "}
-            {displayedCount.toLocaleString("en-US")}
+            {MAX_RANK.toLocaleString("en-US")}
             {totalParticipants > 0 && (
               <> (Weekly total participants: {totalParticipants.toLocaleString("en-US")})</>
             )}
           </span>
           <div className="flex items-center gap-2">
+            <button onClick={() => setPage(1)} disabled={page === 1} className={btnCls}>
+              First
+            </button>
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-3 py-1.5 text-sm rounded-sm border border-pd2/30 text-pd3 hover:text-nasun-white hover:border-pado-1/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className={btnCls}
             >
               Prev
             </button>
@@ -232,9 +240,12 @@ function LeaderboardTable({
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-sm border border-pd2/30 text-pd3 hover:text-nasun-white hover:border-pado-1/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className={btnCls}
             >
               Next
+            </button>
+            <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className={btnCls}>
+              Last
             </button>
             <input
               type="number"
@@ -481,7 +492,7 @@ export function PadoScoreLeaderboard() {
           traders={pagedTraders}
           isLoading={currentQuery.isLoading}
           displayedCount={displayedCount}
-          totalParticipants={currentQuery.data?.totalTraders ?? 0}
+          totalParticipants={currentQuery.data?.totalParticipants ?? 0}
           totalPages={totalPages}
           page={page}
           setPage={setPage}
