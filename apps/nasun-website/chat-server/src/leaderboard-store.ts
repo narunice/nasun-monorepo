@@ -1558,6 +1558,22 @@ export function getWeeklyScoreCount(weekId: string): number {
   return row.cnt;
 }
 
+/** Count unique traders who made at least one trade in the given week window. */
+export function countWeeklyUniqueTraders(weekStartMs: number, weekEndMs: number): number {
+  const row = getLeaderboardDb()
+    .prepare(
+      `SELECT COUNT(DISTINCT address) as cnt FROM (
+         SELECT maker_address AS address FROM trade_fills
+           WHERE timestamp_ms >= ? AND timestamp_ms < ?
+         UNION
+         SELECT taker_address AS address FROM trade_fills
+           WHERE timestamp_ms >= ? AND timestamp_ms < ?
+       )`
+    )
+    .get(weekStartMs, weekEndMs, weekStartMs, weekEndMs) as { cnt: number };
+  return row.cnt;
+}
+
 /** Individual trader weekly score. */
 export function getTraderWeeklyScore(weekId: string, address: string): WeeklyScoreRow | null {
   return (getLeaderboardDb()
