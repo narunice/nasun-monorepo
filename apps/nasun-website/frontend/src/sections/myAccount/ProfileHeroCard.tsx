@@ -139,6 +139,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   const {
     score: ecosystemScore,
     isLoading: ecosystemLoading,
+    isError: ecosystemError,
     refresh: refreshEcosystem,
     isRefreshing: ecosystemRefreshing,
     cooldownSeconds,
@@ -436,12 +437,12 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                       All time
                     </span>
                     <span className="text-7xl font-semibold bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent leading-none">
-                      {(
-                        ecosystemScore?.allTime.ecosystemScore ?? 0
-                      ).toLocaleString("en-US", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 1,
-                      })}
+                      {ecosystemError && !ecosystemScore
+                        ? "--"
+                        : (ecosystemScore?.allTime.ecosystemScore ?? 0).toLocaleString("en-US", {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 1,
+                          })}
                     </span>
                     <span className="text-lg font-semibold text-nasun-white uppercase tracking-wider">
                       pts
@@ -451,10 +452,12 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                   {/* Today + Formula (single line) */}
                   <div className="flex items-baseline justify-center flex-wrap gap-x-2 gap-y-1">
                     <span className="text-2xl font-bold text-amber-400">
-                      {displayTodayScore.toLocaleString("en-US", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 1,
-                      })}
+                      {ecosystemError && !ecosystemScore
+                        ? "--"
+                        : displayTodayScore.toLocaleString("en-US", {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 1,
+                          })}
                     </span>
                     <span className="text-sm text-nasun-white/70">
                       pts today
