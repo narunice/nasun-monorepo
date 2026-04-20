@@ -4,10 +4,12 @@
  * Individual row in the leaderboard table with rank change indicator.
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SeasonLeaderboardEntry } from "../types";
 import { RankChangeIndicatorV3 } from "./RankChangeIndicatorV3";
+
+const failedAvatarUrls = new Set<string>();
 
 interface LeaderboardV3RowProps {
   entry: SeasonLeaderboardEntry;
@@ -20,6 +22,23 @@ function DefaultAvatar({ username }: { username: string }) {
     <div className="w-9 h-9 rounded-sm bg-nasun-nw3/30 border border-nasun-nw3/40 flex items-center justify-center flex-shrink-0">
       <span className="text-nasun-nw4 font-semibold text-sm">{initial}</span>
     </div>
+  );
+}
+
+function RowAvatar({ url, username }: { url: string; username: string }) {
+  const [failed, setFailed] = useState(() => failedAvatarUrls.has(url));
+  if (failed) return <DefaultAvatar username={username} />;
+  return (
+    <img
+      src={url}
+      alt={username}
+      className="w-9 h-9 rounded-sm object-cover flex-shrink-0"
+      loading="lazy"
+      onError={() => {
+        failedAvatarUrls.add(url);
+        setFailed(true);
+      }}
+    />
   );
 }
 
@@ -51,24 +70,10 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
 
       {/* User with Avatar */}
       <div className="col-span-6 flex items-center gap-2.5 min-w-0">
-        {entry.profileImageUrl ? (
-          <img
-            src={entry.profileImageUrl}
-            alt={entry.displayName || entry.username}
-            className="w-9 h-9 rounded-sm object-cover flex-shrink-0"
-            loading="lazy"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              const fallback = e.currentTarget.nextElementSibling;
-              if (fallback) fallback.classList.remove("hidden");
-            }}
-          />
-        ) : (
-          <DefaultAvatar username={entry.username} />
-        )}
-        <div className="hidden">
-          <DefaultAvatar username={entry.username} />
-        </div>
+        {entry.profileImageUrl
+          ? <RowAvatar url={entry.profileImageUrl} username={entry.username} />
+          : <DefaultAvatar username={entry.username} />
+        }
 
         <div className="min-w-0 flex-1">
           {entry.displayName && (
