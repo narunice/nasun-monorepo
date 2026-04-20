@@ -4,6 +4,7 @@ import TriptychSection from "@/sections/home/TriptychSection";
 import Hero2026Section from "@/sections/home/2026HeroSection";
 import Hero2026StatsSection from "@/sections/home/2026StatsSection";
 import WhatWeBuild2026Section from "@/sections/home/2026WhatWeBuildSection";
+import DevNewsEventsSection from "@/sections/home/DevNewsEventsSection";
 
 export default function DevHomePage() {
   return (
@@ -17,6 +18,9 @@ export default function DevHomePage() {
         </ScrollSnapSection>
         <ScrollSnapSection>
           <WhatWeBuild2026Section />
+        </ScrollSnapSection>
+        <ScrollSnapSection allowTallContent>
+          <DevNewsEventsSection />
         </ScrollSnapSection>
         <ScrollSnapSection>
           <TriptychSection />
