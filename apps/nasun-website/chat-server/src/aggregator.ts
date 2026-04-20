@@ -19,7 +19,7 @@ import {
   getWeeklyCurrentRanks,
   replaceWeeklyTraderScores,
 } from './leaderboard-store.js';
-import { buildSameIdentityPairs, refreshIdentityCache } from './identity-resolver.js';
+import { buildSameIdentityPairs, refreshIdentityCache, resolveIdentityIds, getSocialBadgesBatch } from './identity-resolver.js';
 
 // PnL data cached during PnL aggregation, consumed by points aggregation
 let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
@@ -78,8 +78,10 @@ function runAggregation(): void {
   // Aggregate active competitions
   runCompetitionAggregation();
 
-  // Weekly score leaderboard
-  runWeeklyScoreAggregation();
+  // Weekly score leaderboard (async: fetches social badges from DynamoDB in background)
+  runWeeklyScoreAggregation().catch((err: unknown) => {
+    console.error('[Aggregator] Weekly score aggregation error:', (err as Error).message);
+  });
 
   // Mark cycle completion for pado score staleness guard (settle-pado consumer).
   // Key is app-prefixed to avoid collision with future per-app aggregators.
@@ -218,7 +220,7 @@ function runPointsAggregation(): void {
  * from pnl score (floor 0). This penalty only affects trader_points_weekly and is
  * never propagated to Ecosystem Points.
  */
-function runWeeklyScoreAggregation(): void {
+async function runWeeklyScoreAggregation(): Promise<void> {
   if (!config) return;
 
   const weekStart = getCurrentWeekStart();
@@ -286,7 +288,27 @@ function runWeeklyScoreAggregation(): void {
     return { ...t, rank, prevRank };
   });
 
-  replaceWeeklyTraderScores(weekId, ranked);
+  // Resolve social badges (xHandle, hasGoogle, hasTelegram) at aggregation time.
+  // Background job: DynamoDB latency is acceptable here.
+  const addresses = ranked.map((t) => t.address);
+  const identityMap = await resolveIdentityIds(addresses);
+  const identityIds = [...new Set(identityMap.values())];
+  const badgesByIdentity = identityIds.length > 0
+    ? await getSocialBadgesBatch(identityIds)
+    : new Map<string, { xHandle: string | null; hasGoogle: boolean; hasTelegram: boolean }>();
+
+  const rankedWithBadges = ranked.map((t) => {
+    const identityId = identityMap.get(t.address);
+    const badge = identityId ? badgesByIdentity.get(identityId) : undefined;
+    return {
+      ...t,
+      xHandle: badge?.xHandle ?? null,
+      hasGoogle: badge?.hasGoogle ?? false,
+      hasTelegram: badge?.hasTelegram ?? false,
+    };
+  });
+
+  replaceWeeklyTraderScores(weekId, rankedWithBadges);
 }
 
 /**

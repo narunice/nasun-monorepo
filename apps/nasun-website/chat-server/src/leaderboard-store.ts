@@ -206,6 +206,9 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
       rank INTEGER NOT NULL DEFAULT 0,
       prev_rank INTEGER NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL,
+      x_handle TEXT,
+      has_google INTEGER NOT NULL DEFAULT 0,
+      has_telegram INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (week_id, address)
     );
 
@@ -216,6 +219,12 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
     -- Settlement state is now tracked in PostgreSQL (nasun_points.weekly_score_snapshots).
     -- settle-pado reads trader_points_weekly via GET /api/pado/internal/weekly-scores/:weekId.
   `);
+
+  // Migrate: add social badge columns if they don't exist yet (idempotent).
+  const cols = (db!.prepare(`PRAGMA table_info(trader_points_weekly)`).all() as Array<{ name: string }>).map(c => c.name);
+  if (!cols.includes('x_handle')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN x_handle TEXT`).run();
+  if (!cols.includes('has_google')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN has_google INTEGER NOT NULL DEFAULT 0`).run();
+  if (!cols.includes('has_telegram')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN has_telegram INTEGER NOT NULL DEFAULT 0`).run();
 }
 
 export function getLeaderboardDb(): Database.Database {
@@ -1434,6 +1443,9 @@ export interface WeeklyScoreRow {
   rank: number;
   prev_rank: number;
   updated_at: number;
+  x_handle: string | null;
+  has_google: number;
+  has_telegram: number;
 }
 
 export function getWeeklyCurrentRanks(weekId: string): Map<string, number> {
@@ -1461,6 +1473,9 @@ export function replaceWeeklyTraderScores(
     volumeQuote: string;
     rank: number;
     prevRank: number;
+    xHandle?: string | null;
+    hasGoogle?: boolean;
+    hasTelegram?: boolean;
   }>,
 ): void {
   const ldb = getLeaderboardDb();
@@ -1470,8 +1485,8 @@ export function replaceWeeklyTraderScores(
     `INSERT INTO trader_points_weekly
        (week_id, address, total_score, score_from_trades, score_from_volume,
         score_from_diversity, score_from_pnl, trade_count, volume_quote,
-        rank, prev_rank, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        rank, prev_rank, updated_at, x_handle, has_google, has_telegram)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(week_id, address) DO UPDATE SET
        total_score = excluded.total_score,
        score_from_trades = excluded.score_from_trades,
@@ -1482,7 +1497,10 @@ export function replaceWeeklyTraderScores(
        volume_quote = excluded.volume_quote,
        rank = excluded.rank,
        prev_rank = excluded.prev_rank,
-       updated_at = excluded.updated_at`
+       updated_at = excluded.updated_at,
+       x_handle = excluded.x_handle,
+       has_google = excluded.has_google,
+       has_telegram = excluded.has_telegram`
   );
 
   const tx = ldb.transaction(() => {
@@ -1504,6 +1522,7 @@ export function replaceWeeklyTraderScores(
         t.scoreFromDiversity, t.scoreFromPnl,
         t.tradeCount, t.volumeQuote,
         t.rank, t.prevRank, now,
+        t.xHandle ?? null, t.hasGoogle ? 1 : 0, t.hasTelegram ? 1 : 0,
       );
     }
   });
