@@ -41,15 +41,15 @@ const PadoScoreLeaderboardPage: React.FC = () => {
             To be eligible for leaderboard rewards, users must have at least one
             social account connected to their profile. Users without any linked
             social account will not receive point payouts, even if they rank
-            within the top 500.
+            within the top 2000.
           </p>
 
           {/* Row 1: Top 3 */}
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "1st", pts: 50, crown: true },
-              { label: "2nd", pts: 40, crown: false },
-              { label: "3rd", pts: 30, crown: false },
+              { label: "2nd", pts: 45, crown: false },
+              { label: "3rd", pts: 40, crown: false },
             ].map(({ label, pts, crown }) => (
               <div
                 key={label}
@@ -66,12 +66,13 @@ const PadoScoreLeaderboardPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Row 2: Top 50 / 100 / 200 */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Row 2: Top 10 / 20 / 50 / 100 */}
+          <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Top 50", pts: 15 },
-              { label: "Top 100", pts: 10 },
-              { label: "Top 200", pts: 6 },
+              { label: "Top 10", pts: 35 },
+              { label: "Top 20", pts: 30 },
+              { label: "Top 50", pts: 25 },
+              { label: "Top 100", pts: 20 },
             ].map(({ label, pts }) => (
               <div
                 key={label}
@@ -85,12 +86,30 @@ const PadoScoreLeaderboardPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Row 3: Top 300 / 400 / 500 */}
+          {/* Row 3: Top 200 / 300 / 500 */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Top 300", pts: 5 },
-              { label: "Top 400", pts: 2 },
-              { label: "Top 500", pts: 1 },
+              { label: "Top 200", pts: 15 },
+              { label: "Top 300", pts: 10 },
+              { label: "Top 500", pts: 8 },
+            ].map(({ label, pts }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
+              >
+                <span className="text-base text-pado-2">{label}</span>
+                <span className="text-base font-bold text-pado-3">
+                  {pts} pts
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Row 4: Top 1000 / 2000 */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Top 1000", pts: 6 },
+              { label: "Top 2000", pts: 5 },
             ].map(({ label, pts }) => (
               <div
                 key={label}
