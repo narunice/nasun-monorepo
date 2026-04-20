@@ -23,10 +23,11 @@ export interface ScoreLeaderboardResponse {
   traders: ScoreLeaderboardTrader[];
   updatedAt: number;
   totalTraders: number;
+  totalParticipants: number;
 }
 
 // 12-hour grace period after weekly reset before switching to live scores
-export const WEEK_GRACE_PERIOD_MS = 12 * 60 * 60 * 1000;
+export const WEEK_GRACE_PERIOD_MS = 2 * 60 * 60 * 1000;
 
 // ISO 8601 week ID (Thursday-anchor algorithm). Copied from pado useLeaderboard.ts.
 function getWeekId(weeksAgo = 0): string {
@@ -93,7 +94,7 @@ export function usePadoScoreLeaderboard(weekId?: string) {
 
   return useQuery<ScoreLeaderboardResponse>({
     queryKey: ['pado-score-leaderboard', 'current', resolvedWeekId],
-    queryFn: () => fetchWeeklyScoreLeaderboard(resolvedWeekId, 1000, 0),
+    queryFn: () => fetchWeeklyScoreLeaderboard(resolvedWeekId, 2000, 0),
     enabled: !!getChatHttpUrl(),
     staleTime: 30_000,
     refetchInterval: 30_000,

@@ -261,14 +261,59 @@ const EcosystemLeaderboardPage = () => {
                   <th className="px-4 py-3 text-left font-medium text-nasun-white/60 uppercase tracking-wide">
                     User
                   </th>
-                  <th className="px-2 py-3 text-center font-medium text-nasun-white/60 w-8" aria-label="Twitter" title="Twitter">
-                    <svg className="w-3.5 h-3.5 mx-auto" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  <th
+                    className="px-2 py-3 text-center font-medium text-nasun-white/60 w-8"
+                    aria-label="Twitter"
+                    title="Twitter"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 mx-auto"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
                   </th>
-                  <th className="px-2 py-3 text-center font-medium text-nasun-white/60 w-8" aria-label="Google" title="Google">
-                    <svg className="w-3.5 h-3.5 mx-auto" fill="currentColor" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                  <th
+                    className="px-2 py-3 text-center font-medium text-nasun-white/60 w-8"
+                    aria-label="Google"
+                    title="Google"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 mx-auto"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        fill="#EA4335"
+                      />
+                    </svg>
                   </th>
-                  <th className="px-2 py-3 text-center font-medium text-nasun-white/60 w-8" aria-label="Telegram" title="Telegram">
-                    <svg className="w-3.5 h-3.5 mx-auto text-nasun-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                  <th
+                    className="px-2 py-3 text-center font-medium text-nasun-white/60 w-8"
+                    aria-label="Telegram"
+                    title="Telegram"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 mx-auto text-nasun-white/60"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+                    </svg>
                   </th>
                   <th className="px-4 py-3 text-right font-medium text-nasun-white/60 uppercase tracking-wide">
                     Score
@@ -376,17 +421,47 @@ const EcosystemLeaderboardPage = () => {
                         </td>
                         <td className="px-2 py-3 text-center w-8">
                           {entry.xHandle ? (
-                            <svg className="w-3 h-3 mx-auto text-sky-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            <svg
+                              className="w-3 h-3 mx-auto text-sky-400"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                           ) : null}
                         </td>
                         <td className="px-2 py-3 text-center w-8">
                           {entry.hasGoogle ? (
-                            <svg className="w-3 h-3 mx-auto text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            <svg
+                              className="w-3 h-3 mx-auto text-emerald-400"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                           ) : null}
                         </td>
                         <td className="px-2 py-3 text-center w-8">
                           {entry.isTelegramMember ? (
-                            <svg className="w-3 h-3 mx-auto text-violet-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            <svg
+                              className="w-3 h-3 mx-auto text-violet-400"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                           ) : null}
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-nasun-c3">
@@ -425,15 +500,22 @@ const EcosystemLeaderboardPage = () => {
               Showing {(page - 1) * PAGE_SIZE + 1}-
               {Math.min(page * PAGE_SIZE, displayedCount)} of top{" "}
               {displayedCount.toLocaleString("en-US")}
-              {(leaderboardQuery.data?.meta.total ?? 0) > 0 && (
+              {(leaderboardQuery.data?.meta.prevTotal ?? 0) > 0 && (
                 <>
                   {" "}
                   (Weekly total participants:{" "}
-                  {leaderboardQuery.data!.meta.total.toLocaleString("en-US")})
+                  {leaderboardQuery.data!.meta.prevTotal.toLocaleString("en-US")})
                 </>
               )}
             </p>
             <div className="flex items-center gap-2">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage(1)}
+                className="px-3 py-1.5 text-sm rounded-sm border border-nasun-c3/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c3/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                First
+              </button>
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -450,6 +532,13 @@ const EcosystemLeaderboardPage = () => {
                 className="px-3 py-1.5 text-sm rounded-sm border border-nasun-c3/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c3/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Next
+              </button>
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage(totalPages)}
+                className="px-3 py-1.5 text-sm rounded-sm border border-nasun-c3/20 text-nasun-white/70 hover:text-nasun-white hover:border-nasun-c3/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Last
               </button>
               <input
                 type="number"
@@ -489,78 +578,35 @@ const EcosystemLeaderboardPage = () => {
             contributions. Weekly rankings reset every Monday and do not carry
             over.
           </p>
-          <p className="text-base text-nasun-white/80">
-            To be eligible for leaderboard rewards, users must have at least one
-            social account connected to their profile. Users without any linked
-            social account will not receive point payouts, even if they rank
-            within the top 2000.
-          </p>
+
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "1st", pts: 50, crown: true },
-              { label: "2nd", pts: 45, crown: false },
-              { label: "3rd", pts: 40, crown: false },
-            ].map(({ label, pts, crown }) => (
+              { label: "1st", pts: 50, highlight: true, crown: true },
+              { label: "2nd", pts: 45, highlight: true, crown: false },
+              { label: "3rd", pts: 40, highlight: true, crown: false },
+              { label: "Top 10", pts: 35, highlight: false },
+              { label: "Top 20", pts: 30, highlight: false },
+              { label: "Top 50", pts: 25, highlight: false },
+              { label: "Top 100", pts: 20, highlight: false },
+              { label: "Top 200", pts: 15, highlight: false },
+              { label: "Top 300", pts: 10, highlight: false },
+              { label: "Top 500", pts: 8, highlight: false },
+              { label: "Top 1000", pts: 6, highlight: false },
+              { label: "Top 2000", pts: 5, highlight: false },
+            ].map(({ label, pts, highlight, crown }) => (
               <div
                 key={label}
-                className="flex items-center justify-between px-3 py-2.5 rounded-sm bg-pado-4/10 border border-pado-4/40"
+                className={`flex items-center justify-between px-3 py-2.5 rounded-sm border ${
+                  highlight
+                    ? "bg-pado-4/10 border-pado-4/40"
+                    : "bg-pd1/30 border-pd2/25"
+                }`}
               >
-                <span className="text-base font-semibold text-pado-4">
+                <span className={`text-base font-semibold ${highlight ? "text-pado-4" : "text-pado-2"}`}>
                   {crown && <span className="mr-1">&#x1F451;</span>}
                   {label}
                 </span>
-                <span className="text-base font-bold text-pado-4">
-                  {pts} pts
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: "Top 10", pts: 35 },
-              { label: "Top 20", pts: 30 },
-              { label: "Top 50", pts: 25 },
-              { label: "Top 100", pts: 20 },
-            ].map(({ label, pts }) => (
-              <div
-                key={label}
-                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
-              >
-                <span className="text-base text-pado-2">{label}</span>
-                <span className="text-base font-bold text-pado-3">
-                  {pts} pts
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Top 200", pts: 15 },
-              { label: "Top 300", pts: 10 },
-              { label: "Top 500", pts: 8 },
-            ].map(({ label, pts }) => (
-              <div
-                key={label}
-                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
-              >
-                <span className="text-base text-pado-2">{label}</span>
-                <span className="text-base font-bold text-pado-3">
-                  {pts} pts
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Top 1000", pts: 6 },
-              { label: "Top 2000", pts: 5 },
-            ].map(({ label, pts }) => (
-              <div
-                key={label}
-                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
-              >
-                <span className="text-base text-pado-2">{label}</span>
-                <span className="text-base font-bold text-pado-3">
+                <span className={`text-base font-bold ${highlight ? "text-pado-4" : "text-pado-3"}`}>
                   {pts} pts
                 </span>
               </div>

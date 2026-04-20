@@ -938,7 +938,63 @@ app.get('/leaderboard', async (c) => {
     }
   }
 
-  const [all, total] = await Promise.all([getScoredLeaderboard(), getTotalCount()]);
+  const getPrevTotal = prevWeekBounds
+    ? cached(
+        `eco-leaderboard-count-${prevWeekId}`,
+        60 * 60 * 1000,
+        async () => {
+          const pb = prevWeekBounds!;
+          const result = await pointsDb!`
+            WITH week_activities AS (
+              SELECT DISTINCT identity_id, category
+              FROM activity_points
+              WHERE NOT flagged
+                AND identity_id IS NOT NULL
+                AND tx_timestamp >= ${pb.start}
+                AND tx_timestamp < ${pb.end}
+                AND category NOT IN (
+                  'referral-bonus', 'daily-mission', 'ecosystem-passive',
+                  'staking-daily', 'staking'
+                )
+                AND category NOT LIKE 'ecosystem-bonus-%'
+                AND category NOT LIKE 'pado-%'
+            ),
+            activity_score AS (
+              SELECT identity_id FROM week_activities GROUP BY identity_id
+            ),
+            creator_post_score AS (
+              SELECT identity_id FROM activity_points
+              WHERE category = 'ecosystem-bonus-creator-posts'
+                AND NOT flagged AND identity_id IS NOT NULL
+                AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
+              GROUP BY identity_id
+            ),
+            bonus_score AS (
+              SELECT identity_id FROM activity_points
+              WHERE category IN ('ecosystem-bonus-bugreport', 'ecosystem-bonus-feedback', 'ecosystem-bonus-game')
+                AND NOT flagged AND identity_id IS NOT NULL
+                AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
+              GROUP BY identity_id
+            )
+            SELECT COUNT(*) AS total FROM (
+              SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id
+              FROM activity_score a
+              FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
+              FULL OUTER JOIN bonus_score b
+                ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
+              WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id) IS NOT NULL
+            ) sub
+          `;
+          return Number((result[0] as any).total ?? 0);
+        },
+      )
+    : null;
+
+  const [all, total, prevTotal] = await Promise.all([
+    getScoredLeaderboard(),
+    getTotalCount(),
+    getPrevTotal ? getPrevTotal() : Promise.resolve(0),
+  ]);
 
   const page = all.slice(offset, offset + limit);
   const ranked = page.map((entry, i) => {
@@ -957,6 +1013,7 @@ app.get('/leaderboard', async (c) => {
       limit,
       offset,
       total,
+      prevTotal,
       cappedAt: LEADERBOARD_TOP_N,
       updatedAt: Date.now(),
     },

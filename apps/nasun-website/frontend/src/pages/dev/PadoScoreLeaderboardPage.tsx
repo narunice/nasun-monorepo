@@ -37,12 +37,6 @@ const PadoScoreLeaderboardPage: React.FC = () => {
             volume, pool diversity, and realized PnL. Scores reset every Monday
             and do not carry over.
           </p>
-          <p className="text-base text-nasun-white/80 mt-4">
-            To be eligible for leaderboard rewards, users must have at least one
-            social account connected to their profile. Users without any linked
-            social account will not receive point payouts, even if they rank
-            within the top 2000.
-          </p>
 
           {/* Row 1: Top 3 */}
           <div className="grid grid-cols-3 gap-3">
