@@ -116,9 +116,88 @@ cd ~/explorer-api
 
 echo "-- npm install --"
 npm install --omit=dev
+
+echo "-- dependency validation --"
+node --input-type=module << 'NODEEOF'
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+const require = createRequire(join(process.cwd(), 'package.json'));
+const deps = [
+  '@aws-sdk/client-dynamodb',
+  '@aws-sdk/client-s3',
+  '@aws-sdk/lib-dynamodb',
+  'hono',
+  '@hono/node-server',
+  'jose',
+  'postgres',
+];
+let allOk = true;
+for (const dep of deps) {
+  try {
+    require.resolve(dep);
+    console.log(`  OK: ${dep}`);
+  } catch {
+    console.error(`  MISSING: ${dep}`);
+    allOk = false;
+  }
+}
+if (!allOk) {
+  console.error('Dependency validation failed. Aborting restart.');
+  process.exit(1);
+}
+NODEEOF
+
 echo "-- pm2 restart --"
+BEFORE_RESTARTS=$(pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+    for a in apps:
+        if a['name'] == 'explorer-api':
+            print(a['pm2_env']['restart_time'])
+except: print(0)
+" 2>/dev/null || echo 0)
+
 pm2 restart explorer-api
-sleep 3
+sleep 5
+
+echo "-- crash loop check --"
+AFTER_RESTARTS=$(pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+    for a in apps:
+        if a['name'] == 'explorer-api':
+            print(a['pm2_env']['restart_time'])
+except: print(0)
+" 2>/dev/null || echo 0)
+PM2_STATUS=$(pm2 jlist 2>/dev/null | python3 -c "
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+    for a in apps:
+        if a['name'] == 'explorer-api':
+            print(a['pm2_env']['status'])
+except: print('unknown')
+" 2>/dev/null || echo unknown)
+
+RESTART_DIFF=$((AFTER_RESTARTS - BEFORE_RESTARTS))
+echo "PM2 status=$PM2_STATUS, new restarts since deploy=$RESTART_DIFF"
+
+if [ "$PM2_STATUS" != "online" ]; then
+  echo "ERROR: explorer-api is not online after restart (status=$PM2_STATUS)"
+  echo "Last 20 lines of error log:"
+  pm2 logs explorer-api --err --lines 20 --nostream 2>/dev/null || true
+  exit 1
+fi
+if [ "$RESTART_DIFF" -ge 3 ]; then
+  echo "ERROR: explorer-api restarted $RESTART_DIFF times in 5s - crash loop detected"
+  echo "Last 20 lines of error log:"
+  pm2 logs explorer-api --err --lines 20 --nostream 2>/dev/null || true
+  exit 1
+fi
+
 echo "-- health check --"
 curl -sf -m 5 http://localhost:3200/api/v1/health | python3 -c "
 import sys, json
