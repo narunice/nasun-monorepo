@@ -359,6 +359,8 @@ export async function verifyJwtSignature(
   try {
     const { payload } = await jwtVerify(jwt, jwks, {
       issuer: expectedIssuers,
+      // 60s on devnet (clock skew), 10s on prod
+      clockTolerance: process.env.NODE_ENV === 'production' ? 10 : 60,
     });
     return payload;
   } catch (error) {
