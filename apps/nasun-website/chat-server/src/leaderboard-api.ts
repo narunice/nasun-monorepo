@@ -39,7 +39,7 @@ import {
   getScoreLeaderboard, getTraderScore, getTotalScoreTraders, getPadoAggregatorLastRun,
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
-  getWeeklyScoreLeaderboard, getWeeklyScoreCount, getTraderWeeklyScore,
+  getWeeklyScoreLeaderboard, getWeeklyScoreCount, countWeeklyUniqueTraders, getTraderWeeklyScore,
   getAvailableWeeks,
   getCurrentWeekStart, getWeekId,
   getFollowedTraderFills,
@@ -679,6 +679,19 @@ async function handleInternalWeeklyScores(
   return true;
 }
 
+function weekIdToStartMs(weekId: string): number {
+  const [yearStr, weekStr] = weekId.split('-W');
+  const year = parseInt(yearStr, 10);
+  const week = parseInt(weekStr, 10);
+  // Jan 4 is always in ISO week 1
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const dayOfWeek = jan4.getUTCDay() || 7;
+  const monday_w1 = new Date(jan4.getTime() - (dayOfWeek - 1) * 86400000);
+  const monday = new Date(monday_w1.getTime() + (week - 1) * 7 * 86400000);
+  monday.setUTCHours(0, 10, 0, 0);
+  return monday.getTime();
+}
+
 async function handleScoreLeaderboardWeekly(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>, weekId: string,
 ): Promise<void> {
@@ -686,6 +699,9 @@ async function handleScoreLeaderboardWeekly(
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const rows = getWeeklyScoreLeaderboard(weekId, limit, offset);
   const totalTraders = getWeeklyScoreCount(weekId);
+  const weekStartMs = weekIdToStartMs(weekId);
+  const prevWeekStartMs = weekStartMs - 7 * 24 * 60 * 60 * 1000;
+  const totalParticipants = countWeeklyUniqueTraders(prevWeekStartMs, weekStartMs);
   const addresses = rows.map((r) => r.address);
   if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
     console.error('[ScoreLeaderboardWeekly] ensureProfilesCached error:', (err as Error).message);
@@ -744,6 +760,7 @@ async function handleScoreLeaderboardWeekly(
     traders,
     updatedAt: getPadoAggregatorLastRun(),
     totalTraders,
+    totalParticipants,
   }));
 }
 
