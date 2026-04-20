@@ -60,13 +60,12 @@ const PadoScoreLeaderboardPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Row 2: Top 10 / 20 / 50 / 100 */}
-          <div className="grid grid-cols-4 gap-3">
+          {/* Row 2: Top 10 / 20 / 50 */}
+          <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Top 10", pts: 35 },
               { label: "Top 20", pts: 30 },
               { label: "Top 50", pts: 25 },
-              { label: "Top 100", pts: 20 },
             ].map(({ label, pts }) => (
               <div
                 key={label}
@@ -80,12 +79,12 @@ const PadoScoreLeaderboardPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Row 3: Top 200 / 300 / 500 */}
+          {/* Row 3: Top 100 / 200 / 300 */}
           <div className="grid grid-cols-3 gap-3">
             {[
+              { label: "Top 100", pts: 20 },
               { label: "Top 200", pts: 15 },
               { label: "Top 300", pts: 10 },
-              { label: "Top 500", pts: 8 },
             ].map(({ label, pts }) => (
               <div
                 key={label}
@@ -99,9 +98,10 @@ const PadoScoreLeaderboardPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Row 4: Top 1000 / 2000 */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Row 4: Top 500 / 1000 / 2000 */}
+          <div className="grid grid-cols-3 gap-3">
             {[
+              { label: "Top 500", pts: 8 },
               { label: "Top 1000", pts: 6 },
               { label: "Top 2000", pts: 5 },
             ].map(({ label, pts }) => (
