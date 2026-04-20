@@ -1,9 +1,8 @@
 /**
  * Balance Watchdog
  *
- * Monitors LP bot wallet token balances and auto-refills via batched legacy faucet.
- * Gas management is removed -- each bot wallet is pre-funded with 100k NASUN via
- * scripts/refill-gas.ts. Watchdog only emits warnings when gas drops below threshold.
+ * Monitors LP bot wallet token balances and auto-refills via batched faucet.
+ * Also auto-refills NASUN gas via HTTP faucet when balance drops below threshold.
  *
  * Usage:
  *   npx tsx scripts/balance-watchdog.ts
@@ -14,6 +13,8 @@
  *   WATCHDOG_INTERVAL_MS        - check interval (default: 300000 = 5 min)
  *   WATCHDOG_REFILL_ROUNDS      - faucet rounds per refill (default: 50)
  *   WATCHDOG_GAS_WARNING        - warn when gas drops below this (NASUN, default: 1500)
+ *   WATCHDOG_GAS_AUTO_REFILL    - auto-refill threshold (NASUN, default: 5000)
+ *   NASUN_FAUCET_URL            - faucet base URL (default: https://faucet.devnet.nasun.io)
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -28,6 +29,11 @@ const INTERVAL_MS = parseInt(process.env.WATCHDOG_INTERVAL_MS || '300000', 10);
 const REFILL_ROUNDS = parseInt(process.env.WATCHDOG_REFILL_ROUNDS || '50', 10);
 // Warn when gas drops below 1500 NASUN (above bot's 1000 NASUN skip threshold)
 const GAS_WARNING_THRESHOLD = parseFloat(process.env.WATCHDOG_GAS_WARNING || '1500');
+// Auto-refill via HTTP faucet when gas drops below this threshold
+const GAS_AUTO_REFILL_THRESHOLD = parseFloat(process.env.WATCHDOG_GAS_AUTO_REFILL || '5000');
+const FAUCET_URL = process.env.NASUN_FAUCET_URL || 'https://faucet.devnet.nasun.io';
+
+// Auto-refill via HTTP faucet when gas drops below this threshold
 
 // Contract addresses
 const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
@@ -161,13 +167,27 @@ async function checkMarket(client: SuiClient, market: keyof typeof MARKETS): Pro
   const address = keypair.getPublicKey().toSuiAddress();
   const config = MARKETS[market];
 
-  // Gas warning (no auto-refill -- run scripts/refill-gas.ts manually)
+  // Auto-refill gas via HTTP faucet when below threshold
   const gas = await getGasBalance(client, address);
-  if (gas < GAS_WARNING_THRESHOLD) {
-    console.warn(
-      `[${timestamp()}] [${market}] WARNING: Low gas ${gas.toFixed(0)} NASUN ` +
-      `(threshold: ${GAS_WARNING_THRESHOLD}). Run: pnpm tsx scripts/refill-gas.ts`
-    );
+  if (gas < GAS_AUTO_REFILL_THRESHOLD) {
+    console.log(`[${timestamp()}] [${market}] Gas low (${gas.toFixed(0)} NASUN), requesting from faucet...`);
+    try {
+      const body = JSON.stringify({ FixedAmountRequest: { recipient: address } });
+      const res = await fetch(`${FAUCET_URL}/v1/gas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.ok) {
+        console.log(`[${timestamp()}] [${market}] Gas refilled via faucet`);
+      } else {
+        const text = await res.text().catch(() => res.status.toString());
+        console.error(`[${timestamp()}] [${market}] Gas faucet FAILED: ${text}`);
+      }
+    } catch (err) {
+      console.error(`[${timestamp()}] [${market}] Gas faucet error:`, err instanceof Error ? err.message : err);
+    }
   }
 
   // Token balance check and refill

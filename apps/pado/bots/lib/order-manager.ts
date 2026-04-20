@@ -16,6 +16,9 @@ import {
   SELF_MATCHING,
   type OrderSpec,
   type BotState,
+  type Inventory,
+  quantityToRaw,
+  roundToLotSize,
   timestamp,
 } from './config.js';
 
@@ -28,6 +31,47 @@ function generateProofAsOwner(tx: Transaction, balanceManagerId: string) {
     target: `${DEEPBOOK_PACKAGE}::balance_manager::generate_proof_as_owner`,
     arguments: [tx.object(balanceManagerId)],
   });
+}
+
+/**
+ * Build transaction to sweep a crossing bid using an IOC (Immediate-Or-Cancel) order.
+ * IOC orders fill against existing liquidity and expire immediately if no fill is possible.
+ */
+function buildSweepCrossingBid(
+  balanceManagerId: string,
+  sweepPrice: bigint,
+  sweepQuantity: bigint,
+  state: BotState,
+): Transaction {
+  const tx = new Transaction();
+  const tradeProof = generateProofAsOwner(tx, balanceManagerId);
+  const clientOrderId = state.clientOrderIdCounter++;
+
+  const orderInfo = tx.moveCall({
+    target: `${DEEPBOOK_PACKAGE}::pool::place_limit_order`,
+    typeArguments: [MARKET.baseType, MARKET.quoteType],
+    arguments: [
+      tx.object(MARKET.poolId),
+      tx.object(balanceManagerId),
+      tradeProof,
+      tx.pure.u64(clientOrderId),
+      tx.pure.u8(ORDER_TYPE.IMMEDIATE_OR_CANCEL),
+      tx.pure.u8(SELF_MATCHING.CANCEL_TAKER),
+      tx.pure.u64(sweepPrice),
+      tx.pure.u64(sweepQuantity),
+      tx.pure.bool(false), // isBid = false (ask side sweep)
+      tx.pure.bool(false),
+      tx.pure.u64(Date.now() + 60000), // 1min TTL for IOC (matches buildArbitrageTrades)
+      tx.object(CLOCK_ID),
+    ],
+  });
+
+  tx.moveCall({
+    target: `${DEEPBOOK_PACKAGE}::order_info::order_id`,
+    arguments: [orderInfo],
+  });
+
+  return tx;
 }
 
 /**
@@ -193,6 +237,7 @@ export async function syncOrders(
   balanceManagerId: string,
   orders: OrderSpec[],
   state: BotState,
+  inventory?: Inventory,
 ): Promise<{ success: boolean; digest?: string; error?: string }> {
   if (orders.length > 0) {
     const sample = orders[0];
@@ -232,6 +277,42 @@ export async function syncOrders(
       result = await executeTransaction(client, keypair, placeTx);
       if (result.success) {
         console.log(`[${timestamp()}] Split cancel+place succeeded`);
+      } else if (result.error?.includes('assert_execution')) {
+        // Level-2: IOC sweep to consume the foreign bid, then retry POST_ONLY.
+        // This handles cases where devInspect missed a crossing bid (e.g. timing issue).
+        console.log(`[${timestamp()}] Place-only still crossing — IOC sweep to remove foreign bid...`);
+        const askOrders = orders.filter((o) => !o.isBid);
+        if (askOrders.length > 0) {
+          const innermostAskPrice = askOrders.reduce(
+            (min, o) => (o.price < min ? o.price : min),
+            askOrders[0].price,
+          );
+          // Use full BalanceManager base inventory for maximum sweep power.
+          // Grid quantity (45 x orderSize) is insufficient against a whale bid larger
+          // than the grid total. Full inventory consumes the largest possible portion.
+          const gridQty = askOrders.reduce((sum, o) => sum + o.quantity, 0n);
+          const sweepQuantity = (() => {
+            if (!inventory || inventory.base <= 0) return gridQty;
+            const fullQty = roundToLotSize(quantityToRaw(inventory.base * 0.99));
+            return fullQty > gridQty ? fullQty : gridQty;
+          })();
+          const sweepTx = buildSweepCrossingBid(balanceManagerId, innermostAskPrice, sweepQuantity, state);
+          const sweepResult = await executeTransaction(client, keypair, sweepTx);
+
+          if (sweepResult.success) {
+            console.log(`[${timestamp()}] IOC sweep executed (tx: ${sweepResult.digest?.slice(0, 10)}...), retrying...`);
+            await new Promise((r) => setTimeout(r, 2000));
+            const retryPlaceTx = buildPlaceOrders(balanceManagerId, orders, state);
+            result = await executeTransaction(client, keypair, retryPlaceTx);
+            if (result.success) {
+              console.log(`[${timestamp()}] Post-sweep POST_ONLY placement succeeded`);
+            } else {
+              console.error(`[${timestamp()}] Post-sweep POST_ONLY still failing: ${result.error}`);
+            }
+          } else {
+            console.error(`[${timestamp()}] IOC sweep failed: ${sweepResult.error}`);
+          }
+        }
       }
     } else {
       console.log(`[${timestamp()}] Cancel failed: ${cancelResult.error}`);
