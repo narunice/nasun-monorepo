@@ -22,13 +22,16 @@ export interface FindResult {
  * Validate that a BalanceManager object exists on-chain
  */
 export async function validateBalanceManagerExists(id: string): Promise<boolean> {
-  try {
-    const client = getSuiClient();
-    const obj = await client.getObject({ id });
-    return obj.data !== null && obj.error === undefined;
-  } catch {
-    return false;
+  const client = getSuiClient();
+  const obj = await client.getObject({ id });
+  // Only return false when the chain explicitly says object not found.
+  // Let other errors propagate so callers don't misinterpret RPC failures as deletion.
+  if (obj.error) {
+    const code = (obj.error as { code?: string }).code;
+    if (code === 'notExists' || code === 'deleted') return false;
+    throw new Error(`RPC error for object ${id}: ${JSON.stringify(obj.error)}`);
   }
+  return obj.data != null;
 }
 
 /**
