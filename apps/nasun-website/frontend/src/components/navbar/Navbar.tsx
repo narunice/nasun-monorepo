@@ -16,6 +16,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 
 import { useAuth } from "@/features/auth";
 import { useAdminAuth } from "@/features/admin/hooks/useAdminAuth";
+import { NavEcoPointsBadge } from "./NavEcoPointsBadge";
 
 export default function Navbar() {
   const { t } = useTranslation("common");
@@ -154,6 +155,8 @@ export default function Navbar() {
               </Tooltip.Content>
             </Tooltip.Root>
           )}
+
+          {isAuthenticated && user && <NavEcoPointsBadge identityId={user.identityId} />}
 
           {isAuthenticated && user && (
             <Tooltip.Root>
