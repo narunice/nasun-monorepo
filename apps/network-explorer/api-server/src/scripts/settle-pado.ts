@@ -67,15 +67,18 @@ if (!ECOSYSTEM_ACTIVATIONS_URL) {
 // ===== Reward table =====
 
 const REWARD_TABLE: Array<{ maxRank: number; pts: number }> = [
-  { maxRank: 1,   pts: 50 },
-  { maxRank: 2,   pts: 40 },
-  { maxRank: 3,   pts: 30 },
-  { maxRank: 50,  pts: 15 },
-  { maxRank: 100, pts: 10 },
-  { maxRank: 200, pts: 6  },
-  { maxRank: 300, pts: 5  },
-  { maxRank: 400, pts: 2  },
-  { maxRank: 500, pts: 1  },
+  { maxRank: 1,    pts: 50 },
+  { maxRank: 2,    pts: 45 },
+  { maxRank: 3,    pts: 40 },
+  { maxRank: 10,   pts: 35 },
+  { maxRank: 20,   pts: 30 },
+  { maxRank: 50,   pts: 25 },
+  { maxRank: 100,  pts: 20 },
+  { maxRank: 200,  pts: 15 },
+  { maxRank: 300,  pts: 10 },
+  { maxRank: 500,  pts: 8  },
+  { maxRank: 1000, pts: 6  },
+  { maxRank: 2000, pts: 5  },
 ];
 
 function getRewardPts(rank: number): number {
@@ -381,7 +384,7 @@ async function main() {
   console.log(`  Skipped (unregistered): ${skippedUnregistered}`);
   console.log(`  Skipped (no Alliance NFT): ${skippedNoAlliance}`);
   console.log(`  Skipped (no social account): ${skippedNoSocial}`);
-  console.log(`  Skipped (rank > 500): ${skippedNoReward}`);
+  console.log(`  Skipped (rank > 2000): ${skippedNoReward}`);
 
   await pgDb.end();
   console.log('\nDone.');

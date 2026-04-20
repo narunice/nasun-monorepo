@@ -69,19 +69,6 @@ export function ScoreTraderRow({ trader, isCurrentUser }: ScoreTraderRowProps) {
             <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
               {displayName}
             </span>
-            {trader.twitterHandle && (
-              <a
-                href={`https://x.com/${trader.twitterHandle}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="text-theme-text-muted hover:text-theme-text-primary transition-colors opacity-80"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-              </a>
-            )}
             {trader.hasGenesisPass && <GenesisPassBadge />}
           </div>
           {trader.nickname && (
@@ -96,12 +83,27 @@ export function ScoreTraderRow({ trader, isCurrentUser }: ScoreTraderRowProps) {
           {formatScore(trader.totalScore)}
         </span>
       </td>
-      <td className="py-3 px-3 text-right">
+      <td className="py-3 px-2 text-center w-8">
+        {trader.twitterHandle ? (
+          <svg className="w-3 h-3 mx-auto text-sky-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+        ) : null}
+      </td>
+      <td className="py-3 px-2 text-center w-8">
+        {trader.hasGoogle ? (
+          <svg className="w-3 h-3 mx-auto text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+        ) : null}
+      </td>
+      <td className="py-3 px-2 text-center w-8">
+        {trader.hasTelegram ? (
+          <svg className="w-3 h-3 mx-auto text-violet-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+        ) : null}
+      </td>
+      <td className="py-3 px-3 text-right hidden md:table-cell">
         <span className="text-sm text-theme-text-secondary">
           {formatVolume(trader.volumeUsd)}
         </span>
       </td>
-      <td className="py-3 px-3 text-right">
+      <td className="py-3 px-3 text-right hidden md:table-cell">
         <span className="text-sm text-theme-text-secondary">
           {trader.tradeCount.toLocaleString()}
         </span>
