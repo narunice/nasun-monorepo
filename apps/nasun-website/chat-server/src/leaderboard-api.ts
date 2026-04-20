@@ -246,13 +246,15 @@ export async function handleLeaderboardRequest(
 
     const weeklyScoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/score\/weekly\/(\d{4}-W\d{2})$/);
     if (weeklyScoreMatch && method === 'GET') {
-      handleScoreLeaderboardWeekly(res, url, corsHeaders, weeklyScoreMatch[1]).catch((err) => {
+      try {
+        handleScoreLeaderboardWeekly(res, url, corsHeaders, weeklyScoreMatch[1]);
+      } catch (err) {
         console.error('[ScoreLeaderboardWeekly] Error:', (err as Error).message);
         if (!res.writableEnded) {
           res.writeHead(500, corsHeaders);
           res.end(JSON.stringify({ error: 'internal_error' }));
         }
-      });
+      }
       return true;
     }
     // Pattern-matched routes
@@ -529,13 +531,15 @@ async function handleScoreLeaderboard(
   }
   const weekStart = getCurrentWeekStart();
   const weekId = getWeekId(weekStart);
-  await handleScoreLeaderboardWeekly(res, url, corsHeaders, weekId).catch((err) => {
+  try {
+    handleScoreLeaderboardWeekly(res, url, corsHeaders, weekId);
+  } catch (err) {
     console.error('[ScoreLeaderboard] Error:', (err as Error).message);
     if (!res.writableEnded) {
       res.writeHead(500, corsHeaders);
       res.end(JSON.stringify({ error: 'internal_error' }));
     }
-  });
+  }
   return true;
 }
 
@@ -692,9 +696,9 @@ function weekIdToStartMs(weekId: string): number {
   return monday.getTime();
 }
 
-async function handleScoreLeaderboardWeekly(
+function handleScoreLeaderboardWeekly(
   res: ServerResponse, url: URL, corsHeaders: Record<string, string>, weekId: string,
-): Promise<void> {
+): void {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 2000);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
   const rows = getWeeklyScoreLeaderboard(weekId, limit, offset);
@@ -711,40 +715,22 @@ async function handleScoreLeaderboardWeekly(
   const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
   const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
 
-  // Resolve social badges (xHandle, hasGoogle, hasTelegram) from DynamoDB UserProfiles.
-  // SQLite nasun_profiles cache only covers chat-room users; most traders are not in it.
-  let socialBadgesByAddress = new Map<string, SocialBadges>();
-  if (addresses.length > 0) {
-    const identityMap = await withTimeout(resolveIdentityIds(addresses), 5000, new Map<string, string>());
-    const identityIds = [...new Set(identityMap.values())];
-    if (identityIds.length > 0) {
-      const badgesByIdentity = await withTimeout(getSocialBadgesBatch(identityIds), 5000, new Map<string, SocialBadges>());
-      if (badgesByIdentity.size === 0) {
-        console.warn('[social-badges] timeout or empty, badges hidden for this request');
-      }
-      for (const [addr, identityId] of identityMap) {
-        const badges = badgesByIdentity.get(identityId);
-        if (badges) socialBadgesByAddress.set(addr, badges);
-      }
-    }
-  }
-
+  // Social badges are pre-computed at aggregation time and stored in SQLite.
   const traders = rows.map((row) => {
-    const badges = socialBadgesByAddress.get(row.address);
     return {
       rank: row.rank,
       address: row.address,
       nickname: nicknames.get(row.address) ?? null,
       hasGenesisPass: genesisPassSet.has(row.address),
       profileImageUrl: profileImages.get(row.address) ?? null,
-      xHandle: badges?.xHandle ?? null,
+      xHandle: row.x_handle ?? null,
       totalScore: row.total_score,
       tradeCount: row.trade_count,
       volumeUsd: formatQuoteVolume(row.volume_quote),
       rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - row.rank,
       followerCount: followerCounts.get(row.address) ?? 0,
-      hasGoogle: badges?.hasGoogle ?? false,
-      hasTelegram: badges?.hasTelegram ?? false,
+      hasGoogle: Boolean(row.has_google),
+      hasTelegram: Boolean(row.has_telegram),
     };
   });
 
