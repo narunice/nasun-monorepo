@@ -9,7 +9,15 @@ declare const __BUILD_TIMESTAMP__: string;
 import enCommon from "./assets/locales/en/common.json";
 import enHome from "./assets/locales/en/home.json";
 
+const silentLogger = {
+  type: 'logger' as const,
+  log: () => {},
+  warn: () => {},
+  error: console.error,
+};
+
 i18n
+  .use(silentLogger)
   .use(Backend)
   .use(initReactI18next)
   .init({
