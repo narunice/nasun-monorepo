@@ -117,7 +117,20 @@ export function useTrading(): UseTrading {
 
       const storedId = getStoredBalanceManagerId(walletAddress);
       if (storedId) {
-        const exists = await validateBalanceManagerExists(storedId);
+        let exists: boolean;
+        try {
+          exists = await validateBalanceManagerExists(storedId);
+        } catch (err) {
+          // RPC error (network/timeout): keep stored ID and assume still valid.
+          // Reset guard so next mount re-validates once network recovers.
+          console.warn('[useTrading] BM validation RPC error, keeping stored ID:', err);
+          _validatingForAddress = null;
+          if (!cancelled) {
+            setBalanceManagerId(storedId);
+            setIsValidatingBalanceManager(false);
+          }
+          return;
+        }
         if (cancelled) return;
         if (exists) {
           setBalanceManagerId(storedId);

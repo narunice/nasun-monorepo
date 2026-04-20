@@ -50,12 +50,26 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
 
     const client = getSuiClient();
 
+    const attemptBuild = async (): Promise<Uint8Array> => {
+      try {
+        return await tx.build({ client });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // RPC lag: previous tx effects not yet indexed — retry once after brief delay
+        if (/No valid gas coins found|InsufficientGas/i.test(msg)) {
+          await new Promise((r) => setTimeout(r, 2000));
+          return tx.build({ client });
+        }
+        throw err;
+      }
+    };
+
     try {
       setIsLoading(true);
       setError(null);
 
       tx.setSender(walletAddress);
-      const bytes = await tx.build({ client });
+      const bytes = await attemptBuild();
 
       // Sign with appropriate method (priority: zkLogin > local > passkey)
       let signature: string;
