@@ -13,7 +13,7 @@ import { MARKET, timestamp } from './config.js';
 
 const BINANCE_API_URL = `https://api.binance.com/api/v3/ticker/price?symbol=${MARKET.binanceSymbol}`;
 const CACHE_TTL_MS = 5000; // 5 seconds cache
-const MAX_FALLBACK_AGE_MS = 60_000; // 1 minute max staleness for fallback
+const MAX_FALLBACK_AGE_MS = 30_000; // 30s max staleness: 60s caused up to 6 stale cycles
 
 // ========================================
 // Cache State

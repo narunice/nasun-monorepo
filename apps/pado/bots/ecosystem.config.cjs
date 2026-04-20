@@ -164,7 +164,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
-        WATCHDOG_INTERVAL_MS: '300000',   // 5 minutes
+        WATCHDOG_INTERVAL_MS: '60000',    // 1 minute (5min caused up to 5min token drain gap)
         WATCHDOG_REFILL_ROUNDS: '100',    // 100 rounds per refill TX
       },
       max_restarts: 10,

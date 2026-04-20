@@ -1,318 +1,391 @@
-# Pado Bots
+# Pado Bots - Liquidity Provider & Infrastructure
 
-Automated bots for the Pado trading platform on Nasun Devnet.
-
-## Available Bots
-
-| Bot | Script | Description | Interval |
-|-----|--------|-------------|----------|
-| LP Bot | `lp-bot.ts` | Grid market making on DeepBook V3 (NBTC, NETH, NSOL) | 10s |
-| Price Updater | `price-updater.ts` | Updates DevOracle with BTC/ETH/NASUN prices from Binance/CoinGecko | 30s |
-| Liquidation Keeper | `liquidation-keeper.ts` | Monitors perpetual positions and triggers liquidations | 10s |
-| TP/SL Keeper | `tpsl-keeper.ts` | Monitors take-profit/stop-loss orders and executes them on price trigger | Continuous |
-
-## LP Bot
-
-Provides liquidity to DeepBook V3 orderbooks by placing grid orders around real-time prices from Binance.
-
-### Features
-
-- **Multi-market**: NBTC/NUSDC, NETH/NUSDC, NSOL/NUSDC (one instance per market)
-- **Grid orders**: 30 bid + 30 ask orders per side (configurable via `LP_ORDER_LEVELS`)
-- **Per-market tuning**: Spread, level spacing, order size configured independently
-- **Auto-refill**: Requests faucet tokens when balance drops below threshold
-- **Inventory skew**: Widens spread on heavy side to rebalance
-- **Arbitrage**: Detects and captures price discrepancies vs Binance
-- **Circuit breaker**: Auto-recovery with exponential cooldown (max 60s)
-- **Gas management**: Auto-refills gas when below threshold
-
-### Quick Start (Local)
-
-```bash
-cd apps/pado/bots
-
-# 1. Set private key in .env
-echo 'LP_PRIVATE_KEY=suiprivkey1...' > .env
-
-# 2. Run single market once
-pnpm lp-bot:once
-
-# 3. Run continuously (single market)
-LP_MARKET=NBTC pnpm lp-bot
-
-# 4. Run all markets
-pnpm lp-bot:all
-```
-
-### Per-Market Configuration
-
-| Variable | NBTC | NETH | NSOL | Description |
-|----------|------|------|------|-------------|
-| `LP_SPREAD_BPS` | 20 | 30 | 40 | Base spread in basis points |
-| `LP_LEVEL_SPACING_BPS` | 8 | 12 | 15 | Price spacing between levels |
-| `LP_ORDER_SIZE` | 0.05 | 2 | 30 | Base token quantity per level |
-| `LP_MAX_ORDER_SIZE` | 0.5 | 20 | 300 | Maximum single order size |
-| `LP_MAX_ARB_QUANTITY` | 0.1 | 5 | 100 | Max arbitrage trade size |
-| `LP_MIN_PRICE` | 50000 | 1000 | 10 | Sanity check lower bound |
-| `LP_MAX_PRICE` | 200000 | 10000 | 1000 | Sanity check upper bound |
-
-### Common Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LP_PRIVATE_KEY` | (required) | Ed25519 private key (bech32 `suiprivkey1...` or hex) |
-| `LP_MARKET` | `NBTC` | Market to operate: `NBTC`, `NETH`, or `NSOL` |
-| `NASUN_RPC_URL` | `https://rpc.devnet.nasun.io` | RPC endpoint |
-| `LP_ORDER_LEVELS` | 30 | Orders per side |
-| `LP_UPDATE_INTERVAL` | 10000 | Update interval (ms) |
-| `LP_REQUOTE_THRESHOLD` | 50 | Re-quote at 0.5% price move |
-| `LP_MIN_SPREAD_BPS` | 10 | Minimum allowed spread |
-| `LP_MAX_FAILURES` | 5 | Failures before cooldown starts |
-| `LP_GAS_REFILL_THRESHOLD` | 0.5 | Gas refill trigger (NASUN) |
-
-## Price Updater
-
-Updates DevOracle contract with BTC, ETH, and NASUN prices from Binance/CoinGecko.
-
-```bash
-# Required env
-export ORACLE_ADMIN_KEY=<hex-key>
-
-# Run
-pnpm price-updater
-pnpm price-updater:once
-```
-
-Contract addresses are hardcoded in `price-updater.ts` (lines 29-31).
-
-## Liquidation Keeper
-
-Monitors perpetual positions and triggers liquidations when margin ratio drops below MM (2.5%).
-
-```bash
-export KEEPER_PRIVATE_KEY=<hex-key>
-pnpm liquidation-keeper
-pnpm liquidation-keeper:once
-```
-
-## TP/SL Keeper
-
-HTTP + WebSocket server that monitors take-profit/stop-loss orders and executes position closures when price triggers are hit.
-
-```bash
-# Required env
-export KEEPER_PRIVATE_KEY=<hex-key>
-export TPSL_API_KEY=<api-key>
-
-# Run (listens on port 4001)
-pnpm tsx tpsl-keeper.ts
-```
-
-### TP/SL Keeper Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `KEEPER_PRIVATE_KEY` | Hex-encoded Ed25519 key for executing liquidations |
-| `TPSL_API_KEY` | Bearer token for API authentication |
-| `TPSL_PORT` | HTTP/WS port (default: 4001) |
-| `NASUN_RPC_URL` | RPC endpoint |
-| `ORACLE_REGISTRY_ID` | Oracle registry object ID |
-| `ORACLE_PACKAGE_ID` | Oracle package ID |
-| `DEEPBOOK_PACKAGE` | DeepBook V3 package ID |
-| `TPSL_ALLOWED_ORIGIN` | CORS allowed origin |
+Automated infrastructure and market-making bots for the Pado trading platform on Nasun Devnet.
 
 ---
 
-## Production Deployment (PM2)
+## 1. Overview
 
-All bots run via PM2 using `ecosystem.config.cjs`. The deploy script handles code sync, dependency install, and PM2 restart.
+The bot suite provides continuous on-chain liquidity for Pado's spot markets (DeepBook V3 CLOB) and keeps the system's operational state consistent without manual intervention.
 
-### Architecture
+**Running processes (PM2)**:
+| Process | Source | Role |
+|---------|--------|------|
+| `lp-bot-nbtc` | `lp-bot.ts` | Grid market maker, NBTC/NUSDC |
+| `lp-bot-neth` | `lp-bot.ts` | Grid market maker, NETH/NUSDC |
+| `lp-bot-nsol` | `lp-bot.ts` | Grid market maker, NSOL/NUSDC |
+| `price-updater` | `price-updater.ts` | Oracle price feed to on-chain state |
+| `tpsl-keeper` | `tpsl-keeper.ts` | TP/SL order execution |
+| `lottery-keeper` | `lottery-keeper.ts` | Weekly lottery automation |
+| `balance-watchdog` | `scripts/balance-watchdog.ts` | Gas and token monitoring |
+
+**Supported Markets**:
+| Market | Pool | Tick Size | Lot Size | Oracle |
+|--------|------|-----------|----------|--------|
+| NBTC/NUSDC | `0xa2b755...` | $0.10 | 0.00001 NBTC | Binance BTCUSDT |
+| NETH/NUSDC | `0xb6c960...` | $0.10 | 0.00001 NETH | Binance ETHUSDT |
+| NSOL/NUSDC | `0x577f81...` | $0.01 | 1.0 NSOL | Binance SOLUSDT |
+
+---
+
+## 2. System Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  ecosystem.config.cjs (PM2 process manager)              │
-├──────────────────────────────────────────────────────────┤
-│  lp-bot-nbtc   │ LP market making for NBTC/NUSDC        │
-│  lp-bot-neth   │ LP market making for NETH/NUSDC        │
-│  lp-bot-nsol   │ LP market making for NSOL/NUSDC        │
-│  price-updater │ Oracle price feed (BTC/ETH/NASUN)      │
-│  tpsl-keeper   │ TP/SL order execution (port 4001)      │
-├──────────────────────────────────────────────────────────┤
-│  .env (secrets)                                          │
-│  ├── LP_PRIVATE_KEY       (LP bots)                      │
-│  ├── ORACLE_ADMIN_KEY     (price-updater)                │
-│  ├── KEEPER_PRIVATE_KEY   (tpsl-keeper)                  │
-│  └── TPSL_API_KEY         (tpsl-keeper)                  │
-└──────────────────────────────────────────────────────────┘
+lp-bot.ts (per market)
+    |
+    +-- lib/price-source.ts     Binance REST API, 5s cache
+    +-- lib/config.ts           Market config, env vars, type definitions
+    +-- lib/balance-manager.ts  BalanceManager discovery, deposit, balance queries
+    +-- lib/faucet.ts           On-chain token faucets (V1/V2) + HTTP gas faucet
+    +-- lib/orderbook.ts        Pool state via devInspect
+    +-- lib/arbitrage.ts        Crossing-bid/ask detection and IOC execution
+    +-- lib/strategy.ts         Grid order generation with inventory skew
+    +-- lib/order-manager.ts    TX builders, executeTransaction, syncOrders self-heal
+    +-- lib/retry.ts            Exponential backoff with non-retriable error detection
+
+scripts/balance-watchdog.ts     Independent process (5-min interval)
 ```
 
-### Environment Separation
+**On-chain contracts (Nasun Devnet)**:
+- DeepBook V3 Package: `0xb4a100f2...`
+- Token Package V1 (NBTC/NUSDC): `0x96adf476...`
+- Token Faucet V1: `0x7cc75ad1...`
+- Token Package V2 (NETH/NSOL): `0xcc65166f...` / `0xe672843f...`
 
-Staging and production use **separate LP private keys** to avoid on-chain object contention (BalanceManager lock conflicts on shared DeepBook Pool objects).
+---
 
-| Environment | Server | User | LP Wallet Address | LP Alias |
-|-------------|--------|------|-------------------|----------|
-| Staging | `ec2-15-165-19-180.ap-northeast-2.compute.amazonaws.com` | `ubuntu` | `0x69377697cebb6a6a748b9a5492de51b2d0f67413551d87f62cc17899432952cd` | `musing-euclase` |
-| Production | `43.200.67.52` | `ec2-user` | `0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90` | `hopeful-malachite` |
+## 3. Initialization Pipeline (`initialize`)
 
-> **Important**: Never use the same `LP_PRIVATE_KEY` on both staging and production simultaneously. Concurrent access to the same BalanceManager from multiple instances causes "Object already locked" errors from the Sui validator.
+When a bot process starts, it runs a one-time initialization before entering the main loop:
 
-### Required `.env` File on Server
+```
+1. Gas check
+   - Query wallet NASUN balance
+   - If < 1,000 NASUN: wait (balance-watchdog will refill)
 
-```env
-LP_PRIVATE_KEY=suiprivkey1...     # LP bots (bech32 or hex)
-ORACLE_ADMIN_KEY=<hex>            # price-updater (AdminCap owner)
-KEEPER_PRIVATE_KEY=<hex>          # tpsl-keeper
-TPSL_API_KEY=<api-key>            # tpsl-keeper API auth
+2. BalanceManager setup
+   - Load persisted ID from data/.lp-bot-state-{market}.json
+   - If not found: query getOwnedObjects on bot address for BalanceManager type
+   - If still not found: create a new BalanceManager via DeepBook V3
+
+3. Inventory check
+   - Sum wallet + BalanceManager balances for base and quote tokens
+   - Required minimum: orderSize * orderLevels * 1.2 base tokens
+   - If below threshold: call on-chain faucet (up to 5 rounds at startup)
+
+4. Deposit
+   - Transfer all wallet tokens into BalanceManager
+   - Set justInitialized = true (skip one cycle for RPC to index)
+
+5. Staggered startup
+   - NBTC: 0s delay
+   - NETH: 20s delay
+   - NSOL: 40s delay
+   (Prevents gas coin contention when restarting all bots simultaneously)
 ```
 
-### Deploy Commands
+Initialization retries up to 20 times (5-minute intervals) before exiting. This prevents PM2 restart loops from flooding the faucet.
+
+---
+
+## 4. Main Loop Cycle (`runBot`)
+
+Runs every `LP_UPDATE_INTERVAL` ms (default: 10s). Each step uses `withRetry` for transient RPC errors.
+
+```
+Step 0: Gas check
+  - If wallet NASUN < LP_GAS_REFILL_THRESHOLD (1,000): skip cycle
+  - balance-watchdog handles the refill independently
+
+Step 1: Oracle price
+  - Fetch from Binance REST API (/api/v3/ticker/price)
+  - Cache TTL: 5s. Stale fallback: up to 1min old
+  - On total failure: use stale price with warning
+
+Step 2: Price validation
+  - Reject if price outside [LP_MIN_PRICE, LP_MAX_PRICE]
+  - Prevents quoting during flash crashes or data errors
+
+Step 3: BalanceManager check
+  - Verify state.balanceManagerId is set (initialize lazily if restarted mid-session)
+
+Step 4: Inventory check and refill
+  - If base < LP_REFILL_THRESHOLD_BASE OR quote < LP_REFILL_THRESHOLD_QUOTE:
+    * Call on-chain faucet (unless LP_DISABLE_TOKEN_FAUCET=true)
+    * Deposit any wallet tokens to BalanceManager
+
+Step 5: Orderbook query
+  - Call pool::get_level2_ticks_from_mid via devInspect (100 levels)
+  - Returns: bids[], asks[] with price and aggregated quantity per level
+  - On failure: returns empty state (handled gracefully downstream)
+
+Step 6: Arbitrage (runs every cycle regardless of requote threshold)
+  - Scan bids above oracle price: place IOC ask to sell at their price
+  - Scan asks below oracle price: place IOC bid to buy at their price
+  - Minimum profit threshold: LP_MIN_ARB_PROFIT_BPS (default: 10bps)
+  - Maximum quantity: LP_MAX_ARB_QUANTITY (per-market)
+  - After execution: wait 3s, re-fetch orderbook before generating grid
+
+Step 6.5: Requote threshold check
+  - If |currentPrice - lastQuotedPrice| < LP_REQUOTE_THRESHOLD_BPS AND no arb ran:
+    * Increment skipCount; skip cancel+place (avoids TX churn during stable prices)
+    * Force refresh every 3 skips (MAX_SKIP_CYCLES)
+  - Exception: if orderbook mid diverges > LP_DIVERGENCE_THRESHOLD_BPS from oracle,
+    force requote even if price is stable (clears contaminated book)
+
+Step 7: Order generation
+  - calculateOrders() in strategy.ts: grid around oracle price
+  - Cap to available inventory (95% of BalanceManager balance)
+  - validateOrders(): filter by maxOrderSize and minSpreadBps
+
+Step 8: Atomic cancel+place
+  - Single TX: cancel_all_orders + 90x place_limit_order (POST_ONLY)
+  - On failure: 3-level self-heal (see Section 6)
+```
+
+---
+
+## 5. Order Generation Strategy (`lib/strategy.ts`)
+
+### Grid Structure
+
+Orders are placed symmetrically around the oracle mid-price:
+
+```
+ask[44]  ...  oracle * (1 + spread + 44*spacing + skew)
+ask[1]         oracle * (1 + spread + 1*spacing + skew)
+ask[0]         oracle * (1 + spread + skew)          <- innermost ask
+---- oracle mid ----
+bid[0]         oracle * (1 - spread - skew)          <- innermost bid
+bid[1]         oracle * (1 - spread - 1*spacing - skew)
+bid[44]  ...  oracle * (1 - spread - 44*spacing - skew)
+```
+
+Where `spread = LP_SPREAD_BPS / 2 / 10000` (half-spread per side).
+
+### Inventory Skew Adjustment
+
+Rebalances inventory by asymmetrically shifting the grid:
+
+- `baseRatio = baseValue / totalPortfolioValue`
+- If `baseRatio > 0.6`: too much base token (e.g. too much NBTC)
+  - Widen bids (buy less aggressively), tighten asks (sell more)
+- If `quoteRatio > 0.6`: too much quote token (e.g. too much NUSDC)
+  - Tighten bids (buy more aggressively), widen asks (sell less)
+- Adjustment capped at `30% of LP_SPREAD_BPS` to prevent extreme pricing
+
+### Orderbook-Derived Constraints
+
+- `maxBidPrice`: derived from `bestAsk * 0.9999` (bid must not cross existing asks)
+- `minAskPrice`: derived from `bestBid * 1.0001` (ask must not cross existing bids)
+- Both clamped within 3% of oracle to ignore anomalous stale orders
+
+---
+
+## 6. Order Management & Self-Healing (`lib/order-manager.ts`)
+
+### Transaction Structure
+
+The primary TX (`buildCancelAndPlaceOrders`) is a single PTB:
+- Command 0: `generate_proof_as_owner` (trade authorization)
+- Command 1: `cancel_all_orders`
+- Commands 2..N: pairs of `place_limit_order` + `order_id` (90 orders = 180 commands)
+
+`place_limit_order` parameters for grid orders:
+- Order type: `POST_ONLY` (rejects if crossing the book)
+- Self-matching: `CANCEL_TAKER`
+- Expiry: `Date.now() + 600,000ms` (10 minutes; auto-expires if bot dies)
+
+### 3-Level Self-Healing in `syncOrders`
+
+```
+Level 0: Standard atomic cancel+place
+  TX: cancel_all + 90x place_limit_order
+  |
+  +--> success -> done
+  |
+  +--> "not available for consumption" (object version conflict)
+  |     Level 1: Wait 3s, rebuild TX with fresh object versions, retry once
+  |
+  +--> "assert_execution" code 5 (EPOSTOrderCrossesOrderbook)
+        Level 2a: Split cancel+place
+          TX1: cancel_all_orders -> success (clears bot's own orders)
+          TX2: place_limit_order x90 -> retry
+          |
+          +--> success -> done
+          |
+          +--> "assert_execution" again (foreign bid still blocking)
+                Level 2b: IOC Sweep
+                  Compute: innermostAskPrice = min price across all ask orders
+                  Compute: sweepQuantity = sum of all ask quantities
+                  TX: IOC ask at innermostAskPrice for sweepQuantity
+                    -> Fills any bid >= innermostAskPrice at execution time
+                    -> IOC: fills what it can, expires remainder silently
+                  Wait 2s for RPC to index sweep TX
+                  TX: place_limit_order x90 (retry POST_ONLY placement)
+```
+
+**Why IOC sweep works without devInspect**: The IOC order is evaluated against the live book at TX execution time on the fullnode, bypassing the devInspect timing race that caused the bot to miss the crossing bid.
+
+---
+
+## 7. Arbitrage Module (`lib/arbitrage.ts`)
+
+Detects and exploits mispriced orders placed by external users:
+
+**Detection** (runs each cycle from `fullOrderbook.bids/asks`):
+- Bid above oracle: SELL opportunity (sell base to user at their high price)
+- Ask below oracle: BUY opportunity (buy base from user at their low price)
+- Minimum profit: `LP_MIN_ARB_PROFIT_BPS` basis points vs oracle
+
+**Execution**:
+- IOC (Immediate-Or-Cancel) order at the user's price
+- Fills if the order still exists at execution time; harmless miss otherwise
+- Single TX can contain multiple arb trades (one per opportunity)
+
+**Post-arb**:
+- Wait 3s for RPC indexing
+- Re-fetch orderbook to get post-arb snapshot
+- Then generate grid around current oracle (not stale pre-arb mid)
+
+---
+
+## 8. Inventory & Gas Management
+
+### BalanceManager
+
+DeepBook V3 uses a `BalanceManager` object as an on-chain account that holds base and quote tokens for a given bot address. This avoids per-order coin object management.
+
+- Discovery: `getOwnedObjects` filtered by `BalanceManager` type
+- Persistence: `.data/lp-bot-state-{market}.json` stores the object ID across restarts
+- Deposit: `balance_manager::deposit` moves wallet coins into the manager
+
+### On-Chain Token Faucets
+
+| Market | Faucet Type | Call |
+|--------|-------------|------|
+| NBTC | V1 (on-chain, no cooldown) | `token_faucet::request_tokens` |
+| NUSDC | V1 (on-chain, no cooldown) | `token_faucet::request_tokens` |
+| NETH | V2 (on-chain, no cooldown) | `faucet::request_neth` |
+| NSOL | V2 (on-chain, no cooldown) | `faucet::request_nsol` |
+
+Faucet calls are throttled by the bot (3s delay between rounds) to avoid RPC object-version conflicts.
+
+### Gas (NASUN) Management
+
+- **Consumption**: ~300-360 NASUN/hour per bot (TX every 10s)
+- **`balance-watchdog`** (independent PM2 process, 5-min interval):
+  - Queries wallet NASUN balance for each bot address
+  - If balance < `WATCHDOG_GAS_THRESHOLD` (default: 5,000 NASUN):
+    - POST `https://faucet.devnet.nasun.io/v1/gas` with bot address
+    - Bot addresses are in the faucet whitelist: cooldown bypass, unlimited requests
+- **Bot self-check (Step 0)**: Skips the cycle if gas < 1,000 NASUN (avoids failed TXs)
+
+---
+
+## 9. Risk Controls
+
+| Control | Mechanism | Config |
+|---------|-----------|--------|
+| Circuit breaker | After N consecutive failures: exponential cooldown (max 60s), auto-recover | `LP_MAX_FAILURES=5` |
+| Price bounds | Reject oracle price outside range; stop quoting | `LP_MIN_PRICE`, `LP_MAX_PRICE` |
+| Order TTL | All orders expire after 10 min; book self-cleans if bot dies | Hardcoded in order builder |
+| Graceful shutdown | `cancel_all_orders` on SIGINT/SIGTERM; 3s timeout, best-effort | Signal handlers in `main()` |
+| Max order size | Per-order size cap; filters at validation stage | `LP_MAX_ORDER_SIZE` |
+| Divergence force-requote | If book mid diverges > threshold from oracle, force full refresh | `LP_DIVERGENCE_THRESHOLD_BPS` |
+| Inventory cap | Orders capped to 95% of BalanceManager balance (reserves for maker fees) | Computed per cycle |
+| Non-retriable detection | `withRetry` skips retry for lock conflicts, equivocation errors | `lib/retry.ts` |
+
+---
+
+## 10. Configuration Reference
+
+### Environment Variables
+
+All variables are set in `ecosystem.config.cjs`. Per-market overrides take precedence over common defaults.
+
+| Variable | Description | NBTC | NETH | NSOL |
+|----------|-------------|------|------|------|
+| `LP_MARKET` | Market selector | `NBTC` | `NETH` | `NSOL` |
+| `LP_PRIVATE_KEY` | Hex or bech32 private key | per-bot | per-bot | per-bot |
+| `LP_SPREAD_BPS` | Half-spread per side in bps | 20 | 6 | 6 |
+| `LP_LEVEL_SPACING_BPS` | BPS between grid levels | 6 | 12 | 15 |
+| `LP_ORDER_LEVELS` | Levels per side | 45 | 45 | 45 |
+| `LP_ORDER_SIZE` | Base tokens per order | 0.1 | 2 | 30 |
+| `LP_MAX_ORDER_SIZE` | Max base tokens per order | 0.5 | 10 | 1000 |
+| `LP_UPDATE_INTERVAL` | Loop interval (ms) | 10000 | 10000 | 10000 |
+| `LP_REQUOTE_THRESHOLD` | Min price move to requote (bps) | 20 | 20 | 20 |
+| `LP_MIN_PRICE` | Price floor for oracle validation | $50,000 | $1,000 | $10 |
+| `LP_MAX_PRICE` | Price ceiling for oracle validation | $200,000 | $10,000 | $1,000 |
+| `LP_MAX_FAILURES` | Circuit breaker threshold | 5 | 5 | 5 |
+| `LP_GAS_REFILL_THRESHOLD` | Skip cycle if gas below this (NASUN) | 1,000 | 1,000 | 1,000 |
+| `LP_ENABLE_ARBITRAGE` | Enable/disable arb module | true | true | true |
+| `LP_MIN_ARB_PROFIT_BPS` | Min profit to execute arb | 10 | 10 | 10 |
+| `LP_MAX_ARB_QUANTITY` | Max base qty per arb trade | 10 | 5 | 100 |
+| `LP_DIVERGENCE_THRESHOLD_BPS` | Force requote if mid deviates this much | 30 | 30 | 30 |
+| `LP_MIN_SPREAD_BPS` | Minimum allowed spread (validation) | 10 | 10 | 10 |
+| `LP_REFILL_THRESHOLD_BASE` | Trigger token refill below this (base) | 6 | - | - |
+| `LP_REFILL_THRESHOLD_QUOTE` | Trigger token refill below this (NUSDC) | 200,000 | 200,000 | 200,000 |
+| `LP_DISABLE_TOKEN_FAUCET` | Disable on-chain token faucet | true | true | true |
+| `NASUN_RPC_URL` | RPC endpoint | `https://rpc.devnet.nasun.io` | - | - |
+| `NASUN_FAUCET_URL` | Gas faucet HTTP endpoint | `https://faucet.devnet.nasun.io` | - | - |
+
+---
+
+## 11. Known Failure Patterns
+
+| Symptom | Root Cause | Resolution |
+|---------|-----------|------------|
+| `[ALERT] Depth critically low! bid=$0 ask=$0` repeated | Circuit breaker loop; bot failing to place orders | Check error logs for underlying code (see below) |
+| `assert_execution code 5` (`EPOSTOrderCrossesOrderbook`) | Foreign bid above bot's innermost ask | Level-2 self-heal fires IOC sweep automatically; if persistent, check pm2 logs for "IOC sweep" messages |
+| `Gas exhaustion` in logs | Wallet NASUN below threshold | Check balance-watchdog logs; manually call gas faucet if watchdog is down |
+| `Object not available for consumption` | Stale object version after RPC lag | Level-1 self-heal (3s rebuild) handles this automatically |
+| `Orderbook empty across all markets` | All bots stopped (gas or crash) | `pm2 restart lp-bot-nbtc lp-bot-neth lp-bot-nsol`; check gas balances |
+| `justInitialized` skip on first cycle | Normal: waits one cycle for RPC to index deposit TX | Not an error; resolves on next cycle |
+| Bot stuck in initialization loop | Gas too low to initialize | Wait for balance-watchdog to refill, or manually send NASUN |
+
+---
+
+## 12. Operational Commands
 
 ```bash
-# From monorepo root
-pnpm deploy:pado:bots:staging     # Deploy to staging
-pnpm deploy:pado:bots:prod        # Deploy to production
-
-# Or directly
-./scripts/deploy-pado-bots.sh --staging
-./scripts/deploy-pado-bots.sh --production
-
-# Operations
-./scripts/deploy-pado-bots.sh --staging --status    # PM2 status
-./scripts/deploy-pado-bots.sh --staging --logs       # PM2 logs
-./scripts/deploy-pado-bots.sh --staging --stop       # Stop all
-./scripts/deploy-pado-bots.sh --staging --restart    # Restart all
-```
-
-### How PM2 + .env Works
-
-PM2 does **not** read `.env` files automatically. The mechanism:
-
-1. **Non-secret config** (contract addresses, RPC URLs) is set in `ecosystem.config.cjs` `env:` blocks
-2. **Secrets** (private keys, API keys) are stored in `.env` on the server
-3. The deploy script runs `set -a && source .env && set +a` before `pm2 start`, injecting secrets into the shell environment
-4. PM2 inherits those shell environment variables at process spawn time
-
-### Manual Server Setup
-
-```bash
-# SSH to server
-ssh -i <key.pem> <user>@<host>
-
-# Install PM2 (if not present)
-npm install -g pm2
-
-# Configure auto-restart on reboot
-pm2 startup
-# Run the command it outputs (sudo env PATH=...)
-pm2 save
-
-# View status
+# Check all process status
 pm2 status
-pm2 logs --lines 50
-pm2 logs lp-bot-nbtc --lines 20
+
+# Tail logs for a specific bot
+pm2 logs lp-bot-nbtc
+pm2 logs lp-bot-nbtc --lines 100
+
+# Restart one bot after deploying updated code
+pm2 restart lp-bot-nbtc
+
+# Restart all LP bots
+pm2 restart lp-bot-nbtc lp-bot-neth lp-bot-nsol
+
+# Check gas and token balances (dry-run, no transactions)
+cd ~/pado-bots && pnpm tsx scripts/balance-watchdog.ts --once
+
+# Cancel all stale orders for a market (emergency cleanup)
+LP_MARKET=NBTC LP_PRIVATE_KEY=<key> pnpm tsx scripts/sweep-stale-orders.ts
+
+# Pre-fund a bot wallet (from admin source)
+LP_PRIVATE_KEY_SOURCE=<admin_key> pnpm tsx scripts/prefund-bot.ts
 ```
 
 ---
 
-## Contract Addresses (DevNet V7)
+## 13. Deployment Notes
 
-| Contract | Address |
-|----------|---------|
-| DeepBook Package | `0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134` |
-| NBTC/NUSDC Pool | `0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0` |
-| NETH/NUSDC Pool | `0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7` |
-| NSOL/NUSDC Pool | `0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769` |
-| Tokens Package (NBTC, NUSDC) | `0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731` |
-| Token Faucet (V1) | `0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92` |
-| NETH Package | `0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31` |
-| NSOL Package (V2) | `0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2` |
-| Oracle Package | `0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c` |
-| Oracle Registry | `0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1` |
+The `apps/pado/bots/` directory in the monorepo is the source of truth. The production server at `43.200.67.52:/home/ec2-user/pado-bots/` is a deployed copy.
 
-## Troubleshooting
-
-### "LP_PRIVATE_KEY environment variable not set"
-
-Set in `.env` file (for PM2) or export directly:
+To deploy changes:
 ```bash
-echo 'LP_PRIVATE_KEY=suiprivkey1...' >> .env
-# or
-export LP_PRIVATE_KEY=<bech32-or-hex>
-```
+# Deploy a specific file
+scp -i ~/.ssh/.awskey/nasun-prod-key \
+  apps/pado/bots/lib/order-manager.ts \
+  ec2-user@43.200.67.52:/home/ec2-user/pado-bots/lib/order-manager.ts
 
-Supports both bech32 (`suiprivkey1...`) and raw hex formats.
-
-### "Object already locked by a different transaction"
-
-Two LP bot instances are using the same `LP_PRIVATE_KEY`, creating BalanceManager contention. Ensure staging and production use different keys. See Environment Separation above.
-
-### "Failed to create BalanceManager"
-
-Wallet needs NASUN for gas. Request from faucet:
-```bash
-curl -X POST https://faucet.devnet.nasun.io/gas -H 'Content-Type: application/json' \
-  -d '{"FixedAmountRequest":{"recipient":"<address>"}}'
-```
-
-### Circuit breaker / auto-recovery
-
-Current implementation uses exponential cooldown (not permanent pause). After `LP_MAX_FAILURES` consecutive errors, the bot waits with increasing delay (max 60s) before retrying. No manual restart needed.
-
-### price-updater or tpsl-keeper crash loop (high restart count)
-
-Check that secrets are present in the shell environment:
-```bash
-ssh <server>
-pm2 env 0 | grep -E 'ORACLE_ADMIN_KEY|KEEPER_PRIVATE_KEY|TPSL_API_KEY'
-```
-
-If missing, ensure `.env` has the keys and restart with:
-```bash
-cd /path/to/pado-bots
-set -a && source .env && set +a
-pm2 delete price-updater tpsl-keeper
-pm2 start ecosystem.config.cjs --only price-updater
-pm2 start ecosystem.config.cjs --only tpsl-keeper
-pm2 save
-```
-
-## Development
-
-```bash
-cd apps/pado/bots
-
-# Install dependencies
-pnpm install
-
-# Type check
-npx tsc --noEmit
-
-# Run single bot locally
-LP_MARKET=NBTC pnpm lp-bot:once
-pnpm price-updater:once
-```
-
-## Source Structure
-
-```
-bots/
-├── lp-bot.ts              # LP market maker (main loop)
-├── price-updater.ts       # Oracle price feed updater
-├── liquidation-keeper.ts  # Perp position liquidator
-├── tpsl-keeper.ts         # TP/SL order executor (HTTP + WS)
-├── ecosystem.config.cjs   # PM2 process configuration
-├── package.json           # Dependencies (tsx must be in dependencies for PM2)
-├── tsconfig.json
-├── .env                   # Secrets (gitignored)
-├── lib/
-│   ├── config.ts          # Multi-market config, contract addresses, helpers
-│   ├── balance-manager.ts # Gas/token balance tracking
-│   ├── order-manager.ts   # Order creation/cancellation (atomic)
-│   ├── strategy.ts        # Grid price calculation + inventory skew
-│   ├── faucet.ts          # Auto faucet refill (V1 + V2)
-│   ├── tpsl-store.ts      # TP/SL state persistence
-│   └── tpsl-executor.ts   # TP/SL execution logic
-└── logs/                  # PM2 log files (gitignored)
+# Then restart affected bots
+ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \
+  "pm2 restart lp-bot-nbtc lp-bot-neth lp-bot-nsol"
 ```
