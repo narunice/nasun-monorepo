@@ -12,7 +12,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
 
 // We test through public functions: claimLink and createLink
 import { claimLink } from '../core/link/claim';
@@ -557,7 +556,7 @@ describe('Nasun Link Transfer', () => {
 
     it('should send separate gas coin for non-native token links', async () => {
       const senderKeypair = new Ed25519Keypair();
-      const senderAddress = senderKeypair.toSuiAddress();
+      senderKeypair.toSuiAddress();
 
       // Mock getCoins for non-native token lookup
       mockGetCoins.mockResolvedValue(
