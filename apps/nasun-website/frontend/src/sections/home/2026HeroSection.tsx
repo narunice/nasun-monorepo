@@ -4,18 +4,27 @@ import { InlineLoading } from "@/components/ui/InlineLoading";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
+interface Hero2026SectionProps {
+  videoSrc?: string;
+  /** Negative top offset to crop the video from the top. E.g. "-15%" or "-120px" */
+  videoTopCrop?: string;
+}
+
 /**
  * 2026HeroSection 컴포넌트
  *
  * 2026년 디자인 가이드를 따르는 새로운 히어로 섹션
  * 비디오 배경 위 중앙 정렬된 타이틀과 태그라인, 버튼을 포함합니다.
  */
-function Hero2026Section() {
+function Hero2026Section({
+  videoSrc = "/videos/Canyons-uju-bg.mp4",
+  videoTopCrop,
+}: Hero2026SectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   // 비디오 파일 경로
-  const bgVideo = "/videos/Canyons-uju-bg.mp4";
+  const bgVideo = videoSrc;
 
   // 비디오 can play 핸들러
   const handleVideoCanPlay = () => {
@@ -61,9 +70,17 @@ function Hero2026Section() {
         preload="auto"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
-        className={`absolute inset-0 w-full h-full object-cover ${
+        className={`absolute inset-x-0 bottom-0 w-full object-cover ${
           !isVideoPlaying ? "opacity-0" : "opacity-100"
         } transition-opacity duration-1000 z-0`}
+        style={
+          videoTopCrop
+            ? {
+                top: videoTopCrop,
+                height: `calc(100% + ${videoTopCrop.startsWith("-") ? videoTopCrop.slice(1) : videoTopCrop})`,
+              }
+            : { top: 0, height: "100%" }
+        }
       >
         <source src={bgVideo} type="video/mp4" />
       </video>
@@ -73,7 +90,7 @@ function Hero2026Section() {
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
           background:
-            "linear-gradient(to bottom, transparent 65%, rgba(0, 0, 0, 0.55) 100%)",
+            "linear-gradient(to bottom, transparent 65%, rgba(0, 0, 0, 0.7) 100%)",
         }}
       />
 
@@ -90,9 +107,15 @@ function Hero2026Section() {
                 Grow the Life You Own
               </h3>
 
-              <div className=" my-4 md:my-5 lg:my-6 space-y-2 drop-shadow-lg">
+              <div className="max-w-3xl my-4 md:my-5 lg:my-6 space-y-2 drop-shadow-lg">
                 <p className="text-nasun-white text-lg md:text-xl">
-                  uju (우주) means universe. Your Universe.
+                  Nasun is infrastructure built around you. Not platforms. Not
+                  projects. You.
+                </p>
+                <p className="text-nasun-white text-lg md:text-xl">
+                  uju (우주, universe) is the OS powered by Nasun <br /> that
+                  brings crypto, Web3, and Web2 into one experience on your
+                  terms.
                 </p>
                 <p className="text-nasun-white text-lg md:text-xl drop-shadow-lg">
                   One identity. Every app. Everything you do compounds.
