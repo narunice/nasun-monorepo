@@ -132,7 +132,7 @@ const app = new Hono();
 
 const roundTo2 = (n: number) => parseFloat(n.toFixed(2));
 
-const ALLOWED_LIMITS = [25, 50, 100, 200, 500, 1000] as const;
+const ALLOWED_LIMITS = [25, 50, 100, 200, 500, 1000, 2000] as const;
 const MAX_OFFSET = 10000;
 
 // Cognito identityId format: region:uuid
@@ -154,7 +154,7 @@ const CORS_ALLOWED_ORIGINS = new Set([
 
 // Maximum ranked entries returned by the leaderboard. Raising this increases
 // DynamoDB BatchGet calls (ceil(N/100)) and memory proportionally.
-const LEADERBOARD_TOP_N = 1000;
+const LEADERBOARD_TOP_N = 2000;
 
 function parseLimit(raw: string | undefined): number {
   const n = Number(raw ?? 50);

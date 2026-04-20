@@ -147,7 +147,7 @@ export async function getEcosystemLeaderboard(
 export async function getEcosystemLeaderboardFull(
   weekId?: string,
 ): Promise<EcosystemLeaderboardResponse> {
-  return getEcosystemLeaderboard(weekId, 1000, 0);
+  return getEcosystemLeaderboard(weekId, 2000, 0);
 }
 
 export async function getAvailableEcosystemWeeks(): Promise<AvailableEcosystemWeek[]> {

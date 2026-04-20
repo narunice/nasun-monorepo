@@ -65,6 +65,8 @@ export interface ScoreLeaderboardTrader {
   nickname: string | null;
   twitterHandle?: string;
   hasGenesisPass?: boolean;
+  hasGoogle?: boolean;
+  hasTelegram?: boolean;
   totalScore: number;
   tradeCount: number;
   volumeUsd: string;
