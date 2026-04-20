@@ -87,7 +87,7 @@ export function LeaderboardPage() {
         : volumeQuery.isLoading;
 
   // Grace period: only applies when viewing the current week
-  const WEEK_GRACE_PERIOD_MS = 12 * 60 * 60 * 1000;
+  const WEEK_GRACE_PERIOD_MS = 2 * 60 * 60 * 1000;
   const scoreData = scoreQuery.data;
   const isCurrentWeek = viewMode === "current";
   const isNewWeek =
