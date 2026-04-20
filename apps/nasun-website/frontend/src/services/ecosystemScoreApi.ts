@@ -79,6 +79,7 @@ export interface EcosystemLeaderboardResponse {
     limit: number;
     offset: number;
     total: number;
+    prevTotal: number;
     cappedAt: number;
     updatedAt: number;
   };
