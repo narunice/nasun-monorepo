@@ -9,6 +9,7 @@
 import { useAuth } from "@/features/auth";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
+import { ScoreUnavailableFallback } from "@/sections/myAccount/components/ScoreUnavailableFallback";
 
 interface EcosystemStatusCardProps {
   className?: string;
@@ -17,7 +18,7 @@ interface EcosystemStatusCardProps {
 export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps) {
   const { user, cognitoToken } = useAuth();
   const { activations, getActivation } = useEcosystemStatus(cognitoToken ?? undefined);
-  const { score, isLoading: loading } = useEcosystemScore(user?.identityId);
+  const { score, isLoading: loading, isError } = useEcosystemScore(user?.identityId);
 
   const multiplier = score?.multiplier ?? 1.0;
   const dailyScore = score?.daily.ecosystemScore ?? 0;
@@ -55,6 +56,8 @@ export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps
         <div className="flex h-32 items-center justify-center text-nasun-white/80">
           Loading...
         </div>
+      ) : isError && !score ? (
+        <ScoreUnavailableFallback />
       ) : (
         <>
           {/* Score Overview */}

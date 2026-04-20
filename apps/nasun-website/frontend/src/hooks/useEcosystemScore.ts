@@ -25,6 +25,7 @@ export const ecosystemScoreKeys = {
 interface UseEcosystemScoreResult {
   score: EcosystemScoreData | null;
   isLoading: boolean;
+  isError: boolean;
   /** Sync activations cache then refetch score */
   refresh: () => void;
   isRefreshing: boolean;
@@ -99,6 +100,7 @@ export function useEcosystemScore(
   return {
     score: query.data ?? null,
     isLoading: query.isLoading || query.isFetching,
+    isError: query.isError,
     refresh,
     isRefreshing,
     cooldownSeconds,
