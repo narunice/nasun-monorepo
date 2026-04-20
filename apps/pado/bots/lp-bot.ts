@@ -35,9 +35,7 @@ import {
   loadConfig,
   type LPConfig,
   type BotState,
-  type Inventory,
   rawToPrice,
-  rawToQuantity,
   isGasExhaustedError,
   timestamp,
 } from './lib/config.js';
@@ -278,7 +276,7 @@ async function runBot(
   console.log(`[${timestamp()}] Generating ${bids.length} bids + ${asks.length} asks around $${price.toLocaleString()}`);
 
   // Step 8: Atomic cancel+place
-  const result = await syncOrders(client, keypair, state.balanceManagerId, finalOrders, state);
+  const result = await syncOrders(client, keypair, state.balanceManagerId, finalOrders, state, inventory);
 
   if (result.success) {
     state.lastQuotedPrice = price;
