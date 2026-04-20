@@ -397,7 +397,7 @@ const EcosystemLeaderboardPage = () => {
                             )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-medium text-sm text-nasun-white truncate">
+                                <span className="font-medium text-sm text-nasun-white truncate inline-block max-w-[14ch] md:max-w-[20ch]">
                                   {entry.displayName ??
                                     (isValidXHandle(entry.xHandle)
                                       ? `@${entry.xHandle}`
@@ -579,36 +579,73 @@ const EcosystemLeaderboardPage = () => {
             over.
           </p>
 
+          {/* Row 1: Top 3 */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "1st", pts: 50, highlight: true, crown: true },
-              { label: "2nd", pts: 45, highlight: true, crown: false },
-              { label: "3rd", pts: 40, highlight: true, crown: false },
-              { label: "Top 10", pts: 35, highlight: false },
-              { label: "Top 20", pts: 30, highlight: false },
-              { label: "Top 50", pts: 25, highlight: false },
-              { label: "Top 100", pts: 20, highlight: false },
-              { label: "Top 200", pts: 15, highlight: false },
-              { label: "Top 300", pts: 10, highlight: false },
-              { label: "Top 500", pts: 8, highlight: false },
-              { label: "Top 1000", pts: 6, highlight: false },
-              { label: "Top 2000", pts: 5, highlight: false },
-            ].map(({ label, pts, highlight, crown }) => (
+              { label: "1st", pts: 50, crown: true },
+              { label: "2nd", pts: 45, crown: false },
+              { label: "3rd", pts: 40, crown: false },
+            ].map(({ label, pts, crown }) => (
               <div
                 key={label}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-sm border ${
-                  highlight
-                    ? "bg-pado-4/10 border-pado-4/40"
-                    : "bg-pd1/30 border-pd2/25"
-                }`}
+                className="flex items-center justify-between px-3 py-2.5 rounded-sm bg-pado-4/10 border border-pado-4/40"
               >
-                <span className={`text-base font-semibold ${highlight ? "text-pado-4" : "text-pado-2"}`}>
+                <span className="text-base font-semibold text-pado-4">
                   {crown && <span className="mr-1">&#x1F451;</span>}
                   {label}
                 </span>
-                <span className={`text-base font-bold ${highlight ? "text-pado-4" : "text-pado-3"}`}>
-                  {pts} pts
-                </span>
+                <span className="text-base font-bold text-pado-4">{pts} pts</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Row 2: Top 10 / 20 / 50 / 100 */}
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: "Top 10", pts: 35 },
+              { label: "Top 20", pts: 30 },
+              { label: "Top 50", pts: 25 },
+              { label: "Top 100", pts: 20 },
+            ].map(({ label, pts }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
+              >
+                <span className="text-base text-pado-2">{label}</span>
+                <span className="text-base font-bold text-pado-3">{pts} pts</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Row 3: Top 200 / 300 / 500 */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Top 200", pts: 15 },
+              { label: "Top 300", pts: 10 },
+              { label: "Top 500", pts: 8 },
+            ].map(({ label, pts }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
+              >
+                <span className="text-base text-pado-2">{label}</span>
+                <span className="text-base font-bold text-pado-3">{pts} pts</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Row 4: Top 1000 / 2000 */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Top 1000", pts: 6 },
+              { label: "Top 2000", pts: 5 },
+            ].map(({ label, pts }) => (
+              <div
+                key={label}
+                className="flex items-center justify-between px-3 py-2 rounded-sm bg-pd1/30 border border-pd2/25"
+              >
+                <span className="text-base text-pado-2">{label}</span>
+                <span className="text-base font-bold text-pado-3">{pts} pts</span>
               </div>
             ))}
           </div>
