@@ -11,9 +11,6 @@ import { RankChangeIndicatorV3 } from "./RankChangeIndicatorV3";
 
 const failedAvatarUrls = new Set<string>();
 
-function truncateName(name: string, max: number) {
-  return name.length > max ? name.slice(0, max) + "…" : name;
-}
 
 interface LeaderboardV3RowProps {
   entry: SeasonLeaderboardEntry;
@@ -82,10 +79,7 @@ const LeaderboardV3Row: React.FC<LeaderboardV3RowProps> = ({ entry, isHighlighte
         <div className="min-w-0 flex-1">
           {entry.displayName && (
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-nasun-white font-medium min-w-0 text-sm leading-tight">
-                <span className="hidden md:inline">{truncateName(entry.displayName, 20)}</span>
-                <span className="md:hidden">{truncateName(entry.displayName, 14)}</span>
-              </span>
+              <span className="text-nasun-white font-medium text-sm leading-tight truncate inline-block max-w-[14ch] md:max-w-[20ch]">{entry.displayName}</span>
               {entry.isRegistered && (
                 <span
                   className="inline-flex items-center justify-center w-4 h-4 bg-nasun-c7/20 rounded-full flex-shrink-0"

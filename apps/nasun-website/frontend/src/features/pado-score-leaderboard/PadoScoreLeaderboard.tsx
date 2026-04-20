@@ -20,9 +20,6 @@ function abbreviateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function truncateName(name: string, max: number) {
-  return name.length > max ? name.slice(0, max) + "…" : name;
-}
 
 function RankChangeBadge({ change }: { change: number }) {
   if (change > 0) {
@@ -94,14 +91,8 @@ function TraderRow({
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className={`text-sm font-medium ${trader.nickname ? "text-nasun-white" : "text-pd3"}`}>
-                {trader.nickname
-                  ? <>
-                      <span className="hidden md:inline">{truncateName(trader.nickname, 20)}</span>
-                      <span className="md:hidden">{truncateName(trader.nickname, 14)}</span>
-                    </>
-                  : abbreviateAddress(trader.address)
-                }
+              <span className={`text-sm font-medium truncate inline-block max-w-[14ch] md:max-w-[20ch] ${trader.nickname ? "text-nasun-white" : "text-pd3"}`}>
+                {trader.nickname ?? abbreviateAddress(trader.address)}
               </span>
               {trader.hasGenesisPass && <GenesisPassBadge />}
             </div>
