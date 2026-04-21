@@ -94,7 +94,7 @@ export interface RoomInfo {
 
 export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update' | 'nickname' | 'nickname_check' | 'follow_result' | 'following_list';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update' | 'nickname' | 'nickname_check' | 'follow_result' | 'following_list' | 'captcha_required';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -108,6 +108,7 @@ export interface ChatEventMap {
   nickname_check: { available: boolean; nickname: string };
   follow_result: { target: string; following: boolean; followerCount: number; error?: string };
   following_list: { addresses: string[] };
+  captcha_required: undefined;
 }
 
 type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
@@ -141,9 +142,11 @@ export class ChatService {
   private currentNickname: string | null = null;
   private currentRateLimit: NicknameRateLimit | null = null;
   private pendingTurnstileToken: string | null = null;
+  private captchaRequired = false;
 
   setTurnstileToken(token: string): void {
     this.pendingTurnstileToken = token;
+    this.captchaRequired = false;
   }
 
   on<T extends ChatEventType>(event: T, listener: ChatListener<T>): void {
@@ -247,7 +250,10 @@ export class ChatService {
       }
       if (this.status !== 'disconnected') {
         this.setStatus('disconnected');
-        this.scheduleReconnect();
+        // Don't auto-reconnect when captcha is required — wait for new token
+        if (!this.captchaRequired) {
+          this.scheduleReconnect();
+        }
       }
     };
 
@@ -285,6 +291,10 @@ export class ChatService {
 
       case 'auth_error':
         console.warn('Chat auth error:', msg.reason);
+        if (msg.reason === 'Captcha required') {
+          this.captchaRequired = true;
+          this.emit('captcha_required', undefined);
+        }
         this.emit('error', { code: 'AUTH_ERROR', message: msg.reason });
         this.ws?.close();
         this.ws = null;
