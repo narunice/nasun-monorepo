@@ -18,6 +18,8 @@ import {
   getWeekId,
   getWeeklyCurrentRanks,
   replaceWeeklyTraderScores,
+  countWeeklyUniqueTraders,
+  setWeeklyParticipantCount,
 } from './leaderboard-store.js';
 import { buildSameIdentityPairs, refreshIdentityCache, resolveIdentityIds, getSocialBadgesBatch } from './identity-resolver.js';
 
@@ -309,6 +311,15 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   });
 
   replaceWeeklyTraderScores(weekId, rankedWithBadges);
+
+  // Cache previous week's participant count with excluded addresses applied.
+  // Stored in indexer_state so leaderboard-api can serve it without a live scan.
+  const prevWeekParticipants = countWeeklyUniqueTraders(
+    prevWeekStart,
+    weekStart,
+    config.excludedAddresses,
+  );
+  setWeeklyParticipantCount(prevWeekId, prevWeekParticipants);
 }
 
 /**
