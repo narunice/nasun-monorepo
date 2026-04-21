@@ -21,11 +21,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { readBalanceManagerId, queryBalanceManagerBalances } from '../lib/balance-manager.js';
 
 // ===== Configuration =====
 
@@ -123,53 +119,6 @@ async function getTokenBalance(
   return Number(balance.totalBalance) / (10 ** decimals);
 }
 
-function loadBalanceManagerId(market: string, address: string): string | null {
-  const stateFile = join(__dirname, '..', `.lp-bot-state-${market.toLowerCase()}.json`);
-  try {
-    const state = JSON.parse(readFileSync(stateFile, 'utf-8')) as {
-      balanceManagers?: Record<string, string>;
-    };
-    return state.balanceManagers?.[address] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function getBalanceManagerBalance(
-  client: SuiClient,
-  balanceManagerId: string,
-  baseType: string,
-  baseDecimals: number,
-): Promise<{ base: number; quote: number }> {
-  const obj = await client.getObject({ id: balanceManagerId, options: { showContent: true } });
-
-  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') return { base: 0, quote: 0 };
-
-  const fields = obj.data.content.fields as Record<string, unknown>;
-  const balances = fields.balances as { fields: { id: { id: string } } } | undefined;
-  if (!balances) return { base: 0, quote: 0 };
-
-  const dynamicFields = await client.getDynamicFields({ parentId: balances.fields.id.id });
-
-  let baseBalance = 0;
-  let quoteBalance = 0;
-
-  for (const field of dynamicFields.data) {
-    const fieldObj = await client.getObject({ id: field.objectId, options: { showContent: true } });
-    if (!fieldObj.data?.content || fieldObj.data.content.dataType !== 'moveObject') continue;
-    const value = Number((fieldObj.data.content.fields as Record<string, unknown>).value || 0);
-    if (field.objectType.includes(baseType)) {
-      baseBalance = value;
-    } else if (field.objectType.includes('nusdc::NUSDC')) {
-      quoteBalance = value;
-    }
-  }
-
-  return {
-    base: baseBalance / Math.pow(10, baseDecimals),
-    quote: quoteBalance / 1e6,
-  };
-}
 
 async function getGasBalance(client: SuiClient, owner: string): Promise<number> {
   const balance = await client.getBalance({ owner });
@@ -245,12 +194,12 @@ async function checkMarket(client: SuiClient, market: keyof typeof MARKETS): Pro
 
   // lp-bot depositAll moves wallet tokens into BalanceManager each cycle, so wallet alone is ~0.
   // Check wallet + BalanceManager combined to avoid false LOW triggers.
-  const bmId = loadBalanceManagerId(market, address);
+  const bmId = readBalanceManagerId(market, address);
   const [walletBase, walletNusdc, bmBal] = await Promise.all([
     getTokenBalance(client, address, config.baseType, config.baseDecimals),
     getTokenBalance(client, address, TOKEN_TYPES.NUSDC, 6),
     bmId
-      ? getBalanceManagerBalance(client, bmId, config.baseType, config.baseDecimals).catch(() => {
+      ? queryBalanceManagerBalances(client, bmId, config.baseType, config.baseDecimals, TOKEN_TYPES.NUSDC, 6).catch(() => {
           console.warn(`[${timestamp()}] [${market}] BalanceManager query failed, using wallet balance only`);
           return { base: 0, quote: 0 };
         })

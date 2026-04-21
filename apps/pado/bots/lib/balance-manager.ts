@@ -161,67 +161,83 @@ export async function createBalanceManager(
 // ========================================
 
 /**
- * Get base and quote token balances in BalanceManager
+ * Read BalanceManager ID from lp-bot's persistent state file.
+ * Market-agnostic: any caller can look up a BM ID without importing MARKET singleton.
+ */
+export function readBalanceManagerId(market: string, address: string): string | null {
+  const stateFile = join(__dirname, '..', `.lp-bot-state-${market.toLowerCase()}.json`);
+  try {
+    const state = JSON.parse(readFileSync(stateFile, 'utf-8')) as {
+      balanceManagers?: Record<string, string>;
+    };
+    return state.balanceManagers?.[address] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Query base and quote token balances in a BalanceManager, with explicit token types.
+ * Market-agnostic: callers supply token types and decimals directly.
+ *
+ * Throws on RPC error rather than returning zeros -- let callers use withRetry.
+ * Returning { base: 0, quote: 0 } on 502 disguises RPC failure as empty inventory.
+ */
+export async function queryBalanceManagerBalances(
+  client: SuiClient,
+  balanceManagerId: string,
+  baseType: string,
+  baseDecimals: number,
+  quoteType: string,
+  quoteDecimals: number,
+): Promise<Inventory> {
+  const obj = await client.getObject({ id: balanceManagerId, options: { showContent: true } });
+
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    return { base: 0, quote: 0 };
+  }
+
+  const fields = obj.data.content.fields as Record<string, unknown>;
+  const balances = fields.balances as { fields: { id: { id: string } } } | undefined;
+  if (!balances) return { base: 0, quote: 0 };
+
+  const dynamicFields = await client.getDynamicFields({ parentId: balances.fields.id.id });
+
+  let baseBalance = 0;
+  let quoteBalance = 0;
+
+  for (const field of dynamicFields.data) {
+    const fieldObj = await client.getObject({ id: field.objectId, options: { showContent: true } });
+    if (!fieldObj.data?.content || fieldObj.data.content.dataType !== 'moveObject') continue;
+    const value = Number((fieldObj.data.content.fields as Record<string, unknown>).value || 0);
+    if (field.objectType.includes(baseType)) {
+      baseBalance = value;
+    } else if (field.objectType.includes(quoteType)) {
+      quoteBalance = value;
+    }
+  }
+
+  return {
+    base: baseBalance / Math.pow(10, baseDecimals),
+    quote: quoteBalance / Math.pow(10, quoteDecimals),
+  };
+}
+
+/**
+ * Get base and quote token balances in BalanceManager for the active MARKET.
  */
 export async function getBalanceManagerBalances(
   client: SuiClient,
   balanceManagerId: string,
 ): Promise<Inventory> {
-  try {
-    const obj = await client.getObject({
-      id: balanceManagerId,
-      options: { showContent: true },
-    });
-
-    if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
-      return { base: 0, quote: 0 };
-    }
-
-    const fields = obj.data.content.fields as Record<string, unknown>;
-    const balances = fields.balances as { fields: { id: { id: string } } } | undefined;
-
-    if (!balances) {
-      return { base: 0, quote: 0 };
-    }
-
-    const dynamicFields = await client.getDynamicFields({
-      parentId: balances.fields.id.id,
-    });
-
-    let baseBalance = 0;
-    let quoteBalance = 0;
-
-    for (const field of dynamicFields.data) {
-      const fieldObj = await client.getObject({
-        id: field.objectId,
-        options: { showContent: true },
-      });
-
-      if (!fieldObj.data?.content || fieldObj.data.content.dataType !== 'moveObject') {
-        continue;
-      }
-
-      const fieldContent = fieldObj.data.content.fields as Record<string, unknown>;
-      const value = Number(fieldContent.value || 0);
-
-      // Match by token type to support any market
-      if (field.objectType.includes(MARKET.baseType)) {
-        baseBalance = value;
-      } else if (field.objectType.includes(MARKET.quoteType)) {
-        quoteBalance = value;
-      }
-    }
-
-    return {
-      base: baseBalance / Math.pow(10, MARKET.baseDecimals),
-      quote: quoteBalance / Math.pow(10, MARKET.quoteDecimals),
-    };
-  } catch (error) {
-    // Throw instead of returning zero -- let callers use withRetry to handle transient RPC errors.
-    // Returning { base: 0, quote: 0 } disguises RPC 502 as "empty inventory" and triggers
-    // unnecessary faucet/refill cascades.
-    throw error;
-  }
+  return queryBalanceManagerBalances(
+    client,
+    balanceManagerId,
+    MARKET.baseType,
+    MARKET.baseDecimals,
+    MARKET.quoteType,
+    MARKET.quoteDecimals,
+  );
 }
 
 /**

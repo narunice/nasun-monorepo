@@ -44,6 +44,7 @@ lp-bot.ts (per market)
     +-- lib/retry.ts            Exponential backoff with non-retriable error detection
 
 scripts/balance-watchdog.ts     Independent process (5-min interval)
+                                Uses readBalanceManagerId + queryBalanceManagerBalances from lib/balance-manager.ts
 ```
 
 **On-chain contracts (Nasun Devnet)**:
@@ -256,9 +257,10 @@ Detects and exploits mispriced orders placed by external users:
 
 DeepBook V3 uses a `BalanceManager` object as an on-chain account that holds base and quote tokens for a given bot address. This avoids per-order coin object management.
 
-- Discovery: `getOwnedObjects` filtered by `BalanceManager` type
-- Persistence: `.data/lp-bot-state-{market}.json` stores the object ID across restarts
-- Deposit: `balance_manager::deposit` moves wallet coins into the manager
+- Discovery: `getOwnedObjects` filtered by `BalanceManager` type, or created fresh if none found
+- Persistence: `.lp-bot-state-{market}.json` stores the object ID across restarts
+- Deposit: `balance_manager::deposit` moves all wallet coins into the manager each cycle (`depositAll`)
+- Query: `lib/balance-manager.ts` exports `queryBalanceManagerBalances(client, bmId, baseType, baseDecimals, quoteType, quoteDecimals)` for market-agnostic balance reads (used by both lp-bot and balance-watchdog)
 
 ### On-Chain Token Faucets
 
@@ -275,8 +277,12 @@ Faucet calls are throttled by the bot (3s delay between rounds) to avoid RPC obj
 
 - **Consumption**: ~300-360 NASUN/hour per bot (TX every 10s)
 - **`balance-watchdog`** (independent PM2 process, 5-min interval):
-  - Queries wallet NASUN balance for each bot address
-  - If balance < `WATCHDOG_GAS_THRESHOLD` (default: 5,000 NASUN):
+  - For each market, checks **wallet + BalanceManager combined balance** against threshold.
+    lp-bot calls `depositAll` every cycle, so wallet balance is structurally ~0; checking
+    only the wallet would trigger false LOW refill loops.
+  - Reads BalanceManager ID from `.lp-bot-state-{market}.json` (written by lp-bot on startup).
+  - Token thresholds: NBTC 15, NETH 500, NSOL 8,000, NUSDC 500,000.
+  - If gas < `WATCHDOG_GAS_AUTO_REFILL` (default: 5,000 NASUN):
     - POST `https://faucet.devnet.nasun.io/v1/gas` with bot address
     - Bot addresses are in the faucet whitelist: cooldown bypass, unlimited requests
 - **Bot self-check (Step 0)**: Skips the cycle if gas < 1,000 NASUN (avoids failed TXs)
@@ -339,6 +345,8 @@ All variables are set in `ecosystem.config.cjs`. Per-market overrides take prece
 | `[ALERT] Depth critically low! bid=$0 ask=$0` repeated | Circuit breaker loop; bot failing to place orders | Check error logs for underlying code (see below) |
 | `assert_execution code 5` (`EPOSTOrderCrossesOrderbook`) | Foreign bid above bot's innermost ask | Level-2 self-heal fires IOC sweep automatically; if persistent, check pm2 logs for "IOC sweep" messages |
 | `Gas exhaustion` in logs | Wallet NASUN below threshold | Check balance-watchdog logs; manually call gas faucet if watchdog is down |
+| `balance-watchdog LOW` loop with high BM balance | Bug: watchdog checking only wallet, not BalanceManager | Should not occur post-fix; if seen, verify balance-manager.ts has `queryBalanceManagerBalances` exported |
+| `LP_PRIVATE_KEY_* not set` in watchdog error log | PM2 env lost after `pm2 delete` + `pm2 start` without .env | Run: `export $(grep -v '^#' .env \| xargs) && pm2 start ecosystem.config.cjs --only balance-watchdog` |
 | `Object not available for consumption` | Stale object version after RPC lag | Level-1 self-heal (3s rebuild) handles this automatically |
 | `Orderbook empty across all markets` | All bots stopped (gas or crash) | `pm2 restart lp-bot-nbtc lp-bot-neth lp-bot-nsol`; check gas balances |
 | `justInitialized` skip on first cycle | Normal: waits one cycle for RPC to index deposit TX | Not an error; resolves on next cycle |
