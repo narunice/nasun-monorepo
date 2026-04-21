@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { mkdirSync, renameSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import type { StoredMessage, ChatServerConfig, NicknameRateLimit } from './types.js';
 
 // Nickname validation
@@ -34,6 +34,29 @@ export function initStore(config: ChatServerConfig): void {
   const fkStatus = db.pragma('foreign_keys') as Array<{ foreign_keys: number }>;
   if (!fkStatus[0]?.foreign_keys) {
     throw new Error('FATAL: foreign_keys pragma failed to enable');
+  }
+
+  // Recover leftover WAL frames from previous unclean shutdown.
+  try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
+
+  // Detect DB corruption early — chat.db is small (<10MB), completes in <100ms.
+  const integrityRows = db.pragma('integrity_check') as Array<{ integrity_check: string }>;
+  if (integrityRows[0]?.integrity_check !== 'ok') {
+    const absPath = resolve(config.dbPath);
+    const corruptPath = `${absPath}.corrupt.${Date.now()}`;
+    console.error(`[Store] DB integrity check FAILED. Preserving corrupt file at: ${corruptPath}`);
+    db.close();
+    renameSync(absPath, corruptPath);
+    // NOTE: This discards all chat history. Tradeoff: availability > data retention.
+    db = new Database(absPath);
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = FULL');
+    db.pragma('foreign_keys = ON');
+    const fkRecovery = db.pragma('foreign_keys') as Array<{ foreign_keys: number }>;
+    if (!fkRecovery[0]?.foreign_keys) {
+      throw new Error('FATAL: foreign_keys pragma failed after corrupt DB recovery');
+    }
+    // Falls through to db.exec(CREATE TABLE IF NOT EXISTS ...) + migrations below.
   }
 
   db.exec(`
@@ -719,6 +742,7 @@ export function getDisplayNamesBatch(addresses: string[]): Map<string, string> {
 
 export function closeStore(): void {
   if (db) {
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
     db.close();
     db = null;
   }
