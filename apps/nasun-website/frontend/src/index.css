@@ -356,6 +356,33 @@
     @apply !bg-nasun-nw1;
   }
 
+  /* news-slider: propagate h-full through slick internals */
+  .news-slider,
+  .news-slider .slick-slider,
+  .news-slider .slick-list,
+  .news-slider .slick-track,
+  .news-slider .slick-slide,
+  .news-slider .slick-slide > div {
+    height: 100%;
+  }
+
+  /* Full-viewport carousel: dots overlaid at bottom via appendDots absolute position */
+  .carousel-dots-overlay .slick-dots li {
+    @apply !w-auto !h-auto !m-0;
+  }
+  .carousel-dots-overlay .slick-dots li button {
+    @apply !w-auto !h-auto !p-0;
+  }
+  .carousel-dots-overlay .slick-dots li button:before {
+    @apply !hidden;
+  }
+  .carousel-dots-overlay .slick-dots li .carousel-dot {
+    @apply w-2 h-2 rounded-full bg-nasun-white/40 hover:bg-nasun-white/60 transition-colors;
+  }
+  .carousel-dots-overlay .slick-dots li.slick-active .carousel-dot {
+    @apply !bg-nasun-nw1;
+  }
+
   .timeline-item:nth-child(odd) {
     @apply md:pr-[50%] md:text-right;
   }
