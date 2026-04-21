@@ -56,6 +56,7 @@ export default function ChatWidget() {
     messages,
     status,
     displayStatus,
+    captchaRequired,
     onlineCount,
     hasMore,
     sendMessage,
@@ -341,7 +342,10 @@ export default function ChatWidget() {
             <div className="flex items-center gap-2">
               <StatusDot status={displayStatus} />
               <span className="text-sm font-medium text-white">Chat</span>
-              {onlineCount > 0 && (
+              {captchaRequired && (
+                <span className="text-xs text-yellow-400/70">Verifying...</span>
+              )}
+              {!captchaRequired && onlineCount > 0 && (
                 <span className="text-xs text-white/40">{onlineCount}</span>
               )}
             </div>
