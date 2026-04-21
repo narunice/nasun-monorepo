@@ -28,7 +28,7 @@ function StatusDot({ status, loggedIn }: { status: string; loggedIn: boolean }) 
 export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
   const address = useSignerAddress();
   const {
-    messages, sendMessage, loadMore, isConnected, status, displayStatus, onlineCount, hasMore,
+    messages, sendMessage, loadMore, isConnected, status, displayStatus, captchaRequired, onlineCount, hasMore,
     nickname, needsNickname, nicknameRateLimit,
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
@@ -79,7 +79,9 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
             <span className="text-trading-sm font-medium text-theme-text-primary">Chat</span>
             <StatusDot status={displayStatus} loggedIn={!!address} />
             {!address ? null :
-              displayStatus === 'connecting' || displayStatus === 'authenticating' ? (
+              captchaRequired ? (
+                <span className="text-trading-xs text-yellow-500">Verifying...</span>
+              ) : displayStatus === 'connecting' || displayStatus === 'authenticating' ? (
                 <span className="text-trading-xs text-yellow-500">Connecting...</span>
               ) : displayStatus === 'reconnecting' ? (
                 <span className="text-trading-xs text-yellow-500">Reconnecting...</span>

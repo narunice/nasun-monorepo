@@ -63,6 +63,7 @@ export interface UseChatResult {
   isConnected: boolean;
   status: ChatConnectionStatus;
   displayStatus: ChatConnectionStatus;
+  captchaRequired: boolean;
   onlineCount: number;
   hasMore: boolean;
   error: string | null;
@@ -106,6 +107,8 @@ export function useChat(): UseChatResult {
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
   const [turnstileKey, setTurnstileKey] = useState(0);
+  // True after captcha_required fires (mid-session re-verification), false once token arrives
+  const [captchaRequired, setCaptchaRequired] = useState(false);
 
   const marketRooms = useMemo(() => rooms.filter((r) => r.category === 'market'), [rooms]);
   const languageRooms = useMemo(() => rooms.filter((r) => r.category === 'language' || (!r.category && r.id < 100)), [rooms]);
@@ -337,6 +340,7 @@ export function useChat(): UseChatResult {
     });
 
     const unsubCaptcha = chatService.on('captcha_required', () => {
+      setCaptchaRequired(true);
       setTurnstileReady(false);
       setTurnstileKey((k) => k + 1);
     });
@@ -460,7 +464,8 @@ export function useChat(): UseChatResult {
   const setTurnstileToken = useCallback((token: string) => {
     getChatService().setTurnstileToken(token);
     if (!turnstileReady) setTurnstileReady(true);
-  }, [turnstileReady]);
+    if (captchaRequired) setCaptchaRequired(false);
+  }, [turnstileReady, captchaRequired]);
 
 
   const displayStatus: ChatConnectionStatus =
@@ -473,6 +478,7 @@ export function useChat(): UseChatResult {
     isConnected: status === 'connected',
     status,
     displayStatus,
+    captchaRequired,
     onlineCount,
     hasMore,
     error,
