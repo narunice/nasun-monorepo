@@ -1,12 +1,14 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import fs from 'fs'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, path.resolve(__dirname, '../'), '')
+  return {
+    plugins: [
     // Resolve @noble/* subpath exports for production Rollup builds.
     // The esbuild plugin in optimizeDeps only covers dev pre-bundling;
     // this Vite plugin covers the main build + vite-plugin-pwa secondary build.
@@ -29,6 +31,22 @@ export default defineConfig({
       },
     },
     react(),
+    // Inject Umami analytics only when env vars are set (omitted in dev)
+    {
+      name: 'inject-umami',
+      transformIndexHtml(html: string) {
+        if (!env.VITE_UMAMI_HOST || !env.VITE_UMAMI_WEBSITE_ID) return html
+        try {
+          const origin = new URL(env.VITE_UMAMI_HOST).origin
+          const websiteId = env.VITE_UMAMI_WEBSITE_ID.replace(/[^a-zA-Z0-9-]/g, '')
+          if (!websiteId) return html
+          const tag = `<script defer src="${origin}/ns.js" data-website-id="${websiteId}"></script>`
+          return html.replace('</head>', `  ${tag}\n  </head>`)
+        } catch {
+          return html
+        }
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['fonts/**/*.woff2', 'icons/*.svg'],
@@ -159,4 +177,5 @@ export default defineConfig({
     strictPort: true,
     host: true,
   },
+  }
 })
