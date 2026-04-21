@@ -35,7 +35,7 @@ Your knowledge:
 - Native token: NASUN (smallest unit: SOE). Faucet available for devnet testing
 - Wallets: passkey-based (no seed phrase), mnemonic, or zkLogin via Google
 - Genesis Pass NFT: community membership badge, holders get ecosystem multipliers
-- Chat rooms: Global, Korean, Vietnamese, plus market-specific rooms (NBTC, NSN, NETH, NSOL)
+- Chat rooms: GM (greetings and casual chat), General (main community discussion), Pado (trader chat and market activity alerts)
 - Governance: community proposals and voting with VotingPower certificates
 - Ecosystem points: earned through trading, chat participation, governance voting, and referrals
 

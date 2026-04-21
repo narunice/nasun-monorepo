@@ -27,24 +27,28 @@ const MAX_ROOM_MESSAGES = 500;
 const ACTIVE_ROOM_KEY = 'pado:chat:activeRoom';
 const LANGUAGE_ROOM_KEY = 'pado:chat:languageRoom';
 
-const PADO_DEFAULT_ROOM = 100; // Pado market room
+const PADO_DEFAULT_ROOM = 20; // Pado room (trader chat + market alerts)
+const VALID_PADO_ROOMS = new Set([0, 10, 20]);
 
 function getStoredActiveRoom(): number {
   try {
     const stored = localStorage.getItem(ACTIVE_ROOM_KEY);
-    return stored ? parseInt(stored, 10) || PADO_DEFAULT_ROOM : PADO_DEFAULT_ROOM;
+    const parsed = stored ? parseInt(stored, 10) : NaN;
+    return (!isNaN(parsed) && VALID_PADO_ROOMS.has(parsed)) ? parsed : PADO_DEFAULT_ROOM;
   } catch {
     return PADO_DEFAULT_ROOM;
   }
 }
 
+const LANGUAGE_ROOM_IDS = new Set([0, 10]);
+
 function getStoredLanguageRoom(): number {
   try {
     const stored = localStorage.getItem(LANGUAGE_ROOM_KEY);
-    if (stored) return parseInt(stored, 10) || 0;
-    // Fallback: if active room is a language room, use it
+    const parsed = stored ? parseInt(stored, 10) : NaN;
+    if (!isNaN(parsed) && LANGUAGE_ROOM_IDS.has(parsed)) return parsed;
     const active = getStoredActiveRoom();
-    return active < 100 ? active : 0;
+    return LANGUAGE_ROOM_IDS.has(active) ? active : 0;
   } catch {
     return 0;
   }
@@ -110,8 +114,8 @@ export function useChat(): UseChatResult {
   // True after captcha_required fires (mid-session re-verification), false once token arrives
   const [captchaRequired, setCaptchaRequired] = useState(false);
 
-  const marketRooms = useMemo(() => rooms.filter((r) => r.category === 'market'), [rooms]);
-  const languageRooms = useMemo(() => rooms.filter((r) => r.category === 'language' || (!r.category && r.id < 100)), [rooms]);
+  const marketRooms = useMemo(() => rooms.filter((r) => r.id === 20), [rooms]);
+  const languageRooms = useMemo(() => rooms.filter((r) => r.id === 0 || r.id === 10), [rooms]);
 
   // Keep a stable ref to the signer so async callbacks always read the latest
   const signerRef = useRef(signer);
