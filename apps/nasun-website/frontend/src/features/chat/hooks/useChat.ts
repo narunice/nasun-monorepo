@@ -43,6 +43,8 @@ export function useChat() {
   const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
   // Incremented to force Turnstile widget remount when a new token is needed
   const [turnstileKey, setTurnstileKey] = useState(0);
+  // True after captcha_required fires (mid-session re-verification), false once token arrives
+  const [captchaRequired, setCaptchaRequired] = useState(false);
 
   const messages = activeRoomState?.messages ?? [];
   const hasMore = activeRoomState?.hasMore ?? false;
@@ -138,6 +140,7 @@ export function useChat() {
     };
 
     const onCaptchaRequired = () => {
+      setCaptchaRequired(true);
       setTurnstileReady(false);
       setTurnstileKey((k) => k + 1);
     };
@@ -237,7 +240,8 @@ export function useChat() {
   const setTurnstileToken = useCallback((token: string) => {
     getChatService().setTurnstileToken(token);
     if (!turnstileReady) setTurnstileReady(true);
-  }, [turnstileReady]);
+    if (captchaRequired) setCaptchaRequired(false);
+  }, [turnstileReady, captchaRequired]);
 
   const displayStatus: ChatConnectionStatus =
     (!!user?.walletAddress && !turnstileReady) ? 'connecting' : status;
@@ -246,6 +250,7 @@ export function useChat() {
     messages,
     status,
     displayStatus,
+    captchaRequired,
     onlineCount,
     isOpen,
     hasMore,
