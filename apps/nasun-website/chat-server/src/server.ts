@@ -166,10 +166,10 @@ function broadcastSystemMessage(content: string, roomId: number = 0): void {
 }
 
 function broadcastSystemMessageMultiRoom(content: string, poolRoomId: number): void {
-  broadcastSystemMessage(content, poolRoomId);
-  if (poolRoomId !== 0) {
-    broadcastSystemMessage(content, 0);
+  if (VALID_ROOM_IDS.has(poolRoomId) && poolRoomId !== 20) {
+    broadcastSystemMessage(content, poolRoomId);
   }
+  broadcastSystemMessage(content, 20); // Pado room consolidation (replaces room 0 fallback)
 }
 
 // Leaderboard API deps (injected into leaderboard-api.ts)

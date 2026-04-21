@@ -10,36 +10,7 @@ import { Turnstile } from "@marsidev/react-turnstile";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
-// Map browser language codes to room names for preferred sorting
-const LANG_TO_ROOM: Record<string, string> = {
-  ko: "Korean",
-  ja: "Japanese",
-  zh: "Chinese",
-  es: "Spanish",
-  fr: "French",
-  de: "German",
-  pt: "Portuguese",
-  ru: "Russian",
-  vi: "Vietnamese",
-};
-
-function sortRoomsByPreference(rooms: RoomInfo[]): RoomInfo[] {
-  const browserLang = navigator.language.split("-")[0]; // e.g. "ko" from "ko-KR"
-  const preferredName = LANG_TO_ROOM[browserLang];
-  if (!preferredName) return rooms;
-
-  const global: RoomInfo[] = [];
-  const preferred: RoomInfo[] = [];
-  const rest: RoomInfo[] = [];
-
-  for (const room of rooms) {
-    if (room.name === "Global") global.push(room);
-    else if (room.name === preferredName) preferred.push(room);
-    else rest.push(room);
-  }
-
-  return [...global, ...preferred, ...rest];
-}
+const VISIBLE_ROOM_IDS = new Set([0, 10, 20]);
 
 function StatusDot({ status }: { status: string }) {
   const color =
@@ -72,11 +43,10 @@ export default function ChatWidget() {
     turnstileKey,
   } = useChat();
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const languageRooms = useMemo(
-    () => rooms.filter((r) => r.category === 'language' || !r.category),
+  const visibleRooms = useMemo(
+    () => rooms.filter((r) => VISIBLE_ROOM_IDS.has(r.id)),
     [rooms],
   );
-  const sortedRooms = useMemo(() => sortRoomsByPreference(languageRooms), [languageRooms]);
   const isOpen = useChatStore((s) => s.isOpen);
   const toggleOpen = useChatStore((s) => s.toggleOpen);
   const position = useChatStore((s) => s.position);
@@ -443,7 +413,7 @@ export default function ChatWidget() {
                 backgroundPosition: "right 4px center",
               }}
             >
-              {sortedRooms.map((room) => (
+              {visibleRooms.map((room) => (
                 <option
                   key={room.id}
                   value={room.id}
