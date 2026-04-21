@@ -711,7 +711,6 @@ function handleScoreLeaderboardWeekly(
     console.error('[ScoreLeaderboardWeekly] ensureProfilesCached error:', (err as Error).message);
   });
   const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
-  const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
   const genesisPassSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
   const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
 
@@ -725,16 +724,14 @@ function handleScoreLeaderboardWeekly(
       profileImageUrl: profileImages.get(row.address) ?? null,
       xHandle: row.x_handle ?? null,
       totalScore: row.total_score,
-      tradeCount: row.trade_count,
-      volumeUsd: formatQuoteVolume(row.volume_quote),
       rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - row.rank,
-      followerCount: followerCounts.get(row.address) ?? 0,
       hasGoogle: Boolean(row.has_google),
       hasTelegram: Boolean(row.has_telegram),
     };
   });
 
   const weekStart = getCurrentWeekStart();
+
   res.writeHead(200, {
     ...corsHeaders,
     'Cache-Control': 'public, max-age=30, stale-while-revalidate=60',

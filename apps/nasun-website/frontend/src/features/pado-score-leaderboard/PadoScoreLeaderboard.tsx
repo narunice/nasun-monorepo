@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { DashboardCard } from "../../components/ui/DashboardCard";
 import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../components/ui/LeaderboardSearchBox";
@@ -16,6 +16,24 @@ import {
 const PAGE_SIZE = 50;
 const MAX_RANK = 2000;
 
+const failedAvatarUrls = new Set<string>();
+
+function TraderAvatar({ url }: { url: string }) {
+  const [failed, setFailed] = useState(() => failedAvatarUrls.has(url));
+  if (failed) return <div className="w-12 h-12 rounded-lg shrink-0 bg-pd1/60" />;
+  return (
+    <img
+      src={url}
+      alt=""
+      className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
+      loading="lazy"
+      onError={() => { failedAvatarUrls.add(url); setFailed(true); }}
+    />
+  );
+}
+
 function abbreviateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
@@ -31,13 +49,6 @@ function RankChangeBadge({ change }: { change: number }) {
   return <span className="text-sm text-pd3">-</span>;
 }
 
-function formatVolume(usd: string): string {
-  const n = parseFloat(usd);
-  if (isNaN(n)) return "$0";
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toFixed(0)}`;
-}
 
 function RankCell({ rank }: { rank: number }) {
   return (
@@ -78,17 +89,10 @@ function TraderRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
-          {trader.profileImageUrl ? (
-            <img
-              src={trader.profileImageUrl}
-              alt=""
-              className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
-              referrerPolicy="no-referrer"
-              crossOrigin="anonymous"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-lg shrink-0 bg-pd1/60" />
-          )}
+          {trader.profileImageUrl
+            ? <TraderAvatar url={trader.profileImageUrl} />
+            : <div className="w-12 h-12 rounded-lg shrink-0 bg-pd1/60" />
+          }
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={`text-sm font-medium truncate inline-block max-w-[14ch] md:max-w-[20ch] ${trader.nickname ? "text-nasun-white" : "text-pd3"}`}>
@@ -117,12 +121,6 @@ function TraderRow({
       </td>
       <td className="px-2 py-3 text-center w-8">
         {trader.hasTelegram ? <span className="text-violet-400"><CheckIcon /></span> : null}
-      </td>
-      <td className="px-4 py-3 text-right hidden sm:table-cell">
-        <span className="text-sm text-pd3">{formatVolume(trader.volumeUsd)}</span>
-      </td>
-      <td className="px-4 py-3 text-right hidden sm:table-cell">
-        <span className="text-sm text-pd3">{trader.tradeCount}</span>
       </td>
       <td className="px-4 py-3 text-right">
         <span className="text-sm font-bold text-pado-3">
@@ -154,12 +152,6 @@ function TableHead() {
         </th>
         <th className="px-2 py-3 text-center font-medium text-pd3 w-8" aria-label="Telegram" title="Telegram">
           <svg className="w-3.5 h-3.5 mx-auto" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.820 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-        </th>
-        <th className="px-4 py-3 text-right font-medium text-pd3 uppercase tracking-wide hidden sm:table-cell">
-          Volume
-        </th>
-        <th className="px-4 py-3 text-right font-medium text-pd3 uppercase tracking-wide hidden sm:table-cell">
-          Trades
         </th>
         <th className="px-4 py-3 text-right font-medium text-pd3 uppercase tracking-wide">
           Score

@@ -9,11 +9,9 @@ export interface ScoreLeaderboardTrader {
   profileImageUrl?: string | null;
   xHandle?: string | null;
   totalScore: number;
-  tradeCount: number;
-  volumeUsd: string;
   rankChange: number;
-  hasGoogle?: boolean;
-  hasTelegram?: boolean;
+  hasGoogle: boolean;
+  hasTelegram: boolean;
 }
 
 export interface ScoreLeaderboardResponse {
