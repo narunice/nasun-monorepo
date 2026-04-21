@@ -65,7 +65,7 @@ function AppContent() {
         </a>
       )}
       {!isClaimPage && <Navbar />}
-      <main id="main-content" className={!isClaimPage ? "pt-14" : ""}>
+      <main id="main-content" className={!isClaimPage ? "pt-[50px]" : ""}>
         <AppRoutes />
         {isPageReady && !isAdminPage && !isClaimPage && <Footer />}
       </main>
