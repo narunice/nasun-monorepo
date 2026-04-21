@@ -15,14 +15,15 @@ function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-function formatPoints(points: number): string {
-  if (points >= 1_000_000) {
-    return `${(points / 1_000_000).toFixed(1)}M`;
+function formatPoints(points: number | null | undefined): string {
+  const p = points ?? 0;
+  if (p >= 1_000_000) {
+    return `${(p / 1_000_000).toFixed(1)}M`;
   }
-  if (points >= 1_000) {
-    return `${(points / 1_000).toFixed(1)}K`;
+  if (p >= 1_000) {
+    return `${(p / 1_000).toFixed(1)}K`;
   }
-  return points.toLocaleString();
+  return p.toLocaleString();
 }
 
 function formatVolume(volumeUsd: string): string {
@@ -90,7 +91,7 @@ export function PointsTraderRow({ trader, isCurrentUser }: PointsTraderRowProps)
       </td>
       <td className="py-2.5 px-3 text-right">
         <span className="text-sm text-theme-text-secondary">
-          {trader.tradeCount.toLocaleString()}
+          {(trader.tradeCount ?? 0).toLocaleString()}
         </span>
       </td>
       <td className="py-2.5 px-3 text-center">

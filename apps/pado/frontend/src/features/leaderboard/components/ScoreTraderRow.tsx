@@ -15,14 +15,15 @@ function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-function formatScore(score: number): string {
-  if (score >= 1_000_000) {
-    return `${(score / 1_000_000).toFixed(1)}M`;
+function formatScore(score: number | null | undefined): string {
+  const s = score ?? 0;
+  if (s >= 1_000_000) {
+    return `${(s / 1_000_000).toFixed(1)}M`;
   }
-  if (score >= 1_000) {
-    return `${(score / 1_000).toFixed(1)}K`;
+  if (s >= 1_000) {
+    return `${(s / 1_000).toFixed(1)}K`;
   }
-  return score.toLocaleString();
+  return s.toLocaleString();
 }
 
 function formatVolume(volumeUsd: string): string {
@@ -105,7 +106,7 @@ export function ScoreTraderRow({ trader, isCurrentUser }: ScoreTraderRowProps) {
       </td>
       <td className="py-3 px-3 text-right hidden md:table-cell">
         <span className="text-sm text-theme-text-secondary">
-          {trader.tradeCount.toLocaleString()}
+          {(trader.tradeCount ?? 0).toLocaleString()}
         </span>
       </td>
       <td className="py-3 px-3 text-center">
