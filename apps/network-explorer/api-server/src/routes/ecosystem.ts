@@ -759,23 +759,39 @@ app.get('/leaderboard', async (c) => {
             AND tx_timestamp >= ${bounds.start}
             AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
+        ),
+        volume_score AS (
+          -- Game plays (pado-lottery/games/scratchcard) + wallet transfers.
+          -- wallet-transfer intentionally double-counted with activity_score to reward volume.
+          -- pado-dex excluded (covered by Pado Score Leaderboard); games excluded from pado-% pattern corrected here.
+          SELECT identity_id, COUNT(*)::int AS volume_count
+          FROM activity_points
+          WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+            AND NOT flagged
+            AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start}
+            AND tx_timestamp < ${bounds.end}
+          GROUP BY identity_id
         )
         SELECT
-          COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id,
+          COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) AS identity_id,
           COALESCE(a.activity_score, 0)::int AS activity_score,
           COALESCE(c.post_score, 0) AS creator_post_score,
           COALESCE(b.bonus_score, 0) AS bonus_score,
           COALESCE(a.active_days, 0)::int AS active_days,
+          COALESCE(v.volume_count, 0)::int AS volume_count,
           (
             COALESCE(a.activity_score, 0)
             + COALESCE(c.post_score, 0)
             + COALESCE(b.bonus_score, 0)
-            + COALESCE(a.active_days, 0) * 2
-          ) AS weekly_score
+            + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
+          )::float8 AS weekly_score
         FROM activity_score a
         FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
         FULL OUTER JOIN bonus_score b
           ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
+        FULL OUTER JOIN volume_score v
+          ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
         -- Pre-sort by SQL-computable columns. JS applies isTelegramMember/hasGenesisPass tiebreakers after.
         ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
         LIMIT ${LEADERBOARD_TOP_N}
@@ -800,7 +816,8 @@ app.get('/leaderboard', async (c) => {
         creatorPostScore: r.creator_post_score as number,
         bonusScore: r.bonus_score as number,
         activeDays: r.active_days as number,
-        weeklyScore: r.weekly_score as number,
+        volumeCount: r.volume_count as number,
+        weeklyScore: Number(r.weekly_score),
         hasGenesisPass: genesisPassSet.has(r.identity_id as string),
         isTelegramMember: profiles.get(r.identity_id as string)?.isTelegramMember ?? false,
         hasGoogle: profiles.get(r.identity_id as string)?.hasGoogle ?? false,
@@ -858,14 +875,23 @@ app.get('/leaderboard', async (c) => {
             AND NOT flagged AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
+        ),
+        volume_score AS (
+          SELECT identity_id FROM activity_points
+          WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+            AND NOT flagged AND identity_id IS NOT NULL
+            AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
+          GROUP BY identity_id
         )
         SELECT COUNT(*) AS total FROM (
-          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id
+          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) AS identity_id
           FROM activity_score a
           FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
           FULL OUTER JOIN bonus_score b
             ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
-          WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id) IS NOT NULL
+          FULL OUTER JOIN volume_score v
+            ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
+          WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) IS NOT NULL
         ) sub
       `;
       return Number((result[0] as any).total ?? 0);
@@ -914,16 +940,22 @@ app.get('/leaderboard', async (c) => {
               AND NOT flagged AND identity_id IS NOT NULL
               AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
             GROUP BY identity_id
+          ),
+          volume_score AS (
+            SELECT identity_id, COUNT(*)::int AS volume_count
+            FROM activity_points
+            WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+              AND NOT flagged AND identity_id IS NOT NULL
+              AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
+            GROUP BY identity_id
           )
-          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id,
+          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) AS identity_id,
             COALESCE(a.activity_score, 0)::int AS activity_score,
-            COALESCE(c.post_score, 0) AS creator_post_score,
-            COALESCE(b.bonus_score, 0) AS bonus_score,
-            COALESCE(a.active_days, 0)::int AS active_days,
-            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + COALESCE(a.active_days, 0) * 2) AS weekly_score
+            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1))::float8 AS weekly_score
           FROM activity_score a
           FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
           FULL OUTER JOIN bonus_score b ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
+          FULL OUTER JOIN volume_score v ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
           ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
           LIMIT ${LEADERBOARD_TOP_N}
         `;
@@ -975,14 +1007,23 @@ app.get('/leaderboard', async (c) => {
                 AND NOT flagged AND identity_id IS NOT NULL
                 AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
               GROUP BY identity_id
+            ),
+            volume_score AS (
+              SELECT identity_id FROM activity_points
+              WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+                AND NOT flagged AND identity_id IS NOT NULL
+                AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
+              GROUP BY identity_id
             )
             SELECT COUNT(*) AS total FROM (
-              SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id) AS identity_id
+              SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) AS identity_id
               FROM activity_score a
               FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
               FULL OUTER JOIN bonus_score b
                 ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
-              WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id) IS NOT NULL
+              FULL OUTER JOIN volume_score v
+                ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
+              WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) IS NOT NULL
             ) sub
           `;
           return Number((result[0] as any).total ?? 0);
