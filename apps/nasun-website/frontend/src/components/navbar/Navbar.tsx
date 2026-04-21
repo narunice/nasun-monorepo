@@ -11,7 +11,10 @@ import WalletDisconnectModal from "./WalletDisconnectModal";
 import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleUser, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCircleUser,
+  faShieldHalved,
+} from "@fortawesome/free-solid-svg-icons";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
 import { useAuth } from "@/features/auth";
@@ -39,7 +42,8 @@ export default function Navbar() {
         const hasActiveSubItem = item.subMenu.some(
           (subItem) =>
             location.pathname === subItem.path ||
-            (subItem.path !== "/" && location.pathname.startsWith(subItem.path)),
+            (subItem.path !== "/" &&
+              location.pathname.startsWith(subItem.path)),
         );
 
         if (hasActiveSubItem) {
@@ -82,44 +86,46 @@ export default function Navbar() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed top-0 left-0 right-0 z-[60] h-14 bg-nasun-white border-b border-nasun-black/10 shadow-sm flex items-center px-4 lg:px-8"
+      className="fixed top-0 left-0 right-0 z-[60] h-14 bg-nasun-white border-b border-nasun-black/10 shadow-sm flex items-center justify-center px-4 lg:px-8"
     >
-      {/* Logo area */}
-      <Link
-        to="/"
-        onClick={handleHomeClick}
-        className="flex items-center gap-2 flex-shrink-0 mr-4 lg:mr-8"
-      >
-        {/* Symbol: desktop only */}
-        <img
-          src="/nasun_symbol_black.svg"
-          alt="NASUN"
-          className="hidden lg:block h-7 w-7 translate-y-[2px]"
-        />
-        {/* Wordmark: desktop + tablet (hidden on mobile) */}
-        <span className="hidden min-[640px]:block !font-changeling font-bold text-nasun-black text-xl tracking-wider">
-          NASUN
-        </span>
-      </Link>
+      {/* Inner container: max-width 1920px */}
+      <div className="w-full max-w-[1920px] flex items-center gap-2">
+        {/* Logo area */}
+        <Link
+          to="/"
+          onClick={handleHomeClick}
+          className="flex items-center gap-2 flex-shrink-0 mr-4 lg:mr-8"
+        >
+          {/* Symbol: desktop only */}
+          <img
+            src="/nasun_symbol_black.svg"
+            alt="NASUN"
+            className="hidden lg:block h-7 w-7 translate-y-[2px]"
+          />
+          {/* Wordmark: desktop + tablet, hidden on mobile */}
+          <span className="px-2 hidden min-[640px]:block !font-changeling font-bold text-nasun-black text-2xl tracking-wider">
+            NASUN
+          </span>
+        </Link>
 
-      {/* Mobile: hamburger only */}
-      <div className="flex items-center min-[640px]:hidden">
-        <MobileNav
-          navItems={navItems}
-          isMenuOpen={isMenuOpen}
-          toggleSubMenu={toggleSubMenu}
-          closeAllMenus={closeAllMenus}
-          mobileMenuOpen={mobileMenuOpen}
-          setMobileMenuOpen={setMobileMenuOpen}
-          isAdmin={isAdmin}
-        />
-      </div>
+        {/* Mobile: hamburger (mobile only, left-aligned after logo) */}
+        <div className="flex items-center min-[640px]:hidden">
+          <MobileNav
+            navItems={navItems}
+            isMenuOpen={isMenuOpen}
+            toggleSubMenu={toggleSubMenu}
+            closeAllMenus={closeAllMenus}
+            mobileMenuOpen={mobileMenuOpen}
+            setMobileMenuOpen={setMobileMenuOpen}
+            isAdmin={isAdmin}
+          />
+        </div>
 
-      {/* Desktop nav menu */}
-      <DesktopNav navItems={navItems} />
+        {/* Desktop nav menu (flex-1 pushes right-side actions to the end) */}
+        <DesktopNav navItems={navItems} />
 
-        {/* 공통 기능들 */}
-        <div className="flex gap-6 lg:gap-7 min-w-36 items-center justify-end flex-shrink-0">
+        {/* Actions: right-aligned on all breakpoints */}
+        <div className="ml-auto flex gap-6 lg:gap-7 items-center justify-end flex-shrink-0">
           {isAdmin && (
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
@@ -128,7 +134,10 @@ export default function Navbar() {
                   className={`rounded-3xl cursor-pointer hover:opacity-70 transition-all flex items-center justify-center ${location.pathname.startsWith("/admin") ? "text-nasun-nw2" : "text-nasun-black"}`}
                   aria-label="Admin"
                 >
-                  <FontAwesomeIcon icon={faShieldHalved} className="text-xl lg:text-2xl" />
+                  <FontAwesomeIcon
+                    icon={faShieldHalved}
+                    className="text-xl lg:text-2xl"
+                  />
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content
@@ -142,7 +151,9 @@ export default function Navbar() {
             </Tooltip.Root>
           )}
 
-          {isAuthenticated && user && <NavEcoPointsBadge identityId={user.identityId} />}
+          {isAuthenticated && user && (
+            <NavEcoPointsBadge identityId={user.identityId} />
+          )}
 
           {isAuthenticated && user && (
             <Tooltip.Root>
@@ -159,7 +170,10 @@ export default function Navbar() {
                   className={`rounded-3xl cursor-pointer hover:opacity-70 transition-all flex items-center justify-center ${location.pathname === "/my-account" ? "text-nasun-nw2" : "text-nasun-black"}`}
                   aria-label="유저 프로필"
                 >
-                  <FontAwesomeIcon icon={faCircleUser} className="text-xl lg:text-2xl" />
+                  <FontAwesomeIcon
+                    icon={faCircleUser}
+                    className="text-xl lg:text-2xl"
+                  />
                 </button>
               </Tooltip.Trigger>
               <Tooltip.Content
@@ -177,6 +191,7 @@ export default function Navbar() {
           <LoginButton />
           {isAuthenticated && user && <WalletDisconnectModal />}
         </div>
+      </div>
     </nav>
   );
 }
