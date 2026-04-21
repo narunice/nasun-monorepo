@@ -63,8 +63,9 @@ const ZKLOGIN_RETURN_URL_KEY = 'nasun:zklogin:return_url';
 
 // On-chain limit: zklogin_max_epoch_upper_bound_delta = 30 (protocol v43).
 // maxEpoch must not exceed currentEpoch + 30.
-// With 2h devnet epochs: 30 * 2h = 60h (~2.5 days).
-const ZKLOGIN_MAX_EPOCH_OFFSET = 30;
+// Use 29 instead of 30 to tolerate 1-epoch lag between RPC nodes.
+// With 2h devnet epochs: 29 * 2h = 58h (~2.4 days).
+const ZKLOGIN_MAX_EPOCH_OFFSET = 29;
 
 /** zkLogin configuration (set via configureZkLogin) */
 let zkLoginConfig: ZkLoginConfig | null = null;
