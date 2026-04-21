@@ -3,7 +3,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { NavItem, SubMenuItem } from "../../types/routes";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faBars, faXmark, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronDown,
+  faBars,
+  faXmark,
+  faShieldHalved,
+} from "@fortawesome/free-solid-svg-icons";
 import { ExternalLink } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useActiveState } from "../../hooks/useActiveState";
@@ -33,7 +38,10 @@ export default function MobileNav({
   const mobileStyles = getMobileStyles();
   const location = useLocation();
 
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+  const handleLinkClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    path: string,
+  ) => {
     if (location.pathname === path) {
       e.preventDefault();
       closeAllMenus();
@@ -89,105 +97,123 @@ export default function MobileNav({
 
         <Dialog.Content className="fixed top-0 left-0 w-3/5 h-full pt-5 pb-10 pl-6 pr-2 z-[65] bg-nasun-white rounded-r-lg shadow-lg flex flex-col">
           <Dialog.Title className="sr-only">Mobile Menu</Dialog.Title>
-        <Dialog.Description className="sr-only">
-          사이트 내비게이션 링크를 탐색할 수 있는 패널입니다.
-        </Dialog.Description>
+          <Dialog.Description className="sr-only">
+            사이트 내비게이션 링크를 탐색할 수 있는 패널입니다.
+          </Dialog.Description>
 
-        <div className="flex justify-between items-center mb-8 pr-4">
-          <Link to="/" onClick={(e) => handleLinkClick(e, "/")} className="flex items-center">
-            {/* 흰색 심볼 */}
-            <img
-              src="/nasun_symbol_white.svg"
-              alt="NASUN"
-              className="h-6 w-auto transition-all dark:hidden"
-            />
-            {/* 검은색 심볼 */}
-            <img
-              src="/nasun_symbol_black.svg"
-              alt="NASUN"
-              className="h-6 w-auto transition-all block"
-            />
-          </Link>
-          <button
-            onClick={closeAllMenus}
-            className="p-2 text-nasun-black hover:opacity-70 transition-all outline-none"
-            aria-label="Close Menu"
-          >
-            <FontAwesomeIcon icon={faXmark} className="text-lg" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 min-h-0 pr-4">
-        <nav className="flex flex-col items-start">
-          {/* Home link - mobile only */}
-          <div>
+          <div className="flex justify-between items-center mb-8 pr-4">
             <Link
               to="/"
               onClick={(e) => handleLinkClick(e, "/")}
-              className={`block text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
-                location.pathname === "/" ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
-              }`}
+              className="flex items-center"
             >
-              Home
+              {/* 흰색 심볼 */}
+              <img
+                src="/nasun_symbol_white.svg"
+                alt="NASUN"
+                className="h-6 w-auto transition-all dark:hidden"
+              />
+              {/* 검은색 심볼 */}
+              <img
+                src="/nasun_symbol_black.svg"
+                alt="NASUN"
+                className="h-6 w-auto transition-all block"
+              />
             </Link>
+            <button
+              onClick={closeAllMenus}
+              className="p-2 text-nasun-black hover:opacity-70 transition-all outline-none"
+              aria-label="Close Menu"
+            >
+              <FontAwesomeIcon icon={faXmark} className="text-lg" />
+            </button>
           </div>
-          {navItems.map((item) => (
-              <div key={item.name} className="mt-1">
-                {item.subMenu ? (
-                  <div className="space-y-0.5">
-                    {/* 1) 부모 메뉴: 클릭하면 토글만 */}
-                    <button
-                      onClick={() => toggleSubMenu(item.name)}
-                      className={`flex items-center justify-between gap-2 w-full text-base py-1.5 px-2 transition-all rounded-xl text-nasun-black ${
-                        isActive(item) ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
-                      }`}
-                    >
-                      {item.name}
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className={`text-sm transition-transform ${
-                          isMenuOpen[item.name] ? "rotate-180" : ""
+
+          <div className="overflow-y-auto flex-1 min-h-0 pr-4">
+            <nav className="flex flex-col items-start">
+              {/* Home link - mobile only */}
+              <div>
+                <Link
+                  to="/"
+                  onClick={(e) => handleLinkClick(e, "/")}
+                  className={`block text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
+                    location.pathname === "/"
+                      ? "bg-nasun-c4/20"
+                      : "hover:bg-slate-800/70 hover:text-white"
+                  }`}
+                >
+                  Home
+                </Link>
+              </div>
+              {navItems.map((item) => (
+                <div key={item.name} className="mt-1">
+                  {item.subMenu ? (
+                    <div className="space-y-0.5">
+                      {/* 1) 부모 메뉴: 클릭하면 토글만 */}
+                      <button
+                        onClick={() => toggleSubMenu(item.name)}
+                        className={`flex items-center justify-between gap-2 w-full text-base py-1.5 px-2 transition-all rounded-xl text-nasun-black ${
+                          isActive(item)
+                            ? "bg-nasun-c4/20"
+                            : "hover:bg-slate-800/70 hover:text-white"
                         }`}
-                      />
-                    </button>
+                      >
+                        {item.name}
+                        <FontAwesomeIcon
+                          icon={faChevronDown}
+                          className={`text-sm transition-transform ${
+                            isMenuOpen[item.name] ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
 
-                    {/* 서브메뉴 */}
-                    {isMenuOpen[item.name] && (
-                      <div className="ml-4 border-l-2 border-nasun-c4/50 space-y-0.5">
-                        {item.subMenu.map((subItem: SubMenuItem) =>
-                          subItem.subMenu ? (
-                            // 3단계 중첩: 인라인 렌더링 (토글 없이 항상 표시)
-                            <div key={subItem.name}>
-                              {/* 부모 항목 (GEN SOL) - 클릭 불가능한 라벨 */}
-                              <div className={MOBILE_NAVIGATION_STYLES.subMenuHeader.base}>
-                                <span>{subItem.name}</span>
-                              </div>
+                      {/* 서브메뉴 */}
+                      {isMenuOpen[item.name] && (
+                        <div className="ml-4 border-l-2 border-nasun-c4/50 space-y-0.5">
+                          {item.subMenu.map((subItem: SubMenuItem) =>
+                            subItem.subMenu ? (
+                              // 3단계 중첩: 인라인 렌더링 (토글 없이 항상 표시)
+                              <div key={subItem.name}>
+                                {/* 부모 항목 (GEN SOL) - 클릭 불가능한 라벨 */}
+                                <div
+                                  className={
+                                    MOBILE_NAVIGATION_STYLES.subMenuHeader.base
+                                  }
+                                >
+                                  <span>{subItem.name}</span>
+                                </div>
 
-                              {/* 인라인 하위 메뉴 (항상 표시, 왼쪽 border-l) */}
-                              <div className={`${MOBILE_NAVIGATION_STYLES.nestedSubMenuWrapper.base} mb-2 space-y-1`}>
-                                {subItem.subMenu.map((nestedItem: SubMenuItem) =>
-                                  nestedItem.disabled ? (
-                                    <span
-                                      key={nestedItem.name}
-                                      className={`${mobileStyles.nestedSubMenuItem(nestedItem)} opacity-50 cursor-not-allowed`}
-                                    >
-                                      <span>{nestedItem.name}</span>
-                                    </span>
-                                  ) : (
-                                    <Link
-                                      key={nestedItem.name}
-                                      to={nestedItem.path}
-                                      onClick={(e) => handleLinkClick(e, nestedItem.path)}
-                                      className={mobileStyles.nestedSubMenuItem(nestedItem)}
-                                    >
-                                      {nestedItem.name}
-                                    </Link>
-                                  )
-                                )}
+                                {/* 인라인 하위 메뉴 (항상 표시, 왼쪽 border-l) */}
+                                <div
+                                  className={`${MOBILE_NAVIGATION_STYLES.nestedSubMenuWrapper.base} mb-2 space-y-1`}
+                                >
+                                  {subItem.subMenu.map(
+                                    (nestedItem: SubMenuItem) =>
+                                      nestedItem.disabled ? (
+                                        <span
+                                          key={nestedItem.name}
+                                          className={`${mobileStyles.nestedSubMenuItem(nestedItem)} opacity-50 cursor-not-allowed`}
+                                        >
+                                          <span>{nestedItem.name}</span>
+                                        </span>
+                                      ) : (
+                                        <Link
+                                          key={nestedItem.name}
+                                          to={nestedItem.path}
+                                          onClick={(e) =>
+                                            handleLinkClick(e, nestedItem.path)
+                                          }
+                                          className={mobileStyles.nestedSubMenuItem(
+                                            nestedItem,
+                                          )}
+                                        >
+                                          {nestedItem.name}
+                                        </Link>
+                                      ),
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            // 2단계 메뉴 (기존 방식)
+                            ) : // 2단계 메뉴 (기존 방식)
                             subItem.disabled ? (
                               <span
                                 key={subItem.name}
@@ -218,54 +244,64 @@ export default function MobileNav({
                               <Link
                                 key={subItem.name}
                                 to={subItem.path}
-                                onClick={(e) => handleLinkClick(e, subItem.path)}
+                                onClick={(e) =>
+                                  handleLinkClick(e, subItem.path)
+                                }
                                 className={`block py-1.5 px-3 transition-all text-left rounded-xl text-nasun-black ${
-                                  isActive(subItem) ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
+                                  isActive(subItem)
+                                    ? "bg-nasun-c4/20"
+                                    : "hover:bg-slate-800/70 hover:text-white"
                                 }`}
                               >
                                 {subItem.name}
                               </Link>
-                            )
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Link
-                    to={item.path}
-                    onClick={(e) => handleLinkClick(e, item.path)}
-                    className={`block text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
-                      isActive(item) ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
-                    }`}
-                  >
-                    {item.name}
-                  </Link>
-                )}
-              </div>
-          ))}
+                            ),
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      to={item.path}
+                      onClick={(e) => handleLinkClick(e, item.path)}
+                      className={`block text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
+                        isActive(item)
+                          ? "bg-nasun-c4/20"
+                          : "hover:bg-slate-800/70 hover:text-white"
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  )}
+                </div>
+              ))}
 
-          {isAdmin && (
-            <>
-              <div className="w-full border-t border-nasun-black/10 my-3" />
-              <div>
-                <Link
-                  to="/admin"
-                  onClick={(e) => handleLinkClick(e, "/admin")}
-                  className={`flex items-center gap-2 text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
-                    location.pathname.startsWith("/admin") ? "bg-nasun-c4/20" : "hover:bg-slate-800/70 hover:text-white"
-                  }`}
-                >
-                  <FontAwesomeIcon icon={faShieldHalved} className="text-sm" />
-                  Admin
-                </Link>
-              </div>
-            </>
-          )}
-        </nav>
-        </div>
-      </Dialog.Content>
-    </Dialog.Portal>
+              {isAdmin && (
+                <>
+                  <div className="w-full border-t border-nasun-black/10 my-3" />
+                  <div>
+                    <Link
+                      to="/admin"
+                      onClick={(e) => handleLinkClick(e, "/admin")}
+                      className={`flex items-center gap-2 text-base py-1.5 px-2 transition-all text-left rounded-xl text-nasun-black ${
+                        location.pathname.startsWith("/admin")
+                          ? "bg-nasun-c4/20"
+                          : "hover:bg-slate-800/70 hover:text-white"
+                      }`}
+                    >
+                      <FontAwesomeIcon
+                        icon={faShieldHalved}
+                        className="text-sm"
+                      />
+                      Admin
+                    </Link>
+                  </div>
+                </>
+              )}
+            </nav>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
     </Dialog.Root>
   );
 }
