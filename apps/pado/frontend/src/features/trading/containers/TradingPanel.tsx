@@ -178,6 +178,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     handleMarketOrder,
     handleCreateBalanceManager,
     handleWithdrawToken,
+    refreshData,
   } = useOrderActions();
 
   console.log('[TradingPanel] balanceManagerId:', balanceManagerId, 'isConnected:', isConnected, 'disabled:', !isConnected || !balanceManagerId);
@@ -472,7 +473,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     let failCount = 0;
 
     for (const order of orders) {
-      const result = await handleLimitOrder(orderSide, order.price, order.quantity);
+      const result = await handleLimitOrder(orderSide, order.price, order.quantity, undefined, true);
       if (result.success) {
         successCount++;
       } else {
@@ -486,11 +487,16 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
       showToast(`Scale order: all ${failCount} orders failed`, 'error');
     }
 
+    // Refresh once after all orders complete instead of per-order to avoid query flood
+    if (successCount > 0) {
+      refreshData();
+    }
+
     // Only reset form if at least one order succeeded
     if (successCount > 0) {
       resetForm();
     }
-  }, [handleLimitOrder, resetForm, showToast]);
+  }, [handleLimitOrder, resetForm, showToast, refreshData]);
 
   // Simple mode market buy handler (receives baseAmount directly)
   const handleSimpleMarketBuy = async (baseAmount: number) => {
