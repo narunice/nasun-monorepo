@@ -33,7 +33,7 @@ export function ScrollSnapSection({
       className={`
         scroll-snap-section
         /* 조건부 높이: navbar(3.5rem) 제외한 viewport */
-        ${allowTallContent ? 'min-h-[calc(100vh-3.5rem)]' : 'md:h-[calc(100vh-3.5rem)] min-h-[calc(100vh-3.5rem)]'}
+        ${allowTallContent ? 'min-h-[calc(100vh-50px)]' : 'md:h-[calc(100vh-50px)] min-h-[calc(100vh-50px)]'}
         /* Isolation: 새로운 Stacking Context 생성 (z-index 충돌 방지) */
         isolation-isolate
         /* Overflow Clipping: 경계 밖 렌더링 차단 (시각적 겹침 방지) */
