@@ -214,6 +214,22 @@ export function hasActivity(): boolean {
 }
 
 /**
+ * Remove stale entries from cooldownMap and inactive pools.
+ * Called periodically to prevent unbounded memory growth.
+ */
+export function pruneStale(now: number = Date.now()): void {
+  const maxCooldown = Math.max(...Object.values(COOLDOWNS));
+  for (const [key, lastAlertMs] of cooldownMap) {
+    if (now - lastAlertMs > maxCooldown) cooldownMap.delete(key);
+  }
+
+  const poolInactivityMs = 60 * 60 * 1000; // 1 hour
+  for (const [poolId, state] of pools) {
+    if (now - state.lastUpdateMs > poolInactivityMs) pools.delete(poolId);
+  }
+}
+
+/**
  * Reset all tracker state. For testing only.
  */
 export function reset(): void {
