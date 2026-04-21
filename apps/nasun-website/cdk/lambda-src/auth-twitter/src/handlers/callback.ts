@@ -6,6 +6,7 @@ import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
 import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
 import { getOAuthClientCredentials } from '../utils/secrets';
+import { appendXHistory, XChangeType } from '../utils/xHistory';
 
 // Read from environment variable (set by CDK from shared constants/cors.ts)
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
@@ -183,6 +184,28 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
           ':updatedAt': { S: userProfile.updatedAt },
         },
       }));
+
+      // Record X handle change history (non-blocking, best-effort).
+      // account_switch is not detectable here: Cognito issues a new identityId
+      // per twitterId, so this path always has a matching twitterId.
+      // account_switch is handled in link-account instead.
+      const oldHandle    = existingProfile.Item.twitterHandle?.S;
+      const oldTwitterId = existingProfile.Item.twitterId?.S;
+      let xChangeType: XChangeType | null = null;
+      if (!oldHandle) {
+        xChangeType = 'initial_link';
+      } else if (oldHandle !== normalizedTwitterHandle) {
+        xChangeType = 'handle_rename';
+      }
+      if (xChangeType) {
+        appendXHistory(dynamoClient, USER_PROFILES_TABLE, cognitoIdentity.identityId, {
+          changeType: xChangeType,
+          oldHandle:    oldHandle || undefined,
+          newHandle:    normalizedTwitterHandle,
+          oldTwitterId: oldTwitterId || undefined,
+          newTwitterId: twitterUser.id,
+        }).catch((e) => console.warn('[xHistory] append failed', e));
+      }
     } else {
       // Do NOT create a new user profile here.
       // Profile creation is handled by the frontend's ensureUserProfile()
