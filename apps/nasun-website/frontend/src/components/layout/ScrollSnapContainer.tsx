@@ -30,6 +30,8 @@ interface ScrollSnapContainerProps {
  *   - 섹션 상단/하단(10px 여유) 도달 시 다음/이전 섹션으로 전환
  * - 강제 스냅: 스크롤 정지 200ms 후, 섹션 경계 ±10% 내에 있으면 자동 스냅
  */
+const NAVBAR_HEIGHT = 56; // matches h-14 (3.5rem) in Navbar
+
 export function ScrollSnapContainer({
   children,
   className = "",
@@ -75,7 +77,7 @@ export function ScrollSnapContainer({
           minDistance < window.innerHeight * 0.1
         ) {
           const rect = closestSection.getBoundingClientRect();
-          const targetTop = currentScroll + rect.top;
+          const targetTop = Math.max(0, currentScroll + rect.top - NAVBAR_HEIGHT);
           window.scrollTo({ top: targetTop, behavior: "smooth" });
         }
       }, 200); // 200ms 동안 스크롤 없으면 실행
@@ -131,7 +133,7 @@ export function ScrollSnapContainer({
         e.preventDefault();
         isScrollingRef.current = true;
 
-        const targetTop = lastSectionRect.top + currentScrollY;
+        const targetTop = Math.max(0, lastSectionRect.top + currentScrollY - NAVBAR_HEIGHT);
         window.scrollTo({
           top: targetTop,
           behavior: "smooth",
@@ -265,7 +267,7 @@ export function ScrollSnapContainer({
         // 타겟 섹션으로 부드럽게 스크롤
         const targetSection = sections[nextIndex] as HTMLElement;
         if (targetSection) {
-          const targetTop = targetSection.getBoundingClientRect().top + currentScrollY;
+          const targetTop = Math.max(0, targetSection.getBoundingClientRect().top + currentScrollY - NAVBAR_HEIGHT);
           window.scrollTo({
             top: targetTop,
             behavior: "smooth",
