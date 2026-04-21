@@ -65,8 +65,10 @@ function AppContent() {
         </a>
       )}
       {!isClaimPage && <Navbar />}
-      <AppRoutes />
-      {isPageReady && !isAdminPage && !isClaimPage && <Footer />}
+      <main id="main-content" className={!isClaimPage ? "pt-14" : ""}>
+        <AppRoutes />
+        {isPageReady && !isAdminPage && !isClaimPage && <Footer />}
+      </main>
       {!isClaimPage && (
         <Suspense fallback={null}>
           <ChatWidget />
