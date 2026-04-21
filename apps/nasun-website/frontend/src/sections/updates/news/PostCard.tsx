@@ -11,8 +11,10 @@ interface PostCardProps {
 export default function PostCard({ post }: PostCardProps) {
   const { t } = useTranslation("common");
   const featuredImage = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
-  // The excerpt is already sanitized by replacing HTML tags, but we can also use DOMPurify for consistency if needed.
-  const excerptText = post.excerpt.rendered.replace(/<[^>]*>/g, "").trim();
+  const excerptText = (() => {
+    const doc = new DOMParser().parseFromString(post.excerpt.rendered, "text/html");
+    return doc.body.textContent?.trim() ?? "";
+  })();
 
   // Sanitize the title before rendering
   const sanitizedTitle = DOMPurify.sanitize(post.title.rendered);
