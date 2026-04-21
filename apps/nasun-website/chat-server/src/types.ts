@@ -224,16 +224,19 @@ export interface StoredMessage {
 }
 
 // Room definitions
-// Language rooms: 0-99, Market rooms: 100+
+// New structure: GM(0), General(10), Pado(20)
+// Legacy rooms 1, 2, 100-104 kept temporarily — removed in Deploy C
 export const ROOMS: RoomInfo[] = [
-  { id: 0, name: 'Global', category: 'language' },
-  { id: 1, name: 'Korean', category: 'language' },
-  { id: 2, name: 'Vietnamese', category: 'language' },
-  { id: 100, name: 'Pado', category: 'market' },
-  { id: 101, name: 'NBTC', category: 'market' },
-  { id: 102, name: 'NSN', category: 'market' },
-  { id: 103, name: 'NETH', category: 'market' },
-  { id: 104, name: 'NSOL', category: 'market' },
+  { id: 0,   name: 'GM',          category: 'language' },
+  { id: 10,  name: 'General',     category: 'language' },
+  { id: 20,  name: 'Pado',        category: 'market'   },
+  { id: 1,   name: 'Korean',      category: 'language' },
+  { id: 2,   name: 'Vietnamese',  category: 'language' },
+  { id: 100, name: 'PadoLegacy',  category: 'market'   },
+  { id: 101, name: 'NBTC',        category: 'market'   },
+  { id: 102, name: 'NSN',         category: 'market'   },
+  { id: 103, name: 'NETH',        category: 'market'   },
+  { id: 104, name: 'NSOL',        category: 'market'   },
 ];
 
 export const VALID_ROOM_IDS = new Set(ROOMS.map((r) => r.id));

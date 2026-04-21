@@ -52,7 +52,7 @@ export function ChatRoomTabs({
     (sum, r) => sum + (unreadCounts[r.id] ?? 0), 0,
   );
 
-  const selectedLangName = languageRooms.find((r) => r.id === selectedLanguageRoomId)?.name ?? 'Global';
+  const selectedLangName = languageRooms.find((r) => r.id === selectedLanguageRoomId)?.name ?? 'GM';
 
   return (
     <div role="tablist" aria-label="Chat rooms" className="flex items-center gap-1 px-2 py-1.5 border-b border-theme-border shrink-0 overflow-x-auto scrollbar-none">
