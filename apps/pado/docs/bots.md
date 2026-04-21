@@ -42,7 +42,7 @@ pnpm tpsl-keeper                                      # TP/SL conditional order 
 
 ## Production Deployment (PM2)
 
-5 processes managed by PM2 `ecosystem.config.cjs`: `lp-bot-nbtc`, `lp-bot-neth`, `lp-bot-nsol`, `price-updater`, `tpsl-keeper`.
+7 processes managed by PM2 `ecosystem.config.cjs`: `lp-bot-nbtc`, `lp-bot-neth`, `lp-bot-nsol`, `price-updater`, `balance-watchdog`, `tpsl-keeper`, `lottery-keeper`.
 
 > **Note**: `liquidation-keeper` is available as a local script but is **not** included in the PM2 config. Run it manually or add to PM2 when needed.
 
