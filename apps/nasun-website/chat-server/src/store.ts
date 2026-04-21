@@ -16,8 +16,9 @@ const MAX_CHANGES_IN_WINDOW = 10;
 
 // Profile cache constants
 const PROFILE_TTL_MS = 30 * 60 * 1000;           // 30 minutes
-const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;     // 5 minutes for failed lookups
+const NEGATIVE_CACHE_TTL_MS = 30 * 60 * 1000;    // 30 minutes for failed/null lookups
 const FETCH_TIMEOUT_MS = 5000;
+const PROFILE_FETCH_CONCURRENCY = 10;
 const inFlightRequests = new Map<string, Promise<void>>();
 
 let db: Database.Database | null = null;
@@ -689,7 +690,6 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
         upsertNasunProfile(normalized, null, null, null);
       }
     } catch {
-      console.warn(`[nasun-profile] Failed to fetch profile for ${normalized}`);
       upsertNasunProfile(normalized, null, null, null);
     } finally {
       inFlightRequests.delete(normalized);
@@ -703,7 +703,10 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
 export async function ensureProfilesCached(addresses: string[]): Promise<void> {
   const stale = getStaleProfiles(addresses, PROFILE_TTL_MS);
   if (stale.length === 0) return;
-  await Promise.allSettled(stale.map((a) => fetchAndCacheProfile(a)));
+  for (let i = 0; i < stale.length; i += PROFILE_FETCH_CONCURRENCY) {
+    const batch = stale.slice(i, i + PROFILE_FETCH_CONCURRENCY);
+    await Promise.allSettled(batch.map((a) => fetchAndCacheProfile(a)));
+  }
 }
 
 // Unified display name: nasun_profiles (priority 1) > nickname (priority 2) > users.display_name (priority 3)
