@@ -10,7 +10,7 @@ import CategoryFilter from "./CategoryFilter";
 import { CategoryType, getCategoryIds } from "./categoryUtils";
 import Pagination from "./Pagination";
 
-const POSTS_PER_PAGE = 10;
+const POSTS_PER_PAGE = 6;
 
 function CardSkeleton() {
   return (
