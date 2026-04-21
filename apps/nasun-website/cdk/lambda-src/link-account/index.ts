@@ -2,6 +2,7 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCommand, DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { appendXHistory } from './utils/xHistory';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -180,6 +181,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       });
 
       await dynamoClient.send(updatePrimaryCommand);
+
+      // Record X unlink history (non-blocking, best-effort).
+      // Placed after DB update succeeds to avoid phantom history on failure.
+      if (providerKey === 'twitter') {
+        appendXHistory(dynamoClient, tableName, primaryIdentityId, {
+          changeType: 'unlink',
+          oldHandle:    primaryProfile.twitterHandle,
+          oldTwitterId: primaryProfile.twitterId,
+        }).catch((e) => console.warn('[xHistory] append failed', e));
+      }
 
       // Remove reverse link and ownership marker from secondary profile
       if (secondaryIdentityId) {
@@ -726,6 +737,18 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     console.log('Updating primary profile with linkedAccounts:', primaryLinkedAccounts);
     await dynamoClient.send(updatePrimaryCommand);
+
+    // Record X link history (non-blocking, best-effort)
+    if (providerKey === 'twitter') {
+      const xChangeType = primaryProfile.twitterHandle ? 'account_switch' : 'initial_link';
+      appendXHistory(dynamoClient, tableName, primaryIdentityId, {
+        changeType:   xChangeType,
+        oldHandle:    primaryProfile.twitterHandle,
+        newHandle:    secondaryProfile.twitterHandle,
+        oldTwitterId: primaryProfile.twitterId,
+        newTwitterId: secondaryProfile.twitterId,
+      }).catch((e) => console.warn('[xHistory] append failed', e));
+    }
 
     // 6. Build reverse link info for secondary profile
     const primaryProviderKey = primaryProfile.provider?.toLowerCase() || 'unknown';
