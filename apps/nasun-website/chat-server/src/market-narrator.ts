@@ -11,6 +11,7 @@ import {
   updatePool,
   getAllPoolStates,
   hasActivity,
+  pruneStale,
   type PriceAlert,
   type PoolState,
 } from './price-tracker.js';
@@ -41,6 +42,7 @@ let lastMessageMs = 0;
 let hourlyCount = 0;
 let hourlyResetMs = 0;
 let aiSummaryTimer: ReturnType<typeof setInterval> | null = null;
+let pruneTimer: ReturnType<typeof setInterval> | null = null;
 let cachedAiClient: unknown = null; // Cached Anthropic client instance
 
 // ===== Rate Limiting =====
@@ -184,6 +186,10 @@ export function initNarrator(cfg: NarratorConfig): void {
 
   console.log('[Narrator] Initialized (AI:', cfg.anthropicApiKey ? 'enabled' : 'disabled', ')');
 
+  // Prune stale cooldown entries and inactive pools every 30 minutes
+  if (pruneTimer) clearInterval(pruneTimer);
+  pruneTimer = setInterval(() => pruneStale(), 30 * 60 * 1000);
+
   // Schedule periodic AI summaries if API key is available
   if (cfg.anthropicApiKey) {
     const interval = cfg.aiSummaryIntervalMs ?? DEFAULT_AI_INTERVAL_MS;
@@ -223,6 +229,10 @@ export function onTradeFill(fill: TradeFillData): void {
  * Stop the narrator (cleanup timers).
  */
 export function stopNarrator(): void {
+  if (pruneTimer) {
+    clearInterval(pruneTimer);
+    pruneTimer = null;
+  }
   if (aiSummaryTimer) {
     clearInterval(aiSummaryTimer);
     aiSummaryTimer = null;
