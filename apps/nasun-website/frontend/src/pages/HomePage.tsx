@@ -12,7 +12,7 @@ import HeroSectionSkeleton from "../sections/home/HeroSectionSkeleton";
 // TriptychSection: static import (first visible section, no heavy deps like framer-motion)
 import TriptychSection from "../sections/home/TriptychSection";
 // Preload triptych images for LCP
-import kaeboImg from "@/assets/images/kaebo.webp";
+import kaeboImg from "@/assets/images/Princess-Kaebo-Fixed.webp";
 import josenImg from "@/assets/images/josen.webp";
 import canyonImg from "@/assets/images/canyon.webp";
 
