@@ -86,10 +86,10 @@ export default function Navbar() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed top-0 left-0 right-0 z-[60] h-14 bg-nasun-white border-b border-nasun-black/10 shadow-sm flex items-center justify-center px-4 lg:px-8"
+      className="fixed top-0 left-0 right-0 z-[60] h-14 max-w-9xl mx-auto bg-nasun-white border-b border-nasun-black/10 shadow-sm flex items-center justify-center  pr-4 min-[640px]:px-4 lg:px-8"
     >
       {/* Inner container: max-width 1920px */}
-      <div className="w-full max-w-[1920px] flex items-center gap-2">
+      <div className="w-full max-w-9xl flex items-center gap-2">
         {/* Logo area */}
         <Link
           to="/"
@@ -103,13 +103,13 @@ export default function Navbar() {
             className="hidden lg:block h-7 w-7 translate-y-[2px]"
           />
           {/* Wordmark: desktop + tablet, hidden on mobile */}
-          <span className="px-2 hidden min-[640px]:block !font-changeling font-bold text-nasun-black text-2xl tracking-wider">
+          <span className="px-4 hidden min-[640px]:block !font-changeling font-bold text-nasun-black text-2xl tracking-wider">
             NASUN
           </span>
         </Link>
 
         {/* Mobile: hamburger (mobile only, left-aligned after logo) */}
-        <div className="flex items-center min-[640px]:hidden">
+        <div className="flex min-[640px]:hidden">
           <MobileNav
             navItems={navItems}
             isMenuOpen={isMenuOpen}
