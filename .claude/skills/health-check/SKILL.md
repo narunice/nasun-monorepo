@@ -312,7 +312,7 @@ try:
         print(f'{name}: status={status}, restarts={restarts}, mem={mem}MB')
 except: print('PM2 parse error')
 " 2>/dev/null || echo "pm2 not available"
-ss -tlnp 2>/dev/null | grep -E "3100|4001" | head -2
+ss -tlnp 2>/dev/null | grep -E "3101|4001" | head -2
 
 echo "=== DISK ==="
 df -h / | tail -1
@@ -353,7 +353,8 @@ HEALTH_EOF
 - `price-updater` PM2 상태: stopped = **CRITICAL** (오라클 가격 갱신 중단, 단일 인스턴스 필수)
 - `tpsl-keeper` PM2 상태: stopped/errored = **WARNING** (TP/SL 주문 실행 중단)
 - port 4001 리스닝: 없음 = **WARNING** (TP/SL API 다운)
-- `balance-watchdog` PM2 상태: stopped = **WARNING** (봇 잔고 자동 충전 중단)
+- `balance-watchdog` PM2 상태: stopped = **WARNING** (봇 토큰/가스 자동 보충 중단)
+- `lottery-keeper` PM2 상태: stopped = **WARNING** (주간 복권 사이클 자동화 중단)
 - 디스크/메모리/스왑: Threshold 표 참조
 - CPU load avg: > 2.0 (2 vCPU 기준) = **WARNING**
 - nginx 에러 로그: 최근 10분 에러 확인
@@ -386,7 +387,7 @@ try:
         print(f'{name}: status={status}, restarts={restarts}, mem={mem}MB')
 except: print('PM2 parse error')
 " 2>/dev/null || echo "pm2 not available"
-ss -tlnp 2>/dev/null | grep -E "3100|4001" | head -2
+ss -tlnp 2>/dev/null | grep -E "3101|4001" | head -2
 
 echo "=== UMAMI DOCKER ==="
 sudo docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | grep -E "umami|postgres"
@@ -417,83 +418,38 @@ HEALTH_EOF
 - 디스크 (Docker 이미지/볼륨 포함): Threshold 표 참조
 - 메모리/스왑
 
-#### 2d. Pado Bot Wallet Gas Balances (RPC)
+#### 2d. Pado Bot Wallet Gas Balances (Watchdog Log)
 
-봇 지갑은 각 100,000 NASUN으로 pre-funded됩니다. 잔액이 1,500 NASUN 미만이면 보충이 필요합니다.
-private key 없이 주소만으로 RPC 조회합니다.
+`balance-watchdog`이 60초마다 모든 봇 지갑의 가스 잔액을 기록합니다.
+별도 키 파생 없이 watchdog 로그를 직접 읽어 최신 잔액을 확인합니다.
 
 ```bash
 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
-  ec2-user@43.200.67.52 bash -s << 'WALLET_EOF'
-# Locate bots .env (adjust path if deployment location differs)
-BOT_DIR=$(pm2 jlist 2>/dev/null | python3 -c "
-import sys, json
-try:
-    apps = json.load(sys.stdin)
-    for a in apps:
-        if a['name'] == 'lp-bot-nbtc':
-            print(a['pm2_env'].get('pm_cwd', ''))
-            break
-except: pass
-" 2>/dev/null)
-
-if [ -z "$BOT_DIR" ]; then
-  echo "BOT_DIR_NOT_FOUND: lp-bot-nbtc not in PM2"
-  exit 0
-fi
-
-# Extract wallet addresses only (no keys printed)
-node --input-type=module << 'NODEEOF'
-import { readFileSync } from 'fs';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
-
-const envFile = process.env.BOT_ENV_FILE || '';
-const markets = ['NBTC', 'NETH', 'NSOL'];
-
-function getAddr(keyStr) {
-  try {
-    const { secretKey } = decodeSuiPrivateKey(keyStr);
-    return Ed25519Keypair.fromSecretKey(secretKey).getPublicKey().toSuiAddress();
-  } catch {
-    try {
-      return Ed25519Keypair.fromSecretKey(Buffer.from(keyStr, 'hex')).getPublicKey().toSuiAddress();
-    } catch { return null; }
-  }
-}
-
-for (const m of markets) {
-  const k = process.env[`LP_PRIVATE_KEY_${m}`] || process.env.LP_PRIVATE_KEY;
-  const addr = k ? getAddr(k) : null;
-  if (addr) console.log(`${m}:${addr}`);
-  else console.log(`${m}:KEY_NOT_SET`);
-}
-NODEEOF
-WALLET_EOF
+  ec2-user@43.200.67.52 \
+  "tail -30 /home/ec2-user/pado-bots/logs/balance-watchdog-out.log 2>/dev/null || echo 'LOG_NOT_FOUND'"
 ```
 
-주소를 얻으면 RPC로 각 잔액을 조회합니다:
-
-```bash
-# For each address obtained above:
-curl -s -m 10 -X POST https://rpc.devnet.nasun.io \
-  -H "Content-Type: application/json" \
-  -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"suix_getBalance\",\"params\":[\"<ADDRESS>\",\"0x2::sui::SUI\"]}" \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); bal=int(d['result']['totalBalance'])/1e9; print(f'{bal:.0f} NASUN')"
+로그 형식:
+```
+2026-04-21 00:31:49: [24:31:49] [NBTC] OK: 610.00 NBTC, 60,500,000 NUSDC, 5014 NASUN gas
+2026-04-21 00:31:49: [24:31:49] [NETH] LOW: 0.00 NETH (threshold: 500), 8,720,000,000 NUSDC (threshold: 500,000)
+2026-04-21 00:31:49: [24:31:49] [NETH] REFILLED: +50 NETH, +10,000,000 NUSDC (tx: ...)
+2026-04-21 00:31:49: [24:31:49] [NSOL] OK: 8600.00 NSOL, 85,000,000 NUSDC, 5007 NASUN gas
 ```
 
 판정:
-- >= 5,000 NASUN = OK (충분)
-- 1,500~4,999 NASUN = **WARNING** (보충 권장, watchdog 경고 임박)
-- < 1,500 NASUN = **CRITICAL** (즉시 보충 필요)
+- 로그 파일 없음 = **CRITICAL** (watchdog 로그 경로 이상, `/home/ec2-user/pado-bots/logs/` 확인)
+- 마지막 로그가 5분 이상 전 = **WARNING** (watchdog이 중단됐을 가능성, PM2 상태 재확인)
+- `OK:` 라인의 `NASUN gas` 값 >= 5,000 = OK (watchdog 자동보충 미발동)
+- `NASUN gas` 값 1,500~4,999 = **WARNING** (watchdog이 faucet 자동보충 중)
+- `NASUN gas` 값 < 1,500 = **CRITICAL** (watchdog 경고 임계값 이하, faucet 응답 불가 가능성)
+- `LOW:` 라인 반복 = INFO/WARNING (토큰 잔액 부족, watchdog이 보충 시도 중)
 
-잔액 부족 시 조치:
+가스 긴급 보충 (watchdog 자동보충 실패 시):
 ```bash
-# Prod 서버에서:
-LP_PRIVATE_KEY_SOURCE=<admin_key> pnpm tsx scripts/refill-gas.ts --amount 100000
+# Prod 서버 /home/ec2-user/pado-bots/ 에서:
+source .env && npx tsx scripts/prefund-bot.ts
 ```
-
-> Note: Node.js 모듈 경로 오류 시 `cd $BOT_DIR && source .env`로 환경을 직접 로드하거나, PM2에서 실행 중인 봇의 지갑 주소를 수동으로 이 섹션에 기록해두면 이후 체크가 단순해집니다.
 
 #### 2c. Node-3 (54.180.61.196) — Explorer 관련만
 
@@ -744,8 +700,8 @@ ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem -o ConnectTimeout=10 -o StrictHostKey
 ```
 
 판정:
-- `totalTransactions` > 0 = OK
-- `totalTransactions` = 0 또는 null = **CRITICAL** (데이터 없음)
+- `data.totalTransactions` > 0 = OK
+- `data.totalTransactions` = 0 또는 null = **CRITICAL** (데이터 없음)
 - 응답 없음 = **CRITICAL**
 
 #### 4c. Chain Reset Detection
@@ -849,12 +805,13 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | P3 | Pado 정적 파일 누락 (prod) | `/var/www/pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ec2-user@43.200.67.52:/var/www/pado.finance/` |
 | P4 | Pado 정적 파일 누락 (staging) | `/var/www/staging.pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ubuntu@15.165.19.180:/var/www/staging.pado.finance/` |
 | P5 | Chat Server crash-loop | `nasun-chat-server` PM2 restart > 10 | WARNING | `pm2 logs nasun-chat-server --lines 50` -- better-sqlite3 native module 불일치 또는 DB 손상 가능성 |
-| P6 | Chat Server 메모리 과다 | `nasun-chat-server` PM2 메모리 > 200MB (W), > 256MB (C, auto-restart) | W/C | 256MB 초과 시 PM2가 자동 재시작 (max_memory_restart 256M) |
+| P6 | Chat Server 메모리 과다 | `nasun-chat-server` PM2 메모리 > 350MB (W), > 500MB (C, auto-restart) | W/C | 500MB 초과 시 PM2가 자동 재시작 (max_memory_restart 500MB). 30분 주기 pruneStale()로 cooldownMap/pools 정리 중 |
 | P7 | Price Updater 다운 | PM2 status != online | CRITICAL | 오라클 가격 미갱신으로 DEX 거래 불가. 단일 인스턴스 필수 (prod에서만 실행) |
 | P8 | LP Bot 다운 | lp-bot-nbtc/neth/nsol 중 하나 이상 stopped | WARNING | LP 호가 제공 중단. `pm2 restart lp-bot-nbtc` |
-| P9 | TP/SL Keeper 다운 | tpsl-keeper stopped 또는 port 4001 미리스닝 | WARNING | 사용자 TP/SL 주문 미실행. restart 횟수 > 6000은 알려진 이슈 (waiting restart) |
-| P10 | Balance Watchdog 다운 | balance-watchdog stopped | WARNING | 봇 지갑 잔고 자동 충전 중단, 장기적으로 봇 가스 고갈 |
-| P11 | LP Bot 가스 부족 | 봇 지갑 NASUN < 1,500 (WARNING), < 1,000 (봇이 사이클 skip 시작) | WARNING/CRITICAL | `LP_PRIVATE_KEY_SOURCE=<key> pnpm tsx scripts/refill-gas.ts --amount 100000` 실행. 잔액 < 1,000이면 봇이 이미 사이클 건너뜀 |
+| P9 | TP/SL Keeper 다운 | tpsl-keeper stopped 또는 port 4001 미리스닝 | WARNING | 사용자 TP/SL 주문 미실행. `pm2 restart tpsl-keeper`. max_restarts=10, 초과 시 `pm2 start ecosystem.config.cjs --only tpsl-keeper` |
+| P10 | Balance Watchdog 다운 | balance-watchdog stopped | WARNING | 봇 토큰/가스 자동 보충 중단. `pm2 restart balance-watchdog`. 장시간 중단 시 토큰 잔액 고갈로 LP 주문 제출 불가 |
+| P11 | LP Bot 가스 부족 | watchdog 로그에서 `NASUN gas` < 1,500 | WARNING/CRITICAL | watchdog이 faucet 자동보충 실패 중. `ssh ec2-user@43.200.67.52 "cd /home/ec2-user/pado-bots && source .env && npx tsx scripts/prefund-bot.ts"` 실행. < 1,000이면 봇이 이미 사이클 건너뜀 |
+| P12 | Lottery Keeper 다운 | lottery-keeper stopped | WARNING | 주간 복권 사이클 자동화 중단. `pm2 restart lottery-keeper`. 복권 Round 전환/당첨자 선정 수동 개입 필요 |
 
 #### Backup Patterns (B1-B3)
 
@@ -985,17 +942,20 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | PM2 price-updater (prod) | online/stopped | restarts: 0, mem: 50MB |
 | PM2 tpsl-keeper (prod) | online/waiting | restarts: 0, mem: 55MB, port 4001 |
 | PM2 balance-watchdog (prod) | online/stopped | restarts: 0, mem: 50MB |
+| PM2 lottery-keeper (prod) | online/stopped | restarts: 0, mem: 50MB |
 
-### 9. Pado Bot Wallet Gas
+### 9. Pado Bot Wallet Gas (Watchdog Log)
 
-| Wallet | Status | Balance | Notes |
-|--------|--------|---------|-------|
-| lp-bot-nbtc | OK/WARN/CRIT | 95,000 NASUN | Address: 0x... |
-| lp-bot-neth | OK/WARN/CRIT | 96,000 NASUN | Address: 0x... |
-| lp-bot-nsol | OK/WARN/CRIT | 97,000 NASUN | Address: 0x... |
+`/home/ec2-user/pado-bots/logs/balance-watchdog-out.log` 최근 30줄 기준:
 
-Threshold: >= 5,000 OK / 1,500~4,999 WARNING / < 1,500 CRITICAL
-Refill: `LP_PRIVATE_KEY_SOURCE=<key> pnpm tsx scripts/refill-gas.ts --amount 100000`
+| Market | Gas Status | NASUN Gas | Token Status | Notes |
+|--------|-----------|-----------|--------------|-------|
+| NBTC | OK/WARN/CRIT | 5,014 NASUN | OK / LOW | OK: 정상, LOW: 보충 중 |
+| NETH | OK/WARN/CRIT | 4,999 NASUN | OK / LOW | |
+| NSOL | OK/WARN/CRIT | 5,007 NASUN | OK / LOW | |
+
+Threshold: >= 5,000 OK (watchdog 미발동) / 1,500~4,999 WARNING (faucet 자동보충 중) / < 1,500 CRITICAL
+Emergency refill: `ssh ec2-user@43.200.67.52 "cd /home/ec2-user/pado-bots && source .env && npx tsx scripts/prefund-bot.ts"`
 
 ### 10. Daily Local Backups
 
@@ -1051,8 +1011,11 @@ All systems operational. No issues detected.
 | nginx 5xx 비율 | < 1% | 5%+ | 10%+ |
 | Explorer API 응답시간 | < 0.5s | 1s+ | 5s+ |
 | PM2 restart (nasun-chat-server) | < 5 | 10+ | 50+ |
-| PM2 메모리 (nasun-chat-server) | < 150MB | 200MB+ | 256MB+ (auto-restart) |
-| LP Bot 지갑 가스 (NASUN) | >= 5,000 | 1,500~4,999 | < 1,500 |
+| PM2 메모리 (nasun-chat-server) | < 200MB | 350MB+ | 500MB+ (auto-restart) |
+| PM2 메모리 (balance-watchdog) | < 100MB | 150MB+ | 200MB+ (auto-restart) |
+| PM2 메모리 (tpsl-keeper) | < 150MB | 200MB+ | 300MB+ (auto-restart) |
+| PM2 메모리 (lp-bot-*) | < 200MB | 300MB+ | 500MB+ (auto-restart) |
+| LP Bot 지갑 가스 (NASUN) | >= 5,000 | 1,500~4,999 (faucet 자동보충 중) | < 1,500 |
 
 ---
 
