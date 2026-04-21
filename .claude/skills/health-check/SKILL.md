@@ -259,10 +259,11 @@ curl -s -m 10 -o /dev/null -w "HTTP:%{http_code}|TIME:%{time_total}" https://sta
 ```
 
 판정:
-- `/chat/health` HTTP 200 = **OK** (nasun-chat-server 정상)
-- HTTP 502 = **CRITICAL** (nasun-chat-server 다운, upstream 3101 연결 불가)
-- timeout = **CRITICAL**
+- Prod `/chat/health` HTTP 200 = **OK** (nasun-chat-server 정상)
+- Prod HTTP 502 = **CRITICAL** (nasun-chat-server 다운, upstream 3101 연결 불가)
+- Prod timeout = **CRITICAL**
 - `/chat/api/leaderboard` HTTP 200 = **OK** (leaderboard indexer 정상)
+- **Staging** `/chat/health` HTTP 502 = **OK** (의도적 비활성화, 리소스 절약 목적)
 
 > **레거시 확인(선택):** `curl -s -m 5 -o /dev/null -w "%{http_code}" https://pado.finance/chat/health` 가 502면
 > pado.finance.conf에 남은 `location /chat/`, `location /ws` 블록이 아직 3100 포트(죽은 pado-chat-server)를 가리킨다는 뜻.
@@ -410,9 +411,9 @@ HEALTH_EOF
 - nginx 상태: inactive = **WARNING**
 - `staging.nasun.io/index.html` 존재: missing = **WARNING**
 - `staging.pado.finance/index.html` 존재: missing = **WARNING**
-- staging `nasun-chat-server` PM2 상태: stopped = **OK** (리소스 절약 목적으로 의도적 비활성화)
+- staging `nasun-chat-server` PM2 상태: stopped 또는 online이지만 port 3101 미리스닝 = **OK** (리소스 절약 + 시스템 과부하 방지 목적으로 의도적 비활성화)
 - staging `pado-chat-server` PM2 상태: **무시/레거시** (stopped 정상, 실트래픽은 nasun-chat-server가 처리)
-- staging LP bots / tpsl-keeper / balance-watchdog PM2 상태 확인
+- staging LP bots (lp-bot-nbtc/neth/nsol) / tpsl-keeper / balance-watchdog / lottery-keeper PM2 상태: stopped = **OK** (리소스 절약 + 단일 인스턴스 원칙으로 의도적 비활성화)
 - `price-updater` 부재는 정상 (staging은 DISABLE_PRICE_UPDATER=true, prod oracle 참조)
 - Umami + PostgreSQL Docker 컨테이너: Exited = **WARNING** (분석 수집 중단)
 - 디스크 (Docker 이미지/볼륨 포함): Threshold 표 참조
@@ -801,7 +802,7 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | ID | 패턴 | 감지 조건 | 심각도 | 권장 조치 |
 |----|------|-----------|--------|-----------|
 | P1 | Unified Chat Server 다운 (prod) | `https://nasun.io/chat/health` HTTP != 200 또는 `nasun-chat-server` PM2 stopped/port 3101 미리스닝 | CRITICAL | `ssh ec2-user@43.200.67.52 "pm2 restart nasun-chat-server"`. env 유실 시 `cd /home/ec2-user/nasun-chat-server && pm2 delete nasun-chat-server && pm2 start ecosystem.config.cjs`. nasun/pado 공용 서버이므로 양쪽 모두 영향 |
-| P2 | Unified Chat Server 다운 (staging) | `https://staging.nasun.io/chat/health` HTTP != 200 | WARNING | staging nasun-chat-server는 리소스 절약 목적으로 의도적 stopped 상태 유지. 실제 장애 여부는 prod 기준으로 판단 |
+| P2 | Unified Chat Server 다운 (staging) | `https://staging.nasun.io/chat/health` HTTP != 200 | **OK** | 의도적 비활성화 (리소스 절약 + 과부하 방지). 이상 없음으로 판정. prod 기준으로만 장애 판단 |
 | P3 | Pado 정적 파일 누락 (prod) | `/var/www/pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ec2-user@43.200.67.52:/var/www/pado.finance/` |
 | P4 | Pado 정적 파일 누락 (staging) | `/var/www/staging.pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ubuntu@15.165.19.180:/var/www/staging.pado.finance/` |
 | P5 | Chat Server crash-loop | `nasun-chat-server` PM2 restart > 10 | WARNING | `pm2 logs nasun-chat-server --lines 50` -- better-sqlite3 native module 불일치 또는 DB 손상 가능성 |
@@ -932,9 +933,9 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 |------|--------|-------|
 | nasun.io /chat/health | OK/CRIT | HTTP 200 |
 | nasun.io /chat/api/leaderboard | OK/CRIT | HTTP 200 |
-| staging.nasun.io /chat/health | OK/CRIT | HTTP 200 |
+| staging.nasun.io /chat/health | OK (502 정상) | 의도적 비활성화 |
 | PM2 nasun-chat-server (prod) | online/stopped | restarts: 17, mem: 199MB, port 3101 |
-| PM2 nasun-chat-server (staging) | online/stopped | restarts: 34, mem: 160MB, port 3101 |
+| PM2 nasun-chat-server (staging) | OK (stopped 정상) | 의도적 비활성화 |
 | PM2 pado-chat-server (legacy) | N/A | **레거시** (stopped여도 무시. 정리 대상) |
 | PM2 lp-bot-nbtc (prod) | online/stopped | restarts: 0, mem: 50MB |
 | PM2 lp-bot-neth (prod) | online/stopped | restarts: 0, mem: 50MB |
