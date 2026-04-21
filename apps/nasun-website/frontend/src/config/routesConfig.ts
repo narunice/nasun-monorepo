@@ -281,11 +281,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/updates/awards",
           element: Pages.Grants,
         },
-        {
-          name: "navigation.roadmap",
-          path: "/updates/roadmap",
-          element: Pages.Roadmap,
-        },
       ],
     },
     meta: {
@@ -316,6 +311,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.litepaper",
           path: "/about/litepaper",
           element: Pages.Litepaper,
+        },
+        {
+          name: "navigation.roadmap",
+          path: "/about/roadmap",
+          element: Pages.Roadmap,
         },
         // {
         //   name: "navigation.aboutTeam",

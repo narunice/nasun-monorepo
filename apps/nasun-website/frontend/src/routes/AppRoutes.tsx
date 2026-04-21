@@ -141,7 +141,8 @@ const AppRoutes = () => {
         <Route path="/ip/gensol/*" element={<Navigate to="/ecosystem/gensol/main" replace />} />
         <Route path="/ip/*" element={<Navigate to="/ecosystem" replace />} />
         <Route path="/nft-event" element={<Navigate to="/wave1/battalion-nft" replace />} />
-        <Route path="/roadmap" element={<Navigate to="/updates/roadmap" replace />} />
+        <Route path="/roadmap" element={<Navigate to="/about/roadmap" replace />} />
+        <Route path="/updates/roadmap" element={<Navigate to="/about/roadmap" replace />} />
         <Route path="/opportunities" element={<Navigate to="/about/opportunities" replace />} />
         <Route path="/team/founders" element={<Navigate to="/about/founders" replace />} />
         <Route path="/team/opportunities" element={<Navigate to="/about/opportunities" replace />} />
