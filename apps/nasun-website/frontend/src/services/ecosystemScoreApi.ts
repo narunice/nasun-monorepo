@@ -61,6 +61,7 @@ export interface EcosystemLeaderboardEntry {
   bonusScore: number;
   weeklyScore: number;
   activeDays: number;
+  volumeCount?: number;
   hasGenesisPass: boolean;
   displayName: string | null;
   xHandle: string | null;

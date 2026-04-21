@@ -174,7 +174,7 @@ function LeaderboardSection() {
               <th className="pb-2 pr-3 text-right">Activity</th>
               <th className="pb-2 pr-3 text-right">Creator Posts</th>
               <th className="pb-2 pr-3 text-right">Bonus</th>
-              <th className="pb-2 text-right">Active Days</th>
+              <th className="pb-2 text-right">Volume</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-nasun-white/5">
@@ -235,7 +235,9 @@ function LeaderboardSection() {
                   <td className="py-2 pr-3 text-right text-nasun-white/85">
                     {entry.bonusScore > 0 ? `+${entry.bonusScore}` : "-"}
                   </td>
-                  <td className="py-2 text-right text-nasun-white/85">{entry.activeDays}/7</td>
+                  <td className="py-2 text-right text-nasun-white/85">
+                    {entry.volumeCount != null && entry.volumeCount > 0 ? entry.volumeCount.toLocaleString("en-US") : "-"}
+                  </td>
                 </tr>
               );
             })}

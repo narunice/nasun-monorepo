@@ -5,6 +5,7 @@ import {
   WALLET_CACHE_REFRESH_MS,
   GENESIS_PASS_MULTIPLIER,
   SCORE_CATEGORIES,
+  IGNORED_EVENT_KEYS,
   getEventMapping,
   getBasePoints,
 } from '../config/points.js';
@@ -611,12 +612,15 @@ async function processBatch(
     );
 
     if (!mapping) {
-      recordUnmappedEvent(
-        event.package_hex,
-        event.module,
-        event.type_name,
-        event.tx_digest_hex,
-      );
+      const key = `${event.package_hex}::${event.module}::${event.type_name}`;
+      if (!IGNORED_EVENT_KEYS.has(key)) {
+        recordUnmappedEvent(
+          event.package_hex,
+          event.module,
+          event.type_name,
+          event.tx_digest_hex,
+        );
+      }
       continue;
     }
 
