@@ -263,29 +263,17 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  // Updates 섹션 (서브메뉴 있음)
   updates: {
     path: "/updates",
-    component: Pages.News, // 기본 서브페이지로 News
+    component: Pages.News,
     navItem: {
       name: "navigation.updates",
       path: "/updates",
-      subMenu: [
-        {
-          name: "navigation.news",
-          path: "/updates/news",
-          element: Pages.News,
-        },
-        {
-          name: "navigation.awards",
-          path: "/updates/awards",
-          element: Pages.Grants,
-        },
-      ],
+      hidden: true,
     },
     meta: {
-      title: "Updates — NASUN",
-      description: "Nasun updates — news, awards, grants, and development roadmap.",
+      title: "Updates - NASUN",
+      description: "Latest updates from Nasun",
     },
   },
 
@@ -311,6 +299,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.litepaper",
           path: "/about/litepaper",
           element: Pages.Litepaper,
+        },
+        {
+          name: "navigation.news",
+          path: "/about/news",
+          element: Pages.News,
         },
         {
           name: "navigation.roadmap",
@@ -605,7 +598,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-
   newsEventDetail: {
     path: "/news-events/:slug",
     component: Pages.PostDetailPage,
@@ -621,7 +613,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   },
 };
 
-// 개선된 네비게이션 아이템 생성 함수 (Phase 2)
 export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
   return Object.values(routesV2)
     .filter((route) => route.navItem && !route.navItem.hidden)
@@ -649,12 +640,11 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
       })),
     }))
     .sort((a, b) => {
-      // 정렬 순서: network, infra, ecosystem, updates, about, wave1
+      // 정렬 순서: network, infra, ecosystem, about, community, wave1
       const order = [
         "network",
         "infra",
         "ecosystem",
-        "updates",
         "about",
         "community",
         "wave1",
@@ -708,11 +698,6 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.genesisEvent": "Frontiers Event",
     "navigation.contests": "Contests",
   },
-  updates: {
-    "navigation.news": "News",
-    "navigation.awards": "Awards",
-    "navigation.roadmap": "Roadmap",
-  },
   community: {
     "navigation.alliance": "Alliance",
     "navigation.governance": "Governance",
@@ -725,10 +710,12 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.aboutOverview": "Overview",
     "navigation.founders": "Founders",
     "navigation.litepaper": "Litepaper",
+    "navigation.news": "News",
     "navigation.aboutTeam": "Team",
     "navigation.opportunities": "Opportunities",
     "navigation.strategy": "Strategy",
     "navigation.investors": "Investors",
     "navigation.partner": "Partner",
+    "navigation.roadmap": "Roadmap",
   },
 };
