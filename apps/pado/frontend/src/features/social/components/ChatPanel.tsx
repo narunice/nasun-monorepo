@@ -33,7 +33,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
     selectedLanguageRoomId, setLanguageRoom, unreadCounts,
-    setTurnstileToken,
+    setTurnstileToken, turnstileKey,
   } = useChat();
 
   // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
@@ -212,6 +212,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
       )}
       {TURNSTILE_SITE_KEY && address && (
         <Turnstile
+          key={turnstileKey}
           siteKey={TURNSTILE_SITE_KEY}
           options={{ appearance: 'execute', size: 'invisible' }}
           onSuccess={setTurnstileToken}

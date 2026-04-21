@@ -50,7 +50,7 @@ type ServerMessage =
 
 // ===== Listener types =====
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check' | 'rooms_list' | 'reaction_update' | 'follow_result' | 'following_list';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'nickname' | 'nickname_check' | 'rooms_list' | 'reaction_update' | 'follow_result' | 'following_list' | 'captcha_required';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -64,6 +64,7 @@ export interface ChatEventMap {
   reaction_update: { messageId: number; roomId: number; reactions: Record<string, number>; myReaction?: string | null };
   follow_result: { target: string; following: boolean; followerCount: number; error?: string };
   following_list: { addresses: string[] };
+  captcha_required: undefined;
 }
 
 export interface NicknameRateLimit {
@@ -124,13 +125,15 @@ export class ChatService {
   private sessionToken: string | null = null;
 
   private pendingTurnstileToken: string | null = null;
+  private captchaRequired = false;
 
   setTurnstileToken(token: string): void {
     this.pendingTurnstileToken = token;
+    this.captchaRequired = false;
   }
 
   constructor() {
-    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list', 'reaction_update', 'follow_result', 'following_list'] as ChatEventType[]) {
+    for (const type of ['message', 'history', 'status', 'online_count', 'error', 'nickname', 'nickname_check', 'rooms_list', 'reaction_update', 'follow_result', 'following_list', 'captcha_required'] as ChatEventType[]) {
       this.listeners.set(type, new Set());
     }
   }
@@ -160,6 +163,7 @@ export class ChatService {
     if (this.status !== 'disconnected') return;
     if (!this.wsUrl || !this.signer) return;
     if (this.reconnectTimer) return; // Already scheduled
+    if (this.captchaRequired) return; // Wait for fresh Turnstile token
     this.reconnectAttempts = 0;
     this.doConnect();
   }
@@ -370,6 +374,10 @@ export class ChatService {
         break;
 
       case 'auth_error':
+        if (msg.reason === 'Captcha required') {
+          this.captchaRequired = true;
+          this.emit('captcha_required', undefined);
+        }
         this.emit('error', { code: 'AUTH_FAILED', message: msg.reason });
         // Server will close the connection, prevent reconnect
         this.reconnectAttempts = -1;
