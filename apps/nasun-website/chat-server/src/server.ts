@@ -23,6 +23,8 @@ import { invalidateIdentityCache } from './identity-resolver.js';
 
 // ===== State =====
 
+let shuttingDown = false;
+
 const pendingAuth = new Map<WebSocket, { challenge: string; timeout: ReturnType<typeof setTimeout> }>();
 const authenticatedClients = new Map<WebSocket, AuthenticatedClient>();
 const lastMessageTime = new Map<string, number>();
@@ -273,6 +275,11 @@ async function handleHttpRequest(
   res: import('node:http').ServerResponse,
 ): Promise<void> {
   const origin = getCorsOrigin(req.headers.origin);
+  if (shuttingDown) {
+    res.writeHead(503, { ...(origin ? { 'Access-Control-Allow-Origin': origin } : {}) });
+    res.end();
+    return;
+  }
   const corsHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -971,6 +978,7 @@ try {
 
 let orderEventRetentionTimer: ReturnType<typeof setInterval> | null = null;
 let profileSyncTimer: ReturnType<typeof setInterval> | null = null;
+let leaderboardWalTimer: ReturnType<typeof setInterval> | null = null;
 
 if (leaderboardEnabled) {
   try {
@@ -1009,8 +1017,14 @@ if (leaderboardEnabled) {
 
     // Market narrator (rule-based + optional AI)
     initNarrator({
-      broadcast: (content: string) => broadcastSystemMessage(content),
-      broadcastToRoom: broadcastSystemMessageMultiRoom,
+      broadcast: (content: string) => {
+        if (shuttingDown) return;
+        broadcastSystemMessage(content);
+      },
+      broadcastToRoom: (content: string, poolRoomId: number) => {
+        if (shuttingDown) return;
+        broadcastSystemMessageMultiRoom(content, poolRoomId);
+      },
       anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     });
 
@@ -1043,6 +1057,24 @@ if (leaderboardEnabled) {
     orderEventRetentionTimer = setInterval(() => {
       purgeOldOrderEvents(CONFIG.orderEventRetentionDays);
     }, 60 * 60 * 1000); // 1 hour
+
+    // Periodic WAL checkpoint — prevents unbounded WAL growth between restarts.
+    // FULL: checkpoints all available frames; more effective than PASSIVE in single-process env.
+    // (Node.js is single-threaded: no concurrent readers, so FULL doesn't block the event loop.)
+    // Logs if frames remain un-checkpointed so we can detect pathological accumulation.
+    leaderboardWalTimer = setInterval(() => {
+      try {
+        const result = getLeaderboardDb().pragma('wal_checkpoint(FULL)') as Array<{
+          busy: number; log: number; checkpointed: number;
+        }>;
+        const { busy, log, checkpointed } = result[0] ?? {};
+        if (busy > 0) {
+          console.warn(`[Leaderboard] WAL checkpoint: ${checkpointed}/${log} frames, ${busy} busy`);
+        }
+      } catch (err) {
+        console.warn('[Leaderboard] WAL checkpoint failed:', (err as Error).message);
+      }
+    }, 30 * 60 * 1000); // every 30 minutes
 
     // Background profile sync: cache display names for active traders
     const PROFILE_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -1090,20 +1122,31 @@ httpServer.listen(CONFIG.port, () => {
   console.log(`Allowed origins: ${CONFIG.allowedOrigins.join(', ')}`);
 });
 
+// ===== Memory Diagnostics =====
+
+// Temporary memory diagnostics — remove after root cause of RSS growth is identified.
+const memDiagTimer = setInterval(() => {
+  const { heapUsed, rss, external } = process.memoryUsage();
+  const mb = (n: number) => Math.round(n / 1024 / 1024);
+  console.log(`[Memory] rss=${mb(rss)}MB heap=${mb(heapUsed)}MB ext=${mb(external)}MB`);
+}, 5 * 60 * 1000); // every 5 minutes
+
 // ===== Graceful Shutdown =====
 
-let shuttingDown = false;
 function shutdown(): void {
-  if (shuttingDown) return; // Prevent double invocation
+  if (shuttingDown) return;
   shuttingDown = true;
   console.log('Shutting down...');
+
+  // 1. Stop all periodic timers and background modules.
   clearInterval(heartbeatTimer);
   clearInterval(cleanupTimer);
   clearInterval(retentionTimer);
+  clearInterval(memDiagTimer);
+  if (leaderboardWalTimer) clearInterval(leaderboardWalTimer);
   if (orderEventRetentionTimer) clearInterval(orderEventRetentionTimer);
   if (profileSyncTimer) clearInterval(profileSyncTimer);
 
-  // Stop chatbot + leaderboard modules (DB writes cease)
   stopChatbot();
   if (leaderboardEnabled) {
     stopIndexer();
@@ -1111,24 +1154,34 @@ function shutdown(): void {
     stopNarrator();
   }
 
-  // Terminate all WebSocket connections
+  // 2. Terminate all WebSocket connections immediately.
   for (const [ws] of authenticatedClients) {
     try { ws.terminate(); } catch {}
   }
   for (const [ws] of pendingAuth) {
     try { ws.terminate(); } catch {}
   }
-
   wss.close();
+
+  // 3. Force-close keep-alive HTTP connections.
+  //    Clients may see ERR_EMPTY_RESPONSE — acceptable tradeoff vs DB corruption.
+  //    (No load balancer health-check drain needed for direct-EC2 topology.)
+  httpServer.closeAllConnections();
+
+  // 4. Close DBs: all write paths are now unreachable.
+  //    better-sqlite3 is synchronous; any in-flight DB write in an async callback
+  //    will throw "Store not initialized" — caught by each caller's try/catch.
+  if (leaderboardEnabled) closeLeaderboardStore();
+  closeStore();
+
+  // 5. Drain HTTP server state, then exit.
   httpServer.close(() => {
-    if (leaderboardEnabled) closeLeaderboardStore(); // WAL checkpoint + close
-    closeStore();
     console.log('[Chat] Shutdown complete');
     process.exit(0);
   });
 
-  // Force exit after 5s if graceful close hangs
-  setTimeout(() => process.exit(0), 5000).unref();
+  // Backstop: exit before PM2 sends SIGKILL (ecosystem kill_timeout: 20000ms → exit at 17000ms).
+  setTimeout(() => process.exit(0), 17000).unref();
 }
 
 process.on('SIGTERM', shutdown);

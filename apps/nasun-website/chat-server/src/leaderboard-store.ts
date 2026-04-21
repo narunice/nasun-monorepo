@@ -29,6 +29,9 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
   db.pragma('synchronous = FULL');
   db.pragma('auto_vacuum = INCREMENTAL');
 
+  // Recover leftover WAL frames from previous unclean shutdown.
+  try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS indexer_state (
       key TEXT PRIMARY KEY,
@@ -234,6 +237,7 @@ export function getLeaderboardDb(): Database.Database {
 
 export function closeLeaderboardStore(): void {
   if (db) {
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
     db.close();
     db = null;
   }
