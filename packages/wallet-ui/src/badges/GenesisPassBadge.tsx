@@ -24,7 +24,7 @@ function CrownIcon({ className }: { className?: string }) {
 }
 
 const COMPACT_CLASSES =
-  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none bg-teal-500/15 text-teal-400 border border-teal-500/30";
+  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-bold leading-none bg-teal-500/15 text-teal-400 border border-teal-500/30";
 
 const FULL_CLASSES =
   "inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-sm font-semibold bg-teal-500/15 text-teal-300 border border-teal-500/25";
@@ -35,7 +35,7 @@ export const GenesisPassBadge: FC<GenesisPassBadgeProps> = ({
 }) => {
   const isCompact = variant === "compact";
   const baseClasses = isCompact ? COMPACT_CLASSES : FULL_CLASSES;
-  const iconSize = isCompact ? "w-2.5 h-2.5" : "w-3 h-3";
+  const iconSize = isCompact ? "w-3 h-3" : "w-4 h-4";
 
   return (
     <span
