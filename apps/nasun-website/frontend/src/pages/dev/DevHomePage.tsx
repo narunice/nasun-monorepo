@@ -16,8 +16,12 @@ export default function DevHomePage() {
         <ScrollSnapSection allowTallContent>
           <Hero2026StatsSection />
         </ScrollSnapSection>
+        {/* A/B comparison: object-contain vs object-cover — dev only */}
         <ScrollSnapSection>
           <WhatWeBuild2026Section />
+        </ScrollSnapSection>
+        <ScrollSnapSection>
+          <WhatWeBuild2026Section videoCover />
         </ScrollSnapSection>
         <ScrollSnapSection allowTallContent>
           <DevNewsEventsSection />
