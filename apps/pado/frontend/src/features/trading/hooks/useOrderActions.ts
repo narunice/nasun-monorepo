@@ -70,7 +70,8 @@ export interface UseOrderActionsResult {
     type: "buy" | "sell",
     price: number,
     amount: number,
-    orderType?: OrderType
+    orderType?: OrderType,
+    skipRefresh?: boolean
   ) => Promise<TradeResult>;
   handleMarketOrder: (type: "buy" | "sell", amount: number) => Promise<TradeResult>;
   handleCancelOrder: (orderId: string) => Promise<TradeResult>;
@@ -84,6 +85,8 @@ export interface UseOrderActionsResult {
   // Per-token deposit/withdraw
   handleDepositToken: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<TradeResult>;
   handleWithdrawToken: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<TradeResult>;
+
+  refreshData: () => void;
 }
 
 /**
@@ -247,7 +250,8 @@ export function useOrderActions(): UseOrderActionsResult {
       type: "buy" | "sell",
       price: number,
       amount: number,
-      orderType: OrderType = ORDER_TYPE.NO_RESTRICTION
+      orderType: OrderType = ORDER_TYPE.NO_RESTRICTION,
+      skipRefresh = false
     ): Promise<TradeResult> => {
       // Auto deposit if enabled
       if (autoDepositEnabled && balanceManagerId) {
@@ -267,7 +271,7 @@ export function useOrderActions(): UseOrderActionsResult {
         playSound('orderPlaced');
         const message = formatOrderResult(result, type === "buy", currentPool.takerFeeBps);
         showToast(message, "success");
-        refreshData();
+        if (!skipRefresh) refreshData();
       } else {
         playSound('error');
         const requiredQuote = type === "buy" ? price * amount : 0;
@@ -522,5 +526,6 @@ export function useOrderActions(): UseOrderActionsResult {
     handleWithdraw,
     handleDepositToken,
     handleWithdrawToken,
+    refreshData,
   };
 }
