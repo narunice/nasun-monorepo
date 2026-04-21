@@ -5,7 +5,7 @@ import { ButtonV3 } from "@/components/ui/button-v3";
 import { Spinner } from "@/components/ui";
 import { useAirdropRegistration } from "@/sections/myAccount/hooks/useAirdropRegistration";
 
-import kaeboImg from "@/assets/images/kaebo.webp";
+import kaeboImg from "@/assets/images/Princess-Kaebo-Fixed.webp";
 import josenImg from "@/assets/images/josen.webp";
 import canyonImg from "@/assets/images/canyon.webp";
 

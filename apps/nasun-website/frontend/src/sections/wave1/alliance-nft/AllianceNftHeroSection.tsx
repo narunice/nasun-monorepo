@@ -1,6 +1,6 @@
 import React from "react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import PrincessKaebo from "@/assets/images/Princess-Kaebo-Transparency.webp";
+import PrincessKaebo from "@/assets/images/Princess-Kaebo-Fixed.webp";
 
 const GRADIENT =
   "linear-gradient(135deg, #141e30 0%, #1e3a5f 35%, #3a6186 65%, #6b8fad 100%)";
