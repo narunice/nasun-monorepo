@@ -1,7 +1,7 @@
 import { InlineLoading } from "@/components/ui/InlineLoading";
 
 export default function PadoHeroSectionSkeleton() {
-  const containerClassName = "relative !p-0 -mt-14 md:mt-0 mx-auto flex items-center justify-center bg-nasun-black h-screen";
+  const containerClassName = "relative !p-0 -mt-[50px] md:mt-0 mx-auto flex items-center justify-center bg-nasun-black h-screen";
 
   return (
     <div className={containerClassName}>

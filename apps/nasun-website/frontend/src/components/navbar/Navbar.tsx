@@ -86,7 +86,7 @@ export default function Navbar() {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed top-0 left-0 right-0 z-[60] h-14 max-w-9xl mx-auto bg-nasun-white border-b border-nasun-black/10 shadow-sm flex items-center justify-center  pr-4 min-[640px]:px-4 lg:px-8"
+      className="fixed top-0 left-0 right-0 z-[60] h-[50px] max-w-9xl mx-auto bg-nasun-white border-b border-nasun-black/10 shadow-sm flex items-center justify-center  pr-4 min-[640px]:px-4 lg:px-8"
     >
       {/* Inner container: max-width 1920px */}
       <div className="w-full max-w-9xl flex items-center gap-2">

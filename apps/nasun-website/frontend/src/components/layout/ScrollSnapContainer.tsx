@@ -30,7 +30,7 @@ interface ScrollSnapContainerProps {
  *   - 섹션 상단/하단(10px 여유) 도달 시 다음/이전 섹션으로 전환
  * - 강제 스냅: 스크롤 정지 200ms 후, 섹션 경계 ±10% 내에 있으면 자동 스냅
  */
-const NAVBAR_HEIGHT = 56; // matches h-14 (3.5rem) in Navbar
+const NAVBAR_HEIGHT = 50; // matches h-[50px] in Navbar
 
 export function ScrollSnapContainer({
   children,
