@@ -11,7 +11,9 @@ interface Hero2026SectionProps {
 }
 
 function Hero2026Section({
-  videoSrc = "/videos/Canyons-uju-bg.mp4",
+  // videoSrc = "/videos/Canyons-uju-bg.mp4", // Old video - needs to be re-rendered with new color grading
+
+  videoSrc = "/videos/Ancient-Valley-Website-web.mp4",
   videoTopCrop,
 }: Hero2026SectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
@@ -58,7 +60,7 @@ function Hero2026Section({
         preload="auto"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
-        className={`absolute inset-x-0 bottom-0 w-full object-cover ${
+        className={`absolute inset-x-0 w-full object-cover ${
           !isVideoPlaying ? "opacity-0" : "opacity-100"
         } transition-opacity duration-1000 z-0`}
         style={
@@ -67,7 +69,7 @@ function Hero2026Section({
                 top: videoTopCrop,
                 height: `calc(100% + ${videoTopCrop.startsWith("-") ? videoTopCrop.slice(1) : videoTopCrop})`,
               }
-            : { top: 0, height: "100%" }
+            : { top: "-20%", height: "120%" }
         }
       >
         <source src={bgVideo} type="video/mp4" />
