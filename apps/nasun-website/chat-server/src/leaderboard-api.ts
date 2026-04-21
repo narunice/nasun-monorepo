@@ -39,7 +39,8 @@ import {
   getScoreLeaderboard, getTraderScore, getTotalScoreTraders, getPadoAggregatorLastRun,
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
-  getWeeklyScoreLeaderboard, getWeeklyScoreCount, countWeeklyUniqueTraders, getTraderWeeklyScore,
+  getWeeklyScoreLeaderboard, getWeeklyScoreCount, countWeeklyUniqueTraders,
+  getWeeklyParticipantCount, getTraderWeeklyScore,
   getAvailableWeeks,
   getCurrentWeekStart, getWeekId,
   getFollowedTraderFills,
@@ -705,7 +706,11 @@ function handleScoreLeaderboardWeekly(
   const totalTraders = getWeeklyScoreCount(weekId);
   const weekStartMs = weekIdToStartMs(weekId);
   const prevWeekStartMs = weekStartMs - 7 * 24 * 60 * 60 * 1000;
-  const totalParticipants = countWeeklyUniqueTraders(prevWeekStartMs, weekStartMs);
+  const prevWeekId = getWeekId(prevWeekStartMs);
+  const cached = getWeeklyParticipantCount(prevWeekId);
+  const totalParticipants = cached > 0
+    ? cached
+    : countWeeklyUniqueTraders(prevWeekStartMs, weekStartMs);
   const addresses = rows.map((r) => r.address);
   if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
     console.error('[ScoreLeaderboardWeekly] ensureProfilesCached error:', (err as Error).message);

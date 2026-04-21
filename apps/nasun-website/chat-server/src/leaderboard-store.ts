@@ -1578,7 +1578,15 @@ export function getWeeklyScoreCount(weekId: string): number {
 }
 
 /** Count unique traders who made at least one trade in the given week window. */
-export function countWeeklyUniqueTraders(weekStartMs: number, weekEndMs: number): number {
+export function countWeeklyUniqueTraders(
+  weekStartMs: number,
+  weekEndMs: number,
+  excludedAddresses: Set<string> = new Set(),
+): number {
+  const excludeList = [...excludedAddresses];
+  const excludeClause = excludeList.length > 0
+    ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
   const row = getLeaderboardDb()
     .prepare(
       `SELECT COUNT(DISTINCT address) as cnt FROM (
@@ -1587,10 +1595,20 @@ export function countWeeklyUniqueTraders(weekStartMs: number, weekEndMs: number)
          UNION
          SELECT taker_address AS address FROM trade_fills
            WHERE timestamp_ms >= ? AND timestamp_ms < ?
-       )`
+       )
+       WHERE 1=1 ${excludeClause}`
     )
-    .get(weekStartMs, weekEndMs, weekStartMs, weekEndMs) as { cnt: number };
+    .get(weekStartMs, weekEndMs, weekStartMs, weekEndMs, ...excludeList) as { cnt: number };
   return row.cnt;
+}
+
+export function setWeeklyParticipantCount(weekId: string, count: number): void {
+  setIndexerState(`weekly_participants_${weekId}`, String(count));
+}
+
+export function getWeeklyParticipantCount(weekId: string): number {
+  const val = getIndexerState(`weekly_participants_${weekId}`);
+  return val !== null ? parseInt(val, 10) : 0;
 }
 
 /** Individual trader weekly score. */
