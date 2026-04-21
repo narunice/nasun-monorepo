@@ -85,12 +85,12 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
       </td>
       <td className="py-2.5 px-3 text-right">
         <span className={`text-xs font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-          {isPositive ? '+' : ''}{trader.pnlPercent.toFixed(2)}%
+          {isPositive ? '+' : ''}{(trader.pnlPercent ?? 0).toFixed(2)}%
         </span>
       </td>
       <td className="py-2.5 px-3 text-right">
         <span className="text-sm text-theme-text-secondary">
-          {trader.tradeCount.toLocaleString()}
+          {(trader.tradeCount ?? 0).toLocaleString()}
         </span>
       </td>
     </tr>
