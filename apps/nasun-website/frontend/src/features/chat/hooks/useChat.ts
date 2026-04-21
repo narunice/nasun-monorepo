@@ -239,9 +239,13 @@ export function useChat() {
     if (!turnstileReady) setTurnstileReady(true);
   }, [turnstileReady]);
 
+  const displayStatus: ChatConnectionStatus =
+    (!!user?.walletAddress && !turnstileReady) ? 'connecting' : status;
+
   return {
     messages,
     status,
+    displayStatus,
     onlineCount,
     isOpen,
     hasMore,

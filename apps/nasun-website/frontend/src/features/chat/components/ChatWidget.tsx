@@ -55,6 +55,7 @@ export default function ChatWidget() {
   const {
     messages,
     status,
+    displayStatus,
     onlineCount,
     hasMore,
     sendMessage,
@@ -338,7 +339,7 @@ export default function ChatWidget() {
             className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-white/[0.02] cursor-move select-none shrink-0"
           >
             <div className="flex items-center gap-2">
-              <StatusDot status={status} />
+              <StatusDot status={displayStatus} />
               <span className="text-sm font-medium text-white">Chat</span>
               {onlineCount > 0 && (
                 <span className="text-xs text-white/40">{onlineCount}</span>
