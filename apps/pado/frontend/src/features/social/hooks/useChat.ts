@@ -62,6 +62,7 @@ export interface UseChatResult {
   loadMore: () => void;
   isConnected: boolean;
   status: ChatConnectionStatus;
+  displayStatus: ChatConnectionStatus;
   onlineCount: number;
   hasMore: boolean;
   error: string | null;
@@ -462,12 +463,16 @@ export function useChat(): UseChatResult {
   }, [turnstileReady]);
 
 
+  const displayStatus: ChatConnectionStatus =
+    (!!signerAddress && (!turnstileReady || !signerType)) ? 'connecting' : status;
+
   return {
     messages,
     sendMessage,
     loadMore,
     isConnected: status === 'connected',
     status,
+    displayStatus,
     onlineCount,
     hasMore,
     error,
