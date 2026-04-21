@@ -23,16 +23,21 @@ export function NavEcoPointsBadge({ identityId }: NavEcoPointsBadgeProps) {
 
     (async () => {
       try {
-        const res = await fetch(`${EXPLORER_API}/ecosystem/score/${encodeURIComponent(identityId)}`);
+        const res = await fetch(
+          `${EXPLORER_API}/ecosystem/score/${encodeURIComponent(identityId)}`,
+        );
         if (!res.ok || cancelled) return;
         const json = await res.json();
         if (!cancelled && json.data) {
-          const activations: Array<{ nftType: string }> = json.data.activations ?? [];
+          const activations: Array<{ nftType: string }> =
+            json.data.activations ?? [];
           setData({
             score: json.data.allTime?.ecosystemScore ?? 0,
             isPenalized: json.data.isPenalized ?? false,
             disabled: json.data.disabled ?? false,
-            hasGenesisPass: activations.some((a) => a.nftType === "genesis-pass"),
+            hasGenesisPass: activations.some(
+              (a) => a.nftType === "genesis-pass",
+            ),
           });
         }
       } catch {
@@ -40,7 +45,9 @@ export function NavEcoPointsBadge({ identityId }: NavEcoPointsBadgeProps) {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [identityId]);
 
   if (data === null) return null;
@@ -57,7 +64,7 @@ export function NavEcoPointsBadge({ identityId }: NavEcoPointsBadgeProps) {
         className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium cursor-default ${
           penalized
             ? "bg-zinc-500/10 text-zinc-500"
-            : "bg-emerald-500/10 text-emerald-400"
+            : "bg-emerald-500/10 text-emerald-500"
         }`}
         title={tooltip}
       >
