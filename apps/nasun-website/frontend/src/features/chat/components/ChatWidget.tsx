@@ -67,6 +67,7 @@ export default function ChatWidget() {
     nickname,
     nicknameRateLimit,
     setTurnstileToken,
+    turnstileKey,
   } = useChat();
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const languageRooms = useMemo(
@@ -526,9 +527,10 @@ export default function ChatWidget() {
         </svg>
       </button>
 
-      {/* Invisible Turnstile widget - pre-fetches token for WebSocket auth */}
+      {/* Invisible Turnstile widget - re-mounts on captcha_required to get a fresh token */}
       {TURNSTILE_SITE_KEY && canChat && (
         <Turnstile
+          key={turnstileKey}
           siteKey={TURNSTILE_SITE_KEY}
           options={{ appearance: 'execute', size: 'invisible' }}
           onSuccess={setTurnstileToken}

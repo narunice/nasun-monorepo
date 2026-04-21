@@ -41,6 +41,8 @@ export function useChat() {
   const [nicknameRateLimit, setNicknameRateLimit] = useState<NicknameRateLimit | null>(null);
   // If Turnstile is configured, wait for token before connecting
   const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
+  // Incremented to force Turnstile widget remount when a new token is needed
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   const messages = activeRoomState?.messages ?? [];
   const hasMore = activeRoomState?.hasMore ?? false;
@@ -135,6 +137,11 @@ export function useChat() {
       }
     };
 
+    const onCaptchaRequired = () => {
+      setTurnstileReady(false);
+      setTurnstileKey((k) => k + 1);
+    };
+
     service.on('message', onMessage);
     service.on('history', onHistory);
     service.on('status', onStatus);
@@ -143,6 +150,7 @@ export function useChat() {
     service.on('reaction_update', onReactionUpdate);
     service.on('nickname', onNickname);
     service.on('error', onError);
+    service.on('captcha_required', onCaptchaRequired);
 
     service.connect(WS_URL, signFn);
     connectedRef.current = true;
@@ -162,6 +170,7 @@ export function useChat() {
       service.off('reaction_update', onReactionUpdate);
       service.off('nickname', onNickname);
       service.off('error', onError);
+      service.off('captcha_required', onCaptchaRequired);
     };
   }, [user?.walletAddress, user?.customDisplayName, user?.twitterHandle, user?.username, turnstileReady]);
 
@@ -248,5 +257,6 @@ export function useChat() {
     needsNickname,
     nicknameRateLimit,
     setTurnstileToken,
+    turnstileKey,
   };
 }

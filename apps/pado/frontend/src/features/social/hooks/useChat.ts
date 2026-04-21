@@ -80,6 +80,7 @@ export interface UseChatResult {
   setLanguageRoom: (roomId: number) => void;
   unreadCounts: Record<number, number>;
   setTurnstileToken: (token: string) => void;
+  turnstileKey: number;
 }
 
 
@@ -103,6 +104,7 @@ export function useChat(): UseChatResult {
   const [languageRoomId, setLanguageRoomIdState] = useState(selectedLanguageRoomId);
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   const marketRooms = useMemo(() => rooms.filter((r) => r.category === 'market'), [rooms]);
   const languageRooms = useMemo(() => rooms.filter((r) => r.category === 'language' || (!r.category && r.id < 100)), [rooms]);
@@ -333,6 +335,11 @@ export function useChat(): UseChatResult {
       }
     });
 
+    const unsubCaptcha = chatService.on('captcha_required', () => {
+      setTurnstileReady(false);
+      setTurnstileKey((k) => k + 1);
+    });
+
     // If already connected (e.g. re-mount after docked↔floating switch),
     // request history to populate the fresh empty messages state.
     if (chatService.getStatus() === 'connected') {
@@ -348,6 +355,7 @@ export function useChat(): UseChatResult {
       unsubNickname();
       unsubRoomsList();
       unsubReaction();
+      unsubCaptcha();
     };
   }, []);
 
@@ -453,6 +461,7 @@ export function useChat(): UseChatResult {
     if (!turnstileReady) setTurnstileReady(true);
   }, [turnstileReady]);
 
+
   return {
     messages,
     sendMessage,
@@ -477,5 +486,6 @@ export function useChat(): UseChatResult {
     setLanguageRoom,
     unreadCounts,
     setTurnstileToken,
+    turnstileKey,
   };
 }
