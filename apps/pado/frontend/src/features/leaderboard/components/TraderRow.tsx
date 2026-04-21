@@ -88,7 +88,7 @@ export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
       </td>
       <td className="py-2.5 px-3 text-right">
         <span className="text-sm text-theme-text-secondary">
-          {trader.tradeCount.toLocaleString()}
+          {(trader.tradeCount ?? 0).toLocaleString()}
         </span>
       </td>
     </tr>
