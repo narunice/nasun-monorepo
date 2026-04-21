@@ -70,7 +70,7 @@ const SLIDES: SlideData[] = [
   },
 ];
 
-function WhatWeBuild2026Section() {
+function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<Slider>(null);
   const activeSlideRef = useRef(0);
@@ -206,7 +206,7 @@ function WhatWeBuild2026Section() {
   const activeSlide = SLIDES[activeSlideIndex];
 
   return (
-    <section className="relative max-w-9xl mx-auto h-screen overflow-hidden bg-nasun-black">
+    <section className="relative w-full h-screen overflow-hidden bg-nasun-black">
       <div ref={containerRef} className="w-full h-full">
         <Slider ref={sliderRef} {...sliderSettings}>
           {SLIDES.map((slide) => (
@@ -237,7 +237,7 @@ function WhatWeBuild2026Section() {
                       if (slideEl?.classList.contains("slick-cloned")) return;
                       sliderRef.current?.slickNext();
                     }}
-                    className="absolute inset-0 w-full h-full object-contain"
+                    className={`absolute inset-0 w-full h-full ${videoCover ? "object-cover" : "object-contain object-top"}`}
                   >
                     <source
                       src={
