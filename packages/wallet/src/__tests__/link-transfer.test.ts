@@ -18,12 +18,6 @@ import { claimLink } from '../core/link/claim';
 import { createLink } from '../core/link/generator';
 import { serializeLinkConfig } from '../core/link/types';
 import type { LinkData, LinkConfig } from '../core/link/types';
-import {
-  generateEphemeralKeypair,
-  encryptPayload,
-  generateSecret,
-  generateLinkId,
-} from '../core/link/crypto';
 
 // ============================================
 // Mocks
