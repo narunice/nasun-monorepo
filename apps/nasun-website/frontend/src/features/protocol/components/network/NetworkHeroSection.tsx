@@ -54,7 +54,7 @@ function NetworkHeroSection({ onVideoReady, isVideoReady }: NetworkHeroSectionPr
   // 로딩 완료 후: 정상 섹션으로 전환
   const containerClassName = !isVideoReady
     ? "fixed inset-0 z-40 bg-nasun-black h-screen overflow-hidden flex items-center justify-center"
-    : `relative !p-0 -mt-14 md:mt-0 overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
+    : `relative !p-0 -mt-[50px] md:mt-0 overflow-hidden ${!isVideoPlaying ? "h-screen" : "h-[80vh] landscape:h-screen md:h-auto"}`;
 
   return (
     <SectionLayout className={containerClassName}>

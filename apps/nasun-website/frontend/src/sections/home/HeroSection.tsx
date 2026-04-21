@@ -236,7 +236,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
 
       {/* NASUN 로고 오버레이 (심볼) - V2와 동일한 위치 */}
       {isVideoPlaying && areImagesReady && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 md:gap-10 z-10 pt-14 -translate-y-[5vh] pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 md:gap-10 z-10 pt-[50px] -translate-y-[5vh] pointer-events-none">
           <img
             src="/nasun_symbol_white.svg"
             alt="NASUN Symbol"

@@ -47,7 +47,7 @@ function FinanceHeroSection({ onVideoReady }: FinanceHeroSectionProps) {
     return () => clearTimeout(timeout);
   }, [isVideoLoaded, onVideoReady]);
 
-  const containerClassName = `relative !p-0 -mt-14 md:mt-0 mx-auto bg-[#080c16] overflow-hidden ${!isVideoPlaying ? "h-screen flex items-center justify-center" : "min-h-[70vh] landscape:min-h-screen md:!min-h-0 md:!h-auto"}`;
+  const containerClassName = `relative !p-0 -mt-[50px] md:mt-0 mx-auto bg-[#080c16] overflow-hidden ${!isVideoPlaying ? "h-screen flex items-center justify-center" : "min-h-[70vh] landscape:min-h-screen md:!min-h-0 md:!h-auto"}`;
 
   return (
     <div className={containerClassName}>
