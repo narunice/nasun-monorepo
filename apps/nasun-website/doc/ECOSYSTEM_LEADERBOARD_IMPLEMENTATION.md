@@ -1,39 +1,42 @@
 # Nasun Ecosystem Leaderboard - Implementation Reference
 
-Last updated: 2026-04-18
+Last updated: 2026-04-22
 
 ## Overview
 
-Nasun Ecosystem Leaderboard ranks users by **weekly on-chain activity diversity** plus
-**creator post contributions**. NFT multipliers do not affect leaderboard ranking (they
-only apply when distributing Ecosystem Points at week end). Any user with on-chain
-activity or creator posts in the current week appears automatically, regardless of NFT
-ownership.
+Nasun Ecosystem Leaderboard ranks users by **weekly on-chain activity diversity**,
+**game/transfer volume**, and **creator post contributions**. NFT multipliers do not
+affect leaderboard ranking (they only apply when distributing Ecosystem Points at week
+end). Any user with qualifying activity in the current week appears automatically.
 
 This is distinct from two other leaderboard systems in the same product:
 
-| System                   | Data source                  | Reset                  | Scope                              |
-| ------------------------ | ---------------------------- | ---------------------- | ---------------------------------- |
-| Ecosystem Leaderboard    | PostgreSQL `activity_points` | Weekly (Mon 00:10 UTC) | On-chain diversity + creator posts |
-| Pado Leaderboard         | SQLite (chat-server)         | Weekly (Mon 00:10 UTC) | DEX trading volume/PnL             |
-| Community Leaderboard V3 | DynamoDB                     | Seasonal               | X/Twitter social posts             |
+| System                   | Data source                  | Reset                  | Scope                                       |
+| ------------------------ | ---------------------------- | ---------------------- | ------------------------------------------- |
+| Ecosystem Leaderboard    | PostgreSQL `activity_points` | Weekly (Mon 00:10 UTC) | On-chain diversity + game volume + creator posts |
+| Pado Leaderboard         | SQLite (chat-server)         | Weekly (Mon 00:10 UTC) | DEX trading volume/PnL                      |
+| Community Leaderboard V3 | DynamoDB                     | Seasonal               | X/Twitter social posts                      |
 
 ---
 
 ## Score Formula
 
 ```
-weekly_score = activity_score + creator_post_score
+weekly_score = activity_score
+             + creator_post_score   (= SUM(final_points) / 5.0)
+             + bonus_score          (= bugreport+feedback / 2.0 + game / 3.0)
+             + volume_bonus         (= 1.6 * LOG2(volume_count + 1))
 
 activity_score =
-  COUNT of (identity_id, day_slot, category) DISTINCT triples over the week
+  COUNT of DISTINCT (identity_id, day_slot, category) triples over the week
   where day_slot = FLOOR((epoch(tx_timestamp) - epoch(week_start)) / 86400)
 
-creator_post_score =
-  SUM(final_points) WHERE category = 'ecosystem-bonus-creator-posts' in the week
+volume_count =
+  COUNT(*) WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','wallet-transfer')
+  (NOT deduplicated - each transaction counts)
 ```
 
-### Included activity categories
+### Included activity categories (for activity_score)
 
 All `activity_points` rows that are:
 
@@ -41,17 +44,27 @@ All `activity_points` rows that are:
 - `identity_id IS NOT NULL`
 - Within week bounds (`tx_timestamp >= week_start AND < week_end`)
 - Category NOT IN: `referral-bonus`, `daily-mission`, `ecosystem-passive`, `staking-daily`, `staking`
-- Category NOT LIKE: `ecosystem-bonus-%` (creator-posts handled separately below)
-- Category NOT LIKE: `pado-%` (covered by Pado Leaderboard)
+- Category NOT LIKE: `ecosystem-bonus-%` (creator-posts/bugreport/feedback/game handled separately)
+- Category NOT LIKE: `pado-%` (pado-dex covered by Pado Leaderboard; games included via volume_bonus)
 
-Notable inclusions: `governance`, `wallet-transfer`, `faucet`, `baram-*`, `chat`, and any
-future on-chain category not matching the exclusion patterns.
+Notable inclusions: `governance`, `wallet-transfer`, `faucet`, `baram-*`, `chat`.
+
+### Volume bonus
+
+Game plays and wallet transfers are rewarded by raw transaction count with logarithmic
+diminishing returns. `wallet-transfer` is intentionally counted in both `activity_score`
+(1 pt/day deduplicated) and `volume_bonus` (per-transaction).
+
+`pado-dex` is excluded (covered by Pado Score Leaderboard). `pado-lottery`, `pado-games`,
+and `pado-scratchcard` are NOT in the Pado Score Leaderboard, so they belong here.
+
+Coefficient 1.6 may be adjusted via a balance patch as real data accumulates.
 
 ### Creator post score
 
 Admin-granted points via `ecosystem-bonus-creator-posts` category (1-30 pts per post,
 set in `creator-posts-admin.ts` Lambda). Users with creator posts but zero on-chain
-activity still appear on the leaderboard (FULL OUTER JOIN between the two sub-queries).
+activity still appear on the leaderboard (FULL OUTER JOIN between sub-queries).
 
 ### What multipliers do NOT affect
 

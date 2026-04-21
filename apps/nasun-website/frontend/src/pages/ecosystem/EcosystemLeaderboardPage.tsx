@@ -3,7 +3,8 @@
  *
  * Weekly leaderboard: on-chain activity diversity + creator posts + bonus.
  * No NFT multiplier applied to ranking. Resets every Monday 00:10 UTC.
- * Score = activity + FLOOR(creator/5) + FLOOR(bugreport+feedback/2) + FLOOR(game/3) + active_days*2
+ * Score = activity + creator/5 + bugreport+feedback/2 + game/3 + 1.6*LOG2(volume_count+1)
+ * volume_count = pado-lottery + pado-games + pado-scratchcard + wallet-transfer (not deduplicated)
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";

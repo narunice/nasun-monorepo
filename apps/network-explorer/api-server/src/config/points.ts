@@ -97,6 +97,14 @@ const PKG = {
   deepbook: stripHex(
     '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
   ),
+  // Unified margin contract (new pado perp/margin product, 2026-04)
+  unifiedMargin: stripHex(
+    '0x1a1a6e86712a866e8bf7b2d6320b364282b5b257f8f9419db652914cf2d7a472',
+  ),
+  // Alliance NFT (new NFT contract, 2026-04)
+  allianceNft: stripHex(
+    '0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b',
+  ),
   prediction: stripHex(
     '0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895',
   ),
@@ -224,6 +232,7 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   // Actual modules: order_info (OrderPlaced, OrderInfo), order (OrderCanceled)
   [PKG.deepbook, 'order_info', 'OrderPlaced', { category: 'pado-dex', activityType: 'limit-order' }],
   [PKG.deepbook, 'order_info', 'OrderFilled', { category: 'pado-dex', activityType: 'market-order' }],
+  [PKG.deepbook, 'order_info', 'OrderFullyFilled', { category: 'pado-dex', activityType: 'market-order' }],
   [PKG.deepbook, 'order', 'OrderCanceled', { category: 'pado-dex', activityType: 'cancel-order' }],
   // OrderInfo is a companion event emitted with OrderPlaced, skip to avoid double-counting
 
@@ -297,6 +306,36 @@ export function getEventMapping(
 ): EventMapping | undefined {
   return EVENT_MAPPING.get(`${packageHex}::${module}::${typeName}`);
 }
+
+// Events that are explicitly known but should not award points.
+// Checked before recordUnmappedEvent() to suppress log noise.
+//
+// Categories:
+//   A) DeepBook protocol events (auto-emitted by contract internals)
+//   B) Sui system epoch events (auto-emitted at epoch boundaries)
+//   C) New product events pending category/points decision (suppress until mapped)
+export const IGNORED_EVENT_KEYS = new Set<string>([
+  // A) DeepBook protocol events
+  `${PKG.deepbook}::order_info::OrderInfo`,            // companion to OrderPlaced, skip double-count
+  `${PKG.deepbook}::order_info::OrderExpired`,          // order TTL expiry, no user action
+  `${PKG.deepbook}::balance_manager::BalanceManagerEvent`,
+  `${PKG.deepbook}::balance_manager::BalanceEvent`,
+  `${PKG.deepbook}::governance::TradeParamsUpdateEvent`, // protocol param update, not user governance
+  `${PKG.deepbook}::history::EpochData`,
+  `${PKG.deepbook}::history::Volumes`,
+  `${PKG.deepbook}::ewma::EWMAUpdate`,
+
+  // B) Sui system epoch events (emitted by 0x3 at each epoch boundary)
+  `${PKG.sui}::validator_set::ValidatorEpochInfoEventV2`,
+  `${PKG.sui}::sui_system_state_inner::SystemEpochInfoEvent`,
+
+  // C) New product events pending points decision
+  //    unified_margin: new pado margin product (2026-04). Categorize before awarding points.
+  `${PKG.unifiedMargin}::unified_margin::AccountCreated`,
+  `${PKG.unifiedMargin}::unified_margin::NusdcDeposited`,
+  //    alliance_nft: new NFT contract (2026-04). No category defined yet.
+  `${PKG.allianceNft}::alliance_nft::AllianceMinted`,
+]);
 
 // Get base points for a category + activity type
 export function getBasePoints(category: string, activityType: string): number {
