@@ -1,8 +1,8 @@
-import type { FC } from 'react';
+import type { FC } from "react";
 
 export interface GenesisPassBadgeProps {
   /** "full" shows "Genesis Pass", "compact" shows "GP" */
-  variant?: 'full' | 'compact';
+  variant?: "full" | "compact";
   className?: string;
 }
 
@@ -24,18 +24,18 @@ function CrownIcon({ className }: { className?: string }) {
 }
 
 const COMPACT_CLASSES =
-  'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none bg-teal-500/15 text-teal-400 border border-teal-500/30';
+  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold leading-none bg-teal-500/15 text-teal-400 border border-teal-500/30";
 
 const FULL_CLASSES =
-  'inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-sm font-semibold bg-teal-500/15 text-teal-300 border border-teal-500/25';
+  "inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-sm font-semibold bg-teal-500/15 text-teal-300 border border-teal-500/25";
 
 export const GenesisPassBadge: FC<GenesisPassBadgeProps> = ({
-  variant = 'compact',
-  className = '',
+  variant = "compact",
+  className = "",
 }) => {
-  const isCompact = variant === 'compact';
+  const isCompact = variant === "compact";
   const baseClasses = isCompact ? COMPACT_CLASSES : FULL_CLASSES;
-  const iconSize = isCompact ? 'w-2.5 h-2.5' : 'w-3 h-3';
+  const iconSize = isCompact ? "w-2.5 h-2.5" : "w-3 h-3";
 
   return (
     <span
@@ -43,7 +43,7 @@ export const GenesisPassBadge: FC<GenesisPassBadgeProps> = ({
       title="Genesis Pass Holder"
     >
       <CrownIcon className={`${iconSize} flex-shrink-0 text-amber-400`} />
-      {isCompact ? 'GP' : 'Genesis Pass'}
+      {isCompact ? "GP" : "Genesis Pass"}
     </span>
   );
 };
