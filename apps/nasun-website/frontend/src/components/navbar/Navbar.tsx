@@ -72,65 +72,51 @@ export default function Navbar() {
 
   // Authentication is now handled by AuthContext
 
+  const handleHomeClick = (e: React.MouseEvent) => {
+    if (location.pathname === "/") {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-8xl px-0 lg:px-4 flex gap-6 items-stretch"
+      className="fixed top-0 left-0 right-0 z-[60] h-14 bg-nasun-white border-b border-nasun-black/10 shadow-sm flex items-center px-4 lg:px-8"
     >
-      {/* 데스크탑: 심볼 박스 (가장 왼쪽, 독립적) */}
+      {/* Logo area */}
       <Link
         to="/"
-        className="hidden lg:block flex-shrink-0 w-14 h-14"
-        onClick={(e) => {
-          // 현재 홈페이지에 있으면 상단으로 스크롤
-          if (location.pathname === "/") {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }
-          // 다른 페이지에서는 Link의 기본 동작 (홈으로 이동)
-        }}
+        onClick={handleHomeClick}
+        className="flex items-center gap-2 flex-shrink-0 mr-4 lg:mr-8"
       >
-        <div className="flex items-center justify-center w-full h-full rounded-full bg-nasun-white transition-all shadow-lg">
-          <img
-            src="/nasun_symbol_black.svg"
-            alt="NASUN"
-            className="h-8 w-8 transition-all translate-y-[2px]"
-          />
-        </div>
+        {/* Symbol: desktop only */}
+        <img
+          src="/nasun_symbol_black.svg"
+          alt="NASUN"
+          className="hidden lg:block h-7 w-7 translate-y-[2px]"
+        />
+        {/* Wordmark: desktop + tablet (hidden on mobile) */}
+        <span className="hidden min-[640px]:block !font-changeling font-bold text-nasun-black text-xl tracking-wider">
+          NASUN
+        </span>
       </Link>
 
-      {/* 메인 navbar 박스 */}
-      <div className="flex-1 min-w-0 h-14 bg-nasun-white rounded-3xl shadow-lg transition-all flex pl-5 lg:pl-8 pr-5 lg:pr-8 gap-2 lg:gap-4 2xl:gap-8 justify-between items-center text-center text-base ">
-        {/* 모바일: 햄버거 메뉴 + 워드마크 */}
-        <div className="flex items-center gap-4 lg:hidden">
-          <MobileNav
-            navItems={navItems}
-            isMenuOpen={isMenuOpen}
-            toggleSubMenu={toggleSubMenu}
-            closeAllMenus={closeAllMenus}
-            mobileMenuOpen={mobileMenuOpen}
-            setMobileMenuOpen={setMobileMenuOpen}
-            isAdmin={isAdmin}
-          />
-          <Link
-            to="/"
-            onClick={(e) => {
-              // 현재 홈페이지에 있으면 상단으로 스크롤
-              if (location.pathname === "/") {
-                e.preventDefault();
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }
-              // 다른 페이지에서는 Link의 기본 동작 (홈으로 이동)
-            }}
-          >
-            <span className="hidden min-[440px]:block !font-changeling font-bold text-nasun-black text-xl md:text-2xl tracking-wider transition-all">
-              NASUN
-            </span>
-          </Link>
-        </div>
+      {/* Mobile: hamburger only */}
+      <div className="flex items-center min-[640px]:hidden">
+        <MobileNav
+          navItems={navItems}
+          isMenuOpen={isMenuOpen}
+          toggleSubMenu={toggleSubMenu}
+          closeAllMenus={closeAllMenus}
+          mobileMenuOpen={mobileMenuOpen}
+          setMobileMenuOpen={setMobileMenuOpen}
+          isAdmin={isAdmin}
+        />
+      </div>
 
-        {/* 데스크탑 메뉴 */}
-        <DesktopNav navItems={navItems} />
+      {/* Desktop nav menu */}
+      <DesktopNav navItems={navItems} />
 
         {/* 공통 기능들 */}
         <div className="flex gap-6 lg:gap-7 min-w-36 items-center justify-end flex-shrink-0">
@@ -191,7 +177,6 @@ export default function Navbar() {
           <LoginButton />
           {isAuthenticated && user && <WalletDisconnectModal />}
         </div>
-      </div>
     </nav>
   );
 }
