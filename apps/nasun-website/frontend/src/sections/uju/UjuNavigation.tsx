@@ -1,3 +1,5 @@
+import { useNotificationStore } from './notifications/notificationStore';
+
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'activity',  label: 'Activity' },
@@ -12,6 +14,8 @@ interface UjuNavigationProps {
 }
 
 export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
+  const hasUnread = useNotificationStore((s) => s.notifications.some((n) => !n.read));
+
   return (
     <>
       {/* Desktop: sticky top bar below Navbar */}
@@ -27,7 +31,12 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
                   : 'border-transparent text-uju-secondary hover:text-uju-primary'
               }`}
             >
-              {t.label}
+              <span className="inline-flex items-center gap-1.5">
+                {t.label}
+                {t.id === 'profile' && hasUnread && (
+                  <span className="w-2 h-2 rounded-full bg-nasun-scarlet shrink-0" aria-label="Unread notifications" />
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -47,7 +56,12 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
                 activeTab === t.id ? 'text-pado-3' : 'text-uju-secondary'
               }`}
             >
-              {t.label}
+              <span className="inline-flex items-center justify-center gap-1.5">
+                {t.label}
+                {t.id === 'profile' && hasUnread && (
+                  <span className="w-2 h-2 rounded-full bg-nasun-scarlet shrink-0" aria-label="Unread notifications" />
+                )}
+              </span>
             </button>
           ))}
         </div>

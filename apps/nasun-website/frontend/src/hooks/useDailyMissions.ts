@@ -22,7 +22,7 @@ const POLL_INTERVAL_MS = 60_000;
 const MAX_PAGES = 10; // Cap pagination (10 * 50 = 500 results max per wallet)
 
 // Mission IDs matching DailyMissionsCard
-type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lottery" | "pado-scratchcard" | "pado-games" | "chat";
+export type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lottery" | "pado-scratchcard" | "pado-games" | "chat";
 
 // Event type suffixes for Sender-based event query.
 // Spot Trade: OrderPlaced fires only when order is injected into the book (maker).
