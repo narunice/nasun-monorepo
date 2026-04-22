@@ -1,8 +1,8 @@
 /**
- * Daily NFT Check: Alliance Penalty + Genesis Passive Points
+ * Daily NFT Check: Alliance Penalty + Genesis Passive Points + Staking Daily/Emissions
  *
  * Runs once per day from scanLoop (after daily missions).
- * Combines two features into a single activationsCache traversal:
+ * Combines multiple features into a single activationsCache traversal:
  *
  * 1. Alliance Penalty: deactivate alliance bonus for users with <=5 active days in 7
  *    - Exempt if user also has genesis-pass
@@ -11,6 +11,16 @@
  * 2. Genesis Passive: award 1 passive point per inactive day for genesis holders
  *    - Lookback 2 days to handle PM2 downtime
  *    - Idempotent via tx_digest: pp:{identityId}:{date}
+ *
+ * 3. Staking Daily (v2): tier-based points per day for active stake principal
+ *    - Tiers: 1~500 NSN -> 1pt, 501~5000 -> 2pt, >=5001 -> 3pt
+ *    - Lookback 2 days for PM2 downtime
+ *
+ * 4. Staking Emissions: LOG2-scaled delta of estimatedReward per day
+ *    - "Yesterday's confirmed reward" approach: today's reading minus yesterday's
+ *      stored value, attributed to YESTERDAY for week-boundary accuracy
+ *    - Cold start: first run saves baseline only (no points awarded)
+ *    - hasPartialFailure: skip entirely to prevent inflated delta next cycle
  *
  * Fully isolated: errors here never affect the main scan loop.
  */
@@ -21,6 +31,8 @@ import type { NftActivation } from '../config/ecosystem.js';
 import {
   STAKING_V2_CUTOFF_DATE,
   calcStakingTierPts,
+  STAKING_EMISSION_COEFF,
+  STAKING_EMISSION_CUTOFF_DATE,
 } from '../config/points.js';
 
 // Categories excluded from "real activity" checks
@@ -29,6 +41,7 @@ const EXCLUDED_CATEGORIES = [
   'daily-mission',
   'ecosystem-passive',
   'staking-daily',
+  'staking-reward',
   'ecosystem-bonus-pnl',
   'ecosystem-bonus-rank',
   'ecosystem-bonus-game',
@@ -78,24 +91,36 @@ export async function runDailyNftChecks(
     passiveAwarded = await awardGenesisPassivePoints(genesisIds, identityToWallet);
   }
 
-  // --- Staking Daily Points (v2) ---
+  // --- Staking Daily + Emissions (single RPC fetch shared) ---
   let stakingAwarded = 0;
+  let emissionsAwarded = 0;
   try {
-    stakingAwarded = await awardStakingDailyPoints(registeredWallets);
+    // Use staking-daily within last 3 days as the active-stake proxy.
+    // This is equivalent to the old "has ever delegated" query but scoped
+    // to users who are currently active, reducing RPC calls from O(all-time) to
+    // O(active), which is ~3-5x smaller and avoids scanLoop timeout.
+    const stakingUsers = await pointsDb!`
+      SELECT DISTINCT identity_id FROM activity_points
+      WHERE category = 'staking-daily' AND NOT flagged
+        AND tx_timestamp >= CURRENT_DATE - 2
+    `;
+    const stakingIdentityIds = new Set(stakingUsers.map((r: any) => r.identity_id as string));
+
+    if (stakingIdentityIds.size > 0) {
+      const stakeDataByIdentity = await fetchIdentityStakeData(registeredWallets, stakingIdentityIds);
+      stakingAwarded = await awardStakingDailyPoints(stakeDataByIdentity);
+      emissionsAwarded = await awardStakingEmissions(stakeDataByIdentity);
+    }
   } catch (err) {
-    console.error('[DailyNftCheck] Staking daily points error (non-fatal):', err);
+    console.error('[DailyNftCheck] Staking points error (non-fatal):', err);
   }
 
-  // Wallet-transfer detection has moved to wallet-transfer-scanner.ts
-  // (indexer SQL based). Cursor-lag in that scanner naturally absorbs PM2
-  // downtime gaps, so no separate catch-up call is needed here.
-
-  const totalInserts = passiveAwarded + stakingAwarded;
+  const totalInserts = passiveAwarded + stakingAwarded + emissionsAwarded;
 
   if (penaltiesApplied > 0 || penaltiesRecovered > 0 || totalInserts > 0) {
     console.log(
-      `[DailyNftCheck] penalties: ${penaltiesApplied} applied, ${penaltiesRecovered} recovered, ` +
-      `${passiveAwarded} passive, ${stakingAwarded} staking`,
+      `[DailyNftCheck] penalties: ${penaltiesApplied}/${penaltiesRecovered} ` +
+      `passive: ${passiveAwarded} staking: ${stakingAwarded} emissions: ${emissionsAwarded}`,
     );
   }
 
@@ -239,39 +264,39 @@ async function awardGenesisPassivePoints(
   return totalAwarded;
 }
 
-// --- Staking Daily Points (v2) ---
+// --- Shared RPC helper ---
 
 interface StakeInfo {
-  stakes: Array<{ status: string; principal: string }>;
+  stakes: Array<{
+    status: string;
+    principal: string;
+    estimatedReward?: string; // MIST, present when status='Active'
+  }>;
+}
+
+interface IdentityStakeData {
+  wallets: string[];
+  totalPrincipalMist: bigint;
+  totalEstimatedRewardMist: bigint;
+  hasPartialFailure: boolean; // true if any wallet RPC failed
 }
 
 const MIST_PER_NSN = 10n ** 9n;
 
+const RPC_CONCURRENCY = 200; // max parallel suix_getStakes calls
+
 /**
- * Award tier-based staking-daily points per user per day, aggregating across
- * all wallets registered to the identity (suix_getStakes is Sui-native so
- * identity-level EVM cache cannot help here).
+ * Fetch suix_getStakes for all staking identities with bounded concurrency.
+ * Both awardStakingDailyPoints and awardStakingEmissions share this result
+ * to halve the total number of RPC calls.
  *
- * Tiers: 1~500 NSN -> 1pt, 501~5,000 -> 2pt, >=5,001 -> 3pt.
- *
- * Pre-cutoff dates are skipped (v1 semantics frozen; forward-only).
- * Lookback 2 days for PM2 downtime recovery.
+ * Concurrency is capped at RPC_CONCURRENCY to avoid overwhelming the RPC node
+ * and hitting scanLoop's 180s timeout.
  */
-async function awardStakingDailyPoints(
+async function fetchIdentityStakeData(
   registeredWallets: Map<string, string>,
-): Promise<number> {
-  if (!pointsDb || registeredWallets.size === 0) return 0;
-
-  // Only check users who have ever staked (optimization)
-  const stakingUsers = await pointsDb`
-    SELECT DISTINCT identity_id FROM activity_points
-    WHERE category = 'staking' AND activity_type = 'delegate' AND NOT flagged
-  `;
-
-  const stakingIdentityIds = new Set(stakingUsers.map(r => r.identity_id as string));
-  if (stakingIdentityIds.size === 0) return 0;
-
-  // Build identityId -> all Sui wallets map for multi-wallet aggregation.
+  stakingIdentityIds: Set<string>,
+): Promise<Map<string, IdentityStakeData>> {
   const identityToAllWallets = new Map<string, string[]>();
   for (const [addr, id] of registeredWallets) {
     if (!stakingIdentityIds.has(id)) continue;
@@ -280,54 +305,93 @@ async function awardStakingDailyPoints(
     else identityToAllWallets.set(id, [addr]);
   }
 
+  const result = new Map<string, IdentityStakeData>();
+  const entries = [...identityToAllWallets.entries()];
+
+  // Process in batches of RPC_CONCURRENCY identities in parallel
+  for (let i = 0; i < entries.length; i += RPC_CONCURRENCY) {
+    const batch = entries.slice(i, i + RPC_CONCURRENCY);
+
+    await Promise.all(batch.map(async ([identityId, wallets]) => {
+      const stakeResults = await Promise.allSettled(
+        wallets.map((w) => rpcCall<StakeInfo[]>('suix_getStakes', [w])),
+      );
+
+      let totalPrincipalMist = 0n;
+      let totalEstimatedRewardMist = 0n;
+      let hasPartialFailure = false;
+
+      for (const r of stakeResults) {
+        if (r.status !== 'fulfilled') {
+          hasPartialFailure = true;
+          continue;
+        }
+        for (const v of r.value) {
+          for (const s of v.stakes ?? []) {
+            if (s.status !== 'Active') continue;
+            totalPrincipalMist += BigInt(String(s.principal));
+            if (s.estimatedReward) {
+              totalEstimatedRewardMist += BigInt(String(s.estimatedReward));
+            }
+          }
+        }
+      }
+
+      result.set(identityId, {
+        wallets,
+        totalPrincipalMist,
+        totalEstimatedRewardMist,
+        hasPartialFailure,
+      });
+    }));
+  }
+
+  return result;
+}
+
+// --- Staking Daily Points (v2) ---
+
+/**
+ * Award tier-based staking-daily points per user per day, aggregating across
+ * all wallets registered to the identity.
+ *
+ * Tiers: 1~500 NSN -> 1pt, 501~5,000 -> 2pt, >=5,001 -> 3pt.
+ *
+ * Pre-cutoff dates are skipped (v1 semantics frozen; forward-only).
+ * Lookback 2 days for PM2 downtime recovery.
+ */
+async function awardStakingDailyPoints(
+  stakeDataByIdentity: Map<string, IdentityStakeData>,
+): Promise<number> {
+  if (!pointsDb || stakeDataByIdentity.size === 0) return 0;
+
   const now = new Date();
   let totalAwarded = 0;
 
-  // daysAgo=0 (today) keeps `daily.stakingScore` in the user-facing formula
-  // populated within one scan cycle after delegation. ON CONFLICT DO NOTHING
-  // locks today's tier at first sight (monotonic per-day; tier upgrades show
-  // up tomorrow). 1,2 stays for PM2 downtime recovery.
+  // daysAgo=0 keeps `daily.stakingScore` populated within one scan cycle.
+  // ON CONFLICT DO NOTHING locks today's tier at first sight (monotonic per-day).
+  // 1,2 stays for PM2 downtime recovery.
   for (let daysAgo = 0; daysAgo <= 2; daysAgo++) {
     const targetDate = new Date(now);
     targetDate.setUTCDate(targetDate.getUTCDate() - daysAgo);
     const dateStr = targetDate.toISOString().slice(0, 10);
 
-    // Scanner-side forward-only guard: pre-cutoff dates never get v2 rows.
     if (dateStr < STAKING_V2_CUTOFF_DATE) continue;
 
-    for (const identityId of stakingIdentityIds) {
-      const wallets = identityToAllWallets.get(identityId);
-      if (!wallets || wallets.length === 0) continue;
+    for (const [identityId, data] of stakeDataByIdentity) {
+      const { wallets, totalPrincipalMist, hasPartialFailure } = data;
+      if (wallets.length === 0) continue;
+      if (hasPartialFailure) continue; // partial data -> skip to avoid under-crediting
 
       const digest = `stk:${identityId}:${dateStr}`;
 
       try {
-        // allSettled: a single bad wallet RPC must not block the whole identity.
-        // Partial sums are forward-only (monotonic) so fulfilled results alone
-        // are safe to credit; rejected wallets simply contribute zero this cycle.
-        const stakeResults = await Promise.allSettled(
-          wallets.map((w) => rpcCall<StakeInfo[]>('suix_getStakes', [w])),
-        );
+        if (totalPrincipalMist === 0n) continue;
 
-        // Sum active principal across every wallet the identity owns.
-        let totalMist = 0n;
-        for (const r of stakeResults) {
-          if (r.status !== 'fulfilled') continue;
-          for (const v of r.value) {
-            for (const s of v.stakes ?? []) {
-              if (s.status !== 'Active') continue;
-              totalMist += BigInt(String(s.principal));
-            }
-          }
-        }
-        if (totalMist === 0n) continue;
-
-        // Integer division: tier boundaries are whole-NSN-safe (500/5000).
-        const totalNsn = Number(totalMist / MIST_PER_NSN);
+        const totalNsn = Number(totalPrincipalMist / MIST_PER_NSN);
         const pts = calcStakingTierPts(totalNsn);
         if (pts === 0) continue;
 
-        // Record row keyed on the identity's first wallet for activity_points.wallet_address.
         const primaryWallet = wallets[0];
         const txTimestamp = `${dateStr}T00:00:00Z`;
         const result = await pointsDb`
@@ -343,7 +407,7 @@ async function awardStakingDailyPoints(
         `;
         if (result.count > 0) totalAwarded++;
       } catch {
-        // Skip user on RPC error (non-fatal)
+        // Skip user on error (non-fatal)
       }
     }
   }
@@ -351,3 +415,109 @@ async function awardStakingDailyPoints(
   return totalAwarded;
 }
 
+// --- Staking Emissions (staking-reward) ---
+
+/**
+ * Award LOG2-scaled staking emission points per identity per day.
+ *
+ * "Yesterday's confirmed reward" approach:
+ *   - Read today's estimatedReward (confirmed epochs + negligible current-epoch estimate)
+ *   - delta = today's value - yesterday's stored value
+ *   - Record with tx_timestamp = YESTERDAY for correct week-boundary attribution
+ *
+ * Cold start: first run saves baseline only; awards nothing to avoid crediting
+ * all historical accumulated rewards at once.
+ *
+ * hasPartialFailure: state is updated with partial data (prevents delta
+ * accumulation), but no points are awarded for that day.
+ */
+async function awardStakingEmissions(
+  stakeDataByIdentity: Map<string, IdentityStakeData>,
+): Promise<number> {
+  if (!pointsDb || stakeDataByIdentity.size === 0) {
+    console.log(`[DailyNftCheck] awardStakingEmissions early return: size=${stakeDataByIdentity.size}`);
+    return 0;
+  }
+
+  const now = new Date();
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+  const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
+
+  console.log(`[DailyNftCheck] awardStakingEmissions: size=${stakeDataByIdentity.size} yesterday=${yesterdayStr} cutoff=${STAKING_EMISSION_CUTOFF_DATE}`);
+
+  // Forward-only guard: attribute to yesterday's date.
+  if (yesterdayStr < STAKING_EMISSION_CUTOFF_DATE) {
+    console.log('[DailyNftCheck] awardStakingEmissions: cutoff guard triggered, returning 0');
+    return 0;
+  }
+
+  // Batch load previous state (single query)
+  const identityIds = [...stakeDataByIdentity.keys()];
+  const stateRows = await pointsDb`
+    SELECT identity_id, last_total_mist
+    FROM staking_emission_state
+    WHERE identity_id = ANY(${identityIds}::text[])
+  `;
+  const prevStateMap = new Map<string, bigint>();
+  for (const row of stateRows) {
+    prevStateMap.set(row.identity_id as string, BigInt(String(row.last_total_mist)));
+  }
+
+  let totalAwarded = 0;
+
+  for (const [identityId, data] of stakeDataByIdentity) {
+    const { wallets, totalEstimatedRewardMist, hasPartialFailure } = data;
+
+    // Always update state so the next run computes delta from today's reading.
+    // We do this even on partial failure (using incomplete data) to prevent delta
+    // accumulation: skipping the update would cause a multi-day delta on the next
+    // successful run, which inflates the emission score more than partial data does.
+    await pointsDb`
+      INSERT INTO staking_emission_state (identity_id, last_total_mist, updated_at)
+      VALUES (${identityId}, ${String(totalEstimatedRewardMist)}, NOW())
+      ON CONFLICT (identity_id) DO UPDATE
+        SET last_total_mist = EXCLUDED.last_total_mist, updated_at = NOW()
+    `;
+
+    // Partial RPC failure: skip award to avoid crediting incomplete data.
+    if (hasPartialFailure) continue;
+
+    // Cold start: no previous state -> save baseline only, award nothing.
+    if (!prevStateMap.has(identityId)) continue;
+
+    if (totalEstimatedRewardMist === 0n) continue; // no active stakes
+
+    const prevMist = prevStateMap.get(identityId)!;
+    const deltaMist = totalEstimatedRewardMist - prevMist;
+
+    if (deltaMist <= 0n) continue; // unstake or epoch boundary reset
+
+    // Number() loses precision beyond 2^53-1 (~9e15). Daily delta for even a
+    // 10,000 NSN stake is ~8e8 MIST/day — well within safe integer range.
+    const logScore = STAKING_EMISSION_COEFF * Math.log2(Number(deltaMist) + 1);
+    const primaryWallet = wallets[0];
+    const txDigest = `stkr:${identityId}:${yesterdayStr}`;
+
+    try {
+      const result = await pointsDb`
+        INSERT INTO activity_points
+          (wallet_address, identity_id, tx_digest, category, activity_type,
+           base_points, volume_tier, genesis_multiplier, final_points,
+           tx_timestamp, event_seq, tx_sequence_number, metadata)
+        VALUES
+          (${primaryWallet}, ${identityId}, ${txDigest},
+           'staking-reward', 'emission-delta',
+           1.0, 1.0, 1.0, ${logScore.toFixed(6)},
+           ${`${yesterdayStr}T00:00:00Z`}::timestamptz, 0, 0,
+           ${JSON.stringify({ emission_mist: String(deltaMist) })}::jsonb)
+        ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+      `;
+      if (result.count > 0) totalAwarded++;
+    } catch (err) {
+      console.error(`[DailyNftCheck] staking emission insert error for ${identityId}:`, err);
+    }
+  }
+
+  return totalAwarded;
+}

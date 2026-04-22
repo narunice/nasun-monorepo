@@ -26,7 +26,7 @@
 
 import { pointsDb } from '../db.js';
 
-const MATVIEW_VERSION = 2;
+const MATVIEW_VERSION = 3;
 const VERSION_MARKER = `matview_version=${MATVIEW_VERSION}`;
 
 const MATVIEW_SQL = `
@@ -39,7 +39,7 @@ WITH distinct_cats AS (
   FROM activity_points
   WHERE NOT flagged
     AND identity_id IS NOT NULL
-    AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking')
+    AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking', 'staking-reward')
     AND category NOT LIKE 'ecosystem-bonus-%'
 )
 SELECT

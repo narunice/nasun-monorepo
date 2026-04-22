@@ -42,3 +42,12 @@ CREATE TABLE processing_state (
 
 -- Initialize main scanner
 INSERT INTO processing_state (scanner_id) VALUES ('main');
+
+-- Staking emission state: tracks last seen estimatedReward per identity
+-- for delta computation in awardStakingEmissions().
+-- NUMERIC avoids BigInt precision loss for large MIST values.
+CREATE TABLE IF NOT EXISTS staking_emission_state (
+  identity_id TEXT PRIMARY KEY,
+  last_total_mist NUMERIC NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
