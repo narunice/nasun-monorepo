@@ -729,6 +729,8 @@ function handleScoreLeaderboardWeekly(
       profileImageUrl: profileImages.get(row.address) ?? null,
       xHandle: row.x_handle ?? null,
       totalScore: row.total_score,
+      tradeCount: row.trade_count,
+      volumeUsd: formatQuoteVolume(row.volume_quote),
       rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - row.rank,
       hasGoogle: Boolean(row.has_google),
       hasTelegram: Boolean(row.has_telegram),
