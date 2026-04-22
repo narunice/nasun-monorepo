@@ -206,7 +206,8 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                     {mission.label}
                     {isExternal && (
                       <svg
-                        className="w-3 h-3 opacity-50 shrink-0"
+                        aria-hidden="true"
+                        className="w-3 h-3 text-uju-secondary shrink-0"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -249,6 +250,8 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                 ) : (
                   // Circle checkbox on the right (as per wireframe)
                   <div
+                    role="img"
+                    aria-label={completed ? 'Completed' : 'Incomplete'}
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                       completed
                         ? 'bg-pado-4 border-pado-4'
@@ -257,6 +260,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                   >
                     {completed && (
                       <svg
+                        aria-hidden="true"
                         className="w-3 h-3 text-uju-bg"
                         fill="none"
                         stroke="currentColor"
