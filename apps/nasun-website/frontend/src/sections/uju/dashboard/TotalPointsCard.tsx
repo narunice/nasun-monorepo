@@ -47,7 +47,7 @@ export function TotalPointsCard() {
       <button
         onClick={refresh}
         disabled={isRefreshing || cooldownSeconds > 0}
-        className="mt-4 w-full text-sm text-uju-secondary hover:text-uju-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="mt-4 w-full text-sm text-uju-secondary hover:text-uju-primary disabled:text-uju-border disabled:hover:text-uju-border disabled:cursor-not-allowed transition-colors"
       >
         {isRefreshing
           ? "Refreshing..."
