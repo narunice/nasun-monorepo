@@ -97,7 +97,6 @@ export default function ChatWidget() {
   const onDragStart = useCallback(
     (e: React.MouseEvent) => {
       if ((e.target as HTMLElement).closest("button")) return;
-      if ((e.target as HTMLElement).closest("select")) return;
       e.preventDefault();
       isDragging.current = true;
 
@@ -401,28 +400,26 @@ export default function ChatWidget() {
             </div>
           </div>
 
-          {/* Room Selector */}
-          <div className="flex items-center px-3 py-1.5 border-b border-white/10 shrink-0">
-            <select
-              value={activeRoomId}
-              onChange={(e) => switchRoom(Number(e.target.value))}
-              className="w-full bg-transparent text-xs text-white/70 font-medium focus:outline-none cursor-pointer appearance-none"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 4px center",
-              }}
-            >
-              {visibleRooms.map((room) => (
-                <option
+          {/* Room Tabs */}
+          <div className="flex items-center gap-1 px-2 py-1.5 border-b border-white/10 shrink-0">
+            {visibleRooms.map((room) => {
+              const isActive = room.id === activeRoomId;
+              return (
+                <button
                   key={room.id}
-                  value={room.id}
-                  className="bg-nasun-black text-white"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => switchRoom(room.id)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors
+                    ${isActive
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/40 hover:text-white/70 hover:bg-white/8'
+                    }`}
                 >
                   {room.name}
-                </option>
-              ))}
-            </select>
+                </button>
+              );
+            })}
           </div>
 
           {/* Messages */}
