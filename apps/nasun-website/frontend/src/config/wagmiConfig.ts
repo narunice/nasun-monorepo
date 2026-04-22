@@ -26,8 +26,10 @@ if (!projectId) {
 
 const alchemyKey = import.meta.env.VITE_ALCHEMY_API_KEY;
 
+// Always include mainnet so Genesis Pass ownership/drop hooks can read it
+// regardless of VITE_ETHEREUM_CHAIN_ID (which drives MetaMask auth default).
 const chainId = Number(import.meta.env.VITE_ETHEREUM_CHAIN_ID);
-const chains = chainId === 1 ? ([mainnet] as const) : ([sepolia] as const);
+const chains = chainId === 1 ? ([mainnet] as const) : ([mainnet, sepolia] as const);
 
 const isMobile =
   typeof window !== "undefined" &&
