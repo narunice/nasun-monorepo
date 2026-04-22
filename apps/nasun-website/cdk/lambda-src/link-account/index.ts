@@ -522,7 +522,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             unlinkExpr += ' REMOVE twitterHandle, originalTwitterHandle, twitterId, profileImageUrl';
           } else if (matchingKey === 'google' && oldPrimary.provider === 'Twitter') {
             unlinkExpr += ' REMOVE email';
-          } else if (matchingKey === 'metamask') {
+          } else if (matchingKey === 'metamask' && oldPrimary.provider === 'MetaMask') {
             unlinkExpr += ' REMOVE walletAddress';
           }
 
