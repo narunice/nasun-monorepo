@@ -1315,3 +1315,9 @@ export const GENESIS_PASS_ADDRESSES: Record<number, string> = {
   "1": "0x561D4A687e9D13925AD7BEf0209c9eCaEC9858E1",
   "11155111": "0x1EdE4F5de249914099B78d7eceDBE8F4C2F0FF1E"
 };
+
+// Genesis Pass is a mainnet-only asset. Decouple from VITE_ETHEREUM_CHAIN_ID
+// so GP ownership/drop flows always target mainnet regardless of other
+// Ethereum feature configuration (e.g. MetaMask auth on Sepolia).
+export const GENESIS_PASS_CHAIN_ID = 1;
+export const GENESIS_PASS_CONTRACT = GENESIS_PASS_ADDRESSES[GENESIS_PASS_CHAIN_ID] as `0x${string}`;
