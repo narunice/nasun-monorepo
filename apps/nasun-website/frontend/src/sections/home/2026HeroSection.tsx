@@ -11,7 +11,7 @@ interface Hero2026SectionProps {
 }
 
 function Hero2026Section({
-  videoSrc = "/videos/Canyons-uju-bg.mp4",
+  videoSrc = "/videos/Mediterranean-Website-web.mp4",
 
   videoTopCrop,
 }: Hero2026SectionProps) {
