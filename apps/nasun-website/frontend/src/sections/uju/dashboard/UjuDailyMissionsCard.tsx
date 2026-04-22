@@ -14,6 +14,7 @@ import {
   getMissionBadge,
   type UjuMission,
 } from '../missions/missionRegistry';
+import { useNotificationDetector } from '../notifications/useNotificationDetector';
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 const MAX_DISPLAYED = 7;
@@ -82,6 +83,16 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
     }
     return pool;
   }, [pinnedApps, hasUnvotedProposal, unvotedCount]);
+
+  // Fire notification detector after missionPool is computed, before early return
+  useNotificationDetector({
+    identityId: user?.identityId,
+    missionPool,
+    completedMissions,
+    missionsLoading: isLoading,
+    hasUnvotedProposal,
+    unvotedCount,
+  });
 
   const isCompleted = useCallback(
     (m: UjuMission) => {
