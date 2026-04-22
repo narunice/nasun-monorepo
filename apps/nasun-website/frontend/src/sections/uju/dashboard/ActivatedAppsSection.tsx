@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { UjuCard } from '../shared/UjuCard';
-import { useAppDirectory, MAX_PINNED } from '../apps/useAppDirectory';
+import { MAX_PINNED, type UseAppDirectoryResult } from '../apps/useAppDirectory';
 import { CHAIN_LABEL, CHAIN_BADGE_CLASS } from '../apps/appRegistry';
 import { AppDirectoryModal } from '../apps/AppDirectoryModal';
 
-export function ActivatedAppsSection() {
+interface ActivatedAppsSectionProps extends Omit<UseAppDirectoryResult, 'pinnedIds'> {}
+
+export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }: ActivatedAppsSectionProps) {
   const [modalOpen, setModalOpen] = useState(false);
-  const { pinnedApps, isPinned, pin, unpin, atMax } = useAppDirectory();
 
   return (
     <>

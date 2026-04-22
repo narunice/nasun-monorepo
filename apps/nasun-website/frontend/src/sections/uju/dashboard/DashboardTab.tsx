@@ -4,10 +4,14 @@ import { ActivatedAppsSection } from "./ActivatedAppsSection";
 import { WalletBalanceCard } from "./WalletBalanceCard";
 import { StakingCard } from "./StakingCard";
 import { BannerCarousel } from "./banner/BannerCarousel";
-import { DailyMissionsCard } from "@/sections/myAccount/DailyMissionsCard";
+import { UjuDailyMissionsCard } from "./UjuDailyMissionsCard";
 import { NftShowcaseCard } from "@/sections/myAccount/NftShowcaseCard";
+import { useAppDirectory } from "../apps/useAppDirectory";
 
 export function DashboardTab() {
+  // Single useAppDirectory instance — pinnedApps passed down to avoid dual instantiation
+  const { pinnedApps, isPinned, pin, unpin, atMax } = useAppDirectory();
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="md:col-span-2">
@@ -16,9 +20,9 @@ export function DashboardTab() {
       <TotalPointsCard />
       <HealthGaugeCard />
       <div className="md:col-span-2">
-        <DailyMissionsCard />
+        <UjuDailyMissionsCard pinnedApps={pinnedApps} />
       </div>
-      <ActivatedAppsSection />
+      <ActivatedAppsSection pinnedApps={pinnedApps} isPinned={isPinned} pin={pin} unpin={unpin} atMax={atMax} />
       <WalletBalanceCard />
       <StakingCard />
       <div className="md:col-span-2">
