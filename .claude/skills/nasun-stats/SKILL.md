@@ -49,6 +49,7 @@ else
 fi
 
 TODAY=$(date +%Y-%m-%d)
+YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
 SSH_KEY=~/.ssh/.awskey/nasun-devnet-key.pem
 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
 NODE3="ubuntu@54.180.61.196"
@@ -429,14 +430,87 @@ WHERE ap.category NOT IN (
   'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
 )
 GROUP BY ap.category ORDER BY unique_users DESC LIMIT 8;
+-- yesterday per-category stats: total / social-verified / returning (used this cat before yday) / retention_d1 (used yday AND day-before)
+CREATE TEMP TABLE yday_cat AS
+  SELECT DISTINCT category, wallet_address FROM activity_points
+  WHERE tx_timestamp::date = '$YESTERDAY'::date
+    AND category NOT IN ('daily-mission','ecosystem-passive','ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin','ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport','ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop','ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback');
+CREATE TEMP TABLE first_seen_cat AS
+  SELECT category, wallet_address, MIN(tx_timestamp::date) AS first_day
+  FROM activity_points
+  WHERE category IN (SELECT DISTINCT category FROM yday_cat)
+  GROUP BY 1, 2;
+CREATE TEMP TABLE dbd_cat AS
+  SELECT DISTINCT category, wallet_address FROM activity_points
+  WHERE tx_timestamp::date = ('$YESTERDAY'::date - 1)
+    AND category IN (SELECT DISTINCT category FROM yday_cat);
+CREATE INDEX ON first_seen_cat (category, wallet_address);
+CREATE INDEX ON dbd_cat (category, wallet_address);
+SELECT 'CATSTAT',
+  y.category,
+  COUNT(*) AS total,
+  COUNT(vw.wallet_address) AS verified,
+  COUNT(CASE WHEN fsc.first_day < '$YESTERDAY'::date THEN 1 END) AS returning,
+  COUNT(dbd.wallet_address) AS retention_d1
+FROM yday_cat y
+LEFT JOIN verified_wallets vw ON y.wallet_address = vw.wallet_address
+LEFT JOIN first_seen_cat fsc ON fsc.category = y.category AND fsc.wallet_address = y.wallet_address
+LEFT JOIN dbd_cat dbd ON dbd.category = y.category AND dbd.wallet_address = y.wallet_address
+GROUP BY y.category ORDER BY total DESC;
+-- GAMES group (union of lottery/games/scratchcard, wallet-level dedup)
+WITH yg AS (
+  SELECT DISTINCT wallet_address FROM yday_cat WHERE category IN ('pado-lottery','pado-games','pado-scratchcard')
+),
+fsg AS (
+  SELECT wallet_address, MIN(tx_timestamp::date) AS first_day FROM activity_points
+  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard') GROUP BY 1
+),
+dbdg AS (
+  SELECT DISTINCT wallet_address FROM activity_points
+  WHERE tx_timestamp::date = ('$YESTERDAY'::date - 1) AND category IN ('pado-lottery','pado-games','pado-scratchcard')
+)
+SELECT 'GRPSTAT', 'GAMES',
+  COUNT(*) AS total,
+  COUNT(vw.wallet_address) AS verified,
+  COUNT(CASE WHEN fsg.first_day < '$YESTERDAY'::date THEN 1 END) AS returning,
+  COUNT(dbdg.wallet_address) AS retention_d1
+FROM yg
+LEFT JOIN verified_wallets vw ON yg.wallet_address = vw.wallet_address
+LEFT JOIN fsg ON fsg.wallet_address = yg.wallet_address
+LEFT JOIN dbdg ON dbdg.wallet_address = yg.wallet_address;
+-- DEX group (currently only pado-dex; kept for future perp/prediction cats)
+WITH yd AS (
+  SELECT DISTINCT wallet_address FROM yday_cat WHERE category IN ('pado-dex')
+),
+fsd AS (
+  SELECT wallet_address, MIN(tx_timestamp::date) AS first_day FROM activity_points
+  WHERE category IN ('pado-dex') GROUP BY 1
+),
+dbdd AS (
+  SELECT DISTINCT wallet_address FROM activity_points
+  WHERE tx_timestamp::date = ('$YESTERDAY'::date - 1) AND category IN ('pado-dex')
+)
+SELECT 'GRPSTAT', 'DEX',
+  COUNT(*) AS total,
+  COUNT(vw.wallet_address) AS verified,
+  COUNT(CASE WHEN fsd.first_day < '$YESTERDAY'::date THEN 1 END) AS returning,
+  COUNT(dbdd.wallet_address) AS retention_d1
+FROM yd
+LEFT JOIN verified_wallets vw ON yd.wallet_address = vw.wallet_address
+LEFT JOIN fsd ON fsd.wallet_address = yd.wallet_address
+LEFT JOIN dbdd ON dbdd.wallet_address = yd.wallet_address;
 SQLEOF3
 )
 
 NEW_TOTAL=$(echo "$TOP_AND_RATE" | grep '^RATE' | cut -d'|' -f2)
 NEW_VERIFIED=$(echo "$TOP_AND_RATE" | grep '^RATE' | cut -d'|' -f3)
 TOP_ACTIVITIES=$(echo "$TOP_AND_RATE" | grep '^TOP')
+CATSTATS=$(echo "$TOP_AND_RATE" | grep '^CATSTAT')
+GRPSTATS=$(echo "$TOP_AND_RATE" | grep '^GRPSTAT')
 
 echo "new_total=$NEW_TOTAL  new_verified=$NEW_VERIFIED"
+echo "CATSTAT rows: $(echo "$CATSTATS" | wc -l)"
+echo "GRPSTAT rows: $(echo "$GRPSTATS" | wc -l)"
 
 echo "=== Step 5: Build output files ==="
 
@@ -449,12 +523,30 @@ import csv
 lines = open("/tmp/nasun_snapshot_data.txt").read().strip().split("\n")
 mode = lines[0]
 
-new_total   = int("$NEW_TOTAL")   if "$NEW_TOTAL".isdigit()   else 0
-new_verified = int("$NEW_VERIFIED") if "$NEW_VERIFIED".isdigit() else 0
+def _i(s):
+    s = s.strip()
+    return int(s) if s.lstrip('-').isdigit() else 0
+
+new_total   = _i("$NEW_TOTAL")
+new_verified = _i("$NEW_VERIFIED")
 new_rate = f"{new_verified/new_total*100:.1f}%" if new_total > 0 else "N/A"
-today    = "$TODAY"
+today     = "$TODAY"
+yesterday = "$YESTERDAY"
 date_from = "$DATE_FROM"
 date_to   = "$DATE_TO"
+
+# Parse CATSTAT / GRPSTAT rows
+# format per line: CATSTAT|category|total|verified|returning|retention_d1
+cat_stats = {}
+for line in """$CATSTATS""".strip().split("\n"):
+    parts = line.split("|")
+    if len(parts) >= 6 and parts[0] == "CATSTAT":
+        cat_stats[parts[1]] = tuple(_i(x) for x in parts[2:6])
+grp_stats = {}
+for line in """$GRPSTATS""".strip().split("\n"):
+    parts = line.split("|")
+    if len(parts) >= 6 and parts[0] == "GRPSTAT":
+        grp_stats[parts[1]] = tuple(_i(x) for x in parts[2:6])
 
 # DAA stats
 dau_rows = []
@@ -465,9 +557,14 @@ with open("$CSV_FILE") as f:
             dau_rows.append(r)
 
 if dau_rows:
-    # exclude today (partial day) for "latest completed" stats
-    completed_rows = [r for r in dau_rows if r['date'] != today]
-    latest = completed_rows[-1] if completed_rows else dau_rows[-1]
+    # always use yesterday (execution date - 1) as reference — today is partial
+    ymatch = [r for r in dau_rows if r['date'] == yesterday]
+    if ymatch:
+        latest = ymatch[0]
+    else:
+        # yesterday had no activity (or out of range) — fall back to last non-today row
+        completed_rows = [r for r in dau_rows if r['date'] != today]
+        latest = completed_rows[-1] if completed_rows else dau_rows[-1]
     peak   = max(dau_rows, key=lambda r: int(r['dau']))
     active_days = len(dau_rows)
     avg_ret = sum(float(r['returning_pct']) for r in dau_rows if r['returning_pct']) / active_days
@@ -476,14 +573,14 @@ if dau_rows:
     v_gamers  = int(latest.get('verified_unique_gamers', 0))
     daa_section = (
         f"-- Devnet DAA ({date_from} ~ {date_to}, {active_days} active days) --\n"
-        f"Last completed DAA ({latest['date']}):   {int(latest['dau']):,}\n"
+        f"Yesterday DAA ({latest['date']}):      {int(latest['dau']):,}\n"
         f"  Returning:                         {int(latest['returning_addresses']):,}  ({latest['returning_pct']}%)\n"
         f"  New:                               {int(latest['new_addresses']):,}\n"
         f"Peak DAA   ({peak['date']}):         {int(peak['dau']):,}\n"
         f"Avg DAA:                             {avg_dau:,.0f}\n"
         f"Avg returning rate:                  {avg_ret:.1f}%\n"
-        f"Unique spot traders (social verified): {v_traders:,}\n"
-        f"Unique gamers       (social verified): {v_gamers:,}"
+        f"Yesterday pado-dex  (social verified): {v_traders:,}\n"
+        f"Yesterday pado-game (social verified): {v_gamers:,}"
     )
 else:
     daa_section = f"-- Devnet DAA ({date_from} ~ {date_to}) --\nNo active days in this period."
@@ -504,7 +601,6 @@ if mode == "FRESH":
     x_pct, g_pct, tg_pct, union_pct, multi_pct = lines[7], lines[8], lines[9], lines[10], lines[11]
     users_section = (
         f"-- Website Users (DynamoDB, live) --\n"
-        f"Total users (excl. legacy):  {total:,}\n"
         f"  X connected:               {x_count:,}  ({x_pct})\n"
         f"  Google connected:          {g_count:,}  ({g_pct})\n"
         f"  Telegram joined:           {tg_count:,}  ({tg_pct})\n"
@@ -519,11 +615,15 @@ else:
         f"Verified wallets (cached):   {wallet_count:,}"
     )
 
-# Mission distribution for latest completed date
+# Mission distribution for yesterday
 mission_section = ""
 if dau_rows:
-    completed_rows = [r for r in dau_rows if r['date'] != today]
-    mrow = completed_rows[-1] if completed_rows else dau_rows[-1]
+    ymatch2 = [r for r in dau_rows if r['date'] == yesterday]
+    if ymatch2:
+        mrow = ymatch2[0]
+    else:
+        completed_rows = [r for r in dau_rows if r['date'] != today]
+        mrow = completed_rows[-1] if completed_rows else dau_rows[-1]
     m1  = int(mrow.get('mission_1', 0))
     m2  = int(mrow.get('mission_2', 0))
     m3  = int(mrow.get('mission_3', 0))
@@ -533,7 +633,7 @@ if dau_rows:
     total_mission = m1 + m2 + m3 + m4 + m5 + m6p
     def mpct(n): return f"{n/total_mission*100:.1f}%" if total_mission else "N/A"
     mission_section = (
-        f"-- Mission Distribution by Verified Users ({mrow['date']}) --\n"
+        f"-- Yesterday Mission Distribution by Verified Users ({mrow['date']}) --\n"
         f"  1 mission:   {m1:>6,}  ({mpct(m1)})\n"
         f"  2 missions:  {m2:>6,}  ({mpct(m2)})\n"
         f"  3 missions:  {m3:>6,}  ({mpct(m3)})\n"
@@ -543,17 +643,52 @@ if dau_rows:
         f"  Total active: {total_mission:,}"
     )
 
-snapshot = f"""==== Nasun Stats Snapshot ({today}) ====
+def rpct(n, d): return f"{n/d*100:.0f}%" if d else "N/A"
+
+def fmt_stat_row(label, tup):
+    total, verified, returning, retention = tup
+    return (
+        f"  {label:<26} "
+        f"total {total:>7,}  |  "
+        f"social {verified:>6,} ({rpct(verified,total):>4})  |  "
+        f"returning {returning:>6,} ({rpct(returning,total):>4})  |  "
+        f"d-1 retained {retention:>6,} ({rpct(retention,total):>4})"
+    )
+
+cat_section_lines = [
+    f"-- Yesterday Category Breakdown ({yesterday}) --",
+    "  (returning = used this category before yesterday; d-1 retained = also used day-before-yesterday)",
+]
+# Groups first
+if "DEX" in grp_stats:
+    cat_section_lines.append(fmt_stat_row("[group] DEX", grp_stats["DEX"]))
+if "GAMES" in grp_stats:
+    cat_section_lines.append(fmt_stat_row("[group] GAMES", grp_stats["GAMES"]))
+# Individual categories in preferred order, then the rest by total desc
+preferred = ["pado-dex","pado-lottery","pado-scratchcard","pado-games","faucet","wallet-transfer","chat","staking","staking-daily","staking-reward"]
+seen = set()
+for cat in preferred:
+    if cat in cat_stats:
+        cat_section_lines.append(fmt_stat_row(cat, cat_stats[cat]))
+        seen.add(cat)
+for cat, tup in sorted(cat_stats.items(), key=lambda kv: -kv[1][0]):
+    if cat not in seen:
+        cat_section_lines.append(fmt_stat_row(cat, tup))
+yesterday_pado_section = "\n".join(cat_section_lines)
+
+snapshot = f"""==== Nasun Stats Snapshot ({today}, report base = {yesterday}) ====
 
 {daa_section}
 
 {users_section}
 
+{yesterday_pado_section}
+
 {top_section}
 
 {mission_section}
 
--- Today's New User Quality --
+-- Today's New User Quality (partial day, {today}) --
 New DAA today:               {new_total:,}
   Social verified:           {new_verified:,}  ({new_rate})
 """
