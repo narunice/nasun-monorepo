@@ -56,7 +56,7 @@ export const VOLUME_TIER_CAP = 3.0;
 // --- Staking emissions leaderboard ---
 // final_points = STAKING_EMISSION_COEFF * LOG2(delta_mist + 1)
 // Calibration: 1 NSN/week emitted (~1e9 MIST) -> LOG2(1e9+1)*0.05 ~= 1.5 pts/day.
-export const STAKING_EMISSION_COEFF = 0.05;
+export const STAKING_EMISSION_COEFF = 0.07;
 
 // Forward-only guard: yesterday's date must be >= this cutoff to generate rows.
 // Set to the day emissions tracking started minus 1 (i.e., 2026-04-21 passes as yesterdayStr).
