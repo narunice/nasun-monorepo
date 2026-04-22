@@ -29,7 +29,7 @@ function sanitizeXHandle(raw: string | undefined): string | null {
   return X_HANDLE_RE.test(raw) ? raw : null;
 }
 import type { ChatServerConfig } from './types.js';
-import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached } from './store.js';
+import { getDisplayName, getDisplayNamesBatch, getFollowing, getFollowerCounts, getGenesisPassBatch, getProfileImagesBatch, getXHandlesBatch, ensureProfilesCached } from './store.js';
 import { getPoolSymbol, getPoolBaseDecimals } from './rooms.js';
 import {
   getLeaderboard, getLeaderboardPnl,
@@ -402,13 +402,20 @@ function handleLeaderboard(
   if (mode === 'pnl') {
     const rows = getLeaderboardPnl(period, limit, offset);
     const addresses = rows.map((r) => r.address);
+    if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
+      console.error('[handleLeaderboard:pnl] ensureProfilesCached error:', (err as Error).message);
+    });
     const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map();
     const followerCnts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
     const gpSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+    const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
+    const xHandles = addresses.length > 0 ? getXHandlesBatch(addresses) : new Map<string, string>();
     const traders = rows.map((r) => ({
       rank: r.rank, address: r.address,
       nickname: nicknames.get(r.address) ?? null,
       hasGenesisPass: gpSet.has(r.address),
+      profileImageUrl: profileImages.get(r.address) ?? null,
+      twitterHandle: xHandles.get(r.address) ?? null,
       pnlUsd: formatQuoteVolume(r.realized_pnl),
       pnlPercent: r.pnl_percent,
       tradeCount: r.trade_count,
@@ -422,13 +429,20 @@ function handleLeaderboard(
   } else {
     const rows = getLeaderboard(period, limit, offset);
     const addresses = rows.map((r) => r.address);
+    if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
+      console.error('[handleLeaderboard:volume] ensureProfilesCached error:', (err as Error).message);
+    });
     const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map();
     const followerCnts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map();
     const gpSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
+    const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
+    const xHandles = addresses.length > 0 ? getXHandlesBatch(addresses) : new Map<string, string>();
     const traders = rows.map((r) => ({
       rank: r.rank, address: r.address,
       nickname: nicknames.get(r.address) ?? null,
       hasGenesisPass: gpSet.has(r.address),
+      profileImageUrl: profileImages.get(r.address) ?? null,
+      twitterHandle: xHandles.get(r.address) ?? null,
       volumeUsd: formatQuoteVolume(r.volume_quote),
       tradeCount: r.trade_count, uniquePools: r.unique_pools,
       rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
@@ -449,6 +463,9 @@ function handleTraderStats(
   const rows = getTraderAllPeriodStats(address);
   const nickname = getDisplayName(address);
   const hasGenesisPass = getGenesisPassBatch([address]).has(address);
+  ensureProfilesCached([address]).catch(() => {});
+  const profileImageUrl = getProfileImagesBatch([address]).get(address) ?? null;
+  const twitterHandle = getXHandlesBatch([address]).get(address) ?? null;
   const stats: Record<string, { rank: number; volume: string; tradeCount: number; uniquePools: number; rankChange: number } | null> = {
     '24h': null, '7d': null, '30d': null, 'all': null,
   };
@@ -464,7 +481,7 @@ function handleTraderStats(
     }
   }
   res.writeHead(200, corsHeaders);
-  res.end(JSON.stringify({ address, nickname, hasGenesisPass, lastTradeAt, stats }));
+  res.end(JSON.stringify({ address, nickname, hasGenesisPass, lastTradeAt, stats, profileImageUrl, twitterHandle }));
   return true;
 }
 
@@ -583,7 +600,7 @@ async function handleScoreLeaderboardAlltime(
     return {
       ...mapRowToListItem(row, extras, formatQuoteVolume),
       profileImageUrl: profileImages.get(row.address) ?? null,
-      xHandle: badges?.xHandle ?? null,
+      twitterHandle: badges?.xHandle ?? null,
       totalScore: row.total_points,
       hasGoogle: badges?.hasGoogle ?? false,
       hasTelegram: badges?.hasTelegram ?? false,
@@ -727,7 +744,7 @@ function handleScoreLeaderboardWeekly(
       nickname: nicknames.get(row.address) ?? null,
       hasGenesisPass: genesisPassSet.has(row.address),
       profileImageUrl: profileImages.get(row.address) ?? null,
-      xHandle: row.x_handle ?? null,
+      twitterHandle: row.x_handle ?? null,
       totalScore: row.total_score,
       tradeCount: row.trade_count,
       volumeUsd: formatQuoteVolume(row.volume_quote),
