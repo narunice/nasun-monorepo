@@ -24,9 +24,7 @@ export default function DevHomePage() {
       <ScrollSnapSection>
         <WhatWeBuild2026Section />
       </ScrollSnapSection>
-      <ScrollSnapSection>
-        <WhatWeBuild2026Section videoCover />
-      </ScrollSnapSection>
+
       <ScrollSnapSection allowTallContent>
         <DevNewsEventsSection />
       </ScrollSnapSection>
