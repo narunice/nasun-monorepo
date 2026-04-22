@@ -32,7 +32,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
     nickname, needsNickname, nicknameRateLimit,
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
-    selectedLanguageRoomId, setLanguageRoom, unreadCounts,
+    unreadCounts,
     setTurnstileToken, turnstileKey,
   } = useChat();
 
@@ -159,15 +159,12 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
       )}
 
       {/* Room tabs */}
-      {(marketRooms.length > 0 || languageRooms.length > 1) && (
+      {(languageRooms.length > 0 || marketRooms.length > 0) && (
         <ChatRoomTabs
-          marketRooms={marketRooms}
-          languageRooms={languageRooms}
+          rooms={[...languageRooms, ...marketRooms]}
           activeRoomId={activeRoomId}
-          selectedLanguageRoomId={selectedLanguageRoomId}
           unreadCounts={unreadCounts}
           onSelectRoom={setActiveRoom}
-          onSelectLanguage={setLanguageRoom}
         />
       )}
 
