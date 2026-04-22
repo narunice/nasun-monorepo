@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
+import { TraderAvatar } from './TraderAvatar';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import { computeBadgesFromLeaderboard } from '../lib/badges';
+import { isValidXHandle, xProfileUrl } from '../lib/x-handle';
 import { BadgeDisplay } from './BadgeDisplay';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
 
@@ -63,22 +65,42 @@ export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
         </div>
       </td>
       <td className="py-2.5 px-3">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1.5">
-            {trader.lastTradeAt && Date.now() - trader.lastTradeAt < 15 * 60 * 1000 && (
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" title="Active" />
+        <div className="flex items-center gap-2">
+          <TraderAvatar address={trader.address} profileImageUrl={trader.profileImageUrl} size={28} />
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1.5">
+              {trader.lastTradeAt && Date.now() - trader.lastTradeAt < 15 * 60 * 1000 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" title="Active" />
+              )}
+              <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
+                {displayName}
+              </span>
+              {trader.hasGenesisPass && <GenesisPassBadge />}
+              {isValidXHandle(trader.twitterHandle) && (
+                <a
+                  href={xProfileUrl(trader.twitterHandle)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-theme-text-muted/60 hover:text-sky-400 transition-colors shrink-0"
+                  title={`@${trader.twitterHandle} on X`}
+                  aria-label={`Open @${trader.twitterHandle} on X`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M15 3h6v6" />
+                    <path d="M10 14 21 3" />
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  </svg>
+                </a>
+              )}
+              {badges.length > 0 && <BadgeDisplay badges={badges} compact />}
+            </div>
+            {trader.nickname && (
+              <span className="text-xs text-theme-text-muted font-mono">
+                {shortenAddress(trader.address)}
+              </span>
             )}
-            <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
-              {displayName}
-            </span>
-            {trader.hasGenesisPass && <GenesisPassBadge />}
-            {badges.length > 0 && <BadgeDisplay badges={badges} compact />}
           </div>
-          {trader.nickname && (
-            <span className="text-xs text-theme-text-muted font-mono">
-              {shortenAddress(trader.address)}
-            </span>
-          )}
         </div>
       </td>
       <td className="py-2.5 px-3 text-right">

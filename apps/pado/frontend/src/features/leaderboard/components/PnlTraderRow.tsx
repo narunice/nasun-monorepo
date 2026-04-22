@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import type { PnlLeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
+import { TraderAvatar } from './TraderAvatar';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
+import { isValidXHandle, xProfileUrl } from '../lib/x-handle';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
 
 interface PnlTraderRowProps {
@@ -64,18 +66,38 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
         </div>
       </td>
       <td className="py-2.5 px-3">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1.5">
-            <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
-              {displayName}
-            </span>
-            {trader.hasGenesisPass && <GenesisPassBadge />}
+        <div className="flex items-center gap-2">
+          <TraderAvatar address={trader.address} profileImageUrl={trader.profileImageUrl} size={28} />
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
+                {displayName}
+              </span>
+              {trader.hasGenesisPass && <GenesisPassBadge />}
+              {isValidXHandle(trader.twitterHandle) && (
+                <a
+                  href={xProfileUrl(trader.twitterHandle)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-theme-text-muted/60 hover:text-sky-400 transition-colors shrink-0"
+                  title={`@${trader.twitterHandle} on X`}
+                  aria-label={`Open @${trader.twitterHandle} on X`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M15 3h6v6" />
+                    <path d="M10 14 21 3" />
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  </svg>
+                </a>
+              )}
+            </div>
+            {trader.nickname && (
+              <span className="text-xs text-theme-text-muted font-mono">
+                {shortenAddress(trader.address)}
+              </span>
+            )}
           </div>
-          {trader.nickname && (
-            <span className="text-xs text-theme-text-muted font-mono">
-              {shortenAddress(trader.address)}
-            </span>
-          )}
         </div>
       </td>
       <td className="py-2.5 px-3 text-right">
