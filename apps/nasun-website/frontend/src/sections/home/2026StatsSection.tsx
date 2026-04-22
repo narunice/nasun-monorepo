@@ -228,8 +228,8 @@ export const Hero2026StatsSection = () => {
           <span className="text-sm font-bold uppercase tracking-widest text-pd4">
             View our activities
           </span>
-          <div className="flex gap-4 mb-4">
-            <div className="flex w-full ">
+          <div className="flex w-full gap-4 mb-4">
+            <div className="flex w-full justify-center">
               <ButtonV4
                 asChild
                 color="ghost"
@@ -241,7 +241,7 @@ export const Hero2026StatsSection = () => {
                 </Link>
               </ButtonV4>
             </div>
-            <div className="flex w-full">
+            <div className="flex w-full justify-center">
               <ButtonV4
                 asChild
                 color="ghost"
