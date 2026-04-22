@@ -32,12 +32,10 @@ export function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): () 
     const promise = fn()
       .then((data) => {
         store.set(key, { data, expiresAt: Date.now() + ttlMs });
-        inflight.delete(key);
         return data;
       })
-      .catch((err) => {
+      .finally(() => {
         inflight.delete(key);
-        throw err;
       });
 
     inflight.set(key, promise);

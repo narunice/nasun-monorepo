@@ -7,7 +7,8 @@ if (!DATABASE_URL) {
 
 export const sql = postgres(DATABASE_URL, {
   max: 10,
-  idle_timeout: 60,
+  idle_timeout: 30,
+  max_lifetime: 1800,
   connect_timeout: 10,
   connection: {
     statement_timeout: 30000,
@@ -19,7 +20,8 @@ const POINTS_DATABASE_URL = process.env.POINTS_DATABASE_URL;
 export const pointsDb = POINTS_DATABASE_URL
   ? postgres(POINTS_DATABASE_URL, {
       max: 5,
-      idle_timeout: 60,
+      idle_timeout: 30,
+      max_lifetime: 1800,
       connect_timeout: 10,
       connection: {
         statement_timeout: 30000,

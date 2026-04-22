@@ -123,9 +123,19 @@ function tryLoadActivationsFallback(): void {
 
 // --- Per-user Sync ---
 
-// Rate limit: 1 sync per user per 20 seconds
+// Rate limit: 1 sync per user per 20 seconds.
+// Entries expire after 1 hour; purge runs lazily on each set() to avoid a
+// dedicated timer and keep memory bounded at O(active users in 1h window).
 const syncTimestamps = new Map<string, number>();
 const SYNC_RATE_LIMIT_MS = 20_000;
+const SYNC_TIMESTAMP_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function purgeSyncTimestamps(): void {
+  const cutoff = Date.now() - SYNC_TIMESTAMP_TTL_MS;
+  for (const [id, ts] of syncTimestamps) {
+    if (ts < cutoff) syncTimestamps.delete(id);
+  }
+}
 
 /**
  * Fetch a single user's activations from admin-api and update the in-memory cache.
@@ -139,6 +149,7 @@ export async function updateActivationsForUser(
   if (now - lastSync < SYNC_RATE_LIMIT_MS) {
     return null; // rate-limited
   }
+  purgeSyncTimestamps();
   syncTimestamps.set(identityId, now);
 
   const baseUrl = process.env.ECOSYSTEM_ACTIVATIONS_URL;
@@ -247,13 +258,13 @@ export async function maybeRefreshMatview(force = false): Promise<void> {
     const ms = started > 0 ? Date.now() - started : 0;
     console.error(`[Ecosystem] Matview refresh error after ${ms}ms:`, err);
   } finally {
+    refreshInFlight = false;
     try {
       await conn`RESET statement_timeout`;
     } catch {
       // best-effort; if the connection is dead the pool will discard it
     }
     conn.release();
-    refreshInFlight = false;
   }
 }
 
