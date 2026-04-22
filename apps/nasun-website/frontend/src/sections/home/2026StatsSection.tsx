@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import { CountingNumber } from "@/components/ui/CountingNumber";
-import { ButtonV3 } from "@/components/ui/button-v3";
+import { ButtonV4 } from "@/components/ui/button-v4";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -228,29 +228,31 @@ export const Hero2026StatsSection = () => {
           <span className="text-sm font-bold uppercase tracking-widest text-pd4">
             View our activities
           </span>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <ButtonV3
-              asChild
-              variant="nw1"
-              outline
-              size="sm"
-              className="border-nasun-white text-nasun-white hover:bg-nasun-white/10 uppercase tracking-widest"
-            >
-              <Link to="/community/nasun-ecosystem-leaderboard">
-                Nasun Ecosystem Leaderboard
-              </Link>
-            </ButtonV3>
-            <ButtonV3
-              asChild
-              variant="nw1"
-              outline
-              size="sm"
-              className="border-nasun-white text-nasun-white hover:bg-nasun-white/10 uppercase tracking-widest"
-            >
-              <Link to="/community/pado-leaderboard">
-                Pado Traders Leaderboard
-              </Link>
-            </ButtonV3>
+          <div className="flex gap-4 mb-4">
+            <div className="flex w-full ">
+              <ButtonV4
+                asChild
+                color="ghost"
+                size="sm"
+                className="uppercase tracking-widest"
+              >
+                <Link to="/community/nasun-ecosystem-leaderboard">
+                  Ecosystem Leaderboard
+                </Link>
+              </ButtonV4>
+            </div>
+            <div className="flex w-full">
+              <ButtonV4
+                asChild
+                color="ghost"
+                size="sm"
+                className="uppercase tracking-widest"
+              >
+                <Link to="/community/pado-leaderboard">
+                  Pado DeFi Leaderboard
+                </Link>
+              </ButtonV4>
+            </div>
           </div>
         </div>
       </div>

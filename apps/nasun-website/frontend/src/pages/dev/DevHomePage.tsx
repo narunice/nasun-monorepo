@@ -14,23 +14,21 @@ export default function DevHomePage() {
         <ScrollSnapSection>
           <Hero2026Section />
         </ScrollSnapSection>
+        {/* Remaining sections without snap */}
+        <ScrollSnapSection allowTallContent>
+          <Hero2026StatsSection />
+        </ScrollSnapSection>
+        {/* A/B comparison: object-contain vs object-cover — dev only */}
+        <ScrollSnapSection>
+          <WhatWeBuild2026Section />
+        </ScrollSnapSection>
+        <ScrollSnapSection>
+          <DevNewsEventsSection />
+        </ScrollSnapSection>
+        <ScrollSnapSection>
+          <AllianceCreatorSection />
+        </ScrollSnapSection>
       </ScrollSnapContainer>
-
-      {/* Remaining sections without snap */}
-      <ScrollSnapSection allowTallContent>
-        <Hero2026StatsSection />
-      </ScrollSnapSection>
-      {/* A/B comparison: object-contain vs object-cover — dev only */}
-      <ScrollSnapSection>
-        <WhatWeBuild2026Section />
-      </ScrollSnapSection>
-
-      <ScrollSnapSection allowTallContent>
-        <DevNewsEventsSection />
-      </ScrollSnapSection>
-      <ScrollSnapSection>
-        <AllianceCreatorSection />
-      </ScrollSnapSection>
     </div>
   );
 }
