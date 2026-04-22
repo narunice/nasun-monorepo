@@ -74,9 +74,16 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 // Safety net: log unhandled rejections from background tasks (scanner timers,
-// cron callbacks) that escaped all try-catch blocks. Log and exit so PM2
-// can restart with a clean state and the crash is visible in the error log.
+// cron callbacks) that escaped all try-catch blocks.
+// Postgres connection drops (CONNECTION_ENDED / CONNECTION_DESTROYED) are transient;
+// the pool reconnects automatically so we just log them rather than crashing.
+const TRANSIENT_PG_CODES = new Set(['CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'CONNECTION_CLOSED']);
 process.on('unhandledRejection', (err) => {
+  const code = (err as any)?.code;
+  if (TRANSIENT_PG_CODES.has(code)) {
+    console.warn('[WARN] Transient postgres connection error (ignored):', code);
+    return;
+  }
   console.error('[FATAL] UnhandledRejection:', err);
   process.exit(1);
 });

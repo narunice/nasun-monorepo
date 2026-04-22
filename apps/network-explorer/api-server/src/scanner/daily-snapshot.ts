@@ -65,7 +65,7 @@ export async function takeDailySnapshot(
   // bonusRows EXCLUDES synthetic rows (maintains the existing per-day column semantics).
   // bonusCumRows INCLUDES synthetic — needed for cumulative math to match LIVE.
   // stakingRows: tier pts from post-cutoff staking-daily (v2).
-  const [bonusRows, bonusCumRows, referralRows, govRows, stakingRows] = await Promise.all([
+  const batchResults = await Promise.allSettled([
     pointsDb`
       SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric as bonus
       FROM activity_points
@@ -119,6 +119,18 @@ export async function takeDailySnapshot(
       GROUP BY identity_id
     `,
   ]);
+  const [bonusRes, bonusCumRes, referralRes, govRes, stakingRes] = batchResults;
+  if (batchResults.some(r => r.status === 'rejected')) {
+    const failed = batchResults
+      .map((r, i) => r.status === 'rejected' ? `query[${i}]: ${(r as PromiseRejectedResult).reason}` : null)
+      .filter(Boolean);
+    console.error(`[Snapshot] Batch query partial failure for ${snapshotDate}:`, failed.join('; '));
+  }
+  const bonusRows = bonusRes.status === 'fulfilled' ? bonusRes.value : [];
+  const bonusCumRows = bonusCumRes.status === 'fulfilled' ? bonusCumRes.value : [];
+  const referralRows = referralRes.status === 'fulfilled' ? referralRes.value : [];
+  const govRows = govRes.status === 'fulfilled' ? govRes.value : [];
+  const stakingRows = stakingRes.status === 'fulfilled' ? stakingRes.value : [];
   const bonusMap = new Map<string, number>();
   for (const br of bonusRows) {
     bonusMap.set(br.identity_id as string, parseFloat(br.bonus as string));
