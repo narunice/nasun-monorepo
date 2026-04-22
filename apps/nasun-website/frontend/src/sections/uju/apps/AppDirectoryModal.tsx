@@ -79,7 +79,7 @@ function AppCard({
           {pinned ? (
             <button
               onClick={onUnpin}
-              className="flex items-center gap-1 text-xs font-medium text-pado-4 border border-pado-4/30 rounded px-2 py-1 hover:bg-pado-4/10 transition-colors"
+              className="flex items-center gap-1 text-sm font-medium text-pado-4 border border-pado-4/30 rounded px-2 py-1 hover:bg-pado-4/10 transition-colors"
             >
               <CheckIcon />
               Pinned
@@ -89,7 +89,7 @@ function AppCard({
               onClick={onPin}
               disabled={atMax}
               title={atMax ? `Max ${MAX_PINNED} apps` : undefined}
-              className="text-xs font-medium text-uju-secondary border border-uju-border rounded px-2 py-1 hover:text-pado-3 hover:border-pado-3/40 transition-colors disabled:text-uju-border disabled:border-uju-border/50 disabled:cursor-not-allowed disabled:hover:text-uju-border disabled:hover:border-uju-border/50"
+              className="text-sm font-medium text-uju-secondary border border-uju-border rounded px-2 py-1 hover:text-pado-3 hover:border-pado-3/40 transition-colors disabled:text-uju-border disabled:border-uju-border/50 disabled:cursor-not-allowed disabled:hover:text-uju-border disabled:hover:border-uju-border/50"
             >
               Pin
             </button>
@@ -99,7 +99,7 @@ function AppCard({
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Open ${app.name}, opens in new tab`}
-            className="text-xs font-medium text-pado-3 border border-pado-3/30 rounded px-2 py-1 hover:bg-pado-3/10 transition-colors"
+            className="text-sm font-medium text-pado-3 border border-pado-3/30 rounded px-2 py-1 hover:bg-pado-3/10 transition-colors"
           >
             Open
           </a>

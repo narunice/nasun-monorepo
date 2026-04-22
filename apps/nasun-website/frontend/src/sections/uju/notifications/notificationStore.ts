@@ -29,7 +29,8 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
   add: (notif) =>
     set((s) => {
       if (s.notifications.some((n) => n.id === notif.id)) return s;
-      if (notif.actionUrl !== undefined && !notif.actionUrl.startsWith('/')) return s;
+      // Reject non-internal URLs — also blocks protocol-relative //evil.com paths (OWASP A03)
+      if (notif.actionUrl !== undefined && !/^\/(?![/\\])/.test(notif.actionUrl)) return s;
       return { notifications: [notif, ...s.notifications].slice(0, MAX_NOTIFICATIONS) };
     }),
 
