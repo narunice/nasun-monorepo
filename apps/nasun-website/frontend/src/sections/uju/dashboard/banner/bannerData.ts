@@ -17,9 +17,6 @@ export const BANNER_ITEMS: BannerItem[] = [
     tag: 'Network',
     title: 'NSN Staking is Live',
     description: 'Stake your NSN tokens to earn rewards and strengthen the Nasun network.',
-    ctaLabel: 'Start Staking',
-    ctaUrl: '/uju?tab=dashboard',
-    isExternal: false,
     accent: 'mint',
   },
   {
@@ -48,7 +45,7 @@ export const BANNER_ITEMS: BannerItem[] = [
     title: 'Season 1 Leaderboard',
     description: 'Earn ecosystem points through daily missions, governance, and community activity.',
     ctaLabel: 'View Leaderboard',
-    ctaUrl: '/wave1/leaderboard',
+    ctaUrl: '/community/creators-leaderboard',
     isExternal: false,
     accent: 'gold',
   },

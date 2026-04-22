@@ -131,6 +131,7 @@ export function BannerCarousel() {
     const handler = (e: KeyboardEvent) => {
       const active = document.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+      if (active instanceof HTMLElement && active.closest('[role="dialog"]')) return;
       if (e.key === 'ArrowLeft')  dispatch({ type: 'GO', dir: -1 });
       if (e.key === 'ArrowRight') dispatch({ type: 'GO', dir: 1 });
     };
