@@ -6,6 +6,7 @@ import {
   makeGovernanceMission,
   getMissionBadge,
 } from '../missionRegistry';
+import type { MissionId } from '@/hooks/useDailyMissions';
 
 // ── BASE_MISSIONS ─────────────────────────────────────────────────────────────
 
@@ -295,5 +296,67 @@ describe('mission pool construction', () => {
     const ids = pool.map((m) => m.id);
     const uniqueIds = new Set(ids);
     expect(uniqueIds.size).toBe(ids.length);
+  });
+});
+
+// ── Onchain MissionId sync guard ──────────────────────────────────────────────
+// If useDailyMissions.ts adds/removes/renames a MissionId, this test must be
+// updated in lockstep. The runtime array below is the single source of truth
+// for ids accepted by the scanner; drift between this list and MissionId will
+// fail TypeScript compilation via the `satisfies` assertion on ALLOWED, and the
+// `_Exhaustive` type check catches the reverse direction (MissionId gaining an
+// entry not present in ALLOWED).
+
+describe('onchain mission ID sync', () => {
+  // Runtime list mirroring the MissionId union in useDailyMissions.ts.
+  // `satisfies readonly MissionId[]` ensures every entry is a valid MissionId
+  // at compile time — if MissionId shrinks or renames, TS errors here.
+  const ALLOWED_MISSION_IDS = [
+    'faucet',
+    'wallet-transfer',
+    'pado-dex',
+    'pado-lottery',
+    'pado-scratchcard',
+    'pado-games',
+    'chat',
+  ] as const satisfies readonly MissionId[];
+
+  // Reverse check: if MissionId grows, this type forces the developer to add
+  // the new id to ALLOWED_MISSION_IDS above.
+  type _Exhaustive = Exclude<MissionId, (typeof ALLOWED_MISSION_IDS)[number]> extends never
+    ? true
+    : 'ALLOWED_MISSION_IDS is missing a new MissionId — add it to the runtime array above';
+  const _exhaustiveCheck: _Exhaustive = true;
+  void _exhaustiveCheck; // silence unused-var lint
+
+  const allowed = new Set<string>(ALLOWED_MISSION_IDS);
+
+  it('every BASE_MISSIONS onchain id is a valid MissionId', () => {
+    for (const m of BASE_MISSIONS) {
+      if (m.completionType === 'onchain') {
+        expect(allowed.has(m.id)).toBe(true);
+      }
+    }
+  });
+
+  it('every APP_MISSION_MAP onchain id is a valid MissionId', () => {
+    for (const [appId, missions] of Object.entries(APP_MISSION_MAP)) {
+      for (const m of missions) {
+        if (m.completionType === 'onchain') {
+          expect(
+            allowed.has(m.id),
+            `${appId}/${m.id} is not in MissionId union`,
+          ).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('governance-vote is intentionally NOT in MissionId (tracked out-of-band)', () => {
+    // Governance completion is detected via useGovernanceMission
+    // (hasUnvotedProposal), not via the daily-mission scanner's Set<MissionId>.
+    // The mission is removed from the pool once voted, so no MissionId entry
+    // is needed.
+    expect(allowed.has('governance-vote')).toBe(false);
   });
 });
