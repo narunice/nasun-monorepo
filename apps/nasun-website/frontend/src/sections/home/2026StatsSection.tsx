@@ -81,7 +81,7 @@ const SectionChip = ({
 export const Hero2026StatsSection = () => {
   return (
     <section className="relative bg-pd0 min-h-screen flex items-center max-w-9xl mx-auto">
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 py-14 lg:py-20 flex flex-col gap-14 lg:gap-16">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col gap-14 lg:gap-16 -mt-[50px]">
         {/* Top: Nasun Devnet - full width */}
         <div>
           <motion.div
@@ -228,7 +228,7 @@ export const Hero2026StatsSection = () => {
           <span className="text-sm font-bold uppercase tracking-widest text-pd4">
             View our activities
           </span>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <ButtonV3
               asChild
               variant="nw1"
