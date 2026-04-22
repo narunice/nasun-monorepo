@@ -8,7 +8,8 @@ export interface LeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
-  twitterHandle?: string;
+  twitterHandle: string | null;
+  profileImageUrl: string | null;
   hasGenesisPass?: boolean;
   volumeUsd: string;
   tradeCount: number;
@@ -29,7 +30,8 @@ export interface PnlLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
-  twitterHandle?: string;
+  twitterHandle: string | null;
+  profileImageUrl: string | null;
   hasGenesisPass?: boolean;
   pnlUsd: string;
   pnlPercent: number;
@@ -63,7 +65,8 @@ export interface ScoreLeaderboardTrader {
   rank: number;
   address: string;
   nickname: string | null;
-  twitterHandle?: string;
+  twitterHandle: string | null;
+  profileImageUrl: string | null;
   hasGenesisPass?: boolean;
   hasGoogle?: boolean;
   hasTelegram?: boolean;
@@ -111,6 +114,8 @@ export interface TraderStatsResponse {
   hasGenesisPass?: boolean;
   lastTradeAt?: number | null;
   stats: Record<Period, TraderPeriodStats | null>;
+  profileImageUrl: string | null;
+  twitterHandle: string | null;
 }
 
 export interface LeaderboardStatusResponse {
