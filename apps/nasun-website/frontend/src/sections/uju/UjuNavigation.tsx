@@ -16,7 +16,7 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
     <>
       {/* Desktop: sticky top bar below Navbar */}
       <nav className="hidden md:block sticky top-[50px] z-40 bg-uju-card border-b border-uju-border">
-        <div className="max-w-5xl mx-auto px-4 flex gap-1">
+        <div className="max-w-5xl mx-auto px-4 flex gap-1 h-[49px]">
           {TABS.map((t) => (
             <button
               key={t.id}
