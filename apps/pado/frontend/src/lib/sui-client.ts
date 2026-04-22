@@ -1,4 +1,5 @@
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, SuiHTTPTransport } from '@mysten/sui/client';
+import { createRetryFetch } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../config/network';
 
 // Singleton SuiClient instance
@@ -7,7 +8,10 @@ let suiClient: SuiClient | null = null;
 export function getSuiClient(): SuiClient {
   if (!suiClient) {
     suiClient = new SuiClient({
-      url: NETWORK_CONFIG.rpcUrl,
+      transport: new SuiHTTPTransport({
+        url: NETWORK_CONFIG.rpcUrl,
+        fetch: createRetryFetch(),
+      }),
     });
   }
   return suiClient;
