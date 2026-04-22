@@ -14,9 +14,6 @@ function parseTab(raw: string | null): Tab {
   return raw && VALID_TABS.has(raw as Tab) ? (raw as Tab) : "dashboard";
 }
 
-// Navbar 50px + UjuNavigation 49px = 99px
-const HEADER_HEIGHT = 99;
-
 export default function UjuPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
@@ -39,9 +36,9 @@ export default function UjuPage() {
     <UjuLayout>
       <UjuNavigation activeTab={tab} onTabChange={setTab} />
 
-      <div className="flex min-h-[calc(100vh-99px)]">
+      <div className={isDesktop ? "flex h-[calc(100vh-99px)] overflow-hidden" : "flex min-h-[calc(100vh-99px)]"}>
         {/* Main content */}
-        <main className="flex-1 min-w-0">
+        <main className={`flex-1 min-w-0${isDesktop ? " overflow-y-auto" : ""}`}>
           <div className="max-w-5xl mx-auto px-4 py-6">
             {tab === "dashboard" && <DashboardTab />}
             {tab === "activity" && <ActivityTab />}
@@ -51,10 +48,7 @@ export default function UjuPage() {
 
         {/* Desktop sidebar: JS-conditional to prevent double-mount */}
         {isDesktop && (
-          <aside
-            className="flex flex-col w-80 shrink-0 sticky border-l border-uju-border"
-            style={{ top: HEADER_HEIGHT, height: `calc(100vh - ${HEADER_HEIGHT}px)` }}
-          >
+          <aside className="flex flex-col w-80 shrink-0 border-l border-uju-border">
             <UjuChatSidebar />
           </aside>
         )}
