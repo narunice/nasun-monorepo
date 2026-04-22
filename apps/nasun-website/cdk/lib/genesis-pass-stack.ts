@@ -291,12 +291,14 @@ export class GenesisPassStack extends cdk.Stack {
       },
     });
 
-    // Provisioned Concurrency for Genesis Pass drop (eliminates cold starts)
+    // Provisioned Concurrency for Genesis Pass drop (eliminates cold starts).
+    // Only applied in production — dev drops are infrequent and PC is costly.
     const mintSigVersion = mintSignatureLambda.currentVersion;
+    const isProd = process.env.NODE_ENV === "production";
     const mintSigAlias = new lambda.Alias(this, "MintSignatureLiveAlias", {
       aliasName: "live",
       version: mintSigVersion,
-      provisionedConcurrentExecutions: 50,
+      ...(isProd ? { provisionedConcurrentExecutions: 50 } : {}),
     });
 
     this.allowlistTable.grantReadWriteData(mintSignatureLambda);
