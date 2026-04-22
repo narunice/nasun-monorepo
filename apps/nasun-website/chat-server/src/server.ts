@@ -46,7 +46,45 @@ const MAX_SESSION_TOKENS = 10_000;
 const followerCountCache = { data: new Map<string, number>(), expiresAt: 0 };
 const FOLLOWER_CACHE_TTL = 30_000;
 
+// Per-IP auth failure tracking (sliding window) — blocks brute-force / bad-signature loops
+const authFailuresPerIp = new Map<string, { count: number; windowStart: number }>();
+const AUTH_FAIL_WINDOW_MS = 60_000;
+const AUTH_FAIL_THRESHOLD = 10;
+const MAX_AUTH_FAIL_ENTRIES = 5_000;
+
+// Turnstile fail-open budget — prevents unbounded captcha bypass when siteverify times out at scale
+const FAIL_OPEN_WINDOW_MS = 60_000;
+const FAIL_OPEN_MAX = 20;
+let failOpenCount = 0;
+let failOpenWindowStart = Date.now();
+
 // ===== Helpers =====
+
+function recordAuthFailure(ip: string): void {
+  if (ip === 'unknown') return;
+  const now = Date.now();
+  const entry = authFailuresPerIp.get(ip);
+  if (!entry || now - entry.windowStart >= AUTH_FAIL_WINDOW_MS) {
+    if (authFailuresPerIp.size >= MAX_AUTH_FAIL_ENTRIES) {
+      const firstKey = authFailuresPerIp.keys().next().value;
+      if (firstKey) authFailuresPerIp.delete(firstKey);
+    }
+    authFailuresPerIp.set(ip, { count: 1, windowStart: now });
+  } else {
+    entry.count++;
+  }
+}
+
+function isAuthRateLimited(ip: string): boolean {
+  if (ip === 'unknown') return false;
+  const entry = authFailuresPerIp.get(ip);
+  if (!entry) return false;
+  if (Date.now() - entry.windowStart >= AUTH_FAIL_WINDOW_MS) {
+    authFailuresPerIp.delete(ip);
+    return false;
+  }
+  return entry.count >= AUTH_FAIL_THRESHOLD;
+}
 
 async function verifyTurnstileToken(token: string, secretKey: string): Promise<boolean> {
   if (token.length > 2048) return false;
@@ -55,7 +93,7 @@ async function verifyTurnstileToken(token: string, secretKey: string): Promise<b
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ secret: secretKey, response: token }),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
       console.warn('[turnstile] siteverify returned', res.status);
@@ -65,6 +103,25 @@ async function verifyTurnstileToken(token: string, secretKey: string): Promise<b
     return data.success === true;
   } catch (err) {
     console.warn('[turnstile] verification error:', (err as Error).message);
+    // Fail-open on timeout: blocking legitimate users is worse than a brief bot-protection gap.
+    // Check err.name first (DOMException from AbortSignal.timeout throws TimeoutError/AbortError).
+    const errName = (err as DOMException).name;
+    if (errName === 'TimeoutError' || errName === 'AbortError') {
+      // Budget: if timeouts exceed threshold within window, switch to fail-closed
+      // to block attacker-induced bypass (botnet-driven siteverify timeouts).
+      const now = Date.now();
+      if (now - failOpenWindowStart >= FAIL_OPEN_WINDOW_MS) {
+        failOpenWindowStart = now;
+        failOpenCount = 0;
+      }
+      if (failOpenCount >= FAIL_OPEN_MAX) {
+        console.warn('[turnstile] Fail-open budget exhausted — rejecting (fail-closed)');
+        return false;
+      }
+      failOpenCount++;
+      console.warn(`[turnstile] Timeout — fail-open (${failOpenCount}/${FAIL_OPEN_MAX} in window)`);
+      return true;
+    }
     return false;
   }
 }
@@ -383,6 +440,11 @@ wss.on('connection', (ws, req) => {
     ws.close(4429, 'Too many connections');
     return;
   }
+  // Per-IP auth failure rate limit (blocks brute-force / bad-signature loops)
+  if (isAuthRateLimited(ip)) {
+    ws.close(4429, 'Auth rate limit');
+    return;
+  }
   connectionsPerIp.set(ip, ipCount);
 
   // Generate challenge and send
@@ -423,12 +485,14 @@ wss.on('connection', (ws, req) => {
 
         const pending = pendingAuth.get(ws);
         if (!pending) {
+          recordAuthFailure(ip);
           send(ws, { type: 'auth_error', reason: 'No pending challenge' });
           ws.close(4401, 'No pending challenge');
           return;
         }
 
         if (!data.address || !isValidSuiAddress(data.address)) {
+          recordAuthFailure(ip);
           send(ws, { type: 'auth_error', reason: 'Invalid address' });
           ws.close(4401, 'Invalid address');
           return;
@@ -436,12 +500,14 @@ wss.on('connection', (ws, req) => {
 
         if (CONFIG.turnstileSecretKey) {
           if (!data.turnstileToken) {
+            recordAuthFailure(ip);
             send(ws, { type: 'auth_error', reason: 'Captcha required' });
             ws.close(4403, 'Captcha required');
             return;
           }
           const turnstileOk = await verifyTurnstileToken(data.turnstileToken, CONFIG.turnstileSecretKey);
           if (!turnstileOk) {
+            recordAuthFailure(ip);
             send(ws, { type: 'auth_error', reason: 'Captcha verification failed' });
             ws.close(4403, 'Captcha failed');
             return;
@@ -456,10 +522,19 @@ wss.on('connection', (ws, req) => {
         pendingAuth.delete(ws);
 
         if (!verifiedAddress) {
+          recordAuthFailure(ip);
           send(ws, { type: 'auth_error', reason: 'Invalid signature' });
           ws.close(4401, 'Auth failed');
           return;
         }
+
+        // Guard: authTimeout may have fired while awaiting verifySignature
+        if (ws.readyState !== WebSocket.OPEN) {
+          return;
+        }
+
+        // Successful auth — clear any accumulated auth-failure counter for this IP
+        authFailuresPerIp.delete(ip);
 
         // Successfully authenticated
         // Use client-provided displayName if valid, otherwise fall back to shortened address
@@ -947,6 +1022,11 @@ const cleanupTimer = setInterval(() => {
   for (const [key, timestamps] of lastFollowToggleTime) {
     while (timestamps.length > 0 && timestamps[0] < threshold) timestamps.shift();
     if (timestamps.length === 0) lastFollowToggleTime.delete(key);
+  }
+  // Drop auth-failure entries whose sliding window has fully elapsed
+  const authFailThreshold = Date.now() - AUTH_FAIL_WINDOW_MS;
+  for (const [key, entry] of authFailuresPerIp) {
+    if (entry.windowStart < authFailThreshold) authFailuresPerIp.delete(key);
   }
   cleanupSessionTokens();
   cleanupApiRateLimits();

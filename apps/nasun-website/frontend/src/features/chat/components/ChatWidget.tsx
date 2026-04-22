@@ -40,6 +40,8 @@ export default function ChatWidget() {
     nickname,
     nicknameRateLimit,
     setTurnstileToken,
+    onTurnstileError,
+    onTurnstileExpire,
     turnstileKey,
   } = useChat();
   const [showNicknameModal, setShowNicknameModal] = useState(false);
@@ -506,6 +508,8 @@ export default function ChatWidget() {
           siteKey={TURNSTILE_SITE_KEY}
           options={{ appearance: 'execute', size: 'invisible' }}
           onSuccess={setTurnstileToken}
+          onError={onTurnstileError}
+          onExpire={onTurnstileExpire}
           style={{ display: 'none' }}
         />
       )}
