@@ -369,4 +369,143 @@ describe('zklogin.ts core functions', () => {
       expect(getZkLoginState()).toBeNull();
     });
   });
+
+  // =======================
+  // Primary prover circuit breaker
+  // =======================
+  describe('fetchZkProof circuit breaker', () => {
+    // Shared valid proof response used across circuit breaker cases
+    const proofResponse = {
+      proofPoints: { a: ['1'], b: [['1']], c: ['1'] },
+      issBase64Details: { value: 'x', indexMod4: 0 },
+      headerBase64: 'h',
+      addressSeed: 'seed',
+    };
+    // Valid bech32-encoded ephemeral private key (Ed25519Keypair default)
+    let ephemeralPrivateKey: string;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      vi.useRealTimers();
+      const { Ed25519Keypair } = await import('@mysten/sui/keypairs/ed25519');
+      ephemeralPrivateKey = new Ed25519Keypair().getSecretKey();
+    });
+
+    it('opens the circuit after 3 consecutive primary failures and skips primary next call', async () => {
+      const {
+        configureZkLogin,
+        fetchZkProof,
+        __resetPrimaryProverCircuitForTest,
+      } = await import('../core/zklogin');
+      __resetPrimaryProverCircuitForTest();
+
+      configureZkLogin({
+        saltApiUrl: 'https://salt.example.com',
+        proverUrl: 'https://primary.example.com',
+        providers: {},
+      });
+
+      // Primary always rejects, fallback always succeeds.
+      const fetchMock = vi.fn(async (url: string | URL | Request) => {
+        const u = typeof url === 'string' ? url : url.toString();
+        if (u.includes('primary.example.com')) {
+          return new Response('overloaded', { status: 503 });
+        }
+        return new Response(JSON.stringify(proofResponse), { status: 200 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const baseParams = {
+        jwt: 'jwt',
+        salt: '1',
+        ephemeralPrivateKey,
+        maxEpoch: 1,
+        randomness: '1',
+      };
+
+      // 3 calls: all hit primary then fallback -> opens circuit on 3rd failure
+      for (let i = 0; i < 3; i++) {
+        const progress: string[] = [];
+        await fetchZkProof({
+          ...baseParams,
+          onProgress: (e) => progress.push(e.phase),
+        });
+        expect(progress).toEqual(['primary', 'fallback']);
+      }
+
+      // 4th call must skip primary entirely
+      const progress4: Array<{ phase: string; circuitOpen?: boolean }> = [];
+      await fetchZkProof({
+        ...baseParams,
+        onProgress: (e) => progress4.push(e),
+      });
+      expect(progress4).toEqual([
+        { phase: 'fallback', reason: expect.any(String), circuitOpen: true },
+      ]);
+
+      // fetch was called 3x primary + 3x fallback during warmup, + 1x fallback for 4th call = 7 total
+      // (no 4th primary call = the key assertion)
+      const primaryCalls = fetchMock.mock.calls.filter((c) =>
+        (c[0] as string).includes('primary.example.com'),
+      ).length;
+      expect(primaryCalls).toBe(3);
+    });
+
+    it('closes the circuit on successful primary call', async () => {
+      const {
+        configureZkLogin,
+        fetchZkProof,
+        __resetPrimaryProverCircuitForTest,
+      } = await import('../core/zklogin');
+      __resetPrimaryProverCircuitForTest();
+
+      configureZkLogin({
+        saltApiUrl: 'https://salt.example.com',
+        proverUrl: 'https://primary.example.com',
+        providers: {},
+      });
+
+      let primaryShouldFail = true;
+      const fetchMock = vi.fn(async (url: string | URL | Request) => {
+        const u = typeof url === 'string' ? url : url.toString();
+        if (u.includes('primary.example.com') && primaryShouldFail) {
+          return new Response('overloaded', { status: 503 });
+        }
+        return new Response(JSON.stringify(proofResponse), { status: 200 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const baseParams = {
+        jwt: 'jwt',
+        salt: '1',
+        ephemeralPrivateKey,
+        maxEpoch: 1,
+        randomness: '1',
+      };
+
+      // 2 failures -- below threshold, circuit still closed
+      await fetchZkProof(baseParams);
+      await fetchZkProof(baseParams);
+
+      // Primary recovers -- success should reset failure counter
+      primaryShouldFail = false;
+      const progress: string[] = [];
+      await fetchZkProof({
+        ...baseParams,
+        onProgress: (e) => progress.push(e.phase),
+      });
+      expect(progress).toEqual(['primary']);
+
+      // Now make primary fail again. Counter was reset, so it takes 3 more
+      // failures to open the circuit -- primary should still be called next.
+      primaryShouldFail = true;
+      await fetchZkProof(baseParams);
+      const progress2: string[] = [];
+      await fetchZkProof({
+        ...baseParams,
+        onProgress: (e) => progress2.push(e.phase),
+      });
+      expect(progress2).toEqual(['primary', 'fallback']);
+    });
+  });
 });
