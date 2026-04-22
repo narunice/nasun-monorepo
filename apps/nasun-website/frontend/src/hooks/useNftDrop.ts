@@ -1,26 +1,25 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
 import { formatEther } from "viem";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { GENESIS_PASS_ABI, GENESIS_PASS_ADDRESSES } from "@/constants/genesis-pass-contract";
+import {
+  GENESIS_PASS_ABI,
+  GENESIS_PASS_CHAIN_ID,
+  GENESIS_PASS_CONTRACT,
+} from "@/constants/genesis-pass-contract";
 import { requestMintSignature, GenesisPassApiError } from "@/services/genesisPassApi";
 import { useUserStore } from "@/store/userStore";
 
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
 
-function getContractAddress(chainId: number): `0x${string}` | undefined {
-  const addr = GENESIS_PASS_ADDRESSES[chainId];
-  return addr ? (addr as `0x${string}`) : undefined;
-}
-
 export function useNftDropRead() {
-  const chainId = useChainId();
   const { address } = useAccount();
-  const contractAddress = getContractAddress(chainId);
+  const contractAddress = GENESIS_PASS_CONTRACT;
 
   const { data: currentStage } = useReadContract({
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "currentStage",
+    chainId: GENESIS_PASS_CHAIN_ID,
     query: { refetchInterval: 30_000, refetchOnWindowFocus: true },
   });
 
@@ -28,6 +27,7 @@ export function useNftDropRead() {
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "currentMintPrice",
+    chainId: GENESIS_PASS_CHAIN_ID,
     query: { refetchInterval: 30_000 },
   });
 
@@ -35,6 +35,7 @@ export function useNftDropRead() {
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "mintDeadline",
+    chainId: GENESIS_PASS_CHAIN_ID,
     query: { staleTime: 300_000 },
   });
 
@@ -42,6 +43,7 @@ export function useNftDropRead() {
     address: contractAddress,
     abi: GENESIS_PASS_ABI,
     functionName: "transfersUnlocked",
+    chainId: GENESIS_PASS_CHAIN_ID,
     query: { staleTime: 300_000 },
   });
 
@@ -52,6 +54,7 @@ export function useNftDropRead() {
     abi: GENESIS_PASS_ABI,
     functionName: "mintedPerStage",
     args: [stageNum, address!],
+    chainId: GENESIS_PASS_CHAIN_ID,
     query: { enabled: !!address && stageNum > 0 },
   });
 
@@ -60,6 +63,7 @@ export function useNftDropRead() {
     abi: GENESIS_PASS_ABI,
     functionName: "walletLimitPerStage",
     args: [stageNum],
+    chainId: GENESIS_PASS_CHAIN_ID,
     query: { enabled: stageNum > 0 },
   });
 
@@ -86,7 +90,7 @@ const STAGE_PUBLIC = 4;
 export function useNftDropMint() {
   const chainId = useChainId();
   const { address } = useAccount();
-  const contractAddress = getContractAddress(chainId);
+  const contractAddress = GENESIS_PASS_CONTRACT;
   const cognitoToken = useUserStore((s) => s.user?.cognitoToken); // kept for isLoggedIn
   const { switchChainAsync } = useSwitchChain();
   // Read on-chain stage directly for mint logic (immune to UI overrides)
@@ -147,27 +151,17 @@ export function useNftDropMint() {
         return;
       }
 
-      // Switch to correct chain if needed
-      const expectedChainId = Number(import.meta.env.VITE_ETHEREUM_CHAIN_ID);
-      if (!expectedChainId) {
-        setError("Network configuration error. Please contact support.");
-        return;
-      }
-      if (chainId !== expectedChainId) {
+      // Switch to Ethereum mainnet if needed (GP is mainnet-only)
+      if (chainId !== GENESIS_PASS_CHAIN_ID) {
         try {
-          await switchChainAsync({ chainId: expectedChainId });
+          await switchChainAsync({ chainId: GENESIS_PASS_CHAIN_ID });
         } catch {
           setError("Please switch to Ethereum Mainnet in your wallet and try again.");
           return;
         }
       }
 
-      // Resolve contract address from expected chain (not stale closure)
-      const resolvedAddress = getContractAddress(expectedChainId);
-      if (!resolvedAddress) {
-        setError("Contract not available on this network.");
-        return;
-      }
+      const resolvedAddress = GENESIS_PASS_CONTRACT;
 
       // Prevent minting with 0 price on paid stages
       if (currentStage > 1 && currentStage !== STAGE_PUBLIC && mintPriceWei === 0n) {
@@ -256,7 +250,7 @@ export function useNftDropMint() {
             signature,
           ],
           value: mintPriceWei,
-          chainId: expectedChainId,
+          chainId: GENESIS_PASS_CHAIN_ID,
         });
         setTxHash(hash);
       } catch (e: any) {
