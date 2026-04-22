@@ -45,6 +45,7 @@ function AppContent() {
   useCrossAppArrival();
   const isAdminPage = location.pathname.startsWith('/admin');
   const isClaimPage = location.pathname === '/claim' || location.pathname.startsWith('/claim/');
+  const isUjuPage = location.pathname.startsWith('/uju');
 
   // Disable browser's auto scroll restoration
   useEffect(() => {
@@ -69,7 +70,7 @@ function AppContent() {
         <AppRoutes />
         {isPageReady && !isAdminPage && !isClaimPage && <Footer />}
       </main>
-      {!isClaimPage && (
+      {!isClaimPage && !isUjuPage && (
         <Suspense fallback={null}>
           <ChatWidget />
         </Suspense>

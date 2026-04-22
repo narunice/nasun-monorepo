@@ -29,6 +29,9 @@ const CreatorPostsAdmin = lazy(() => import("../features/admin/pages/CreatorPost
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
 
+// uju dashboard (lazy loaded, protected)
+const UjuPage = lazy(() => import("../pages/uju/UjuPage"));
+
 // Dev/Showcase pages (lazy loaded)
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
 const WalletTestPage = lazy(() => import("../pages/dev/WalletTestPage"));
@@ -166,6 +169,15 @@ const AppRoutes = () => {
 
         {/* Admin Routes */}
         {renderAdminRoutes(adminRoutes)}
+
+        {/* uju dashboard (protected) */}
+        <Route path="/uju" element={
+          <PrivateRoute>
+            <Suspense fallback={<PageLoading />}>
+              <UjuPage />
+            </Suspense>
+          </PrivateRoute>
+        } />
 
         {/* Claim Route (standalone landing page, no Navbar/Footer) */}
         <Route path="/claim/:encodedData" element={
