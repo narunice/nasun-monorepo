@@ -6,9 +6,6 @@ import { ChatInput, type ChatInputHandle } from './ChatInput';
 import { SetNicknameModal } from './SetNicknameModal';
 import { ChatRoomTabs } from './ChatRoomTabs';
 import { useChatTextSize } from '../hooks/useChatTextSize';
-import { Turnstile } from '@marsidev/react-turnstile';
-
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 interface Props {
   onMinimize?: () => void;
@@ -33,7 +30,6 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
     unreadCounts,
-    setTurnstileToken, turnstileKey,
   } = useChat();
 
   // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
@@ -209,15 +205,8 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
           }}
         />
       )}
-      {TURNSTILE_SITE_KEY && address && (
-        <Turnstile
-          key={turnstileKey}
-          siteKey={TURNSTILE_SITE_KEY}
-          options={{ appearance: 'execute', size: 'invisible' }}
-          onSuccess={setTurnstileToken}
-          style={{ display: 'none' }}
-        />
-      )}
+      {/* Turnstile widget is mounted at the App root (ChatLayer) so the
+          challenge completes in the background before the panel opens. */}
     </div>
   );
 }

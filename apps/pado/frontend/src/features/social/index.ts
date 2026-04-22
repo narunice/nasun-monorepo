@@ -7,5 +7,5 @@ export { ShareCardModal } from './components/ShareCardModal';
 export { ShareTradeButton } from './components/ShareTradeButton';
 export { SharePnlButton } from './components/SharePnlButton';
 export { SharePortfolioButton } from './components/SharePortfolioButton';
-export { useChat } from './hooks/useChat';
+export { useChat, useChatTurnstilePrewarm } from './hooks/useChat';
 export type { ChatMessage, ChatConnectionStatus, ChatState } from './types';
