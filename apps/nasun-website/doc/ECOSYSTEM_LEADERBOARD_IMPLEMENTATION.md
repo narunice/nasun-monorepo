@@ -1,6 +1,6 @@
 # Nasun Ecosystem Leaderboard - Implementation Reference
 
-Last updated: 2026-04-22
+Last updated: 2026-04-22 (staking emissions added; score display updated to 3 decimal places)
 
 ## Overview
 
@@ -26,6 +26,7 @@ weekly_score = activity_score
              + creator_post_score   (= SUM(final_points) / 5.0)
              + bonus_score          (= bugreport+feedback / 2.0 + game / 3.0)
              + volume_bonus         (= 1.6 * LOG2(volume_count + 1))
+             + staking_emission     (= SUM(final_points) WHERE category='staking-reward')
 
 activity_score =
   COUNT of DISTINCT (identity_id, day_slot, category) triples over the week
@@ -34,6 +35,10 @@ activity_score =
 volume_count =
   COUNT(*) WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','wallet-transfer')
   (NOT deduplicated - each transaction counts)
+
+staking_emission per day =
+  STAKING_EMISSION_COEFF * LOG2(daily_estimated_reward_delta_mist + 1)
+  STAKING_EMISSION_COEFF = 0.07  (set 2026-04-22; was 0.05 at launch)
 ```
 
 ### Included activity categories (for activity_score)
@@ -43,7 +48,7 @@ All `activity_points` rows that are:
 - `NOT flagged`
 - `identity_id IS NOT NULL`
 - Within week bounds (`tx_timestamp >= week_start AND < week_end`)
-- Category NOT IN: `referral-bonus`, `daily-mission`, `ecosystem-passive`, `staking-daily`, `staking`
+- Category NOT IN: `referral-bonus`, `daily-mission`, `ecosystem-passive`, `staking-daily`, `staking`, `staking-reward`
 - Category NOT LIKE: `ecosystem-bonus-%` (creator-posts/bugreport/feedback/game handled separately)
 - Category NOT LIKE: `pado-%` (pado-dex covered by Pado Leaderboard; games included via volume_bonus)
 
@@ -65,6 +70,31 @@ Coefficient 1.6 may be adjusted via a balance patch as real data accumulates.
 Admin-granted points via `ecosystem-bonus-creator-posts` category (1-30 pts per post,
 set in `creator-posts-admin.ts` Lambda). Users with creator posts but zero on-chain
 activity still appear on the leaderboard (FULL OUTER JOIN between sub-queries).
+
+### Staking emission score
+
+Rewards stakers for their daily epoch reward accumulation. Each day at UTC 01:00, the
+scanner reads `suix_getStakes`'s `estimatedReward` for every staking identity, computes
+the delta vs. the previous day's saved value, and inserts a `staking-reward` row with:
+
+```
+final_points = STAKING_EMISSION_COEFF * LOG2(delta_mist + 1)
+tx_timestamp = yesterday (so week-boundary attribution is correct)
+tx_digest    = stkr:{identityId}:{yesterdayStr}  (ON CONFLICT DO NOTHING)
+```
+
+The LOG2 pre-computation means the leaderboard SQL simply sums `final_points` — no
+re-application of LOG in SQL. Cold start: first scan saves the baseline only, so
+historical accumulation is not credited at once. Partial RPC failure: state is updated
+but award is skipped that day to avoid inflated delta on the next run.
+
+Expected score contribution: ~0.7-2.0 pts/day depending on stake size (~5-14 pts/week).
+
+Config: `apps/network-explorer/api-server/src/config/points.ts`
+- `STAKING_EMISSION_COEFF = 0.07`
+- `STAKING_EMISSION_CUTOFF_DATE = '2026-04-21'`
+
+State table: `staking_emission_state` (`nasun_points` DB, `identity_id PK`, `last_total_mist NUMERIC`).
 
 ### What multipliers do NOT affect
 
@@ -216,7 +246,7 @@ WITH week_activities AS (
   FROM activity_points
   WHERE NOT flagged AND identity_id IS NOT NULL
     AND tx_timestamp >= :week_start AND tx_timestamp < :week_end
-    AND category NOT IN ('referral-bonus','daily-mission','ecosystem-passive','staking-daily','staking')
+    AND category NOT IN ('referral-bonus','daily-mission','ecosystem-passive','staking-daily','staking','staking-reward')
     AND category NOT LIKE 'ecosystem-bonus-%'
     AND category NOT LIKE 'pado-%'
 ),
@@ -227,21 +257,58 @@ activity_score AS (
   FROM week_activities GROUP BY identity_id
 ),
 creator_post_score AS (
-  SELECT identity_id, COALESCE(SUM(final_points), 0)::numeric AS post_score
+  SELECT identity_id, COALESCE(SUM(final_points), 0) / 5.0 AS post_score
   FROM activity_points
   WHERE category = 'ecosystem-bonus-creator-posts' AND NOT flagged
     AND identity_id IS NOT NULL
     AND tx_timestamp >= :week_start AND tx_timestamp < :week_end
   GROUP BY identity_id
+),
+bonus_score AS (
+  SELECT identity_id,
+    COALESCE(SUM(final_points) FILTER (WHERE category IN ('ecosystem-bonus-bugreport','ecosystem-bonus-feedback')), 0) / 2.0
+    + COALESCE(SUM(final_points) FILTER (WHERE category = 'ecosystem-bonus-game'), 0) / 3.0 AS bonus_score
+  FROM activity_points
+  WHERE category IN ('ecosystem-bonus-bugreport','ecosystem-bonus-feedback','ecosystem-bonus-game')
+    AND NOT flagged AND identity_id IS NOT NULL
+    AND tx_timestamp >= :week_start AND tx_timestamp < :week_end
+  GROUP BY identity_id
+),
+volume_score AS (
+  SELECT identity_id, COUNT(*)::int AS volume_count
+  FROM activity_points
+  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','wallet-transfer')
+    AND NOT flagged AND identity_id IS NOT NULL
+    AND tx_timestamp >= :week_start AND tx_timestamp < :week_end
+  GROUP BY identity_id
+),
+staking_emission AS (
+  SELECT identity_id, COALESCE(SUM(final_points), 0)::float8 AS emission_score
+  FROM activity_points
+  WHERE category = 'staking-reward' AND NOT flagged AND identity_id IS NOT NULL
+    AND tx_timestamp >= :week_start AND tx_timestamp < :week_end
+  GROUP BY identity_id
 )
 SELECT
-  COALESCE(a.identity_id, c.identity_id) AS identity_id,
+  COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) AS identity_id,
   COALESCE(a.activity_score, 0)::int AS activity_score,
-  COALESCE(c.post_score, 0)::numeric AS post_score,
-  (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0))::numeric AS weekly_score,
-  COALESCE(a.active_days, 0)::int AS active_days
+  COALESCE(c.post_score, 0) AS creator_post_score,
+  COALESCE(b.bonus_score, 0) AS bonus_score,
+  COALESCE(a.active_days, 0)::int AS active_days,
+  COALESCE(v.volume_count, 0)::int AS volume_count,
+  COALESCE(se.emission_score, 0)::float8 AS emission_score,
+  (
+    COALESCE(a.activity_score, 0)
+    + COALESCE(c.post_score, 0)
+    + COALESCE(b.bonus_score, 0)
+    + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
+    + COALESCE(se.emission_score, 0)
+  )::float8 AS weekly_score
 FROM activity_score a
 FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
+FULL OUTER JOIN bonus_score b ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
+FULL OUTER JOIN volume_score v ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
+FULL OUTER JOIN staking_emission se ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
 ORDER BY weekly_score DESC, identity_id ASC
 ```
 
@@ -325,7 +392,7 @@ export function isEcosystemNewWeekGracePeriod(
 | Activity Score | `activityScore`    | Distinct (day_slot, category) pairs                 |
 | Creator Posts  | `creatorPostScore` | Highlighted in teal if > 0, "-" otherwise           |
 | Active Days    | `activeDays`       | `{n}/7` format                                      |
-| Score          | `weeklyScore`      | `activityScore + creatorPostScore`, 1 decimal place |
+| Score          | `weeklyScore`      | full formula sum, 3 decimal places                  |
 
 ### Admin dashboard
 
