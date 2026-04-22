@@ -124,10 +124,12 @@ export function startPointsScanner(): void {
   maybeRefreshMatview().catch((err) => {
     console.error('[Ecosystem] Initial matview refresh error:', (err as Error).message);
   });
-  matviewTimerId = setInterval(() => {
-    maybeRefreshMatview().catch((err) => {
+  matviewTimerId = setInterval(async () => {
+    try {
+      await maybeRefreshMatview();
+    } catch (err) {
       console.error('[Ecosystem] Scheduled matview refresh error:', (err as Error).message);
-    });
+    }
   }, MATVIEW_REFRESH_INTERVAL_MS);
   // Initial scan after 5s delay (let API server warm up)
   scanTimerId = setTimeout(async () => {
@@ -142,8 +144,11 @@ export function startPointsScanner(): void {
     } catch (err) {
       console.error('[Points] Warm-up failed:', (err as Error).message);
     }
-    await runScanLoopSafely();
-    scheduleNext();
+    try {
+      await runScanLoopSafely();
+    } finally {
+      scheduleNext();
+    }
   }, 5000);
 }
 
@@ -222,8 +227,11 @@ function flushUnmappedSummary(): void {
 
 function scheduleNext(): void {
   scanTimerId = setTimeout(async () => {
-    await runScanLoopSafely();
-    scheduleNext();
+    try {
+      await runScanLoopSafely();
+    } finally {
+      scheduleNext();
+    }
   }, SCAN_INTERVAL_MS);
 }
 
