@@ -1,77 +1,76 @@
-import { useAuth } from "@/features/auth";
-import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
-import { UjuCard } from "../shared/UjuCard";
-
-const NASUN_APPS = [
-  { id: "pado",   name: "Pado",     url: "https://pado.finance",          nftType: "alliance" as const },
-  { id: "gnasun", name: "gNasun",   url: "https://gnasun.nasun.io",       nftType: null },
-  { id: "baram",  name: "Baram AI", url: "https://baram.nasun.io",        nftType: null },
-];
+import { useState } from 'react';
+import { UjuCard } from '../shared/UjuCard';
+import { useAppDirectory, MAX_PINNED } from '../apps/useAppDirectory';
+import { CHAIN_LABEL, CHAIN_BADGE_CLASS } from '../apps/appRegistry';
+import { AppDirectoryModal } from '../apps/AppDirectoryModal';
 
 export function ActivatedAppsSection() {
-  const { user } = useAuth();
-  const { activations, isLoading } = useEcosystemStatus(
-    user?.cognitoToken,
-    user?.identityId,
-  );
-
-  const activeCount = activations.filter((a) => a.status === "ACTIVE").length;
+  const [modalOpen, setModalOpen] = useState(false);
+  const { pinnedApps, isPinned, pin, unpin, atMax } = useAppDirectory();
 
   return (
-    <UjuCard>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-medium text-uju-secondary">Activated Apps</p>
-        {!isLoading && (
-          <span className="text-sm font-semibold text-nasun-c3">{activeCount} active</span>
-        )}
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {NASUN_APPS.map((app) => (
-            <div key={app.id} className="h-9 bg-uju-border/30 rounded-lg animate-pulse" />
-          ))}
+    <>
+      <UjuCard>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-medium text-uju-secondary">Activated Apps</p>
+          {pinnedApps.length > 0 && (
+            <span className="text-sm text-uju-secondary">
+              {pinnedApps.length} / {MAX_PINNED}
+            </span>
+          )}
         </div>
-      ) : (
-        <ul className="space-y-2">
-          {NASUN_APPS.map((app) => {
-            const isActive =
-              app.nftType
-                ? activations.some(
-                    (a) => a.nftType === app.nftType && a.status === "ACTIVE",
-                  )
-                : null;
 
-            return (
-              <li
-                key={app.id}
-                className="flex items-center justify-between py-1.5"
-              >
-                <span className="text-sm font-medium text-uju-primary">{app.name}</span>
-                <div className="flex items-center gap-3">
-                  {isActive !== null && (
-                    <span
-                      className={`text-sm font-medium ${
-                        isActive ? "text-pado-4" : "text-uju-secondary"
-                      }`}
-                    >
-                      {isActive ? "Active" : "Inactive"}
+        {pinnedApps.length === 0 ? (
+          <div className="py-4 text-center space-y-2">
+            <p className="text-sm text-uju-secondary">No apps pinned yet.</p>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="text-sm text-pado-3 hover:underline"
+            >
+              Browse App Directory
+            </button>
+          </div>
+        ) : (
+          <>
+            <ul className="space-y-2 mb-3">
+              {pinnedApps.map((app) => (
+                <li key={app.id} className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${CHAIN_BADGE_CLASS[app.chain]}`}>
+                      {CHAIN_LABEL[app.chain]}
                     </span>
-                  )}
+                    <span className="text-sm font-medium text-uju-primary">{app.name}</span>
+                  </div>
                   <a
                     href={app.url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label={`Open ${app.name}, opens in new tab`}
                     className="text-sm text-pado-3 hover:underline"
                   >
                     Open
                   </a>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </UjuCard>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="w-full py-2 text-sm text-uju-secondary border border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
+            >
+              Manage Apps
+            </button>
+          </>
+        )}
+      </UjuCard>
+
+      <AppDirectoryModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        isPinned={isPinned}
+        pin={pin}
+        unpin={unpin}
+        atMax={atMax}
+      />
+    </>
   );
 }
