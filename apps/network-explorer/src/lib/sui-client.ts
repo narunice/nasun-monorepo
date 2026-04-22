@@ -8,14 +8,20 @@ import type {
   SuiMoveNormalizedModules,
   DynamicFieldPage,
 } from '@mysten/sui/client';
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, SuiHTTPTransport } from '@mysten/sui/client';
+import { createRetryFetch } from '@nasun/wallet';
 
 const RPC_URL = import.meta.env.VITE_SUI_RPC_URL;
 if (!RPC_URL) {
   throw new Error('VITE_SUI_RPC_URL environment variable is required. Cannot fall back to public devnet.');
 }
 
-export const suiClient = new SuiClient({ url: RPC_URL });
+export const suiClient = new SuiClient({
+  transport: new SuiHTTPTransport({
+    url: RPC_URL,
+    fetch: createRetryFetch(),
+  }),
+});
 
 export const networkConfig = {
   name: import.meta.env.VITE_NETWORK_NAME || 'Nasun Devnet',

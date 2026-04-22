@@ -2,11 +2,12 @@
  * Nasun Wallet SUI Client Utilities
  */
 
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, SuiHTTPTransport } from '@mysten/sui/client';
 import type { SuiTransport, SuiTransportRequestOptions, SuiTransportSubscribeOptions } from '@mysten/sui/client';
 import type { BalanceInfo, WalletConfig, TokenBalance, MultiTokenBalanceInfo } from '../types';
 import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
 import { AllBalancesSchema, CoinBalanceSchema, safeParseRpc } from '../schemas/rpc';
+import { createRetryFetch } from './retry-fetch';
 
 // ============================================
 // CORS-Compatible Transport for External Chains
@@ -173,7 +174,12 @@ export function getWalletConfig(): WalletConfig {
  */
 export function getSuiClient(): SuiClient {
   if (!suiClient) {
-    suiClient = new SuiClient({ url: walletConfig.rpcUrl });
+    suiClient = new SuiClient({
+      transport: new SuiHTTPTransport({
+        url: walletConfig.rpcUrl,
+        fetch: createRetryFetch(),
+      }),
+    });
   }
   return suiClient;
 }

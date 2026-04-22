@@ -1,4 +1,5 @@
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, SuiHTTPTransport } from '@mysten/sui/client';
+import { createRetryFetch } from '@nasun/wallet';
 
 // Trusted RPC URL whitelist - only these URLs are allowed
 const ALLOWED_RPC_URLS = [
@@ -34,7 +35,12 @@ function getValidatedRpcUrl(): string {
 
 const RPC_URL = getValidatedRpcUrl();
 
-export const suiClient = new SuiClient({ url: RPC_URL });
+export const suiClient = new SuiClient({
+  transport: new SuiHTTPTransport({
+    url: RPC_URL,
+    fetch: createRetryFetch(),
+  }),
+});
 
 export async function getEpochInfo() {
   try {
