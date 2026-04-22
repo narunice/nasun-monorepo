@@ -157,6 +157,10 @@ export {
 // Address display types
 export type { AddressDisplayConfig } from './sui/client';
 
+// RPC retry/backoff transport (for Fullnode restart window recovery)
+export { createRetryFetch } from './sui/retry-fetch';
+export type { RetryFetchOptions } from './sui/retry-fetch';
+
 export {
   requestFaucet,
   checkFaucetAvailable,
