@@ -125,7 +125,7 @@ const EcosystemLeaderboardPage = () => {
   return (
     <PageLayout>
       <Helmet>
-        <title>Ecosystem Leaderboard - NASUN</title>
+        <title>Nasun Ecosystem Leaderboard - NASUN</title>
         <meta
           name="description"
           content="Nasun Ecosystem Leaderboard. Weekly rankings based on on-chain activity diversity and creator contributions."
@@ -139,7 +139,7 @@ const EcosystemLeaderboardPage = () => {
           </span>
           <ExperimentalInfoTooltip />
         </div>
-        <PageTitle as="h2">Ecosystem Leaderboard</PageTitle>
+        <PageTitle as="h2">Nasun Ecosystem Leaderboard</PageTitle>
 
         <div className="mb-6">
           <p className="text-base text-nasun-white/90">
@@ -467,8 +467,8 @@ const EcosystemLeaderboardPage = () => {
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-nasun-c3">
                           {Number(entry.weeklyScore).toLocaleString("en-US", {
-                            minimumFractionDigits: 1,
-                            maximumFractionDigits: 1,
+                            minimumFractionDigits: 3,
+                            maximumFractionDigits: 3,
                           })}
                         </td>
                         <td className="px-4 py-3 text-right">

@@ -18,7 +18,10 @@ export default function DesktopNav({ navItems }: Props) {
   const desktopStyles = getDesktopStyles();
   const location = useLocation();
 
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+  const handleLinkClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    path: string,
+  ) => {
     if (location.pathname === path) {
       e.preventDefault();
       // URL에 파라미터가 있으면 깨끗한 경로로 이동
@@ -32,7 +35,7 @@ export default function DesktopNav({ navItems }: Props) {
   };
 
   return (
-    <div className="hidden lg:flex flex-1 items-center justify-around gap-1 lg:gap-3 2xl:gap-6">
+    <div className="hidden w-full mx-auto lg:flex justify-center gap-8 xl:gap-10 2xl:gap-12">
       {navItems.map((item) => (
         <div key={item.name}>
           {item.subMenu ? (
@@ -58,7 +61,11 @@ export default function DesktopNav({ navItems }: Props) {
                       // 3단계 중첩 메뉴 - 인라인 렌더링 (플라이아웃 대신)
                       <div key={subItem.name}>
                         {/* 부모 항목 (GEN SOL) - 클릭 불가능한 라벨 */}
-                        <div className={DESKTOP_NAVIGATION_STYLES.subMenuHeader.base}>
+                        <div
+                          className={
+                            DESKTOP_NAVIGATION_STYLES.subMenuHeader.base
+                          }
+                        >
                           <span>{subItem.name}</span>
                         </div>
 
@@ -75,7 +82,7 @@ export default function DesktopNav({ navItems }: Props) {
                               {nestedItem.disabled ? (
                                 <span
                                   className={`${desktopStyles.nestedSubMenuItem(
-                                    nestedItem
+                                    nestedItem,
                                   )} cursor-not-allowed opacity-50`}
                                 >
                                   <span>{nestedItem.name}</span>
@@ -83,8 +90,12 @@ export default function DesktopNav({ navItems }: Props) {
                               ) : (
                                 <Link
                                   to={nestedItem.path}
-                                  onClick={(e) => handleLinkClick(e, nestedItem.path)}
-                                  className={desktopStyles.nestedSubMenuItem(nestedItem)}
+                                  onClick={(e) =>
+                                    handleLinkClick(e, nestedItem.path)
+                                  }
+                                  className={desktopStyles.nestedSubMenuItem(
+                                    nestedItem,
+                                  )}
                                 >
                                   <span>{nestedItem.name}</span>
                                 </Link>
@@ -95,11 +106,15 @@ export default function DesktopNav({ navItems }: Props) {
                       </div>
                     ) : (
                       // 2단계 메뉴 (기존 방식)
-                      <DropdownMenu.Item key={subItem.name} asChild disabled={subItem.disabled}>
+                      <DropdownMenu.Item
+                        key={subItem.name}
+                        asChild
+                        disabled={subItem.disabled}
+                      >
                         {subItem.disabled ? (
                           <span
                             className={`${desktopStyles.subMenuItem(
-                              subItem
+                              subItem,
                             )} cursor-not-allowed opacity-50`}
                           >
                             <span className="flex items-center gap-2">
@@ -131,7 +146,7 @@ export default function DesktopNav({ navItems }: Props) {
                           </Link>
                         )}
                       </DropdownMenu.Item>
-                    )
+                    ),
                   )}
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>

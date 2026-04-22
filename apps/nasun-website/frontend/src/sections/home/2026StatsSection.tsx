@@ -62,13 +62,15 @@ const HeroStat = ({
 const SectionChip = ({
   children,
   large = false,
+  className = "",
 }: {
   children: React.ReactNode;
   accent?: "cyan" | "mint" | "teal";
   large?: boolean;
+  className?: string;
 }) => (
   <span
-    className={`inline-block font-black uppercase tracking-widest ${large ? "text-4xl lg:text-5xl" : "text-lg"} text-nasun-white`}
+    className={`inline-block font-black uppercase tracking-widest ${large ? "text-4xl lg:text-5xl" : "text-lg"} text-nasun-white ${className}`}
   >
     {children}
   </span>
@@ -87,12 +89,16 @@ export const Hero2026StatsSection = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-col items-center gap-2 mb-8"
+            className="flex flex-col items-center gap-4 mb-8"
           >
-            <SectionChip accent="mint" large>
+            <SectionChip
+              accent="mint"
+              large
+              className="!font-eurostile font-semibold"
+            >
               Nasun Devnet
             </SectionChip>
-            <span className="text-pd3 text-sm">
+            <span className="text-pd3 text-sm mb-4">
               Launched{" "}
               <span className="text-pd4 font-semibold">March 4, 2026</span>
             </span>
@@ -141,7 +147,9 @@ export const Hero2026StatsSection = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="flex flex-col items-center gap-2 mb-8"
             >
-              <SectionChip accent="cyan">Nasun Community</SectionChip>
+              <SectionChip accent="cyan" className="!text-xl">
+                Nasun Community
+              </SectionChip>
               <span className="text-pd3 text-sm">
                 Launched{" "}
                 <span className="text-pd4 font-semibold">March 4, 2026</span>
@@ -178,7 +186,9 @@ export const Hero2026StatsSection = () => {
               transition={{ duration: 0.5, delay: 0.15 }}
               className="flex flex-col items-center gap-2 mb-8"
             >
-              <SectionChip accent="teal">Pado DeFi & Gaming</SectionChip>
+              <SectionChip accent="teal" className="!text-xl">
+                Pado DeFi & Gaming
+              </SectionChip>
               <span className="text-pd3 text-sm">
                 Launched{" "}
                 <span className="text-pd4 font-semibold">April 9, 2026</span>
@@ -227,7 +237,7 @@ export const Hero2026StatsSection = () => {
               className="border-nasun-white text-nasun-white hover:bg-nasun-white/10 uppercase tracking-widest"
             >
               <Link to="/community/nasun-ecosystem-leaderboard">
-                Ecosystem Leaderboard
+                Nasun Ecosystem Leaderboard
               </Link>
             </ButtonV3>
             <ButtonV3
@@ -238,7 +248,7 @@ export const Hero2026StatsSection = () => {
               className="border-nasun-white text-nasun-white hover:bg-nasun-white/10 uppercase tracking-widest"
             >
               <Link to="/community/pado-leaderboard">
-                Pado Leaderboard
+                Pado Traders Leaderboard
               </Link>
             </ButtonV3>
           </div>
