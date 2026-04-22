@@ -3,14 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, isValidAddress, CHAINS } from "@nasun/wallet";
 import { useBalance as useEthBalance } from "wagmi";
 import { useAuth } from "@/features/auth";
+import { SOL_ADDRESS_RE, SOL_DEVNET_RPC } from "@/lib/solana";
 import { UjuCard } from "../shared/UjuCard";
+import { useSolanaWalletAdapter, type SolWalletName } from "./useSolanaWalletAdapter";
 
-const SOL_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/;
-const SOL_DEVNET_RPC = "https://api.devnet.solana.com";
 const SUI_TESTNET_RPC = CHAINS["sui-testnet"].rpcUrl;
 
 function solKey(identityId: string) {
   return `uju:sol-address:${identityId}`;
+}
+
+function solWalletKey(identityId: string) {
+  return `uju:sol-wallet:${identityId}`;
 }
 
 function shortenAddress(addr: string): string {
@@ -96,28 +100,81 @@ export function WalletBalanceCard() {
   const [solAddress, setSolAddress] = useState<string | null>(null);
   const [solError, setSolError] = useState("");
   const [solEditing, setSolEditing] = useState(false);
+  const [connectedWallet, setConnectedWallet] = useState<SolWalletName | null>(null);
   const { data: solBalance, isPending: solPending, isError: solFetchError } = useSolDevnetBalance(solAddress);
+
+  const {
+    installed,
+    isConnecting,
+    error: walletError,
+    connect: adapterConnect,
+    disconnect: adapterDisconnect,
+    clearError,
+  } = useSolanaWalletAdapter();
 
   const identityId = user?.identityId ?? undefined;
 
+  // Reload SOL state when identityId changes (also covers sign-out → identityId undefined).
   useEffect(() => {
-    if (!identityId) return;
-    const saved = localStorage.getItem(solKey(identityId));
-    if (saved && SOL_ADDRESS_RE.test(saved)) {
-      setSolAddress(saved);
-      setSolInput(saved);
+    if (!identityId) {
+      setSolAddress(null);
+      setSolInput("");
+      setConnectedWallet(null);
+      clearError();
+      return;
     }
-  }, [identityId]);
+    const savedAddr = localStorage.getItem(solKey(identityId));
+    const savedWallet = localStorage.getItem(solWalletKey(identityId));
+    if (savedAddr && SOL_ADDRESS_RE.test(savedAddr)) {
+      setSolAddress(savedAddr);
+      setSolInput(savedAddr);
+      setConnectedWallet(
+        savedWallet === "phantom" || savedWallet === "solflare" ? savedWallet : null,
+      );
+    } else {
+      setSolAddress(null);
+      setSolInput("");
+      setConnectedWallet(null);
+    }
+    clearError();
+  }, [identityId, clearError]);
 
   const isNasunConnected =
     (status === "unlocked" && !!account) || isZkConnected;
+
+  async function handleWalletConnect(name: SolWalletName) {
+    if (!identityId) return;
+    const addr = await adapterConnect(name);
+    if (!addr) return;
+    setSolAddress(addr);
+    setSolInput(addr);
+    setConnectedWallet(name);
+    setSolEditing(false);
+    setSolError("");
+    localStorage.setItem(solKey(identityId), addr);
+    localStorage.setItem(solWalletKey(identityId), name);
+  }
+
+  async function handleWalletDisconnect() {
+    if (connectedWallet) await adapterDisconnect(connectedWallet);
+    if (identityId) {
+      localStorage.removeItem(solKey(identityId));
+      localStorage.removeItem(solWalletKey(identityId));
+    }
+    setSolAddress(null);
+    setSolInput("");
+    setConnectedWallet(null);
+    clearError();
+  }
 
   function handleSolSave() {
     if (!identityId) return;
     const trimmed = solInput.trim();
     if (!trimmed) {
       localStorage.removeItem(solKey(identityId));
+      localStorage.removeItem(solWalletKey(identityId));
       setSolAddress(null);
+      setConnectedWallet(null);
       setSolError("");
       return;
     }
@@ -127,8 +184,10 @@ export function WalletBalanceCard() {
     }
     setSolError("");
     setSolAddress(trimmed);
+    setConnectedWallet(null); // manual-entry marker
     setSolEditing(false);
     localStorage.setItem(solKey(identityId), trimmed);
+    localStorage.removeItem(solWalletKey(identityId));
   }
 
   return (
@@ -196,20 +255,56 @@ export function WalletBalanceCard() {
             </div>
             <div className="flex items-center gap-2">
               {solAddress ? (
-                <span className="text-sm font-medium text-uju-primary tabular-nums">
-                  {solPending ? "-" : solFetchError ? <span className="text-uju-secondary">Error</span> : `${solBalance} SOL`}
-                </span>
+                <>
+                  <span className="text-sm font-medium text-uju-primary tabular-nums">
+                    {solPending
+                      ? "-"
+                      : solFetchError
+                        ? <span className="text-uju-secondary">Error</span>
+                        : `${solBalance} SOL`}
+                  </span>
+                  <button
+                    onClick={connectedWallet ? handleWalletDisconnect : () => setSolEditing((v) => !v)}
+                    className="text-sm text-uju-secondary hover:text-pado-3 transition-colors"
+                  >
+                    {connectedWallet ? "Disconnect" : (solEditing ? "Cancel" : "Edit")}
+                  </button>
+                </>
+              ) : installed.length > 0 ? (
+                <>
+                  {installed.includes("phantom") && (
+                    <button
+                      onClick={() => handleWalletConnect("phantom")}
+                      disabled={isConnecting || !identityId}
+                      className="text-sm text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
+                    >
+                      Phantom
+                    </button>
+                  )}
+                  {installed.includes("solflare") && (
+                    <button
+                      onClick={() => handleWalletConnect("solflare")}
+                      disabled={isConnecting || !identityId}
+                      className="text-sm text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
+                    >
+                      Solflare
+                    </button>
+                  )}
+                </>
               ) : (
-                <span className="text-sm text-uju-secondary">Not set</span>
+                <button
+                  onClick={() => setSolEditing((v) => !v)}
+                  disabled={!identityId}
+                  className="text-sm text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
+                >
+                  {solEditing ? "Cancel" : "Add"}
+                </button>
               )}
-              <button
-                onClick={() => setSolEditing((v) => !v)}
-                className="text-sm text-uju-secondary hover:text-pado-3 transition-colors"
-              >
-                {solEditing ? "Cancel" : solAddress ? "Edit" : "Add"}
-              </button>
             </div>
           </div>
+          {walletError && !solEditing && (
+            <p className="text-sm text-nasun-scarlet mt-1">{walletError}</p>
+          )}
           {solEditing && (
             <div className="mt-2">
               <div className="flex gap-2">
