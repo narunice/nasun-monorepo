@@ -67,7 +67,7 @@ function getOrCreateRoomState(map: Map<number, RoomState>, roomId: number): Room
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  rooms: [{ id: 0, name: 'Global' }, { id: 1, name: 'Korean' }],
+  rooms: [],
   activeRoomId: 0,
   roomStates: new Map(),
   status: 'disconnected',
