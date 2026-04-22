@@ -91,6 +91,15 @@ const DevMyAccountPage = () => {
       setShowLinkXGuidance(true);
       setSearchParams({}, { replace: true });
     }
+
+    const scroll = searchParams.get("scroll");
+    if (scroll === "creator-posts") {
+      paramsHandled.current = true;
+      setSearchParams({}, { replace: true });
+      setTimeout(() => {
+        document.getElementById("creator-posts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -195,7 +204,9 @@ const DevMyAccountPage = () => {
           </ErrorBoundary>
 
           {/* Creator Posts — above MY ASSETS */}
-          <CreatorPostsCard className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+          <div id="creator-posts" className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-3">
+            <CreatorPostsCard />
+          </div>
 
           {/* Creators Leaderboard History — below Creator Posts */}
           <ErrorBoundary

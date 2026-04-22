@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV4 } from "@/components/ui/button-v4";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 
 import kaeboImg from "@/assets/images/Princess-Kaebo-Fixed.webp";
 import josenImg from "@/assets/images/josen.webp";
@@ -17,7 +18,21 @@ const CREATOR_GRADIENT =
 const CREATOR_BOTTOM_FADE =
   "linear-gradient(to top, #0a0a0a 0%, #0a0a0a 10%, rgba(10,10,10,0.95) 25%, rgba(10,10,10,0.7) 40%, transparent 60%)";
 
+const CREATOR_POSTS_PATH = "/my-account?scroll=creator-posts";
+
 export default function AllianceCreatorSection() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const handleCreatorPostsClick = () => {
+    if (isAuthenticated) {
+      navigate(CREATOR_POSTS_PATH);
+    } else {
+      localStorage.setItem("auth_return_to", CREATOR_POSTS_PATH);
+      window.dispatchEvent(new CustomEvent("nasun:open-login"));
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row w-full h-full">
       {/* ===== LEFT: Alliance NFT ===== */}
@@ -95,8 +110,8 @@ export default function AllianceCreatorSection() {
         </div>
         <div className="absolute bottom-[6%] md:bottom-[10%] inset-x-0 z-10 flex justify-center">
           <FadeInUp delay="0.25s">
-            <ButtonV4 color="light" size="lg" asChild>
-              <Link to="/my-account">Sign Up</Link>
+            <ButtonV4 color="light" size="lg" onClick={handleCreatorPostsClick}>
+              {isAuthenticated ? "Submit Posts" : "Sign Up / Login"}
             </ButtonV4>
           </FadeInUp>
         </div>
