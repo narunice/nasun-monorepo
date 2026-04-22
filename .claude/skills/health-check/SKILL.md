@@ -584,14 +584,14 @@ aws events list-rules --profile nasun-prod --region ap-northeast-2 \
 
 확인 대상:
 
-| 규칙 | 주기 | 용도 |
-|------|------|------|
-| nasun-common-price-update | 1분 | NFT 가격 갱신 |
-| nasun-common-purge-deactivated-accounts-daily | 1일 | 비활성 계정 정리 |
-| nasun-leaderboard-v3-daily-snapshot | 매일 00:00 UTC | 리더보드 스냅샷 |
+| 규칙 | 주기 | 용도 | 예상 상태 |
+|------|------|------|-----------|
+| nasun-common-price-update | 1분 | NFT 가격 갱신 | ENABLED |
+| nasun-common-purge-deactivated-accounts-daily | 1일 | 비활성 계정 정리 | ENABLED |
+| leaderboard-v3-snapshot-schedule | 매일 00:10 UTC | 리더보드 스냅샷 | **DISABLED (의도적)** -- creators leaderboard 운영 일시 정지 중. WARN 아님 |
 
-- State = ENABLED → OK
-- State = DISABLED → **WARNING** (의도적 비활성화인지 확인 필요)
+- State = ENABLED → OK (단, leaderboard-v3-snapshot-schedule은 예상 상태가 DISABLED이므로 ENABLED로 나오면 WARN)
+- State = DISABLED → **WARNING** (의도적 비활성화인지 확인 필요. leaderboard-v3-snapshot-schedule은 예외)
 
 #### 3c. Lambda 최근 에러 확인
 
