@@ -173,12 +173,14 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
             <div
               key={mission.id}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                completed ? 'opacity-60' : 'hover:bg-white/[0.03]'
+                completed ? '' : 'hover:bg-white/[0.03]'
               }`}
             >
               {/* App badge */}
               <span
-                className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-md ${badge.bg} ${badge.text} whitespace-nowrap`}
+                className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
+                  completed ? 'bg-uju-border/30 text-uju-secondary' : `${badge.bg} ${badge.text}`
+                }`}
               >
                 {badge.label}
               </span>
