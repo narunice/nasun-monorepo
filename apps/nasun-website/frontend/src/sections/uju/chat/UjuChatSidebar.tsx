@@ -11,7 +11,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | u
 const SIDEBAR_ROOM_IDS = new Set([0, 10]); // GM + General only (Pado is for Pado app)
 
 export function UjuChatSidebar() {
-  const currentUserId = useUserStore((s) => s.user?.walletAddress);
+  const currentUserId = useUserStore((s) => s.user?.walletAddress ?? s.user?.identityId);
   const authError = useChatStore((s) => s.authError);
   const {
     messages, displayStatus, onlineCount, hasMore,

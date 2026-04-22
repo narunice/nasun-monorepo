@@ -29,7 +29,11 @@ export function useAppDirectory(): UseAppDirectoryResult {
   const [pinnedIds, setPinnedIds] = useState<string[]>(loadPinnedIds);
 
   useEffect(() => {
-    localStorage.setItem(PINNED_APPS_KEY, JSON.stringify(pinnedIds));
+    try {
+      localStorage.setItem(PINNED_APPS_KEY, JSON.stringify(pinnedIds));
+    } catch {
+      // Safari private mode or storage quota exceeded
+    }
   }, [pinnedIds]);
 
   const pin = useCallback((id: string) => {

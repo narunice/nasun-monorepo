@@ -5,7 +5,7 @@ import { useBalance as useEthBalance } from "wagmi";
 import { useAuth } from "@/features/auth";
 import { UjuCard } from "../shared/UjuCard";
 
-const SOL_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const SOL_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/;
 const SOL_DEVNET_RPC = "https://api.devnet.solana.com";
 const SUI_TESTNET_RPC = CHAINS["sui-testnet"].rpcUrl;
 
@@ -98,7 +98,7 @@ export function WalletBalanceCard() {
   const [solEditing, setSolEditing] = useState(false);
   const { data: solBalance, isPending: solPending, isError: solFetchError } = useSolDevnetBalance(solAddress);
 
-  const identityId = user?.identityId ?? "";
+  const identityId = user?.identityId ?? undefined;
 
   useEffect(() => {
     if (!identityId) return;
