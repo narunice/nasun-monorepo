@@ -102,4 +102,15 @@ module.exports = {
   ne3: "#a2c5d8",
   ne4: "#cee2e8",
   ne5: "#f5f5f5",
+
+  // ============================================================
+  // uju Dashboard Palette
+  // ============================================================
+  uju: {
+    bg:        '#0D1117',  // page background (deep dark)
+    card:      '#161B27',  // card background (elevated dark)
+    border:    '#252D42',  // border (subtle blue-tinted)
+    primary:   '#F1F5F9',  // primary text (bright white)
+    secondary: '#8B9CB3',  // secondary text (explicit, no opacity)
+  },
 };
