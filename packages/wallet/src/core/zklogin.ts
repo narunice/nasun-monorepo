@@ -49,6 +49,12 @@ const PROVER_TIMEOUT_MS = 30_000;
 /** Fallback prover timeout (ms). More generous since it's the last resort. */
 const FALLBACK_PROVER_TIMEOUT_MS = 60_000;
 
+/** Consecutive primary failures before opening the circuit breaker. */
+const PROVER_CIRCUIT_FAILURE_THRESHOLD = 3;
+
+/** Duration (ms) to skip the primary prover once the circuit is open. */
+const PROVER_CIRCUIT_OPEN_DURATION_MS = 5 * 60 * 1000;
+
 /** Session storage key for zkLogin session */
 const ZKLOGIN_SESSION_KEY = 'nasun:zklogin:session';
 
@@ -562,6 +568,46 @@ export interface FetchZkProofResult {
 }
 
 /**
+ * Circuit breaker state for the primary (self-hosted) prover.
+ * Skips Node-3 entirely while the circuit is open so sustained outages
+ * don't keep piling new requests onto an already-overloaded prover.
+ */
+interface ProverCircuitState {
+  consecutiveFailures: number;
+  openUntil: number;
+}
+
+let primaryProverCircuit: ProverCircuitState = {
+  consecutiveFailures: 0,
+  openUntil: 0,
+};
+
+function isPrimaryProverCircuitOpen(now: number = Date.now()): boolean {
+  return now < primaryProverCircuit.openUntil;
+}
+
+function recordPrimaryProverSuccess(): void {
+  primaryProverCircuit = { consecutiveFailures: 0, openUntil: 0 };
+}
+
+function recordPrimaryProverFailure(now: number = Date.now()): void {
+  const failures = primaryProverCircuit.consecutiveFailures + 1;
+  if (failures >= PROVER_CIRCUIT_FAILURE_THRESHOLD) {
+    primaryProverCircuit = {
+      consecutiveFailures: 0,
+      openUntil: now + PROVER_CIRCUIT_OPEN_DURATION_MS,
+    };
+  } else {
+    primaryProverCircuit = { consecutiveFailures: failures, openUntil: 0 };
+  }
+}
+
+/** Reset the primary prover circuit breaker. Exposed for tests. */
+export function __resetPrimaryProverCircuitForTest(): void {
+  primaryProverCircuit = { consecutiveFailures: 0, openUntil: 0 };
+}
+
+/**
  * Call a single prover endpoint with timeout and abort support.
  */
 async function callProver(
@@ -599,7 +645,7 @@ async function callProver(
 /** Event emitted during proof generation to report progress. */
 export type ProverProgressEvent =
   | { phase: 'primary' }
-  | { phase: 'fallback'; reason: string };
+  | { phase: 'fallback'; reason: string; circuitOpen?: boolean };
 
 /**
  * Fetch ZK proof from prover service (Step 4b)
@@ -638,35 +684,61 @@ export async function fetchZkProof(params: {
     keyClaimName: 'sub',
   });
 
-  // Try primary (self-hosted) prover
-  params.onProgress?.({ phase: 'primary' });
   let response: Response;
-  try {
-    response = await callProver(primaryUrl, body, PROVER_TIMEOUT_MS, params.signal);
-  } catch (primaryErr) {
-    // If the caller aborted (navigation, unmount), don't fallback
-    if (params.signal?.aborted) {
-      throw new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled');
-    }
 
-    const reason = primaryErr instanceof DOMException && primaryErr.name === 'AbortError'
-      ? 'Primary prover timed out'
-      : primaryErr instanceof Error ? primaryErr.message : 'Primary prover unavailable';
-
-    // Fallback to Mysten public prover
-    params.onProgress?.({ phase: 'fallback', reason });
+  // If the primary prover circuit is open, skip Node-3 entirely so we
+  // stop piling new requests on an overloaded host.
+  if (isPrimaryProverCircuitOpen()) {
+    params.onProgress?.({
+      phase: 'fallback',
+      reason: 'Primary prover temporarily disabled (circuit open)',
+      circuitOpen: true,
+    });
     try {
       response = await callProver(FALLBACK_PROVER_URL, body, FALLBACK_PROVER_TIMEOUT_MS, params.signal);
     } catch (fallbackErr) {
       if (params.signal?.aborted) {
         throw new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled');
       }
-      // Log details for debugging but show generic message to user
-      console.error('[zkLogin] All provers failed.', { primary: reason, fallback: fallbackErr });
+      console.error('[zkLogin] Fallback prover failed while primary circuit open.', fallbackErr);
       throw new ZkLoginError(
         'PROVER_FAILED',
         'Proof generation failed. All provers are currently unavailable. Please try again later.',
       );
+    }
+  } else {
+    // Try primary (self-hosted) prover
+    params.onProgress?.({ phase: 'primary' });
+    try {
+      response = await callProver(primaryUrl, body, PROVER_TIMEOUT_MS, params.signal);
+      recordPrimaryProverSuccess();
+    } catch (primaryErr) {
+      // If the caller aborted (navigation, unmount), don't fallback and
+      // don't count the abort as a prover failure.
+      if (params.signal?.aborted) {
+        throw new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled');
+      }
+
+      recordPrimaryProverFailure();
+
+      const reason = primaryErr instanceof DOMException && primaryErr.name === 'AbortError'
+        ? 'Primary prover timed out'
+        : primaryErr instanceof Error ? primaryErr.message : 'Primary prover unavailable';
+
+      // Fallback to Mysten public prover
+      params.onProgress?.({ phase: 'fallback', reason });
+      try {
+        response = await callProver(FALLBACK_PROVER_URL, body, FALLBACK_PROVER_TIMEOUT_MS, params.signal);
+      } catch (fallbackErr) {
+        if (params.signal?.aborted) {
+          throw new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled');
+        }
+        console.error('[zkLogin] All provers failed.', { primary: reason, fallback: fallbackErr });
+        throw new ZkLoginError(
+          'PROVER_FAILED',
+          'Proof generation failed. All provers are currently unavailable. Please try again later.',
+        );
+      }
     }
   }
 
