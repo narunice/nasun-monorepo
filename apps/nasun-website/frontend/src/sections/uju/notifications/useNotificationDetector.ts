@@ -25,18 +25,18 @@ export function useNotificationDetector({
   unvotedCount,
 }: DetectorProps): void {
   const add = useNotificationStore((s) => s.add);
-  const notifications = useNotificationStore((s) => s.notifications);
 
   // In-memory session tracking — no localStorage, resets on page refresh
   const seenRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
   const prevPoolOnchainRef = useRef<Set<string>>(new Set());
 
-  // Reset all refs on account switch to prevent cross-account notification leakage
+  // Reset all refs and clear notification store on account switch (prevents cross-account leakage)
   useEffect(() => {
     seenRef.current = new Set();
     initializedRef.current = false;
     prevPoolOnchainRef.current = new Set();
+    useNotificationStore.getState().clearAll();
   }, [identityId]);
 
   // Mission completion detection
@@ -88,14 +88,15 @@ export function useNotificationDetector({
   }, [completedMissions, missionsLoading, identityId, missionPool, add]);
 
   // Governance proposal detection
-  // Dedup via notification store: 'governance:{YYYY-MM-DD}' key ensures UTC daily dedup
+  // Reads store state lazily (getState) to avoid re-subscribing on every store mutation
   useEffect(() => {
     if (!identityId || !hasUnvotedProposal || unvotedCount === 0) return;
 
     const today = todayUtc();
-    if (notifications.some((n) => n.id === `governance:${today}`)) return;
+    const store = useNotificationStore.getState();
+    if (store.notifications.some((n) => n.id === `governance:${today}`)) return;
 
-    add({
+    store.add({
       id: `governance:${today}`,
       type: 'governance',
       title: 'New Governance Proposal',
@@ -104,5 +105,5 @@ export function useNotificationDetector({
       read: false,
       actionUrl: '/network/governance',
     });
-  }, [hasUnvotedProposal, unvotedCount, identityId, notifications, add]);
+  }, [hasUnvotedProposal, unvotedCount, identityId]);
 }

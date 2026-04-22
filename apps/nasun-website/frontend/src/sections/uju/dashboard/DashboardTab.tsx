@@ -7,10 +7,12 @@ import { BannerCarousel } from "./banner/BannerCarousel";
 import { UjuDailyMissionsCard } from "./UjuDailyMissionsCard";
 import { NftShowcaseCard } from "@/sections/myAccount/NftShowcaseCard";
 import { useAppDirectory } from "../apps/useAppDirectory";
+import { useAuth } from "@/features/auth";
 
 export function DashboardTab() {
+  const { user } = useAuth();
   // Single useAppDirectory instance — pinnedApps passed down to avoid dual instantiation
-  const { pinnedApps, isPinned, pin, unpin, atMax } = useAppDirectory();
+  const { pinnedApps, isPinned, pin, unpin, atMax } = useAppDirectory(user?.identityId);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

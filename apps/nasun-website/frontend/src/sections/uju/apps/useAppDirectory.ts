@@ -1,12 +1,15 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { APP_REGISTRY, VALID_APP_IDS, type AppEntry } from './appRegistry';
 
-const PINNED_APPS_KEY = 'uju:pinned-apps';
 export const MAX_PINNED = 6;
 
-function loadPinnedIds(): string[] {
+function pinnedKey(identityId: string | undefined): string {
+  return identityId ? `uju:pinned-apps:${identityId}` : 'uju:pinned-apps:guest';
+}
+
+function loadPinnedIds(identityId: string | undefined): string[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(PINNED_APPS_KEY) ?? '[]');
+    const raw = JSON.parse(localStorage.getItem(pinnedKey(identityId)) ?? '[]');
     if (!Array.isArray(raw)) return [];
     return (raw as unknown[]).filter(
       (id): id is string => typeof id === 'string' && VALID_APP_IDS.has(id),
@@ -25,16 +28,21 @@ export interface UseAppDirectoryResult {
   atMax: boolean;
 }
 
-export function useAppDirectory(): UseAppDirectoryResult {
-  const [pinnedIds, setPinnedIds] = useState<string[]>(loadPinnedIds);
+export function useAppDirectory(identityId: string | undefined): UseAppDirectoryResult {
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => loadPinnedIds(identityId));
+
+  // Reload from scoped key on account switch
+  useEffect(() => {
+    setPinnedIds(loadPinnedIds(identityId));
+  }, [identityId]);
 
   useEffect(() => {
     try {
-      localStorage.setItem(PINNED_APPS_KEY, JSON.stringify(pinnedIds));
+      localStorage.setItem(pinnedKey(identityId), JSON.stringify(pinnedIds));
     } catch {
       // Safari private mode or storage quota exceeded
     }
-  }, [pinnedIds]);
+  }, [pinnedIds, identityId]);
 
   const pin = useCallback((id: string) => {
     setPinnedIds((prev) => {

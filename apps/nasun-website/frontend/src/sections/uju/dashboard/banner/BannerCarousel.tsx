@@ -141,7 +141,11 @@ export function BannerCarousel() {
 
   // Persist feedback to localStorage separately from state update
   useEffect(() => {
-    localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedback));
+    try {
+      localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedback));
+    } catch {
+      // Safari private mode or storage quota exceeded
+    }
   }, [feedback]);
 
   function handleFeedback(id: string, vote: 'up' | 'down') {
