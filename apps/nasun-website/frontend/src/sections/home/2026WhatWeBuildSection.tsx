@@ -6,6 +6,8 @@ import "slick-carousel/slick/slick-theme.css";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 
 const gensolVideo = "/videos/Color-Trailer-No-Symbol-16x9-web.mp4";
 const baramVideo = "/videos/Baram-Ui-rf28.mp4";
@@ -14,7 +16,6 @@ const padoVideo = "/videos/Pado-Ui-Short-rf28.mp4";
 const padoVideoMobile = "/videos/Pado-Ui-Short-mobile-rf28.mp4";
 const explorerVideo = "/videos/Network-Explorer-Ui-rf28.mp4";
 const explorerVideoMobile = "/videos/Network-Explorer-Ui-mobile-rf28.mp4";
-
 
 type SlideData = {
   id: string;
@@ -34,7 +35,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "GEN SOL",
-    link: "/ip/gensol",
+    link: "/ecosystem/gensol",
     video: gensolVideo,
     poster: "/images/posters/Trakker-Flying-rf28.webp",
   },
@@ -70,7 +71,7 @@ const SLIDES: SlideData[] = [
   },
 ];
 
-function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }) {
+function WhatWeBuild2026Section() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<Slider>(null);
   const activeSlideRef = useRef(0);
@@ -123,25 +124,6 @@ function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }
     preloadAdjacentSlides(0);
   }, [hasEnteredView, preloadAdjacentSlides]);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const doPauseClones = () => {
-      container
-        .querySelectorAll<HTMLVideoElement>(".slick-cloned video")
-        .forEach((v) => {
-          if (!v.paused) v.pause();
-        });
-    };
-    const timer = setTimeout(doPauseClones, 100);
-    const observer = new MutationObserver(doPauseClones);
-    observer.observe(container, { childList: true, subtree: true });
-    return () => {
-      clearTimeout(timer);
-      observer.disconnect();
-    };
-  }, []);
-
   const syncAndPlayClones = useCallback((_current: number, next: number) => {
     const container = containerRef.current;
     if (!container) return;
@@ -182,11 +164,6 @@ function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }
         activeVideo.currentTime = slide.videoStartTime ?? 0;
         activeVideo.play().catch(() => {});
       }
-      container
-        .querySelectorAll<HTMLVideoElement>(".slick-cloned video")
-        .forEach((v) => {
-          if (!v.paused) v.pause();
-        });
       preloadAdjacentSlides(index);
     },
     [preloadAdjacentSlides],
@@ -206,56 +183,67 @@ function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }
   const activeSlide = SLIDES[activeSlideIndex];
 
   return (
-    <section className="relative w-full h-screen overflow-hidden bg-nasun-black">
-      <div ref={containerRef} className="w-full h-full">
-        <Slider ref={sliderRef} {...sliderSettings}>
-          {SLIDES.map((slide) => (
-            <div key={slide.id}>
-              <div
-                className="relative w-full h-screen overflow-hidden"
-                style={{ backgroundColor: slide.bgColor }}
-              >
-                {slide.video && (
-                  <video
-                    key={
-                      isMobile && slide.mobileVideo
-                        ? `${slide.id}-mobile`
-                        : slide.id
-                    }
-                    ref={(el) => {
-                      if (!el) return;
-                      if (slide.videoStartTime && el.currentTime === 0) {
-                        el.currentTime = slide.videoStartTime;
-                      }
-                    }}
-                    muted
-                    playsInline
-                    preload="none"
-                    poster={slide.poster}
-                    onEnded={(e) => {
-                      const slideEl = e.currentTarget.closest(".slick-slide");
-                      if (slideEl?.classList.contains("slick-cloned")) return;
-                      sliderRef.current?.slickNext();
-                    }}
-                    className={`absolute inset-0 w-full h-full ${videoCover ? "object-cover" : "object-contain object-top"}`}
-                  >
-                    <source
-                      src={
-                        isMobile && slide.mobileVideo
-                          ? slide.mobileVideo
-                          : slide.video
-                      }
-                      type="video/mp4"
-                    />
-                  </video>
-                )}
-              </div>
-            </div>
-          ))}
-        </Slider>
+    <SectionLayout
+      maxWidth="9xl"
+      className="!px-0 !py-0 bg-nasun-black overflow-hidden"
+    >
+      <div ref={containerRef} className="w-full flex flex-col">
+        {/* Section Title Area: Independent block above video */}
+        <div className="w-full py-10 md:py-14 lg:py-16 flex justify-center bg-nasun-black">
+          <SectionTitle
+            as="h2"
+            className="!font-eurostile font-semibold uppercase"
+          >
+            What We're Building
+          </SectionTitle>
+        </div>
 
-        {/* Overlay: explore button + nav */}
-        <div className="absolute bottom-12 left-0 right-0 z-20 flex flex-col items-center gap-6 pointer-events-none">
+        {/* Video Slider Area: Positioned below title */}
+        <div className="relative w-full aspect-video">
+          <Slider ref={sliderRef} {...sliderSettings} className="w-full h-full">
+            {SLIDES.map((slide) => (
+              <div key={slide.id}>
+                <div
+                  className="relative w-full aspect-video overflow-hidden"
+                  style={{ backgroundColor: slide.bgColor }}
+                >
+                  {slide.video && (
+                    <video
+                      key={
+                        isMobile && slide.mobileVideo
+                          ? `${slide.id}-mobile`
+                          : slide.id
+                      }
+                      muted
+                      playsInline
+                      preload="none"
+                      poster={slide.poster}
+                      onEnded={() => sliderRef.current?.slickNext()}
+                      className="w-full h-full object-contain"
+                    >
+                      <source
+                        src={
+                          isMobile && slide.mobileVideo
+                            ? slide.mobileVideo
+                            : slide.video
+                        }
+                        type="video/mp4"
+                      />
+                    </video>
+                  )}
+                </div>
+              </div>
+            ))}
+          </Slider>
+        </div>
+
+        {/* Controls Overlay/Below div */}
+        <div
+          className="
+          relative py-10 flex flex-col items-center gap-6 bg-nasun-black
+          lg:absolute lg:bottom-10 lg:left-0 lg:right-0 lg:z-20 lg:bg-transparent lg:pointer-events-none
+        "
+        >
           <ButtonV3
             size="md"
             outline
@@ -273,10 +261,10 @@ function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }
           <div className="flex items-center gap-4 pointer-events-auto">
             <button
               onClick={() => sliderRef.current?.slickPrev()}
-              className="flex items-center justify-center w-7 h-7 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
+              className="flex items-center justify-center w-8 h-8 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
               aria-label="Previous slide"
             >
-              <ChevronLeftIcon className="w-4 h-4 text-white" />
+              <ChevronLeftIcon className="w-5 h-5 text-white" />
             </button>
 
             <div className="flex items-center gap-3">
@@ -284,7 +272,7 @@ function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }
                 <button
                   key={slide.id}
                   onClick={() => sliderRef.current?.slickGoTo(i)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
                     i === activeSlideIndex
                       ? "bg-nasun-white"
                       : "bg-nasun-white/40 hover:bg-nasun-white/60"
@@ -296,15 +284,15 @@ function WhatWeBuild2026Section({ videoCover = false }: { videoCover?: boolean }
 
             <button
               onClick={() => sliderRef.current?.slickNext()}
-              className="flex items-center justify-center w-7 h-7 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
+              className="flex items-center justify-center w-8 h-8 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
               aria-label="Next slide"
             >
-              <ChevronRightIcon className="w-4 h-4 text-white" />
+              <ChevronRightIcon className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
       </div>
-    </section>
+    </SectionLayout>
   );
 }
 

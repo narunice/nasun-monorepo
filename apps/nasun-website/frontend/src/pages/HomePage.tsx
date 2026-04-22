@@ -50,6 +50,7 @@ export default function HomePage() {
         <link rel="preload" as="image" href={canyonImg} type="image/webp" />
       </Helmet>
       <JsonLd data={NASUN_ORG_SCHEMA} />
+
       <ScrollSnapContainer>
         <ScrollSnapSection>
           <TriptychSection />
