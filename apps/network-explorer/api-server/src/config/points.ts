@@ -53,6 +53,15 @@ export const SCORE_CATEGORIES = new Set([
 export const GENESIS_PASS_MULTIPLIER = 2.0; // Forward-only: existing 1.5x records remain immutable
 export const VOLUME_TIER_CAP = 3.0;
 
+// --- Staking emissions leaderboard ---
+// final_points = STAKING_EMISSION_COEFF * LOG2(delta_mist + 1)
+// Calibration: 1 NSN/week emitted (~1e9 MIST) -> LOG2(1e9+1)*0.05 ~= 1.5 pts/day.
+export const STAKING_EMISSION_COEFF = 0.05;
+
+// Forward-only guard: yesterday's date must be >= this cutoff to generate rows.
+// Set to the day emissions tracking started minus 1 (i.e., 2026-04-21 passes as yesterdayStr).
+export const STAKING_EMISSION_CUTOFF_DATE = '2026-04-21';
+
 // --- Staking-v2 ---
 // Active stake principal contributes a tiered per-day score that is summed with base_score
 // inside the frontend formula: today = (base + staking) * mult + bonus.
