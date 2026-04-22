@@ -179,17 +179,27 @@ export class ChatService {
   }
 
   connect(wsUrl: string, signFn: ChatSignFn): void {
-    if (this.ws && this.status === 'connected' && this.signFn === signFn) {
-      return;
-    }
+    // Always refresh wsUrl/signFn so the next challenge uses the latest signer
     this.wsUrl = wsUrl;
     this.signFn = signFn;
-    this.reconnectAttempts = 0;
+    // If already connected, do nothing further — signFn is now up to date for future challenges
+    if (this.ws && this.status === 'connected') {
+      return;
+    }
+    // Clear any pending reconnect before starting a fresh connection
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    // NOTE: do not reset reconnectAttempts here. Resetting on every connect() call would
+    // let React effect churn defeat the exponential backoff. Counter is reset only on
+    // successful auth (auth_success) or explicit disconnect().
     this.doConnect();
   }
 
   disconnect(): void {
     this.reconnectAttempts = 0;
+    this.captchaRequired = false;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -291,7 +301,7 @@ export class ChatService {
 
       case 'auth_error':
         console.warn('Chat auth error:', msg.reason);
-        if (msg.reason === 'Captcha required') {
+        if (msg.reason === 'Captcha required' || msg.reason === 'Captcha verification failed') {
           this.captchaRequired = true;
           this.emit('captcha_required', undefined);
         }

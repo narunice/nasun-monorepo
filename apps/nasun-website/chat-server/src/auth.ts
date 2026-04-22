@@ -127,7 +127,9 @@ export function setProfileApiUrl(url: string): void {
 async function verifyAddressExists(address: string): Promise<boolean> {
   if (!profileApiUrl) return false;
   try {
-    const res = await fetch(`${profileApiUrl}/v3/user-profile?walletAddress=${encodeURIComponent(address)}`);
+    const res = await fetch(`${profileApiUrl}/v3/user-profile?walletAddress=${encodeURIComponent(address)}`, {
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return false;
     const data = await res.json() as { walletAddress?: string };
     return !!data.walletAddress;

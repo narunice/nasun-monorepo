@@ -45,6 +45,15 @@ export function useChat() {
   const [turnstileKey, setTurnstileKey] = useState(0);
   // True after captcha_required fires (mid-session re-verification), false once token arrives
   const [captchaRequired, setCaptchaRequired] = useState(false);
+  // Permanent Turnstile failure (after MAX_TURNSTILE_RETRIES) — stops showing "Connecting..." forever
+  const [turnstilePermanentlyFailed, setTurnstilePermanentlyFailed] = useState(false);
+  // Retry counter for invisible Turnstile errors (privacy browsers, script blockers, etc.)
+  const turnstileRetryRef = useRef(0);
+
+  // Keep display name in a ref so changes don't trigger reconnection
+  const userDisplayNameRef = useRef<string>('');
+  const xDisplayName = user?.provider === 'Twitter' ? user?.username : user?.linkedAccounts?.twitter?.username;
+  userDisplayNameRef.current = user?.customDisplayName || xDisplayName || user?.username || user?.walletAddress || '';
 
   const messages = activeRoomState?.messages ?? [];
   const hasMore = activeRoomState?.hasMore ?? false;
@@ -59,10 +68,6 @@ export function useChat() {
       }
       return;
     }
-
-    // Display name priority: custom > X display name > primary username > wallet address
-    const xDisplayName = user.provider === 'Twitter' ? user.username : user.linkedAccounts?.twitter?.username;
-    const userDisplayName = user.customDisplayName || xDisplayName || user.username || walletAddress;
 
     const signFn: ChatSignFn = async (challenge: string) => {
       const signer = SignerManager.getCurrent();
@@ -82,12 +87,12 @@ export function useChat() {
           address: walletAddress,
           authMethod: 'ephemeral' as const,
           ephemeralPubKey: effectiveSigner.getEphemeralPublicKey(),
-          displayName: userDisplayName,
+          displayName: userDisplayNameRef.current,
         };
       }
 
       const { signature } = await effectiveSigner.signPersonal(messageBytes);
-      return { signature, address: walletAddress, displayName: userDisplayName };
+      return { signature, address: walletAddress, displayName: userDisplayNameRef.current };
     };
     const service = getChatService();
 
@@ -95,8 +100,9 @@ export function useChat() {
       useChatStore.getState().addMessage(msg);
 
       // Mention detection: check if my displayName is @mentioned
-      if (msg.sender !== walletAddress && userDisplayName) {
-        const escaped = userDisplayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const currentDisplayName = userDisplayNameRef.current;
+      if (msg.sender !== walletAddress && currentDisplayName) {
+        const escaped = currentDisplayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const mentionPattern = new RegExp(`@(?:\\[${escaped}\\]|${escaped})(?:\\b|\\s|$)`, 'i');
         if (mentionPattern.test(msg.content)) {
           const store = useChatStore.getState();
@@ -175,7 +181,7 @@ export function useChat() {
       service.off('error', onError);
       service.off('captcha_required', onCaptchaRequired);
     };
-  }, [user?.walletAddress, user?.customDisplayName, user?.twitterHandle, user?.username, turnstileReady]);
+  }, [user?.walletAddress, turnstileReady]);
 
   // Load history for active room when switching
   useEffect(() => {
@@ -239,12 +245,43 @@ export function useChat() {
 
   const setTurnstileToken = useCallback((token: string) => {
     getChatService().setTurnstileToken(token);
+    turnstileRetryRef.current = 0;
+    if (turnstilePermanentlyFailed) setTurnstilePermanentlyFailed(false);
     if (!turnstileReady) setTurnstileReady(true);
     if (captchaRequired) setCaptchaRequired(false);
-  }, [turnstileReady, captchaRequired]);
+  }, [turnstileReady, captchaRequired, turnstilePermanentlyFailed]);
+
+  const onTurnstileError = useCallback(() => {
+    const MAX_TURNSTILE_RETRIES = 3;
+    turnstileRetryRef.current += 1;
+    if (turnstileRetryRef.current < MAX_TURNSTILE_RETRIES) {
+      // Auto-retry with remount after a short delay
+      setTurnstileReady(false);
+      setTimeout(() => {
+        setTurnstileKey((k) => k + 1);
+      }, 500);
+      return;
+    }
+    // Cap exceeded — surface a clear error and stop showing "Connecting..."
+    useChatStore.getState().setAuthError(
+      'Security check failed. Reload the page or disable tracker-blocking extensions to use chat.'
+    );
+    setTurnstileReady(false);
+    setTurnstilePermanentlyFailed(true);
+  }, []);
+
+  const onTurnstileExpire = useCallback(() => {
+    // Token expired before auth completed — remount widget to get a fresh one
+    if (status !== 'connected') {
+      setTurnstileKey((k) => k + 1);
+      setTurnstileReady(false);
+    }
+  }, [status]);
 
   const displayStatus: ChatConnectionStatus =
-    (!!user?.walletAddress && !turnstileReady) ? 'connecting' : status;
+    turnstilePermanentlyFailed ? 'disconnected'
+      : (!!user?.walletAddress && !turnstileReady) ? 'connecting'
+      : status;
 
   return {
     messages,
@@ -266,6 +303,8 @@ export function useChat() {
     needsNickname,
     nicknameRateLimit,
     setTurnstileToken,
+    onTurnstileError,
+    onTurnstileExpire,
     turnstileKey,
   };
 }
