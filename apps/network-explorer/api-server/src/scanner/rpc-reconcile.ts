@@ -27,8 +27,7 @@ import {
 import {
   maybeRefreshMatview,
 } from './ecosystem-cache.js';
-
-const REFERRAL_SF = 0.5;
+import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 
 // RPC event query config (same structure as backfill-points.ts)
 interface ReconcileQuery {
@@ -165,7 +164,19 @@ export async function reconcileFromRpc(
     existing.add(`${r.identity_id}::${r.category}`);
   }
 
-  let totalFilled = 0;
+  interface GapRow {
+    wallet: string;
+    identityId: string;
+    txDigest: string;
+    category: string;
+    activityType: string;
+    basePoints: number;
+    genesisMult: number;
+    finalPoints: string;
+    ts: number;
+    eventSeq: number;
+  }
+  const gapRows: GapRow[] = [];
   const startTime = Date.now();
 
   for (const eq of RECONCILE_QUERIES) {
@@ -179,7 +190,6 @@ export async function reconcileFromRpc(
 
     let cursor: { txDigest: string; eventSeq: string } | null = null;
     let pages = 0;
-    let filled = 0;
 
     try {
       // Query RPC in descending order (most recent first) to reach target date quickly
@@ -219,7 +229,6 @@ export async function reconcileFromRpc(
           const capKey = `${identityId}::${eq.category}`;
           if (existing.has(capKey)) continue;
 
-          // Insert the missing record
           const isScoreCat = SCORE_CATEGORIES.has(eq.category);
           const genesisMult = isScoreCat && genesisPassSet.has(identityId)
             ? GENESIS_PASS_MULTIPLIER : 1.0;
@@ -234,21 +243,15 @@ export async function reconcileFromRpc(
             continue;
           }
 
-          await pointsDb`
-            INSERT INTO activity_points
-              (wallet_address, identity_id, tx_digest, tx_sequence_number,
-               category, activity_type, base_points, volume_tier,
-               genesis_multiplier, final_points, tx_timestamp, event_seq)
-            VALUES
-              (${wallet}, ${identityId}, ${txDigest}, 0,
-               ${eq.category}, ${eq.activityType}, ${basePoints}, 1.0,
-               ${genesisMult}, ${finalPoints},
-               ${new Date(ts)}::timestamptz, ${Number(event.id.eventSeq)})
-            ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
-          `;
-
+          // Mark as filled immediately to prevent same (identity, category) being
+          // collected again from a different event type in the same reconcile run.
           existing.add(capKey);
-          filled++;
+          gapRows.push({
+            wallet, identityId, txDigest,
+            category: eq.category, activityType: eq.activityType,
+            basePoints, genesisMult, finalPoints,
+            ts, eventSeq: Number(event.id.eventSeq),
+          });
         }
 
         if (pastTargetDate || !result.hasNextPage) break;
@@ -257,8 +260,39 @@ export async function reconcileFromRpc(
     } catch (err) {
       console.warn(`[Reconcile] ${eq.category}/${eq.activityType} error: ${(err as Error).message}`);
     }
+  }
 
-    totalFilled += filled;
+  // Bulk INSERT all collected gap rows in a single query
+  let totalFilled = 0;
+  if (gapRows.length > 0) {
+    const wallets = gapRows.map(r => r.wallet);
+    const identityIds = gapRows.map(r => r.identityId);
+    const txDigests = gapRows.map(r => r.txDigest);
+    const categories = gapRows.map(r => r.category);
+    const activityTypes = gapRows.map(r => r.activityType);
+    const basePointsArr = gapRows.map(r => r.basePoints);
+    const genesisMults = gapRows.map(r => r.genesisMult);
+    const finalPointsArr = gapRows.map(r => parseFloat(r.finalPoints));
+    const timestamps = gapRows.map(r => new Date(r.ts));
+    const eventSeqs = gapRows.map(r => r.eventSeq);
+    const zeros = gapRows.map(() => 0);
+    const ones = gapRows.map(() => 1.0);
+
+    const insertResult = await pointsDb`
+      INSERT INTO activity_points
+        (wallet_address, identity_id, tx_digest, tx_sequence_number,
+         category, activity_type, base_points, volume_tier,
+         genesis_multiplier, final_points, tx_timestamp, event_seq)
+      SELECT * FROM unnest(
+        ${wallets}::text[], ${identityIds}::text[], ${txDigests}::text[], ${zeros}::int[],
+        ${categories}::text[], ${activityTypes}::text[], ${basePointsArr}::numeric[], ${ones}::numeric[],
+        ${genesisMults}::numeric[], ${finalPointsArr}::numeric[], ${timestamps}::timestamptz[], ${eventSeqs}::int[]
+      ) AS t(wallet_address, identity_id, tx_digest, tx_sequence_number,
+             category, activity_type, base_points, volume_tier,
+             genesis_multiplier, final_points, tx_timestamp, event_seq)
+      ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+    `;
+    totalFilled = insertResult.count;
   }
 
   // If gaps were found, refresh matview and correct the snapshot
@@ -275,7 +309,7 @@ export async function reconcileFromRpc(
         )
         UPDATE ecosystem_score_snapshots s
         SET base_score = ns.new_base,
-            ecosystem_score = (ns.new_base * s.multiplier + s.bonus_total + s.governance_bonus + s.referral_bonus * ${REFERRAL_SF})::numeric(10,2),
+            ecosystem_score = (ns.new_base * s.multiplier + s.bonus_total + s.governance_bonus + s.referral_bonus * ${REFERRAL_ECOSYSTEM_SCALING_FACTOR})::numeric(10,2),
             is_backfilled = TRUE
         FROM new_scores ns
         WHERE s.identity_id = ns.identity_id
@@ -306,7 +340,7 @@ export async function reconcileFromRpc(
       // Recalculate ecosystem_score for newly inserted rows
       await pointsDb`
         UPDATE ecosystem_score_snapshots
-        SET ecosystem_score = (base_score * multiplier + bonus_total + governance_bonus + referral_bonus * ${REFERRAL_SF})::numeric(10,2)
+        SET ecosystem_score = (base_score * multiplier + bonus_total + governance_bonus + referral_bonus * ${REFERRAL_ECOSYSTEM_SCALING_FACTOR})::numeric(10,2)
         WHERE snapshot_date = ${targetDate}::date AND is_backfilled = TRUE AND ecosystem_score = 0 AND base_score > 0
       `;
 

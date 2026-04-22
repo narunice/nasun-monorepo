@@ -20,16 +20,6 @@ export async function takeDailySnapshot(
 ): Promise<void> {
   if (!pointsDb) return;
 
-  // Skip if snapshot already exists for this date
-  const [existing] = await pointsDb`
-    SELECT 1 FROM ecosystem_score_snapshots
-    WHERE snapshot_date = ${snapshotDate}::date LIMIT 1
-  `;
-  if (existing) {
-    console.log(`[Snapshot] Already exists for ${snapshotDate}, skipping`);
-    return;
-  }
-
   // 1. Get all users' base_score for the snapshot date from matview
   const baseScores = await pointsDb`
     SELECT identity_id, base_score::int as base_score

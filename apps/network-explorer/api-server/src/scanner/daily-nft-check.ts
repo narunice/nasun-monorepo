@@ -168,14 +168,12 @@ async function checkAlliancePenalties(
   let applied = 0;
   if (shouldPenalize.length > 0) {
     const today = new Date().toISOString().slice(0, 10);
-    for (const id of shouldPenalize) {
-      const result = await pointsDb!`
-        INSERT INTO alliance_penalties (identity_id, penalty_start)
-        VALUES (${id}, ${today}::date)
-        ON CONFLICT (identity_id) DO NOTHING
-      `;
-      if (result.count > 0) applied++;
-    }
+    const result = await pointsDb!`
+      INSERT INTO alliance_penalties (identity_id, penalty_start)
+      SELECT unnest(${shouldPenalize}::text[]), ${today}::date
+      ON CONFLICT (identity_id) DO NOTHING
+    `;
+    applied = result.count;
   }
 
   // Recovery check: penalized users with 2 consecutive active days (yesterday + today)
@@ -283,7 +281,7 @@ interface IdentityStakeData {
 
 const MIST_PER_NSN = 10n ** 9n;
 
-const RPC_CONCURRENCY = 200; // max parallel suix_getStakes calls
+const RPC_CONCURRENCY = 50; // max parallel suix_getStakes calls
 
 /**
  * Fetch suix_getStakes for all staking identities with bounded concurrency.
@@ -464,21 +462,28 @@ async function awardStakingEmissions(
     prevStateMap.set(row.identity_id as string, BigInt(String(row.last_total_mist)));
   }
 
+  // Bulk UPSERT all state in a single query (eliminates N+1 for 15k+ users/day).
+  // Always update even on partial failure — prevents multi-day delta accumulation
+  // on next successful run.
+  const stateIds: string[] = [];
+  const stateMists: string[] = [];
+  for (const [identityId, data] of stakeDataByIdentity) {
+    stateIds.push(identityId);
+    stateMists.push(String(data.totalEstimatedRewardMist));
+  }
+  if (stateIds.length > 0) {
+    await pointsDb`
+      INSERT INTO staking_emission_state (identity_id, last_total_mist, updated_at)
+      SELECT unnest(${stateIds}::text[]), unnest(${stateMists}::numeric[]), NOW()
+      ON CONFLICT (identity_id) DO UPDATE
+        SET last_total_mist = EXCLUDED.last_total_mist, updated_at = NOW()
+    `;
+  }
+
   let totalAwarded = 0;
 
   for (const [identityId, data] of stakeDataByIdentity) {
     const { wallets, totalEstimatedRewardMist, hasPartialFailure } = data;
-
-    // Always update state so the next run computes delta from today's reading.
-    // We do this even on partial failure (using incomplete data) to prevent delta
-    // accumulation: skipping the update would cause a multi-day delta on the next
-    // successful run, which inflates the emission score more than partial data does.
-    await pointsDb`
-      INSERT INTO staking_emission_state (identity_id, last_total_mist, updated_at)
-      VALUES (${identityId}, ${String(totalEstimatedRewardMist)}, NOW())
-      ON CONFLICT (identity_id) DO UPDATE
-        SET last_total_mist = EXCLUDED.last_total_mist, updated_at = NOW()
-    `;
 
     // Partial RPC failure: skip award to avoid crediting incomplete data.
     if (hasPartialFailure) continue;
