@@ -6,7 +6,13 @@ import type { TraderStatsResponse } from '../types';
 async function fetchTraderStats(address: string): Promise<TraderStatsResponse> {
   const baseUrl = NETWORK_CONFIG.chatHttpUrl;
   if (!baseUrl) {
-    return { address, nickname: null, stats: { '24h': null, '7d': null, '30d': null, 'all': null } };
+    return {
+      address,
+      nickname: null,
+      profileImageUrl: null,
+      twitterHandle: null,
+      stats: { '24h': null, '7d': null, '30d': null, 'all': null },
+    };
   }
 
   const url = `${baseUrl}/api/leaderboard/trader/${encodeURIComponent(address)}`;

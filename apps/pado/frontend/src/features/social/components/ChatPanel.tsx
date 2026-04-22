@@ -25,7 +25,7 @@ function StatusDot({ status, loggedIn }: { status: string; loggedIn: boolean }) 
 export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
   const address = useSignerAddress();
   const {
-    messages, sendMessage, loadMore, isConnected, status, displayStatus, captchaRequired, onlineCount, hasMore,
+    messages, sendMessage, loadMore, isConnected, displayStatus, captchaRequired, onlineCount, hasMore,
     nickname, needsNickname, nicknameRateLimit,
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
