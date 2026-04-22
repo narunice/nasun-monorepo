@@ -672,7 +672,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.gameServers": "Game Servers",
   },
   ecosystem: {
-    "navigation.ecosystemLeaderboard": "Ecosystem Leaderboard",
+    "navigation.ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",
     "navigation.baramAi": "Baram - AI",
     "navigation.padoFinance": "Pado - Finance",
     "navigation.genSol": "GenSol",
@@ -701,7 +701,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
   community: {
     "navigation.alliance": "Alliance",
     "navigation.governance": "Governance",
-    "navigation.padoScoreLeaderboard": "Pado Leaderboard",
+    "navigation.padoScoreLeaderboard": "Pado Traders Leaderboard",
     "navigation.creatorsLeaderboard": "Creators Leaderboard",
     "navigation.ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",
     "navigation.creatorsLeaderboardGuide": "Creators Leaderboard Guide",

@@ -120,8 +120,7 @@ export default function Navbar() {
             isAdmin={isAdmin}
           />
         </div>
-
-        {/* Desktop nav menu (flex-1 pushes right-side actions to the end) */}
+        {/* Desktop nav menu */}
         <DesktopNav navItems={navItems} />
 
         {/* Actions: right-aligned on all breakpoints */}

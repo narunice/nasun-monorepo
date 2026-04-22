@@ -9,27 +9,30 @@ import DevNewsEventsSection from "@/sections/home/DevNewsEventsSection";
 export default function DevHomePage() {
   return (
     <div className="bg-nasun-black">
+      {/* Hero section with snap */}
       <ScrollSnapContainer>
         <ScrollSnapSection>
           <Hero2026Section />
         </ScrollSnapSection>
-        <ScrollSnapSection allowTallContent>
-          <Hero2026StatsSection />
-        </ScrollSnapSection>
-        {/* A/B comparison: object-contain vs object-cover — dev only */}
-        <ScrollSnapSection>
-          <WhatWeBuild2026Section />
-        </ScrollSnapSection>
-        <ScrollSnapSection>
-          <WhatWeBuild2026Section videoCover />
-        </ScrollSnapSection>
-        <ScrollSnapSection allowTallContent>
-          <DevNewsEventsSection />
-        </ScrollSnapSection>
-        <ScrollSnapSection>
-          <AllianceCreatorSection />
-        </ScrollSnapSection>
       </ScrollSnapContainer>
+
+      {/* Remaining sections without snap */}
+      <ScrollSnapSection allowTallContent>
+        <Hero2026StatsSection />
+      </ScrollSnapSection>
+      {/* A/B comparison: object-contain vs object-cover — dev only */}
+      <ScrollSnapSection>
+        <WhatWeBuild2026Section />
+      </ScrollSnapSection>
+      <ScrollSnapSection>
+        <WhatWeBuild2026Section videoCover />
+      </ScrollSnapSection>
+      <ScrollSnapSection allowTallContent>
+        <DevNewsEventsSection />
+      </ScrollSnapSection>
+      <ScrollSnapSection>
+        <AllianceCreatorSection />
+      </ScrollSnapSection>
     </div>
   );
 }

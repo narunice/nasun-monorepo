@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { PadoScoreLeaderboard } from "../../features/pado-score-leaderboard/PadoScoreLeaderboard";
@@ -7,6 +8,13 @@ import { PageTitle } from "@/components/ui/PageTitle";
 const PadoScoreLeaderboardPage: React.FC = () => {
   return (
     <PageLayout>
+      <Helmet>
+        <title>Pado Traders Leaderboard - NASUN</title>
+        <meta
+          name="description"
+          content="Pado Traders Leaderboard. Weekly rankings based on trading activity, volume, and PnL on Pado DEX."
+        />
+      </Helmet>
       <SectionLayout maxWidth="6xl">
         <div className="flex justify-end mt-2 md:mt-4 mb-2 items-center gap-2">
           <span className="text-sm font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
@@ -15,7 +23,7 @@ const PadoScoreLeaderboardPage: React.FC = () => {
           <ExperimentalInfoTooltip />
         </div>
         <PageTitle wrapperClassName="flex flex-col mb-6 md:mb-8 lg:mb-10 xl:mb-12">
-          Pado Leaderboard
+          Pado Traders Leaderboard
         </PageTitle>
         <p className="text-base text-nasun-white/80 mb-6 -mt-2">
           Weekly rankings reset every Monday 00:10 UTC. Top traders earn Nasun
