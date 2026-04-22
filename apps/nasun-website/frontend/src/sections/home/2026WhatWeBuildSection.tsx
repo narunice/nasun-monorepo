@@ -4,10 +4,8 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import { ButtonV3 } from "@/components/ui/button-v3";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 
 const gensolVideo = "/videos/Color-Trailer-No-Symbol-16x9-web.mp4";
 const baramVideo = "/videos/Baram-Ui-rf28.mp4";
@@ -124,12 +122,12 @@ function WhatWeBuild2026Section() {
   // Initial play when entered view
   useEffect(() => {
     if (!hasEnteredView) return;
-    
+
     const timer = setTimeout(() => {
       const container = containerRef.current;
       if (!container) return;
       const activeVideo = container.querySelector<HTMLVideoElement>(
-        `.slick-slide.slick-active:not(.slick-cloned) video`
+        `.slick-slide.slick-active:not(.slick-cloned) video`,
       );
       playVideo(activeVideo);
       preloadAdjacentSlides(0);
@@ -152,9 +150,9 @@ function WhatWeBuild2026Section() {
 
       // Play the video in the currently active slide
       const activeVideo = container.querySelector<HTMLVideoElement>(
-        `.slick-slide.slick-active:not(.slick-cloned) video`
+        `.slick-slide.slick-active:not(.slick-cloned) video`,
       );
-      
+
       if (activeVideo) {
         const slide = SLIDES[index];
         if (activeVideo.currentTime === 0 && slide.videoStartTime) {
@@ -162,7 +160,7 @@ function WhatWeBuild2026Section() {
         }
         playVideo(activeVideo);
       }
-      
+
       preloadAdjacentSlides(index);
     },
     [preloadAdjacentSlides],
@@ -176,7 +174,7 @@ function WhatWeBuild2026Section() {
     slidesToScroll: 1,
     arrows: false,
     afterChange: handleAfterChange,
-    lazyLoad: 'progressive' as const,
+    lazyLoad: "progressive" as const,
   };
 
   const activeSlide = SLIDES[activeSlideIndex];
@@ -184,36 +182,41 @@ function WhatWeBuild2026Section() {
   return (
     <SectionLayout
       maxWidth="9xl"
-      className="bg-black overflow-hidden !px-0 min-h-screen "
+      className="bg-black overflow-hidden !px-0 !py-0 h-screen"
     >
-      <SectionTitle
-        as="h2"
-        className="!font-eurostile font-semibold uppercase text-center !mb-0 pt-12 md:pt-16 lg:pt-20 pb-0 md:pb-4 lg:pb-6"
-      >
-        What We're Building
-      </SectionTitle>
-
-      <div className="relative w-full aspect-video">
-        <Slider ref={sliderRef} {...sliderSettings} className="w-full h-full">
+      <div ref={containerRef} className="absolute inset-0">
+        <Slider
+          ref={sliderRef}
+          {...sliderSettings}
+          className="w-full h-full [&_.slick-list]:h-full [&_.slick-track]:h-full [&_.slick-slide]:h-full [&_.slick-slide>div]:h-full"
+        >
           {SLIDES.map((slide, idx) => (
-            <div key={slide.id}>
+            <div key={slide.id} className="h-full">
               <div
-                className="relative w-full aspect-video overflow-hidden"
+                className="relative w-full h-full overflow-hidden"
                 style={{ backgroundColor: slide.bgColor }}
               >
                 {slide.video && (
                   <video
-                    key={isMobile && slide.mobileVideo ? `${slide.id}-mobile` : slide.id}
+                    key={
+                      isMobile && slide.mobileVideo
+                        ? `${slide.id}-mobile`
+                        : slide.id
+                    }
                     muted
                     playsInline
-                    autoPlay={idx === 0} // Attempt autoplay for the first slide
+                    autoPlay={idx === 0}
                     preload={idx === 0 ? "auto" : "metadata"}
                     poster={slide.poster}
                     onEnded={() => sliderRef.current?.slickNext()}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-cover"
                   >
                     <source
-                      src={isMobile && slide.mobileVideo ? slide.mobileVideo : slide.video}
+                      src={
+                        isMobile && slide.mobileVideo
+                          ? slide.mobileVideo
+                          : slide.video
+                      }
                       type="video/mp4"
                     />
                   </video>
@@ -222,54 +225,63 @@ function WhatWeBuild2026Section() {
             </div>
           ))}
         </Slider>
-      </div>
 
-      <div className="relative py-10 flex flex-col items-center gap-6 bg-nasun-black lg:absolute lg:bottom-10 lg:left-0 lg:right-0 lg:z-20 lg:bg-transparent lg:pointer-events-none">
-        <ButtonV3
-          size="md"
-          outline
-          asChild
-          className="w-[200px] md:w-[240px] pointer-events-auto border-white/70 text-white bg-black/40 backdrop-blur-sm hover:bg-black/60 uppercase tracking-widest"
-        >
-          <Link to={activeSlide.link}>
-            {activeSlide.buttonPrefix}
-            <span className="font-semibold ml-1">
-              {activeSlide.projectName}
-            </span>
-          </Link>
-        </ButtonV3>
+        <div className="absolute bottom-[20%] left-0 right-0 z-20 flex justify-center pointer-events-none">
+          <div className="pointer-events-auto w-56 flex flex-col items-center rounded-2xl bg-black/50 border border-white/15 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+            {/* Explore link */}
+            <Link
+              to={activeSlide.link}
+              className="flex items-center gap-2.5 px-8 py-3 w-full justify-center group hover:bg-white/5 transition-colors"
+            >
+              <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/45 group-hover:text-white/60 transition-colors">
+                Explore
+              </span>
+              <span className="text-sm font-bold uppercase tracking-widest text-white">
+                {activeSlide.projectName}
+              </span>
+            </Link>
 
-        <div className="flex items-center gap-4 pointer-events-auto">
-          <button
-            onClick={() => sliderRef.current?.slickPrev()}
-            className="flex items-center justify-center w-8 h-8 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
-            aria-label="Previous slide"
-          >
-            <ChevronLeftIcon className="w-5 h-5 text-white" />
-          </button>
+            {/* Divider */}
+            <span className="w-full h-px bg-white/10" />
 
-          <div className="flex items-center gap-3">
-            {SLIDES.map((slide, i) => (
+            {/* Navigation row */}
+            <div className="flex items-center">
               <button
-                key={slide.id}
-                onClick={() => sliderRef.current?.slickGoTo(i)}
-                className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                  i === activeSlideIndex
-                    ? "bg-nasun-white"
-                    : "bg-nasun-white/40 hover:bg-nasun-white/60"
-                }`}
-                aria-label={`Go to slide ${i + 1}`}
-              />
-            ))}
-          </div>
+                onClick={() => sliderRef.current?.slickPrev()}
+                className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
+                aria-label="Previous slide"
+              >
+                <ChevronLeftIcon className="w-4 h-4 text-white/70" />
+              </button>
 
-          <button
-            onClick={() => sliderRef.current?.slickNext()}
-            className="flex items-center justify-center w-8 h-8 rounded-full border border-white/30 bg-black/40 hover:bg-black/70 hover:border-white/60 transition-all"
-            aria-label="Next slide"
-          >
-            <ChevronRightIcon className="w-5 h-5 text-white" />
-          </button>
+              <span className="w-px h-4 bg-white/15 shrink-0" />
+
+              <div className="flex items-center gap-2 px-4">
+                {SLIDES.map((slide, i) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => sliderRef.current?.slickGoTo(i)}
+                    className={`rounded-full transition-all duration-300 ${
+                      i === activeSlideIndex
+                        ? "w-5 h-2 bg-white"
+                        : "w-2 h-2 bg-white/35 hover:bg-white/60"
+                    }`}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+
+              <span className="w-px h-4 bg-white/15 shrink-0" />
+
+              <button
+                onClick={() => sliderRef.current?.slickNext()}
+                className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
+                aria-label="Next slide"
+              >
+                <ChevronRightIcon className="w-4 h-4 text-white/70" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </SectionLayout>

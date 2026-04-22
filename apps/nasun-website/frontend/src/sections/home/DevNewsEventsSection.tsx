@@ -30,13 +30,19 @@ function DevNewsEventsSection() {
   }, []);
   const { posts, loading, error, refetch } = usePosts(
     [WP_CATEGORIES.NEWS, WP_CATEGORIES.EVENTS],
-    6,
+    4,
   );
 
   const getCategory = (post: Post): string => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const terms = (post._embedded as any)?.["wp:term"];
-    if (terms && Array.isArray(terms) && terms[0] && Array.isArray(terms[0]) && terms[0][0]?.name) {
+    if (
+      terms &&
+      Array.isArray(terms) &&
+      terms[0] &&
+      Array.isArray(terms[0]) &&
+      terms[0][0]?.name
+    ) {
       return terms[0][0].name;
     }
     return "NEWS";
@@ -104,7 +110,9 @@ function DevNewsEventsSection() {
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-nasun-nw4/30 to-nasun-nw1/20 flex items-center justify-center">
-                          <span className="text-nasun-black/30 text-lg">No Image</span>
+                          <span className="text-nasun-black/30 text-lg">
+                            No Image
+                          </span>
                         </div>
                       )}
                     </div>
@@ -127,7 +135,10 @@ function DevNewsEventsSection() {
                         {stripHtml(post.title.rendered)}
                       </h4>
 
-                      <time className="text-nasun-black/50 text-sm" dateTime={post.date}>
+                      <time
+                        className="text-nasun-black/50 text-sm"
+                        dateTime={post.date}
+                      >
                         {formatDate(post.date)}
                       </time>
 
@@ -137,7 +148,11 @@ function DevNewsEventsSection() {
 
                       <div>
                         <Link to={`/news-events/${post.slug}`}>
-                          <ButtonV3 variant="gradient" size="sm" className="capitalize">
+                          <ButtonV3
+                            variant="gradient"
+                            size="sm"
+                            className="capitalize"
+                          >
                             Read more
                           </ButtonV3>
                         </Link>
@@ -148,7 +163,6 @@ function DevNewsEventsSection() {
               );
             })}
           </Slider>
-
         </div>
       )}
 
@@ -156,40 +170,43 @@ function DevNewsEventsSection() {
           Opacity transition prevents flicker during scroll-snap section transitions. */}
       {Array.isArray(posts) && posts.length > 0 && (
         <div
-          className={`fixed bottom-[10vh] left-0 right-0 z-50 flex justify-center transition-opacity duration-300 ${
-            isVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          className={`absolute bottom-20 left-0 right-0 z-50 flex justify-center transition-opacity duration-300 ${
+            isVisible
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none"
           }`}
         >
-          <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-full bg-black/60 border border-white/20 backdrop-blur-md shadow-lg">
+          <div className="inline-flex items-center rounded-2xl bg-black/50 border border-white/15 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
             <button
               onClick={() => sliderRef.current?.slickPrev()}
-              className="flex items-center justify-center w-6 h-6 rounded-full hover:bg-white/10 transition-colors"
+              className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
               aria-label="Previous news"
             >
               <ChevronLeftIcon className="w-4 h-4 text-white/70" />
             </button>
 
-            <div className="flex items-center gap-2">
-              {Array.from({ length: Math.ceil(postCount / 2) }).map((_, dotIndex) => {
-                const isActive = Math.floor(activeIndex / 2) === dotIndex;
-                return (
-                  <button
-                    key={dotIndex}
-                    onClick={() => sliderRef.current?.slickGoTo(dotIndex * 2)}
-                    className={`rounded-full transition-all duration-300 ${
-                      isActive
-                        ? "w-4 h-2 bg-nasun-nw1"
-                        : "w-2 h-2 bg-white/40 hover:bg-white/60"
-                    }`}
-                    aria-label={`Go to slide group ${dotIndex + 1}`}
-                  />
-                );
-              })}
+            <span className="w-px h-4 bg-white/15 shrink-0" />
+
+            <div className="flex items-center gap-2 px-4">
+              {Array.from({ length: postCount }).map((_, dotIndex) => (
+                <button
+                  key={dotIndex}
+                  onClick={() => sliderRef.current?.slickGoTo(dotIndex)}
+                  className={`rounded-full transition-all duration-300 ${
+                    activeIndex === dotIndex
+                      ? "w-5 h-2 bg-white"
+                      : "w-2 h-2 bg-white/35 hover:bg-white/60"
+                  }`}
+                  aria-label={`Go to slide ${dotIndex + 1}`}
+                />
+              ))}
             </div>
+
+            <span className="w-px h-4 bg-white/15 shrink-0" />
 
             <button
               onClick={() => sliderRef.current?.slickNext()}
-              className="flex items-center justify-center w-6 h-6 rounded-full hover:bg-white/10 transition-colors"
+              className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
               aria-label="Next news"
             >
               <ChevronRightIcon className="w-4 h-4 text-white/70" />
