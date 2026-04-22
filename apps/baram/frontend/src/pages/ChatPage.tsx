@@ -6,26 +6,30 @@
  * ChatTopBar, messages, and input area.
  */
 
-import { useEffect } from 'react';
-import { ChatTopBar } from '../components/chat/ChatTopBar';
-import { ChatInput } from '../components/input/ChatInput';
-import { WelcomeScreen } from '../components/empty/WelcomeScreen';
-import { LandingScreen } from '../components/empty/LandingScreen';
-import { NFTGateScreen } from '../components/empty/NFTGateScreen';
-import { OnboardingChecklist } from '../components/empty/OnboardingChecklist';
-import { MessageList } from '../components/chat/MessageList';
-import { AttestationDisplay } from '../features/request/components/AttestationDisplay';
-import { useWalletSession } from '../hooks/useWalletSession';
-import { useNFTGate } from '../hooks/useNFTGate';
-import { useRequestWithRetry } from '../features/request/hooks/useRequestWithRetry';
-import { MODEL_PRICING, ModelId } from '../config/network';
-import { useChatStore } from '../stores/chatStore';
-import { useMultiBalance } from '@nasun/wallet';
-import { ClaimAllButton } from '@nasun/wallet-ui';
+import { useEffect } from "react";
+import { ChatTopBar } from "../components/chat/ChatTopBar";
+import { ChatInput } from "../components/input/ChatInput";
+import { WelcomeScreen } from "../components/empty/WelcomeScreen";
+import { LandingScreen } from "../components/empty/LandingScreen";
+import { NFTGateScreen } from "../components/empty/NFTGateScreen";
+import { OnboardingChecklist } from "../components/empty/OnboardingChecklist";
+import { MessageList } from "../components/chat/MessageList";
+import { AttestationDisplay } from "../features/request/components/AttestationDisplay";
+import { useWalletSession } from "../hooks/useWalletSession";
+import { useNFTGate } from "../hooks/useNFTGate";
+import { useRequestWithRetry } from "../features/request/hooks/useRequestWithRetry";
+import { MODEL_PRICING, ModelId } from "../config/network";
+import { useChatStore } from "../stores/chatStore";
+import { useMultiBalance } from "@nasun/wallet";
+import { ClaimAllButton } from "@nasun/wallet-ui";
 
 export function ChatPage() {
   const { isConnected, walletAddress } = useWalletSession();
-  const { hasAccess, isLoading: nftLoading, refresh: refreshNFTGate } = useNFTGate(walletAddress);
+  const {
+    hasAccess,
+    isLoading: nftLoading,
+    refresh: refreshNFTGate,
+  } = useNFTGate(walletAddress);
   const {
     submit,
     isProcessing,
@@ -38,7 +42,7 @@ export function ChatPage() {
   } = useRequestWithRetry();
 
   const { data: balances } = useMultiBalance();
-  const nusdcBalance = balances?.tokens['NUSDC']?.balance ?? 0n;
+  const nusdcBalance = balances?.tokens["NUSDC"]?.balance ?? 0n;
   const hasNusdc = nusdcBalance > 0n;
 
   const messages = useChatStore((state) => state.messages);
@@ -49,7 +53,9 @@ export function ChatPage() {
   const privacyMode = useChatStore((state) => state.privacyMode);
   const setPrivacyMode = useChatStore((state) => state.setPrivacyMode);
   const isLoading = useChatStore((state) => state.isLoading);
-  const currentWalletAddress = useChatStore((state) => state.currentWalletAddress);
+  const currentWalletAddress = useChatStore(
+    (state) => state.currentWalletAddress,
+  );
 
   useEffect(() => {
     if (!selectedModel) {
@@ -61,7 +67,13 @@ export function ChatPage() {
     if (isConnected && currentWalletAddress && !activeSessionId && !isLoading) {
       createSession();
     }
-  }, [isConnected, currentWalletAddress, activeSessionId, createSession, isLoading]);
+  }, [
+    isConnected,
+    currentWalletAddress,
+    activeSessionId,
+    createSession,
+    isLoading,
+  ]);
 
   // Wrap submit to pre-check NUSDC balance
   const handleSubmit = (prompt: string) => {
@@ -72,7 +84,7 @@ export function ChatPage() {
   const hasMessages = messages.length > 0 || isProcessing;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full pb-8">
       {/* Top bar: session title + model name */}
       <ChatTopBar />
 
@@ -83,19 +95,28 @@ export function ChatPage() {
             <LandingScreen />
           ) : nftLoading ? (
             <div className="flex items-center justify-center min-h-[60vh]">
-              <span className="text-sm text-[var(--color-text-muted)]">Checking access...</span>
+              <span className="text-sm text-[var(--color-text-muted)]">
+                Checking access...
+              </span>
             </div>
           ) : !hasAccess ? (
-            <NFTGateScreen walletAddress={walletAddress} onRefresh={refreshNFTGate} />
+            <NFTGateScreen
+              walletAddress={walletAddress}
+              onRefresh={refreshNFTGate}
+            />
           ) : !hasMessages ? (
             <>
               <OnboardingChecklist hasTokens={hasNusdc} />
               <WelcomeScreen onSuggestionClick={handleSubmit} />
-              {selectedExecutor && MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee' && (
-                <div className="max-w-lg mx-auto mt-6">
-                  <AttestationDisplay teeType={selectedExecutor.teeType} attestation={attestation} />
-                </div>
-              )}
+              {selectedExecutor &&
+                MODEL_PRICING[selectedModel as ModelId]?.provider === "tee" && (
+                  <div className="max-w-lg mx-auto mt-6">
+                    <AttestationDisplay
+                      teeType={selectedExecutor.teeType}
+                      attestation={attestation}
+                    />
+                  </div>
+                )}
             </>
           ) : (
             <>
@@ -104,14 +125,19 @@ export function ChatPage() {
                 isProcessing={isProcessing}
                 isTeeExecutor={
                   (selectedExecutor?.teeType ?? 0) > 0 &&
-                  MODEL_PRICING[selectedModel as ModelId]?.provider === 'tee'
+                  MODEL_PRICING[selectedModel as ModelId]?.provider === "tee"
                 }
                 requestStatus={requestStatus}
               />
               {selectedExecutor && attestation.isVerified && (
                 <div className="mt-4 text-center">
                   <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)]">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <svg
+                      className="w-3 h-3"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -135,8 +161,13 @@ export function ChatPage() {
           {isConnected && hasAccess && !hasNusdc && (
             <div className="flex items-center gap-3 p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--color-text-primary)]">Get test tokens to start</p>
-                <p className="text-xs text-[var(--color-text-muted)]">You need NUSDC to pay for AI inference. Claim free devnet tokens below.</p>
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                  Get test tokens to start
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  You need NUSDC to pay for AI inference. Claim free devnet
+                  tokens below.
+                </p>
               </div>
               <div className="shrink-0 w-40">
                 <ClaimAllButton />
@@ -145,29 +176,40 @@ export function ChatPage() {
           )}
           <ChatInput
             onSubmit={handleSubmit}
-            disabled={isProcessing || !isConnected || !selectedExecutor || !hasAccess || !hasNusdc}
+            disabled={
+              isProcessing ||
+              !isConnected ||
+              !selectedExecutor ||
+              !hasAccess ||
+              !hasNusdc
+            }
             placeholder={
               !isConnected
-                ? 'Connect wallet to start...'
+                ? "Connect wallet to start..."
                 : executorsLoading
-                  ? 'Loading executors...'
+                  ? "Loading executors..."
                   : executorsError
-                    ? 'Failed to load executors'
+                    ? "Failed to load executors"
                     : !hasNusdc
-                      ? 'Claim test tokens above to get started...'
+                      ? "Claim test tokens above to get started..."
                       : !selectedExecutor
-                        ? 'No eligible executors available'
-                        : 'Ask anything...'
+                        ? "No eligible executors available"
+                        : "Ask anything..."
             }
             privacyMode={privacyMode}
             onTogglePrivacy={(mode) => setPrivacyMode(mode)}
             selectedModel={selectedModel}
             onSelectModel={setSelectedModel}
           />
-          {(result?.requestId !== undefined || result?.executionTimeMs !== undefined) && (
+          {(result?.requestId !== undefined ||
+            result?.executionTimeMs !== undefined) && (
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] px-1">
-              {result?.requestId !== undefined && <span>Request #{result.requestId}</span>}
-              {result?.executionTimeMs !== undefined && <span>{(result.executionTimeMs / 1000).toFixed(2)}s</span>}
+              {result?.requestId !== undefined && (
+                <span>Request #{result.requestId}</span>
+              )}
+              {result?.executionTimeMs !== undefined && (
+                <span>{(result.executionTimeMs / 1000).toFixed(2)}s</span>
+              )}
             </div>
           )}
         </div>
