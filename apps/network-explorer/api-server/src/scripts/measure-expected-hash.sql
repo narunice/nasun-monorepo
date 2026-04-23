@@ -3,6 +3,10 @@
 -- Must be byte-identical (for _deltas construction) with the recovery SQL.
 -- Run:  sudo -u postgres psql -d nasun_points -tAX \
 --         -c "SET timezone='UTC'; $(cat measure-expected-hash.sql)"
+--
+-- Category filter: ecosystem base_score scope (see db/ecosystem-schema.sql).
+-- `staking` is not in NOT IN list because it's excluded via the
+-- time-bounded clause below (pre-2026-04-12 counts, post doesn't).
 
 WITH cats AS (
   SELECT DISTINCT identity_id, date_trunc('day', tx_timestamp)::date AS day, category

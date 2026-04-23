@@ -4,6 +4,9 @@
 -- Principle: 사용자가 본 점수는 내려갈 수 없다 (원상 복구이지 정책 변경 아님)
 -- Plan: ~/.claude/plans/lucky-herding-cloud.md (v10)
 --
+-- Category filter: ecosystem base_score scope (see db/ecosystem-schema.sql).
+-- Must stay byte-identical with measure-expected-hash.sql.
+--
 -- Usage:
 --   HASH=$(sudo -u postgres psql -d nasun_points -tAX \
 --     -c "SET timezone='UTC'; $(cat measure-expected-hash.sql)")
