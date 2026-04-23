@@ -12,8 +12,6 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_USER_POOL_ID: string;
   readonly VITE_COGNITO_CLIENT_ID: string;
   readonly VITE_COGNITO_DOMAIN: string;
-  readonly VITE_COGNITO_REDIRECT_SIGNIN: string;
-  readonly VITE_COGNITO_REDIRECT_SIGNOUT: string;
   readonly VITE_COGNITO_USERNAME_ATTRIBUTES: string;
   readonly VITE_COGNITO_SOCIAL_PROVIDERS: string;
   readonly VITE_COGNITO_SIGNUP_ATTRIBUTES: string;
