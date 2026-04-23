@@ -5,7 +5,7 @@ import { useMarket } from '../context/MarketContext';
 interface OrderConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   orderType: 'buy' | 'sell';
   price: string;
   amount: string;
@@ -29,11 +29,18 @@ export function OrderConfirmModal({
 }: OrderConfirmModalProps) {
   const { currentPool } = useMarket();
   const [skipConfirm, setSkipConfirm] = useState(false);
+  // Local submitting flag flips synchronously on click so the button disables
+  // before the parent's async isLoading has a chance to propagate. Prevents
+  // double-submit during tx build / signing setup.
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset checkbox when modal closes
+  // Reset checkbox and submitting flag when modal closes
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (!isOpen) setSkipConfirm(false);
+    if (!isOpen) {
+      setSkipConfirm(false);
+      setIsSubmitting(false);
+    }
   }, [isOpen]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -61,19 +68,27 @@ export function OrderConfirmModal({
   const absDiffPct = Math.abs(priceDiffPct);
   const isAboveMid = priceDiffPct > 0;
 
-  const handleConfirm = () => {
-    if (skipConfirm && onEnableOneClick) {
-      onEnableOneClick();
+  const handleConfirm = async () => {
+    if (isSubmitting || isLoading) return;
+    setIsSubmitting(true);
+    try {
+      if (skipConfirm && onEnableOneClick) {
+        onEnableOneClick();
+      }
+      await onConfirm();
+    } finally {
+      setIsSubmitting(false);
     }
-    onConfirm();
   };
+
+  const isBusy = isLoading || isSubmitting;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70"
-        onClick={isLoading ? undefined : onClose}
+        onClick={isBusy ? undefined : onClose}
       />
 
       {/* Modal */}
@@ -169,21 +184,28 @@ export function OrderConfirmModal({
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               onClick={onClose}
-              className="py-3 bg-theme-bg-tertiary hover:bg-theme-bg-secondary rounded-lg font-medium transition-colors"
-              disabled={isLoading}
+              className="py-3 bg-theme-bg-tertiary hover:bg-theme-bg-secondary rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isBusy}
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
-              className={`py-3 rounded-lg font-medium text-white transition-colors disabled:opacity-50 ${
+              className={`py-3 rounded-lg font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 isBuy
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-red-600 hover:bg-red-700'
               }`}
-              disabled={isLoading}
+              disabled={isBusy}
             >
-              {isLoading ? 'Processing...' : `Confirm ${isBuy ? 'Buy' : 'Sell'}`}
+              {isBusy ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </span>
+              ) : (
+                `Confirm ${isBuy ? 'Buy' : 'Sell'}`
+              )}
             </button>
           </div>
         </div>
