@@ -262,6 +262,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {
       const err = e as Error;
       logger.error(`Error handling ${provider} redirect:`, err);
+
+      if (isLinkingFlow) {
+        // Linking a secondary provider must never destroy the primary session.
+        // Historical bug: any throw here (expired primary cognitoToken, backend
+        // conflict when the OAuth identity is already linked elsewhere, transient
+        // network error) called clearUser() and logged the user out. Google is
+        // the most visible case because it is the only linkable provider that
+        // creates a Cognito Federated Identity, which produces stable 4xx
+        // conflicts on repeated attempts.
+        logger.warn(`${provider} linking failed, preserving primary session`);
+        // Rehydrate the primary user from localStorage so <Callback> does not
+        // briefly fall into Case 4 (navigate to "/") before the hard redirect
+        // below completes.
+        try {
+          const cached = localStorage.getItem("nasun_user_profile");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed?.identityId) setUser(parsed);
+          }
+        } catch {
+          /* ignore parse error */
+        }
+        window.location.href = `/my-account?error=linking_failed&provider=${encodeURIComponent(provider)}`;
+        return true;
+      }
+
       const formattedError = new Error(formatErrorMessage(err));
       setError(formattedError);
       clearUser();
