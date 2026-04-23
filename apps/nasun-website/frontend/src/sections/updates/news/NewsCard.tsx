@@ -5,15 +5,13 @@ import { ArrowRight } from "lucide-react";
 import { Post } from "../../../types/post.d";
 import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";
+import { stripHtmlTags } from "../../../utils/wordpressContent";
 
 interface NewsCardProps {
   post: Post;
 }
 
-// Helper function to strip HTML tags
-const stripHtml = (html: string): string => {
-  return html.replace(/<[^>]*>?/gm, "");
-};
+const stripHtml = (html: string): string => stripHtmlTags(html);
 
 // Helper function to format date
 const formatDate = (dateString: string): string => {

@@ -88,5 +88,32 @@ export function stripHtmlTags(html: string): string {
   if (!html || typeof html !== 'string') {
     return '';
   }
-  return html.replace(/<[^>]*>?/gm, '');
+  return decodeHtmlEntities(html.replace(/<[^>]*>?/gm, ''));
+}
+
+/**
+ * WordPress가 반환하는 HTML 엔티티(&#8211; &#8217; &amp; 등)를 실제 문자로 디코딩
+ *
+ * @param text - HTML 엔티티를 포함한 문자열
+ * @returns 디코딩된 문자열
+ */
+export function decodeHtmlEntities(text: string): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+  if (typeof document !== 'undefined') {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ');
 }

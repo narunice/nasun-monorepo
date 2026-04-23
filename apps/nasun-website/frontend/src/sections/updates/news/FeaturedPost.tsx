@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 import { Post } from "../../types/post.d";
+import { stripHtmlTags } from "../../../utils/wordpressContent";
 import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";
 
@@ -10,10 +11,7 @@ interface FeaturedPostProps {
   post: Post;
 }
 
-// Helper function to strip HTML tags
-const stripHtml = (html: string): string => {
-  return html.replace(/<[^>]*>?/gm, "");
-};
+const stripHtml = (html: string): string => stripHtmlTags(html);
 
 // Helper function to format date
 const formatDate = (dateString: string): string => {

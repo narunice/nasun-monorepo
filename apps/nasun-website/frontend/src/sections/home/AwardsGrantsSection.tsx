@@ -10,6 +10,7 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
+import { stripHtmlTags } from "../../utils/wordpressContent";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const CustomArrow = ({
@@ -49,9 +50,7 @@ function AwardsGrantsSection() {
     });
   };
 
-  const stripHtml = (html: string) => {
-    return html.replace(/<[^>]*>?/gm, "");
-  };
+  const stripHtml = (html: string) => stripHtmlTags(html);
 
   const sliderSettings = {
     dots: true,
