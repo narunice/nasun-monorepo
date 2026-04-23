@@ -9,10 +9,10 @@ const PadoScoreLeaderboardPage: React.FC = () => {
   return (
     <PageLayout>
       <Helmet>
-        <title>Pado Traders Leaderboard - NASUN</title>
+        <title>Pado DeFi Leaderboard - NASUN</title>
         <meta
           name="description"
-          content="Pado Traders Leaderboard. Weekly rankings based on trading activity, volume, and PnL on Pado DEX."
+          content="Pado DeFi Leaderboard. Weekly rankings based on trading activity, volume, and PnL on Pado DEX."
         />
       </Helmet>
       <SectionLayout maxWidth="6xl">
@@ -23,7 +23,7 @@ const PadoScoreLeaderboardPage: React.FC = () => {
           <ExperimentalInfoTooltip />
         </div>
         <PageTitle wrapperClassName="flex flex-col mb-6 md:mb-8 lg:mb-10 xl:mb-12">
-          Pado Traders Leaderboard
+          Pado DeFi Leaderboard
         </PageTitle>
         <p className="text-base text-nasun-white/80 mb-6 -mt-2">
           Weekly rankings reset every Monday 00:10 UTC. Top traders earn Nasun

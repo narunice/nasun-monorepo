@@ -7,7 +7,7 @@ export interface ScoreLeaderboardTrader {
   nickname: string | null;
   hasGenesisPass?: boolean;
   profileImageUrl?: string | null;
-  xHandle?: string | null;
+  twitterHandle?: string | null;
   totalScore: number;
   rankChange: number;
   hasGoogle: boolean;
