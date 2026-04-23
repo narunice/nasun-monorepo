@@ -14,8 +14,7 @@
  *   LP_PRIVATE_KEY_NSOL=<key>
  *   ORACLE_ADMIN_KEY=<admin-hex-key>      # Required by price-updater
  *   KEEPER_PRIVATE_KEY=<keeper-hex-key>   # Required by tpsl-keeper
- *   TPSL_API_KEY=<api-key>               # Required by tpsl-keeper
- *   TPSL_ALLOWED_ORIGIN=<origin-url>     # Required by tpsl-keeper (CORS)
+ *   TPSL_ALLOWED_ORIGIN=<origin-url>     # Required by tpsl-keeper (CORS, e.g. https://pado.finance)
  *   LOTTERY_ADMIN_KEY=<admin-key>        # Required by lottery-keeper (AdminCap owner)
  *
  * The deploy script (scripts/deploy-pado-bots.sh) sources .env before PM2 start.
@@ -188,7 +187,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         TPSL_PORT: '4001',
-        // KEEPER_PRIVATE_KEY and TPSL_API_KEY loaded from .env via deploy script
+        // KEEPER_PRIVATE_KEY loaded from .env via deploy script
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         ORACLE_REGISTRY_ID: '0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1',
         ORACLE_PACKAGE_ID: '0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c',
