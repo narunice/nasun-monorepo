@@ -270,8 +270,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // network error) called clearUser() and logged the user out. Google is
         // the most visible case because it is the only linkable provider that
         // creates a Cognito Federated Identity, which produces stable 4xx
-        // conflicts on repeated attempts.
+        // conflicts on repeated attempts (e.g. the email already owns a
+        // zkLogin wallet — backend returns 409 with an actionable message).
         logger.warn(`${provider} linking failed, preserving primary session`);
+        // Carry the backend-supplied message across the hard redirect so the
+        // user sees what actually went wrong (e.g. "already has a zkLogin
+        // wallet, use Google login or contact support") instead of a generic
+        // "linking failed" notification.
+        try {
+          sessionStorage.setItem(
+            "account_linking_error",
+            JSON.stringify({ provider, message: err.message, at: Date.now() }),
+          );
+        } catch {
+          /* sessionStorage may be blocked; generic message will show instead */
+        }
         // Rehydrate the primary user from localStorage so <Callback> does not
         // briefly fall into Case 4 (navigate to "/") before the hard redirect
         // below completes.
