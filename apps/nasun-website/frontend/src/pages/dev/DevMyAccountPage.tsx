@@ -89,12 +89,35 @@ const DevMyAccountPage = () => {
 
     if (errorParam === "linking_failed" && provider) {
       paramsHandled.current = true;
+      // Prefer the backend-supplied reason (stashed by AuthProvider in
+      // sessionStorage just before the hard redirect). Fall back to a generic
+      // line if sessionStorage was blocked or the payload is stale/malformed.
+      let detail = "";
+      try {
+        const raw = sessionStorage.getItem("account_linking_error");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (
+            parsed?.provider === provider
+            && typeof parsed.message === "string"
+            && typeof parsed.at === "number"
+            && Date.now() - parsed.at < 60_000
+          ) {
+            detail = parsed.message;
+          }
+          sessionStorage.removeItem("account_linking_error");
+        }
+      } catch {
+        sessionStorage.removeItem("account_linking_error");
+      }
       setNotification({
-        message: `${provider} account linking failed. Your existing sign-in is still active. Please try again later or contact support.`,
+        message: detail
+          ? `${provider} linking failed: ${detail} Your existing sign-in is still active.`
+          : `${provider} account linking failed. Your existing sign-in is still active. Please try again later or contact support.`,
         type: "error",
       });
       setSearchParams({}, { replace: true });
-      const timer = setTimeout(() => setNotification(null), 7000);
+      const timer = setTimeout(() => setNotification(null), 12000);
       return () => clearTimeout(timer);
     }
 
