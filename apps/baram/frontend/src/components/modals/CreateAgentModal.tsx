@@ -7,6 +7,7 @@
  */
 
 import { useState, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { AgentTxStatus, AgentCreationMode } from '@/hooks/useCreateAgent';
 
 interface CreateAgentModalProps {
@@ -91,7 +92,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
 
   // Success state
   if (isSuccess) {
-    return (
+    return createPortal(
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/60" onClick={onClose} />
         <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-6 text-center space-y-3">
@@ -148,11 +149,12 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
             Done
           </button>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={isBusy ? undefined : onClose} />
 
@@ -421,6 +423,7 @@ export function CreateAgentModal({ onClose, onCreate, txStatus, txError, generat
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
