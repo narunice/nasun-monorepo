@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 import { ButtonV4 } from "@/components/ui/button-v4";
@@ -12,8 +13,7 @@ interface Hero2026SectionProps {
 
 function Hero2026Section({
   videoSrc = "/videos/Mediterranean-Website-web.mp4",
-
-  videoTopCrop,
+  videoTopCrop = "-10vh",
 }: Hero2026SectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -59,10 +59,15 @@ function Hero2026Section({
         preload="auto"
         onCanPlay={handleVideoCanPlay}
         onPlaying={handleVideoPlaying}
-        className={`absolute inset-0 w-full h-full object-cover ${
+        className={`absolute inset-x-0 w-full object-cover ${
           !isVideoPlaying ? "opacity-0" : "opacity-100"
         } transition-opacity duration-1000 z-0`}
-        style={{ top: videoTopCrop || "0" }}
+        style={{
+          top: videoTopCrop || "0",
+          height: videoTopCrop
+            ? `calc(100% + ${videoTopCrop.replace(/^-/, "")})`
+            : "100%",
+        }}
       >
         <source src={bgVideo} type="video/mp4" />
       </video>
@@ -77,43 +82,50 @@ function Hero2026Section({
 
       {/* Content - always centered in section, pushed into lower half */}
       {isVideoPlaying && (
-        <div className="relative z-20 w-full px-5 md:px-6 flex flex-col items-center text-center mt-[36vh] md:mt-[40vh] lg:mt-[32vh]">
+        <div className="relative z-20 w-full px-5 md:px-6 flex flex-col items-center text-center mt-[28vh] md:mt-[32vh] lg:mt-[36vh]">
           <FadeInUp>
             <div className="flex flex-col items-center">
-              <h1 className="text-white !font-changeling font-bold tracking-widest uppercase mb-1 md:mb-2 drop-shadow-lg">
+              <h1
+                className="text-white
+             !font-changeling font-bold tracking-widest uppercase mb-1 md:mb-2 drop-shadow-lg"
+              >
                 NASUN
               </h1>
 
-              <h3 className="text-nasun-white font-medium mb-1 md:mb-2 drop-shadow-lg text-base md:text-xl lg:text-2xl">
+              <h3 className="text-white/90 font-medium mb-1 md:mb-2 drop-shadow-lg text-base md:text-xl lg:text-2xl">
                 Grow the Life You Own
               </h3>
 
-              <div className="max-w-3xl my-3 md:my-5 lg:my-6 space-y-2 drop-shadow-lg">
-                <p className=" text-nasun-white text-sm md:text-lg lg:text-xl">
+              <p className="text-white max-w-3xl my-3 md:my-5 lg:my-6 font-medium bg-clip-text">
+                <span className="block">
                   Nasun is infrastructure built around you.{" "}
                   <br className="sm:hidden" />
                   Not platforms. Not projects. You.
-                </p>
-                <p className=" text-nasun-white text-sm md:text-lg lg:text-xl">
+                </span>
+                <span className="block mt-2">
                   uju (우주, universe) is the OS powered by Nasun
                   <br className="hidden sm:block" /> that brings crypto, Web3,
                   and Web2
                   <br className="sm:hidden" /> into one experience on your
                   terms.
-                </p>
-                <p className=" text-nasun-white text-sm md:text-lg lg:text-xl">
+                </span>
+                <span className="block mt-2">
                   One identity. Every app. <br className="sm:hidden" />
                   Everything you do compounds.
-                </p>
-              </div>
+                </span>
+              </p>
 
-              <ButtonV4
-                color="light"
-                size="lg"
-                className="min-w-[160px] md:min-w-[200px] mt-2 mb-2 md:mb-4 lg:mb-6 drop-shadow-lg"
-              >
-                Enter uju
-              </ButtonV4>
+              <div className="relative inline-block mt-2 mb-2 md:mb-4 lg:mb-6">
+                <Link to="/uju">
+                  <ButtonV4
+                    color="pado-mint"
+                    size="lg"
+                    className="min-w-[160px] md:min-w-[200px] drop-shadow-lg font-medium text-white"
+                  >
+                    Enter uju
+                  </ButtonV4>
+                </Link>
+              </div>
             </div>
           </FadeInUp>
         </div>

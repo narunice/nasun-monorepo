@@ -48,7 +48,7 @@ export default function AllianceCreatorSection() {
         <img
           src={kaeboImg}
           alt="Kaebo"
-          className="absolute bottom-[28%] left-1/2 -translate-x-1/2 h-[67%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
+          className="absolute bottom-[28%] left-1/2 -translate-x-1/2 h-[72%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
         />
 
         <div
@@ -69,10 +69,10 @@ export default function AllianceCreatorSection() {
             </div>
           </FadeInUp>
         </div>
-        <div className="absolute bottom-[14%] md:bottom-[10%] inset-x-0 z-10 flex justify-center">
+        <div className="absolute bottom-[14%]  inset-x-0 z-10 flex justify-center">
           <FadeInUp delay="0.1s">
             <ButtonV4 color="light" size="lg" asChild>
-              <Link to="/wave1/alliance-nft">Mint Free Alliance NFT</Link>
+              <Link to="/community/alliance-nft">Mint Free Alliance NFT</Link>
             </ButtonV4>
           </FadeInUp>
         </div>
@@ -86,7 +86,7 @@ export default function AllianceCreatorSection() {
         <img
           src={josenImg}
           alt="Josen"
-          className="absolute bottom-[14%] left-[46%] -translate-x-1/2 h-[78%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
+          className="absolute bottom-[14%] left-[46%] -translate-x-1/2 h-[83%] w-auto max-w-none pointer-events-none transition-transform duration-700 origin-bottom group-hover:scale-[1.015]"
         />
 
         <div
@@ -108,7 +108,7 @@ export default function AllianceCreatorSection() {
             </div>
           </FadeInUp>
         </div>
-        <div className="absolute bottom-[14%] md:bottom-[10%] inset-x-0 z-10 flex justify-center">
+        <div className="absolute bottom-[14%]  inset-x-0 z-10 flex justify-center">
           <FadeInUp delay="0.25s">
             <ButtonV4 color="light" size="lg" onClick={handleCreatorPostsClick}>
               {isAuthenticated ? "Submit Posts" : "Sign Up / Login"}
