@@ -13,6 +13,13 @@ import {
 
 const CONTENT_MAX_WIDTH = "max-w-[1440px]";
 
+// Per-post mobile-only featured image overrides (keyed by post slug).
+// Desktop still uses the post's original featured media.
+const MOBILE_IMAGE_OVERRIDES: Record<string, string> = {
+  "nasun-is-building-pado-prediction-markets-submit-your-ideas-now-and-earn-points":
+    "/Predictions-Submit-Ideas-Taroka-Mobile.png",
+};
+
 function DevNewsEventsSection() {
   const sliderRef = useRef<Slider>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -100,20 +107,29 @@ function DevNewsEventsSection() {
           <Slider ref={sliderRef} {...sliderSettings} className="w-full">
             {postList.map((post, idx) => {
               const imageUrl = getImageUrl(post, idx);
+              const mobileOverride = MOBILE_IMAGE_OVERRIDES[post.slug];
               return (
                 <div key={post.id} className="outline-none">
                   <div className="w-full flex justify-center overflow-hidden">
                     <div className="relative w-full min-h-[50vh] md:min-h-[60vh] max-h-[65vh] aspect-[4/3] md:aspect-[2/1]">
                       {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt="Featured news"
-                          loading={idx === 0 ? "eager" : "lazy"}
-                          onError={() =>
-                            setImgErrors((prev) => ({ ...prev, [idx]: true }))
-                          }
-                          className="w-full h-full object-cover"
-                        />
+                        <picture>
+                          {mobileOverride && (
+                            <source
+                              media="(max-width: 767px)"
+                              srcSet={mobileOverride}
+                            />
+                          )}
+                          <img
+                            src={imageUrl}
+                            alt="Featured news"
+                            loading={idx === 0 ? "eager" : "lazy"}
+                            onError={() =>
+                              setImgErrors((prev) => ({ ...prev, [idx]: true }))
+                            }
+                            className="w-full h-full object-cover"
+                          />
+                        </picture>
                       ) : (
                         <div className="w-full h-full bg-pd1/40" />
                       )}
