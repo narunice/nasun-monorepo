@@ -10,7 +10,6 @@ const dynamoClient = DynamoDBDocumentClient.from(client);
 const tableName = process.env.USER_PROFILES_TABLE || 'UserProfiles';
 const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
 const genesisPassAllowlistTable = process.env.GENESIS_PASS_ALLOWLIST_TABLE || '';
-const zkLoginTableName = process.env.ZKLOGIN_TABLE_NAME || '';
 
 // JWKS singleton for token verification
 let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -431,9 +430,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     // 2. Get the primary user's current profile
-    // (Moved ahead of the 1.5 cross-reference check so that self-link — a Google
-    // email whose zkLogin wallet IS this primary wallet — can be recognised and
-    // allowed through.)
     const getPrimaryCommand = new GetCommand({
       TableName: tableName,
       Key: { identityId: primaryIdentityId },
@@ -447,50 +443,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         headers: corsHeaders,
         body: JSON.stringify({ message: 'Primary user profile not found.' }),
       };
-    }
-
-    // 1.5. Cross-reference: if linking Google, reject only when the email's
-    // zkLogin wallet is NOT the primary wallet. A user whose Nasun wallet was
-    // originally created via Google zkLogin legitimately owns that zkLogin
-    // record, and linking Google to the same wallet is a no-op self-link that
-    // simply populates linkedAccounts.google for UI consistency.
-    if (secondaryProvider.toLowerCase() === 'google' && secondaryProfile.email && zkLoginTableName) {
-      try {
-        const zkLoginScan = await dynamoClient.send(new ScanCommand({
-          TableName: zkLoginTableName,
-          FilterExpression: 'email = :email',
-          ExpressionAttributeValues: { ':email': secondaryProfile.email },
-          ProjectionExpression: 'address',
-        }));
-
-        const primaryWallet = typeof primaryProfile.walletAddress === 'string'
-          ? primaryProfile.walletAddress.toLowerCase()
-          : undefined;
-        const conflictingZkLogin = (zkLoginScan.Items || []).find((item) => {
-          const addr = typeof item.address === 'string' ? item.address.toLowerCase() : undefined;
-          return addr !== undefined && addr !== primaryWallet;
-        });
-
-        if (conflictingZkLogin) {
-          console.log(JSON.stringify({
-            event: 'GOOGLE_ZKLOGIN_CROSS_REF',
-            emailHash: secondaryProfile.email.replace(/(.{2}).*(@.*)/, '$1***$2'),
-            primaryIdentityId,
-            conflictingAddress: conflictingZkLogin.address,
-          }));
-
-          return {
-            statusCode: 409,
-            headers: corsHeaders,
-            body: JSON.stringify({
-              message: 'This Google account already has a zkLogin wallet. Use Google login to access your existing wallet, or contact support to merge accounts.',
-            }),
-          };
-        }
-      } catch (crossRefErr) {
-        // Non-blocking: log and continue if ZkLoginUsers check fails
-        console.warn('ZkLoginUsers cross-reference check failed (non-blocking):', crossRefErr);
-      }
     }
 
     // 2.5. Auto-transfer: linkedToPrimaryId as primary source, reverse link as v1 fallback
