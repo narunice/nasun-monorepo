@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSignerAddress } from '@nasun/wallet';
 import { useChat } from '../hooks/useChat';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { ActivityCard } from './ActivityCard';
@@ -63,13 +64,19 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({ onBrowseLeaderboard }: ActivityFeedProps) {
   // Ensure WebSocket is connected for session token (needed by feed API)
-  useChat();
+  const { isConnected } = useChat();
+  const signerAddress = useSignerAddress();
 
   const navigate = useNavigate();
   const [beforeTs, setBeforeTs] = useState<number | undefined>();
   const [allActivities, setAllActivities] = useState<FeedActivity[]>([]);
 
   const { data, isLoading, isFetching } = useActivityFeed(30, beforeTs);
+  // Feed API needs a session token issued on WebSocket auth_success. Until the
+  // chat session is established, the query is disabled, so isLoading stays
+  // false and we'd otherwise flash the "Follow traders" empty state even for
+  // users who already follow someone. Treat the pre-auth window as loading.
+  const waitingForSession = !!signerAddress && !isConnected;
 
   // Merge initial + paginated results
   const activities = useMemo(() => {
@@ -99,6 +106,17 @@ export function ActivityFeed({ onBrowseLeaderboard }: ActivityFeedProps) {
     const lastTs = activities[activities.length - 1].timestamp;
     setBeforeTs(lastTs);
   };
+
+  // Loading / pre-auth skeleton
+  if ((isLoading || waitingForSession) && activities.length === 0) {
+    return (
+      <div className="space-y-2 py-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="animate-pulse bg-theme-bg-secondary rounded-lg border border-theme-border p-3 h-14" />
+        ))}
+      </div>
+    );
+  }
 
   // Empty state
   if (!isLoading && activities.length === 0) {
