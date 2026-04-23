@@ -10,20 +10,32 @@ export const Pages = {
   VisionNetwork: lazyWithRetry(() => import("../pages/protocol/NetworkPage")),
   IPs: lazyWithRetry(() => import("../pages/IPsPage")),
   IPsGenSol: lazyWithRetry(() => import("../pages/ips/gensol/GenSolMainPage")),
-  IPsGenSolOverview: lazyWithRetry(() => import("../pages/ips/gensol/OverviewPage")),
-  IPsGenSolShooter: lazyWithRetry(() => import("../pages/ips/gensol/ShooterPage")),
+  IPsGenSolOverview: lazyWithRetry(
+    () => import("../pages/ips/gensol/OverviewPage"),
+  ),
+  IPsGenSolShooter: lazyWithRetry(
+    () => import("../pages/ips/gensol/ShooterPage"),
+  ),
   IPsGenSolHeist: lazyWithRetry(() => import("../pages/ips/gensol/HeistPage")),
   FinancePado: lazyWithRetry(() => import("../pages/finance/PadoPage")),
   IPsWePop: lazyWithRetry(() => import("../pages/ips/WePopPage")),
-  IPsRiderStudioMain: lazyWithRetry(() => import("../pages/ips/riderstudio/RiderStudioMainPage")),
-  IPsRiderStudioOverview: lazyWithRetry(() => import("../pages/ips/riderstudio/RiderStudioOverviewPage")),
+  IPsRiderStudioMain: lazyWithRetry(
+    () => import("../pages/ips/riderstudio/RiderStudioMainPage"),
+  ),
+  IPsRiderStudioOverview: lazyWithRetry(
+    () => import("../pages/ips/riderstudio/RiderStudioOverviewPage"),
+  ),
   Roadmap: lazyWithRetry(() => import("../pages/RoadmapPage")),
-  Opportunities: lazyWithRetry(() => import("../pages/about/OpportunitiesPage")),
+  Opportunities: lazyWithRetry(
+    () => import("../pages/about/OpportunitiesPage"),
+  ),
   Grants: lazyWithRetry(() => import("../pages/AwardsPage")),
   Founders: lazyWithRetry(() => import("../pages/about/FoundersPage")),
   GenesisNft: lazyWithRetry(() => import("../pages/GenesisNftPage")),
   Web3: lazyWithRetry(() => import("../pages/protocol/ProposalPage")),
-  ProposalDetail: lazyWithRetry(() => import("../pages/protocol/ProposalDetailPage")),
+  ProposalDetail: lazyWithRetry(
+    () => import("../pages/protocol/ProposalDetailPage"),
+  ),
   MyAccountPage: lazyWithRetry(() => import("../pages/dev/DevMyAccountPage")),
   PrivacyPolicy: lazyWithRetry(() => import("../pages/PrivacyPolicyPage")),
   TermsOfUse: lazyWithRetry(() => import("../pages/TermsOfUsePage")),
@@ -37,28 +49,44 @@ export const Pages = {
   AllianceNft: lazyWithRetry(() => import("../pages/wave1/AllianceNftPage")),
   GenesisPass: lazyWithRetry(() => import("../pages/dev/DevGenesisPassPage")),
   NftDrop: lazyWithRetry(() => import("../pages/wave1/NftDropPage")),
-  GenesisPassDrop: lazyWithRetry(() => import("../pages/wave1/GenesisPassDropPage")),
+  GenesisPassDrop: lazyWithRetry(
+    () => import("../pages/wave1/GenesisPassDropPage"),
+  ),
   BattalionNft: lazyWithRetry(() => import("../pages/wave1/BattalionNftPage")),
-  EarlyContributors: lazyWithRetry(() => import("../pages/wave1/EarlyContributorsPage")),
-  LeaderboardInfo: lazyWithRetry(() => import("../pages/wave1/LeaderboardInfoPage")),
+  EarlyContributors: lazyWithRetry(
+    () => import("../pages/wave1/EarlyContributorsPage"),
+  ),
+  LeaderboardInfo: lazyWithRetry(
+    () => import("../pages/wave1/LeaderboardInfoPage"),
+  ),
   // Protocol Pages
-  ProtocolOverview: lazyWithRetry(() => import("../pages/protocol/ProtocolOverviewPage")),
+  ProtocolOverview: lazyWithRetry(
+    () => import("../pages/protocol/ProtocolOverviewPage"),
+  ),
   // About Pages
   About: lazyWithRetry(() => import("../pages/AboutPage")),
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
   BaramDark: lazyWithRetry(() => import("../pages/ecosystem/BaramDarkPage")),
-  EcosystemLeaderboard: lazyWithRetry(() => import("../pages/ecosystem/EcosystemLeaderboardPage")),
+  EcosystemLeaderboard: lazyWithRetry(
+    () => import("../pages/ecosystem/EcosystemLeaderboardPage"),
+  ),
 
   // Infra Pages
-  InfraOverview: lazyWithRetry(() => import("../pages/infra/InfraOverviewPage")),
+  InfraOverview: lazyWithRetry(
+    () => import("../pages/infra/InfraOverviewPage"),
+  ),
   // About Pages (new)
-  AboutOverview: lazyWithRetry(() => import("../pages/about/AboutOverviewPage")),
+  AboutOverview: lazyWithRetry(
+    () => import("../pages/about/AboutOverviewPage"),
+  ),
   Investors: lazyWithRetry(() => import("../pages/about/InvestorsPage")),
   Litepaper: lazyWithRetry(() => import("../pages/about/LitepaperPage")),
   Partner: lazyWithRetry(() => import("../pages/about/PartnerPage")),
   // Community Pages
-  PadoScoreLeaderboard: lazyWithRetry(() => import("../pages/dev/PadoScoreLeaderboardPage")),
+  PadoScoreLeaderboard: lazyWithRetry(
+    () => import("../pages/dev/PadoScoreLeaderboardPage"),
+  ),
   // 404 Page
   NotFound: lazyWithRetry(() => import("../pages/NotFoundPage")),
 };
@@ -76,7 +104,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "NASUN",
-      description: "A new Layer 1 blockchain with a DEX, AI platform, gaming, and more. All live on devnet.",
+      description:
+        "A new Layer 1 blockchain with a DEX, AI platform, gaming, and more. All live on devnet.",
     },
   },
 
@@ -95,7 +124,9 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         },
         {
           name: "navigation.devnetWallet",
-          path: import.meta.env.VITE_DEVNET_EXPLORER_URL || "https://explorer.nasun.io/devnet",
+          path:
+            import.meta.env.VITE_DEVNET_EXPLORER_URL ||
+            "https://explorer.nasun.io/devnet",
           external: true,
         },
         {
@@ -108,7 +139,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Nasun Network — High-Performance L1 Blockchain",
-      description: "Nasun Network is a high-performance Layer 1 blockchain with sub-second finality, parallel execution, and native AI integration.",
+      description:
+        "Nasun Network is a high-performance Layer 1 blockchain with sub-second finality, parallel execution, and native AI integration.",
     },
   },
 
@@ -160,7 +192,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Infrastructure — NASUN",
-      description: "Nasun's decentralized infrastructure layer — AI executors, compute, storage, streaming, and game servers.",
+      description:
+        "Nasun's decentralized infrastructure layer — AI executors, compute, storage, streaming, and game servers.",
     },
   },
 
@@ -231,7 +264,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Ecosystem — NASUN",
-      description: "Explore the Nasun ecosystem — Baram AI settlement, Pado DEX with prediction markets, and GenSol gaming studio.",
+      description:
+        "Explore the Nasun ecosystem — Baram AI settlement, Pado DEX with prediction markets, and GenSol gaming studio.",
     },
   },
 
@@ -245,7 +279,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Awards & Grants — NASUN",
-      description: "Nasun awards, grant programs, and ecosystem funding opportunities for builders and contributors.",
+      description:
+        "Nasun awards, grant programs, and ecosystem funding opportunities for builders and contributors.",
     },
   },
 
@@ -259,7 +294,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "News — NASUN",
-      description: "Latest news, announcements, and updates from the Nasun ecosystem.",
+      description:
+        "Latest news, announcements, and updates from the Nasun ecosystem.",
     },
   },
 
@@ -336,7 +372,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "About — NASUN",
-      description: "About Nasun — meet the founders, learn our vision, and explore investment opportunities.",
+      description:
+        "About Nasun — meet the founders, learn our vision, and explore investment opportunities.",
     },
   },
 
@@ -383,7 +420,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Community — NASUN",
-      description: "Nasun community — governance, leaderboards, and ecosystem participation.",
+      description:
+        "Nasun community — governance, leaderboards, and ecosystem participation.",
     },
   },
 
@@ -409,7 +447,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Team — NASUN",
-      description: "Meet the Nasun team — the people building the next generation of onchain applications.",
+      description:
+        "Meet the Nasun team — the people building the next generation of onchain applications.",
     },
   },
 
@@ -477,7 +516,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Wave 1 — NASUN",
-      description: "Nasun Wave 1 campaign — Battalion NFT free mint, community leaderboard, and early contributor rewards.",
+      description:
+        "Nasun Wave 1 campaign — Battalion NFT free mint, community leaderboard, and early contributor rewards.",
     },
   },
 
@@ -491,7 +531,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Creators Leaderboard — NASUN Wave 1",
-      description: "Climb the Nasun Creators Leaderboard. Track your participation, compete with other members, and earn ecosystem rewards.",
+      description:
+        "Climb the Nasun Creators Leaderboard. Track your participation, compete with other members, and earn ecosystem rewards.",
     },
   },
 
@@ -523,7 +564,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Privacy Policy — NASUN",
-      description: "Nasun privacy policy — how we collect, use, and protect your data.",
+      description:
+        "Nasun privacy policy — how we collect, use, and protect your data.",
     },
   },
 
@@ -537,7 +579,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Terms of Use — NASUN",
-      description: "Nasun terms of use — conditions for using the Nasun website and services.",
+      description:
+        "Nasun terms of use — conditions for using the Nasun website and services.",
     },
   },
 
@@ -594,7 +637,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
     meta: {
       title: "Baram - NASUN",
-      description: "Baram: AI Compliance Settlement Layer — Auditable, Accountable, Governed",
+      description:
+        "Baram: AI Compliance Settlement Layer — Auditable, Accountable, Governed",
     },
   },
 
@@ -619,25 +663,28 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
     .map((route) => ({
       ...route.navItem!,
       name: t(route.navItem!.name as never),
-      subMenu: route.navItem!.subMenu?.filter((subItem) => !subItem.hidden).map((subItem) => ({
-        ...subItem,
-        name: t(subItem.name as never),
-        path:
-          subItem.path.startsWith("/") || subItem.path.startsWith("http")
-            ? subItem.path
-            : `${route.path}/${subItem.path}`,
-        parentPath: route.path,
-        // 재귀적으로 중첩 서브메뉴 처리 (3단계 중첩 지원)
-        subMenu: subItem.subMenu?.map((nestedItem) => ({
-          ...nestedItem,
-          name: t(nestedItem.name as never),
+      subMenu: route
+        .navItem!.subMenu?.filter((subItem) => !subItem.hidden)
+        .map((subItem) => ({
+          ...subItem,
+          name: t(subItem.name as never),
           path:
-            nestedItem.path.startsWith("/") || nestedItem.path.startsWith("http")
-              ? nestedItem.path
-              : `${subItem.path}/${nestedItem.path}`,
-          parentPath: subItem.path,
+            subItem.path.startsWith("/") || subItem.path.startsWith("http")
+              ? subItem.path
+              : `${route.path}/${subItem.path}`,
+          parentPath: route.path,
+          // 재귀적으로 중첩 서브메뉴 처리 (3단계 중첩 지원)
+          subMenu: subItem.subMenu?.map((nestedItem) => ({
+            ...nestedItem,
+            name: t(nestedItem.name as never),
+            path:
+              nestedItem.path.startsWith("/") ||
+              nestedItem.path.startsWith("http")
+                ? nestedItem.path
+                : `${subItem.path}/${nestedItem.path}`,
+            parentPath: subItem.path,
+          })),
         })),
-      })),
     }))
     .sort((a, b) => {
       // 정렬 순서: network, infra, ecosystem, about, community, wave1
@@ -701,7 +748,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
   community: {
     "navigation.alliance": "Alliance",
     "navigation.governance": "Governance",
-    "navigation.padoScoreLeaderboard": "Pado Traders Leaderboard",
+    "navigation.padoScoreLeaderboard": "Pado DeFi Leaderboard",
     "navigation.creatorsLeaderboard": "Creators Leaderboard",
     "navigation.ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",
     "navigation.creatorsLeaderboardGuide": "Creators Leaderboard Guide",
