@@ -1168,6 +1168,69 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       return jsonResponse(200, { metrics }, requestOrigin);
     }
 
+    // GET /nasun-stats/download?format=csv|txt|meta
+    //   csv  → text/csv blob
+    //   txt  → text/plain blob
+    //   meta → JSON { ready, generatedAt, reportBaseDate, rowCount }
+    if (path.endsWith("/nasun-stats/download") && event.httpMethod === "GET") {
+      const rawFormat = event.queryStringParameters?.format;
+      const format = rawFormat === "txt" ? "txt" : rawFormat === "meta" ? "meta" : "csv";
+
+      const projection = format === "meta"
+        ? "generatedAt, reportBaseDate, rowCount"
+        : "csv, txt, reportBaseDate";
+
+      const result = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: DEVNET_METRICS_TABLE,
+          Key: { pk: { S: "NASUN_STATS_DOWNLOAD" }, sk: { S: "LATEST" } },
+          ProjectionExpression: projection,
+        })
+      );
+
+      if (format === "meta") {
+        if (!result.Item) {
+          return jsonResponse(200, { ready: false }, requestOrigin);
+        }
+        return jsonResponse(200, {
+          ready: true,
+          generatedAt: result.Item.generatedAt?.S || "",
+          reportBaseDate: result.Item.reportBaseDate?.S || "",
+          rowCount: Number(result.Item.rowCount?.N) || 0,
+        }, requestOrigin);
+      }
+
+      if (!result.Item) {
+        return errorResponse(404, "Nasun stats snapshot not generated yet", requestOrigin);
+      }
+
+      // Strict-validate reportBaseDate before embedding in Content-Disposition
+      // to prevent CRLF / header injection. Collector writes ISO YYYY-MM-DD,
+      // but defend against a corrupted snapshot item.
+      const rawReportDate = result.Item.reportBaseDate?.S;
+      const reportDate =
+        rawReportDate && /^\d{4}-\d{2}-\d{2}$/.test(rawReportDate)
+          ? rawReportDate
+          : "unknown";
+      const content = format === "csv"
+        ? (result.Item.csv?.S || "")
+        : (result.Item.txt?.S || "");
+      const filename = `nasun-stats-${reportDate}.${format}`;
+      const contentType = format === "csv" ? "text/csv; charset=utf-8" : "text/plain; charset=utf-8";
+
+      return {
+        statusCode: 200,
+        headers: {
+          ...corsHeaders(requestOrigin),
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "X-Content-Type-Options": "nosniff",
+          "Cache-Control": "private, no-store",
+        },
+        body: content,
+      };
+    }
+
     // GET /user-analytics - User analytics daily metrics (admin only)
     if (path.endsWith("/user-analytics") && event.httpMethod === "GET") {
       console.log("Fetching user analytics metrics");

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { sql, pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { getBalance, discoverAddressesViaRpc } from '../rpc.js';
+import { OFFCHAIN_CATEGORIES } from '../config/categories.js';
 
 const app = new Hono();
 
@@ -341,21 +342,6 @@ app.get('/daily-metrics', async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points db not configured' }, 503);
   }
-
-  // DAU scope = wallets with on-chain point-earning activity. Exclude
-  // off-chain (chat) and admin-granted ecosystem bonuses so the metric
-  // reflects actual on-chain engagement.
-  const OFFCHAIN_CATEGORIES = [
-    'chat',
-    'daily-mission',
-    'ecosystem-bonus-restoration',
-    'ecosystem-bonus-earlybird',
-    'ecosystem-bonus-admin',
-    'ecosystem-bonus-game',
-    'ecosystem-bonus-creators-appreciation',
-    'ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts',
-  ];
 
   const compute = cached(`daily-metrics-${dateParam}`, 30 * 60 * 1000, async () => {
     const [agg] = await pointsDb!`
