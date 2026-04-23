@@ -336,6 +336,8 @@ app.get('/score/:identityId', async (c) => {
             AND tx_timestamp < (CURRENT_DATE + interval '1 day') AT TIME ZONE 'UTC'
             AND base_points > 0
             AND NOT flagged
+            -- Ecosystem base_score scope (see db/ecosystem-schema.sql).
+            -- NOT the DAU/nasun-metrics scope (config/categories.ts).
             AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking')
             AND category NOT LIKE 'ecosystem-bonus-%'
         `.then(rows => rows.map((r: any) => r.category as string)),
@@ -715,6 +717,9 @@ app.get('/leaderboard', async (c) => {
             AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start}
             AND tx_timestamp < ${bounds.end}
+            -- Ecosystem activity_score scope — tighter than base_score: also
+            -- excludes pado-* (covered by separate Pado score). See
+            -- db/ecosystem-schema.sql for the canonical DAU vs score distinction.
             AND category NOT IN (
               'referral-bonus', 'daily-mission', 'ecosystem-passive',
               'staking-daily', 'staking', 'staking-reward'
@@ -868,6 +873,9 @@ app.get('/leaderboard', async (c) => {
             AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start}
             AND tx_timestamp < ${bounds.end}
+            -- Ecosystem activity_score scope — tighter than base_score: also
+            -- excludes pado-* (covered by separate Pado score). See
+            -- db/ecosystem-schema.sql for the canonical DAU vs score distinction.
             AND category NOT IN (
               'referral-bonus', 'daily-mission', 'ecosystem-passive',
               'staking-daily', 'staking', 'staking-reward'
@@ -942,6 +950,7 @@ app.get('/leaderboard', async (c) => {
             FROM activity_points
             WHERE NOT flagged AND identity_id IS NOT NULL
               AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
+              -- Ecosystem activity_score scope (see db/ecosystem-schema.sql).
               AND category NOT IN ('referral-bonus','daily-mission','ecosystem-passive','staking-daily','staking','staking-reward')
               AND category NOT LIKE 'ecosystem-bonus-%' AND category NOT LIKE 'pado-%'
           ),

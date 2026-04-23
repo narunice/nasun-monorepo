@@ -39,6 +39,10 @@ WITH distinct_cats AS (
   FROM activity_points
   WHERE NOT flagged
     AND identity_id IS NOT NULL
+    -- Ecosystem base_score scope: exclude system-granted / passive categories.
+    -- NOT the same as the DAU scope in config/categories.ts OFFCHAIN_CATEGORIES
+    -- (DAU excludes faucet + ecosystem-bonus-* but keeps staking; score is the
+    -- opposite). Source of truth for score semantics: db/ecosystem-schema.sql.
     AND category NOT IN ('referral-bonus', 'daily-mission', 'ecosystem-passive', 'staking-daily', 'staking', 'staking-reward')
     AND category NOT LIKE 'ecosystem-bonus-%'
 )
