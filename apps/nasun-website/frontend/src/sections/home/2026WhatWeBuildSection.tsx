@@ -6,10 +6,10 @@ import "slick-carousel/slick/slick-theme.css";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { ButtonV4 } from "@/components/ui/button-v4";
 
 const gensolVideo = "/videos/Color-Trailer-No-Symbol-16x9-web.mp4";
-const baramVideo = "/videos/Baram-Ui-rf28.mp4";
-const baramVideoMobile = "/videos/Baram-Ui-mobile-rf28.mp4";
+const baramVideo = "/videos/baram-new-ui-video-smaller-fonts-web.mp4";
 const padoVideo = "/videos/Pado-Ui-Short-rf28.mp4";
 const padoVideoMobile = "/videos/Pado-Ui-Short-mobile-rf28.mp4";
 const explorerVideo = "/videos/Network-Explorer-Ui-rf28.mp4";
@@ -20,6 +20,7 @@ type SlideData = {
   bgColor: string;
   buttonPrefix: string;
   projectName: string;
+  buttonVariant: "sf-orange" | "baram" | "pado" | "nasun-network";
   link: string;
   video?: string;
   mobileVideo?: string;
@@ -33,6 +34,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "GEN SOL",
+    buttonVariant: "sf-orange",
     link: "/ecosystem/gensol",
     video: gensolVideo,
     poster: "/images/posters/Trakker-Flying-rf28.webp",
@@ -42,16 +44,17 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "BARAM",
+    buttonVariant: "baram",
     link: "/ecosystem/baram",
     video: baramVideo,
-    mobileVideo: baramVideoMobile,
-    poster: "/images/posters/Baram-Ui-rf28.webp",
+    poster: "/images/posters/baram-new-ui-video-smaller-fonts-web.webp",
   },
   {
     id: "pado",
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "PADO",
+    buttonVariant: "pado",
     link: "/ecosystem/pado",
     video: padoVideo,
     mobileVideo: padoVideoMobile,
@@ -62,6 +65,7 @@ const SLIDES: SlideData[] = [
     bgColor: "#0b1120",
     buttonPrefix: "EXPLORE",
     projectName: "NASUN",
+    buttonVariant: "nasun-network",
     link: "/network/nsn",
     video: explorerVideo,
     mobileVideo: explorerVideoMobile,
@@ -179,21 +183,77 @@ function WhatWeBuild2026Section() {
 
   const activeSlide = SLIDES[activeSlideIndex];
 
+  const controls = (
+    <>
+      {/* Explore button */}
+      <div className="pointer-events-auto shadow-lg rounded-full ring-2 ring-white/50">
+        <ButtonV4
+          color={activeSlide.buttonVariant}
+          size="md"
+          asChild
+          className="w-[200px] md:w-[240px]"
+        >
+          <Link to={activeSlide.link}>
+            {activeSlide.buttonPrefix}
+            <span className="font-semibold ml-1">
+              {activeSlide.projectName}
+            </span>
+          </Link>
+        </ButtonV4>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex items-center gap-3 pointer-events-auto">
+        <button
+          onClick={() => sliderRef.current?.slickPrev()}
+          className="flex items-center justify-center w-11 h-11 rounded-full bg-black/50 border border-white/60 backdrop-blur-xl hover:bg-black/70 transition-colors drop-shadow-lg"
+          aria-label="Previous slide"
+        >
+          <ChevronLeftIcon className="w-6 h-6 text-white" />
+        </button>
+
+        {SLIDES.map((slide, i) => (
+          <button
+            key={slide.id}
+            onClick={() => sliderRef.current?.slickGoTo(i)}
+            className={`rounded-full transition-all duration-300 drop-shadow-lg bg-white ring-1 ring-black/60 ${
+              i === activeSlideIndex
+                ? "w-5 h-2"
+                : "w-2 h-2 hover:opacity-90"
+            }`}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
+
+        <button
+          onClick={() => sliderRef.current?.slickNext()}
+          className="flex items-center justify-center w-11 h-11 rounded-full bg-black/50 border border-white/60 backdrop-blur-xl hover:bg-black/70 transition-colors drop-shadow-lg"
+          aria-label="Next slide"
+        >
+          <ChevronRightIcon className="w-6 h-6 text-white" />
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <SectionLayout
       maxWidth="9xl"
-      className="bg-black overflow-hidden !px-0 !py-0 h-screen"
+      className="bg-black overflow-hidden !px-0 !py-0 landscape:h-screen"
     >
-      <div ref={containerRef} className="absolute inset-0">
+      <div
+        ref={containerRef}
+        className="landscape:absolute landscape:inset-0 portrait:relative portrait:w-full portrait:flex portrait:flex-col"
+      >
         <Slider
           ref={sliderRef}
           {...sliderSettings}
-          className="w-full h-full [&_.slick-list]:h-full [&_.slick-track]:h-full [&_.slick-slide]:h-full [&_.slick-slide>div]:h-full"
+          className="w-full landscape:h-full landscape:[&_.slick-list]:h-full landscape:[&_.slick-track]:h-full landscape:[&_.slick-slide]:h-full landscape:[&_.slick-slide>div]:h-full"
         >
           {SLIDES.map((slide, idx) => (
-            <div key={slide.id} className="h-full">
+            <div key={slide.id} className="landscape:h-full">
               <div
-                className="relative w-full h-full overflow-hidden"
+                className="relative w-full overflow-hidden landscape:h-full portrait:h-[70vh] portrait:max-h-[70vh]"
                 style={{ backgroundColor: slide.bgColor }}
               >
                 {slide.video && (
@@ -226,62 +286,14 @@ function WhatWeBuild2026Section() {
           ))}
         </Slider>
 
-        <div className="absolute bottom-[20%] left-0 right-0 z-20 flex justify-center pointer-events-none">
-          <div className="pointer-events-auto w-56 flex flex-col items-center rounded-2xl bg-black/50 border border-white/15 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
-            {/* Explore link */}
-            <Link
-              to={activeSlide.link}
-              className="flex items-center gap-2.5 px-8 py-3 w-full justify-center group hover:bg-white/5 transition-colors"
-            >
-              <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/45 group-hover:text-white/60 transition-colors">
-                Explore
-              </span>
-              <span className="text-sm font-bold uppercase tracking-widest text-white">
-                {activeSlide.projectName}
-              </span>
-            </Link>
+        {/* Landscape (desktop): overlay controls on video */}
+        <div className="landscape:flex hidden absolute bottom-[15%] left-0 right-0 z-20 flex-col items-center gap-4 pointer-events-none">
+          {controls}
+        </div>
 
-            {/* Divider */}
-            <span className="w-full h-px bg-white/10" />
-
-            {/* Navigation row */}
-            <div className="flex items-center">
-              <button
-                onClick={() => sliderRef.current?.slickPrev()}
-                className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
-                aria-label="Previous slide"
-              >
-                <ChevronLeftIcon className="w-4 h-4 text-white/70" />
-              </button>
-
-              <span className="w-px h-4 bg-white/15 shrink-0" />
-
-              <div className="flex items-center gap-2 px-4">
-                {SLIDES.map((slide, i) => (
-                  <button
-                    key={slide.id}
-                    onClick={() => sliderRef.current?.slickGoTo(i)}
-                    className={`rounded-full transition-all duration-300 ${
-                      i === activeSlideIndex
-                        ? "w-5 h-2 bg-white"
-                        : "w-2 h-2 bg-white/35 hover:bg-white/60"
-                    }`}
-                    aria-label={`Go to slide ${i + 1}`}
-                  />
-                ))}
-              </div>
-
-              <span className="w-px h-4 bg-white/15 shrink-0" />
-
-              <button
-                onClick={() => sliderRef.current?.slickNext()}
-                className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
-                aria-label="Next slide"
-              >
-                <ChevronRightIcon className="w-4 h-4 text-white/70" />
-              </button>
-            </div>
-          </div>
+        {/* Portrait (tablet/mobile): controls below video */}
+        <div className="portrait:flex hidden flex-col items-center gap-4 mt-6 pb-10 px-4">
+          {controls}
         </div>
       </div>
     </SectionLayout>
