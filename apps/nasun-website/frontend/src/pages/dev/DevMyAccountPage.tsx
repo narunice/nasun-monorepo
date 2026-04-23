@@ -70,6 +70,7 @@ const DevMyAccountPage = () => {
     if (paramsHandled.current) return;
 
     const message = searchParams.get("message");
+    const errorParam = searchParams.get("error");
     const provider = searchParams.get("provider");
     const guidance = searchParams.get("guidance");
 
@@ -83,6 +84,28 @@ const DevMyAccountPage = () => {
       });
       setSearchParams({}, { replace: true });
       const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+
+    if (errorParam === "linking_failed" && provider) {
+      paramsHandled.current = true;
+      setNotification({
+        message: `${provider} account linking failed. Your existing sign-in is still active. Please try again later or contact support.`,
+        type: "error",
+      });
+      setSearchParams({}, { replace: true });
+      const timer = setTimeout(() => setNotification(null), 7000);
+      return () => clearTimeout(timer);
+    }
+
+    if (errorParam === "linking_session_expired") {
+      paramsHandled.current = true;
+      setNotification({
+        message: "Account linking session expired. Please try linking again.",
+        type: "error",
+      });
+      setSearchParams({}, { replace: true });
+      const timer = setTimeout(() => setNotification(null), 7000);
       return () => clearTimeout(timer);
     }
 
