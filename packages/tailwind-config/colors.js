@@ -69,6 +69,8 @@ module.exports = {
     3: "#5ee1e4", // Accent - cyan
     4: "#86f3b7", // Highlight - mint
     5: "#d2f6a2", // Light - lime
+    violet: "#7C5CFF", // Accent - electric violet (primary point)
+    lavender: "#C9A7FF", // Accent - soft lavender (secondary point)
   },
   // Pado custom palette (dark navy -> light gray-blue)
   pd0: "#0b1120",
