@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -q 'pm2 restart' && echo \"$cmd\" | grep -q -- '--update-env'; then jq -n '{hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: \"pm2 restart --update-env does not re-evaluate ecosystem.config.cjs. Use: pm2 startOrRestart ecosystem.config.cjs with fresh env (export $(cat .env | xargs)). See memory/feedback_pm2_env_management.md.\"}}'; fi"
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(^|[;&|`]|\\$\\()[[:space:]]*(sudo[[:space:]]+)?pm2[[:space:]]+restart([[:space:]]|$)' && echo \"$cmd\" | grep -qE '(^|[[:space:]])--update-env([^A-Za-z0-9_-]|$)'; then jq -n '{hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: \"The pm2 + --update-env restart pattern does not re-evaluate ecosystem.config.cjs. Use: pm2 startOrRestart ecosystem.config.cjs with fresh env (export $(cat .env | xargs)). See memory/feedback_pm2_env_management.md.\"}}'; fi"
           }
         ]
       }
