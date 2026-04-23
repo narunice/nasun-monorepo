@@ -42,18 +42,20 @@ const HeroStat = ({
       initial={{ opacity: 0, y: 24 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col gap-2 min-w-0 items-center text-center"
+      className="flex flex-col gap-1.5 min-w-0 items-center text-center"
     >
       <div
-        className={`${size === "lg" ? "text-5xl lg:text-6xl" : "text-3xl lg:text-4xl"} font-black tabular-nums leading-none tracking-tight ${accentText[accent]}`}
+        className={`${size === "lg" ? "text-4xl sm:text-5xl lg:text-6xl" : "text-3xl lg:text-4xl"} font-black tabular-nums leading-none tracking-tight ${accentText[accent]}`}
       >
         {value}
       </div>
-      <div className="text-pd5 font-semibold text-sm uppercase tracking-widest mt-1">
+      <div className="text-pd5 font-semibold text-xs sm:text-sm uppercase tracking-wider sm:tracking-widest mt-1 px-1">
         {label}
       </div>
       {sublabel && (
-        <div className="text-pd4 text-sm font-medium">{sublabel}</div>
+        <div className="text-pd4 text-xs sm:text-sm font-medium px-1">
+          {sublabel}
+        </div>
       )}
     </motion.div>
   );
@@ -70,7 +72,7 @@ const SectionChip = ({
   className?: string;
 }) => (
   <span
-    className={`inline-block font-black uppercase tracking-widest ${large ? "text-4xl lg:text-5xl" : "text-lg"} text-nasun-white ${className}`}
+    className={`inline-block text-center font-black uppercase tracking-wider sm:tracking-widest ${large ? "text-3xl leading-tight sm:text-4xl lg:text-5xl" : "text-base sm:text-lg"} text-nasun-white ${className}`}
   >
     {children}
   </span>
@@ -80,8 +82,8 @@ const SectionChip = ({
 
 export const Hero2026StatsSection = () => {
   return (
-    <section className="relative bg-pd0 min-h-screen flex items-center max-w-9xl mx-auto">
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col gap-14 lg:gap-16 -mt-[50px]">
+    <section className="relative bg-pd0 min-h-screen flex items-center max-w-9xl mx-auto py-20 sm:py-24 lg:py-0">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col gap-14 lg:gap-16 lg:-mt-[50px]">
         {/* Top: Nasun Devnet - full width */}
         <div>
           <motion.div
@@ -96,7 +98,9 @@ export const Hero2026StatsSection = () => {
               large
               className="!font-eurostile font-semibold"
             >
-              Nasun Devnet
+              Nasun
+              <br className="sm:hidden" />{" "}
+              Devnet
             </SectionChip>
             <span className="text-pd3 text-sm mb-4">
               Launched{" "}
@@ -104,9 +108,9 @@ export const Hero2026StatsSection = () => {
             </span>
           </motion.div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-16 gap-y-8 justify-items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 lg:gap-x-16 gap-y-10 justify-items-center">
             <HeroStat
-              value="37k+"
+              value={<CountingNumber value="37k+" />}
               label="Peak Daily Active Addresses"
               sublabel="Apr 14, 2026"
               accent="mint"
@@ -156,16 +160,21 @@ export const Hero2026StatsSection = () => {
               </span>
             </motion.div>
 
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-2 gap-4 sm:gap-8">
               <HeroStat
-                value="96k+"
+                value={<CountingNumber value="96k+" />}
                 label="Registered Users"
                 accent="cyan"
                 delay={0.15}
                 size="sm"
               />
               <HeroStat
-                value="10.5k+"
+                value={
+                <>
+                  <CountingNumber value="10" />.
+                  <CountingNumber value="5k+" />
+                </>
+              }
                 label="Verified Wallets"
                 sublabel="With one or more social accounts connected"
                 accent="cyan"
@@ -195,7 +204,7 @@ export const Hero2026StatsSection = () => {
               </span>
             </motion.div>
 
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-2 gap-4 sm:gap-8">
               <HeroStat
                 value={
                   <>
@@ -228,7 +237,7 @@ export const Hero2026StatsSection = () => {
           <span className="text-sm font-bold uppercase tracking-widest text-pd4">
             View our activities
           </span>
-          <div className="flex w-full gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row w-full gap-4 mb-4">
             <div className="flex w-full justify-center">
               <ButtonV4
                 asChild

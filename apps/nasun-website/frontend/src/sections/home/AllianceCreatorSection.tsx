@@ -56,7 +56,7 @@ export default function AllianceCreatorSection() {
           style={{ background: ALLIANCE_BOTTOM_FADE }}
         />
 
-        <div className="absolute bottom-[18%] md:bottom-[22%] inset-x-0 z-10 flex flex-col items-center">
+        <div className="absolute bottom-[28%] md:bottom-[22%] inset-x-0 z-10 flex flex-col items-center">
           <FadeInUp delay="0s">
             <div className="flex flex-col items-center">
               <h3 className="!font-eurostile text-nasun-white text-3xl md:text-4xl tracking-[0.2em] uppercase text-center">
@@ -69,7 +69,7 @@ export default function AllianceCreatorSection() {
             </div>
           </FadeInUp>
         </div>
-        <div className="absolute bottom-[6%] md:bottom-[10%] inset-x-0 z-10 flex justify-center">
+        <div className="absolute bottom-[14%] md:bottom-[10%] inset-x-0 z-10 flex justify-center">
           <FadeInUp delay="0.1s">
             <ButtonV4 color="light" size="lg" asChild>
               <Link to="/wave1/alliance-nft">Mint Free Alliance NFT</Link>
@@ -94,7 +94,7 @@ export default function AllianceCreatorSection() {
           style={{ background: CREATOR_BOTTOM_FADE }}
         />
 
-        <div className="absolute bottom-[18%] md:bottom-[22%] inset-x-0 z-10 flex flex-col items-center">
+        <div className="absolute bottom-[28%] md:bottom-[22%] inset-x-0 z-10 flex flex-col items-center">
           <FadeInUp delay="0.15s">
             <div className="flex flex-col items-center">
               <h3 className="!font-eurostile text-nasun-white text-3xl md:text-4xl tracking-[0.2em] uppercase text-center">
@@ -108,7 +108,7 @@ export default function AllianceCreatorSection() {
             </div>
           </FadeInUp>
         </div>
-        <div className="absolute bottom-[6%] md:bottom-[10%] inset-x-0 z-10 flex justify-center">
+        <div className="absolute bottom-[14%] md:bottom-[10%] inset-x-0 z-10 flex justify-center">
           <FadeInUp delay="0.25s">
             <ButtonV4 color="light" size="lg" onClick={handleCreatorPostsClick}>
               {isAuthenticated ? "Submit Posts" : "Sign Up / Login"}
