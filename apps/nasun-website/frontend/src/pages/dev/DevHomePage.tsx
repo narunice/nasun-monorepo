@@ -22,7 +22,7 @@ export default function DevHomePage() {
         <ScrollSnapSection>
           <WhatWeBuild2026Section />
         </ScrollSnapSection>
-        <ScrollSnapSection>
+        <ScrollSnapSection allowTallContent>
           <DevNewsEventsSection />
         </ScrollSnapSection>
         <ScrollSnapSection>
