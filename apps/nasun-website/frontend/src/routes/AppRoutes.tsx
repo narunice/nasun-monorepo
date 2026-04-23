@@ -29,8 +29,10 @@ const CreatorPostsAdmin = lazy(() => import("../features/admin/pages/CreatorPost
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
 
-// uju dashboard (lazy loaded, protected)
+// uju dashboard (lazy loaded, protected) — currently WIP, exposed at /dev/uju
 const UjuPage = lazy(() => import("../pages/uju/UjuPage"));
+// uju public coming-soon landing
+const UjuComingSoonPage = lazy(() => import("../pages/uju/UjuComingSoonPage"));
 
 // Dev/Showcase pages (lazy loaded)
 const ComponentShowcasePage = lazy(() => import("../pages/ComponentShowcasePage"));
@@ -170,8 +172,15 @@ const AppRoutes = () => {
         {/* Admin Routes */}
         {renderAdminRoutes(adminRoutes)}
 
-        {/* uju dashboard (protected) */}
+        {/* uju coming-soon landing (public) */}
         <Route path="/uju" element={
+          <Suspense fallback={<PageLoading />}>
+            <UjuComingSoonPage />
+          </Suspense>
+        } />
+
+        {/* uju dashboard WIP (protected, dev-only) */}
+        <Route path="/dev/uju" element={
           <PrivateRoute>
             <Suspense fallback={<PageLoading />}>
               <UjuPage />
