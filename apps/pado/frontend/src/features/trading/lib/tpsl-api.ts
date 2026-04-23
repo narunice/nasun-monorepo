@@ -1,13 +1,13 @@
 /**
  * TP/SL Keeper API Client
  *
- * REST client for communicating with the server-side TP/SL Keeper Bot.
- * Includes API key authentication, request timeouts, and URL encoding.
+ * REST client for the server-side TP/SL Keeper Bot. Same-origin requests from
+ * pado.finance are authorized by CORS Origin; no client-side secret required.
  */
 
 const KEEPER_URL = import.meta.env.VITE_TPSL_KEEPER_URL || '';
-const API_KEY = import.meta.env.VITE_TPSL_API_KEY || '';
 const REQUEST_TIMEOUT_MS = 10_000;
+const JSON_HEADERS: Record<string, string> = { 'Content-Type': 'application/json' };
 
 export interface TPSLOrderRequest {
   userAddress: string;
@@ -44,13 +44,6 @@ export interface KeeperStatus {
   checkInterval: number;
 }
 
-// Build request headers with API key authentication
-function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (API_KEY) headers['X-API-Key'] = API_KEY;
-  return headers;
-}
-
 // Fetch with timeout via AbortController
 async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
@@ -75,7 +68,7 @@ export function isKeeperConfigured(): boolean {
 export async function registerTPSLOrder(order: TPSLOrderRequest): Promise<TPSLOrderResponse> {
   const response = await fetchWithTimeout(`${KEEPER_URL}/api/tpsl/register`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: JSON_HEADERS,
     body: JSON.stringify(order),
   });
 
@@ -94,7 +87,7 @@ export async function registerTPSLOrder(order: TPSLOrderRequest): Promise<TPSLOr
 export async function getUserTPSLOrders(address: string): Promise<TPSLOrderResponse[]> {
   const response = await fetchWithTimeout(
     `${KEEPER_URL}/api/tpsl/orders?address=${encodeURIComponent(address)}`,
-    { headers: authHeaders() },
+    { headers: JSON_HEADERS },
   );
 
   if (!response.ok) {
@@ -112,7 +105,7 @@ export async function cancelTPSLOrder(orderId: string, userAddress: string): Pro
   const addressParam = `?address=${encodeURIComponent(userAddress)}`;
   const response = await fetchWithTimeout(
     `${KEEPER_URL}/api/tpsl/orders/${encodeURIComponent(orderId)}${addressParam}`,
-    { method: 'DELETE', headers: authHeaders() },
+    { method: 'DELETE', headers: JSON_HEADERS },
   );
 
   if (!response.ok) {
@@ -127,7 +120,7 @@ export async function cancelTPSLOrder(orderId: string, userAddress: string): Pro
 export async function getKeeperStatus(): Promise<KeeperStatus> {
   const response = await fetchWithTimeout(
     `${KEEPER_URL}/api/tpsl/status`,
-    { headers: authHeaders() },
+    { headers: JSON_HEADERS },
   );
 
   if (!response.ok) {

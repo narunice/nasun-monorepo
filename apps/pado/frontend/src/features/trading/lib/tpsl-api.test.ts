@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock import.meta.env before importing the module
 vi.stubEnv('VITE_TPSL_KEEPER_URL', 'https://keeper.test.com');
-vi.stubEnv('VITE_TPSL_API_KEY', 'test-api-key-123');
 
 // Dynamic import after env setup
 const tpslApiModule = await import('./tpsl-api');
@@ -49,7 +48,7 @@ describe('registerTPSLOrder', () => {
     balanceManagerId: '0x9abc',
   };
 
-  it('sends POST with correct URL, headers (including API key), and body', async () => {
+  it('sends POST with correct URL, JSON headers, and body', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -63,10 +62,8 @@ describe('registerTPSLOrder', () => {
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toBe('https://keeper.test.com/api/tpsl/register');
     expect(options.method).toBe('POST');
-    expect(options.headers).toEqual({
-      'Content-Type': 'application/json',
-      'X-API-Key': 'test-api-key-123',
-    });
+    expect(options.headers).toEqual({ 'Content-Type': 'application/json' });
+    expect(options.headers['X-API-Key']).toBeUndefined();
     expect(JSON.parse(options.body)).toEqual(validRequest);
   });
 
@@ -117,7 +114,7 @@ describe('registerTPSLOrder', () => {
 // getUserTPSLOrders
 // ========================================
 describe('getUserTPSLOrders', () => {
-  it('sends GET with encoded address, API key, and auth headers', async () => {
+  it('sends GET with encoded address and JSON headers only', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ orders: [] }),
@@ -128,7 +125,7 @@ describe('getUserTPSLOrders', () => {
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toBe('https://keeper.test.com/api/tpsl/orders?address=0xabc123');
     expect(options.headers['Content-Type']).toBe('application/json');
-    expect(options.headers['X-API-Key']).toBe('test-api-key-123');
+    expect(options.headers['X-API-Key']).toBeUndefined();
   });
 
   it('URL-encodes special characters in address', async () => {
@@ -171,7 +168,7 @@ describe('getUserTPSLOrders', () => {
 // cancelTPSLOrder
 // ========================================
 describe('cancelTPSLOrder', () => {
-  it('sends DELETE with correct URL, API key, and auth', async () => {
+  it('sends DELETE with correct URL and JSON headers only', async () => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
     await cancelTPSLOrder('order-123', '0xowner');
@@ -180,7 +177,7 @@ describe('cancelTPSLOrder', () => {
     expect(url).toBe('https://keeper.test.com/api/tpsl/orders/order-123?address=0xowner');
     expect(options.method).toBe('DELETE');
     expect(options.headers['Content-Type']).toBe('application/json');
-    expect(options.headers['X-API-Key']).toBe('test-api-key-123');
+    expect(options.headers['X-API-Key']).toBeUndefined();
   });
 
   it('encodes orderId in URL path', async () => {
