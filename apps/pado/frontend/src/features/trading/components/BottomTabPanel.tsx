@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
 import { OrderHistory } from './OrderHistory';
@@ -16,6 +17,8 @@ import { calcLockedAmounts } from '../types';
 import { UnderlineTabs, type TabItem } from '@/components/common';
 import { TransferModal } from './TransferModal';
 import { getActiveTPSLOrders, getTPSLOrders, cancelTPSLOrder, removeTPSLOrder, clearTPSLHistory } from '../lib/tpsl-storage';
+import { getUserTPSLOrders, cancelTPSLOrder as cancelTPSLOrderKeeper, isKeeperConfigured } from '../lib/tpsl-api';
+import type { TPSLOrderResponse } from '../lib/tpsl-api';
 import { TPSL_POLL_INTERVAL_MS, MAX_TPSL_ORDERS } from '../lib/tpsl-types';
 import type { TPSLOrder } from '../lib/tpsl-types';
 import { MiniPortfolioWidget } from '../../portfolio/components/MiniPortfolioWidget';
@@ -34,14 +37,39 @@ export function BottomTabPanel({ className = '' }: BottomTabPanelProps) {
   const { data: openOrdersData } = useOpenOrders(balanceManagerId);
   const openOrderCount = openOrdersData?.orders?.length ?? 0;
 
-  // Periodic refresh instead of reading localStorage on every render
-  const [tpslActiveCount, setTpslActiveCount] = useState(() => getActiveTPSLOrders().length);
+  // Wallet address for keeper badge query (same priority as TradingPanel)
+  const { status: _walletStatus, account: _account } = useWallet();
+  const { isConnected: _isZkLoggedIn, state: _zkState } = useZkLogin();
+  const _isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const _passkeyAddress = usePasskeyStore((s) => s.address);
+  const _badgeWalletAddress = _isZkLoggedIn
+    ? _zkState?.address
+    : (_walletStatus === 'unlocked' && _account?.address)
+      ? _account.address
+      : _isPasskeyUnlocked
+        ? _passkeyAddress ?? undefined
+        : undefined;
+
+  // Keeper orders for badge (same cache key as useTPSLMonitor + TPSLTab — no extra RPC)
+  const { data: _keeperOrdersForBadge } = useQuery({
+    queryKey: ['keeperTPSLOrders', _badgeWalletAddress],
+    queryFn: () => getUserTPSLOrders(_badgeWalletAddress!),
+    enabled: !!_badgeWalletAddress && isKeeperConfigured(),
+    staleTime: 5_000,
+  });
+
+  // Periodic refresh of localStorage badge for client mode
+  const [_localActiveCount, setLocalActiveCount] = useState(() => getActiveTPSLOrders().length);
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setTpslActiveCount(getActiveTPSLOrders().length);
+      setLocalActiveCount(getActiveTPSLOrders().length);
     }, TPSL_POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, []);
+
+  const tpslActiveCount = _keeperOrdersForBadge !== undefined
+    ? _keeperOrdersForBadge.filter((o) => o.status === 'active').length
+    : _localActiveCount;
 
   const tabs: TabConfig[] = [
     { id: 'openOrders', label: 'Open Orders', badge: openOrderCount > 0 ? openOrderCount : undefined },
@@ -120,26 +148,81 @@ function TradeHistoryTab() {
 // TP/SL Tab - shows active and triggered TP/SL orders
 const TPSL_HISTORY_PAGE_SIZE = 20;
 
+function mapKeeperOrder(ko: TPSLOrderResponse): TPSLOrder {
+  return {
+    id: ko.id,
+    side: ko.side,
+    quantity: ko.quantity,
+    triggerPrice: ko.triggerPrice,
+    triggerType: ko.triggerType === 'take_profit' ? 'tp' : 'sl',
+    status: ko.status === 'active' ? 'active'
+      : ko.status === 'executing' ? 'executing'
+      : ko.status === 'filled' ? 'triggered'
+      : ko.status === 'canceled' ? 'cancelled'
+      : 'failed',
+    createdAt: ko.createdAt,
+    digest: ko.txDigest,
+    error: ko.error,
+  };
+}
+
 function TPSLTab() {
-  const [orders, setOrders] = useState<TPSLOrder[]>(() => getTPSLOrders());
+  const { status: walletStatus, account } = useWallet();
+  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const passkeyAddress = usePasskeyStore((s) => s.address);
+  // Mirror TradingPanel walletAddress priority: zkLogin > local wallet > passkey
+  const walletAddress = isZkLoggedIn
+    ? zkState?.address
+    : (walletStatus === 'unlocked' && account?.address)
+      ? account.address
+      : isPasskeyUnlocked
+        ? passkeyAddress ?? undefined
+        : undefined;
+
+  // Same query key as useTPSLMonitor — React Query serves from shared cache, no extra RPC.
+  // staleTime must match so we don't issue a redundant refetch.
+  const { data: keeperOrders } = useQuery({
+    queryKey: ['keeperTPSLOrders', walletAddress],
+    queryFn: () => getUserTPSLOrders(walletAddress!),
+    enabled: !!walletAddress && isKeeperConfigured(),
+    staleTime: 5_000,
+  });
+
+  const isServerMode = keeperOrders !== undefined;
+
+  const [localOrders, setLocalOrders] = useState<TPSLOrder[]>(() => getTPSLOrders());
   const [historyVisible, setHistoryVisible] = useState(TPSL_HISTORY_PAGE_SIZE);
 
-  const refresh = () => setOrders(getTPSLOrders());
+  const refreshLocal = () => setLocalOrders(getTPSLOrders());
 
-  const handleCancel = (id: string) => {
-    cancelTPSLOrder(id);
-    refresh();
+  // Derive display orders from keeper (server mode) or localStorage (client mode)
+  const orders: TPSLOrder[] = isServerMode
+    ? keeperOrders.map(mapKeeperOrder)
+    : localOrders;
+
+  const handleCancel = async (id: string) => {
+    if (isServerMode && walletAddress) {
+      try {
+        await cancelTPSLOrderKeeper(id, walletAddress);
+      } catch {
+        // error toast handled by caller; still refresh local for consistency
+      }
+    } else {
+      cancelTPSLOrder(id);
+      refreshLocal();
+    }
   };
 
   const handleRemove = (id: string) => {
     removeTPSLOrder(id);
-    refresh();
+    if (!isServerMode) refreshLocal();
   };
 
   const handleClearHistory = () => {
     clearTPSLHistory();
     setHistoryVisible(TPSL_HISTORY_PAGE_SIZE);
-    refresh();
+    if (!isServerMode) refreshLocal();
   };
 
   const activeOrders = orders.filter((o) => o.status === 'active');
