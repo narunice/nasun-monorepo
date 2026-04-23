@@ -61,7 +61,10 @@ export interface LeaderboardApiDeps {
 // ===== Rate limiting =====
 
 const apiRateMap = new Map<string, { count: number; resetAt: number }>();
-const API_RATE_MAX = 30;
+// Read-only endpoints hitting local SQLite. A single leaderboard page load
+// fires ~5 parallel queries and refetches every 30s, plus tab/mode switches.
+// Keep generous headroom so normal browsing never hits 429.
+const API_RATE_MAX = 180;
 const API_RATE_WINDOW_MS = 60_000;
 
 function checkApiRateLimit(ip: string): boolean {
