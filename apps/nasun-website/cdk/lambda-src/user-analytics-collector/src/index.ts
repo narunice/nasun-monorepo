@@ -17,6 +17,7 @@ import {
   PutCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
+import { buildNasunStatsSnapshot, type WalletSets } from './nasun-stats.js';
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client, {
@@ -64,35 +65,83 @@ function getTodayDateString(): string {
 }
 
 /**
- * Scan UserProfiles table once and compute all counters simultaneously.
+ * Scan UserProfiles table once. Computes counters AND builds wallet sets
+ * (x/google/telegram/any/multi) for the downstream nasun-stats snapshot.
+ *
+ * Twitter-provider identities are excluded from wallet sets but still counted
+ * (matches the nasun-stats skill — legacy Twitter-OAuth identities have no
+ * wallet, so they can't appear in DAU joins anyway).
  */
-async function scanUserProfileCounts(): Promise<{
+async function scanUserProfiles(): Promise<{
   total: number;
   telegramMembers: number;
   xConnected: number;
+  wallets: WalletSets;
 }> {
   let total = 0;
   let telegramMembers = 0;
   let xConnected = 0;
+  const walletsAny = new Set<string>();
+  const walletsX = new Set<string>();
+  const walletsGoogle = new Set<string>();
+  const walletsTelegram = new Set<string>();
+  const walletsMulti = new Set<string>();
+  let walletIdentityCount = 0;
   let lastKey: Record<string, unknown> | undefined;
 
   do {
-    const result = await docClient.send(new ScanCommand({
-      TableName: USER_PROFILES_TABLE,
-      ProjectionExpression: 'isTelegramMember, twitterHandle',
-      ExclusiveStartKey: lastKey,
-    }));
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: USER_PROFILES_TABLE,
+        ProjectionExpression:
+          'identityId, walletAddress, #p, twitterHandle, linkedAccounts, telegramUserId, isTelegramMember',
+        ExpressionAttributeNames: { '#p': 'provider' },
+        ExclusiveStartKey: lastKey,
+      }),
+    );
 
     for (const item of result.Items ?? []) {
       total++;
       if (item.isTelegramMember === true) telegramMembers++;
       if (item.twitterHandle) xConnected++;
+
+      // Wallet-set building (skip legacy Twitter-OAuth provider identities).
+      if (item.provider === 'Twitter') continue;
+      walletIdentityCount++;
+
+      const wallet = typeof item.walletAddress === 'string' ? item.walletAddress : '';
+      if (!wallet) continue;
+
+      const hasX = !!item.twitterHandle;
+      const googleEmail = item.linkedAccounts?.google?.email;
+      const hasG = !!googleEmail;
+      const tgId = typeof item.telegramUserId === 'string' ? item.telegramUserId : '';
+      const hasTg = !!tgId && item.isTelegramMember === true;
+
+      if (hasX) walletsX.add(wallet);
+      if (hasG) walletsGoogle.add(wallet);
+      if (hasTg) walletsTelegram.add(wallet);
+      const socialCount = Number(hasX) + Number(hasG) + Number(hasTg);
+      if (socialCount >= 1) walletsAny.add(wallet);
+      if (socialCount >= 2) walletsMulti.add(wallet);
     }
 
     lastKey = result.LastEvaluatedKey;
   } while (lastKey);
 
-  return { total, telegramMembers, xConnected };
+  return {
+    total,
+    telegramMembers,
+    xConnected,
+    wallets: {
+      any: walletsAny,
+      x: walletsX,
+      google: walletsGoogle,
+      telegram: walletsTelegram,
+      multi: walletsMulti,
+      totalProfiles: walletIdentityCount,
+    },
+  };
 }
 
 /**
@@ -166,24 +215,41 @@ async function collectDaily(force: boolean): Promise<void> {
   }
 
   // Collect counts in parallel
-  const [userCounts, leaderboardAccounts] = await Promise.all([
-    scanUserProfileCounts(),
+  const [userScan, leaderboardAccounts] = await Promise.all([
+    scanUserProfiles(),
     countLeaderboardAccounts(),
   ]);
 
   const record: UserMetricsRecord = {
     pk: `USER_METRICS#${targetDate}`,
     sk: 'DAILY',
-    registeredUsers: userCounts.total,
+    registeredUsers: userScan.total,
     leaderboardAccounts,
-    telegramMembers: userCounts.telegramMembers,
-    xConnected: userCounts.xConnected,
+    telegramMembers: userScan.telegramMembers,
+    xConnected: userScan.xConnected,
     collectedAt: new Date().toISOString(),
   };
 
   // When force=true, overwrite; otherwise protect existing
   await saveMetrics(record, !force);
-  console.log(`User metrics saved: registered=${record.registeredUsers}, leaderboard=${record.leaderboardAccounts}, telegram=${record.telegramMembers}, x=${record.xConnected}`);
+  console.log(
+    `User metrics saved: registered=${record.registeredUsers}, leaderboard=${record.leaderboardAccounts}, telegram=${record.telegramMembers}, x=${record.xConnected}`,
+  );
+
+  // Additionally build and persist the nasun-stats snapshot (CSV + TXT) to
+  // DynamoDB. Failures here MUST NOT affect the core user-metrics flow — this
+  // is a nice-to-have admin report.
+  try {
+    const apiBase = process.env.EXPLORER_API_BASE || 'https://explorer.nasun.io/api/v1';
+    const apiKey = process.env.NASUN_METRICS_API_KEY;
+    if (!apiKey) {
+      console.warn('[nasun-stats] NASUN_METRICS_API_KEY not set; skipping snapshot build.');
+    } else {
+      await buildNasunStatsSnapshot(docClient, userScan.wallets, apiBase, apiKey, targetDate);
+    }
+  } catch (err) {
+    console.error('[nasun-stats] snapshot build failed:', err);
+  }
 }
 
 /**

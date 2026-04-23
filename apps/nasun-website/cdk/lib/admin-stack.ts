@@ -400,6 +400,17 @@ export class AdminStack extends cdk.Stack {
     const userAnalyticsResource = this.api.root.addResource("user-analytics");
     userAnalyticsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
+    // Nasun Stats snapshot route (admin only)
+    // Single endpoint, single Lambda permission pair (API Gateway resource policy
+    // is close to the 20KB limit — keep new resources minimal).
+    // GET /nasun-stats/download?format=csv|txt|meta
+    //   csv  → text/csv blob
+    //   txt  → text/plain blob
+    //   meta → JSON { ready, generatedAt, reportBaseDate, rowCount }
+    const nasunStatsResource = this.api.root.addResource("nasun-stats");
+    const nasunStatsDownloadResource = nasunStatsResource.addResource("download");
+    nasunStatsDownloadResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
+
     // Genesis Pass Allowlist CRUD API Routes (admin only)
     const genesisPassCrudResource = this.api.root.addResource("genesis-pass");
     const genesisPassEntriesResource = genesisPassCrudResource.addResource("entries");
