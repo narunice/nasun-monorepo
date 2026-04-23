@@ -1,10 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "../components/AdminLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { PageLoading } from "@/components/ui/PageLoading";
 import { useDevnetMetrics } from "../hooks/useDevnetMetrics";
+import { useAdminAuth } from "../hooks/useAdminAuth";
+import {
+  fetchNasunStatsMeta,
+  downloadNasunStats,
+} from "../services/devnetMetricsApi";
 import {
   AreaChart,
   Area,
@@ -32,9 +38,46 @@ const CHART_COLORS = {
   cumulative: "#8b5cf6",
 };
 
+// Devnet launched 2026-03-05. Earlier rows are internal dev-period test data.
+const LAUNCH_DATE = "2026-03-05";
+
 export function DevnetMetrics() {
-  const { data: metrics, isLoading, error } = useDevnetMetrics();
+  const { data: rawMetrics, isLoading, error } = useDevnetMetrics();
   const [range, setRange] = useState<DateRange>("30d");
+  const { cognitoToken } = useAdminAuth();
+  const [downloading, setDownloading] = useState<"csv" | "txt" | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const nasunMeta = useQuery({
+    queryKey: ["nasun-stats-meta"],
+    queryFn: () => fetchNasunStatsMeta(cognitoToken!),
+    enabled: !!cognitoToken,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!downloadError) return;
+    const t = setTimeout(() => setDownloadError(null), 6000);
+    return () => clearTimeout(t);
+  }, [downloadError]);
+
+  async function onDownload(format: "csv" | "txt") {
+    if (!cognitoToken) return;
+    setDownloading(format);
+    setDownloadError(null);
+    try {
+      await downloadNasunStats(cognitoToken, format);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  const metrics = useMemo(
+    () => rawMetrics?.filter(m => m.date >= LAUNCH_DATE),
+    [rawMetrics]
+  );
 
   const filtered = useMemo(() => {
     if (!metrics) return [];
@@ -69,9 +112,10 @@ export function DevnetMetrics() {
         {metrics && (
           <>
             <div className="text-xs text-nasun-white/60 mb-3 leading-relaxed">
-              Scope: all wallets with any point-earning on-chain activity (faucet, DEX, scratchcard, lottery, transfer, staking, chat, governance, etc.).
-              DAU = distinct wallets active that day. "New" = wallets whose first-ever point-earning activity was that day. "Repeat" = DAU minus New.
-              Data backfilled from 2026-02-05 (pre-launch dev period) through 2026-04-13; daily transaction count uses sui-indexer checkpoints from 2026-04-14 onward.
+              Scope: wallets with meaningful on-chain engagement (DEX, scratchcard, lottery, transfer, staking, governance).
+              Excluded to avoid bot-farming and airdrop inflation: faucet claims, passive/airdrop point grants, off-chain chat, daily-mission entries.
+              DAU = distinct wallets active that day. "New" = wallets whose first-ever qualifying activity was that day. "Repeat" = DAU minus New.
+              Data from 2026-03-05 (launch). Daily transaction count uses sui-indexer checkpoints from 2026-04-14 onward.
             </div>
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -218,6 +262,53 @@ export function DevnetMetrics() {
                 </ResponsiveContainer>
               </OuterBox>
             )}
+
+            {/* Nasun Stats full report download */}
+            <OuterBox className="p-4 mt-6">
+              <h3 className="text-nasun-white text-sm font-medium mb-2">
+                Detailed Nasun Stats
+              </h3>
+              <p className="text-xs text-nasun-white/60 mb-3 leading-relaxed">
+                Full report: DAU by social (X/Google/Telegram), verified traders/gamers,
+                mission distribution, category breakdown, top activities. Regenerated daily
+                around 01:00 UTC.
+                {nasunMeta.data?.ready && nasunMeta.data.generatedAt && (
+                  <>
+                    {" "}
+                    Last generated:{" "}
+                    <span className="text-nasun-white/80">
+                      {new Date(nasunMeta.data.generatedAt).toLocaleString("en-US")}
+                    </span>
+                    {" "}(report base: {nasunMeta.data.reportBaseDate},{" "}
+                    {nasunMeta.data.rowCount} rows).
+                  </>
+                )}
+                {nasunMeta.data && !nasunMeta.data.ready && (
+                  <span className="text-yellow-300/80"> Not yet generated.</span>
+                )}
+              </p>
+              <div className="flex gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={() => onDownload("csv")}
+                  disabled={!cognitoToken || downloading !== null || !nasunMeta.data?.ready}
+                  className="px-3 py-1.5 text-sm rounded-md bg-nasun-brand/80 hover:bg-nasun-brand text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {downloading === "csv" ? "Downloading…" : "Download CSV"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDownload("txt")}
+                  disabled={!cognitoToken || downloading !== null || !nasunMeta.data?.ready}
+                  className="px-3 py-1.5 text-sm rounded-md bg-nasun-dark-700/60 hover:bg-nasun-dark-700/80 text-nasun-white/90 border border-nasun-white/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {downloading === "txt" ? "Downloading…" : "Download TXT (snapshot)"}
+                </button>
+              </div>
+              {downloadError && (
+                <div className="mt-2 text-xs text-red-400">{downloadError}</div>
+              )}
+            </OuterBox>
           </>
         )}
       </SectionLayout>
