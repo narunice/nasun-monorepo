@@ -98,6 +98,10 @@ export function useCreateAgent() {
 
           await encryptAndStoreAgentKey(profileId, keypair, address, params.passphrase);
 
+          // Wait for indexer to index the new AgentProfile so subsequent
+          // getOwnedObjects queries reflect it without a page reload.
+          await suiClient.waitForTransaction({ digest: result.digest });
+
           setTxStatus('success');
           return result.digest;
         } else {
@@ -127,6 +131,8 @@ export function useCreateAgent() {
           if (result.effects?.status?.status !== 'success') {
             throw new Error(result.effects?.status?.error || 'Transaction failed');
           }
+
+          await suiClient.waitForTransaction({ digest: result.digest });
 
           setTxStatus('success');
           return result.digest;
