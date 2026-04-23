@@ -366,6 +366,7 @@
     height: 100%;
   }
 
+
   /* Full-viewport carousel: dots overlaid at bottom via appendDots absolute position */
   .carousel-dots-overlay .slick-dots li {
     @apply !w-auto !h-auto !m-0;
