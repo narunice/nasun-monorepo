@@ -12,6 +12,7 @@ import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
 import { Post } from "../../types/post.d";
+import { stripHtmlTags } from "../../utils/wordpressContent";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const CustomArrow = ({
@@ -53,9 +54,7 @@ function NewsEventsSection() {
     return "NEWS";
   };
 
-  const stripHtml = (html: string) => {
-    return html.replace(/<[^>]*>?/gm, "");
-  };
+  const stripHtml = (html: string) => stripHtmlTags(html);
 
   // 날짜 포맷 헬퍼 함수
   const formatDate = (dateString: string): string => {
