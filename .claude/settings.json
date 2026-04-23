@@ -65,5 +65,39 @@
       "/tmp",
       "/home/naru/.claude/plans"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; [ -n \"$f\" ] && case \"$(basename \"$f\")\" in *.bak.*) ;; .env|.env.*) cp \"$f\" \"$f.bak.$(date +%s)\" 2>/dev/null ;; esac; } 2>/dev/null || true",
+            "statusMessage": "Backing up .env before edit"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -q 'pm2 restart' && echo \"$cmd\" | grep -q -- '--update-env'; then jq -n '{hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: \"pm2 restart --update-env does not re-evaluate ecosystem.config.cjs. Use: pm2 startOrRestart ecosystem.config.cjs with fresh env (export $(cat .env | xargs)). See memory/feedback_pm2_env_management.md.\"}}'; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; [ -n \"$f\" ] && /home/naru/my_apps/nasun-monorepo/scripts/env-duplicate-check.sh \"$f\"; } 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
   }
 }
