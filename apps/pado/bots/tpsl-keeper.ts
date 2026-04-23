@@ -5,11 +5,11 @@
  * Monitors oracle prices and triggers market orders via delegated TradeCap.
  *
  * Security model:
- * - API key authentication via X-API-Key header (prevents unauthorized access)
- * - CORS origin verification as secondary defense
- * - Server-side ownership verification for mutations (no client-supplied identity)
+ * - CORS origin verification (strict match on state-changing methods)
+ * - Server-side ownership verification for mutations (address param vs. stored order)
  * - TradeCap on-chain ownership verification on registration
- * - Per-IP rate limiting on all endpoints
+ * - Trigger price sanity check (0.01x-100x of oracle price) limits abuse impact
+ * - Per-user order limit (MAX_ORDERS_PER_USER) and per-IP rate limiting
  *
  * Usage:
  *   pnpm tpsl-keeper    # Run HTTP server + price monitor
@@ -20,13 +20,11 @@
  *   DEEPBOOK_PACKAGE      - DeepBook V3 package ID
  *   ORACLE_REGISTRY_ID    - Oracle registry object ID
  *   TPSL_PORT             - HTTP server port (default: 4001)
- *   TPSL_API_KEY          - API key for client authentication (required in production)
  *   TPSL_ALLOWED_ORIGIN   - CORS allowed origin (default: https://pado.finance)
  *
- * @version 0.3.0
+ * @version 0.4.0
  */
 
-import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { SuiClient } from '@mysten/sui/client';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
@@ -47,12 +45,9 @@ const ORACLE_REGISTRY_ID = process.env.ORACLE_REGISTRY_ID || '';
 const ORACLE_PACKAGE_ID = process.env.ORACLE_PACKAGE_ID || '';
 const DEEPBOOK_PACKAGE = process.env.DEEPBOOK_PACKAGE || '';
 const ALLOWED_ORIGIN = process.env.TPSL_ALLOWED_ORIGIN || 'https://pado.finance';
-const API_KEY = process.env.TPSL_API_KEY || '';
-// Auth bypass in dev/staging is intentional:
-// - Dev/staging use isolated devnet with no real assets
-// - TradeCap on-chain ownership is the actual security boundary
-// - API key validation still applies when TPSL_API_KEY is set
-// - Production (NODE_ENV=production) always requires API key + origin check
+// Origin check is enforced in production only. Dev/staging bypass because localhost
+// origins vary. The real security boundaries are on-chain: TradeCap ownership (checked
+// on register) and stored-order userAddress (checked on cancel).
 const REQUIRE_AUTH = process.env.NODE_ENV === 'production';
 const MAX_BODY_SIZE = 10_000; // 10KB max request body
 const MAX_ORDERS_PER_USER = 50;
@@ -405,40 +400,34 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+    'Access-Control-Allow-Headers': 'Content-Type',
   });
   res.end(JSON.stringify(data));
 }
 
 /**
- * Authenticate request via API key + CORS origin.
- * - Production: requires valid X-API-Key header AND matching Origin
- * - Development: allows all requests (API_KEY or REQUIRE_AUTH not set)
+ * Verify CORS origin.
+ * - State-changing methods (POST/DELETE): require exact Origin match (browsers always
+ *   send Origin for these per Fetch spec, so missing Origin signals a non-browser caller).
+ * - GET: allow missing Origin (same-origin GETs may omit it) but reject non-matching.
+ * - Dev mode (REQUIRE_AUTH=false): all allowed.
  */
-function authenticateRequest(req: IncomingMessage, res: ServerResponse): boolean {
-  // Dev mode: skip auth when no API key configured or not in production
-  if (!REQUIRE_AUTH && !API_KEY) return true;
+function authenticateRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  strict: boolean,
+): boolean {
+  if (!REQUIRE_AUTH) return true;
 
-  // API key verification (primary defense, timing-safe)
-  if (API_KEY) {
-    const clientKey = (req.headers['x-api-key'] as string) || '';
-    const clientBuf = Buffer.from(clientKey);
-    const keyBuf = Buffer.from(API_KEY);
-    if (clientBuf.length !== keyBuf.length || !timingSafeEqual(clientBuf, keyBuf)) {
-      sendJson(res, 401, { error: 'Unauthorized: invalid or missing API key' });
-      return false;
-    }
+  const origin = (req.headers['origin'] as string) || '';
+  if (strict && origin !== ALLOWED_ORIGIN) {
+    sendJson(res, 403, { error: 'Forbidden: invalid origin' });
+    return false;
   }
-
-  // CORS origin check (secondary defense)
-  if (REQUIRE_AUTH) {
-    const origin = req.headers['origin'] || '';
-    if (origin && origin !== ALLOWED_ORIGIN) {
-      sendJson(res, 403, { error: 'Forbidden: invalid origin' });
-      return false;
-    }
+  if (!strict && origin && origin !== ALLOWED_ORIGIN) {
+    sendJson(res, 403, { error: 'Forbidden: invalid origin' });
+    return false;
   }
-
   return true;
 }
 
@@ -469,7 +458,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
     try {
       // POST /api/tpsl/register - Register new TP/SL order
       if (method === 'POST' && url.pathname === '/api/tpsl/register') {
-        if (!authenticateRequest(req, res)) return;
+        if (!authenticateRequest(req, res, true)) return;
 
         const body = await parseBody(req);
 
@@ -567,7 +556,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
 
       // GET /api/tpsl/orders?address=<addr> - Get user orders
       if (method === 'GET' && url.pathname === '/api/tpsl/orders') {
-        if (!authenticateRequest(req, res)) return;
+        if (!authenticateRequest(req, res, false)) return;
 
         const address = url.searchParams.get('address');
         if (!address || !isValidObjectId(address)) {
@@ -582,7 +571,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
       // DELETE /api/tpsl/orders/:id - Cancel order
       // Ownership is verified server-side via stored order data (C-2)
       if (method === 'DELETE' && url.pathname.startsWith('/api/tpsl/orders/')) {
-        if (!authenticateRequest(req, res)) return;
+        if (!authenticateRequest(req, res, true)) return;
 
         const id = url.pathname.split('/').pop();
         if (!id) {
@@ -681,7 +670,7 @@ async function main() {
 
   const keeperAddress = keypair.getPublicKey().toSuiAddress();
   console.log(`  Keeper: ${keeperAddress.slice(0, 16)}...`);
-  console.log(`  Auth: ${API_KEY ? 'API key configured' : 'No API key (dev mode)'}`);
+  console.log(`  Auth: Origin check ${REQUIRE_AUTH ? `enforced (${ALLOWED_ORIGIN})` : 'disabled (dev)'}`);
   console.log(`  Orders: ${store.stats().active} active\n`);
 
   // Startup validation: fail orphaned orders whose TradeCap is not owned by this keeper

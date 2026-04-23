@@ -121,9 +121,29 @@
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_TPSL_KEEPER_URL` | TP/SL Keeper HTTP API URL |
-| `VITE_TPSL_KEEPER_ADDRESS` | Keeper wallet address (for TradeCap delegation) |
-| `VITE_TPSL_API_KEY` | API key for TP/SL Keeper authentication |
+| `VITE_TPSL_KEEPER_URL` | TP/SL Keeper HTTP API URL (empty = same-origin via nginx proxy) |
+| `VITE_TPSL_KEEPER_ADDRESS` | **Keeper wallet public address** — must match pubkey of `KEEPER_PRIVATE_KEY` on the bot server |
+
+### Keeper Address Invariant (CRITICAL)
+
+**`VITE_TPSL_KEEPER_ADDRESS` (frontend) MUST match the address derived from `KEEPER_PRIVATE_KEY` (bot server).**
+
+- Mismatch symptom: POST `/api/tpsl/register` returns `403 "TradeCap is not owned by the keeper"`
+- Cause: User's `tx.transferObjects([tradeCap], VITE_TPSL_KEEPER_ADDRESS)` sends the TradeCap to the wrong address, so the keeper (different address) cannot verify on-chain ownership
+- Previously-delegated users self-heal: frontend detects `stored.keeperAddress !== VITE_TPSL_KEEPER_ADDRESS` and auto-clears localStorage, prompting re-delegation
+
+**If rotating `KEEPER_PRIVATE_KEY`, simultaneously update `VITE_TPSL_KEEPER_ADDRESS` in `apps/pado/.env.production` and redeploy the frontend.** Failing to do so silently breaks TP/SL for every user who delegates during the window where the two diverge.
+
+**Current prod keeper address** (as of 2026-04-23): `0x74a7daf4b88ce870e4c0f05350f6907621a923e728ff027f04cef6fc73de4d24`
+
+Verify after any deploy/key rotation:
+```bash
+# From an active TP/SL order's tradeCapId, query on-chain owner:
+curl -sX POST https://rpc.devnet.nasun.io -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"sui_getObject","params":["<tradeCapId>",{"showOwner":true}]}' \
+  | jq '.result.data.owner.AddressOwner'
+# Must equal VITE_TPSL_KEEPER_ADDRESS
+```
 
 ## Optional (News)
 
@@ -147,8 +167,8 @@
 | `LP_PRIVATE_KEY_NETH` | Per-market LP key for NETH (optional, falls back to LP_PRIVATE_KEY) |
 | `LP_PRIVATE_KEY_NSOL` | Per-market LP key for NSOL (optional, falls back to LP_PRIVATE_KEY) |
 | `ORACLE_ADMIN_KEY` | Oracle admin private key (price-updater) |
-| `KEEPER_PRIVATE_KEY` | TP/SL keeper private key |
-| `TPSL_API_KEY` | API key for TP/SL keeper authentication |
+| `KEEPER_PRIVATE_KEY` | TP/SL keeper private key — pubkey **must match** `VITE_TPSL_KEEPER_ADDRESS` in frontend |
+| `TPSL_ALLOWED_ORIGIN` | CORS allowed origin for TP/SL keeper (prod: `https://pado.finance`, never `localhost:...` in prod) |
 | `LP_DISABLE_TOKEN_FAUCET` | Skip auto faucet refill (`true`/`false`, for pre-funded deployments) |
 
 ## Feature Flags

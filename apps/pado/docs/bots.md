@@ -65,7 +65,7 @@ To avoid gas coin contention between LP bot instances, each market can use a sep
 
 If per-market keys are not set, all markets fall back to the shared `LP_PRIVATE_KEY`.
 
-**Required `.env` (server)**: `LP_PRIVATE_KEY` (or per-market keys), `ORACLE_ADMIN_KEY`, `KEEPER_PRIVATE_KEY`, `TPSL_API_KEY`
+**Required `.env` (server)**: `LP_PRIVATE_KEY` (or per-market keys), `ORACLE_ADMIN_KEY`, `KEEPER_PRIVATE_KEY`, `TPSL_ALLOWED_ORIGIN`
 
 **Optional `.env`**: `LP_DISABLE_TOKEN_FAUCET=true` (skip auto faucet refill for pre-funded deployments)
 
