@@ -53,10 +53,41 @@ function DevNewsEventsSection() {
 
   const activePost = postList[activeIndex];
 
+  const navButtons = postCount > 1 && (
+    <div className="flex items-center justify-center gap-3">
+      <button
+        onClick={() => sliderRef.current?.slickPrev()}
+        className="flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
+        aria-label="Previous news"
+      >
+        <ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6 text-black" />
+      </button>
+
+      {postList.map((p, i) => (
+        <button
+          key={p.id}
+          onClick={() => sliderRef.current?.slickGoTo(i)}
+          className={`rounded-full transition-all duration-300 drop-shadow-lg bg-white ring-1 ring-black/60 ${
+            i === activeIndex ? "w-5 h-2" : "w-2 h-2 hover:opacity-90"
+          }`}
+          aria-label={`Go to news ${i + 1}`}
+        />
+      ))}
+
+      <button
+        onClick={() => sliderRef.current?.slickNext()}
+        className="flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
+        aria-label="Next news"
+      >
+        <ChevronRightIcon className="w-5 h-5 md:w-6 md:h-6 text-black" />
+      </button>
+    </div>
+  );
+
   return (
     <section
       id="dev-news-events"
-      className=" relative w-full min-h-screen bg-[#0b1628] flex flex-col items-center pt-14 pb-16"
+      className=" relative w-full min-h-screen bg-[#0b1628] flex flex-col items-center pt-10 pb-10 md:pt-14 md:pb-16"
     >
       {/* Section title */}
       <h2 className="!font-eurostile font-semibold uppercase tracking-wider drop-shadow-lg bg-gradient-to-r from-pado-3 to-[#DFF9BE] bg-clip-text text-transparent">
@@ -72,7 +103,7 @@ function DevNewsEventsSection() {
               return (
                 <div key={post.id} className="outline-none">
                   <div className="w-full flex justify-center overflow-hidden">
-                    <div className="relative w-full min-w-[1280px] aspect-square md:aspect-[2/1]">
+                    <div className="relative w-full min-h-[50vh] md:min-h-[60vh] max-h-[65vh] aspect-[4/3] md:aspect-[2/1]">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
@@ -93,42 +124,26 @@ function DevNewsEventsSection() {
             })}
           </Slider>
 
-          {/* Carousel navigation overlay (bottom of image) */}
-          {postCount > 1 && (
-            <div className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center gap-3">
-              <button
-                onClick={() => sliderRef.current?.slickPrev()}
-                className="flex items-center justify-center w-11 h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
-                aria-label="Previous news"
-              >
-                <ChevronLeftIcon className="w-6 h-6 text-black" />
-              </button>
-
-              {postList.map((p, i) => (
-                <button
-                  key={p.id}
-                  onClick={() => sliderRef.current?.slickGoTo(i)}
-                  className={`rounded-full transition-all duration-300 drop-shadow-lg bg-white ring-1 ring-black/60 ${
-                    i === activeIndex ? "w-5 h-2" : "w-2 h-2 hover:opacity-90"
-                  }`}
-                  aria-label={`Go to news ${i + 1}`}
-                />
-              ))}
-
-              <button
-                onClick={() => sliderRef.current?.slickNext()}
-                className="flex items-center justify-center w-11 h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
-                aria-label="Next news"
-              >
-                <ChevronRightIcon className="w-6 h-6 text-black" />
-              </button>
+          {/* Landscape: nav overlay on image */}
+          {navButtons && (
+            <div className="landscape:block hidden absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-10">
+              {navButtons}
             </div>
           )}
         </div>
       )}
 
+      {/* Portrait: nav below image (no overlap) */}
+      {navButtons && (
+        <div
+          className={`portrait:flex hidden w-full ${CONTENT_MAX_WIDTH} justify-center mt-4 md:mt-6`}
+        >
+          {navButtons}
+        </div>
+      )}
+
       {/* Body: title/date + buttons */}
-      <div className={`w-full ${CONTENT_MAX_WIDTH} flex flex-col`}>
+      <div className={`w-full ${CONTENT_MAX_WIDTH} flex flex-col px-4 md:px-0`}>
         {loading ? (
           <div className="mt-6 flex flex-col items-center gap-3">
             <div className="h-7 w-64 rounded bg-pd2/30 animate-pulse" />
@@ -151,14 +166,14 @@ function DevNewsEventsSection() {
           </div>
         ) : activePost ? (
           <>
-            {/* Title (one line) + date — centered, side by side */}
-            <div className="mt-2 flex items-baseline justify-center gap-3 w-full min-w-0">
+            {/* Title + date — stack on mobile, side-by-side on md+ */}
+            <div className="mt-4 md:mt-2 flex flex-col md:flex-row items-center md:items-baseline justify-center gap-1 md:gap-3 w-full min-w-0 text-center">
               <Link
                 to={`/news-events/${activePost.slug}`}
-                className="group min-w-0"
+                className="group min-w-0 max-w-full"
               >
                 <h6
-                  className="font-light text-pado-4 group-hover:text-pd5 group-hover:underline transition-colors duration-200 drop-shadow-lg truncate "
+                  className="font-light text-pado-4 group-hover:text-pd5 group-hover:underline transition-colors duration-200 drop-shadow-lg line-clamp-2 md:truncate text-base md:text-lg"
                   style={{ fontFamily: "Rubik, sans-serif" }}
                   title={plainTitle(activePost.title.rendered)}
                 >
@@ -166,7 +181,7 @@ function DevNewsEventsSection() {
                 </h6>
               </Link>
               <time
-                className="shrink-0 text-pd4 text-sm drop-shadow-lg"
+                className="shrink-0 text-pd4 text-xs md:text-sm drop-shadow-lg"
                 style={{ fontFamily: "Rubik, sans-serif" }}
                 dateTime={activePost.date}
               >
@@ -175,7 +190,7 @@ function DevNewsEventsSection() {
             </div>
 
             {/* Read More + Go to News buttons */}
-            <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+            <div className="mt-6 md:mt-10 flex items-center justify-center gap-3 flex-wrap">
               <Link
                 to={`/news-events/${activePost.slug}`}
                 className="group inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-pd4 text-black hover:bg-pd5 text-sm font-medium drop-shadow-lg transition-colors"
