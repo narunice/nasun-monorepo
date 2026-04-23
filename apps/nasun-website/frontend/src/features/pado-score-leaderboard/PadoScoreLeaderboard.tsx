@@ -100,21 +100,21 @@ function TraderRow({
               </span>
               {trader.hasGenesisPass && <GenesisPassBadge />}
             </div>
-            {trader.xHandle && (
+            {trader.twitterHandle && (
               <a
-                href={`https://x.com/${trader.xHandle}`}
+                href={`https://x.com/${trader.twitterHandle}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-pd3 truncate block hover:text-nasun-white/70 transition-colors"
               >
-                @{trader.xHandle}
+                @{trader.twitterHandle}
               </a>
             )}
           </div>
         </div>
       </td>
       <td className="px-2 py-3 text-center w-8">
-        {trader.xHandle ? <span className="text-sky-400"><CheckIcon /></span> : null}
+        {trader.twitterHandle ? <span className="text-sky-400"><CheckIcon /></span> : null}
       </td>
       <td className="px-2 py-3 text-center w-8">
         {trader.hasGoogle ? <span className="text-emerald-400"><CheckIcon /></span> : null}
@@ -352,14 +352,14 @@ export function PadoScoreLeaderboard() {
     const q = query.toLowerCase();
     return (
       entry.address.toLowerCase().includes(q) ||
-      (entry.xHandle ?? "").toLowerCase().includes(q) ||
+      (entry.twitterHandle ?? "").toLowerCase().includes(q) ||
       (entry.nickname ?? "").toLowerCase().includes(q)
     );
   }, []);
 
   const toResult = useCallback((entry: ScoreLeaderboardTrader): LeaderboardSearchResult => {
-    const primary = entry.nickname ?? entry.xHandle ?? abbreviateAddress(entry.address);
-    const secondary = entry.xHandle ? `@${entry.xHandle}` : abbreviateAddress(entry.address);
+    const primary = entry.nickname ?? entry.twitterHandle ?? abbreviateAddress(entry.address);
+    const secondary = entry.twitterHandle ? `@${entry.twitterHandle}` : abbreviateAddress(entry.address);
     return {
       id: entry.address,
       primaryLabel: primary,
