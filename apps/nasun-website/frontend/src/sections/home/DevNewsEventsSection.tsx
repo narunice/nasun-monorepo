@@ -1,62 +1,45 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import { Button } from "@/components/ui/button";
-import { TagV2 } from "@/components/ui/tag-v2";
-import { ButtonV3 } from "@/components/ui/button-v3";
 import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
 import { Post } from "../../types/post.d";
+import {
+  stripHtmlTags,
+  decodeHtmlEntities,
+} from "../../utils/wordpressContent";
 
-// Dev-only copy of NewsEventsSection for redesign experimentation.
-// The original NewsEventsSection (used on the live home page) must not be modified here.
+const CONTENT_MAX_WIDTH = "max-w-[1440px]";
+
 function DevNewsEventsSection() {
   const sliderRef = useRef<Slider>(null);
-  const sectionRef = useRef<HTMLElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
+  const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry.intersectionRatio >= 0.5),
-      { threshold: 0.5 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
   const { posts, loading, error, refetch } = usePosts(
     [WP_CATEGORIES.NEWS, WP_CATEGORIES.EVENTS],
-    4,
+    3,
   );
 
-  const getCategory = (post: Post): string => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const terms = (post._embedded as any)?.["wp:term"];
-    if (
-      terms &&
-      Array.isArray(terms) &&
-      terms[0] &&
-      Array.isArray(terms[0]) &&
-      terms[0][0]?.name
-    ) {
-      return terms[0][0].name;
-    }
-    return "NEWS";
-  };
+  const postList: Post[] = Array.isArray(posts) ? posts : [];
+  const postCount = postList.length;
 
-  const stripHtml = (html: string) => html.replace(/<[^>]*>?/gm, "");
+  const plainTitle = (html: string) =>
+    decodeHtmlEntities(stripHtmlTags(html.replace(/<br\s*\/?>/gi, " ")));
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString: string): string =>
+    new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
-  };
+
+  const getImageUrl = (post: Post, idx: number): string =>
+    !imgErrors[idx] && post._embedded?.["wp:featuredmedia"]?.[0]?.source_url
+      ? post._embedded["wp:featuredmedia"][0].source_url
+      : "";
 
   const sliderSettings = {
     dots: false,
@@ -68,152 +51,168 @@ function DevNewsEventsSection() {
     afterChange: (index: number) => setActiveIndex(index),
   };
 
-  const postCount = Array.isArray(posts) ? posts.length : 0;
+  const activePost = postList[activeIndex];
 
   return (
     <section
-      ref={sectionRef}
       id="dev-news-events"
-      className="relative w-full h-full bg-nasun-black overflow-hidden"
+      className=" relative w-full min-h-screen bg-[#0b1628] flex flex-col items-center pt-14 pb-16"
     >
-      {loading ? (
-        <div className="w-full h-full bg-black/30 animate-pulse" />
-      ) : error ? (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-          <p className="text-orange-400">{error}</p>
-          <Button variant="black" onClick={() => refetch()}>
-            Retry
-          </Button>
-        </div>
-      ) : postCount === 0 ? (
-        <div className="w-full h-full flex items-center justify-center text-gray-400">
-          No news posts available.
-        </div>
-      ) : (
-        <div className="news-slider" style={{ height: "calc(100vh - 50px)" }}>
-          <Slider ref={sliderRef} {...sliderSettings}>
-            {(posts as Post[]).map((post) => {
-              const imageUrl =
-                post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
+      {/* Section title */}
+      <h2 className="!font-eurostile font-semibold uppercase tracking-wider drop-shadow-lg bg-gradient-to-r from-pado-3 to-[#DFF9BE] bg-clip-text text-transparent">
+        NEWS
+      </h2>
 
+      {/* Featured image carousel */}
+      {postCount > 0 && (
+        <div className={`relative w-full ${CONTENT_MAX_WIDTH} mt-6`}>
+          <Slider ref={sliderRef} {...sliderSettings} className="w-full">
+            {postList.map((post, idx) => {
+              const imageUrl = getImageUrl(post, idx);
               return (
-                <div key={post.id} className="outline-none h-full">
-                  <div className="flex flex-col lg:flex-row bg-nasun-white h-full">
-                    {/* Left: Featured image */}
-                    <div className="lg:w-1/2 h-64 lg:h-full overflow-hidden shrink-0">
+                <div key={post.id} className="outline-none">
+                  <div className="w-full flex justify-center overflow-hidden">
+                    <div className="relative w-full min-w-[1280px] aspect-square md:aspect-[2/1]">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
-                          alt="Featured"
-                          loading="lazy"
+                          alt="Featured news"
+                          loading={idx === 0 ? "eager" : "lazy"}
+                          onError={() =>
+                            setImgErrors((prev) => ({ ...prev, [idx]: true }))
+                          }
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-nasun-nw4/30 to-nasun-nw1/20 flex items-center justify-center">
-                          <span className="text-nasun-black/30 text-lg">
-                            No Image
-                          </span>
-                        </div>
+                        <div className="w-full h-full bg-pd1/40" />
                       )}
-                    </div>
-
-                    {/* Right: Post info */}
-                    <div className="lg:w-1/2 flex flex-col px-10 py-10 lg:py-16 lg:px-16 gap-5 justify-center">
-                      <p className="text-xs font-bold tracking-[0.25em] text-nasun-black/40 uppercase">
-                        News &amp; Events
-                      </p>
-
-                      <TagV2
-                        variant="outlineNw2"
-                        size="md"
-                        className="self-start font-medium uppercase tracking-wider"
-                      >
-                        {getCategory(post)}
-                      </TagV2>
-
-                      <h4 className="font-semibold text-xl lg:text-2xl text-nasun-black leading-snug line-clamp-3">
-                        {stripHtml(post.title.rendered)}
-                      </h4>
-
-                      <time
-                        className="text-nasun-black/50 text-sm"
-                        dateTime={post.date}
-                      >
-                        {formatDate(post.date)}
-                      </time>
-
-                      <p className="line-clamp-4 text-nasun-black/70 text-sm leading-relaxed">
-                        {stripHtml(post.excerpt.rendered)}
-                      </p>
-
-                      <div>
-                        <Link to={`/news-events/${post.slug}`}>
-                          <ButtonV3
-                            variant="gradient"
-                            size="sm"
-                            className="capitalize"
-                          >
-                            Read more
-                          </ButtonV3>
-                        </Link>
-                      </div>
                     </div>
                   </div>
                 </div>
               );
             })}
           </Slider>
-        </div>
-      )}
 
-      {/* Navigation: fixed floating pill at viewport bottom 10%.
-          Opacity transition prevents flicker during scroll-snap section transitions. */}
-      {Array.isArray(posts) && posts.length > 0 && (
-        <div
-          className={`absolute bottom-20 left-0 right-0 z-50 flex justify-center transition-opacity duration-300 ${
-            isVisible
-              ? "opacity-100 pointer-events-auto"
-              : "opacity-0 pointer-events-none"
-          }`}
-        >
-          <div className="inline-flex items-center rounded-2xl bg-black/50 border border-white/15 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
-            <button
-              onClick={() => sliderRef.current?.slickPrev()}
-              className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
-              aria-label="Previous news"
-            >
-              <ChevronLeftIcon className="w-4 h-4 text-white/70" />
-            </button>
+          {/* Carousel navigation overlay (bottom of image) */}
+          {postCount > 1 && (
+            <div className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 z-10 flex items-center justify-center gap-3">
+              <button
+                onClick={() => sliderRef.current?.slickPrev()}
+                className="flex items-center justify-center w-11 h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
+                aria-label="Previous news"
+              >
+                <ChevronLeftIcon className="w-6 h-6 text-black" />
+              </button>
 
-            <span className="w-px h-4 bg-white/15 shrink-0" />
-
-            <div className="flex items-center gap-2 px-4">
-              {Array.from({ length: postCount }).map((_, dotIndex) => (
+              {postList.map((p, i) => (
                 <button
-                  key={dotIndex}
-                  onClick={() => sliderRef.current?.slickGoTo(dotIndex)}
-                  className={`rounded-full transition-all duration-300 ${
-                    activeIndex === dotIndex
-                      ? "w-5 h-2 bg-white"
-                      : "w-2 h-2 bg-white/35 hover:bg-white/60"
+                  key={p.id}
+                  onClick={() => sliderRef.current?.slickGoTo(i)}
+                  className={`rounded-full transition-all duration-300 drop-shadow-lg bg-white ring-1 ring-black/60 ${
+                    i === activeIndex ? "w-5 h-2" : "w-2 h-2 hover:opacity-90"
                   }`}
-                  aria-label={`Go to slide ${dotIndex + 1}`}
+                  aria-label={`Go to news ${i + 1}`}
                 />
               ))}
+
+              <button
+                onClick={() => sliderRef.current?.slickNext()}
+                className="flex items-center justify-center w-11 h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
+                aria-label="Next news"
+              >
+                <ChevronRightIcon className="w-6 h-6 text-black" />
+              </button>
             </div>
-
-            <span className="w-px h-4 bg-white/15 shrink-0" />
-
-            <button
-              onClick={() => sliderRef.current?.slickNext()}
-              className="flex items-center justify-center w-10 h-10 shrink-0 hover:bg-white/10 transition-colors"
-              aria-label="Next news"
-            >
-              <ChevronRightIcon className="w-4 h-4 text-white/70" />
-            </button>
-          </div>
+          )}
         </div>
       )}
+
+      {/* Body: title/date + buttons */}
+      <div className={`w-full ${CONTENT_MAX_WIDTH} flex flex-col`}>
+        {loading ? (
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <div className="h-7 w-64 rounded bg-pd2/30 animate-pulse" />
+            <div className="h-4 w-48 rounded bg-pd2/20 animate-pulse" />
+          </div>
+        ) : error ? (
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <p
+              className="text-pado-3 text-sm"
+              style={{ fontFamily: "Rubik, sans-serif" }}
+            >
+              {error}
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="text-xs text-pd4 underline underline-offset-2"
+            >
+              Retry
+            </button>
+          </div>
+        ) : activePost ? (
+          <>
+            {/* Title (one line) + date — centered, side by side */}
+            <div className="mt-2 flex items-baseline justify-center gap-3 w-full min-w-0">
+              <Link
+                to={`/news-events/${activePost.slug}`}
+                className="group min-w-0"
+              >
+                <h6
+                  className="font-light text-pado-4 group-hover:text-pd5 group-hover:underline transition-colors duration-200 drop-shadow-lg truncate "
+                  style={{ fontFamily: "Rubik, sans-serif" }}
+                  title={plainTitle(activePost.title.rendered)}
+                >
+                  {plainTitle(activePost.title.rendered)}
+                </h6>
+              </Link>
+              <time
+                className="shrink-0 text-pd4 text-sm drop-shadow-lg"
+                style={{ fontFamily: "Rubik, sans-serif" }}
+                dateTime={activePost.date}
+              >
+                {formatDate(activePost.date)}
+              </time>
+            </div>
+
+            {/* Read More + Go to News buttons */}
+            <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+              <Link
+                to={`/news-events/${activePost.slug}`}
+                className="group inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-pd4 text-black hover:bg-pd5 text-sm font-medium drop-shadow-lg transition-colors"
+                style={{ fontFamily: "Rubik, sans-serif" }}
+              >
+                Read More
+                <span
+                  aria-hidden="true"
+                  className="transition-transform group-hover:translate-x-0.5"
+                >
+                  →
+                </span>
+              </Link>
+              <a
+                href="https://nasun.io/about/news"
+                className="group inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-pd4/60 text-pd4 hover:border-pd5 hover:text-pd5 text-sm font-medium drop-shadow-lg transition-colors"
+                style={{ fontFamily: "Rubik, sans-serif" }}
+              >
+                Go to News
+                <span
+                  aria-hidden="true"
+                  className="transition-transform group-hover:translate-x-0.5"
+                >
+                  →
+                </span>
+              </a>
+            </div>
+          </>
+        ) : (
+          <p
+            className="mt-6 text-pd3 text-sm text-center"
+            style={{ fontFamily: "Rubik, sans-serif" }}
+          >
+            No news available.
+          </p>
+        )}
+      </div>
     </section>
   );
 }
