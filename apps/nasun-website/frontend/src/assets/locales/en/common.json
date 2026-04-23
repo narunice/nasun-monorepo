@@ -9,7 +9,6 @@
     "protocolOverview": "Overview",
     "governance": "Governance",
     "identity": "Identity",
-    "litepaper": "Litepaper",
     "infra": "Infra",
     "infraOverview": "Infra Overview",
     "aiExecutors": "AI Executors",
@@ -75,9 +74,9 @@
     "contests": "Contests",
     "aboutTeam": "Team",
     "community": "Community",
-    "padoScoreLeaderboard": "Pado Traders Leaderboard",
+    "padoScoreLeaderboard": "Pado DeFi Leaderboard",
     "creatorsLeaderboard": "Creators Leaderboard",
-    "ecosystemLeaderboard": "Nasun Leaderboard",
+    "ecosystemLeaderboard": "Ecosystem Leaderboard",
     "creatorsLeaderboardGuide": "Creators Leaderboard Guide"
   },
   "auth": {

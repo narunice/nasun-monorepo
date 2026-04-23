@@ -97,7 +97,9 @@ const DevMyAccountPage = () => {
       paramsHandled.current = true;
       setSearchParams({}, { replace: true });
       setTimeout(() => {
-        document.getElementById("creator-posts")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        document
+          .getElementById("creator-posts")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 300);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -204,7 +206,10 @@ const DevMyAccountPage = () => {
           </ErrorBoundary>
 
           {/* Creator Posts — above MY ASSETS */}
-          <div id="creator-posts" className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-3">
+          <div
+            id="creator-posts"
+            className="order-5 lg:order-none col-span-1 md:col-span-2 lg:col-span-3"
+          >
             <CreatorPostsCard />
           </div>
 
@@ -268,8 +273,8 @@ const DevMyAccountPage = () => {
               />
               <DialogTitle>Connect Your X Account</DialogTitle>
               <DialogDescription className="text-nasun-white/70">
-                To participate in the Nasun Leaderboard, connect your X account
-                below.
+                To participate in the Creators Leaderboard, connect your X
+                account below.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
