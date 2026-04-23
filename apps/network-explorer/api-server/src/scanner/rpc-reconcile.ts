@@ -273,7 +273,10 @@ export async function reconcileFromRpc(
     const basePointsArr = gapRows.map(r => r.basePoints);
     const genesisMults = gapRows.map(r => r.genesisMult);
     const finalPointsArr = gapRows.map(r => parseFloat(r.finalPoints));
-    const timestamps = gapRows.map(r => new Date(r.ts));
+    // ISO strings (not Date objects) so postgres.js 3.x serializes as text[]
+    // which PG casts element-wise to timestamptz[]. Passing Date[] fails with
+    // "cannot cast type timestamp with time zone to timestamp with time zone[]".
+    const timestamps = gapRows.map(r => new Date(r.ts).toISOString());
     const eventSeqs = gapRows.map(r => r.eventSeq);
     const zeros = gapRows.map(() => 0);
     const ones = gapRows.map(() => 1.0);
