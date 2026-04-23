@@ -28,6 +28,24 @@ import {
 } from "./useEcosystemLeaderboard";
 
 const PAGE_SIZE = 50;
+
+const failedAvatarUrls = new Set<string>();
+
+function EntryAvatar({ url }: { url: string }) {
+  const [failed, setFailed] = useState(() => failedAvatarUrls.has(url));
+  if (failed) return <div className="w-12 h-12 rounded-lg shrink-0 bg-nasun-c6/60" />;
+  return (
+    <img
+      src={url}
+      alt=""
+      className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
+      loading="lazy"
+      onError={() => { failedAvatarUrls.add(url); setFailed(true); }}
+    />
+  );
+}
 const MAX_RANK = 2000;
 const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
 
@@ -386,13 +404,7 @@ const EcosystemLeaderboardPage = () => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             {entry.profileImageUrl ? (
-                              <img
-                                src={entry.profileImageUrl}
-                                alt=""
-                                className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
-                                referrerPolicy="no-referrer"
-                                crossOrigin="anonymous"
-                              />
+                              <EntryAvatar url={entry.profileImageUrl} />
                             ) : (
                               <div className="w-12 h-12 rounded-lg shrink-0 bg-nasun-c6/60" />
                             )}
