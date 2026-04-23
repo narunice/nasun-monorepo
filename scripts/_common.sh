@@ -106,6 +106,56 @@ health_check() {
   fi
 }
 
+# env-verify: dist 번들에 .env VITE_* 값이 embed 되었는지 검증
+# 사용: verify_env_embed <app> [mode]
+# - 모두 MATCH: log_success
+# - MISSING 발견: log_warning + 상세 출력, $FORCE=true가 아니면 확인 프롬프트
+# - setup 에러: log_warning (skip)
+# --skip-env-verify 플래그로 건너뛸 수 있음 (SKIP_ENV_VERIFY=true)
+verify_env_embed() {
+  local app=$1
+  local mode=${2:-production}
+  local script_path="$(dirname "${BASH_SOURCE[0]}")/env-verify.sh"
+
+  if [ "${SKIP_ENV_VERIFY:-false}" = "true" ]; then
+    log_warning "env-verify 건너뜀 (--skip-env-verify)"
+    return 0
+  fi
+
+  if [ ! -x "$script_path" ]; then
+    log_warning "env-verify.sh 없음 — 검증 skip"
+    return 0
+  fi
+
+  log_info "dist 번들의 VITE_* 값 검증 중 (env-verify)..."
+  local out
+  local rc=0
+  out=$(bash "$script_path" "$app" --mode "$mode" 2>&1) || rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    log_success "env embed 검증 통과"
+    return 0
+  elif [ "$rc" -eq 2 ]; then
+    log_warning "env-verify setup 에러 — skip"
+    echo "$out"
+    return 0
+  else
+    log_warning "env embed 미스매치 감지됨:"
+    echo "$out"
+    echo ""
+    if [ "${FORCE:-false}" = "true" ]; then
+      log_warning "--force 지정됨 — 경고 무시하고 계속"
+      return 0
+    fi
+    read -p "계속 배포하려면 'continue'를 입력하세요: " confirm
+    if [ "$confirm" != "continue" ]; then
+      log_error "배포 취소 (env embed 미스매치)"
+    fi
+    log_warning "사용자가 경고를 무시하고 계속 진행함"
+    return 0
+  fi
+}
+
 # 모노레포 루트 경로
 MONOREPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
