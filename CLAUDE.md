@@ -84,6 +84,16 @@ Nasun is a **bootstrapped web3 project with zero external funding**. All product
 - Point at logs, errors, failing tests — then resolve them
 - Zero context switching required from the user
 
+**Environment Variable Protocol (CRITICAL):**
+
+Env var loss/staleness has repeatedly broken deploys. Follow this protocol without exception.
+
+1. **Pre-edit backup (auto)**: project PreToolUse hook auto-creates `.env.<name>.bak.<timestamp>` before any Edit/Write to `.env*`. Do not disable. Restore from the latest `.bak.*` if recovery needed.
+2. **Duplicate key check (auto)**: project PostToolUse hook runs `scripts/env-duplicate-check.sh` after each `.env*` edit and surfaces keys whose values differ across sibling files (e.g. `.env` vs `.env.local`). Do not assume your edit took effect if a warning appears.
+3. **pm2 restart discipline (auto)**: `pm2 restart --update-env` is blocked by hook. Use `pm2 startOrRestart ecosystem.config.cjs` with `export $(cat .env | xargs)` to force fresh env evaluation. See memory `feedback_pm2_env_management.md`.
+4. **Post-build sanity**: run `/env-verify <app>` after any frontend build to confirm `VITE_*` values baked into `dist/assets/*.js` match the current `.env`. Rebuild on MISSING/STALE.
+5. **Envdir awareness**: pado uses `envDir: '../'` (reads `apps/pado/.env.production`, not `frontend/.env`). Verify the target file path against each app's vite config before editing.
+
 Security expectations:
 
 - Security-first mindset is mandatory
