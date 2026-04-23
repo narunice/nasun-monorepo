@@ -5,7 +5,7 @@ import { cn } from "../../utils/utils";
 import { buttonV4Variants } from "./button-v4-variants";
 
 export interface ButtonV4Props
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color">,
     VariantProps<typeof buttonV4Variants> {
   asChild?: boolean;
 }
