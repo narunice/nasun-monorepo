@@ -187,6 +187,9 @@ export interface EthereumNFT {
 
   /** Last updated timestamp */
   lastUpdated?: string;
+
+  /** Raw or gateway-resolved metadata URI (e.g. https://host/metadata/{id}.json) */
+  tokenUri?: string;
 }
 
 // ============================================================================
