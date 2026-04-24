@@ -65,13 +65,13 @@ const MARKETS = {
   NETH: {
     baseType: TOKEN_TYPES.NETH,
     baseDecimals: 8,
-    baseThreshold: 500,
+    baseThreshold: 300,
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
     faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
     faucetV2Object: TOKEN_FAUCET_V2,
     faucetV2Function: 'request_neth',
-    basePerRound: 8.0,
+    basePerRound: 0.5,
     quotePerRound: 100_000,
   },
   NSOL: {
