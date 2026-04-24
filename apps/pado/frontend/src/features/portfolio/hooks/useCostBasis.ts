@@ -108,6 +108,8 @@ async function fetchCostBasisRpc(
       if (qty === 0) continue;
 
       if (isBid) {
+        // Only DeepBook buy fills count toward cost basis.
+        // Faucet claims and direct deposits are excluded because they lack a purchase price.
         const prevHolding = totalBought - totalSold;
         const newHolding = prevHolding + qty;
         if (newHolding > 0) {
