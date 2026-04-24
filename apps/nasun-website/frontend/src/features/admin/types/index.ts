@@ -160,6 +160,21 @@ export interface UserDetailResponse {
   user: UserProfile;
 }
 
+export type SearchField = "auto" | "twitter" | "google" | "telegram" | "wallet" | "identityid";
+
+export interface SearchUsersParams {
+  q: string;
+  field?: SearchField;
+  resolvePrimary?: boolean;
+}
+
+export interface SearchUsersResponse {
+  success: boolean;
+  query: { q: string; field: string; resolvePrimary: boolean };
+  matches: UserProfile[];
+  truncated: boolean;
+}
+
 // Blacklist types
 export interface BannedAccount {
   accountId: string;

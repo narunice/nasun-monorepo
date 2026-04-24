@@ -1,4 +1,4 @@
-import type { ListUsersResponse, UserDetailResponse } from '../types';
+import type { ListUsersResponse, UserDetailResponse, SearchUsersParams, SearchUsersResponse } from '../types';
 import { authHeaders } from '../utils';
 
 const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL;
@@ -27,6 +27,28 @@ export async function listUsers(
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `Failed to list users: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function searchUsers(
+  cognitoToken: string,
+  params: SearchUsersParams,
+): Promise<SearchUsersResponse> {
+  const sp = new URLSearchParams({ q: params.q });
+  if (params.field && params.field !== 'auto') sp.set('field', params.field);
+  if (params.resolvePrimary === false) sp.set('resolvePrimary', 'false');
+
+  // Uses GET /users?q=... (same endpoint as list, search mode activated by q param)
+  const response = await fetch(`${ADMIN_API_URL}/users?${sp}`, {
+    method: 'GET',
+    headers: authHeaders(cognitoToken),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to search users: ${response.status}`);
   }
 
   return response.json();
