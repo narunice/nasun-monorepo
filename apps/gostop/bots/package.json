@@ -1,0 +1,20 @@
+{
+  "name": "gostop-bots",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lottery-keeper": "node --env-file=.env --import tsx lottery-keeper.ts",
+    "lottery-keeper:once": "node --env-file=.env --import tsx lottery-keeper.ts --once",
+    "seed:v2": "node --env-file=.env --import tsx seed-bankroll-v2.ts",
+    "install-gamecap:v3": "node --env-file=.env --import tsx install-gamecap-v3.ts"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.45.2",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.3"
+  }
+}
