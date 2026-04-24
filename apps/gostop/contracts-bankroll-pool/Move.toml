@@ -1,0 +1,14 @@
+[package]
+name = "gostop_bankroll_pool"
+edition = "2024"
+version = "0.0.2"
+published-at = "0xb92e09a5665144aeb69934b7e1c8b6fc67a37d424c69ac2eabd9386524110b82"
+
+[dependencies]
+devnet_tokens = { local = "../../../packages/devnet-tokens" }
+
+[addresses]
+bankroll_pool = "0xb92e09a5665144aeb69934b7e1c8b6fc67a37d424c69ac2eabd9386524110b82"
+
+[environments]
+nasun-devnet = "272218f1"

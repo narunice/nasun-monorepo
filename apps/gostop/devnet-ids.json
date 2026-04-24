@@ -1,0 +1,108 @@
+{
+  "network": "nasun-devnet",
+  "chainId": "272218f1",
+  "rpc": "https://rpc.devnet.nasun.io",
+  "deployedAt": "2026-04-24",
+  "version": "v4",
+  "deployer": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
+  "versionNotes": [
+    "v4 (current, 2026-04-24 late) - post-review hardening:",
+    "  - lottery: obligated_amount field tracks unclaimed winner liability",
+    "    so sweep_unclaimed_to_bankroll cannot accidentally take rollover",
+    "    funds destined for the next round (H2 fix)",
+    "  - lottery: SWEEP_GRACE_MS=1h between claim deadline and earliest sweep",
+    "    closes the same-block claim/sweep race (H4 fix)",
+    "  - lottery: RoundSettled event now emits base_rollover + obligated_amount",
+    "    for proper accounting reconciliation (C1 fix)",
+    "  - bankroll_pool: pause check removed from pay_winner / refund_bet",
+    "    so legitimate winner payouts cannot be frozen during ops emergency",
+    "    (H3 fix). Pause still gates collect_bet (new exposure).",
+    "  - bankroll_pool was UPGRADED in-place via UpgradeCap (function body",
+    "    changes only), so BankrollPool object + 100K NUSDC seed remain.",
+    "  - lottery was FRESH-PUBLISHED (struct field added), so v3 lottery is",
+    "    deprecated; new GameCap issued from same bankroll for v4 registry.",
+    "",
+    "v3 (deprecated, 2026-04-24 late) - 5-of-32 -> 5-of-25 recalibration:",
+    "  - Lottery range C(32,5)=201,376 -> C(25,5)=53,130, ~3.8x jackpot freq",
+    "  - Tier payout BPS unchanged (60/25/15 within 70% prize pool)",
+    "",
+    "v2 (deprecated, 2026-04-24 18:xx UTC) - post-audit hardening:",
+    "  - treasury_deposit GameCap-gated (closes LP inflation)",
+    "  - LPToken soulbound, owner field removed",
+    "  - emit_game_result uses cap.game_id (no spoof)",
+    "  - session_id: vector<u8> (widened from ID)",
+    "  - provide_liquidity MIN_LP_DEPOSIT=10 NUSDC + virtual-offset share math",
+    "  - refund_bet, admin-mutation events added",
+    "  - close/draw time sanity checks in create_round",
+    "  - LotteryRegistry.game_cap installed at launch",
+    "",
+    "v1 (deprecated, 2026-04-24 AM) - contained LP inflation vector; do not use."
+  ],
+
+  "tokens": {
+    "packageId": "0x1c93579be99e89ab05a33ac04af2fd7b1a604f9c98fe74d1b6cae6913c8362e7",
+    "originalPackageId": "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731",
+    "nusdcType": "0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC",
+    "tokenFaucet": "0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92"
+  },
+
+  "bankrollPool": {
+    "packageId": "0x561c1cf6d984d0be0bc7c77b4387009120b0d73617af07cd6acc605b3ff681fd",
+    "originalPackageId": "0xb92e09a5665144aeb69934b7e1c8b6fc67a37d424c69ac2eabd9386524110b82",
+    "bankrollPool": "0xf74e8c3c16ee077651f82459f350e96027c82319686395679d10f08ed0cd306d",
+    "adminCap": "0x6c9c504ac631b967ff576e39f643153f3a503a16d4360c1820575d15802b41ba",
+    "upgradeCap": "0xf38053fa5ce1621b7ad30a6c7408fbd7d49b360f6fcca9e15a54b9dac158dd00",
+    "initialSeedNusdc": "100000000000",
+    "seedTxDigest": "AsnpvnaDQ3VyRCe71ZTGVTKxHUTvQFAD1RdR9Tmeg7hJ",
+    "upgradeTxDigest": "GssZiwYFchY6vXvHP3c9UdShoFeSbrwDofC4VZ646Mh7",
+    "upgradeNotes": "v2 -> upgraded 2026-04-24. pay_winner / refund_bet pause check removed (H3). BankrollPool object + 100K NUSDC seed unchanged. Original packageId still required for type identity and event subscriptions."
+  },
+
+  "lottery": {
+    "packageId": "0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3",
+    "originalPackageId": "0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3",
+    "registry": "0x1069c4acb26233de518b2e7f072ccac3bdc7da4428a95e20e54432c0b08d596c",
+    "adminCap": "0x4f2ca8c69b5098d0e255467f8cc6bae1db8abcae254b01c373a02f2528745c89",
+    "upgradeCap": "0x01b40d08a86e8b32956f9955dfdab608325532588bd81388e79472d85e427a15",
+    "publishTxDigest": "9kNj5GtR7rjcjXcjDwrYeXKF2dBPaEMKrDZhXBP7bNax",
+    "gameCapInstalled": "0xc8627acca466d2cceab531df148647363d3721567a15c98eb3de5a568d5ef4a7 (consumed into registry.game_cap)",
+    "gameCapInstallTxDigest": "BXBTHLvWrPPjsW8CEwYWAHAHM9JSPViGsro7oW7ABupB",
+    "numbersCount": 5,
+    "maxNumber": 25,
+    "maxTicketsPerAddress": 300,
+    "ticketPriceNusdc": "5000000",
+    "claimWindowMs": 2592000000,
+    "sweepGraceMs": 3600000,
+    "maxDrawDelayMs": 604800000,
+    "gameId": 1,
+    "schedule": {
+      "closeDayUtc": "Sunday 24:00 UTC = Monday 00:00 UTC",
+      "drawAfterCloseMs": 0,
+      "firstRoundStart": "2026-04-27T00:00:00Z"
+    }
+  },
+
+  "deprecated": {
+    "v3": {
+      "lotteryPackageId": "0x48e23db58f02f077b46aef98aa0fcfce86aaa65046fdc7e0db302a6fc670ec14",
+      "lotteryRegistry": "0xf09e32ed9033a4ebf86b66246efb21ab618c96e9ab0032859dc926d6d9b52ea5",
+      "lotteryAdminCap": "0x73ae9d42b41d97f78c7bfacbf603ba13333e976dd50e7f55b2a3c029b70c262a",
+      "gameCapInstalled": "0xa0704c143878b46d1df1bab8729c6c87e9e8db79ee4f7c2044798d7329a665ef",
+      "note": "Superseded by v4 (post-review hardening). v3 had H2 (sweep can take rollover), H4 (claim/sweep race), C1 (event accounting). Round 1 was created on v3 but is replaced by v4 Round 1 once keeper restarts."
+    },
+    "v2": {
+      "lotteryPackageId": "0xd1982095c8092b4c30b9d4d0c45cbcb6a856011f722af3d430e1c8271e2d6b86",
+      "lotteryRegistry": "0x50f29b198de1822cbb889a7127b9356f74f265d0bae8b3bd56a5551fecc20207",
+      "lotteryAdminCap": "0x18cf311fbd30dad05b30cceb7f8878b30bb0a882f39b277fc462be5e8ee86391",
+      "gameCapInstalled": "0xdd7eef8ed5eb025c4bfaf4e7c8784f59789a1d9330093d31432643f4b79c115f",
+      "note": "5-of-32 lottery; superseded by v3 (recalibration to 5-of-25). v2 GameCap remains in v2 registry but unused."
+    },
+    "v1": {
+      "bankrollPoolPackageId": "0x7693396d304bc554e626987507b92fe22692c5bdae91408b2fc97d0544cfb75e",
+      "bankrollPoolObject": "0x305e9fd4eff5f2c57b1daa3f24896b65010f8cd71da3c5ef16bccd09e23acd9c",
+      "lotteryPackageId": "0x52eec4fe17b8ee56d0dd94cdc144d59d1ba7bdbf0adf50ea4c543473f3a7242b",
+      "lotteryRegistry": "0x40d917141deb54a2a602140b0e8974d79ed26fe1421285057049cc5e369b1e72",
+      "note": "DO NOT USE. v1 contains critical LP inflation attack. 100K NUSDC is stranded in v1 BankrollPool (no admin withdraw path); devnet-only cost."
+    }
+  }
+}

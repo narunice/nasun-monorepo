@@ -1,0 +1,14 @@
+[package]
+name = "gostop_lottery"
+edition = "2024"
+version = "0.0.2"
+
+[dependencies]
+bankroll_pool = { local = "../contracts-bankroll-pool" }
+devnet_tokens = { local = "../../../packages/devnet-tokens" }
+
+[addresses]
+gostop_lottery = "0x0"
+
+[environments]
+nasun-devnet = "272218f1"
