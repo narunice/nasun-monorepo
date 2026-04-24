@@ -36,6 +36,47 @@ export const PRIZE_CLAIMED_EVENT_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery
 export const ROUND_SETTLED_EVENT_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::RoundSettled`;
 export const TICKET_PURCHASED_EVENT_TYPE = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::TicketPurchased`;
 
+// ===== Scratch Card =====
+export const SCRATCH_PACKAGE_ID = devnetIds.scratchcard.packageId;
+export const SCRATCH_ORIGINAL_PACKAGE_ID =
+  devnetIds.scratchcard.originalPackageId ?? devnetIds.scratchcard.packageId;
+export const SCRATCH_REGISTRY_ID = devnetIds.scratchcard.registry;
+export const SCRATCH_CARD_PRICE = BigInt(devnetIds.scratchcard.cardPriceNusdc); // 5_000_000
+export const SCRATCH_MAX_PRIZE = BigInt(devnetIds.scratchcard.maxPrizeNusdc);   // 500_000_000
+export const SCRATCH_MAX_BULK_COUNT = devnetIds.scratchcard.maxBulkCount;       // 10
+export const SCRATCH_CARD_TYPE = devnetIds.scratchcard.sessionType;
+export const SCRATCH_PURCHASED_EVENT_TYPE = devnetIds.scratchcard.purchasedEventType;
+export const SCRATCH_GAME_ID = devnetIds.scratchcard.gameId;
+
+// ===== Number Match =====
+export const NM_PACKAGE_ID = devnetIds.numbermatch.packageId;
+export const NM_ORIGINAL_PACKAGE_ID =
+  devnetIds.numbermatch.originalPackageId ?? devnetIds.numbermatch.packageId;
+export const NM_REGISTRY_ID = devnetIds.numbermatch.registry;
+export const NM_PRICE_PER_PICK = BigInt(devnetIds.numbermatch.pricePerPickNusdc); // 5_000_000
+export const NM_MAX_PICKS = devnetIds.numbermatch.maxPicks;           // 3
+export const NM_MIN_NUMBER = devnetIds.numbermatch.minNumber;         // 1
+export const NM_MAX_NUMBER = devnetIds.numbermatch.maxNumber;         // 5
+export const NM_MAX_PAYOUT = BigInt(devnetIds.numbermatch.maxPayoutNusdc); // 18_000_000
+export const NM_PLAYED_EVENT_TYPE = devnetIds.numbermatch.playedEventType;
+export const NM_GAME_ID = devnetIds.numbermatch.gameId;
+
+// ===== Mines =====
+export const MINES_PACKAGE_ID = devnetIds.mines.packageId;
+export const MINES_ORIGINAL_PACKAGE_ID =
+  devnetIds.mines.originalPackageId ?? devnetIds.mines.packageId;
+export const MINES_REGISTRY_ID = devnetIds.mines.registry;
+export const MINES_GRID_SIZE = devnetIds.mines.gridSize;            // 25
+export const MINES_MIN_MINES = devnetIds.mines.mineCountRange[0];   // 1
+export const MINES_MAX_MINES = devnetIds.mines.mineCountRange[1];   // 24
+export const MINES_HOUSE_EDGE_BPS = devnetIds.mines.houseEdgeBps;   // 300
+export const MINES_MAX_SINGLE_PAYOUT = BigInt(devnetIds.mines.maxSinglePayout); // 100_000_000
+export const MINES_SESSION_TYPE = devnetIds.mines.sessionType;
+export const MINES_SESSION_CREATED_EVENT_TYPE = devnetIds.mines.sessionCreatedEventType;
+export const MINES_CELL_REVEALED_EVENT_TYPE = devnetIds.mines.cellRevealedEventType;
+export const MINES_SESSION_FINISHED_EVENT_TYPE = devnetIds.mines.sessionFinishedEventType;
+export const MINES_GAME_ID = devnetIds.mines.gameId;
+
 export const SUI_CLOCK_ID = '0x6';
 export const SUI_RANDOM_ID = '0x8';
 
