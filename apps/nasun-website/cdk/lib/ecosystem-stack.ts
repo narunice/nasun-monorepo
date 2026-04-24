@@ -19,6 +19,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
+import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
@@ -26,6 +27,7 @@ import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
 interface EcosystemStackProps extends cdk.StackProps {
   userProfilesTableName: string;
   cognitoIdentityPoolId: string;
+  sharedWafArn: string;
 }
 
 export class EcosystemStack extends cdk.Stack {
@@ -221,6 +223,11 @@ export class EcosystemStack extends cdk.Stack {
       value: this.api.url,
       description: "Ecosystem API URL",
       exportName: "EcosystemApiUrl",
+    });
+
+    new wafv2.CfnWebACLAssociation(this, "EcosystemWafAssociation", {
+      resourceArn: this.api.deploymentStage.stageArn,
+      webAclArn: props.sharedWafArn,
     });
   }
 }

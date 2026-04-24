@@ -19,6 +19,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -31,6 +32,7 @@ export interface BugReportStackProps extends cdk.StackProps {
   environmentName: string;
   cognitoIdentityPoolId: string;
   naruTelegramChatId: string;
+  sharedWafArn: string;
 }
 
 export class BugReportStack extends cdk.Stack {
@@ -350,6 +352,11 @@ export class BugReportStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'BugReportsTableName', {
       value: bugReportsTable.tableName,
       description: 'Bug Reports DynamoDB Table Name',
+    });
+
+    new wafv2.CfnWebACLAssociation(this, 'BugReportWafAssociation', {
+      resourceArn: this.api.deploymentStage.stageArn,
+      webAclArn: props.sharedWafArn,
     });
   }
 }
