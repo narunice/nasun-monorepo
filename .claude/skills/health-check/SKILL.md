@@ -735,7 +735,7 @@ curl -sI -m 10 https://pado.finance | grep -iE "x-cache|x-amz-cf-pop|cache-contr
 ```
 
 분석:
-- `index.html`: `cache-control`에 `max-age=3600` 확인 (1시간 TTL)
+- `index.html`: **nasun.io는 `no-cache, no-store, must-revalidate`가 정상** (nginx `location = /index.html`에 의도적으로 설정됨. SPA 배포 후 구버전 HTML 서빙 방지 목적. `max-age=3600` 기대 금지). pado.finance는 `max-age=3600` 정상.
 - assets: `cache-control`에 `immutable` 확인 (장기 캐시)
 - `content-encoding: gzip` 또는 `br` 확인 (압축 활성화)
 - `x-cache: Error from cloudfront` = **CRITICAL**
@@ -805,7 +805,7 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "%{http_c
 | P2 | Unified Chat Server 다운 (staging) | `https://staging.nasun.io/chat/health` HTTP != 200 | **OK** | 의도적 비활성화 (리소스 절약 + 과부하 방지). 이상 없음으로 판정. prod 기준으로만 장애 판단 |
 | P3 | Pado 정적 파일 누락 (prod) | `/var/www/pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ec2-user@43.200.67.52:/var/www/pado.finance/` |
 | P4 | Pado 정적 파일 누락 (staging) | `/var/www/staging.pado.finance/index.html` 없음 | CRITICAL | `rsync -avz --delete apps/pado/frontend/dist/ ubuntu@15.165.19.180:/var/www/staging.pado.finance/` |
-| P5 | Chat Server crash-loop | `nasun-chat-server` PM2 restart > 10 | WARNING | `pm2 logs nasun-chat-server --lines 50` -- better-sqlite3 native module 불일치 또는 DB 손상 가능성 |
+| P5 | Chat Server crash-loop | `nasun-chat-server` PM2 restart > 10 **AND** process uptime < 1h | WARNING | restart 수만으로 판단 금지. PM2 describe의 uptime을 반드시 함께 확인. uptime이 수 시간 이상이면 과거 누적 재시작이므로 현재는 안정 상태. RPC 503 에러가 error log에 반복되는 것은 non-fatal (Node-3 부하 downstream 증상). `pm2 logs nasun-chat-server --lines 50 --nostream`으로 실제 크래시 여부 확인. |
 | P6 | Chat Server 메모리 과다 | `nasun-chat-server` PM2 메모리 > 350MB (W), > 500MB (C, auto-restart) | W/C | 500MB 초과 시 PM2가 자동 재시작 (max_memory_restart 500MB). 30분 주기 pruneStale()로 cooldownMap/pools 정리 중 |
 | P7 | Price Updater 다운 | PM2 status != online | CRITICAL | 오라클 가격 미갱신으로 DEX 거래 불가. 단일 인스턴스 필수 (prod에서만 실행) |
 | P8 | LP Bot 다운 | lp-bot-nbtc/neth/nsol 중 하나 이상 stopped | WARNING | LP 호가 제공 중단. `pm2 restart lp-bot-nbtc` |
