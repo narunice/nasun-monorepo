@@ -29,6 +29,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXTwitter } from "@fortawesome/free-brands-svg-icons";
 import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking";
+import { linkAccounts } from "@/features/auth/utils/authApi";
 
 // Dashboard Card Components
 import { ProfileHeroCard } from "../../sections/myAccount/ProfileHeroCard";
@@ -57,6 +58,22 @@ const DevMyAccountPage = () => {
     type: "info" | "error";
   } | null>(null);
   const [showLinkXGuidance, setShowLinkXGuidance] = useState(false);
+  const [linkTransferConfirm, setLinkTransferConfirm] = useState<{
+    provider: "Google" | "Twitter";
+    primaryIdentityId: string;
+    secondaryIdentityId: string;
+    secondaryInfo: {
+      username: string;
+      email?: string;
+      twitterHandle?: string;
+      originalTwitterHandle?: string;
+      twitterId?: string;
+      profileImageUrl?: string;
+    };
+    existingPrimary: { walletAddress: string | null; username: string | null };
+    secondaryEmail?: string;
+  } | null>(null);
+  const [transferring, setTransferring] = useState(false);
   const { handleLinkTwitter } = useAccountLinking({ user });
 
   const paramsHandled = useRef(false);
@@ -121,6 +138,41 @@ const DevMyAccountPage = () => {
       return () => clearTimeout(timer);
     }
 
+    const confirmParam = searchParams.get("confirm");
+    if (confirmParam === "link_transfer" && provider) {
+      paramsHandled.current = true;
+      try {
+        const raw = sessionStorage.getItem("account_link_confirm_pending");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (
+            (parsed?.provider === "Google" || parsed?.provider === "Twitter")
+            && parsed.provider === provider
+            && typeof parsed.primaryIdentityId === "string"
+            && typeof parsed.secondaryIdentityId === "string"
+            && parsed.existingPrimary
+            && typeof parsed.at === "number"
+            && Date.now() - parsed.at < 600_000
+          ) {
+            setLinkTransferConfirm({
+              provider: parsed.provider,
+              primaryIdentityId: parsed.primaryIdentityId,
+              secondaryIdentityId: parsed.secondaryIdentityId,
+              secondaryInfo: parsed.secondaryInfo || { username: "" },
+              existingPrimary: parsed.existingPrimary,
+              secondaryEmail: parsed.secondaryInfo?.email,
+            });
+          } else {
+            sessionStorage.removeItem("account_link_confirm_pending");
+          }
+        }
+      } catch {
+        sessionStorage.removeItem("account_link_confirm_pending");
+      }
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
     if (errorParam === "linking_session_expired") {
       paramsHandled.current = true;
       setNotification({
@@ -150,6 +202,46 @@ const DevMyAccountPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleConfirmTransfer = async () => {
+    if (!linkTransferConfirm || !user?.cognitoToken) return;
+    setTransferring(true);
+    try {
+      await linkAccounts(
+        linkTransferConfirm.primaryIdentityId,
+        linkTransferConfirm.secondaryIdentityId,
+        linkTransferConfirm.provider,
+        user.cognitoToken,
+        linkTransferConfirm.secondaryInfo,
+        { confirmTransfer: true },
+      );
+      sessionStorage.removeItem("account_link_confirm_pending");
+      setLinkTransferConfirm(null);
+      // Hard reload so the user sees the freshly linked account everywhere
+      // (linkedAccounts in profile, governance, leaderboard, etc.).
+      window.location.assign("/my-account");
+    } catch (err) {
+      setTransferring(false);
+      sessionStorage.removeItem("account_link_confirm_pending");
+      setLinkTransferConfirm(null);
+      setNotification({
+        message: err instanceof Error ? err.message : "Failed to move account.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleCancelTransfer = () => {
+    if (transferring) return;
+    sessionStorage.removeItem("account_link_confirm_pending");
+    setLinkTransferConfirm(null);
+  };
+
+  const formatWalletShort = (addr: string | null) => {
+    if (!addr) return null;
+    if (addr.length <= 12) return addr;
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
 
   // Prefer linked MetaMask wallet over login wallet
   const walletAddress =
@@ -300,6 +392,67 @@ const DevMyAccountPage = () => {
             </Suspense>
           </ErrorBoundary>
         </div>
+
+        {/* Link-Transfer Confirm Modal: the secondary provider is already
+            linked to another wallet — ask the user before moving it here. */}
+        <Dialog
+          modal={false}
+          open={!!linkTransferConfirm}
+          onOpenChange={(open) => {
+            if (!open) handleCancelTransfer();
+          }}
+        >
+          <DialogContent
+            className="max-w-md text-center"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => {
+              if (transferring) e.preventDefault();
+            }}
+          >
+            <DialogHeader className="items-center">
+              <DialogTitle>
+                Move {linkTransferConfirm?.provider} Account?
+              </DialogTitle>
+              <DialogDescription className="text-nasun-white/70 space-y-2">
+                <div>
+                  This {linkTransferConfirm?.provider} account
+                  {linkTransferConfirm?.secondaryEmail ? ` (${linkTransferConfirm.secondaryEmail})` : ""}
+                  {" "}is already linked to another wallet
+                  {linkTransferConfirm?.existingPrimary.walletAddress
+                    ? ` (${formatWalletShort(linkTransferConfirm.existingPrimary.walletAddress)}${
+                        linkTransferConfirm.existingPrimary.username
+                          ? ` — ${linkTransferConfirm.existingPrimary.username}`
+                          : ""
+                      })`
+                    : ""}
+                  .
+                </div>
+                <div>
+                  Move it to your current wallet? The previous link will be removed.
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+              <ButtonV3
+                variant="nw2"
+                size="sm"
+                onClick={handleConfirmTransfer}
+                disabled={transferring}
+              >
+                {transferring ? "Moving..." : "Move to This Wallet"}
+              </ButtonV3>
+              <ButtonV3
+                variant="nw2"
+                size="sm"
+                outline
+                onClick={handleCancelTransfer}
+                disabled={transferring}
+              >
+                Cancel
+              </ButtonV3>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* X Account Linking Guidance Modal */}
         <Dialog

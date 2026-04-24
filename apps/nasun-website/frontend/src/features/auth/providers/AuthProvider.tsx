@@ -5,7 +5,7 @@ import { useUserStore } from "@/store/userStore";
 import type { UserData } from "@/store/userStore";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { AuthContextType } from "../types";
-import { linkAccounts } from "../utils/authApi";
+import { linkAccounts, LinkNeedsConfirmError } from "../utils/authApi";
 import { isValidReturnUrl } from "../utils/urlValidation";
 import { isTokenExpired } from "../utils/tokenUtils";
 import { refreshAndSaveUserProfile } from "../services/userProfileService";
@@ -273,9 +273,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // conflicts on repeated attempts (e.g. the email already owns a
         // zkLogin wallet — backend returns 409 with an actionable message).
         logger.warn(`${provider} linking failed, preserving primary session`);
+
+        // Rehydrate the primary user from localStorage so <Callback> does not
+        // briefly fall into Case 4 (navigate to "/") before the hard redirect
+        // below completes.
+        const cachedProfileRaw = localStorage.getItem("nasun_user_profile");
+        try {
+          if (cachedProfileRaw) {
+            const parsed = JSON.parse(cachedProfileRaw);
+            if (parsed?.identityId) setUser(parsed);
+          }
+        } catch {
+          /* ignore parse error */
+        }
+
+        // Special-case the "already linked elsewhere" 409: stash the conflict
+        // payload + the secondary identity so MyAccount can prompt the user
+        // to confirm transferring the OAuth identity to this wallet, then
+        // re-call linkAccounts with confirmTransfer: true.
+        if (err instanceof LinkNeedsConfirmError && (provider === "Google" || provider === "Twitter")) {
+          try {
+            const cachedProfile = cachedProfileRaw ? JSON.parse(cachedProfileRaw) : null;
+            const targetPrimaryId = cachedProfile?.identityId;
+            sessionStorage.setItem(
+              "account_link_confirm_pending",
+              JSON.stringify({
+                provider,
+                primaryIdentityId: targetPrimaryId,
+                secondaryIdentityId: identityId!,
+                secondaryInfo: {
+                  username: userInfo!.name,
+                  email: userInfo!.email,
+                  ...(twitterData?.twitterHandle && { twitterHandle: twitterData.twitterHandle }),
+                  ...(twitterData?.originalTwitterHandle && { originalTwitterHandle: twitterData.originalTwitterHandle }),
+                  ...(twitterData?.twitterId && { twitterId: twitterData.twitterId }),
+                  ...(twitterData?.profileImageUrl && { profileImageUrl: twitterData.profileImageUrl }),
+                },
+                existingPrimary: err.detail.existingPrimary,
+                at: Date.now(),
+              }),
+            );
+          } catch {
+            /* sessionStorage may be blocked; user will see generic linking_failed instead */
+            window.location.href = `/my-account?error=linking_failed&provider=${encodeURIComponent(provider)}`;
+            return true;
+          }
+          window.location.href = `/my-account?confirm=link_transfer&provider=${encodeURIComponent(provider)}`;
+          return true;
+        }
+
         // Carry the backend-supplied message across the hard redirect so the
-        // user sees what actually went wrong (e.g. "already has a zkLogin
-        // wallet, use Google login or contact support") instead of a generic
+        // user sees what actually went wrong instead of a generic
         // "linking failed" notification.
         try {
           sessionStorage.setItem(
@@ -284,18 +332,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           );
         } catch {
           /* sessionStorage may be blocked; generic message will show instead */
-        }
-        // Rehydrate the primary user from localStorage so <Callback> does not
-        // briefly fall into Case 4 (navigate to "/") before the hard redirect
-        // below completes.
-        try {
-          const cached = localStorage.getItem("nasun_user_profile");
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (parsed?.identityId) setUser(parsed);
-          }
-        } catch {
-          /* ignore parse error */
         }
         window.location.href = `/my-account?error=linking_failed&provider=${encodeURIComponent(provider)}`;
         return true;
