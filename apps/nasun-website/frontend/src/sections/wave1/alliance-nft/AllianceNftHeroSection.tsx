@@ -77,7 +77,7 @@ function AllianceNftHeroSection() {
 
       {/* ========== HERO - Desktop (xl+) ========== */}
       <section
-        className="hidden xl:block relative w-full h-screen overflow-hidden max-w-[1920px] mx-auto"
+        className="hidden xl:block relative w-full h-[calc(100dvh-50px)] overflow-hidden max-w-[1920px] mx-auto"
         style={{ background: GRADIENT }}
       >
         {/* Atmospheric overlays */}
@@ -125,21 +125,33 @@ function AllianceNftHeroSection() {
           </FadeInUp>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-6 inset-x-0 z-20 flex justify-center">
-          <svg
-            className="w-6 h-6 text-nasun-white/50 animate-bounce"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
+        {/* Scroll down CTA - aligned under left column (below Allowlists Priority) */}
+        <div className="absolute bottom-6 left-8 min-[1500px]:left-14 min-[1700px]:left-20 w-[48%] min-[1500px]:w-[50%] min-[1700px]:w-[55%] z-30 flex justify-center ">
+          <button
+            type="button"
+            onClick={() =>
+              window.scrollBy({
+                top: window.innerHeight - 50,
+                behavior: "smooth",
+              })
+            }
+            className="group inline-flex items-center gap-2 !font-rubik text-sm lg:text-base text-nasun-c2 hover:text-nasun-white transition-colors"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-            />
-          </svg>
+            <span>Scroll down to meet all 4 Alliances</span>
+            <svg
+              className="w-4 h-4 animate-bounce group-hover:animate-none group-hover:translate-y-0.5 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+              />
+            </svg>
+          </button>
         </div>
       </section>
     </>
