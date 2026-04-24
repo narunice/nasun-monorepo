@@ -18,7 +18,11 @@ import { FeaturedNftSection } from "./components/FeaturedNftSection";
 import { useWalletRegistration } from "./hooks/useWalletRegistration";
 import { useNftDropRead } from "@/hooks/useNftDrop";
 import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
-import { NFT_EDITIONS } from "@/constants/nft-drop";
+import {
+  NFT_EDITIONS,
+  getEditionIdFromMediaUrl,
+  getEditionIdFromTokenUri,
+} from "@/constants/nft-drop";
 
 interface AssetsCardProps {
   walletAddress?: string;
@@ -84,26 +88,31 @@ export const AssetsCard: FC<AssetsCardProps> = ({
     return { featuredNfts: featured, regularNfts: regular };
   }, [multiChainNfts, featuredSet]);
 
-  // Enrich featured NFTs: fill missing tokenId/name from on-chain data.
-  // When multiple NFTs lack tokenId, assign each a unique owned edition 1:1.
+  // Fill missing tokenId/name by recovering the edition id from the NFT's own
+  // metadata (tokenUri preferred, image CID fallback). Earlier versions paired
+  // names by index order, which mis-labeled multi-NFT holders when Alchemy
+  // returned NFTs in a different order than ownedEditionIds.
   const enrichedFeaturedNfts = useMemo(() => {
     if (featuredNfts.length === 0) return featuredNfts;
-    // Collect owned edition IDs not already used by NFTs that have a tokenId
     const usedIds = new Set(
       featuredNfts.filter((n) => n.tokenId).map((n) => Number(n.tokenId)),
     );
-    const available = ownedEditionIds.filter((id) => !usedIds.has(id));
-    let idx = 0;
+    const leftover = ownedEditionIds.filter((id) => !usedIds.has(id));
+    let leftoverIdx = 0;
     return featuredNfts.map((nft) => {
       if (nft.tokenId) return nft;
-      const editionId = available[idx++];
-      if (editionId == null) return nft; // no more editions to assign
-      const edition = NFT_EDITIONS.find((e) => e.id === editionId);
+      const matchedId =
+        getEditionIdFromTokenUri(nft.tokenUri) ??
+        getEditionIdFromMediaUrl(nft.imageUrl) ??
+        getEditionIdFromMediaUrl(nft.thumbnailUrl) ??
+        leftover[leftoverIdx++];
+      if (matchedId == null) return nft;
+      const edition = NFT_EDITIONS.find((e) => e.id === matchedId);
+      if (!edition) return nft;
       return {
         ...nft,
-        tokenId: String(editionId),
-        name: edition ? `Genesis Pass - ${edition.name}` : nft.name,
-        description: edition?.description || nft.description,
+        tokenId: String(matchedId),
+        name: `Genesis Pass - ${edition.name}`,
       };
     });
   }, [featuredNfts, ownedEditionIds]);

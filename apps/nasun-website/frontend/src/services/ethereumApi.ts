@@ -287,6 +287,7 @@ const normalizeAlchemyNFT = (nft: AlchemyNFT, chain: NFTChain = 'ethereum'): Eth
     source: 'alchemy',
     chain,
     lastUpdated: nft.timeLastUpdated,
+    tokenUri: nft.tokenUri?.gateway || nft.tokenUri?.raw,
   };
 };
 
