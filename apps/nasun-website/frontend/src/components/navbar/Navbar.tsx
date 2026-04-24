@@ -90,6 +90,19 @@ export default function Navbar() {
     >
       {/* Inner container: max-width 1920px */}
       <div className="w-full max-w-9xl flex items-center gap-2">
+        {/* Mobile + Tablet: hamburger (left of wordmark, hidden on desktop) */}
+        <div className="flex lg:hidden">
+          <MobileNav
+            navItems={navItems}
+            isMenuOpen={isMenuOpen}
+            toggleSubMenu={toggleSubMenu}
+            closeAllMenus={closeAllMenus}
+            mobileMenuOpen={mobileMenuOpen}
+            setMobileMenuOpen={setMobileMenuOpen}
+            isAdmin={isAdmin}
+          />
+        </div>
+
         {/* Logo area */}
         <Link
           to="/"
@@ -107,19 +120,6 @@ export default function Navbar() {
             NASUN
           </span>
         </Link>
-
-        {/* Mobile: hamburger (mobile only, left-aligned after logo) */}
-        <div className="flex min-[640px]:hidden">
-          <MobileNav
-            navItems={navItems}
-            isMenuOpen={isMenuOpen}
-            toggleSubMenu={toggleSubMenu}
-            closeAllMenus={closeAllMenus}
-            mobileMenuOpen={mobileMenuOpen}
-            setMobileMenuOpen={setMobileMenuOpen}
-            isAdmin={isAdmin}
-          />
-        </div>
         {/* Desktop nav menu */}
         <DesktopNav navItems={navItems} />
 
