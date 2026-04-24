@@ -127,6 +127,37 @@ function pnlColor(value: number): string {
   return 'text-theme-text-secondary';
 }
 
+function AvgBuyTooltip() {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="relative inline-flex items-center gap-0.5">
+      Avg Buy
+      <span
+        role="button"
+        tabIndex={0}
+        className="cursor-pointer text-theme-text-muted hover:text-theme-text-secondary select-none"
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        onClick={() => setVisible((v) => !v)}
+        onKeyDown={(e) => e.key === 'Enter' && setVisible((v) => !v)}
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setVisible(false); }}
+        aria-label="Avg Buy explanation"
+      >
+        <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+        </svg>
+      </span>
+      {visible && (
+        <div className="absolute bottom-full right-0 mb-1 w-56 p-2.5 rounded-lg bg-theme-bg-elevated border border-theme-border shadow-lg text-xs text-theme-text-secondary whitespace-normal z-50 text-left font-normal leading-relaxed">
+          <p className="font-semibold text-theme-text-primary mb-1">Avg Buy Price</p>
+          <p>Weighted average of your buy fills for this market.</p>
+          <p className="mt-1.5 text-theme-text-muted">Faucet claims and deposits are not counted as buys and do not affect this price.</p>
+        </div>
+      )}
+    </span>
+  );
+}
+
 export function MarketPerformance() {
   const { status } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
@@ -224,7 +255,7 @@ export function MarketPerformance() {
               <th className="text-right py-2 font-medium">Volume</th>
               <th className="text-right py-2 font-medium">P&L</th>
               <th className="text-right py-2 font-medium">Win Rate</th>
-              <th className="text-right py-2 font-medium">Avg Buy</th>
+              <th className="text-right py-2 font-medium"><AvgBuyTooltip /></th>
               <th className="text-right py-2 font-medium">Current</th>
             </tr>
           </thead>
