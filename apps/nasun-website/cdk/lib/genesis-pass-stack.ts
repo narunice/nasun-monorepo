@@ -30,6 +30,8 @@ interface GenesisPassStackProps extends cdk.StackProps {
   chainId?: string;
   /** Secrets Manager secret name for the EIP-712 signer key */
   signerSecretName?: string;
+  /** Shared WAF WebACL ARN to attach this API's stage to */
+  sharedWafArn: string;
 }
 
 export class GenesisPassStack extends cdk.Stack {
@@ -336,56 +338,11 @@ export class GenesisPassStack extends cdk.Stack {
       },
     });
 
-    // ========== WAF (DDoS + Bot Protection) ==========
-
-    const webAcl = new wafv2.CfnWebACL(this, "GenesisPassWaf", {
-      name: "nasun-genesis-pass-waf",
-      scope: "REGIONAL",
-      defaultAction: { allow: {} },
-      visibilityConfig: {
-        sampledRequestsEnabled: true,
-        cloudWatchMetricsEnabled: true,
-        metricName: "nasun-genesis-pass-waf",
-      },
-      rules: [
-        {
-          name: "RateLimit300Per5Min",
-          priority: 1,
-          action: { block: {} },
-          statement: {
-            rateBasedStatement: {
-              limit: 300,
-              aggregateKeyType: "IP",
-            },
-          },
-          visibilityConfig: {
-            sampledRequestsEnabled: true,
-            cloudWatchMetricsEnabled: true,
-            metricName: "GenesisPassRateLimit",
-          },
-        },
-        {
-          name: "AWSManagedIPReputation",
-          priority: 2,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: "AWS",
-              name: "AWSManagedRulesAmazonIpReputationList",
-            },
-          },
-          visibilityConfig: {
-            sampledRequestsEnabled: true,
-            cloudWatchMetricsEnabled: true,
-            metricName: "GenesisPassIPReputation",
-          },
-        },
-      ],
-    });
+    // ========== WAF (attached to shared WebACL) ==========
 
     new wafv2.CfnWebACLAssociation(this, "GenesisPassWafAssociation", {
       resourceArn: this.api.deploymentStage.stageArn,
-      webAclArn: webAcl.attrArn,
+      webAclArn: props.sharedWafArn,
     });
 
     const genesisPassResource = this.api.root.addResource("genesis-pass");

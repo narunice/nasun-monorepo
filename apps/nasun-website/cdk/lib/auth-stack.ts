@@ -6,11 +6,14 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as path from 'path';
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 export interface AuthStackProps extends cdk.StackProps {
   readonly userProfilesTable: dynamodb.ITable;
+  /** Shared WAF WebACL ARN to attach each auth API stage to */
+  readonly sharedWafArn: string;
 }
 
 export class AuthStack extends cdk.Stack {
@@ -432,5 +435,19 @@ export class AuthStack extends cdk.Stack {
       description: 'DynamoDB table for Sui wallet auth nonces',
     });
 
+    // ========== WAF associations (shared WebACL) ==========
+
+    const wafTargets: { id: string; api: apigw.RestApi }[] = [
+      { id: 'TwitterAuthWafAssociation', api: twitterAuthApi },
+      { id: 'MetaMaskAuthWafAssociation', api: this.metamaskAuthApi },
+      { id: 'ZkLoginAuthWafAssociation', api: this.zkLoginAuthApi },
+      { id: 'SuiAuthWafAssociation', api: this.suiAuthApi },
+    ];
+    for (const { id, api } of wafTargets) {
+      new wafv2.CfnWebACLAssociation(this, id, {
+        resourceArn: api.deploymentStage.stageArn,
+        webAclArn: props.sharedWafArn,
+      });
+    }
   }
 }

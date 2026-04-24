@@ -19,16 +19,22 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
+
+export interface NftEventStackProps extends cdk.StackProps {
+  /** Shared WAF WebACL ARN to attach this API's stage to */
+  readonly sharedWafArn: string;
+}
 
 export class NftEventStack extends cdk.Stack {
   public readonly whitelistTable: dynamodb.Table;
   public readonly tasksTable: dynamodb.Table;
   public readonly api: apigateway.RestApi;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: NftEventStackProps) {
     super(scope, id, props);
 
     // Secret names for Secrets Manager runtime reads
@@ -561,6 +567,11 @@ export class NftEventStack extends cdk.Stack {
     new cdk.CfnOutput(this, "FeatureFlag", {
       value: "VITE_ENABLE_NFT_EVENT=false",
       description: "NFT Event Feature Flag (default: disabled)",
+    });
+
+    new wafv2.CfnWebACLAssociation(this, "NftEventWafAssociation", {
+      resourceArn: this.api.deploymentStage.stageArn,
+      webAclArn: props.sharedWafArn,
     });
   }
 }

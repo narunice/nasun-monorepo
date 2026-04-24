@@ -40,8 +40,14 @@ import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
 import { EcosystemStack } from '../lib/ecosystem-stack';
 import { AirdropStack } from '../lib/airdrop-stack';
 import { BugReportStack } from '../lib/bug-report-stack';
+import { SharedWafStack } from '../lib/shared-waf-stack';
 
 const app = new cdk.App();
+
+// Shared WAF stack - single WebACL attached to all public API Gateway stages.
+// Per-API rate limits are scoped via Host header match (see shared-waf-stack.ts).
+const sharedWafStack = new SharedWafStack(app, 'SharedWafStack', { env: cdkEnv });
+const sharedWafArn = sharedWafStack.webAclArn;
 
 // Common infrastructure stack (NFT, User Profile, Price API, AWS Credentials)
 const commonStack = new CommonStack(app, 'CommonStack', { env: cdkEnv });
@@ -50,12 +56,15 @@ const commonStack = new CommonStack(app, 'CommonStack', { env: cdkEnv });
 const authStack = new AuthStack(app, 'AuthStack', {
   env: cdkEnv,
   userProfilesTable: commonStack.userProfilesTable,
+  sharedWafArn,
 });
 authStack.addDependency(commonStack);
+authStack.addDependency(sharedWafStack);
 
 // NFT Event stack (Wave 1 Battalion Free Mint)
-const nftEventStack = new NftEventStack(app, 'NftEventStack', { env: cdkEnv });
-// No dependencies - standalone stack with Feature Flag
+const nftEventStack = new NftEventStack(app, 'NftEventStack', { env: cdkEnv, sharedWafArn });
+nftEventStack.addDependency(sharedWafStack);
+// No other dependencies - standalone stack with Feature Flag
 
 // Admin stack (Whitelist Export, Governance Management)
 const adminStack = new AdminStack(app, 'AdminStack', {
@@ -77,24 +86,27 @@ const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
   environmentName: 'prod',
   cognitoIdentityPoolId,
   userProfilesTableName: 'UserProfiles',
+  sharedWafArn,
 });
-// No dependencies - completely independent from V2
+leaderboardV3Stack.addDependency(sharedWafStack);
 
 // Genesis Pass Allowlist stack
 const genesisPassStack = new GenesisPassStack(app, 'GenesisPassStack', {
   env: cdkEnv,
   userProfilesTableName: 'UserProfiles',
   cognitoIdentityPoolId,
+  sharedWafArn,
 });
-// No dependencies - references UserProfiles table by name
+genesisPassStack.addDependency(sharedWafStack);
 
 // Referral system stack
 const referralStack = new ReferralStack(app, 'ReferralStack', {
   env: cdkEnv,
   userProfilesTableName: 'UserProfiles',
   cognitoIdentityPoolId,
+  sharedWafArn,
 });
-// No dependencies - references UserProfiles table by name
+referralStack.addDependency(sharedWafStack);
 
 // Devnet metrics stack (daily DAU/address collection via RPC)
 const devnetMetricsStack = new DevnetMetricsStack(app, 'DevnetMetricsStack', { env: cdkEnv });
@@ -109,16 +121,18 @@ const ecosystemStack = new EcosystemStack(app, 'EcosystemStack', {
   env: cdkEnv,
   userProfilesTableName: 'UserProfiles',
   cognitoIdentityPoolId,
+  sharedWafArn,
 });
-// No dependencies - references tables by name
+ecosystemStack.addDependency(sharedWafStack);
 
 // Airdrop stack (April 16th Airdrop registration)
 const airdropStack = new AirdropStack(app, 'AirdropStack', {
   env: cdkEnv,
   userProfilesTableName: 'UserProfiles',
   cognitoIdentityPoolId,
+  sharedWafArn,
 });
-// No dependencies - references tables by name
+airdropStack.addDependency(sharedWafStack);
 
 // Bug Report stack (user-submitted bug reports with Telegram notification)
 const bugReportStack = new BugReportStack(app, 'BugReportStack', {
@@ -126,8 +140,9 @@ const bugReportStack = new BugReportStack(app, 'BugReportStack', {
   environmentName: 'prod',
   cognitoIdentityPoolId,
   naruTelegramChatId: process.env.NARU_TELEGRAM_CHAT_ID || '',
+  sharedWafArn,
 });
-// No dependencies - standalone stack
+bugReportStack.addDependency(sharedWafStack);
 
 // Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {

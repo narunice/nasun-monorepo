@@ -21,6 +21,7 @@ import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -35,6 +36,8 @@ export interface LeaderboardV3StackProps extends cdk.StackProps {
   cognitoIdentityPoolId: string;
   /** UserProfiles table for profile data lookup (required for admin auth) */
   userProfilesTableName: string;
+  /** Shared WAF WebACL ARN to attach this API's stage to */
+  sharedWafArn: string;
 }
 
 export class LeaderboardV3Stack extends cdk.Stack {
@@ -904,6 +907,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
     new cdk.CfnOutput(this, 'LeaderboardV3SeasonAccountsTableName', {
       value: this.seasonAccountsTable.tableName,
       description: 'Leaderboard V3 Season Accounts Table Name',
+    });
+
+    new wafv2.CfnWebACLAssociation(this, 'LeaderboardV3WafAssociation', {
+      resourceArn: this.api.deploymentStage.stageArn,
+      webAclArn: props.sharedWafArn,
     });
   }
 }
