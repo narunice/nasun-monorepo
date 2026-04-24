@@ -149,6 +149,7 @@ export async function handlePadoIdeaRequest(
   // --- Auth ---
   const walletAddress = deps.resolveSessionToken(req.headers.authorization);
   if (!walletAddress) {
+    console.warn('[pado-idea] 401 unauthorized: missing or invalid session token');
     sendJson(res, 401, { error: 'unauthorized', message: 'Valid session token required' }, corsHeaders);
     return true;
   }
@@ -189,8 +190,7 @@ export async function handlePadoIdeaRequest(
   const reqOrigin = req.headers.origin || '';
   const isPadoOrigin = PADO_PREDICT_ORIGINS.has(reqOrigin);
   if (!isPadoOrigin) {
-    // Defence in depth: session token might be valid but the request
-    // origin is not a known pado origin. Reject.
+    console.warn(`[pado-idea] 403 forbidden_origin: wallet=${walletAddress} origin="${reqOrigin}"`);
     sendJson(res, 403, { error: 'forbidden_origin' }, corsHeaders);
     return true;
   }

@@ -100,9 +100,21 @@ export function IdeaSubmissionForm() {
         </div>
       )}
 
-      {state.kind === "error" && state.error.kind !== "not_registered" && (
+      {state.kind === "error" && state.error.kind === "unauthorized" && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
-          Submission failed. One submission per user.
+          Session expired. Please reload the page and try again.
+        </div>
+      )}
+
+      {state.kind === "error" && state.error.kind === "network" && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+          Network error. Please check your connection and try again.
+        </div>
+      )}
+
+      {state.kind === "error" && state.error.kind === "validation" && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+          Submission failed: {state.error.message}
         </div>
       )}
 
