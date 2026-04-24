@@ -59,9 +59,14 @@ export function useChat() {
   const hasMore = activeRoomState?.hasMore ?? false;
   const loaded = activeRoomState?.loaded ?? false;
 
+  // Keep signFn in a ref so the periodic reconnect always uses the latest signer
+  // without needing to be included in dependency arrays.
+  const signFnRef = useRef<ChatSignFn | null>(null);
+
   useEffect(() => {
     const walletAddress = user?.walletAddress;
     if (!walletAddress || !turnstileReady) {
+      signFnRef.current = null;
       if (!walletAddress && connectedRef.current) {
         getChatService().disconnect();
         connectedRef.current = false;
@@ -94,6 +99,7 @@ export function useChat() {
       const { signature } = await effectiveSigner.signPersonal(messageBytes);
       return { signature, address: walletAddress, displayName: userDisplayNameRef.current };
     };
+    signFnRef.current = signFn;
     const service = getChatService();
 
     const onMessage = (msg: ChatMessage) => {
@@ -181,6 +187,23 @@ export function useChat() {
       service.off('error', onError);
       service.off('captcha_required', onCaptchaRequired);
     };
+  }, [user?.walletAddress, turnstileReady]);
+
+  // Periodic reconnect: if we should be connected but aren't, retry every 30s.
+  // Handles transient auth failures, network blips, and server restarts.
+  useEffect(() => {
+    if (!user?.walletAddress || !turnstileReady) return;
+
+    const checkInterval = setInterval(() => {
+      const fn = signFnRef.current;
+      if (!fn) return;
+      const service = getChatService();
+      if (service.getStatus() === 'disconnected') {
+        service.connect(WS_URL, fn);
+      }
+    }, 30_000);
+
+    return () => clearInterval(checkInterval);
   }, [user?.walletAddress, turnstileReady]);
 
   // Load history for active room when switching
