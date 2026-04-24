@@ -50,8 +50,10 @@ export default function Footer() {
     }
   };
 
+  const isHomePage = location.pathname === "/";
+
   return (
-    <div className="bg-nasun-black">
+    <div className={isHomePage ? "bg-[#0b1628]" : "bg-nasun-black"}>
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>

@@ -217,9 +217,7 @@ function WhatWeBuild2026Section() {
             key={slide.id}
             onClick={() => sliderRef.current?.slickGoTo(i)}
             className={`rounded-full transition-all duration-300 drop-shadow-lg bg-white ring-1 ring-black/60 ${
-              i === activeSlideIndex
-                ? "w-5 h-2"
-                : "w-2 h-2 hover:opacity-90"
+              i === activeSlideIndex ? "w-5 h-2" : "w-2 h-2 hover:opacity-90"
             }`}
             aria-label={`Go to slide ${i + 1}`}
           />
@@ -253,7 +251,7 @@ function WhatWeBuild2026Section() {
           {SLIDES.map((slide, idx) => (
             <div key={slide.id} className="landscape:h-full">
               <div
-                className="relative w-full overflow-hidden landscape:h-full portrait:h-[70vh] portrait:max-h-[70vh]"
+                className="relative w-full overflow-hidden landscape:h-full portrait:h-[50vh] portrait:max-h-[50vh]"
                 style={{ backgroundColor: slide.bgColor }}
               >
                 {slide.video && (

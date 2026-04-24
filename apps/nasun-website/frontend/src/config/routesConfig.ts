@@ -6,6 +6,9 @@ import { lazyWithRetry } from "../utils/lazyWithRetry";
 // 페이지 컴포넌트 lazy loading
 export const Pages = {
   Home: lazyWithRetry(() => import("../pages/HomePage")),
+  LegacyHome2026April: lazyWithRetry(
+    () => import("../pages/legacy/Home2026AprilPage"),
+  ),
   VisionStrategy: lazyWithRetry(() => import("../pages/about/StrategyPage")),
   VisionNetwork: lazyWithRetry(() => import("../pages/protocol/NetworkPage")),
   IPs: lazyWithRetry(() => import("../pages/IPsPage")),

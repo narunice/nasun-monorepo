@@ -22,7 +22,7 @@ export const buttonV4Variants = cva(
         "pado-aqua":
           "bg-gradient-to-r from-[#3bb9d8] to-[#5ee1e4] hover:from-[#33a5c2] hover:to-[#4dcdd0] text-white",
         "pado-mint":
-          "bg-gradient-to-l from-[#5ee1e4] to-[#86f3b7] hover:from-[#4dcdd0] hover:to-[#74dfa4] text-nasun-black hover:text-pd2",
+          "bg-gradient-to-l from-[#5ee1e4] to-[#86f3b7] hover:from-[#4dcdd0] hover:to-[#74dfa4] text-nasun-black hover:text-pd1",
         "pado-lime":
           "bg-gradient-to-r from-[#86f3b7] to-[#d2f6a2] hover:from-[#74dfa4] hover:to-[#bde08e] text-nasun-black",
         "pado-tropical":
