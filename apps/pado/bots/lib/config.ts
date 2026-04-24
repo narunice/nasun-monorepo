@@ -66,9 +66,10 @@ export interface MarketConfig {
   defaultMinPrice: number;
   defaultMaxPrice: number;
   defaultOrderSize: number;
-  defaultLevelSpacing: number; // Default level spacing in bps (per-market)
-  defaultSpreadBps: number;    // Default spread in bps (per-market)
-  defaultMaxArbQuantity: number; // Default max arb quantity (per-market)
+  defaultLevelSpacing: number;         // Default level spacing in bps (per-market)
+  defaultSpreadBps: number;            // Default spread in bps (per-market)
+  defaultRequoteThresholdBps: number;  // Price move threshold to trigger cancel+place (per-market)
+  defaultMaxArbQuantity: number;       // Default max arb quantity (per-market)
   defaultMaxOrderSize: number; // Default max order size (per-market)
   faucetBaseAmount: number;    // Base tokens received per faucet call (for accumulation calc)
   startupDelayMs: number;      // Staggered startup delay to avoid gas coin contention
@@ -95,6 +96,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultOrderSize: 0.05,
     defaultLevelSpacing: 8,
     defaultSpreadBps: 6,
+    defaultRequoteThresholdBps: 35, // NBTC moves ~2bps/10s; 35bps avoids premature requotes
     defaultMaxArbQuantity: 0.1,
     defaultMaxOrderSize: 1.0,
     faucetBaseAmount: 0.01,  // V1 faucet: 0.01 NBTC per call
@@ -117,6 +119,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultOrderSize: 2,
     defaultLevelSpacing: 12,
     defaultSpreadBps: 6,
+    defaultRequoteThresholdBps: 25,
     defaultMaxArbQuantity: 5,
     defaultMaxOrderSize: 10.0,
     faucetBaseAmount: 0.5,   // V2 faucet: 0.5 NETH per call (NETH_FAUCET_AMOUNT = 50_000_000)
@@ -142,6 +145,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultOrderSize: 30,
     defaultLevelSpacing: 15,
     defaultSpreadBps: 6,
+    defaultRequoteThresholdBps: 20,
     defaultMaxArbQuantity: 100,
     defaultMaxOrderSize: 1000,
     faucetBaseAmount: 10,    // V2 faucet: 10 NSOL per call (request_nsol)
@@ -220,7 +224,7 @@ export function loadConfig(): LPConfig {
     orderSize: parseFloat(process.env.LP_ORDER_SIZE || String(MARKET.defaultOrderSize)),
 
     updateIntervalMs: parseInt(process.env.LP_UPDATE_INTERVAL || '10000', 10),
-    requoteThresholdBps: parseInt(process.env.LP_REQUOTE_THRESHOLD || '20', 10),
+    requoteThresholdBps: parseInt(process.env.LP_REQUOTE_THRESHOLD || String(MARKET.defaultRequoteThresholdBps), 10),
 
     refillThresholdBase: parseFloat(process.env.LP_REFILL_THRESHOLD_BASE || '5'),
     refillThresholdQuote: parseFloat(process.env.LP_REFILL_THRESHOLD_QUOTE || '200000'),
@@ -324,6 +328,7 @@ export interface BotState {
   balanceManagerId: string | null;
   justInitialized: boolean;
   skipCount: number;
+  consecutiveZeroDepth: number;
 }
 
 // ========================================

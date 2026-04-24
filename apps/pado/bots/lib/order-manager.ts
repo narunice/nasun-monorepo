@@ -249,16 +249,23 @@ export async function syncOrders(
   const tx = buildCancelAndPlaceOrders(balanceManagerId, orders, state);
   let result = await executeTransaction(client, keypair, tx);
 
-  // Self-heal on object version conflict: wait for RPC to sync, then rebuild
-  // a fresh TX and retry once. The same TX cannot be retried (stale version),
-  // but a new TX built after the wait will use the current object version.
+  // Self-heal on object version conflict: rebuild a fresh TX after a wait so
+  // the new TX picks up the current object version. Retry up to 3 times with
+  // linear backoff (3s, 6s, 9s) to handle heavily contested pools where
+  // a single fixed wait is insufficient before the pool version advances again.
   if (!result.success && result.error?.includes('not available for consumption')) {
-    console.log(`[${timestamp()}] Object version conflict, waiting 3s and rebuilding TX...`);
-    await new Promise((r) => setTimeout(r, 3000));
-    const retryTx = buildCancelAndPlaceOrders(balanceManagerId, orders, state);
-    result = await executeTransaction(client, keypair, retryTx);
-    if (result.success) {
-      console.log(`[${timestamp()}] Version conflict self-healed`);
+    const MAX_CONFLICT_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_CONFLICT_RETRIES; attempt++) {
+      const waitMs = 3000 * attempt;
+      console.log(`[${timestamp()}] Object version conflict (attempt ${attempt}/${MAX_CONFLICT_RETRIES}), waiting ${waitMs / 1000}s...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      const retryTx = buildCancelAndPlaceOrders(balanceManagerId, orders, state);
+      result = await executeTransaction(client, keypair, retryTx);
+      if (result.success) {
+        console.log(`[${timestamp()}] Version conflict self-healed on attempt ${attempt}`);
+        break;
+      }
+      if (!result.error?.includes('not available for consumption')) break; // different error, stop retrying
     }
   }
 

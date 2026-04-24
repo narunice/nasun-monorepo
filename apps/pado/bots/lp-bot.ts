@@ -227,12 +227,24 @@ async function runBot(
     }
   }
 
-  // Depth monitoring
+  // Depth monitoring with false-zero guard.
+  // A single depth=0 reading after a recent place is likely an RPC indexing lag,
+  // not a genuinely empty book. Require 2 consecutive zero readings before acting.
   const bidDepthUsd = fullOrderbook.bids.reduce((sum, lvl) => sum + lvl.price * lvl.quantity, 0);
   const askDepthUsd = fullOrderbook.asks.reduce((sum, lvl) => sum + lvl.price * lvl.quantity, 0);
   console.log(`[${timestamp()}] [DEPTH] bid=$${bidDepthUsd.toFixed(0)} ask=$${askDepthUsd.toFixed(0)}`);
-  if (bidDepthUsd < 20000 || askDepthUsd < 20000) {
-    console.error(`[${timestamp()}] [ALERT] Depth critically low! bid=$${bidDepthUsd.toFixed(0)} ask=$${askDepthUsd.toFixed(0)}`);
+  const depthIsLow = bidDepthUsd < 20000 || askDepthUsd < 20000;
+  if (depthIsLow) {
+    state.consecutiveZeroDepth++;
+    console.error(`[${timestamp()}] [ALERT] Depth critically low (${state.consecutiveZeroDepth}x)! bid=$${bidDepthUsd.toFixed(0)} ask=$${askDepthUsd.toFixed(0)}`);
+    // Suppress requote on the first zero reading when orders were previously placed.
+    // A single zero after a recent place is almost always RPC indexing lag, not a
+    // genuinely empty book. Require 2 consecutive zeros before doing cancel+place.
+    if (state.consecutiveZeroDepth < 2 && state.lastQuotedPrice > 0) {
+      return;
+    }
+  } else {
+    state.consecutiveZeroDepth = 0;
   }
 
   // Step 7: Calculate new grid orders
@@ -282,6 +294,7 @@ async function runBot(
     state.lastQuotedPrice = price;
     state.consecutiveFailures = 0;
     state.skipCount = 0;
+    state.consecutiveZeroDepth = 0;
 
     const bestBid = bids.length > 0 ? rawToPrice(bids[0].price) : 0;
     const bestAsk = asks.length > 0 ? rawToPrice(asks[0].price) : 0;
@@ -489,6 +502,7 @@ async function main() {
     balanceManagerId: null,
     justInitialized: false,
     skipCount: 0,
+    consecutiveZeroDepth: 0,
   };
 
   // Retry initialization instead of crashing -- avoids PM2 restart loops
