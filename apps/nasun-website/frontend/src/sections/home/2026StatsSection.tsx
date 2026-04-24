@@ -9,7 +9,7 @@ import { ButtonV4 } from "@/components/ui/button-v4";
 interface HeroStatProps {
   value: React.ReactNode;
   label: string;
-  sublabel?: string;
+  sublabel?: React.ReactNode;
   accent?: "cyan" | "mint" | "teal";
   delay?: number;
   size?: "lg" | "sm";
@@ -99,8 +99,7 @@ export const Hero2026StatsSection = () => {
               className="!font-eurostile font-semibold"
             >
               Nasun
-              <br className="sm:hidden" />{" "}
-              Devnet
+              <br className="sm:hidden" /> Devnet
             </SectionChip>
             <span className="text-pd3 text-sm mb-4">
               Launched{" "}
@@ -111,8 +110,7 @@ export const Hero2026StatsSection = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 lg:gap-x-16 gap-y-10 justify-items-center">
             <HeroStat
               value={<CountingNumber value="37k+" />}
-              label="Peak Daily Active Addresses"
-              sublabel="Apr 14, 2026"
+              label="Daily Active Addresses"
               accent="mint"
               delay={0.15}
             />
@@ -130,10 +128,11 @@ export const Hero2026StatsSection = () => {
             <HeroStat
               value={
                 <>
-                  <CountingNumber value="8785" />
+                  <CountingNumber value="8,785" />
                 </>
               }
               label="Avg Daily Active Addresses"
+              sublabel="46-day average"
               accent="mint"
               delay={0.35}
             />
@@ -162,21 +161,28 @@ export const Hero2026StatsSection = () => {
 
             <div className="grid grid-cols-2 gap-4 sm:gap-8">
               <HeroStat
-                value={<CountingNumber value="96k+" />}
-                label="Registered Users"
+                value={
+                  <>
+                    <CountingNumber value="10" />.
+                    <CountingNumber value="5k+" />
+                  </>
+                }
+                label="Verified Users"
+                sublabel="With social accounts connected"
                 accent="cyan"
                 delay={0.15}
                 size="sm"
               />
               <HeroStat
-                value={
-                <>
-                  <CountingNumber value="10" />.
-                  <CountingNumber value="5k+" />
-                </>
-              }
-                label="Verified Wallets"
-                sublabel="With one or more social accounts connected"
+                value={<CountingNumber value="5,734" />}
+                label="Daily Active Users"
+                sublabel={
+                  <>
+                    With social accounts connected
+                    <br />
+                    7-day avg (Apr 16-22)
+                  </>
+                }
                 accent="cyan"
                 delay={0.25}
                 size="sm"
@@ -208,11 +214,17 @@ export const Hero2026StatsSection = () => {
               <HeroStat
                 value={
                   <>
-                    <CountingNumber value="4307" />
+                    <CountingNumber value="2,377" />
                   </>
                 }
-                label="Traders with social accounts connected"
-                sublabel="Peak, Apr 14"
+                label="Daily Active Traders"
+                sublabel={
+                  <>
+                    With social accounts connected
+                    <br />
+                    7-day avg (Apr 16-22)
+                  </>
+                }
                 accent="teal"
                 delay={0.15}
                 size="sm"
@@ -220,11 +232,17 @@ export const Hero2026StatsSection = () => {
               <HeroStat
                 value={
                   <>
-                    <CountingNumber value="5231" />
+                    <CountingNumber value="3,347" />
                   </>
                 }
-                label="Gamers with social accounts connected"
-                sublabel="Peak, Apr 15"
+                label="Daily Active Gamers"
+                sublabel={
+                  <>
+                    With social accounts connected
+                    <br />
+                    7-day avg (Apr 16-22)
+                  </>
+                }
                 accent="teal"
                 delay={0.25}
                 size="sm"

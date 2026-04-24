@@ -41,7 +41,6 @@ const DevBattalionNftPage = lazy(() => import("../pages/dev/DevBattalionNftPage"
 const DevGenesisNftPage = lazy(() => import("../pages/dev/DevGenesisNftPage"));
 const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
-const DevHomePage = lazy(() => import("../pages/dev/DevHomePage"));
 const StatsPage = lazy(() => import("../pages/dev/StatsPage"));
 const NftDropPage = lazy(() => import("../pages/wave1/NftDropPage"));
 
@@ -204,7 +203,10 @@ const AppRoutes = () => {
         <Route path="/dev/investors" element={<DevInvestorsPage />} />
         <Route path="/dev/genesis-pass" element={<DevGenesisPassPage />} />
         {/* /dev/genesis-pass-drop moved to /wave1/genesis-pass-drop */}
-        <Route path="/dev/home" element={<DevHomePage />} />
+        <Route
+          path="/legacy/home2026april"
+          element={<Pages.LegacyHome2026April />}
+        />
         <Route path="/dev/my-account" element={<Navigate to="/my-account" replace />} />
         <Route path="/dev/alliance-nft" element={<Navigate to="/wave1/alliance-nft" replace />} />
 

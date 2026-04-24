@@ -1,41 +1,15 @@
-import { Suspense, lazy, useState, useCallback, useEffect } from "react";
-import { Helmet } from "react-helmet-async";
-import ErrorBoundary from "../components/layout/ErrorBoundary";
-import { SectionLayout } from "../components/layout/SectionLayout";
-import { ScrollSnapContainer } from "../components/layout/ScrollSnapContainer";
-import { ScrollSnapSection } from "../components/layout/ScrollSnapSection";
-import { useHomePageLoading } from "../contexts/PageLoadingContext";
-import { JsonLd, NASUN_ORG_SCHEMA } from "../utils/jsonLd";
-
-// TriptychSection: static import (first visible section, no heavy deps like framer-motion)
-import TriptychSection from "../sections/home/TriptychSection";
-// Preload triptych images for LCP
-import kaeboImg from "@/assets/images/Princess-Kaebo-Fixed.webp";
-import josenImg from "@/assets/images/josen.webp";
-import canyonImg from "@/assets/images/canyon.webp";
-
-// Below-fold sections
-const VisionSection = lazy(() => import("../sections/home/VisionSection"));
-const WhatWeBuildingSection = lazy(() => import("../sections/home/WhatWeBuildingSection"));
-const AwardsGrantsSection = lazy(() => import("../sections/home/AwardsGrantsSection"));
+import ErrorBoundary from "@/components/layout/ErrorBoundary";
+import { SectionLayout } from "@/components/layout/SectionLayout";
+import { ScrollSnapContainer } from "@/components/layout/ScrollSnapContainer";
+import { ScrollSnapSection } from "@/components/layout/ScrollSnapSection";
+import AllianceCreatorSection from "@/sections/home/AllianceCreatorSection";
+import Hero2026Section from "@/sections/home/2026HeroSection";
+import Hero2026StatsSection from "@/sections/home/2026StatsSection";
+import WhatWeBuild2026Section from "@/sections/home/2026WhatWeBuildSection";
+import DevNewsEventsSection from "@/sections/home/DevNewsEventsSection";
+import { JsonLd, NASUN_ORG_SCHEMA } from "@/utils/jsonLd";
 
 export default function HomePage() {
-  const [isVideoReady, setIsVideoReady] = useState(false);
-  const { setIsPageReady } = useHomePageLoading();
-
-  useEffect(() => {
-    setIsPageReady(false);
-  }, [setIsPageReady]);
-
-  const handleVideoReady = useCallback(() => {
-    setIsVideoReady(true);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsPageReady(true);
-      });
-    });
-  }, [setIsPageReady]);
-
   const errorFallback = (
     <SectionLayout>
       <p className="text-nasun-white">Failed to load section</p>
@@ -44,42 +18,30 @@ export default function HomePage() {
 
   return (
     <div className="bg-nasun-black">
-      <Helmet>
-        <link rel="preload" as="image" href={kaeboImg} type="image/webp" />
-        <link rel="preload" as="image" href={josenImg} type="image/webp" />
-        <link rel="preload" as="image" href={canyonImg} type="image/webp" />
-      </Helmet>
       <JsonLd data={NASUN_ORG_SCHEMA} />
+      <ErrorBoundary fallback={errorFallback}>
+        <ScrollSnapContainer>
+          <ScrollSnapSection>
+            <Hero2026Section />
+          </ScrollSnapSection>
+          <ScrollSnapSection allowTallContent>
+            <Hero2026StatsSection />
+          </ScrollSnapSection>
+          <ScrollSnapSection
+            allowTallContent
+            className="!min-h-0 md:!min-h-[calc(100vh-50px)]"
+          >
+            <WhatWeBuild2026Section />
+          </ScrollSnapSection>
 
-      <ScrollSnapContainer>
-        <ScrollSnapSection>
-          <TriptychSection />
-        </ScrollSnapSection>
-
-        <ErrorBoundary fallback={errorFallback}>
-          <Suspense fallback={null}>
-            {/* VisionSection: ENTERTAINMENT/TECHNOLOGY/FINANCE/UNIFIED */}
-            <ScrollSnapSection>
-              <VisionSection shouldLoadVideo={true} onVideoReady={handleVideoReady} />
-            </ScrollSnapSection>
-
-            {/* WhatWeBuildingSection - 제품 캐러셀 */}
-            <ScrollSnapSection allowTallContent={true}>
-              <WhatWeBuildingSection />
-            </ScrollSnapSection>
-          </Suspense>
-        </ErrorBoundary>
-      </ScrollSnapContainer>
-
-      {isVideoReady && (
-        <ErrorBoundary fallback={errorFallback}>
-          <Suspense fallback={null}>
-            <ScrollSnapSection allowTallContent={true}>
-              <AwardsGrantsSection />
-            </ScrollSnapSection>
-          </Suspense>
-        </ErrorBoundary>
-      )}
+          <ScrollSnapSection>
+            <AllianceCreatorSection />
+          </ScrollSnapSection>
+          <ScrollSnapSection allowTallContent>
+            <DevNewsEventsSection />
+          </ScrollSnapSection>
+        </ScrollSnapContainer>
+      </ErrorBoundary>
     </div>
   );
 }
