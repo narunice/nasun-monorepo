@@ -3,9 +3,8 @@ import { Link } from 'react-router-dom'
 const UPCOMING = [
   { name: 'Crash', tagline: 'Go or stop. One decision, one multiplier.', eta: 'Phase 2' },
   { name: 'Plinko', tagline: 'Drop it and watch gold bounce.', eta: 'Phase 3' },
-  { name: 'Mines', tagline: 'Step carefully. Multiply wildly.', eta: 'Phase 4' },
-  { name: 'Roulette', tagline: 'The European wheel, on-chain.', eta: 'Phase 5' },
-  { name: 'Wheel', tagline: 'A nightly spin, a daily chance.', eta: 'Phase 6' },
+  { name: 'Roulette', tagline: 'The European wheel, on-chain.', eta: 'Phase 4' },
+  { name: 'Wheel', tagline: 'A nightly spin, a daily chance.', eta: 'Phase 5' },
 ]
 
 export default function HomePage() {
@@ -56,13 +55,35 @@ function Live() {
           Now open
         </span>
       </div>
-      <div className="grid md:grid-cols-1 gap-4">
+      <div className="grid md:grid-cols-2 gap-4">
         <GameCard
           title="Weekly Lottery"
           tagline="5 of 25. One ticket, seven days."
           cta="Play"
           to="/lottery"
           accent="gold"
+        />
+        <GameCard
+          title="Scratch Cards"
+          tagline="Ten cards, one tap. Up to 100× a pop."
+          cta="Scratch"
+          to="/scratch"
+          accent="gold"
+        />
+        <GameCard
+          title="Number Match"
+          tagline="Pick one to three. Match to win."
+          cta="Play"
+          to="/numbermatch"
+          accent="gold"
+        />
+        <GameCard
+          title="Mines"
+          tagline="Step carefully. Multiply wildly."
+          cta="Enter"
+          to="/mines"
+          accent="gold"
+          badge="Devnet prototype"
         />
       </div>
     </section>
@@ -130,12 +151,14 @@ function GameCard({
   cta,
   to,
   accent,
+  badge,
 }: {
   title: string
   tagline: string
   cta: string
   to: string
   accent: 'gold' | 'emerald'
+  badge?: string
 }) {
   return (
     <Link
@@ -153,6 +176,11 @@ function GameCard({
       <div className="relative">
         <h3 className="font-display text-3xl text-gold mb-2">{title}</h3>
         <p className="text-base text-neutral-200 italic">{tagline}</p>
+        {badge && (
+          <span className="inline-block mt-3 px-2 py-0.5 rounded-full border border-amber-400/40 bg-amber-950/30 text-xs uppercase tracking-[0.15em] text-amber-300/90">
+            {badge}
+          </span>
+        )}
       </div>
       <span className="relative btn-gold whitespace-nowrap group-hover:translate-x-1 transition-transform">
         {cta}
