@@ -1,0 +1,476 @@
+{
+ "Description": "gostop.app static SPA hosting (S3 + CloudFront + Route53)",
+ "Resources": {
+  "HostedZoneDB99F866": {
+   "Type": "AWS::Route53::HostedZone",
+   "Properties": {
+    "HostedZoneConfig": {
+     "Comment": "gostop.app — managed by gostop-cdk"
+    },
+    "Name": "gostop.app."
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/HostedZone/Resource"
+   }
+  },
+  "SiteCert6025247C": {
+   "Type": "AWS::CertificateManager::Certificate",
+   "Properties": {
+    "DomainName": "gostop.app",
+    "DomainValidationOptions": [
+     {
+      "DomainName": "gostop.app",
+      "HostedZoneId": {
+       "Ref": "HostedZoneDB99F866"
+      }
+     },
+     {
+      "DomainName": "www.gostop.app",
+      "HostedZoneId": {
+       "Ref": "HostedZoneDB99F866"
+      }
+     }
+    ],
+    "SubjectAlternativeNames": [
+     "www.gostop.app"
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "GostopSiteStack/SiteCert"
+     }
+    ],
+    "ValidationMethod": "DNS"
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/SiteCert/Resource"
+   }
+  },
+  "SiteBucket397A1860": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "gostop-site-466841130170",
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/SiteBucket/Resource"
+   }
+  },
+  "SiteBucketPolicy3AC1D0F8": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "SiteBucket397A1860"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:*",
+       "Condition": {
+        "Bool": {
+         "aws:SecureTransport": "false"
+        }
+       },
+       "Effect": "Deny",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "SiteBucket397A1860",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "SiteBucket397A1860",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "s3:GetObject",
+       "Condition": {
+        "StringEquals": {
+         "AWS:SourceArn": {
+          "Fn::Join": [
+           "",
+           [
+            "arn:",
+            {
+             "Ref": "AWS::Partition"
+            },
+            ":cloudfront::",
+            {
+             "Ref": "AWS::AccountId"
+            },
+            ":distribution/",
+            {
+             "Ref": "SiteDistribution3FF9535D"
+            }
+           ]
+          ]
+         }
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+       },
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "SiteBucket397A1860",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/SiteBucket/Policy/Resource"
+   }
+  },
+  "SiteDistributionOrigin1S3OriginAccessControl7D960FE6": {
+   "Type": "AWS::CloudFront::OriginAccessControl",
+   "Properties": {
+    "OriginAccessControlConfig": {
+     "Name": "GostopSiteStackSiteDistributOrigin1S3OriginAccessControlA7F0CB47",
+     "OriginAccessControlOriginType": "s3",
+     "SigningBehavior": "always",
+     "SigningProtocol": "sigv4"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/SiteDistribution/Origin1/S3OriginAccessControl/Resource"
+   }
+  },
+  "SiteDistribution3FF9535D": {
+   "Type": "AWS::CloudFront::Distribution",
+   "Properties": {
+    "DistributionConfig": {
+     "Aliases": [
+      "gostop.app",
+      "www.gostop.app"
+     ],
+     "Comment": "gostop.app static SPA",
+     "CustomErrorResponses": [
+      {
+       "ErrorCachingMinTTL": 60,
+       "ErrorCode": 403,
+       "ResponseCode": 200,
+       "ResponsePagePath": "/index.html"
+      },
+      {
+       "ErrorCachingMinTTL": 60,
+       "ErrorCode": 404,
+       "ResponseCode": 200,
+       "ResponsePagePath": "/index.html"
+      }
+     ],
+     "DefaultCacheBehavior": {
+      "AllowedMethods": [
+       "GET",
+       "HEAD",
+       "OPTIONS"
+      ],
+      "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+      "Compress": true,
+      "TargetOriginId": "GostopSiteStackSiteDistributionOrigin19D16FAF5",
+      "ViewerProtocolPolicy": "redirect-to-https"
+     },
+     "DefaultRootObject": "index.html",
+     "Enabled": true,
+     "HttpVersion": "http2and3",
+     "IPV6Enabled": true,
+     "Origins": [
+      {
+       "DomainName": {
+        "Fn::GetAtt": [
+         "SiteBucket397A1860",
+         "RegionalDomainName"
+        ]
+       },
+       "Id": "GostopSiteStackSiteDistributionOrigin19D16FAF5",
+       "OriginAccessControlId": {
+        "Fn::GetAtt": [
+         "SiteDistributionOrigin1S3OriginAccessControl7D960FE6",
+         "Id"
+        ]
+       },
+       "S3OriginConfig": {
+        "OriginAccessIdentity": ""
+       }
+      }
+     ],
+     "PriceClass": "PriceClass_200",
+     "ViewerCertificate": {
+      "AcmCertificateArn": {
+       "Ref": "SiteCert6025247C"
+      },
+      "MinimumProtocolVersion": "TLSv1.2_2021",
+      "SslSupportMethod": "sni-only"
+     }
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/SiteDistribution/Resource"
+   }
+  },
+  "ApexAliasF68A3000": {
+   "Type": "AWS::Route53::RecordSet",
+   "Properties": {
+    "AliasTarget": {
+     "DNSName": {
+      "Fn::GetAtt": [
+       "SiteDistribution3FF9535D",
+       "DomainName"
+      ]
+     },
+     "HostedZoneId": {
+      "Fn::FindInMap": [
+       "AWSCloudFrontPartitionHostedZoneIdMap",
+       {
+        "Ref": "AWS::Partition"
+       },
+       "zoneId"
+      ]
+     }
+    },
+    "HostedZoneId": {
+     "Ref": "HostedZoneDB99F866"
+    },
+    "Name": "gostop.app.",
+    "Type": "A"
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/ApexAlias/Resource"
+   }
+  },
+  "ApexAliasAAAA63A3B9F4": {
+   "Type": "AWS::Route53::RecordSet",
+   "Properties": {
+    "AliasTarget": {
+     "DNSName": {
+      "Fn::GetAtt": [
+       "SiteDistribution3FF9535D",
+       "DomainName"
+      ]
+     },
+     "HostedZoneId": {
+      "Fn::FindInMap": [
+       "AWSCloudFrontPartitionHostedZoneIdMap",
+       {
+        "Ref": "AWS::Partition"
+       },
+       "zoneId"
+      ]
+     }
+    },
+    "HostedZoneId": {
+     "Ref": "HostedZoneDB99F866"
+    },
+    "Name": "gostop.app.",
+    "Type": "AAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/ApexAliasAAAA/Resource"
+   }
+  },
+  "WwwAlias44931BEB": {
+   "Type": "AWS::Route53::RecordSet",
+   "Properties": {
+    "AliasTarget": {
+     "DNSName": {
+      "Fn::GetAtt": [
+       "SiteDistribution3FF9535D",
+       "DomainName"
+      ]
+     },
+     "HostedZoneId": {
+      "Fn::FindInMap": [
+       "AWSCloudFrontPartitionHostedZoneIdMap",
+       {
+        "Ref": "AWS::Partition"
+       },
+       "zoneId"
+      ]
+     }
+    },
+    "HostedZoneId": {
+     "Ref": "HostedZoneDB99F866"
+    },
+    "Name": "www.gostop.app.",
+    "Type": "A"
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/WwwAlias/Resource"
+   }
+  },
+  "WwwAliasAAAAE1599A9F": {
+   "Type": "AWS::Route53::RecordSet",
+   "Properties": {
+    "AliasTarget": {
+     "DNSName": {
+      "Fn::GetAtt": [
+       "SiteDistribution3FF9535D",
+       "DomainName"
+      ]
+     },
+     "HostedZoneId": {
+      "Fn::FindInMap": [
+       "AWSCloudFrontPartitionHostedZoneIdMap",
+       {
+        "Ref": "AWS::Partition"
+       },
+       "zoneId"
+      ]
+     }
+    },
+    "HostedZoneId": {
+     "Ref": "HostedZoneDB99F866"
+    },
+    "Name": "www.gostop.app.",
+    "Type": "AAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/WwwAliasAAAA/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WLQWrDMBBFz5K9rAabHMB1F92UlHiXTVGksZnYmTHSqCEI3b2oLsSbwsD/7w2/1vVhr/c7cw+VdVM140WnXoydlLmHr+Q5Chwand45CLgzE6huoA21J7DsXbFr60FUa4xZKSsLXnBAawRuhswIXqfu6cpwg1mFRqfXaCeQ8vpra3zyjPbx1CtnZWeObvBMotMbBvF4iYJMqm+OHkek1loIoWMSz3PZ/6O345yL+TDLgjT+bqIsUbIidqCv4eW7rnW53TUgVj6S4A30ac0flQZEVVkBAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Mappings": {
+  "AWSCloudFrontPartitionHostedZoneIdMap": {
+   "aws": {
+    "zoneId": "Z2FDTNDATAQYW2"
+   },
+   "aws-cn": {
+    "zoneId": "Z3RFFRIM2A3IF5"
+   }
+  }
+ },
+ "Outputs": {
+  "BucketName": {
+   "Description": "S3 bucket for SPA assets (sync dist/ here)",
+   "Value": {
+    "Ref": "SiteBucket397A1860"
+   }
+  },
+  "DistributionId": {
+   "Description": "CloudFront distribution id (use for invalidations)",
+   "Value": {
+    "Ref": "SiteDistribution3FF9535D"
+   }
+  },
+  "DistributionDomain": {
+   "Description": "CloudFront default domain (cert-validated)",
+   "Value": {
+    "Fn::GetAtt": [
+     "SiteDistribution3FF9535D",
+     "DomainName"
+    ]
+   }
+  },
+  "HostedZoneId": {
+   "Description": "Route53 hosted zone id",
+   "Value": {
+    "Ref": "HostedZoneDB99F866"
+   }
+  },
+  "HostedZoneNameServers": {
+   "Description": "Update Porkbun NS records to these 4 nameservers",
+   "Value": {
+    "Fn::Join": [
+     ",",
+     {
+      "Fn::GetAtt": [
+       "HostedZoneDB99F866",
+       "NameServers"
+      ]
+     }
+    ]
+   }
+  },
+  "SiteUrl": {
+   "Description": "Public site URL (after Porkbun NS delegation propagates)",
+   "Value": "https://gostop.app"
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

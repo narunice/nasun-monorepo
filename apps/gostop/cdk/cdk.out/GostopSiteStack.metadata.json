@@ -1,0 +1,141 @@
+{
+  "/GostopSiteStack": [
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "Environment",
+          "value": "production"
+        },
+        {
+          "key": "ManagedBy",
+          "value": "cdk"
+        },
+        {
+          "key": "Project",
+          "value": "gostop"
+        }
+      ]
+    }
+  ],
+  "/GostopSiteStack/AWSCloudFrontPartitionHostedZoneIdMap": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AWSCloudFrontPartitionHostedZoneIdMap"
+    }
+  ],
+  "/GostopSiteStack/BucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BucketName"
+    }
+  ],
+  "/GostopSiteStack/DistributionId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DistributionId"
+    }
+  ],
+  "/GostopSiteStack/DistributionDomain": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DistributionDomain"
+    }
+  ],
+  "/GostopSiteStack/HostedZoneId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HostedZoneId"
+    }
+  ],
+  "/GostopSiteStack/HostedZoneNameServers": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HostedZoneNameServers"
+    }
+  ],
+  "/GostopSiteStack/SiteUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteUrl"
+    }
+  ],
+  "/GostopSiteStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/GostopSiteStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/GostopSiteStack/HostedZone/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HostedZoneDB99F866"
+    }
+  ],
+  "/GostopSiteStack/SiteCert/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteCert6025247C"
+    }
+  ],
+  "/GostopSiteStack/SiteBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucket397A1860"
+    }
+  ],
+  "/GostopSiteStack/SiteDistribution/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteDistribution3FF9535D"
+    }
+  ],
+  "/GostopSiteStack/ApexAlias/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApexAliasF68A3000"
+    }
+  ],
+  "/GostopSiteStack/ApexAliasAAAA/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApexAliasAAAA63A3B9F4"
+    }
+  ],
+  "/GostopSiteStack/WwwAlias/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WwwAlias44931BEB"
+    }
+  ],
+  "/GostopSiteStack/WwwAliasAAAA/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WwwAliasAAAAE1599A9F"
+    }
+  ],
+  "/GostopSiteStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ],
+  "/GostopSiteStack/SiteBucket/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteBucketPolicy3AC1D0F8"
+    }
+  ],
+  "/GostopSiteStack/SiteDistribution/Origin1/S3OriginAccessControl/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "SiteDistributionOrigin1S3OriginAccessControl7D960FE6"
+    }
+  ]
+}
