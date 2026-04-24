@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV4 } from "@/components/ui/button-v4";
 
-const gensolVideo = "/videos/Color-Trailer-No-Symbol-16x9-web.mp4";
+const gensolVideo = "/videos/Color-Trailer-No-Symbol-16x9-No-Brightness-web.mp4";
 const baramVideo = "/videos/baram-new-ui-video-smaller-fonts-web.mp4";
 const padoVideo = "/videos/Pado-Ui-Short-rf28.mp4";
 const padoVideoMobile = "/videos/Pado-Ui-Short-mobile-rf28.mp4";
