@@ -19,6 +19,10 @@ describe('zklogin.ts core functions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    // zkLoginState lives in localStorage (persists across OAuth redirects on
+    // a fresh tab), so clearing sessionStorage alone leaks state between
+    // tests and breaks the "no state exists" case.
+    localStorage.clear();
   });
 
   // =======================
