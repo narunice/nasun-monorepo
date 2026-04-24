@@ -121,8 +121,8 @@ export function useMyTrades(
     queryKey: ['my-trades-api', senderAddress, poolId],
     queryFn: () => fetchMyTradesFromApi(senderAddress!, poolId),
     enabled: !!senderAddress && apiAvailable,
-    refetchInterval: 10_000,
-    staleTime: 5000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
     retry: 1,
   });
 
