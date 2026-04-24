@@ -124,6 +124,42 @@ function ChatIcon({ className = '' }: { className?: string }) {
   );
 }
 
+// P&L column header with click+hover tooltip (mobile and desktop)
+function PnlHeaderTooltip() {
+  const [pinned, setPinned] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const visible = pinned || hovered;
+  return (
+    <span className="relative inline-flex items-center gap-0.5">
+      P&amp;L
+      <span
+        role="button"
+        tabIndex={0}
+        className="cursor-pointer text-theme-text-muted hover:text-theme-text-secondary select-none"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={() => setPinned(v => !v)}
+        onKeyDown={(e) => e.key === 'Enter' && setPinned(v => !v)}
+        onBlur={() => { setPinned(false); setHovered(false); }}
+        aria-label="P&L explanation"
+      >
+        <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+        </svg>
+      </span>
+      {visible && (
+        <div className="absolute bottom-full right-0 mb-1 w-60 p-2.5 rounded-lg bg-theme-bg-elevated border border-theme-border shadow-lg text-xs text-theme-text-secondary whitespace-normal z-50 text-left font-normal leading-relaxed">
+          <p className="font-semibold text-theme-text-primary mb-1">Profit / Loss per fill</p>
+          <p>Sell: (fill price - avg buy price) x qty</p>
+          <p>Buy: (current price - fill price) x qty (unrealized)</p>
+          <p className="mt-1.5 text-theme-text-muted">This is profit/loss, not total proceeds. See <span className="text-theme-text-secondary">Total</span> for the amount received.</p>
+          <p className="mt-1 text-theme-text-muted">Shows -- when avg buy price is unavailable.</p>
+        </div>
+      )}
+    </span>
+  );
+}
+
 type SideFilter = 'all' | 'buy' | 'sell';
 type PeriodFilter = 'all' | '24h' | '7d';
 
@@ -190,6 +226,10 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
       { header: 'Price', accessor: (t) => t.price },
       { header: 'Amount', accessor: (t) => t.quantity },
       { header: 'Total', accessor: (t) => Math.round(t.price * t.quantity * 100) / 100 },
+      { header: 'Fee (est.)', accessor: (t) => {
+        const bps = (t.role === 'taker' ? currentPool.takerFeeBps : currentPool.makerFeeBps) ?? 0;
+        return Math.round(t.price * t.quantity * bps / 10000 * 100) / 100;
+      }},
       { header: 'Role', accessor: (t) => t.role },
       { header: 'TX Digest', accessor: (t) => t.txDigest },
     ]);
@@ -318,12 +358,14 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
       <table className="w-full text-xs xl:text-sm">
         <thead className="text-theme-text-secondary">
           <tr>
-            <th className="py-2 px-2 text-left font-medium">Market</th>
+            <th className="py-2 px-2 text-left font-medium hidden sm:table-cell">Market</th>
             <th className="py-2 px-2 text-left font-medium">Side</th>
             <th className="py-2 px-2 text-right font-medium">Price ({quoteSymbol})</th>
-            <th className="py-2 px-2 text-right font-medium">Amount ({baseSymbol})</th>
-            <th className="py-2 px-2 text-center font-medium">Role</th>
-            <th className="py-2 px-2 text-right font-medium">P&L</th>
+            <th className="py-2 px-2 text-right font-medium">Amt ({baseSymbol})</th>
+            <th className="py-2 px-2 text-right font-medium">Total ({quoteSymbol})</th>
+            <th className="py-2 px-2 text-right font-medium hidden sm:table-cell">Fee <span className="font-normal text-theme-text-muted">~</span></th>
+            <th className="py-2 px-2 text-center font-medium hidden sm:table-cell">Role</th>
+            <th className="py-2 px-2 text-right font-medium"><PnlHeaderTooltip /></th>
             <th className="py-2 px-2 text-right font-medium">Time</th>
             <th className="py-2 px-1 w-16"></th>
           </tr>
@@ -331,10 +373,14 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
         <tbody className="divide-y divide-theme-border">
           {visibleTrades.map((trade) => {
             const pnlData = computePnl(trade, baseSymbol, avgBuyPrice);
+            const total = Math.round(trade.price * trade.quantity * 100) / 100;
+            const feeBps = (trade.role === 'taker' ? currentPool.takerFeeBps : currentPool.makerFeeBps) ?? 0;
+            const rawTotal = trade.price * trade.quantity;
+            const fee = Math.round(rawTotal * feeBps / 10000 * 100) / 100;
 
             return (
               <tr key={trade.id} className="hover:bg-theme-bg-tertiary/30 transition-colors">
-                <td className="py-1.5 px-2 text-theme-text-secondary">
+                <td className="py-1.5 px-2 text-theme-text-secondary hidden sm:table-cell">
                   {pair}
                 </td>
                 <td className={`py-1.5 px-2 font-semibold ${
@@ -353,7 +399,19 @@ export function TradeHistory({ className = "" }: TradeHistoryProps) {
                 <td className="py-1.5 px-2 text-right font-mono text-theme-text-primary">
                   {trade.quantity.toFixed(5)}
                 </td>
-                <td className="py-1.5 px-2 text-center">
+                <td className="py-1.5 px-2 text-right font-mono text-theme-text-primary">
+                  ${total.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </td>
+                <td className="py-1.5 px-2 text-right font-mono text-theme-text-muted hidden sm:table-cell">
+                  ${fee.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </td>
+                <td className="py-1.5 px-2 text-center hidden sm:table-cell">
                   <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] xl:text-xs font-medium ${
                     trade.role === 'taker'
                       ? 'bg-blue-600/20 text-blue-400'
