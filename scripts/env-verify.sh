@@ -73,10 +73,12 @@ if [ ${#BUNDLES[@]} -eq 0 ]; then
   exit 2
 fi
 
-# Load env files in Vite priority order (low to high — later wins)
+# Load env files in Vite priority order (low to high — later wins).
+# Per Vite docs: .env.[mode] takes higher priority than .env.local.
+# Order: .env → .env.local → .env.[mode] → .env.[mode].local
 declare -A ENV_MAP
 declare -A ENV_SOURCE
-for f in "$ENV_DIR/.env" "$ENV_DIR/.env.$MODE" "$ENV_DIR/.env.local" "$ENV_DIR/.env.$MODE.local"; do
+for f in "$ENV_DIR/.env" "$ENV_DIR/.env.local" "$ENV_DIR/.env.$MODE" "$ENV_DIR/.env.$MODE.local"; do
   [ -f "$f" ] || continue
   while IFS= read -r line || [ -n "$line" ]; do
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
@@ -138,7 +140,7 @@ if [ "$MISS" -gt 0 ]; then
   echo "  Likely causes:"
   echo "    1. Stale build (most common) — rebuild, then re-run env-verify"
   echo "    2. Key defined in .env but not referenced in src (unused)"
-  echo "    3. .env.local overriding .env.$MODE with a different value"
+  echo "    3. .env.$MODE.local overriding .env.$MODE with a different value"
   exit 1
 fi
 
