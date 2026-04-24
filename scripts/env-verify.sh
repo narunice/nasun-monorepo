@@ -29,23 +29,28 @@ done
 case "$APP" in
   nasun-website)
     ENV_DIR="$MONOREPO_ROOT/apps/nasun-website/frontend"
+    SRC_DIR="$MONOREPO_ROOT/apps/nasun-website/frontend/src"
     DIST="$MONOREPO_ROOT/apps/nasun-website/frontend/dist"
     ;;
   pado)
     # Vite envDir:'../' — reads apps/pado/.env*, not apps/pado/frontend/.env*
     ENV_DIR="$MONOREPO_ROOT/apps/pado"
+    SRC_DIR="$MONOREPO_ROOT/apps/pado/frontend/src"
     DIST="$MONOREPO_ROOT/apps/pado/frontend/dist"
     ;;
   gensol-website)
     ENV_DIR="$MONOREPO_ROOT/apps/gensol-website/frontend"
+    SRC_DIR="$MONOREPO_ROOT/apps/gensol-website/frontend/src"
     DIST="$MONOREPO_ROOT/apps/gensol-website/frontend/dist"
     ;;
   network-explorer)
     ENV_DIR="$MONOREPO_ROOT/apps/network-explorer"
+    SRC_DIR="$MONOREPO_ROOT/apps/network-explorer/src"
     DIST="$MONOREPO_ROOT/apps/network-explorer/dist"
     ;;
   baram)
     ENV_DIR="$MONOREPO_ROOT/apps/baram/frontend"
+    SRC_DIR="$MONOREPO_ROOT/apps/baram/frontend/src"
     DIST="$MONOREPO_ROOT/apps/baram/frontend/dist"
     ;;
   "")
@@ -104,8 +109,18 @@ echo "  env dir: $ENV_DIR"
 echo "  dist:    $DIST/assets/ (${#BUNDLES[@]} bundle$([ ${#BUNDLES[@]} -gt 1 ] && echo s))"
 echo ""
 
-MATCH=0; MISS=0; SKIP=0
+MATCH=0; MISS=0; SKIP=0; UNUSED=0
 MISSING_LIST=""
+
+# Build set of VITE_ keys actually referenced in source (import.meta.env.VITE_*)
+declare -A SRC_REFS
+if [ -d "$SRC_DIR" ]; then
+  while IFS= read -r ref_key; do
+    SRC_REFS[$ref_key]=1
+  done < <(grep -rh "import\.meta\.env\.VITE_" "$SRC_DIR" --include="*.ts" --include="*.tsx" --include="*.js" 2>/dev/null \
+    | grep -oP 'VITE_[A-Za-z0-9_]+' | sort -u)
+fi
+
 for k in $(echo "${!ENV_MAP[@]}" | tr ' ' '\n' | sort); do
   v="${ENV_MAP[$k]}"
   src="${ENV_SOURCE[$k]}"
@@ -119,6 +134,12 @@ for k in $(echo "${!ENV_MAP[@]}" | tr ' ' '\n' | sort); do
   if [ ${#disp} -gt 48 ]; then
     disp="${disp:0:45}..."
   fi
+  # If key is not referenced in source, it won't be embedded by Vite — this is expected
+  if [ -z "${SRC_REFS[$k]+x}" ]; then
+    printf "  %-40s UNUSED   %s [%s]\n" "$k" "$disp" "$src"
+    UNUSED=$((UNUSED+1))
+    continue
+  fi
   if grep -Fq -- "$v" "${BUNDLES[@]}" 2>/dev/null; then
     printf "  %-40s MATCH    %s [%s]\n" "$k" "$disp" "$src"
     MATCH=$((MATCH+1))
@@ -130,17 +151,16 @@ for k in $(echo "${!ENV_MAP[@]}" | tr ' ' '\n' | sort); do
 done
 
 echo ""
-echo "  summary: $MATCH match, $MISS missing, $SKIP skipped"
+echo "  summary: $MATCH match, $MISS missing, $SKIP skipped, $UNUSED unused(not in src)"
 
 if [ "$MISS" -gt 0 ]; then
   echo ""
-  echo "MISSING keys — value from .env not found in dist bundles:"
+  echo "MISSING keys — referenced in src but value not found in dist bundles:"
   printf '%s' "$MISSING_LIST"
   echo ""
   echo "  Likely causes:"
   echo "    1. Stale build (most common) — rebuild, then re-run env-verify"
-  echo "    2. Key defined in .env but not referenced in src (unused)"
-  echo "    3. .env.$MODE.local overriding .env.$MODE with a different value"
+  echo "    2. .env.$MODE.local overriding .env.$MODE with a different value"
   exit 1
 fi
 
