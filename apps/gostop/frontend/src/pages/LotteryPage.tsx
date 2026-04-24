@@ -68,6 +68,7 @@ export default function LotteryPage() {
     walletAddress,
     isWalletConnected,
     buyTicket,
+    buyTicketBulk,
     claimPrize,
     burnTicket,
     isBuying,
@@ -108,6 +109,15 @@ export default function LotteryPage() {
     const ok = await buyTicket(round.id, picks)
     if (ok) {
       setPicks([])
+      refreshRound()
+      refreshTickets()
+    }
+  }
+
+  async function onQuickBuy(count: number) {
+    if (!round) return
+    const ok = await buyTicketBulk(round.id, count)
+    if (ok) {
       refreshRound()
       refreshTickets()
     }
@@ -175,6 +185,13 @@ export default function LotteryPage() {
           isRoundOpen={isRoundOpen}
         />
       </section>
+
+      <QuickBuyPanel
+        onQuickBuy={onQuickBuy}
+        isBuying={isBuying}
+        isWalletConnected={isWalletConnected}
+        isRoundOpen={isRoundOpen}
+      />
 
       <MyTickets
         tickets={tickets}
@@ -375,6 +392,59 @@ function BuyPanel({
         {label}
       </button>
     </div>
+  )
+}
+
+function QuickBuyPanel({
+  onQuickBuy,
+  isBuying,
+  isWalletConnected,
+  isRoundOpen,
+}: {
+  onQuickBuy: (count: number) => void
+  isBuying: boolean
+  isWalletConnected: boolean
+  isRoundOpen: boolean
+}) {
+  const options = [1, 5, 10]
+  const disabled = !isWalletConnected || !isRoundOpen || isBuying
+  const hint = !isWalletConnected
+    ? 'Connect a wallet to buy tickets'
+    : !isRoundOpen
+      ? 'No open round at the moment'
+      : isBuying
+        ? 'Submitting transaction'
+        : 'Auto-picks 5 unique numbers per ticket and buys in one transaction'
+  return (
+    <section className="panel p-7">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
+        <div>
+          <h2 className="font-display text-2xl text-gold">Quick Buy</h2>
+          <p className="text-sm text-neutral-200 mt-1">
+            Skip picking. Auto-generate numbers and buy instantly.
+          </p>
+        </div>
+        <p className="text-sm text-neutral-200">
+          {TICKET_PRICE_NUSDC.toFixed(2)} NUSDC each
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {options.map((n) => (
+          <button
+            key={n}
+            onClick={() => onQuickBuy(n)}
+            disabled={disabled}
+            className="btn-ghost !py-3 !px-5 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+            title={hint}
+          >
+            <span className="font-semibold">Buy {n}</span>
+            <span className="ml-2 font-mono text-gold-200">
+              {(n * TICKET_PRICE_NUSDC).toFixed(2)} NUSDC
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }
 

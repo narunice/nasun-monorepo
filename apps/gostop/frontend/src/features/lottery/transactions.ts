@@ -79,6 +79,75 @@ export function buildClaimPrize(roundId: string, ticketId: string): Transaction 
   return tx;
 }
 
+/**
+ * Bulk ticket purchase with client-side auto-picked numbers. PTB repeats
+ * `buy_ticket` N times (buy_ticket does not use &Random so composition is
+ * safe). Caller must ensure `nusdcCoinId` total >= count * TICKET_PRICE
+ * (merge dust via `extraCoinsToMerge` if needed).
+ */
+export function buildBuyTicketBulk(
+  roundId: string,
+  nusdcCoinId: string,
+  bulkPicks: number[][],
+  extraCoinsToMerge: string[] = [],
+): Transaction {
+  const count = bulkPicks.length;
+  if (count < 1 || count > 10) {
+    throw new Error('[Security] Bulk count must be between 1 and 10');
+  }
+  for (const picks of bulkPicks) {
+    if (picks.length !== LOTTERY_NUMBERS_COUNT) {
+      throw new Error(`[Security] Each ticket must have exactly ${LOTTERY_NUMBERS_COUNT} numbers`);
+    }
+    const seen = new Set<number>();
+    for (const n of picks) {
+      if (!Number.isInteger(n) || n < 1 || n > LOTTERY_MAX_NUMBER) {
+        throw new Error(`[Security] Number ${n} out of range (must be 1-${LOTTERY_MAX_NUMBER})`);
+      }
+      if (seen.has(n)) {
+        throw new Error(`[Security] Duplicate number detected within a ticket: ${n}`);
+      }
+      seen.add(n);
+    }
+  }
+
+  const tx = new Transaction();
+  tx.setGasBudget(500_000_000); // 10 tickets × registry mutate × event emit. Measure + adjust on devnet.
+
+  if (extraCoinsToMerge.length > 0) {
+    tx.mergeCoins(
+      tx.object(nusdcCoinId),
+      extraCoinsToMerge.map((id) => tx.object(id)),
+    );
+  }
+
+  // Pre-split count exact payments.
+  const payments = tx.splitCoins(
+    tx.object(nusdcCoinId),
+    Array.from({ length: count }, () => tx.pure.u64(LOTTERY_TICKET_PRICE)),
+  );
+
+  for (let i = 0; i < count; i++) {
+    const sorted = [...bulkPicks[i]].sort((a, b) => a - b);
+    tx.moveCall({
+      target: `${LOTTERY_PACKAGE_ID}::lottery::buy_ticket`,
+      arguments: [
+        tx.object(roundId),
+        tx.object(LOTTERY_REGISTRY_ID),
+        payments[i],
+        tx.pure.u8(sorted[0]),
+        tx.pure.u8(sorted[1]),
+        tx.pure.u8(sorted[2]),
+        tx.pure.u8(sorted[3]),
+        tx.pure.u8(sorted[4]),
+        tx.object(SUI_CLOCK_ID),
+      ],
+    });
+  }
+
+  return tx;
+}
+
 export function buildBurnTicket(roundId: string, ticketId: string): Transaction {
   const tx = new Transaction();
   tx.moveCall({

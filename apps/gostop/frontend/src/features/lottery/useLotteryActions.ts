@@ -5,15 +5,18 @@ import { getSuiClient } from '../../lib/sui-client'
 import { LOTTERY_TICKET_PRICE, NUSDC_TYPE } from '../../lib/gostop-config'
 import {
   buildBuyTicket,
+  buildBuyTicketBulk,
   buildBurnTicket,
   buildClaimPrize,
 } from './transactions'
+import { autoPickNumbers } from './lottery-utils'
 import { humanizeLotteryError } from './errors'
 
 export interface UseLotteryActionsResult {
   walletAddress: string | undefined
   isWalletConnected: boolean
   buyTicket: (roundId: string, numbers: number[]) => Promise<boolean>
+  buyTicketBulk: (roundId: string, count: number) => Promise<boolean>
   claimPrize: (roundId: string, ticketId: string) => Promise<boolean>
   burnTicket: (roundId: string, ticketId: string) => Promise<boolean>
   isBuying: boolean
@@ -95,35 +98,35 @@ export function useLotteryActions(): UseLotteryActionsResult {
   )
 
   /**
-   * Returns coin ids sufficient to pay one ticket price. Prefer a single
-   * coin >= TICKET_PRICE; otherwise return all coins that sum to >= price
-   * (caller must mergeCoins them in the tx).
+   * Returns coin ids whose total balance is >= `amount`. Prefer a single
+   * coin sufficient on its own; otherwise aggregate dust (caller must
+   * `mergeCoins` the extras into `primary` in the tx).
    */
-  const findNusdcCoins = useCallback(async (): Promise<{
-    primary: string
-    extra: string[]
-  } | null> => {
-    if (!walletAddress) return null
-    const client = getSuiClient()
-    const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE })
-    if (coins.data.length === 0) return null
+  const findNusdcCoinsForAmount = useCallback(
+    async (
+      amount: bigint,
+    ): Promise<{ primary: string; extra: string[] } | null> => {
+      if (!walletAddress) return null
+      const client = getSuiClient()
+      const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE })
+      if (coins.data.length === 0) return null
 
-    // Single sufficient coin (cheapest path)
-    const single = coins.data.find((c) => BigInt(c.balance) >= LOTTERY_TICKET_PRICE)
-    if (single) return { primary: single.coinObjectId, extra: [] }
+      const single = coins.data.find((c) => BigInt(c.balance) >= amount)
+      if (single) return { primary: single.coinObjectId, extra: [] }
 
-    // Aggregate dust
-    let total = 0n
-    const ordered = [...coins.data].sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
-    const used: string[] = []
-    for (const c of ordered) {
-      used.push(c.coinObjectId)
-      total += BigInt(c.balance)
-      if (total >= LOTTERY_TICKET_PRICE) break
-    }
-    if (total < LOTTERY_TICKET_PRICE) return null
-    return { primary: used[0], extra: used.slice(1) }
-  }, [walletAddress])
+      let total = 0n
+      const ordered = [...coins.data].sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
+      const used: string[] = []
+      for (const c of ordered) {
+        used.push(c.coinObjectId)
+        total += BigInt(c.balance)
+        if (total >= amount) break
+      }
+      if (total < amount) return null
+      return { primary: used[0], extra: used.slice(1) }
+    },
+    [walletAddress],
+  )
 
   const guard = (key: string) => {
     if (pendingRef.current) {
@@ -148,7 +151,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
 
       setIsBuying(true)
       try {
-        const coins = await findNusdcCoins()
+        const coins = await findNusdcCoinsForAmount(LOTTERY_TICKET_PRICE)
         if (!coins) throw new Error('Insufficient NUSDC balance (need 5 NUSDC).')
         const tx = buildBuyTicket(roundId, coins.primary, numbers, coins.extra)
         await signAndExecute(tx)
@@ -162,7 +165,44 @@ export function useLotteryActions(): UseLotteryActionsResult {
         setIsBuying(false)
       }
     },
-    [isWalletConnected, findNusdcCoins, signAndExecute],
+    [isWalletConnected, findNusdcCoinsForAmount, signAndExecute],
+  )
+
+  const buyTicketBulk = useCallback(
+    async (roundId: string, count: number): Promise<boolean> => {
+      if (!isWalletConnected) {
+        setError('Wallet not connected')
+        return false
+      }
+      if (count < 1 || count > 10) {
+        setError('Bulk count must be between 1 and 10')
+        return false
+      }
+      if (!guard(`buyBulk:${roundId}:${count}`)) return false
+
+      setIsBuying(true)
+      try {
+        const totalCost = LOTTERY_TICKET_PRICE * BigInt(count)
+        const coins = await findNusdcCoinsForAmount(totalCost)
+        if (!coins) {
+          throw new Error(
+            `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
+          )
+        }
+        const bulkPicks = Array.from({ length: count }, () => autoPickNumbers())
+        const tx = buildBuyTicketBulk(roundId, coins.primary, bulkPicks, coins.extra)
+        await signAndExecute(tx)
+        return true
+      } catch (e) {
+        const raw = e instanceof Error ? e.message : 'Failed to buy tickets'
+        setError(humanizeLotteryError(raw))
+        return false
+      } finally {
+        release()
+        setIsBuying(false)
+      }
+    },
+    [isWalletConnected, findNusdcCoinsForAmount, signAndExecute],
   )
 
   const claimPrize = useCallback(
@@ -211,6 +251,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
     walletAddress,
     isWalletConnected,
     buyTicket,
+    buyTicketBulk,
     claimPrize,
     burnTicket,
     isBuying,
