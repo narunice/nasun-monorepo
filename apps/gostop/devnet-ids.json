@@ -82,6 +82,64 @@
     }
   },
 
+  "scratchcard": {
+    "packageId": "0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e",
+    "originalPackageId": "0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e",
+    "registry": "0x80bd11609a0706960507df28c164a84b0b84921a3018a98731958db614a1a014",
+    "adminCap": "0x0a4772d64e08016a1b84e6bbba7c0790111cb998ded348d2e0489362007e5c0c",
+    "upgradeCap": "0xecc153c3f115db5e164883722a246ed77eb4c5931a7d32ef3abab8fd2e570c21",
+    "publishTxDigest": "C52dnFaDVXVdQHr87z41DrY7J7fsDkPtF5YUsyuBqoUu",
+    "gameCapInstalled": "0x7448d89c8aa3841b132a13e2237551ae5d01f883d074e2d2253aefeebad6fefb (consumed into registry.game_cap)",
+    "gameCapInstallTxDigest": "52aQknhwM9ssVhFbS8oX5SGVHULkadz4CWXdKsWzHhAD",
+    "gameId": 2,
+    "cardPriceNusdc": "5000000",
+    "maxPrizeNusdc": "500000000",
+    "maxBulkCount": 10,
+    "maxSinglePayout": "500000000",
+    "sessionType": "0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e::scratchcard::ScratchCard",
+    "purchasedEventType": "0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e::scratchcard::ScratchCardPurchased"
+  },
+
+  "numbermatch": {
+    "packageId": "0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314",
+    "originalPackageId": "0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314",
+    "registry": "0xb412009d5738d340821f3614c7141424692bf09c4025e6a45387d364021a79a9",
+    "adminCap": "0x66cf819c6dac2dd0e3d5663bf0a334876fd6fe007b330d27d1ceb4e566477b2c",
+    "upgradeCap": "0xb7ee298d6a8b36c69b7325dc8ea1c2349648e60481d0a67895aa409ae3f2149a",
+    "publishTxDigest": "9nyECnVqyJRtVkhHX9siHkibjB8aNUY6XsnWdc9JmCnp",
+    "gameCapInstalled": "0x69aa519c955e85d0e4eeeecfee5b5f6e356bd81e109fadf76178637643b930c9 (consumed into registry.game_cap)",
+    "gameCapInstallTxDigest": "9QkYuXt25nY5XBoDjD7HGU8jN2VLwefTmHBwLGuZfbqg",
+    "gameId": 3,
+    "pricePerPickNusdc": "5000000",
+    "maxPicks": 3,
+    "minNumber": 1,
+    "maxNumber": 5,
+    "maxPayoutNusdc": "18000000",
+    "maxSinglePayout": "20000000",
+    "playedEventType": "0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314::numbermatch::NumberMatchPlayed"
+  },
+
+  "mines": {
+    "packageId": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54",
+    "originalPackageId": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54",
+    "registry": "0x7b0574b78206bd5141a0afb59ac4e8c33bbdb4c48f626ca81596714e3f1f8795",
+    "adminCap": "0x47d469ddac1a0a6ebd8ae997004118a7e3fde0b75718baf854c851eefe67da9a",
+    "upgradeCap": "0xb320a909b116fb4bb00598384fa0bfcbcb625dd941cf8e88ecd7101fa7ead548",
+    "publishTxDigest": "ErEh4aBWh4JWLe9sQRzBXbGZ4YM5VwD4rtu5niCL1dwr",
+    "gameCapInstalled": "0xa1802eb4c1f944b8c97b2822d601924bd1f548680f400102a2a45a937c1de113 (consumed into registry.game_cap)",
+    "gameCapInstallTxDigest": "FEiUTBDf38kVn3H8JMhsJmsy9Tz4Yp74NCNpYqANm1Mg",
+    "gameId": 5,
+    "gridSize": 25,
+    "mineCountRange": [1, 24],
+    "houseEdgeBps": 300,
+    "maxSinglePayout": "100000000",
+    "sessionType": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54::mines::MinesSession",
+    "sessionCreatedEventType": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54::mines::SessionCreated",
+    "cellRevealedEventType": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54::mines::CellRevealed",
+    "sessionFinishedEventType": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54::mines::SessionFinished",
+    "devnetOnly": "mine_positions field is visible via getObject RPC. Encrypted placement (ECIES + house key) required before mainnet."
+  },
+
   "deprecated": {
     "v3": {
       "lotteryPackageId": "0x48e23db58f02f077b46aef98aa0fcfce86aaa65046fdc7e0db302a6fc670ec14",
