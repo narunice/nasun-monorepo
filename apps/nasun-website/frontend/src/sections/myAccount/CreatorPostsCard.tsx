@@ -55,10 +55,10 @@ export const CreatorPostsCard: FC<CreatorPostsCardProps> = ({
     setErrorMsg(null);
     setSuccessMsg(null);
     submitMut.mutate(postUrl.trim(), {
-      onSuccess: (res) => {
+      onSuccess: () => {
         setPostUrl("");
         setSuccessMsg(
-          `Submitted. Remaining today: ${res.remainingToday}/${res.dailyLimit}.`,
+          `Submitted successfully.`,
         );
       },
       onError: (err) => {
@@ -142,7 +142,7 @@ export const CreatorPostsCard: FC<CreatorPostsCardProps> = ({
               {submitMut.isPending ? "Submitting..." : "Submit"}
             </button>
           </div>
-          <p className=" text-white/80">Up to 2 posts per day</p>
+          <p className=" text-white/80">Share posts that add value to the community.</p>
           {errorMsg && <p className="text-sm text-red-400">{errorMsg}</p>}
           {successMsg && <p className="text-sm text-green-400">{successMsg}</p>}
         </div>

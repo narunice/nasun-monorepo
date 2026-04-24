@@ -241,7 +241,7 @@ function WhatWeBuild2026Section() {
     >
       <div
         ref={containerRef}
-        className="landscape:absolute landscape:inset-0 portrait:relative portrait:w-full portrait:flex portrait:flex-col portrait:min-h-[calc(100vh-50px)]"
+        className="landscape:absolute landscape:inset-0 portrait:relative portrait:w-full portrait:flex portrait:flex-col portrait:h-[calc(100vh-50px)] portrait:justify-center portrait:items-center"
       >
         <Slider
           ref={sliderRef}
@@ -290,7 +290,7 @@ function WhatWeBuild2026Section() {
         </div>
 
         {/* Portrait (tablet/mobile): controls below video */}
-        <div className="portrait:flex hidden flex-col items-center gap-4 mt-6 pb-10 px-4">
+        <div className="portrait:flex hidden flex-col items-center gap-4 mt-6 px-4">
           {controls}
         </div>
 
