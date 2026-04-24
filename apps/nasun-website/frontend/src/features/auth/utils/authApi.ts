@@ -29,12 +29,31 @@ interface SecondaryProfileInfo {
   profileImageUrl?: string;
 }
 
+export interface LinkConflictDetail {
+  existingPrimary: {
+    identityId: string;
+    walletAddress: string | null;
+    username: string | null;
+  };
+}
+
+export class LinkNeedsConfirmError extends Error {
+  code = "LINK_NEEDS_CONFIRM" as const;
+  detail: LinkConflictDetail;
+  constructor(message: string, detail: LinkConflictDetail) {
+    super(message);
+    this.name = "LinkNeedsConfirmError";
+    this.detail = detail;
+  }
+}
+
 export const linkAccounts = async (
   primaryIdentityId: string,
   secondaryIdentityId: string,
   secondaryProvider: "Google" | "Twitter",
   cognitoToken?: string,
   secondaryInfo?: SecondaryProfileInfo,
+  options?: { confirmTransfer?: boolean },
 ) => {
   if (!cognitoToken) {
     throw new Error("Session expired. Please sign in again to link accounts.");
@@ -50,6 +69,7 @@ export const linkAccounts = async (
       primaryIdentityId,
       secondaryIdentityId,
       secondaryProvider,
+      ...(options?.confirmTransfer === true && { confirmTransfer: true }),
       ...(secondaryInfo && {
         secondaryUsername: secondaryInfo.username,
         secondaryEmail: secondaryInfo.email,
@@ -62,8 +82,14 @@ export const linkAccounts = async (
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Failed to link accounts");
+    const errorData = await response.json().catch(() => ({}));
+    if (response.status === 409 && errorData?.code === "LINK_NEEDS_CONFIRM" && errorData?.existingPrimary) {
+      throw new LinkNeedsConfirmError(
+        errorData.message || "This account is already linked to another wallet.",
+        { existingPrimary: errorData.existingPrimary },
+      );
+    }
+    throw new Error(errorData?.message || "Failed to link accounts");
   }
 
   return await response.json();

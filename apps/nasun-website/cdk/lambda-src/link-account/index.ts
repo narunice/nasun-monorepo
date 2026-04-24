@@ -326,7 +326,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const { primaryIdentityId, secondaryIdentityId, secondaryProvider,
             secondaryUsername, secondaryEmail,
             secondaryTwitterHandle, secondaryTwitterId, secondaryProfileImageUrl,
-            secondaryOriginalTwitterHandle } = JSON.parse(event.body || '{}');
+            secondaryOriginalTwitterHandle,
+            confirmTransfer } = JSON.parse(event.body || '{}');
 
     if (!primaryIdentityId || !secondaryIdentityId || !secondaryProvider) {
       return {
@@ -482,6 +483,32 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           .find(k => oldLinked[k]?.identityId === secondaryIdentityId);
 
         if (matchingKey) {
+          // Require explicit user confirmation before transferring a linked
+          // account away from another wallet. Admin-link bypasses the gate
+          // because identity merges are an intentional admin operation.
+          if (!isAdminLink && confirmTransfer !== true) {
+            console.log(JSON.stringify({
+              event: 'LINK_NEEDS_CONFIRM',
+              oldPrimaryId,
+              newPrimaryId: primaryIdentityId,
+              secondaryId: secondaryIdentityId,
+              provider: matchingKey,
+            }));
+            return {
+              statusCode: 409,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                code: 'LINK_NEEDS_CONFIRM',
+                message: `This ${secondaryProvider} account is already linked to another wallet.`,
+                existingPrimary: {
+                  identityId: oldPrimaryId,
+                  walletAddress: typeof oldPrimary.walletAddress === 'string' ? oldPrimary.walletAddress : null,
+                  username: oldPrimary.customDisplayName || oldPrimary.username || null,
+                },
+              }),
+            };
+          }
+
           delete oldLinked[matchingKey];
 
           let unlinkExpr = 'SET linkedAccounts = :la, updatedAt = :ua';
