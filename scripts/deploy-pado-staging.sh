@@ -31,7 +31,9 @@ START_TIME=$(date +%s)
 # --- 옵션 파싱 ---
 DRY_RUN=false
 
-SKIP_BOTS=false
+# Staging: bots/chat-server are intentionally OFF to reduce system load.
+# Use --deploy-bots only when explicitly testing bot code on staging.
+SKIP_BOTS=true
 
 for arg in "$@"; do
   case $arg in
@@ -39,8 +41,12 @@ for arg in "$@"; do
       DRY_RUN=true
       shift
       ;;
+    --deploy-bots)
+      SKIP_BOTS=false
+      shift
+      ;;
     --skip-bots)
-      SKIP_BOTS=true
+      # kept for backwards compat: bots are skipped by default, this flag is a no-op
       shift
       ;;
     --help|-h)
@@ -48,8 +54,11 @@ for arg in "$@"; do
       echo ""
       echo "옵션:"
       echo "  --dry-run      배포 없이 빌드만 수행"
-      echo "  --skip-bots    LP 봇 배포 건너뛰기"
+      echo "  --deploy-bots  LP 봇 배포 포함 (기본: 스킵)"
       echo "  --help, -h     도움말 표시"
+      echo ""
+      echo "참고: 스테이징에서는 챗서버/LP봇/keeper봇이 의도적으로 꺼져 있습니다."
+      echo "      프로덕션(pado.finance)에서만 봇이 상시 운영됩니다."
       exit 0
       ;;
   esac
@@ -68,6 +77,7 @@ if [ "$DRY_RUN" = true ]; then
   log_warning "드라이런 모드: 빌드만 수행하고 배포는 건너뜁니다."
   TOTAL_STEPS=3
 elif [ "$SKIP_BOTS" = true ]; then
+  # Default for staging: no bots
   TOTAL_STEPS=6
 fi
 
@@ -224,15 +234,18 @@ fi
 # --- 완료 ---
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  🎉 스테이징 배포 완료!                                    ║${NC}"
+echo -e "${GREEN}║  스테이징 배포 완료!                                       ║${NC}"
 echo -e "${GREEN}╠════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${GREEN}║  URL: ${CYAN}https://staging.pado.finance${NC}"
 if [ "$SKIP_BOTS" = false ]; then
 echo -e "${GREEN}║  봇: ${CYAN}PM2 (3 LP bots + price-updater + tpsl-keeper)${NC}"
+else
+echo -e "${GREEN}║  봇: ${YELLOW}꺼짐 (챗서버/LP봇/keeper는 프로덕션 전용)${NC}"
 fi
 echo -e "${GREEN}║  소요 시간: ${CYAN}$(get_elapsed_time $START_TIME)${NC}"
+if [ "$SKIP_BOTS" = true ]; then
 echo -e "${GREEN}║${NC}"
-echo -e "${GREEN}║  봇 로그: ${CYAN}pnpm deploy:pado:bots:staging -- --logs${NC}"
-echo -e "${GREEN}║  봇 상태: ${CYAN}pnpm deploy:pado:bots:staging -- --status${NC}"
+echo -e "${GREEN}║  봇 포함 재배포: ${CYAN}pnpm deploy:pado:staging -- --deploy-bots${NC}"
+fi
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""

@@ -18,7 +18,7 @@ APP_NAME="pado"
 APP_DIR="$MONOREPO_ROOT/apps/pado"
 
 # EC2 설정 (Production)
-PEM_KEY_PATH="$HOME/.ssh/nasun-prod-key.pem"
+PEM_KEY_PATH="$HOME/.ssh/.awskey/nasun-prod-key"
 EC2_USER="ec2-user"
 EC2_HOST="43.200.67.52"
 REMOTE_DIR="/var/www/pado.finance"
