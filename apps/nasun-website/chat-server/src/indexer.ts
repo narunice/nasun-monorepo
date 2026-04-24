@@ -40,6 +40,24 @@ let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let largeTradeOpts: LargeTradeOptions | null = null;
 
+// Backoff state for RPC 5xx errors (503 Service Unavailable from overloaded Node-3)
+let consecutiveRpcErrors = 0;
+const BACKOFF_BASE_MS = 5_000;
+const BACKOFF_MAX_MS = 120_000; // 2 min cap
+
+function backoffDelayMs(): number {
+  if (consecutiveRpcErrors === 0) return 0;
+  const exp = Math.min(consecutiveRpcErrors - 1, 7); // cap at 2^7 = 128x base
+  const base = Math.min(BACKOFF_BASE_MS * Math.pow(2, exp), BACKOFF_MAX_MS);
+  const jitter = (Math.random() - 0.5) * 0.6 * base; // ±30% jitter to spread reconnect storms
+  return Math.min(Math.max(0, base + jitter), BACKOFF_MAX_MS);
+}
+
+function isRpcError(err: unknown): boolean {
+  const msg = (err as Error).message ?? '';
+  return /\b(503|502)\b/.test(msg) || msg.includes('Service Unavailable');
+}
+
 // ===== Balance Manager Resolution =====
 
 /**
@@ -218,11 +236,15 @@ async function pollOrderFilled(): Promise<number> {
 
       hasMore = result.hasNextPage;
 
+      // Successful page — reset RPC error counter
+      consecutiveRpcErrors = 0;
+
       // Small delay in catch-up mode to be polite to RPC
       if (hasMore) {
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
     } catch (err) {
+      if (isRpcError(err)) consecutiveRpcErrors++;
       console.error('[Indexer] Poll error:', (err as Error).message);
       hasMore = false; // Will retry on next poll cycle
     }
@@ -335,10 +357,14 @@ async function pollOrderEvents(): Promise<number> {
 
         hasMore = result.hasNextPage;
 
+        // Successful page — reset RPC error counter
+        consecutiveRpcErrors = 0;
+
         if (hasMore) {
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
       } catch (err) {
+        if (isRpcError(err)) consecutiveRpcErrors++;
         console.error(`[Indexer] Poll ${source.label} error:`, (err as Error).message);
         hasMore = false;
       }
@@ -353,6 +379,12 @@ async function pollOrderEvents(): Promise<number> {
 function schedulePoll(): void {
   if (!running || !config) return;
 
+  const backoff = backoffDelayMs();
+  const delay = config.indexerPollIntervalMs + backoff;
+  if (backoff > 0) {
+    console.warn(`[Indexer] RPC errors=${consecutiveRpcErrors}, backing off ${Math.round(delay / 1000)}s`);
+  }
+
   pollTimer = setTimeout(async () => {
     const fillCount = await pollOrderFilled();
     const orderCount = await pollOrderEvents();
@@ -361,7 +393,7 @@ function schedulePoll(): void {
       setIndexerState('last_indexed_at', String(Date.now()));
     }
     schedulePoll();
-  }, config.indexerPollIntervalMs);
+  }, delay);
 }
 
 export function startIndexer(cfg: LeaderboardConfig, largeTrade?: LargeTradeOptions): void {
@@ -373,14 +405,16 @@ export function startIndexer(cfg: LeaderboardConfig, largeTrade?: LargeTradeOpti
   console.log(`[Indexer] Starting (poll interval: ${cfg.indexerPollIntervalMs}ms, RPC: ${cfg.rpcUrl})`);
   console.log(`[Indexer] DeepBook package: ${cfg.deepbookPackage.slice(0, 16)}...`);
 
-  // Initial poll immediately, then schedule
-  Promise.all([pollOrderFilled(), pollOrderEvents()]).then(([fills, orders]) => {
+  // Initial poll immediately then schedule — sequential to avoid racing on consecutiveRpcErrors
+  (async () => {
+    const fills = await pollOrderFilled();
+    const orders = await pollOrderEvents();
     if (fills > 0 || orders > 0) {
       console.log(`[Indexer] Initial poll indexed ${fills} fills, ${orders} order events`);
       setIndexerState('last_indexed_at', String(Date.now()));
     }
     schedulePoll();
-  });
+  })();
 }
 
 export function stopIndexer(): void {
