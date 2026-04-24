@@ -355,7 +355,7 @@ export class AdminStack extends cdk.Stack {
 
     // User Management API Routes (reuses exportFunction which already has UserProfiles read access)
     const usersResource = this.api.root.addResource("users");
-    // GET /users - Admin: list/search users
+    // GET /users - Admin: list users (paginated) or search users (?q=... param)
     usersResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
     const userIdResource = usersResource.addResource("{identityId}");
     // GET /users/{identityId} - Admin: get user detail

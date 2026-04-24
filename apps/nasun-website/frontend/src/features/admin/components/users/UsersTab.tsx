@@ -1,15 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { OuterBox } from "@/components/ui/OuterBox";
-import { useUserList, useUserDetail } from "../../hooks/useUserManagement";
+import { useUserList, useUserDetail, useUserSearch } from "../../hooks/useUserManagement";
 import { useAdminAuth } from "../../hooks/useAdminAuth";
 import { truncateAddress } from "@/utils/addressUtils";
-import type { UserProfile } from "../../types";
+import type { UserProfile, SearchField } from "../../types";
 import { getAccountFlag, setAccountFlag } from "../../services/accountFlagApi";
+import { SearchBar } from "./SearchBar";
+import { Pagination } from "./Pagination";
 
 const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 300;
 
 function ProviderBadge({ provider }: { provider?: string }) {
   if (!provider) return <span className="text-nasun-white/50">-</span>;
@@ -141,7 +144,6 @@ function FlaggedBadge({ flagged }: { flagged?: boolean }) {
 function AccountFlagPanel({ user }: { user: UserProfile }) {
   const { cognitoToken } = useAdminAuth();
   const queryClient = useQueryClient();
-  const isSelf = false; // Backend also enforces; UI just hides the action below.
 
   const { data: flagStatus } = useQuery({
     queryKey: ["admin-account-flag", user.identityId],
@@ -211,7 +213,7 @@ function AccountFlagPanel({ user }: { user: UserProfile }) {
           variant="outlineC5"
           size="sm"
           onClick={() => mutation.mutate({ flagged: false })}
-          disabled={mutation.isPending || isSelf}
+          disabled={mutation.isPending}
           className="w-full"
         >
           {mutation.isPending ? "Updating..." : "Unflag account"}
@@ -410,52 +412,129 @@ function UserDetailModal({
 
 export function UsersTab() {
   const { cognitoToken } = useAdminAuth();
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [nextToken, setNextToken] = useState<string | undefined>(undefined);
+
+  // Search state
+  const [qInput, setQInput] = useState("");
+  const [q, setQ] = useState("");
+  const [field, setField] = useState<SearchField>("auto");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+  // Cursor-based pagination: cursorStack[i] = nextToken needed to fetch page i+1
+  // page 1 uses undefined (no token), page 2 uses cursorStack[0], etc.
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useUserList(cognitoToken, {
-    limit: PAGE_SIZE,
-    nextToken: nextToken,
-  });
+  const isSearching = q.trim().length > 0;
+
+  // Debounce search input
+  const handleQChange = (value: string) => {
+    setQInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setQ(value), SEARCH_DEBOUNCE_MS);
+  };
+
+  const handleClear = () => {
+    setQInput("");
+    setQ("");
+    setPage(1);
+    setCursorStack([]);
+  };
+
+  const handleFieldChange = (f: SearchField) => {
+    setField(f);
+    // Trigger a new search with the same q but different field
+    setQ(qInput);
+  };
+
+  // List query (active when not searching)
+  const nextToken = page > 1 ? cursorStack[page - 2] : undefined; // page 1 has no token, page N uses cursorStack[N-2]
+  const listQuery = useUserList(
+    cognitoToken,
+    { limit: PAGE_SIZE, nextToken, page },
+    { enabled: !isSearching },
+  );
+
+  // Search query (active when searching)
+  const searchQuery = useUserSearch(
+    cognitoToken,
+    { q, field },
+    { enabled: isSearching },
+  );
 
   const { data: detailData } = useUserDetail(cognitoToken, selectedUserId);
 
-  useEffect(() => {
-    if (data?.users) {
-      // Append new users to the existing list
-      setAllUsers((prev) => {
-        const existingIds = new Set(prev.map(u => u.identityId));
-        const newUsers = data.users.filter(u => !existingIds.has(u.identityId));
-        return [...prev, ...newUsers];
-      });
-    }
-  }, [data]);
+  // Pagination handlers
+  const handleNext = () => {
+    if (!listQuery.data?.nextToken) return;
+    setCursorStack((prev) => {
+      const next = [...prev];
+      next[page - 1] = listQuery.data!.nextToken!;
+      return next;
+    });
+    setPage((p) => p + 1);
+  };
 
-  const handleLoadMore = () => {
-    if (data?.nextToken) {
-      setNextToken(data.nextToken);
-    }
+  const handlePrev = () => {
+    if (page <= 1) return;
+    setPage((p) => p - 1);
+  };
+
+  const handleFirst = () => {
+    setPage(1);
+    setCursorStack([]);
   };
 
   const handleCloseModal = useCallback(() => setSelectedUserId(null), []);
 
+  // Derive display users from active query
+  const displayUsers: UserProfile[] = isSearching
+    ? (searchQuery.data?.matches ?? [])
+    : (listQuery.data?.users ?? []);
+
+  const isLoading = isSearching ? searchQuery.isLoading : listQuery.isLoading;
+  const error = isSearching ? searchQuery.error : listQuery.error;
+  const truncated = isSearching && (searchQuery.data?.truncated ?? false);
+
+  const hasPrev = page > 1;
+  const hasNext = !isSearching && !!listQuery.data?.nextToken;
+
   return (
     <div className="flex flex-col gap-8 w-full">
-      {/* Users Table */}
       <OuterBox color="w2" padding="md">
-        <h3 className="text-nasun-white font-medium text-lg mb-4">
-          Registered Users (Incremental Load)
-        </h3>
+        <h3 className="text-nasun-white font-medium text-lg mb-4">Registered Users</h3>
+
+        <SearchBar
+          q={qInput}
+          field={field}
+          onQChange={handleQChange}
+          onFieldChange={handleFieldChange}
+          onClear={handleClear}
+        />
+
+        {isSearching && !isLoading && searchQuery.data && (
+          <div className="mb-3 text-sm text-nasun-white/60">
+            {searchQuery.data.matches.length === 0
+              ? `No users matched "${q}".`
+              : `${searchQuery.data.matches.length} match${searchQuery.data.matches.length > 1 ? "es" : ""} found.`}
+            {truncated && (
+              <span className="ml-2 text-amber-400 text-xs">
+                Showing first 500 results. Refine your search for more precision.
+              </span>
+            )}
+          </div>
+        )}
 
         {error ? (
           <p className="text-red-400 text-center py-8">
             Failed to load users: {error.message}
           </p>
-        ) : allUsers.length === 0 && isLoading ? (
-          <p className="text-nasun-white/60 text-center py-8">Loading users...</p>
-        ) : allUsers.length === 0 ? (
-          <p className="text-nasun-white/60 text-center py-8">No registered users found.</p>
+        ) : displayUsers.length === 0 && isLoading ? (
+          <p className="text-nasun-white/60 text-center py-8">Loading...</p>
+        ) : displayUsers.length === 0 ? (
+          <p className="text-nasun-white/60 text-center py-8">No users found.</p>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -474,7 +553,7 @@ export function UsersTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-nasun-white/5">
-                  {allUsers.map((user) => (
+                  {displayUsers.map((user) => (
                     <tr
                       key={user.identityId}
                       onClick={() => setSelectedUserId(user.identityId)}
@@ -489,6 +568,7 @@ export function UsersTab() {
                           <img
                             src={user.profileImageUrl}
                             alt=""
+                            loading="lazy"
                             className="w-6 h-6 rounded-full"
                           />
                         ) : (
@@ -560,24 +640,21 @@ export function UsersTab() {
               </table>
             </div>
 
-            {/* Load More Pagination */}
-            {data?.nextToken && (
-              <div className="flex justify-center mt-6 pt-4 border-t border-nasun-white/20">
-                <Button
-                  variant="outlineC5"
-                  onClick={handleLoadMore}
-                  disabled={isLoading}
-                  className="px-8"
-                >
-                  {isLoading ? "Loading..." : "Load More Users"}
-                </Button>
-              </div>
+            {!isSearching && (
+              <Pagination
+                page={page}
+                hasPrev={hasPrev}
+                hasNext={hasNext}
+                onPrev={handlePrev}
+                onNext={handleNext}
+                onFirst={handleFirst}
+                isLoading={isLoading}
+              />
             )}
           </>
         )}
       </OuterBox>
 
-      {/* Detail Modal */}
       {selectedUserId && detailData?.user && (
         <UserDetailModal user={detailData.user} onClose={handleCloseModal} />
       )}

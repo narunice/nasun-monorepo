@@ -1082,17 +1082,213 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       return jsonResponse(200, { success: true, user: parseUserProfileDetail(result.Item) }, requestOrigin);
     }
 
-    // GET /users - List users with search, filter, pagination
+    // GET /users - List users (paginated) OR search (?q=... present)
     if (path.endsWith("/users") && event.httpMethod === "GET") {
+      // --- Search mode: q param present ---
+      if (queryParams.q) {
+        const rawQ = queryParams.q.trim();
+        if (!rawQ) return errorResponse(400, "Missing query parameter: q", requestOrigin);
+        if (rawQ.length > 128) return errorResponse(400, "Query too long (max 128 chars)", requestOrigin);
+
+        const rawField = (queryParams.field ?? "auto").toLowerCase();
+        const resolvePrimary = queryParams.resolvePrimary !== "false";
+
+        type FieldKind = "twitter" | "google" | "telegram_id" | "telegram_username" | "wallet" | "identity_id";
+
+        function inferField(input: string): FieldKind {
+          if (/^0x[a-f0-9]{40,}$/i.test(input)) return "wallet";
+          if (/^[a-z0-9-]+:[0-9a-f-]{36}$/i.test(input)) return "identity_id";
+          if (/^\d{5,}$/.test(input)) return "telegram_id";
+          if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input)) return "google";
+          return "twitter";
+        }
+
+        const fieldKind: FieldKind = (() => {
+          if (rawField === "twitter") return "twitter";
+          if (rawField === "google") return "google";
+          if (rawField === "telegram") return /^\d+$/.test(rawQ) ? "telegram_id" : "telegram_username";
+          if (rawField === "wallet") return "wallet";
+          if (rawField === "identityid" || rawField === "identity_id") return "identity_id";
+          return inferField(rawQ);
+        })();
+
+        console.log(`User search: q="${rawQ}" field=${rawField} resolved=${fieldKind}`);
+
+        const matchedItems: Record<string, any>[] = [];
+        let truncated = false;
+        const SCAN_LIMIT = 500;
+
+        if (fieldKind === "identity_id") {
+          const result = await dynamoClient.send(
+            new GetItemCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId: { S: rawQ } } })
+          );
+          if (result.Item) matchedItems.push(result.Item);
+
+        } else if (fieldKind === "twitter") {
+          const normalized = rawQ.replace(/^@/, "").toLowerCase();
+          const gsiResult = await dynamoClient.send(
+            new QueryCommand({
+              TableName: USER_PROFILES_TABLE,
+              IndexName: "twitterHandle-index",
+              KeyConditionExpression: "twitterHandle = :h",
+              FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
+              ExpressionAttributeValues: { ":h": { S: normalized } },
+            })
+          );
+          if (gsiResult.Items && gsiResult.Items.length > 0) {
+            matchedItems.push(...gsiResult.Items);
+          } else {
+            // Fallback: scan for legacy records where twitterHandle is only in linkedAccounts
+            const scanResult = await dynamoClient.send(
+              new ScanCommand({
+                TableName: USER_PROFILES_TABLE,
+                FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND #la.#tw.#th = :h",
+                ExpressionAttributeNames: { "#la": "linkedAccounts", "#tw": "twitter", "#th": "twitterHandle" },
+                ExpressionAttributeValues: { ":h": { S: normalized } },
+                Limit: SCAN_LIMIT,
+              })
+            );
+            if (scanResult.Items) matchedItems.push(...scanResult.Items);
+            if (scanResult.LastEvaluatedKey) truncated = true;
+          }
+
+        } else if (fieldKind === "google") {
+          const normalizedEmail = rawQ.toLowerCase();
+          let gsiSuccess = false;
+          try {
+            const gsiResult = await dynamoClient.send(
+              new QueryCommand({
+                TableName: USER_PROFILES_TABLE,
+                IndexName: "email-index",
+                KeyConditionExpression: "#em = :e",
+                FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
+                ExpressionAttributeNames: { "#em": "email" },
+                ExpressionAttributeValues: { ":e": { S: normalizedEmail } },
+              })
+            );
+            if (gsiResult.Items) matchedItems.push(...gsiResult.Items);
+            gsiSuccess = true;
+          } catch (err: any) {
+            if (err?.name !== "ResourceNotFoundException" && err?.name !== "ValidationException") throw err;
+          }
+          if (!gsiSuccess) {
+            const scanResult = await dynamoClient.send(
+              new ScanCommand({
+                TableName: USER_PROFILES_TABLE,
+                FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND (#em = :e OR #la.#g.#em2 = :e)",
+                ExpressionAttributeNames: { "#em": "email", "#la": "linkedAccounts", "#g": "google", "#em2": "email" },
+                ExpressionAttributeValues: { ":e": { S: normalizedEmail } },
+                Limit: SCAN_LIMIT,
+              })
+            );
+            if (scanResult.Items) matchedItems.push(...scanResult.Items);
+            if (scanResult.LastEvaluatedKey) truncated = true;
+          }
+
+        } else if (fieldKind === "telegram_id") {
+          const gsiResult = await dynamoClient.send(
+            new QueryCommand({
+              TableName: USER_PROFILES_TABLE,
+              IndexName: "telegramUserId-index",
+              KeyConditionExpression: "telegramUserId = :id",
+              FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
+              ExpressionAttributeValues: { ":id": { S: rawQ } },
+            })
+          );
+          if (gsiResult.Items) matchedItems.push(...gsiResult.Items);
+
+        } else if (fieldKind === "telegram_username") {
+          const normalized = rawQ.replace(/^@/, "").toLowerCase();
+          const scanResult = await dynamoClient.send(
+            new ScanCommand({
+              TableName: USER_PROFILES_TABLE,
+              FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND telegramUsername = :u",
+              ExpressionAttributeValues: { ":u": { S: normalized } },
+              Limit: SCAN_LIMIT,
+            })
+          );
+          if (scanResult.Items) matchedItems.push(...scanResult.Items);
+          if (scanResult.LastEvaluatedKey) truncated = true;
+
+        } else if (fieldKind === "wallet") {
+          const normalizedWallet = rawQ.toLowerCase();
+          let gsiSuccess = false;
+          try {
+            const gsiResult = await dynamoClient.send(
+              new QueryCommand({
+                TableName: USER_PROFILES_TABLE,
+                IndexName: "walletAddress-index",
+                KeyConditionExpression: "walletAddress = :w",
+                FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
+                ExpressionAttributeValues: { ":w": { S: normalizedWallet } },
+              })
+            );
+            if (gsiResult.Items) matchedItems.push(...gsiResult.Items);
+            gsiSuccess = true;
+          } catch (err: any) {
+            if (err?.name !== "ResourceNotFoundException" && err?.name !== "ValidationException") throw err;
+          }
+          if (!gsiSuccess) {
+            const scanResult = await dynamoClient.send(
+              new ScanCommand({
+                TableName: USER_PROFILES_TABLE,
+                FilterExpression:
+                  "attribute_not_exists(linkedToPrimaryId) AND (walletAddress = :w OR #la.metamask.#wa = :w OR #la.#nw.#wa = :w)",
+                ExpressionAttributeNames: { "#la": "linkedAccounts", "#wa": "walletAddress", "#nw": "nasun wallet" },
+                ExpressionAttributeValues: { ":w": { S: normalizedWallet } },
+                Limit: SCAN_LIMIT,
+              })
+            );
+            if (scanResult.Items) matchedItems.push(...scanResult.Items);
+            if (scanResult.LastEvaluatedKey) truncated = true;
+          }
+        }
+
+        // Resolve secondary accounts to their primary
+        let resolvedItems = matchedItems;
+        if (resolvePrimary && matchedItems.length > 0) {
+          const primaryIds = new Set<string>();
+          const directPrimaryItems: Record<string, any>[] = [];
+          const secondaryItems: Record<string, any>[] = [];
+          for (const item of matchedItems) {
+            if (item.linkedToPrimaryId?.S) secondaryItems.push(item);
+            else { primaryIds.add(item.identityId?.S ?? ""); directPrimaryItems.push(item); }
+          }
+          if (secondaryItems.length > 0) {
+            const toFetch = [...new Set(
+              secondaryItems.map((i) => i.linkedToPrimaryId?.S).filter((id): id is string => !!id && !primaryIds.has(id))
+            )];
+            for (const primaryId of toFetch) {
+              if (primaryIds.has(primaryId)) continue;
+              try {
+                const r = await dynamoClient.send(
+                  new GetItemCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId: { S: primaryId } } })
+                );
+                if (r.Item) { directPrimaryItems.push(r.Item); primaryIds.add(primaryId); }
+              } catch (_) { /* best-effort */ }
+            }
+          }
+          resolvedItems = directPrimaryItems;
+        }
+
+        return jsonResponse(200, {
+          success: true,
+          query: { q: rawQ, field: fieldKind, resolvePrimary },
+          matches: resolvedItems.map(parseUserProfileDetail),
+          truncated,
+        }, requestOrigin);
+      }
+
+      // --- List mode: no q param ---
       const limit = Math.min(100, Math.max(1, parseInt(queryParams.limit || "50", 10) || 50));
       const nextToken = queryParams.nextToken;
-      
+
       console.log(`Listing users (limit: ${limit}, nextToken: ${!!nextToken})`);
 
       const scanParams: any = {
         TableName: USER_PROFILES_TABLE,
         Limit: limit,
-        FilterExpression: "attribute_not_exists(linkedToPrimaryId)", // Only primary accounts
+        FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
       };
 
       if (nextToken) {
@@ -1105,7 +1301,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       const result = await dynamoClient.send(new ScanCommand(scanParams));
       const users = (result.Items || []).map(parseUserProfileItem).map(toListItem);
-      
+
       let encodedNextToken: string | undefined;
       if (result.LastEvaluatedKey) {
         encodedNextToken = Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString("base64");
@@ -1115,8 +1311,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         success: true,
         users,
         nextToken: encodedNextToken,
-        // Stats removed to prevent full table scans and timeouts. 
-        // Admin can request stats via Gemini.
       }, requestOrigin);
     }
 
