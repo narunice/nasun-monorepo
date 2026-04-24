@@ -237,11 +237,11 @@ function WhatWeBuild2026Section() {
   return (
     <SectionLayout
       maxWidth="9xl"
-      className="bg-black overflow-hidden !px-0 !py-0 landscape:h-screen"
+      className="bg-nasun-black overflow-hidden !px-0 !py-0 landscape:h-screen"
     >
       <div
         ref={containerRef}
-        className="landscape:absolute landscape:inset-0 portrait:relative portrait:w-full portrait:flex portrait:flex-col"
+        className="landscape:absolute landscape:inset-0 portrait:relative portrait:w-full portrait:flex portrait:flex-col portrait:min-h-[calc(100vh-50px)]"
       >
         <Slider
           ref={sliderRef}
@@ -292,6 +292,23 @@ function WhatWeBuild2026Section() {
         {/* Portrait (tablet/mobile): controls below video */}
         <div className="portrait:flex hidden flex-col items-center gap-4 mt-6 pb-10 px-4">
           {controls}
+        </div>
+
+        {/* Tablet-only scroll indicator, pinned to section bottom */}
+        <div className="hidden md:flex lg:hidden absolute bottom-6 inset-x-0 z-30 justify-center pointer-events-none">
+          <svg
+            className="w-6 h-6 text-nasun-white/50 animate-bounce"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+            />
+          </svg>
         </div>
       </div>
     </SectionLayout>
