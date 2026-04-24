@@ -33,9 +33,16 @@ upload_db() {
   log "DONE sqlite-backup $dbname -> $s3key"
 }
 
+VALID_DBS=("chat" "leaderboard")
+
 if [[ $# -gt 0 ]]; then
+  # Validate argument to prevent passing arbitrary strings to remote sqlite3
+  valid=0
+  for v in "${VALID_DBS[@]}"; do [[ "$1" == "$v" ]] && valid=1; done
+  if [[ $valid -eq 0 ]]; then
+    echo "Usage: $0 [chat|leaderboard]" >&2; exit 1
+  fi
   upload_db "$1"
 else
-  upload_db "chat"
-  upload_db "leaderboard"
+  for db in "${VALID_DBS[@]}"; do upload_db "$db"; done
 fi
