@@ -486,6 +486,7 @@ wss.on('connection', (ws, req) => {
         const pending = pendingAuth.get(ws);
         if (!pending) {
           recordAuthFailure(ip);
+          console.warn(`[Auth] no pending challenge ip=${ip}`);
           send(ws, { type: 'auth_error', reason: 'No pending challenge' });
           ws.close(4401, 'No pending challenge');
           return;
@@ -493,6 +494,7 @@ wss.on('connection', (ws, req) => {
 
         if (!data.address || !isValidSuiAddress(data.address)) {
           recordAuthFailure(ip);
+          console.warn(`[Auth] invalid address ip=${ip}`);
           send(ws, { type: 'auth_error', reason: 'Invalid address' });
           ws.close(4401, 'Invalid address');
           return;
@@ -501,6 +503,7 @@ wss.on('connection', (ws, req) => {
         if (CONFIG.turnstileSecretKey) {
           if (!data.turnstileToken) {
             recordAuthFailure(ip);
+            console.warn(`[Auth] captcha token missing ip=${ip}`);
             send(ws, { type: 'auth_error', reason: 'Captcha required' });
             ws.close(4403, 'Captcha required');
             return;
@@ -508,6 +511,7 @@ wss.on('connection', (ws, req) => {
           const turnstileOk = await verifyTurnstileToken(data.turnstileToken, CONFIG.turnstileSecretKey);
           if (!turnstileOk) {
             recordAuthFailure(ip);
+            console.warn(`[Auth] captcha failed ip=${ip}`);
             send(ws, { type: 'auth_error', reason: 'Captcha verification failed' });
             ws.close(4403, 'Captcha failed');
             return;
@@ -523,6 +527,7 @@ wss.on('connection', (ws, req) => {
 
         if (!verifiedAddress) {
           recordAuthFailure(ip);
+          console.warn(`[Auth] signature invalid ip=${ip} method=${data.authMethod ?? 'personal'}`);
           send(ws, { type: 'auth_error', reason: 'Invalid signature' });
           ws.close(4401, 'Auth failed');
           return;
