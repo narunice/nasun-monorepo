@@ -237,11 +237,11 @@ function WhatWeBuild2026Section() {
   return (
     <SectionLayout
       maxWidth="9xl"
-      className="bg-nasun-black overflow-hidden !px-0 !py-0 landscape:h-screen"
+      className="bg-nasun-black overflow-hidden !px-0 !py-0 landscape:h-screen portrait:min-h-[calc(100vh_-_50px)]"
     >
       <div
         ref={containerRef}
-        className="landscape:absolute landscape:inset-0 portrait:relative portrait:w-full portrait:flex portrait:flex-col portrait:h-[calc(100vh-50px)] portrait:justify-center portrait:items-center"
+        className="landscape:absolute landscape:inset-0 portrait:relative portrait:w-full portrait:flex portrait:flex-col portrait:h-[calc(100vh_-_50px)] portrait:justify-center"
       >
         <Slider
           ref={sliderRef}
