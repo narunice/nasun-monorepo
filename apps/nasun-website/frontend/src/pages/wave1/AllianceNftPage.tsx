@@ -88,7 +88,7 @@ const AllianceNftPage = () => {
 
       <SectionLayout
         ref={mintSectionRef}
-        className="!max-w-8xl min-h-[80vh] px-6 sm:px-10 lg:px-12 !pt-12 md:!pt-16 lg:!pt-10"
+        className="!max-w-8xl min-h-[88vh] px-6 sm:px-10 lg:px-12 !pt-12 md:!pt-16 lg:!pt-10"
       >
         <h5 className="text-center text-nasun-white max-w-5xl mx-auto -mt-2 mb-4">
           {isMinted ? (
