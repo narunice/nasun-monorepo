@@ -148,7 +148,7 @@ function PnlHeaderTooltip() {
         </svg>
       </span>
       {visible && (
-        <div className="absolute bottom-full right-0 mb-1 w-60 p-2.5 rounded-lg bg-theme-bg-elevated border border-theme-border shadow-lg text-xs text-theme-text-secondary whitespace-normal z-50 text-left font-normal leading-relaxed">
+        <div className="absolute top-full right-0 mt-1 w-60 p-2.5 rounded-lg bg-theme-bg-secondary border border-theme-border shadow-xl text-xs text-theme-text-secondary whitespace-normal z-50 text-left font-normal leading-relaxed">
           <p className="font-semibold text-theme-text-primary mb-1">Profit / Loss per fill</p>
           <p>Sell: (fill price - avg buy price) x qty</p>
           <p>Buy: (current price - fill price) x qty (unrealized)</p>
