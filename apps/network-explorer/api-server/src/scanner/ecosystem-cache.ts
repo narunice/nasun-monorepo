@@ -30,6 +30,18 @@ export function getActivationsForUser(identityId: string): NftActivation[] {
   return activationsCache.get(identityId) || [];
 }
 
+// Single source of truth for "does this user hold a Genesis Pass NFT?"
+// Backed by the Alchemy daily-snapshot pipeline (nasun-ecosystem-activations
+// DynamoDB), NOT the legacy drop allowlist. See docs/ecosystem-points-system.md.
+export function hasGenesisPass(identityId: string): boolean {
+  const acts = activationsCache.get(identityId);
+  if (!acts) return false;
+  for (const a of acts) {
+    if (a.nftType === 'genesis-pass') return true;
+  }
+  return false;
+}
+
 export function getMultiplierForUser(identityId: string): number {
   return calculateMultiplier(getActivationsForUser(identityId));
 }
