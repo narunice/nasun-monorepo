@@ -105,6 +105,7 @@ export const CRASH_PACKAGE_ID = crashStr('packageId');
 export const CRASH_REGISTRY_ID = crashStr('registry');
 export const CRASH_GAME_ID = crashNum('gameId');
 export const CRASH_MIN_BET = crashBig('minBetNusdc'); // 1_000_000
+export const CRASH_MAX_BET = crashBig('maxBetNusdc'); // 400_000_000 (400 NUSDC)
 export const CRASH_MAX_SINGLE_PAYOUT = crashBig('maxSinglePayout');
 export const CRASH_HOUSE_EDGE_BPS = crashNum('houseEdgeBps');
 
