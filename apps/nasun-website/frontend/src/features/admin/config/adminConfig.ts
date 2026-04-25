@@ -23,7 +23,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/whitelist', label: 'Allowlist Export', icon: '📋' },
   { path: '/admin/airdrop', label: 'Airdrop', icon: '🪂' },
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
-  { path: '/admin/points', label: 'Ecosystem Points', icon: '🎯' },
   { path: '/admin/nft-collections', label: 'Nasun NFT on ETH', icon: '🖼️' },
   { path: '/admin/genesis-pass-drop', label: 'Genesis Pass Drop', icon: '🎫' },
   { path: '/admin/bug-reports', label: 'Bug Reports', icon: '🐛' },
@@ -79,13 +78,6 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     icon: '🖼️',
     link: '/admin/nft-collections',
     linkText: 'Manage NFTs',
-  },
-  {
-    title: 'Ecosystem Points',
-    description: 'Monitor on-chain activity points scanner, view leaderboard rankings, and look up user points by wallet address.',
-    icon: '🎯',
-    link: '/admin/points',
-    linkText: 'View Points',
   },
   {
     title: 'Airdrop',
