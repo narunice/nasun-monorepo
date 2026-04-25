@@ -50,7 +50,6 @@ export const API_RATE_LIMITS: ApiRateLimitConfig[] = [
   { apiId: "gtzq164xhb", name: "MetaMaskAuth", limit: 120 },
   { apiId: "r0thrlqqcf", name: "ZkLoginAuth", limit: 120 },
   { apiId: "r45cfshhkf", name: "SuiAuth", limit: 120 },
-  { apiId: "2b5cjqtnci", name: "Airdrop", limit: 120 },
   { apiId: "9snrweav74", name: "Referral", limit: 120 },
   { apiId: "jrrge0lqtk", name: "NftEvent", limit: 200 },
   { apiId: "hntjvkuyvk", name: "GenesisPass", limit: 600 },
