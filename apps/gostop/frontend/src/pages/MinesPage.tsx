@@ -1,5 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMines } from '../features/mines/useMines'
+import {
+  useCelebrate,
+  tierForMines,
+  useForceTierDebug,
+} from '../components/celebration'
 import {
   computeMultiplierBps,
   maxMultiplierBps,
@@ -39,9 +44,38 @@ export default function MinesPage() {
     clearLastFinish,
   } = useMines()
   const { showToast } = useToast()
+  const celebrate = useCelebrate()
+  useForceTierDebug('Mines')
 
   const [bet, setBet] = useState<number>(DEFAULT_BET_NUSDC)
   const [mineCount, setMineCount] = useState<number>(3)
+
+  // Fire celebration when a cashout finishes. lastFinish.kind === 'cashed_out'
+  // is the only winning outcome; explosions resolve to no celebration.
+  const celebratedFinishRef = useRef<typeof lastFinish>(null)
+  useEffect(() => {
+    if (!lastFinish) {
+      celebratedFinishRef.current = null
+      return
+    }
+    if (celebratedFinishRef.current === lastFinish) return
+    celebratedFinishRef.current = lastFinish
+    if (lastFinish.kind !== 'cashed_out') return
+    if (lastFinish.bet === 0n) return
+    // Compute multiplier from on-chain payout / bet.
+    const multBps = Number((lastFinish.payout * 10_000n) / lastFinish.bet)
+    const multiplier = multBps / 10_000
+    const tier = tierForMines(multiplier)
+    if (tier) {
+      celebrate({
+        variant: 'tiered',
+        tier,
+        payout: lastFinish.payout,
+        multiplier: Number(multiplier.toFixed(2)),
+        gameLabel: 'Mines',
+      })
+    }
+  }, [lastFinish, celebrate])
 
   // Cap bet so max theoretical payout respects MINES_MAX_SINGLE_PAYOUT.
   const maxMul = maxMultiplierBps(mineCount) / 10_000

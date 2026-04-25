@@ -4,6 +4,11 @@ import {
   type NumberMatchResult,
 } from '../features/numbermatch/useNumberMatch'
 import { useToast } from '../components/ui/Toast'
+import {
+  useCelebrate,
+  tierForNumberMatch,
+  useForceTierDebug,
+} from '../components/celebration'
 
 const MIN_NUM = 1
 const MAX_NUM = 5
@@ -25,6 +30,8 @@ function fmt(mist: bigint): string {
 export default function NumberMatchPage() {
   const { isWalletConnected, play, isPlaying, error, clearError } = useNumberMatch()
   const { showToast } = useToast()
+  const celebrate = useCelebrate()
+  useForceTierDebug('Number Match')
   const [picks, setPicks] = useState<number[]>([])
   const [result, setResult] = useState<NumberMatchResult | null>(null)
 
@@ -49,6 +56,15 @@ export default function NumberMatchPage() {
           `Match! Winning number ${r.winningNumber} · +${fmt(r.payout)} NUSDC`,
           'success',
         )
+        const tier = tierForNumberMatch(r.isWin, picks.length)
+        if (tier) {
+          celebrate({
+            variant: 'slam',
+            tier,
+            payout: r.payout,
+            gameLabel: 'Number Match',
+          })
+        }
       } else {
         showToast(
           `No match. Winning number was ${r.winningNumber} · Refund ${fmt(r.payout)} NUSDC`,

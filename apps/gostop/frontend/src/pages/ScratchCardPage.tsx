@@ -1,6 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useScratchCard, type ScratchResult } from '../features/scratchcard/useScratchCard'
 import { useToast } from '../components/ui/Toast'
+import {
+  useCelebrate,
+  tierForScratch,
+  useForceTierDebug,
+} from '../components/celebration'
 
 const CARD_PRICE_NUSDC = 5
 const BUY_OPTIONS = [1, 3, 5, 10]
@@ -25,26 +30,61 @@ function formatNusdc(mist: bigint): string {
 export default function ScratchCardPage() {
   const { isWalletConnected, buy, isBuying, error, clearError } = useScratchCard()
   const { showToast } = useToast()
+  const celebrate = useCelebrate()
+  useForceTierDebug('Scratch')
   const [results, setResults] = useState<ScratchResult[]>([])
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
+  // Lock so we celebrate exactly once per batch, regardless of how the
+  // user reveals (one-by-one or "Reveal all"). Reset on a new purchase.
+  const celebratedBatchRef = useRef<string | null>(null)
 
   async function onBuy(count: number) {
     setResults([])
     setRevealed(new Set())
+    celebratedBatchRef.current = null
     const out = await buy(count)
     if (!out) return
     setResults(out)
-    const totalPrize = out.reduce((s, r) => s + r.prizeAmount, 0n)
-    const wins = out.filter((r) => r.multiplier > 0).length
+    showToast(
+      `${out.length} card${out.length === 1 ? '' : 's'} purchased — tap to reveal`,
+      'info',
+    )
+  }
+
+  // Trigger the celebration / result toast only once all cards are revealed.
+  // This keeps the surprise intact: showing the win before the user has
+  // scratched the card spoils the moment.
+  useEffect(() => {
+    if (results.length === 0) return
+    if (revealed.size !== results.length) return
+
+    const batchKey = results.map((r) => `${r.cardId}:${r.bulkIndex}`).join(',')
+    if (celebratedBatchRef.current === batchKey) return
+    celebratedBatchRef.current = batchKey
+
+    const totalPrize = results.reduce((s, r) => s + r.prizeAmount, 0n)
+    const wins = results.filter((r) => r.multiplier > 0).length
+
     if (totalPrize > 0n) {
       showToast(
-        `${wins}/${out.length} won · +${formatNusdc(totalPrize)} NUSDC`,
+        `${wins}/${results.length} won · +${formatNusdc(totalPrize)} NUSDC`,
         'success',
       )
-    } else if (out.length === 1) {
+      const maxMultiplier = results.reduce((m, r) => Math.max(m, r.multiplier), 0)
+      const tier = tierForScratch(maxMultiplier)
+      if (tier) {
+        celebrate({
+          variant: 'tiered',
+          tier,
+          payout: totalPrize,
+          multiplier: maxMultiplier,
+          gameLabel: 'Scratch',
+        })
+      }
+    } else if (results.length === 1) {
       showToast('No luck this time. Try again!', 'info')
     }
-  }
+  }, [revealed, results, celebrate, showToast])
 
   function revealAll() {
     setRevealed(new Set(results.map((_, i) => i)))
