@@ -28,6 +28,8 @@
     "deploy:pado:bots:staging": "./scripts/deploy-pado-bots.sh --staging",
     "deploy:pado:bots:prod": "./scripts/deploy-pado-bots.sh --production",
     "deploy:baram:prod": "./scripts/deploy-baram-production.sh",
+    "deploy:gostop:staging": "./scripts/deploy-gostop-staging.sh",
+    "deploy:gostop:prod": "./scripts/deploy-gostop-production.sh",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",

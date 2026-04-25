@@ -375,7 +375,7 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WLQWrDMBBFz5K9rAabHMB1F92UlHiXTVGksZnYmTHSqCEI3b2oLsSbwsD/7w2/1vVhr/c7cw+VdVM140WnXoydlLmHr+Q5Chwand45CLgzE6huoA21J7DsXbFr60FUa4xZKSsLXnBAawRuhswIXqfu6cpwg1mFRqfXaCeQ8vpra3zyjPbx1CtnZWeObvBMotMbBvF4iYJMqm+OHkek1loIoWMSz3PZ/6O345yL+TDLgjT+bqIsUbIidqCv4eW7rnW53TUgVj6S4A30ac0flQZEVVkBAAA="
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WNMU/DMBCFf0t3xzStKsEYwsCCqJqNBbn2Jbom9UX2uQhZ/u84GKlZmO697+7d28ndYSu3G/XlK23GasKzjB0rPYqMPqOjwHDYy/hKnsF8kAXR9nblmhNocmahRXXAolFKFZeEBsfYo1YMV2XVAE7G9s6W4Mom4XPbc9BjfpNXf6qMI02ov++4+FwxUTC9I8syvqBnh+fASFZ0+3eHA9pGa/C+zQeOpiX/D16HU1rIm5pntMNvJvAcOAlLBuTFP9zqR1k/yXpz8YiVC5bxCvJU5g8/b4bOWQEAAA=="
    },
    "Metadata": {
     "aws:cdk:path": "GostopSiteStack/CDKMetadata/Default"

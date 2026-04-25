@@ -1,0 +1,242 @@
+#!/bin/bash
+# ==============================================================================
+# gostop 프로덕션 배포 스크립트 (모노레포 버전)
+# ==============================================================================
+# 대상:   gostop.app + www.gostop.app
+# 계정:   nasun-prod (466841130170), us-east-1
+# 방식:   S3 + CloudFront (CDK: GostopSiteStack)
+# 빌드:   pnpm --filter @nasun/gostop build
+# ==============================================================================
+
+set -e
+
+# 공통 유틸리티 로드
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_common.sh"
+
+# --- 설정 변수 ---
+APP_NAME="gostop"
+APP_DIR="$MONOREPO_ROOT/apps/gostop"
+CDK_DIR="$APP_DIR/cdk"
+DIST_DIR="$APP_DIR/frontend/dist"
+
+AWS_PROFILE_NAME="nasun-prod"
+AWS_REGION="us-east-1"
+STACK_NAME="GostopSiteStack"
+EXPECTED_ACCOUNT="466841130170"
+HEALTH_CHECK_URL="https://gostop.app"
+
+TOTAL_STEPS=7
+START_TIME=$(date +%s)
+
+# --- 옵션 파싱 ---
+DRY_RUN=false
+FORCE=false
+SKIP_CDK=false
+
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --force)
+      FORCE=true
+      shift
+      ;;
+    --skip-cdk)
+      SKIP_CDK=true
+      shift
+      ;;
+    --help|-h)
+      echo "사용법: ./scripts/deploy-gostop-production.sh [옵션]"
+      echo ""
+      echo "옵션:"
+      echo "  --dry-run    빌드만 수행하고 업로드/무효화 건너뜀"
+      echo "  --force      확인 프롬프트 건너뛰기"
+      echo "  --skip-cdk   CDK diff/deploy 단계 건너뜀 (프론트엔드만 재배포)"
+      echo "  --help, -h   도움말 표시"
+      exit 0
+      ;;
+  esac
+done
+
+# --- 헤더 ---
+echo ""
+echo -e "${RED}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${RED}║  🚀 GoStop 프로덕션 배포                                   ║${NC}"
+echo -e "${RED}╠════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${RED}║  대상: ${YELLOW}gostop.app${RED}  (nasun-prod / us-east-1)              ${RED}║${NC}"
+echo -e "${RED}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+if [ "$DRY_RUN" = true ]; then
+  log_warning "드라이런 모드: 빌드만 수행하고 업로드/무효화는 건너뜁니다."
+  TOTAL_STEPS=3
+fi
+
+# --- Phase 1: 환경 검증 ---
+log_step 1 $TOTAL_STEPS "환경 검증"
+
+if [ ! -d "$APP_DIR" ]; then
+  log_error "앱 디렉토리를 찾을 수 없습니다: $APP_DIR"
+fi
+log_success "앱 디렉토리 확인됨: $APP_DIR"
+
+if [ ! -d "$CDK_DIR" ]; then
+  log_error "CDK 디렉토리를 찾을 수 없습니다: $CDK_DIR"
+fi
+
+# AWS 프로필 + 계정 매칭 검증
+log_info "AWS 프로필 확인 중: $AWS_PROFILE_NAME"
+CURRENT_ACCOUNT=$(aws sts get-caller-identity --profile "$AWS_PROFILE_NAME" --query Account --output text 2>/dev/null || echo "")
+if [ -z "$CURRENT_ACCOUNT" ]; then
+  log_error "AWS 프로필 '$AWS_PROFILE_NAME'로 인증할 수 없습니다. ~/.aws/credentials 확인."
+fi
+if [ "$CURRENT_ACCOUNT" != "$EXPECTED_ACCOUNT" ]; then
+  log_error "계정 불일치: 예상=$EXPECTED_ACCOUNT, 실제=$CURRENT_ACCOUNT"
+fi
+log_success "AWS 계정 확인됨: $CURRENT_ACCOUNT (nasun-prod)"
+
+# --- 배포 확인 프롬프트 ---
+if [ "$DRY_RUN" = false ] && [ "$FORCE" = false ]; then
+  echo ""
+  echo -e "${YELLOW}╔════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${YELLOW}║  ⚠️  프로덕션 배포 확인                                      ║${NC}"
+  echo -e "${YELLOW}╠════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${YELLOW}║  이 작업은 프로덕션 gostop.app에 영향을 미칩니다.          ║${NC}"
+  echo -e "${YELLOW}╚════════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  read -p "계속하려면 'deploy'를 입력하세요: " confirm
+  if [ "$confirm" != "deploy" ]; then
+    log_warning "배포가 취소되었습니다."
+    exit 0
+  fi
+fi
+
+# --- Phase 2: TypeScript 타입 체크 ---
+log_step 2 $TOTAL_STEPS "TypeScript 타입 체크"
+
+cd "$MONOREPO_ROOT"
+
+log_info "TypeScript 타입 체크 중..."
+if ! pnpm --filter @nasun/gostop exec tsc --noEmit 2>&1; then
+  log_error "TypeScript 타입 체크 실패!"
+fi
+log_success "TypeScript 타입 체크 통과"
+
+# --- Phase 3: 프론트엔드 빌드 ---
+log_step 3 $TOTAL_STEPS "프론트엔드 빌드"
+
+log_info "gostop frontend 빌드 중..."
+if ! pnpm --filter @nasun/gostop build 2>&1; then
+  log_error "빌드 실패!"
+fi
+
+if [ ! -d "$DIST_DIR" ] || [ ! -f "$DIST_DIR/index.html" ]; then
+  log_error "빌드 결과물을 찾을 수 없습니다: $DIST_DIR"
+fi
+
+BUILD_SIZE=$(du -sh "$DIST_DIR" | cut -f1)
+log_success "빌드 완료 (크기: $BUILD_SIZE)"
+
+if [ "$DRY_RUN" = true ]; then
+  echo ""
+  echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║  ✅ 드라이런 완료!                                         ║${NC}"
+  echo -e "${GREEN}╠════════════════════════════════════════════════════════════╣${NC}"
+  echo -e "${GREEN}║  빌드 결과물: ${CYAN}$DIST_DIR${NC}"
+  echo -e "${GREEN}║  소요 시간: ${CYAN}$(get_elapsed_time $START_TIME)${NC}"
+  echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+  exit 0
+fi
+
+# --- Phase 4: CDK 배포 ---
+if [ "$SKIP_CDK" = false ]; then
+  log_step 4 $TOTAL_STEPS "CDK 스택 배포"
+
+  cd "$CDK_DIR"
+
+  log_info "CDK diff 확인 중..."
+  NODE_ENV=production AWS_PROFILE="$AWS_PROFILE_NAME" \
+    npx cdk diff "$STACK_NAME" 2>&1 || true
+
+  log_info "CDK deploy 실행 중..."
+  if ! NODE_ENV=production AWS_PROFILE="$AWS_PROFILE_NAME" \
+      npx cdk deploy "$STACK_NAME" --require-approval broadening 2>&1; then
+    log_error "CDK 배포 실패!"
+  fi
+  log_success "CDK 스택 배포 완료"
+
+  cd "$MONOREPO_ROOT"
+else
+  log_info "CDK 배포 건너뜀 (--skip-cdk)"
+fi
+
+# --- Phase 5: CFN 출력에서 버킷/디스트리뷰션 조회 ---
+log_step 5 $TOTAL_STEPS "배포 대상 조회"
+
+log_info "CFN 스택 출력 조회 중: $STACK_NAME"
+OUTPUTS=$(aws cloudformation describe-stacks \
+  --profile "$AWS_PROFILE_NAME" \
+  --region "$AWS_REGION" \
+  --stack-name "$STACK_NAME" \
+  --query 'Stacks[0].Outputs' \
+  --output json 2>/dev/null)
+
+BUCKET=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="BucketName") | .OutputValue')
+DIST_ID=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="DistributionId") | .OutputValue')
+
+if [ -z "$BUCKET" ] || [ "$BUCKET" = "null" ] || [ -z "$DIST_ID" ] || [ "$DIST_ID" = "null" ]; then
+  log_error "스택 출력에서 BucketName/DistributionId를 찾을 수 없습니다."
+fi
+log_success "버킷: $BUCKET"
+log_success "배포: $DIST_ID"
+
+# --- Phase 6: S3 업로드 + CloudFront 무효화 ---
+log_step 6 $TOTAL_STEPS "S3 업로드 + CloudFront 무효화"
+
+log_info "해시 에셋 업로드 중 (long cache)..."
+aws s3 sync "$DIST_DIR/" "s3://$BUCKET/" \
+  --profile "$AWS_PROFILE_NAME" \
+  --region "$AWS_REGION" \
+  --delete \
+  --exclude "index.html" \
+  --exclude "*.html" \
+  --cache-control "public, max-age=31536000, immutable" > /dev/null
+
+log_info "HTML 업로드 중 (no cache)..."
+aws s3 sync "$DIST_DIR/" "s3://$BUCKET/" \
+  --profile "$AWS_PROFILE_NAME" \
+  --region "$AWS_REGION" \
+  --exclude "*" \
+  --include "*.html" \
+  --cache-control "no-cache, no-store, must-revalidate" > /dev/null
+
+log_success "S3 동기화 완료"
+
+log_info "CloudFront 캐시 무효화 중..."
+INVALIDATION_ID=$(aws cloudfront create-invalidation \
+  --profile "$AWS_PROFILE_NAME" \
+  --distribution-id "$DIST_ID" \
+  --paths "/" "/index.html" "/*.html" \
+  --query 'Invalidation.Id' \
+  --output text 2>/dev/null)
+log_success "무효화 요청: $INVALIDATION_ID"
+
+# --- Phase 7: 헬스 체크 ---
+log_step 7 $TOTAL_STEPS "헬스 체크"
+
+health_check "$HEALTH_CHECK_URL"
+
+# --- 완료 ---
+echo ""
+echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║  🎉 프로덕션 배포 완료!                                    ║${NC}"
+echo -e "${GREEN}╠════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${GREEN}║  URL:       ${CYAN}https://gostop.app${NC}"
+echo -e "${GREEN}║  Bucket:    ${CYAN}$BUCKET${NC}"
+echo -e "${GREEN}║  CF Dist:   ${CYAN}$DIST_ID${NC}"
+echo -e "${GREEN}║  소요 시간: ${CYAN}$(get_elapsed_time $START_TIME)${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
