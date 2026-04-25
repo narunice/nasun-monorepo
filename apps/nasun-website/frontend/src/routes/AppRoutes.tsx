@@ -152,9 +152,9 @@ const AppRoutes = () => {
         <Route path="/team/founders" element={<Navigate to="/about/founders" replace />} />
         <Route path="/team/opportunities" element={<Navigate to="/about/opportunities" replace />} />
         <Route path="/vision/strategy" element={<Navigate to="/about/strategy" replace />} />
-        <Route path="/updates/awards" element={<Navigate to="/about/news" replace />} />
-        <Route path="/grants" element={<Navigate to="/about/news" replace />} />
-        <Route path="/updates/grants" element={<Navigate to="/about/news" replace />} />
+        <Route path="/updates/awards" element={<Navigate to="/about/awards" replace />} />
+        <Route path="/grants" element={<Navigate to="/about/awards" replace />} />
+        <Route path="/updates/grants" element={<Navigate to="/about/awards" replace />} />
         <Route path="/wave1/leaderboard" element={<Navigate to="/community/creators-leaderboard" replace />} />
         <Route path="/wave1/leaderboard-guide" element={<Navigate to="/community/creators-leaderboard-guide" replace />} />
         <Route path="/wave1/alliance-nft" element={<Navigate to="/community/alliance-nft" replace />} />
