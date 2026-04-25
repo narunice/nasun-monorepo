@@ -18,6 +18,9 @@ const PRODUCTION_ORIGINS = [
   'https://pado.finance',
   'https://staging.pado.finance',
   'https://baram.nasun.io',
+  'https://gostop.app',
+  'https://www.gostop.app',
+  'https://staging.gostop.app',
 ];
 
 const DEV_ORIGINS = [
@@ -26,13 +29,15 @@ const DEV_ORIGINS = [
   'http://localhost:5175',
   'http://localhost:5176',
   'http://localhost:5177',
+  'http://localhost:5178',
 ];
 
-// Include DEV_ORIGINS only in non-production environments
-const isDev = process.env.NODE_ENV !== 'production';
+// DEV_ORIGINS are always included so local dev can call the prod salt API.
+// Safe because endpoints still require a verified Google JWT — origin allowlist
+// only governs CORS, not authentication.
 export const ALLOWED_ORIGINS = [
   ...PRODUCTION_ORIGINS,
-  ...(isDev ? DEV_ORIGINS : []),
+  ...DEV_ORIGINS,
 ];
 
 /** Comma-separated string for passing to Lambda environment variables */
