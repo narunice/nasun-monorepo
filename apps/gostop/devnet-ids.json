@@ -140,6 +140,32 @@
     "devnetOnly": "mine_positions field is visible via getObject RPC. Encrypted placement (ECIES + house key) required before mainnet."
   },
 
+  "crash": {
+    "packageId": "0x3af13dc1a85d2527fa8b667747aa46cbeb1743ef8d9719b77db2dda3af59d6bb",
+    "originalPackageId": "0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188",
+    "registry": "0x3fa421e97c705f98c1cd29300bf4b90aab09a8f2a74190ab08f12d7a6a2f8cab",
+    "adminCap": "0x456f17e5a4d2679d8b9d9deb6ef6e3aa5fae6d74be02b055a18c05918a44e3dc",
+    "upgradeCap": "0x280169472593b2b4d00da513d114df1423d036e62c3ad0cc0e53861482d1d499",
+    "gameId": 4,
+    "maxParticipants": 30,
+    "minBetNusdc": "1000000",
+    "maxSinglePayout": "1000000000",
+    "houseEdgeBps": 300,
+    "gameCapInstalled": "0x407da7db9d996e19c762b62d88afe80de6157ae500c797fcb83d938d66f69a88 (consumed into registry.game_cap)",
+    "gameCapInstallTxDigest": "6HpxuUMxgvUmYv5vQ1tr3zYLaaMifayS5eNAUb2GfgMb",
+    "operatorAddress": "0xeff56f9fb9994a6de8e001b90af3ee338834cba5628a9137fbcb02b90cb9e7ca",
+    "operatorAlias": "crash-operator (suiprivkey stored in admin laptop keystore + chat-server .env.production for keeper child env)",
+    "setOperatorTxDigest": "BkGKN3mw9NXBQ1FNy8ovKFYhnGceEJWFYJAXgqqz3afy",
+    "v2UpgradeTxDigest": "(see Published.toml)",
+    "staleRoundFinalizeTxDigest": "7pbDzuVRBV7n6AoHqayJEU6zos8AfDG1mwVPwNQdMpjx",
+    "maxPayoutSetCanaryTxDigest": "673qrJ9eLU5cbNAnZV4y1vEZu33tUXiVuVFt2hSwAerH",
+    "status": "v2 upgraded, operator separated, fork keeper code merged + locally smoke-tested. Awaiting 5/4 prod deploy (Lottery stabilization).",
+    "v2UpgradeNotes": [
+      "v2 upgrade (2026-04-25): UpgradeCap-based upgrade. Struct unchanged. Added: INVERSE_SEARCH_TOP_BPS assert in resolve_round, admin_finalize_stuck_round, update_max_payout_via_bp_admin, unique session_id (round_id || player). Removed: paused field idea (off-chain via CRASH_ENABLED env + PM2 stop sufficient).",
+      "v1 (2026-04-25 earlier): packageId same as originalPackageId. operator was deployer wallet. max_single_payout 10k. stale round 0x896421... at v1. Now superseded but registry/cap retained via upgrade."
+    ]
+  },
+
   "deprecated": {
     "v3": {
       "lotteryPackageId": "0x48e23db58f02f077b46aef98aa0fcfce86aaa65046fdc7e0db302a6fc670ec14",
