@@ -38,7 +38,6 @@ import { GenesisPassStack } from '../lib/genesis-pass-stack';
 import { ReferralStack } from '../lib/referral-stack';
 import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
 import { EcosystemStack } from '../lib/ecosystem-stack';
-import { AirdropStack } from '../lib/airdrop-stack';
 import { BugReportStack } from '../lib/bug-report-stack';
 import { SharedWafStack } from '../lib/shared-waf-stack';
 
@@ -124,15 +123,6 @@ const ecosystemStack = new EcosystemStack(app, 'EcosystemStack', {
   sharedWafArn,
 });
 ecosystemStack.addDependency(sharedWafStack);
-
-// Airdrop stack (April 16th Airdrop registration)
-const airdropStack = new AirdropStack(app, 'AirdropStack', {
-  env: cdkEnv,
-  userProfilesTableName: 'UserProfiles',
-  cognitoIdentityPoolId,
-  sharedWafArn,
-});
-airdropStack.addDependency(sharedWafStack);
 
 // Bug Report stack (user-submitted bug reports with Telegram notification)
 const bugReportStack = new BugReportStack(app, 'BugReportStack', {
