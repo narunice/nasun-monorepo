@@ -54,9 +54,11 @@ module gostop_crash::crash {
     const STATE_BETTING: u8 = 0;
     const STATE_FLYING: u8 = 1;
 
-    // Max theoretical multiplier for place_bet pre-check (multiplier_at_bps(60_000) approx).
-    // 10000 + 6*60000 + 36*60000*60000/20000 = 10000 + 360000 + 6480000 = 6850000
-    const MAX_THEORETICAL_MUL_BPS: u64 = 6_850_000;
+    // Max theoretical multiplier for place_bet pre-check.
+    // Capped at 200x to keep per-bet payout ceiling reasonable vs bankroll size.
+    // Rounds that crash above 200x are extremely rare; cash_out above this aborts
+    // (frontend caps auto-cashout accordingly).
+    const MAX_THEORETICAL_MUL_BPS: u64 = 2_000_000;
 
     // Reason code for refund_bet calls.
     const REFUND_REASON_EMERGENCY: u8 = 1;
