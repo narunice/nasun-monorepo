@@ -181,6 +181,12 @@ export function useMines(): UseMinesResult {
       if (!session || session.status !== 0) return
       if (pendingCells.has(cellIndex)) return
       if (phase === 'creating' || phase === 'cashing_out') return
+      // Serialize all session-mutating ops. Two reveals racing on the same
+      // owned MinesSession object would target the same object version and
+      // the second tx is rejected by validators with a version mismatch.
+      // The ref lock is synchronous, unlike `pendingCells` (state).
+      if (phaseLockRef.current) return
+      phaseLockRef.current = 'reveal'
 
       setPendingCells((prev) => new Set(prev).add(cellIndex))
       setError(null)
@@ -217,6 +223,7 @@ export function useMines(): UseMinesResult {
           next.delete(cellIndex)
           return next
         })
+        phaseLockRef.current = null
       }
     },
     [session, pendingCells, phase, signAndExecute],
