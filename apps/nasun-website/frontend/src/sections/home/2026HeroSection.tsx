@@ -72,14 +72,6 @@ function Hero2026Section({
         <source src={bgVideo} type="video/mp4" />
       </video>
 
-      <div
-        className="absolute inset-x-0 bottom-0 h-1/2 z-10 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.85) 100%, rgba(0,0,0,0.97) 100%)",
-        }}
-      />
-
       {/* Content - always centered in section, pushed into lower half */}
       {isVideoPlaying && (
         <div className="relative z-20 w-full px-5 md:px-6 flex flex-col items-center text-center mt-[28vh] md:mt-[32vh] lg:mt-[36vh]">
@@ -87,20 +79,18 @@ function Hero2026Section({
             <div className="flex flex-col items-center">
               <h1
                 className="text-white
-             !font-changeling font-bold tracking-widest uppercase mb-1 md:mb-2 drop-shadow-lg"
+             !font-changeling font-bold tracking-widest uppercase mb-1 md:mb-2 drop-shadow-[6px_6px_6px_rgba(0,0,0,0.8)] text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
               >
                 NASUN
               </h1>
 
-              <h3 className="text-white/90 font-medium mb-1 md:mb-2 drop-shadow-lg text-base md:text-xl lg:text-2xl">
+              <h3 className="text-white/90 font-medium mb-1 md:mb-2 drop-shadow-[4px_4px_4px_rgba(0,0,0,0.8)] text-xl md:text-2xl lg:text-3xl">
                 Grow the Life You Own
               </h3>
 
-              <p className="text-white max-w-3xl my-3 md:my-5 lg:my-6 font-medium bg-clip-text">
+              <p className=" text-white max-w-3xl my-3 md:my-5 lg:my-6 font-medium bg-clip-text drop-shadow-[4px_4px_4px_rgba(0,0,0,0.8)] text-base/snug md:text-lg/snug xl:text-xl/snug">
                 <span className="block">
-                  Nasun is infrastructure built around you.{" "}
-                  <br className="sm:hidden" />
-                  Not platforms. Not projects. You.
+                  Nasun is infrastructure built around you.
                 </span>
                 <span className="block mt-2">
                   uju (우주, universe) is the OS powered by Nasun
