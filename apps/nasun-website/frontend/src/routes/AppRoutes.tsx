@@ -19,7 +19,6 @@ const NftCollectionManagement = lazy(() => import("../features/admin/pages/NftCo
 const UserManagement = lazy(() => import("../features/admin/pages/UserManagement").then(m => ({ default: m.UserManagement })));
 const DevnetMetrics = lazy(() => import("../features/admin/pages/DevnetMetrics").then(m => ({ default: m.DevnetMetrics })));
 const FeaturedFeedManagement = lazy(() => import("../features/admin/pages/FeaturedFeedManagement").then(m => ({ default: m.FeaturedFeedManagement })));
-const AirdropAdmin = lazy(() => import("../features/admin/pages/AirdropAdmin").then(m => ({ default: m.AirdropAdmin })));
 const AllianceNftAdmin = lazy(() => import("../features/admin/pages/AllianceNftAdmin").then(m => ({ default: m.AllianceNftAdmin })));
 const GenesisPassDropAdmin = lazy(() => import("../features/admin/pages/GenesisPassDropAdmin").then(m => ({ default: m.GenesisPassDropAdmin })));
 const BugReportAdmin = lazy(() => import("../features/admin/pages/BugReportAdmin").then(m => ({ default: m.BugReportAdmin })));
@@ -53,7 +52,6 @@ const adminRoutes = [
   { path: "/admin/nft-collections", title: "NFT Collections", component: NftCollectionManagement },
   { path: "/admin/devnet-metrics", title: "Devnet Metrics", component: DevnetMetrics },
   { path: "/admin/featured-feed", title: "Featured Feed", component: FeaturedFeedManagement },
-  { path: "/admin/airdrop", title: "Airdrop Management", component: AirdropAdmin },
   { path: "/admin/alliance-nft", title: "Alliance NFT", component: AllianceNftAdmin },
   { path: "/admin/genesis-pass-drop", title: "Genesis Pass Drop", component: GenesisPassDropAdmin },
   { path: "/admin/bug-reports", title: "Bug Reports", component: BugReportAdmin },
