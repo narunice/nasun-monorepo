@@ -205,7 +205,7 @@ export function useCrash(): UseCrashResult {
       const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE })
       const enough = coins.data.find((c) => BigInt(c.balance) >= betAmount)
       if (!enough) { setError('Insufficient NUSDC balance'); return false }
-      const tx = buildPlaceBetTx(roundObjectIdRef.current, enough.coinObjectId)
+      const tx = buildPlaceBetTx(roundObjectIdRef.current, enough.coinObjectId, betAmount)
       await execTx(tx)
       setHasBetThisRound(true)
       return true
