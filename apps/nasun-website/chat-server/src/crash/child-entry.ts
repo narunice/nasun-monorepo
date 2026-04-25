@@ -51,7 +51,10 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 process.on('disconnect', shutdown);  // parent 죽을 때
 
-await manager.start();
-console.error('[crash-child] manager.start returned, exiting');
-manager.close();
+const started = await manager.start();
+try { manager.close(); } catch {}  // sqlite WAL flush; safe to ignore if db never opened
+if (!started) {
+  // Boot-blocked: exit code 2 so the parent does not immediately respawn.
+  process.exit(2);
+}
 process.exit(0);
