@@ -32,6 +32,14 @@ export default function CrashPage() {
   const state = crash.roundState?.state ?? 'IDLE'
   const isBetting = state === 'BETTING'
   const isFlying = state === 'FLYING'
+  // Disable bet 3s before betting window closes to avoid in-flight tx hitting FLYING.
+  const bettingEndsAt = crash.roundState?.bettingEndsAt ?? null
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(id)
+  }, [])
+  const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 3000
 
   // Reset bet tracking on a new round.
   useEffect(() => {
@@ -158,10 +166,14 @@ export default function CrashPage() {
             <p className="text-xs text-gray-500">Min: {formatNusdc(CRASH_MIN_BET)} NUSDC</p>
             <button
               onClick={handleBet}
-              disabled={crash.phase === 'placing_bet'}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg disabled:opacity-50"
+              disabled={crash.phase === 'placing_bet' || bettingClosingSoon}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {crash.phase === 'placing_bet' ? 'Placing bet...' : 'Place Bet'}
+              {crash.phase === 'placing_bet'
+                ? 'Placing bet...'
+                : bettingClosingSoon
+                ? 'Betting closing...'
+                : 'Place Bet'}
             </button>
           </div>
         ) : (
