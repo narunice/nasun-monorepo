@@ -14,6 +14,11 @@ import {
 } from '../features/lottery/lottery-client'
 import { useLotteryActions } from '../features/lottery/useLotteryActions'
 import { ROUND_STATUS } from '../lib/gostop-config'
+import {
+  useCelebrate,
+  tierForLottery,
+  useForceTierDebug,
+} from '../components/celebration'
 
 const URGENT_DEADLINE_MS = 24 * 60 * 60 * 1000
 
@@ -78,6 +83,8 @@ export default function LotteryPage() {
   } = useLotteryActions()
   const { tickets, refresh: refreshTickets } = useMyTickets(walletAddress, round?.id)
   const claimSummary = useClaimSummary(walletAddress)
+  const celebrate = useCelebrate()
+  useForceTierDebug('Lottery')
 
   const closeMs = round?.closeTime ?? fallbackCloseAt.getTime()
   // isRoundOpen does not need 1Hz precision; minute-level is fine.
@@ -124,10 +131,25 @@ export default function LotteryPage() {
   }
 
   async function onClaim(roundId: string, ticketId: string) {
+    // Look up tier+payout BEFORE claim so the celebration matches the
+    // ticket the user clicked (claimSummary refetches after success).
+    const claimable = claimSummary.claimable.find(
+      (c) => c.round.id === roundId && c.ticket.id === ticketId,
+    )
     const ok = await claimPrize(roundId, ticketId)
     if (ok) {
       refreshRound()
       refreshTickets()
+      if (claimable) {
+        celebrate({
+          variant: 'tiered',
+          tier: tierForLottery(claimable.tier),
+          payout: claimable.payout,
+          gameLabel: 'Lottery',
+          tierLabelOverride:
+            claimable.tier === 1 ? 'JACKPOT' : claimable.tier === 2 ? '2ND PRIZE' : '3RD PRIZE',
+        })
+      }
     }
   }
 

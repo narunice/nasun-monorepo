@@ -14,6 +14,7 @@
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@tanstack/react-query": "^5.90.12",
+    "canvas-confetti": "^1.9.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@nasun/tailwind-config": "workspace:*",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
