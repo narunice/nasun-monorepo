@@ -5,12 +5,12 @@
  * Calls explorer-api endpoints at VITE_EXPLORER_API_URL.
  */
 
-import type { LeaderboardEntry, UserPoints, ScannerHealth } from "@/types/points";
+import type { UserPoints } from "@/types/points";
 
 const API_BASE = import.meta.env.VITE_EXPLORER_API_URL;
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 
-export class PointsApiError extends Error {
+class PointsApiError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
@@ -18,23 +18,6 @@ export class PointsApiError extends Error {
     super(message);
     this.name = "PointsApiError";
   }
-}
-
-export async function getPointsLeaderboard(
-  limit: number = 50,
-  offset: number = 0,
-): Promise<LeaderboardEntry[]> {
-  if (!API_BASE) return [];
-
-  const res = await fetch(
-    `${API_BASE}/points/leaderboard?limit=${limit}&offset=${offset}`,
-  );
-  if (!res.ok) {
-    throw new PointsApiError(`Leaderboard fetch failed: ${res.status}`, res.status);
-  }
-
-  const json = await res.json();
-  return json.data ?? [];
 }
 
 export async function getPointsUser(
@@ -49,18 +32,6 @@ export async function getPointsUser(
   if (res.status === 404) return null;
   if (!res.ok) {
     throw new PointsApiError(`User points fetch failed: ${res.status}`, res.status);
-  }
-
-  const json = await res.json();
-  return json.data ?? null;
-}
-
-export async function getPointsHealth(): Promise<ScannerHealth | null> {
-  if (!API_BASE) return null;
-
-  const res = await fetch(`${API_BASE}/points/health`);
-  if (!res.ok) {
-    throw new PointsApiError(`Health fetch failed: ${res.status}`, res.status);
   }
 
   const json = await res.json();
