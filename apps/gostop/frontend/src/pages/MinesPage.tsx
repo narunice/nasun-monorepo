@@ -24,10 +24,6 @@ function fmtNum(n: number): string {
   return n.toFixed(2)
 }
 
-function mulFromBps(bps: number): number {
-  return bps / 10_000
-}
-
 export default function MinesPage() {
   const {
     isWalletConnected,
