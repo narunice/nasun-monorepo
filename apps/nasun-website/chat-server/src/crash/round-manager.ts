@@ -118,9 +118,14 @@ export class RoundManager {
     // (admin_finalize_stuck_round + emergency_refund_batch).
     try {
       const reg = await this.client.getObject({ id: this.config.registryId, options: { showContent: true } });
-      const fields = (reg.data?.content as { fields?: { current_round_id?: { fields?: { vec?: unknown[] } } } })?.fields;
-      const currentVec = fields?.current_round_id?.fields?.vec;
-      if (Array.isArray(currentVec) && currentVec.length > 0) {
+      // Sui RPC renders Option<ID> as: null when None, the inner ID string when Some.
+      // Some older shapes used {fields:{vec:[...]}}; cover both.
+      const fields = (reg.data?.content as { fields?: { current_round_id?: unknown } })?.fields;
+      const cri = fields?.current_round_id;
+      const isSome =
+        (typeof cri === 'string' && cri.length > 0) ||
+        (typeof cri === 'object' && cri !== null && Array.isArray((cri as { fields?: { vec?: unknown[] } }).fields?.vec) && ((cri as { fields: { vec: unknown[] } }).fields.vec.length > 0));
+      if (isSome) {
         console.error('[Crash] BOOT BLOCKED: registry.current_round_id is non-empty. A previous round is in flight on-chain.');
         console.error('[Crash] Run admin_finalize_stuck_round + emergency_refund_batch to clear, then restart with CRASH_ENABLED=true.');
         this.running = false;
