@@ -77,6 +77,37 @@ export const MINES_CELL_REVEALED_EVENT_TYPE = devnetIds.mines.cellRevealedEventT
 export const MINES_SESSION_FINISHED_EVENT_TYPE = devnetIds.mines.sessionFinishedEventType;
 export const MINES_GAME_ID = devnetIds.mines.gameId;
 
+// ===== Crash =====
+// `crash` may be absent in dev/staging devnet-ids when the C2 build gate is
+// disabled. Guard reads so the module never throws at import time; Crash
+// code paths are only reachable when the gate is on, where the IDs exist.
+const crashIds = (devnetIds as { crash?: Record<string, unknown> }).crash;
+function crashStr(key: string): string {
+  const v = crashIds?.[key];
+  return typeof v === 'string' ? v : '';
+}
+function crashNum(key: string): number {
+  const v = crashIds?.[key];
+  return typeof v === 'number' ? v : 0;
+}
+function crashBig(key: string): bigint {
+  const v = crashIds?.[key];
+  if (typeof v === 'string' || typeof v === 'number') {
+    try {
+      return BigInt(v);
+    } catch {
+      return 0n;
+    }
+  }
+  return 0n;
+}
+export const CRASH_PACKAGE_ID = crashStr('packageId');
+export const CRASH_REGISTRY_ID = crashStr('registry');
+export const CRASH_GAME_ID = crashNum('gameId');
+export const CRASH_MIN_BET = crashBig('minBetNusdc'); // 1_000_000
+export const CRASH_MAX_SINGLE_PAYOUT = crashBig('maxSinglePayout');
+export const CRASH_HOUSE_EDGE_BPS = crashNum('houseEdgeBps');
+
 export const SUI_CLOCK_ID = '0x6';
 export const SUI_RANDOM_ID = '0x8';
 
