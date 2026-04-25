@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCrash } from '../features/crash/useCrash'
 import { formatMultiplier } from '../features/crash/crash-math'
-import { CRASH_MIN_BET } from '../lib/gostop-config'
+import { CRASH_MIN_BET, CRASH_MAX_BET } from '../lib/gostop-config'
 import { WalletConnect } from '@nasun/wallet-ui'
 import {
   useCelebrate,
@@ -74,6 +74,10 @@ export default function CrashPage() {
     myBetRef.current = amount
     crash.placeBet(amount)
   }
+
+  const betFloat = parseFloat(betInput)
+  const betAmountBig = Number.isFinite(betFloat) ? BigInt(Math.round(betFloat * 1_000_000)) : 0n
+  const overMax = betAmountBig > CRASH_MAX_BET
 
   function handleCashOut() { crash.cashOut() }
 
@@ -163,16 +167,20 @@ export default function CrashPage() {
               />
               <span className="text-gray-400 text-sm">NUSDC</span>
             </div>
-            <p className="text-xs text-gray-500">Min: {formatNusdc(CRASH_MIN_BET)} NUSDC</p>
+            <p className="text-xs text-gray-500">
+              Min: {formatNusdc(CRASH_MIN_BET)} NUSDC · Max: {formatNusdc(CRASH_MAX_BET)} NUSDC
+            </p>
             <button
               onClick={handleBet}
-              disabled={crash.phase === 'placing_bet' || bettingClosingSoon}
+              disabled={crash.phase === 'placing_bet' || bettingClosingSoon || overMax}
               className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {crash.phase === 'placing_bet'
                 ? 'Placing bet...'
                 : bettingClosingSoon
                 ? 'Betting closing...'
+                : overMax
+                ? `Max ${formatNusdc(CRASH_MAX_BET)} NUSDC`
                 : 'Place Bet'}
             </button>
           </div>
