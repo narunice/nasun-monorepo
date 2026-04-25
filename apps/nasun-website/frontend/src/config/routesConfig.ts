@@ -345,6 +345,11 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.News,
         },
         {
+          name: "navigation.awards",
+          path: "/about/awards",
+          element: Pages.Grants,
+        },
+        {
           name: "navigation.roadmap",
           path: "/about/roadmap",
           element: Pages.Roadmap,
