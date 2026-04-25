@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { WalletConnect } from '@nasun/wallet-ui'
+import { HeaderSoundToggle } from './components/HeaderSoundToggle'
 import LotteryPage from './pages/LotteryPage'
 import ScratchCardPage from './pages/ScratchCardPage'
 import NumberMatchPage from './pages/NumberMatchPage'
 import MinesPage from './pages/MinesPage'
 import HomePage from './pages/HomePage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
+
+// Build-time gate (C2). dev/staging dist에서는 CrashPage 코드 자체가 tree-shake로 제거됨.
+const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true'
+const CrashPage = ENABLE_CRASH ? lazy(() => import('./pages/CrashPage')) : null
 
 interface NavEntry {
   to: string
@@ -14,11 +20,35 @@ interface NavEntry {
 
 const NAV_ITEMS: NavEntry[] = [
   { to: '/', label: 'Home' },
+  ...(ENABLE_CRASH ? [{ to: '/crash', label: 'Crash' }] : []),
   { to: '/lottery', label: 'Lottery' },
   { to: '/scratch', label: 'Scratch' },
   { to: '/numbermatch', label: 'Match' },
   { to: '/mines', label: 'Mines' },
 ]
+
+// Runtime second-layer (A-W3): build-time gate가 정상 동작하면 dev/staging dist에 코드 자체 없음.
+// runtime guard는 prod dist를 다른 hostname에서 재서빙하는 우회 시나리오 한정 방어.
+function CrashRouteElement() {
+  const isProdHost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'gostop.app' || window.location.hostname === 'www.gostop.app')
+  if (!isProdHost) return <CrashDisabledPage />
+  if (!CrashPage) return <CrashDisabledPage />
+  return (
+    <Suspense fallback={<div className="panel p-10 text-center text-neutral-300">Loading...</div>}>
+      <CrashPage />
+    </Suspense>
+  )
+}
+
+function CrashDisabledPage() {
+  return (
+    <div className="panel p-10 text-center max-w-md mx-auto">
+      <h1 className="font-display text-3xl text-gold mb-3">Crash is production-only</h1>
+      <p className="text-base text-neutral-300">Visit gostop.app to play.</p>
+    </div>
+  )
+}
 
 export default function App() {
   return (
@@ -31,6 +61,8 @@ export default function App() {
           <Route path="/scratch" element={<ScratchCardPage />} />
           <Route path="/numbermatch" element={<NumberMatchPage />} />
           <Route path="/mines" element={<MinesPage />} />
+          {ENABLE_CRASH && <Route path="/crash" element={<CrashRouteElement />} />}
+          <Route path="/callback" element={<AuthCallbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -77,6 +109,7 @@ function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <HeaderSoundToggle />
           <div className="shrink-0">
             <WalletConnect />
           </div>
