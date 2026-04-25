@@ -84,7 +84,7 @@ function Hero2026Section({
                 NASUN
               </h1>
 
-              <h3 className="text-white/90 font-medium mb-1 md:mb-2 drop-shadow-[4px_4px_4px_rgba(0,0,0,0.8)] text-xl md:text-2xl lg:text-3xl">
+              <h3 className="text-white font-medium mb-1 md:mb-2 drop-shadow-[4px_4px_4px_rgba(0,0,0,0.8)] text-xl md:text-2xl lg:text-3xl">
                 Grow the Life You Own
               </h3>
 
