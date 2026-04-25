@@ -69,9 +69,13 @@ async function batchGetWithRetry(keys: Array<{ postId: string }>): Promise<Recor
       break;
     }
     remaining = unproc as Array<{ postId: string }>;
+    console.warn(`[creator-posts-admin][batchGet] UnprocessedKeys attempt=${attempt + 1} remaining=${remaining.length}`);
     if (attempt < MAX_RETRIES) {
       await new Promise(r => setTimeout(r, 100 * (attempt + 1)));
     }
+  }
+  if (remaining.length > 0) {
+    console.error(`[creator-posts-admin][batchGet] UnprocessedKeys not resolved after ${MAX_RETRIES} retries remaining=${remaining.length}`);
   }
   return collected;
 }
@@ -87,6 +91,7 @@ export async function handleList(
   event: APIGatewayProxyEvent,
   cors: Record<string, string>,
 ): Promise<APIGatewayProxyResult> {
+  const t0 = Date.now();
   const qs = event.queryStringParameters || {};
   const statusParam = (qs.status || 'PENDING') as Status;
   if (!VALID_STATUSES.includes(statusParam)) {
@@ -100,31 +105,45 @@ export async function handleList(
       : ADMIN_LIMIT_DEFAULT;
   const exclusiveStartKey = decodeCursor(qs.cursor);
 
+  console.log(`[creator-posts-admin][list] start status=${statusParam} limit=${limit} cursor=${qs.cursor ? 'yes' : 'none'}`);
+
   // Step 1: Query GSI (KEYS_ONLY) for postIds in requested status.
-  const q = await ddb.send(new QueryCommand({
-    TableName: CREATOR_POSTS_TABLE,
-    IndexName: 'status-createdAt-index',
-    KeyConditionExpression: '#status = :status',
-    ExpressionAttributeNames: { '#status': 'status' },
-    ExpressionAttributeValues: { ':status': statusParam },
-    ScanIndexForward: false,
-    Limit: limit,
-    ExclusiveStartKey: exclusiveStartKey,
-  }));
+  const t1 = Date.now();
+  let q;
+  try {
+    q = await ddb.send(new QueryCommand({
+      TableName: CREATOR_POSTS_TABLE,
+      IndexName: 'status-createdAt-index',
+      KeyConditionExpression: '#status = :status',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: { ':status': statusParam },
+      ScanIndexForward: false,
+      Limit: limit,
+      ExclusiveStartKey: exclusiveStartKey,
+    }));
+  } catch (err) {
+    console.error(`[creator-posts-admin][list] GSI query failed ms=${Date.now() - t1}`, err);
+    throw err;
+  }
+  console.log(`[creator-posts-admin][list] step1_gsi ms=${Date.now() - t1} keys=${q.Items?.length ?? 0} hasMore=${!!q.LastEvaluatedKey}`);
 
   const keys = (q.Items || []).map(it => ({ postId: it.postId as string }));
   if (keys.length === 0) {
+    console.log(`[creator-posts-admin][list] done_empty total_ms=${Date.now() - t0}`);
     return respond(200, { items: [], filter: statusParam, nextCursor: encodeCursor(q.LastEvaluatedKey) }, cors);
   }
 
   // Step 2: BatchGet full rows
+  const t2 = Date.now();
   const fullItems = await batchGetWithRetry(keys);
+  console.log(`[creator-posts-admin][list] step2_batchget ms=${Date.now() - t2} requested=${keys.length} returned=${fullItems.length}`);
 
   const orderedIds = (q.Items || []).map(it => it.postId as string);
   const map = new Map<string, Record<string, unknown>>();
   for (const it of fullItems) map.set(it.postId as string, it);
   const items = orderedIds.map(id => map.get(id)).filter(Boolean);
 
+  console.log(`[creator-posts-admin][list] done total_ms=${Date.now() - t0} items=${items.length}`);
   return respond(200, {
     items,
     filter: statusParam,
