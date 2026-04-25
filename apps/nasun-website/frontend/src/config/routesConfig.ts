@@ -51,7 +51,6 @@ export const Pages = {
   // Wave 1 Campaign Pages
   AllianceNft: lazyWithRetry(() => import("../pages/wave1/AllianceNftPage")),
   GenesisPass: lazyWithRetry(() => import("../pages/dev/DevGenesisPassPage")),
-  NftDrop: lazyWithRetry(() => import("../pages/wave1/NftDropPage")),
   GenesisPassDrop: lazyWithRetry(
     () => import("../pages/wave1/GenesisPassDropPage"),
   ),
@@ -480,11 +479,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         //   name: "navigation.genesisPass",
         //   path: "/wave1/genesis-pass",
         //   element: Pages.GenesisPass,
-        // },
-        // {
-        //   name: "Genesis Pass Drop",
-        //   path: "/wave1/genesis-pass-drop",
-        //   element: Pages.NftDrop,
         // },
         // {
         //   name: "navigation.battalion",

@@ -42,7 +42,6 @@ const DevGenesisNftPage = lazy(() => import("../pages/dev/DevGenesisNftPage"));
 const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
 const StatsPage = lazy(() => import("../pages/dev/StatsPage"));
-const NftDropPage = lazy(() => import("../pages/wave1/NftDropPage"));
 
 // Admin route definitions
 const adminRoutes = [
