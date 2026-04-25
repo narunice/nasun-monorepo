@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom'
 
+const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true'
+
 const UPCOMING = [
-  { name: 'Crash', tagline: 'Go or stop. One decision, one multiplier.', eta: 'Phase 2' },
+  ...(ENABLE_CRASH
+    ? []
+    : [{ name: 'Crash', tagline: 'Go or stop. One decision, one multiplier.', eta: 'Phase 2' }]),
   { name: 'Plinko', tagline: 'Drop it and watch gold bounce.', eta: 'Phase 3' },
   { name: 'Roulette', tagline: 'The European wheel, on-chain.', eta: 'Phase 4' },
   { name: 'Wheel', tagline: 'A nightly spin, a daily chance.', eta: 'Phase 5' },
@@ -56,6 +60,16 @@ function Live() {
         </span>
       </div>
       <div className="grid md:grid-cols-2 gap-4">
+        {ENABLE_CRASH && (
+          <GameCard
+            title="Crash"
+            tagline="Go or stop. One decision, one multiplier."
+            cta="Fly"
+            to="/crash"
+            accent="gold"
+            badge="Live"
+          />
+        )}
         <GameCard
           title="Weekly Lottery"
           tagline="5 of 25. One ticket, seven days."
@@ -177,7 +191,16 @@ function GameCard({
         <h3 className="font-display text-3xl text-gold mb-2">{title}</h3>
         <p className="text-base text-neutral-200 italic">{tagline}</p>
         {badge && (
-          <span className="inline-block mt-3 px-2 py-0.5 rounded-full border border-amber-400/40 bg-amber-950/30 text-xs uppercase tracking-[0.15em] text-amber-300/90">
+          <span
+            className={`inline-flex items-center gap-1.5 mt-3 px-2 py-0.5 rounded-full text-xs uppercase tracking-[0.15em] border ${
+              badge === 'Live'
+                ? 'border-emerald-400/50 bg-emerald-950/40 text-emerald-300'
+                : 'border-amber-400/40 bg-amber-950/30 text-amber-300/90'
+            }`}
+          >
+            {badge === 'Live' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
+            )}
             {badge}
           </span>
         )}
