@@ -21,7 +21,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { path: '/admin/featured-feed', label: 'Featured Feed', icon: '⭐' },
   { path: '/admin/alliance-nft', label: 'Alliance NFT', icon: '🛡️' },
   { path: '/admin/whitelist', label: 'Allowlist Export', icon: '📋' },
-  { path: '/admin/airdrop', label: 'Airdrop', icon: '🪂' },
   { path: '/admin/governance', label: 'Governance', icon: '🗳️' },
   { path: '/admin/nft-collections', label: 'Nasun NFT on ETH', icon: '🖼️' },
   { path: '/admin/genesis-pass-drop', label: 'Genesis Pass Drop', icon: '🎫' },
@@ -78,13 +77,6 @@ export const ADMIN_DASHBOARD_FEATURES: AdminFeature[] = [
     icon: '🖼️',
     link: '/admin/nft-collections',
     linkText: 'Manage NFTs',
-  },
-  {
-    title: 'Airdrop',
-    description: 'Manage April 16th Airdrop registrations. View applicants, approve or revert status.',
-    icon: '🪂',
-    link: '/admin/airdrop',
-    linkText: 'Manage Airdrop',
   },
   {
     title: 'Alliance NFT',

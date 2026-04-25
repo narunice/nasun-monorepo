@@ -1,9 +1,6 @@
 import { Link } from "react-router-dom";
-import { useAuth } from "@/features/auth";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
-import { Spinner } from "@/components/ui";
-import { useAirdropRegistration } from "@/sections/myAccount/hooks/useAirdropRegistration";
 
 import kaeboImg from "@/assets/images/Princess-Kaebo-Fixed.webp";
 import josenImg from "@/assets/images/josen.webp";
@@ -32,11 +29,6 @@ const AIRDROP_BOTTOM_FADE =
   "linear-gradient(to top, #0a0a0a 0%, #0a0a0a 10%, rgba(10,10,10,0.95) 25%, rgba(10,10,10,0.7) 40%, transparent 60%)";
 
 export default function TriptychSection() {
-  const { user } = useAuth();
-  const { status, isLoading } = useAirdropRegistration(user?.cognitoToken);
-
-  const isRegistered = status === "approved" || status === "pending";
-
   return (
     <div className="flex flex-col md:flex-row w-full h-full">
       {/* ===== LEFT: Alliance ===== */}
@@ -162,41 +154,8 @@ export default function TriptychSection() {
                 <p className="text-nasun-white font-semibold text-base md:text-lg">
                   200,000 Points
                 </p>
-                <p>Registration Closes April 8th</p>
-                <p>Airdrop April 16th</p>
-              </div>
-              <div className="mt-2 mb-6 md:mt-6 md:mb-0">
-                {!user ? (
-                  <ButtonV3
-                    variant="nw2"
-                    size="lg"
-                    onClick={() => {
-                      localStorage.setItem("auth_return_to", "/my-account");
-                      window.dispatchEvent(new CustomEvent("nasun:open-login"));
-                    }}
-                  >
-                    Sign in to register
-                  </ButtonV3>
-                ) : isLoading ? (
-                  <Spinner />
-                ) : (
-                  <ButtonV3 variant="nw2" size="lg" asChild>
-                    <Link to="/my-account">
-                      {isRegistered ? "Registered" : "Not Registered"}
-                      <svg
-                        className="w-4 h-4 ml-1.5 inline-block"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.22 14.78a.75.75 0 010-1.06l7.22-7.22H8.75a.75.75 0 010-1.5h5.5a.75.75 0 01.75.75v5.5a.75.75 0 01-1.5 0V7.06l-7.22 7.22a.75.75 0 01-1.06 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </Link>
-                  </ButtonV3>
-                )}
+                <p>Distributed April 16th</p>
+                <p>Event Concluded</p>
               </div>
             </div>
           </FadeInUp>
