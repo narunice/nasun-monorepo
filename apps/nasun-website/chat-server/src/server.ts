@@ -350,6 +350,11 @@ async function handleHttpRequest(
     return;
   }
 
+  // Crash API
+  if (crashHttpHandler && url.pathname.startsWith('/api/crash/')) {
+    if (crashHttpHandler(req, res, corsHeaders)) return;
+  }
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);
     res.end();
@@ -1199,6 +1204,31 @@ if (!CONFIG.turnstileSecretKey) {
   console.warn('[turnstile] TURNSTILE_SECRET_KEY not set — WebSocket bot protection is DISABLED');
 }
 
+// ===== Crash Game Module =====
+
+let crashHttpHandler: ((req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, corsHeaders: Record<string, string>) => boolean) | null = null;
+let crashStop: (() => Promise<void>) | null = null;
+
+if (process.env.CRASH_ENABLED === 'true') {
+  (async () => {
+    try {
+      const { startCrashModule, handleCrashHttpRequest, stopCrashModule } = await import('./crash/index.js');
+      const logger = {
+        info: (obj: object | string, msg?: string) => console.log(msg ?? obj, typeof obj !== 'string' ? obj : ''),
+        error: (obj: object | string, msg?: string) => console.error(msg ?? obj, typeof obj !== 'string' ? obj : ''),
+        warn: (obj: object | string, msg?: string) => console.warn(msg ?? obj, typeof obj !== 'string' ? obj : ''),
+      };
+      crashHttpHandler = handleCrashHttpRequest;
+      crashStop = stopCrashModule;
+      await startCrashModule({ wsServer: wss, logger });
+    } catch (err) {
+      console.error('[Crash] Module failed to boot, chat continues without Crash:', err);
+    }
+  })();
+} else {
+  console.log('[Crash] Disabled (CRASH_ENABLED not set to true)');
+}
+
 httpServer.listen(CONFIG.port, () => {
   console.log(`Nasun Chat Server listening on port ${CONFIG.port}`);
   console.log(`Allowed origins: ${CONFIG.allowedOrigins.join(', ')}`);
@@ -1215,7 +1245,7 @@ const memDiagTimer = setInterval(() => {
 
 // ===== Graceful Shutdown =====
 
-function shutdown(): void {
+async function shutdown(): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log('Shutting down...');
@@ -1234,6 +1264,11 @@ function shutdown(): void {
     stopIndexer();
     stopAggregator();
     stopNarrator();
+  }
+
+  // 1b. Crash keeper child SIGTERM + exit 대기 (sqlite WAL flush 보장, max 16s)
+  if (crashStop) {
+    try { await crashStop(); } catch (err) { console.error('[Crash] stop error:', err); }
   }
 
   // 2. Terminate all WebSocket connections immediately.
