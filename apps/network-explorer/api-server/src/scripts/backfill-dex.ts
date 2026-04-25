@@ -19,6 +19,7 @@ import {
   GENESIS_PASS_MULTIPLIER,
 } from '../config/points.js';
 import { fetchWithOffload } from '../scanner/fetch-with-offload.js';
+import { fetchGenesisPassHolders } from './_load-gp-holders.js';
 
 // --- Config ---
 
@@ -120,7 +121,6 @@ async function loadWallets(): Promise<{
 
   const data = await fetchWithOffload<{
     wallets: Record<string, string>;
-    genesisPass: string[];
   }>({
     url: WALLET_MAPPINGS_URL,
     apiKey: WALLET_MAPPINGS_KEY,
@@ -137,9 +137,9 @@ async function loadWallets(): Promise<{
     walletMap.set(addr.toLowerCase(), id);
   }
 
-  const genesisPassSet = new Set(
-    data.genesisPass.filter((v: unknown) => typeof v === 'string'),
-  );
+  // Genesis Pass holders come from the Alchemy on-chain snapshot, not the
+  // legacy drop allowlist. See docs/ecosystem-points-system.md.
+  const genesisPassSet = await fetchGenesisPassHolders();
 
   console.log(`Loaded ${walletMap.size} wallets, ${genesisPassSet.size} genesis pass holders`);
   return { walletMap, genesisPassSet };

@@ -17,7 +17,6 @@
  */
 
 import { sql, pointsDb } from '../db.js';
-import { GENESIS_PASS_MULTIPLIER } from '../config/points.js';
 import type { PointsInsert } from './referral-bonus.js';
 
 // All known package IDs (hex, no 0x prefix) for faucet contracts.
@@ -38,15 +37,12 @@ let lastFaucetSeq = 0;
 /**
  * Scan for faucet claims and insert activity points.
  *
- * @param maxSeq - Upper bound tx_sequence_number (from event scanner)
  * @param registeredWallets - Map<walletAddress, identityId>
- * @param genesisPassHolders - Set<identityId>
  * @param dailyCategorySeen - Shared daily cap Set from main scanner
  * @returns Number of points rows inserted
  */
 export async function scanFaucetClaims(
   registeredWallets: Map<string, string>,
-  genesisPassHolders: Set<string>,
   dailyCategorySeen: Set<string>,
 ): Promise<number> {
   if (!pointsDb || registeredWallets.size === 0) return 0;

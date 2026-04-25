@@ -26,6 +26,8 @@ import {
 } from '../config/points.js';
 import {
   maybeRefreshMatview,
+  hasGenesisPass,
+  getActivationsCacheSize,
 } from './ecosystem-cache.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 
@@ -138,13 +140,11 @@ interface RpcQueryResult {
  *
  * @param targetDate - YYYY-MM-DD to reconcile
  * @param walletMap - walletAddress (lowercase) -> identityId
- * @param genesisPassSet - identityIds with Genesis Pass
  * @returns number of gaps filled
  */
 export async function reconcileFromRpc(
   targetDate: string,
   walletMap: Map<string, string>,
-  genesisPassSet: Set<string>,
 ): Promise<number> {
   if (!pointsDb || walletMap.size === 0) return 0;
 
@@ -230,7 +230,12 @@ export async function reconcileFromRpc(
           if (existing.has(capKey)) continue;
 
           const isScoreCat = SCORE_CATEGORIES.has(eq.category);
-          const genesisMult = isScoreCat && genesisPassSet.has(identityId)
+          // See live scanner: refuse to bake an unreliable multiplier when the
+          // cache is empty. Next reconcile run will retry once it loads.
+          if (isScoreCat && getActivationsCacheSize() === 0) {
+            continue;
+          }
+          const genesisMult = isScoreCat && hasGenesisPass(identityId)
             ? GENESIS_PASS_MULTIPLIER : 1.0;
           const finalPoints = isScoreCat
             ? (basePoints * genesisMult).toFixed(2)

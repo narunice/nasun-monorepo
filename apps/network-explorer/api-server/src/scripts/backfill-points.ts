@@ -15,6 +15,7 @@ import {
   SCORE_CATEGORIES,
 } from '../config/points.js';
 import { fetchWithOffload } from '../scanner/fetch-with-offload.js';
+import { fetchGenesisPassHolders } from './_load-gp-holders.js';
 
 // --- Config ---
 
@@ -296,17 +297,15 @@ async function fetchWalletMappings(): Promise<{
   genesisPassSet: Set<string>;
 }> {
   const walletMap = new Map<string, string>();
-  const genesisPassSet = new Set<string>();
 
   if (!WALLET_MAPPINGS_URL) {
     console.warn('WALLET_MAPPINGS_URL not set, all wallets will be skipped');
-    return { walletMap, genesisPassSet };
+    return { walletMap, genesisPassSet: new Set() };
   }
 
   // Use fetchWithOffload to handle S3 presigned URL + gzip (same as live scanner)
   const data = await fetchWithOffload<{
     wallets: Record<string, string>;
-    genesisPass: string[];
   }>({
     url: WALLET_MAPPINGS_URL,
     apiKey: WALLET_MAPPINGS_KEY,
@@ -321,11 +320,10 @@ async function fetchWalletMappings(): Promise<{
       }
     }
   }
-  if (Array.isArray(data.genesisPass)) {
-    for (const id of data.genesisPass) {
-      if (typeof id === 'string') genesisPassSet.add(id);
-    }
-  }
+
+  // Genesis Pass holders come from the on-chain Alchemy snapshot, not the
+  // legacy drop allowlist; fetch them from /internal/ecosystem-activations.
+  const genesisPassSet = await fetchGenesisPassHolders();
 
   return { walletMap, genesisPassSet };
 }

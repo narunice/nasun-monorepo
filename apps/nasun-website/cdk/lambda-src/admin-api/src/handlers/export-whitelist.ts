@@ -534,29 +534,11 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         lastKey = result.LastEvaluatedKey;
       } while (lastKey);
 
-      // Scan Genesis Pass allowlist for active holders
-      const genesisPass: string[] = [];
-      let gpLastKey: Record<string, any> | undefined;
-      do {
-        const result = await dynamoClient.send(
-          new ScanCommand({
-            TableName: GENESIS_PASS_TABLE,
-            FilterExpression: "#s = :active",
-            ExpressionAttributeNames: { "#s": "status" },
-            ExpressionAttributeValues: { ":active": { S: "ACTIVE" } },
-            ProjectionExpression: "identityId",
-            ...(gpLastKey && { ExclusiveStartKey: gpLastKey }),
-          })
-        );
-        for (const item of result.Items || []) {
-          const id = item.identityId?.S;
-          if (id) genesisPass.push(id);
-        }
-        gpLastKey = result.LastEvaluatedKey;
-      } while (gpLastKey);
-
-      const payload = { wallets, genesisPass };
-      console.log(`[internal] Wallet mappings: ${Object.keys(wallets).length} wallets, ${genesisPass.length} genesis pass holders`);
+      // Genesis Pass holder identification has moved to /internal/ecosystem-activations
+      // (Alchemy on-chain snapshot). The legacy drop allowlist is no longer used for
+      // multiplier eligibility; see docs/ecosystem-points-system.md.
+      const payload = { wallets };
+      console.log(`[internal] Wallet mappings: ${Object.keys(wallets).length} wallets`);
 
       // Offload to S3 to avoid Lambda 6MB response limit
       const url = await uploadAndPresign("internal/wallet-mappings.json.gz", payload);

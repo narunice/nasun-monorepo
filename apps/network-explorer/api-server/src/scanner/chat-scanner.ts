@@ -82,13 +82,11 @@ async function fetchAllChatParticipants(dateStr: string): Promise<Set<string>> {
  * Scan for chat participation and insert activity points.
  *
  * @param registeredWallets - Map<walletAddress (lowercase 0x), identityId>
- * @param _genesisPassHolders - Unused for base categories, kept for signature consistency
  * @param dailyCategorySeen - Shared daily cap Set from main scanner
  * @returns Number of points rows inserted
  */
 export async function scanChatParticipation(
   registeredWallets: Map<string, string>,
-  _genesisPassHolders: Set<string>,
   dailyCategorySeen: Set<string>,
 ): Promise<number> {
   if (

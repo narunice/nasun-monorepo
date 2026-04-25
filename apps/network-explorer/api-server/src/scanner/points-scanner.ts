@@ -21,6 +21,8 @@ import {
   maybeRefreshMatview,
   getMatviewStatus,
   getActivationsCacheMap,
+  getActivationsCacheSize,
+  hasGenesisPass,
 } from './ecosystem-cache.js';
 import { getIdentityToWalletMap } from './referral-bonus.js';
 import { runDailyNftChecks } from './daily-nft-check.js';
@@ -39,8 +41,6 @@ import { saveCache, loadCache } from './cache-persist.js';
 
 // Wallet cache: walletAddress (lowercase, with 0x) -> identityId
 let registeredWallets = new Map<string, string>();
-// Genesis Pass holders: identityId set
-let genesisPassHolders = new Set<string>();
 let walletCacheLastRefresh = 0;
 
 let isScanning = false;
@@ -284,7 +284,7 @@ async function scanLoop(myGen: number): Promise<void> {
     // Faucet detection: scan tx_calls_fun for faucet claims (no Move events)
     try {
       const faucetCount = await scanFaucetClaims(
-        registeredWallets, genesisPassHolders, dailyCategorySeen,
+        registeredWallets, dailyCategorySeen,
       );
       totalProcessed += faucetCount;
     } catch (err) {
@@ -294,7 +294,7 @@ async function scanLoop(myGen: number): Promise<void> {
     // Chat participation detection: query chat server REST APIs (off-chain)
     try {
       const chatCount = await scanChatParticipation(
-        registeredWallets, genesisPassHolders, dailyCategorySeen,
+        registeredWallets, dailyCategorySeen,
       );
       totalProcessed += chatCount;
     } catch (err) {
@@ -392,11 +392,11 @@ async function scanLoop(myGen: number): Promise<void> {
       const yesterday = new Date();
       yesterday.setUTCDate(yesterday.getUTCDate() - 1);
       const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      // Capture snapshots of caches at launch time (maps are mutated by reference, clone to freeze)
+      // Capture snapshot of wallet map at launch time (mutated by reference, clone to freeze).
+      // GP holder lookup goes through hasGenesisPass() which reads activationsCache directly.
       const walletSnapshot = new Map(registeredWallets);
-      const genesisSnapshot = new Set(genesisPassHolders);
       isReconciling = true;
-      reconcileFromRpc(yesterdayStr, walletSnapshot, genesisSnapshot)
+      reconcileFromRpc(yesterdayStr, walletSnapshot)
         .then((gapsFilled) => {
           if (gapsFilled > 0) {
             console.log(`[Reconcile] ${yesterdayStr}: ${gapsFilled} gaps filled from RPC`);
@@ -649,7 +649,17 @@ async function processBatch(
     // Score categories: apply genesis multiplier. Base categories: always 1.
     const isScoreCat = SCORE_CATEGORIES.has(mapping.category);
     const volumeTier = 1.0;
-    const genesisMult = isScoreCat && genesisPassHolders.has(identityId)
+    // Forward-only safety: if the activations cache is empty (cold start or
+    // misconfiguration), skip score-category writes rather than baking in an
+    // incorrect 1.0 multiplier for what may be a real GP holder. rpc-reconcile
+    // will fill the gap on the next daily run when the cache is loaded.
+    if (isScoreCat && getActivationsCacheSize() === 0) {
+      console.warn(
+        `[Points] Skipping score-category write for ${mapping.category}: activations cache empty`,
+      );
+      continue;
+    }
+    const genesisMult = isScoreCat && hasGenesisPass(identityId)
       ? GENESIS_PASS_MULTIPLIER
       : 1.0;
     const finalPoints = isScoreCat
@@ -707,7 +717,6 @@ async function maybeRefreshWalletCache(): Promise<void> {
   try {
     const data = await fetchWithOffload<{
       wallets: Record<string, string>;
-      genesisPass: string[];
     }>({
       url: walletMappingsUrl,
       apiKey: walletMappingsKey,
@@ -717,7 +726,7 @@ async function maybeRefreshWalletCache(): Promise<void> {
     if (!data) {
       // Lambda failed on cold start: fall back to disk cache
       if (registeredWallets.size === 0) {
-        const fallback = loadCache<{ wallets: Record<string, string>; genesisPass: string[] }>('wallet-mappings');
+        const fallback = loadCache<{ wallets: Record<string, string> }>('wallet-mappings');
         if (fallback) {
           applyWalletData(fallback);
           console.warn(`[Points] Loaded wallet cache from disk fallback: ${registeredWallets.size} wallets`);
@@ -732,12 +741,12 @@ async function maybeRefreshWalletCache(): Promise<void> {
 
     walletCacheLastRefresh = now;
     console.log(
-      `[Points] Wallet cache refreshed: ${registeredWallets.size} wallets, ${genesisPassHolders.size} genesis pass holders`,
+      `[Points] Wallet cache refreshed: ${registeredWallets.size} wallets`,
     );
   } catch (err) {
     console.error('[Points] Wallet cache refresh error:', err);
     if (registeredWallets.size === 0) {
-      const fallback = loadCache<{ wallets: Record<string, string>; genesisPass: string[] }>('wallet-mappings');
+      const fallback = loadCache<{ wallets: Record<string, string> }>('wallet-mappings');
       if (fallback) {
         applyWalletData(fallback);
         console.warn(`[Points] Loaded wallet cache from disk fallback: ${registeredWallets.size} wallets`);
@@ -747,7 +756,7 @@ async function maybeRefreshWalletCache(): Promise<void> {
   }
 }
 
-function applyWalletData(data: { wallets: Record<string, string>; genesisPass: string[] }): void {
+function applyWalletData(data: { wallets: Record<string, string> }): void {
   if (data.wallets && typeof data.wallets === 'object' && !Array.isArray(data.wallets)) {
     const newMap = new Map<string, string>();
     for (const [addr, id] of Object.entries(data.wallets)) {
@@ -756,10 +765,6 @@ function applyWalletData(data: { wallets: Record<string, string>; genesisPass: s
       }
     }
     registeredWallets = newMap;
-  }
-
-  if (Array.isArray(data.genesisPass)) {
-    genesisPassHolders = new Set(data.genesisPass.filter((v: unknown) => typeof v === 'string'));
   }
 }
 
@@ -777,7 +782,6 @@ export async function getScannerHealth(): Promise<{
   processedAt: string | null;
   txCount: number;
   registeredWallets: number;
-  genesisPassHolders: number;
   ecosystem: { lastRefresh: string | null; stale: boolean; activationsCacheSize: number };
 }> {
   if (!pointsDb) {
@@ -788,7 +792,6 @@ export async function getScannerHealth(): Promise<{
       processedAt: null,
       txCount: 0,
       registeredWallets: 0,
-      genesisPassHolders: 0,
       ecosystem: { lastRefresh: null, stale: true, activationsCacheSize: 0 },
     };
   }
@@ -806,7 +809,6 @@ export async function getScannerHealth(): Promise<{
     processedAt: state?.processed_at?.toISOString() ?? null,
     txCount: Number(state?.tx_count ?? 0),
     registeredWallets: registeredWallets.size,
-    genesisPassHolders: genesisPassHolders.size,
     ecosystem: getMatviewStatus(),
   };
 }
