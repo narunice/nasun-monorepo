@@ -12,6 +12,11 @@ export interface GostopSiteStackProps extends cdk.StackProps {
   domainName: string;
   /** Optional subdomains (e.g. ["www"]). The apex is always wired up. */
   subdomains?: string[];
+  /**
+   * Base64-encoded "user:password" tokens for basic auth via CloudFront Function.
+   * Omit to disable basic auth.
+   */
+  basicAuthTokens?: string[];
 }
 
 /**
@@ -37,7 +42,7 @@ export class GostopSiteStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: GostopSiteStackProps) {
     super(scope, id, props);
 
-    const { domainName, subdomains = ['www'] } = props;
+    const { domainName, subdomains = ['www'], basicAuthTokens } = props;
 
     // ---- Hosted zone ----
     // Created here so apex + subdomains share one zone. Porkbun NS records
@@ -68,6 +73,39 @@ export class GostopSiteStack extends cdk.Stack {
     });
     this.bucket = siteBucket;
 
+    // ---- Basic auth CloudFront Function (viewer request) ----
+    // Stores allowed tokens as base64("user:password") strings. CloudFront
+    // Functions run at the edge before the cache, so the 401 is never cached.
+    let basicAuthFunction: cloudfront.Function | undefined;
+    if (basicAuthTokens && basicAuthTokens.length > 0) {
+      const tokenList = basicAuthTokens.map((t) => `"${t}"`).join(', ');
+      basicAuthFunction = new cloudfront.Function(this, 'BasicAuthFunction', {
+        functionName: `${id}-basic-auth`,
+        code: cloudfront.FunctionCode.fromInline(`
+var TOKENS = [${tokenList}];
+function handler(event) {
+  var request = event.request;
+  var headers = request.headers;
+  var auth = headers.authorization ? headers.authorization.value : '';
+  if (auth.indexOf('Basic ') === 0) {
+    var token = auth.slice(6);
+    for (var i = 0; i < TOKENS.length; i++) {
+      if (token === TOKENS[i]) { return request; }
+    }
+  }
+  return {
+    statusCode: 401,
+    statusDescription: 'Unauthorized',
+    headers: {
+      'www-authenticate': { value: 'Basic realm="Restricted"' }
+    }
+  };
+}
+        `.trim()),
+        runtime: cloudfront.FunctionRuntime.JS_2_0,
+      });
+    }
+
     // ---- CloudFront distribution ----
     // OAC (Origin Access Control) is the modern replacement for OAI.
     // SPA fallback: 403/404 -> /index.html so client-side routing works.
@@ -85,6 +123,14 @@ export class GostopSiteStack extends cdk.Stack {
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         compress: true,
+        functionAssociations: basicAuthFunction
+          ? [
+              {
+                function: basicAuthFunction,
+                eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+              },
+            ]
+          : [],
       },
       errorResponses: [
         // SPA fallback for client-routed paths

@@ -27,11 +27,18 @@ const isProd = nodeEnv === 'production';
 
 const app = new cdk.App();
 
+// Basic auth tokens: base64("user:password") — keep plaintext mapping out of git.
+const BASIC_AUTH_TOKENS = [
+  'YWRtaW46bmFzdW4yMDI2',
+  'R2VuU29sOkdlblNvbDIwMjU=',
+];
+
 new GostopSiteStack(app, isProd ? 'GostopSiteStack' : 'GostopSiteStagingStack', {
   env,
   domainName: isProd ? 'gostop.app' : 'staging.gostop.app',
   // Prod also serves www.gostop.app. Staging is apex-only (no www.staging).
   subdomains: isProd ? ['www'] : [],
+  basicAuthTokens: BASIC_AUTH_TOKENS,
   description: isProd
     ? 'gostop.app static SPA hosting (S3 + CloudFront + Route53)'
     : 'staging.gostop.app static SPA hosting (S3 + CloudFront + Route53)',
