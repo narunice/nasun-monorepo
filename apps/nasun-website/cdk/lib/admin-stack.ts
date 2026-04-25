@@ -20,7 +20,6 @@ interface AdminStackProps extends cdk.StackProps {
   referralCodesTableName?: string;
   referralsTableName?: string;
   activationsTableName?: string;
-  airdropTableName?: string;
 }
 
 export class AdminStack extends cdk.Stack {
@@ -41,7 +40,6 @@ export class AdminStack extends cdk.Stack {
     const referralCodesTableName = props?.referralCodesTableName || "nasun-referral-codes";
     const referralsTableName = props?.referralsTableName || "nasun-referrals";
     const activationsTableName = props?.activationsTableName || "nasun-ecosystem-activations";
-    const airdropTableName = props?.airdropTableName || "nasun-airdrop-registrations";
 
     // Create NFT Collections DynamoDB table
     const nftCollectionsTable = new dynamodb.Table(this, "NftCollectionsTable", {
@@ -112,13 +110,6 @@ export class AdminStack extends cdk.Stack {
       this,
       "ActivationsTableRef",
       activationsTableName
-    );
-
-    // Reference Airdrop Registrations table (from AirdropStack)
-    const airdropTable = dynamodb.Table.fromTableName(
-      this,
-      "AirdropTableRef",
-      airdropTableName
     );
 
     const allowedOrigins = ALLOWED_ORIGINS_ENV;
@@ -423,41 +414,6 @@ export class AdminStack extends cdk.Stack {
     genesisPassEntryIdResource.addMethod("PUT", exportIntegration, authorizedMethodOptions);
     // DELETE /genesis-pass/entries/{walletAddress} - Admin: delete entry
     genesisPassEntryIdResource.addMethod("DELETE", exportIntegration, authorizedMethodOptions);
-
-    // Airdrop Admin Lambda (separate from export to avoid resource policy size limit)
-    const airdropAdminFunction = new NodejsFunction(this, "AirdropAdminFunction", {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "handler",
-      entry: path.join(__dirname, "../lambda-src/admin-api/src/handlers/airdrop-admin.ts"),
-      timeout: cdk.Duration.seconds(15),
-      memorySize: 256,
-      depsLockFilePath: path.join(__dirname, "../pnpm-lock.yaml"),
-      environment: {
-        AIRDROP_TABLE: airdropTableName,
-        USER_PROFILES_TABLE: userProfilesTableName,
-        ALLOWED_ORIGINS: allowedOrigins,
-        COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
-      },
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        target: "node22",
-        format: OutputFormat.ESM,
-        mainFields: ["module", "main"],
-      },
-    });
-
-    airdropTable.grantReadWriteData(airdropAdminFunction);
-    userProfilesTable.grantReadData(airdropAdminFunction);
-
-    const airdropIntegration = new apigateway.LambdaIntegration(airdropAdminFunction);
-
-    // Airdrop Admin API Routes (admin only)
-    const airdropResource = this.api.root.addResource("airdrop");
-    const airdropRegistrationsResource = airdropResource.addResource("registrations");
-    airdropRegistrationsResource.addMethod("GET", airdropIntegration, authorizedMethodOptions);
-    const airdropRegistrationIdResource = airdropRegistrationsResource.addResource("{identityId}");
-    airdropRegistrationIdResource.addMethod("PUT", airdropIntegration, authorizedMethodOptions);
 
     // Internal API Routes (API key auth in Lambda, no Cognito authorizer)
     const internalResource = this.api.root.addResource("internal");
