@@ -132,6 +132,14 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
     logger.warn(`[crash-child] exited code=${code} signal=${signal}`);
     child = null;
 
+    // Exit code 2 = boot-blocked (stale round in registry). Don't count as crash.
+    // Retry every 60s until the stuck round is cleared manually.
+    if (code === 2) {
+      logger.warn('[Crash] Boot-blocked — retrying in 60s (clear stuck round to unblock).');
+      restartTimer = setTimeout(() => spawnChild(logger), 60_000);
+      return;
+    }
+
     const now = Date.now();
     exitHistory.push(now);
     while (exitHistory.length > 0 && now - exitHistory[0] > BACKOFF_WINDOW_MS) {

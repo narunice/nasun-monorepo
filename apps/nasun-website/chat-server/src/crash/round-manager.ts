@@ -110,7 +110,8 @@ export class RoundManager {
     return { ...this.roundState, recentRounds: [...this.roundState.recentRounds] };
   }
 
-  async start(): Promise<void> {
+  /** Returns true if keeper started normally, false if boot-blocked (stale round in registry). */
+  async start(): Promise<boolean> {
     this.running = true;
 
     // Boot recovery: if registry has a current_round_id, the previous chat-server crashed
@@ -119,25 +120,27 @@ export class RoundManager {
     try {
       const reg = await this.client.getObject({ id: this.config.registryId, options: { showContent: true } });
       // Sui RPC renders Option<ID> as: null when None, the inner ID string when Some.
-      // Some older shapes used {fields:{vec:[...]}}; cover both.
+      // Also handle {vec:[...]} shape from older Sui SDK versions.
       const fields = (reg.data?.content as { fields?: { current_round_id?: unknown } })?.fields;
       const cri = fields?.current_round_id;
       const isSome =
         (typeof cri === 'string' && cri.length > 0) ||
-        (typeof cri === 'object' && cri !== null && Array.isArray((cri as { fields?: { vec?: unknown[] } }).fields?.vec) && ((cri as { fields: { vec: unknown[] } }).fields.vec.length > 0));
+        (Array.isArray((cri as { vec?: unknown[] })?.vec) && ((cri as { vec: unknown[] }).vec.length > 0)) ||
+        (Array.isArray((cri as { fields?: { vec?: unknown[] } })?.fields?.vec) && ((cri as { fields: { vec: unknown[] } }).fields.vec.length > 0));
       if (isSome) {
         console.error('[Crash] BOOT BLOCKED: registry.current_round_id is non-empty. A previous round is in flight on-chain.');
-        console.error('[Crash] Run admin_finalize_stuck_round + emergency_refund_batch to clear, then restart with CRASH_ENABLED=true.');
+        console.error('[Crash] Run admin_finalize_stuck_round / refund_stale_betting to clear, then restart.');
         this.running = false;
-        return;
+        return false;
       }
     } catch (err) {
       console.error('[Crash] Boot recovery check failed:', err);
       this.running = false;
-      return;
+      return false;
     }
 
     await this.runLoop();
+    return true;
   }
 
   stop(): void {
@@ -195,6 +198,16 @@ export class RoundManager {
       try {
         await this.runRound();
       } catch (err) {
+        const msg = String(err);
+        // ECurrentRoundExists (abort code 13 in crash module): registry already has a round in flight.
+        // Match both the module name and abort code to avoid false positives from other contracts.
+        // Retrying would just spam the same error. Halt so the parent can respawn after
+        // the stale round is manually cleared (admin_finalize_stuck_round / refund_stale_betting).
+        if (msg.includes('crash::start_round') && msg.includes(', 13)')) {
+          console.error('[Crash] HALTED: ECurrentRoundExists — registry occupied. Clear stuck round then restart.');
+          this.running = false;
+          return;
+        }
         console.error('[Crash] Round error:', err);
         this.roundState.state = 'IDLE';
         this.roundState.roundId = null;
