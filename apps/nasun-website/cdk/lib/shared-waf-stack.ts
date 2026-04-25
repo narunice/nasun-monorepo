@@ -76,15 +76,35 @@ export class SharedWafStack extends cdk.Stack {
           rateBasedStatement: {
             limit: cfg.limit,
             aggregateKeyType: "IP",
-            // Scope-down: only count requests targeting this API's hostname.
-            // API Gateway default hostname is `{apiId}.execute-api.{region}.amazonaws.com`,
-            // so the Host header starts with the api-id.
+            // Scope-down: only count requests targeting this API's hostname,
+            // and exclude CORS preflight (OPTIONS). Preflights are unauthenticated
+            // browser-issued probes; counting them inflates the rate against
+            // legitimate users (e.g. admin pages that fire many parallel queries),
+            // which surfaced as blocked OPTIONS on /admin/creator-posts.
             scopeDownStatement: {
-              byteMatchStatement: {
-                fieldToMatch: { singleHeader: { name: "host" } },
-                positionalConstraint: "STARTS_WITH",
-                searchString: `${cfg.apiId}.execute-api`,
-                textTransformations: [{ priority: 0, type: "LOWERCASE" }],
+              andStatement: {
+                statements: [
+                  {
+                    byteMatchStatement: {
+                      fieldToMatch: { singleHeader: { name: "host" } },
+                      positionalConstraint: "STARTS_WITH",
+                      searchString: `${cfg.apiId}.execute-api`,
+                      textTransformations: [{ priority: 0, type: "LOWERCASE" }],
+                    },
+                  },
+                  {
+                    notStatement: {
+                      statement: {
+                        byteMatchStatement: {
+                          fieldToMatch: { method: {} },
+                          positionalConstraint: "EXACTLY",
+                          searchString: "OPTIONS",
+                          textTransformations: [{ priority: 0, type: "NONE" }],
+                        },
+                      },
+                    },
+                  },
+                ],
               },
             },
           },
