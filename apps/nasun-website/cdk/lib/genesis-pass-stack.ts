@@ -24,12 +24,6 @@ import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
 interface GenesisPassStackProps extends cdk.StackProps {
   userProfilesTableName: string;
   cognitoIdentityPoolId: string;
-  /** Deployed NasunGenesisPass contract address (e.g., "0x...") */
-  contractAddress?: string;
-  /** Target chain ID ("1" for mainnet, "11155111" for Sepolia) */
-  chainId?: string;
-  /** Secrets Manager secret name for the EIP-712 signer key */
-  signerSecretName?: string;
   /** Shared WAF WebACL ARN to attach this API's stage to */
   sharedWafArn: string;
 }
@@ -42,9 +36,6 @@ export class GenesisPassStack extends cdk.Stack {
     super(scope, id, props);
 
     const { userProfilesTableName, cognitoIdentityPoolId } = props;
-    const contractAddress = props.contractAddress || process.env.GENESIS_PASS_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
-    const chainId = props.chainId || process.env.GENESIS_PASS_CHAIN_ID || "11155111";
-    const signerSecretName = props.signerSecretName || process.env.GENESIS_PASS_SIGNER_SECRET || "nasun/genesis-pass/signer";
 
     // ========== 1. DynamoDB Table ==========
 
@@ -160,34 +151,7 @@ export class GenesisPassStack extends cdk.Stack {
       description: "Current minting stage (0=PAUSED, 1=FREE_MINT, 2=GTD, 3=FCFS, 4=PUBLIC)",
     });
 
-    // 3.2 Sync Stage Lambda (JWT-authorized, admin only)
-    const syncStageLogGroup = new logs.LogGroup(this, "SyncStageLogGroup", {
-      logGroupName: "/aws/lambda/nasun-genesis-pass-sync-stage",
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const syncStageLambda = new NodejsFunction(this, "SyncStageLambda", {
-      functionName: "nasun-genesis-pass-sync-stage",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, "sync-stage", "src", "index.ts"),
-      handler: "handler",
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(10),
-      memorySize: 256,
-      logGroup: syncStageLogGroup,
-      environment: {
-        STAGE_PARAM_NAME: stageParameter.parameterName,
-        ADMIN_IDENTITY_IDS: process.env.ADMIN_IDENTITY_IDS || "",
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        NODE_OPTIONS: "--enable-source-maps",
-      },
-    });
-
-    stageParameter.grantWrite(syncStageLambda);
-
-    // 3.3 Check Lambda (public, no auth)
+    // 3.2 Check Lambda (public, no auth)
     const checkLambda = new NodejsFunction(this, "CheckLambda", {
       functionName: "nasun-genesis-pass-check",
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -252,71 +216,6 @@ export class GenesisPassStack extends cdk.Stack {
       identitySource: "method.request.header.Authorization",
     });
 
-    // 3.4 Mint Signature Lambda (JWT authorized, EIP-712 signing)
-
-    const mintSignatureLogGroup = new logs.LogGroup(this, "MintSignatureLogGroup", {
-      logGroupName: "/aws/lambda/nasun-genesis-pass-mint-signature",
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const mintSignatureLambda = new NodejsFunction(this, "MintSignatureLambda", {
-      functionName: "nasun-genesis-pass-mint-signature",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, "mint-signature", "src", "index.ts"),
-      handler: "handler",
-      depsLockFilePath,
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        externalModules: [
-          "@aws-sdk/client-dynamodb",
-          "@aws-sdk/lib-dynamodb",
-          "@aws-sdk/util-dynamodb",
-          "@aws-sdk/client-secrets-manager",
-          "@aws-sdk/client-ssm",
-        ],
-      },
-      timeout: cdk.Duration.seconds(15),
-      memorySize: 256,
-      logGroup: mintSignatureLogGroup,
-      environment: {
-        ALLOWLIST_TABLE_NAME: this.allowlistTable.tableName,
-        SIGNER_SECRET_NAME: signerSecretName,
-        CONTRACT_ADDRESS: contractAddress,
-        CHAIN_ID: chainId,
-        STAGE_PARAM_NAME: stageParameter.parameterName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        ADMIN_WALLETS: process.env.GENESIS_PASS_ADMIN_WALLETS || "",
-        ADMIN_MAX_QUANTITY: process.env.GENESIS_PASS_ADMIN_MAX_QUANTITY || "16",
-        NODE_OPTIONS: "--enable-source-maps",
-      },
-    });
-
-    // Provisioned Concurrency for Genesis Pass drop (eliminates cold starts).
-    // Only applied in production — dev drops are infrequent and PC is costly.
-    const mintSigVersion = mintSignatureLambda.currentVersion;
-    const isProd = process.env.NODE_ENV === "production";
-    const mintSigAlias = new lambda.Alias(this, "MintSignatureLiveAlias", {
-      aliasName: "live",
-      version: mintSigVersion,
-      ...(isProd ? { provisionedConcurrentExecutions: 50 } : {}),
-    });
-
-    this.allowlistTable.grantReadWriteData(mintSignatureLambda);
-    stageParameter.grantRead(mintSignatureLambda);
-
-    // Secrets Manager access (scoped to signer secret)
-    mintSignatureLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["secretsmanager:GetSecretValue"],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${signerSecretName}-*`,
-        ],
-      })
-    );
-
     // ========== 4. API Gateway ==========
 
     this.api = new apigateway.RestApi(this, "GenesisPassApi", {
@@ -360,27 +259,11 @@ export class GenesisPassStack extends cdk.Stack {
     registerResource.addMethod("POST", registerIntegration, authOptions);
     registerResource.addMethod("DELETE", registerIntegration, authOptions);
 
-    // POST /genesis-pass/mint-signature (public, wallet address in body)
-    const mintSignatureResource = genesisPassResource.addResource("mint-signature");
-    mintSignatureResource.addMethod(
-      "POST",
-      new apigateway.LambdaIntegration(mintSigAlias, { proxy: true })
-    );
-
     // GET /genesis-pass/check?walletAddress=0x...
     const checkResource = genesisPassResource.addResource("check");
     checkResource.addMethod(
       "GET",
       new apigateway.LambdaIntegration(checkLambda, { proxy: true })
-    );
-
-    // POST /genesis-pass/admin/sync-stage (JWT required, admin only)
-    const adminResource = genesisPassResource.addResource("admin");
-    const syncStageResource = adminResource.addResource("sync-stage");
-    syncStageResource.addMethod(
-      "POST",
-      new apigateway.LambdaIntegration(syncStageLambda, { proxy: true }),
-      authOptions,
     );
 
     // ========== 5. CloudFormation Outputs ==========
@@ -405,9 +288,5 @@ export class GenesisPassStack extends cdk.Stack {
       description: "GET /genesis-pass/check?walletAddress=0x...",
     });
 
-    new cdk.CfnOutput(this, "MintSignatureEndpoint", {
-      value: `${this.api.url}genesis-pass/mint-signature`,
-      description: "POST /genesis-pass/mint-signature (JWT required)",
-    });
   }
 }

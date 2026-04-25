@@ -158,6 +158,11 @@ export async function getMyGenesisPassStatus(cognitoToken: string): Promise<Gene
  * Server verifies the wallet against the allowlist and returns a signature
  * that authorizes the connected wallet to mint.
  * Includes a single retry with jittered delay on 429.
+ *
+ * NOTE: The backend Lambda (nasun-genesis-pass-mint-signature) has been
+ * decommissioned. This function will return 404 at runtime. It is kept only
+ * because useNftDrop.ts still imports it; remove both when cleaning up the
+ * NftDropPage.
  */
 export async function requestMintSignature(walletAddress: string): Promise<MintSignatureResponse> {
   if (!API_BASE) throw new GenesisPassApiError("Genesis Pass API is not configured");
@@ -233,35 +238,4 @@ export async function checkGenesisPass(walletAddress: string): Promise<GenesisPa
   }
 
   return data as GenesisPassCheckResponse;
-}
-
-/**
- * Sync on-chain stage to SSM parameter (admin only).
- * Called after a successful setStage transaction.
- */
-export async function syncStageToSSM(cognitoToken: string, stage: number): Promise<{ success: boolean }> {
-  if (!API_BASE) throw new GenesisPassApiError("Genesis Pass API is not configured");
-
-  const url = `${API_BASE}/genesis-pass/admin/sync-stage`;
-
-  const response = await fetchWithTimeout(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cognitoToken}`,
-    },
-    body: JSON.stringify({ stage }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new GenesisPassApiError(
-      data.message || "Failed to sync stage",
-      response.status,
-      data.error,
-    );
-  }
-
-  return data;
 }
