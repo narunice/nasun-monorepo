@@ -3,6 +3,7 @@
 //
 // IPC primitives only (types.ts 주석 참조). BigInt/Date/Buffer 미사용.
 import { RoundManager } from './round-manager.js';
+import { CHILD_BACKSTOP_MS, CHILD_HARD_STOP_LEAD_MS } from './constants.js';
 
 const {
   CRASH_OPERATOR_PRIVKEY,
@@ -40,12 +41,21 @@ let shutting = false;
 async function shutdown() {
   if (shutting) return;
   shutting = true;
-  manager.stop();
-  // chat-server 17s backstop 정합. round-manager의 진행 중 라운드는 try/catch로 IDLE 복귀.
+  // Drain: in-flight round runs to resolve, then runLoop exits via the draining guard.
+  manager.stop({ drain: true });
+
+  // Two-phase backstop. At t = CHILD_BACKSTOP_MS - CHILD_HARD_STOP_LEAD_MS we
+  // flip to hard-stop so any pending sleep returns and the WAL flush has the
+  // remaining lead time before exit. At t = CHILD_BACKSTOP_MS we exit.
+  const HARD_STOP_AT = Math.max(0, CHILD_BACKSTOP_MS - CHILD_HARD_STOP_LEAD_MS);
+  setTimeout(() => {
+    console.warn('[Crash] Drain budget exhausted; hard-stopping');
+    manager.stop();
+  }, HARD_STOP_AT);
   setTimeout(() => {
     manager.close();    // sqlite WAL flush
     process.exit(0);
-  }, 15000);
+  }, CHILD_BACKSTOP_MS);
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

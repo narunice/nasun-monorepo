@@ -1266,10 +1266,13 @@ async function shutdown(): Promise<void> {
     stopNarrator();
   }
 
-  // 1b. Crash keeper child SIGTERM + exit 대기 (sqlite WAL flush 보장, max 16s)
-  if (crashStop) {
-    try { await crashStop(); } catch (err) { console.error('[Crash] stop error:', err); }
-  }
+  // 1b. Crash keeper child SIGTERM (drain). Launched in parallel with parent's
+  //     own cleanup; child has its own sqlite (CRASH_SALT_DB_PATH) independent
+  //     from chat.db / leaderboard.db, so DB closes do not race.
+  //     Drain budget can be up to ~95s (PARENT_GRACE_MS); awaited at the end.
+  const crashStopPromise = crashStop
+    ? crashStop().catch((err) => console.error('[Crash] stop error:', err))
+    : Promise.resolve();
 
   // 2. Terminate all WebSocket connections immediately.
   for (const [ws] of authenticatedClients) {
@@ -1285,20 +1288,22 @@ async function shutdown(): Promise<void> {
   //    (No load balancer health-check drain needed for direct-EC2 topology.)
   httpServer.closeAllConnections();
 
-  // 4. Close DBs: all write paths are now unreachable.
+  // 4. Close parent DBs: all write paths are now unreachable.
   //    better-sqlite3 is synchronous; any in-flight DB write in an async callback
   //    will throw "Store not initialized" — caught by each caller's try/catch.
   if (leaderboardEnabled) closeLeaderboardStore();
   closeStore();
 
-  // 5. Drain HTTP server state, then exit.
-  httpServer.close(() => {
+  // 5. Wait for both HTTP server drain and crash child exit before final exit.
+  const httpClosePromise = new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  Promise.all([httpClosePromise, crashStopPromise]).then(() => {
     console.log('[Chat] Shutdown complete');
     process.exit(0);
   });
 
-  // Backstop: exit before PM2 sends SIGKILL (ecosystem kill_timeout: 20000ms → exit at 17000ms).
-  setTimeout(() => process.exit(0), 17000).unref();
+  // Backstop: exit before PM2 sends SIGKILL. Must exceed crash drain budget.
+  // ecosystem kill_timeout: 105_000ms → backstop at 100_000ms.
+  setTimeout(() => process.exit(0), 100_000).unref();
 }
 
 process.on('SIGTERM', shutdown);
