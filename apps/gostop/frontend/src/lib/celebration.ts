@@ -60,11 +60,12 @@ async function fireSmall(colors: string[]) {
   const confetti = await loadConfetti()
   if (!confetti) return
   await confetti({
-    particleCount: scale(50),
-    spread: 60,
+    particleCount: scale(120),
+    spread: 90,
     origin: { x: 0.5, y: 0.6 },
     colors,
     zIndex: Z_INDEX,
+    scalar: 1.1,
     disableForReducedMotion: true,
   })
 }
@@ -74,10 +75,11 @@ async function fireMedium(colors: string[]) {
   if (!confetti) return
 
   confetti({
-    particleCount: scale(60),
-    spread: 70,
+    particleCount: scale(140),
+    spread: 100,
     origin: { x: 0.5, y: 0.5 },
     colors,
+    scalar: 1.15,
     zIndex: Z_INDEX,
     disableForReducedMotion: true,
   })
@@ -85,21 +87,25 @@ async function fireMedium(colors: string[]) {
   await new Promise((r) => setTimeout(r, 300))
 
   confetti({
-    particleCount: scale(40),
+    particleCount: scale(90),
     angle: 60,
-    spread: 55,
-    origin: { x: 0, y: 0.65 },
+    spread: 75,
+    origin: { x: 0, y: 0.7 },
     colors,
+    scalar: 1.15,
+    startVelocity: 55,
     zIndex: Z_INDEX,
     disableForReducedMotion: true,
   })
 
   await confetti({
-    particleCount: scale(40),
+    particleCount: scale(90),
     angle: 120,
-    spread: 55,
-    origin: { x: 1, y: 0.65 },
+    spread: 75,
+    origin: { x: 1, y: 0.7 },
     colors,
+    scalar: 1.15,
+    startVelocity: 55,
     zIndex: Z_INDEX,
     disableForReducedMotion: true,
   })
@@ -110,45 +116,65 @@ async function fireLarge(colors: string[]) {
   if (!confetti) return
 
   confetti({
-    particleCount: scale(100),
-    spread: 80,
+    particleCount: scale(140),
+    spread: 110,
     origin: { x: 0.5, y: 0.5 },
     colors,
+    scalar: 1.3,
+    startVelocity: 55,
     zIndex: Z_INDEX,
     disableForReducedMotion: true,
   })
 
-  await new Promise((r) => setTimeout(r, 300))
+  await new Promise((r) => setTimeout(r, 500))
   confetti({
-    particleCount: scale(60),
+    particleCount: scale(110),
     angle: 60,
-    spread: 50,
-    origin: { x: 0, y: 0.7 },
+    spread: 70,
+    origin: { x: 0, y: 0.75 },
     colors,
+    scalar: 1.25,
+    startVelocity: 60,
     zIndex: Z_INDEX,
     disableForReducedMotion: true,
   })
 
-  await new Promise((r) => setTimeout(r, 300))
+  await new Promise((r) => setTimeout(r, 500))
   confetti({
-    particleCount: scale(60),
+    particleCount: scale(110),
     angle: 120,
-    spread: 50,
-    origin: { x: 1, y: 0.7 },
+    spread: 70,
+    origin: { x: 1, y: 0.75 },
     colors,
+    scalar: 1.25,
+    startVelocity: 60,
     zIndex: Z_INDEX,
     disableForReducedMotion: true,
   })
 
-  await new Promise((r) => setTimeout(r, 400))
-  await confetti({
-    particleCount: scale(40),
-    spread: 160,
+  await new Promise((r) => setTimeout(r, 650))
+  confetti({
+    particleCount: scale(90),
+    spread: 180,
     origin: { x: 0.5, y: 0 },
     shapes: ['star'],
     colors,
     zIndex: Z_INDEX,
-    scalar: 1.2,
+    scalar: 1.5,
+    gravity: 0.7,
+    disableForReducedMotion: true,
+  })
+
+  await new Promise((r) => setTimeout(r, 700))
+  await confetti({
+    particleCount: scale(60),
+    spread: 360,
+    startVelocity: 30,
+    origin: { x: 0.5, y: 0.5 },
+    shapes: ['circle'],
+    colors,
+    zIndex: Z_INDEX,
+    scalar: 1.4,
     disableForReducedMotion: true,
   })
 }
@@ -179,33 +205,42 @@ export async function fireConfettiRain(
   const resolvedColors = colors ?? GOLD
 
   const isLarge = intensity === 'large'
+  // Stagger origins inside each wave so confetti enters from different
+  // columns at different moments instead of an all-at-once dense band.
   const origins = isLarge ? [0.1, 0.3, 0.5, 0.7, 0.9] : [0.2, 0.5, 0.8]
-  const waveCount = isLarge ? 4 : 2
-  const particlesPerBurst = scale(isLarge ? 20 : 18)
+  const waveCount = isLarge ? 4 : 3
+  const particlesPerBurst = scale(isLarge ? 24 : 18)
+  const perOriginDelay = 130
+  const waveGap = isLarge ? 700 : 600
   const shapes: ('star' | 'circle' | 'square')[] = isLarge
     ? ['star', 'circle', 'square']
     : ['circle', 'square']
 
   for (let wave = 0; wave < waveCount; wave++) {
-    for (const x of origins) {
+    for (let i = 0; i < origins.length; i++) {
+      const x = origins[i]
+      // Fire-and-forget so the inner loop can advance between bursts.
       confetti({
         particleCount: particlesPerBurst,
         angle: 270,
-        spread: 120,
+        spread: 110,
         origin: { x, y: 0 },
         colors: resolvedColors,
         shapes,
-        startVelocity: 8,
-        gravity: 0.8,
-        decay: 0.96,
-        ticks: 400,
+        startVelocity: 10,
+        gravity: 0.85,
+        decay: 0.95,
+        ticks: 420,
         zIndex: Z_INDEX,
         scalar: isLarge ? 1.2 : 1.0,
         disableForReducedMotion: true,
       })
+      if (i < origins.length - 1) {
+        await new Promise((r) => setTimeout(r, perOriginDelay))
+      }
     }
     if (wave < waveCount - 1) {
-      await new Promise((r) => setTimeout(r, 300))
+      await new Promise((r) => setTimeout(r, waveGap))
     }
   }
 }

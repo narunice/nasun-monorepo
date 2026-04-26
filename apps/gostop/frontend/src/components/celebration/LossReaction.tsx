@@ -47,7 +47,7 @@ export function LossReaction({ onComplete }: LossReactionProps) {
 
   useEffect(() => {
     const textTimer = setTimeout(() => setShowText(true), 600)
-    const completeTimer = setTimeout(() => onComplete?.(), 1000)
+    const completeTimer = setTimeout(() => onComplete?.(), 3000)
     return () => {
       clearTimeout(textTimer)
       clearTimeout(completeTimer)
@@ -55,10 +55,13 @@ export function LossReaction({ onComplete }: LossReactionProps) {
   }, [onComplete])
 
   return (
-    <div className="text-center py-6 animate-scratch-drumroll">
-      <div className="text-4xl mb-2">{picked.emoji}</div>
+    <div className="relative text-center py-10 px-8 animate-scratch-drumroll">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.18),transparent_60%)] pointer-events-none" />
+      <div className="relative text-7xl md:text-8xl mb-4 drop-shadow-[0_0_18px_rgba(220,38,38,0.45)] animate-scratch-card-shake">
+        {picked.emoji}
+      </div>
       {showText && (
-        <p className="text-base font-semibold text-neutral-300 animate-scratch-text-fade">
+        <p className="relative text-xl md:text-2xl font-bold uppercase tracking-[0.15em] text-red-300/90 animate-scratch-text-fade">
           {picked.text}
         </p>
       )}
