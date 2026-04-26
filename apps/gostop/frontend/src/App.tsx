@@ -27,9 +27,12 @@ const NAV_ITEMS: NavEntry[] = [
 // Runtime second-layer (A-W3): build-time gate가 정상 동작하면 dev/staging dist에 코드 자체 없음.
 // runtime guard는 prod dist를 다른 hostname에서 재서빙하는 우회 시나리오 한정 방어.
 function CrashRouteElement() {
-  const isProdHost = typeof window !== 'undefined' &&
-    (window.location.hostname === 'gostop.app' || window.location.hostname === 'www.gostop.app')
-  if (!isProdHost) return <CrashDisabledPage />
+  const host = typeof window !== 'undefined' ? window.location.hostname : ''
+  const isProdHost = host === 'gostop.app' || host === 'www.gostop.app'
+  // Allow localhost so dev/staging can render the UI for design work.
+  // Production runtime guard remains intact for non-prod hostnames serving prod dist.
+  const isDevHost = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local') || import.meta.env.DEV
+  if (!isProdHost && !isDevHost) return <CrashDisabledPage />
   if (!CrashPage) return <CrashDisabledPage />
   return (
     <Suspense fallback={<div className="panel p-10 text-center text-neutral-300">Loading...</div>}>
@@ -97,6 +100,9 @@ function Header() {
         <NavLink to="/" className="flex items-center gap-3 group">
           <LogoMark />
           <span className="font-display text-2xl tracking-wide text-gold">GoStop</span>
+          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs uppercase tracking-[0.15em] border border-amber-400/40 bg-amber-950/30 text-amber-300/90">
+            Nasun Devnet
+          </span>
         </NavLink>
 
         {/* Desktop nav (md+) */}
