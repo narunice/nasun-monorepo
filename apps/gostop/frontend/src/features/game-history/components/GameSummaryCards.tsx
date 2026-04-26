@@ -68,6 +68,11 @@ export function GameSummaryCards({ summary, isLoading }: Props) {
             Showing recent history only — older games may be missing
           </span>
         )}
+        {summary.crashBackendError && (
+          <span className="text-amber-300">
+            Crash history backend unreachable — Crash rows may be incomplete
+          </span>
+        )}
       </div>
     </section>
   )

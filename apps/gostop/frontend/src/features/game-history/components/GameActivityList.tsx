@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNusdc } from '../../../lib/format'
 import { getExplorerTxUrl } from '../../../lib/explorer'
+import { useActiveAddress } from '../../../hooks/useActiveAddress'
 import type { GameActivity, GameType } from '../types'
 
 const ITEMS_PER_PAGE = 10
@@ -83,10 +84,10 @@ function formatTime(timestampMs: number): string {
   })
 }
 
-function ExplorerLink({ txDigest }: { txDigest: string }) {
+function ExplorerLink({ txDigest, viewer }: { txDigest: string; viewer?: string | null }) {
   return (
     <a
-      href={getExplorerTxUrl(txDigest)}
+      href={getExplorerTxUrl(txDigest, viewer)}
       target="_blank"
       rel="noopener noreferrer"
       // p-2 -m-2 enlarges the touch target to ≥44px without changing layout.
@@ -100,7 +101,7 @@ function ExplorerLink({ txDigest }: { txDigest: string }) {
 }
 
 
-function ActivityCard({ activity }: { activity: GameActivity }) {
+function ActivityCard({ activity, viewer }: { activity: GameActivity; viewer?: string | null }) {
   const badge = GAME_BADGE[activity.gameType]
   return (
     <div className="p-4">
@@ -113,7 +114,7 @@ function ActivityCard({ activity }: { activity: GameActivity }) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm text-neutral-200">{formatTime(activity.timestampMs)}</span>
-          <ExplorerLink txDigest={activity.txDigest} />
+          <ExplorerLink txDigest={activity.txDigest} viewer={viewer} />
         </div>
       </div>
       <div className="flex justify-between items-center text-sm">
@@ -126,7 +127,7 @@ function ActivityCard({ activity }: { activity: GameActivity }) {
   )
 }
 
-function ActivityRow({ activity }: { activity: GameActivity }) {
+function ActivityRow({ activity, viewer }: { activity: GameActivity; viewer?: string | null }) {
   const badge = GAME_BADGE[activity.gameType]
   return (
     <tr className="border-t border-gold-subtle/30 hover:bg-ink-800/50 transition-colors">
@@ -146,7 +147,7 @@ function ActivityRow({ activity }: { activity: GameActivity }) {
         <ResultBadge result={activity.result} payout={activity.payout} />
       </td>
       <td className="py-3 px-3 text-center w-10">
-        <ExplorerLink txDigest={activity.txDigest} />
+        <ExplorerLink txDigest={activity.txDigest} viewer={viewer} />
       </td>
     </tr>
   )
@@ -199,6 +200,7 @@ interface Props {
 }
 
 export function GameActivityList({ activities, isLoading, error, showCrashFootnote }: Props) {
+  const viewer = useActiveAddress()
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE)
   // Reset pagination when the parent swaps the activity list (filter change).
   useEffect(() => {
@@ -232,7 +234,7 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
       >
         {visible.map((a) => (
           <li key={a.id}>
-            <ActivityCard activity={a} />
+            <ActivityCard activity={a} viewer={viewer} />
           </li>
         ))}
       </ul>
@@ -252,7 +254,7 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
           </thead>
           <tbody>
             {visible.map((a) => (
-              <ActivityRow key={a.id} activity={a} />
+              <ActivityRow key={a.id} activity={a} viewer={viewer} />
             ))}
           </tbody>
         </table>
@@ -272,10 +274,10 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
 
       {showCrashFootnote && (
         <p className="text-sm text-neutral-200 italic mt-4 px-1">
-          Crash records reflect cashout requests; final settlement may differ until
-          indexer integration. Win rows link to the keeper&apos;s resolve transaction
-          (where USDC payouts settle); loss rows link to your original bet
-          transaction.
+          Crash rows reflect on-chain settlement from the keeper&apos;s resolve
+          transaction. The Tx link opens the resolve transaction where the USDC
+          payout was transferred (use the &ldquo;you&rdquo; highlight in the
+          explorer to see your balance change).
         </p>
       )}
     </div>
