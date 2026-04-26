@@ -26,7 +26,7 @@ STACK_NAME="GostopSiteStack"
 EXPECTED_ACCOUNT="466841130170"
 HEALTH_CHECK_URL="https://gostop.app"
 
-TOTAL_STEPS=7
+TOTAL_STEPS=6
 START_TIME=$(date +%s)
 
 # --- 옵션 파싱 ---
@@ -72,7 +72,7 @@ echo ""
 
 if [ "$DRY_RUN" = true ]; then
   log_warning "드라이런 모드: 빌드만 수행하고 업로드/무효화는 건너뜁니다."
-  TOTAL_STEPS=3
+  TOTAL_STEPS=2
 fi
 
 # --- Phase 1: 환경 검증 ---
@@ -114,19 +114,9 @@ if [ "$DRY_RUN" = false ] && [ "$FORCE" = false ]; then
   fi
 fi
 
-# --- Phase 2: TypeScript 타입 체크 ---
-log_step 2 $TOTAL_STEPS "TypeScript 타입 체크"
-
-cd "$MONOREPO_ROOT"
-
-log_info "TypeScript 타입 체크 중..."
-if ! pnpm --filter @nasun/gostop exec tsc --noEmit 2>&1; then
-  log_error "TypeScript 타입 체크 실패!"
-fi
-log_success "TypeScript 타입 체크 통과"
-
-# --- Phase 3: 프론트엔드 빌드 ---
-log_step 3 $TOTAL_STEPS "프론트엔드 빌드"
+# --- Phase 2: 프론트엔드 빌드 ---
+# tsc -b is part of the build script and aborts on type errors — no separate noEmit step needed.
+log_step 2 $TOTAL_STEPS "프론트엔드 빌드"
 
 log_info "gostop frontend 빌드 중..."
 if ! pnpm --filter @nasun/gostop build 2>&1; then
@@ -153,7 +143,7 @@ fi
 
 # --- Phase 4: CDK 배포 ---
 if [ "$SKIP_CDK" = false ]; then
-  log_step 4 $TOTAL_STEPS "CDK 스택 배포"
+  log_step 3 $TOTAL_STEPS "CDK 스택 배포"
 
   cd "$CDK_DIR"
 
@@ -174,7 +164,7 @@ else
 fi
 
 # --- Phase 5: CFN 출력에서 버킷/디스트리뷰션 조회 ---
-log_step 5 $TOTAL_STEPS "배포 대상 조회"
+log_step 4 $TOTAL_STEPS "배포 대상 조회"
 
 log_info "CFN 스택 출력 조회 중: $STACK_NAME"
 OUTPUTS=$(aws cloudformation describe-stacks \
@@ -194,7 +184,7 @@ log_success "버킷: $BUCKET"
 log_success "배포: $DIST_ID"
 
 # --- Phase 6: S3 업로드 + CloudFront 무효화 ---
-log_step 6 $TOTAL_STEPS "S3 업로드 + CloudFront 무효화"
+log_step 5 $TOTAL_STEPS "S3 업로드 + CloudFront 무효화"
 
 log_info "해시 에셋 업로드 중 (long cache)..."
 aws s3 sync "$DIST_DIR/" "s3://$BUCKET/" \
@@ -225,7 +215,7 @@ INVALIDATION_ID=$(aws cloudfront create-invalidation \
 log_success "무효화 요청: $INVALIDATION_ID"
 
 # --- Phase 7: 헬스 체크 ---
-log_step 7 $TOTAL_STEPS "헬스 체크"
+log_step 6 $TOTAL_STEPS "헬스 체크"
 
 health_check "$HEALTH_CHECK_URL"
 
