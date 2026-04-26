@@ -84,20 +84,55 @@ function formatTime(timestampMs: number): string {
   })
 }
 
-function ExplorerLink({ txDigest, viewer }: { txDigest: string; viewer?: string | null }) {
+function ExplorerLink({
+  txDigest,
+  viewer,
+  label,
+  title,
+}: {
+  txDigest: string
+  viewer?: string | null
+  label?: string
+  title?: string
+}) {
   return (
     <a
       href={getExplorerTxUrl(txDigest, viewer)}
       target="_blank"
       rel="noopener noreferrer"
       // p-2 -m-2 enlarges the touch target to ≥44px without changing layout.
-      className="inline-flex items-center justify-center p-2 -m-2 text-neutral-300 hover:text-gold-200 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
-      title="View on Explorer"
-      aria-label="Open transaction on explorer"
+      className="inline-flex items-center justify-center gap-1 p-2 -m-2 text-neutral-300 hover:text-gold-200 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
+      title={title ?? 'View on Explorer'}
+      aria-label={title ?? 'Open transaction on explorer'}
     >
+      {label && <span className="text-xs font-medium">{label}</span>}
       <ExternalLinkIcon />
     </a>
   )
+}
+
+// For crash rows: shows Bet (place_bet tx) + Resolve (keeper settlement tx)
+// side by side. Other game types resolve in one tx — use ExplorerLink directly.
+function TxLinks({ activity, viewer }: { activity: GameActivity; viewer?: string | null }) {
+  if (activity.gameType === 'crash' && activity.betTxDigest) {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <ExplorerLink
+          txDigest={activity.betTxDigest}
+          viewer={viewer}
+          label="Bet"
+          title="Open place_bet transaction on explorer"
+        />
+        <ExplorerLink
+          txDigest={activity.txDigest}
+          viewer={viewer}
+          label="Resolve"
+          title="Open resolve transaction on explorer"
+        />
+      </span>
+    )
+  }
+  return <ExplorerLink txDigest={activity.txDigest} viewer={viewer} />
 }
 
 
@@ -114,7 +149,7 @@ function ActivityCard({ activity, viewer }: { activity: GameActivity; viewer?: s
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm text-neutral-200">{formatTime(activity.timestampMs)}</span>
-          <ExplorerLink txDigest={activity.txDigest} viewer={viewer} />
+          <TxLinks activity={activity} viewer={viewer} />
         </div>
       </div>
       <div className="flex justify-between items-center text-sm">
@@ -146,8 +181,8 @@ function ActivityRow({ activity, viewer }: { activity: GameActivity; viewer?: st
       <td className="py-3 px-3 text-right">
         <ResultBadge result={activity.result} payout={activity.payout} />
       </td>
-      <td className="py-3 px-3 text-center w-10">
-        <ExplorerLink txDigest={activity.txDigest} viewer={viewer} />
+      <td className="py-3 px-3 text-center whitespace-nowrap">
+        <TxLinks activity={activity} viewer={viewer} />
       </td>
     </tr>
   )
@@ -249,7 +284,7 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
               <th className="py-2 px-3 text-left font-medium">Detail</th>
               <th className="py-2 px-3 text-right font-medium">Spent</th>
               <th className="py-2 px-3 text-right font-medium">Payout</th>
-              <th className="py-2 px-3 text-center font-medium w-10">Tx</th>
+              <th className="py-2 px-3 text-center font-medium whitespace-nowrap">Tx</th>
             </tr>
           </thead>
           <tbody>
@@ -274,10 +309,10 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
 
       {showCrashFootnote && (
         <p className="text-sm text-neutral-200 italic mt-4 px-1">
-          Crash rows reflect on-chain settlement from the keeper&apos;s resolve
-          transaction. The Tx link opens the resolve transaction where the USDC
-          payout was transferred (use the &ldquo;you&rdquo; highlight in the
-          explorer to see your balance change).
+          Crash rows expose two transactions: <strong>Bet</strong> is your
+          place_bet (USDC out) and <strong>Resolve</strong> is the keeper&apos;s
+          settlement (USDC payout, if any). On a loss the resolve tx contains no
+          balance change for you — the USDC outflow is on the bet tx.
         </p>
       )}
     </div>

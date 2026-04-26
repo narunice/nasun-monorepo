@@ -19,6 +19,9 @@ export interface ResolvePlayerRow {
   multiplierBps: number; // realized payout/bet ratio in bps; 0 if loss
   timestampMs: number;
   sessionIdHex: string;
+  // Digest of the user's place_bet tx. Discovered by querying BetPlaced events
+  // for this round; null when the lookup fails or the row predates this field.
+  betTx: string | null;
 }
 
 export type WsEvent =

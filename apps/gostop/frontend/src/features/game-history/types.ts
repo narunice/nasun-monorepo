@@ -27,6 +27,9 @@ export interface GameActivity {
   detail: string
   /** For win rows that pair across two events (crash), points at the cashout tx. */
   txDigest: string
+  /** Crash only: digest of the user's place_bet tx, when known. Other game
+   *  types resolve in a single tx so this stays undefined. */
+  betTxDigest?: string
   source: ActivitySource
 }
 
