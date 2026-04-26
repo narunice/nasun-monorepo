@@ -89,7 +89,8 @@ function ExplorerLink({ txDigest }: { txDigest: string }) {
       href={getExplorerTxUrl(txDigest)}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-neutral-300 hover:text-gold-200 transition-colors inline-flex"
+      // p-2 -m-2 enlarges the touch target to ≥44px without changing layout.
+      className="inline-flex items-center justify-center p-2 -m-2 text-neutral-300 hover:text-gold-200 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
       title="View on Explorer"
       aria-label="Open transaction on explorer"
     >
@@ -223,15 +224,21 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
   return (
     <div>
       {/* Mobile cards */}
-      <div className="md:hidden panel divide-y divide-gold-subtle/30">
+      <ul
+        role="list"
+        aria-label="Game activity"
+        className="md:hidden panel divide-y divide-gold-subtle/30 list-none"
+      >
         {visible.map((a) => (
-          <ActivityCard key={a.id} activity={a} />
+          <li key={a.id}>
+            <ActivityCard activity={a} />
+          </li>
         ))}
-      </div>
+      </ul>
 
       {/* Desktop table */}
       <div className="hidden md:block panel overflow-hidden">
-        <table className="w-full">
+        <table className="w-full" aria-label="Game activity">
           <thead>
             <tr className="bg-ink-800/80 text-sm uppercase tracking-widest text-neutral-200">
               <th className="py-2 px-3 text-left font-medium">Time</th>
@@ -254,7 +261,8 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
         <div className="flex justify-center mt-4">
           <button
             onClick={() => setDisplayCount((c) => c + ITEMS_PER_PAGE)}
-            className="btn-ghost !py-2 !px-4 text-sm"
+            className="btn-ghost !py-2 !px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
+            aria-label={`Show next ${ITEMS_PER_PAGE} games, ${activities.length - displayCount} remaining`}
           >
             Load More ({activities.length - displayCount} remaining)
           </button>
