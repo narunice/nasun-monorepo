@@ -9,7 +9,52 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { multiplierAtBps, inverseMultiplierAt } from './math.js';
-import type { RoundState, RecentRound, WsEvent } from './types.js';
+import type { RoundState, RecentRound, WsEvent, ResolvePlayerRow } from './types.js';
+import { RESOLVE_RETRY_ATTEMPTS, RESOLVE_RETRY_DELAY_MS } from './constants.js';
+
+// CRASH game id within bankroll_pool::GameResult events.
+// Must match apps/gostop/devnet-ids.json crash.gameId.
+const CRASH_GAME_ID = 4;
+
+// Parse bankroll_pool::GameResult events from a resolve_round tx response into
+// JSON-safe per-player history rows. Filters by game_id to avoid sibling games
+// sharing the same pool (none today, but defensive). Caller catches any throw.
+function parsePlayerResultsFromEvents(
+  events: unknown[] | undefined,
+): ResolvePlayerRow[] {
+  if (!Array.isArray(events)) return [];
+  const out: ResolvePlayerRow[] = [];
+  for (const evRaw of events) {
+    const ev = evRaw as { type?: string; parsedJson?: Record<string, unknown> } | null;
+    if (!ev || typeof ev.type !== 'string') continue;
+    if (!ev.type.endsWith('::bankroll_pool::GameResult')) continue;
+    const d = ev.parsedJson ?? {};
+    if (Number(d.game_id) !== CRASH_GAME_ID) continue;
+
+    const player = String(d.player ?? '').toLowerCase();
+    if (!/^0x[0-9a-f]{1,64}$/.test(player)) continue;
+
+    const sessionRaw = d.session_id;
+    let sessionIdHex = '';
+    if (Array.isArray(sessionRaw)) {
+      sessionIdHex = (sessionRaw as number[])
+        .map((b) => (b & 0xff).toString(16).padStart(2, '0'))
+        .join('');
+    } else if (typeof sessionRaw === 'string') {
+      sessionIdHex = sessionRaw.startsWith('0x') ? sessionRaw.slice(2) : sessionRaw;
+    }
+
+    out.push({
+      player,
+      betAmount: String(d.bet_amount ?? '0'),
+      payout: String(d.payout ?? '0'),
+      multiplierBps: Number(d.multiplier_bps ?? 0),
+      timestampMs: Number(d.timestamp_ms ?? 0),
+      sessionIdHex,
+    });
+  }
+  return out;
+}
 
 // Hardcoded BankrollPool + SUI clock (stable across Crash upgrades).
 const BANKROLL_POOL = '0xf74e8c3c16ee077651f82459f350e96027c82319686395679d10f08ed0cd306d';
@@ -51,6 +96,7 @@ export class RoundManager {
   private config: RoundManagerConfig;
   private broadcast: BroadcastFn;
   private running = false;
+  private draining = false;
   // Phase 1 scope: no participants list, no on-chain event subscription.
   // Each player's frontend tracks its own bet/cashout from tx results.
   private roundState: InternalRoundState;
@@ -110,40 +156,129 @@ export class RoundManager {
     return { ...this.roundState, recentRounds: [...this.roundState.recentRounds] };
   }
 
-  /** Returns true if keeper started normally, false if boot-blocked (stale round in registry). */
+  /** Returns true if keeper started normally, false if boot-blocked (stale round with entries in registry). */
   async start(): Promise<boolean> {
     this.running = true;
-
-    // Boot recovery: if registry has a current_round_id, the previous chat-server crashed
-    // mid-round. Refuse to start a new round until an admin clears it manually
-    // (admin_finalize_stuck_round + emergency_refund_batch).
-    try {
-      const reg = await this.client.getObject({ id: this.config.registryId, options: { showContent: true } });
-      // Sui RPC renders Option<ID> as: null when None, the inner ID string when Some.
-      // Also handle {vec:[...]} shape from older Sui SDK versions.
-      const fields = (reg.data?.content as { fields?: { current_round_id?: unknown } })?.fields;
-      const cri = fields?.current_round_id;
-      const isSome =
-        (typeof cri === 'string' && cri.length > 0) ||
-        (Array.isArray((cri as { vec?: unknown[] })?.vec) && ((cri as { vec: unknown[] }).vec.length > 0)) ||
-        (Array.isArray((cri as { fields?: { vec?: unknown[] } })?.fields?.vec) && ((cri as { fields: { vec: unknown[] } }).fields.vec.length > 0));
-      if (isSome) {
-        console.error('[Crash] BOOT BLOCKED: registry.current_round_id is non-empty. A previous round is in flight on-chain.');
-        console.error('[Crash] Run admin_finalize_stuck_round / refund_stale_betting to clear, then restart.');
-        this.running = false;
-        return false;
-      }
-    } catch (err) {
-      console.error('[Crash] Boot recovery check failed:', err);
+    const verdict = await this.recover();
+    if (verdict === 'block') {
       this.running = false;
       return false;
     }
-
     await this.runLoop();
     return true;
   }
 
-  stop(): void {
+  /// Boot-time recovery. Returns 'ok' to proceed with normal loop, 'block' to
+  /// exit (parent will retry every 60s).
+  /// - clean (registry empty): 'ok'
+  /// - empty stuck round: auto operator_finalize_empty_stuck_round → 'ok'
+  /// - entries>0 stuck round: 'block' (manual emergency_refund + admin_finalize)
+  /// - RPC errors: 'block' (transient, parent retry recovers)
+  private async recover(): Promise<'ok' | 'block'> {
+    let currentId: string | null;
+    try {
+      currentId = await this.fetchCurrentRoundId();
+    } catch (err) {
+      console.error('[Crash] recover: registry fetch failed:', err);
+      return 'block';
+    }
+    if (!currentId) {
+      console.log('[Crash] Recover: clean start (no stuck round)');
+      return 'ok';
+    }
+
+    let round: { roundId: number; objectId: string; state: number; entriesCount: number; bettingEndsAt: number } | null;
+    try {
+      round = await this.fetchRoundScalars(currentId);
+    } catch (err) {
+      console.error('[Crash] recover: round fetch failed:', err);
+      return 'block';
+    }
+    if (!round) {
+      console.error(`[Crash] BOOT BLOCKED: registry points to non-existent round ${currentId}; manual intervention required`);
+      return 'block';
+    }
+
+    if (round.entriesCount > 0) {
+      console.error(`[Crash] BOOT BLOCKED: round ${round.roundId} has ${round.entriesCount} entries. Run emergency_refund_batch + admin_finalize.`);
+      return 'block';
+    }
+
+    // Empty stuck round. Move's state/time guard rejects calls during an active
+    // BETTING window, so keeper-side check is defensive only.
+    try {
+      await this.operatorFinalizeEmpty(round.objectId);
+      console.warn(`[Crash] Recover: finalized empty stuck round ${round.roundId}`);
+      return 'ok';
+    } catch (err) {
+      const msg = (err as Error).message;
+      // EBettingNotEnded = 18: BETTING window still active. Block; next 60s parent
+      // retry will catch the round after the window expires.
+      if (msg.includes(', 18)') || msg.includes('EBettingNotEnded')) {
+        console.warn(`[Crash] Recover: round ${round.roundId} still in active BETTING window; blocking for retry`);
+        return 'block';
+      }
+      console.error('[Crash] Recover: finalize tx failed:', err);
+      return 'block';
+    }
+  }
+
+  private async fetchCurrentRoundId(): Promise<string | null> {
+    const reg = await this.client.getObject({
+      id: this.config.registryId,
+      options: { showContent: true },
+    });
+    const fields = (reg.data?.content as { fields?: { current_round_id?: unknown } })?.fields;
+    const cri = fields?.current_round_id;
+    if (typeof cri === 'string' && cri.length > 0) return cri;
+    const vec1 = (cri as { vec?: unknown[] } | null)?.vec;
+    if (Array.isArray(vec1) && vec1.length > 0 && typeof vec1[0] === 'string') return vec1[0] as string;
+    const vec2 = (cri as { fields?: { vec?: unknown[] } } | null)?.fields?.vec;
+    if (Array.isArray(vec2) && vec2.length > 0 && typeof vec2[0] === 'string') return vec2[0] as string;
+    return null;
+  }
+
+  private async fetchRoundScalars(
+    objectId: string,
+  ): Promise<{ roundId: number; objectId: string; state: number; entriesCount: number; bettingEndsAt: number } | null> {
+    const obj = await this.client.getObject({ id: objectId, options: { showContent: true } });
+    const fields = (obj.data?.content as { fields?: Record<string, unknown> })?.fields;
+    if (!fields) return null;
+    const entries = fields.entries;
+    return {
+      roundId: Number(fields.round_id ?? 0),
+      objectId,
+      state: Number(fields.state ?? 0),
+      entriesCount: Array.isArray(entries) ? entries.length : 0,
+      bettingEndsAt: Number(fields.betting_ends_at ?? 0),
+    };
+  }
+
+  private async operatorFinalizeEmpty(roundObjectId: string): Promise<void> {
+    const tx = new Transaction();
+    tx.moveCall({
+      target: `${this.config.packageId}::crash::operator_finalize_empty_stuck_round`,
+      arguments: [
+        tx.object(this.config.registryId),
+        tx.object(roundObjectId),
+        tx.object(SUI_CLOCK),
+      ],
+    });
+    await this.execTx(tx, 'operator_finalize_empty_stuck_round');
+  }
+
+  /// `drain: true` keeps `running=true` so the in-flight `runRound()` finishes
+  /// (close_betting → resolve), then the next loop iteration exits via the
+  /// `draining` guard. `drain: false` is the hard-stop path used by the
+  /// child-entry backstop just before process.exit.
+  stop(opts: { drain?: boolean } = {}): void {
+    if (opts.drain) {
+      if (!this.draining) {
+        console.warn('[Crash] Drain requested; finishing in-flight round before exit');
+        this.draining = true;
+      }
+      return;
+    }
     this.running = false;
   }
 
@@ -199,8 +334,15 @@ export class RoundManager {
 
   private async runLoop(): Promise<void> {
     while (this.running) {
+      if (this.draining) {
+        console.warn('[Crash] Drain complete, exiting loop');
+        this.running = false;
+        return;
+      }
       try {
+        const startedAt = Date.now();
         await this.runRound();
+        console.log(`[Crash] Round duration: ${Date.now() - startedAt}ms`);
       } catch (err) {
         const msg = String(err);
         // ECurrentRoundExists (abort code 13 from start_round): registry already has a round in flight.
@@ -216,9 +358,32 @@ export class RoundManager {
         this.roundState.roundId = null;
         this.roundState.roundObjectId = null;
         this.bumpVersion();
+        if (this.draining) {
+          console.warn('[Crash] Drain: round error during drain, exiting loop');
+          this.running = false;
+          return;
+        }
         await this.sleep(this.config.roundIntervalMs);
       }
     }
+  }
+
+  /// Tight retry around resolve_round so a transient RPC blip during drain doesn't
+  /// leave a CRASHED round un-resolved. See plan v2 §Drain 설계.
+  private async execResolveWithRetry(tx: Transaction): Promise<{ digest: string; events?: unknown[] }> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < RESOLVE_RETRY_ATTEMPTS; attempt++) {
+      try {
+        return await this.execTx(tx, 'resolve_round');
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[Crash] resolve_round attempt ${attempt + 1}/${RESOLVE_RETRY_ATTEMPTS} failed:`, (err as Error).message);
+        if (attempt < RESOLVE_RETRY_ATTEMPTS - 1) {
+          await this.sleep(RESOLVE_RETRY_DELAY_MS);
+        }
+      }
+    }
+    throw lastErr;
   }
 
   private async runRound(): Promise<void> {
@@ -366,9 +531,28 @@ export class RoundManager {
         resolveTx.object(SUI_CLOCK),
       ],
     });
-    await this.execTx(resolveTx, 'resolve_round');
+    const resolveRes = await this.execResolveWithRetry(resolveTx);
 
     this.db.prepare('UPDATE crash_salts SET resolved = 1 WHERE round_id = ?').run(roundId);
+
+    // History persistence: parse GameResult events from the resolve_round
+    // response and ship to parent via IPC. Failures here MUST NOT abort the
+    // round loop, so wrap defensively. INSERTs happen in the parent (single
+    // writer for the history DB; child stays focused on tx execution).
+    try {
+      const rows = parsePlayerResultsFromEvents(resolveRes.events);
+      if (rows.length > 0) {
+        this.broadcast({
+          type: 'resolve_persisted',
+          roundId,
+          resolveTx: resolveRes.digest,
+          rows,
+          stateVersion: this.roundState.stateVersion,
+        });
+      }
+    } catch (err) {
+      console.error('[Crash] persistResolveResults parse failed', { roundId, err: (err as Error).message });
+    }
 
     const crashTimeMs = inverseMultiplierAt(crashPointBps);
     this.roundState.state = 'RESOLVED';

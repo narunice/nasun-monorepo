@@ -5,7 +5,7 @@ module.exports = {
       script: 'dist/server.js',
       max_memory_restart: '700M',
       node_args: '--max-old-space-size=450',  // must be < max_memory_restart (RSS) so PM2 triggers before OOM crash
-      kill_timeout: 20000,                    // backstop in shutdown() is 17000ms; SIGKILL at 20s
+      kill_timeout: 105000,                   // crash drain budget 90s + parent grace 95s + 10s margin (see crash/constants.ts)
       wait_ready: false,
       max_restarts: 15,
       min_uptime: '30s',
@@ -14,10 +14,11 @@ module.exports = {
       autorestart: true,
       env: {
         PORT: '3101',
-        ALLOWED_ORIGINS: 'https://nasun.io,https://www.nasun.io,https://pado.finance,https://www.pado.finance',
+        ALLOWED_ORIGINS: 'https://nasun.io,https://www.nasun.io,https://pado.finance,https://www.pado.finance,https://gostop.app,https://www.gostop.app',
         TRUST_PROXY: 'true',
         CHAT_DB_PATH: './data/chat.db',
         LEADERBOARD_DB_PATH: './data/leaderboard.db',
+        CRASH_HISTORY_DB_PATH: './data/crash-history.db',
         RPC_URL: 'https://rpc.devnet.nasun.io',
         INDEXER_POLL_INTERVAL_MS: '5000',
         AGGREGATION_INTERVAL_MS: '60000',

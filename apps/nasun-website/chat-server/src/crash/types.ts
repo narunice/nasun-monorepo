@@ -9,12 +9,26 @@ export interface RecentRound {
   crashPointBps: number;
 }
 
+// Per-player payout row IPC'd from child to parent for history persistence.
+// All fields JSON-safe (no BigInt/Buffer): u64 amounts as decimal strings,
+// session_id as hex string (no leading 0x).
+export interface ResolvePlayerRow {
+  player: string;        // 0x-prefixed lowercased hex
+  betAmount: string;     // u64 decimal string
+  payout: string;        // u64 decimal string (0 if loss)
+  multiplierBps: number; // realized payout/bet ratio in bps; 0 if loss
+  timestampMs: number;
+  sessionIdHex: string;
+}
+
 export type WsEvent =
   | { type: 'round_started'; roundId: number; roundObjectId: string; commitHash: string; bettingEndsAt: number; serverTime: number; stateVersion: number }
   | { type: 'betting_closed'; roundId: number; flyingStartedAt: number; stateVersion: number }
   | { type: 'crashed'; roundId: number; stateVersion: number }
   | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; nextRoundAt: number; stateVersion: number }
-  | { type: 'disabled'; reason: 'backoff' | 'shutdown'; retryAt?: number; stateVersion: number };
+  | { type: 'disabled'; reason: 'backoff' | 'shutdown'; retryAt?: number; stateVersion: number }
+  // IPC-only: parent persists to history DB, does NOT broadcast to ws clients.
+  | { type: 'resolve_persisted'; roundId: number; resolveTx: string; rows: ResolvePlayerRow[]; stateVersion: number };
 
 export interface CrashModuleDeps {
   wsServer: import('ws').WebSocketServer;
