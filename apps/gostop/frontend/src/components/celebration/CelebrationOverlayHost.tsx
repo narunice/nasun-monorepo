@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { useCelebrationState } from './CelebrationProvider'
 import { TieredWinCelebration } from './TieredWinCelebration'
 import { SlamWinCelebration } from './SlamWinCelebration'
+import { LossReaction } from './LossReaction'
 import { triggerSoundOptInPrompt } from './SoundOptInToast'
 
 interface Props {
@@ -41,7 +42,14 @@ export function CelebrationOverlayHost({ onComplete }: Props) {
       aria-live="polite"
       aria-atomic="true"
     >
-      {config.variant === 'slam' ? (
+      {config.variant === 'loss' ? (
+        <div key={config.key} className="pointer-events-auto panel p-10 md:p-12 w-full max-w-xl bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.2),transparent_60%)] border-red-500/40">
+          <p className="text-xs uppercase tracking-[0.3em] text-red-300/80 text-center mb-2">
+            {config.gameLabel}
+          </p>
+          <LossReaction onComplete={onComplete} />
+        </div>
+      ) : config.variant === 'slam' ? (
         <SlamWinCelebration key={config.key} config={config} onComplete={onComplete} />
       ) : (
         <TieredWinCelebration key={config.key} config={config} onComplete={onComplete} />

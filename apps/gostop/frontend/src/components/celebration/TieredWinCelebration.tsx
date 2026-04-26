@@ -111,7 +111,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
           fireConfettiRain('medium', colors)
         }, 400),
       )
-      timers.push(setTimeout(onComplete, 2400))
+      timers.push(setTimeout(onComplete, 4200))
     } else if (tier === 'big') {
       timers.push(setTimeout(() => setShowFlash(false), 150))
       timers.push(setTimeout(() => setPhase('counting'), 600))
@@ -122,7 +122,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
           fireConfettiRain('medium', colors)
         }, 1400),
       )
-      timers.push(setTimeout(onComplete, 3000))
+      timers.push(setTimeout(onComplete, 5500))
     } else if (tier === 'jackpot') {
       timers.push(
         setTimeout(() => {
@@ -138,7 +138,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
           fireConfettiRain('large', colors)
         }, 2200),
       )
-      timers.push(setTimeout(onComplete, 5000))
+      timers.push(setTimeout(onComplete, 7500))
     }
 
     return () => {
@@ -157,9 +157,9 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
       return (
         <div className="mb-3">
           {typeof multiplier === 'number' && (
-            <p className={`font-display text-5xl ${colorClass} mb-2 leading-none`}>{multiplier}×</p>
+            <p className={`font-display text-7xl md:text-8xl ${colorClass} mb-3 leading-none drop-shadow-[0_0_24px_rgba(255,215,0,0.55)]`}>{multiplier}×</p>
           )}
-          <p className={`font-display text-3xl ${colorClass}`}>
+          <p className={`font-display text-4xl md:text-5xl ${colorClass}`}>
             {labelChars.map((char, i) => (
               <span
                 key={i}
@@ -181,12 +181,12 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
     return (
       <div className="mb-3">
         {typeof multiplier === 'number' && (
-          <p className={`font-display text-4xl ${colorClass} ${animClass} leading-none`}>
+          <p className={`font-display text-6xl md:text-7xl ${colorClass} ${animClass} leading-none drop-shadow-[0_0_18px_rgba(255,215,0,0.4)]`}>
             {multiplier}×
           </p>
         )}
         <p
-          className={`font-display text-xl ${colorClass} animate-scratch-text-fade mt-2`}
+          className={`font-display text-2xl md:text-3xl ${colorClass} animate-scratch-text-fade mt-3`}
           style={{ animationDelay: '0.3s', opacity: 0 }}
         >
           {label}
@@ -200,7 +200,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
       (tier === 'big' || tier === 'jackpot') && phase !== 'enter' ? countedValue : payout
     return (
       <p
-        className="font-mono text-2xl text-gold-100 animate-scratch-text-fade mt-2"
+        className="font-mono text-3xl md:text-4xl text-gold-100 animate-scratch-text-fade mt-3"
         style={{ animationDelay: tier === 'normal' ? '0.4s' : '0.6s', opacity: 0 }}
       >
         +{formatNusdc(displayAmount)} NUSDC
@@ -209,7 +209,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
   }
 
   return (
-    <div className="pointer-events-auto relative w-full max-w-md">
+    <div className="pointer-events-auto relative w-full max-w-xl">
       {/* Jackpot luxury sweep — single 1.2s pass */}
       {enableLuxuryAccents && (
         <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
@@ -218,7 +218,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
       )}
 
       <div
-        className={`relative panel p-7 text-center overflow-hidden ${
+        className={`relative panel p-10 md:p-12 text-center overflow-hidden ${
           enableLuxuryAccents
             ? 'border-gold-200/70 shadow-gold-glow-lg bg-[linear-gradient(110deg,rgba(20,20,32,0.95),rgba(11,11,16,0.98),rgba(20,20,32,0.95))] bg-[length:200%_100%] animate-gold-shimmer'
             : ''

@@ -43,7 +43,7 @@ export function SlamWinCelebration({ config, onComplete }: Props) {
       setTimeout(() => {
         setPhase('celebrate')
         playGameSound(sound)
-        fireConfettiRain('medium', colors)
+        fireConfettiRain('large', colors)
       }, 150),
     )
 
@@ -54,7 +54,7 @@ export function SlamWinCelebration({ config, onComplete }: Props) {
           setPhase('done')
           onCompleteRef.current()
         }
-      }, 2500),
+      }, 5000),
     )
 
     return () => {
@@ -81,15 +81,15 @@ export function SlamWinCelebration({ config, onComplete }: Props) {
         )}
 
       {showCelebrate && (
-        <div className="pointer-events-auto panel p-7 text-center w-full max-w-md">
-          <p className="text-xs uppercase tracking-[0.3em] text-gold-400 mb-4">{gameLabel}</p>
+        <div className="pointer-events-auto panel p-10 md:p-12 text-center w-full max-w-xl">
+          <p className="text-sm uppercase tracking-[0.35em] text-gold-400 mb-5">{gameLabel}</p>
           <div className="animate-nm-win-slam">
-            <p className="font-display text-4xl bg-gradient-to-r from-gold-200 via-gold-300 to-emerald-400 bg-clip-text text-transparent">
+            <p className="font-display text-6xl md:text-7xl bg-gradient-to-r from-gold-200 via-gold-300 to-emerald-400 bg-clip-text text-transparent drop-shadow-[0_0_24px_rgba(255,215,0,0.45)]">
               YOU WON!
             </p>
           </div>
           <p
-            className="font-mono text-2xl text-gold-100 mt-3 animate-scratch-text-fade"
+            className="font-mono text-3xl md:text-4xl text-gold-100 mt-4 animate-scratch-text-fade"
             style={{ animationDelay: '0.3s', opacity: 0 }}
           >
             +{formatNusdc(payout)} NUSDC

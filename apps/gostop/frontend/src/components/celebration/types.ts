@@ -2,9 +2,9 @@
  * Shared celebration types.
  */
 
-export type CelebrationTier = 'normal' | 'big' | 'jackpot'
+export type CelebrationTier = 'normal' | 'big' | 'jackpot' | 'loss'
 
-export type CelebrationVariant = 'tiered' | 'slam'
+export type CelebrationVariant = 'tiered' | 'slam' | 'loss'
 
 export type GameLabel =
   | 'Scratch'
