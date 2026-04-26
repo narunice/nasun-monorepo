@@ -9,6 +9,7 @@ import {
   useForceTierDebug,
 } from '../components/celebration'
 import { useCrashInvalidationEffect } from '../features/game-history'
+import crashThumb from '../assets/images/crash.webp'
 
 const NUSDC_DECIMALS = 1_000_000n
 
@@ -107,7 +108,23 @@ export default function CrashPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-white">Crash</h1>
+      <header className="panel p-6 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)] flex items-center gap-5">
+        <img
+          src={crashThumb}
+          alt=""
+          aria-hidden
+          className="w-24 h-24 md:w-32 md:h-32 rounded-xl object-cover border border-gold-subtle shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs uppercase tracking-[0.3em] text-gold-300 mb-2">
+            Live Round
+          </p>
+          <h1 className="font-display text-3xl md:text-4xl text-gold">Crash</h1>
+          <p className="text-sm text-neutral-200 mt-2 italic">
+            Go or stop. One decision, one multiplier.
+          </p>
+        </div>
+      </header>
 
       <CrashGraph
         state={state}
@@ -151,17 +168,19 @@ export default function CrashPage() {
           </div>
         ) : showCashOutPanel ? (
           <div className="space-y-3">
-            <button
-              onClick={handleCashOut}
-              disabled={cashOutDisabled}
-              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {crash.phase === 'cashing_out'
-                ? 'Cashing out...'
-                : isFlying
-                ? `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`
-                : 'Cash Out'}
-            </button>
+            <div className="flex justify-center">
+              <button
+                onClick={handleCashOut}
+                disabled={cashOutDisabled}
+                className="w-full sm:min-w-[22rem] py-5 px-10 text-2xl font-extrabold tracking-wide bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl shadow-[0_0_24px_rgba(234,179,8,0.45)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition"
+              >
+                {crash.phase === 'cashing_out'
+                  ? 'Cashing out...'
+                  : isFlying
+                  ? `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`
+                  : 'Cash Out'}
+              </button>
+            </div>
             <div className="flex gap-2 items-center">
               <input
                 type="number"

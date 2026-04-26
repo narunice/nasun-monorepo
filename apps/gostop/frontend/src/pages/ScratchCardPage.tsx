@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useScratchCard, type ScratchResult } from '../features/scratchcard/useScratchCard'
+import scratchThumb from '../assets/images/scratchcard.webp'
+import { ScratchSurface } from '../features/scratchcard/ScratchSurface'
 import { useToast } from '../components/ui/Toast'
 import {
   useCelebrate,
@@ -194,16 +196,24 @@ export default function ScratchCardPage() {
 
 function Header() {
   return (
-    <header className="panel p-8 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)]">
-      <p className="text-sm uppercase tracking-[0.3em] text-gold-300 mb-3">
-        Instant Play
-      </p>
-      <h1 className="font-display text-4xl md:text-5xl text-gold">Scratch Cards</h1>
-      <p className="text-base text-neutral-200 mt-3 max-w-2xl leading-relaxed">
-        Buy up to ten cards in one transaction. Each card resolves instantly
-        with provably-fair randomness. Multipliers up to 100×. Winning cards
-        become NFTs in your wallet.
-      </p>
+    <header className="panel p-6 md:p-8 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)] flex flex-col md:flex-row md:items-center gap-6">
+      <img
+        src={scratchThumb}
+        alt=""
+        aria-hidden
+        className="w-full md:w-48 h-40 md:h-48 rounded-xl object-cover border border-gold-subtle shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm uppercase tracking-[0.3em] text-gold-300 mb-3">
+          Instant Play
+        </p>
+        <h1 className="font-display text-4xl md:text-5xl text-gold">Scratch Cards</h1>
+        <p className="text-base text-neutral-200 mt-3 max-w-2xl leading-relaxed">
+          Buy up to ten cards in one transaction. Each card resolves instantly
+          with provably-fair randomness. Multipliers up to 100×. Winning cards
+          become NFTs in your wallet.
+        </p>
+      </div>
     </header>
   )
 }
@@ -218,41 +228,34 @@ function Card({
   onReveal: () => void
 }) {
   const isWin = result.multiplier > 0
-  if (!revealed) {
-    return (
-      <button
-        onClick={onReveal}
-        className="relative aspect-[3/4] rounded-lg border border-gold-subtle bg-gradient-to-br from-ink-800 to-ink-900 flex items-center justify-center hover:border-gold-200/60 transition-all hover:-translate-y-0.5"
-      >
-        <span className="font-display text-2xl text-gold">?</span>
-        <span className="absolute bottom-2 right-2 text-xs text-neutral-200 font-mono">
-          Tap to reveal
-        </span>
-      </button>
-    )
-  }
   return (
     <div
-      className={`aspect-[3/4] rounded-lg border flex flex-col items-center justify-center gap-1 p-3 animate-slide-in ${
-        isWin
-          ? 'border-gold-200/60 bg-gradient-to-br from-amber-950/80 to-ink-900 shadow-[0_0_20px_-5px_rgba(212,175,55,0.4)]'
-          : 'border-neutral-700 bg-ink-900/80'
+      className={`relative aspect-[3/4] rounded-lg border overflow-hidden ${
+        revealed
+          ? isWin
+            ? 'border-gold-200/60 bg-gradient-to-br from-amber-950/80 to-ink-900 shadow-[0_0_20px_-5px_rgba(212,175,55,0.4)] animate-slide-in'
+            : 'border-neutral-700 bg-ink-900/80 animate-slide-in'
+          : 'border-gold-subtle bg-gradient-to-br from-ink-800 to-ink-900'
       }`}
     >
-      {isWin ? (
-        <>
-          <span className="font-display text-3xl text-gold">{result.multiplier}×</span>
-          <span className="font-mono text-sm text-gold-200">
-            +{formatNusdc(result.prizeAmount)}
-          </span>
-          <span className="text-xs text-neutral-200 uppercase tracking-wider">Won</span>
-        </>
-      ) : (
-        <>
-          <span className="font-display text-2xl text-neutral-400">—</span>
-          <span className="text-xs text-neutral-500 uppercase tracking-wider">No win</span>
-        </>
-      )}
+      <ScratchSurface revealed={revealed} onReveal={onReveal}>
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-3">
+          {isWin ? (
+            <>
+              <span className="font-display text-3xl text-gold">{result.multiplier}×</span>
+              <span className="font-mono text-sm text-gold-200">
+                +{formatNusdc(result.prizeAmount)}
+              </span>
+              <span className="text-xs text-neutral-200 uppercase tracking-wider">Won</span>
+            </>
+          ) : (
+            <>
+              <span className="font-display text-2xl text-neutral-400">—</span>
+              <span className="text-xs text-neutral-500 uppercase tracking-wider">No win</span>
+            </>
+          )}
+        </div>
+      </ScratchSurface>
     </div>
   )
 }

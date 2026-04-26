@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import lotteryThumb from '../assets/images/lottery.webp'
 import {
   useClaimSummary,
   useLatestRound,
@@ -13,7 +14,7 @@ import {
   type Ticket,
 } from '../features/lottery/lottery-client'
 import { useLotteryActions } from '../features/lottery/useLotteryActions'
-import { ROUND_STATUS } from '../lib/gostop-config'
+import { LOTTERY_TICKET_PRICE, ROUND_STATUS } from '../lib/gostop-config'
 import {
   useCelebrate,
   tierForLottery,
@@ -113,14 +114,25 @@ export default function LotteryPage() {
     setQuickPickSeed((s) => s + 1)
   }
 
+  const [purchaseConfirm, setPurchaseConfirm] = useState<
+    | { count: number; picks: number[] | null; roundNumber: number | null }
+    | null
+  >(null)
+
   async function onBuy() {
     if (!round || picks.length !== PICK_COUNT) return
+    const submitted = [...picks]
     const ok = await buyTicket(round.id, picks)
     if (ok) {
       setPicks([])
       refreshRound()
       refreshTickets()
       invalidateHistory()
+      setPurchaseConfirm({
+        count: 1,
+        picks: submitted,
+        roundNumber: round.roundNumber ?? null,
+      })
     }
   }
 
@@ -131,6 +143,11 @@ export default function LotteryPage() {
       refreshRound()
       refreshTickets()
       invalidateHistory()
+      setPurchaseConfirm({
+        count,
+        picks: null,
+        roundNumber: round.roundNumber ?? null,
+      })
     }
   }
 
@@ -230,6 +247,94 @@ export default function LotteryPage() {
       />
 
       <PrizeTable />
+
+      {purchaseConfirm && (
+        <PurchaseConfirmModal
+          count={purchaseConfirm.count}
+          picks={purchaseConfirm.picks}
+          roundNumber={purchaseConfirm.roundNumber}
+          totalCostNusdc={formatNusdc(
+            LOTTERY_TICKET_PRICE * BigInt(purchaseConfirm.count),
+          )}
+          onClose={() => setPurchaseConfirm(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function PurchaseConfirmModal({
+  count,
+  picks,
+  roundNumber,
+  totalCostNusdc,
+  onClose,
+}: {
+  count: number
+  picks: number[] | null
+  roundNumber: number | null
+  totalCostNusdc: string
+  onClose: () => void
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const roundLabel =
+    roundNumber != null ? `Round ${String(roundNumber).padStart(3, '0')}` : 'this round'
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center px-5 bg-black/70 backdrop-blur-sm animate-slide-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="relative w-full max-w-md panel p-8 text-center bg-[radial-gradient(circle_at_top,rgba(212,175,55,0.18),transparent_60%)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-14 h-14 mx-auto mb-4 rounded-full border border-gold-200/60 bg-gold-200/10 flex items-center justify-center text-3xl text-gold-200">
+          ✓
+        </div>
+        <p className="text-xs uppercase tracking-[0.3em] text-gold-300 mb-2">
+          Purchase Confirmed
+        </p>
+        <h2 className="font-display text-3xl text-gold mb-3">
+          {count === 1 ? '1 Ticket' : `${count} Tickets`} Bought
+        </h2>
+        <p className="text-base text-neutral-200 leading-relaxed mb-5">
+          Entered into <span className="text-gold-200">{roundLabel}</span> for{' '}
+          <span className="font-mono text-gold-200">{totalCostNusdc} NUSDC</span>.
+        </p>
+        {picks && picks.length > 0 && (
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.25em] text-neutral-300 mb-3">
+              Your Numbers
+            </p>
+            <div className="flex justify-center gap-2 flex-wrap">
+              {picks.map((n) => (
+                <span
+                  key={n}
+                  className="w-10 h-10 rounded-full border border-gold-subtle bg-ink-900 flex items-center justify-center font-display text-lg text-gold-200"
+                >
+                  {n}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        <p className="text-sm text-neutral-300 italic mb-6">
+          Good luck. Draw happens Monday 00:00 UTC.
+        </p>
+        <button onClick={onClose} className="btn-gold w-full !py-3 text-base">
+          Got it
+        </button>
+      </div>
     </div>
   )
 }
@@ -249,9 +354,15 @@ function RoundHeader({
     ? `Round ${String(roundNumber).padStart(3, '0')}`
     : 'Round -'
   return (
-    <header className="panel p-8 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)]">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div>
+    <header className="panel p-6 md:p-8 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)]">
+      <div className="flex flex-col md:flex-row md:items-center gap-6">
+        <img
+          src={lotteryThumb}
+          alt=""
+          aria-hidden
+          className="w-full md:w-48 h-40 md:h-48 rounded-xl object-cover border border-gold-subtle shrink-0"
+        />
+        <div className="flex-1 min-w-0">
           <p className="text-sm uppercase tracking-[0.3em] text-gold-300 mb-3">
             {roundLabel} · {statusText}
           </p>
