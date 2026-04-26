@@ -12,7 +12,7 @@ interface Hero2026SectionProps {
 }
 
 function Hero2026Section({
-  videoSrc = "/videos/Mediterranean-Website-web.mp4",
+  videoSrc = "/videos/Mediterranean-Website-4k-2-web.mp4",
   videoTopCrop = "-10vh",
 }: Hero2026SectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
