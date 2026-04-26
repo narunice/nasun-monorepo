@@ -21,11 +21,6 @@ interface NavEntry {
 
 const NAV_ITEMS: NavEntry[] = [
   { to: '/', label: 'Home' },
-  ...(ENABLE_CRASH ? [{ to: '/crash', label: 'Crash' }] : []),
-  { to: '/lottery', label: 'Lottery' },
-  { to: '/scratch', label: 'Scratch' },
-  { to: '/numbermatch', label: 'Match' },
-  { to: '/mines', label: 'Mines' },
   { to: '/games/history', label: 'History' },
 ]
 

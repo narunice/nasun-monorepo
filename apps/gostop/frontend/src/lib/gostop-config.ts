@@ -116,6 +116,8 @@ export const CRASH_BET_PLACED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
   ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::BetPlaced` : '';
 export const CRASH_CASH_OUT_RECORDED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
   ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::CashOutRecorded` : '';
+export const CRASH_ROUND_RESOLVED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
+  ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::RoundResolved` : '';
 
 // Build-time crash gate. Single source of truth — App.tsx and HomePage.tsx
 // import from here instead of reading the env var locally.

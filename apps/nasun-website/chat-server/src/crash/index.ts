@@ -20,6 +20,7 @@ interface SnapshotState {
   commitHash: string | null;
   bettingEndsAt: number | null;
   flyingStartedAt: number | null;
+  nextRoundAt: number | null;
   recentRounds: RecentRound[];
   crashedAlreadyFired: boolean;
   stateVersion: number;
@@ -44,6 +45,7 @@ function createInitialSnapshot(): SnapshotState {
     commitHash: null,
     bettingEndsAt: null,
     flyingStartedAt: null,
+    nextRoundAt: null,
     recentRounds: [],
     crashedAlreadyFired: false,
     stateVersion: Date.now(),
@@ -180,6 +182,7 @@ function applyEvent(event: WsEvent) {
       snapshot.commitHash = event.commitHash;
       snapshot.bettingEndsAt = event.bettingEndsAt;
       snapshot.flyingStartedAt = null;
+      snapshot.nextRoundAt = null;
       snapshot.crashedAlreadyFired = false;
       break;
     case 'betting_closed':
@@ -192,6 +195,7 @@ function applyEvent(event: WsEvent) {
       break;
     case 'resolved':
       snapshot.state = 'RESOLVED';
+      snapshot.nextRoundAt = event.nextRoundAt;
       snapshot.recentRounds = [
         { roundId: event.roundId, crashPointBps: event.crashPointBps },
         ...snapshot.recentRounds.slice(0, 19),

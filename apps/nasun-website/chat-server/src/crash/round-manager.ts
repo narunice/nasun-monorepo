@@ -204,10 +204,9 @@ export class RoundManager {
       } catch (err) {
         const msg = String(err);
         // ECurrentRoundExists (abort code 13 from start_round): registry already has a round in flight.
-        // Match the function_name field and abort code together; the Sui abort message format is
-        // `function_name: Some("start_round") }, 13)`. Retrying would spam the same error, so halt
-        // and let the parent respawn after the stuck round is manually cleared.
-        if (msg.includes('Some("start_round")') && msg.includes('}, 13)')) {
+        // execTx throws `Tx start_round failed: <JSON.stringify(status)>`, so the function_name field
+        // arrives escaped (`Some(\"start_round\")`). Match on the throw label + abort code instead.
+        if (msg.includes('Tx start_round failed') && msg.includes('}, 13)')) {
           console.error('[Crash] HALTED: ECurrentRoundExists — registry occupied. Clear stuck round then restart.');
           this.running = false;
           return;
@@ -385,6 +384,7 @@ export class RoundManager {
       roundId,
       crashPointBps,
       crashTimeMs,
+      nextRoundAt: Date.now() + this.config.roundIntervalMs,
       stateVersion: this.roundState.stateVersion,
     });
 

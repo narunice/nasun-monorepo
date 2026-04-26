@@ -20,6 +20,7 @@ import {
   MINES_SESSION_FINISHED_EVENT_TYPE,
   CRASH_BET_PLACED_EVENT_TYPE,
   CRASH_CASH_OUT_RECORDED_EVENT_TYPE,
+  CRASH_ROUND_RESOLVED_EVENT_TYPE,
 } from '../../../lib/gostop-config'
 import {
   countMatchingNumbers,
@@ -341,6 +342,48 @@ interface ParsedCashout {
   eventSeq: string
 }
 
+// Fetch resolve_round tx digests for the given round_ids by walking RoundResolved
+// events (descending). Returns a partial map — round_ids whose resolve event lies
+// beyond the page cap are simply omitted, and the caller falls back to the
+// cashout tx digest. Cap kept moderate: at ~20s/round, 1000 events covers roughly
+// the last ~5h of rounds, which dominates most users' active win history.
+async function fetchResolveTxByRoundId(
+  neededRoundIds: Set<string>,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (neededRoundIds.size === 0 || !CRASH_ROUND_RESOLVED_EVENT_TYPE) return out
+  const client = getSuiClient()
+  let cursor: EventId | null = null
+  const pending = new Set(neededRoundIds)
+
+  for (let page = 0; page < MAX_PAGES && pending.size > 0; page++) {
+    let result: Awaited<ReturnType<typeof client.queryEvents>>
+    try {
+      result = await client.queryEvents({
+        query: { MoveEventType: CRASH_ROUND_RESOLVED_EVENT_TYPE },
+        limit: PAGE_SIZE,
+        order: 'descending',
+        cursor: cursor ?? undefined,
+      })
+    } catch (e) {
+      console.warn('[history] RoundResolved query failed; falling back to cashout tx', e)
+      break
+    }
+    for (const event of result.data) {
+      const d = event.parsedJson as { round_id?: string } | undefined
+      if (typeof d?.round_id !== 'string') continue
+      if (pending.has(d.round_id)) {
+        out.set(d.round_id, event.id.txDigest)
+        pending.delete(d.round_id)
+        if (pending.size === 0) break
+      }
+    }
+    if (!result.hasNextPage || !result.nextCursor) break
+    cursor = result.nextCursor
+  }
+  return out
+}
+
 function mapCrash(bets: SuiEvent[], cashouts: SuiEvent[]): GameActivity[] {
   // round_id → cashout. Only the sender's own cashout is in this list.
   const cashoutByRound = new Map<string, ParsedCashout>()
@@ -512,6 +555,24 @@ export async function fetchAllGameHistory(address: string): Promise<GameHistoryD
     .map(mapMines)
     .filter((x): x is GameActivity => x !== null)
   const crashItems = mapCrash(raw.crashBet, raw.crashCash)
+
+  // Repoint crash WIN rows from the player's cash_out tx (gas only) to the
+  // keeper's resolve_round tx, where the actual USDC payout is transferred.
+  // The round_id is embedded in the original detail string ("R{id} @{mult}×").
+  const winRoundIds = new Set<string>()
+  for (const row of crashItems) {
+    if (row.result !== 'win') continue
+    const m = row.detail.match(/^R(\d+)/)
+    if (m) winRoundIds.add(m[1])
+  }
+  const resolveTxByRound = await fetchResolveTxByRoundId(winRoundIds)
+  for (const row of crashItems) {
+    if (row.result !== 'win') continue
+    const m = row.detail.match(/^R(\d+)/)
+    if (!m) continue
+    const resolveTx = resolveTxByRound.get(m[1])
+    if (resolveTx) row.txDigest = resolveTx
+  }
 
   const tickets = raw.lottery
     .map(parseTicketEvent)
