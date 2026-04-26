@@ -1,5 +1,6 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useSignerAddress } from '@nasun/wallet';
 import { getTransaction } from '../lib/sui-client';
 import { useDocumentTitle } from '../hooks';
 import { Card } from '../components/ui/Card';
@@ -16,6 +17,9 @@ const TX_DIGEST_RE = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/;
 
 export default function Transaction() {
   const { digest } = useParams<{ digest: string }>();
+  const [searchParams] = useSearchParams();
+  const connectedAddress = useSignerAddress();
+  const viewerAddress = searchParams.get('viewer') ?? connectedAddress;
   useDocumentTitle(digest ? `Tx ${digest.slice(0, 8)}...` : 'Transaction');
   const isValidDigest = digest ? TX_DIGEST_RE.test(digest) : false;
 
@@ -76,7 +80,10 @@ export default function Transaction() {
           <TransactionObjectChanges objectChanges={tx.objectChanges} />
 
           {/* Balance Changes Section */}
-          <TransactionBalanceChanges balanceChanges={tx.balanceChanges} />
+          <TransactionBalanceChanges
+            balanceChanges={tx.balanceChanges}
+            viewerAddress={viewerAddress}
+          />
 
           {/* Events Section */}
           <TransactionEvents events={tx.events} />

@@ -10,6 +10,7 @@ interface AddressTransactionHistoryProps {
   limit?: number;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  viewerAddress?: string;
 }
 
 export default function AddressTransactionHistory({
@@ -17,7 +18,9 @@ export default function AddressTransactionHistory({
   isLoading,
   onLoadMore,
   hasMore,
+  viewerAddress,
 }: AddressTransactionHistoryProps) {
+  const viewerSuffix = viewerAddress ? `?viewer=${viewerAddress}` : '';
   return (
     <SectionBox title="Transaction History" color="c6">
       {isLoading ? (
@@ -47,7 +50,7 @@ export default function AddressTransactionHistory({
                   <tr key={tx.digest} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">
                       <Link
-                        to={`/tx/${tx.digest}`}
+                        to={`/tx/${tx.digest}${viewerSuffix}`}
                         className="font-mono text-sm text-foreground hover:text-primary hover:underline"
                       >
                         {truncateDigest(tx.digest)}
