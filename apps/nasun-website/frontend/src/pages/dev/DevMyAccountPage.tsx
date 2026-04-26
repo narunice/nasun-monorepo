@@ -45,7 +45,6 @@ import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
 import { NftShowcaseCard } from "../../sections/myAccount/NftShowcaseCard";
-import { CreatorRewardCard } from "../../sections/myAccount/CreatorRewardCard";
 // import { GenesisDropCard } from "../../sections/myAccount/GenesisDropCard";
 // import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
 
