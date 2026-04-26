@@ -1,13 +1,10 @@
 /**
- * Game history client. Sender-based event query + per-game mappers.
- *
- * Single `queryEvents({Sender})` paginated up to 1000 events (50/page × 20).
- * Activities are categorized client-side by event type; lottery additionally
- * does a multi-get of round objects to derive win/loss deterministically.
- *
- * Crash mapping is "optimistic settling" — see mapCrash for details. Real
- * accuracy waits on the LT-3 indexer; for now the `source` field marks
- * which rows are optimistic so the future indexer can reconcile them.
+ * Game history client. Sender-based event query for scratch/nm/mines/lottery
+ * + backend REST for crash (authoritative on-chain settlement persisted by
+ * the chat-server keeper). Crash event reconciliation in the browser was
+ * removed in favor of the keeper-owned history backend; the same on-chain
+ * GameResult event the keeper already receives in the resolve_round response
+ * is the source of truth.
  */
 
 import type { SuiEvent, EventId } from '@mysten/sui/client'
@@ -18,9 +15,6 @@ import {
   NM_PLAYED_EVENT_TYPE,
   TICKET_PURCHASED_EVENT_TYPE,
   MINES_SESSION_FINISHED_EVENT_TYPE,
-  CRASH_BET_PLACED_EVENT_TYPE,
-  CRASH_CASH_OUT_RECORDED_EVENT_TYPE,
-  CRASH_ROUND_RESOLVED_EVENT_TYPE,
 } from '../../../lib/gostop-config'
 import {
   countMatchingNumbers,
@@ -41,35 +35,21 @@ import type {
 const MAX_PAGES = 20
 const PAGE_SIZE = 50
 
-// Crash window: contract enforces FLYING ≤ 120s; production BETTING ~60s.
-// 2.5 minutes covers the normal round + ~60s of additional settling so a
-// just-bet user sees their row immediately as "settling…", then it promotes
-// to win/loss as the next refetch lands. Stuck-round (1h refund) cases need
-// the LT-3 indexer to be detected.
-const CRASH_FINALIZE_WINDOW_MS = 150 * 1000
-const CLOCK_SKEW_MS = 30 * 1000
-
-// === Event-type union ===
+// === Sender event fetcher ===
 
 const EVENT_TYPES = {
   scratch: SCRATCH_PURCHASED_EVENT_TYPE,
   nm: NM_PLAYED_EVENT_TYPE,
   ticket: TICKET_PURCHASED_EVENT_TYPE,
   minesFinished: MINES_SESSION_FINISHED_EVENT_TYPE,
-  crashBet: CRASH_BET_PLACED_EVENT_TYPE,
-  crashCash: CRASH_CASH_OUT_RECORDED_EVENT_TYPE,
 }
 const ALL_EVENT_TYPES = new Set(Object.values(EVENT_TYPES).filter((s) => s.length > 0))
-
-// === Sender event fetcher ===
 
 interface RawEvents {
   scratch: SuiEvent[]
   numbermatch: SuiEvent[]
   lottery: SuiEvent[]
   mines: SuiEvent[]
-  crashBet: SuiEvent[]
-  crashCash: SuiEvent[]
   isTruncated: boolean
 }
 
@@ -80,8 +60,6 @@ async function fetchUserGameEvents(address: string): Promise<RawEvents> {
     numbermatch: [],
     lottery: [],
     mines: [],
-    crashBet: [],
-    crashCash: [],
     isTruncated: false,
   }
   let cursor: EventId | null = null
@@ -101,8 +79,6 @@ async function fetchUserGameEvents(address: string): Promise<RawEvents> {
       else if (event.type === EVENT_TYPES.nm) out.numbermatch.push(event)
       else if (event.type === EVENT_TYPES.ticket) out.lottery.push(event)
       else if (event.type === EVENT_TYPES.minesFinished) out.mines.push(event)
-      else if (event.type === EVENT_TYPES.crashBet) out.crashBet.push(event)
-      else if (event.type === EVENT_TYPES.crashCash) out.crashCash.push(event)
     }
 
     if (!result.hasNextPage) {
@@ -110,8 +86,6 @@ async function fetchUserGameEvents(address: string): Promise<RawEvents> {
       break
     }
     if (!result.nextCursor) {
-      // RPC returned hasNextPage=true with no cursor; treat as truncated to
-      // avoid an infinite loop replaying the same page.
       console.warn('[history] queryEvents missing nextCursor; stopping early')
       break
     }
@@ -182,9 +156,6 @@ function mapNumberMatch(event: SuiEvent): GameActivity | null {
   }
 }
 
-// Lottery uses round-object-derived results. PrizeClaimed events are NOT
-// consumed here; round.drawnNumbers + getTicketTier is deterministic.
-
 interface ParsedTicket {
   ticketId: number
   roundId: string
@@ -239,8 +210,6 @@ async function fetchRoundsByIds(roundIds: string[]): Promise<Map<string, Lottery
         options: { showContent: true },
       })
     } catch (e) {
-      // One chunk failure shouldn't kill the whole history — tickets in this
-      // chunk stay pending until the next refetch.
       console.warn('[history] multiGetObjects chunk failed', e)
       continue
     }
@@ -272,7 +241,6 @@ function resolveTicketResults(
     let tierLabel = ''
 
     if (round?.drawnNumbers) {
-      // countMatchingNumbers signature: (ticket, drawn) — ticket numbers first.
       const matches = countMatchingNumbers(t.numbers, round.drawnNumbers)
       const tier = getTicketTier(matches)
       if (tier !== PRIZE_TIER.NONE) {
@@ -316,7 +284,6 @@ function mapMines(event: SuiEvent): GameActivity | null {
     console.warn('[history] malformed mines event', event)
     return null
   }
-  // mines.move: STATUS_CASHED_OUT = 1, STATUS_EXPLODED = 2
   const STATUS_CASHED_OUT = 1
   const bet = BigInt(d.bet_amount)
   const payout = BigInt(d.payout)
@@ -336,203 +303,64 @@ function mapMines(event: SuiEvent): GameActivity | null {
   }
 }
 
-interface ParsedCashout {
-  multBps: bigint
-  txDigest: string
-  eventSeq: string
+// === Crash backend client ===
+
+interface CrashHistoryRow {
+  round_id: number
+  bet_amount: string
+  payout: string
+  multiplier_bps: number
+  timestamp_ms: number
+  resolve_tx: string
 }
 
-// Fetch resolve_round tx digests for the given round_ids by walking RoundResolved
-// events (descending). Returns a partial map — round_ids whose resolve event lies
-// beyond the page cap are simply omitted, and the caller falls back to the
-// cashout tx digest. Cap kept moderate: at ~20s/round, 1000 events covers roughly
-// the last ~5h of rounds, which dominates most users' active win history.
-async function fetchResolveTxByRoundId(
-  neededRoundIds: Set<string>,
-): Promise<Map<string, string>> {
-  const out = new Map<string, string>()
-  if (neededRoundIds.size === 0 || !CRASH_ROUND_RESOLVED_EVENT_TYPE) return out
-  const client = getSuiClient()
-  let cursor: EventId | null = null
-  const pending = new Set(neededRoundIds)
-
-  for (let page = 0; page < MAX_PAGES && pending.size > 0; page++) {
-    let result: Awaited<ReturnType<typeof client.queryEvents>>
-    try {
-      result = await client.queryEvents({
-        query: { MoveEventType: CRASH_ROUND_RESOLVED_EVENT_TYPE },
-        limit: PAGE_SIZE,
-        order: 'descending',
-        cursor: cursor ?? undefined,
-      })
-    } catch (e) {
-      console.warn('[history] RoundResolved query failed; falling back to cashout tx', e)
-      break
-    }
-    for (const event of result.data) {
-      const d = event.parsedJson as { round_id?: string } | undefined
-      if (typeof d?.round_id !== 'string') continue
-      if (pending.has(d.round_id)) {
-        out.set(d.round_id, event.id.txDigest)
-        pending.delete(d.round_id)
-        if (pending.size === 0) break
-      }
-    }
-    if (!result.hasNextPage || !result.nextCursor) break
-    cursor = result.nextCursor
-  }
-  return out
+interface CrashHistoryResponse {
+  items: CrashHistoryRow[]
+  serverTime: number
 }
 
-function mapCrash(bets: SuiEvent[], cashouts: SuiEvent[]): GameActivity[] {
-  // round_id → cashout. Only the sender's own cashout is in this list.
-  const cashoutByRound = new Map<string, ParsedCashout>()
-  for (const e of cashouts) {
-    const d = e.parsedJson as { round_id?: string; multiplier_bps?: string } | undefined
-    if (typeof d?.round_id !== 'string' || typeof d?.multiplier_bps !== 'string') continue
-    try {
-      const next = {
-        multBps: BigInt(d.multiplier_bps),
-        txDigest: e.id.txDigest,
-        eventSeq: e.id.eventSeq,
-      }
-      const existing = cashoutByRound.get(d.round_id)
-      if (existing && existing.multBps !== next.multBps) {
-        // Contract today emits one CashOutRecorded per (round, player). If
-        // future contract changes allow multiple, prefer the highest multBps
-        // (most generous attempted cashout) and warn so we notice.
-        console.warn('[history] duplicate crash cashout for round', d.round_id, {
-          existing: existing.multBps.toString(),
-          next: next.multBps.toString(),
-        })
-        if (next.multBps > existing.multBps) cashoutByRound.set(d.round_id, next)
-      } else {
-        cashoutByRound.set(d.round_id, next)
-      }
-    } catch {
-      console.warn('[history] bad crash multiplier_bps', d.multiplier_bps)
-    }
+function resolveCrashHistoryUrl(): string {
+  // Derive from VITE_CHAT_SERVER_URL — gostop already uses this for crash WS/state.
+  // Fallback to local dev port to keep `pnpm dev` working without extra env.
+  const explicit = import.meta.env.VITE_CHAT_SERVER_URL as string | undefined
+  const base = explicit ? explicit.replace(/\/$/, '') : 'http://localhost:3101'
+  return `${base}/api/crash/history`
+}
+
+interface CrashFetchOutcome {
+  items: GameActivity[]
+  backendError: boolean
+}
+
+async function fetchCrashHistoryFromBackend(address: string): Promise<CrashFetchOutcome> {
+  const url = `${resolveCrashHistoryUrl()}?address=${encodeURIComponent(address)}&limit=200`
+  let body: CrashHistoryResponse
+  try {
+    const r = await fetch(url)
+    if (!r.ok) throw new Error(`status ${r.status}`)
+    body = (await r.json()) as CrashHistoryResponse
+  } catch (err) {
+    console.warn('[history] crash backend fetch failed', err)
+    return { items: [], backendError: true }
   }
-
-  const now = Date.now()
-  const out: GameActivity[] = []
-
-  for (const e of bets) {
-    const d = e.parsedJson as
-      | { round_id?: string; amount?: string; timestamp_ms?: string }
-      | undefined
-    if (typeof d?.round_id !== 'string' || typeof d?.amount !== 'string') {
-      console.warn('[history] malformed crash bet event', e)
-      continue
-    }
-    const roundId = d.round_id
-    const bet = BigInt(d.amount)
-    const ts = Number(d.timestamp_ms ?? e.timestampMs ?? 0)
-    // Stable id keyed off the BetPlaced event so the row is identifiable
-    // regardless of which downstream events arrive.
-    const id = `crash-${e.id.txDigest}-${e.id.eventSeq}`
-    const cashout = cashoutByRound.get(roundId)
-
-    // Guard against missing/zero timestamps from indexer/RPC quirks. Without
-    // this, `elapsed = now` (huge), and the row falls into the loss branch
-    // silently — better to surface as pending so the user notices.
-    if (!cashout && (!Number.isFinite(ts) || ts <= 0)) {
-      console.warn('[history] crash bet missing timestamp; row pending', {
-        roundId,
-        eventTs: e.timestampMs,
-        bodyTs: d.timestamp_ms,
-      })
-      out.push({
-        id,
-        gameType: 'crash',
-        timestampMs: 0,
-        spent: bet,
-        payout: 0n,
-        result: 'pending',
-        detail: `R${roundId} (settling…)`,
-        txDigest: e.id.txDigest,
-        source: 'optimistic-pending',
-      })
-      continue
-    }
-
-    if (cashout) {
-      // Optimistic win. cash_out emit ≠ resolve_round confirmed win, but in
-      // practice the user's client only enables cashout when live multiplier
-      // < crash_point, so phantom wins are rare. The Tx link points at the
-      // cashout transaction (where the payout actually executes).
-      const payout = (bet * cashout.multBps) / 10_000n
-      const multStr = (Number(cashout.multBps) / 10_000).toFixed(2)
-      out.push({
-        id,
-        gameType: 'crash',
-        timestampMs: ts,
-        spent: bet,
-        payout,
-        result: 'win',
-        detail: `R${roundId} @${multStr}×`,
-        txDigest: cashout.txDigest,
-        source: 'optimistic-cashout',
-      })
-      continue
-    }
-
-    const elapsed = now - ts
-    if (elapsed < 0) {
-      // Future timestamp — almost certainly a clock-skew client. Show as
-      // pending with diagnostic so the user can investigate rather than
-      // silently hiding the row.
-      console.warn('[history] crash bet timestamp in future; clock may be off', {
-        roundId,
-        ts,
-        now,
-      })
-      out.push({
-        id,
-        gameType: 'crash',
-        timestampMs: ts,
-        spent: bet,
-        payout: 0n,
-        result: 'pending',
-        detail: `R${roundId} (settling… verify clock)`,
-        txDigest: e.id.txDigest,
-        source: 'optimistic-pending',
-      })
-      continue
-    }
-    if (elapsed < CRASH_FINALIZE_WINDOW_MS + CLOCK_SKEW_MS) {
-      // Within the settling window: bet is acknowledged but cashout (if any)
-      // hasn't propagated yet. Show as pending so the user sees the bet was
-      // recorded; the next refetch promotes to win/loss.
-      out.push({
-        id,
-        gameType: 'crash',
-        timestampMs: ts,
-        spent: bet,
-        payout: 0n,
-        result: 'pending',
-        detail: `R${roundId} (settling…)`,
-        txDigest: e.id.txDigest,
-        source: 'optimistic-pending',
-      })
-      continue
-    }
-
-    // Window elapsed without a cashout — presumed loss. Stuck-round (refund)
-    // cases will mis-classify here; they need the LT-3 indexer.
-    out.push({
-      id,
+  const items: GameActivity[] = (body.items ?? []).map((it) => {
+    const bet = BigInt(it.bet_amount)
+    const payout = BigInt(it.payout)
+    const isWin = payout > 0n
+    const multStr = (it.multiplier_bps / 10_000).toFixed(2)
+    return {
+      id: `crash-${it.round_id}`,
       gameType: 'crash',
-      timestampMs: ts,
+      timestampMs: it.timestamp_ms,
       spent: bet,
-      payout: 0n,
-      result: 'loss',
-      detail: `R${roundId} crashed`,
-      txDigest: e.id.txDigest,
-      source: 'optimistic-no-cashout',
-    })
-  }
-  return out
+      payout,
+      result: isWin ? 'win' : 'loss',
+      detail: isWin ? `R${it.round_id} @${multStr}×` : `R${it.round_id} crashed`,
+      txDigest: it.resolve_tx,
+      source: 'backend-resolved',
+    }
+  })
+  return { items, backendError: false }
 }
 
 // === Public API ===
@@ -540,10 +368,15 @@ function mapCrash(bets: SuiEvent[], cashouts: SuiEvent[]): GameActivity[] {
 export interface GameHistoryData {
   activities: GameActivity[]
   isTruncated: boolean
+  crashBackendError: boolean
 }
 
 export async function fetchAllGameHistory(address: string): Promise<GameHistoryData> {
-  const raw = await fetchUserGameEvents(address)
+  // Crash and the on-chain event scan are independent — fetch in parallel.
+  const [raw, crashOutcome] = await Promise.all([
+    fetchUserGameEvents(address),
+    fetchCrashHistoryFromBackend(address),
+  ])
 
   const scratchItems = raw.scratch
     .map(mapScratch)
@@ -554,25 +387,6 @@ export async function fetchAllGameHistory(address: string): Promise<GameHistoryD
   const minesItems = raw.mines
     .map(mapMines)
     .filter((x): x is GameActivity => x !== null)
-  const crashItems = mapCrash(raw.crashBet, raw.crashCash)
-
-  // Repoint crash WIN rows from the player's cash_out tx (gas only) to the
-  // keeper's resolve_round tx, where the actual USDC payout is transferred.
-  // The round_id is embedded in the original detail string ("R{id} @{mult}×").
-  const winRoundIds = new Set<string>()
-  for (const row of crashItems) {
-    if (row.result !== 'win') continue
-    const m = row.detail.match(/^R(\d+)/)
-    if (m) winRoundIds.add(m[1])
-  }
-  const resolveTxByRound = await fetchResolveTxByRoundId(winRoundIds)
-  for (const row of crashItems) {
-    if (row.result !== 'win') continue
-    const m = row.detail.match(/^R(\d+)/)
-    if (!m) continue
-    const resolveTx = resolveTxByRound.get(m[1])
-    if (resolveTx) row.txDigest = resolveTx
-  }
 
   const tickets = raw.lottery
     .map(parseTicketEvent)
@@ -586,9 +400,10 @@ export async function fetchAllGameHistory(address: string): Promise<GameHistoryD
       ...scratchItems,
       ...nmItems,
       ...minesItems,
-      ...crashItems,
+      ...crashOutcome.items,
       ...lotteryItems,
     ].sort((a, b) => b.timestampMs - a.timestampMs),
     isTruncated: raw.isTruncated,
+    crashBackendError: crashOutcome.backendError,
   }
 }

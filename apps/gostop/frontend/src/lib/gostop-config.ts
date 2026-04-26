@@ -111,14 +111,6 @@ export const CRASH_MAX_BET = crashBig('maxBetNusdc'); // 400_000_000 (400 NUSDC)
 export const CRASH_MAX_SINGLE_PAYOUT = crashBig('maxSinglePayout');
 export const CRASH_HOUSE_EDGE_BPS = crashNum('houseEdgeBps');
 
-// Event type strings (empty when crash disabled — fetcher must filter empties).
-export const CRASH_BET_PLACED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
-  ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::BetPlaced` : '';
-export const CRASH_CASH_OUT_RECORDED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
-  ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::CashOutRecorded` : '';
-export const CRASH_ROUND_RESOLVED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
-  ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::RoundResolved` : '';
-
 // Build-time crash gate. Single source of truth — App.tsx and HomePage.tsx
 // import from here instead of reading the env var locally.
 export const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true';

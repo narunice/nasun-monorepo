@@ -19,8 +19,9 @@ const NETWORK_SEGMENT_MAP: Record<string, string> = {
 const segment = NETWORK_SEGMENT_MAP[GOSTOP_NETWORK ?? ''] ?? 'devnet'
 const EXPLORER_BASE = `https://explorer.nasun.io/${segment}`
 
-export function getExplorerTxUrl(digest: string): string {
-  return `${EXPLORER_BASE}/tx/${digest}`
+export function getExplorerTxUrl(digest: string, viewer?: string | null): string {
+  const base = `${EXPLORER_BASE}/tx/${digest}`
+  return viewer ? `${base}?viewer=${encodeURIComponent(viewer)}` : base
 }
 
 export function getExplorerObjectUrl(id: string): string {

@@ -80,6 +80,7 @@ export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistory
       winRate:
         totalResolved > 0 ? Math.round((winCount / totalResolved) * 10000) / 100 : 0,
       isTruncated: data?.isTruncated ?? false,
+      crashBackendError: data?.crashBackendError,
     }
   }, [all, data])
 
