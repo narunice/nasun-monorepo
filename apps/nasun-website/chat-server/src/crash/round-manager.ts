@@ -158,10 +158,14 @@ export class RoundManager {
   }
 
   private generateCrashPoint(): { crashPointBps: number; salt: Buffer } {
+    // Standard provably-fair crash distribution. Instant-crash band kept narrow
+    // so most rounds give players a real chance to cash out.
+    // Numerator (10000 - INSTANT_BAND) sets the on-chain house edge: 1%.
+    const INSTANT_BAND = 100;
     const raw = randomInt(0, 10_000);
-    let crashPointBps = raw < 300
+    let crashPointBps = raw < INSTANT_BAND
       ? 10_000
-      : Math.floor((10_000 - 300) * 10_000 / (10_000 - raw));
+      : Math.floor((10_000 - INSTANT_BAND) * 10_000 / (10_000 - raw));
     // Cap matches Move INVERSE_SEARCH_TOP_BPS.
     if (crashPointBps > CRASH_POINT_CAP_BPS) crashPointBps = CRASH_POINT_CAP_BPS;
     const salt = randomBytes(32);
@@ -199,11 +203,11 @@ export class RoundManager {
         await this.runRound();
       } catch (err) {
         const msg = String(err);
-        // ECurrentRoundExists (abort code 13 in crash module): registry already has a round in flight.
-        // Match both the module name and abort code to avoid false positives from other contracts.
-        // Retrying would just spam the same error. Halt so the parent can respawn after
-        // the stale round is manually cleared (admin_finalize_stuck_round / refund_stale_betting).
-        if (msg.includes('crash::start_round') && msg.includes(', 13)')) {
+        // ECurrentRoundExists (abort code 13 from start_round): registry already has a round in flight.
+        // Match the function_name field and abort code together; the Sui abort message format is
+        // `function_name: Some("start_round") }, 13)`. Retrying would spam the same error, so halt
+        // and let the parent respawn after the stuck round is manually cleared.
+        if (msg.includes('Some("start_round")') && msg.includes('}, 13)')) {
           console.error('[Crash] HALTED: ECurrentRoundExists — registry occupied. Clear stuck round then restart.');
           this.running = false;
           return;
@@ -279,8 +283,10 @@ export class RoundManager {
       stateVersion: this.roundState.stateVersion,
     });
 
-    // --- Wait for betting window with safety margin for on-chain clock skew ---
-    const waitMs = Math.max(0, bettingEndsAt - Date.now()) + 1_000; // +1s buffer
+    // --- Wait for betting window with small safety margin for on-chain clock skew ---
+    // Buffer kept small (Sui devnet clock now tracks wall clock); EBettingNotEnded
+    // retry below covers the rare residual skew case.
+    const waitMs = Math.max(0, bettingEndsAt - Date.now()) + 200;
     await this.sleep(waitMs);
     if (!this.running) return;
 
