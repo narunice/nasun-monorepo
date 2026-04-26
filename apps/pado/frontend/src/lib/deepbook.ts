@@ -37,6 +37,13 @@ export interface Orderbook {
   midPrice: number;
 }
 
+// Adaptive tick count for get_level2_ticks_from_mid devInspect.
+// devnet's devInspect gas budget can shrink, causing large `ticks` values to
+// fail with InsufficientGas. We progressively halve until success and cache
+// per-pool the working value for subsequent calls.
+const TICK_FALLBACK_LADDER = [100, 50, 25, 10];
+const cachedSuccessfulTicks: Map<string, number> = new Map();
+
 /**
  * Query orderbook using get_level2_ticks_from_mid
  * Returns bid/ask prices and quantities
@@ -50,57 +57,84 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
     return { bids: [], asks: [], spread: 0, midPrice: 0 };
   }
 
-  try {
-    const tx = new Transaction();
+  const cached = cachedSuccessfulTicks.get(pool.id) ?? null;
+  const candidates = cached !== null
+    ? [cached, ...TICK_FALLBACK_LADDER.filter((t) => t !== cached)]
+    : [...TICK_FALLBACK_LADDER];
 
-    tx.moveCall({
-      target: `${NETWORK_CONFIG.deepbookPackage}::pool::get_level2_ticks_from_mid`,
-      typeArguments: [
-        pool.baseToken.type,
-        pool.quoteToken.type,
-      ],
-      arguments: [
-        tx.object(pool.id),
-        tx.pure.u64(100), // ticks (number of price levels to fetch per side)
-        tx.object('0x6'), // Clock
-      ],
-    });
+  let lastError: unknown = null;
+  for (const ticks of candidates) {
+    try {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${NETWORK_CONFIG.deepbookPackage}::pool::get_level2_ticks_from_mid`,
+        typeArguments: [
+          pool.baseToken.type,
+          pool.quoteToken.type,
+        ],
+        arguments: [
+          tx.object(pool.id),
+          tx.pure.u64(ticks),
+          tx.object('0x6'), // Clock
+        ],
+      });
 
-    const result = await client.devInspectTransactionBlock({
-      sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      transactionBlock: tx,
-    });
+      const result = await client.devInspectTransactionBlock({
+        sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        transactionBlock: tx,
+      });
 
-    if (!result.results || result.results.length === 0) {
-      return { bids: [], asks: [], spread: 0, midPrice: 0 };
+      // devInspect returns failure status (not throw) on InsufficientGas. Detect
+      // and fall back to a smaller tick count rather than returning empty book.
+      const status = result.effects?.status;
+      if (status?.status === 'failure') {
+        const errMsg = status.error || '';
+        if (errMsg.includes('InsufficientGas')) {
+          if (cachedSuccessfulTicks.get(pool.id) === ticks) cachedSuccessfulTicks.delete(pool.id);
+          lastError = new Error(`InsufficientGas at ticks=${ticks}`);
+          continue;
+        }
+        // Non-gas failure (e.g. pool not found): surface immediately.
+        throw new Error(`devInspect failure: ${errMsg}`);
+      }
+
+      if (!result.results || result.results.length === 0) {
+        return { bids: [], asks: [], spread: 0, midPrice: 0 };
+      }
+
+      const returnValues = result.results[0]?.returnValues;
+      if (!returnValues || returnValues.length < 4) {
+        return { bids: [], asks: [], spread: 0, midPrice: 0 };
+      }
+
+      cachedSuccessfulTicks.set(pool.id, ticks);
+
+      // Parse the 4 vectors: bid_prices, bid_quantities, ask_prices, ask_quantities
+      const bidPrices = parseU64Vector(returnValues[0][0]);
+      const bidQuantities = parseU64Vector(returnValues[1][0]);
+      const askPrices = parseU64Vector(returnValues[2][0]);
+      const askQuantities = parseU64Vector(returnValues[3][0]);
+
+      // Convert to PriceLevel format (with dynamic decimals)
+      const bids = buildPriceLevels(bidPrices, bidQuantities, pool.quoteToken.decimals, pool.baseToken.decimals);
+      const asks = buildPriceLevels(askPrices, askQuantities, pool.quoteToken.decimals, pool.baseToken.decimals);
+
+      // Calculate spread and mid price
+      const bestBid = bids.length > 0 ? bids[0].price : 0;
+      const bestAsk = asks.length > 0 ? asks[0].price : 0;
+      const spread = bestAsk > 0 && bestBid > 0 ? bestAsk - bestBid : 0;
+      const midPrice = bestAsk > 0 && bestBid > 0 ? (bestAsk + bestBid) / 2 : 0;
+
+      return { bids, asks, spread, midPrice };
+    } catch (error) {
+      lastError = error;
+      // Network/transport errors: try next candidate as well in case intermittent
+      continue;
     }
-
-    const returnValues = result.results[0]?.returnValues;
-    if (!returnValues || returnValues.length < 4) {
-      return { bids: [], asks: [], spread: 0, midPrice: 0 };
-    }
-
-    // Parse the 4 vectors: bid_prices, bid_quantities, ask_prices, ask_quantities
-    const bidPrices = parseU64Vector(returnValues[0][0]);
-    const bidQuantities = parseU64Vector(returnValues[1][0]);
-    const askPrices = parseU64Vector(returnValues[2][0]);
-    const askQuantities = parseU64Vector(returnValues[3][0]);
-
-    // Convert to PriceLevel format (with dynamic decimals)
-    const bids = buildPriceLevels(bidPrices, bidQuantities, pool.quoteToken.decimals, pool.baseToken.decimals);
-    const asks = buildPriceLevels(askPrices, askQuantities, pool.quoteToken.decimals, pool.baseToken.decimals);
-
-    // Calculate spread and mid price
-    const bestBid = bids.length > 0 ? bids[0].price : 0;
-    const bestAsk = asks.length > 0 ? asks[0].price : 0;
-    const spread = bestAsk > 0 && bestBid > 0 ? bestAsk - bestBid : 0;
-    const midPrice = bestAsk > 0 && bestBid > 0 ? (bestAsk + bestBid) / 2 : 0;
-
-    return { bids, asks, spread, midPrice };
-  } catch (error) {
-    logOnce('deepbook-orderbook', 'warn', '[DeepBook] Orderbook unavailable (pool may not exist on-chain):', error);
-    throw error;
   }
+
+  logOnce('deepbook-orderbook', 'warn', '[DeepBook] Orderbook unavailable (all tick fallbacks exhausted):', lastError);
+  throw lastError ?? new Error('Orderbook query failed at all tick fallback levels');
 }
 
 // Maximum ULEB128 bytes for a u64 value (ceil(64/7) = 10)
