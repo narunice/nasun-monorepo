@@ -36,8 +36,8 @@ export function ScrollSnapSection({
         ${allowTallContent ? 'min-h-[calc(100vh-50px)]' : 'md:h-[calc(100vh-50px)] min-h-[calc(100vh-50px)]'}
         /* Isolation: 새로운 Stacking Context 생성 (z-index 충돌 방지) */
         isolation-isolate
-        /* Overflow Clipping: 경계 밖 렌더링 차단 (시각적 겹침 방지) */
-        overflow-clip
+        /* tall 섹션은 콘텐츠 높이로 자라야 하므로 overflow-clip 제거 */
+        ${allowTallContent ? '' : 'overflow-clip'}
         ${className}
       `}
       {...(disableSnapBelowLg && { 'data-disable-snap-below-lg': 'true' })}

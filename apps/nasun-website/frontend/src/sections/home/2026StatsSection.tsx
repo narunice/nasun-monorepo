@@ -1,8 +1,6 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import { CountingNumber } from "@/components/ui/CountingNumber";
-import { ButtonV4 } from "@/components/ui/button-v4";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -10,7 +8,7 @@ interface HeroStatProps {
   value: React.ReactNode;
   label: string;
   sublabel?: React.ReactNode;
-  accent?: "cyan" | "mint" | "teal";
+  accent?: "cyan" | "mint" | "teal" | "lime" | "violet";
   delay?: number;
   size?: "lg" | "sm";
 }
@@ -21,6 +19,8 @@ const accentText = {
   cyan: "text-pado-3",
   mint: "text-pado-4",
   teal: "text-pado-2",
+  lime: "text-pado-5",
+  violet: "text-pado-violet",
 } as const;
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ const HeroStat = ({
       initial={{ opacity: 0, y: 24 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col gap-1.5 min-w-0 items-center text-center"
+      className="flex flex-col gap-0.5 min-w-0 items-center text-center"
     >
       <div
         className={`${size === "lg" ? "text-4xl sm:text-5xl lg:text-6xl" : "text-3xl lg:text-4xl"} font-black tabular-nums leading-none tracking-tight ${accentText[accent]}`}
@@ -67,7 +67,7 @@ const SectionChip = ({
   className = "",
 }: {
   children: React.ReactNode;
-  accent?: "cyan" | "mint" | "teal";
+  accent?: "cyan" | "mint" | "teal" | "lime" | "violet";
   large?: boolean;
   className?: string;
 }) => (
@@ -82,8 +82,8 @@ const SectionChip = ({
 
 export const Hero2026StatsSection = () => {
   return (
-    <section className="relative bg-pd0 min-h-screen flex items-center max-w-9xl mx-auto py-20 sm:py-24 lg:py-0">
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col gap-14 lg:gap-16 lg:-mt-[50px]">
+    <section className="relative bg-pd0 min-h-[calc(100vh-50px)] max-w-9xl mx-auto py-16 sm:py-20 lg:py-16">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col gap-14 lg:gap-16">
         {/* Top: Nasun Devnet - full width */}
         <div>
           <motion.div
@@ -91,7 +91,7 @@ export const Hero2026StatsSection = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="flex flex-col items-center gap-4 mb-8"
+            className="flex flex-col items-center gap-2 mb-8"
           >
             <SectionChip
               accent="mint"
@@ -110,9 +110,21 @@ export const Hero2026StatsSection = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 lg:gap-x-16 gap-y-10 justify-items-center">
             <HeroStat
               value={<CountingNumber value="37k+" />}
-              label="Daily Active Addresses"
+              label="Peak Daily Active Addresses"
               accent="mint"
               delay={0.15}
+            />
+
+            <HeroStat
+              value={
+                <>
+                  <CountingNumber value="8,785" />
+                </>
+              }
+              label="Avg Daily Active Addresses"
+              sublabel="45-day average"
+              accent="mint"
+              delay={0.35}
             />
             <HeroStat
               value={
@@ -124,17 +136,6 @@ export const Hero2026StatsSection = () => {
               sublabel="45-day average"
               accent="mint"
               delay={0.25}
-            />
-            <HeroStat
-              value={
-                <>
-                  <CountingNumber value="8,785" />
-                </>
-              }
-              label="Avg Daily Active Addresses"
-              sublabel="45-day average"
-              accent="mint"
-              delay={0.35}
             />
           </div>
         </div>
@@ -148,10 +149,10 @@ export const Hero2026StatsSection = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="flex flex-col items-center gap-2 mb-8"
+              className="flex flex-col items-center gap-1 mb-8"
             >
-              <SectionChip accent="cyan" className="!text-xl">
-                Nasun WebApp
+              <SectionChip accent="cyan" className="!text-2xl">
+                Nasun Community
               </SectionChip>
               <span className="text-pd3 text-sm">
                 Launched{" "}
@@ -168,7 +169,7 @@ export const Hero2026StatsSection = () => {
                   </>
                 }
                 label="Verified Users"
-                sublabel="With social accounts connected"
+                sublabel="Connected with social accounts"
                 accent="cyan"
                 delay={0.15}
                 size="sm"
@@ -178,7 +179,7 @@ export const Hero2026StatsSection = () => {
                 label="Daily Active Users"
                 sublabel={
                   <>
-                    With social accounts connected
+                    Connected with social accounts
                     <br />
                     7-day avg (Apr 16-22)
                   </>
@@ -199,9 +200,9 @@ export const Hero2026StatsSection = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.15 }}
-              className="flex flex-col items-center gap-2 mb-8"
+              className="flex flex-col items-center gap-1 mb-8"
             >
-              <SectionChip accent="teal" className="!text-xl">
+              <SectionChip accent="teal" className="!text-2xl">
                 Pado DeFi & Gaming
               </SectionChip>
               <span className="text-pd3 text-sm">
@@ -220,7 +221,7 @@ export const Hero2026StatsSection = () => {
                 label="Daily Active Traders"
                 sublabel={
                   <>
-                    With social accounts connected
+                    Connected with social accounts
                     <br />
                     7-day avg (Apr 16-22)
                   </>
@@ -238,7 +239,7 @@ export const Hero2026StatsSection = () => {
                 label="Daily Active Gamers"
                 sublabel={
                   <>
-                    With social accounts connected
+                    Connected with social accounts
                     <br />
                     7-day avg (Apr 16-22)
                   </>
@@ -250,37 +251,77 @@ export const Hero2026StatsSection = () => {
             </div>
           </div>
         </div>
-        {/* View our activities */}
-        <div className="flex flex-col items-center gap-6 pt-4">
-          <span className="text-sm font-bold uppercase tracking-widest text-pd4">
-            View our activities
-          </span>
-          <div className="flex flex-col sm:flex-row w-full gap-4 mb-4">
-            <div className="flex w-full justify-center">
-              <ButtonV4
-                asChild
-                color="ghost"
-                size="sm"
-                className="uppercase tracking-widest"
-              >
-                <Link to="/community/nasun-ecosystem-leaderboard">
-                  Ecosystem Leaderboard
-                </Link>
-              </ButtonV4>
-            </div>
-            <div className="flex w-full justify-center">
-              <ButtonV4
-                asChild
-                color="ghost"
-                size="sm"
-                className="uppercase tracking-widest"
-              >
-                <Link to="/community/pado-leaderboard">
-                  Pado DeFi Leaderboard
-                </Link>
-              </ButtonV4>
-            </div>
+        {/* Web Apps — accent: "lime" | "violet" */}
+        <div>
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="flex flex-col items-center gap-1 mb-8"
+          >
+            <SectionChip accent="cyan" className="!text-2xl">
+              Web Apps
+            </SectionChip>
+            <span className="text-pd3 text-sm">
+              Launched{" "}
+              <span className="text-pd4 font-semibold">March 4, 2026</span>
+            </span>
+          </motion.div>
+          <div className="md:px-10 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 justify-items-center">
+            <HeroStat
+              value={
+                <>
+                  <CountingNumber value="78" />.<CountingNumber value="1k" />
+                </>
+              }
+              label="Visits"
+              sublabel="Apr 16-22"
+              accent="lime"
+              delay={0.1}
+              size="sm"
+            />
+
+            <HeroStat
+              value={
+                <>
+                  <CountingNumber value="11" />%
+                </>
+              }
+              label="Bounce Rate"
+              sublabel="7-day avg (Apr 16-22)"
+              accent="lime"
+              delay={0.3}
+              size="sm"
+            />
+            <HeroStat
+              value={
+                <>
+                  <CountingNumber value="13" />m <CountingNumber value="13" />s
+                </>
+              }
+              label="Visit Duration"
+              sublabel="7-day avg (Apr 16-22)"
+              accent="lime"
+              delay={0.4}
+              size="sm"
+            />
           </div>
+        </div>
+        {/* Footnotes */}
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-nasun-white/15">
+          <p className="text-pd4 text-sm leading-relaxed">
+            <sup>1</sup> Nasun web apps are bot-filtered by Cloudflare
+            Turnstile.
+          </p>
+          <p className="text-pd4 text-sm leading-relaxed">
+            <sup>2</sup> Users with connected social accounts are linked with
+            verified X, Google, and/or Telegram accounts.
+          </p>
+          <p className="text-pd4 text-sm leading-relaxed">
+            <sup>3</sup> Bounce rate and visit duration are sourced from Umami
+            Analytics. All on-chain data is independently verifiable.
+          </p>
         </div>
       </div>
     </section>
