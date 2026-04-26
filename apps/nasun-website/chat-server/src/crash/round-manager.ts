@@ -51,7 +51,63 @@ function parsePlayerResultsFromEvents(
       multiplierBps: Number(d.multiplier_bps ?? 0),
       timestampMs: Number(d.timestamp_ms ?? 0),
       sessionIdHex,
+      betTx: null,
     });
+  }
+  return out;
+}
+
+// Fetch BetPlaced events for `roundId` from the crash module and return a
+// map of player -> tx digest. Used to enrich resolve rows so the history UI
+// can link both the user's place_bet tx and the keeper's resolve tx.
+//
+// Strategy: page descending from latest. The keeper just emitted RoundResolved
+// for this round, so BetPlaced events for it are within recent history. We
+// stop once a page yields zero matches AND we've seen at least one event with
+// `round_id < target` (older), or we hit a hard page cap. Failures return an
+// empty map; callers must tolerate missing digests.
+async function fetchBetTxByPlayer(
+  client: SuiClient,
+  packageId: string,
+  roundId: number,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const eventType = `${packageId}::crash::BetPlaced`;
+  const PAGE_LIMIT = 50;
+  const MAX_PAGES = 10;
+  let cursor: { txDigest: string; eventSeq: string } | null | undefined = null;
+  let sawOlder = false;
+
+  for (let i = 0; i < MAX_PAGES; i++) {
+    let page;
+    try {
+      page = await client.queryEvents({
+        query: { MoveEventType: eventType },
+        order: 'descending',
+        limit: PAGE_LIMIT,
+        cursor: cursor ?? null,
+      });
+    } catch (err) {
+      console.error('[Crash] queryEvents BetPlaced failed', { roundId, err: (err as Error).message });
+      return out;
+    }
+    let matchedThisPage = 0;
+    for (const ev of page.data) {
+      const d = (ev.parsedJson ?? {}) as { round_id?: unknown; player?: unknown };
+      const rid = Number(d.round_id);
+      if (rid === roundId) {
+        const player = String(d.player ?? '').toLowerCase();
+        if (/^0x[0-9a-f]{1,64}$/.test(player) && !out.has(player)) {
+          out.set(player, ev.id.txDigest);
+          matchedThisPage++;
+        }
+      } else if (rid < roundId) {
+        sawOlder = true;
+      }
+    }
+    if (sawOlder && matchedThisPage === 0) break;
+    if (!page.hasNextPage || !page.nextCursor) break;
+    cursor = page.nextCursor;
   }
   return out;
 }
@@ -542,6 +598,17 @@ export class RoundManager {
     try {
       const rows = parsePlayerResultsFromEvents(resolveRes.events);
       if (rows.length > 0) {
+        // Enrich with bet_tx digests by querying BetPlaced events for this
+        // round. Done out-of-band so a query failure doesn't lose the row.
+        try {
+          const betTxMap = await fetchBetTxByPlayer(this.client, this.config.packageId, roundId);
+          for (const r of rows) {
+            const tx = betTxMap.get(r.player);
+            if (tx) r.betTx = tx;
+          }
+        } catch (err) {
+          console.error('[Crash] fetchBetTxByPlayer failed', { roundId, err: (err as Error).message });
+        }
         this.broadcast({
           type: 'resolve_persisted',
           roundId,

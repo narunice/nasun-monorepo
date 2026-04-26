@@ -312,6 +312,7 @@ interface CrashHistoryRow {
   multiplier_bps: number
   timestamp_ms: number
   resolve_tx: string
+  bet_tx?: string | null
 }
 
 interface CrashHistoryResponse {
@@ -357,6 +358,7 @@ async function fetchCrashHistoryFromBackend(address: string): Promise<CrashFetch
       result: isWin ? 'win' : 'loss',
       detail: isWin ? `R${it.round_id} @${multStr}×` : `R${it.round_id} crashed`,
       txDigest: it.resolve_tx,
+      betTxDigest: it.bet_tx ?? undefined,
       source: 'backend-resolved',
     }
   })

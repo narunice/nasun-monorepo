@@ -53,10 +53,20 @@ const HISTORY_SCHEMA = `
     timestamp_ms    INTEGER NOT NULL,
     session_id_hex  TEXT    NOT NULL,
     resolve_tx      TEXT    NOT NULL,
+    bet_tx          TEXT,
     PRIMARY KEY (round_id, player)
   );
   CREATE INDEX IF NOT EXISTS idx_player_round ON crash_player_results (player, round_id DESC);
 `;
+
+// Idempotent ALTER for DBs created before bet_tx existed. SQLite has no
+// IF NOT EXISTS for ADD COLUMN, so guard via PRAGMA.
+function ensureBetTxColumn(db: Database.Database): void {
+  const cols = db.prepare("PRAGMA table_info('crash_player_results')").all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'bet_tx')) {
+    db.exec("ALTER TABLE crash_player_results ADD COLUMN bet_tx TEXT");
+  }
+}
 
 function openHistoryDb(path: string): void {
   try {
@@ -68,20 +78,21 @@ function openHistoryDb(path: string): void {
   historyDb.pragma('journal_mode = WAL');
   historyDb.pragma('synchronous = NORMAL');
   historyDb.exec(HISTORY_SCHEMA);
+  ensureBetTxColumn(historyDb);
   insertPlayerStmt = historyDb.prepare(`
     INSERT OR REPLACE INTO crash_player_results
-    (round_id, player, bet_amount, payout, multiplier_bps, timestamp_ms, session_id_hex, resolve_tx)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    (round_id, player, bet_amount, payout, multiplier_bps, timestamp_ms, session_id_hex, resolve_tx, bet_tx)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   queryHistoryStmt = historyDb.prepare(`
-    SELECT round_id, bet_amount, payout, multiplier_bps, timestamp_ms, resolve_tx
+    SELECT round_id, bet_amount, payout, multiplier_bps, timestamp_ms, resolve_tx, bet_tx
     FROM crash_player_results
     WHERE player = ?
     ORDER BY round_id DESC
     LIMIT ?
   `);
   queryHistoryBeforeStmt = historyDb.prepare(`
-    SELECT round_id, bet_amount, payout, multiplier_bps, timestamp_ms, resolve_tx
+    SELECT round_id, bet_amount, payout, multiplier_bps, timestamp_ms, resolve_tx, bet_tx
     FROM crash_player_results
     WHERE player = ? AND round_id < ?
     ORDER BY round_id DESC
@@ -104,6 +115,7 @@ function persistResolveRows(roundId: number, resolveTx: string, rows: ResolvePla
           r.timestampMs,
           r.sessionIdHex,
           resolveTx,
+          r.betTx,
         );
       }
     });
