@@ -83,15 +83,12 @@ function emptyOrderbookState(): OrderbookState {
   return { bestBid: 0, bestAsk: 0, midPrice: 0, spread: 0, hasBids: false, hasAsks: false };
 }
 
-function emptyFullOrderbookState(): FullOrderbookState {
-  return { ...emptyOrderbookState(), bids: [], asks: [] };
-}
-
 // Adaptive tick count for get_level2_ticks_from_mid devInspect.
-// devnet's devInspect gas budget can shrink, causing large `ticks` values to
-// fail with InsufficientGas. We progressively halve until success and cache
-// the working value for subsequent calls.
-const TICK_FALLBACK_LADDER = [100, 50, 25, 10];
+// DeepBook's gas cost grows non-linearly with depth: ticks=25 ≈ 2M gas,
+// ticks=50 ≈ 1.6B gas, ticks=100 exceeds devInspect budget on devnet. The bot
+// only needs depth visibility for arbitrage and divergence checks, so 25 is
+// sufficient and avoids the failure-then-fallback path on every cycle.
+const TICK_FALLBACK_LADDER = [25, 50, 10];
 let cachedSuccessfulTicks: number | null = null;
 
 export async function getFullOrderbookState(client: SuiClient): Promise<FullOrderbookState> {
@@ -139,12 +136,17 @@ export async function getFullOrderbookState(client: SuiClient): Promise<FullOrde
     }
 
     if (!result.results || result.results.length === 0) {
-      return emptyFullOrderbookState();
+      // Missing return data is a transport failure, not an empty book — fall
+      // through to the next candidate (or surface the throw) so the caller's
+      // depth/divergence logic doesn't react to a phantom empty orderbook.
+      lastError = new Error(`devInspect returned no results at ticks=${ticks}`);
+      continue;
     }
 
     const returnValues = result.results[0]?.returnValues;
     if (!returnValues || returnValues.length < 4) {
-      return emptyFullOrderbookState();
+      lastError = new Error(`devInspect returned malformed result at ticks=${ticks}`);
+      continue;
     }
 
     cachedSuccessfulTicks = ticks;

@@ -38,11 +38,49 @@ export interface Orderbook {
 }
 
 // Adaptive tick count for get_level2_ticks_from_mid devInspect.
-// devnet's devInspect gas budget can shrink, causing large `ticks` values to
-// fail with InsufficientGas. We progressively halve until success and cache
-// per-pool the working value for subsequent calls.
-const TICK_FALLBACK_LADDER = [100, 50, 25, 10];
+// DeepBook's gas cost grows non-linearly with depth: ticks=25 ≈ 2M gas,
+// ticks=50 ≈ 1.6B gas, ticks=100 exceeds devInspect budget on devnet.
+// We start at the cheapest count that satisfies UI needs (25 levels per side
+// is well above what the visible book renders) and only escalate if a caller
+// hits the rare case where a small count returns no return values.
+const TICK_FALLBACK_LADDER = [25, 50, 10];
+const TICK_CACHE_KEY_PREFIX = 'pado:deepbook:ticks:';
 const cachedSuccessfulTicks: Map<string, number> = new Map();
+
+function loadCachedTicks(poolId: string): number | null {
+  const inMemory = cachedSuccessfulTicks.get(poolId);
+  if (inMemory !== undefined) return inMemory;
+  try {
+    const raw = globalThis.localStorage?.getItem(TICK_CACHE_KEY_PREFIX + poolId);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || !TICK_FALLBACK_LADDER.includes(parsed)) return null;
+    cachedSuccessfulTicks.set(poolId, parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedTicks(poolId: string, ticks: number): void {
+  cachedSuccessfulTicks.set(poolId, ticks);
+  try {
+    globalThis.localStorage?.setItem(TICK_CACHE_KEY_PREFIX + poolId, String(ticks));
+  } catch {
+    // localStorage unavailable (private mode / SSR) — in-memory cache still works
+  }
+}
+
+function invalidateCachedTicks(poolId: string, ticks: number): void {
+  if (cachedSuccessfulTicks.get(poolId) === ticks) {
+    cachedSuccessfulTicks.delete(poolId);
+    try {
+      globalThis.localStorage?.removeItem(TICK_CACHE_KEY_PREFIX + poolId);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 /**
  * Query orderbook using get_level2_ticks_from_mid
@@ -57,7 +95,7 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
     return { bids: [], asks: [], spread: 0, midPrice: 0 };
   }
 
-  const cached = cachedSuccessfulTicks.get(pool.id) ?? null;
+  const cached = loadCachedTicks(pool.id);
   const candidates = cached !== null
     ? [cached, ...TICK_FALLBACK_LADDER.filter((t) => t !== cached)]
     : [...TICK_FALLBACK_LADDER];
@@ -90,7 +128,7 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
       if (status?.status === 'failure') {
         const errMsg = status.error || '';
         if (errMsg.includes('InsufficientGas')) {
-          if (cachedSuccessfulTicks.get(pool.id) === ticks) cachedSuccessfulTicks.delete(pool.id);
+          invalidateCachedTicks(pool.id, ticks);
           lastError = new Error(`InsufficientGas at ticks=${ticks}`);
           continue;
         }
@@ -99,15 +137,21 @@ export async function getOrderbook(pool: PoolConfig = DEFAULT_POOL): Promise<Ord
       }
 
       if (!result.results || result.results.length === 0) {
-        return { bids: [], asks: [], spread: 0, midPrice: 0 };
+        // Treat missing return data as a transport failure, not an empty book.
+        // Real "empty orderbook" comes through as a successful call with 4
+        // return vectors of length 0; falling through to the next candidate
+        // (or surfacing the throw) avoids silently rendering an empty UI.
+        lastError = new Error(`devInspect returned no results at ticks=${ticks}`);
+        continue;
       }
 
       const returnValues = result.results[0]?.returnValues;
       if (!returnValues || returnValues.length < 4) {
-        return { bids: [], asks: [], spread: 0, midPrice: 0 };
+        lastError = new Error(`devInspect returned malformed result at ticks=${ticks}`);
+        continue;
       }
 
-      cachedSuccessfulTicks.set(pool.id, ticks);
+      saveCachedTicks(pool.id, ticks);
 
       // Parse the 4 vectors: bid_prices, bid_quantities, ask_prices, ask_quantities
       const bidPrices = parseU64Vector(returnValues[0][0]);
