@@ -121,7 +121,7 @@ export const Hero2026StatsSection = () => {
                 </>
               }
               label="Avg Returning Rate"
-              sublabel="46-day average"
+              sublabel="45-day average"
               accent="mint"
               delay={0.25}
             />
@@ -132,7 +132,7 @@ export const Hero2026StatsSection = () => {
                 </>
               }
               label="Avg Daily Active Addresses"
-              sublabel="46-day average"
+              sublabel="45-day average"
               accent="mint"
               delay={0.35}
             />
@@ -151,7 +151,7 @@ export const Hero2026StatsSection = () => {
               className="flex flex-col items-center gap-2 mb-8"
             >
               <SectionChip accent="cyan" className="!text-xl">
-                Nasun Community
+                Nasun WebApp
               </SectionChip>
               <span className="text-pd3 text-sm">
                 Launched{" "}
