@@ -105,6 +105,7 @@ export function useCrash(): UseCrashResult {
           commitHash: event.commitHash,
           bettingEndsAt: event.bettingEndsAt,
           flyingStartedAt: event.flyingStartedAt,
+          nextRoundAt: event.nextRoundAt ?? null,
           recentRounds: event.recentRounds,
           crashedAlreadyFired: event.crashedAlreadyFired,
         })
@@ -147,6 +148,7 @@ export function useCrash(): UseCrashResult {
           commitHash: event.commitHash,
           bettingEndsAt: event.bettingEndsAt,
           flyingStartedAt: null,
+          nextRoundAt: null,
           crashedAlreadyFired: false,
           stateVersion: event.stateVersion,
           serverTime: event.serverTime,
@@ -159,7 +161,7 @@ export function useCrash(): UseCrashResult {
         setRoundState((prev) => prev ? { ...prev, state: 'CRASHED', crashedAlreadyFired: true, stateVersion: event.stateVersion } : prev)
       } else if (event.type === 'resolved') {
         setRecentRounds((prev) => [{ roundId: event.roundId, crashPointBps: event.crashPointBps }, ...prev.slice(0, 19)])
-        setRoundState((prev) => prev ? { ...prev, state: 'RESOLVED', stateVersion: event.stateVersion } : prev)
+        setRoundState((prev) => prev ? { ...prev, state: 'RESOLVED', nextRoundAt: event.nextRoundAt, stateVersion: event.stateVersion } : prev)
         setLiveMultiplierBps(10_000)
       }
     })

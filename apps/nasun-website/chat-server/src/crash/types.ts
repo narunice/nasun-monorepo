@@ -13,7 +13,7 @@ export type WsEvent =
   | { type: 'round_started'; roundId: number; roundObjectId: string; commitHash: string; bettingEndsAt: number; serverTime: number; stateVersion: number }
   | { type: 'betting_closed'; roundId: number; flyingStartedAt: number; stateVersion: number }
   | { type: 'crashed'; roundId: number; stateVersion: number }
-  | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; stateVersion: number }
+  | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; nextRoundAt: number; stateVersion: number }
   | { type: 'disabled'; reason: 'backoff' | 'shutdown'; retryAt?: number; stateVersion: number };
 
 export interface CrashModuleDeps {

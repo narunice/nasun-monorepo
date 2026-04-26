@@ -66,7 +66,6 @@ function Live() {
             cta="Fly"
             to="/crash"
             accent="gold"
-            badge="Live"
           />
         )}
         <GameCard

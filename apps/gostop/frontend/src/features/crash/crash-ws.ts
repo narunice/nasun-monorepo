@@ -22,11 +22,11 @@ function resolveWsUrl(): string {
 const WS_URL = resolveWsUrl()
 
 export type CrashWsEvent =
-  | { type: 'state_sync'; state: string; roundId: number | null; roundObjectId: string | null; commitHash: string | null; bettingEndsAt: number | null; flyingStartedAt: number | null; recentRounds: Array<{ roundId: number; crashPointBps: number }>; crashedAlreadyFired: boolean; stateVersion: number; serverTime: number }
+  | { type: 'state_sync'; state: string; roundId: number | null; roundObjectId: string | null; commitHash: string | null; bettingEndsAt: number | null; flyingStartedAt: number | null; nextRoundAt: number | null; recentRounds: Array<{ roundId: number; crashPointBps: number }>; crashedAlreadyFired: boolean; stateVersion: number; serverTime: number }
   | { type: 'round_started'; roundId: number; roundObjectId: string; commitHash: string; bettingEndsAt: number; serverTime: number; stateVersion: number }
   | { type: 'betting_closed'; roundId: number; flyingStartedAt: number; stateVersion: number }
   | { type: 'crashed'; roundId: number; stateVersion: number }
-  | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; stateVersion: number }
+  | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; nextRoundAt: number; stateVersion: number }
 
 type Listener = (event: CrashWsEvent) => void
 

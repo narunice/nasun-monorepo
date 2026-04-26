@@ -45,6 +45,12 @@ export default function CrashPage() {
     return () => clearInterval(id)
   }, [])
   const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 3000
+  // After the betting countdown hits 0s the server still needs a moment to flip
+  // the round to FLYING. Treat that gap as "armed" so the cash-out button shows
+  // immediately (disabled) instead of leaving the user staring at a waiting line.
+  const bettingWindowExpired = isBetting && bettingEndsAt !== null && now >= bettingEndsAt
+  const showCashOutPanel = crash.hasBetThisRound && (isFlying || bettingWindowExpired)
+  const cashOutDisabled = !isFlying || crash.phase === 'cashing_out'
 
   // Reset bet tracking on a new round.
   useEffect(() => {
@@ -113,15 +119,26 @@ export default function CrashPage() {
         {state === 'FLYING' ? (
           <span className={`text-5xl font-bold ${multiplierColor}`}>{formatMultiplier(crash.liveMultiplierBps)}</span>
         ) : state === 'CRASHED' || state === 'RESOLVED' ? (
-          <span className="text-5xl font-bold text-red-400">
-            {formatMultiplier(crash.recentRounds[0]?.crashPointBps ?? 10_000)}
-          </span>
+          <div className="space-y-1">
+            <div className="text-5xl font-bold text-red-400">
+              {formatMultiplier(crash.recentRounds[0]?.crashPointBps ?? 10_000)}
+            </div>
+            {(() => {
+              const nextAt = crash.roundState?.nextRoundAt ?? null
+              const secsLeft = nextAt !== null ? Math.max(0, Math.ceil((nextAt - now) / 1000)) : null
+              return (
+                <div className="text-sm text-gray-500">
+                  {secsLeft !== null && secsLeft > 0 ? `Next round in ${secsLeft}s` : 'Starting next round...'}
+                </div>
+              )
+            })()}
+          </div>
         ) : state === 'BETTING' ? (
           <span className="text-2xl text-gray-400">
             Accepting bets... {crash.roundState?.bettingEndsAt ? `${Math.max(0, Math.ceil((crash.roundState.bettingEndsAt - Date.now()) / 1000))}s` : ''}
           </span>
         ) : (
-          <span className="text-2xl text-gray-500">Waiting for next round...</span>
+          <span className="text-2xl text-gray-500">Starting next round...</span>
         )}
       </div>
 
@@ -132,14 +149,18 @@ export default function CrashPage() {
           <div className="text-center text-green-400 font-semibold py-4">
             Cashed out at {formatMultiplier(crash.myCashoutBps ?? 10_000)}
           </div>
-        ) : crash.hasBetThisRound && isFlying ? (
+        ) : showCashOutPanel ? (
           <div className="space-y-3">
             <button
               onClick={handleCashOut}
-              disabled={crash.phase === 'cashing_out'}
-              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg disabled:opacity-50"
+              disabled={cashOutDisabled}
+              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {crash.phase === 'cashing_out' ? 'Cashing out...' : `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`}
+              {crash.phase === 'cashing_out'
+                ? 'Cashing out...'
+                : isFlying
+                ? `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`
+                : 'Cash Out'}
             </button>
             <div className="flex gap-2 items-center">
               <input

@@ -17,6 +17,7 @@ export interface CrashRoundState {
   commitHash: string | null
   bettingEndsAt: number | null
   flyingStartedAt: number | null
+  nextRoundAt: number | null
   recentRounds: Array<{ roundId: number; crashPointBps: number }>
   crashedAlreadyFired: boolean
 }

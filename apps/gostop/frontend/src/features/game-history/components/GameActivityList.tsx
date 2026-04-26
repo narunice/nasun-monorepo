@@ -99,6 +99,7 @@ function ExplorerLink({ txDigest }: { txDigest: string }) {
   )
 }
 
+
 function ActivityCard({ activity }: { activity: GameActivity }) {
   const badge = GAME_BADGE[activity.gameType]
   return (
@@ -272,7 +273,9 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
       {showCrashFootnote && (
         <p className="text-sm text-neutral-200 italic mt-4 px-1">
           Crash records reflect cashout requests; final settlement may differ until
-          indexer integration.
+          indexer integration. Win rows link to the keeper&apos;s resolve transaction
+          (where USDC payouts settle); loss rows link to your original bet
+          transaction.
         </p>
       )}
     </div>
