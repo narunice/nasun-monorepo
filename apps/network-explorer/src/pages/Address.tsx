@@ -89,6 +89,7 @@ export default function Address() {
             isLoading={txLoading}
             hasMore={txLimit < 100 && (transactions?.length ?? 0) >= txLimit}
             onLoadMore={() => setTxLimit((prev) => Math.min(prev + 30, 100))}
+            viewerAddress={addr}
           />
         </div>
       )}
