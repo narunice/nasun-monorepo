@@ -46,7 +46,7 @@ export interface ApiRateLimitConfig {
 // increase or split into a second WebACL ($5/mo additional).
 export const API_RATE_LIMITS: ApiRateLimitConfig[] = [
   { apiId: "br30jspm8j", name: "TwitterAuth", limit: 60 },
-  { apiId: "p2du2vo5uf", name: "BugReport", limit: 120 },
+  { apiId: "p2du2vo5uf", name: "BugReport", limit: 600 },
   { apiId: "gtzq164xhb", name: "MetaMaskAuth", limit: 120 },
   { apiId: "r0thrlqqcf", name: "ZkLoginAuth", limit: 120 },
   { apiId: "r45cfshhkf", name: "SuiAuth", limit: 120 },
