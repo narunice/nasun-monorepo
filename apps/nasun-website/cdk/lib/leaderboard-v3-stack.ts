@@ -543,21 +543,6 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
-    // Creator Reward Lambda (one-time USDC reward preference for SEASON1 top-100 creators)
-    const creatorRewardLambda = new NodejsFunction(
-      this,
-      'LeaderboardV3CreatorRewardFunction',
-      {
-        ...nodejsFunctionDefaults,
-        functionName: `${envPrefix}nasun-leaderboard-v3-creator-reward`,
-        entry: path.join(lambdaSrcPath, 'handlers', 'creator-reward.ts'),
-        handler: 'handler',
-        timeout: cdk.Duration.seconds(15),
-        memorySize: 128,
-        description: 'Leaderboard V3: One-time USDC reward preference for SEASON1 top-100 creators',
-      }
-    );
-
     // Grant DynamoDB permissions
     this.postsTable.grantReadWriteData(createPostLambda);
     this.postsTable.grantReadData(getLeaderboardLambda);
@@ -672,9 +657,6 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonsTable.grantReadData(disconnectTelegramLambda);
     userProfilesTable.grantReadWriteData(disconnectTelegramLambda);
 
-    // Creator Reward permissions (GetItem + UpdateItem on UserProfiles only)
-    userProfilesTable.grantReadWriteData(creatorRewardLambda);
-
     // Secrets Manager read for Telegram bot token
     verifyTelegramLambda.addToRolePolicy(
       new iam.PolicyStatement({
@@ -776,13 +758,6 @@ export class LeaderboardV3Stack extends cdk.Stack {
       'POST',
       new apigw.LambdaIntegration(disconnectTelegramLambda)
     );
-
-    // GET /v3/leaderboard/creator-reward
-    // POST /v3/leaderboard/creator-reward
-    const creatorRewardResource = leaderboardResource.addResource('creator-reward');
-    const creatorRewardIntegration = new apigw.LambdaIntegration(creatorRewardLambda);
-    creatorRewardResource.addMethod('GET', creatorRewardIntegration);
-    creatorRewardResource.addMethod('POST', creatorRewardIntegration);
 
     // GET /v3/feed/featured
     const feedResource = v3Resource.addResource('feed');
