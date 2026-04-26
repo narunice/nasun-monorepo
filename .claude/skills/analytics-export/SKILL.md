@@ -19,7 +19,7 @@ Nasun ecosystem Umami analytics 데이터를 날짜별 CSV로 추출합니다.
 
 | Website ID | Name | 기간 | 내용 |
 |---|---|---|---|
-| `9fea5a9d-feac-48a7-88e3-e87783f29b5b` | Nasun Ecosystem | 2026-02-27 ~ 현재 | nasun.io 전체 기간 + pado.finance 2026-04-14부터 |
+| `9fea5a9d-feac-48a7-88e3-e87783f29b5b` | Nasun Ecosystem | 2026-02-27 ~ 현재 | nasun.io 전체 기간 + pado.finance 2026-04-14부터 + gostop.app 2026-04-26부터 |
 | `fcf0ce34-acb4-4cee-b1db-f76a9ab28e69` | [Archive] Pado | 2026-03-29 ~ 현재 | pado.finance 별도 추적 시절 데이터 |
 
 ### 기간별 데이터 방법론 (중요)
@@ -75,7 +75,7 @@ WITH visits AS (
     EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) AS duration_sec
   FROM website_event
   WHERE website_id = '9fea5a9d-feac-48a7-88e3-e87783f29b5b'
-    AND hostname IN ('nasun.io', 'pado.finance')
+    AND hostname IN ('nasun.io', 'pado.finance', 'gostop.app')
     AND DATE(created_at) BETWEEN '$DATE_FROM' AND '$DATE_TO'
     AND event_type != 2
   GROUP BY session_id, visit_id
