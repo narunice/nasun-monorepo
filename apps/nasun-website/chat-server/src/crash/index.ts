@@ -119,12 +119,22 @@ function persistResolveRows(roundId: number, resolveTx: string, rows: ResolvePla
 // History page may parallel-fetch + refresh; bots/scrapers will trip 429.
 const HISTORY_RATE_MAX = 120;
 const HISTORY_RATE_WINDOW_MS = 60_000;
+// Hard cap on map size as a defense-in-depth against pathological IP churn
+// (CG-NAT rotation, scrapers). When exceeded, evict the oldest entries.
+const HISTORY_RATE_MAP_MAX = 10_000;
+const HISTORY_RATE_SWEEP_MS = 5 * 60_000;
 const historyRateMap = new Map<string, { count: number; resetAt: number }>();
 
 function checkHistoryRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = historyRateMap.get(ip);
   if (!entry || now > entry.resetAt) {
+    if (historyRateMap.size >= HISTORY_RATE_MAP_MAX) {
+      // Evict oldest insertion (Map preserves insertion order). Cheap O(1)
+      // bound when sweep can't keep up with adversarial churn.
+      const firstKey = historyRateMap.keys().next().value;
+      if (firstKey !== undefined) historyRateMap.delete(firstKey);
+    }
     historyRateMap.set(ip, { count: 1, resetAt: now + HISTORY_RATE_WINDOW_MS });
     return true;
   }
@@ -132,6 +142,15 @@ function checkHistoryRateLimit(ip: string): boolean {
   entry.count++;
   return true;
 }
+
+// Periodic sweep removes entries whose window has expired. Prevents the map
+// from accumulating one-shot IPs across the PM2 restart interval.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of historyRateMap) {
+    if (now > entry.resetAt) historyRateMap.delete(ip);
+  }
+}, HISTORY_RATE_SWEEP_MS).unref();
 
 function getClientIp(req: IncomingMessage): string {
   return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'unknown';
