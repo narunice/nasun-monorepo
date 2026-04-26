@@ -102,12 +102,24 @@ function crashBig(key: string): bigint {
   return 0n;
 }
 export const CRASH_PACKAGE_ID = crashStr('packageId');
+export const CRASH_ORIGINAL_PACKAGE_ID =
+  crashStr('originalPackageId') || crashStr('packageId');
 export const CRASH_REGISTRY_ID = crashStr('registry');
 export const CRASH_GAME_ID = crashNum('gameId');
 export const CRASH_MIN_BET = crashBig('minBetNusdc'); // 1_000_000
 export const CRASH_MAX_BET = crashBig('maxBetNusdc'); // 400_000_000 (400 NUSDC)
 export const CRASH_MAX_SINGLE_PAYOUT = crashBig('maxSinglePayout');
 export const CRASH_HOUSE_EDGE_BPS = crashNum('houseEdgeBps');
+
+// Event type strings (empty when crash disabled — fetcher must filter empties).
+export const CRASH_BET_PLACED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
+  ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::BetPlaced` : '';
+export const CRASH_CASH_OUT_RECORDED_EVENT_TYPE = CRASH_ORIGINAL_PACKAGE_ID
+  ? `${CRASH_ORIGINAL_PACKAGE_ID}::crash::CashOutRecorded` : '';
+
+// Build-time crash gate. Single source of truth — App.tsx and HomePage.tsx
+// import from here instead of reading the env var locally.
+export const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true';
 
 export const SUI_CLOCK_ID = '0x6';
 export const SUI_RANDOM_ID = '0x8';

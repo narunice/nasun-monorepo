@@ -19,6 +19,7 @@ import {
   tierForLottery,
   useForceTierDebug,
 } from '../components/celebration'
+import { useInvalidateGameHistory } from '../features/game-history'
 
 const URGENT_DEADLINE_MS = 24 * 60 * 60 * 1000
 
@@ -84,6 +85,7 @@ export default function LotteryPage() {
   const { tickets, refresh: refreshTickets } = useMyTickets(walletAddress, round?.id)
   const claimSummary = useClaimSummary(walletAddress)
   const celebrate = useCelebrate()
+  const invalidateHistory = useInvalidateGameHistory()
   useForceTierDebug('Lottery')
 
   const closeMs = round?.closeTime ?? fallbackCloseAt.getTime()
@@ -118,6 +120,7 @@ export default function LotteryPage() {
       setPicks([])
       refreshRound()
       refreshTickets()
+      invalidateHistory()
     }
   }
 
@@ -127,6 +130,7 @@ export default function LotteryPage() {
     if (ok) {
       refreshRound()
       refreshTickets()
+      invalidateHistory()
     }
   }
 
@@ -140,6 +144,7 @@ export default function LotteryPage() {
     if (ok) {
       refreshRound()
       refreshTickets()
+      invalidateHistory()
       if (claimable) {
         celebrate({
           variant: 'tiered',

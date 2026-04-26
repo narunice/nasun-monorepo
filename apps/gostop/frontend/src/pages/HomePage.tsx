@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
-
-const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true'
+import { ENABLE_CRASH } from '../lib/gostop-config'
 
 const UPCOMING = [
   ...(ENABLE_CRASH
