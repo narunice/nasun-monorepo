@@ -87,24 +87,56 @@ function emptyFullOrderbookState(): FullOrderbookState {
   return { ...emptyOrderbookState(), bids: [], asks: [] };
 }
 
-export async function getFullOrderbookState(client: SuiClient): Promise<FullOrderbookState> {
-  try {
-    const tx = new Transaction();
+// Adaptive tick count for get_level2_ticks_from_mid devInspect.
+// devnet's devInspect gas budget can shrink, causing large `ticks` values to
+// fail with InsufficientGas. We progressively halve until success and cache
+// the working value for subsequent calls.
+const TICK_FALLBACK_LADDER = [100, 50, 25, 10];
+let cachedSuccessfulTicks: number | null = null;
 
+export async function getFullOrderbookState(client: SuiClient): Promise<FullOrderbookState> {
+  // Build candidate ladder: try cached value first, then fall back through ladder.
+  const candidates = cachedSuccessfulTicks !== null
+    ? [cachedSuccessfulTicks, ...TICK_FALLBACK_LADDER.filter((t) => t !== cachedSuccessfulTicks)]
+    : [...TICK_FALLBACK_LADDER];
+
+  let lastError: unknown = null;
+  for (const ticks of candidates) {
+    const tx = new Transaction();
     tx.moveCall({
       target: `${DEEPBOOK_PACKAGE}::pool::get_level2_ticks_from_mid`,
       typeArguments: [MARKET.baseType, MARKET.quoteType],
       arguments: [
         tx.object(MARKET.poolId),
-        tx.pure.u64(100),
+        tx.pure.u64(ticks),
         tx.object(CLOCK_ID),
       ],
     });
 
-    const result = await client.devInspectTransactionBlock({
-      sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      transactionBlock: tx,
-    });
+    let result;
+    try {
+      result = await client.devInspectTransactionBlock({
+        sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        transactionBlock: tx,
+      });
+    } catch (error) {
+      lastError = error;
+      continue;
+    }
+
+    // devInspect returns failure status (not throw) on InsufficientGas. Detect
+    // and fall back to a smaller tick count rather than returning empty book.
+    const status = result.effects?.status;
+    if (status?.status === 'failure') {
+      const errMsg = status.error || '';
+      if (errMsg.includes('InsufficientGas')) {
+        if (cachedSuccessfulTicks === ticks) cachedSuccessfulTicks = null; // invalidate stale cache
+        lastError = new Error(`InsufficientGas at ticks=${ticks}`);
+        continue;
+      }
+      // Non-gas failure: surface immediately to avoid masking real errors.
+      throw new Error(`devInspect failure: ${errMsg}`);
+    }
 
     if (!result.results || result.results.length === 0) {
       return emptyFullOrderbookState();
@@ -113,6 +145,11 @@ export async function getFullOrderbookState(client: SuiClient): Promise<FullOrde
     const returnValues = result.results[0]?.returnValues;
     if (!returnValues || returnValues.length < 4) {
       return emptyFullOrderbookState();
+    }
+
+    cachedSuccessfulTicks = ticks;
+    if (ticks < TICK_FALLBACK_LADDER[0]) {
+      console.warn(`[${timestamp()}] Orderbook query: using ticks=${ticks} (devnet gas-limited)`);
     }
 
     const bidPrices = parseU64Vector(returnValues[0][0]);
@@ -138,9 +175,10 @@ export async function getFullOrderbookState(client: SuiClient): Promise<FullOrde
     const spread = hasBids && hasAsks ? bestAsk - bestBid : 0;
 
     return { bestBid, bestAsk, midPrice, spread, hasBids, hasAsks, bids, asks };
-  } catch (error) {
-    throw error;
   }
+
+  // All candidates exhausted (every tick value hit InsufficientGas or devInspect threw)
+  throw lastError ?? new Error('Orderbook query failed at all tick fallback levels');
 }
 
 function parseU64Vector(bytes: number[]): bigint[] {
