@@ -174,6 +174,11 @@ module gostop_crash::crash {
         timestamp_ms: u64,
     }
 
+    public struct OperatorEmptyFinalize has copy, drop {
+        round_id: u64,
+        timestamp_ms: u64,
+    }
+
     // ===== Init =====
 
     fun init(ctx: &mut TxContext) {
@@ -237,6 +242,32 @@ module gostop_crash::crash {
         if (option::is_some(&reg.current_round_id)) {
             let _ = option::extract(&mut reg.current_round_id);
         };
+        destroy_round(round);
+    }
+
+    /// Operator-initiated finalize for a stuck *empty* round. Allows the keeper to
+    /// auto-recover after PM2 restart / OOM without requiring AdminCap. Funds are
+    /// never at risk because entries must be empty. The state guard rejects calls
+    /// during an active BETTING window so a compromised operator key cannot wipe a
+    /// freshly-started valid round.
+    public entry fun operator_finalize_empty_stuck_round(
+        reg: &mut CrashRegistry,
+        round: CrashRound,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        assert!(tx_context::sender(ctx) == reg.operator_address, ENotOperator);
+        assert!(vector::is_empty(&round.entries), EEntriesNotEmpty);
+        let now = clock::timestamp_ms(clock);
+        assert!(
+            round.state == STATE_FLYING || now > round.betting_ends_at,
+            EBettingNotEnded,
+        );
+        let round_id = round.round_id;
+        if (option::is_some(&reg.current_round_id)) {
+            let _ = option::extract(&mut reg.current_round_id);
+        };
+        event::emit(OperatorEmptyFinalize { round_id, timestamp_ms: now });
         destroy_round(round);
     }
 

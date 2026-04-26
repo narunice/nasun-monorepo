@@ -524,6 +524,166 @@ module gostop_crash::crash_tests {
         ts::end(scenario);
     }
 
+    /// operator_finalize_empty_stuck_round: FLYING + empty → 정상 finalize
+    #[test]
+    fun test_operator_finalize_empty_succeeds() {
+        let mut scenario = ts::begin(ADMIN);
+        let mut clock = setup(&mut scenario);
+        install_caps(&mut scenario, &clock);
+
+        let commit_hash = make_commit_hash(20_000, b"saltsaltsaltsaltsaltsaltsaltsalt");
+
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            crash::start_round(&mut reg, BETTING_DURATION_MS, commit_hash, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        clock::increment_for_testing(&mut clock, BETTING_DURATION_MS + 1);
+
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let reg = ts::take_shared<CrashRegistry>(&scenario);
+            let mut round = ts::take_shared<CrashRound>(&scenario);
+            crash::close_betting(&reg, &mut round, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+            ts::return_shared(round);
+        };
+
+        // operator_finalize_empty_stuck_round 호출 (operator, no AdminCap)
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            let round = ts::take_shared<CrashRound>(&scenario);
+            crash::operator_finalize_empty_stuck_round(&mut reg, round, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    /// operator_finalize_empty_stuck_round: BETTING window 활성 + empty → abort EBettingNotEnded (=18)
+    #[test]
+    #[expected_failure(abort_code = 18, location = gostop_crash::crash)]
+    fun test_operator_finalize_during_betting_window_aborts() {
+        let mut scenario = ts::begin(ADMIN);
+        let clock = setup(&mut scenario);
+        install_caps(&mut scenario, &clock);
+
+        let commit_hash = make_commit_hash(20_000, b"saltsaltsaltsaltsaltsaltsaltsalt");
+
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            crash::start_round(&mut reg, BETTING_DURATION_MS, commit_hash, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        // BETTING window 활성. clock 진행 안 함. state=BETTING + now <= betting_ends_at → 거부
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            let round = ts::take_shared<CrashRound>(&scenario);
+            crash::operator_finalize_empty_stuck_round(&mut reg, round, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    /// operator_finalize_empty_stuck_round: non-operator caller → abort ENotOperator (=16)
+    #[test]
+    #[expected_failure(abort_code = 16, location = gostop_crash::crash)]
+    fun test_operator_finalize_non_operator_aborts() {
+        let mut scenario = ts::begin(ADMIN);
+        let mut clock = setup(&mut scenario);
+        install_caps(&mut scenario, &clock);
+
+        let commit_hash = make_commit_hash(20_000, b"saltsaltsaltsaltsaltsaltsaltsalt");
+
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            crash::start_round(&mut reg, BETTING_DURATION_MS, commit_hash, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        clock::increment_for_testing(&mut clock, BETTING_DURATION_MS + 1);
+
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let reg = ts::take_shared<CrashRegistry>(&scenario);
+            let mut round = ts::take_shared<CrashRound>(&scenario);
+            crash::close_betting(&reg, &mut round, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+            ts::return_shared(round);
+        };
+
+        // PLAYER_A가 호출 → ENotOperator
+        ts::next_tx(&mut scenario, PLAYER_A);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            let round = ts::take_shared<CrashRound>(&scenario);
+            crash::operator_finalize_empty_stuck_round(&mut reg, round, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
+    /// operator_finalize_empty_stuck_round: entries > 0 → abort EEntriesNotEmpty (=19)
+    #[test]
+    #[expected_failure(abort_code = 19, location = gostop_crash::crash)]
+    fun test_operator_finalize_with_entries_aborts() {
+        let mut scenario = ts::begin(ADMIN);
+        let clock = setup(&mut scenario);
+        install_caps(&mut scenario, &clock);
+
+        ts::next_tx(&mut scenario, ADMIN);
+        {
+            let mut pool = ts::take_shared<BankrollPool>(&scenario);
+            let seed_coin = mint_nusdc(200_000_000, ts::ctx(&mut scenario));
+            bankroll_pool::provide_liquidity(&mut pool, seed_coin, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(pool);
+        };
+
+        let commit_hash = make_commit_hash(20_000, b"saltsaltsaltsaltsaltsaltsaltsalt");
+
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            crash::start_round(&mut reg, BETTING_DURATION_MS, commit_hash, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        ts::next_tx(&mut scenario, PLAYER_A);
+        {
+            let mut round = ts::take_shared<CrashRound>(&scenario);
+            let reg = ts::take_shared<CrashRegistry>(&scenario);
+            let mut pool = ts::take_shared<BankrollPool>(&scenario);
+            let bet = mint_nusdc(1_000_000, ts::ctx(&mut scenario));
+            crash::place_bet(&mut round, &reg, &mut pool, bet, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(round);
+            ts::return_shared(reg);
+            ts::return_shared(pool);
+        };
+
+        ts::next_tx(&mut scenario, OPERATOR);
+        {
+            let mut reg = ts::take_shared<CrashRegistry>(&scenario);
+            let round = ts::take_shared<CrashRound>(&scenario);
+            crash::operator_finalize_empty_stuck_round(&mut reg, round, &clock, ts::ctx(&mut scenario));
+            ts::return_shared(reg);
+        };
+
+        clock::destroy_for_testing(clock);
+        ts::end(scenario);
+    }
+
     /// admin_finalize_stuck_round: entries > 0 → abort EEntriesNotEmpty (=19)
     #[test]
     #[expected_failure(abort_code = 19, location = gostop_crash::crash)]

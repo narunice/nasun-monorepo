@@ -141,7 +141,8 @@
   },
 
   "crash": {
-    "packageId": "0x546f9f13280cfc70ed961553fe0cc0b5a691e21918b0be53164b16a3a78b9966",
+    "packageId": "0xab03c5f2e8e11aa9543b506690cf3ee6650341afe14e0b567b4298758557bacc",
+    "v2PackageId": "0x546f9f13280cfc70ed961553fe0cc0b5a691e21918b0be53164b16a3a78b9966",
     "originalPackageId": "0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188",
     "registry": "0x3fa421e97c705f98c1cd29300bf4b90aab09a8f2a74190ab08f12d7a6a2f8cab",
     "adminCap": "0x456f17e5a4d2679d8b9d9deb6ef6e3aa5fae6d74be02b055a18c05918a44e3dc",
@@ -163,6 +164,7 @@
     "maxPayoutSetCanaryTxDigest": "673qrJ9eLU5cbNAnZV4y1vEZu33tUXiVuVFt2hSwAerH",
     "status": "v2 upgraded, operator separated, fork keeper code merged + locally smoke-tested. Awaiting 5/4 prod deploy (Lottery stabilization).",
     "v2UpgradeNotes": [
+      "v3 upgrade (2026-04-26): UpgradeCap-based upgrade. Struct unchanged. Added: operator_finalize_empty_stuck_round (with state/time guard) + OperatorEmptyFinalize event. Lets keeper auto-recover from empty stuck rounds without AdminCap. New packageId 0xab03c5f2...; previous 0x546f9f13... (v2) retained via upgrade.",
       "v2 upgrade (2026-04-25): UpgradeCap-based upgrade. Struct unchanged. Added: INVERSE_SEARCH_TOP_BPS assert in resolve_round, admin_finalize_stuck_round, update_max_payout_via_bp_admin, unique session_id (round_id || player). Removed: paused field idea (off-chain via CRASH_ENABLED env + PM2 stop sufficient).",
       "v1 (2026-04-25 earlier): packageId same as originalPackageId. operator was deployer wallet. max_single_payout 10k. stale round 0x896421... at v1. Now superseded but registry/cap retained via upgrade."
     ]
