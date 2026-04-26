@@ -56,7 +56,7 @@ export default function GameHistoryPage() {
           type="button"
           onClick={refetch}
           disabled={isLoading}
-          className="btn-ghost !py-2 !px-4 text-sm disabled:opacity-50"
+          className="btn-ghost !py-2 !px-4 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
           aria-label="Refresh game history"
         >
           {isLoading ? 'Refreshing…' : 'Refresh'}
@@ -65,7 +65,7 @@ export default function GameHistoryPage() {
 
       <GameSummaryCards summary={summary} isLoading={isLoading} />
 
-      <div className="flex flex-wrap gap-2">
+      <div role="group" aria-label="Filter by game" className="flex flex-wrap gap-2">
         {FILTER_OPTIONS.map((opt) => {
           const active = filter === opt.value
           return (
@@ -74,7 +74,7 @@ export default function GameHistoryPage() {
               type="button"
               onClick={() => setFilter(opt.value)}
               aria-pressed={active}
-              className={`px-3 py-1.5 text-sm rounded-full border transition-all ${
+              className={`px-3 py-1.5 text-sm rounded-full border transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200 ${
                 active
                   ? 'bg-gold-400/15 text-gold-200 border-gold-200/60 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.3)]'
                   : 'border-gold-subtle text-neutral-300 hover:text-gold-200 hover:border-gold-200/40'
